@@ -29,7 +29,7 @@ module HDF5_Utilities
    module procedure HDF5_read_pReal_5
    module procedure HDF5_read_pReal_6
    module procedure HDF5_read_pReal_7
-   
+
    module procedure HDF5_read_pInt_1
    module procedure HDF5_read_pInt_2
    module procedure HDF5_read_pInt_3
@@ -37,7 +37,7 @@ module HDF5_Utilities
    module procedure HDF5_read_pInt_5
    module procedure HDF5_read_pInt_6
    module procedure HDF5_read_pInt_7  !ABOVE 8 DIMENSIONS IT GIVES ERROR: THE CALL TO H5DREAD_F DOESNT WORK
-   
+
  end interface HDF5_read
 
 !--------------------------------------------------------------------------------------------------
@@ -51,7 +51,7 @@ module HDF5_Utilities
    module procedure HDF5_write_pReal5
    module procedure HDF5_write_pReal6
    module procedure HDF5_write_pReal7
-   
+
    module procedure HDF5_write_pInt1
    module procedure HDF5_write_pInt2
    module procedure HDF5_write_pInt3
@@ -59,7 +59,7 @@ module HDF5_Utilities
    module procedure HDF5_write_pInt5
    module procedure HDF5_write_pInt6
    module procedure HDF5_write_pInt7  !ABOVE 8 DIMENSIONS IT GIVES ERROR: THE CALL TO H5DREAD_F DOESNT WORK
-   
+
  end interface HDF5_write
 
  public :: &
@@ -95,7 +95,7 @@ subroutine HDF5_Utilities_init
 
  implicit none
  integer              :: hdferr
- integer(SIZE_T)      :: typeSize 
+ integer(SIZE_T)      :: typeSize
 
  write(6,'(/,a)') ' <<<+-  HDF5_Utilities init  -+>>>'
 #include "compilation_info.f90"
@@ -113,7 +113,7 @@ subroutine HDF5_Utilities_init
  call h5tget_size_f(H5T_NATIVE_DOUBLE,typeSize, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5tget_size_f (double)')
  if (int(pReal,SIZE_T)/=typeSize) call IO_error(0_pInt,ext_msg='pReal does not match H5T_NATIVE_DOUBLE')
- 
+
 end subroutine HDF5_Utilities_init
 
 !--------------------------------------------------------------------------------------------------
@@ -128,14 +128,12 @@ subroutine HDF5_createJobFile
  integer              :: hdferr
  character(len=1024)  :: path
 #ifdef PETSc
-#include <petsc/finclude/petscsys.h> 
-#endif
+#include <petsc/finclude/petscsys.h>
 
-#ifdef PETSc
  call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pcreate_f') 
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pcreate_f')
  call h5pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pset_fapl_mpio_f') 
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pset_fapl_mpio_f')
 #endif
 
 !--------------------------------------------------------------------------------------------------
@@ -157,20 +155,20 @@ end subroutine HDF5_createJobFile
  use hdf5
  use DAMASK_interface, only: &
    getSolverJobName
-   
+
  implicit none
  integer                       :: hdferr
- integer(SIZE_T)               :: typeSize 
+ integer(SIZE_T)               :: typeSize
  character(len=*), intent(in)  :: path
 #ifdef PETSc
-#include <petsc/finclude/petscsys.h> 
+#include <petsc/finclude/petscsys.h>
 #endif
   call h5open_f(hdferr) !############################################################ DANGEROUS
 #ifdef PETSc
  call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pcreate_f') 
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pcreate_f')
  call h5pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pset_fapl_mpio_f') 
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pset_fapl_mpio_f')
 #endif
 !--------------------------------------------------------------------------------------------------
 ! create a file
@@ -187,7 +185,7 @@ end function HDF5_createFile
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_closeJobFile()
  use hdf5
- 
+
  implicit none
  integer  :: hdferr
  call HDF5_removeLink('current')
@@ -201,7 +199,7 @@ end subroutine HDF5_closeJobFile
 !> @brief open and initializes HDF5 output file
 !--------------------------------------------------------------------------------------------------
 integer(HID_T) function HDF5_openFile(fileName,mode)
- 
+
  implicit none
  character(len=*), intent(in)           :: fileName
  character,        intent(in), optional :: mode
@@ -213,7 +211,7 @@ integer(HID_T) function HDF5_openFile(fileName,mode)
  else
    m = 'r'
  endif
- 
+
  if (m == 'w') then
    call h5fcreate_f(fileName,H5F_ACC_TRUNC_F,HDF5_openFile,hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fcreate_f',el=hdferr)
@@ -233,7 +231,7 @@ end function HDF5_openFile
 !> @brief close the opened HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_closeFile(fileHandle)
- 
+
  implicit none
  integer :: hdferr
  integer(HID_T), intent(in) :: fileHandle
@@ -245,15 +243,15 @@ end subroutine HDF5_closeFile
 !--------------------------------------------------------------------------------------------------
 !> @brief adds a new group to the results file
 !--------------------------------------------------------------------------------------------------
-integer(HID_T) function HDF5_addGroup(path)
+integer(HID_T) function HDF5_addGroup(groupName)
  use hdf5
 
  implicit none
- character(len=*), intent(in) :: path
+ character(len=*), intent(in) :: groupName
  integer                      :: hdferr
- 
- call h5gcreate_f(resultsFile, trim(path), HDF5_addGroup, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_addGroup: h5gcreate_f ('//trim(path)//')')
+
+ call h5gcreate_f(resultsFile, trim(groupName), HDF5_addGroup, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_addGroup: h5gcreate_f ('//trim(groupName)//')')
 
 end function HDF5_addGroup
 
@@ -268,46 +266,46 @@ integer(HID_T) function HDF5_addGroup2(fileHandle,groupName)
  character(len=*), intent(in) :: groupName
  integer(HID_T), intent(in)   :: fileHandle
  integer                      :: hdferr
- 
+
  call h5gcreate_f(fileHandle, trim(groupName), HDF5_addGroup2, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_addGroup2: h5gcreate_f ('//trim(groupName)//')')
- 
+
 end function HDF5_addGroup2
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief open a group from the results file
 !--------------------------------------------------------------------------------------------------
-integer(HID_T) function HDF5_openGroup(path)
+integer(HID_T) function HDF5_openGroup(groupName)
  use hdf5
 
  implicit none
- character(len=*), intent(in) :: path
+ character(len=*), intent(in) :: groupName
  integer                      :: hdferr
 
- call h5gopen_f(resultsFile, trim(path), HDF5_openGroup, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup: h5gopen_f ('//trim(path)//')')
+ call h5gopen_f(resultsFile, trim(groupName), HDF5_openGroup, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup: h5gopen_f ('//trim(groupName)//')')
 
 end function HDF5_openGroup
 
 !--------------------------------------------------------------------------------------------------
-!> @brief open an existing group of the results file
+!> @brief open an existing group of a file
 !--------------------------------------------------------------------------------------------------
-integer(HID_T) function HDF5_openGroup2(FileReadID,path)
+integer(HID_T) function HDF5_openGroup2(FileReadID,groupName)
  use hdf5
 
  implicit none
- character(len=*), intent(in) :: path
+ character(len=*), intent(in) :: groupName
  integer                      :: hdferr
  integer(HID_T), intent(in)   :: FileReadID
- 
- call h5gopen_f(FileReadID, trim(path), HDF5_openGroup2, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup2: h5gopen_f ('//trim(path)//')')
+
+ call h5gopen_f(FileReadID, trim(groupName), HDF5_openGroup2, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup2: h5gopen_f ('//trim(groupName)//')')
 
 end function HDF5_openGroup2
 
 !--------------------------------------------------------------------------------------------------
-!> @brief ???
+!> @brief set link to object in results file
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_setLink(path,link)
  use hdf5
@@ -329,7 +327,7 @@ subroutine HDF5_setLink(path,link)
 end subroutine HDF5_setLink
 
 !--------------------------------------------------------------------------------------------------
-!> @brief ???
+!> @brief remove link to an object
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_removeLink(link)
  use hdf5
@@ -344,7 +342,7 @@ subroutine HDF5_removeLink(link)
 end subroutine HDF5_removeLink
 
 !--------------------------------------------------------------------------------------------------
-!> @brief closes a group
+!> @brief close a group
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_closeGroup(ID)
  use hdf5
@@ -382,6 +380,8 @@ subroutine HDF5_addStringAttribute(entity,attrLabel,attrValue)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute: h5awrite_f')
  call h5aclose_f(attr_id,hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute: h5aclose_f')
+ call h5tclose_f(type_id,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute: h5tclose_f')
  call h5sclose_f(space_id,hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute: h5sclose_f')
 
@@ -399,16 +399,16 @@ subroutine HDF5_mappingPhase(mapping,mapping2,Nconstituents,material_phase,phase
  character(len=*), intent(in), dimension(:)     :: phase_name
  integer(pInt),    intent(in), dimension(:)     :: mpiOffset_phase
  integer(pInt),    intent(in), dimension(:,:,:) :: material_phase
- 
+
  character(len=len(phase_name(1))), dimension(:), allocatable :: namesNA
  character(len=len(phase_name(1)))                            :: a
  character(len=*),                  parameter                 :: n = "NULL"
- 
+
  integer(pInt)   :: hdferr, NmatPoints, i, j, k
  integer(HID_T)  :: mapping_id, dtype_id, dset_id, space_id, name_id, position_id, plist_id, memspace
  integer(HID_T)  :: dt5_id      ! Memory datatype identifier
  integer(SIZE_T) :: typesize, type_sizec, type_sizei, type_size
- 
+
  integer(HSIZE_T),  dimension(2)                :: counter
  integer(HSSIZE_T), dimension(2)                :: fileOffset
  integer(pInt),     dimension(:,:), allocatable :: arrOffset
@@ -417,17 +417,17 @@ subroutine HDF5_mappingPhase(mapping,mapping2,Nconstituents,material_phase,phase
  allocate(namesNA(0:size(phase_name)),source=[a,phase_name])
  NmatPoints = size(mapping,1)/Nconstituents
  mapping_ID = HDF5_openGroup("current/mapGeometry")
- 
+
  allocate(arrOffset(Nconstituents,NmatPoints))
  do i=1_pInt, NmatPoints
    do k=1_pInt, Nconstituents
-     do j=1_pInt, size(phase_name)   
+     do j=1_pInt, size(phase_name)
        if(material_phase(k,1,i) == j) &
          arrOffset(k,i) = mpiOffset_phase(j)
      enddo
    enddo
  enddo
- 
+
 !--------------------------------------------------------------------------------------------------
 ! create dataspace
  call h5screate_simple_f(2, int([Nconstituents,dataspace_size],HSIZE_T), space_id, hdferr, &
@@ -468,7 +468,7 @@ subroutine HDF5_mappingPhase(mapping,mapping2,Nconstituents,material_phase,phase
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5tcreate_f position_id')
  call h5tinsert_f(position_id, "Position", 0_SIZE_T, H5T_STD_I32LE, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5tinsert_f position_id')
- 
+
 !--------------------------------------------------------------------------------------------------
 ! Define and select hyperslabs
  counter(1)    = Nconstituents                  ! how big i am
@@ -483,15 +483,15 @@ subroutine HDF5_mappingPhase(mapping,mapping2,Nconstituents,material_phase,phase
  call h5sselect_hyperslab_f(space_id, H5S_SELECT_SET_F, fileOffset, counter, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5sselect_hyperslab_f')
 
-!-------------------------------------------------------------------------------------------------- 
+!--------------------------------------------------------------------------------------------------
  ! Create property list for collective dataset write
 #ifdef PETSc
  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5pcreate_f') 
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5pcreate_f')
  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5pset_dxpl_mpio_f')
 #endif
- 
+
 !--------------------------------------------------------------------------------------------------
 ! write data by fields in the datatype. Fields order is not important.
  call h5dwrite_f(dset_id, name_id, reshape(namesNA(mapping),[Nconstituents,NmatPoints]), &
@@ -503,7 +503,7 @@ subroutine HDF5_mappingPhase(mapping,mapping2,Nconstituents,material_phase,phase
                           int([Nconstituents,  dataspace_size],HSIZE_T), hdferr, &
                           file_space_id = space_id, mem_space_id = memspace, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5dwrite_f instance_id')
-  
+
 !--------------------------------------------------------------------------------------------------
 ! close types, dataspaces
  call h5tclose_f(dtype_id, hdferr)
@@ -511,11 +511,15 @@ subroutine HDF5_mappingPhase(mapping,mapping2,Nconstituents,material_phase,phase
  call h5tclose_f(position_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5tclose_f position_id')
  call h5tclose_f(name_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5tclose_f instance_id')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5tclose_f name_id  ')
+ call h5tclose_f(dt5_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5tclose_f dt5_id')
  call h5dclose_f(dset_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5dclose_f')
  call h5sclose_f(space_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5sclose_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5sclose_f space_id')
+ call h5sclose_f(memspace, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5sclose_f memspace')
  call h5pclose_f(plist_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5pclose_f')
  call HDF5_closeGroup(mapping_ID)
@@ -533,35 +537,35 @@ subroutine HDF5_backwardMappingPhase(material_phase,phasememberat,phase_name,dat
  character(len=*), intent(in), dimension(:)     :: phase_name
  integer(pInt),    intent(in), dimension(:)     :: dataspace_size, mpiOffset_phase
  integer(pInt),    intent(in)                   :: mpiOffset
-  
+
  integer(pInt)   :: hdferr, NmatPoints, Nconstituents, i, j
  integer(HID_T)  :: mapping_id, dtype_id, dset_id, space_id, position_id, plist_id, memspace
  integer(SIZE_T) :: type_size
- 
+
  integer(pInt), dimension(:,:), allocatable :: arr
- 
+
  integer(HSIZE_T),  dimension(1) :: counter
  integer(HSSIZE_T), dimension(1) :: fileOffset
- 
+
  character(len=64) :: phaseID
- 
+
  Nconstituents = size(phasememberat,1)
  NmatPoints = count(material_phase /=0_pInt)/Nconstituents
- 
+
  allocate(arr(2,NmatPoints*Nconstituents))
 
  do i=1_pInt, NmatPoints
    do j=Nconstituents-1_pInt, 0_pInt, -1_pInt
      arr(1,Nconstituents*i-j) = i-1_pInt
    enddo
- enddo 
+ enddo
  arr(2,:) = pack(material_phase,material_phase/=0_pInt)
- 
+
  do i=1_pInt, size(phase_name)
    write(phaseID, '(i0)') i
    mapping_ID = HDF5_openGroup('/current/constitutive/'//trim(phaseID)//'_'//phase_name(i))
    NmatPoints = count(material_phase == i)
-   
+
 !--------------------------------------------------------------------------------------------------
   ! create dataspace
    call h5screate_simple_f(1, int([dataspace_size(i)],HSIZE_T), space_id, hdferr, &
@@ -588,7 +592,7 @@ subroutine HDF5_backwardMappingPhase(material_phase,phasememberat,phase_name,dat
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingPhase: h5tcreate_f position_id')
    call h5tinsert_f(position_id, "Position", 0_SIZE_T, H5T_STD_I32LE, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingPhase: h5tinsert_f position_id')
-   
+
 !--------------------------------------------------------------------------------------------------
   ! Define and select hyperslabs
    counter = NmatPoints                       ! how big i am
@@ -601,11 +605,11 @@ subroutine HDF5_backwardMappingPhase(material_phase,phasememberat,phase_name,dat
    call h5sselect_hyperslab_f(space_id, H5S_SELECT_SET_F, fileOffset, counter, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingPhase: h5sselect_hyperslab_f')
 
-!-------------------------------------------------------------------------------------------------- 
+!--------------------------------------------------------------------------------------------------
  ! Create property list for collective dataset write
 #ifdef PETSc
    call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingPhase: h5pcreate_f') 
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingPhase: h5pcreate_f')
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingPhase: h5pset_dxpl_mpio_f')
 #endif
@@ -625,7 +629,9 @@ subroutine HDF5_backwardMappingPhase(material_phase,phasememberat,phase_name,dat
    call h5dclose_f(dset_id, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingPhase: h5dclose_f')
    call h5sclose_f(space_id, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingPhase: h5sclose_f')
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingPhase: h5sclose_f space_id')
+   call h5sclose_f(memspace, hdferr)
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingPhase: h5sclose_f memspace')
    call h5pclose_f(plist_id, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingPhase: h5pclose_f')
    call HDF5_closeGroup(mapping_ID)
@@ -651,14 +657,14 @@ subroutine HDF5_mappingHomog(material_homog,homogmemberat,homogenization_name,da
 
  integer(HID_T)  :: dt5_id      ! Memory datatype identifier
  integer(SIZE_T) :: typesize, type_sizec, type_sizei, type_size
- 
+
  integer(HSIZE_T),  dimension(1)              :: counter
  integer(HSSIZE_T), dimension(1)              :: fileOffset
  integer(pInt),     dimension(:), allocatable :: arrOffset
- 
+
  NmatPoints = count(material_homog /=0_pInt)
  mapping_ID = HDF5_openGroup("current/mapGeometry")
- 
+
  allocate(arrOffset(NmatPoints))
  do i=1_pInt, NmatPoints
    do j=1_pInt, size(homogenization_name)
@@ -666,7 +672,7 @@ subroutine HDF5_mappingHomog(material_homog,homogmemberat,homogenization_name,da
        arrOffset(i) = mpiOffset_homog(j)
    enddo
  enddo
- 
+
 !--------------------------------------------------------------------------------------------------
 ! create dataspace
  call h5screate_simple_f(1, int([dataspace_size],HSIZE_T), space_id, hdferr, &
@@ -707,7 +713,7 @@ subroutine HDF5_mappingHomog(material_homog,homogmemberat,homogenization_name,da
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5tcreate_f position_id')
  call h5tinsert_f(position_id, "Position", 0_SIZE_T, H5T_STD_I32LE, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5tinsert_f position_id')
- 
+
 !--------------------------------------------------------------------------------------------------
 ! Define and select hyperslabs
  counter = NmatPoints                    ! how big i am
@@ -720,42 +726,46 @@ subroutine HDF5_mappingHomog(material_homog,homogmemberat,homogenization_name,da
  call h5sselect_hyperslab_f(space_id, H5S_SELECT_SET_F, fileOffset, counter, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5sselect_hyperslab_f')
 
-!-------------------------------------------------------------------------------------------------- 
+!--------------------------------------------------------------------------------------------------
 ! Create property list for collective dataset write
 #ifdef PETSc
  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5pcreate_f') 
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5pcreate_f')
  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5pset_dxpl_mpio_f')
 #endif
- 
+
 !--------------------------------------------------------------------------------------------------
 ! write data by fields in the datatype. Fields order is not important.
  call h5dwrite_f(dset_id, name_id, homogenization_name(pack(material_homog,material_homog/=0_pInt)), &
                           int([dataspace_size],HSIZE_T), hdferr, file_space_id = space_id, &
                           mem_space_id = memspace, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5dwrite_f position_id')
- 
- call h5dwrite_f(dset_id, position_id, pack(homogmemberat-1_pInt,homogmemberat/=0_pInt) + arrOffset, & 
+
+ call h5dwrite_f(dset_id, position_id, pack(homogmemberat-1_pInt,homogmemberat/=0_pInt) + arrOffset, &
                           int([dataspace_size],HSIZE_T), hdferr, file_space_id = space_id, &
                           mem_space_id = memspace, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5dwrite_f instance_id')
 
 !--------------------------------------------------------------------------------------------------
 !close types, dataspaces
- call h5tclose_f(dtype_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5tclose_f dtype_id')
- call h5tclose_f(position_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5tclose_f position_id')
- call h5tclose_f(name_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5tclose_f instance_id')
- call h5dclose_f(dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5dclose_f')
- call h5sclose_f(space_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5sclose_f')
- call h5pclose_f(plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5pclose_f')
- call HDF5_closeGroup(mapping_ID)
+call h5tclose_f(dtype_id, hdferr)
+if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5tclose_f dtype_id')
+call h5tclose_f(position_id, hdferr)
+if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5tclose_f position_id')
+call h5tclose_f(name_id, hdferr)
+if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5tclose_f name_id  ')
+call h5tclose_f(dt5_id, hdferr)
+if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5tclose_f dt5_id')
+call h5dclose_f(dset_id, hdferr)
+if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5dclose_f')
+call h5sclose_f(space_id, hdferr)
+if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5sclose_f space_id')
+call h5sclose_f(memspace, hdferr)
+if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5sclose_f memspace')
+call h5pclose_f(plist_id, hdferr)
+if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomog: h5pclose_f')
+call HDF5_closeGroup(mapping_ID)
 
 end subroutine HDF5_mappingHomog
 
@@ -774,20 +784,20 @@ subroutine HDF5_backwardMappingHomog(material_homog,homogmemberat,homogenization
  integer(pInt)   :: hdferr, NmatPoints, i
  integer(HID_T)  :: mapping_id, dtype_id, dset_id, space_id, position_id, plist_id, memspace
  integer(SIZE_T) :: type_size
- 
+
  integer(pInt),     dimension(:,:), allocatable :: arr
- 
+
  integer(HSIZE_T),  dimension(1) :: counter
  integer(HSSIZE_T), dimension(1) :: fileOffset
- 
+
  character(len=64) :: homogID
 
  NmatPoints = count(material_homog /=0_pInt)
  allocate(arr(2,NmatPoints))
- 
+
  arr(1,:) = (/(i, i=0_pint,NmatPoints-1_pInt)/)
  arr(2,:) = pack(material_homog,material_homog/=0_pInt)
- 
+
  do i=1_pInt, size(homogenization_name)
    write(homogID, '(i0)') i
    mapping_ID = HDF5_openGroup('/current/homogenization/'//trim(homogID)//'_'//homogenization_name(i))
@@ -818,7 +828,7 @@ subroutine HDF5_backwardMappingHomog(material_homog,homogmemberat,homogenization
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingHomog: h5tcreate_f position_id')
    call h5tinsert_f(position_id, "Position", 0_SIZE_T, H5T_STD_I32LE, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingHomog: h5tinsert_f position_id')
-   
+
 !--------------------------------------------------------------------------------------------------
   ! Define and select hyperslabs
    counter = NmatPoints                           ! how big i am
@@ -831,15 +841,15 @@ subroutine HDF5_backwardMappingHomog(material_homog,homogmemberat,homogenization
    call h5sselect_hyperslab_f(space_id, H5S_SELECT_SET_F, fileOffset, counter, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingHomog: h5sselect_hyperslab_f')
 
-!-------------------------------------------------------------------------------------------------- 
+!--------------------------------------------------------------------------------------------------
  ! Create property list for collective dataset write
 #ifdef PETSc
    call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingHomog: h5pcreate_f') 
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingHomog: h5pcreate_f')
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingHomog: h5pset_dxpl_mpio_f')
 #endif
-    
+
 !--------------------------------------------------------------------------------------------------
   ! write data by fields in the datatype. Fields order is not important.
    call h5dwrite_f(dset_id, position_id, pack(arr(1,:),arr(2,:)==i)+mpiOffset,int([dataspace_size(i)],HSIZE_T),&
@@ -855,11 +865,13 @@ subroutine HDF5_backwardMappingHomog(material_homog,homogmemberat,homogenization
    call h5dclose_f(dset_id, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingHomog: h5dclose_f')
    call h5sclose_f(space_id, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingHomog: h5sclose_f')
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingHomog: h5sclose_f space_id')
+   call h5sclose_f(memspace, hdferr)
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingHomog: h5sclose_f memspace')
    call h5pclose_f(plist_id, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingHomog: h5pclose_f')
    call HDF5_closeGroup(mapping_ID)
-   
+
  enddo
 
 end subroutine HDF5_backwardMappingHomog
@@ -871,41 +883,41 @@ subroutine HDF5_mappingCrystallite(crystalliteAt,crystmemberAt,crystallite_name,
  use hdf5
 
  implicit none
- integer(pInt),    intent(in), dimension(:,:)   :: crystalliteAt   
- integer(pInt),    intent(in), dimension(:,:,:) :: crystmemberAt   
- character(len=*), intent(in), dimension(:)     :: crystallite_name 
+ integer(pInt),    intent(in), dimension(:,:)   :: crystalliteAt
+ integer(pInt),    intent(in), dimension(:,:,:) :: crystmemberAt
+ character(len=*), intent(in), dimension(:)     :: crystallite_name
  integer(pInt),    intent(in), dimension(:)     :: mpiOffset_cryst
  integer(pInt),    intent(in)                   :: dataspace_size, mpiOffset
 
  integer         :: hdferr
  integer(pInt)   :: NmatPoints, Nconstituents, i, j
  integer(HID_T)  :: mapping_id, dtype_id, dset_id, space_id, name_id, plist_id, memspace
- 
+
  integer(HID_T), dimension(:), allocatable :: position_id
- 
+
  integer(HID_T)  :: dt5_id      ! Memory datatype identifier
  integer(SIZE_T) :: typesize, type_sizec, type_sizei, type_size
-     
+
  integer(HSIZE_T),  dimension(1)              :: counter
  integer(HSSIZE_T), dimension(1)              :: fileOffset
  integer(pInt),     dimension(:), allocatable :: arrOffset
- 
+
  character(len=64) :: m
 
- Nconstituents = size(crystmemberAt,1)  
- NmatPoints = count(crystalliteAt /=0_pInt)  
+ Nconstituents = size(crystmemberAt,1)
+ NmatPoints = count(crystalliteAt /=0_pInt)
  mapping_ID = HDF5_openGroup("current/mapGeometry")
- 
+
  allocate(position_id(Nconstituents))
- 
+
  allocate(arrOffset(NmatPoints))
  do i=1_pInt, NmatPoints
-   do j=1_pInt, size(crystallite_name)   
+   do j=1_pInt, size(crystallite_name)
      if(crystalliteAt(1,i) == j) &
        arrOffset(i) = Nconstituents*mpiOffset_cryst(j)
    enddo
- enddo 
-  
+ enddo
+
 !--------------------------------------------------------------------------------------------------
 ! create dataspace
  call h5screate_simple_f(1, int([dataspace_size],HSIZE_T), space_id, hdferr, &
@@ -917,7 +929,7 @@ subroutine HDF5_mappingCrystallite(crystalliteAt,crystmemberAt,crystallite_name,
      ! First calculate total size by calculating sizes of each member
      !
      CALL h5tcopy_f(H5T_NATIVE_CHARACTER, dt5_id, hdferr)
-     typesize = len(crystallite_name(1)) 
+     typesize = len(crystallite_name(1))
      CALL h5tset_size_f(dt5_id, typesize, hdferr)
      CALL h5tget_size_f(dt5_id, type_sizec, hdferr)
      CALL h5tget_size_f(H5T_STD_I32LE, type_sizei, hdferr)
@@ -952,7 +964,7 @@ subroutine HDF5_mappingCrystallite(crystalliteAt,crystmemberAt,crystallite_name,
    call h5tinsert_f(position_id(i), "Position "//trim(m), 0_SIZE_T, H5T_STD_I32LE, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tinsert_f position_id')
  enddo
- 
+
 !--------------------------------------------------------------------------------------------------
 ! Define and select hyperslabs
  counter = NmatPoints                    ! how big i am
@@ -965,22 +977,22 @@ subroutine HDF5_mappingCrystallite(crystalliteAt,crystmemberAt,crystallite_name,
  call h5sselect_hyperslab_f(space_id, H5S_SELECT_SET_F, fileOffset, counter, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5sselect_hyperslab_f')
 
-!-------------------------------------------------------------------------------------------------- 
+!--------------------------------------------------------------------------------------------------
  ! Create property list for collective dataset write
 #ifdef PETSc
  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5pcreate_f') 
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5pcreate_f')
  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5pset_dxpl_mpio_f')
 #endif
- 
+
 !--------------------------------------------------------------------------------------------------
 ! write data by fields in the datatype. Fields order is not important.
  call h5dwrite_f(dset_id, name_id, crystallite_name(pack(crystalliteAt,crystalliteAt/=0_pInt)), &
                           int([dataspace_size],HSIZE_T), hdferr, file_space_id = space_id, &
                           mem_space_id = memspace, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5dwrite_f position_id')
- 
+
  do i=1_pInt, Nconstituents
    call h5dwrite_f(dset_id, position_id(i), pack(crystmemberAt(i,:,:)-1_pInt,crystmemberAt(i,:,:)/=0_pInt)+arrOffset,&
                             int([dataspace_size],HSIZE_T), hdferr, file_space_id = space_id, &
@@ -997,11 +1009,15 @@ subroutine HDF5_mappingCrystallite(crystalliteAt,crystmemberAt,crystallite_name,
  enddo
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tclose_f position_id')
  call h5tclose_f(name_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tclose_f instance_id')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tclose_f name_id')
+ call h5tclose_f(dt5_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tclose_f dt5_id')
  call h5dclose_f(dset_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5dclose_f')
  call h5sclose_f(space_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5sclose_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5sclose_f space_id')
+ call h5sclose_f(memspace, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5sclose_f memspace')
  call h5pclose_f(plist_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5pclose_f')
  call HDF5_closeGroup(mapping_ID)
@@ -1016,9 +1032,9 @@ subroutine HDF5_backwardMappingCrystallite(crystalliteAt,crystmemberAt,crystalli
  use hdf5
 
  implicit none
- integer(pInt),    intent(in), dimension(:,:)   :: crystalliteAt 
- integer(pInt),    intent(in), dimension(:,:,:) :: crystmemberAt 
- character(len=*), intent(in), dimension(:)     :: crystallite_name  
+ integer(pInt),    intent(in), dimension(:,:)   :: crystalliteAt
+ integer(pInt),    intent(in), dimension(:,:,:) :: crystmemberAt
+ character(len=*), intent(in), dimension(:)     :: crystallite_name
  integer(pInt),    intent(in), dimension(:)     :: dataspace_size, mpiOffset_cryst
  integer(pInt),    intent(in)                   :: mpiOffset
 
@@ -1026,36 +1042,36 @@ subroutine HDF5_backwardMappingCrystallite(crystalliteAt,crystmemberAt,crystalli
  integer(pInt)   :: NmatPoints, Nconstituents, i, j
  integer(HID_T)  :: mapping_id, dtype_id, dset_id, space_id, position_id, plist_id, memspace
  integer(SIZE_T) :: type_size
- 
+
  integer(pInt), dimension(:,:), allocatable     :: h_arr, arr
- 
+
  integer(HSIZE_T),  dimension(1) :: counter
  integer(HSSIZE_T), dimension(1) :: fileOffset
-    
+
  character(len=64) :: crystallID
 
  Nconstituents = size(crystmemberAt,1)
- NmatPoints = count(crystalliteAt /=0_pInt) 
- 
+ NmatPoints = count(crystalliteAt /=0_pInt)
+
  allocate(h_arr(2,NmatPoints))
  allocate(arr(2,Nconstituents*NmatPoints))
- 
+
  h_arr(1,:) = (/(i, i=0_pInt,NmatPoints-1_pInt)/)
  h_arr(2,:) = pack(crystalliteAt,crystalliteAt/=0_pInt)
- 
+
  do i=1_pInt, NmatPoints
    do j=Nconstituents-1_pInt, 0_pInt, -1_pInt
      arr(1,Nconstituents*i-j) = h_arr(1,i)
      arr(2,Nconstituents*i-j) = h_arr(2,i)
    enddo
- enddo 
+ enddo
 
- do i=1_pInt, size(crystallite_name) 
+ do i=1_pInt, size(crystallite_name)
    if (crystallite_name(i) == 'none') cycle
    write(crystallID, '(i0)') i
    mapping_ID = HDF5_openGroup('/current/crystallite/'//trim(crystallID)//'_'//crystallite_name(i))
    NmatPoints = count(crystalliteAt == i)
-   
+
 !--------------------------------------------------------------------------------------------------
   ! create dataspace
    call h5screate_simple_f(1, int([Nconstituents*dataspace_size(i)],HSIZE_T), space_id, hdferr, &
@@ -1082,7 +1098,7 @@ subroutine HDF5_backwardMappingCrystallite(crystalliteAt,crystmemberAt,crystalli
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5tcreate_f position_id')
    call h5tinsert_f(position_id, "Position", 0_SIZE_T, H5T_STD_I32LE, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5tinsert_f position_id')
-   
+
 !--------------------------------------------------------------------------------------------------
   ! Define and select hyperslabs
    counter = Nconstituents*NmatPoints                       ! how big i am
@@ -1095,17 +1111,17 @@ subroutine HDF5_backwardMappingCrystallite(crystalliteAt,crystmemberAt,crystalli
    call h5sselect_hyperslab_f(space_id, H5S_SELECT_SET_F, fileOffset, counter, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5sselect_hyperslab_f')
 
-!-------------------------------------------------------------------------------------------------- 
+!--------------------------------------------------------------------------------------------------
  ! Create property list for collective dataset write
 #ifdef PETSc
    call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5pcreate_f') 
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5pcreate_f')
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5pset_dxpl_mpio_f')
 #endif
-     
+
 !--------------------------------------------------------------------------------------------------
-  ! write data by fields in the datatype. Fields order is not important.      
+  ! write data by fields in the datatype. Fields order is not important.
    call h5dwrite_f(dset_id, position_id, pack(arr(1,:),arr(2,:)==i) + mpiOffset,&
                               int([Nconstituents*dataspace_size(i)],HSIZE_T), hdferr, file_space_id = space_id, &
                               mem_space_id = memspace, xfer_prp = plist_id)
@@ -1120,11 +1136,13 @@ subroutine HDF5_backwardMappingCrystallite(crystalliteAt,crystmemberAt,crystalli
    call h5dclose_f(dset_id, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5dclose_f')
    call h5sclose_f(space_id, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5sclose_f')
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5sclose_f space_id')
+   call h5sclose_f(memspace, hdferr)
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5sclose_f memspace')
    call h5pclose_f(plist_id, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5pclose_f')
    call HDF5_closeGroup(mapping_ID)
-     
+
  enddo
 
 end subroutine HDF5_backwardMappingCrystallite
@@ -1184,8 +1202,8 @@ subroutine HDF5_addTensor3DDataset(group,Nnodes,tensorSize,label,SIunit)
  integer                        :: hdferr
  integer(HID_T)                 :: space_id, dset_id
  integer(HSIZE_T), dimension(3) :: dataShape
-  
- dataShape = int([tensorSize,tensorSize,Nnodes], HSIZE_T)                
+
+ dataShape = int([tensorSize,tensorSize,Nnodes], HSIZE_T)
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace
@@ -1220,18 +1238,18 @@ subroutine HDF5_writeVectorDataset(group,dataset,label,SIunit,dataspace_size,mpi
 
  integer        :: hdferr, vectorSize
  integer(HID_T) :: dset_id, space_id, memspace, plist_id
- 
+
  integer(HSIZE_T),  dimension(2) :: counter
  integer(HSSIZE_T), dimension(2) :: fileOffset
- 
+
  if(any(shape(dataset) == 0)) return
- 
+
  vectorSize = size(dataset,1)
- 
+
  call HDF5_addVectorDataset(group,dataspace_size,vectorSize,label,SIunit)                   ! here nNodes need to be global
  call h5dopen_f(group, label, dset_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeVectorDataset: h5dopen_f')
-  
+
  ! Define and select hyperslabs
  counter(1) = vectorSize                    ! how big i am
  counter(2) = size(dataset,2)
@@ -1244,25 +1262,25 @@ subroutine HDF5_writeVectorDataset(group,dataset,label,SIunit,dataspace_size,mpi
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeVectorDataset: h5dget_space_f')
  call h5sselect_hyperslab_f(space_id, H5S_SELECT_SET_F, fileOffset, counter, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeVectorDataset: h5sselect_hyperslab_f')
- 
+
  ! Create property list for collective dataset write
 #ifdef PETSc
  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeVectorDataset: h5pcreate_f') 
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeVectorDataset: h5pcreate_f')
  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeVectorDataset: h5pset_dxpl_mpio_f')
 #endif
- 
+
  ! Write the dataset collectively
  call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, dataset, int([vectorSize, dataspace_size],HSIZE_T), hdferr, &
                  file_space_id = space_id, mem_space_id = memspace, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeVectorDataset: h5dwrite_f')
- 
+
  call h5sclose_f(space_id, hdferr)
  call h5sclose_f(memspace, hdferr)
  call h5dclose_f(dset_id, hdferr)
  call h5pclose_f(plist_id, hdferr)
-  
+
 end subroutine HDF5_writeVectorDataset
 
 !--------------------------------------------------------------------------------------------------
@@ -1279,52 +1297,52 @@ subroutine HDF5_writeTensorDataset(group,dataset,label,SIunit,dataspace_size,mpi
  real(pReal),      intent(in), dimension(:,:,:) :: dataset
 
  integer        :: hdferr, tensorSize
- integer(HID_T) :: dset_id, space_id, memspace, plist_id 
- 
+ integer(HID_T) :: dset_id, space_id, memspace, plist_id
+
  integer(HSIZE_T),  dimension(3)                :: counter
  integer(HSSIZE_T), dimension(3)                :: fileOffset
- 
+
  if(any(shape(dataset) == 0)) return
- 
+
  tensorSize = size(dataset,1)
- 
+
  call HDF5_addTensor3DDataset(group,dataspace_size,tensorSize,label,SIunit)
  call h5dopen_f(group, label, dset_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeTensorDataset: h5dopen_f')
 
- ! Define and select hyperslabs 
+ ! Define and select hyperslabs
  counter(1) = tensorSize                    ! how big i am
  counter(2) = tensorSize
  counter(3) = size(dataset,3)
  fileOffset(1)  = 0                         ! where i start to write my data
  fileOffset(2)  = 0
  fileOffset(3)  = mpiOffset
- 
+
  call h5screate_simple_f(3, counter, memspace, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeTensorDataset: h5screate_simple_f')
  call h5dget_space_f(dset_id, space_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeTensorDataset: h5dget_space_f')
  call h5sselect_hyperslab_f(space_id, H5S_SELECT_SET_F, fileOffset, counter, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeTensorDataset: h5sselect_hyperslab_f')
- 
+
  ! Create property list for collective dataset write
 #ifdef PETSc
  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeTensorDataset: h5pcreate_f') 
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeTensorDataset: h5pcreate_f')
  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeTensorDataset: h5pset_dxpl_mpio_f')
 #endif
- 
+
  ! Write the dataset collectively
  call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, dataset, int([tensorSize, dataspace_size],HSIZE_T), hdferr, &
                  file_space_id = space_id, mem_space_id = memspace, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeTensorDataset: h5dwrite_f')
- 
+
  call h5sclose_f(space_id, hdferr)
  call h5sclose_f(memspace, hdferr)
  call h5dclose_f(dset_id, hdferr)
  call h5pclose_f(plist_id, hdferr)
- 
+
  end subroutine HDF5_writeTensorDataset
 
 !--------------------------------------------------------------------------------------------------
@@ -1375,13 +1393,13 @@ subroutine HDF5_writeScalarDataset(group,dataset,label,SIunit,dataspace_size,mpi
 
  integer        :: hdferr, nNodes
  integer(HID_T) :: dset_id, space_id, memspace, plist_id
- 
+
  integer(HSIZE_T), dimension(1)             :: counter
  integer(HSIZE_T), dimension(1)             :: fileOffset
- 
+
  nNodes = size(dataset)
  if (nNodes < 1) return
- 
+
  call HDF5_addScalarDataset(group,dataspace_size,label,SIunit)
  call h5dopen_f(group, label, dset_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5dopen_f')
@@ -1389,32 +1407,32 @@ subroutine HDF5_writeScalarDataset(group,dataset,label,SIunit,dataspace_size,mpi
  ! Define and select hyperslabs
  counter = size(dataset)                    ! how big i am
  fileOffset  = mpiOffset                    ! where i start to write my data
- 
+
  call h5screate_simple_f(1, counter, memspace, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5screate_simple_f')
  call h5dget_space_f(dset_id, space_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5dget_space_f')
  call h5sselect_hyperslab_f(space_id, H5S_SELECT_SET_F, fileOffset, counter, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5sselect_hyperslab_f')
- 
+
  ! Create property list for collective dataset write
 #ifdef PETSc
  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5pcreate_f') 
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5pcreate_f')
  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5pset_dxpl_mpio_f')
 #endif
- 
+
  ! Write the dataset collectively
  call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, dataset, int([dataspace_size],HSIZE_T), hdferr, &
                  file_space_id = space_id, mem_space_id = memspace, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeScalarDataset: h5dwrite_f')
- 
+
  call h5sclose_f(space_id, hdferr)
  call h5sclose_f(memspace, hdferr)
  call h5dclose_f(dset_id, hdferr)
  call h5pclose_f(plist_id, hdferr)
- 
+
 end subroutine HDF5_writeScalarDataset
 
 !--------------------------------------------------------------------------------------------------
@@ -1430,7 +1448,7 @@ subroutine HDF5_read_pReal_1(dataset,loc_id,datasetName)
  integer        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
- 
+
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
  if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_shape1: h5dopen_f')
  call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T),hdferr)
@@ -1450,11 +1468,11 @@ subroutine HDF5_read_pReal_2(dataset,loc_id,datasetName)
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
- 
+
  integer        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
- 
+
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
  if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_shape2: h5dopen_f')
  call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T),hdferr)
@@ -1477,7 +1495,7 @@ subroutine HDF5_read_pReal_3(dataset,loc_id,datasetName)
  integer        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
- 
+
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
  if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_shape3: h5dopen_f')
  call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T),hdferr)
@@ -1497,11 +1515,11 @@ subroutine HDF5_read_pReal_4(dataset,loc_id,datasetName)
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
- 
+
  integer        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
- 
+
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
  if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_shape4: h5dopen_f')
  call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T),hdferr)
@@ -1521,11 +1539,11 @@ subroutine HDF5_read_pReal_5(dataset,loc_id,datasetName)
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
- 
+
  integer        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
- 
+
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
  if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_shape5: h5dopen_f')
  call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T),hdferr)
@@ -1545,11 +1563,11 @@ subroutine HDF5_read_pReal_6(dataset,loc_id,datasetName)
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
- 
+
  integer        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
- 
+
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
  if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_shape6: h5dopen_f')
  call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T),hdferr)
@@ -1569,11 +1587,11 @@ subroutine HDF5_read_pReal_7(dataset,loc_id,datasetName)
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
- 
+
  integer        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
- 
+
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
  if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_shape7: h5dopen_f')
  call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T),hdferr)
@@ -1593,11 +1611,11 @@ subroutine HDF5_read_pInt_1(dataset,loc_id,datasetName)
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
- 
+
  integer        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
- 
+
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
  if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape1: h5dopen_f')
  call h5dread_f(dset_id,H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T),hdferr)
@@ -1617,11 +1635,11 @@ subroutine HDF5_read_pInt_2(dataset,loc_id,datasetName)
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
- 
+
  integer        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
- 
+
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
  if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape2: h5dopen_f')
  call h5dread_f(dset_id,H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T),hdferr)
@@ -1641,11 +1659,11 @@ subroutine HDF5_read_pInt_3(dataset,loc_id,datasetName)
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
- 
+
  integer        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
- 
+
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
  if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape3: h5dopen_f')
  call h5dread_f(dset_id,H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T),hdferr)
@@ -1665,11 +1683,11 @@ subroutine HDF5_read_pInt_4(dataset,loc_id,datasetName)
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
- 
+
  integer        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
- 
+
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
  if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape4: h5dopen_f')
  call h5dread_f(dset_id,H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T),hdferr)
@@ -1689,11 +1707,11 @@ subroutine HDF5_read_pInt_5(dataset,loc_id,datasetName)
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
- 
+
  integer        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
- 
+
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
  if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape5: h5dopen_f')
  call h5dread_f(dset_id,H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T),hdferr)
@@ -1713,11 +1731,11 @@ subroutine HDF5_read_pInt_6(dataset,loc_id,datasetName)
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
- 
+
  integer        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
- 
+
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
  if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape6: h5dopen_f')
  call h5dread_f(dset_id,H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T),hdferr)
@@ -1737,11 +1755,11 @@ subroutine HDF5_read_pInt_7(dataset,loc_id,datasetName)
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
- 
+
  integer        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
- 
+
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
  if (hdferr /= 0) call IO_error(0_pInt,ext_msg='HDF5_read_pInt__shape7: h5dopen_f')
  call h5dread_f(dset_id,H5T_NATIVE_INTEGER,dataset,int(myShape,HSIZE_T),hdferr)
@@ -2303,12 +2321,13 @@ subroutine HDF5_forwardResults(time)
  use hdf5
  use IO, only: &
    IO_intOut
-   
+
  implicit none
  integer :: hdferr
+ integer(HID_T) :: currentIncID
  real(pReal), intent(in) :: time
  character(len=1024)     :: myName
- 
+
  currentInc = currentInc +1_pInt
  write(6,*) 'forward results';flush(6)
  write(myName,'(a,'//IO_intOut(currentInc)//')') 'inc',currentInc
