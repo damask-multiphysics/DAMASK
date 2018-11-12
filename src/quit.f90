@@ -14,18 +14,24 @@ subroutine quit(stop_id)
  use prec, only: &
    pInt
  use PetscSys
+ use hdf5
 
  implicit none
  integer(pInt), intent(in) :: stop_id
  integer, dimension(8) :: dateAndTime                                                               ! type default integer
+ integer :: hdferr
  integer(pInt) :: error = 0_pInt
  PetscErrorCode :: ierr = 0
- 
+
+ call h5close_f(hdferr)
+ if (hdferr /= 0) write(6,'(a,i5)') ' Error in h5close_f',hdferr
+
  call PETScFinalize(ierr)
  CHKERRQ(ierr)
+
 #ifdef _OPENMP
  call MPI_finalize(error)
- if (error /= 0) write(6,'(a)') ' Error in MPI_finalize'
+ if (error /= 0) write(6,'(a,i5)') ' Error in MPI_finalize',error
 #endif
  
  call date_and_time(values = dateAndTime)
