@@ -8,7 +8,6 @@ stages:
   - prepareSpectral
   - spectral
   - compileMarc2017
-  - compileMarc2018_1
   - marc
   - compileAbaqus2017
   - example
@@ -78,8 +77,8 @@ variables:
   MSC2017:                         "FEM/MSC/2017"
   # ------------ Defaults ----------------------------------------------
   Abaqus:                          "$Abaqus2017"
-  MSC:                             "$MSC2018_1"
-  IntelMarc:                       "IntelCompiler17_0"
+  MSC:                             "$MSC2017"
+  IntelMarc:                       "IntelCompiler16_4"
   # ++++++++++++ Documentation +++++++++++++++++++++++++++++++++++++++++
   Doxygen1_8_13:                   "Documentation/Doxygen/1.8.13"
   # ------------ Defaults ----------------------------------------------
