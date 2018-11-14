@@ -8,6 +8,7 @@ stages:
   - prepareSpectral
   - spectral
   - compileMarc2017
+  - compileMarc2018_1
   - marc
   - compileAbaqus2017
   - example
@@ -73,10 +74,12 @@ variables:
   PETSc_MPICH_GNU:                 "$PETSc3_10_0MPICH3_2GNU7_3"
   # ++++++++++++ FEM +++++++++++++++++++++++++++++++++++++++++++++++++++
   Abaqus2017:                      "FEM/Abaqus/2017"
+  MSC2018_1:                       "FEM/MSC/2018.1"
   MSC2017:                         "FEM/MSC/2017"
   # ------------ Defaults ----------------------------------------------
   Abaqus:                          "$Abaqus2017"
-  MSC:                             "$MSC2017"
+  MSC:                             "$MSC2018_1"
+  IntelMarc:                       "IntelCompiler17_0"
   # ++++++++++++ Documentation +++++++++++++++++++++++++++++++++++++++++
   Doxygen1_8_13:                   "Documentation/Doxygen/1.8.13"
   # ------------ Defaults ----------------------------------------------
@@ -365,11 +368,23 @@ Marc_compileIfort2017:
     - master
     - release
 
+
+###################################################################################################
+Marc_compileIfort2018_1:
+  stage: compileMarc2018_1
+  script:
+    - module load $IntelCompiler17_0 $MSC2018_1
+    - Marc_compileIfort/test.py -m 2018.1
+  except:
+    - master
+    - release
+
+
 ###################################################################################################
 Hex_elastic:
   stage: marc
   script:
-    - module load $IntelCompiler16_4 $MSC
+    - module load $IntelMarc $MSC
     - Hex_elastic/test.py
   except:
     - master
@@ -378,7 +393,7 @@ Hex_elastic:
 CubicFCC_elastic:
   stage: marc
   script:
-    - module load $IntelCompiler16_4 $MSC
+    - module load $IntelMarc $MSC
     - CubicFCC_elastic/test.py
   except:
     - master
@@ -387,7 +402,7 @@ CubicFCC_elastic:
 CubicBCC_elastic:
   stage: marc
   script:
-    - module load $IntelCompiler16_4 $MSC
+    - module load $IntelMarc $MSC
     - CubicBCC_elastic/test.py
   except:
     - master
@@ -396,7 +411,7 @@ CubicBCC_elastic:
 J2_plasticBehavior:
   stage: marc
   script:
-    - module load $IntelCompiler16_4 $MSC
+    - module load $IntelMarc $MSC
     - J2_plasticBehavior/test.py
   except:
     - master
