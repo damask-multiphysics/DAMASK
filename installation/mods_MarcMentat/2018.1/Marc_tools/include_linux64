@@ -537,15 +537,15 @@ fi
 
 # DAMASK compiler calls: additional flags are in line 2 OpenMP flags in line 3
 DFORTLOWMP="$FCOMP -c -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB  -O0 $I8FFLAGS -I$MARC_SOURCE/common \
- -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2018 -DDAMASKVERSION=$DAMASKVERSION \
+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2018.1 -DDAMASKVERSION=$DAMASKVERSION \
  -qopenmp -qopenmp-threadprivate=compat\
   $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
 DFORTRANMP="$FCOMP -c -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB  -O1 $I8FFLAGS -I$MARC_SOURCE/common \
- -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2018 -DDAMASKVERSION=$DAMASKVERSION \
+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2018.1 -DDAMASKVERSION=$DAMASKVERSION \
  -qopenmp -qopenmp-threadprivate=compat\
   $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
 DFORTHIGHMP="$FCOMP -c -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB  -fno-alias -O2 $I8FFLAGS -I$MARC_SOURCE/common \
- -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2018 -DDAMASKVERSION=$DAMASKVERSION \
+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2018.1 -DDAMASKVERSION=$DAMASKVERSION \
  -qopenmp -qopenmp-threadprivate=compat\
   $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
 
@@ -564,15 +564,15 @@ fi
 
       # DAMASK compiler calls: additional flags are in line 2 OpenMP flags in line 3
   DFORTLOWMP="$FCOMP -c -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
-   -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2018 -DDAMASKVERSION=$DAMASKVERSION \
+   -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2018.1 -DDAMASKVERSION=$DAMASKVERSION \
    -qopenmp -qopenmp-threadprivate=compat\
     $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
   DFORTRANMP="$FCOMP -c -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
-   -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2018 -DDAMASKVERSION=$DAMASKVERSION \
+   -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2018.1 -DDAMASKVERSION=$DAMASKVERSION \
    -qopenmp -qopenmp-threadprivate=compat\
     $MUMPS_INCLUDE $I8DEFINES  -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
   DFORTHIGHMP="$FCOMP -c -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB  -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
-   -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2018 -DDAMASKVERSION=$DAMASKVERSION \
+   -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2018.1 -DDAMASKVERSION=$DAMASKVERSION \
    -qopenmp -qopenmp-threadprivate=compat\
     $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
 
