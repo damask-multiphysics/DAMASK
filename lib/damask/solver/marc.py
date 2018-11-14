@@ -9,8 +9,10 @@ class Marc(Solver):
   def __init__(self):
     self.solver = 'Marc'
     self.releases = { \
-              '2017':  ['linux64',''],
-              '2016':  ['linux64',''],
+              '2018.1': ['linux64',''],
+              '2018':   ['linux64',''],
+              '2017':   ['linux64',''],
+              '2016':   ['linux64',''],
              }
 
 
@@ -67,7 +69,6 @@ class Marc(Solver):
                  logfile      = None,
                  compile      = False,
                  optimization ='',
-                 openMP       = False
                 ):
 
     import os,damask.environment
@@ -90,8 +91,7 @@ class Marc(Solver):
         user = os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc%s'%release)
 
     # Define options [see Marc Installation and Operation Guide, pp 23]
-    script = 'run_damask%s'%({False:'',True:'_'}[optimization!='' or openMP])
-    script =  script+'%s%s'%({False:'',True:optimization}[optimization!=''],{False:'',True:'mp'}[openMP])
+    script = 'run_damask_%smp'%({False:'',True:optimization}[optimization!=''])
     
     cmd = os.path.join(self.toolsPath(release),script) + \
           ' -jid ' + model + '_' + job + \
