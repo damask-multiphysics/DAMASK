@@ -244,9 +244,9 @@ class MPIEspectral_result:    # mimic py_post result object
     a = self.grid[0]+1
     b = self.grid[1]+1
     c = self.grid[2]+1
-    return vector([self.size[0] *       (n%a) / self.grid[0],
-                   self.size[1] *   ((n/a)%b) / self.grid[1],
-                   self.size[2] * ((n/a/b)%c) / self.grid[2],
+    return vector([self.size[0] *         (n%a) / self.grid[0],
+                   self.size[1] *    ((n//a)%b) / self.grid[1],
+                   self.size[2] * ((n//a//b)%c) / self.grid[2],
             ])
 
   def element_sequence(self,e):
@@ -258,7 +258,7 @@ class MPIEspectral_result:    # mimic py_post result object
   def element(self,e):
     a = self.grid[0]+1
     b = self.grid[1]+1
-    basenode = 1 + e+e/self.grid[0] + e/self.grid[0]/self.grid[1]*a
+    basenode = 1 + e+e//self.grid[0] + e//self.grid[0]//self.grid[1]*a
     basenode2 = basenode+a*b
     return (element([basenode ,basenode +1,basenode +a+1,basenode +a,
                     basenode2 ,basenode2+1,basenode2+a+1,basenode2+a,
