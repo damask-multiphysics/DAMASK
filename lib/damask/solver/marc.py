@@ -8,57 +8,37 @@ class Marc(Solver):
 
   def __init__(self):
     self.solver = 'Marc'
-    self.releases = { \
-              '2018.1': ['linux64',''],
-              '2018':   ['linux64',''],
-              '2017':   ['linux64',''],
-              '2016':   ['linux64',''],
-             }
 
 
 #--------------------------
   def version(self):
-    import os,damask.environment
+    import damask.environment
 
-    MSCpath = damask.environment.Environment().options['MSC_ROOT']
-    
-    for release,subdirs in sorted(list(self.releases.items()),reverse=True):
-      for subdir in subdirs:
-        path = '%s/mentat%s/shlib/%s'%(MSCpath,release,subdir)
-        if os.path.exists(path): return release
-        else: continue
-    
-    return ''
+    return damask.environment.Environment().options['MARC_VERSION']
       
     
 #--------------------------
-  def libraryPath(self,releases = []):
+  def libraryPath(self,release = ''):
     import os,damask.environment
 
-    MSCpath = damask.environment.Environment().options['MSC_ROOT']
+    MSCpath     = damask.environment.Environment().options['MSC_ROOT']
+    if len(release) == 0: release = self.version()
     
-    if len(releases) == 0: releases = list(self.releases.keys())
-    if type(releases) is not list: releases = [releases]
-    for release in sorted(releases,reverse=True):
-      if release not in self.releases: continue
-      for subdir in self.releases[release]:
-        libPath = '%s/mentat%s/shlib/%s'%(MSCpath,release,subdir)
-        if os.path.exists(libPath): return libPath
-        else: continue
-    
-    return ''
-  
+    path = '{}/mentat{}/shlib/linux64'.format(MSCpath,release)
+
+    return path if os.path.exists(path) else ''
+
 
 #--------------------------
   def toolsPath(self,release = ''):
     import os,damask.environment
 
     MSCpath = damask.environment.Environment().options['MSC_ROOT']
-    
     if len(release) == 0: release = self.version()
+
     path = '%s/marc%s/tools'%(MSCpath,release)
-    if os.path.exists(path): return path
-    else: return ''
+
+    return path if os.path.exists(path) else ''
   
 
 #--------------------------
@@ -76,13 +56,10 @@ class Marc(Solver):
     
     if len(release) == 0: release = self.version()
 
-    if release not in self.releases:
-      raise Exception("Unknown MSC.Marc Version %s"%release)
-      
 
     damaskEnv = damask.environment.Environment()
     
-    user = os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc')                                   # might be updated if special version (symlink) is found
+    user = os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc')                                    # first guess, might be updated in the following lines
     if compile:
       if os.path.isfile(os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc%s.f90'%release)):
         user = os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc%s'%release)
