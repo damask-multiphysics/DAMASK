@@ -135,7 +135,7 @@ class MPIEspectral_result:    # mimic py_post result object
     if self.N_element_scalars is None:
       self.N_element_scalars = self._keyedPackedArray('materialpoint_sizeResults',count=1,type='i')[0]
 
-    self.N_positions  = (self.filesize-self.dataOffset)/(self.N_elements*self.N_element_scalars*8)
+    self.N_positions  = (self.filesize-self.dataOffset)//(self.N_elements*self.N_element_scalars*8)
     self.N_increments = 1                                                    # add zero'th entry
     for i in range(self.N_loadcases):
       self.N_increments += self._increments[i]//self._frequencies[i]
@@ -674,6 +674,9 @@ parser.add_option('-p','--type', dest='filetype',
 parser.add_option('-q','--quiet', dest='verbose',
                   action = 'store_false',
                   help = 'suppress verbose output')
+parser.add_option('--verbose', dest='verbose',
+                  action = 'store_true',
+                  help = 'enable verbose output')
 
 group_material = OptionGroup(parser,'Material identifier')
 
@@ -715,7 +718,7 @@ parser.add_option_group(group_general)
 parser.add_option_group(group_special)
 
 parser.set_defaults(info = False,
-                    verbose = True,
+                    verbose = False,
                     legacy = False,
                     nodal = False,
                     prefix = '',
@@ -1173,5 +1176,3 @@ for incCount,position in enumerate(locations):     # walk through locations
 if fileOpen:
   file.close()
 
-
-# ---------------------------       DONE     --------------------------------
