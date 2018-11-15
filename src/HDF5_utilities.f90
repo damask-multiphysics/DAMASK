@@ -4,7 +4,7 @@
 !> @author Jennifer Nastola, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !--------------------------------------------------------------------------------------------------
-module HDF5_Utilities
+module HDF5_utilities
   use prec
   use IO
   use HDF5
@@ -14,9 +14,6 @@ module HDF5_Utilities
 
  implicit none
  private
- integer(HID_T), public, protected :: tempCoordinates, tempResults
- integer(HID_T), private :: resultsFile, currentIncID, plist_id
- integer(pInt),  private :: currentInc
 
 !--------------------------------------------------------------------------------------------------
 !> @brief reads pInt or pReal data of defined shape from file
@@ -73,7 +70,7 @@ module HDF5_Utilities
    HDF5_write
 contains
 
-subroutine HDF5_Utilities_init
+subroutine HDF5_utilities_init
  use, intrinsic :: &
    iso_fortran_env  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 
@@ -95,54 +92,21 @@ subroutine HDF5_Utilities_init
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5tget_size_f (double)')
  if (int(pReal,SIZE_T)/=typeSize) call IO_error(0_pInt,ext_msg='pReal does not match H5T_NATIVE_DOUBLE')
 
-end subroutine HDF5_Utilities_init
-
-
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief creates and initializes HDF5 output files
-!--------------------------------------------------------------------------------------------------
- integer(HID_T) function HDF5_createFile(path)
- use hdf5
- use DAMASK_interface, only: &
-   getSolverJobName
-
- implicit none
- integer                       :: hdferr
- integer(SIZE_T)               :: typeSize
- character(len=*), intent(in)  :: path
-#ifdef PETSc
-#include <petsc/finclude/petscsys.h>
-#endif
-  call h5open_f(hdferr) !############################################################ DANGEROUS
-#ifdef PETSc
- call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pcreate_f')
- call h5pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pset_fapl_mpio_f')
-#endif
-!--------------------------------------------------------------------------------------------------
-! create a file
- !call h5fcreate_f(path,H5F_ACC_TRUNC_F,resultsFile,hdferr)
- call h5fcreate_f(path,H5F_ACC_TRUNC_F,HDF5_createFile,hdferr,access_prp = plist_id)
- if (hdferr < 0) call IO_error(100_pInt,ext_msg=path)
- !call HDF5_addStringAttribute(HDF5_createFile,'createdBy',DAMASKVERSION)
- call h5pclose_f(plist_id, hdferr)  !neu
-
-end function HDF5_createFile
-
+end subroutine HDF5_utilities_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief open and initializes HDF5 output file
 !--------------------------------------------------------------------------------------------------
-integer(HID_T) function HDF5_openFile(fileName,mode)
+integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
 
  implicit none
  character(len=*), intent(in)           :: fileName
  character,        intent(in), optional :: mode
+ logical,          intent(in), optional :: parallel
+
  character                              :: m
+ integer(HID_T)                         :: plist_id
  integer :: hdferr
 
  if (present(mode)) then
@@ -150,6 +114,15 @@ integer(HID_T) function HDF5_openFile(fileName,mode)
  else
    m = 'r'
  endif
+
+#ifdef PETSc
+ if (present(parallel)) then; if (parallel) then
+   call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdferr)
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pcreate_f')
+   call h5pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pset_fapl_mpio_f')
+ endif; endif
+#endif
 
  if (m == 'w') then
    call h5fcreate_f(fileName,H5F_ACC_TRUNC_F,HDF5_openFile,hdferr)
