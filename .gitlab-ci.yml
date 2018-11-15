@@ -369,14 +369,14 @@ Marc_compileIfort2017:
 
 
 ###################################################################################################
-Marc_compileIfort2018_1:
-  stage: compileMarc2018_1
-  script:
-    - module load $IntelCompiler17_0 $MSC2018_1
-    - Marc_compileIfort/test.py -m 2018.1
-  except:
-    - master
-    - release
+#Marc_compileIfort2018_1:
+#  stage: compileMarc2018_1
+#  script:
+#    - module load $IntelCompiler17_0 $MSC2018_1
+#    - Marc_compileIfort/test.py -m 2018.1
+#  except:
+#    - master
+#    - release
 
 
 ###################################################################################################
