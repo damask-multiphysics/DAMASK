@@ -55,11 +55,8 @@ class Marc(Solver):
     import subprocess,shlex
     
     if len(release) == 0: release = self.version()
-
-
     damaskEnv = damask.environment.Environment()
     
-    user = os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc')                                    # first guess, might be updated in the following lines
     if compile:
       if os.path.isfile(os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc%s.f90'%release)):
         user = os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc%s'%release)
@@ -83,18 +80,18 @@ class Marc(Solver):
     print(cmd)
     self.p = subprocess.Popen(shlex.split(cmd),stdout = log,stderr = subprocess.STDOUT)
     log.close()
-    self.p.wait()
+    line.p.wait()
       
 #--------------------------
   def exit_number_from_outFile(self,outFile=None):
     import string
     exitnumber = -1
     fid_out = open(outFile,'r')
-    for ln in fid_out:
-      if (string.find(ln,'tress iteration') is not -1):
-        print(ln)
-      elif (string.find(ln,'Exit number') is not -1):
-        substr = ln[string.find(ln,'Exit number'):len(ln)]
+    for line in fid_out:
+      if (string.find(line,'tress iteration') is not -1):
+        print(line)
+      elif (string.find(line,'Exit number') is not -1):
+        substr = line[string.find(line,'Exit number'):len(line)]
         exitnumber = int(substr[12:16])
 
     fid_out.close()
