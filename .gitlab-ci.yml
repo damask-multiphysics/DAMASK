@@ -7,7 +7,7 @@ stages:
   - compilePETScGNU
   - prepareSpectral
   - spectral
-  - compileMarc2017
+  - compileMarc2018_1
   - marc
   - compileAbaqus2017
   - example
@@ -77,8 +77,8 @@ variables:
   MSC2017:                         "FEM/MSC/2017"
   # ------------ Defaults ----------------------------------------------
   Abaqus:                          "$Abaqus2017"
-  MSC:                             "$MSC2017"
-  IntelMarc:                       "$IntelCompiler16_4"
+  MSC:                             "$MSC2018_1"
+  IntelMarc:                       "$IntelCompiler17"
   # ++++++++++++ Documentation +++++++++++++++++++++++++++++++++++++++++
   Doxygen1_8_13:                   "Documentation/Doxygen/1.8.13"
   # ------------ Defaults ----------------------------------------------
@@ -358,25 +358,14 @@ TextureComponents:
 
 
 ###################################################################################################
-Marc_compileIfort2017:
-  stage: compileMarc2017
+Marc_compileIfort2018_1:
+  stage: compileMarc2018_1
   script:
-    - module load $IntelCompiler16_4 $MSC2017
-    - Marc_compileIfort/test.py -m 2017
+    - module load $IntelCompiler17_0 $MSC2018_1
+    - Marc_compileIfort/test.py -m 2018.1
   except:
     - master
     - release
-
-
-###################################################################################################
-#Marc_compileIfort2018_1:
-#  stage: compileMarc2018_1
-#  script:
-#    - module load $IntelCompiler17_0 $MSC2018_1
-#    - Marc_compileIfort/test.py -m 2018.1
-#  except:
-#    - master
-#    - release
 
 
 ###################################################################################################
