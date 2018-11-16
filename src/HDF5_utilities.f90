@@ -115,27 +115,31 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
    m = 'r'
  endif
 
+ call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdferr)
+ if (hdferr /= 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5pcreate_f')
+
 #ifdef PETSc
  if (present(parallel)) then; if (parallel) then
-   call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pcreate_f')
    call h5pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pset_fapl_mpio_f')
+   if (hdferr /= 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5pset_fapl_mpio_f')
  endif; endif
 #endif
 
- if (m == 'w') then
-   call h5fcreate_f(fileName,H5F_ACC_TRUNC_F,HDF5_openFile,hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fcreate_f',el=hdferr)
+ if    (m == 'w') then
+   call h5fcreate_f(fileName,H5F_ACC_TRUNC_F,HDF5_openFile,hdferr,access_prp = plist_id)
+   if (hdferr /= 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fcreate_f',el=hdferr)
  elseif(m == 'a') then
-   call h5fopen_f(fileName,H5F_ACC_RDWR_F,HDF5_openFile,hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f (a)',el=hdferr)
+   call h5fopen_f(fileName,H5F_ACC_RDWR_F,HDF5_openFile,hdferr,access_prp = plist_id)
+   if (hdferr /= 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f (a)',el=hdferr)
  elseif(m == 'r') then
-   call h5fopen_f(fileName,H5F_ACC_RDONLY_F,HDF5_openFile,hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f (r)',el=hdferr)
+   call h5fopen_f(fileName,H5F_ACC_RDONLY_F,HDF5_openFile,hdferr,access_prp = plist_id)
+   if (hdferr /= 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f (r)',el=hdferr)
  else
-   call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f unknown access mode',el=hdferr)
+   call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f unknown access mode')
  endif
+
+ call h5pclose_f(plist_id, hdferr)
+ if (hdferr /= 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5pclose_f')
 
 end function HDF5_openFile
 
