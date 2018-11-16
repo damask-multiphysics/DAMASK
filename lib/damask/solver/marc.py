@@ -57,15 +57,17 @@ class Marc(Solver):
     if len(release) == 0: release = self.version()
     damaskEnv = damask.environment.Environment()
     
+    user = 'not found'
+
     if compile:
-      if os.path.isfile(os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc%s.f90'%release)):
-        user = os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc%s'%release)
+      if os.path.isfile(os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc{}.f90'.format(release))):
+        user = os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc{}'.format(release))
     else:
-      if os.path.isfile(os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc%s.marc'%release)):
-        user = os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc%s'%release)
+      if os.path.isfile(os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc{}.marc'.format(release))):
+        user = os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc{}'.format(release))
 
     # Define options [see Marc Installation and Operation Guide, pp 23]
-    script = 'run_damask_%smp'%({False:'',True:optimization}[optimization!=''])
+    script = 'run_damask_{}mp'.format(optimization)
     
     cmd = os.path.join(self.toolsPath(release),script) + \
           ' -jid ' + model + '_' + job + \
@@ -74,13 +76,13 @@ class Marc(Solver):
     if compile: cmd += ' -u ' + user+'.f90' + ' -save y'
     else:       cmd += ' -prog ' + user
 
-    print('job submission with%s compilation: %s'%({False:'out',True:''}[compile],user))
+    print('job submission with{} compilation: {}'.format({False:'out',True:''}[compile],user))
     if logfile:
       log = open(logfile, 'w')
     print(cmd)
-    self.p = subprocess.Popen(shlex.split(cmd),stdout = log,stderr = subprocess.STDOUT)
+    process = subprocess.Popen(shlex.split(cmd),stdout = log,stderr = subprocess.STDOUT)
     log.close()
-    line.p.wait()
+    process.wait()
       
 #--------------------------
   def exit_number_from_outFile(self,outFile=None):
