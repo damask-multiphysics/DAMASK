@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math
@@ -82,11 +82,11 @@ for name in filenames:
              'microstructures': 0,
             }
 
-  newInfo['grid'] = np.array([{True:round(o*float(n.translate(None,'xX'))), 
-                               False: round(float(n.translate(None,'xX')))}[n[-1].lower() == 'x']
+  newInfo['grid'] = np.array([{True: round(o*float(n.lower().replace('x',''))),
+                               False:  round(float(n.lower().replace('x','')))}[n[-1].lower() == 'x']
                                                   for o,n in zip(info['grid'],options.grid)],'i')
-  newInfo['size'] = np.array([{True:      o*float(n.translate(None,'xX')) ,
-                               False:       float(n.translate(None,'xX')) }[n[-1].lower() == 'x']
+  newInfo['size'] = np.array([{True:       o*float(n.lower().replace('x','')),
+                               False:        float(n.lower().replace('x',''))}[n[-1].lower() == 'x']
                                                   for o,n in zip(info['size'],options.size)],'d')
   newInfo['grid'] = np.where(newInfo['grid'] <= 0  , info['grid'],newInfo['grid'])
   newInfo['size'] = np.where(newInfo['size'] <= 0.0, info['size'],newInfo['size'])
