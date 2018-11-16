@@ -4,5 +4,5 @@ if [ $1x != 3to2x ]; then
   find . -name '*.py' -type f | xargs sed -i 's/usr\/bin\/env python2.7/usr\/bin\/env python/g'
 else
   echo 'python to python2.7'
-  find . -name '*.py' -type f | xargs sed -i 's/usr\/bin\/env python/usr\/bin\/env python2.7/g'
+  find . -name '*.py' -type f | xargs sed -i '/2.7/! s/usr\/bin\/env python/usr\/bin\/env python2.7/g'
 fi
