@@ -434,7 +434,7 @@ def mapIncremental(label, mapping, N, base, new):
               'unique': lambda n,b,a: a if n==0 or b==a else 'nan'
             }
   if mapping in theMap:
-    mapped = map(theMap[mapping],[N]*len(base),base,new)                        # map one of the standard functions to data
+    mapped = map(theMap[mapping],[N for i in range(len(base))],base,new)                        # map one of the standard functions to data
     if label.lower() == 'orientation':                                          # orientation is special case:...
       orientationNorm = math.sqrt(sum([q*q for q in mapped]))                   # ...calc norm of average quaternion
       mapped = map(lambda x: x/orientationNorm, mapped)                         # ...renormalize quaternion
