@@ -78,7 +78,7 @@ variables:
   # ------------ Defaults ----------------------------------------------
   Abaqus:                          "$Abaqus2017"
   MSC:                             "$MSC2018_1"
-  IntelMarc:                       "$IntelCompiler17"
+  IntelMarc:                       "$IntelCompiler17_0"
   # ++++++++++++ Documentation +++++++++++++++++++++++++++++++++++++++++
   Doxygen1_8_13:                   "Documentation/Doxygen/1.8.13"
   # ------------ Defaults ----------------------------------------------
