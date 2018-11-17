@@ -45,7 +45,7 @@ def divFFT(geomdim,field):
 
   div_fourier = np.einsum(einsums[n],k_s,field_fourier)*TWOPIIMG
 
-  return np.fft.irfftn(div_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,n/3])
+  return np.fft.irfftn(div_fourier,s=shapeFFT,axes=(0,1,2)).reshape([N,n//3])
 
 
 # --------------------------------------------------------------------
