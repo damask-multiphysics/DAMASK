@@ -444,7 +444,7 @@ def mapIncremental(label, mapping, N, base, new):
     except:
       mapped = ['nan']*len(base)
 
-  return mapped
+  return list(mapped)
 
 
 
@@ -1167,11 +1167,11 @@ for incCount,position in enumerate(locations):     # walk through locations
       file.write('\t'.join(standard + header) + '\n')
       headerWritten = True
 
-    file.write('\t'.join(map(str,[p.increment] + \
+    file.write('\t'.join(list(map(str,[p.increment] + \
                                  {True:[p.time],False:[]}[options.time] + \
                                  group[0] + \
                                  mappedResult)
-                        ) + '\n')
+                        )) + '\n')
 
 if fileOpen:
   file.close()
