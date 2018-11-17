@@ -245,9 +245,9 @@ for name in filenames:
   hasEulers  = table.label_dimension(options.eulers) == 3
   hasWeights = table.label_dimension(options.weight) == 1 and options.laguerre
 
-  if     np.any(info['grid'] < 1):   errors.append('invalid grid a b c.')
-  if     np.any(info['size'] <= 0.0) \
-     and np.all(info['grid'] < 1):   errors.append('invalid size x y z.')
+  if     np.any(np.array(info['grid']) < 1):   errors.append('invalid grid a b c.')
+  if     np.any(np.array(info['size']) <= 0.0) \
+     and np.all(np.array(info['grid']) < 1):   errors.append('invalid size x y z.')
   else:
     for i in range(3):
       if info['size'][i] <= 0.0:                                                                      # any invalid size?
