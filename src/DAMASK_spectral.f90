@@ -80,6 +80,7 @@ program DAMASK_spectral
  use spectral_mech_Polarisation
  use spectral_damage
  use spectral_thermal
+ use results
 
  implicit none
 
@@ -157,6 +158,10 @@ program DAMASK_spectral
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
+
+ call results_openJobFile()
+ call results_addIncrement()
+ call results_closeJobFile()
 !--------------------------------------------------------------------------------------------------
 ! initialize field solver information
  nActiveFields = 1

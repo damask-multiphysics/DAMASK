@@ -61,11 +61,13 @@ module HDF5_utilities
 
  public :: &
    HDF5_utilities_init, &
+   HDF5_openFile, &
+   HDF5_closeFile, &
+   HDF5_addStringAttribute, &
+   HDF5_addIntegerAttribute, &
    HDF5_closeGroup ,&
    HDF5_openGroup2, &
-   HDF5_closeFile, &
    HDF5_addGroup2, &
-   HDF5_openFile, &
    HDF5_read, &
    HDF5_write
 contains
@@ -206,6 +208,71 @@ subroutine HDF5_closeGroup(ID)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_closeGroup: h5gclose_f (el is ID)', el = int(ID,pInt))
 
 end subroutine HDF5_closeGroup
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief adds a StringAttribute to the results file
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_addStringAttribute(entity,attrLabel,attrValue)
+ use hdf5
+
+ implicit none
+ integer(HID_T),   intent(in)  :: entity
+ character(len=*), intent(in)  :: attrLabel, attrValue
+ integer                       :: hdferr
+ integer(HID_T)                :: attr_id, space_id, type_id
+
+ call h5screate_f(H5S_SCALAR_F,space_id,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addStringAttribute: h5screate_f')
+ call h5tcopy_f(H5T_NATIVE_CHARACTER, type_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addStringAttribute: h5tcopy_f')
+ call h5tset_size_f(type_id, int(len(trim(attrValue)),HSIZE_T), hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addStringAttribute: h5tset_size_f')
+ call h5acreate_f(entity, trim(attrLabel),type_id,space_id,attr_id,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addStringAttribute: h5acreate_f')
+ call h5awrite_f(attr_id, type_id, trim(attrValue), int([1],HSIZE_T), hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addStringAttribute: h5awrite_f')
+ call h5aclose_f(attr_id,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addStringAttribute: h5aclose_f')
+ call h5tclose_f(type_id,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addStringAttribute: h5tclose_f')
+ call h5sclose_f(space_id,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addStringAttribute: h5sclose_f')
+
+end subroutine HDF5_addStringAttribute
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief adds a StringAttribute to the results file
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_addIntegerAttribute(entity,attrLabel,attrValue)
+ use hdf5
+
+ implicit none
+ integer(HID_T),   intent(in)  :: entity
+ character(len=*), intent(in)  :: attrLabel
+ integer(pInt),    intent(in)  :: attrValue
+ integer                       :: hdferr
+ integer(HID_T)                :: attr_id, space_id, type_id
+
+ call h5screate_f(H5S_SCALAR_F,space_id,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addIntegerAttribute: h5screate_f')
+ call h5tcopy_f(H5T_NATIVE_Integer, type_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addIntegerAttribute: h5tcopy_f')
+ call h5tset_size_f(type_id, 1_HSIZE_T, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addIntegerAttribute: h5tset_size_f')
+ call h5acreate_f(entity, trim(attrLabel),type_id,space_id,attr_id,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addIntegerAttribute: h5acreate_f')
+ call h5awrite_f(attr_id, type_id, attrValue, int([1],HSIZE_T), hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addIntegerAttribute: h5awrite_f')
+ call h5aclose_f(attr_id,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addIntegerAttribute: h5aclose_f')
+ call h5tclose_f(type_id,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addIntegerAttribute: h5tclose_f')
+ call h5sclose_f(space_id,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addIntegerAttribute: h5sclose_f')
+
+end subroutine HDF5_addIntegerAttribute
 
 
 !--------------------------------------------------------------------------------------------------

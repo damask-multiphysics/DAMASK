@@ -17,11 +17,13 @@ module results
  private
  integer(HID_T), public, protected :: tempCoordinates, tempResults
  integer(HID_T), private :: resultsFile, currentIncID, plist_id
- integer(pInt),  private :: currentInc
 
 
  public :: &
    results_init, &
+   results_openJobFile, &
+   results_closeJobFile, &
+   results_addIncrement, &
    HDF5_mappingPhase, &
    HDF5_mappingHomog, &
    HDF5_mappingCrystallite, &
@@ -32,11 +34,9 @@ module results
    HDF5_addGroup ,&
    HDF5_closeGroup ,&
    HDF5_openGroup, &
-   HDF5_forwardResults, &
    HDF5_writeVectorDataset, &
    HDF5_writeScalarDataset, &
    HDF5_writeTensorDataset, &
-   HDF5_closeJobFile, &
    HDF5_removeLink
 contains
 
@@ -50,11 +50,46 @@ subroutine results_init
  write(6,'(/,a)') ' <<<+-  results init  -+>>>'
 #include "compilation_info.f90"
 
- currentInc = -1_pInt
  call HDF5_closeFile(HDF5_openFile(trim(getSolverJobName())//'.hdf5','w',.true.))
 
 end subroutine results_init
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief opens the results file to append data
+!--------------------------------------------------------------------------------------------------
+subroutine results_openJobFile()
+ use DAMASK_interface, only: &
+   getSolverJobName
+ implicit none
+
+ resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','a',.true.)
+
+end subroutine results_openJobFile
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief closes the results file
+!--------------------------------------------------------------------------------------------------
+subroutine results_closeJobFile()
+ use DAMASK_interface, only: &
+   getSolverJobName
+ implicit none
+
+ call HDF5_closeFile(resultsFile)
+
+end subroutine results_closeJobFile
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief closes the results file
+!--------------------------------------------------------------------------------------------------
+subroutine results_addIncrement()
+ implicit none
+
+ call HDF5_addIntegerAttribute(resultsFile,'test',1)
+
+end subroutine results_addIncrement
 
 !--------------------------------------------------------------------------------------------------
 !> @brief open a group from the results file
@@ -71,20 +106,6 @@ integer(HID_T) function HDF5_openGroup(groupName)
 
 end function HDF5_openGroup
 
-!--------------------------------------------------------------------------------------------------
-!> @brief close the opened HDF5 output file
-!--------------------------------------------------------------------------------------------------
-subroutine HDF5_closeJobFile()
- use hdf5
-
- implicit none
- integer  :: hdferr
- call HDF5_removeLink('current')
- call h5fclose_f(resultsFile,hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_closeJobFile: h5fclose_f',el=hdferr)
-! call h5close_f(hdferr)
-
-end subroutine HDF5_closeJobFile
 
 !--------------------------------------------------------------------------------------------------
 !> @brief adds a new group to the results file
@@ -138,37 +159,6 @@ subroutine HDF5_removeLink(link)
 
 end subroutine HDF5_removeLink
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief adds a StringAttribute to the results file
-!--------------------------------------------------------------------------------------------------
-subroutine HDF5_addStringAttribute(entity,attrLabel,attrValue)
- use hdf5
-
- implicit none
- integer(HID_T),   intent(in)  :: entity
- character(len=*), intent(in)  :: attrLabel, attrValue
- integer                       :: hdferr
- integer(HID_T)                :: attr_id, space_id, type_id
-
- call h5screate_f(H5S_SCALAR_F,space_id,hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute: h5screate_f')
- call h5tcopy_f(H5T_NATIVE_CHARACTER, type_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute: h5tcopy_f')
- call h5tset_size_f(type_id, int(len(trim(attrValue)),HSIZE_T), hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute: h5tset_size_f')
- call h5acreate_f(entity, trim(attrLabel),type_id,space_id,attr_id,hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute: h5acreate_f')
- call h5awrite_f(attr_id, type_id, trim(attrValue), int([1],HSIZE_T), hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute: h5awrite_f')
- call h5aclose_f(attr_id,hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute: h5aclose_f')
- call h5tclose_f(type_id,hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute: h5tclose_f')
- call h5sclose_f(space_id,hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute: h5sclose_f')
-
-end subroutine HDF5_addStringAttribute
 
 !--------------------------------------------------------------------------------------------------
 !> @brief adds the unique mapping from spatial position and constituent ID to results
@@ -1251,29 +1241,5 @@ subroutine HDF5_addScalarDataset(group,nnodes,label,SIunit)
  call h5sclose_f(space_id, hdferr)
 
 end subroutine HDF5_addScalarDataset
-
-!--------------------------------------------------------------------------------------------------
-!> @brief copies the current temp results to the actual results file
-!--------------------------------------------------------------------------------------------------
-subroutine HDF5_forwardResults(time)
- use hdf5
- use IO, only: &
-   IO_intOut
-
- implicit none
- integer :: hdferr
- integer(HID_T) :: currentIncID
- real(pReal), intent(in) :: time
- character(len=1024)     :: myName
-
- currentInc = currentInc +1_pInt
- write(6,*) 'forward results';flush(6)
- write(myName,'(a,'//IO_intOut(currentInc)//')') 'inc',currentInc
- currentIncID = HDF5_addGroup(myName)
- call HDF5_setLink(myName,'current')
-! call HDF5_flush(resultsFile)
- call HDF5_closeGroup(currentIncID)
-
-end subroutine HDF5_forwardResults
 
 end module results
