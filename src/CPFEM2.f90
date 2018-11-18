@@ -39,6 +39,8 @@ subroutine CPFEM_initAll()
    material_init
  use HDF5_utilities, only: &
    HDF5_utilities_init
+ use results, only: &
+   results_init
  use lattice, only: &
    lattice_init
  use constitutive, only: &
@@ -73,6 +75,7 @@ subroutine CPFEM_initAll()
  call lattice_init
  call material_init
  call HDF5_utilities_init
+ call results_init
  call constitutive_init
  call crystallite_init
  call homogenization_init

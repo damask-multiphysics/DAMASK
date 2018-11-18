@@ -8,6 +8,7 @@ module results
   use prec
   use IO
   use HDF5
+  use HDF5_utilities
 #ifdef PETSc
   use PETSC
 #endif
@@ -31,186 +32,28 @@ module results
    HDF5_addGroup ,&
    HDF5_closeGroup ,&
    HDF5_openGroup, &
-   HDF5_openGroup2, &
    HDF5_forwardResults, &
    HDF5_writeVectorDataset, &
    HDF5_writeScalarDataset, &
    HDF5_writeTensorDataset, &
    HDF5_closeJobFile, &
-   HDF5_removeLink, &
-   HDF5_createFile, &
-   HDF5_closeFile, &
-   HDF5_addGroup2
+   HDF5_removeLink
 contains
 
 subroutine results_init
  use, intrinsic :: &
    iso_fortran_env  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
-
+ use DAMASK_interface, only: &
+   getSolverJobName
  implicit none
 
- write(6,'(/,a)') ' <<<+-  HDF5_Utilities init  -+>>>'
+ write(6,'(/,a)') ' <<<+-  results init  -+>>>'
 #include "compilation_info.f90"
 
  currentInc = -1_pInt
+ call HDF5_closeFile(HDF5_openFile(trim(getSolverJobName())//'.hdf5','w',.true.))
 
 end subroutine results_init
-
-!--------------------------------------------------------------------------------------------------
-!> @brief creates and initializes HDF5 output files
-!--------------------------------------------------------------------------------------------------
-subroutine HDF5_createJobFile
- use hdf5
- use DAMASK_interface, only: &
-   getSolverJobName
-
- implicit none
- integer              :: hdferr
- character(len=1024)  :: path
-#ifdef PETSc
-#include <petsc/finclude/petscsys.h>
-
- call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pcreate_f')
- call h5pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pset_fapl_mpio_f')
-#endif
-
-!--------------------------------------------------------------------------------------------------
-! open file
- path = trim(getSolverJobName())//'.'//'hdf5'
- !call h5fcreate_f(path,H5F_ACC_TRUNC_F,resultsFile,hdferr)
- call h5fcreate_f(path,H5F_ACC_TRUNC_F,resultsFile,hdferr,access_prp = plist_id)
- if (hdferr < 0) call IO_error(100_pInt,ext_msg=path)
- call HDF5_addStringAttribute(resultsFile,'createdBy',DAMASKVERSION)
- call h5pclose_f(plist_id, hdferr)  !neu
-
-end subroutine HDF5_createJobFile
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief creates and initializes HDF5 output files
-!--------------------------------------------------------------------------------------------------
- integer(HID_T) function HDF5_createFile(path)
- use hdf5
- use DAMASK_interface, only: &
-   getSolverJobName
-
- implicit none
- integer                       :: hdferr
- integer(SIZE_T)               :: typeSize
- character(len=*), intent(in)  :: path
-#ifdef PETSc
-#include <petsc/finclude/petscsys.h>
-#endif
-  call h5open_f(hdferr) !############################################################ DANGEROUS
-#ifdef PETSc
- call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pcreate_f')
- call h5pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5pset_fapl_mpio_f')
-#endif
-!--------------------------------------------------------------------------------------------------
-! create a file
- !call h5fcreate_f(path,H5F_ACC_TRUNC_F,resultsFile,hdferr)
- call h5fcreate_f(path,H5F_ACC_TRUNC_F,HDF5_createFile,hdferr,access_prp = plist_id)
- if (hdferr < 0) call IO_error(100_pInt,ext_msg=path)
- !call HDF5_addStringAttribute(HDF5_createFile,'createdBy',DAMASKVERSION)
- call h5pclose_f(plist_id, hdferr)  !neu
-
-end function HDF5_createFile
-
-!--------------------------------------------------------------------------------------------------
-!> @brief close the opened HDF5 output file
-!--------------------------------------------------------------------------------------------------
-subroutine HDF5_closeJobFile()
- use hdf5
-
- implicit none
- integer  :: hdferr
- call HDF5_removeLink('current')
- call h5fclose_f(resultsFile,hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_closeJobFile: h5fclose_f',el=hdferr)
-! call h5close_f(hdferr)
-
-end subroutine HDF5_closeJobFile
-
-!--------------------------------------------------------------------------------------------------
-!> @brief open and initializes HDF5 output file
-!--------------------------------------------------------------------------------------------------
-integer(HID_T) function HDF5_openFile(fileName,mode)
-
- implicit none
- character(len=*), intent(in)           :: fileName
- character,        intent(in), optional :: mode
- character                              :: m
- integer :: hdferr
-
- if (present(mode)) then
-   m = mode
- else
-   m = 'r'
- endif
-
- if (m == 'w') then
-   call h5fcreate_f(fileName,H5F_ACC_TRUNC_F,HDF5_openFile,hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fcreate_f',el=hdferr)
- elseif(m == 'a') then
-   call h5fopen_f(fileName,H5F_ACC_RDWR_F,HDF5_openFile,hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f (a)',el=hdferr)
- elseif(m == 'r') then
-   call h5fopen_f(fileName,H5F_ACC_RDONLY_F,HDF5_openFile,hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f (r)',el=hdferr)
- else
-   call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f unknown access mode',el=hdferr)
- endif
-
-end function HDF5_openFile
-
-!--------------------------------------------------------------------------------------------------
-!> @brief close the opened HDF5 output file
-!--------------------------------------------------------------------------------------------------
-subroutine HDF5_closeFile(fileHandle)
-
- implicit none
- integer :: hdferr
- integer(HID_T), intent(in) :: fileHandle
- call h5fclose_f(fileHandle,hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_closeFile: h5fclose_f',el=hdferr)
-
-end subroutine HDF5_closeFile
-
-!--------------------------------------------------------------------------------------------------
-!> @brief adds a new group to the results file
-!--------------------------------------------------------------------------------------------------
-integer(HID_T) function HDF5_addGroup(groupName)
- use hdf5
-
- implicit none
- character(len=*), intent(in) :: groupName
- integer                      :: hdferr
-
- call h5gcreate_f(resultsFile, trim(groupName), HDF5_addGroup, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_addGroup: h5gcreate_f ('//trim(groupName)//')')
-
-end function HDF5_addGroup
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief adds a new group to the fileHandle (additional to addGroup2)
-!--------------------------------------------------------------------------------------------------
-integer(HID_T) function HDF5_addGroup2(fileHandle,groupName)
- use hdf5
-
- implicit none
- character(len=*), intent(in) :: groupName
- integer(HID_T), intent(in)   :: fileHandle
- integer                      :: hdferr
-
- call h5gcreate_f(fileHandle, trim(groupName), HDF5_addGroup2, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_addGroup2: h5gcreate_f ('//trim(groupName)//')')
-
-end function HDF5_addGroup2
 
 
 !--------------------------------------------------------------------------------------------------
@@ -229,20 +72,34 @@ integer(HID_T) function HDF5_openGroup(groupName)
 end function HDF5_openGroup
 
 !--------------------------------------------------------------------------------------------------
-!> @brief open an existing group of a file
+!> @brief close the opened HDF5 output file
 !--------------------------------------------------------------------------------------------------
-integer(HID_T) function HDF5_openGroup2(FileReadID,groupName)
+subroutine HDF5_closeJobFile()
+ use hdf5
+
+ implicit none
+ integer  :: hdferr
+ call HDF5_removeLink('current')
+ call h5fclose_f(resultsFile,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_closeJobFile: h5fclose_f',el=hdferr)
+! call h5close_f(hdferr)
+
+end subroutine HDF5_closeJobFile
+
+!--------------------------------------------------------------------------------------------------
+!> @brief adds a new group to the results file
+!--------------------------------------------------------------------------------------------------
+integer(HID_T) function HDF5_addGroup(groupName)
  use hdf5
 
  implicit none
  character(len=*), intent(in) :: groupName
  integer                      :: hdferr
- integer(HID_T), intent(in)   :: FileReadID
 
- call h5gopen_f(FileReadID, trim(groupName), HDF5_openGroup2, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup2: h5gopen_f ('//trim(groupName)//')')
+ call h5gcreate_f(resultsFile, trim(groupName), HDF5_addGroup, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_addGroup: h5gcreate_f ('//trim(groupName)//')')
 
-end function HDF5_openGroup2
+end function HDF5_addGroup
 
 !--------------------------------------------------------------------------------------------------
 !> @brief set link to object in results file
@@ -281,20 +138,6 @@ subroutine HDF5_removeLink(link)
 
 end subroutine HDF5_removeLink
 
-!--------------------------------------------------------------------------------------------------
-!> @brief close a group
-!--------------------------------------------------------------------------------------------------
-subroutine HDF5_closeGroup(ID)
- use hdf5
-
- implicit none
- integer(HID_T), intent(in) :: ID
- integer                    :: hdferr
-
- call h5gclose_f(ID, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_closeGroup: h5gclose_f (el is ID)', el = int(ID,pInt))
-
-end subroutine HDF5_closeGroup
 
 !--------------------------------------------------------------------------------------------------
 !> @brief adds a StringAttribute to the results file
