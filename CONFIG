@@ -8,6 +8,6 @@ set DAMASK_NUM_THREADS    = 4
 set MSC_ROOT              = /opt/msc
 set MARC_VERSION          = 2018.1
 
-set ABAQUS_VERSION        = 2017
+set ABAQUS_VERSION        = 2018.1
 
 set DAMASK_HDF5           = OFF

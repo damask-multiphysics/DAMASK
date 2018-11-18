@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,re
@@ -66,7 +66,7 @@ for name in filenames:
     for i,index in enumerate(indices):
       if index == -1: remarks.append('label "{}" not present...'.format(options.label[i]))
       else:
-        m = pattern[dimensions[i]>1].match(table.tags[index])                                       # isolate label name
+        m = pattern[int(dimensions[i]>1)].match(table.tags[index])                                  # isolate label name
         for j in range(dimensions[i]):
           table.tags[index+j] = table.tags[index+j].replace(m.group(2),options.substitute[i])       # replace name with substitute
 

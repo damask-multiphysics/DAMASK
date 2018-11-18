@@ -384,10 +384,10 @@ class Test():
     while table0.data_read():                                                  # read next data line of ASCII table
       if line0 not in skipLines:
         for i in range(dataLength):
-          myData = np.array(map(float,table0.data[column[0][i]:\
-                                                  column[0][i]+length[i]]),'d')
-          normData = np.array(map(float,table0.data[normColumn[i]:\
-                                                    normColumn[i]+normLength[i]]),'d')
+          myData = np.array(list(map(float,table0.data[column[0][i]:\
+                                                       column[0][i]+length[i]])),'d')
+          normData = np.array(list(map(float,table0.data[normColumn[i]:\
+                                                         normColumn[i]+normLength[i]])),'d')
           data[i] = np.append(data[i],np.reshape(myData,shape[i]))
           if normType == 'pInf':
             norm[i] = np.append(norm[i],np.max(np.abs(normData)))
@@ -410,8 +410,8 @@ class Test():
     while table1.data_read():                                                  # read next data line of ASCII table
       if line1 not in skipLines:
         for i in range(dataLength):
-          myData = np.array(map(float,table1.data[column[1][i]:\
-                                                  column[1][i]+length[i]]),'d')
+          myData = np.array(list(map(float,table1.data[column[1][i]:\
+                                                       column[1][i]+length[i]])),'d')
           maxError[i] = max(maxError[i],np.linalg.norm(np.reshape(myData-data[i][line1-len(skipLines),:],shape[i]))/
                                                                                    norm[i][line1-len(skipLines)])
       line1 +=1
