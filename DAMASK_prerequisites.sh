@@ -78,7 +78,7 @@ echo PETSC_DIR: $PETSC_DIR
 ls $PETSC_DIR/lib
 
 firstLevel "Python"
-DEFAULT_PYTHON=python2.7
+DEFAULT_PYTHON=python3
 for executable in python python2 python3 python2.7; do
   getDetails $executable '--version'
 done
