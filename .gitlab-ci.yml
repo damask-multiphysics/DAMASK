@@ -321,6 +321,15 @@ Spectral_MPI:
     - master
     - release
 
+SpectralAll_restartMPI:
+  stage: spectral
+  script:
+    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - SpectralAll_restartMPI/test.py
+  except:
+    - master
+    - release
+
 Plasticity_DetectChanges:
   stage: spectral
   script: Plasticity_DetectChanges/test.py
