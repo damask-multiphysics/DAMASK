@@ -79,6 +79,7 @@ variables:
   Abaqus:                          "$Abaqus2017"
   MSC:                             "$MSC2018_1"
   IntelMarc:                       "$IntelCompiler17_0"
+  IntelAbaqus:                     "$IntelCompiler16_4"
   # ++++++++++++ Documentation +++++++++++++++++++++++++++++++++++++++++
   Doxygen1_8_13:                   "Documentation/Doxygen/1.8.13"
   # ------------ Defaults ----------------------------------------------
@@ -425,7 +426,7 @@ SpectralExample:
 AbaqusExample:
   stage: example
   script:
-    - module load $IntelCompiler16_4 $Abaqus
+    - module load $IntelAbaqus $Abaqus
     - Abaqus_example/test.py
   only:
     - development
