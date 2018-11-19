@@ -4,7 +4,7 @@
 # Normal exit status is 0.
 #
 
-DIR=/msc/marc2016
+DIR=/nethome/f.roters/temp/msc/marc2018.1
 if test $MARCDIR1
 then
  DIR=$MARCDIR1

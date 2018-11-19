@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
 import os,re,sys,fnmatch
@@ -139,6 +139,7 @@ for name in filenames:
       table.data_readArray(positions+1)                                                               # read desired columns (indexed 1,...)
       table.data_writeArray()                                                                         # directly write out
     except:
+      table.data_rewind()
       atOnce = False                                                                                  # data contains items that prevent array chunking
 
   if not atOnce:                                                                                      # read data line by line

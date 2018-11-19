@@ -349,7 +349,7 @@ export BINDIR
 AFMATDAT=$MARC_RUNTIME/AF_flowmat/
 export AFMATDAT
 export MESHERDIR
-MSC_LICENSE_FINPROC=1
+MSC_LICENSE_FINPROC=0
 export MSC_LICENSE_FINPROC
 #
 # define directory path to global unified material database
@@ -374,6 +374,12 @@ fi
 # the one for IBM is defined futher down
 
 LD_LIBRARY_PATH=$MARC_LIB_SHARED:$LD_LIBRARY_PATH
+if test -f "/etc/redhat-release"; then
+  ver=`cat /etc/redhat-release | sed 's/.* release \([0-9]\).\([0-9]\+\) .*/\1\2/'`
+  case "$ver" in
+    6*) LD_LIBRARY_PATH="${MARC_LIB_SHARED}rh67:$LD_LIBRARY_PATH" ;;
+  esac
+fi
 LD_LIBRARY_PATH=$MARC_LIB:$LD_LIBRARY_PATH
 LD_LIBRARY_PATH=$MESHERDIR:$LD_LIBRARY_PATH
 LD_LIBRARY_PATH=$SFMATDIR:$LD_LIBRARY_PATH
@@ -533,7 +539,7 @@ if test -n "$value"; then
     . $MARC_INCLUDE
     MDSRCLIB=$MARC_LIB/mdsrc.a_$value
     if test "$MUMPSSOLVER" = MUMPS; then
-     MUMPSSOLVERLIBS="$MARC_LIB/libmumps.a_$value"
+     MUMPSSOLVERLIBS="$MUMPSLIB_DIR/libmumps.a_$value"
     fi
   fi
 fi
@@ -807,14 +813,14 @@ do
                          . $MARC_INCLUDE
                          MDSRCLIB=$MARC_LIB/mdsrc.a_$value
                          if test "$MUMPSSOLVER" = MUMPS; then
-                          MUMPSSOLVERLIBS="$MARC_LIB/libmumps.a_$value"
+                          MUMPSSOLVERLIBS="$MUMPSLIB_DIR/libmumps.a_$value"
                          fi
                         else
                          exefile=marc
                          . $MARC_INCLUDE
                          MDSRCLIB=$MARC_LIB/mdsrc.a
                          if test "$MUMPSSOLVER" = MUMPS; then
-                          MUMPSSOLVERLIBS="$MARC_LIB/libmumps.a"
+                          MUMPSSOLVERLIBS="$MUMPSLIB_DIR/libmumps.a"
                          fi
                         fi
                 ;;
@@ -1005,6 +1011,7 @@ then
   nprocdddm=
 fi  
 
+nsolverprint=$nsolver
 if test $nsolver -eq 0 
 then 
   nsolverprint=
@@ -1890,6 +1897,12 @@ Program name ($prog)? $ECHOTXT"
           set ntsprint=0
         fi
         nts=$ntsprint
+#       Update print variable for -nsolver option
+        nsolverprint=$nsolver
+        if test $nsolver -eq 0
+        then
+          nsolverprint=
+        fi
 		$ECHO "GPGPU id option ($gpuids)? $ECHOTXT"
 		read value
 		if test "$value"
@@ -3206,14 +3219,14 @@ then
     then
         if test $MACHINENAME = "CRAY"
         then
-            $DFORTLOWMP $user || \
+            $DFORTHIGHMP $user || \
                 {
                 echo "$0: compile failed for $user"
                 exit 1
                 }
             /bin/rm $program 2>/dev/null
         else
-            $DFORTLOWMP $user -o $userobj || \
+            $DFORTHIGHMP $user -o $userobj || \
                 {
                 echo "$0: compile failed for $user"
                 exit 1
@@ -3240,6 +3253,7 @@ then
     $MRCLIBS     \
     $METISLIBS \
     $DAMASK   \
+    $OPENSSL_LIB \
     $SYSLIBS  \
     $SFLIB  \
     $SECLIBS      || \
@@ -3478,7 +3492,7 @@ then
               remoteuser=$DIR1/`$BASENAME $user`
               $RSH $i /bin/rm $remoteprog 2> /dev/null
               echo
-              $RSH $i $DIR2/tools/comp_damask_lmp $DIR2 $DIR1 $remoteuser $remoteprog
+              $RSH $i $DIR2/tools/comp_damask_hmp $DIR2 $DIR1 $remoteuser $remoteprog
               # check if successful, the new executable should be there
               line=`$RSH $i /bin/ls $remoteprog 2> /dev/null`
               if test "$line"
@@ -3507,7 +3521,7 @@ then
     userobj=$usernoext.o
         if test $MACHINENAME = "CRAY"
         then
-            $DFORTLOWMP $user || \
+            $DFORTHIGHMP $user || \
                 {
                 echo "$0: compile failed for $user"
                 echo "         $PRODUCT Exit number 3"
@@ -3515,7 +3529,7 @@ then
                 }
             /bin/rm $program 2>/dev/null
         else
-            $DFORTLOWMP $user -o $userobj || \
+            $DFORTHIGHMP $user -o $userobj || \
                 {
                 echo "$0: compile failed for $user"
                 echo "         $PRODUCT Exit number 3"
@@ -3543,6 +3557,7 @@ then
   $MRCLIBS     \
   $METISLIBS \
   $DAMASK \
+  $OPENSSL_LIB \
   $SYSLIBS  \
   $SFLIB  \
   $SECLIBS    || \
@@ -3815,7 +3830,7 @@ then
               remoteuser=$DIR1/`$BASENAME $user`
               $RSH $i /bin/rm $remoteprog 2> /dev/null
               echo
-              $RSH $i $DIR2/tools/comp_damask_lmp $DIR2 $DIR1 $remoteuser $remoteprog
+              $RSH $i $DIR2/tools/comp_damask_hmp $DIR2 $DIR1 $remoteuser $remoteprog
               # check if successful, the new executable should be there
               line=`$RSH $i /bin/ls $remoteprog 2> /dev/null`
               if test "$line"
@@ -3843,14 +3858,14 @@ then
     userobj=$usernoext.o
         if test $MACHINENAME = "CRAY"
         then
-            $DFORTLOWMP $user || \
+            $DFORTHIGHMP $user || \
                 {
                 echo "$0: compile failed for $user"
                 exit 1
                 }
             /bin/rm $program 2>/dev/null
         else
-            $DFORTLOWMP $user -o $userobj || \
+            $DFORTHIGHMP $user -o $userobj || \
                 {
                 echo "$0: compile failed for $user"
                 exit 1
@@ -3877,6 +3892,7 @@ then
   $MRCLIBS     \
   $METISLIBS \
   $DAMASK \
+  $OPENSSL_LIB \
   $SYSLIBS \
   $SFLIB \
   $SECLIBS         || \
