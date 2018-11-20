@@ -280,7 +280,7 @@ if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
   #   ... for uninitialized variables.
   set (DEBUG_FLAGS "${DEBUG_FLAGS} -ftrapuv")
   #   ... initializes stack local variables to an unusual value to aid error detection
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all0")
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0")
   #   ... capture all floating-point exceptions, sets -ftz automatically
 
   set (DEBUG_FLAGS "${DEBUG_FLAGS} -warn")
