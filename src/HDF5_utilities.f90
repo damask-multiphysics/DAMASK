@@ -619,7 +619,7 @@ subroutine HDF5_write_pReal1(dataset,loc_id,datasetName,parallel)
    worldsize
 
  implicit none
- real(pReal),      intent(out), dimension(:) ::    dataset
+ real(pReal),      intent(inout), dimension(:) ::    dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
@@ -705,7 +705,7 @@ subroutine HDF5_write_pReal2(dataset,loc_id,datasetName,parallel)
    worldsize
 
  implicit none
- real(pReal),      intent(out), dimension(:,:) ::    dataset
+ real(pReal),      intent(inout), dimension(:,:) ::    dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
@@ -791,7 +791,7 @@ subroutine HDF5_write_pReal3(dataset,loc_id,datasetName,parallel)
    worldsize
 
  implicit none
- real(pReal),      intent(out), dimension(:,:,:) ::    dataset
+ real(pReal),      intent(inout), dimension(:,:,:) ::    dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
@@ -877,7 +877,7 @@ subroutine HDF5_write_pReal4(dataset,loc_id,datasetName,parallel)
    worldsize
 
  implicit none
- real(pReal),      intent(out), dimension(:,:,:,:) ::    dataset
+ real(pReal),      intent(inout), dimension(:,:,:,:) ::    dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
@@ -963,7 +963,7 @@ subroutine HDF5_write_pReal5(dataset,loc_id,datasetName,parallel)
    worldsize
 
  implicit none
- real(pReal),      intent(out), dimension(:,:,:,:,:) ::    dataset
+ real(pReal),      intent(inout), dimension(:,:,:,:,:) ::    dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
@@ -1049,7 +1049,7 @@ subroutine HDF5_write_pReal6(dataset,loc_id,datasetName,parallel)
    worldsize
 
  implicit none
- real(pReal),      intent(out), dimension(:,:,:,:,:,:) ::    dataset
+ real(pReal),      intent(inout), dimension(:,:,:,:,:,:) ::    dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
@@ -1135,7 +1135,7 @@ subroutine HDF5_write_pReal7(dataset,loc_id,datasetName,parallel)
    worldsize
 
  implicit none
- real(pReal),      intent(out), dimension(:,:,:,:,:,:,:) ::    dataset
+ real(pReal),      intent(inout), dimension(:,:,:,:,:,:,:) ::    dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
@@ -1218,7 +1218,7 @@ end subroutine HDF5_write_pReal7
 subroutine HDF5_write_pInt1(dataset,loc_id,datasetName)
 
  implicit none
- integer(pInt),      intent(out), dimension(:) ::    dataset
+ integer(pInt),      intent(inout), dimension(:) ::    dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
 
@@ -1254,7 +1254,7 @@ end subroutine HDF5_write_pInt1
 subroutine HDF5_write_pInt2(dataset,loc_id,datasetName)
 
  implicit none
- integer(pInt),      intent(out), dimension(:,:) ::    dataset
+ integer(pInt),      intent(inout), dimension(:,:) ::    dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
 
@@ -1290,7 +1290,7 @@ end subroutine HDF5_write_pInt2
 subroutine HDF5_write_pInt3(dataset,loc_id,datasetName)
 
  implicit none
- integer(pInt),      intent(out), dimension(:,:,:) ::    dataset
+ integer(pInt),      intent(inout), dimension(:,:,:) ::    dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
 
@@ -1326,7 +1326,7 @@ end subroutine HDF5_write_pInt3
 subroutine HDF5_write_pInt4(dataset,loc_id,datasetName)
 
  implicit none
- integer(pInt),      intent(out), dimension(:,:,:,:) ::    dataset
+ integer(pInt),      intent(inout), dimension(:,:,:,:) ::    dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
 
@@ -1362,7 +1362,7 @@ end subroutine HDF5_write_pInt4
 subroutine HDF5_write_pInt5(dataset,loc_id,datasetName)
 
  implicit none
- integer(pInt),      intent(out), dimension(:,:,:,:,:) ::    dataset
+ integer(pInt),      intent(inout), dimension(:,:,:,:,:) ::    dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
 
@@ -1434,7 +1434,7 @@ end subroutine HDF5_write_pInt6
 subroutine HDF5_write_pInt7(dataset,loc_id,datasetName)
 
  implicit none
- integer(pInt),      intent(out), dimension(:,:,:,:,:,:,:) ::    dataset
+ integer(pInt),      intent(inout), dimension(:,:,:,:,:,:,:) ::    dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
 
