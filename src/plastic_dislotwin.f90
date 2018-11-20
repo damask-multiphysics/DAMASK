@@ -219,6 +219,7 @@ subroutine plastic_dislotwin_init(fileUnit)
    phase_plasticity, &
    phase_plasticityInstance, &
    phase_Noutput, &
+   material_allocatePlasticState, &
    PLASTICITY_DISLOTWIN_label, &
    PLASTICITY_DISLOTWIN_ID, &
    material_phase, &  
@@ -227,8 +228,6 @@ subroutine plastic_dislotwin_init(fileUnit)
    MATERIAL_partPhase, &
    config_phase
  use lattice
- use numerics,only: &
-   numerics_integrator
 
  implicit none
  integer(pInt), intent(in) :: fileUnit
@@ -237,7 +236,7 @@ subroutine plastic_dislotwin_init(fileUnit)
                   f,j,i,k,o,p, &
                   offset_slip, index_myFamily, index_otherFamily, &
                   startIndex, endIndex, outputSize
- integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
+ integer(pInt) :: sizeState, sizeDotState
  integer(pInt) :: NipcMyPhase   
      
  real(pReal),  allocatable, dimension(:,:) :: temp1,temp2
@@ -588,31 +587,11 @@ subroutine plastic_dislotwin_init(fileUnit)
    sizeDotState     = int(size(['rho         ','rhoDip      ','accshearslip']),pInt) * prm%totalNslip &
                     + int(size(['twinFraction','accsheartwin']),pInt) * prm%totalNtwin &
                     + int(size(['stressTransFraction','strainTransFraction']),pInt) * prm%totalNtrans
-   sizeDeltaState   =  0_pInt
-   sizeState        = sizeDotState + sizeDeltaState
-              
-   plasticState(p)%sizeState = sizeDotState
-   plasticState(p)%sizeDotState = sizeDotState
-   plasticState(p)%sizePostResults = sum(plastic_dislotwin_sizePostResult(:,phase_plasticityInstance(p)))
-   plasticState(p)%nSlip = prm%totalNslip
-   plasticState(p)%nTwin = prm%totalNtwin
-   plasticState(p)%nTrans= prm%totalNtrans
-   allocate(plasticState(p)%aTolState           (sizeState),                source=0.0_pReal)
-   allocate(plasticState(p)%state0              (sizeState,NipcMyPhase),     source=0.0_pReal)
-   allocate(plasticState(p)%partionedState0     (sizeState,NipcMyPhase),     source=0.0_pReal)
-   allocate(plasticState(p)%subState0           (sizeState,NipcMyPhase),     source=0.0_pReal)
-   allocate(plasticState(p)%state               (sizeState,NipcMyPhase),     source=0.0_pReal)
+   sizeState        = sizeDotState
 
-   allocate(plasticState(p)%dotState            (sizeDotState,NipcMyPhase),  source=0.0_pReal)
-   allocate(plasticState(p)%deltaState        (sizeDeltaState,NipcMyPhase),  source=0.0_pReal)
-   if (any(numerics_integrator == 1_pInt)) then
-     allocate(plasticState(p)%previousDotState  (sizeDotState,NipcMyPhase),  source=0.0_pReal)
-     allocate(plasticState(p)%previousDotState2 (sizeDotState,NipcMyPhase),  source=0.0_pReal)
-   endif
-   if (any(numerics_integrator == 4_pInt)) &
-     allocate(plasticState(p)%RK4dotState       (sizeDotState,NipcMyPhase),  source=0.0_pReal)
-   if (any(numerics_integrator == 5_pInt)) &
-     allocate(plasticState(p)%RKCK45dotState    (6,sizeDotState,NipcMyPhase),source=0.0_pReal)
+   call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0_pInt, &
+                                      prm%totalNslip,prm%totalNtwin,prm%totalNtrans)
+   plasticState(p)%sizePostResults = sum(plastic_dislotwin_sizePostResult(:,phase_plasticityInstance(p)))
 
    ! ToDo: do later on
    offset_slip = 2_pInt*plasticState(p)%nslip
