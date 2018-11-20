@@ -63,14 +63,6 @@ else
  INTEGER_PATH=/$MARC_INTEGER_SIZE
 fi
 
-if test "$DAMASK_HDF5" = "ON";then
-  H5FC="$(h5fc -show)"
-  HDF5_LIB=${$H5FC//ifort/}
-  FCOMP=$H5FC
-else
-  FCOMP=ifort
-fi
-
 INTELPATH="/opt/intel/compilers_and_libraries_2017/linux"
 
 # find the root directory of the compiler installation:
@@ -104,6 +96,16 @@ elif test -d "$INTELPATH"; then
  fi
 else
  FCOMPROOT=
+fi
+
+# DAMASK uses the HDF5 compiler wrapper around the Intel compiler
+if test "$DAMASK_HDF5" = "ON";then
+  H5FC="$(h5fc -shlib -show)"
+  HDF5_LIB=${H5FC//ifort/}
+  FCOMP="$H5FC -DDAMASKHDF5"
+  echo $FCOMP
+else
+  FCOMP=ifort
 fi
 
 # AEM
