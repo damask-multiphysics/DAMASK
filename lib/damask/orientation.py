@@ -929,7 +929,7 @@ class Orientation:
 
 # disorientation, own sym, other sym, self-->other: True, self<--other: False
     return (Orientation(quaternion = theQ,symmetry = self.symmetry.lattice),
-            i,j,k == 1)                                                                             
+            i,j, k == 1)                                                                             
 
 
   def inversePole(self,
