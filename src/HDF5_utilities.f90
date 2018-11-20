@@ -14,6 +14,8 @@ module HDF5_utilities
 
  implicit none
  private
+ integer(pInt), parameter, private :: &
+   HDF5_ERR_TYPE = 4_pInt                                                                           !< kind of the integer return in the HDF5 library
 
 !--------------------------------------------------------------------------------------------------
 !> @brief reads pInt or pReal data of defined shape from file
@@ -77,8 +79,8 @@ subroutine HDF5_utilities_init
    iso_fortran_env  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 
  implicit none
- integer              :: hdferr
- integer(SIZE_T)      :: typeSize
+ integer(HDF5_ERR_TYPE) :: hdferr
+ integer(SIZE_T)        :: typeSize
 
  write(6,'(/,a)') ' <<<+-  HDF5_Utilities init  -+>>>'
 #include "compilation_info.f90"
@@ -109,7 +111,7 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
 
  character                              :: m
  integer(HID_T)                         :: plist_id
- integer :: hdferr
+ integer(HDF5_ERR_TYPE)                 :: hdferr
 
  if (present(mode)) then
    m = mode
@@ -129,13 +131,13 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
 
  if    (m == 'w') then
    call h5fcreate_f(fileName,H5F_ACC_TRUNC_F,HDF5_openFile,hdferr,access_prp = plist_id)
-   if (hdferr /= 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fcreate_f',el=hdferr)
+   if (hdferr /= 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fcreate_f')
  elseif(m == 'a') then
    call h5fopen_f(fileName,H5F_ACC_RDWR_F,HDF5_openFile,hdferr,access_prp = plist_id)
-   if (hdferr /= 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f (a)',el=hdferr)
+   if (hdferr /= 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f (a)')
  elseif(m == 'r') then
    call h5fopen_f(fileName,H5F_ACC_RDONLY_F,HDF5_openFile,hdferr,access_prp = plist_id)
-   if (hdferr /= 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f (r)',el=hdferr)
+   if (hdferr /= 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f (r)')
  else
    call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f unknown access mode')
  endif
@@ -152,10 +154,11 @@ end function HDF5_openFile
 subroutine HDF5_closeFile(fileHandle)
 
  implicit none
- integer :: hdferr
+ integer(HDF5_ERR_TYPE)     :: hdferr
  integer(HID_T), intent(in) :: fileHandle
+
  call h5fclose_f(fileHandle,hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_closeFile: h5fclose_f',el=hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_closeFile: h5fclose_f')
 
 end subroutine HDF5_closeFile
 
@@ -164,12 +167,11 @@ end subroutine HDF5_closeFile
 !> @brief adds a new group to the fileHandle (additional to addGroup2)
 !--------------------------------------------------------------------------------------------------
 integer(HID_T) function HDF5_addGroup2(fileHandle,groupName)
- use hdf5
 
  implicit none
  character(len=*), intent(in) :: groupName
  integer(HID_T), intent(in)   :: fileHandle
- integer                      :: hdferr
+ integer(HDF5_ERR_TYPE)       :: hdferr
 
  call h5gcreate_f(fileHandle, trim(groupName), HDF5_addGroup2, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_addGroup2: h5gcreate_f ('//trim(groupName)//')')
@@ -181,11 +183,10 @@ end function HDF5_addGroup2
 !> @brief open an existing group of a file
 !--------------------------------------------------------------------------------------------------
 integer(HID_T) function HDF5_openGroup2(FileReadID,groupName)
- use hdf5
 
  implicit none
  character(len=*), intent(in) :: groupName
- integer                      :: hdferr
+ integer(HDF5_ERR_TYPE)       :: hdferr
  integer(HID_T), intent(in)   :: FileReadID
 
  call h5gopen_f(FileReadID, trim(groupName), HDF5_openGroup2, hdferr)
@@ -198,11 +199,10 @@ end function HDF5_openGroup2
 !> @brief close a group
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_closeGroup(ID)
- use hdf5
 
  implicit none
  integer(HID_T), intent(in) :: ID
- integer                    :: hdferr
+ integer(HDF5_ERR_TYPE)     :: hdferr
 
  call h5gclose_f(ID, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_closeGroup: h5gclose_f (el is ID)', el = int(ID,pInt))
@@ -214,12 +214,11 @@ end subroutine HDF5_closeGroup
 !> @brief adds a StringAttribute to the results file
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_addStringAttribute(entity,attrLabel,attrValue)
- use hdf5
 
  implicit none
  integer(HID_T),   intent(in)  :: entity
  character(len=*), intent(in)  :: attrLabel, attrValue
- integer                       :: hdferr
+ integer(HDF5_ERR_TYPE)        :: hdferr
  integer(HID_T)                :: attr_id, space_id, type_id
 
  call h5screate_f(H5S_SCALAR_F,space_id,hdferr)
@@ -246,13 +245,12 @@ end subroutine HDF5_addStringAttribute
 !> @brief adds a StringAttribute to the results file
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_addIntegerAttribute(entity,attrLabel,attrValue)
- use hdf5
 
  implicit none
  integer(HID_T),   intent(in)  :: entity
  character(len=*), intent(in)  :: attrLabel
  integer(pInt),    intent(in)  :: attrValue
- integer                       :: hdferr
+ integer(HDF5_ERR_TYPE)        :: hdferr
  integer(HID_T)                :: attr_id, space_id, type_id
 
  call h5screate_f(H5S_SCALAR_F,space_id,hdferr)
@@ -285,7 +283,7 @@ subroutine HDF5_read_pReal_1(dataset,loc_id,datasetName)
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
- integer        :: hdferr
+ integer(HDF5_ERR_TYPE)        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
 
@@ -309,8 +307,8 @@ subroutine HDF5_read_pReal_2(dataset,loc_id,datasetName)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
 
- integer        :: hdferr
- integer(HID_T) :: dset_id
+ integer(HDF5_ERR_TYPE) :: hdferr
+ integer(HID_T)        :: dset_id
  myShape = shape(dataset)
 
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
@@ -332,7 +330,7 @@ subroutine HDF5_read_pReal_3(dataset,loc_id,datasetName)
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
- integer        :: hdferr
+ integer(HDF5_ERR_TYPE)        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
 
@@ -356,7 +354,7 @@ subroutine HDF5_read_pReal_4(dataset,loc_id,datasetName)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
 
- integer        :: hdferr
+ integer(HDF5_ERR_TYPE)        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
 
@@ -380,7 +378,7 @@ subroutine HDF5_read_pReal_5(dataset,loc_id,datasetName)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
 
- integer        :: hdferr
+ integer(HDF5_ERR_TYPE)        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
 
@@ -404,7 +402,7 @@ subroutine HDF5_read_pReal_6(dataset,loc_id,datasetName)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
 
- integer        :: hdferr
+ integer(HDF5_ERR_TYPE)        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
 
@@ -428,7 +426,7 @@ subroutine HDF5_read_pReal_7(dataset,loc_id,datasetName)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
 
- integer        :: hdferr
+ integer(HDF5_ERR_TYPE)        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
 
@@ -452,7 +450,7 @@ subroutine HDF5_read_pInt_1(dataset,loc_id,datasetName)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
 
- integer        :: hdferr
+ integer(HDF5_ERR_TYPE)        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
 
@@ -476,7 +474,7 @@ subroutine HDF5_read_pInt_2(dataset,loc_id,datasetName)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
 
- integer        :: hdferr
+ integer(HDF5_ERR_TYPE)        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
 
@@ -500,7 +498,7 @@ subroutine HDF5_read_pInt_3(dataset,loc_id,datasetName)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
 
- integer        :: hdferr
+ integer(HDF5_ERR_TYPE)        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
 
@@ -524,7 +522,7 @@ subroutine HDF5_read_pInt_4(dataset,loc_id,datasetName)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
 
- integer        :: hdferr
+ integer(HDF5_ERR_TYPE)        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
 
@@ -548,7 +546,7 @@ subroutine HDF5_read_pInt_5(dataset,loc_id,datasetName)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
 
- integer        :: hdferr
+ integer(HDF5_ERR_TYPE)        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
 
@@ -572,7 +570,7 @@ subroutine HDF5_read_pInt_6(dataset,loc_id,datasetName)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
 
- integer        :: hdferr
+ integer(HDF5_ERR_TYPE)        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
 
@@ -596,7 +594,7 @@ subroutine HDF5_read_pInt_7(dataset,loc_id,datasetName)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
 
- integer        :: hdferr
+ integer(HDF5_ERR_TYPE)        :: hdferr
  integer(HID_T) :: dset_id
  myShape = shape(dataset)
 
@@ -629,11 +627,12 @@ subroutine HDF5_write_pReal1(dataset,loc_id,datasetName,parallel)
    globalShape, &                                                                                   !< shape of the dataset (all processes)
    localShape, &                                                                                    !< shape of the dataset (this process)
    outputSize                                                                                       !< contribution of all processes
- integer :: hdferr,ierr
+ integer(HDF5_ERR_TYPE) :: hdferr
+ integer                :: ierr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
  integer(HSIZE_T), dimension(1) :: myStart
 
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, ierr)
+ call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
 
 !--------------------------------------------------------------------------------------------------
 ! determine shape of dataset
@@ -715,11 +714,12 @@ subroutine HDF5_write_pReal2(dataset,loc_id,datasetName,parallel)
    globalShape, &                                                                                   !< shape of the dataset (all processes)
    localShape, &                                                                                    !< shape of the dataset (this process)
    outputSize                                                                                       !< contribution of all processes
- integer :: hdferr,ierr
+ integer(HDF5_ERR_TYPE) :: hdferr
+ integer                :: ierr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
  integer(HSIZE_T), dimension(2) :: myStart
 
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, ierr)
+ call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
 
 !--------------------------------------------------------------------------------------------------
 ! determine shape of dataset
@@ -801,11 +801,12 @@ subroutine HDF5_write_pReal3(dataset,loc_id,datasetName,parallel)
    globalShape, &                                                                                   !< shape of the dataset (all processes)
    localShape, &                                                                                    !< shape of the dataset (this process)
    outputSize                                                                                       !< contribution of all processes
- integer :: hdferr,ierr
+ integer(HDF5_ERR_TYPE) :: hdferr
+ integer                :: ierr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
  integer(HSIZE_T), dimension(3) :: myStart
 
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, ierr)
+ call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
 
 !--------------------------------------------------------------------------------------------------
 ! determine shape of dataset
@@ -887,11 +888,12 @@ subroutine HDF5_write_pReal4(dataset,loc_id,datasetName,parallel)
    globalShape, &                                                                                   !< shape of the dataset (all processes)
    localShape, &                                                                                    !< shape of the dataset (this process)
    outputSize                                                                                       !< contribution of all processes
- integer :: hdferr,ierr
+ integer(HDF5_ERR_TYPE) :: hdferr
+ integer                :: ierr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
  integer(HSIZE_T), dimension(4) :: myStart
 
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, ierr)
+ call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
 
 !--------------------------------------------------------------------------------------------------
 ! determine shape of dataset
@@ -973,11 +975,12 @@ subroutine HDF5_write_pReal5(dataset,loc_id,datasetName,parallel)
    globalShape, &                                                                                   !< shape of the dataset (all processes)
    localShape, &                                                                                    !< shape of the dataset (this process)
    outputSize                                                                                       !< contribution of all processes
- integer :: hdferr,ierr
+ integer(HDF5_ERR_TYPE) :: hdferr
+ integer                :: ierr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
  integer(HSIZE_T), dimension(5) :: myStart
 
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, ierr)
+ call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
 
 !--------------------------------------------------------------------------------------------------
 ! determine shape of dataset
@@ -1059,11 +1062,12 @@ subroutine HDF5_write_pReal6(dataset,loc_id,datasetName,parallel)
    globalShape, &                                                                                   !< shape of the dataset (all processes)
    localShape, &                                                                                    !< shape of the dataset (this process)
    outputSize                                                                                       !< contribution of all processes
- integer :: hdferr,ierr
+ integer(HDF5_ERR_TYPE) :: hdferr
+ integer                :: ierr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
  integer(HSIZE_T), dimension(6) :: myStart
 
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, ierr)
+ call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
 
 !--------------------------------------------------------------------------------------------------
 ! determine shape of dataset
@@ -1145,11 +1149,12 @@ subroutine HDF5_write_pReal7(dataset,loc_id,datasetName,parallel)
    globalShape, &                                                                                   !< shape of the dataset (all processes)
    localShape, &                                                                                    !< shape of the dataset (this process)
    outputSize                                                                                       !< contribution of all processes
- integer :: hdferr,ierr
+ integer(HDF5_ERR_TYPE) :: hdferr
+ integer                :: ierr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
  integer(HSIZE_T), dimension(7) :: myStart
 
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, ierr)
+ call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
 
 !--------------------------------------------------------------------------------------------------
 ! determine shape of dataset
@@ -1223,7 +1228,8 @@ subroutine HDF5_write_pInt1(dataset,loc_id,datasetName)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
 
  integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- integer :: hdferr
+ integer(HDF5_ERR_TYPE) :: hdferr
+ integer                :: ierr
  integer(HID_T) :: dset_id, space_id
 
  myShape = shape(dataset)
@@ -1259,7 +1265,7 @@ subroutine HDF5_write_pInt2(dataset,loc_id,datasetName)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
 
  integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- integer :: hdferr
+ integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T) :: dset_id, space_id
 
  myShape = shape(dataset)
@@ -1295,7 +1301,7 @@ subroutine HDF5_write_pInt3(dataset,loc_id,datasetName)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
 
  integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- integer :: hdferr
+ integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T) :: dset_id, space_id
 
  myShape = shape(dataset)
@@ -1331,7 +1337,7 @@ subroutine HDF5_write_pInt4(dataset,loc_id,datasetName)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
 
  integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- integer :: hdferr
+ integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T) :: dset_id, space_id
 
  myShape = shape(dataset)
@@ -1367,7 +1373,7 @@ subroutine HDF5_write_pInt5(dataset,loc_id,datasetName)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
 
  integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- integer :: hdferr
+ integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T) :: dset_id, space_id
 
  myShape = shape(dataset)
@@ -1403,7 +1409,7 @@ subroutine HDF5_write_pInt6(dataset,loc_id,datasetName)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
 
  integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- integer :: hdferr
+ integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T) :: dset_id, space_id
 
  myShape = shape(dataset)
@@ -1439,7 +1445,7 @@ subroutine HDF5_write_pInt7(dataset,loc_id,datasetName)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
 
  integer(pInt), dimension(:), allocatable :: myShape                                                          !<shape of the dataset
- integer :: hdferr
+ integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T) :: dset_id, space_id
 
  myShape = shape(dataset)
