@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math,random
@@ -170,7 +170,7 @@ for name in filenames:
                    dtype=int,casting='unsafe')                                                      # find max grid indices within fraction
     meshgrid = np.meshgrid(*map(np.arange,n),indexing='ij')                                         # create a meshgrid within fraction
     coords = np.vstack((meshgrid[0],meshgrid[1],meshgrid[2])).reshape(3,n.prod()).T                 # assemble list of 3D coordinates
-    seeds = ((random.sample(coords,options.N)+np.random.random(options.N*3).reshape(options.N,3))\
+    seeds = ((random.sample(list(coords),options.N)+np.random.random(options.N*3).reshape(options.N,3))\
               / \
              (n/options.fraction)).T                                                                # pick options.N of those, rattle position,
                                                                                                     # and rescale to fall within fraction

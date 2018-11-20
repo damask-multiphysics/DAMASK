@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -94,11 +94,9 @@ for name in filenames:
 
   if (any(options.grid) == 0 or any(options.size) == 0.0):
     grid,size = damask.util.coordGridAndSize(table.data[:,table.label_indexrange(options.pos)])
-
   else:
     grid   = np.array(options.grid,'i')
     size   = np.array(options.size,'d')
-    origin = np.zeros(3,'d')
 
   packing = np.where(grid == 1,1,packing)                                                           # reset packing to 1 where grid==1
   shift   = np.where(grid == 1,0,shift)                                                             # reset   shift to 0 where grid==1
@@ -113,7 +111,7 @@ for name in filenames:
                           -shift[2],axis = 2),
                   size = list(packing) + [1],
                   mode = 'wrap',
-                  origin = list(-(packing/2)) + [0])\
+                  origin = list(-(packing//2)) + [0])\
                   [::packing[0],::packing[1],::packing[2],:].reshape((packedGrid.prod(),table.data.shape[1]),order = 'F')
 
   
@@ -121,15 +119,15 @@ for name in filenames:
 
 #--- generate grid --------------------------------------------------------------------------------
 
-  x = (0.5 + shift[0] + np.arange(packedGrid[0],dtype=float))/packedGrid[0]*size[0] + origin[0]
-  y = (0.5 + shift[1] + np.arange(packedGrid[1],dtype=float))/packedGrid[1]*size[1] + origin[1]
-  z = (0.5 + shift[2] + np.arange(packedGrid[2],dtype=float))/packedGrid[2]*size[2] + origin[2]
+  x = (0.5 + shift[0] + np.arange(packedGrid[0],dtype=float))/packedGrid[0]*size[0]
+  y = (0.5 + shift[1] + np.arange(packedGrid[1],dtype=float))/packedGrid[1]*size[1]
+  z = (0.5 + shift[2] + np.arange(packedGrid[2],dtype=float))/packedGrid[2]*size[2]
 
   xx = np.tile(          x,                packedGrid[1]* packedGrid[2])
   yy = np.tile(np.repeat(y,packedGrid[0]                ),packedGrid[2])
   zz =         np.repeat(z,packedGrid[0]*packedGrid[1])
 
-  table.data[:,table.label_indexragen(options.pos)] = np.squeeze(np.dstack((xx,yy,zz)))
+  table.data[:,table.label_indexrange(options.pos)] = np.squeeze(np.dstack((xx,yy,zz)))
 
 # ------------------------------------------ output result -----------------------------------------  
 

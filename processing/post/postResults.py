@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math,re,time,struct
@@ -79,7 +79,7 @@ class MPIEspectral_result:    # mimic py_post result object
     self.dataOffset = 0
     while self.dataOffset < self.filesize:
       self.file.seek(self.dataOffset)
-      if self.file.read(3) == 'eoh': break
+      if self.file.read(3) == b'eoh': break
       self.dataOffset += 1
     self.dataOffset   += 7
 #search first for the new keywords with ':', if not found try to find the old ones
@@ -135,7 +135,7 @@ class MPIEspectral_result:    # mimic py_post result object
     if self.N_element_scalars is None:
       self.N_element_scalars = self._keyedPackedArray('materialpoint_sizeResults',count=1,type='i')[0]
 
-    self.N_positions  = (self.filesize-self.dataOffset)/(self.N_elements*self.N_element_scalars*8)
+    self.N_positions  = (self.filesize-self.dataOffset)//(self.N_elements*self.N_element_scalars*8)
     self.N_increments = 1                                                    # add zero'th entry
     for i in range(self.N_loadcases):
       self.N_increments += self._increments[i]//self._frequencies[i]
@@ -179,7 +179,7 @@ class MPIEspectral_result:    # mimic py_post result object
       self.file.seek(filepos)
 # read the starting tag in front of the keyword (Fortran indicates start and end of writing by a 4 byte tag indicating the length of the following data)
       dataLen=struct.unpack('i',self.file.read(4))[0]
-      name = self.file.read(len(identifier))                                                        # anticipate identifier
+      name = self.file.read(len(identifier)).decode(errors="ignore")                                # anticipate identifier
       start=filepos+(4+len(identifier))                                                             # position of the values for the found key
       filepos=filepos+(4+dataLen+4)                                                                 # forward to next keyword
 
@@ -202,7 +202,7 @@ class MPIEspectral_result:    # mimic py_post result object
   def _keyedString(self,identifier,default=None):
     value = default
     self.file.seek(0)
-    m = re.search(r'(.{4})%s(.*?)\1'%identifier,self.file.read(self.dataOffset),re.DOTALL)
+    m = re.search(r'(.{4})%s(.*?)\1'%identifier,self.file.read(self.dataOffset).decode(errors="ignore"),re.DOTALL)
     if m:
       value = m.group(2)
     return value
@@ -244,9 +244,9 @@ class MPIEspectral_result:    # mimic py_post result object
     a = self.grid[0]+1
     b = self.grid[1]+1
     c = self.grid[2]+1
-    return vector([self.size[0] *       (n%a) / self.grid[0],
-                   self.size[1] *   ((n/a)%b) / self.grid[1],
-                   self.size[2] * ((n/a/b)%c) / self.grid[2],
+    return vector([self.size[0] *         (n%a) / self.grid[0],
+                   self.size[1] *    ((n//a)%b) / self.grid[1],
+                   self.size[2] * ((n//a//b)%c) / self.grid[2],
             ])
 
   def element_sequence(self,e):
@@ -258,7 +258,7 @@ class MPIEspectral_result:    # mimic py_post result object
   def element(self,e):
     a = self.grid[0]+1
     b = self.grid[1]+1
-    basenode = 1 + e+e/self.grid[0] + e/self.grid[0]/self.grid[1]*a
+    basenode = 1 + e+e//self.grid[0] + e//self.grid[0]//self.grid[1]*a
     basenode2 = basenode+a*b
     return (element([basenode ,basenode +1,basenode +a+1,basenode +a,
                     basenode2 ,basenode2+1,basenode2+a+1,basenode2+a,
@@ -434,17 +434,17 @@ def mapIncremental(label, mapping, N, base, new):
               'unique': lambda n,b,a: a if n==0 or b==a else 'nan'
             }
   if mapping in theMap:
-    mapped = map(theMap[mapping],[N]*len(base),base,new)                        # map one of the standard functions to data
+    mapped = list(map(theMap[mapping],[N for i in range(len(base))],base,new))                        # map one of the standard functions to data
     if label.lower() == 'orientation':                                          # orientation is special case:...
       orientationNorm = math.sqrt(sum([q*q for q in mapped]))                   # ...calc norm of average quaternion
-      mapped = map(lambda x: x/orientationNorm, mapped)                         # ...renormalize quaternion
+      mapped = list(map(lambda x: x/orientationNorm, mapped))                         # ...renormalize quaternion
   else:
     try:
-      mapped = eval('map(%s,[N]*len(base),base,new)'%mapping)                   # map user defined function to colums in chunks
+      mapped = list(eval('map(%s,[N for i in range(len(base))],base,new)'%mapping))                   # map user defined function to colums in chunks
     except:
-      mapped = ['nan']*len(base)
+      mapped = ['nan' for i in range(len(base))]
 
-  return mapped
+  return list(mapped)
 
 
 
@@ -466,7 +466,7 @@ def ParseOutputFormat(filename,what,me):
   """Parse .output* files in order to get a list of outputs"""
   content = []
   format = {'outputs':{},'specials':{'brothers':[]}}
-  for prefix in ['']+map(str,range(1,17)):
+  for prefix in ['']+list(map(str,range(1,17))):
     if os.path.exists(prefix+filename+'.output'+what):
       try:
         file = open(prefix+filename+'.output'+what)
@@ -674,6 +674,9 @@ parser.add_option('-p','--type', dest='filetype',
 parser.add_option('-q','--quiet', dest='verbose',
                   action = 'store_false',
                   help = 'suppress verbose output')
+parser.add_option('--verbose', dest='verbose',
+                  action = 'store_true',
+                  help = 'enable verbose output')
 
 group_material = OptionGroup(parser,'Material identifier')
 
@@ -715,7 +718,7 @@ parser.add_option_group(group_general)
 parser.add_option_group(group_special)
 
 parser.set_defaults(info = False,
-                    verbose = True,
+                    verbose = False,
                     legacy = False,
                     nodal = False,
                     prefix = '',
@@ -850,7 +853,7 @@ for opt in ['nodalScalar','elemScalar','elemTensor','homogenizationResult','crys
       if (opt in ['nodalScalar','elemScalar','elemTensor'] and label not in stat['IndexOfLabel'] and label not in ['elements',]) \
            or (opt in ['homogenizationResult','crystalliteResult','constitutiveResult'] \
                and (not outputFormat[opt[:-6].capitalize()]['outputs'] \
-                  or label not in zip(*outputFormat[opt[:-6].capitalize()]['outputs'])[0])):
+                  or label not in list(zip(*outputFormat[opt[:-6].capitalize()]['outputs']))[0])):
         parser.error('%s "%s" unknown...'%(opt,label))
 
 
@@ -935,8 +938,8 @@ else:
   for e in range(stat['NumberOfElements']):
     if options.verbose and e%1000 == 0: bg.set_message('scan elem %i...'%e)
     myElemID = p.element_id(e)
-    myIpCoordinates = ipCoords(p.element(e).type, map(lambda node: [node.x, node.y, node.z],
-                                                         map(p.node, map(p.node_sequence, p.element(e).items))))
+    myIpCoordinates = ipCoords(p.element(e).type, list(map(lambda node: [node.x, node.y, node.z],
+                                                         list(map(p.node, map(p.node_sequence, p.element(e).items))))))
     myIpIDs = ipIDs(p.element(e).type)
     Nips = len(myIpIDs)
     myNodeIDs = p.element(e).items[:Nips]
@@ -1023,7 +1026,7 @@ if options.verbose: bg.set_message('getting map between positions and increments
 incAtPosition = {}
 positionOfInc = {}
 
-for position in range(stat['NumberOfIncrements']):
+for position in range(int(stat['NumberOfIncrements'])):
   p.moveto(position+offset_pos)
   incAtPosition[position] = p.increment            # remember "real" increment at this position
   positionOfInc[p.increment] = position            # remember position of "real" increment
@@ -1130,7 +1133,7 @@ for incCount,position in enumerate(locations):     # walk through locations
                                       ['Crystallite']*len(options.crystalliteResult) +
                                       ['Constitutive']*len(options.constitutiveResult)
                                       ):
-          outputIndex = list(zip(*outputFormat[resultType]['outputs'])[0]).index(label)             # find the position of this output in the outputFormat
+          outputIndex = (list(zip(*outputFormat[resultType]['outputs']))[0]).index(label)             # find the position of this output in the outputFormat
           length = int(outputFormat[resultType]['outputs'][outputIndex][1])
           thisHead = heading('_',[[component,''.join( label.split() )] for component in range(int(length>1),length+int(length>1))])
           if assembleHeader: header += thisHead
@@ -1164,14 +1167,12 @@ for incCount,position in enumerate(locations):     # walk through locations
       file.write('\t'.join(standard + header) + '\n')
       headerWritten = True
 
-    file.write('\t'.join(map(str,[p.increment] + \
+    file.write('\t'.join(list(map(str,[p.increment] + \
                                  {True:[p.time],False:[]}[options.time] + \
                                  group[0] + \
                                  mappedResult)
-                        ) + '\n')
+                        )) + '\n')
 
 if fileOpen:
   file.close()
 
-
-# ---------------------------       DONE     --------------------------------

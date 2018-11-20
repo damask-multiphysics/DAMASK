@@ -2,11 +2,10 @@
 popmenu job_title_pm                file jobs.ms
 popdown job_title_ok                file jobs.ms
 
-group job_solver_gr                 file job_common.ms
 group user_domains_gr               file domain_decomposition.ms
 group user_domains_generate_gr      file domain_decomposition.ms
 group user_domains_tail_gr          file domain_decomposition.ms
-group job_solver_opts_gr            file job_common.ms
+group matrix_solver_gr              file job_common.ms
 popmenu ddm_options                 file job_common.ms
 
 browser edit_browser                file file.ms
@@ -131,63 +130,89 @@ popmenu job_run_popmenu {
             "*job_option user_source:run_saved"
   }
 
-  toggle {
+  button {
    position 1 +6
-   size 22 4
-   text "PARALLELIZATION/\{GPU}"
+   size 24 4
+   text "SOLVER/PARALLELIZATION"
    help job_run_parallel
-   toggle "or(*job_option parallel:on, \
-              *job_option assem_recov_multi_threading:on, \
-              solver_multi_procs, \
-              solver_multi_threads, \
-              and(job_solver_mfront_sparse,\
-                  job_nonsym_off,\
-                  *job_option solver_use_gpu:on))"
    popmenu job_run_parallelization_pm
    set $popname2 "job_run_parallelization_pm"
   }
-
   frame {
-   position +22 =
-   size 28 16
+   position 1 +4
+   size 48 16
    border_width 1
    border_color black
 
-   group {
-
-    display {
-     position 0 0
-     size 28 4
-     display job_ddm_domains
+   group{ 
+    layout hbox
+     frame {
+      position 0 0
+      size 24 16
+      group {   
+       layout vbox      
+      
+       display {
+        position 0 0
+        size 24 4
+        display job_solver_solution
+       } 
+     
+       display {
+        position = +4
+        size 24 4
+        display job_solver_type
+       }
+        spacer {
+         stretch 1
+        }
+   
+      }
     }
 
-    display {
-     position = +4
-     size 28 4
-     display job_assem_recov_nthreads
-    }
-
-    display {
-     position = +4
-     size 28 4
-     display job_solver_procs
-     visible solver_allows_multi_procs
-    }
-
-    display {
-     position = =
-     size 28 4
-     display job_solver_threads
-     visible "and(solver_allows_multi_threads,\
-                  not(and(job_solver_mfront_sparse,\
-                          *job_option parallel:on)))"
-    }
-
-    display {
-     position = +4
-     size 28 4
-     display job_solver_gpu
-     visible "and(job_solver_mfront_sparse,job_nonsym_off)"
+    frame {
+     position +22 =
+     size 24 16
+     border_width 1
+     border_color black
+      
+     group {  
+      #layout vbox
+      display {
+       position = +4
+       size 24 4
+       display job_ddm_domains
+      }
+    
+      display {
+       position = +4
+       size 24 4
+       display job_assem_recov_nthreads
+      }
+    
+      display {
+       position = +4
+       size 24 4
+       display job_solver_procs
+       visible solver_allows_multi_procs
+      }
+    
+      display {
+       position = =
+       size 24 4
+       display job_solver_threads
+       visible "and(solver_allows_multi_threads,\
+                    not(and(job_solver_mfront_sparse,\
+                            *job_option parallel:on)))"
+      }
+    
+      display {
+       position = +4
+       size 24 4
+       display job_solver_gpu
+       visible "and(job_solver_mfront_sparse,job_nonsym_off)"
+      } 
+     }
     }
    }
   }
@@ -250,7 +275,7 @@ popmenu job_run_popmenu {
    text "ADVANCED JOB SUBMISSION"
    popmenu job_submit_adv_pm
   }
-
+  
    button {
    position +16 =
    size 18 6
@@ -258,7 +283,7 @@ popmenu job_run_popmenu {
    popmenu damask
   }
 
- button {
+  button {
    position 1 +6
    size 16 6
    text "UPDATE"
@@ -357,7 +382,7 @@ popmenu job_run_popmenu {
    border_color black
   }
 
-  float {
+  display {
    position +32 =
    size 18 4
    display "job_time"
@@ -667,28 +692,6 @@ popmenu job_submit_adv_pm {
    false_command "*job_option check:off"
   }
 
-  label {
-   position 1 +6
-   size 16 4
-   text "INTEGER SIZE"
-   border_width 1
-   border_color black
-  }
-
-  roller {
-   position +16 =
-   size 32 4
-   nvalues 3
-   texts "DEFAULT"
-         "4-BYTE INTEGERS"
-         "8-BYTE INTEGERS"
-   commands "*job_option marc_integer_size:default"
-            "*job_option marc_integer_size:i4"
-            "*job_option marc_integer_size:i8"
-   help job_run_intsize
-   roller "job_option marc_integer_size"
-  }
-
   frame {
    position 1 +6
    size 48 12
@@ -709,12 +712,16 @@ popmenu job_submit_adv_pm {
     roller {
      position +9 =
      size 14 4
-     nvalues 22
-     nvisible 22
+     nvalues 26
+     nvisible 26
      texts "DEFAULT"
 #if 0
-           "2016"
+           "2018.1"
 #endif
+           "2018"
+           "2017.1"
+           "2017"
+           "2016"
            "2015"
            "2014.2"
            "2014.1"
@@ -742,8 +749,12 @@ popmenu job_submit_adv_pm {
      help job_param_version
      rollers "job_input_version_default"
 #if 0
-             "job_input_version_2016"
+             "job_input_version_2018.1"
 #endif
+             "job_input_version_2018"
+             "job_input_version_2017.1"
+             "job_input_version_2017"
+             "job_input_version_2016"
              "job_input_version_2015"
              "job_input_version_2014.2"
              "job_input_version_2014.1"
@@ -770,8 +781,12 @@ popmenu job_submit_adv_pm {
              "job_input_version_k4"
   commands "*job_option version:default"
 #if 0
-           "*job_option version:2016"
+           "*job_option version:2018.1"
 #endif
+           "*job_option version:2018"
+           "*job_option version:2017.1"
+           "*job_option version:2017"
+           "*job_option version:2016"
            "*job_option version:2015"
            "*job_option version:2014.2"
            "*job_option version:2014.1"
@@ -798,8 +813,12 @@ popmenu job_submit_adv_pm {
            "*job_option version:k4"
   visibles "job_allows_input_version_default"
 #if 0
-          "job_allows_input_version_2016"
+          "job_allows_input_version_2018.1"
 #endif
+          "job_allows_input_version_2018"
+          "job_allows_input_version_2017.1"
+          "job_allows_input_version_2017"
+          "job_allows_input_version_2016"
           "job_allows_input_version_2015"
           "job_allows_input_version_2014.2"
           "job_allows_input_version_2014.1"
@@ -858,12 +877,20 @@ popmenu job_submit_adv_pm {
 
     toggle {
      position 0 +4
-     size 48 4
+     size 24 4
      text "EXTENDED PRECISION"
      help job_run_precision
      toggle "*job_option inp_file_prec:extended"
      true_command "*job_option inp_file_prec:extended"
      false_command "*job_option inp_file_prec:normal"
+    }
+    toggle {
+     position +24 =
+     size 24 4
+     text "INCLUDE UNUSED TABLES"
+     toggle "*job_option input_file_tables:all"
+     true_command "*job_option input_file_tables:all"
+     false_command "*job_option input_file_tables:used"
     }
    }
   }
@@ -1130,8 +1157,6 @@ popmenu damask {
   }
 }
 
-
-
  window {
   parent mentat
   origin 38 8
@@ -1191,10 +1216,14 @@ popmenu job_exit_msg_pm {
 #--------------------------------------------------------------------------------------------------
 popmenu job_run_parallelization_pm {
 
- text "PARALLELIZATION/\{GPU}"
+ text "SOLVER/PARALLELIZATION"
 
  group {
-
+  layout vbox
+  frame {
+   position 0 0
+   size 42 8
+   group {
 
    label {
     position 0 0
@@ -1204,7 +1233,7 @@ popmenu job_run_parallelization_pm {
 
    display {
     position +6 =
-    size 26 4
+    size 36 4
     display "job_name"
    }
 
@@ -1216,13 +1245,14 @@ popmenu job_run_parallelization_pm {
 
    display {
     position +6 =
-    size 26 4
+    size 36 4
     display job_class_label
    }
-
+   }
+  }   
   frame {
-   position 1 9
-   size 48 28
+   position 0 8
+   size 42 20
    group job_ddm_gr
    text "DOMAIN DECOMPOSITION"
    border_width 1
@@ -1230,8 +1260,8 @@ popmenu job_run_parallelization_pm {
   }
 
   frame {
-   position 1 +29
-   size 36 13
+   position 0 +20
+   size 42 13
    group job_assem_recov_gr
    text "ASSEMBLY AND RECOVERY"
    border_width 1
@@ -1239,8 +1269,8 @@ popmenu job_run_parallelization_pm {
   }
 
   frame {
-   position 1 +14
-   size 58 31
+   position 0 +14
+   size 42 31
    group job_parallel_matrix_solver_gr
    text "MATRIX SOLVER"
    border_width 1
@@ -1248,8 +1278,8 @@ popmenu job_run_parallelization_pm {
   }
 
   frame {
-   position 1 +32
-   size 48 28
+   position 0 +32
+   size 42 28
    group job_parallel_env_gr
    text "PARALLELIZATION ENVIRONMENT"
    border_width 1
@@ -1257,11 +1287,29 @@ popmenu job_run_parallelization_pm {
    visible "or(*job_option parallel:on, \
                solver_multi_procs)"
   }
+  frame {
+   position 15 +30
+   size 42 8
+   group {
+    layout hbox
 
+    spacer {
+     stretch 1
+    }   
   popdown {
-   position 24 +30
+     position 15 0
    size 12 8
    text "OK"
+  }
+    spacer {
+     stretch 1
+    }    
+   }
+  }
+ 
+  spacer {
+   spacing 2
+   stretch 1
   }
  }
 
@@ -1283,34 +1331,54 @@ group job_ddm_gr {
 
  toggle {
   position 1 4
-  size 30 4
+  size 42 4
   text "USE \{DDM}"
   toggle "*job_option parallel:on"
   help job_run_ddm_use
   true_command "*job_option parallel:on"
   false_command "*job_option parallel:off"
-  active "not(job_solver_it_ext)"
+  active "and(not(job_solver_it_ext),\
+              not(job_solver_mixed_direct_iterative))"
  }
 
  frame {
-  position +2 +5
-  size 44 18
+  position = +5
+  size 42 4
   group job_ddm_use_gr
   visible "*job_option parallel:on"
  }
 }
 
 group job_ddm_use_gr {
- roller {
+ layout vbox
+ frame{
   position 0 0
   size 30 4
-  nvalues 2
-  texts "DECOMPOSITION IN MARC"
-        "DECOMPOSITION IN MENTAT"
-  roller "job_option ddm_generator"
-  commands "*job_option ddm_generator:fea_solver"
-           "*job_option ddm_generator:preprocessor"
-  help job_run_ddm_generator
+   group {
+   layout hbox
+   label {
+    position 0 0
+    size 12 4 
+    text "DECOMPOSITION IN"
+    help job_run_ddm_generator
+   }
+   oneonly{
+    position +12 =
+    size 8 4
+    text "MARC"
+    oneonly "*job_option ddm_generator:fea_solver"
+    command "*job_option ddm_generator:fea_solver"
+    help job_run_ddm_generator
+   }
+   oneonly{
+    position +12 =
+    size 8 4
+    text "MENTAT"
+    oneonly "*job_option ddm_generator:preprocessor"
+    command "*job_option ddm_generator:preprocessor"
+    help job_run_ddm_generator
+   }
+  }
  }
 
  frame {
@@ -1327,37 +1395,44 @@ group job_ddm_use_gr {
   visible "*job_option ddm_generator:preprocessor"
  }
 
- text {
-  position 0 +9
-  size 22 4
-  text "Single Input File"
-  readonly
-  visible "*job_option ddm_generator:fea_solver"
- }
-
- roller {
-  position = =
-  size 22 4
-  nvalues 2
-  texts "MULTIPLE INPUT FILES"
-        "SINGLE INPUT FILE"
-  roller "job_option ddm_single_input"
-  commands "*job_option ddm_single_input:off"
-           "*job_option ddm_single_input:on"
-  visible "*job_option ddm_generator:preprocessor"
-  help job_run_ddm_single_input
- }
-
- roller {
-  position +23 =
-  size 21 4
-  nvalues 2
-  texts "MULTIPLE POST FILES"
-        "SINGLE POST FILE"
-  roller "job_option ddm_single_post"
-  commands "*job_option ddm_single_post:off"
-           "*job_option ddm_single_post:on"
-  help job_run_ddm_single_post
+ frame{ 
+  position 0 +5
+  size 40 4 
+  group{
+   layout hbox
+   text {
+    position 0 0
+    size 22 4
+    text "Single Input File"
+    readonly
+    visible "*job_option ddm_generator:fea_solver"
+   }
+ 
+   roller {
+    position = =
+    size 22 4
+    nvalues 2
+    texts "MULTIPLE INPUT FILES"
+          "SINGLE INPUT FILE"
+    roller "job_option ddm_single_input"
+    commands "*job_option ddm_single_input:off"
+             "*job_option ddm_single_input:on"
+    visible "*job_option ddm_generator:preprocessor"
+    help job_run_ddm_single_input
+   }
+ 
+   roller {
+    position +23 =
+    size 21 4
+    nvalues 2
+    texts "MULTIPLE POST FILES"
+          "SINGLE POST FILE"
+    roller "job_option ddm_single_post"
+    commands "*job_option ddm_single_post:off"
+             "*job_option ddm_single_post:on"
+    help job_run_ddm_single_post
+   }
+  }
  }
 }
 
@@ -1382,7 +1457,7 @@ group job_ddm_fea_solver_gr {
  }
 
  label {
-  position +4 =
+  position 0 +4
   size 7 4
   text "METHOD"
   border_width 1
@@ -1391,7 +1466,7 @@ group job_ddm_fea_solver_gr {
 
  roller {
   position +7 =
-  size 23 4
+  size 18 4
   nvalues 7
   texts "METIS BEST"
         "METIS ELEMENT"
@@ -1418,9 +1493,9 @@ group job_ddm_fea_solver_gr {
  }
 
  button {
-  position +4 +4
-  size 19 4
-  text "ADVANCED SETTINGS"
+  position +18 =
+  size 12 4
+  text "ADV. SETTINGS"
   popmenu job_ddm_fea_solver_pm
  }
 }
@@ -1792,7 +1867,7 @@ group job_ddm_preprocessor_gr {
  }
 
  button {
-  position +4 =
+  position 0 +4
   size 30 4
   text "USER DOMAINS"
   popmenu domains_pm
@@ -1816,7 +1891,7 @@ group job_assem_recov_gr {
  }
 
  label {
-  position +2 +4
+  position = +4
   size 12 4
   text "# THREADS"  
   visible "*job_option assem_recov_multi_threading:on"
@@ -1832,7 +1907,7 @@ group job_assem_recov_gr {
 
  label {
   position +4 =
-  size 12 4
+  size 10 4
   visible "and(*job_option assem_recov_multi_threading:on, \
                *job_option parallel:on)"
   text "PER DOMAIN"  
@@ -1847,154 +1922,84 @@ group job_assem_recov_gr {
   visible "and(*job_option assem_recov_multi_threading:on, \
                *job_option parallel:on)"
  }
+ spacer{
+  stretch 2
+ }
+
 }
 
 
 #--------------------------------------------------------------------------------------------------
 group job_parallel_matrix_solver_gr {
-
- label {
-  position 3 4
-  size 12 4
-  text "SOLUTION"
-  border_width 1
-  border_color black
- }
-
- roller {
-  position +12 =
-  size 18 4
-  nvalues 2
-  texts "SYMMETRIC"
-        "NONSYMMETRIC"
-  rollers job_nonsym_off
-          job_nonsym_on
-  commands "*job_option solver_nonsym:off"
-           "*job_option solver_nonsym:on"
-  help job_param_solver_method
- }
-
- label {
-  position -12 +4
-  size 6 4
-  text "TYPE"
-  border_width 1
-  border_color black
- }
-
- roller {
-  position +6 =
-  size 24 4
-  nvalues 9
-  help job_param_solver_method
-  texts "MULTIFRONTAL SPARSE"
-        "MIXED DIRECT-ITERATIVE"
-        "CASI ITERATIVE"
-        "PARDISO DIRECT SPARSE"
-        "MUMPS PARALLEL DIRECT"
-        "HARDWARE SPARSE"
-        "ITERATIVE SPARSE"
-        "DIRECT PROFILE"
-        "DIRECT SPARSE"
-  rollers job_solver_mfront_sparse
-          job_solver_mixed_direct_iterative
-          job_solver_it_ext
-          job_solver_pardiso
-          job_solver_mumps
-          job_solver_sparse
-          job_solver_it_sparse
-          job_solver_dir_profile
-          job_solver_dir_sparse
-  commands "*job_option solver:mfront_sparse"
-           "*job_option solver:mixed_direct_iterative"
-           "*job_option solver:it_ext"
-           "*job_option solver:pardiso"
-           "*job_option solver:mumps"
-           "*job_option solver:sparse"
-           "*job_option solver:it_sparse"
-           "*job_option solver:dir_profile"
-           "*job_option solver:dir_sparse"
-  visibles job_allows_solver_mfront_sparse
-           job_allows_solver_mixed_direct_iterative
-           job_allows_solver_it_ext
-           job_allows_solver_pardiso
-           job_allows_solver_mumps
-           job_allows_solver_sparse
-           job_allows_solver_it_sparse
-           job_allows_solver_dir_profile
-           job_allows_solver_dir_sparse
-  help job_param_solver_method
- }
-
- button {
-  position +24 =
-  size 10 4
-  text "OPTIONS"
-  popmenu job_parallel_matrix_solver_opt_pm
+ layout vbox
+ frame { 
+  position 1 0
+  size 36 31
+  group {
+   layout hbox
+   label {
+    position 3 4
+    size 12 4
+    text "SOLUTION"
+    border_width 1
+    border_color black
+   }
+   oneonly {
+    position +12 =
+    size 12 4
+    text "SYMMETRIC"
+    help job_param_solver_method
+    oneonly "job_nonsym_off"
+    command "*job_option solver_nonsym:off"
+   }
+   oneonly {
+    position +12 =
+    size 12 4
+    text "NONSYMMETRIC"
+    help job_param_solver_method
+    oneonly "job_nonsym_on"
+    command "*job_option solver_nonsym:on"
+   }
+   spacer {
+    stretch 1
+   }  
+  }
  }
 
  frame {
-  position +10 =
-  size 14 4
+  position 1 +5
+  size 42 23
+  group matrix_solver_gr  
+  help job_param_solver
+ }
+
+ frame {
+  position +1 =
+  size 42 4
   group job_run_solver_ddm_opts_gr
   visible "*job_option parallel:on"
  }
 
  frame {
-  position 1 +5
-  size 46 8
+  position 1 +23
+  size 42 8
   group job_solver_multi_procs_gr
   visible solver_allows_multi_procs
  }
 
  frame {
   position = =
-  size 46 8
+  size 42 8
   group job_solver_multi_threads_gr
   visible solver_allows_multi_threads
  }
 
  frame {
   position 1 +9
-  size 46 8
+  size 42 8
   group job_solver_gpu_gr
   visible "and(job_solver_mfront_sparse,job_nonsym_off)"
  }
-}
-
-
-
-
-#--------------------------------------------------------------------------------------------------
-popmenu job_parallel_matrix_solver_opt_pm {
-
- text "MATRIX SOLVER OPTIONS"
-
- group {
-
-
-  frame {
-   position 1 5
-   size 36 23
-   group job_solver_opts_gr
-  }
-
-  popdown {
-   position 13 +25
-   size 12 8
-   text "OK"
-  }
- }
-
- window {
-  parent mentat
-  origin 41 12
-  size 38 39
-  border_width 1
-  border_color border
-  background_color body
- }
- mode dialog
 }
 
 
@@ -2010,9 +2015,16 @@ group job_run_solver_ddm_opts_gr {
   visible "not(or(job_solver_it_sparse, \
                   job_solver_it_ext, \
                   job_solver_mixed_direct_iterative, \
-                  job_solver_pardiso, \
+                  job_solver_pardiso,\
                   job_solver_mumps))"
  }
+ button {
+  position = =
+  size 14 4
+  text "\{DDM} OPTIONS"
+  popmenu ddm_options_mumps
+  visible "job_solver_mumps"
+ } 
 }
 
 
@@ -2020,14 +2032,14 @@ group job_run_solver_ddm_opts_gr {
 group job_solver_multi_procs_gr {
  frame {
   position 0 0
-  size 46 8
+  size 42 8
   group job_solver_multi_procs_parallel_off_gr
   visible "*job_option parallel:off"
  }
 
  frame {
   position = =
-  size 46 8
+  size 42 8
   group job_solver_multi_procs_parallel_on_gr
   visible "*job_option parallel:on"
  }
@@ -2211,7 +2223,7 @@ group job_solver_multi_threads_mfront_sparse_parallel_off_gr {
  } 
 
  label { 
-  position +2 +4
+  position = +4
   size 14 4
   text "# THREADS"  
   visible "*job_option mfront_sparse_multi_threading:on"
@@ -2258,7 +2270,7 @@ group job_solver_multi_threads_mfront_sparse_parallel_on_gr {
  }
 
  label {
-  position 2 +4
+  position 0 +4
   size 14 4
   text "# THREADS"
   border_color black
@@ -2350,39 +2362,48 @@ group job_solver_gpu_gr {
   false_command "*job_option solver_use_gpu:off"
   help job_solver_gpu
  }
-
- label {
-  position +2 +4
-  size 16 4
-  text "\{GPU} SELECTION"
-  border_width 1
-  border_color black
-  visible "*job_option solver_use_gpu:on"
- }
-
- roller {
-  position +16 =
-  size 12 4
-  nvalues 2
-  texts "AUTOMATIC"
-        "USER"
-  commands "*job_option solver_gpus:automatic"
-           "*job_option solver_gpus:user"
-  rollers "*job_option solver_gpus:automatic"
-          "*job_option solver_gpus:user"
-  visible "*job_option solver_use_gpu:on"
-  help job_solver_gpu
- }
-
- text {
-  position +12 =
-  size 16 4
-  display job_solver_gpus
-  command "*clear_job_solver_gpus *job_solver_gpus"
-  visible "and(*job_option solver_use_gpu:on,*job_option solver_gpus:user)"
+ frame{
+  position 0 +4
+  size 28 4
+  group{
+   layout hbox
+   
+   label {
+    position 0 0
+    size 16 4
+    text "\{GPU} SELECTION"
+    border_width 1
+    border_color black
+    visible "*job_option solver_use_gpu:on"
+   }
+   
+   roller {
+    position +16 =
+    size 12 4
+    nvalues 2
+    texts "AUTOMATIC"
+          "USER"
+    commands "*job_option solver_gpus:automatic"
+             "*job_option solver_gpus:user"
+    rollers "*job_option solver_gpus:automatic"
+            "*job_option solver_gpus:user"
+    visible "*job_option solver_use_gpu:on"
+    help job_solver_gpu
+   }
+   
+   text {
+    position +12 =
+    size 12 4
+    display job_solver_gpus
+    command "*clear_job_solver_gpus *job_solver_gpus"
+    visible "and(*job_option solver_use_gpu:on,*job_option solver_gpus:user)"
+   }
+   spacer {
+     stretch 1
+   }
+  }
  }
 }
-
 
 #--------------------------------------------------------------------------------------------------
 group job_solver_multi_threads_pardiso_parallel_off_gr {
@@ -2398,7 +2419,7 @@ group job_solver_multi_threads_pardiso_parallel_off_gr {
  }
 
  label {
-  position +2 +4
+  position = +4
   size 14 4
   text "# THREADS"  
   visible "*job_option pardiso_multi_threading:on"
@@ -2428,7 +2449,7 @@ group job_solver_multi_threads_pardiso_parallel_on_gr {
  }
 
  label {
-  position +2 +4
+  position = +4
   size 14 4
   text "# THREADS"
   border_color black
@@ -2523,7 +2544,7 @@ group job_solver_multi_threads_it_ext_off_gr {
  }
 
  label {
-  position +2 +4
+  position = +4
   size 14 4
   text "# THREADS"  
   visible "*job_option it_ext_multi_threading:on"
@@ -2542,21 +2563,44 @@ group job_solver_multi_threads_it_ext_off_gr {
 #--------------------------------------------------------------------------------------------------
 group job_parallel_env_gr {
 
- roller {
-  position 1 4
-  size 30 4
-  nvalues 2
-  texts "SINGLE MACHINE"
-        "NETWORK"
-  help job_run_ddm_setup
-  roller "job_option parallel_setup"
-  commands "*job_option parallel_setup:single"
-           "*job_option parallel_setup:network"
+ frame{
+  position 0 +4
+  size 40 4
+  group{
+   layout hbox
+   label{
+    position 0 0
+    size 8 4
+    text "SETUP"
+    help job_run_ddm_setup
+   }
+   oneonly {
+    position +12 =
+    size 12 4
+    text "SINGLE MACHINE"
+    oneonly "*job_option parallel_setup:single"
+    command "*job_option parallel_setup:single"
+    help job_run_ddm_setup
+   }
+   oneonly {
+    position +8 =
+    size 12 4
+    text "NETWORK"
+    oneonly "*job_option parallel_setup:network"
+    command "*job_option parallel_setup:network"
+    help job_run_ddm_setup
+   }
+
+   spacer {
+    stretch 1
+   }
+  }
  }
+ 
 
  frame {
-  position +2 +5
-  size 44 18
+  position +1 +5
+  size 40 16
   group job_parallel_env_network_gr
   visible "*job_option parallel_setup:network"
  }
