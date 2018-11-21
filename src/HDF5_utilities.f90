@@ -166,12 +166,16 @@ end subroutine HDF5_closeFile
 !--------------------------------------------------------------------------------------------------
 !> @brief adds a new group to the fileHandle (additional to addGroup2)
 !--------------------------------------------------------------------------------------------------
-integer(HID_T) function HDF5_addGroup2(fileHandle,groupName)
+integer(HID_T) function HDF5_addGroup2(fileHandle,groupName,parallel)
 
  implicit none
  character(len=*), intent(in) :: groupName
  integer(HID_T), intent(in)   :: fileHandle
  integer(HDF5_ERR_TYPE)       :: hdferr
+
+ logical,intent(in), optional :: parallel
+
+ integer(HID_T)               :: plist_id,gapl_id 
 
  call h5gcreate_f(fileHandle, trim(groupName), HDF5_addGroup2, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_addGroup2: h5gcreate_f ('//trim(groupName)//')')
