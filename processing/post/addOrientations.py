@@ -169,7 +169,7 @@ for name in filenames:
     for output in options.output:
       if   output == 'quaternion': table.data_append(o.asQuaternion())
       elif output == 'rodrigues':  table.data_append(o.asRodrigues())
-      elif output == 'eulers':     table.data_append(o.asEulers('Bunge', degrees=options.degrees))
+      elif output == 'eulers':     table.data_append(o.asEulers(degrees=options.degrees))
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output finalization -----------------------------------  
