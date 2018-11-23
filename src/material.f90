@@ -169,18 +169,13 @@ module material
    homogenization_maxNgrains                                                                        !< max number of grains in any USED homogenization
 
  integer(pInt), dimension(:), allocatable, public, protected :: &
-   material_homogenizationAt, &                                                                     !< homogenization ID of each element (copy of mesh_homogenizationAt)
    phase_Nsources, &                                                                                !< number of source mechanisms active in each phase
    phase_Nkinematics, &                                                                             !< number of kinematic mechanisms active in each phase
    phase_NstiffnessDegradations, &                                                                  !< number of stiffness degradation mechanisms active in each phase
    phase_Noutput, &                                                                                 !< number of '(output)' items per phase
    phase_elasticityInstance, &                                                                      !< instance of particular elasticity of each phase
-   phase_plasticityInstance                                                                         !< instance of particular plasticity of each phase
-
- integer(pInt), dimension(:), allocatable, public, protected :: &
-   crystallite_Noutput                                                                              !< number of '(output)' items per crystallite setting
-
- integer(pInt), dimension(:), allocatable, public, protected :: &
+   phase_plasticityInstance, &                                                                      !< instance of particular plasticity of each phase
+   crystallite_Noutput, &                                                                           !< number of '(output)' items per crystallite setting
    homogenization_Ngrains, &                                                                        !< number of grains in each homogenization
    homogenization_Noutput, &                                                                        !< number of '(output)' items per homogenization
    homogenization_typeInstance, &                                                                   !< instance of particular type of each homogenization
@@ -189,7 +184,7 @@ module material
    vacancyflux_typeInstance, &                                                                      !< instance of particular type of each vacancy flux
    porosity_typeInstance, &                                                                         !< instance of particular type of each porosity model
    hydrogenflux_typeInstance, &                                                                     !< instance of particular type of each hydrogen flux
-   microstructure_crystallite                                                                       !< crystallite setting ID of each microstructure
+   microstructure_crystallite                                                                       !< crystallite setting ID of each microstructure ! DEPRECATED !!!!
 
  real(pReal), dimension(:), allocatable, public, protected :: &
    thermal_initialT, &                                                                              !< initial temperature per each homogenization
@@ -198,12 +193,27 @@ module material
    porosity_initialPhi, &                                                                           !< initial posority per each homogenization
    hydrogenflux_initialCh                                                                           !< initial hydrogen concentration per each homogenization
 
+! NEW MAPPINGS 
+ integer(pInt), dimension(:), allocatable, public, protected :: &
+   material_homogenizationAt, &                                                                     !< homogenization ID of each element (copy of mesh_homogenizationAt)
+   material_homogenizationMemberAt, &                                                               !< position of the element within its homogenization instance
+   material_aggregateAt, &                                                                          !< aggregate ID of each element FUTURE USE FOR OUTPUT
+   material_aggregatMemberAt                                                                        !< position of the element within its aggregate instance FUTURE USE FOR OUTPUT
+ integer(pInt), dimension(:,:), allocatable, public, protected :: &
+   material_phaseAt, &                                                                              !< phase ID of each element
+   material_phaseMemberAt, &                                                                        !< position of the element within its phase instance
+   material_crystalliteAt, &                                                                        !< crystallite ID of each element CURRENTLY NOT PER CONSTITUTENT
+   material_crystalliteMemberAt                                                                     !< position of the element within its crystallite instance CURRENTLY NOT PER CONSTITUTENT
+! END NEW MAPPINGS
+ 
+! DEPRECATED: use material_phaseAt
  integer(pInt), dimension(:,:,:), allocatable, public :: &
    material_phase                                                                                   !< phase (index) of each grain,IP,element
-! BEGIN DEPRECATED: use material_homogenizationAt
+! DEPRECATED: use material_homogenizationAt
  integer(pInt), dimension(:,:), allocatable, public :: &
    material_homog                                                                                   !< homogenization (index) of each IP,element
 ! END DEPRECATED
+
  type(tPlasticState), allocatable, dimension(:), public :: &
    plasticState
  type(tSourceState),  allocatable, dimension(:), public :: &
@@ -226,10 +236,6 @@ module material
    microstructure_active, &
    microstructure_elemhomo, &                                                                       !< flag to indicate homogeneous microstructure distribution over element's IPs
    phase_localPlasticity                                                                            !< flags phases with local constitutive law
-
-
- character(len=65536), dimension(:), allocatable, private :: &
-   texture_ODFfile                                                                                  !< name of each ODF file
 
  integer(pInt), private :: &
    microstructure_maxNconstituents, &                                                               !< max number of constituents in any phase
@@ -258,11 +264,13 @@ module material
  logical, dimension(:), allocatable, private :: &
    homogenization_active
 
+! BEGIN DEPRECATED
  integer(pInt), dimension(:,:,:), allocatable, public :: phaseAt                                    !< phase ID of every material point (ipc,ip,el)
  integer(pInt), dimension(:,:,:), allocatable, public :: phasememberAt                              !< memberID of given phase at every material point (ipc,ip,el)
- integer(pInt), dimension(:,:,:), allocatable, public, target :: mappingCrystallite
+
  integer(pInt), dimension(:,:,:), allocatable, public, target :: mappingHomogenization              !< mapping from material points to offset in heterogenous state/field
- integer(pInt), dimension(:,:),   allocatable, public, target :: mappingHomogenizationConst         !< mapping from material points to offset in constant state/field
+ integer(pInt), dimension(:,:),   allocatable, private, target :: mappingHomogenizationConst         !< mapping from material points to offset in constant state/field
+! END DEPRECATED
 
  type(tHomogMapping), allocatable, dimension(:), public :: &
    thermalMapping, &                                                                                !< mapping for thermal state/fields
@@ -368,7 +376,6 @@ subroutine material_init()
  use mesh, only: &
    mesh_homogenizationAt, &
    mesh_NipsPerElem, &
-   mesh_maxNips, &
    mesh_NcpElems, &
    FE_geomtype
 
@@ -378,11 +385,11 @@ subroutine material_init()
  integer(pInt) :: &
   g, &                                                                                              !< grain number
   i, &                                                                                              !< integration point number
-  e, &                                                                                              !< element number
-  phase
- integer(pInt), dimension(:), allocatable :: ConstitutivePosition
- integer(pInt), dimension(:), allocatable :: CrystallitePosition
- integer(pInt), dimension(:), allocatable :: HomogenizationPosition
+  e                                                                                                 !< element number
+ integer(pInt), dimension(:), allocatable :: &
+  PhaseCounter, &
+  CrystalliteCounter, &
+  HomogenizationCounter
 
  myDebug = debug_level(debug_material)
 
@@ -473,30 +480,34 @@ subroutine material_init()
 
  call material_populateGrains
 
- allocate(phaseAt                   (  homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0_pInt)
- allocate(phasememberAt             (  homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0_pInt)
- allocate(mappingHomogenization     (2,                          mesh_maxNips,mesh_NcpElems),source=0_pInt)
- allocate(mappingCrystallite        (2,homogenization_maxNgrains,             mesh_NcpElems),source=0_pInt)
- allocate(mappingHomogenizationConst(                            mesh_maxNips,mesh_NcpElems),source=1_pInt)
+! BEGIN DEPRECATED
+ allocate(phaseAt                   (  homogenization_maxNgrains,mesh_nIPsPerElem,mesh_NcpElems),source=0_pInt)
+ allocate(phasememberAt             (  homogenization_maxNgrains,mesh_nIPsPerElem,mesh_NcpElems),source=0_pInt)
+ allocate(mappingHomogenization     (2,                          mesh_nIPsPerElem,mesh_NcpElems),source=0_pInt)
+ allocate(mappingHomogenizationConst(                            mesh_nIPsPerElem,mesh_NcpElems),source=1_pInt)
+! END DEPRECATED
 
- allocate(ConstitutivePosition  (size(config_phase)),         source=0_pInt)
- allocate(HomogenizationPosition(size(config_homogenization)),source=0_pInt)
- allocate(CrystallitePosition   (size(config_phase)),         source=0_pInt)
+ allocate(material_homogenizationAt,source=mesh_homogenizationAt)
+ allocate(PhaseCounter         (size(config_phase)),         source=0_pInt)
+ allocate(HomogenizationCounter(size(config_homogenization)),source=0_pInt)
 
- ElemLoop:do e = 1_pInt,mesh_NcpElems
+! BEGIN DEPRECATED
+ do e = 1_pInt,mesh_NcpElems
  myHomog = mesh_homogenizationAt(e)
-   IPloop:do i = 1_pInt, mesh_NipsPerElem
-     HomogenizationPosition(myHomog) = HomogenizationPosition(myHomog) + 1_pInt
-     mappingHomogenization(1:2,i,e) = [HomogenizationPosition(myHomog),myHomog]
-     GrainLoop:do g = 1_pInt,homogenization_Ngrains(myHomog)
-       phase = material_phase(g,i,e)
-       ConstitutivePosition(phase) = ConstitutivePosition(phase)+1_pInt                             ! not distinguishing between instances of same phase
-       phaseAt(g,i,e)              = phase
-       phasememberAt(g,i,e)        = ConstitutivePosition(phase)
-     enddo GrainLoop
-   enddo IPloop
- enddo ElemLoop
+   do i = 1_pInt, mesh_NipsPerElem
+     HomogenizationCounter(myHomog) = HomogenizationCounter(myHomog) + 1_pInt
+     mappingHomogenization(1:2,i,e) = [HomogenizationCounter(myHomog),myHomog]
+     do g = 1_pInt,homogenization_Ngrains(myHomog)
+       myPhase = material_phase(g,i,e)
+       PhaseCounter(myPhase) = PhaseCounter(myPhase)+1_pInt                             ! not distinguishing between instances of same phase
+       phaseAt(g,i,e)              = myPhase
+       phasememberAt(g,i,e)        = PhaseCounter(myPhase)
+     enddo
+   enddo
+ enddo
+! END DEPRECATED
 
+! REMOVE !!!!!
 ! hack needed to initialize field values used during constitutive and crystallite initializations
  do myHomog = 1,size(config_homogenization)
    thermalMapping     (myHomog)%p => mappingHomogenizationConst
@@ -513,7 +524,7 @@ subroutine material_init()
    allocate(vacancyConcRate (myHomog)%p(1), source=0.0_pReal)
    allocate(hydrogenConcRate(myHomog)%p(1), source=0.0_pReal)
  enddo
- 
+
 end subroutine material_init
 
 
@@ -937,9 +948,7 @@ subroutine material_parseTexture
  integer(pInt) :: section, gauss, fiber, j, t, i
  character(len=65536), dimension(:), allocatable ::  strings                                     ! Values for given key in material config 
  integer(pInt), dimension(:), allocatable :: chunkPos
- character(len=65536) :: tag
 
- allocate(texture_ODFfile(size(config_texture))); texture_ODFfile=''
  allocate(texture_symmetry(size(config_texture)), source=1_pInt)
  allocate(texture_Ngauss(size(config_texture)),   source=0_pInt)
  allocate(texture_Nfiber(size(config_texture)),   source=0_pInt)
@@ -984,9 +993,6 @@ subroutine material_parseTexture
      enddo
      if(dNeq(math_det33(texture_transformation(1:3,1:3,t)),1.0_pReal)) call IO_error(157_pInt,t)
    endif
-
-   tag=''
-   texture_ODFfile(t) = config_texture(t)%getString('hybridia',defaultVal=tag)
 
    if (config_texture(t)%keyExists('symmetry')) then
      select case (config_texture(t)%getString('symmetry'))
@@ -1122,7 +1128,7 @@ end subroutine material_allocatePlasticState
 !--------------------------------------------------------------------------------------------------
 !> @brief populates the grains
 !> @details populates the grains by identifying active microstructure/homogenization pairs,
-!! calculates the volume of the grains and deals with texture components and hybridIA
+!! calculates the volume of the grains and deals with texture components
 !--------------------------------------------------------------------------------------------------
 subroutine material_populateGrains
  use prec, only: &
@@ -1141,7 +1147,6 @@ subroutine material_populateGrains
    mesh_elemType, &
    mesh_homogenizationAt, &
    mesh_microstructureAt, &
-   mesh_maxNips, &
    mesh_NcpElems, &
    mesh_ipVolume, &
    FE_geomtype
@@ -1152,8 +1157,7 @@ subroutine material_populateGrains
    homogenization_name, &
    microstructure_name 
  use IO, only: &
-   IO_error, &
-   IO_hybridIA
+   IO_error
  use debug, only: &
    debug_level, &
    debug_material, &
@@ -1181,12 +1185,11 @@ subroutine material_populateGrains
 
  myDebug = debug_level(debug_material)
 
- allocate(material_volume(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),       source=0.0_pReal)
- allocate(material_phase(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),        source=0_pInt)
- allocate(material_homog(mesh_maxNips,mesh_NcpElems),                                  source=0_pInt)
- allocate(material_homogenizationAt,source=mesh_homogenizationAt)
- allocate(material_texture(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),      source=0_pInt)
- allocate(material_EulerAngles(3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
+ allocate(material_volume(homogenization_maxNgrains,mesh_nIPsPerElem,mesh_NcpElems),       source=0.0_pReal)
+ allocate(material_phase(homogenization_maxNgrains,mesh_nIPsPerElem,mesh_NcpElems),        source=0_pInt)
+ allocate(material_homog(mesh_nIPsPerElem,mesh_NcpElems),                                  source=0_pInt)
+ allocate(material_texture(homogenization_maxNgrains,mesh_nIPsPerElem,mesh_NcpElems),      source=0_pInt)
+ allocate(material_EulerAngles(3,homogenization_maxNgrains,mesh_nIPsPerElem,mesh_NcpElems),source=0.0_pReal)
 
  allocate(Ngrains(size(config_homogenization),size(config_microstructure)),            source=0_pInt)
  allocate(Nelems (size(config_homogenization),size(config_microstructure)),            source=0_pInt)
@@ -1330,39 +1333,31 @@ subroutine material_populateGrains
                                    real(texture_symmetry(textureID),pReal),pInt)                    ! max number of unique orientations (excl. symmetry)
 
 !--------------------------------------------------------------------------------------------------
-! ...has texture components
-         if (texture_ODFfile(textureID) == '') then
-           gauss: do t = 1_pInt,texture_Ngauss(textureID)                                           ! loop over Gauss components
-             do g = 1_pInt,int(real(myNorientations,pReal)*texture_Gauss(5,t,textureID),pInt)       ! loop over required grain count
-               orientationOfGrain(:,grain+constituentGrain+g) = &
-                 math_sampleGaussOri(texture_Gauss(1:3,t,textureID),&
-                                     texture_Gauss(  4,t,textureID))
-             enddo
-             constituentGrain = &
-             constituentGrain + int(real(myNorientations,pReal)*texture_Gauss(5,t,textureID))       ! advance counter for grains of current constituent
-           enddo gauss
+! has texture components
+         gauss: do t = 1_pInt,texture_Ngauss(textureID)                                             ! loop over Gauss components
+           do g = 1_pInt,int(real(myNorientations,pReal)*texture_Gauss(5,t,textureID),pInt)         ! loop over required grain count
+             orientationOfGrain(:,grain+constituentGrain+g) = &
+               math_sampleGaussOri(texture_Gauss(1:3,t,textureID),&
+                                   texture_Gauss(  4,t,textureID))
+           enddo
+           constituentGrain = &
+           constituentGrain + int(real(myNorientations,pReal)*texture_Gauss(5,t,textureID))         ! advance counter for grains of current constituent
+         enddo gauss
 
-           fiber: do t = 1_pInt,texture_Nfiber(textureID)                                           ! loop over fiber components
-             do g = 1_pInt,int(real(myNorientations,pReal)*texture_Fiber(6,t,textureID),pInt)       ! loop over required grain count
-               orientationOfGrain(:,grain+constituentGrain+g) = &
-                 math_sampleFiberOri(texture_Fiber(1:2,t,textureID),&
-                                     texture_Fiber(3:4,t,textureID),&
-                                     texture_Fiber(  5,t,textureID))
-             enddo
-             constituentGrain = &
-             constituentGrain + int(real(myNorientations,pReal)*texture_fiber(6,t,textureID),pInt)  ! advance counter for grains of current constituent
-           enddo fiber
+         fiber: do t = 1_pInt,texture_Nfiber(textureID)                                             ! loop over fiber components
+           do g = 1_pInt,int(real(myNorientations,pReal)*texture_Fiber(6,t,textureID),pInt)         ! loop over required grain count
+             orientationOfGrain(:,grain+constituentGrain+g) = &
+               math_sampleFiberOri(texture_Fiber(1:2,t,textureID),&
+                                   texture_Fiber(3:4,t,textureID),&
+                                   texture_Fiber(  5,t,textureID))
+           enddo
+           constituentGrain = &
+           constituentGrain + int(real(myNorientations,pReal)*texture_fiber(6,t,textureID),pInt)    ! advance counter for grains of current constituent
+         enddo fiber
 
-           random: do constituentGrain = constituentGrain+1_pInt,myNorientations                    ! fill remainder with random
-              orientationOfGrain(:,grain+constituentGrain) = math_sampleRandomOri()
-           enddo random
-!--------------------------------------------------------------------------------------------------
-! ...has hybrid IA
-         else
-           orientationOfGrain(1:3,grain+1_pInt:grain+myNorientations) = &
-                                            IO_hybridIA(myNorientations,texture_ODFfile(textureID))
-           if (all(dEq(orientationOfGrain(1:3,grain+1_pInt),-1.0_pReal))) call IO_error(156_pInt)
-         endif
+         random: do constituentGrain = constituentGrain+1_pInt,myNorientations                      ! fill remainder with random
+            orientationOfGrain(:,grain+constituentGrain) = math_sampleRandomOri()
+         enddo random
 
 !--------------------------------------------------------------------------------------------------
 ! ...texture transformation
@@ -1479,12 +1474,7 @@ subroutine material_populateGrains
    enddo microstructureLoop
  enddo homogenizationLoop
 
- deallocate(volumeOfGrain)
- deallocate(phaseOfGrain)
- deallocate(textureOfGrain)
- deallocate(orientationOfGrain)
  deallocate(texture_transformation)
- deallocate(Nelems)
  deallocate(elemsOfHomogMicro)
  call config_deallocate('material.config/microstructure')
 
