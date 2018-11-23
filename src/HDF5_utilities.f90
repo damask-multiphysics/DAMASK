@@ -374,7 +374,10 @@ end subroutine HDF5_read_pReal_4
 !--------------------------------------------------------------------------------------------------
 !> @brief subroutine for reading dataset of the type pReal with 5 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_read_pReal_5(dataset,loc_id,datasetName)
+subroutine HDF5_read_pReal_5(dataset,loc_id,datasetName,parallel)
+ use numerics, only: &
+   worldrank, &
+   worldsize
 
  implicit none
  real(pReal),      intent(out), dimension(:,:,:,:,:) ::    dataset
@@ -382,16 +385,70 @@ subroutine HDF5_read_pReal_5(dataset,loc_id,datasetName)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
 
- integer(HDF5_ERR_TYPE)        :: hdferr
- integer(HID_T) :: dset_id
- myShape = shape(dataset)
+ logical, intent(in), optional :: parallel
+ integer                       :: ierr
 
+ integer(pInt), dimension(:), allocatable :: &
+   globalShape, &                                                                                   !< shape of the dataset (all processes)
+   localShape, &                                                                                    !< shape of the dataset (this process)
+   readSize                                                                                         !< contribution of all processes
+
+ integer(HDF5_ERR_TYPE)        :: hdferr
+ integer(HSIZE_T), dimension(5) :: myStart
+
+ integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
+
+ myShape = shape(dataset)
+ 
+
+ localShape = shape(dataset)
+ allocate(readSize(worldsize), source = 0_pInt)
+ readSize(worldrank+1) = localShape(5)
+
+!>>>>>>>>>!New additions 
+ call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+ write(6,*) plist_id
+#ifdef PETSc
+ if (present(parallel)) then; if (parallel) then
+   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal5: h5pset_dxpl_mpio_f')
+   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pReal5: MPI_allreduce')
+ endif; endif
+#endif
+
+ myStart     = int([0,0,0,0,sum(readSize(1:worldrank))],HSIZE_T)
+ globalShape = [localShape(1:4),sum(readSize)]
+
+!>>>>>>>>>!New additions 
+!-------------------------------------------------------------------------------------------------
+! Open the file
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
  if (hdferr < 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_shape5: h5dopen_f')
- call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T),hdferr)
+!-------------------------------------------------------------------------------------------------
+! get the dataspace_id of the dataset
+ call h5dget_space_f(dset_id, filespace_id, hdferr)
+ if (hdferr < 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_5: h5dget_space_f')
+!-------------------------------------------------------------------------------------------------
+! select hyperslab (part to be read by the current process)
+ call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart,int(localShape,HSIZE_T), hdferr)
+ if (hdferr < 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_5: h5sselect_hyperslab_f')
+ write(6,*) filespace_id
+!-------------------------------------------------------------------------------------------------
+! read the part of the file
+ call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T),hdferr, &
+                file_space_id = filespace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_shape5: h5dread_f')
- call h5dclose_f(dset_id,hdferr)
- if (hdferr < 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_shape5: h5dclose_f')
+
+!close types, dataspaces
+ call h5pclose_f(plist_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal5: plist_id')
+ call h5dclose_f(dset_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal5: h5dclose_f')
+ !call h5sclose_f(filespace_id, hdferr)
+ !if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal5: h5sclose_f/filespace_id')
+ !call h5sclose_f(memspace_id, hdferr)
+ !if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal5: h5sclose_f/memspace_id')
 
 end subroutine HDF5_read_pReal_5
 
