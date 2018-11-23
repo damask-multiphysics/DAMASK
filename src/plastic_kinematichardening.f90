@@ -140,18 +140,17 @@ subroutine plastic_kinehardening_init(fileUnit)
    IO_timeStamp, &
    IO_EOF
  use material, only: &
-   PLASTICITY_kinehardening_label, &
-   PLASTICITY_kinehardening_ID, &
    phase_plasticity, &
    phase_plasticityInstance, &
    phase_Noutput, &
+   material_allocatePlasticState, &
+   PLASTICITY_kinehardening_label, &
+   PLASTICITY_kinehardening_ID, &
    material_phase, &
    plasticState
  use config, only: &
    MATERIAL_partPhase
  use lattice
- use numerics,only: &
-   numerics_integrator
 
  implicit none
  integer(pInt), intent(in) :: fileUnit
@@ -422,29 +421,11 @@ subroutine plastic_kinehardening_init(fileUnit)
                     + nSlip                                        !< accumulated shear at last switch of stress sense
 
      sizeState = sizeDotState + sizeDeltaState
-     plasticState(phase)%sizeState = sizeState
-     plasticState(phase)%sizeDotState = sizeDotState
-     plasticState(phase)%sizeDeltaState = sizeDeltaState
-     plasticState(phase)%offsetDeltaState = sizeDotState
-     plasticState(phase)%sizePostResults = plastic_kinehardening_sizePostResults(instance)
-     plasticState(phase)%nSlip = nSlip
-  
-     allocate(plasticState(phase)%state0             (   sizeState,NipcMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%partionedState0    (   sizeState,NipcMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%subState0          (   sizeState,NipcMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%state              (   sizeState,NipcMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%aTolState          (sizeDotState),             source=0.0_pReal)
-     allocate(plasticState(phase)%dotState           (sizeDotState,NipcMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%deltaState       (sizeDeltaState,NipcMyPhase), source=0.0_pReal)          ! allocate space for deltaState 
-     if (any(numerics_integrator == 1_pInt)) then
-       allocate(plasticState(phase)%previousDotState (sizeDotState,NipcMyPhase),source=0.0_pReal)
-       allocate(plasticState(phase)%previousDotState2(sizeDotState,NipcMyPhase),source=0.0_pReal)
-     endif
-     if (any(numerics_integrator == 4_pInt)) &
-       allocate(plasticState(phase)%RK4dotState      (sizeDotState,NipcMyPhase), source=0.0_pReal)
-     if (any(numerics_integrator == 5_pInt)) &
-       allocate(plasticState(phase)%RKCK45dotState (6,sizeDotState,NipcMyPhase), source=0.0_pReal)
 
+     call material_allocatePlasticState(phase,NipcMyPhase,sizeState,sizeDotState,sizeDeltaState, &
+                                        nSlip,0_pInt,0_pInt)
+     plasticState(phase)%sizePostResults = plastic_kinehardening_sizePostResults(instance)
+    
      offset_slip = plasticState(phase)%nSlip+plasticState(phase)%nTwin+2_pInt
      plasticState(phase)%slipRate => &
        plasticState(phase)%dotState(offset_slip+1:offset_slip+plasticState(phase)%nSlip,1:NipcMyPhase)
@@ -611,7 +592,7 @@ end subroutine plastic_kinehardening_shearRates
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dTstar99, &
+subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp, &
                                                  Tstar_v,ipc,ip,el)
  use prec, only: &
    dNeq0
@@ -639,8 +620,8 @@ subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dTstar99, &
  implicit none
  real(pReal), dimension(3,3), intent(out) :: &
    Lp                                                                                               !< plastic velocity gradient
- real(pReal), dimension(9,9), intent(out) :: &
-   dLp_dTstar99                                                                                     !< derivative of Lp with respect to 2nd Piola Kirchhoff stress
+ real(pReal), dimension(3,3,3,3), intent(out) :: &
+   dLp_dMp                                                                                          !< derivative of Lp with respect to the Mandel stress
 
  integer(pInt),               intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
@@ -661,8 +642,6 @@ subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dTstar99, &
    tau_pos,tau_neg
  real(pReal) :: &
    dgdot_dtau_pos,dgdot_dtau_neg
- real(pReal), dimension(3,3,3,3) :: &
-   dLp_dTstar3333                                                                                   !< derivative of Lp with respect to Tstar as 4th order tensor
  real(pReal), dimension(3,3,2) :: &
    nonSchmid_tensor
 
@@ -671,8 +650,7 @@ subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dTstar99, &
  instance = phase_plasticityInstance(ph)
 
  Lp = 0.0_pReal 
- dLp_dTstar3333 = 0.0_pReal
- dLp_dTstar99 = 0.0_pReal
+ dLp_dMp = 0.0_pReal
 
  call plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
                                        Tstar_v,ph,instance,of)
@@ -702,22 +680,21 @@ subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dTstar99, &
      if (dNeq0(gdot_pos(j))) then
        dgdot_dtau_pos = gdot_pos(j)*param(instance)%n_slip/(tau_pos(j)-state(instance)%crss_back(j,of))
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-         dLp_dTstar3333(k,l,m,n) = &
-         dLp_dTstar3333(k,l,m,n) + dgdot_dtau_pos*lattice_Sslip(k,l,1,index_myFamily+i,ph)* &
+         dLp_dMp(k,l,m,n) = &
+         dLp_dMp(k,l,m,n) + dgdot_dtau_pos*lattice_Sslip(k,l,1,index_myFamily+i,ph)* &
                                                   nonSchmid_tensor(m,n,1)
      endif
 
      if (dNeq0(gdot_neg(j))) then
        dgdot_dtau_neg = gdot_neg(j)*param(instance)%n_slip/(tau_neg(j)-state(instance)%crss_back(j,of))
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-         dLp_dTstar3333(k,l,m,n) = &
-         dLp_dTstar3333(k,l,m,n) + dgdot_dtau_neg*lattice_Sslip(k,l,1,index_myFamily+i,ph)* &
+         dLp_dMp(k,l,m,n) = &
+         dLp_dMp(k,l,m,n) + dgdot_dtau_neg*lattice_Sslip(k,l,1,index_myFamily+i,ph)* &
                                                   nonSchmid_tensor(m,n,2)
      endif
    enddo slipSystems
  enddo slipFamilies
 
- dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
 
 end subroutine plastic_kinehardening_LpAndItsTangent
 
