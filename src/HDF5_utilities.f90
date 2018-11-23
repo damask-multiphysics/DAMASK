@@ -381,11 +381,18 @@ subroutine HDF5_read_pReal_5(dataset,loc_id,datasetName)
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  integer(pInt),dimension(:), allocatable  :: myShape
+ 
+ integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
 
  integer(HDF5_ERR_TYPE)        :: hdferr
- integer(HID_T) :: dset_id
  myShape = shape(dataset)
 
+
+!--------------------------------------------------------------------------------------------------
+!creating a property list for transfer properties
+ call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+  
+ 
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
  if (hdferr < 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_shape5: h5dopen_f')
  call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T),hdferr)
