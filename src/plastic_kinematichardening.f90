@@ -424,6 +424,7 @@ subroutine plastic_kinehardening_init(fileUnit)
 
      call material_allocatePlasticState(phase,NipcMyPhase,sizeState,sizeDotState,sizeDeltaState, &
                                         nSlip,0_pInt,0_pInt)
+     plasticState(phase)%offsetDeltaState = sizeDotState
      plasticState(phase)%sizePostResults = plastic_kinehardening_sizePostResults(instance)
     
      offset_slip = plasticState(phase)%nSlip+plasticState(phase)%nTwin+2_pInt
