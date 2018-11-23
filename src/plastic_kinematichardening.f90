@@ -534,17 +534,18 @@ end subroutine plastic_kinehardening_init
 !> @brief calculation of shear rates (\dot \gamma)
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
-                                            Tstar_v,ph,instance,of)
+                                            Mp,ph,instance,of)
 
+ use math
  use lattice, only: &
    lattice_NslipSystem, &
-   lattice_Sslip_v, &
+   lattice_Sslip, &
    lattice_maxNslipFamily, &
    lattice_NnonSchmid
 
  implicit none
- real(pReal), dimension(6),   intent(in) :: &
-   Tstar_v                                                                                         !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal), dimension(3,3), intent(in) :: &
+   Mp
  integer(pInt),               intent(in) :: &
    ph, &                                                                                           !< phase ID
    instance, &                                                                                     !< instance of that phase
@@ -565,13 +566,13 @@ subroutine plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
    index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                         ! at which index starts my family
    slipSystems: do i = 1_pInt,plastic_kinehardening_Nslip(f,instance)
      j = j + 1_pInt
-     tau_pos(j) = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
+     tau_pos(j) = math_mul33xx33(Mp,lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph))
      tau_neg(j) = tau_pos(j)
      nonSchmidSystems: do k = 1,lattice_NnonSchmid(ph)
        tau_pos(j) = tau_pos(j) + param(instance)%nonSchmidCoeff(k)* &
-                                 dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+0,index_myFamily+i,ph))
+                                 math_mul33xx33(Mp,lattice_Sslip(1:3,1:3,2*k+0,index_myFamily+i,ph))
        tau_neg(j) = tau_neg(j) + param(instance)%nonSchmidCoeff(k)* &
-                                 dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,ph))
+                                 math_mul33xx33(Mp,lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph))
      enddo nonSchmidSystems
    enddo slipSystems
  enddo slipFamilies
@@ -593,7 +594,7 @@ end subroutine plastic_kinehardening_shearRates
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp, &
-                                                 Tstar_v,ipc,ip,el)
+                                                 Mp,ipc,ip,el)
  use prec, only: &
    dNeq0
  use debug, only: &
@@ -627,8 +628,8 @@ subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp, &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- real(pReal), dimension(6),   intent(in) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal), dimension(3,3), intent(in) :: &
+   Mp
 
  integer(pInt) :: &
    instance, &
@@ -653,7 +654,7 @@ subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp, &
  dLp_dMp = 0.0_pReal
 
  call plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
-                                       Tstar_v,ph,instance,of)
+                                       Mp,ph,instance,of)
 
 
  j = 0_pInt                                                                                          ! reading and marking the starting index for each slip family
@@ -701,7 +702,7 @@ end subroutine plastic_kinehardening_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates (instantaneous) incremental change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_kinehardening_deltaState(Tstar_v,ipc,ip,el)
+subroutine plastic_kinehardening_deltaState(Mp,ipc,ip,el)
  use prec, only: &
    dNeq, &
    dEq0
@@ -719,8 +720,8 @@ subroutine plastic_kinehardening_deltaState(Tstar_v,ipc,ip,el)
    phase_plasticityInstance
  
  implicit none
- real(pReal), dimension(6), intent(in):: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal), dimension(3,3), intent(in) :: &
+   Mp
  integer(pInt),             intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -740,7 +741,7 @@ subroutine plastic_kinehardening_deltaState(Tstar_v,ipc,ip,el)
  instance = phase_plasticityInstance(ph)
 
  call plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
-                                       Tstar_v,ph,instance,of)
+                                       Mp,ph,instance,of)
  sense = merge(state(instance)%sense(:,of), &                                                       ! keep existing...
                sign(1.0_pReal,gdot_pos+gdot_neg), &                                                 ! ...or have a defined 
                dEq0(gdot_pos+gdot_neg,1e-10_pReal))                                                 ! current sense of shear direction
@@ -781,7 +782,7 @@ end subroutine plastic_kinehardening_deltaState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_kinehardening_dotState(Tstar_v,ipc,ip,el)
+subroutine plastic_kinehardening_dotState(Mp,ipc,ip,el)
  use lattice, only: &
    lattice_maxNslipFamily
  use material, only: &
@@ -790,8 +791,8 @@ subroutine plastic_kinehardening_dotState(Tstar_v,ipc,ip,el)
    phase_plasticityInstance
 
  implicit none
- real(pReal), dimension(6),  intent(in) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation, vector form
+ real(pReal), dimension(3,3),  intent(in) :: &
+   Mp
  integer(pInt),              intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -815,7 +816,7 @@ subroutine plastic_kinehardening_dotState(Tstar_v,ipc,ip,el)
  dotState(instance)%sumGamma(of) = 0.0_pReal
 
  call plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
-                                       Tstar_v,ph,instance,of)
+                                       Mp,ph,instance,of)
                                        
  j = 0_pInt
  slipFamilies: do f = 1_pInt,lattice_maxNslipFamily
@@ -848,19 +849,20 @@ end subroutine plastic_kinehardening_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-function plastic_kinehardening_postResults(Tstar_v,ipc,ip,el)
+function plastic_kinehardening_postResults(Mp,ipc,ip,el)
+ use math
  use material, only: &
    material_phase, &
    phaseAt, phasememberAt, &
    phase_plasticityInstance
  use lattice, only: &
-   lattice_Sslip_v, &
+   lattice_Sslip, &
    lattice_maxNslipFamily, &
    lattice_NslipSystem
 
  implicit none
- real(pReal), dimension(6), intent(in) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal), dimension(3,3), intent(in) :: &
+   Mp
  integer(pInt),             intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -889,7 +891,7 @@ function plastic_kinehardening_postResults(Tstar_v,ipc,ip,el)
  c = 0_pInt
 
  call plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
-                                       Tstar_v,ph,instance,of) 
+                                       Mp,ph,instance,of) 
 
  outputsLoop: do o = 1_pInt,plastic_kinehardening_Noutput(instance)
    select case(param(instance)%outputID(o))
@@ -932,7 +934,7 @@ function plastic_kinehardening_postResults(Tstar_v,ipc,ip,el)
          slipSystems: do i = 1_pInt,plastic_kinehardening_Nslip(f,instance)
            j = j + 1_pInt
            plastic_kinehardening_postResults(c+j) = &
-                             dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
+                             math_mul33xx33(Mp,lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph))
          enddo slipSystems
        enddo slipFamilies
        c = c + nSlip

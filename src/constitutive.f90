@@ -516,7 +516,7 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, S6, Fi, ipc, ip, e
      call plastic_phenopowerlaw_LpAndItsTangent   (Lp,dLp_dMp, Mp,instance,of)
 
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
-     call plastic_kinehardening_LpAndItsTangent   (Lp,dLp_dMp, math_Mandel33to6(Mp),ipc,ip,el)
+     call plastic_kinehardening_LpAndItsTangent   (Lp,dLp_dMp, Mp,ipc,ip,el)
 
    case (PLASTICITY_NONLOCAL_ID) plasticityType
      call plastic_nonlocal_LpAndItsTangent        (Lp,dLp_dMp99, math_Mandel33to6(Mp), &
@@ -918,7 +918,7 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
      call plastic_phenopowerlaw_dotState(Mp,instance,of)
 
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
-     call plastic_kinehardening_dotState(math_Mandel33to6(Mp),ipc,ip,el)
+     call plastic_kinehardening_dotState(Mp,ipc,ip,el)
 
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
      call plastic_dislotwin_dotState    (math_Mandel33to6(Mp),temperature(ho)%p(tme), &
@@ -1012,7 +1012,7 @@ subroutine constitutive_collectDeltaState(S6, Fe, Fi, ipc, ip, el)
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
 
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
-     call plastic_kinehardening_deltaState(math_Mandel33to6(Mstar),ipc,ip,el)
+     call plastic_kinehardening_deltaState(Mstar,ipc,ip,el)
 
    case (PLASTICITY_NONLOCAL_ID) plasticityType
      call plastic_nonlocal_deltaState(math_Mandel33to6(Mstar),ip,el)
@@ -1141,7 +1141,7 @@ function constitutive_postResults(S6, Fi, FeArray, ipc, ip, el)
        plastic_phenopowerlaw_postResults(Mp,instance,of)
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
-       plastic_kinehardening_postResults(S6,ipc,ip,el)
+       plastic_kinehardening_postResults(Mp,ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
        plastic_dislotwin_postResults(S6,temperature(ho)%p(tme),ipc,ip,el)
