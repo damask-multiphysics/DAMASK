@@ -151,6 +151,13 @@ Spectral_geometryPacking:
     - release
 
 ###################################################################################################
+Post_AverageDown:
+  stage: postprocessing
+  script: averageDown/test.py
+  except:
+    - master
+    - release
+
 Post_General:
   stage: postprocessing
   script: PostProcessing/test.py
