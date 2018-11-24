@@ -47,7 +47,7 @@ linker:
 
 # CMake will execute each target in the ${petsc_config_makefile}
 # to acquire corresponding PETSc Variables.
-find_program (MAKE_EXECUTABLE NAMES make gmake)
+find_program (MAKE_EXECUTABLE NAMES gmake make)
 # Find the PETSc includes directory settings
 execute_process (COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_config_makefile} "includes"
                  RESULT_VARIABLE PETSC_INCLUDES_RETURN
