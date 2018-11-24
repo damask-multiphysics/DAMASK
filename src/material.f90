@@ -387,9 +387,8 @@ subroutine material_init()
   i, &                                                                                              !< integration point number
   e                                                                                                 !< element number
  integer(pInt), dimension(:), allocatable :: &
-  PhaseCounter, &
-  CrystalliteCounter, &
-  HomogenizationCounter
+  CounterPhase, &
+  CounterHomogenization
 
  myDebug = debug_level(debug_material)
 
@@ -488,20 +487,20 @@ subroutine material_init()
 ! END DEPRECATED
 
  allocate(material_homogenizationAt,source=mesh_homogenizationAt)
- allocate(PhaseCounter         (size(config_phase)),         source=0_pInt)
- allocate(HomogenizationCounter(size(config_homogenization)),source=0_pInt)
+ allocate(CounterPhase         (size(config_phase)),         source=0_pInt)
+ allocate(CounterHomogenization(size(config_homogenization)),source=0_pInt)
 
 ! BEGIN DEPRECATED
  do e = 1_pInt,mesh_NcpElems
  myHomog = mesh_homogenizationAt(e)
    do i = 1_pInt, mesh_NipsPerElem
-     HomogenizationCounter(myHomog) = HomogenizationCounter(myHomog) + 1_pInt
-     mappingHomogenization(1:2,i,e) = [HomogenizationCounter(myHomog),myHomog]
+     CounterHomogenization(myHomog) = CounterHomogenization(myHomog) + 1_pInt
+     mappingHomogenization(1:2,i,e) = [CounterHomogenization(myHomog),myHomog]
      do g = 1_pInt,homogenization_Ngrains(myHomog)
        myPhase = material_phase(g,i,e)
-       PhaseCounter(myPhase) = PhaseCounter(myPhase)+1_pInt                             ! not distinguishing between instances of same phase
+       CounterPhase(myPhase) = CounterPhase(myPhase)+1_pInt                             ! not distinguishing between instances of same phase
        phaseAt(g,i,e)              = myPhase
-       phasememberAt(g,i,e)        = PhaseCounter(myPhase)
+       phasememberAt(g,i,e)        = CounterPhase(myPhase)
      enddo
    enddo
  enddo
