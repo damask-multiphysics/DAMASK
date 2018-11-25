@@ -47,9 +47,6 @@ module plastic_kinehardening
 
 
  type, private :: tParameters                                                                       !< container type for internal constitutive parameters
-   integer(kind(undefined_ID)),         dimension(:),   allocatable,          private :: &
-     outputID                                                                                       !< ID of each post result output
-    
    real(pReal) :: &
      gdot0, &                                                                                       !< reference shear strain rate for slip (input parameter)
      n_slip, &                                                                                      !< stress exponent for slip (input parameter)
@@ -67,9 +64,21 @@ module plastic_kinehardening
      tau1_b, &
      interaction_slipslip, &                                                                        !< latent hardening matrix
      nonSchmidCoeff
+
+   real(pReal),                 allocatable, dimension(:,:,:) :: &
+     Schmid_slip, &
+     Schmid_twin, &
+     nonSchmid_pos, &
+     nonSchmid_neg
         
    real(pReal),                       dimension(:,:),   allocatable,          private :: &
      hardeningMatrix_SlipSlip
+   integer(pInt) :: &
+     totalNslip                                                                                     !< total number of active slip system
+   integer(pInt),               allocatable, dimension(:) :: &
+     Nslip                                                                                          !< number of active slip systems for each family
+   integer(kind(undefined_ID)), allocatable, dimension(:) :: &
+     outputID                                                                                       !< ID of each post result output
  end type
 
  type, private :: tKinehardeningState
@@ -86,8 +95,9 @@ module plastic_kinehardening
  end type
 
  type(tParameters), dimension(:), allocatable, private :: &
-   param                                                                                            !< containers of constitutive parameters (len Ninstance)
- 
+   param, &                                                                                            !< containers of constitutive parameters (len Ninstance)
+   paramNew ! temp
+
  type(tKinehardeningState), allocatable, dimension(:), private :: &
    dotState, &
    deltaState, &
@@ -148,6 +158,7 @@ subroutine plastic_kinehardening_init(fileUnit)
    material_phase, &
    plasticState
  use config, only: &
+   config_phase, &
    MATERIAL_partPhase
  use lattice
 
@@ -158,11 +169,12 @@ subroutine plastic_kinehardening_init(fileUnit)
  integer(kind(undefined_ID)) :: &
    output_ID
  integer(pInt) :: &
-   o, j, k, f, &
+   o, i,j, k, f, p,  &
    phase, & 
    instance, &
    maxNinstance, &
    NipcMyPhase, &
+   outputSize, &
    Nchunks_SlipSlip = 0_pInt, Nchunks_SlipFamilies = 0_pInt, &
    Nchunks_nonSchmid = 0_pInt, &
    offset_slip, index_myFamily, index_otherFamily, &
@@ -172,12 +184,21 @@ subroutine plastic_kinehardening_init(fileUnit)
    sizeState, &
    sizeDeltaState
 
+ integer(pInt),          dimension(0), parameter :: emptyIntArray    = [integer(pInt)::]
+ real(pReal),            dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
+ character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
+
  real(pReal), dimension(:), allocatable :: tempPerSlip
+ integer(kind(undefined_ID)) :: &
+   outputID                                                                                         !< ID of each post result output
    
+ character(len=65536), dimension(:), allocatable :: &
+  outputs
  character(len=65536) :: &
    tag       = '', &
    line      = '', &
-   extmsg    = ''
+   extmsg    = '', &
+   structure    = ''
 
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_KINEHARDENING_label//' init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -198,7 +219,77 @@ subroutine plastic_kinehardening_init(fileUnit)
  allocate(plastic_kinehardening_Nslip(lattice_maxNslipFamily,maxNinstance),  source=0_pInt)
  allocate(plastic_kinehardening_totalNslip(maxNinstance),                    source=0_pInt)
  allocate(param(maxNinstance))                                                                      ! one container of parameters per instance
+ allocate(paramNew(maxNinstance))                                                                      ! one container of parameters per instance
+  
+ do p = 1_pInt, size(phase_plasticityInstance)
+   if (phase_plasticity(p) /= PLASTICITY_KINEHARDENING_ID) cycle
+   associate(prm => paramNew(phase_plasticityInstance(p)), &
+             dot => dotState(phase_plasticityInstance(p)), &
+             stt => state(phase_plasticityInstance(p)))
+
+   structure          = config_phase(p)%getString('lattice_structure')
+
+!--------------------------------------------------------------------------------------------------
+!  optional parameters that need to be defined
+   prm%aTolResistance = config_phase(p)%getFloat('atol_resistance',defaultVal=1.0_pReal)
+   prm%aTolShear      = config_phase(p)%getFloat('atol_shear',     defaultVal=1.0e-6_pReal)
+
+!--------------------------------------------------------------------------------------------------
+! slip related parameters
+   prm%Nslip      = config_phase(p)%getInts('nslip',defaultVal=emptyIntArray)
+   prm%totalNslip = sum(prm%Nslip)
+   slipActive: if (prm%totalNslip > 0_pInt) then
+     prm%Schmid_slip          = lattice_SchmidMatrix_slip(prm%Nslip,structure(1:3),&
+                                                          config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal))
+     if(structure=='bcc') then
+       prm%nonSchmidCoeff     = config_phase(p)%getFloats('nonschmid_coefficients',&
+                                                          defaultVal = emptyRealArray)
+       prm%nonSchmid_pos      = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1_pInt)
+       prm%nonSchmid_neg      = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1_pInt)
+     else
+       prm%nonSchmid_pos      = prm%Schmid_slip
+       prm%nonSchmid_neg      = prm%Schmid_slip
+     endif
+     !prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
+     !                                                        config_phase(p)%getFloats('interaction_slipslip'), &
+     !                                                        structure(1:3))
+   endif slipActive
+
    
+!--------------------------------------------------------------------------------------------------
+!  output pararameters
+   outputs = config_phase(p)%getStrings('(output)',defaultVal=emptyStringArray)
+   allocate(prm%outputID(0))
+   do i=1_pInt, size(outputs)
+     outputID = undefined_ID
+     select case(outputs(i))
+        case ('resistance')
+          outputID = merge(crss_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputSize = prm%totalNslip
+        case ('accumulatedshear')
+          outputID = merge(accshear_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputSize = prm%totalNslip
+        case ('shearrate')
+          outputID = merge(shearrate_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputSize = prm%totalNslip
+        case ('resolvedstress')
+          outputID = merge(resolvedstress_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputSize = prm%totalNslip
+
+      end select
+
+      if (outputID /= undefined_ID) then
+        plastic_kinehardening_output(i,phase_plasticityInstance(p)) = outputs(i)
+        plastic_kinehardening_sizePostResult(i,phase_plasticityInstance(p)) = outputSize
+        prm%outputID = [prm%outputID , outputID]
+      endif
+
+   end do
+
+   end associate
+ end do
+
+ 
  rewind(fileUnit)
  phase = 0_pInt
  do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partPhase)         ! wind forward to <phase>
