@@ -200,6 +200,13 @@ Post_ParaviewRelated:
     - master
     - release
 
+Post_OrientationConversion:
+  stage: postprocessing
+  script: OrientationConversion/test.py
+  except:
+    - master
+    - release
+
 ###################################################################################################
 Compile_Spectral_Intel:
   stage: compilePETScIntel
@@ -250,6 +257,13 @@ Compile_Intel_Prepare:
     - release
 
 ###################################################################################################
+Thermal:
+  stage: spectral
+  script: Thermal/test.py
+  except:
+    - master
+    - release
+
 Spectral_PackedGeometry:
   stage: spectral
   script: Spectral_PackedGeometry/test.py
