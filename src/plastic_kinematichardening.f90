@@ -229,6 +229,7 @@ subroutine plastic_kinehardening_init(fileUnit)
    if (phase_plasticity(p) /= PLASTICITY_KINEHARDENING_ID) cycle
    associate(prm => paramNew(phase_plasticityInstance(p)), &
              dot => dotState(phase_plasticityInstance(p)), &
+             delta => deltaState(phase_plasticityInstance(p)), &
              stt => state(phase_plasticityInstance(p)))
 
    structure          = config_phase(p)%getString('lattice_structure')
@@ -237,6 +238,10 @@ subroutine plastic_kinehardening_init(fileUnit)
 !  optional parameters that need to be defined
    prm%aTolResistance = config_phase(p)%getFloat('atol_resistance',defaultVal=1.0_pReal)
    prm%aTolShear      = config_phase(p)%getFloat('atol_shear',     defaultVal=1.0e-6_pReal)
+
+   ! sanity checks
+   if (prm%aTolResistance <= 0.0_pReal) extmsg = trim(extmsg)//'aTolresistance '
+   if (prm%aTolShear      <= 0.0_pReal) extmsg = trim(extmsg)//'aTolShear '
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
@@ -254,6 +259,16 @@ subroutine plastic_kinehardening_init(fileUnit)
        prm%nonSchmid_pos      = prm%Schmid_slip
        prm%nonSchmid_neg      = prm%Schmid_slip
      endif
+
+     prm%crss0                = config_phase(p)%getFloats('crss0',   requiredShape=shape(prm%Nslip))
+     prm%tau1                 = config_phase(p)%getFloats('tau1', requiredShape=shape(prm%Nslip))
+     prm%tau1_b                 = config_phase(p)%getFloats('tau1_b', requiredShape=shape(prm%Nslip))
+     prm%theta0                 = config_phase(p)%getFloats('theta0', requiredShape=shape(prm%Nslip))
+     prm%theta1                 = config_phase(p)%getFloats('theta1', requiredShape=shape(prm%Nslip))
+     prm%theta0_b                 = config_phase(p)%getFloats('theta0_b', requiredShape=shape(prm%Nslip))
+     prm%theta1_b                 = config_phase(p)%getFloats('theta1_b', requiredShape=shape(prm%Nslip))
+
+
      !prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
      !                                                        config_phase(p)%getFloats('interaction_slipslip'), &
      !                                                        structure(1:3))
@@ -282,13 +297,85 @@ subroutine plastic_kinehardening_init(fileUnit)
 
       end select
 
-      if (outputID /= undefined_ID) then
-        plastic_kinehardening_output(i,phase_plasticityInstance(p)) = outputs(i)
-        plastic_kinehardening_sizePostResult(i,phase_plasticityInstance(p)) = outputSize
-        prm%outputID = [prm%outputID , outputID]
-      endif
+      !if (outputID /= undefined_ID) then
+      !  plastic_kinehardening_output(i,phase_plasticityInstance(p)) = outputs(i)
+      !  plastic_kinehardening_sizePostResult(i,phase_plasticityInstance(p)) = outputSize
+      !  prm%outputID = [prm%outputID , outputID]
+      !endif
 
    end do
+   nslip = prm%totalNslip
+!--------------------------------------------------------------------------------------------------
+! allocate state arrays
+     sizeDotState = nSlip &                                        !< crss
+                  + nSlip &                                        !< crss_back
+                  + nSlip &                                        !< accumulated (absolute) shear
+                  + 1_pInt                                         !< sum(gamma)
+               
+     sizeDeltaState = nSlip &                                      !< sense of acting shear stress (-1 or +1)
+                    + nSlip &                                      !< backstress at last switch of stress sense
+                    + nSlip                                        !< accumulated shear at last switch of stress sense
+
+     sizeState = sizeDotState + sizeDeltaState
+     NipcMyPhase = count(material_phase == p)                                                   ! number of IPCs containing my phase
+     call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,sizeDeltaState, &
+                                        nSlip,0_pInt,0_pInt)
+     plasticState(p)%offsetDeltaState = sizeDotState
+
+
+     endindex = 0_pInt
+     o = endIndex                                                                                           ! offset of dotstate index relative to state index
+     
+     startIndex = endIndex + 1_pInt
+     endIndex   = endIndex + nSlip
+     stt%crss          => plasticState(p)%state    (startIndex  :endIndex  ,1:NipcMyPhase)
+     dot%crss          => plasticState(p)%dotState (startIndex-o:endIndex-o,1:NipcMyPhase)
+     plasticState(p)%aTolState(startIndex-o:endIndex-o) = prm%aTolResistance
+     
+!    .............................................
+     startIndex = endIndex + 1_pInt
+     endIndex   = endIndex + nSlip 
+     stt%crss_back          => plasticState(p)%state    (startIndex  :endIndex  ,1:NipcMyPhase)
+     dot%crss_back          => plasticState(p)%dotState (startIndex-o:endIndex-o,1:NipcMyPhase)
+     plasticState(p)%aTolState(startIndex-o:endIndex-o) = prm%aTolResistance
+     
+!    .............................................
+     startIndex = endIndex + 1_pInt
+     endIndex   = endIndex + nSlip
+     stt%accshear          => plasticState(p)%state    (startIndex  :endIndex  ,1:NipcMyPhase)
+     dot%accshear          => plasticState(p)%dotState (startIndex-o:endIndex-o,1:NipcMyPhase)
+     plasticState(p)%aTolState(startIndex-o:endIndex-o) = prm%aTolShear
+     
+!    .............................................
+     startIndex = endIndex + 1_pInt
+     endIndex   = endIndex + 1_pInt
+     stt%sumGamma        => plasticState(p)%state    (startIndex             ,1:NipcMyPhase)
+     dot%sumGamma        => plasticState(p)%dotState (startIndex-o           ,1:NipcMyPhase)
+     plasticState(p)%aTolState(startIndex-o:endIndex-o) =prm%aTolShear
+     
+!----------------------------------------------------------------------------------------------
+!locally define deltaState alias
+     o = endIndex
+     
+!    .............................................
+     startIndex = endIndex + 1_pInt
+     endIndex   = endIndex + nSlip
+     stt%sense          => plasticState(p)%state     (startIndex  :endIndex  ,1:NipcMyPhase)
+     delta%sense        => plasticState(p)%deltaState(startIndex-o:endIndex-o,1:NipcMyPhase)
+     
+!    .............................................
+     startIndex = endIndex + 1_pInt
+     endIndex   = endIndex + nSlip
+     stt%chi0           => plasticState(p)%state     (startIndex  :endIndex  ,1:NipcMyPhase)
+     delta%chi0         => plasticState(p)%deltaState(startIndex-o:endIndex-o,1:NipcMyPhase)
+
+     
+!    .............................................
+     startIndex = endIndex + 1_pInt
+     endIndex   = endIndex + nSlip
+     stt%gamma0         => plasticState(p)%state     (startIndex  :endIndex  ,1:NipcMyPhase)         
+     delta%gamma0       => plasticState(p)%deltaState(startIndex-o:endIndex-o,1:NipcMyPhase)
+
 
    end associate
  end do
@@ -464,9 +551,7 @@ subroutine plastic_kinehardening_init(fileUnit)
      if (any(plastic_kinehardening_Nslip (1:nSlipFamilies,instance) > 0_pInt &
              .and. param(instance)%tau1_b(1:nSlipFamilies)         < 0.0_pReal)) extmsg = trim(extmsg)//' tau1_b'
      if (param(instance)%gdot0            <= 0.0_pReal) extmsg = trim(extmsg)//' gdot0'
-     if (param(instance)%n_slip           <= 0.0_pReal) extmsg = trim(extmsg)//' n_slip'
-     if (param(instance)%aTolResistance   <= 0.0_pReal) param(instance)%aTolResistance = 1.0_pReal      ! default absolute tolerance 1 Pa
-     if (param(instance)%aTolShear        <= 0.0_pReal) param(instance)%aTolShear = 1.0e-6_pReal        ! default absolute tolerance 1e-6                  
+     if (param(instance)%n_slip           <= 0.0_pReal) extmsg = trim(extmsg)//' n_slip'               
      if (extmsg /= '') then 
        extmsg = trim(extmsg)//' ('//PLASTICITY_KINEHARDENING_label//')'                                 ! prepare error message identifier
        call IO_error(211_pInt,ip=instance,ext_msg=extmsg)
@@ -495,22 +580,7 @@ subroutine plastic_kinehardening_init(fileUnit)
          plastic_kinehardening_sizePostResults(instance)  = plastic_kinehardening_sizePostResults(instance) + mySize
        endif outputFound
      enddo outputsLoop     
-!--------------------------------------------------------------------------------------------------
-! allocate state arrays
-     sizeDotState = nSlip &                                        !< crss
-                  + nSlip &                                        !< crss_back
-                  + nSlip &                                        !< accumulated (absolute) shear
-                  + 1_pInt                                         !< sum(gamma)
-               
-     sizeDeltaState = nSlip &                                      !< sense of acting shear stress (-1 or +1)
-                    + nSlip &                                      !< backstress at last switch of stress sense
-                    + nSlip                                        !< accumulated shear at last switch of stress sense
 
-     sizeState = sizeDotState + sizeDeltaState
-
-     call material_allocatePlasticState(phase,NipcMyPhase,sizeState,sizeDotState,sizeDeltaState, &
-                                        nSlip,0_pInt,0_pInt)
-     plasticState(phase)%offsetDeltaState = sizeDotState
      plasticState(phase)%sizePostResults = plastic_kinehardening_sizePostResults(instance)
     
      offset_slip = plasticState(phase)%nSlip+plasticState(phase)%nTwin+2_pInt
@@ -534,84 +604,16 @@ subroutine plastic_kinehardening_init(fileUnit)
            enddo; enddo
      enddo; enddo
      
-!----------------------------------------------------------------------------------------------
-!locally define dotState alias
-
      endindex = 0_pInt
      o = endIndex                                                                                           ! offset of dotstate index relative to state index
      
      startIndex = endIndex + 1_pInt
      endIndex   = endIndex + nSlip
-     state   (instance)%crss          => plasticState(phase)%state    (startIndex  :endIndex  ,1:NipcMyPhase)
      state0  (instance)%crss          => plasticState(phase)%state0   (startIndex  :endIndex  ,1:NipcMyPhase)
-     dotState(instance)%crss          => plasticState(phase)%dotState (startIndex-o:endIndex-o,1:NipcMyPhase)
 
      state0(instance)%crss                                  = spread(math_expand(param(instance)%crss0,&
                                                                                  plastic_kinehardening_Nslip(:,instance)), &
                                                                      2, NipcMyPhase)
-     plasticState(phase)%aTolState(startIndex-o:endIndex-o) = param(instance)%aTolResistance
-     
-!    .............................................
-     startIndex = endIndex + 1_pInt
-     endIndex   = endIndex + nSlip 
-     state   (instance)%crss_back          => plasticState(phase)%state    (startIndex  :endIndex  ,1:NipcMyPhase)
-     state0  (instance)%crss_back          => plasticState(phase)%state0   (startIndex  :endIndex  ,1:NipcMyPhase)
-     dotState(instance)%crss_back          => plasticState(phase)%dotState (startIndex-o:endIndex-o,1:NipcMyPhase)
-     
-     state0(instance)%crss_back                             = 0.0_pReal
-     plasticState(phase)%aTolState(startIndex-o:endIndex-o) = param(instance)%aTolResistance
-     
-!    .............................................
-     startIndex = endIndex + 1_pInt
-     endIndex   = endIndex + nSlip
-     state   (instance)%accshear          => plasticState(phase)%state    (startIndex  :endIndex  ,1:NipcMyPhase)
-     state0  (instance)%accshear          => plasticState(phase)%state0   (startIndex  :endIndex  ,1:NipcMyPhase)
-     dotState(instance)%accshear          => plasticState(phase)%dotState (startIndex-o:endIndex-o,1:NipcMyPhase)
-
-     state0(instance)%accshear                              = 0.0_pReal
-     plasticState(phase)%aTolState(startIndex-o:endIndex-o) = param(instance)%aTolShear
-     
-!    .............................................
-     startIndex = endIndex + 1_pInt
-     endIndex   = endIndex + 1_pInt
-     state   (instance)%sumGamma        => plasticState(phase)%state    (startIndex             ,1:NipcMyPhase)
-     state0  (instance)%sumGamma        => plasticState(phase)%state0   (startIndex             ,1:NipcMyPhase)
-     dotState(instance)%sumGamma        => plasticState(phase)%dotState (startIndex-o           ,1:NipcMyPhase)
-
-     state0(instance)%sumGamma                              = 0.0_pReal
-     plasticState(phase)%aTolState(startIndex-o:endIndex-o) = param(instance)%aTolShear
-     
-!----------------------------------------------------------------------------------------------
-!locally define deltaState alias
-     o = endIndex
-     
-!    .............................................
-     startIndex = endIndex + 1_pInt
-     endIndex   = endIndex + nSlip
-     state   (instance)%sense          => plasticState(phase)%state     (startIndex  :endIndex  ,1:NipcMyPhase)
-     state0  (instance)%sense          => plasticState(phase)%state0    (startIndex  :endIndex  ,1:NipcMyPhase)
-     deltaState(instance)%sense        => plasticState(phase)%deltaState(startIndex-o:endIndex-o,1:NipcMyPhase)
-     
-     state0(instance)%sense          = 0.0_pReal
-     
-!    .............................................
-     startIndex = endIndex + 1_pInt
-     endIndex   = endIndex + nSlip
-     state   (instance)%chi0           => plasticState(phase)%state     (startIndex  :endIndex  ,1:NipcMyPhase)
-     state0  (instance)%chi0           => plasticState(phase)%state0    (startIndex  :endIndex  ,1:NipcMyPhase)
-     deltaState(instance)%chi0         => plasticState(phase)%deltaState(startIndex-o:endIndex-o,1:NipcMyPhase)
-     
-     state0(instance)%chi0           = 0.0_pReal
-     
-!    .............................................
-     startIndex = endIndex + 1_pInt
-     endIndex   = endIndex + nSlip
-     state   (instance)%gamma0         => plasticState(phase)%state     (startIndex  :endIndex  ,1:NipcMyPhase)         
-     state0  (instance)%gamma0         => plasticState(phase)%state0    (startIndex  :endIndex  ,1:NipcMyPhase)
-     deltaState(instance)%gamma0       => plasticState(phase)%deltaState(startIndex-o:endIndex-o,1:NipcMyPhase)
-
-     state0(instance)%gamma0         = 0.0_pReal
-     
    endif myPhase2
  enddo initializeInstances
 
