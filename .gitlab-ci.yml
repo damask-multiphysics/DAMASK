@@ -151,6 +151,13 @@ Spectral_geometryPacking:
     - release
 
 ###################################################################################################
+Post_AverageDown:
+  stage: postprocessing
+  script: averageDown/test.py
+  except:
+    - master
+    - release
+
 Post_General:
   stage: postprocessing
   script: PostProcessing/test.py
@@ -189,6 +196,13 @@ Post_addGradient:
 Post_ParaviewRelated:
   stage: postprocessing
   script: ParaviewRelated/test.py
+  except:
+    - master
+    - release
+
+Post_OrientationConversion:
+  stage: postprocessing
+  script: OrientationConversion/test.py
   except:
     - master
     - release
@@ -243,6 +257,13 @@ Compile_Intel_Prepare:
     - release
 
 ###################################################################################################
+Thermal:
+  stage: spectral
+  script: Thermal/test.py
+  except:
+    - master
+    - release
+
 Spectral_PackedGeometry:
   stage: spectral
   script: Spectral_PackedGeometry/test.py
@@ -343,13 +364,6 @@ Phenopowerlaw_singleSlip:
     - master
     - release
 
-HybridIA:
-  stage: spectral
-  script: HybridIA/test.py
-  except:
-    - master
-    - release
-
 TextureComponents:
   stage: spectral
   script: TextureComponents/test.py
@@ -420,14 +434,6 @@ Abaqus_compile2017:
 SpectralExample:
   stage: example
   script: SpectralAll_example/test.py
-  only:
-    - development
-
-AbaqusExample:
-  stage: example
-  script:
-    - module load $IntelAbaqus $Abaqus
-    - Abaqus_example/test.py
   only:
     - development
 
