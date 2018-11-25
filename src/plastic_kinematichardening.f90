@@ -1,9 +1,9 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Philip Eisenlohr, Michigan State University
 !> @author Zhuowen Zhao, Michigan State University
-!> @author   Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Introducing Voce-type kinematic hardening rule into crystal plasticity  
-!! formulation using a power law fitting
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief  Phenomenological crystal plasticity using a power law formulation for the shear rates
+!!         and a Voce-type kinematic hardening rule
 !--------------------------------------------------------------------------------------------------
 module plastic_kinehardening
  use prec, only: &
@@ -33,19 +33,19 @@ module plastic_kinehardening
    
 
  enum, bind(c)
-   enumerator :: undefined_ID, &
-                 crss_ID, &                                                                         !< critical resolved stress
-                 crss_back_ID, &                                                                    !< critical resolved back stress
-                 sense_ID, &                                                                        !< sense of acting shear stress (-1 or +1)
-                 chi0_ID, &                                                                         !< backstress at last switch of stress sense (positive?)
-                 gamma0_ID, &                                                                       !< accumulated shear at last switch of stress sense (at current switch?)
-                 accshear_ID, &
-                 shearrate_ID, &
-                 resolvedstress_ID
-                
+   enumerator :: &
+     undefined_ID, &
+     crss_ID, &                                                                         !< critical resolved stress
+     crss_back_ID, &                                                                    !< critical resolved back stress
+     sense_ID, &                                                                        !< sense of acting shear stress (-1 or +1)
+     chi0_ID, &                                                                         !< backstress at last switch of stress sense (positive?)
+     gamma0_ID, &                                                                       !< accumulated shear at last switch of stress sense (at current switch?)
+     accshear_ID, &
+     shearrate_ID, &
+     resolvedstress_ID
  end enum
- 
- 
+
+
  type, private :: tParameters                                                                       !< container type for internal constitutive parameters
    integer(kind(undefined_ID)),         dimension(:),   allocatable,          private :: &
      outputID                                                                                       !< ID of each post result output
