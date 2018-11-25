@@ -219,7 +219,11 @@ subroutine plastic_kinehardening_init(fileUnit)
  allocate(plastic_kinehardening_Nslip(lattice_maxNslipFamily,maxNinstance),  source=0_pInt)
  allocate(plastic_kinehardening_totalNslip(maxNinstance),                    source=0_pInt)
  allocate(param(maxNinstance))                                                                      ! one container of parameters per instance
- allocate(paramNew(maxNinstance))                                                                      ! one container of parameters per instance
+ allocate(paramNew(maxNinstance))
+ allocate(state(maxNinstance))
+ allocate(state0(maxNinstance))
+ allocate(dotState(maxNinstance))
+ allocate(deltaState(maxNinstance))
   
  do p = 1_pInt, size(phase_plasticityInstance)
    if (phase_plasticity(p) /= PLASTICITY_KINEHARDENING_ID) cycle
@@ -435,10 +439,7 @@ subroutine plastic_kinehardening_init(fileUnit)
 
 !--------------------------------------------------------------------------------------------------
 ! allocation of variables whose size depends on the total number of active slip systems
- allocate(state(maxNinstance))
- allocate(state0(maxNinstance))
- allocate(dotState(maxNinstance))
- allocate(deltaState(maxNinstance))
+
 
 
  initializeInstances: do phase = 1_pInt, size(phase_plasticity)                                     ! loop through all phases in material.config
@@ -935,7 +936,7 @@ end subroutine plastic_kinehardening_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-function plastic_kinehardening_postResults(Mp,ipc,ip,el)
+function plastic_kinehardening_postResults(Mp,ipc,ip,el) result(postResults)
  use math
  use material, only: &
    material_phase, &
@@ -955,7 +956,7 @@ function plastic_kinehardening_postResults(Mp,ipc,ip,el)
    el                                                                                               !< element                                                                                        !< microstructure state
 
  real(pReal), dimension(plastic_kinehardening_sizePostResults(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
-   plastic_kinehardening_postResults
+   postResults
 
  integer(pInt) :: &
    instance,ph, of, &
@@ -973,7 +974,7 @@ function plastic_kinehardening_postResults(Mp,ipc,ip,el)
 
  nSlip = plastic_kinehardening_totalNslip(instance)
  
- plastic_kinehardening_postResults = 0.0_pReal
+ postResults = 0.0_pReal
  c = 0_pInt
 
  call plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
@@ -982,31 +983,31 @@ function plastic_kinehardening_postResults(Mp,ipc,ip,el)
  outputsLoop: do o = 1_pInt,plastic_kinehardening_Noutput(instance)
    select case(param(instance)%outputID(o))
      case (crss_ID)
-       plastic_kinehardening_postResults(c+1_pInt:c+nSlip) = state(instance)%crss(:,of)
+       postResults(c+1_pInt:c+nSlip) = state(instance)%crss(:,of)
        c = c + nSlip
        
      case(crss_back_ID)
-       plastic_kinehardening_postResults(c+1_pInt:c+nSlip) = state(instance)%crss_back(:,of)
+       postResults(c+1_pInt:c+nSlip) = state(instance)%crss_back(:,of)
        c = c + nSlip
        
      case (sense_ID)
-       plastic_kinehardening_postResults(c+1_pInt:c+nSlip) = state(instance)%sense(:,of)
+       postResults(c+1_pInt:c+nSlip) = state(instance)%sense(:,of)
        c = c + nSlip
                                                                         
      case (chi0_ID)
-       plastic_kinehardening_postResults(c+1_pInt:c+nSlip) = state(instance)%chi0(:,of)
+       postResults(c+1_pInt:c+nSlip) = state(instance)%chi0(:,of)
        c = c + nSlip
        
      case (gamma0_ID)
-       plastic_kinehardening_postResults(c+1_pInt:c+nSlip) = state(instance)%gamma0(:,of)
+       postResults(c+1_pInt:c+nSlip) = state(instance)%gamma0(:,of)
        c = c + nSlip
      
      case (accshear_ID)
-       plastic_kinehardening_postResults(c+1_pInt:c+nSlip) = state(instance)%accshear(:,of)
+       postResults(c+1_pInt:c+nSlip) = state(instance)%accshear(:,of)
        c = c + nSlip
        
      case (shearrate_ID)
-       plastic_kinehardening_postResults(c+1_pInt:c+nSlip) = gdot_pos+gdot_neg
+       postResults(c+1_pInt:c+nSlip) = gdot_pos+gdot_neg
        c = c + nSlip
 
      case (resolvedstress_ID)
@@ -1015,7 +1016,7 @@ function plastic_kinehardening_postResults(Mp,ipc,ip,el)
          index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                ! at which index starts my family
          slipSystems: do i = 1_pInt,plastic_kinehardening_Nslip(f,instance)
            j = j + 1_pInt
-           plastic_kinehardening_postResults(c+j) = &
+           postResults(c+j) = &
                              math_mul33xx33(Mp,lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph))
          enddo slipSystems
        enddo slipFamilies
