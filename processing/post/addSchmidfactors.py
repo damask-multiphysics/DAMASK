@@ -190,27 +190,27 @@ if np.sum(input) != 1: parser.error('needs exactly one input format.')
                          (options.quaternion,4,'quaternion'),
                         ][np.where(input)[0][0]]                                                    # select input label that was requested
 
-c_direction = np.zeros((len(slipSystems[options.lattice]),3),'f')
-c_normal    = np.zeros_like(c_direction)
+slip_direction = np.zeros((len(slipSystems[options.lattice]),3),'f')
+slip_normal    = np.zeros_like(slip_direction)
 
 
 if options.lattice in latticeChoices[:2]:
-  c_direction = slipSystems[options.lattice][:,:3]
-  c_normal    = slipSystems[options.lattice][:,3:]
+  slip_direction = slipSystems[options.lattice][:,:3]
+  slip_normal    = slipSystems[options.lattice][:,3:]
 elif options.lattice == latticeChoices[2]:
   # convert 4 Miller index notation of hex to orthogonal 3 Miller index notation
-  for i in range(len(c_direction)):
-    c_direction[i] = np.array([slipSystems['hex'][i,0]*1.5,
+  for i in range(len(slip_direction)):
+    slip_direction[i] = np.array([slipSystems['hex'][i,0]*1.5,
                               (slipSystems['hex'][i,0] + 2.*slipSystems['hex'][i,1])*0.5*np.sqrt(3),
                                slipSystems['hex'][i,3]*options.CoverA,
                               ])
-    c_normal[i]    = np.array([slipSystems['hex'][i,4],
+    slip_normal[i]    = np.array([slipSystems['hex'][i,4],
                               (slipSystems['hex'][i,4] + 2.*slipSystems['hex'][i,5])/np.sqrt(3),
                                slipSystems['hex'][i,7]/options.CoverA,
                               ])
 
-c_direction /= np.tile(np.linalg.norm(c_direction,axis=1),(3,1)).T
-c_normal    /= np.tile(np.linalg.norm(c_normal   ,axis=1),(3,1)).T
+slip_direction /= np.tile(np.linalg.norm(slip_direction,axis=1),(3,1)).T
+slip_normal    /= np.tile(np.linalg.norm(slip_normal   ,axis=1),(3,1)).T
 
 # --- loop over input files ------------------------------------------------------------------------
 
@@ -244,7 +244,7 @@ for name in filenames:
                        .format(       id = i+1,
                                   normal = theNormal,
                                direction = theDirection,
-                              ) for i,(theNormal,theDirection) in enumerate(zip(c_normal,c_direction))])
+                              ) for i,(theNormal,theDirection) in enumerate(zip(slip_normal,slip_direction))])
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
@@ -262,9 +262,9 @@ for name in filenames:
     elif inputtype == 'quaternion':
       o = damask.Orientation(quaternion = np.array(list(map(float,table.data[column:column+4]))),)
 
-    rotForce  = o.quaternion.conjugated() * force
-    rotNormal = o.quaternion.conjugated() * normal
-    table.data_append(np.abs(np.sum(c_direction*rotForce,axis=1) * np.sum(c_normal*rotNormal,axis=1)))
+
+    table.data_append(  np.abs(  np.sum(slip_direction * (o.quaternion * force) ,axis=1) \
+                               * np.sum(slip_normal    * (o.quaternion * normal),axis=1)))
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output finalization -----------------------------------  
