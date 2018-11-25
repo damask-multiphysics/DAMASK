@@ -24,12 +24,10 @@ module plastic_phenopowerlaw
      accumulatedshear_slip_ID, &
      shearrate_slip_ID, &
      resolvedstress_slip_ID, &
-     totalshear_ID, &
      resistance_twin_ID, &
      accumulatedshear_twin_ID, &
      shearrate_twin_ID, &
-     resolvedstress_twin_ID, &
-     totalvolfrac_twin_ID
+     resolvedstress_twin_ID
  end enum
 
  type, private :: tParameters
@@ -338,12 +336,6 @@ subroutine plastic_phenopowerlaw_init
           outputID = merge(resolvedstress_twin_ID,undefined_ID,prm%totalNtwin>0_pInt)
           outputSize = prm%totalNtwin
 
-        case ('totalshear')
-          outputID = merge(totalshear_ID,undefined_ID,prm%totalNslip>0_pInt)
-          outputSize = 1_pInt
-        case ('totalvolfrac_twin')
-          outputID = merge(totalvolfrac_twin_ID,undefined_ID,prm%totalNtwin>0_pInt)
-          outputSize = 1_pInt
       end select
 
       if (outputID /= undefined_ID) then
@@ -731,13 +723,6 @@ function plastic_phenopowerlaw_postResults(Mp,instance,of) result(postResults)
          postResults(c+i) = math_mul33xx33(Mp,prm%Schmid_twin(1:3,1:3,i))
        enddo
        c = c + prm%totalNtwin
-
-     case (totalshear_ID)
-       postResults(c+1_pInt) = stt%sumGamma(of)
-       c = c + 1_pInt
-     case (totalvolfrac_twin_ID)
-       postResults(c+1_pInt) = stt%sumF(of)
-       c = c + 1_pInt
 
    end select
  enddo outputsLoop
