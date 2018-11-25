@@ -79,7 +79,6 @@ module plastic_phenopowerlaw
 
  type, private :: tPhenopowerlawState
    real(pReal), pointer, dimension(:) :: &
-     sumGamma, &                                                                                    ! ToDo: why not make a dependent state?
      sumF                                                                                           ! ToDo: why not make a dependent state?
    real(pReal), pointer, dimension(:,:) :: &
      xi_slip, &
@@ -351,7 +350,7 @@ subroutine plastic_phenopowerlaw_init
    NipcMyPhase = count(material_phase == p)                                                         ! number of IPCs containing my phase
    sizeState = size(['tau_slip  ','gamma_slip']) * prm%TotalNslip &
              + size(['tau_twin  ','gamma_twin']) * prm%TotalNtwin &
-             + size(['sum(gamma)','sum(f)    '])                                                    ! ToDo: only needed if either twin or slip active!
+             + size(['sum(f)    '])                                                    ! ToDo: only needed if either twin or slip active!
    sizeDotState = sizeState
 
    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0_pInt, &
@@ -374,12 +373,6 @@ subroutine plastic_phenopowerlaw_init
    stt%xi_twin = spread(prm%xi_twin_0, 2, NipcMyPhase)
    dot%xi_twin => plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolResistance
-
-   startIndex = endIndex + 1_pInt
-   endIndex   = endIndex + 1_pInt
-   stt%sumGamma => plasticState(p)%state   (startIndex,:)
-   dot%sumGamma => plasticState(p)%dotState(startIndex,:)
-   plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolShear
 
    startIndex = endIndex + 1_pInt
    endIndex   = endIndex + 1_pInt
@@ -482,7 +475,7 @@ subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
    i
  real(pReal) :: &
    c_SlipSlip,c_TwinSlip,c_TwinTwin, &
-   xi_slip_sat_offset
+   xi_slip_sat_offset,sumGamma
 
  real(pReal), dimension(param(instance)%totalNslip) :: &
    left_SlipSlip,right_SlipSlip, &
@@ -494,11 +487,12 @@ subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
  associate(prm => param(instance),  stt => state(instance),  dot => dotState(instance))
 
  dot%whole(:,of) = 0.0_pReal
+ sumGamma = sum(stt%gamma_slip(:,of))
 
 !--------------------------------------------------------------------------------------------------
 ! system-independent (nonlinear) prefactors to M_Xx (X influenced by x) matrices
  c_SlipSlip = prm%h0_slipslip * (1.0_pReal + prm%twinC*stt%sumF(of)** prm%twinB)
- c_TwinSlip = prm%h0_TwinSlip * stt%sumGamma(of)**prm%twinE
+ c_TwinSlip = prm%h0_TwinSlip * sumGamma**prm%twinE
  c_TwinTwin = prm%h0_TwinTwin * stt%sumF(of)**prm%twinD
 
 !--------------------------------------------------------------------------------------------------
@@ -512,7 +506,6 @@ subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
 ! shear rates
  call kinetics_slip(prm,stt,of,Mp,gdot_slip_pos,gdot_slip_neg)
  dot%gamma_slip(:,of) = abs(gdot_slip_pos+gdot_slip_neg)
- dot%sumGamma(of) = sum(dot%gamma_slip(:,of))
  call kinetics_twin(prm,stt,of,Mp,dot%gamma_twin(:,of))
  if (prm%totalNtwin > 0_pInt) dot%sumF(of) = merge(sum(dot%gamma_twin(:,of)/prm%gamma_twin_char), &
                                                    0.0_pReal, &
