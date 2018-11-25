@@ -40,7 +40,6 @@ module plastic_kinehardening
                  chi0_ID, &                                                                         !< backstress at last switch of stress sense (positive?)
                  gamma0_ID, &                                                                       !< accumulated shear at last switch of stress sense (at current switch?)
                  accshear_ID, &
-                 sumGamma_ID, &
                  shearrate_ID, &
                  resolvedstress_ID
                 
@@ -260,9 +259,6 @@ subroutine plastic_kinehardening_init(fileUnit)
            case ('accumulatedshear')
              output_ID = accshear_ID
 
-           case ('totalshear')
-             output_ID = sumGamma_ID
-
            case ('shearrate')
              output_ID = shearrate_ID
 
@@ -399,8 +395,6 @@ subroutine plastic_kinehardening_init(fileUnit)
               shearrate_ID, &
               resolvedstress_ID)
            mySize = nSlip
-         case(sumGamma_ID)
-           mySize = 1_pInt
          case default
        end select
 
@@ -919,10 +913,6 @@ function plastic_kinehardening_postResults(Mp,ipc,ip,el)
      case (accshear_ID)
        plastic_kinehardening_postResults(c+1_pInt:c+nSlip) = state(instance)%accshear(:,of)
        c = c + nSlip
-       
-     case (sumGamma_ID)
-       plastic_kinehardening_postResults(c+1_pInt) = state(instance)%sumGamma(of)
-       c = c + 1_pInt  
        
      case (shearrate_ID)
        plastic_kinehardening_postResults(c+1_pInt:c+nSlip) = gdot_pos+gdot_neg
