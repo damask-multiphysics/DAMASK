@@ -278,6 +278,7 @@ subroutine plastic_phenopowerlaw_init
    else twinActive
      allocate(prm%interaction_TwinTwin(0,0))
      allocate(prm%xi_twin_0(0))
+     allocate(prm%gamma_twin_char(0))
    endif twinActive
 
 !--------------------------------------------------------------------------------------------------
