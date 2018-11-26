@@ -1021,30 +1021,33 @@ pure subroutine kinetics(prm,stt,of,Mp,gdot_pos,gdot_neg, &
                            0.0_pReal, nonSchmidActive)
  enddo
 
+ tau_pos = tau_pos - stt%crss_back(:,of)
+ tau_neg = tau_neg - stt%crss_back(:,of)
+
  where(dNeq0(tau_pos))
-   gdot_pos = prm%gdot0 * merge(0.5_pReal,1.0_pReal, nonSchmidActive) &                   ! 1/2 if non-Schmid active
-            * sign(abs((tau_pos-stt%crss_back(:,of))/stt%crss(:,of))**prm%n_slip,  tau_pos-stt%crss_back(:,of))
+   gdot_pos = prm%gdot0 * merge(0.5_pReal,1.0_pReal, nonSchmidActive) &                             ! 1/2 if non-Schmid active
+            * sign(abs(tau_pos/stt%crss(:,of))**prm%n_slip,  tau_pos)
  else where
    gdot_pos = 0.0_pReal
  end where
 
  where(dNeq0(tau_neg))
-   gdot_pos = prm%gdot0 * 0.5_pReal &                                                    ! only used if non-Schmid active, always 1/2
-            * sign(abs((tau_pos-stt%crss_back(:,of))/stt%crss(:,of))**prm%n_slip,  tau_pos-stt%crss_back(:,of))
+   gdot_neg = prm%gdot0 * 0.5_pReal &                                                               ! only used if non-Schmid active, always 1/2
+            * sign(abs(tau_neg/stt%crss(:,of))**prm%n_slip,  tau_neg)
  else where
    gdot_neg = 0.0_pReal
  end where
 
  if (present(dgdot_dtau_pos)) then
    where(dNeq0(gdot_pos))
-     !dgdot_dtau_slip_pos = gdot_slip_pos*prm%n_slip/tau_slip_pos
+     dgdot_dtau_pos = gdot_pos*prm%n_slip/tau_pos
    else where
      dgdot_dtau_pos = 0.0_pReal
    end where
  endif
  if (present(dgdot_dtau_neg)) then
    where(dNeq0(gdot_neg))
-  !   dgdot_dtau_slip_neg = gdot_slip_neg*prm%n_slip/tau_slip_neg
+     dgdot_dtau_neg = gdot_neg*prm%n_slip/tau_neg
    else where
      dgdot_dtau_neg = 0.0_pReal
    end where
