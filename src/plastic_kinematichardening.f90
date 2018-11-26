@@ -265,6 +265,11 @@ subroutine plastic_kinehardening_init(fileUnit)
      prm%theta1_b                 = config_phase(p)%getFloats('theta1_b', requiredShape=shape(prm%Nslip))
 
 
+     prm%gdot0           = config_phase(p)%getFloat('gdot0')
+     prm%n_slip               = config_phase(p)%getFloat('n_slip')
+
+
+
      !prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
      !                                                        config_phase(p)%getFloats('interaction_slipslip'), &
      !                                                        structure(1:3))
@@ -972,5 +977,79 @@ function plastic_kinehardening_postResults(Mp,ipc,ip,el) result(postResults)
  enddo outputsLoop
 
 end function plastic_kinehardening_postResults
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates shear rates on slip systems and derivatives with respect to resolved stress
+!> @details: Shear rates are calculated only optionally. NOTE: Against the common convention, the
+!> result (i.e. intent(out)) variables are the last to have the optional arguments at the end
+!--------------------------------------------------------------------------------------------------
+pure subroutine kinetics(prm,stt,of,Mp,gdot_pos,gdot_neg, &
+                           dgdot_dtau_pos,dgdot_dtau_neg)
+ use prec, only: &
+  dNeq0
+ use math, only: &
+   math_mul33xx33
+
+ implicit none
+ type(tParameters), intent(in) :: &
+   prm
+ type(tKinehardeningState), intent(in) :: &
+   stt
+ integer(pInt),     intent(in) :: &
+   of
+ real(pReal), dimension(prm%totalNslip), intent(out) :: &
+   gdot_pos, &
+   gdot_neg
+ real(pReal), dimension(prm%totalNslip), optional, intent(out) :: &
+   dgdot_dtau_pos, &
+   dgdot_dtau_neg
+ real(pReal), dimension(3,3), intent(in) :: &
+   Mp
+
+ real(pReal), dimension(prm%totalNslip) :: &
+   tau_pos, &
+   tau_neg
+ integer(pInt) :: i
+ logical       :: nonSchmidActive
+
+ nonSchmidActive = size(prm%nonSchmidCoeff) > 0_pInt
+
+ do i = 1_pInt, prm%totalNslip
+   tau_pos(i) =       math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i))
+   tau_neg(i) = merge(math_mul33xx33(Mp,prm%nonSchmid_neg(1:3,1:3,i)), &
+                           0.0_pReal, nonSchmidActive)
+ enddo
+
+ where(dNeq0(tau_pos))
+   gdot_pos = prm%gdot0 * merge(0.5_pReal,1.0_pReal, nonSchmidActive) &                   ! 1/2 if non-Schmid active
+            * sign(abs((tau_pos-stt%crss_back(:,of))/stt%crss(:,of))**prm%n_slip,  tau_pos-stt%crss_back(:,of))
+ else where
+   gdot_pos = 0.0_pReal
+ end where
+
+ where(dNeq0(tau_neg))
+   gdot_pos = prm%gdot0 * 0.5_pReal &                                                    ! only used if non-Schmid active, always 1/2
+            * sign(abs((tau_pos-stt%crss_back(:,of))/stt%crss(:,of))**prm%n_slip,  tau_pos-stt%crss_back(:,of))
+ else where
+   gdot_neg = 0.0_pReal
+ end where
+
+ if (present(dgdot_dtau_pos)) then
+   where(dNeq0(gdot_pos))
+     !dgdot_dtau_slip_pos = gdot_slip_pos*prm%n_slip/tau_slip_pos
+   else where
+     dgdot_dtau_pos = 0.0_pReal
+   end where
+ endif
+ if (present(dgdot_dtau_neg)) then
+   where(dNeq0(gdot_neg))
+  !   dgdot_dtau_slip_neg = gdot_slip_neg*prm%n_slip/tau_slip_neg
+   else where
+     dgdot_dtau_neg = 0.0_pReal
+   end where
+ endif
+
+end subroutine kinetics
 
 end module plastic_kinehardening
