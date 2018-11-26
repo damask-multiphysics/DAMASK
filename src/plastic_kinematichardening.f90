@@ -12,9 +12,6 @@ module plastic_kinehardening
  
  implicit none
  private
- integer(pInt),                       dimension(:),     allocatable,         public, protected :: &
-   plastic_kinehardening_sizePostResults                                                            !< cumulative size of post results
-   
  integer(pInt),                       dimension(:,:),   allocatable, target, public :: &
    plastic_kinehardening_sizePostResult                                                             !< size of each post result output
    
@@ -210,7 +207,6 @@ subroutine plastic_kinehardening_init(fileUnit)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a,1x,i5,/)') '# instances:',maxNinstance                                      
    
- allocate(plastic_kinehardening_sizePostResults(maxNinstance),               source=0_pInt)
  allocate(plastic_kinehardening_sizePostResult(maxval(phase_Noutput),maxNinstance), &
                                                                              source=0_pInt)
  allocate(plastic_kinehardening_output(maxval(phase_Noutput),maxNinstance))
@@ -224,9 +220,9 @@ subroutine plastic_kinehardening_init(fileUnit)
  allocate(state0(maxNinstance))
  allocate(dotState(maxNinstance))
  allocate(deltaState(maxNinstance))
-  
  do p = 1_pInt, size(phase_plasticityInstance)
    if (phase_plasticity(p) /= PLASTICITY_KINEHARDENING_ID) cycle
+     instance = phase_plasticityInstance(p)                                                     ! which instance of my phase
    associate(prm => paramNew(phase_plasticityInstance(p)), &
              dot => dotState(phase_plasticityInstance(p)), &
              delta => deltaState(phase_plasticityInstance(p)), &
@@ -294,16 +290,30 @@ subroutine plastic_kinehardening_init(fileUnit)
         case ('resolvedstress')
           outputID = merge(resolvedstress_ID,undefined_ID,prm%totalNslip>0_pInt)
           outputSize = prm%totalNslip
+        case ('backstress')
+          outputID = merge(crss_back_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputSize = prm%totalNslip
+        case ('sense')
+          outputID = merge(sense_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputSize = prm%totalNslip
+        case ('chi0')
+          outputID = merge(chi0_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputSize = prm%totalNslip
+        case ('gamma0')
+          outputID = merge(gamma0_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputSize = prm%totalNslip
 
       end select
 
-      !if (outputID /= undefined_ID) then
-      !  plastic_kinehardening_output(i,phase_plasticityInstance(p)) = outputs(i)
-      !  plastic_kinehardening_sizePostResult(i,phase_plasticityInstance(p)) = outputSize
-      !  prm%outputID = [prm%outputID , outputID]
-      !endif
+      if (outputID /= undefined_ID) then
+        plastic_kinehardening_Noutput(instance) = plastic_kinehardening_Noutput(instance) + 1_pInt
+        plastic_kinehardening_output(i,phase_plasticityInstance(p)) = outputs(i)
+        plastic_kinehardening_sizePostResult(i,phase_plasticityInstance(p)) = outputSize
+        prm%outputID = [prm%outputID , outputID]
+      endif
 
    end do
+param(instance)%outputID = prm%outputID
    nslip = prm%totalNslip
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
@@ -320,6 +330,7 @@ subroutine plastic_kinehardening_init(fileUnit)
      NipcMyPhase = count(material_phase == p)                                                   ! number of IPCs containing my phase
      call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,sizeDeltaState, &
                                         nSlip,0_pInt,0_pInt)
+     plasticState(p)%sizePostResults = sum(plastic_kinehardening_sizePostResult(:,phase_plasticityInstance(p)))
      plasticState(p)%offsetDeltaState = sizeDotState
 
 
@@ -412,7 +423,6 @@ subroutine plastic_kinehardening_init(fileUnit)
        allocate(param(instance)%nonSchmidCoeff(Nchunks_nonSchmid),      source=0.0_pReal)
        if(allocated(tempPerSlip)) deallocate(tempPerSlip)
        allocate(tempPerSlip(Nchunks_SlipFamilies))
-       allocate(param(instance)%outputID(0))
      endif
      cycle                                                                                          ! skip to next line
    endif
@@ -420,41 +430,7 @@ subroutine plastic_kinehardening_init(fileUnit)
      chunkPos = IO_stringPos(line)
      tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                              ! extract key
      select case(tag)
-       case ('(output)')
-         output_ID = undefined_ID
-         select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
-           case ('resistance')
-             output_ID = crss_ID
 
-           case ('backstress')
-             output_ID = crss_back_ID
-
-           case ('sense')
-             output_ID = sense_ID
-
-           case ('chi0')
-             output_ID = chi0_ID
-
-           case ('gamma0')
-             output_ID = gamma0_ID
-
-           case ('accumulatedshear')
-             output_ID = accshear_ID
-
-           case ('shearrate')
-             output_ID = shearrate_ID
-
-           case ('resolvedstress')
-             output_ID = resolvedstress_ID
-
-         end select
-
-         if (output_ID /= undefined_ID) then
-           plastic_kinehardening_Noutput(instance) = plastic_kinehardening_Noutput(instance) + 1_pInt
-           plastic_kinehardening_output(plastic_kinehardening_Noutput(instance),instance) = &
-                                                          IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           param(instance)%outputID = [param(instance)%outputID, output_ID]
-         endif
 
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on number of slip families 
@@ -511,12 +487,6 @@ subroutine plastic_kinehardening_init(fileUnit)
              
        case ('n_slip')
          param(instance)%n_slip                   = IO_floatValue(line,chunkPos,2_pInt)
-             
-       case ('atol_resistance')
-         param(instance)%aTolResistance           = IO_floatValue(line,chunkPos,2_pInt)
-       
-       case ('atol_shear')
-         param(instance)%aTolShear                = IO_floatValue(line,chunkPos,2_pInt)
                
        case default
 
@@ -556,32 +526,7 @@ subroutine plastic_kinehardening_init(fileUnit)
        extmsg = trim(extmsg)//' ('//PLASTICITY_KINEHARDENING_label//')'                                 ! prepare error message identifier
        call IO_error(211_pInt,ip=instance,ext_msg=extmsg)
      endif
-     
-
-!--------------------------------------------------------------------------------------------------
-!  Determine size of postResults array
-     
-     outputsLoop: do o = 1_pInt,plastic_kinehardening_Noutput(instance)
-       select case(param(instance)%outputID(o))
-         case(crss_ID, &                                                                                           !< critical resolved stress
-              crss_back_ID, &                                                                                      !< critical resolved back stress
-              sense_ID, &                                                                                          !< sense of acting shear stress (-1 or +1)
-              chi0_ID, &                                                                                           !< backstress at last switch of stress sense
-              gamma0_ID, &                                                                                         !< accumulated shear at last switch of stress sense
-              accshear_ID, &
-              shearrate_ID, &
-              resolvedstress_ID)
-           mySize = nSlip
-         case default
-       end select
-
-       outputFound: if (mySize > 0_pInt) then
-         plastic_kinehardening_sizePostResult(o,instance) = mySize
-         plastic_kinehardening_sizePostResults(instance)  = plastic_kinehardening_sizePostResults(instance) + mySize
-       endif outputFound
-     enddo outputsLoop     
-
-     plasticState(phase)%sizePostResults = plastic_kinehardening_sizePostResults(instance)
+   
     
      offset_slip = plasticState(phase)%nSlip+plasticState(phase)%nTwin+2_pInt
      plasticState(phase)%slipRate => &
@@ -957,9 +902,8 @@ function plastic_kinehardening_postResults(Mp,ipc,ip,el) result(postResults)
    ip, &                                                                                            !< integration point
    el                                                                                               !< element                                                                                        !< microstructure state
 
- real(pReal), dimension(plastic_kinehardening_sizePostResults(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
+ real(pReal), dimension(sum(plastic_kinehardening_sizePostResult(:,phase_plasticityInstance(material_phase(ipc,ip,el))))) :: &
    postResults
-
  integer(pInt) :: &
    instance,ph, of, &
    nSlip,&
