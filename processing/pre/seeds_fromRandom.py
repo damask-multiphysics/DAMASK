@@ -127,7 +127,7 @@ options.fraction = np.array(options.fraction)
 options.grid = np.array(options.grid)
 gridSize = options.grid.prod()
 
-if options.randomSeed is None: options.randomSeed = int(os.urandom(4).encode('hex'), 16)
+if options.randomSeed is None: options.randomSeed = int(os.urandom(4).hex(), 16)
 np.random.seed(options.randomSeed)                                                                  # init random generators
 random.seed(options.randomSeed)
 
