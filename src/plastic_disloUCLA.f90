@@ -774,14 +774,14 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
 
  integer(pInt) :: instance,ph,of,ns,f,i,j,k,l,m,n,index_myFamily
  real(pReal) :: StressRatio_p,StressRatio_pminus1,BoltzmannRatio,DotGamma0, &
-                tau_slip_pos,tau_slip_neg,vel_slip,dvel_slip,&
-                dgdot_dtauslip_pos,dgdot_dtauslip_neg,stressRatio
+                vel_slip,dvel_slip,&
+                stressRatio
  real(pReal), dimension(3,3,2) :: &
    nonSchmid_tensor
  real(pReal), dimension(3,3,3,3) :: &
    dLp_dTstar3333
  real(pReal), dimension(plastic_disloUCLA_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
-   gdot_slip_pos,gdot_slip_neg
+   gdot_slip_pos,gdot_slip_neg,tau_slip_pos,tau_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg
    
  !* Shortened notation
  of = phasememberAt(ipc,ip,el)
@@ -811,14 +811,14 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
         state(instance)%rhoEdge(j,of)*plastic_disloUCLA_burgersPerSlipSystem(j,instance)*&
         plastic_disloUCLA_v0PerSlipSystem(j,instance)
      !* Resolved shear stress on slip system
-     tau_slip_pos  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
-     tau_slip_neg  = tau_slip_pos
+     tau_slip_pos(j)  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
+     tau_slip_neg(j)  = tau_slip_pos(j)
      nonSchmid_tensor(1:3,1:3,1) = lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
      nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,1)
      nonSchmidSystems: do k = 1,lattice_NnonSchmid(ph) 
-       tau_slip_pos = tau_slip_pos + plastic_disloUCLA_nonSchmidCoeff(k,instance)* &
+       tau_slip_pos(j) = tau_slip_pos(j) + plastic_disloUCLA_nonSchmidCoeff(k,instance)* &
                                    dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k,  index_myFamily+i,ph))
-       tau_slip_neg = tau_slip_neg + plastic_disloUCLA_nonSchmidCoeff(k,instance)* &
+       tau_slip_neg(j) = tau_slip_neg(j) + plastic_disloUCLA_nonSchmidCoeff(k,instance)* &
                                    dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,ph))
        nonSchmid_tensor(1:3,1:3,1) = nonSchmid_tensor(1:3,1:3,1) + plastic_disloUCLA_nonSchmidCoeff(k,instance)*&
                                            lattice_Sslip(1:3,1:3,2*k,  index_myFamily+i,ph)
@@ -826,9 +826,9 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
                                            lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph)
      enddo nonSchmidSystems
 
-     significantPostitiveStress: if((abs(tau_slip_pos)-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
+     significantPostitiveStress: if((abs(tau_slip_pos(j))-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
        !* Stress ratio
-       stressRatio = ((abs(tau_slip_pos)-state(instance)%threshold_stress_slip(j,of))/&
+       stressRatio = ((abs(tau_slip_pos(j))-state(instance)%threshold_stress_slip(j,of))/&
                       (plastic_disloUCLA_SolidSolutionStrength(instance)+&
                        plastic_disloUCLA_tau_peierlsPerSlipFamily(f,instance)))
        stressRatio_p       = stressRatio** plastic_disloUCLA_pPerSlipFamily(f,instance)
@@ -837,10 +837,10 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
        vel_slip = 2.0_pReal*plastic_disloUCLA_burgersPerSlipFamily(f,instance) &
                      * plastic_disloUCLA_kinkheight(f,instance) * plastic_disloUCLA_omega(f,instance)  &
                      * ( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) ) &
-                     * (tau_slip_pos  &
+                     * (tau_slip_pos(j)  &
                      * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance)) ) &
                      / ( &
-                     2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal)*tau_slip_pos &
+                     2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal)*tau_slip_pos(j) &
                      + plastic_disloUCLA_omega(f,instance) * plastic_disloUCLA_friction(f,instance) &
                      *(( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) )**2.0_pReal) &
                      * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance))  &
@@ -848,7 +848,7 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
  
        gdot_slip_pos(j) = DotGamma0 &
                        * vel_slip & 
-                       * sign(1.0_pReal,tau_slip_pos) 
+                       * sign(1.0_pReal,tau_slip_pos(j)) 
 
        !* Derivatives of shear rates                                                                                                              
        dvel_slip = &
@@ -857,19 +857,19 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
           * ( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) ) &
           * ( &
              (exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance)) &
-          + tau_slip_pos &
+          + tau_slip_pos(j) &
           * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance)))&    !deltaf(i)                                                  
           *BoltzmannRatio*plastic_disloUCLA_pPerSlipFamily(f,instance)&
           *plastic_disloUCLA_qPerSlipFamily(f,instance)/&
           (plastic_disloUCLA_SolidSolutionStrength(instance)+plastic_disloUCLA_tau_peierlsPerSlipFamily(f,instance))*&
           StressRatio_pminus1*(1-StressRatio_p)**(plastic_disloUCLA_qPerSlipFamily(f,instance)-1.0_pReal)  ) &!deltaf(f)                                                 
              ) &
-          *  (2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal)*tau_slip_pos &
+          *  (2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal)*tau_slip_pos(j) &
           +  plastic_disloUCLA_omega(f,instance) * plastic_disloUCLA_friction(f,instance) &
           *(( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) )**2.0_pReal) &
           * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance))  &
              ) &
-          -  (tau_slip_pos &
+          -  (tau_slip_pos(j) &
           * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance)) )  &
           *  (2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal) &
           +  plastic_disloUCLA_omega(f,instance) * plastic_disloUCLA_friction(f,instance) &
@@ -883,18 +883,18 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
             )  &
           / (  &
              ( &
-           2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal)*tau_slip_pos &
+           2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal)*tau_slip_pos(j) &
            + plastic_disloUCLA_omega(f,instance) * plastic_disloUCLA_friction(f,instance) &
            *(( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) )**2.0_pReal) &
            * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance))  &
              )**2.0_pReal &
             )
-       dgdot_dtauslip_pos = DotGamma0 * dvel_slip
+       dgdot_dtauslip_pos(j) = DotGamma0 * dvel_slip
 
      endif significantPostitiveStress
-     significantNegativeStress: if((abs(tau_slip_neg)-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
+     significantNegativeStress: if((abs(tau_slip_neg(j))-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
        !* Stress ratio
-       stressRatio = ((abs(tau_slip_neg)-state(instance)%threshold_stress_slip(j,of))/&
+       stressRatio = ((abs(tau_slip_neg(j))-state(instance)%threshold_stress_slip(j,of))/&
                       (plastic_disloUCLA_SolidSolutionStrength(instance)+&
                        plastic_disloUCLA_tau_peierlsPerSlipFamily(f,instance)))
        stressRatio_p       = stressRatio** plastic_disloUCLA_pPerSlipFamily(f,instance)
@@ -903,10 +903,10 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
        vel_slip = 2.0_pReal*plastic_disloUCLA_burgersPerSlipFamily(f,instance) &
                      * plastic_disloUCLA_kinkheight(f,instance) * plastic_disloUCLA_omega(f,instance)  &
                      * ( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) ) &
-                     * (tau_slip_neg  &
+                     * (tau_slip_neg(j)  &
                      * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance)) ) &
                      / ( &
-                     2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal)*tau_slip_neg &
+                     2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal)*tau_slip_neg(j) &
                      + plastic_disloUCLA_omega(f,instance) * plastic_disloUCLA_friction(f,instance) &
                      *(( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) )**2.0_pReal) &
                      * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance))  &
@@ -914,7 +914,7 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
                 
        gdot_slip_neg(j) = DotGamma0 &
                        * vel_slip & 
-                       * sign(1.0_pReal,tau_slip_neg) 
+                       * sign(1.0_pReal,tau_slip_neg(j)) 
 
        !* Derivatives of shear rates                                                                                                              
        dvel_slip = &
@@ -923,19 +923,19 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
           * ( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) ) &
           * ( &
              (exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance)) &
-          + tau_slip_neg &
+          + tau_slip_neg(j) &
           * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance)))&    !deltaf(i)                                                  
           *BoltzmannRatio*plastic_disloUCLA_pPerSlipFamily(f,instance)&
           *plastic_disloUCLA_qPerSlipFamily(f,instance)/&
           (plastic_disloUCLA_SolidSolutionStrength(instance)+plastic_disloUCLA_tau_peierlsPerSlipFamily(f,instance))*&
           StressRatio_pminus1*(1-StressRatio_p)**(plastic_disloUCLA_qPerSlipFamily(f,instance)-1.0_pReal)  ) &!deltaf(f)                                                 
              ) &
-          *  (2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal)*tau_slip_neg &
+          *  (2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal)*tau_slip_neg(j) &
           +  plastic_disloUCLA_omega(f,instance) * plastic_disloUCLA_friction(f,instance) &
           *(( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) )**2.0_pReal) &
           * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance))  &
              ) &
-          -  (tau_slip_neg &
+          -  (tau_slip_neg(j) &
           * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance)) )  &
           *  (2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal) &
           +  plastic_disloUCLA_omega(f,instance) * plastic_disloUCLA_friction(f,instance) &
@@ -949,14 +949,14 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
             )  &
           / (  &
              ( &
-           2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal)*tau_slip_neg &
+           2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal)*tau_slip_neg(j) &
            + plastic_disloUCLA_omega(f,instance) * plastic_disloUCLA_friction(f,instance) &
            *(( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) )**2.0_pReal) &
            * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance))  &
              )**2.0_pReal &
             )
 
-       dgdot_dtauslip_neg = DotGamma0 * dvel_slip
+       dgdot_dtauslip_neg(j) = DotGamma0 * dvel_slip
 
      endif significantNegativeStress
      !* Plastic velocity gradient for dislocation glide
@@ -964,8 +964,8 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
      !* Calculation of the tangent of Lp
      forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
         dLp_dTstar3333(k,l,m,n) = &
-        dLp_dTstar3333(k,l,m,n) + (dgdot_dtauslip_pos*nonSchmid_tensor(m,n,1)+&
-                                   dgdot_dtauslip_neg*nonSchmid_tensor(m,n,2))*0.5_pReal*&
+        dLp_dTstar3333(k,l,m,n) + (dgdot_dtauslip_pos(j)*nonSchmid_tensor(m,n,1)+&
+                                   dgdot_dtauslip_neg(j)*nonSchmid_tensor(m,n,2))*0.5_pReal*&
                                    lattice_Sslip(k,l,1,index_myFamily+i,ph)
    enddo slipSystems
  enddo slipFamilies
