@@ -84,6 +84,26 @@ module plastic_disloUCLA
                  edge_dipole_distance_ID, &
                  stress_exponent_ID
  end enum
+
+ type, private :: tParameters
+   real(pReal),                 allocatable, dimension(:) :: &
+     nonSchmidCoeff
+   real(pReal),                 allocatable, dimension(:,:) :: &
+     interaction_SlipSlip                                                                           !< slip resistance from slip activity
+   real(pReal),                 allocatable, dimension(:,:,:) :: &
+     Schmid_slip, &
+     Schmid_twin, &
+     nonSchmid_pos, &
+     nonSchmid_neg
+   integer(pInt) :: &
+     totalNslip                                                                                     !< total number of active slip system
+   integer(pInt),               allocatable, dimension(:) :: &
+     Nslip                                                                                          !< number of active slip systems for each family
+   integer(kind(undefined_ID)), allocatable, dimension(:) :: &
+     outputID                                                                                       !< ID of each post result output
+ end type                                                                                           !< container type for internal constitutive parameters
+
+ type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
  integer(kind(undefined_ID)),         dimension(:,:),         allocatable,          private :: & 
    plastic_disloUCLA_outputID                                                                       !< ID of each post result output
  
@@ -155,7 +175,8 @@ subroutine plastic_disloUCLA_init(fileUnit)
    plasticState, &
 material_allocatePlasticState
  use config, only: &
-   MATERIAL_partPhase
+   MATERIAL_partPhase, &
+   config_phase
  use lattice
  
  implicit none
@@ -167,13 +188,18 @@ material_allocatePlasticState
                   Nchunks_SlipSlip = 0_pInt, &
                   Nchunks_SlipFamilies = 0_pInt,Nchunks_nonSchmid = 0_pInt, &
                   offset_slip, index_myFamily, index_otherFamily, &
-                  startIndex, endIndex
+                  startIndex, endIndex, p
  integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
  integer(pInt) :: NofMyPhase
  character(len=65536) :: &
+   structure = '',&
    tag  = '', &
    line = ''
  real(pReal), dimension(:), allocatable :: tempPerSlip
+
+ integer(pInt),          dimension(0), parameter :: emptyIntArray    = [integer(pInt)::]
+ real(pReal),            dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
+ character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
   
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_DISLOUCLA_label//' init  -+>>>'
  write(6,'(/,a)')   ' Cereceda et al., International Journal of Plasticity 78, 2016, 242-256'
@@ -225,6 +251,43 @@ material_allocatePlasticState
 
  allocate(plastic_disloUCLA_nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstance),        source=0.0_pReal)
  
+ allocate(param(maxNinstance))
+ allocate(state(maxNinstance))
+ allocate(state0(maxNinstance))
+ allocate(dotState(maxNinstance))
+
+
+do p = 1_pInt, size(phase_plasticityInstance)
+   if (phase_plasticity(p) /= PLASTICITY_DISLOUCLA_ID) cycle
+   associate(prm => param(phase_plasticityInstance(p)), &
+             dot => dotState(phase_plasticityInstance(p)), &
+             stt => state(phase_plasticityInstance(p)))
+
+   structure          = config_phase(p)%getString('lattice_structure')
+
+
+!--------------------------------------------------------------------------------------------------
+! slip related parameters
+   prm%Nslip      = config_phase(p)%getInts('nslip',defaultVal=emptyIntArray)
+   prm%totalNslip = sum(prm%Nslip)
+   slipActive: if (prm%totalNslip > 0_pInt) then
+     prm%Schmid_slip          = lattice_SchmidMatrix_slip(prm%Nslip,structure(1:3),&
+                                                          config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal))
+     if(structure=='bcc') then
+       prm%nonSchmidCoeff     = config_phase(p)%getFloats('nonschmid_coefficients',&
+                                                          defaultVal = emptyRealArray)
+       prm%nonSchmid_pos      = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1_pInt)
+       prm%nonSchmid_neg      = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1_pInt)
+     else
+       prm%nonSchmid_pos      = prm%Schmid_slip
+       prm%nonSchmid_neg      = prm%Schmid_slip
+     endif
+     prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
+                                                             config_phase(p)%getFloats('interaction_slipslip'), &
+                                                             structure(1:3))
+   endif slipActive
+   end associate
+ enddo
 
  rewind(fileUnit)
  phase = 0_pInt
@@ -442,10 +505,7 @@ material_allocatePlasticState
                                                             maxNinstance), source=0.0_pReal)
  allocate(plastic_disloUCLA_forestProjectionEdge(maxTotalNslip,maxTotalNslip,maxNinstance), &
                                                                                        source=0.0_pReal)
- 
- allocate(state(maxNinstance))
- allocate(state0(maxNinstance))
- allocate(dotState(maxNinstance))
+
 
  initializeInstances: do phase = 1_pInt, size(phase_plasticity)
    myPhase2: if (phase_plasticity(phase) == PLASTICITY_disloUCLA_ID) then
