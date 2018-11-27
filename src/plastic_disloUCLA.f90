@@ -152,7 +152,8 @@ subroutine plastic_disloUCLA_init(fileUnit)
    PLASTICITY_DISLOUCLA_label, &
    PLASTICITY_DISLOUCLA_ID, &
    material_phase, &
-   plasticState
+   plasticState, &
+material_allocatePlasticState
  use config, only: &
    MATERIAL_partPhase
  use lattice
@@ -486,29 +487,11 @@ subroutine plastic_disloUCLA_init(fileUnit)
                       + int(size(['invLambdaSlip     ',&
                                   'meanFreePathSlip  ','tauSlipThreshold  ']),pInt) * ns
 
-     plasticState(phase)%sizeState = sizeState
-     plasticState(phase)%sizeDotState = sizeDotState
-     plasticState(phase)%sizeDeltaState = sizeDeltaState
-     plasticState(phase)%sizePostResults = plastic_disloUCLA_sizePostResults(instance)
-     plasticState(phase)%nSlip = plastic_disloucla_totalNslip(instance)
-     plasticState(phase)%nTwin = 0_pInt
-     plasticState(phase)%nTrans= 0_pInt
-     allocate(plasticState(phase)%aTolState           (sizeState),                source=0.0_pReal)
-     allocate(plasticState(phase)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
-     allocate(plasticState(phase)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
-     allocate(plasticState(phase)%subState0           (sizeState,NofMyPhase),     source=0.0_pReal)
-     allocate(plasticState(phase)%state               (sizeState,NofMyPhase),     source=0.0_pReal)
+   call material_allocatePlasticState(phase,NofMyPhase,sizeState,sizeDotState,0_pInt, &
+                                      ns,0_pInt,0_pInt)
 
-     allocate(plasticState(phase)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
-     if (any(numerics_integrator == 1_pInt)) then
-       allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
-       allocate(plasticState(phase)%previousDotState2 (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     endif
-     if (any(numerics_integrator == 4_pInt)) &
-       allocate(plasticState(phase)%RK4dotState       (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     if (any(numerics_integrator == 5_pInt)) &
-       allocate(plasticState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)
+plasticState(phase)%sizePostResults = plastic_disloUCLA_sizePostResults(instance)
+
      offset_slip = 2_pInt*plasticState(phase)%nSlip
      plasticState(phase)%slipRate => &
        plasticState(phase)%dotState(offset_slip+1:offset_slip+plasticState(phase)%nSlip,1:NofMyPhase)
