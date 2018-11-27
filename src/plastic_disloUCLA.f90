@@ -1241,6 +1241,123 @@ function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
         plastic_disloUCLA_postResults(c+1_pInt:c+ns) = state(instance)%rhoEdgeDip(1_pInt:ns,of)
         c = c + ns
       case (shear_rate_slip_ID,stress_exponent_ID)
+ call kinetics(Tstar_v,Temperature,ipc,ip,el, &                                                
+                 gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
+
+        if     (plastic_disloUCLA_outputID(o,instance) == shear_rate_slip_ID) then
+          plastic_disloUCLA_postResults(c+1:c+ns) = (gdot_slip_pos + gdot_slip_neg)*0.5_pReal
+          c = c + ns
+        elseif(plastic_disloUCLA_outputID(o,instance) == stress_exponent_ID) then
+          do j = 1_pInt, ns
+            if (dEq(gdot_slip_pos(j)+gdot_slip_neg(j),0.0_pReal)) then
+              plastic_disloUCLA_postResults(c+j) = 0.0_pReal
+            else
+              plastic_disloUCLA_postResults(c+j) = (tau_slip_pos(j)+tau_slip_neg(j))/&
+                                                       (gdot_slip_pos(j)+gdot_slip_neg(j))*&
+                                                       (dgdot_dtauslip_pos(j)+dgdot_dtauslip_neg(j))* 0.5_pReal
+            endif
+          enddo
+           c = c + ns
+        endif
+
+      case (accumulated_shear_slip_ID)
+       plastic_disloUCLA_postResults(c+1_pInt:c+ns) = &
+                      state(instance)%accshear_slip(1_pInt:ns, of)
+        c = c + ns
+      case (mfp_slip_ID)
+        plastic_disloUCLA_postResults(c+1_pInt:c+ns) =&
+                      state(instance)%mfp_slip(1_pInt:ns, of)
+        c = c + ns
+      case (resolved_stress_slip_ID)
+        j = 0_pInt
+        slipFamilies1: do f = 1_pInt,lattice_maxNslipFamily
+           index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                 ! at which index starts my family
+           slipSystems1: do i = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
+              j = j + 1_pInt
+              plastic_disloUCLA_postResults(c+j) =&
+                                dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))
+        enddo slipSystems1; enddo slipFamilies1
+        c = c + ns
+      case (threshold_stress_slip_ID)
+        plastic_disloUCLA_postResults(c+1_pInt:c+ns) = &
+                                state(instance)%threshold_stress_slip(1_pInt:ns,of)
+        c = c + ns
+      case (edge_dipole_distance_ID)
+        j = 0_pInt
+        slipFamilies2: do f = 1_pInt,lattice_maxNslipFamily
+           index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                 ! at which index starts my family
+           slipSystems2: do i = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
+              j = j + 1_pInt
+              if (dNeq0(abs(dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))))) then
+              plastic_disloUCLA_postResults(c+j) = &
+                (3.0_pReal*lattice_mu(ph)*plastic_disloUCLA_burgersPerSlipSystem(j,instance))/&
+                (16.0_pReal*pi*abs(dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))))
+              else
+              plastic_disloUCLA_postResults(c+j) = huge(1.0_pReal)
+              endif
+              plastic_disloUCLA_postResults(c+j)=min(plastic_disloUCLA_postResults(c+j),&
+                                                            state(instance)%mfp_slip(j,of))
+        enddo slipSystems2; enddo slipFamilies2
+        c = c + ns
+    end select
+ enddo
+end function plastic_disloUCLA_postResults
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief return array of constitutive results
+!--------------------------------------------------------------------------------------------------
+subroutine kinetics(Tstar_v,Temperature,ipc,ip,el, &
+                 gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
+ use prec, only: &
+   tol_math_check, &
+   dEq, dNeq0
+ use math, only: &
+   pi
+ use material, only: &
+   material_phase, &
+   phase_plasticityInstance,& 
+   !plasticState, &
+   phaseAt, phasememberAt
+ use lattice, only: &
+   lattice_Sslip_v, &
+   lattice_maxNslipFamily, &
+   lattice_NslipSystem, &
+   lattice_NnonSchmid, &
+   lattice_mu
+
+ implicit none
+ real(pReal), dimension(6),  intent(in) :: &
+   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal),                intent(in) :: &
+   temperature                                                                                      !< temperature at integration point
+ integer(pInt),              intent(in) :: &
+   ipc, &                                                                                           !< component-ID of integration point
+   ip, &                                                                                            !< integration point
+   el                                                                                               !< element
+
+ real(pReal), dimension(plastic_disloUCLA_sizePostResults(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
+                                           plastic_disloUCLA_postResults
+
+ integer(pInt) :: &
+   instance,&
+   ns,&
+   f,o,i,c,j,k,index_myFamily,&
+   ph, &
+   of
+ real(pReal) :: StressRatio_p,StressRatio_pminus1,&
+                BoltzmannRatio,DotGamma0,stressRatio,&
+                dvel_slip, vel_slip
+ real(pReal), intent(out), dimension(plastic_disloUCLA_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
+   gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg
+ 
+ !* Shortened notation
+ of = phasememberAt(ipc,ip,el)
+ ph = phaseAt(ipc,ip,el)
+ instance  = phase_plasticityInstance(ph)
+ ns = plastic_disloUCLA_totalNslip(instance)
+ 
+
         gdot_slip_pos = 0.0_pReal
         gdot_slip_neg = 0.0_pReal
         dgdot_dtauslip_pos = 0.0_pReal
@@ -1404,63 +1521,6 @@ function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
           enddo slipSystems
         enddo slipFamilies
 
-        if     (plastic_disloUCLA_outputID(o,instance) == shear_rate_slip_ID) then
-          plastic_disloUCLA_postResults(c+1:c+ns) = (gdot_slip_pos + gdot_slip_neg)*0.5_pReal
-          c = c + ns
-        elseif(plastic_disloUCLA_outputID(o,instance) == stress_exponent_ID) then
-          do j = 1_pInt, ns
-            if (dEq(gdot_slip_pos(j)+gdot_slip_neg(j),0.0_pReal)) then
-              plastic_disloUCLA_postResults(c+j) = 0.0_pReal
-            else
-              plastic_disloUCLA_postResults(c+j) = (tau_slip_pos(j)+tau_slip_neg(j))/&
-                                                       (gdot_slip_pos(j)+gdot_slip_neg(j))*&
-                                                       (dgdot_dtauslip_pos(j)+dgdot_dtauslip_neg(j))* 0.5_pReal
-            endif
-          enddo
-           c = c + ns
-        endif
-
-      case (accumulated_shear_slip_ID)
-       plastic_disloUCLA_postResults(c+1_pInt:c+ns) = &
-                      state(instance)%accshear_slip(1_pInt:ns, of)
-        c = c + ns
-      case (mfp_slip_ID)
-        plastic_disloUCLA_postResults(c+1_pInt:c+ns) =&
-                      state(instance)%mfp_slip(1_pInt:ns, of)
-        c = c + ns
-      case (resolved_stress_slip_ID)
-        j = 0_pInt
-        slipFamilies1: do f = 1_pInt,lattice_maxNslipFamily
-           index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                 ! at which index starts my family
-           slipSystems1: do i = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
-              j = j + 1_pInt
-              plastic_disloUCLA_postResults(c+j) =&
-                                dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))
-        enddo slipSystems1; enddo slipFamilies1
-        c = c + ns
-      case (threshold_stress_slip_ID)
-        plastic_disloUCLA_postResults(c+1_pInt:c+ns) = &
-                                state(instance)%threshold_stress_slip(1_pInt:ns,of)
-        c = c + ns
-      case (edge_dipole_distance_ID)
-        j = 0_pInt
-        slipFamilies2: do f = 1_pInt,lattice_maxNslipFamily
-           index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                 ! at which index starts my family
-           slipSystems2: do i = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
-              j = j + 1_pInt
-              if (dNeq0(abs(dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))))) then
-              plastic_disloUCLA_postResults(c+j) = &
-                (3.0_pReal*lattice_mu(ph)*plastic_disloUCLA_burgersPerSlipSystem(j,instance))/&
-                (16.0_pReal*pi*abs(dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))))
-              else
-              plastic_disloUCLA_postResults(c+j) = huge(1.0_pReal)
-              endif
-              plastic_disloUCLA_postResults(c+j)=min(plastic_disloUCLA_postResults(c+j),&
-                                                            state(instance)%mfp_slip(j,of))
-        enddo slipSystems2; enddo slipFamilies2
-        c = c + ns
-    end select
- enddo
-end function plastic_disloUCLA_postResults
+end subroutine kinetics
 
 end module plastic_disloUCLA
