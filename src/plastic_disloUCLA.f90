@@ -157,8 +157,6 @@ material_allocatePlasticState
  use config, only: &
    MATERIAL_partPhase
  use lattice
- use numerics,only: &
-   numerics_integrator
  
  implicit none
  integer(pInt), intent(in) :: fileUnit
@@ -743,7 +741,6 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
    phaseAt, phasememberAt
  use lattice, only: &
    lattice_Sslip, &
-   lattice_Sslip_v, &
    lattice_maxNslipFamily,&
    lattice_NslipSystem, &
    lattice_NnonSchmid
@@ -756,9 +753,7 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
  real(pReal), dimension(9,9), intent(out)   :: dLp_dTstar99
 
  integer(pInt) :: instance,ph,of,ns,f,i,j,k,l,m,n,index_myFamily
- real(pReal) :: StressRatio_p,StressRatio_pminus1,BoltzmannRatio,DotGamma0, &
-                vel_slip,dvel_slip,&
-                stressRatio
+
  real(pReal), dimension(3,3,2) :: &
    nonSchmid_tensor
  real(pReal), dimension(3,3,3,3) :: &
@@ -786,12 +781,6 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
    index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph)) ! at which index starts my family
    slipSystems: do i = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
      j = j+1_pInt
-     !* Boltzmann ratio
-     BoltzmannRatio = plastic_disloUCLA_QedgePerSlipSystem(j,instance)/(kB*Temperature)
-     !* Initial shear rates
-     DotGamma0 = &
-        state(instance)%rhoEdge(j,of)*plastic_disloUCLA_burgersPerSlipSystem(j,instance)*&
-        plastic_disloUCLA_v0PerSlipSystem(j,instance)
      nonSchmid_tensor(1:3,1:3,1) = lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
      nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,1)
      nonSchmidSystems: do k = 1,lattice_NnonSchmid(ph) 
@@ -832,10 +821,8 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
    plasticState, &
    phaseAt, phasememberAt
  use lattice,  only: &
-   lattice_Sslip_v, &
    lattice_maxNslipFamily, &
    lattice_NslipSystem, &
-   lattice_NnonSchmid, &
    lattice_mu
 
  implicit none
@@ -848,14 +835,10 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
 
- integer(pInt) :: instance,ns,f,i,j,k,index_myFamily, &
+ integer(pInt) :: instance,ns,f,i,j,index_myFamily, &
                   ph, &
                   of
  real(pReal) :: &
-   stressRatio_p,&
-   BoltzmannRatio,&
-   DotGamma0,&
-   stressRatio, &
    EdgeDipMinDistance,&
    AtomicVolume,&
    VacancyDiffusion,&
@@ -865,9 +848,7 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
    DotRhoEdgeEdgeAnnihilation, &
    ClimbVelocity, &
    DotRhoEdgeDipClimb, &
-   DotRhoDipFormation, &
-   vel_slip, &
-   gdot_slip
+   DotRhoDipFormation
  real(pReal), dimension(plastic_disloUCLA_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    gdot_slip_pos, gdot_slip_neg,&
    tau_slip_pos,&
@@ -890,16 +871,10 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
    index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph)) ! at which index starts my family
    slipSystems: do i = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
      j = j+1_pInt
-     !* Boltzmann ratio
-     BoltzmannRatio = plastic_disloUCLA_QedgePerSlipSystem(j,instance)/(kB*Temperature)
-     !* Initial shear rates
-     DotGamma0 = &
-        state(instance)%rhoEdge(j,of)*plastic_disloUCLA_burgersPerSlipSystem(j,instance)*&
-        plastic_disloUCLA_v0PerSlipSystem(j,instance)
 
-     gdot_slip = (gdot_slip_pos(j)+gdot_slip_neg(j))*0.5_pReal
+     dotState(instance)%accshear_slip(j,of) = (gdot_slip_pos(j)+gdot_slip_neg(j))*0.5_pReal
      !* Multiplication
-     DotRhoMultiplication = abs(gdot_slip)/&
+     DotRhoMultiplication = abs(dotState(instance)%accshear_slip(j,of))/&
                                (plastic_disloUCLA_burgersPerSlipSystem(j,instance)* &
                                 state(instance)%mfp_slip(j,of))
  
@@ -916,18 +891,18 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
        if (EdgeDipDistance<EdgeDipMinDistance) EdgeDipDistance=EdgeDipMinDistance
        DotRhoDipFormation = &
          ((2.0_pReal*EdgeDipDistance)/plastic_disloUCLA_burgersPerSlipSystem(j,instance))*&
-         state(instance)%rhoEdge(j,of)*abs(gdot_slip)*plastic_disloUCLA_dipoleFormationFactor(instance)
+         state(instance)%rhoEdge(j,of)*abs(dotState(instance)%accshear_slip(j,of))*plastic_disloUCLA_dipoleFormationFactor(instance)
      endif
  
     !* Spontaneous annihilation of 2 single edge dislocations
     DotRhoEdgeEdgeAnnihilation = &
         ((2.0_pReal*EdgeDipMinDistance)/plastic_disloUCLA_burgersPerSlipSystem(j,instance))*&
-        state(instance)%rhoEdge(j,of)*abs(gdot_slip)
+        state(instance)%rhoEdge(j,of)*abs(dotState(instance)%accshear_slip(j,of))
  
     !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
     DotRhoEdgeDipAnnihilation = &
         ((2.0_pReal*EdgeDipMinDistance)/plastic_disloUCLA_burgersPerSlipSystem(j,instance))*&
-        state(instance)%rhoEdgeDip(j,of)*abs(gdot_slip)
+        state(instance)%rhoEdgeDip(j,of)*abs(dotState(instance)%accshear_slip(j,of))
  
       !* Dislocation dipole climb
      AtomicVolume = &
@@ -951,9 +926,7 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
      !* Edge dislocation dipole density rate of change
      dotState(instance)%rhoEdgeDip(j,of) = &
         DotRhoDipFormation-DotRhoEdgeDipAnnihilation-DotRhoEdgeDipClimb
- 
-     !* Dotstate for accumulated shear due to slip
-     dotState(instance)%accshear_slip(j,of) = gdot_slip
+
  
    enddo slipSystems
  enddo slipFamilies
@@ -980,7 +953,6 @@ function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
    lattice_Sslip_v, &
    lattice_maxNslipFamily, &
    lattice_NslipSystem, &
-   lattice_NnonSchmid, &
    lattice_mu
 
  implicit none
@@ -999,12 +971,9 @@ function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
  integer(pInt) :: &
    instance,&
    ns,&
-   f,o,i,c,j,k,index_myFamily,&
+   f,o,i,c,j,index_myFamily,&
    ph, &
    of
- real(pReal) :: StressRatio_p,StressRatio_pminus1,&
-                BoltzmannRatio,DotGamma0,stressRatio,&
-                dvel_slip, vel_slip
  real(pReal), dimension(plastic_disloUCLA_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg
  
@@ -1110,8 +1079,7 @@ subroutine kinetics(Tstar_v,Temperature,ipc,ip,el, &
    lattice_Sslip_v, &
    lattice_maxNslipFamily, &
    lattice_NslipSystem, &
-   lattice_NnonSchmid, &
-   lattice_mu
+   lattice_NnonSchmid
 
  implicit none
  real(pReal), dimension(6),  intent(in) :: &
@@ -1123,13 +1091,10 @@ subroutine kinetics(Tstar_v,Temperature,ipc,ip,el, &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
 
- real(pReal), dimension(plastic_disloUCLA_sizePostResults(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
-                                           plastic_disloUCLA_postResults
-
  integer(pInt) :: &
    instance,&
    ns,&
-   f,o,i,c,j,k,index_myFamily,&
+   f,i,j,k,index_myFamily,&
    ph, &
    of
  real(pReal) :: StressRatio_p,StressRatio_pminus1,&
