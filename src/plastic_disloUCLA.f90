@@ -1017,8 +1017,6 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
    EdgeDipMinDistance,&
    AtomicVolume,&
    VacancyDiffusion,&
-   tau_slip_pos,&
-   tau_slip_neg,&
    DotRhoMultiplication,&
    EdgeDipDistance, &
    DotRhoEdgeDipAnnihilation, &
@@ -1029,7 +1027,9 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
    vel_slip, &
    gdot_slip
  real(pReal), dimension(plastic_disloUCLA_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
-   gdot_slip_pos, gdot_slip_neg
+   gdot_slip_pos, gdot_slip_neg,&
+   tau_slip_pos,&
+   tau_slip_neg
 
  !* Shortened notation
  of = phasememberAt(ipc,ip,el)
@@ -1054,19 +1054,19 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
         state(instance)%rhoEdge(j,of)*plastic_disloUCLA_burgersPerSlipSystem(j,instance)*&
         plastic_disloUCLA_v0PerSlipSystem(j,instance)
      !* Resolved shear stress on slip system
-     tau_slip_pos  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
-     tau_slip_neg  = tau_slip_pos
+     tau_slip_pos(j)  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
+     tau_slip_neg(j)  = tau_slip_pos(j)
 
      nonSchmidSystems: do k = 1,lattice_NnonSchmid(ph) 
-       tau_slip_pos = tau_slip_pos + plastic_disloUCLA_nonSchmidCoeff(k,instance)* &
+       tau_slip_pos(j) = tau_slip_pos(j) + plastic_disloUCLA_nonSchmidCoeff(k,instance)* &
                                    dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k,  index_myFamily+i,ph))
-       tau_slip_neg = tau_slip_neg + plastic_disloUCLA_nonSchmidCoeff(k,instance)* &
+       tau_slip_neg(j) = tau_slip_neg(j) + plastic_disloUCLA_nonSchmidCoeff(k,instance)* &
                                    dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,ph))
      enddo nonSchmidSystems
 
-     significantPositiveStress: if((abs(tau_slip_pos)-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
+     significantPositiveStress: if((abs(tau_slip_pos(j))-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
        !* Stress ratios
-       stressRatio = ((abs(tau_slip_pos)-state(instance)%threshold_stress_slip(j,of))/&
+       stressRatio = ((abs(tau_slip_pos(j))-state(instance)%threshold_stress_slip(j,of))/&
                       (plastic_disloUCLA_SolidSolutionStrength(instance)+&
                        plastic_disloUCLA_tau_peierlsPerSlipFamily(f,instance)))
        stressRatio_p = stressRatio** plastic_disloUCLA_pPerSlipFamily(f,instance)
@@ -1074,10 +1074,10 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
        vel_slip = 2.0_pReal*plastic_disloUCLA_burgersPerSlipFamily(f,instance) &
                      * plastic_disloUCLA_kinkheight(f,instance) * plastic_disloUCLA_omega(f,instance)  &
                      * ( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) ) &
-                     * (tau_slip_pos  &
+                     * (tau_slip_pos(j)  &
                      * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance)) ) &
                      / ( &
-                     2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal)*tau_slip_pos &
+                     2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal)*tau_slip_pos(j) &
                      + plastic_disloUCLA_omega(f,instance) * plastic_disloUCLA_friction(f,instance) &
                      *(( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) )**2.0_pReal) &
                      * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance))  &
@@ -1085,11 +1085,11 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
                        
        gdot_slip_pos(j) = DotGamma0 &
                        * vel_slip & 
-                       * sign(1.0_pReal,tau_slip_pos) 
+                       * sign(1.0_pReal,tau_slip_pos(j)) 
      endif significantPositiveStress
-     significantNegativeStress: if((abs(tau_slip_neg)-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
+     significantNegativeStress: if((abs(tau_slip_neg(j))-state(instance)%threshold_stress_slip(j,of)) > tol_math_check) then
        !* Stress ratios
-       stressRatio = ((abs(tau_slip_neg)-state(instance)%threshold_stress_slip(j,of))/&
+       stressRatio = ((abs(tau_slip_neg(j))-state(instance)%threshold_stress_slip(j,of))/&
                       (plastic_disloUCLA_SolidSolutionStrength(instance)+&
                        plastic_disloUCLA_tau_peierlsPerSlipFamily(f,instance)))
        stressRatio_p = stressRatio** plastic_disloUCLA_pPerSlipFamily(f,instance)
@@ -1097,10 +1097,10 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
        vel_slip = 2.0_pReal*plastic_disloUCLA_burgersPerSlipFamily(f,instance) &
                      * plastic_disloUCLA_kinkheight(f,instance) * plastic_disloUCLA_omega(f,instance)  &
                      * ( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) ) &
-                     * (tau_slip_neg  &
+                     * (tau_slip_neg(j)  &
                      * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance)) ) &
                      / ( &
-                     2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal)*tau_slip_neg &
+                     2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal)*tau_slip_neg(j) &
                      + plastic_disloUCLA_omega(f,instance) * plastic_disloUCLA_friction(f,instance) &
                      *(( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) )**2.0_pReal) &
                      * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance))  &
@@ -1108,7 +1108,7 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
        
        gdot_slip_neg(j) = DotGamma0 &
                        * vel_slip & 
-                       * sign(1.0_pReal,tau_slip_neg) 
+                       * sign(1.0_pReal,tau_slip_neg(j)) 
      endif significantNegativeStress
      gdot_slip = (gdot_slip_pos(j)+gdot_slip_neg(j))*0.5_pReal
      !* Multiplication
@@ -1119,12 +1119,12 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
      !* Dipole formation
      EdgeDipMinDistance = &
        plastic_disloUCLA_CEdgeDipMinDistance(instance)*plastic_disloUCLA_burgersPerSlipSystem(j,instance)
-     if (dEq0(tau_slip_pos)) then
+     if (dEq0(tau_slip_pos(j))) then
        DotRhoDipFormation = 0.0_pReal
      else
        EdgeDipDistance = &
          (3.0_pReal*lattice_mu(ph)*plastic_disloUCLA_burgersPerSlipSystem(j,instance))/&
-         (16.0_pReal*pi*abs(tau_slip_pos))
+         (16.0_pReal*pi*abs(tau_slip_pos(j)))
        if (EdgeDipDistance>state(instance)%mfp_slip(j,of)) EdgeDipDistance=state(instance)%mfp_slip(j,of)
        if (EdgeDipDistance<EdgeDipMinDistance) EdgeDipDistance=EdgeDipMinDistance
        DotRhoDipFormation = &
@@ -1147,7 +1147,7 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
         plastic_disloUCLA_CAtomicVolume(instance)*plastic_disloUCLA_burgersPerSlipSystem(j,instance)**(3.0_pReal)
      VacancyDiffusion = &
         plastic_disloUCLA_D0(instance)*exp(-plastic_disloUCLA_Qsd(instance)/(kB*Temperature))
-     if (dEq0(tau_slip_pos)) then
+     if (dEq0(tau_slip_pos(j))) then
        DotRhoEdgeDipClimb = 0.0_pReal
      else
        ClimbVelocity = &
