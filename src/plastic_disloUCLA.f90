@@ -82,11 +82,36 @@ module plastic_disloUCLA
                  resolved_stress_slip_ID, &
                  threshold_stress_slip_ID, &
                  edge_dipole_distance_ID, &
-                 stress_exponent_ID
+                 stress_exponent_ID, &
+     rho_ID, &
+     rhoDip_ID, &
+     shearrate_ID, &
+     accumulatedshear_ID, &
+     mfp_ID, &
+     resolvedstress_ID, &
+     thresholdstress_ID, &
+     dipoledistance_ID, &
+     stressexponent_ID
  end enum
 
  type, private :: tParameters
    real(pReal),                 allocatable, dimension(:) :: &
+     rho0, &                                                                        !< initial edge dislocation density per slip system for each family and instance
+     rhoDip0, &                                                                     !< initial edge dipole density per slip system for each family and instance
+     burgers, &                                                                     !< absolute length of burgers vector [m] for each slip system and instance
+     H0kp, &                                                                        !< activation energy for glide [J] for each slip system and instance
+     v0, &                                                                          !< dislocation velocity prefactor [m/s] for each family and instance
+     CLambda, &                                                                     !< Adj. parameter for distance between 2 forest dislocations for each slip system and instance
+     p, &                                                                           !< p-exponent in glide velocity
+     q, &                                                                           !< q-exponent in glide velocity       
+     !* mobility law parameters                                                                                                                                                      
+     kinkheight, &                                                                  !< height of the kink pair                                                      
+     nu0, &                                                                         !< attempt frequency for kink pair nucleation                                   
+     kinkwidth, &                                                                   !< width of the kink pair                                                       
+     !dislolength, &                                                                !< dislocation length (lamda)                                                   
+     viscosity, &                                                                   !< friction coeff. B (kMC)
+     !*    
+     tauPeierls, &
      nonSchmidCoeff
    real(pReal),                 allocatable, dimension(:,:) :: &
      interaction_SlipSlip                                                                           !< slip resistance from slip activity
@@ -184,8 +209,8 @@ material_allocatePlasticState
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: maxNinstance,mySize=0_pInt,phase,maxTotalNslip,&
-                  f,instance,j,k,o,ns, &
-                  Nchunks_SlipSlip = 0_pInt, &
+                  f,instance,j,k,o,ns, i, &
+                  Nchunks_SlipSlip = 0_pInt, output_ID, outputSize, &
                   Nchunks_SlipFamilies = 0_pInt,Nchunks_nonSchmid = 0_pInt, &
                   offset_slip, index_myFamily, index_otherFamily, &
                   startIndex, endIndex, p
@@ -196,7 +221,8 @@ material_allocatePlasticState
    tag  = '', &
    line = ''
  real(pReal), dimension(:), allocatable :: tempPerSlip
-
+ character(len=65536), dimension(:), allocatable :: outputs
+ integer(kind(undefined_ID))  :: outputID
  integer(pInt),          dimension(0), parameter :: emptyIntArray    = [integer(pInt)::]
  real(pReal),            dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
@@ -285,7 +311,65 @@ do p = 1_pInt, size(phase_plasticityInstance)
      prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
                                                              config_phase(p)%getFloats('interaction_slipslip'), &
                                                              structure(1:3))
+     !prm%rho0        = config_phase(p)%getFloats('rho0')
+     !prm%rhoDip0     = config_phase(p)%getFloats('dipole_rho0')
+     !prm%burgers     = config_phase(p)%getFloats('burgers')
+     !prm%H0kp        = config_phase(p)%getFloats('h0')
+     !prm%v0          = config_phase(p)%getFloats('v0')
+     !prm%clambda     = config_phase(p)%getFloats('clambda')
+     !prm%tauPeierls  = config_phase(p)%getFloats('peierls_stress')
+     !prm%p           = config_phase(p)%getFloats('pexponent',defaultVal=[(1.0_pReal,i=1_pInt,size(prm%Nslip))])
+     !prm%q           = config_phase(p)%getFloats('qexponent',defaultVal=[(1.0_pReal,i=1_pInt,size(prm%Nslip))])
+     !prm%kinkHeight  = config_phase(p)%getFloats('kink_height')
+     !prm%kinkWidth   = config_phase(p)%getFloats('kink_width')
+     !prm%nu0         = config_phase(p)%getFloats('attemptfrequency')
+    !prm%dislolength = config_phase(p)%getFloats('dislolength')       ! what is this used for?
+     !prm%viscosity   = config_phase(p)%getFloats('viscosity')
    endif slipActive
+
+
+!--------------------------------------------------------------------------------------------------
+!  phase outputs
+
+#if defined(__GFORTRAN__)
+  outputs = ['GfortranBug86277']
+  outputs = config_phase(p)%getStrings('(output)',defaultVal=outputs)
+  if (outputs(1) == 'GfortranBug86277') outputs = emptyStringArray
+#else
+  outputs = config_phase(p)%getStrings('(output)',defaultVal=emptyStringArray)
+#endif
+   allocate(prm%outputID(0))
+   
+   do i = 1_pInt, size(outputs)
+     outputID = undefined_ID
+     outputSize = prm%totalNslip
+     select case(trim(outputs(i)))
+         case ('edge_density')
+           outputID  = rho_ID
+         case ('dipole_density')
+           output_ID = rhoDip_ID
+         case ('shear_rate','shearrate')
+           output_ID = shearrate_ID
+         case ('accumulated_shear','accumulatedshear')
+           output_ID = accumulatedshear_ID
+         case ('mfp')
+           output_ID = mfp_ID
+         case ('resolved_stress')
+           output_ID = resolvedstress_ID
+         case ('threshold_stress')
+           output_ID = thresholdstress_ID
+         case ('edge_dipole_distance')
+           output_ID = dipoleDistance_ID
+         case ('stress_exponent')
+           output_ID = stressexponent_ID
+     end select
+       
+     !if (outputID /= undefined_ID) then       
+     !  plastic_disloUCLA_output(i,instance) = outputs(i)
+     !  plastic_disloUCLA_sizePostResult(i,instance) = outputSize   
+     !  prm%outputID = [prm%outputID, outputID]
+     !endif
+   enddo 
    end associate
  enddo
 
@@ -515,7 +599,7 @@ do p = 1_pInt, size(phase_plasticityInstance)
 
 !--------------------------------------------------------------------------------------------------
 !  Determine size of postResults array
-     outputs: do o = 1_pInt,plastic_disloUCLA_Noutput(instance)
+     do o = 1_pInt,plastic_disloUCLA_Noutput(instance)
        select case(plastic_disloUCLA_outputID(o,instance))
          case(edge_density_ID, &
               dipole_density_ID, &
@@ -534,7 +618,7 @@ do p = 1_pInt, size(phase_plasticityInstance)
           plastic_disloUCLA_sizePostResult(o,instance) = mySize
           plastic_disloUCLA_sizePostResults(instance)  = plastic_disloUCLA_sizePostResults(instance) + mySize
        endif
-     enddo outputs
+     enddo
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
