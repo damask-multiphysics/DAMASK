@@ -42,31 +42,20 @@ module plastic_disloUCLA
    plastic_disloUCLA_GrainSize, &                                                                   !< grain size
    plastic_disloUCLA_CEdgeDipMinDistance, &                                                         !<
    plastic_disloUCLA_SolidSolutionStrength, &                                                       !< Strength due to elements in solid solution
-   plastic_disloUCLA_dipoleFormationFactor, &                                                       !< scaling factor for dipole formation: 0: off, 1: on. other values not useful
-   plastic_disloUCLA_aTolRho                                                                        !< absolute tolerance for integration of dislocation density
+   plastic_disloUCLA_dipoleFormationFactor                                                       !< scaling factor for dipole formation: 0: off, 1: on. other values not useful
 
  real(pReal),                         dimension(:,:),         allocatable,         private :: &
    plastic_disloUCLA_rhoEdge0, &                                                                    !< initial edge dislocation density per slip system for each family and instance
    plastic_disloUCLA_rhoEdgeDip0, &                                                                 !< initial edge dipole density per slip system for each family and instance
-   plastic_disloUCLA_burgersPerSlipFamily, &                                                        !< absolute length of burgers vector [m] for each slip family and instance
-   plastic_disloUCLA_burgersPerSlipSystem, &                                                        !< absolute length of burgers vector [m] for each slip system and instance
-   plastic_disloUCLA_QedgePerSlipFamily, &                                                          !< activation energy for glide [J] for each slip family and instance
-   plastic_disloUCLA_QedgePerSlipSystem, &                                                          !< activation energy for glide [J] for each slip system and instance
    plastic_disloUCLA_v0PerSlipFamily, &                                                             !< dislocation velocity prefactor [m/s] for each family and instance
    plastic_disloUCLA_v0PerSlipSystem, &                                                             !< dislocation velocity prefactor [m/s] for each slip system and instance
    plastic_disloUCLA_tau_peierlsPerSlipFamily, &                                                    !< Peierls stress [Pa] for each family and instance
    plastic_disloUCLA_CLambdaSlipPerSlipFamily, &                                                    !< Adj. parameter for distance between 2 forest dislocations for each slip family and instance
    plastic_disloUCLA_CLambdaSlipPerSlipSystem, &                                                    !< Adj. parameter for distance between 2 forest dislocations for each slip system and instance
-   plastic_disloUCLA_interaction_SlipSlip, &                                                        !< coefficients for slip-slip interaction for each interaction type and instance
-   plastic_disloUCLA_pPerSlipFamily, &                                                              !< p-exponent in glide velocity
-   plastic_disloUCLA_qPerSlipFamily, &                                                              !< q-exponent in glide velocity       
-   !* mobility law parameters                                                                                                                                                      
-   plastic_disloUCLA_kinkheight, &                                                                  !< height of the kink pair                                                      
-   plastic_disloUCLA_omega, &                                                                       !< attempt frequency for kink pair nucleation                                   
-   plastic_disloUCLA_kinkwidth, &                                                                   !< width of the kink pair                                                                                                      
-   plastic_disloUCLA_friction, &                                                                    !< friction coeff. B (kMC)
-   !*    
-   plastic_disloUCLA_nonSchmidCoeff                                                                 !< non-Schmid coefficients (bcc)
+   plastic_disloUCLA_interaction_SlipSlip, &                                                        !< coefficients for slip-slip interaction for each interaction type and instance 
+   !* mobility law parameters                                                                                                                                                                                                                                                          
+   plastic_disloUCLA_friction                                                                    !< friction coeff. B (kMC)
+
  real(pReal),                         dimension(:,:,:),       allocatable,         private :: &
    plastic_disloUCLA_interactionMatrix_SlipSlip, &                                                  !< interaction matrix of the different slip systems for each instance
    plastic_disloUCLA_forestProjectionEdge                                                           !< matrix of forest projections of edge dislocations for each instance
@@ -85,6 +74,8 @@ module plastic_disloUCLA
  end enum
 
  type, private :: tParameters
+   real(pReal) :: &
+     aTolRho
    real(pReal),                 allocatable, dimension(:) :: &
      rho0, &                                                                        !< initial edge dislocation density per slip system for each family and instance
      rhoDip0, &                                                                     !< initial edge dipole density per slip system for each family and instance
@@ -95,10 +86,9 @@ module plastic_disloUCLA
      p, &                                                                           !< p-exponent in glide velocity
      q, &                                                                           !< q-exponent in glide velocity       
      !* mobility law parameters                                                                                                                                                      
-     kinkheight, &                                                                  !< height of the kink pair                                                      
-     nu0, &                                                                         !< attempt frequency for kink pair nucleation                                   
-     kinkwidth, &                                                                   !< width of the kink pair                                                       
-     !dislolength, &                                                                !< dislocation length (lamda)                                                   
+     kink_height, &                                                                  !< height of the kink pair                                                                                         
+     kink_width, &                                                                   !< width of the kink pair   
+     omega, &                                                                   !<       attempt frequency for kink pair nucleation                                        
      viscosity, &                                                                   !< friction coeff. B (kMC)
      !*    
      tauPeierls, &
@@ -166,7 +156,8 @@ subroutine plastic_disloUCLA_init(fileUnit)
  use math, only: &
    math_Mandel3333to66, &
    math_Voigt66to3333, &
-   math_mul3x3
+   math_mul3x3, &
+   math_expand
  use IO, only: &
    IO_read, &
    IO_lc, &
@@ -243,28 +234,19 @@ material_allocatePlasticState
  allocate(plastic_disloUCLA_GrainSize(maxNinstance),                           source=0.0_pReal)
  allocate(plastic_disloUCLA_CEdgeDipMinDistance(maxNinstance),                 source=0.0_pReal)
  allocate(plastic_disloUCLA_SolidSolutionStrength(maxNinstance),               source=0.0_pReal)
- allocate(plastic_disloUCLA_aTolRho(maxNinstance),                             source=0.0_pReal)
  allocate(plastic_disloUCLA_dipoleFormationFactor(maxNinstance),               source=1.0_pReal) !should be on by default
  allocate(plastic_disloUCLA_rhoEdge0(lattice_maxNslipFamily,maxNinstance),     source=0.0_pReal)
  allocate(plastic_disloUCLA_rhoEdgeDip0(lattice_maxNslipFamily,maxNinstance),  source=0.0_pReal)
- allocate(plastic_disloUCLA_burgersPerSlipFamily(lattice_maxNslipFamily,maxNinstance),source=0.0_pReal)
- allocate(plastic_disloUCLA_kinkheight(lattice_maxNslipFamily,maxNinstance),   source=0.0_pReal)
- allocate(plastic_disloUCLA_omega(lattice_maxNslipFamily,maxNinstance),        source=0.0_pReal)
- allocate(plastic_disloUCLA_kinkwidth(lattice_maxNslipFamily,maxNinstance),    source=0.0_pReal)
  allocate(plastic_disloUCLA_friction(lattice_maxNslipFamily,maxNinstance),     source=0.0_pReal)
- allocate(plastic_disloUCLA_QedgePerSlipFamily(lattice_maxNslipFamily,maxNinstance),  source=0.0_pReal)
  allocate(plastic_disloUCLA_v0PerSlipFamily(lattice_maxNslipFamily,maxNinstance),     source=0.0_pReal)
  allocate(plastic_disloUCLA_tau_peierlsPerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
                                                                                       source=0.0_pReal)
- allocate(plastic_disloUCLA_pPerSlipFamily(lattice_maxNslipFamily,maxNinstance),       source=0.0_pReal)
- allocate(plastic_disloUCLA_qPerSlipFamily(lattice_maxNslipFamily,maxNinstance),       source=0.0_pReal)
 
  allocate(plastic_disloUCLA_CLambdaSlipPerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
                                                                                       source=0.0_pReal)
 
  allocate(plastic_disloUCLA_interaction_SlipSlip(lattice_maxNinteraction,maxNinstance),source=0.0_pReal)
 
- allocate(plastic_disloUCLA_nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstance),        source=0.0_pReal)
  
  allocate(param(maxNinstance))
  allocate(state(maxNinstance))
@@ -280,7 +262,7 @@ do p = 1_pInt, size(phase_plasticityInstance)
 
    structure          = config_phase(p)%getString('lattice_structure')
 
-
+   prm%aTolRho = config_phase(p)%getFloat('atol_rho')
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
    prm%Nslip      = config_phase(p)%getInts('nslip',defaultVal=emptyIntArray)
@@ -302,18 +284,27 @@ do p = 1_pInt, size(phase_plasticityInstance)
                                                              structure(1:3))
      !prm%rho0        = config_phase(p)%getFloats('rho0')
      !prm%rhoDip0     = config_phase(p)%getFloats('dipole_rho0')
-     !prm%burgers     = config_phase(p)%getFloats('burgers')
-     !prm%H0kp        = config_phase(p)%getFloats('h0')
+     prm%burgers     = config_phase(p)%getFloats('slipburgers')
+     prm%H0kp        = config_phase(p)%getFloats('qedge')
      !prm%v0          = config_phase(p)%getFloats('v0')
      !prm%clambda     = config_phase(p)%getFloats('clambda')
      !prm%tauPeierls  = config_phase(p)%getFloats('peierls_stress')
-     !prm%p           = config_phase(p)%getFloats('pexponent',defaultVal=[(1.0_pReal,i=1_pInt,size(prm%Nslip))])
-     !prm%q           = config_phase(p)%getFloats('qexponent',defaultVal=[(1.0_pReal,i=1_pInt,size(prm%Nslip))])
-     !prm%kinkHeight  = config_phase(p)%getFloats('kink_height')
-     !prm%kinkWidth   = config_phase(p)%getFloats('kink_width')
-     !prm%nu0         = config_phase(p)%getFloats('attemptfrequency')
-    !prm%dislolength = config_phase(p)%getFloats('dislolength')       ! what is this used for?
+     prm%p           = config_phase(p)%getFloats('p_slip',defaultVal=[(1.0_pReal,i=1_pInt,size(prm%Nslip))])
+     prm%q           = config_phase(p)%getFloats('q_slip',defaultVal=[(1.0_pReal,i=1_pInt,size(prm%Nslip))])
+     prm%kink_height  = config_phase(p)%getFloats('kink_height')
+     prm%kink_width   = config_phase(p)%getFloats('kink_width')
+     prm%omega   = config_phase(p)%getFloats('omega')
      !prm%viscosity   = config_phase(p)%getFloats('viscosity')
+
+
+     ! expand: family => system
+     prm%q   = math_expand(prm%q,  prm%Nslip)
+     prm%p   = math_expand(prm%p,  prm%Nslip)
+     prm%H0kp   = math_expand(prm%H0kp,  prm%Nslip)
+     prm%burgers   = math_expand(prm%burgers,  prm%Nslip)
+     prm%kink_height   = math_expand(prm%kink_height,  prm%Nslip)
+     prm%kink_width   = math_expand(prm%kink_width,  prm%Nslip)
+     prm%omega   = math_expand(prm%omega,  prm%Nslip)
    endif slipActive
 
 
@@ -417,10 +408,6 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
              plastic_disloUCLA_rhoEdge0(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
            case ('rhoedgedip0')
              plastic_disloUCLA_rhoEdgeDip0(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
-           case ('slipburgers')
-             plastic_disloUCLA_burgersPerSlipFamily(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
-           case ('qedge')
-             plastic_disloUCLA_QedgePerSlipFamily(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
            case ('v0')
              plastic_disloUCLA_v0PerSlipFamily(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
            case ('clambdaslip')
@@ -429,19 +416,6 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
              if (lattice_structure(phase) /= LATTICE_bcc_ID) &
                call IO_warning(42_pInt,ext_msg=trim(tag)//' for non-bcc ('//PLASTICITY_DISLOUCLA_label//')')
              plastic_disloUCLA_tau_peierlsPerSlipFamily(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
-           case ('p_slip')
-             plastic_disloUCLA_pPerSlipFamily(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
-           case ('q_slip')
-             plastic_disloUCLA_qPerSlipFamily(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies) 
-           case ('kink_height')
-             plastic_disloUCLA_kinkheight(1:Nchunks_SlipFamilies,instance) = &
-                  tempPerSlip(1:Nchunks_SlipFamilies)
-           case ('omega')
-             plastic_disloUCLA_omega(1:Nchunks_SlipFamilies,instance) = &
-                  tempPerSlip(1:Nchunks_SlipFamilies)
-           case ('kink_width')
-             plastic_disloUCLA_kinkwidth(1:Nchunks_SlipFamilies,instance) = &
-                  tempPerSlip(1:Nchunks_SlipFamilies)
            case ('friction_coeff')
              plastic_disloUCLA_friction(1:Nchunks_SlipFamilies,instance) = &
                   tempPerSlip(1:Nchunks_SlipFamilies)  
@@ -455,12 +429,6 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
          do j = 1_pInt, Nchunks_SlipSlip
            plastic_disloUCLA_interaction_SlipSlip(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
-       case ('nonschmid_coefficients')
-         if (chunkPos(1) < 1_pInt + Nchunks_nonSchmid) &
-           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOUCLA_label//')')
-         do j = 1_pInt,Nchunks_nonSchmid
-           plastic_disloUCLA_nonSchmidCoeff(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
-         enddo
 !--------------------------------------------------------------------------------------------------
 ! parameters independent of number of slip systems
        case ('grainsize')
@@ -469,8 +437,6 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
          plastic_disloUCLA_D0(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('qsd')
          plastic_disloUCLA_Qsd(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case ('atol_rho')
-         plastic_disloUCLA_aTolRho(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('solidsolutionstrength')
          plastic_disloUCLA_SolidSolutionStrength(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case ('cedgedipmindistance')
@@ -494,8 +460,8 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
             call IO_error(211_pInt,el=instance,ext_msg='rhoEdge0 ('//PLASTICITY_DISLOUCLA_label//')')
           if (plastic_disloUCLA_rhoEdgeDip0(f,instance) < 0.0_pReal) & 
             call IO_error(211_pInt,el=instance,ext_msg='rhoEdgeDip0 ('//PLASTICITY_DISLOUCLA_label//')')
-          if (plastic_disloUCLA_burgersPerSlipFamily(f,instance) <= 0.0_pReal) &
-            call IO_error(211_pInt,el=instance,ext_msg='slipBurgers ('//PLASTICITY_DISLOUCLA_label//')')
+          !if (plastic_disloUCLA_burgersPerSlipFamily(f,instance) <= 0.0_pReal) &
+          !  call IO_error(211_pInt,el=instance,ext_msg='slipBurgers ('//PLASTICITY_DISLOUCLA_label//')')
           if (plastic_disloUCLA_v0PerSlipFamily(f,instance) <= 0.0_pReal) &
             call IO_error(211_pInt,el=instance,ext_msg='v0 ('//PLASTICITY_DISLOUCLA_label//')')
           if (plastic_disloUCLA_tau_peierlsPerSlipFamily(f,instance) < 0.0_pReal) &
@@ -522,8 +488,6 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
 ! allocation of variables whose size depends on the total number of active slip systems
  maxTotalNslip = maxval(plastic_disloUCLA_totalNslip)
  
- allocate(plastic_disloUCLA_burgersPerSlipSystem(maxTotalNslip, maxNinstance),    source=0.0_pReal)
- allocate(plastic_disloUCLA_QedgePerSlipSystem(maxTotalNslip, maxNinstance),      source=0.0_pReal)
  allocate(plastic_disloUCLA_v0PerSlipSystem(maxTotalNslip, maxNinstance),         source=0.0_pReal)
  allocate(plastic_disloUCLA_CLambdaSlipPerSlipSystem(maxTotalNslip, maxNinstance),source=0.0_pReal)
  
@@ -541,7 +505,7 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
      instance = phase_plasticityInstance(phase)
      ns = plastic_disloUCLA_totalNslip(instance)
 
-
+    associate(prm => param(instance), stt=>state(instance))
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
 
@@ -567,16 +531,7 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
        index_myFamily = sum(plastic_disloUCLA_Nslip(1:f-1_pInt,instance))                      ! index in truncated slip system list
        mySlipSystems: do j = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
 
-      !* Burgers vector, 
-      !  dislocation velocity prefactor,
-      !  mean free path prefactor,
-      !  and minimum dipole distance
- 
-         plastic_disloUCLA_burgersPerSlipSystem(index_myFamily+j,instance) = &
-         plastic_disloUCLA_burgersPerSlipFamily(f,instance)
- 
-         plastic_disloUCLA_QedgePerSlipSystem(index_myFamily+j,instance) = &
-         plastic_disloUCLA_QedgePerSlipFamily(f,instance)
+
  
          plastic_disloUCLA_v0PerSlipSystem(index_myFamily+j,instance) = &
          plastic_disloUCLA_v0PerSlipFamily(f,instance)
@@ -606,13 +561,13 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
      endIndex=ns
      state(instance)%rhoEdge=>plasticState(phase)%state(startIndex:endIndex,:)
      dotState(instance)%rhoEdge=>plasticState(phase)%dotState(startIndex:endIndex,:)
-     plasticState(p)%aTolState(startIndex:endIndex) = plastic_disloUCLA_aTolRho(instance)
+     plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
 
      startIndex=endIndex+1_pInt
      endIndex=endIndex+ns
      state(instance)%rhoEdgeDip=>plasticState(phase)%state(startIndex:endIndex,:)
      dotState(instance)%rhoEdgeDip=>plasticState(phase)%dotState(startIndex:endIndex,:)
-     plasticState(p)%aTolState(startIndex:endIndex) = plastic_disloUCLA_aTolRho(instance)
+     plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
 
      startIndex=endIndex+1_pInt
      endIndex=endIndex+ns
@@ -635,8 +590,9 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
      call plastic_disloUCLA_stateInit(phase,instance)
 
      plasticState(p)%state0 = plasticState(p)%state                                                 ! ToDo: this could be done centrally
+   end associate
    endif myPhase2
- 
+
  enddo initializeInstances
  
 end subroutine plastic_disloUCLA_init
@@ -669,7 +625,7 @@ subroutine plastic_disloUCLA_stateInit(ph,instance)
    tauSlipThreshold0
  tempState = 0.0_pReal
  ns = plastic_disloUCLA_totalNslip(instance)
-
+ associate(prm => param(instance), stt => state(instance))
 !--------------------------------------------------------------------------------------------------
 ! initialize basic slip state variables
  do f = 1_pInt,lattice_maxNslipFamily
@@ -699,13 +655,13 @@ subroutine plastic_disloUCLA_stateInit(ph,instance)
  
  forall (i = 1_pInt:ns) &
    tauSlipThreshold0(i) = &
-     lattice_mu(ph)*plastic_disloUCLA_burgersPerSlipSystem(i,instance) * &
+     lattice_mu(ph)*prm%burgers(i) * &
      sqrt(dot_product((rhoEdge0+rhoEdgeDip0),plastic_disloUCLA_interactionMatrix_SlipSlip(i,1:ns,instance)))
 
  tempState(5_pInt*ns+1:6_pInt*ns) = tauSlipThreshold0
  
 plasticState(ph)%state = spread(tempState,2,size(plasticState(ph)%state(1,:)))
-
+end associate
 end subroutine plastic_disloUCLA_stateInit
 
 
@@ -740,7 +696,7 @@ subroutine plastic_disloUCLA_microstructure(temperature,ipc,ip,el)
  ph = phaseAt(ipc,ip,el)
  instance = phase_plasticityInstance(ph)
  ns = plastic_disloUCLA_totalNslip(instance)
-
+ associate(prm => param(instance), stt => state(instance))
  !* 1/mean free distance between 2 forest dislocations seen by a moving dislocation
  forall (s = 1_pInt:ns) &
    state(instance)%invLambdaSlip(s,of) = &
@@ -758,10 +714,10 @@ subroutine plastic_disloUCLA_microstructure(temperature,ipc,ip,el)
  !* threshold stress for dislocation motion
  forall (s = 1_pInt:ns) &
    state(instance)%threshold_stress_slip(s,of) = &
-     lattice_mu(ph)*plastic_disloUCLA_burgersPerSlipSystem(s,instance)*&
+     lattice_mu(ph)*prm%burgers(s)*&
      sqrt(dot_product((state(instance)%rhoEdge(1_pInt:ns,of)+state(instance)%rhoEdgeDip(1_pInt:ns,of)),&
                       plastic_disloUCLA_interactionMatrix_SlipSlip(s,1:ns,instance)))
- 
+ end associate
 end subroutine plastic_disloUCLA_microstructure
 
 
@@ -868,7 +824,7 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,ipc,ip,el)
  ns = plastic_disloUCLA_totalNslip(instance) 
 
  plasticState(ph)%dotState(:,of) = 0.0_pReal
- 
+  associate(prm => param(instance), stt => state(instance))
  !* Dislocation density evolution
  call kinetics(Mp,Temperature,ph,instance,of, &                                                
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
@@ -882,38 +838,38 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,ipc,ip,el)
 
      !* Multiplication
      DotRhoMultiplication = abs(dotState(instance)%accshear_slip(j,of))/&
-                               (plastic_disloUCLA_burgersPerSlipSystem(j,instance)* &
+                               (prm%burgers(j)* &
                                 state(instance)%mfp_slip(j,of))
  
      !* Dipole formation
      EdgeDipMinDistance = &
-       plastic_disloUCLA_CEdgeDipMinDistance(instance)*plastic_disloUCLA_burgersPerSlipSystem(j,instance)
+       plastic_disloUCLA_CEdgeDipMinDistance(instance)*prm%burgers(j)
      if (dEq0(tau_slip_pos(j))) then
        DotRhoDipFormation = 0.0_pReal
      else
        EdgeDipDistance = &
-         (3.0_pReal*lattice_mu(ph)*plastic_disloUCLA_burgersPerSlipSystem(j,instance))/&
+         (3.0_pReal*lattice_mu(ph)*prm%burgers(j))/&
          (16.0_pReal*pi*abs(tau_slip_pos(j)))
        if (EdgeDipDistance>state(instance)%mfp_slip(j,of)) EdgeDipDistance=state(instance)%mfp_slip(j,of)
        if (EdgeDipDistance<EdgeDipMinDistance) EdgeDipDistance=EdgeDipMinDistance
        DotRhoDipFormation = &
-         ((2.0_pReal*EdgeDipDistance)/plastic_disloUCLA_burgersPerSlipSystem(j,instance))*&
+         ((2.0_pReal*EdgeDipDistance)/prm%burgers(j))*&
          state(instance)%rhoEdge(j,of)*abs(dotState(instance)%accshear_slip(j,of))*plastic_disloUCLA_dipoleFormationFactor(instance)
      endif
  
     !* Spontaneous annihilation of 2 single edge dislocations
     DotRhoEdgeEdgeAnnihilation = &
-        ((2.0_pReal*EdgeDipMinDistance)/plastic_disloUCLA_burgersPerSlipSystem(j,instance))*&
+        ((2.0_pReal*EdgeDipMinDistance)/prm%burgers(j))*&
         state(instance)%rhoEdge(j,of)*abs(dotState(instance)%accshear_slip(j,of))
  
     !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
     DotRhoEdgeDipAnnihilation = &
-        ((2.0_pReal*EdgeDipMinDistance)/plastic_disloUCLA_burgersPerSlipSystem(j,instance))*&
+        ((2.0_pReal*EdgeDipMinDistance)/prm%burgers(j))*&
         state(instance)%rhoEdgeDip(j,of)*abs(dotState(instance)%accshear_slip(j,of))
  
       !* Dislocation dipole climb
      AtomicVolume = &
-        plastic_disloUCLA_CAtomicVolume(instance)*plastic_disloUCLA_burgersPerSlipSystem(j,instance)**(3.0_pReal)
+        plastic_disloUCLA_CAtomicVolume(instance)*prm%burgers(j)**(3.0_pReal)
      VacancyDiffusion = &
         plastic_disloUCLA_D0(instance)*exp(-plastic_disloUCLA_Qsd(instance)/(kB*Temperature))
      if (dEq0(tau_slip_pos(j))) then
@@ -937,7 +893,7 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,ipc,ip,el)
  
    enddo slipSystems
  enddo slipFamilies
-
+end associate
  
 end subroutine plastic_disloUCLA_dotState
 
@@ -945,7 +901,7 @@ end subroutine plastic_disloUCLA_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-function plastic_disloUCLA_postResults(Mp,Temperature,ipc,ip,el)
+function plastic_disloUCLA_postResults(Mp,Temperature,ipc,ip,el) result(postResults)
  use prec, only: &
    tol_math_check, &
    dEq, dNeq0
@@ -974,7 +930,7 @@ math_mul33xx33
    el                                                                                               !< element
 
  real(pReal), dimension(plastic_disloUCLA_sizePostResults(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
-                                           plastic_disloUCLA_postResults
+                                           postResults
 
  integer(pInt) :: &
    instance,&
@@ -993,30 +949,30 @@ math_mul33xx33
  
  !* Required output
  c = 0_pInt
- plastic_disloUCLA_postResults = 0.0_pReal
-
+ postResults = 0.0_pReal
+ associate (prm => param(instance))
  do o = 1_pInt,plastic_disloUCLA_Noutput(instance)
     select case(plastic_disloUCLA_outputID(o,instance))
  
       case (rho_ID)
-        plastic_disloUCLA_postResults(c+1_pInt:c+ns) = state(instance)%rhoEdge(1_pInt:ns,of)
+        postResults(c+1_pInt:c+ns) = state(instance)%rhoEdge(1_pInt:ns,of)
         c = c + ns
       case (rhoDip_ID)
-        plastic_disloUCLA_postResults(c+1_pInt:c+ns) = state(instance)%rhoEdgeDip(1_pInt:ns,of)
+        postResults(c+1_pInt:c+ns) = state(instance)%rhoEdgeDip(1_pInt:ns,of)
         c = c + ns
       case (shearrate_ID,stressexponent_ID)
  call kinetics(Mp,Temperature,ph,instance,of, &                                                
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
 
         if     (plastic_disloUCLA_outputID(o,instance) == shearrate_ID) then
-          plastic_disloUCLA_postResults(c+1:c+ns) = (gdot_slip_pos + gdot_slip_neg)*0.5_pReal
+          postResults(c+1:c+ns) = (gdot_slip_pos + gdot_slip_neg)*0.5_pReal
           c = c + ns
         elseif(plastic_disloUCLA_outputID(o,instance) == stressexponent_ID) then
           do j = 1_pInt, ns
             if (dEq(gdot_slip_pos(j)+gdot_slip_neg(j),0.0_pReal)) then
-              plastic_disloUCLA_postResults(c+j) = 0.0_pReal
+              postResults(c+j) = 0.0_pReal
             else
-              plastic_disloUCLA_postResults(c+j) = (tau_slip_pos(j)+tau_slip_neg(j))/&
+              postResults(c+j) = (tau_slip_pos(j)+tau_slip_neg(j))/&
                                                        (gdot_slip_pos(j)+gdot_slip_neg(j))*&
                                                        (dgdot_dtauslip_pos(j)+dgdot_dtauslip_neg(j))* 0.5_pReal
             endif
@@ -1025,11 +981,11 @@ math_mul33xx33
         endif
 
       case (accumulatedshear_ID)
-       plastic_disloUCLA_postResults(c+1_pInt:c+ns) = &
+       postResults(c+1_pInt:c+ns) = &
                       state(instance)%accshear_slip(1_pInt:ns, of)
         c = c + ns
       case (mfp_ID)
-        plastic_disloUCLA_postResults(c+1_pInt:c+ns) =&
+        postResults(c+1_pInt:c+ns) =&
                       state(instance)%mfp_slip(1_pInt:ns, of)
         c = c + ns
       case (resolvedstress_ID)
@@ -1038,12 +994,12 @@ math_mul33xx33
            index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                 ! at which index starts my family
            slipSystems1: do i = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
               j = j + 1_pInt
-              plastic_disloUCLA_postResults(c+j) =&
+              postResults(c+j) =&
                                 math_mul33xx33(Mp,lattice_Sslip(:,:,1,index_myFamily+i,ph))
         enddo slipSystems1; enddo slipFamilies1
         c = c + ns
       case (thresholdstress_ID)
-        plastic_disloUCLA_postResults(c+1_pInt:c+ns) = &
+        postResults(c+1_pInt:c+ns) = &
                                 state(instance)%threshold_stress_slip(1_pInt:ns,of)
         c = c + ns
       case (dipoleDistance_ID)
@@ -1053,18 +1009,19 @@ math_mul33xx33
            slipSystems2: do i = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
               j = j + 1_pInt
               if (dNeq0(abs(math_mul33xx33(Mp,lattice_Sslip(:,:,1,index_myFamily+i,ph))))) then
-              plastic_disloUCLA_postResults(c+j) = &
-                (3.0_pReal*lattice_mu(ph)*plastic_disloUCLA_burgersPerSlipSystem(j,instance))/&
+              postResults(c+j) = &
+                (3.0_pReal*lattice_mu(ph)*prm%burgers(j))/&
                 (16.0_pReal*pi*abs(math_mul33xx33(Mp,lattice_Sslip(:,:,1,index_myFamily+i,ph))))
               else
-              plastic_disloUCLA_postResults(c+j) = huge(1.0_pReal)
+              postResults(c+j) = huge(1.0_pReal)
               endif
-              plastic_disloUCLA_postResults(c+j)=min(plastic_disloUCLA_postResults(c+j),&
+              postResults(c+j)=min(postResults(c+j),&
                                                             state(instance)%mfp_slip(j,of))
         enddo slipSystems2; enddo slipFamilies2
         c = c + ns
     end select
  enddo
+end associate
 end function plastic_disloUCLA_postResults
 
 
@@ -1106,7 +1063,7 @@ ph, instance,of
                 dvel_slip, vel_slip
  real(pReal), intent(out), dimension(plastic_disloUCLA_totalNslip(instance)) :: &
    gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg
- 
+ associate(prm => param(instance), stt => state(instance))
  !* Shortened notation
  ns = plastic_disloUCLA_totalNslip(instance)
  
@@ -1121,40 +1078,33 @@ ph, instance,of
           slipSystems: do i = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
             j = j + 1_pInt
             !* Boltzmann ratio
-            BoltzmannRatio = plastic_disloUCLA_QedgePerSlipSystem(j,instance)/(kB*Temperature)
+            BoltzmannRatio = prm%H0kp(j)/(kB*Temperature)
             !* Initial shear rates
             DotGamma0 = &
-              state(instance)%rhoEdge(j,of)*plastic_disloUCLA_burgersPerSlipSystem(j,instance)*&
+              state(instance)%rhoEdge(j,of)*prm%burgers(j)*&
               plastic_disloUCLA_v0PerSlipSystem(j,instance)
             !* Resolved shear stress on slip system
-            tau_slip_pos(j) = math_mul33xx33(Mp,lattice_Sslip(:,:,1,index_myFamily+i,ph))
-            tau_slip_neg(j)  = tau_slip_pos(j)
-
-            nonSchmidSystems: do k = 1,lattice_NnonSchmid(ph) 
-              tau_slip_pos = tau_slip_pos + plastic_disloUCLA_nonSchmidCoeff(k,instance)* &
-                                   math_mul33xx33(Mp,lattice_Sslip(1:3,1:3,2*k,index_myFamily+i,ph))
-              tau_slip_neg = tau_slip_neg + plastic_disloUCLA_nonSchmidCoeff(k,instance)* &
-                                   math_mul33xx33(Mp,lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph))
-            enddo nonSchmidSystems
+            tau_slip_pos(j) = math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,j))
+            tau_slip_neg(j) = math_mul33xx33(Mp,prm%nonSchmid_neg(1:3,1:3,j))
 
             significantPositiveTau: if((abs(tau_slip_pos(j))-state(instance)%threshold_stress_slip(j, of)) > tol_math_check) then
               !* Stress ratio
               stressRatio = ((abs(tau_slip_pos(j))-state(instance)%threshold_stress_slip(j, of))/&
                       (plastic_disloUCLA_SolidSolutionStrength(instance)+&
                        plastic_disloUCLA_tau_peierlsPerSlipFamily(f,instance)))
-              stressRatio_p       = stressRatio** plastic_disloUCLA_pPerSlipFamily(f,instance)
-              stressRatio_pminus1 = stressRatio**(plastic_disloUCLA_pPerSlipFamily(f,instance)-1.0_pReal)
+              stressRatio_p       = stressRatio** prm%p(j)
+              stressRatio_pminus1 = stressRatio**(prm%p(j)-1.0_pReal)
               !* Shear rates due to slip
-              vel_slip = 2.0_pReal*plastic_disloUCLA_burgersPerSlipFamily(f,instance) &
-                     * plastic_disloUCLA_kinkheight(f,instance) * plastic_disloUCLA_omega(f,instance)  &
-                     * ( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) ) &
+              vel_slip = 2.0_pReal*prm%burgers(j) &
+                     * prm%kink_height(j) * prm%omega(j)  &
+                     * ( state(instance)%mfp_slip(j,of) - prm%kink_width(j) ) &
                      * (tau_slip_pos(j)  &
-                     * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance)) ) &
+                     * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j)) ) &
                      / ( &
-                     2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal)*tau_slip_pos(j) &
-                     + plastic_disloUCLA_omega(f,instance) * plastic_disloUCLA_friction(f,instance) &
-                     *(( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) )**2.0_pReal) &
-                     * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance))  &
+                     2.0_pReal*(prm%burgers(j)**2.0_pReal)*tau_slip_pos(j) &
+                     + prm%omega(j) * plastic_disloUCLA_friction(f,instance) &
+                     *(( state(instance)%mfp_slip(j,of) - prm%kink_width(j) )**2.0_pReal) &
+                     * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j))  &
                      )
                        
               gdot_slip_pos(j) = DotGamma0 &
@@ -1163,41 +1113,41 @@ ph, instance,of
               !* Derivatives of shear rates 
 
               dvel_slip = &
-                   2.0_pReal*plastic_disloUCLA_burgersPerSlipFamily(f,instance) &
-                   * plastic_disloUCLA_kinkheight(f,instance) * plastic_disloUCLA_omega(f,instance)  &
-                   * ( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) ) &
+                   2.0_pReal*prm%burgers(j) &
+                   * prm%kink_height(j) * prm%omega(j)  &
+                   * ( state(instance)%mfp_slip(j,of) - prm%kink_width(j) ) &
                    * ( &
-                   (exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance)) &
+                   (exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j)) &
                    + tau_slip_pos(j) &
-                   * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance)))&    !deltaf(i)                                         
-                   *BoltzmannRatio*plastic_disloUCLA_pPerSlipFamily(f,instance)&
-                   *plastic_disloUCLA_qPerSlipFamily(f,instance)/&
+                   * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j)))&    !deltaf(i)                                         
+                   *BoltzmannRatio*prm%p(j)&
+                   *prm%q(j)/&
                    (plastic_disloUCLA_SolidSolutionStrength(instance)+plastic_disloUCLA_tau_peierlsPerSlipFamily(f,instance))*&
-                   StressRatio_pminus1*(1-StressRatio_p)**(plastic_disloUCLA_qPerSlipFamily(f,instance)-1.0_pReal)  ) &!deltaf(f)                                        
+                   StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)  ) &!deltaf(f)                                        
                    ) &
-                   *  (2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal)*tau_slip_pos(j) &
-                   +  plastic_disloUCLA_omega(f,instance) * plastic_disloUCLA_friction(f,instance) &
-                   *(( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) )**2.0_pReal) &
-                   * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance))  &
+                   *  (2.0_pReal*(prm%burgers(j)**2.0_pReal)*tau_slip_pos(j) &
+                   +  prm%omega(j) * plastic_disloUCLA_friction(f,instance) &
+                   *(( state(instance)%mfp_slip(j,of) - prm%kink_width(j) )**2.0_pReal) &
+                   * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j))  &
                    ) &
                    -  (tau_slip_pos(j) &
-                   * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance)) )  &
-                   *  (2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal) &
-                   +  plastic_disloUCLA_omega(f,instance) * plastic_disloUCLA_friction(f,instance) &
-                   *(( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) )**2.0_pReal) &
-                   * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance)))&     !deltaf(i)                                        
-                   *BoltzmannRatio*plastic_disloUCLA_pPerSlipFamily(f,instance)&
-                   *plastic_disloUCLA_qPerSlipFamily(f,instance)/&
+                   * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j)) )  &
+                   *  (2.0_pReal*(prm%burgers(j)**2.0_pReal) &
+                   +  prm%omega(j) * plastic_disloUCLA_friction(f,instance) &
+                   *(( state(instance)%mfp_slip(j,of) - prm%kink_width(j) )**2.0_pReal) &
+                   * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j)))&     !deltaf(i)                                        
+                   *BoltzmannRatio*prm%p(j)&
+                   *prm%q(j)/&
                    (plastic_disloUCLA_SolidSolutionStrength(instance)+plastic_disloUCLA_tau_peierlsPerSlipFamily(f,instance))*&
-                   StressRatio_pminus1*(1-StressRatio_p)**(plastic_disloUCLA_qPerSlipFamily(f,instance)-1.0_pReal)  )& !deltaf(f)                                        
+                   StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)  )& !deltaf(f)                                        
                    ) &
                    )  &
                    / (  &
                    ( &
-                   2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal)*tau_slip_pos(j) &
-                   + plastic_disloUCLA_omega(f,instance) * plastic_disloUCLA_friction(f,instance) &
-                   *(( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) )**2.0_pReal) &
-                   * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance))  &
+                   2.0_pReal*(prm%burgers(j)**2.0_pReal)*tau_slip_pos(j) &
+                   + prm%omega(j) * plastic_disloUCLA_friction(f,instance) &
+                   *(( state(instance)%mfp_slip(j,of) - prm%kink_width(j) )**2.0_pReal) &
+                   * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j))  &
                    )**2.0_pReal &
                    )
 
@@ -1209,19 +1159,19 @@ ph, instance,of
               stressRatio = ((abs(tau_slip_neg(j))-state(instance)%threshold_stress_slip(j, of))/&
                       (plastic_disloUCLA_SolidSolutionStrength(instance)+&
                        plastic_disloUCLA_tau_peierlsPerSlipFamily(f,instance)))
-              stressRatio_p       = stressRatio** plastic_disloUCLA_pPerSlipFamily(f,instance)
-              stressRatio_pminus1 = stressRatio**(plastic_disloUCLA_pPerSlipFamily(f,instance)-1.0_pReal)
+              stressRatio_p       = stressRatio** prm%p(j)
+              stressRatio_pminus1 = stressRatio**(prm%p(j)-1.0_pReal)
               !* Shear rates due to slip                                                                                                                                                                                                                                                                           
-              vel_slip = 2.0_pReal*plastic_disloUCLA_burgersPerSlipFamily(f,instance) &
-                     * plastic_disloUCLA_kinkheight(f,instance) * plastic_disloUCLA_omega(f,instance)  &
-                     * ( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) ) &
+              vel_slip = 2.0_pReal*prm%burgers(j) &
+                     * prm%kink_height(j) * prm%omega(j)  &
+                     * ( state(instance)%mfp_slip(j,of) - prm%kink_width(j) ) &
                      * (tau_slip_neg(j)  &
-                     * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance)) ) &
+                     * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j)) ) &
                      / ( &
-                     2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal)*tau_slip_neg(j) &
-                     + plastic_disloUCLA_omega(f,instance) * plastic_disloUCLA_friction(f,instance) &
-                     *(( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) )**2.0_pReal) &
-                     * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance))  &
+                     2.0_pReal*(prm%burgers(j)**2.0_pReal)*tau_slip_neg(j) &
+                     + prm%omega(j) * plastic_disloUCLA_friction(f,instance) &
+                     *(( state(instance)%mfp_slip(j,of) - prm%kink_width(j) )**2.0_pReal) &
+                     * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j))  &
                      )
               
               gdot_slip_neg(j) = DotGamma0 &
@@ -1229,41 +1179,41 @@ ph, instance,of
                        * sign(1.0_pReal,tau_slip_neg(j))
               !* Derivatives of shear rates 
               dvel_slip = &
-                   2.0_pReal*plastic_disloUCLA_burgersPerSlipFamily(f,instance) &
-                   * plastic_disloUCLA_kinkheight(f,instance) * plastic_disloUCLA_omega(f,instance)  &
-                   * ( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) ) &
+                   2.0_pReal*prm%burgers(j) &
+                   * prm%kink_height(j) * prm%omega(j)  &
+                   * ( state(instance)%mfp_slip(j,of) - prm%kink_width(j) ) &
                    * ( &
-                   (exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance)) &
+                   (exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j)) &
                    + tau_slip_neg(j) &
-                   * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance)))&    !deltaf(i)                                         
-                   *BoltzmannRatio*plastic_disloUCLA_pPerSlipFamily(f,instance)&
-                   *plastic_disloUCLA_qPerSlipFamily(f,instance)/&
+                   * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j)))&    !deltaf(i)                                         
+                   *BoltzmannRatio*prm%p(j)&
+                   *prm%q(j)/&
                    (plastic_disloUCLA_SolidSolutionStrength(instance)+plastic_disloUCLA_tau_peierlsPerSlipFamily(f,instance))*&
-                   StressRatio_pminus1*(1-StressRatio_p)**(plastic_disloUCLA_qPerSlipFamily(f,instance)-1.0_pReal)  ) &!deltaf(f)                                        
+                   StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)  ) &!deltaf(f)                                        
                    ) &
-                   *  (2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal)*tau_slip_neg(j) &
-                   +  plastic_disloUCLA_omega(f,instance) * plastic_disloUCLA_friction(f,instance) &
-                   *(( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) )**2.0_pReal) &
-                   * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance))  &
+                   *  (2.0_pReal*(prm%burgers(j)**2.0_pReal)*tau_slip_neg(j) &
+                   +  prm%omega(j) * plastic_disloUCLA_friction(f,instance) &
+                   *(( state(instance)%mfp_slip(j,of) - prm%kink_width(j) )**2.0_pReal) &
+                   * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j))  &
                    ) &
                    -  (tau_slip_neg(j) &
-                   * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance)) )  &
-                   *  (2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal) &
-                   +  plastic_disloUCLA_omega(f,instance) * plastic_disloUCLA_friction(f,instance) &
-                   *(( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) )**2.0_pReal) &
-                   * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance)))&     !deltaf(i)                                        
-                   *BoltzmannRatio*plastic_disloUCLA_pPerSlipFamily(f,instance)&
-                   *plastic_disloUCLA_qPerSlipFamily(f,instance)/&
+                   * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j)) )  &
+                   *  (2.0_pReal*(prm%burgers(j)**2.0_pReal) &
+                   +  prm%omega(j) * plastic_disloUCLA_friction(f,instance) &
+                   *(( state(instance)%mfp_slip(j,of) - prm%kink_width(j) )**2.0_pReal) &
+                   * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j)))&     !deltaf(i)                                        
+                   *BoltzmannRatio*prm%p(j)&
+                   *prm%q(j)/&
                    (plastic_disloUCLA_SolidSolutionStrength(instance)+plastic_disloUCLA_tau_peierlsPerSlipFamily(f,instance))*&
-                   StressRatio_pminus1*(1-StressRatio_p)**(plastic_disloUCLA_qPerSlipFamily(f,instance)-1.0_pReal)  )& !deltaf(f)                                        
+                   StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)  )& !deltaf(f)                                        
                    ) &
                    )  &
                    / (  &
                    ( &
-                   2.0_pReal*(plastic_disloUCLA_burgersPerSlipFamily(f,instance)**2.0_pReal)*tau_slip_neg(j) &
-                   + plastic_disloUCLA_omega(f,instance) * plastic_disloUCLA_friction(f,instance) &
-                   *(( state(instance)%mfp_slip(j,of) - plastic_disloUCLA_kinkwidth(f,instance) )**2.0_pReal) &
-                   * exp(-BoltzmannRatio*(1-StressRatio_p) ** plastic_disloUCLA_qPerSlipFamily(f,instance))  &
+                   2.0_pReal*(prm%burgers(j)**2.0_pReal)*tau_slip_neg(j) &
+                   + prm%omega(j) * plastic_disloUCLA_friction(f,instance) &
+                   *(( state(instance)%mfp_slip(j,of) - prm%kink_width(j) )**2.0_pReal) &
+                   * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j))  &
                    )**2.0_pReal &
                    )
 
@@ -1273,7 +1223,7 @@ ph, instance,of
             endif significantNegativeTau
           enddo slipSystems
         enddo slipFamilies
-
+ end associate
 end subroutine kinetics
 
 end module plastic_disloUCLA
