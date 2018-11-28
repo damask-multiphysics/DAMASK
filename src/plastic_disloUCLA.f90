@@ -769,23 +769,10 @@ end subroutine plastic_disloUCLA_microstructure
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,ipc,ip,el)
- use prec, only: &
-   tol_math_check
- use math, only: &
-   math_Plain3333to99, &
-   math_Mandel6to33, &
-   math_Mandel33to6, &
-   math_symmetric33, &
-   math_mul33x3
  use material, only: &
    material_phase, &
    phase_plasticityInstance, &
    phaseAt, phasememberAt
- use lattice, only: &
-   lattice_Sslip, &
-   lattice_maxNslipFamily,&
-   lattice_NslipSystem, &
-   lattice_NnonSchmid
  
  implicit none
  integer(pInt), intent(in)                  :: ipc,ip,el
@@ -794,10 +781,8 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,ipc,ip,el
  real(pReal), dimension(3,3), intent(out)   :: Lp
  real(pReal), dimension(3,3,3,3), intent(out)   :: dLp_dMp
 
- integer(pInt) :: instance,ph,of,ns,f,i,j,k,l,m,n,index_myFamily
+ integer(pInt) :: instance,ph,of,i,k,l,m,n
 
- real(pReal), dimension(3,3,2) :: &
-   nonSchmid_tensor
  real(pReal), dimension(plastic_disloUCLA_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    gdot_slip_pos,gdot_slip_neg,tau_slip_pos,tau_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg
    
@@ -805,43 +790,25 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,ipc,ip,el
  of = phasememberAt(ipc,ip,el)
  ph = phaseAt(ipc,ip,el)
  instance  = phase_plasticityInstance(ph)
- ns = plastic_disloUCLA_totalNslip(instance)
  associate(prm => param(instance), stt => state(instance))
  
  Lp = 0.0_pReal
  dLp_dMp = 0.0_pReal
  
-!--------------------------------------------------------------------------------------------------
-! Dislocation glide part
-
- !* Dislocation density evolution
  call kinetics(Mp,Temperature,ph,instance,of, &                                                  
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
- j = 0_pInt
- slipFamilies: do f = 1_pInt,lattice_maxNslipFamily
-   index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph)) ! at which index starts my family
-   slipSystems: do i = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
-     j = j+1_pInt
-     nonSchmid_tensor(1:3,1:3,1) = lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
-     nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,1)
-     nonSchmidSystems: do k = 1,lattice_NnonSchmid(ph) 
-       nonSchmid_tensor(1:3,1:3,1) = nonSchmid_tensor(1:3,1:3,1) + plastic_disloUCLA_nonSchmidCoeff(k,instance)*&
-                                           lattice_Sslip(1:3,1:3,2*k,  index_myFamily+i,ph)
-       nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,2) + plastic_disloUCLA_nonSchmidCoeff(k,instance)*&
-                                           lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph)
-     enddo nonSchmidSystems
-
-   Lp = Lp + (gdot_slip_pos(j)+gdot_slip_neg(j))*prm%Schmid_slip(1:3,1:3,j)*0.5_pReal
-     !* Calculation of the tangent of Lp
-     forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-        dLp_dMp(k,l,m,n) = &
-        dLp_dMp(k,l,m,n) + (dgdot_dtauslip_pos(j)*nonSchmid_tensor(m,n,1)+&
-                                   dgdot_dtauslip_neg(j)*nonSchmid_tensor(m,n,2))*0.5_pReal*&
-                                   lattice_Sslip(k,l,1,index_myFamily+i,ph)
-   enddo slipSystems
- enddo slipFamilies
+ slipSystems: do i = 1_pInt, prm%totalNslip
+   Lp = Lp + (gdot_slip_pos(i)+gdot_slip_neg(i))*prm%Schmid_slip(1:3,1:3,i)
+   forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
+     dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
+                      + dgdot_dtauslip_pos(i) * prm%Schmid_slip(k,l,i) * prm%nonSchmid_pos(m,n,i) &
+                      + dgdot_dtauslip_neg(i) * prm%Schmid_slip(k,l,i) * prm%nonSchmid_neg(m,n,i)
+ enddo slipSystems
 end associate
- 
+
+ Lp = 0.5_pReal * Lp
+ dLp_dMp = 0.5_pReal * dLp_dMp
+
 end subroutine plastic_disloUCLA_LpAndItsTangent
 
 
@@ -905,13 +872,14 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,ipc,ip,el)
  !* Dislocation density evolution
  call kinetics(Mp,Temperature,ph,instance,of, &                                                
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
+ dotState(instance)%accshear_slip(:,of) = (gdot_slip_pos+gdot_slip_neg)*0.5_pReal
+
  j = 0_pInt
  slipFamilies: do f = 1_pInt,lattice_maxNslipFamily
    index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph)) ! at which index starts my family
    slipSystems: do i = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
      j = j+1_pInt
 
-     dotState(instance)%accshear_slip(j,of) = (gdot_slip_pos(j)+gdot_slip_neg(j))*0.5_pReal
      !* Multiplication
      DotRhoMultiplication = abs(dotState(instance)%accshear_slip(j,of))/&
                                (plastic_disloUCLA_burgersPerSlipSystem(j,instance)* &
