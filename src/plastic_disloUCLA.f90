@@ -74,15 +74,6 @@ module plastic_disloUCLA
 
  enum, bind(c) 
    enumerator :: undefined_ID, &
-                 edge_density_ID, &
-                 dipole_density_ID, &
-                 shear_rate_slip_ID, &
-                 accumulated_shear_slip_ID, &
-                 mfp_slip_ID, &
-                 resolved_stress_slip_ID, &
-                 threshold_stress_slip_ID, &
-                 edge_dipole_distance_ID, &
-                 stress_exponent_ID, &
      rho_ID, &
      rhoDip_ID, &
      shearrate_ID, &
@@ -210,7 +201,7 @@ material_allocatePlasticState
  integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: maxNinstance,mySize=0_pInt,phase,maxTotalNslip,&
                   f,instance,j,k,o,ns, i, &
-                  Nchunks_SlipSlip = 0_pInt, output_ID, outputSize, &
+                  Nchunks_SlipSlip = 0_pInt, outputSize, &
                   Nchunks_SlipFamilies = 0_pInt,Nchunks_nonSchmid = 0_pInt, &
                   offset_slip, index_myFamily, index_otherFamily, &
                   startIndex, endIndex, p
@@ -345,34 +336,40 @@ do p = 1_pInt, size(phase_plasticityInstance)
      outputSize = prm%totalNslip
      select case(trim(outputs(i)))
          case ('edge_density')
-           outputID  = rho_ID
+           outputID  = merge(rho_ID,undefined_ID,prm%totalNslip>0_pInt)
          case ('dipole_density')
-           output_ID = rhoDip_ID
-         case ('shear_rate','shearrate')
-           output_ID = shearrate_ID
-         case ('accumulated_shear','accumulatedshear')
-           output_ID = accumulatedshear_ID
-         case ('mfp')
-           output_ID = mfp_ID
-         case ('resolved_stress')
-           output_ID = resolvedstress_ID
-         case ('threshold_stress')
-           output_ID = thresholdstress_ID
+           outputID = merge(rhoDip_ID,undefined_ID,prm%totalNslip>0_pInt)
+         case ('shear_rate','shearrate','shear_rate_slip','shearrate_slip')
+           outputID = merge(shearrate_ID,undefined_ID,prm%totalNslip>0_pInt)
+         case ('accumulated_shear','accumulatedshear','accumulated_shear_slip')
+           outputID = merge(accumulatedshear_ID,undefined_ID,prm%totalNslip>0_pInt)
+         case ('mfp','mfp_slip')
+           outputID = merge(mfp_ID,undefined_ID,prm%totalNslip>0_pInt)
+         case ('resolved_stress','resolved_stress_slip')
+           outputID = merge(resolvedstress_ID,undefined_ID,prm%totalNslip>0_pInt)
+         case ('threshold_stress','threshold_stress_slip')
+           outputID = merge(thresholdstress_ID,undefined_ID,prm%totalNslip>0_pInt)
          case ('edge_dipole_distance')
-           output_ID = dipoleDistance_ID
+           outputID = merge(dipoleDistance_ID,undefined_ID,prm%totalNslip>0_pInt)
          case ('stress_exponent')
-           output_ID = stressexponent_ID
+           outputID = merge(stressexponent_ID,undefined_ID,prm%totalNslip>0_pInt)
      end select
-       
-     !if (outputID /= undefined_ID) then       
-     !  plastic_disloUCLA_output(i,instance) = outputs(i)
-     !  plastic_disloUCLA_sizePostResult(i,instance) = outputSize   
-     !  prm%outputID = [prm%outputID, outputID]
-     !endif
+
+     if (outputID /= undefined_ID) then       
+       plastic_disloUCLA_output(i,phase_plasticityInstance(p)) = outputs(i)
+       plastic_disloUCLA_sizePostResult(i,phase_plasticityInstance(p)) = outputSize   
+       prm%outputID = [prm%outputID, outputID]
+       plastic_disloUCLA_outputID(i,phase_plasticityInstance(p)) = outputID
+       plastic_disloUCLA_sizePostResults(phase_plasticityInstance(p)) = &
+          plastic_disloUCLA_sizePostResults(phase_plasticityInstance(p)) + outputSize
+plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) + 1_pInt
+     endif
+
    enddo 
    end associate
  enddo
-
+  print*, plastic_disloUCLA_sizePostResults
+ print*, plastic_disloUCLA_output
  rewind(fileUnit)
  phase = 0_pInt
  do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= MATERIAL_partPhase)         ! wind forward to <phase>
@@ -402,54 +399,6 @@ do p = 1_pInt, size(phase_plasticityInstance)
      chunkPos = IO_stringPos(line)
      tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
       select case(tag)
-       case ('(output)')
-         select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
-           case ('edge_density')
-             plastic_disloUCLA_Noutput(instance) = plastic_disloUCLA_Noutput(instance) + 1_pInt
-             plastic_disloUCLA_outputID(plastic_disloUCLA_Noutput(instance),instance) = edge_density_ID
-             plastic_disloUCLA_output(plastic_disloUCLA_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('dipole_density')
-             plastic_disloUCLA_Noutput(instance) = plastic_disloUCLA_Noutput(instance) + 1_pInt
-             plastic_disloUCLA_outputID(plastic_disloUCLA_Noutput(instance),instance) = dipole_density_ID
-             plastic_disloUCLA_output(plastic_disloUCLA_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('shear_rate_slip','shearrate_slip')
-             plastic_disloUCLA_Noutput(instance) = plastic_disloUCLA_Noutput(instance) + 1_pInt
-             plastic_disloUCLA_outputID(plastic_disloUCLA_Noutput(instance),instance) = shear_rate_slip_ID
-             plastic_disloUCLA_output(plastic_disloUCLA_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('accumulated_shear_slip')
-             plastic_disloUCLA_Noutput(instance) = plastic_disloUCLA_Noutput(instance) + 1_pInt
-             plastic_disloUCLA_outputID(plastic_disloUCLA_Noutput(instance),instance) = accumulated_shear_slip_ID
-             plastic_disloUCLA_output(plastic_disloUCLA_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('mfp_slip')
-             plastic_disloUCLA_Noutput(instance) = plastic_disloUCLA_Noutput(instance) + 1_pInt
-             plastic_disloUCLA_outputID(plastic_disloUCLA_Noutput(instance),instance) = mfp_slip_ID
-             plastic_disloUCLA_output(plastic_disloUCLA_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('resolved_stress_slip')
-             plastic_disloUCLA_Noutput(instance) = plastic_disloUCLA_Noutput(instance) + 1_pInt
-             plastic_disloUCLA_outputID(plastic_disloUCLA_Noutput(instance),instance) = resolved_stress_slip_ID
-             plastic_disloUCLA_output(plastic_disloUCLA_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('threshold_stress_slip')
-             plastic_disloUCLA_Noutput(instance) = plastic_disloUCLA_Noutput(instance) + 1_pInt
-             plastic_disloUCLA_outputID(plastic_disloUCLA_Noutput(instance),instance) = threshold_stress_slip_ID
-             plastic_disloUCLA_output(plastic_disloUCLA_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('edge_dipole_distance')
-             plastic_disloUCLA_Noutput(instance) = plastic_disloUCLA_Noutput(instance) + 1_pInt
-             plastic_disloUCLA_outputID(plastic_disloUCLA_Noutput(instance),instance) = edge_dipole_distance_ID
-             plastic_disloUCLA_output(plastic_disloUCLA_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('stress_exponent')
-             plastic_disloUCLA_Noutput(instance) = plastic_disloUCLA_Noutput(instance) + 1_pInt
-             plastic_disloUCLA_outputID(plastic_disloUCLA_Noutput(instance),instance) = stress_exponent_ID
-             plastic_disloUCLA_output(plastic_disloUCLA_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-          end select
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on number of slip system families
        case ('nslip')
@@ -597,28 +546,6 @@ do p = 1_pInt, size(phase_plasticityInstance)
      instance = phase_plasticityInstance(phase)
      ns = plastic_disloUCLA_totalNslip(instance)
 
-!--------------------------------------------------------------------------------------------------
-!  Determine size of postResults array
-     do o = 1_pInt,plastic_disloUCLA_Noutput(instance)
-       select case(plastic_disloUCLA_outputID(o,instance))
-         case(edge_density_ID, &
-              dipole_density_ID, &
-              shear_rate_slip_ID, &
-              accumulated_shear_slip_ID, &
-              mfp_slip_ID, &
-              resolved_stress_slip_ID, &
-              threshold_stress_slip_ID, &
-              edge_dipole_distance_ID, &
-              stress_exponent_ID &
-              )
-           mySize = ns
-       end select
- 
-       if (mySize > 0_pInt) then  ! any meaningful output found
-          plastic_disloUCLA_sizePostResult(o,instance) = mySize
-          plastic_disloUCLA_sizePostResults(instance)  = plastic_disloUCLA_sizePostResults(instance) + mySize
-       endif
-     enddo
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
@@ -632,7 +559,7 @@ do p = 1_pInt, size(phase_plasticityInstance)
    call material_allocatePlasticState(phase,NofMyPhase,sizeState,sizeDotState,0_pInt, &
                                       ns,0_pInt,0_pInt)
 
-plasticState(phase)%sizePostResults = plastic_disloUCLA_sizePostResults(instance)
+     plasticState(phase)%sizePostResults = plastic_disloUCLA_sizePostResults(instance)
 
      offset_slip = 2_pInt*plasticState(phase)%nSlip
      plasticState(phase)%slipRate => &
@@ -1132,20 +1059,20 @@ math_mul33xx33
  do o = 1_pInt,plastic_disloUCLA_Noutput(instance)
     select case(plastic_disloUCLA_outputID(o,instance))
  
-      case (edge_density_ID)
+      case (rho_ID)
         plastic_disloUCLA_postResults(c+1_pInt:c+ns) = state(instance)%rhoEdge(1_pInt:ns,of)
         c = c + ns
-      case (dipole_density_ID)
+      case (rhoDip_ID)
         plastic_disloUCLA_postResults(c+1_pInt:c+ns) = state(instance)%rhoEdgeDip(1_pInt:ns,of)
         c = c + ns
-      case (shear_rate_slip_ID,stress_exponent_ID)
+      case (shearrate_ID,stressexponent_ID)
  call kinetics(Mp,Temperature,ph,instance,of, &                                                
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
 
-        if     (plastic_disloUCLA_outputID(o,instance) == shear_rate_slip_ID) then
+        if     (plastic_disloUCLA_outputID(o,instance) == shearrate_ID) then
           plastic_disloUCLA_postResults(c+1:c+ns) = (gdot_slip_pos + gdot_slip_neg)*0.5_pReal
           c = c + ns
-        elseif(plastic_disloUCLA_outputID(o,instance) == stress_exponent_ID) then
+        elseif(plastic_disloUCLA_outputID(o,instance) == stressexponent_ID) then
           do j = 1_pInt, ns
             if (dEq(gdot_slip_pos(j)+gdot_slip_neg(j),0.0_pReal)) then
               plastic_disloUCLA_postResults(c+j) = 0.0_pReal
@@ -1158,15 +1085,15 @@ math_mul33xx33
            c = c + ns
         endif
 
-      case (accumulated_shear_slip_ID)
+      case (accumulatedshear_ID)
        plastic_disloUCLA_postResults(c+1_pInt:c+ns) = &
                       state(instance)%accshear_slip(1_pInt:ns, of)
         c = c + ns
-      case (mfp_slip_ID)
+      case (mfp_ID)
         plastic_disloUCLA_postResults(c+1_pInt:c+ns) =&
                       state(instance)%mfp_slip(1_pInt:ns, of)
         c = c + ns
-      case (resolved_stress_slip_ID)
+      case (resolvedstress_ID)
         j = 0_pInt
         slipFamilies1: do f = 1_pInt,lattice_maxNslipFamily
            index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                 ! at which index starts my family
@@ -1176,11 +1103,11 @@ math_mul33xx33
                                 math_mul33xx33(Mp,lattice_Sslip(:,:,1,index_myFamily+i,ph))
         enddo slipSystems1; enddo slipFamilies1
         c = c + ns
-      case (threshold_stress_slip_ID)
+      case (thresholdstress_ID)
         plastic_disloUCLA_postResults(c+1_pInt:c+ns) = &
                                 state(instance)%threshold_stress_slip(1_pInt:ns,of)
         c = c + ns
-      case (edge_dipole_distance_ID)
+      case (dipoleDistance_ID)
         j = 0_pInt
         slipFamilies2: do f = 1_pInt,lattice_maxNslipFamily
            index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                 ! at which index starts my family
