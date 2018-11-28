@@ -530,9 +530,8 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, S6, Fi, ipc, ip, e
      call plastic_dislotwin_LpAndItsTangent       (Lp,dLp_dMp,Mp,temperature(ho)%p(tme),instance,of)
 
    case (PLASTICITY_DISLOUCLA_ID) plasticityType
-     call plastic_disloucla_LpAndItsTangent       (Lp,dLp_dMp99, math_Mandel33to6(Mp), &
+     call plastic_disloucla_LpAndItsTangent       (Lp,dLp_dMp,Mp, &
                                                    temperature(ho)%p(tme), ipc,ip,el)
-     dLp_dMp = math_Plain99to3333(dLp_dMp99)                                                        ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
 
  end select plasticityType
 
@@ -927,7 +926,7 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
      call plastic_dislotwin_dotState    (Mp,temperature(ho)%p(tme),instance,of)
 
    case (PLASTICITY_DISLOUCLA_ID) plasticityType
-     call plastic_disloucla_dotState    (math_Mandel33to6(Mp),temperature(ho)%p(tme), &
+     call plastic_disloucla_dotState    (Mp,temperature(ho)%p(tme), &
                                          ipc,ip,el)
 
    case (PLASTICITY_NONLOCAL_ID) plasticityType
@@ -1155,7 +1154,7 @@ function constitutive_postResults(S6, Fi, FeArray, ipc, ip, el)
 
    case (PLASTICITY_DISLOUCLA_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
-       plastic_disloucla_postResults(S6,temperature(ho)%p(tme),ipc,ip,el)
+       plastic_disloucla_postResults(Mp,temperature(ho)%p(tme),ipc,ip,el)
 
    case (PLASTICITY_NONLOCAL_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &

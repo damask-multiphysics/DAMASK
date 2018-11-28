@@ -870,7 +870,7 @@ end subroutine plastic_disloUCLA_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature,ipc,ip,el)
+subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,ipc,ip,el)
  use prec, only: &
    tol_math_check
  use math, only: &
@@ -892,16 +892,14 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
  implicit none
  integer(pInt), intent(in)                  :: ipc,ip,el
  real(pReal), intent(in)                    :: Temperature
- real(pReal), dimension(6),   intent(in)    :: Tstar_v
+ real(pReal), dimension(3,3),   intent(in)    :: Mp
  real(pReal), dimension(3,3), intent(out)   :: Lp
- real(pReal), dimension(9,9), intent(out)   :: dLp_dTstar99
+ real(pReal), dimension(3,3,3,3), intent(out)   :: dLp_dMp
 
  integer(pInt) :: instance,ph,of,ns,f,i,j,k,l,m,n,index_myFamily
 
  real(pReal), dimension(3,3,2) :: &
    nonSchmid_tensor
- real(pReal), dimension(3,3,3,3) :: &
-   dLp_dTstar3333
  real(pReal), dimension(plastic_disloUCLA_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    gdot_slip_pos,gdot_slip_neg,tau_slip_pos,tau_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg
    
@@ -912,13 +910,13 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
  ns = plastic_disloUCLA_totalNslip(instance)
  
  Lp = 0.0_pReal
- dLp_dTstar3333 = 0.0_pReal
+ dLp_dMp = 0.0_pReal
  
 !--------------------------------------------------------------------------------------------------
 ! Dislocation glide part
 
  !* Dislocation density evolution
- call kinetics(Tstar_v,Temperature,ipc,ip,el, &                                                
+ call kinetics(Mp,Temperature,ipc,ip,el, &                                                
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
  j = 0_pInt
  slipFamilies: do f = 1_pInt,lattice_maxNslipFamily
@@ -938,14 +936,13 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
      Lp = Lp + (gdot_slip_pos(j)+gdot_slip_neg(j))*0.5_pReal*lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
      !* Calculation of the tangent of Lp
      forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-        dLp_dTstar3333(k,l,m,n) = &
-        dLp_dTstar3333(k,l,m,n) + (dgdot_dtauslip_pos(j)*nonSchmid_tensor(m,n,1)+&
+        dLp_dMp(k,l,m,n) = &
+        dLp_dMp(k,l,m,n) + (dgdot_dtauslip_pos(j)*nonSchmid_tensor(m,n,1)+&
                                    dgdot_dtauslip_neg(j)*nonSchmid_tensor(m,n,2))*0.5_pReal*&
                                    lattice_Sslip(k,l,1,index_myFamily+i,ph)
    enddo slipSystems
  enddo slipFamilies
 
- dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
  
 end subroutine plastic_disloUCLA_LpAndItsTangent
 
@@ -953,7 +950,7 @@ end subroutine plastic_disloUCLA_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
+subroutine plastic_disloUCLA_dotState(Mp,Temperature,ipc,ip,el)
  use prec, only: &
    tol_math_check, &
    dEq0
@@ -970,8 +967,8 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
    lattice_mu
 
  implicit none
- real(pReal), dimension(6),  intent(in):: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal), dimension(3,3),  intent(in):: &
+   Mp                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
  real(pReal),                intent(in) :: &
    temperature                                                                                      !< temperature at integration point
  integer(pInt),              intent(in) :: &
@@ -1008,7 +1005,7 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
  plasticState(ph)%dotState(:,of) = 0.0_pReal
  
  !* Dislocation density evolution
- call kinetics(Tstar_v,Temperature,ipc,ip,el, &                                                
+ call kinetics(Mp,Temperature,ipc,ip,el, &                                                
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
  j = 0_pInt
  slipFamilies: do f = 1_pInt,lattice_maxNslipFamily
@@ -1082,26 +1079,27 @@ end subroutine plastic_disloUCLA_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
+function plastic_disloUCLA_postResults(Mp,Temperature,ipc,ip,el)
  use prec, only: &
    tol_math_check, &
    dEq, dNeq0
  use math, only: &
-   pi
+   pi, &
+math_mul33xx33
  use material, only: &
    material_phase, &
    phase_plasticityInstance,& 
    !plasticState, &
    phaseAt, phasememberAt
  use lattice, only: &
-   lattice_Sslip_v, &
+   lattice_Sslip, &
    lattice_maxNslipFamily, &
    lattice_NslipSystem, &
    lattice_mu
 
  implicit none
- real(pReal), dimension(6),  intent(in) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal), dimension(3,3),  intent(in) :: &
+   Mp                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
  real(pReal),                intent(in) :: &
    temperature                                                                                      !< temperature at integration point
  integer(pInt),              intent(in) :: &
@@ -1141,7 +1139,7 @@ function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
         plastic_disloUCLA_postResults(c+1_pInt:c+ns) = state(instance)%rhoEdgeDip(1_pInt:ns,of)
         c = c + ns
       case (shear_rate_slip_ID,stress_exponent_ID)
- call kinetics(Tstar_v,Temperature,ipc,ip,el, &                                                
+ call kinetics(Mp,Temperature,ipc,ip,el, &                                                
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
 
         if     (plastic_disloUCLA_outputID(o,instance) == shear_rate_slip_ID) then
@@ -1175,7 +1173,7 @@ function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
            slipSystems1: do i = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
               j = j + 1_pInt
               plastic_disloUCLA_postResults(c+j) =&
-                                dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))
+                                math_mul33xx33(Mp,lattice_Sslip(:,:,1,index_myFamily+i,ph))
         enddo slipSystems1; enddo slipFamilies1
         c = c + ns
       case (threshold_stress_slip_ID)
@@ -1188,10 +1186,10 @@ function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
            index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                 ! at which index starts my family
            slipSystems2: do i = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
               j = j + 1_pInt
-              if (dNeq0(abs(dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))))) then
+              if (dNeq0(abs(math_mul33xx33(Mp,lattice_Sslip(:,:,1,index_myFamily+i,ph))))) then
               plastic_disloUCLA_postResults(c+j) = &
                 (3.0_pReal*lattice_mu(ph)*plastic_disloUCLA_burgersPerSlipSystem(j,instance))/&
-                (16.0_pReal*pi*abs(dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))))
+                (16.0_pReal*pi*abs(math_mul33xx33(Mp,lattice_Sslip(:,:,1,index_myFamily+i,ph))))
               else
               plastic_disloUCLA_postResults(c+j) = huge(1.0_pReal)
               endif
@@ -1207,27 +1205,28 @@ end function plastic_disloUCLA_postResults
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-subroutine kinetics(Tstar_v,Temperature,ipc,ip,el, &
+subroutine kinetics(Mp,Temperature,ipc,ip,el, &
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
  use prec, only: &
    tol_math_check, &
    dEq, dNeq0
  use math, only: &
-   pi
+   pi, &
+math_mul33xx33
  use material, only: &
    material_phase, &
    phase_plasticityInstance,& 
    !plasticState, &
    phaseAt, phasememberAt
  use lattice, only: &
-   lattice_Sslip_v, &
+   lattice_Sslip, &
    lattice_maxNslipFamily, &
    lattice_NslipSystem, &
    lattice_NnonSchmid
 
  implicit none
- real(pReal), dimension(6),  intent(in) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal), dimension(3,3),  intent(in) :: &
+   Mp                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
  real(pReal),                intent(in) :: &
    temperature                                                                                      !< temperature at integration point
  integer(pInt),              intent(in) :: &
@@ -1270,14 +1269,14 @@ subroutine kinetics(Tstar_v,Temperature,ipc,ip,el, &
               state(instance)%rhoEdge(j,of)*plastic_disloUCLA_burgersPerSlipSystem(j,instance)*&
               plastic_disloUCLA_v0PerSlipSystem(j,instance)
             !* Resolved shear stress on slip system
-            tau_slip_pos(j) = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))
+            tau_slip_pos(j) = math_mul33xx33(Mp,lattice_Sslip(:,:,1,index_myFamily+i,ph))
             tau_slip_neg(j)  = tau_slip_pos(j)
 
             nonSchmidSystems: do k = 1,lattice_NnonSchmid(ph) 
               tau_slip_pos = tau_slip_pos + plastic_disloUCLA_nonSchmidCoeff(k,instance)* &
-                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k,index_myFamily+i,ph))
+                                   math_mul33xx33(Mp,lattice_Sslip(1:3,1:3,2*k,index_myFamily+i,ph))
               tau_slip_neg = tau_slip_neg + plastic_disloUCLA_nonSchmidCoeff(k,instance)* &
-                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,ph))
+                                   math_mul33xx33(Mp,lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph))
             enddo nonSchmidSystems
 
             significantPositiveTau: if((abs(tau_slip_pos(j))-state(instance)%threshold_stress_slip(j, of)) > tol_math_check) then
