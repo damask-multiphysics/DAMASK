@@ -63,8 +63,7 @@ module plastic_disloUCLA
    !* mobility law parameters                                                                                                                                                      
    plastic_disloUCLA_kinkheight, &                                                                  !< height of the kink pair                                                      
    plastic_disloUCLA_omega, &                                                                       !< attempt frequency for kink pair nucleation                                   
-   plastic_disloUCLA_kinkwidth, &                                                                   !< width of the kink pair                                                       
-   plastic_disloUCLA_dislolength, &                                                                 !< dislocation length (lamda)                                                   
+   plastic_disloUCLA_kinkwidth, &                                                                   !< width of the kink pair                                                                                                      
    plastic_disloUCLA_friction, &                                                                    !< friction coeff. B (kMC)
    !*    
    plastic_disloUCLA_nonSchmidCoeff                                                                 !< non-Schmid coefficients (bcc)
@@ -144,8 +143,8 @@ module plastic_disloUCLA
    plastic_disloUCLA_dotState, &
    plastic_disloUCLA_postResults
  private :: &
-   plastic_disloUCLA_stateInit, &
-   plastic_disloUCLA_aTolState
+   plastic_disloUCLA_stateInit
+
 
 contains
 
@@ -252,7 +251,6 @@ material_allocatePlasticState
  allocate(plastic_disloUCLA_kinkheight(lattice_maxNslipFamily,maxNinstance),   source=0.0_pReal)
  allocate(plastic_disloUCLA_omega(lattice_maxNslipFamily,maxNinstance),        source=0.0_pReal)
  allocate(plastic_disloUCLA_kinkwidth(lattice_maxNslipFamily,maxNinstance),    source=0.0_pReal)
- allocate(plastic_disloUCLA_dislolength(lattice_maxNslipFamily,maxNinstance),  source=0.0_pReal)
  allocate(plastic_disloUCLA_friction(lattice_maxNslipFamily,maxNinstance),     source=0.0_pReal)
  allocate(plastic_disloUCLA_QedgePerSlipFamily(lattice_maxNslipFamily,maxNinstance),  source=0.0_pReal)
  allocate(plastic_disloUCLA_v0PerSlipFamily(lattice_maxNslipFamily,maxNinstance),     source=0.0_pReal)
@@ -368,8 +366,7 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
    enddo 
    end associate
  enddo
-  print*, plastic_disloUCLA_sizePostResults
- print*, plastic_disloUCLA_output
+
  rewind(fileUnit)
  phase = 0_pInt
  do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= MATERIAL_partPhase)         ! wind forward to <phase>
@@ -445,9 +442,6 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
            case ('kink_width')
              plastic_disloUCLA_kinkwidth(1:Nchunks_SlipFamilies,instance) = &
                   tempPerSlip(1:Nchunks_SlipFamilies)
-           case ('dislolength')
-             plastic_disloUCLA_dislolength(1:Nchunks_SlipFamilies,instance) = &
-                  tempPerSlip(1:Nchunks_SlipFamilies)  
            case ('friction_coeff')
              plastic_disloUCLA_friction(1:Nchunks_SlipFamilies,instance) = &
                   tempPerSlip(1:Nchunks_SlipFamilies)  
@@ -542,6 +536,7 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
 
  initializeInstances: do phase = 1_pInt, size(phase_plasticity)
    myPhase2: if (phase_plasticity(phase) == PLASTICITY_disloUCLA_ID) then
+     p = phase
      NofMyPhase=count(material_phase==phase)
      instance = phase_plasticityInstance(phase)
      ns = plastic_disloUCLA_totalNslip(instance)
@@ -610,38 +605,36 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
      startIndex=1_pInt
      endIndex=ns
      state(instance)%rhoEdge=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%rhoEdge=>plasticState(phase)%state0(startIndex:endIndex,:)
-     dotState(instance)%rhoEdge=>plasticState(phase)%dotState(startIndex:endIndex,:) 
+     dotState(instance)%rhoEdge=>plasticState(phase)%dotState(startIndex:endIndex,:)
+     plasticState(p)%aTolState(startIndex:endIndex) = plastic_disloUCLA_aTolRho(instance)
 
      startIndex=endIndex+1_pInt
      endIndex=endIndex+ns
      state(instance)%rhoEdgeDip=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%rhoEdgeDip=>plasticState(phase)%state0(startIndex:endIndex,:)
      dotState(instance)%rhoEdgeDip=>plasticState(phase)%dotState(startIndex:endIndex,:)
+     plasticState(p)%aTolState(startIndex:endIndex) = plastic_disloUCLA_aTolRho(instance)
 
      startIndex=endIndex+1_pInt
      endIndex=endIndex+ns
      state(instance)%accshear_slip=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%accshear_slip=>plasticState(phase)%state0(startIndex:endIndex,:)
      dotState(instance)%accshear_slip=>plasticState(phase)%dotState(startIndex:endIndex,:)
+     plasticState(p)%aTolState(startIndex:endIndex) = 1e6_pReal
 
      startIndex=endIndex+1_pInt
      endIndex=endIndex+ns
      state(instance)%invLambdaSlip=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%invLambdaSlip=>plasticState(phase)%state0(startIndex:endIndex,:)
 
      startIndex=endIndex+1_pInt
      endIndex=endIndex+ns
      state(instance)%mfp_slip=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%mfp_slip=>plasticState(phase)%state0(startIndex:endIndex,:)
 
      startIndex=endIndex+1_pInt
      endIndex=endIndex+ns
      state(instance)%threshold_stress_slip=>plasticState(phase)%state(startIndex:endIndex,:)
-     state0(instance)%threshold_stress_slip=>plasticState(phase)%state0(startIndex:endIndex,:)
 
      call plastic_disloUCLA_stateInit(phase,instance)
-     call plastic_disloUCLA_aTolState(phase,instance)
+
+     plasticState(p)%state0 = plasticState(p)%state                                                 ! ToDo: this could be done centrally
    endif myPhase2
  
  enddo initializeInstances
@@ -711,31 +704,9 @@ subroutine plastic_disloUCLA_stateInit(ph,instance)
 
  tempState(5_pInt*ns+1:6_pInt*ns) = tauSlipThreshold0
  
-plasticState(ph)%state0 = spread(tempState,2,size(plasticState(ph)%state(1,:)))
+plasticState(ph)%state = spread(tempState,2,size(plasticState(ph)%state(1,:)))
 
 end subroutine plastic_disloUCLA_stateInit
-
-!--------------------------------------------------------------------------------------------------
-!> @brief sets the relevant state values for a given instance of this plasticity
-!--------------------------------------------------------------------------------------------------
-subroutine plastic_disloUCLA_aTolState(ph,instance)
- use material, only: &
-  plasticState
-
- implicit none
- integer(pInt), intent(in) ::  &
-   ph, &
-   instance                                                                                         ! number specifying the current instance of the plasticity
-
- ! Tolerance state for dislocation densities
- plasticState(ph)%aTolState(1_pInt:2_pInt*plastic_disloUCLA_totalNslip(instance)) = &
-   plastic_disloUCLA_aTolRho(instance)
-
- ! Tolerance state for accumulated shear due to slip 
- plasticState(ph)%aTolState(2_pInt*plastic_disloUCLA_totalNslip(instance)+1_pInt: &
-                            3_pInt*plastic_disloUCLA_totalNslip(instance))=1e6_pReal
-
-end subroutine plastic_disloUCLA_aTolState
 
 
 !--------------------------------------------------------------------------------------------------
