@@ -806,6 +806,7 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,ipc,ip,el
  ph = phaseAt(ipc,ip,el)
  instance  = phase_plasticityInstance(ph)
  ns = plastic_disloUCLA_totalNslip(instance)
+ associate(prm => param(instance), stt => state(instance))
  
  Lp = 0.0_pReal
  dLp_dMp = 0.0_pReal
@@ -830,8 +831,7 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,ipc,ip,el
                                            lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph)
      enddo nonSchmidSystems
 
-     !* Plastic velocity gradient for dislocation glide
-     Lp = Lp + (gdot_slip_pos(j)+gdot_slip_neg(j))*0.5_pReal*lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
+   Lp = Lp + (gdot_slip_pos(j)+gdot_slip_neg(j))*prm%Schmid_slip(1:3,1:3,j)*0.5_pReal
      !* Calculation of the tangent of Lp
      forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
         dLp_dMp(k,l,m,n) = &
@@ -840,7 +840,7 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,ipc,ip,el
                                    lattice_Sslip(k,l,1,index_myFamily+i,ph)
    enddo slipSystems
  enddo slipFamilies
-
+end associate
  
 end subroutine plastic_disloUCLA_LpAndItsTangent
 
