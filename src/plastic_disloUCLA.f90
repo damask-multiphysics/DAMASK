@@ -916,7 +916,7 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,ipc,ip,el
 ! Dislocation glide part
 
  !* Dislocation density evolution
- call kinetics(Mp,Temperature,ipc,ip,el, &                                                
+ call kinetics(Mp,Temperature,ph,instance,of, &                                                  
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
  j = 0_pInt
  slipFamilies: do f = 1_pInt,lattice_maxNslipFamily
@@ -1005,7 +1005,7 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,ipc,ip,el)
  plasticState(ph)%dotState(:,of) = 0.0_pReal
  
  !* Dislocation density evolution
- call kinetics(Mp,Temperature,ipc,ip,el, &                                                
+ call kinetics(Mp,Temperature,ph,instance,of, &                                                
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
  j = 0_pInt
  slipFamilies: do f = 1_pInt,lattice_maxNslipFamily
@@ -1139,7 +1139,7 @@ math_mul33xx33
         plastic_disloUCLA_postResults(c+1_pInt:c+ns) = state(instance)%rhoEdgeDip(1_pInt:ns,of)
         c = c + ns
       case (shear_rate_slip_ID,stress_exponent_ID)
- call kinetics(Mp,Temperature,ipc,ip,el, &                                                
+ call kinetics(Mp,Temperature,ph,instance,of, &                                                
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
 
         if     (plastic_disloUCLA_outputID(o,instance) == shear_rate_slip_ID) then
@@ -1205,7 +1205,7 @@ end function plastic_disloUCLA_postResults
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-subroutine kinetics(Mp,Temperature,ipc,ip,el, &
+subroutine kinetics(Mp,Temperature,ph,instance,of, &
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
  use prec, only: &
    tol_math_check, &
@@ -1230,26 +1230,18 @@ math_mul33xx33
  real(pReal),                intent(in) :: &
    temperature                                                                                      !< temperature at integration point
  integer(pInt),              intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
+ph, instance,of
 
  integer(pInt) :: &
-   instance,&
    ns,&
-   f,i,j,k,index_myFamily,&
-   ph, &
-   of
+   f,i,j,k,index_myFamily
  real(pReal) :: StressRatio_p,StressRatio_pminus1,&
                 BoltzmannRatio,DotGamma0,stressRatio,&
                 dvel_slip, vel_slip
- real(pReal), intent(out), dimension(plastic_disloUCLA_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
+ real(pReal), intent(out), dimension(plastic_disloUCLA_totalNslip(instance)) :: &
    gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg
  
  !* Shortened notation
- of = phasememberAt(ipc,ip,el)
- ph = phaseAt(ipc,ip,el)
- instance  = phase_plasticityInstance(ph)
  ns = plastic_disloUCLA_totalNslip(instance)
  
 
