@@ -136,7 +136,7 @@ module plastic_disloUCLA
    plastic_disloUCLA_dotState, &
    plastic_disloUCLA_postResults
  private :: &
-   plastic_disloUCLA_stateInit
+   kinetics
 
 
 contains
@@ -192,7 +192,7 @@ material_allocatePlasticState
  integer(pInt), intent(in) :: fileUnit
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt) :: maxNinstance,mySize=0_pInt,phase,maxTotalNslip,&
+ integer(pInt) :: maxNinstance,phase,maxTotalNslip,&
                   f,instance,j,k,o,ns, i, &
                   Nchunks_SlipSlip = 0_pInt, outputSize, &
                   Nchunks_SlipFamilies = 0_pInt,Nchunks_nonSchmid = 0_pInt, &
@@ -573,7 +573,7 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
    allocate(mse%mfp(prm%totalNslip,NofMyPhase),source=0.0_pReal)
    allocate(mse%threshold_stress(prm%totalNslip,NofMyPhase),source=0.0_pReal)
 
-     call plastic_disloUCLA_stateInit(phase,instance)
+     !call plastic_disloUCLA_stateInit(phase,instance)
 
      plasticState(p)%state0 = plasticState(p)%state                                                 ! ToDo: this could be done centrally
    end associate
@@ -582,60 +582,6 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
  enddo initializeInstances
  
 end subroutine plastic_disloUCLA_init
-
-!--------------------------------------------------------------------------------------------------
-!> @brief sets the relevant state values for a given instance of this plasticity
-!--------------------------------------------------------------------------------------------------
-subroutine plastic_disloUCLA_stateInit(ph,instance)
- use math, only: &
-   pi
- use lattice, only: &
-   lattice_maxNslipFamily, &
-   lattice_mu
- use material, only: &
-   plasticState, &
-   material_phase
-
- implicit none
- integer(pInt), intent(in) :: &
-   instance, &                                                                                      !< number specifying the instance of the plasticity
-   ph 
-
-  real(pReal), dimension(plasticState(ph)%sizeState) :: tempState
-
- integer(pInt) :: i,f,ns, index_myFamily
- real(pReal), dimension(plastic_disloUCLA_totalNslip(instance)) :: &
-   invLambdaSlip0, &
-   MeanFreePathSlip0, &
-   tauSlipThreshold0
- tempState = 0.0_pReal
- ns = plastic_disloUCLA_totalNslip(instance)
- associate(prm => param(instance),mse => microstructure(instance))
- 
- tempState(1_pInt:ns)           = prm%rho0
- tempState(ns+1_pInt:2_pInt*ns) = prm%rhoDip0
- 
-!--------------------------------------------------------------------------------------------------
-! initialize dependent slip microstructural variables
- forall (i = 1_pInt:ns) &
-   invLambdaSlip0(i) = sqrt(dot_product((prm%rho0+prm%rhoDip0),plastic_disloUCLA_forestProjectionEdge(1:ns,i,instance)))/ &
-                       plastic_disloUCLA_CLambdaSlipPerSlipSystem(i,instance)
- 
- forall (i = 1_pInt:ns) &
-   MeanFreePathSlip0(i) = &
-     prm%grainSize/(1.0_pReal+invLambdaSlip0(i)*prm%grainSize)
-
- mse%mfp= spread(MeanFreePathSlip0,2,size(plasticState(ph)%state(1,:)))
- 
- forall (i = 1_pInt:ns) &
-   tauSlipThreshold0(i) = &
-     lattice_mu(ph)*prm%burgers(i) * &
-     sqrt(dot_product((prm%rho0+prm%rhoDip0),plastic_disloUCLA_interactionMatrix_SlipSlip(i,1:ns,instance)))
-
- mse%threshold_stress= spread(tauSlipThreshold0,2,size(plasticState(ph)%state(1,:)))
- 
-end associate
-end subroutine plastic_disloUCLA_stateInit
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1015,16 +961,9 @@ subroutine kinetics(Mp,Temperature,ph,instance,of, &
  use math, only: &
    pi, &
 math_mul33xx33
- use material, only: &
-   material_phase, &
-   phase_plasticityInstance,& 
-   !plasticState, &
-   phaseAt, phasememberAt
  use lattice, only: &
-   lattice_Sslip, &
    lattice_maxNslipFamily, &
-   lattice_NslipSystem, &
-   lattice_NnonSchmid
+   lattice_NslipSystem
 
  implicit none
  real(pReal), dimension(3,3),  intent(in) :: &
@@ -1036,7 +975,7 @@ ph, instance,of
 
  integer(pInt) :: &
    ns,&
-   f,i,j,k,index_myFamily
+   f,i,j,index_myFamily
  real(pReal) :: StressRatio_p,StressRatio_pminus1,&
                 BoltzmannRatio,DotGamma0,stressRatio,&
                 dvel_slip, vel_slip
