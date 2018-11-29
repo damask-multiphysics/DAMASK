@@ -374,6 +374,12 @@ fi
 # the one for IBM is defined futher down
 
 LD_LIBRARY_PATH=$MARC_LIB_SHARED:$LD_LIBRARY_PATH
+if test -f "/etc/redhat-release"; then
+  ver=`cat /etc/redhat-release | sed 's/.* release \([0-9]\).\([0-9]\+\) .*/\1\2/'`
+  case "$ver" in
+    6*) LD_LIBRARY_PATH="${MARC_LIB_SHARED}rh67:$LD_LIBRARY_PATH" ;;
+  esac
+fi
 LD_LIBRARY_PATH=$MARC_LIB:$LD_LIBRARY_PATH
 LD_LIBRARY_PATH=$MESHERDIR:$LD_LIBRARY_PATH
 LD_LIBRARY_PATH=$SFMATDIR:$LD_LIBRARY_PATH
@@ -533,7 +539,7 @@ if test -n "$value"; then
     . $MARC_INCLUDE
     MDSRCLIB=$MARC_LIB/mdsrc.a_$value
     if test "$MUMPSSOLVER" = MUMPS; then
-     MUMPSSOLVERLIBS="$MARC_LIB/libmumps.a_$value"
+     MUMPSSOLVERLIBS="$MUMPSLIB_DIR/libmumps.a_$value"
     fi
   fi
 fi
@@ -807,14 +813,14 @@ do
                          . $MARC_INCLUDE
                          MDSRCLIB=$MARC_LIB/mdsrc.a_$value
                          if test "$MUMPSSOLVER" = MUMPS; then
-                          MUMPSSOLVERLIBS="$MARC_LIB/libmumps.a_$value"
+                          MUMPSSOLVERLIBS="$MUMPSLIB_DIR/libmumps.a_$value"
                          fi
                         else
                          exefile=marc
                          . $MARC_INCLUDE
                          MDSRCLIB=$MARC_LIB/mdsrc.a
                          if test "$MUMPSSOLVER" = MUMPS; then
-                          MUMPSSOLVERLIBS="$MARC_LIB/libmumps.a"
+                          MUMPSSOLVERLIBS="$MUMPSLIB_DIR/libmumps.a"
                          fi
                         fi
                 ;;

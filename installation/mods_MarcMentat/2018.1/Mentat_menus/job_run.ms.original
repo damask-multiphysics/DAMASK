@@ -2,11 +2,9 @@
 popmenu job_title_pm                file jobs.ms
 popdown job_title_ok                file jobs.ms
 
-group job_solver_gr                 file job_common.ms
 group user_domains_gr               file domain_decomposition.ms
 group user_domains_generate_gr      file domain_decomposition.ms
 group user_domains_tail_gr          file domain_decomposition.ms
-group job_solver_opts_gr            file job_common.ms
 group matrix_solver_gr              file job_common.ms
 popmenu ddm_options                 file job_common.ms
 
@@ -273,16 +271,9 @@ popmenu job_run_popmenu {
 
   button {
    position +16 =
-   size 16 6
+   size 34 6
    text "ADVANCED JOB SUBMISSION"
    popmenu job_submit_adv_pm
-  }
-
-   button {
-   position +16 =
-   size 18 6
-   text "DAMASK"
-   popmenu damask
   }
 
   button {
@@ -384,7 +375,7 @@ popmenu job_run_popmenu {
    border_color black
   }
 
-  float {
+  display {
    position +32 =
    size 18 4
    display "job_time"
@@ -714,12 +705,15 @@ popmenu job_submit_adv_pm {
     roller {
      position +9 =
      size 14 4
-     nvalues 23
-     nvisible 23
+     nvalues 26
+     nvisible 26
      texts "DEFAULT"
 #if 0
-           "2017"
+           "2018.1"
 #endif
+           "2018"
+           "2017.1"
+           "2017"
            "2016"
            "2015"
            "2014.2"
@@ -748,8 +742,11 @@ popmenu job_submit_adv_pm {
      help job_param_version
      rollers "job_input_version_default"
 #if 0
-             "job_input_version_2017"
+             "job_input_version_2018.1"
 #endif
+             "job_input_version_2018"
+             "job_input_version_2017.1"
+             "job_input_version_2017"
              "job_input_version_2016"
              "job_input_version_2015"
              "job_input_version_2014.2"
@@ -777,8 +774,11 @@ popmenu job_submit_adv_pm {
              "job_input_version_k4"
   commands "*job_option version:default"
 #if 0
-           "*job_option version:2017"
+           "*job_option version:2018.1"
 #endif
+           "*job_option version:2018"
+           "*job_option version:2017.1"
+           "*job_option version:2017"
            "*job_option version:2016"
            "*job_option version:2015"
            "*job_option version:2014.2"
@@ -806,8 +806,11 @@ popmenu job_submit_adv_pm {
            "*job_option version:k4"
   visibles "job_allows_input_version_default"
 #if 0
-          "job_allows_input_version_2017"
+          "job_allows_input_version_2018.1"
 #endif
+          "job_allows_input_version_2018"
+          "job_allows_input_version_2017.1"
+          "job_allows_input_version_2017"
           "job_allows_input_version_2016"
           "job_allows_input_version_2015"
           "job_allows_input_version_2014.2"
@@ -1034,136 +1037,6 @@ popmenu job_submit_adv_pm {
  mode permanent
 }
 
-#--------------------------------------------------------------------------------------------------
-popmenu damask {
-
-#ifdef QT_MENTAT
- text "DAMASK.MPIE.DE"
-#endif
-
- group {
-#ifndef QT_MENTAT
-  label {
-   position 0 0
-   size 50 4
-   text "DAMASK.MPIE.DE"
-  }
-#endif
-
-  label {
-   position 1 6
-   size 13   6
-   text "Optimzation"
-   border_width 1
-   border_color black
-  }
-
-  label {
-   position +13 =
-   size 20 6
-   text "write Input"
-   border_width 1
-   border_color black
-  }
-
-  label {
-   position +18 =
-   size 30 6
-   text "do not write Inp."
-   border_width 1
-   border_color black
-  }
-
-  label {
-   position -32 +6
-   size 12 6
-   text "O2 / OpenMP"
-   border_width 1
-   border_color black
-  }
-
-  popdown {
-   position +12 =
-   size 20 6
-   text "Submit"
-   command "*submit_job 4 *monitor_job"
-  }
-
-  popdown {
-   position +20 =
-   size 20 6
-   text "Execute"
-   command "*execute_job 4 *monitor_job"
-  }
-
-  label {
-   position -32 +6
-   size 12 6
-   text "O1 / OpenMP"
-   border_width 1
-   border_color black
-  }
-
-  popdown {
-   position +12 =
-   size 20 6
-   text "Submit"
-   command "*submit_job 5 *monitor_job"
-  }
-
-  popdown {
-   position +20 =
-   size 20 6
-   text "Execute"
-   command "*execute_job 5 *monitor_job"
-  }
-
-  label {
-   position -32 +6
-   size 12 6
-   text "O0 / OpenMP"
-   border_width 1
-   border_color black
-  }
-
-  popdown {
-   position +12 =
-   size 20 6
-   text "Submit"
-   command "*submit_job 6 *monitor_job"
-  }
-
-  popdown {
-   position +20 =
-   size 20 6
-   text "Execute"
-   command "*execute_job 6 *monitor_job"
-  }
-
-  popdown {
-   position 19 +8
-   size 12 8
-   text "CANCEL"
-  }
-}
-
-
-
- window {
-  parent mentat
-  origin 38 8
-#ifdef DCOM
-  size 50 100
-#else
-  size 50 94
-#endif
-  background_color body
-  border_width 1
-  border_color border
-  buffering single
- }
- mode permanent
-}
 
 #--------------------------------------------------------------------------------------------------
 popmenu job_exit_msg_pm {
@@ -1329,7 +1202,8 @@ group job_ddm_gr {
   help job_run_ddm_use
   true_command "*job_option parallel:on"
   false_command "*job_option parallel:off"
-  active "not(job_solver_it_ext)"
+  active "and(not(job_solver_it_ext),\
+              not(job_solver_mixed_direct_iterative))"
  }
 
  frame {
@@ -1351,6 +1225,7 @@ group job_ddm_use_gr {
     position 0 0
     size 12 4 
     text "DECOMPOSITION IN"
+    help job_run_ddm_generator
    }
    oneonly{
     position +12 =
@@ -1358,6 +1233,7 @@ group job_ddm_use_gr {
     text "MARC"
     oneonly "*job_option ddm_generator:fea_solver"
     command "*job_option ddm_generator:fea_solver"
+    help job_run_ddm_generator
    }
    oneonly{
     position +12 =
@@ -1365,6 +1241,7 @@ group job_ddm_use_gr {
     text "MENTAT"
     oneonly "*job_option ddm_generator:preprocessor"
     command "*job_option ddm_generator:preprocessor"
+    help job_run_ddm_generator
    }
   }
  }

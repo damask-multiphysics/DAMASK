@@ -299,23 +299,7 @@ fi
 
 . "$DIR/getarch"
 
-
-# getting user subroutine file name
-found=0
-for i in "$@"; do
-  if test $found = 1; then
-    DAMASK_USER=$i
-    found=0
-  fi
-  case $i in
-    -u* | -U*)
-      found=1
-    ;;
-  esac
-done
-# sourcing include_linux64 (needs DAMASK_USER to be set)
 . $MARC_INCLUDE
-
 #
 
 #
@@ -374,6 +358,12 @@ fi
 # the one for IBM is defined futher down
 
 LD_LIBRARY_PATH=$MARC_LIB_SHARED:$LD_LIBRARY_PATH
+if test -f "/etc/redhat-release"; then
+  ver=`cat /etc/redhat-release | sed 's/.* release \([0-9]\).\([0-9]\+\) .*/\1\2/'`
+  case "$ver" in
+    6*) LD_LIBRARY_PATH="${MARC_LIB_SHARED}rh67:$LD_LIBRARY_PATH" ;;
+  esac
+fi
 LD_LIBRARY_PATH=$MARC_LIB:$LD_LIBRARY_PATH
 LD_LIBRARY_PATH=$MESHERDIR:$LD_LIBRARY_PATH
 LD_LIBRARY_PATH=$SFMATDIR:$LD_LIBRARY_PATH
@@ -410,7 +400,7 @@ sid=
 did=
 vid=
 user=
-usernoext=
+usersubname=
 objs=
 qid=background
 cpu=
@@ -533,7 +523,7 @@ if test -n "$value"; then
     . $MARC_INCLUDE
     MDSRCLIB=$MARC_LIB/mdsrc.a_$value
     if test "$MUMPSSOLVER" = MUMPS; then
-     MUMPSSOLVERLIBS="$MARC_LIB/libmumps.a_$value"
+     MUMPSSOLVERLIBS="$MUMPSLIB_DIR/libmumps.a_$value"
     fi
   fi
 fi
@@ -577,7 +567,7 @@ do
 		    justlist=yes
 		;;
                 -fe* | -FE*)
-		    feature=$value
+                    feature=$value
 
 		;;
 		-pr* | -PR*)
@@ -673,19 +663,50 @@ do
                         esac        
                 ;;
 		-u* | -U*)
-                        user=$value
+                        user=`dirname $value`/`$BASENAME $value .f`
+                        usersubname=$user
+                        basefile=`$BASENAME $value`
+                        if test ${basefile##*.} = f
+                        then
+                         user=`dirname $value`/`$BASENAME $value .f`
+                         usersubname=$user.f
+                        elif test ${basefile##*.} = F
+                        then
+                         user=`dirname $value`/`$BASENAME $value .F`
+                         usersubname=$user.F
+                        elif test ${basefile##*.} = f90
+                        then
+                         user=`dirname $value`/`$BASENAME $value .f90`
+                         usersubname=$user.f90
+                        elif test ${basefile##*.} = F90
+                        then
+                         user=`dirname $value`/`$BASENAME $value .F90`
+                         usersubname=$user.F90
+                        fi
                         case $user in
                            \/*)
                              ;;
                            *)
                             user=`pwd`/$user
+                            usersubname=`pwd`/$usersubname
                              ;;
                         esac
-						usernoext=$user
-						usernoext=`dirname $usernoext`/`$BASENAME $usernoext .f`
-						usernoext=`dirname $usernoext`/`$BASENAME $usernoext .F`
-						usernoext=`dirname $usernoext`/`$BASENAME $usernoext .for`
-						usernoext=`dirname $usernoext`/`$BASENAME $usernoext .f90`
+                        if test ! -f $usersubname
+                        then
+                         if test -f $usersubname.f 
+                         then
+                          usersubname=$usersubname.f 
+                         elif test -f $usersubname.F 
+                         then
+                          usersubname=$usersubname.F
+                         elif test -f $usersubname.f90
+                         then
+                          usersubname=$usersubname.f90
+                         elif test -f $usersubname.F90
+                         then
+                          usersubname=$usersubname.F90
+                         fi
+                        fi
 		;;
 		-obj | -OBJ)
 			objs="$value"
@@ -807,14 +828,14 @@ do
                          . $MARC_INCLUDE
                          MDSRCLIB=$MARC_LIB/mdsrc.a_$value
                          if test "$MUMPSSOLVER" = MUMPS; then
-                          MUMPSSOLVERLIBS="$MARC_LIB/libmumps.a_$value"
+                          MUMPSSOLVERLIBS="$MUMPSLIB_DIR/libmumps.a_$value"
                          fi
                         else
                          exefile=marc
                          . $MARC_INCLUDE
                          MDSRCLIB=$MARC_LIB/mdsrc.a
                          if test "$MUMPSSOLVER" = MUMPS; then
-                          MUMPSSOLVERLIBS="$MARC_LIB/libmumps.a"
+                          MUMPSSOLVERLIBS="$MUMPSLIB_DIR/libmumps.a"
                          fi
                         fi
                 ;;
@@ -1145,12 +1166,12 @@ post file $DIRPID/$pid.t16 or $DIRPID/$pid.t19 not accessible"
 				fi
 			fi
 		fi
-		if test "$user"
+		if test "$usersubname"
 		then
-			if test ! -f $user
+			if test ! -f $usersubname
 			then
 		   		error="$error
-user subroutine file $user not accessible"
+user subroutine file $usersubname not accessible"
 			fi
 		fi
 		if test "$objs"
@@ -1332,7 +1353,7 @@ else
     else
 	error="$error
 job id required"
-fi
+    fi
 fi
 
 if test $nprocd -gt 1
@@ -1481,7 +1502,7 @@ Program name         : $prog
 Marc shared lib      : $progdll
 Version type         : $mode
 Job ID               : $DIRJID/$jid
-User subroutine name : $user
+User subroutine name : $usersubname
 User objects/libs    : $objs
 Restart file job ID  : $rid
 Substructure file ID : $sid
@@ -1514,7 +1535,7 @@ Program name         : $prog
 Marc shared lib      : $progdll
 Version type         : $mode
 Job ID               : $DIRJID/$jid
-User subroutine name : $user
+User subroutine name : $usersubname
 User objects/libs    : $objs
 Restart file job ID  : $rid
 Substructure file ID : $sid
@@ -1638,7 +1659,7 @@ Program name ($prog)? $ECHOTXT"
                     ;;
                   esac        
                 fi
-		$ECHO "User subroutine name ($user)? $ECHOTXT"
+		$ECHO "User subroutine name ($usersubname)? $ECHOTXT"
 		read value
 		if test "$value"
 		then
@@ -1647,19 +1668,50 @@ Program name ($prog)? $ECHOTXT"
                       user=
                     ;;
                     *)
-                      user=$value
+                      user=`dirname $value`/`$BASENAME $value .f`
+                      usersubname=$user
+                      basefile=`$BASENAME $value`
+                      if test ${basefile##*.} = f
+                      then
+                       user=`dirname $value`/`$BASENAME $value .f`
+                       usersubname=$user.f
+                      elif test ${basefile##*.} = F
+                      then
+                       user=`dirname $value`/`$BASENAME $value .F`
+                       usersubname=$user.F
+                      elif test ${basefile##*.} = f90
+                      then
+                       user=`dirname $value`/`$BASENAME $value .f90`
+                       usersubname=$user.f90
+                      elif test ${basefile##*.} = F90
+                      then
+                       user=`dirname $value`/`$BASENAME $value .F90`
+                       usersubname=$user.F90
+                      fi
                       case $user in
-                        \/*)
-                        ;;
-                        *)
+                         \/*)
+                           ;;
+                         *)
                           user=`pwd`/$user
-                        ;;
-                      esac        
-					  usernoext=$user
-					  usernoext=`dirname $usernoext`/`$BASENAME $usernoext .f`
-					  usernoext=`dirname $usernoext`/`$BASENAME $usernoext .F`
-					  usernoext=`dirname $usernoext`/`$BASENAME $usernoext .for`
-					  usernoext=`dirname $usernoext`/`$BASENAME $usernoext .f90`
+                          usersubname=`pwd`/$usersubname
+                           ;;
+                      esac
+                      if test ! -f $usersubname
+                      then
+                       if test -f $usersubname.f 
+                       then
+                        usersubname=$usersubname.f 
+                       elif test -f $usersubname.F 
+                       then
+                        usersubname=$usersubname.F
+                       elif test -f $usersubname.f90
+                       then
+                        usersubname=$usersubname.f90
+                       elif test -f $usersubname.F90
+                       then
+                        usersubname=$usersubname.F90
+                       fi
+                      fi
                     ;;
                   esac
 		fi
@@ -2200,12 +2252,11 @@ fi
 #
 # user subroutine used
 #
-# add DAMASK options for linking
-  DAMASK="-lstdc++"
 
   if test "$user"
   then
-    program=$usernoext.marc
+#    program=$user.marc
+    program=$DIRJOB/`$BASENAME $user .f`.marc
     case $program in
       \/* | \.\/*)
         bd=
@@ -2318,7 +2369,7 @@ fi
     fi
     if test "$user"
     then
-     execpath=$usernoext.marc
+     execpath=$DIRJOB/`$BASENAME $user .f`.marc
      usersub=1
     fi
     export execpath      
@@ -3206,27 +3257,44 @@ then
     echo
     if test "$user"
     then
-        userobj=$usermoext.o
+        userobj=$DIRJOB/`$BASENAME $user .f`.o
+        basefile=`$BASENAME $usersubname`
+        if test ${basefile##*.} = f 
+        then
+         usersub=$DIRJOB/`$BASENAME $user .f`.F
+         ln -sf "$user.f" "$usersub"
+        else
+         usersub=$usersubname
+        fi
+
     fi
     cat > $jid.runmarcscript << END4
     if test "$user"
     then
+        if test ${basefile##*.} = f 
+        then
+         ln -sf "$user.f" "$usersub"
+        fi
         if test $MACHINENAME = "CRAY"
         then
-            $DFORTLOWMP $user || \
+            $FORTRAN $usersub || \
                 {
-                echo "$0: compile failed for $user"
+                echo "$0: compile failed for $user.f"
                 exit 1
                 }
             /bin/rm $program 2>/dev/null
         else
-            $DFORTLOWMP $user -o $userobj || \
+            $FORTRAN $usersub -o $userobj || \
                 {
-                echo "$0: compile failed for $user"
+                echo "$0: compile failed for $user.f"
                 exit 1
                 }
             /bin/rm $program 2>/dev/null
         fi
+         if test ${basefile##*.} = f 
+         then
+          /bin/rm -f "$usersub"
+         fi
     fi
 
 
@@ -3246,7 +3314,6 @@ then
     $TKLIBS  \
     $MRCLIBS     \
     $METISLIBS \
-    $DAMASK   \
     $OPENSSL_LIB \
     $SYSLIBS  \
     $SFLIB  \
@@ -3260,7 +3327,6 @@ else
 	prgsav=yes
 fi
 /bin/rm $userobj 2>/dev/null
-/bin/rm $DIRJOB/*.mod 2>/dev/null
 
 #
 # run marc
@@ -3307,7 +3373,7 @@ if test $dllrun -eq 0; then
   fi
 else
   if test $cpdll = yes; then
-     filename=$usernoext
+     filename=`basename $usersubname .f`
      /bin/cp $DIRJOB/$marcdll $DIRJOB/${filename}_$marcdll 2>/dev/null
   fi
   if test $rmdll = yes
@@ -3473,7 +3539,7 @@ then
               # first copy over the user sub if local directories
               if test ${dirstatus[$counter]} = "local"
               then
-               $RCP $user $i:$DIR1/
+               $RCP $user.f $i:$DIR1/
               fi
               # do the compilation on the other machine
               if test ${dirstatus[$counter]} = "shared"
@@ -3486,21 +3552,21 @@ then
               remoteuser=$DIR1/`$BASENAME $user`
               $RSH $i /bin/rm $remoteprog 2> /dev/null
               echo
-              $RSH $i $DIR2/tools/comp_damask_lmp $DIR2 $DIR1 $remoteuser $remoteprog
+              $RSH $i $DIR2/tools/comp_user $DIR2 $DIR1 $remoteuser $remoteprog
               # check if successful, the new executable should be there
               line=`$RSH $i /bin/ls $remoteprog 2> /dev/null`
               if test "$line"
               then
                 echo compilation and linking successful on host $i
               else
-                echo "$0: compile failed for $user on host $i"
+                echo "$0: compile failed for $user.f on host $i"
                 echo "         $PRODUCT Exit number 3"
                 exit 1
               fi
               # remove the user subroutine on remote machine
               if test ${dirstatus[$counter]} = "local"
               then
-               $RSH $i /bin/rm $remoteuser 2> /dev/null
+               $RSH $i /bin/rm $remoteuser.f 2> /dev/null
               fi
             fi
           fi
@@ -3510,27 +3576,39 @@ then
     if test "$userhost"
     then
       echo
-      echo "Compiling and linking user subroutine $user on host `hostname`"
+      echo "Compiling and linking user subroutine $user.f on host `hostname`"
     fi
-    userobj=$usernoext.o
+    userobj=$DIRJOB/`$BASENAME $user .f`.o
+    basefile=`$BASENAME $usersubname`
+    if test ${basefile##*.} = f 
+    then
+     usersub=$DIRJOB/`$BASENAME $user .f`.F
+     ln -sf "$user.f" "$usersub"
+    else
+     usersub=$usersubname
+    fi
         if test $MACHINENAME = "CRAY"
         then
-            $DFORTLOWMP $user || \
+            $FORTRAN $usersub || \
                 {
-                echo "$0: compile failed for $user"
+                echo "$0: compile failed for $user.f"
                 echo "         $PRODUCT Exit number 3"
                 exit 1
                 }
             /bin/rm $program 2>/dev/null
         else
-            $DFORTLOWMP $user -o $userobj || \
+            $FORTRAN $usersub -o $userobj || \
                 {
-                echo "$0: compile failed for $user"
+                echo "$0: compile failed for $user.f"
                 echo "         $PRODUCT Exit number 3"
                 exit 1
                 }
             /bin/rm $program 2>/dev/null
         fi
+    if test ${basefile##*.} = f 
+    then
+     /bin/rm -f "$usersub"
+    fi
   fi # if test $user
 
 
@@ -3550,7 +3628,6 @@ then
   $TKLIBS  \
   $MRCLIBS     \
   $METISLIBS \
-  $DAMASK \
   $OPENSSL_LIB \
   $SYSLIBS  \
   $SFLIB  \
@@ -3592,7 +3669,6 @@ else # if test $link
 	prgsav=yes
 fi   # if test $link
 /bin/rm $userobj 2>/dev/null
-/bin/rm $DIRJOB/*.mod 2>/dev/null
 
 #
 # run marc
@@ -3651,42 +3727,42 @@ then
       counter=0
       if test -f "$host_filt"
       then
-      for i in `$AWK -v n=$numfield '{print $n}' $host_filt`
-      do
-        ibase=${i%%.*}
-        if test $ibase != $thishost
-        then
-          counter=$((counter+1))
-          DIR1=$DIRJOB
-          line=`grep -v '^#' $userhost | grep "^$ibase "`
-          workdir=`echo $line | $AWK '{print $3}'`
-          if test -n "$workdir"
+        for i in `$AWK -v n=$numfield '{print $n}' $host_filt`
+        do
+          ibase=${i%%.*}
+          if test $ibase != $thishost
           then
-            DIR1=$workdir
+            counter=$((counter+1))
+            DIR1=$DIRJOB
+            line=`grep -v '^#' $userhost | grep "^$ibase "`
+            workdir=`echo $line | $AWK '{print $3}'`
+            if test -n "$workdir"
+            then
+              DIR1=$workdir
+            fi
+            #  if an incompatible host uses shared directory,
+            #  then the root machine deletes the executable
+            if test ${dirstatus[$counter]} = "shared" -a  ${compstatus[$counter]} = "no"
+            then
+              hname=_$ibase
+              /bin/rm ${execname}$hname
+            fi
+            # if local directory used, the remote machine
+            # deletes the executable
+            if test ${dirstatus[$counter]} = "local"
+            then
+              $RSH $i /bin/rm $DIR1/${execname} 2>/dev/null
+            fi
           fi
-          #  if an incompatible host uses shared directory,
-          #  then the root machine deletes the executable
-          if test ${dirstatus[$counter]} = "shared" -a  ${compstatus[$counter]} = "no"
-          then
-            hname=_$ibase
-            /bin/rm ${execname}$hname
-          fi
-          # if local directory used, the remote machine
-          # deletes the executable
-          if test ${dirstatus[$counter]} = "local"
-          then
-            $RSH $i /bin/rm $DIR1/${execname} 2>/dev/null
-          fi
-        fi
-      done
+        done
+      fi
     fi
   fi
-fi
 fi
 else
 #dllrun >0
   if test $cpdll = yes; then
-     filename=$usernoext
+     filename=`basename $usersubname .f`
      /bin/cp $DIRJOB/$marcdll $DIRJOB/${filename}_$marcdll 2>/dev/null
   fi
   if test $rmdll = yes;then
@@ -3811,7 +3887,7 @@ then
               # first copy over the user sub if local directories
               if test ${dirstatus[$counter]} = "local"
               then
-               $RCP $user $i:$DIR1/
+               $RCP $user.f $i:$DIR1/
               fi
               # do the compilation on the other machine
               if test ${dirstatus[$counter]} = "shared"
@@ -3824,20 +3900,20 @@ then
               remoteuser=$DIR1/`$BASENAME $user`
               $RSH $i /bin/rm $remoteprog 2> /dev/null
               echo
-              $RSH $i $DIR2/tools/comp_damask_lmp $DIR2 $DIR1 $remoteuser $remoteprog
+              $RSH $i $DIR2/tools/comp_user $DIR2 $DIR1 $remoteuser $remoteprog
               # check if successful, the new executable should be there
               line=`$RSH $i /bin/ls $remoteprog 2> /dev/null`
               if test "$line"
               then
                 echo compilation and linking successful on host $i
               else
-                echo "$0: compile failed for $user on host $i"
+                echo "$0: compile failed for $user.f on host $i"
                 exit 1
               fi
               # remove the user subroutine on remote machine
               if test ${dirstatus[$counter]} = "local"
               then
-               $RSH $i /bin/rm $remoteuser 2> /dev/null
+               $RSH $i /bin/rm $remoteuser.f 2> /dev/null
               fi
             fi
           fi
@@ -3847,25 +3923,37 @@ then
     if test "$userhost"
     then
       echo
-      echo "Compiling and linking user subroutine $user on host `hostname`"
+      echo "Compiling and linking user subroutine $user.f on host `hostname`"
     fi
-    userobj=$usernoext.o
+    userobj=$DIRJOB/`$BASENAME $user .f`.o
+    basefile=`$BASENAME $usersubname`
+    if test ${basefile##*.} = f 
+    then
+     usersub=$DIRJOB/`$BASENAME $user .f`.F
+     ln -sf "$user.f" "$usersub"
+    else
+     usersub=$usersubname
+    fi
         if test $MACHINENAME = "CRAY"
         then
-            $DFORTLOWMP $user || \
+            $FORTRAN $usersub || \
                 {
-                echo "$0: compile failed for $user"
+                echo "$0: compile failed for $user.f"
                 exit 1
                 }
             /bin/rm $program 2>/dev/null
         else
-            $DFORTLOWMP $user -o $userobj || \
+            $FORTRAN $usersub -o $userobj || \
                 {
-                echo "$0: compile failed for $user"
+                echo "$0: compile failed for $user.f"
                 exit 1
                 }
             /bin/rm $program 2>/dev/null
         fi
+    if test ${basefile##*.} = f 
+    then
+     /bin/rm -f "$usersub"
+    fi
   fi # if test $user
 
 
@@ -3885,7 +3973,6 @@ then
   $TKLIBS  \
   $MRCLIBS     \
   $METISLIBS \
-  $DAMASK \
   $OPENSSL_LIB \
   $SYSLIBS \
   $SFLIB \
@@ -3926,7 +4013,7 @@ else # if test $link
 	prgsav=yes
 fi   # if test $link
 /bin/rm $userobj 2>/dev/null
-/bin/rm $DIRJOB/*.mod 2>/dev/null
+
 # done if no job id given
 if test -z "$jid"
 then
@@ -3966,7 +4053,7 @@ if test $ddm_arc -gt 0; then
   RUN_JOB="$MESHERDIR/sf_exeddm $RUN_JOB -ddm $ddm_arc "
 fi
 
-    $RUN_JOB 
+$RUN_JOB 
 
 if test $nprocd -gt 1
 then
@@ -4010,42 +4097,42 @@ then
       counter=0
       if test -f "$host_filt"
       then
-      for i in `$AWK -v n=$numfield '{print $n}' $host_filt`
-      do
-        ibase=${i%%.*}
-        if test $ibase != $thishost
-        then
-          counter=$((counter+1))
-          DIR1=$DIRJOB
-          line=`grep -v '^#' $userhost | grep "^$ibase "`
-          workdir=`echo $line | $AWK '{print $3}'`
-          if test -n "$workdir"
+        for i in `$AWK -v n=$numfield '{print $n}' $host_filt`
+        do
+          ibase=${i%%.*}
+          if test $ibase != $thishost
           then
-            DIR1=$workdir
+            counter=$((counter+1))
+            DIR1=$DIRJOB
+            line=`grep -v '^#' $userhost | grep "^$ibase "`
+            workdir=`echo $line | $AWK '{print $3}'`
+            if test -n "$workdir"
+            then
+              DIR1=$workdir
+            fi
+            #  if an incompatible host uses shared directory,
+            #  then the root machine deletes the executable
+            if test ${dirstatus[$counter]} = "shared" -a  ${compstatus[$counter]} = "no"
+            then
+              hname=_$ibase
+              /bin/rm ${execname}$hname
+            fi
+            # if local directory used, the remote machine
+            # deletes the executable
+            if test ${dirstatus[$counter]} = "local"
+            then
+              $RSH $i /bin/rm $DIR1/${execname} 2>/dev/null
+            fi
           fi
-          #  if an incompatible host uses shared directory,
-          #  then the root machine deletes the executable
-          if test ${dirstatus[$counter]} = "shared" -a  ${compstatus[$counter]} = "no"
-          then
-            hname=_$ibase
-            /bin/rm ${execname}$hname
-          fi
-          # if local directory used, the remote machine
-          # deletes the executable
-          if test ${dirstatus[$counter]} = "local"
-          then
-            $RSH $i /bin/rm $DIR1/${execname} 2>/dev/null
-          fi
-        fi
-      done
+        done
+      fi
     fi
   fi
-fi
 fi
 else
 #dllrun >0
   if test $cpdll = yes; then
-     filename=$usernoext
+     filename=`basename $usersubname .f`
      /bin/cp $DIRJOB/$marcdll $DIRJOB/${filename}_$marcdll 2>/dev/null
   fi
   if test $rmdll = yes;then
