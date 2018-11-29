@@ -115,14 +115,12 @@ module plastic_disloUCLA
        rhoEdge, &
        rhoEdgeDip, &
        accshear_slip, &
-       invLambdaSlip, &
        mfp_slip, &
        threshold_stress_slip
  end type 
 
  type, private :: tDisloUCLAMicrostructure
    real(pReal), allocatable,     dimension(:,:) :: &
-     invLambda, &
      mfp, &
      threshold_stress
  end type tDisloUCLAMicrostructure
@@ -516,8 +514,7 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
      sizeDotState     = int(size(['rhoEdge     ','rhoEdgeDip  ','accshearslip']),pInt) * ns
      sizeDeltaState   =  0_pInt
      sizeState        = sizeDotState &
-                      + int(size(['invLambdaSlip     ',&
-                                  'meanFreePathSlip  ','tauSlipThreshold  ']),pInt) * ns
+                      + int(size(['meanFreePathSlip  ','tauSlipThreshold  ']),pInt) * ns
 
    call material_allocatePlasticState(phase,NofMyPhase,sizeState,sizeDotState,0_pInt, &
                                       ns,0_pInt,0_pInt)
@@ -581,17 +578,12 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
 
      startIndex=endIndex+1_pInt
      endIndex=endIndex+ns
-     stt%invLambdaSlip=>plasticState(phase)%state(startIndex:endIndex,:)
-
-     startIndex=endIndex+1_pInt
-     endIndex=endIndex+ns
      stt%mfp_slip=>plasticState(phase)%state(startIndex:endIndex,:)
 
      startIndex=endIndex+1_pInt
      endIndex=endIndex+ns
      stt%threshold_stress_slip=>plasticState(phase)%state(startIndex:endIndex,:)
 
-   allocate(mse%invLambda(prm%totalNslip,NofMyPhase),source=0.0_pReal)
    allocate(mse%mfp(prm%totalNslip,NofMyPhase),source=0.0_pReal)
    allocate(mse%threshold_stress(prm%totalNslip,NofMyPhase),source=0.0_pReal)
 
@@ -615,7 +607,8 @@ subroutine plastic_disloUCLA_stateInit(ph,instance)
    lattice_maxNslipFamily, &
    lattice_mu
  use material, only: &
-   plasticState
+   plasticState, &
+   material_phase
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -641,19 +634,18 @@ subroutine plastic_disloUCLA_stateInit(ph,instance)
  forall (i = 1_pInt:ns) &
    invLambdaSlip0(i) = sqrt(dot_product((prm%rho0+prm%rhoDip0),plastic_disloUCLA_forestProjectionEdge(1:ns,i,instance)))/ &
                        plastic_disloUCLA_CLambdaSlipPerSlipSystem(i,instance)
- tempState(3_pInt*ns+1:4_pInt*ns) = invLambdaSlip0
  
  forall (i = 1_pInt:ns) &
    MeanFreePathSlip0(i) = &
      plastic_disloUCLA_GrainSize(instance)/(1.0_pReal+invLambdaSlip0(i)*plastic_disloUCLA_GrainSize(instance))
- tempState(4_pInt*ns+1:5_pInt*ns) = MeanFreePathSlip0
+ tempState(3_pInt*ns+1:4_pInt*ns) = MeanFreePathSlip0
  
  forall (i = 1_pInt:ns) &
    tauSlipThreshold0(i) = &
      lattice_mu(ph)*prm%burgers(i) * &
      sqrt(dot_product((prm%rho0+prm%rhoDip0),plastic_disloUCLA_interactionMatrix_SlipSlip(i,1:ns,instance)))
 
- tempState(5_pInt*ns+1:6_pInt*ns) = tauSlipThreshold0
+ tempState(4_pInt*ns+1:5_pInt*ns) = tauSlipThreshold0
  
 plasticState(ph)%state = spread(tempState,2,size(plasticState(ph)%state(1,:)))
 end associate
@@ -668,7 +660,8 @@ subroutine plastic_disloUCLA_microstructure(temperature,ipc,ip,el)
    pi
  use material, only: &
    phase_plasticityInstance, &
-   phaseAt, phasememberAt
+   phaseAt, phasememberAt, &
+   material_phase
  use lattice, only: &
    lattice_mu
 
@@ -685,7 +678,8 @@ subroutine plastic_disloUCLA_microstructure(temperature,ipc,ip,el)
    ns,s, &
    ph, &
    of
-
+ real(pReal), dimension(plastic_disloUCLA_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
+  invLambdaSlip
  !* Shortened notation
  of = phasememberAt(ipc,ip,el)
  ph = phaseAt(ipc,ip,el)
@@ -694,7 +688,7 @@ subroutine plastic_disloUCLA_microstructure(temperature,ipc,ip,el)
  associate(prm => param(instance), stt => state(instance))
  !* 1/mean free distance between 2 forest dislocations seen by a moving dislocation
  forall (s = 1_pInt:ns) &
-   stt%invLambdaSlip(s,of) = &
+   invLambdaSlip(s) = &
      sqrt(dot_product((stt%rhoEdge(1_pInt:ns,of)+stt%rhoEdgeDip(1_pInt:ns,of)),&
                       plastic_disloUCLA_forestProjectionEdge(1:ns,s,instance)))/ &
      plastic_disloUCLA_CLambdaSlipPerSlipSystem(s,instance)
@@ -703,7 +697,7 @@ subroutine plastic_disloUCLA_microstructure(temperature,ipc,ip,el)
  do s = 1_pInt,ns
    stt%mfp_slip(s,of) = &
       plastic_disloUCLA_GrainSize(instance)/&
-       (1.0_pReal+plastic_disloUCLA_GrainSize(instance)*(stt%invLambdaSlip(s,of)))
+       (1.0_pReal+plastic_disloUCLA_GrainSize(instance)*(invLambdaSlip(s)))
  enddo
  
  !* threshold stress for dislocation motion
