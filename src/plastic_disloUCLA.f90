@@ -45,8 +45,6 @@ module plastic_disloUCLA
    plastic_disloUCLA_dipoleFormationFactor                                                       !< scaling factor for dipole formation: 0: off, 1: on. other values not useful
 
  real(pReal),                         dimension(:,:),         allocatable,         private :: &
-   plastic_disloUCLA_rhoEdge0, &                                                                    !< initial edge dislocation density per slip system for each family and instance
-   plastic_disloUCLA_rhoEdgeDip0, &                                                                 !< initial edge dipole density per slip system for each family and instance
    plastic_disloUCLA_v0PerSlipFamily, &                                                             !< dislocation velocity prefactor [m/s] for each family and instance
    plastic_disloUCLA_v0PerSlipSystem, &                                                             !< dislocation velocity prefactor [m/s] for each slip system and instance
    plastic_disloUCLA_tau_peierlsPerSlipFamily, &                                                    !< Peierls stress [Pa] for each family and instance
@@ -121,10 +119,20 @@ module plastic_disloUCLA
        mfp_slip, &
        threshold_stress_slip
  end type 
+
+ type, private :: tDisloUCLAMicrostructure
+   real(pReal), allocatable,     dimension(:,:) :: &
+     invLambda, &
+     mfp, &
+     threshold_stress
+ end type tDisloUCLAMicrostructure
+
  type(tDisloUCLAState ), allocatable, dimension(:), private :: &
    state, &
-   state0, &
    dotState
+
+ type(tDisloUCLAMicrostructure), allocatable, dimension(:), private :: &
+   microstructure
  
  public :: &
    plastic_disloUCLA_init, &
@@ -235,8 +243,6 @@ material_allocatePlasticState
  allocate(plastic_disloUCLA_CEdgeDipMinDistance(maxNinstance),                 source=0.0_pReal)
  allocate(plastic_disloUCLA_SolidSolutionStrength(maxNinstance),               source=0.0_pReal)
  allocate(plastic_disloUCLA_dipoleFormationFactor(maxNinstance),               source=1.0_pReal) !should be on by default
- allocate(plastic_disloUCLA_rhoEdge0(lattice_maxNslipFamily,maxNinstance),     source=0.0_pReal)
- allocate(plastic_disloUCLA_rhoEdgeDip0(lattice_maxNslipFamily,maxNinstance),  source=0.0_pReal)
  allocate(plastic_disloUCLA_friction(lattice_maxNslipFamily,maxNinstance),     source=0.0_pReal)
  allocate(plastic_disloUCLA_v0PerSlipFamily(lattice_maxNslipFamily,maxNinstance),     source=0.0_pReal)
  allocate(plastic_disloUCLA_tau_peierlsPerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
@@ -250,8 +256,8 @@ material_allocatePlasticState
  
  allocate(param(maxNinstance))
  allocate(state(maxNinstance))
- allocate(state0(maxNinstance))
  allocate(dotState(maxNinstance))
+ allocate(microstructure(maxNinstance))
 
 
 do p = 1_pInt, size(phase_plasticityInstance)
@@ -282,8 +288,8 @@ do p = 1_pInt, size(phase_plasticityInstance)
      prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
                                                              config_phase(p)%getFloats('interaction_slipslip'), &
                                                              structure(1:3))
-     !prm%rho0        = config_phase(p)%getFloats('rho0')
-     !prm%rhoDip0     = config_phase(p)%getFloats('dipole_rho0')
+     prm%rho0        = config_phase(p)%getFloats('rhoedge0')
+     prm%rhoDip0     = config_phase(p)%getFloats('rhoedgedip0')
      prm%burgers     = config_phase(p)%getFloats('slipburgers')
      prm%H0kp        = config_phase(p)%getFloats('qedge')
      !prm%v0          = config_phase(p)%getFloats('v0')
@@ -298,6 +304,8 @@ do p = 1_pInt, size(phase_plasticityInstance)
 
 
      ! expand: family => system
+     prm%rho0   = math_expand(prm%rho0,  prm%Nslip)
+     prm%rhoDip0   = math_expand(prm%rhoDip0,  prm%Nslip)
      prm%q   = math_expand(prm%q,  prm%Nslip)
      prm%p   = math_expand(prm%p,  prm%Nslip)
      prm%H0kp   = math_expand(prm%H0kp,  prm%Nslip)
@@ -404,10 +412,6 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
            tempPerSlip(j) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
          select case(tag)
-           case ('rhoedge0')
-             plastic_disloUCLA_rhoEdge0(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
-           case ('rhoedgedip0')
-             plastic_disloUCLA_rhoEdgeDip0(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
            case ('v0')
              plastic_disloUCLA_v0PerSlipFamily(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
            case ('clambdaslip')
@@ -456,10 +460,10 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
         call IO_error(211_pInt,el=instance,ext_msg='Nslip ('//PLASTICITY_DISLOUCLA_label//')')
       do f = 1_pInt,lattice_maxNslipFamily
         if (plastic_disloUCLA_Nslip(f,instance) > 0_pInt) then
-          if (plastic_disloUCLA_rhoEdge0(f,instance) < 0.0_pReal) &
-            call IO_error(211_pInt,el=instance,ext_msg='rhoEdge0 ('//PLASTICITY_DISLOUCLA_label//')')
-          if (plastic_disloUCLA_rhoEdgeDip0(f,instance) < 0.0_pReal) & 
-            call IO_error(211_pInt,el=instance,ext_msg='rhoEdgeDip0 ('//PLASTICITY_DISLOUCLA_label//')')
+          !if (plastic_disloUCLA_rhoEdge0(f,instance) < 0.0_pReal) &
+          !  call IO_error(211_pInt,el=instance,ext_msg='rhoEdge0 ('//PLASTICITY_DISLOUCLA_label//')')
+          !if (plastic_disloUCLA_rhoEdgeDip0(f,instance) < 0.0_pReal) & 
+          !  call IO_error(211_pInt,el=instance,ext_msg='rhoEdgeDip0 ('//PLASTICITY_DISLOUCLA_label//')')
           !if (plastic_disloUCLA_burgersPerSlipFamily(f,instance) <= 0.0_pReal) &
           !  call IO_error(211_pInt,el=instance,ext_msg='slipBurgers ('//PLASTICITY_DISLOUCLA_label//')')
           if (plastic_disloUCLA_v0PerSlipFamily(f,instance) <= 0.0_pReal) &
@@ -505,7 +509,7 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
      instance = phase_plasticityInstance(phase)
      ns = plastic_disloUCLA_totalNslip(instance)
 
-    associate(prm => param(instance), stt=>state(instance))
+    associate(prm => param(instance), stt=>state(instance),mse => microstructure(phase_plasticityInstance(p)))
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
 
@@ -587,6 +591,10 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
      endIndex=endIndex+ns
      stt%threshold_stress_slip=>plasticState(phase)%state(startIndex:endIndex,:)
 
+   allocate(mse%invLambda(prm%totalNslip,NofMyPhase),source=0.0_pReal)
+   allocate(mse%mfp(prm%totalNslip,NofMyPhase),source=0.0_pReal)
+   allocate(mse%threshold_stress(prm%totalNslip,NofMyPhase),source=0.0_pReal)
+
      call plastic_disloUCLA_stateInit(phase,instance)
 
      plasticState(p)%state0 = plasticState(p)%state                                                 ! ToDo: this could be done centrally
@@ -618,33 +626,20 @@ subroutine plastic_disloUCLA_stateInit(ph,instance)
 
  integer(pInt) :: i,f,ns, index_myFamily
  real(pReal), dimension(plastic_disloUCLA_totalNslip(instance)) :: &
-   rhoEdge0, &
-   rhoEdgeDip0, &
    invLambdaSlip0, &
    MeanFreePathSlip0, &
    tauSlipThreshold0
  tempState = 0.0_pReal
  ns = plastic_disloUCLA_totalNslip(instance)
  associate(prm => param(instance))
-!--------------------------------------------------------------------------------------------------
-! initialize basic slip state variables
- do f = 1_pInt,lattice_maxNslipFamily
-   index_myFamily   = sum(plastic_disloUCLA_Nslip(1:f-1_pInt,instance))                        ! index in truncated slip system list
-   rhoEdge0(index_myFamily+1_pInt: &
-            index_myFamily+plastic_disloUCLA_Nslip(f,instance)) = &
-     plastic_disloUCLA_rhoEdge0(f,instance)
-   rhoEdgeDip0(index_myFamily+1_pInt: &
-               index_myFamily+plastic_disloUCLA_Nslip(f,instance)) = &
-     plastic_disloUCLA_rhoEdgeDip0(f,instance)
- enddo
  
- tempState(1_pInt:ns)           = rhoEdge0
- tempState(ns+1_pInt:2_pInt*ns) = rhoEdgeDip0
+ tempState(1_pInt:ns)           = prm%rho0
+ tempState(ns+1_pInt:2_pInt*ns) = prm%rhoDip0
  
 !--------------------------------------------------------------------------------------------------
 ! initialize dependent slip microstructural variables
  forall (i = 1_pInt:ns) &
-   invLambdaSlip0(i) = sqrt(dot_product((rhoEdge0+rhoEdgeDip0),plastic_disloUCLA_forestProjectionEdge(1:ns,i,instance)))/ &
+   invLambdaSlip0(i) = sqrt(dot_product((prm%rho0+prm%rhoDip0),plastic_disloUCLA_forestProjectionEdge(1:ns,i,instance)))/ &
                        plastic_disloUCLA_CLambdaSlipPerSlipSystem(i,instance)
  tempState(3_pInt*ns+1:4_pInt*ns) = invLambdaSlip0
  
@@ -656,7 +651,7 @@ subroutine plastic_disloUCLA_stateInit(ph,instance)
  forall (i = 1_pInt:ns) &
    tauSlipThreshold0(i) = &
      lattice_mu(ph)*prm%burgers(i) * &
-     sqrt(dot_product((rhoEdge0+rhoEdgeDip0),plastic_disloUCLA_interactionMatrix_SlipSlip(i,1:ns,instance)))
+     sqrt(dot_product((prm%rho0+prm%rhoDip0),plastic_disloUCLA_interactionMatrix_SlipSlip(i,1:ns,instance)))
 
  tempState(5_pInt*ns+1:6_pInt*ns) = tauSlipThreshold0
  
