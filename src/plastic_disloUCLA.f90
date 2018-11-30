@@ -155,18 +155,8 @@ subroutine plastic_disloUCLA_init(fileUnit)
    math_mul3x3, &
    math_expand
  use IO, only: &
-   IO_read, &
-   IO_lc, &
-   IO_getTag, &
-   IO_isBlank, &
-   IO_stringPos, &
-   IO_stringValue, &
-   IO_floatValue, &
-   IO_intValue, &
-   IO_warning, &
    IO_error, &
-   IO_timeStamp, &
-   IO_EOF
+   IO_timeStamp
  use material, only: &
    phase_plasticity, &
    phase_plasticityInstance, &
@@ -184,11 +174,9 @@ material_allocatePlasticState
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: maxNinstance,phase,maxTotalNslip,&
                   f,instance,j,k,o,ns, i, &
-                  Nchunks_SlipSlip = 0_pInt, outputSize, &
-                  Nchunks_SlipFamilies = 0_pInt,Nchunks_nonSchmid = 0_pInt, &
+                  outputSize, &
                   offset_slip, index_myFamily, index_otherFamily, &
                   startIndex, endIndex, p
  integer(pInt) :: sizeState, sizeDotState
@@ -375,53 +363,8 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
    end associate
  enddo
 
- rewind(fileUnit)
- phase = 0_pInt
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= MATERIAL_partPhase)         ! wind forward to <phase>
-   line = IO_read(fileUnit)
- enddo
  
- parsingFile: do while (trim(line) /= IO_EOF)                                                       ! read through sections of phase part
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit                                                                                           
-   endif   
-   if (IO_getTag(line,'[',']') /= '') then                                                          ! next phase section
-     phase = phase + 1_pInt                                                                         ! advance phase section counter
-     if (phase_plasticity(phase) == PLASTICITY_DISLOUCLA_ID) then
-       Nchunks_SlipFamilies = count(lattice_NslipSystem(:,phase) > 0_pInt)
-       Nchunks_nonSchmid =    lattice_NnonSchmid(phase)
-       if(allocated(tempPerSlip)) deallocate(tempPerSlip)
-       allocate(tempPerSlip(Nchunks_SlipFamilies))
-     endif
-     cycle                                                                                          ! skip to next line
-   endif
-   if (phase > 0_pInt ) then; if (phase_plasticity(phase) == PLASTICITY_DISLOUCLA_ID) then           ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
-     instance = phase_plasticityInstance(phase)                                                     ! which instance of my plasticity is present phase
-     chunkPos = IO_stringPos(line)
-     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
-      select case(tag)
-!--------------------------------------------------------------------------------------------------
-! parameters depending on number of slip system families
-       case ('nslip')
-         if (chunkPos(1) < Nchunks_SlipFamilies + 1_pInt) &
-           call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOUCLA_label//')')
-         if (chunkPos(1) > Nchunks_SlipFamilies + 1_pInt) &
-           call IO_error(150_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOUCLA_label//')')
-         Nchunks_SlipFamilies = chunkPos(1) - 1_pInt
-         do j = 1_pInt, Nchunks_SlipFamilies
-             plastic_disloUCLA_Nslip(j,instance) = IO_intValue(line,chunkPos,1_pInt+j)
-         enddo
-     end select
-   endif; endif
- enddo parsingFile
- 
- sanityChecks: do phase = 1_pInt, size(phase_plasticity)
-    myPhase: if (phase_plasticity(phase) == PLASTICITY_disloUCLA_ID) then
-      instance = phase_plasticityInstance(phase)
-      do f = 1_pInt,lattice_maxNslipFamily
+
           !if (plastic_disloUCLA_rhoEdge0(f,instance) < 0.0_pReal) &
           !  call IO_error(211_pInt,el=instance,ext_msg='rhoEdge0 ('//PLASTICITY_DISLOUCLA_label//')')
           !if (plastic_disloUCLA_rhoEdgeDip0(f,instance) < 0.0_pReal) & 
@@ -432,12 +375,7 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
           !  call IO_error(211_pInt,el=instance,ext_msg='v0 ('//PLASTICITY_DISLOUCLA_label//')')
           !if (plastic_disloUCLA_tau_peierlsPerSlipFamily(f,instance) < 0.0_pReal) &
           !  call IO_error(211_pInt,el=instance,ext_msg='tau_peierls ('//PLASTICITY_DISLOUCLA_label//')')
-      enddo
-!--------------------------------------------------------------------------------------------------
-! Determine total number of active slip systems
-      plastic_disloUCLA_Nslip(:,instance) = min(lattice_NslipSystem(:,phase),plastic_disloUCLA_Nslip(:,instance))
-   endif myPhase
- enddo sanityChecks
+
  
 !--------------------------------------------------------------------------------------------------
 ! allocation of variables whose size depends on the total number of active slip systems
@@ -649,7 +587,7 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,ipc,ip,el)
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
 
- integer(pInt) :: instance,ns,f,i,j, &
+ integer(pInt) :: instance,ns,j, &
                   of
  real(pReal) :: &
    EdgeDipMinDistance,&
@@ -775,7 +713,7 @@ math_mul33xx33
  integer(pInt) :: &
    instance,&
    ns,&
-   o,i,c,j,&
+   o,c,j,&
    of
  real(pReal), dimension(plastic_disloUCLA_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg
