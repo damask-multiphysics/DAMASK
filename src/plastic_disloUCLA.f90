@@ -556,7 +556,7 @@ subroutine plastic_disloUCLA_microstructure(temperature,ipc,ip,el)
  !* Shortened notation
  of = phasememberAt(ipc,ip,el)
  ph = phaseAt(ipc,ip,el)
- instance = phase_plasticityInstance(ph)
+ instance = phase_plasticityInstance(phaseAt(ipc,ip,el))
  ns = plastic_disloUCLA_totalNslip(instance)
 
 
@@ -600,21 +600,20 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,ipc,ip,el
  real(pReal), dimension(3,3), intent(out)   :: Lp
  real(pReal), dimension(3,3,3,3), intent(out)   :: dLp_dMp
 
- integer(pInt) :: instance,ph,of,i,k,l,m,n
+ integer(pInt) :: instance,of,i,k,l,m,n
 
  real(pReal), dimension(plastic_disloUCLA_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    gdot_slip_pos,gdot_slip_neg,tau_slip_pos,tau_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg
    
  !* Shortened notation
  of = phasememberAt(ipc,ip,el)
- ph = phaseAt(ipc,ip,el)
- instance  = phase_plasticityInstance(ph)
+ instance  = phase_plasticityInstance(phaseAt(ipc,ip,el))
  associate(prm => param(instance))
  
  Lp = 0.0_pReal
  dLp_dMp = 0.0_pReal
  
- call kinetics(Mp,Temperature,ph,instance,of, &                                                  
+ call kinetics(Mp,Temperature,instance,of, &                                                  
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
  slipSystems: do i = 1_pInt, prm%totalNslip
    Lp = Lp + (gdot_slip_pos(i)+gdot_slip_neg(i))*prm%Schmid_slip(1:3,1:3,i)
@@ -689,7 +688,7 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,ipc,ip,el)
  plasticState(ph)%dotState(:,of) = 0.0_pReal
   associate(prm => param(instance), stt => state(instance),mse => microstructure(instance))
  !* Dislocation density evolution
- call kinetics(Mp,Temperature,ph,instance,of, &                                                
+ call kinetics(Mp,Temperature,instance,of, &                                                
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
  dotState(instance)%accshear_slip(:,of) = (gdot_slip_pos+gdot_slip_neg)*0.5_pReal
 
@@ -777,9 +776,6 @@ math_mul33xx33
    !plasticState, &
    phaseAt, phasememberAt
  use lattice, only: &
-   lattice_Sslip, &
-   lattice_maxNslipFamily, &
-   lattice_NslipSystem, &
    lattice_mu
 
  implicit none
@@ -798,7 +794,7 @@ math_mul33xx33
  integer(pInt) :: &
    instance,&
    ns,&
-   f,o,i,c,j,index_myFamily,&
+   o,i,c,j,&
    ph, &
    of
  real(pReal), dimension(plastic_disloUCLA_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
@@ -824,7 +820,7 @@ math_mul33xx33
         postResults(c+1_pInt:c+ns) = stt%rhoEdgeDip(1_pInt:ns,of)
         c = c + ns
       case (shearrate_ID,stressexponent_ID)
- call kinetics(Mp,Temperature,ph,instance,of, &                                                
+ call kinetics(Mp,Temperature,instance,of, &                                                
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
 
         if     (plastic_disloUCLA_outputID(o,instance) == shearrate_ID) then
@@ -851,34 +847,25 @@ math_mul33xx33
         postResults(c+1_pInt:c+ns) = mse%mfp(1_pInt:ns, of)
         c = c + ns
       case (resolvedstress_ID)
-        j = 0_pInt
-        slipFamilies1: do f = 1_pInt,lattice_maxNslipFamily
-           index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                 ! at which index starts my family
-           slipSystems1: do i = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
-              j = j + 1_pInt
-              postResults(c+j) =&
-                                math_mul33xx33(Mp,lattice_Sslip(:,:,1,index_myFamily+i,ph))
-        enddo slipSystems1; enddo slipFamilies1
+ do j = 1_pInt, prm%totalNslip
+
+              postResults(c+j) =math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,j))
+        enddo
         c = c + ns
       case (thresholdstress_ID)
         postResults(c+1_pInt:c+ns) = mse%threshold_stress(1_pInt:ns,of)
         c = c + ns
       case (dipoleDistance_ID)
-        j = 0_pInt
-        slipFamilies2: do f = 1_pInt,lattice_maxNslipFamily
-           index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                 ! at which index starts my family
-           slipSystems2: do i = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
-              j = j + 1_pInt
-              if (dNeq0(abs(math_mul33xx33(Mp,lattice_Sslip(:,:,1,index_myFamily+i,ph))))) then
+ do j = 1_pInt, prm%totalNslip
+              if (dNeq0(abs(math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,j))))) then
               postResults(c+j) = &
                 (3.0_pReal*lattice_mu(ph)*prm%burgers(j))/&
-                (16.0_pReal*pi*abs(math_mul33xx33(Mp,lattice_Sslip(:,:,1,index_myFamily+i,ph))))
+                (16.0_pReal*pi*abs(math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,j))))
               else
               postResults(c+j) = huge(1.0_pReal)
               endif
-              postResults(c+j)=min(postResults(c+j),&
-                                                            mse%mfp(j,of))
-        enddo slipSystems2; enddo slipFamilies2
+              postResults(c+j)=min(postResults(c+j),mse%mfp(j,of))
+        enddo
         c = c + ns
     end select
  enddo
@@ -889,7 +876,7 @@ end function plastic_disloUCLA_postResults
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-subroutine kinetics(Mp,Temperature,ph,instance,of, &
+subroutine kinetics(Mp,Temperature,instance,of, &
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
  use prec, only: &
    tol_math_check, &
@@ -897,9 +884,6 @@ subroutine kinetics(Mp,Temperature,ph,instance,of, &
  use math, only: &
    pi, &
 math_mul33xx33
- use lattice, only: &
-   lattice_maxNslipFamily, &
-   lattice_NslipSystem
 
  implicit none
  real(pReal), dimension(3,3),  intent(in) :: &
@@ -907,10 +891,9 @@ math_mul33xx33
  real(pReal),                intent(in) :: &
    temperature                                                                                      !< temperature at integration point
  integer(pInt),              intent(in) :: &
-ph, instance,of
+instance,of
 
  integer(pInt) :: &
-   ns,&
    f,i,j,index_myFamily
  real(pReal) :: StressRatio_p,StressRatio_pminus1,&
                 BoltzmannRatio,DotGamma0,stressRatio,&
@@ -918,19 +901,14 @@ ph, instance,of
  real(pReal), intent(out), dimension(plastic_disloUCLA_totalNslip(instance)) :: &
    gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg
  associate(prm => param(instance), stt => state(instance),mse => microstructure(instance))
- !* Shortened notation
- ns = plastic_disloUCLA_totalNslip(instance)
+
  
 
         gdot_slip_pos = 0.0_pReal
         gdot_slip_neg = 0.0_pReal
         dgdot_dtauslip_pos = 0.0_pReal
         dgdot_dtauslip_neg = 0.0_pReal
-        j = 0_pInt
-        slipFamilies: do f = 1_pInt,lattice_maxNslipFamily
-          index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                 ! at which index starts my family
-          slipSystems: do i = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
-            j = j + 1_pInt
+        do j = 1_pInt, prm%totalNslip
             !* Boltzmann ratio
             BoltzmannRatio = prm%H0kp(j)/(kB*Temperature)
             !* Initial shear rates
@@ -1006,6 +984,8 @@ ph, instance,of
               dgdot_dtauslip_pos(j) = DotGamma0 * dvel_slip
 
             endif significantPositiveTau
+
+
             significantNegativeTau: if((abs(tau_slip_neg(j))-mse%threshold_stress(j, of)) > tol_math_check) then
               !* Stress ratios
               stressRatio = ((abs(tau_slip_neg(j))-mse%threshold_stress(j, of))/&
@@ -1071,10 +1051,8 @@ ph, instance,of
 
 
               dgdot_dtauslip_neg(j) = DotGamma0 * dvel_slip
-
-            endif significantNegativeTau
-          enddo slipSystems
-        enddo slipFamilies
+ endif             significantNegativeTau
+        enddo
  end associate
 end subroutine kinetics
 
