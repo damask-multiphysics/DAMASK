@@ -42,9 +42,6 @@ module plastic_disloUCLA
    plastic_disloUCLA_CEdgeDipMinDistance, &                                                         !<
    plastic_disloUCLA_dipoleFormationFactor                                                       !< scaling factor for dipole formation: 0: off, 1: on. other values not useful
 
- real(pReal),                         dimension(:,:),         allocatable,         private :: &
-   plastic_disloUCLA_CLambdaSlipPerSlipFamily, &                                                    !< Adj. parameter for distance between 2 forest dislocations for each slip family and instance
-   plastic_disloUCLA_CLambdaSlipPerSlipSystem                                                    !< Adj. parameter for distance between 2 forest dislocations for each slip system and instance
 
  real(pReal),                         dimension(:,:,:),       allocatable,         private :: &
    plastic_disloUCLA_forestProjectionEdge                                                           !< matrix of forest projections of edge dislocations for each instance
@@ -231,10 +228,6 @@ material_allocatePlasticState
  allocate(plastic_disloUCLA_Qsd(maxNinstance),                                 source=0.0_pReal)
  allocate(plastic_disloUCLA_CEdgeDipMinDistance(maxNinstance),                 source=0.0_pReal)
  allocate(plastic_disloUCLA_dipoleFormationFactor(maxNinstance),               source=1.0_pReal) !should be on by default
-
- allocate(plastic_disloUCLA_CLambdaSlipPerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
-                                                                                      source=0.0_pReal)
-
  
  allocate(param(maxNinstance))
  allocate(state(maxNinstance))
@@ -275,7 +268,7 @@ do p = 1_pInt, size(phase_plasticityInstance)
      prm%burgers     = config_phase(p)%getFloats('slipburgers')
      prm%H0kp        = config_phase(p)%getFloats('qedge')
      prm%v0          = config_phase(p)%getFloats('v0')
-     !prm%clambda     = config_phase(p)%getFloats('clambda')
+     prm%clambda     = config_phase(p)%getFloats('clambdaslip')
      prm%tau_Peierls  = config_phase(p)%getFloats('tau_peierls')
      prm%p           = config_phase(p)%getFloats('p_slip',defaultVal=[(1.0_pReal,i=1_pInt,size(prm%Nslip))])
      prm%q           = config_phase(p)%getFloats('q_slip',defaultVal=[(1.0_pReal,i=1_pInt,size(prm%Nslip))])
@@ -310,6 +303,22 @@ do p = 1_pInt, size(phase_plasticityInstance)
      prm%tau_Peierls   = math_expand(prm%tau_Peierls,  prm%Nslip)
      prm%v0   = math_expand(prm%v0,  prm%Nslip)
      prm%B   = math_expand(prm%B,  prm%Nslip)
+     prm%clambda   = math_expand(prm%clambda,  prm%Nslip)
+      
+      instance = phase_plasticityInstance(p)
+      if (plastic_disloUCLA_CAtomicVolume(instance) <= 0.0_pReal) &
+        call IO_error(211_pInt,el=instance,ext_msg='cAtomicVolume ('//PLASTICITY_DISLOUCLA_label//')')
+      if (plastic_disloUCLA_D0(instance) <= 0.0_pReal) &
+        call IO_error(211_pInt,el=instance,ext_msg='D0 ('//PLASTICITY_DISLOUCLA_label//')')
+      if (plastic_disloUCLA_Qsd(instance) <= 0.0_pReal) &
+        call IO_error(211_pInt,el=instance,ext_msg='Qsd ('//PLASTICITY_DISLOUCLA_label//')')
+     ! if (plastic_disloUCLA_aTolRho(instance) <= 0.0_pReal) &
+     !   call IO_error(211_pInt,el=instance,ext_msg='aTolRho ('//PLASTICITY_DISLOUCLA_label//')')   
+
+   else slipActive
+     allocate(prm%rho0(0))
+     allocate(prm%rhoDip0(0))
+
    endif slipActive
 
 
@@ -402,14 +411,6 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
          do j = 1_pInt, Nchunks_SlipFamilies
              plastic_disloUCLA_Nslip(j,instance) = IO_intValue(line,chunkPos,1_pInt+j)
          enddo
-       case ('clambdaslip')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           tempPerSlip(j) = IO_floatValue(line,chunkPos,1_pInt+j)
-         enddo
-         select case(tag)
-           case ('clambdaslip')
-             plastic_disloUCLA_CLambdaSlipPerSlipFamily(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
-         end select
      end select
    endif; endif
  enddo parsingFile
@@ -433,15 +434,6 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
           !  call IO_error(211_pInt,el=instance,ext_msg='tau_peierls ('//PLASTICITY_DISLOUCLA_label//')')
         endif
       enddo
-      if (plastic_disloUCLA_CAtomicVolume(instance) <= 0.0_pReal) &
-        call IO_error(211_pInt,el=instance,ext_msg='cAtomicVolume ('//PLASTICITY_DISLOUCLA_label//')')
-      if (plastic_disloUCLA_D0(instance) <= 0.0_pReal) &
-        call IO_error(211_pInt,el=instance,ext_msg='D0 ('//PLASTICITY_DISLOUCLA_label//')')
-      if (plastic_disloUCLA_Qsd(instance) <= 0.0_pReal) &
-        call IO_error(211_pInt,el=instance,ext_msg='Qsd ('//PLASTICITY_DISLOUCLA_label//')')
-     ! if (plastic_disloUCLA_aTolRho(instance) <= 0.0_pReal) &
-     !   call IO_error(211_pInt,el=instance,ext_msg='aTolRho ('//PLASTICITY_DISLOUCLA_label//')')   
-
 !--------------------------------------------------------------------------------------------------
 ! Determine total number of active slip systems
       plastic_disloUCLA_Nslip(:,instance) = min(lattice_NslipSystem(:,phase),plastic_disloUCLA_Nslip(:,instance))
@@ -452,8 +444,6 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
 !--------------------------------------------------------------------------------------------------
 ! allocation of variables whose size depends on the total number of active slip systems
  maxTotalNslip = maxval(plastic_disloUCLA_totalNslip)
- 
- allocate(plastic_disloUCLA_CLambdaSlipPerSlipSystem(maxTotalNslip, maxNinstance),source=0.0_pReal)
  
  allocate(plastic_disloUCLA_forestProjectionEdge(maxTotalNslip,maxTotalNslip,maxNinstance), &
                                                                                        source=0.0_pReal)
@@ -488,10 +478,6 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
      mySlipFamilies: do f = 1_pInt,size(prm%Nslip,1)
        index_myFamily = sum(plastic_disloUCLA_Nslip(1:f-1_pInt,instance))                      ! index in truncated slip system list
        mySlipSystems: do j = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
-
- 
-         plastic_disloUCLA_CLambdaSlipPerSlipSystem(index_myFamily+j,instance) = &
-         plastic_disloUCLA_CLambdaSlipPerSlipFamily(f,instance)
   
        !* Calculation of forest projections for edge dislocations
          otherSlipFamilies: do o = 1_pInt,size(prm%Nslip,1)
@@ -580,7 +566,7 @@ subroutine plastic_disloUCLA_microstructure(temperature,ipc,ip,el)
    invLambdaSlip(s) = &
      sqrt(dot_product((stt%rhoEdge(1_pInt:ns,of)+stt%rhoEdgeDip(1_pInt:ns,of)),&
                       plastic_disloUCLA_forestProjectionEdge(1:ns,s,instance)))/ &
-     plastic_disloUCLA_CLambdaSlipPerSlipSystem(s,instance)
+     prm%Clambda(s)
  
  !* mean free path between 2 obstacles seen by a moving dislocation
 
@@ -985,11 +971,11 @@ ph, instance,of
                    * ( &
                    (exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j)) &
                    + tau_slip_pos(j) &
-                   * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j)))&    !deltaf(i)                                         
+                   * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j)))&
                    *BoltzmannRatio*prm%p(j)&
                    *prm%q(j)/&
                    (prm%solidSolutionStrength+prm%tau_Peierls(j))*&
-                   StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)  ) &!deltaf(f)                                        
+                   StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)  ) &
                    ) &
                    *  (2.0_pReal*(prm%burgers(j)**2.0_pReal)*tau_slip_pos(j) &
                    +  prm%omega(j) * prm%B(j) &
@@ -1001,11 +987,11 @@ ph, instance,of
                    *  (2.0_pReal*(prm%burgers(j)**2.0_pReal) &
                    +  prm%omega(j) * prm%B(j) &
                    *(( mse%mfp(j,of) - prm%kink_width(j) )**2.0_pReal) &
-                   * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j)))&     !deltaf(i)                                        
+                   * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j)))&
                    *BoltzmannRatio*prm%p(j)&
                    *prm%q(j)/&
                    (prm%solidSolutionStrength+prm%tau_Peierls(j))*&
-                   StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)  )& !deltaf(f)                                        
+                   StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)  )&
                    ) &
                    )  &
                    / (  &
@@ -1051,11 +1037,11 @@ ph, instance,of
                    * ( &
                    (exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j)) &
                    + tau_slip_neg(j) &
-                   * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j)))&    !deltaf(i)                                         
+                   * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j)))&                                     
                    *BoltzmannRatio*prm%p(j)&
                    *prm%q(j)/&
                    (prm%solidSolutionStrength+prm%tau_Peierls(j))*&
-                   StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)  ) &!deltaf(f)                                        
+                   StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)  ) &                            
                    ) &
                    *  (2.0_pReal*(prm%burgers(j)**2.0_pReal)*tau_slip_neg(j) &
                    +  prm%omega(j) * prm%B(j) &
@@ -1067,11 +1053,11 @@ ph, instance,of
                    *  (2.0_pReal*(prm%burgers(j)**2.0_pReal) &
                    +  prm%omega(j) * prm%B(j) &
                    *(( mse%mfp(j,of) - prm%kink_width(j) )**2.0_pReal) &
-                   * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j)))&     !deltaf(i)                                        
+                   * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j)))&                        
                    *BoltzmannRatio*prm%p(j)&
                    *prm%q(j)/&
                    (prm%solidSolutionStrength+prm%tau_Peierls(j))*&
-                   StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)  )& !deltaf(f)                                        
+                   StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)  )& 
                    ) &
                    )  &
                    / (  &
