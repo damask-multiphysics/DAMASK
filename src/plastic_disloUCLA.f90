@@ -106,7 +106,8 @@ module plastic_disloUCLA
      real(pReal), pointer, dimension(:,:) :: &
        rhoEdge, &
        rhoEdgeDip, &
-       accshear_slip
+       accshear_slip, &
+       whole
  end type 
 
  type, private :: tDisloUCLAMicrostructure
@@ -447,6 +448,8 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
      dotState(instance)%accshear_slip=>plasticState(phase)%dotState(startIndex:endIndex,:)
      plasticState(p)%aTolState(startIndex:endIndex) = 1e6_pReal
 
+     dotState(instance)%whole => plasticState(phase)%dotState
+
 
    allocate(mse%mfp(prm%totalNslip,NofMyPhase),source=0.0_pReal)
    allocate(mse%threshold_stress(prm%totalNslip,NofMyPhase),source=0.0_pReal)
@@ -565,17 +568,12 @@ end subroutine plastic_disloUCLA_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_disloUCLA_dotState(Mp,Temperature,ipc,ip,el)
+subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
  use prec, only: &
    tol_math_check, &
    dEq0
  use math, only: &
    pi
- use material, only: &
-   material_phase, &
-   phase_plasticityInstance, &
-   plasticState, &
-   phaseAt, phasememberAt
 
  implicit none
  real(pReal), dimension(3,3),  intent(in):: &
@@ -583,12 +581,9 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,ipc,ip,el)
  real(pReal),                intent(in) :: &
    temperature                                                                                      !< temperature at integration point
  integer(pInt),              intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
+ instance, of
+ integer(pInt) :: ns,j
 
- integer(pInt) :: instance,ns,j, &
-                  of
  real(pReal) :: &
    EdgeDipMinDistance,&
    AtomicVolume,&
@@ -600,18 +595,15 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,ipc,ip,el)
    ClimbVelocity, &
    DotRhoEdgeDipClimb, &
    DotRhoDipFormation
- real(pReal), dimension(plastic_disloUCLA_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
+ real(pReal), dimension(plastic_disloUCLA_totalNslip(instance)) :: &
    gdot_slip_pos, gdot_slip_neg,&
    tau_slip_pos,&
    tau_slip_neg, &
    dgdot_dtauslip_neg,dgdot_dtauslip_pos
 
- !* Shortened notation
- of = phasememberAt(ipc,ip,el)
- instance  = phase_plasticityInstance(phaseAt(ipc,ip,el))
  ns = plastic_disloUCLA_totalNslip(instance) 
+ dotState(instance)%whole(:,of) = 0.0_pReal
 
- plasticState(phaseAt(ipc,ip,el))%dotState(:,of) = 0.0_pReal
   associate(prm => param(instance), stt => state(instance),mse => microstructure(instance))
  !* Dislocation density evolution
  call kinetics(Mp,Temperature,instance,of, &                                                
@@ -684,18 +676,13 @@ end subroutine plastic_disloUCLA_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-function plastic_disloUCLA_postResults(Mp,Temperature,ipc,ip,el) result(postResults)
+function plastic_disloUCLA_postResults(Mp,Temperature,instance,of) result(postResults)
  use prec, only: &
    tol_math_check, &
    dEq, dNeq0
  use math, only: &
    pi, &
 math_mul33xx33
- use material, only: &
-   material_phase, &
-   phase_plasticityInstance,& 
-   !plasticState, &
-   phaseAt, phasememberAt
 
  implicit none
  real(pReal), dimension(3,3),  intent(in) :: &
@@ -703,27 +690,19 @@ math_mul33xx33
  real(pReal),                intent(in) :: &
    temperature                                                                                      !< temperature at integration point
  integer(pInt),              intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
+   instance,of
 
- real(pReal), dimension(plastic_disloUCLA_sizePostResults(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
+ real(pReal), dimension(plastic_disloUCLA_sizePostResults(instance)) :: &
                                            postResults
 
  integer(pInt) :: &
-   instance,&
    ns,&
-   o,c,j,&
-   of
- real(pReal), dimension(plastic_disloUCLA_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
+   o,c,j
+ real(pReal), dimension(plastic_disloUCLA_totalNslip(instance)) :: &
    gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg
- 
- !* Shortened notation
- of = phasememberAt(ipc,ip,el)
- instance  = phase_plasticityInstance(phaseAt(ipc,ip,el))
+
  ns = plastic_disloUCLA_totalNslip(instance)
- 
- !* Required output
+
  c = 0_pInt
  postResults = 0.0_pReal
  associate (prm => param(instance),stt =>state(instance),mse => microstructure(instance))
