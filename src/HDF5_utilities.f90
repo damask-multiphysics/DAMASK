@@ -175,9 +175,19 @@ integer(HID_T) function HDF5_addGroup2(fileHandle,groupName,parallel)
 
  logical,intent(in), optional :: parallel
 
- integer(HID_T)               :: plist_id,gapl_id 
+ integer(HID_T)               :: plist_id,gapl_id, gcpl_id, aplist_id
 
- call h5gcreate_f(fileHandle, trim(groupName), HDF5_addGroup2, hdferr)
+ !-------------------------------------------------------------------------------------------------
+! creating a property list for data access properties
+ call h5pcreate_f(H5P_GROUP_ACCESS_F, aplist_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup2: h5pcreate_f ('//trim(groupName)//')')
+ !-------------------------------------------------------------------------------------------------
+! setting I/O mode to collective
+ call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup2: h5pset_all_coll_metadata_ops_f ('//trim(groupName)//')')
+ !-------------------------------------------------------------------------------------------------
+! Create group
+ call h5gcreate_f(fileHandle, trim(groupName), HDF5_addGroup2, hdferr, OBJECT_NAMELEN_DEFAULT_F,gapl_id = aplist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_addGroup2: h5gcreate_f ('//trim(groupName)//')')
 
 end function HDF5_addGroup2
@@ -194,6 +204,8 @@ integer(HID_T) function HDF5_openGroup2(FileReadID,groupName)
  integer(HID_T), intent(in)   :: FileReadID
 
  integer(HID_T)   :: aplist_id
+ logical          :: is_collective
+ 
  
  !-------------------------------------------------------------------------------------------------
 ! creating a property list for data access properties
@@ -201,7 +213,7 @@ integer(HID_T) function HDF5_openGroup2(FileReadID,groupName)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup2: h5pcreate_f ('//trim(groupName)//')')
  !-------------------------------------------------------------------------------------------------
 ! setting I/O mode to collective
- call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
+ call h5pget_all_coll_metadata_ops_f(aplist_id, is_collective, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup2: h5pset_all_coll_metadata_ops_f ('//trim(groupName)//')')
   !-------------------------------------------------------------------------------------------------
 ! opening the group
@@ -340,15 +352,17 @@ subroutine HDF5_read_pReal1(dataset,loc_id,datasetName,parallel)
  myStart     = int([sum(readSize(1:worldrank))],HSIZE_T)
  globalShape = [localShape(1:0),sum(readSize)]
 
- !--------------------------------------------------------------------------------------------------
+
+!--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal1: h5screate_simple_f/memspace_id')
+                        int(localShape,HSIZE_T))
+if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5pset_all_coll_metadata_ops_f')
+!--------------------------------------------------------------------------------------------------
 ! open the dataset in the file
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr, dapl_id = aplist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5dopen_f')
@@ -366,7 +380,7 @@ subroutine HDF5_read_pReal1(dataset,loc_id,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
-                file_space_id = filespace_id, xfer_prp = plist_id)
+                file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5dread_f')
 
 !--------------------------------------------------------------------------------------------------
@@ -377,6 +391,8 @@ subroutine HDF5_read_pReal1(dataset,loc_id,datasetName,parallel)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5dclose_f')
  call h5sclose_f(filespace_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt1: h5sclose_f/filespace_id')
+ call h5sclose_f(memspace_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt1: h5sclose_f/memspace_id')
 
 end subroutine HDF5_read_pReal1
 
@@ -431,15 +447,17 @@ subroutine HDF5_read_pReal2(dataset,loc_id,datasetName,parallel)
  myStart     = int([0,sum(readSize(1:worldrank))],HSIZE_T)
  globalShape = [localShape(1:1),sum(readSize)]
 
- !--------------------------------------------------------------------------------------------------
+
+!--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal2: h5screate_simple_f/memspace_id')
+                        int(localShape,HSIZE_T))
+if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal2: h5pset_all_coll_metadata_ops_f')
+!--------------------------------------------------------------------------------------------------
 ! open the dataset in the file
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr, dapl_id = aplist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal2: h5dopen_f')
@@ -452,24 +470,26 @@ subroutine HDF5_read_pReal2(dataset,loc_id,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! select a hyperslab (the portion of the current process) in the file
  call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, int(localShape,HSIZE_T), hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal3: h5sselect_hyperslab_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal2: h5sselect_hyperslab_f')
 
 !--------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
-                file_space_id = filespace_id, xfer_prp = plist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal3: h5dread_f')
+                file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal2: h5dread_f')
 
 !--------------------------------------------------------------------------------------------------
 !close types, dataspaces
  call h5pclose_f(plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal3: plist_id')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal2: plist_id')
  call h5dclose_f(dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal3: h5dclose_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal2: h5dclose_f')
  call h5sclose_f(filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt3: h5sclose_f/filespace_id')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt2: h5sclose_f/filespace_id')
+ call h5sclose_f(memspace_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt2: h5sclose_f/memspace_id')
 
-end subroutine HDF5_read_pReal3
+end subroutine HDF5_read_pReal2
 
 
 !--------------------------------------------------------------------------------------------------
@@ -522,15 +542,17 @@ subroutine HDF5_read_pReal3(dataset,loc_id,datasetName,parallel)
  myStart     = int([0,0,sum(readSize(1:worldrank))],HSIZE_T)
  globalShape = [localShape(1:2),sum(readSize)]
 
- !--------------------------------------------------------------------------------------------------
+
+!--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal3: h5screate_simple_f/memspace_id')
+                        int(localShape,HSIZE_T))
+if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal3: h5pset_all_coll_metadata_ops_f')
+!--------------------------------------------------------------------------------------------------
 ! open the dataset in the file
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr, dapl_id = aplist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal3: h5dopen_f')
@@ -548,7 +570,7 @@ subroutine HDF5_read_pReal3(dataset,loc_id,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
-                file_space_id = filespace_id, xfer_prp = plist_id)
+                file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal3: h5dread_f')
 
 !--------------------------------------------------------------------------------------------------
@@ -559,6 +581,8 @@ subroutine HDF5_read_pReal3(dataset,loc_id,datasetName,parallel)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal3: h5dclose_f')
  call h5sclose_f(filespace_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt3: h5sclose_f/filespace_id')
+ call h5sclose_f(memspace_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt3: h5sclose_f/memspace_id')
 
 end subroutine HDF5_read_pReal3
 
@@ -613,16 +637,17 @@ subroutine HDF5_read_pReal4(dataset,loc_id,datasetName,parallel)
  myStart     = int([0,0,0,sum(readSize(1:worldrank))],HSIZE_T)
  globalShape = [localShape(1:3),sum(readSize)]
 
- !--------------------------------------------------------------------------------------------------
+
+!--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal4: h5screate_simple_f/memspace_id')
- 
+                        int(localShape,HSIZE_T))
+if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal4: h5pset_all_coll_metadata_ops_f')
+!--------------------------------------------------------------------------------------------------
 ! open the dataset in the file
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr, dapl_id = aplist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal4: h5dopen_f')
@@ -640,7 +665,7 @@ subroutine HDF5_read_pReal4(dataset,loc_id,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
-                file_space_id = filespace_id, xfer_prp = plist_id)
+                file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal4: h5dread_f')
 
 !--------------------------------------------------------------------------------------------------
@@ -651,6 +676,8 @@ subroutine HDF5_read_pReal4(dataset,loc_id,datasetName,parallel)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal4: h5dclose_f')
  call h5sclose_f(filespace_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt4: h5sclose_f/filespace_id')
+ call h5sclose_f(memspace_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt4: h5sclose_f/memspace_id')
 
 end subroutine HDF5_read_pReal4
 
@@ -705,17 +732,17 @@ subroutine HDF5_read_pReal5(dataset,loc_id,datasetName,parallel)
  myStart     = int([0,0,0,0,sum(readSize(1:worldrank))],HSIZE_T)
  globalShape = [localShape(1:4),sum(readSize)]
 
- 
- !--------------------------------------------------------------------------------------------------
+
+!--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal5: h5screate_simple_f/memspace_id')
-
+                        int(localShape,HSIZE_T))
+if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal5: h5pset_all_coll_metadata_ops_f')
+!--------------------------------------------------------------------------------------------------
 ! open the dataset in the file
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr, dapl_id = aplist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal5: h5dopen_f')
@@ -733,7 +760,7 @@ subroutine HDF5_read_pReal5(dataset,loc_id,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
-                file_space_id = filespace_id, xfer_prp = plist_id,mem_space_id = memspace_id)
+                file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal5: h5dread_f')
 
 !--------------------------------------------------------------------------------------------------
@@ -744,6 +771,8 @@ subroutine HDF5_read_pReal5(dataset,loc_id,datasetName,parallel)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal5: h5dclose_f')
  call h5sclose_f(filespace_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt5: h5sclose_f/filespace_id')
+ call h5sclose_f(memspace_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt5: h5sclose_f/memspace_id')
 
 end subroutine HDF5_read_pReal5
 
@@ -798,15 +827,17 @@ subroutine HDF5_read_pReal6(dataset,loc_id,datasetName,parallel)
  myStart     = int([0,0,0,0,0,sum(readSize(1:worldrank))],HSIZE_T)
  globalShape = [localShape(1:5),sum(readSize)]
 
- !--------------------------------------------------------------------------------------------------
+
+!--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal6: h5screate_simple_f/memspace_id')
+                        int(localShape,HSIZE_T))
+if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal6: h5pset_all_coll_metadata_ops_f')
+!--------------------------------------------------------------------------------------------------
 ! open the dataset in the file
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr, dapl_id = aplist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal6: h5dopen_f')
@@ -824,7 +855,7 @@ subroutine HDF5_read_pReal6(dataset,loc_id,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
-                file_space_id = filespace_id, xfer_prp = plist_id)
+                file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal6: h5dread_f')
 
 !--------------------------------------------------------------------------------------------------
@@ -835,6 +866,8 @@ subroutine HDF5_read_pReal6(dataset,loc_id,datasetName,parallel)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal6: h5dclose_f')
  call h5sclose_f(filespace_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt6: h5sclose_f/filespace_id')
+ call h5sclose_f(memspace_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt6: h5sclose_f/memspace_id')
 
 end subroutine HDF5_read_pReal6
 
@@ -889,16 +922,17 @@ subroutine HDF5_read_pReal7(dataset,loc_id,datasetName,parallel)
  myStart     = int([0,0,0,0,0,0,sum(readSize(1:worldrank))],HSIZE_T)
  globalShape = [localShape(1:6),sum(readSize)]
 
- !--------------------------------------------------------------------------------------------------
+
+!--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal7: h5screate_simple_f/memspace_id')
- 
+                        int(localShape,HSIZE_T))
+if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal7: h5pset_all_coll_metadata_ops_f')
+!--------------------------------------------------------------------------------------------------
 ! open the dataset in the file
  call h5dopen_f(loc_id,datasetName,dset_id,hdferr, dapl_id = aplist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal7: h5dopen_f')
@@ -916,7 +950,7 @@ subroutine HDF5_read_pReal7(dataset,loc_id,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
-                file_space_id = filespace_id, xfer_prp = plist_id)
+                file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal7: h5dread_f')
 
 !--------------------------------------------------------------------------------------------------
@@ -927,6 +961,8 @@ subroutine HDF5_read_pReal7(dataset,loc_id,datasetName,parallel)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal7: h5dclose_f')
  call h5sclose_f(filespace_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt7: h5sclose_f/filespace_id')
+ call h5sclose_f(memspace_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt7: h5sclose_f/memspace_id')
 
 end subroutine HDF5_read_pReal7
 
@@ -975,7 +1011,7 @@ subroutine HDF5_read_pInt1(dataset,loc_id,datasetName,parallel)
  if (present(parallel)) then; if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt1: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pInt1: MPI_allreduce')
  endif; endif
 #endif
@@ -983,12 +1019,11 @@ subroutine HDF5_read_pInt1(dataset,loc_id,datasetName,parallel)
  myStart     = int([sum(readSize(1:worldrank))],HSIZE_T)
  globalShape = [localShape(1:0),sum(readSize)]
 
-  !--------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt1: h5screate_simple_f/memspace_id')
- 
+                        int(localShape,HSIZE_T))
+if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
@@ -1012,7 +1047,7 @@ subroutine HDF5_read_pInt1(dataset,loc_id,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr, &
-                mem_space_id = filespace_id, xfer_prp = plist_id)
+                file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt1: h5dread_f')
 
 !--------------------------------------------------------------------------------------------------
@@ -1023,6 +1058,8 @@ subroutine HDF5_read_pInt1(dataset,loc_id,datasetName,parallel)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt1: h5dclose_f')
  call h5sclose_f(filespace_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt1: h5sclose_f/filespace_id')
+ call h5sclose_f(memspace_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt1: h5sclose_f/memspace_id')
 
 end subroutine HDF5_read_pInt1
 
@@ -1071,7 +1108,7 @@ subroutine HDF5_read_pInt2(dataset,loc_id,datasetName,parallel)
  if (present(parallel)) then; if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt2: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pInt2: MPI_allreduce')
  endif; endif
 #endif
@@ -1079,12 +1116,11 @@ subroutine HDF5_read_pInt2(dataset,loc_id,datasetName,parallel)
  myStart     = int([0,sum(readSize(1:worldrank))],HSIZE_T)
  globalShape = [localShape(1:1),sum(readSize)]
 
-  !--------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt2: h5screate_simple_f/memspace_id')
- 
+                        int(localShape,HSIZE_T))
+if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
@@ -1108,7 +1144,7 @@ subroutine HDF5_read_pInt2(dataset,loc_id,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr, &
-                mem_space_id = filespace_id, xfer_prp = plist_id)
+                file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt2: h5dread_f')
 
 !--------------------------------------------------------------------------------------------------
@@ -1119,6 +1155,8 @@ subroutine HDF5_read_pInt2(dataset,loc_id,datasetName,parallel)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt2: h5dclose_f')
  call h5sclose_f(filespace_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt2: h5sclose_f/filespace_id')
+ call h5sclose_f(memspace_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt2: h5sclose_f/memspace_id')
 
 end subroutine HDF5_read_pInt2
 
@@ -1167,7 +1205,7 @@ subroutine HDF5_read_pInt3(dataset,loc_id,datasetName,parallel)
  if (present(parallel)) then; if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt3: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pInt3: MPI_allreduce')
  endif; endif
 #endif
@@ -1175,12 +1213,11 @@ subroutine HDF5_read_pInt3(dataset,loc_id,datasetName,parallel)
  myStart     = int([0,0,sum(readSize(1:worldrank))],HSIZE_T)
  globalShape = [localShape(1:2),sum(readSize)]
 
-  !--------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt3: h5screate_simple_f/memspace_id')
- 
+                        int(localShape,HSIZE_T))
+if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
@@ -1204,7 +1241,7 @@ subroutine HDF5_read_pInt3(dataset,loc_id,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr, &
-                file_space_id = filespace_id, xfer_prp = plist_id)
+                file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt3: h5dread_f')
 
 !--------------------------------------------------------------------------------------------------
@@ -1215,6 +1252,8 @@ subroutine HDF5_read_pInt3(dataset,loc_id,datasetName,parallel)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt3: h5dclose_f')
  call h5sclose_f(filespace_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt3: h5sclose_f/filespace_id')
+ call h5sclose_f(memspace_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt3: h5sclose_f/memspace_id')
 
 end subroutine HDF5_read_pInt3
 
@@ -1263,7 +1302,7 @@ subroutine HDF5_read_pInt4(dataset,loc_id,datasetName,parallel)
  if (present(parallel)) then; if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt4: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pInt4: MPI_allreduce')
  endif; endif
 #endif
@@ -1271,12 +1310,11 @@ subroutine HDF5_read_pInt4(dataset,loc_id,datasetName,parallel)
  myStart     = int([0,0,0,sum(readSize(1:worldrank))],HSIZE_T)
  globalShape = [localShape(1:3),sum(readSize)]
 
-  !--------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt4: h5screate_simple_f/memspace_id')
- 
+                        int(localShape,HSIZE_T))
+if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
@@ -1293,89 +1331,16 @@ subroutine HDF5_read_pInt4(dataset,loc_id,datasetName,parallel)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt4: h5dget_space_f')
 
 !--------------------------------------------------------------------------------------------------
-<<<<<<< HEAD
-subroutine HDF5_read_pReal_5(dataset,loc_id,datasetName,parallel)
- use numerics, only: &
-   worldrank, &
-   worldsize
-=======
 ! select a hyperslab (the portion of the current process) in the file
  call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, int(localShape,HSIZE_T), hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt4: h5sselect_hyperslab_f')
->>>>>>> ab59274c357c40be21ebba6c9572df37f16dce78
 
 !--------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr, &
-                file_space_id = filespace_id, xfer_prp = plist_id)
+                file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt4: h5dread_f')
 
-<<<<<<< HEAD
- logical, intent(in), optional :: parallel
- integer                       :: ierr
-
- integer(pInt), dimension(:), allocatable :: &
-   globalShape, &                                                                                   !< shape of the dataset (all processes)
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   readSize                                                                                         !< contribution of all processes
-
- integer(HDF5_ERR_TYPE)        :: hdferr
- integer(HSIZE_T), dimension(5) :: myStart
-
- integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
-
- myShape = shape(dataset)
- 
-
- localShape = shape(dataset)
- allocate(readSize(worldsize), source = 0_pInt)
- readSize(worldrank+1) = localShape(5)
-
-!>>>>>>>>>!New additions 
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
- write(6,*) plist_id
-#ifdef PETSc
- if (present(parallel)) then; if (parallel) then
-   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal5: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
-   if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pReal5: MPI_allreduce')
- endif; endif
-#endif
-
- myStart     = int([0,0,0,0,sum(readSize(1:worldrank))],HSIZE_T)
- globalShape = [localShape(1:4),sum(readSize)]
-
-!>>>>>>>>>!New additions 
-!-------------------------------------------------------------------------------------------------
-! Open the file
- call h5dopen_f(loc_id,datasetName,dset_id,hdferr)
- if (hdferr < 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_shape5: h5dopen_f')
-!-------------------------------------------------------------------------------------------------
-! get the dataspace_id of the dataset
- call h5dget_space_f(dset_id, filespace_id, hdferr)
- if (hdferr < 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_5: h5dget_space_f')
-!-------------------------------------------------------------------------------------------------
-! select hyperslab (part to be read by the current process)
- call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart,int(localShape,HSIZE_T), hdferr)
- if (hdferr < 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_5: h5sselect_hyperslab_f')
- write(6,*) filespace_id
-!-------------------------------------------------------------------------------------------------
-! read the part of the file
- call h5dread_f(dset_id,H5T_NATIVE_DOUBLE,dataset,int(myShape,HSIZE_T),hdferr, &
-                file_space_id = filespace_id, xfer_prp = plist_id)
- if (hdferr < 0) call IO_error(0_pInt,ext_msg='HDF5_read_pReal_shape5: h5dread_f')
-
-!close types, dataspaces
- call h5pclose_f(plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal5: plist_id')
- call h5dclose_f(dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal5: h5dclose_f')
- !call h5sclose_f(filespace_id, hdferr)
- !if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal5: h5sclose_f/filespace_id')
- !call h5sclose_f(memspace_id, hdferr)
- !if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal5: h5sclose_f/memspace_id')
-=======
 !--------------------------------------------------------------------------------------------------
 !close types, dataspaces
  call h5pclose_f(plist_id, hdferr)
@@ -1384,9 +1349,10 @@ subroutine HDF5_read_pReal_5(dataset,loc_id,datasetName,parallel)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt4: h5dclose_f')
  call h5sclose_f(filespace_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt4: h5sclose_f/filespace_id')
+ call h5sclose_f(memspace_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt4: h5sclose_f/memspace_id')
 
 end subroutine HDF5_read_pInt4
->>>>>>> ab59274c357c40be21ebba6c9572df37f16dce78
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1433,7 +1399,7 @@ subroutine HDF5_read_pInt5(dataset,loc_id,datasetName,parallel)
  if (present(parallel)) then; if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt5: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pInt5: MPI_allreduce')
  endif; endif
 #endif
@@ -1441,12 +1407,11 @@ subroutine HDF5_read_pInt5(dataset,loc_id,datasetName,parallel)
  myStart     = int([0,0,0,0,sum(readSize(1:worldrank))],HSIZE_T)
  globalShape = [localShape(1:4),sum(readSize)]
 
-  !--------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt5: h5screate_simple_f/memspace_id')
- 
+                        int(localShape,HSIZE_T))
+if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
@@ -1470,7 +1435,7 @@ subroutine HDF5_read_pInt5(dataset,loc_id,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr, &
-                file_space_id = filespace_id, xfer_prp = plist_id)
+                file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt5: h5dread_f')
 
 !--------------------------------------------------------------------------------------------------
@@ -1481,6 +1446,8 @@ subroutine HDF5_read_pInt5(dataset,loc_id,datasetName,parallel)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt5: h5dclose_f')
  call h5sclose_f(filespace_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt5: h5sclose_f/filespace_id')
+ call h5sclose_f(memspace_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt5: h5sclose_f/memspace_id')
 
 end subroutine HDF5_read_pInt5
 
@@ -1529,7 +1496,7 @@ subroutine HDF5_read_pInt6(dataset,loc_id,datasetName,parallel)
  if (present(parallel)) then; if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt6: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pInt6: MPI_allreduce')
  endif; endif
 #endif
@@ -1537,12 +1504,11 @@ subroutine HDF5_read_pInt6(dataset,loc_id,datasetName,parallel)
  myStart     = int([0,0,0,0,0,sum(readSize(1:worldrank))],HSIZE_T)
  globalShape = [localShape(1:5),sum(readSize)]
 
-  !--------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt6: h5screate_simple_f/memspace_id')
- 
+                        int(localShape,HSIZE_T))
+if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
@@ -1566,7 +1532,7 @@ subroutine HDF5_read_pInt6(dataset,loc_id,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr, &
-                file_space_id = filespace_id, xfer_prp = plist_id)
+                file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt6: h5dread_f')
 
 !--------------------------------------------------------------------------------------------------
@@ -1577,6 +1543,8 @@ subroutine HDF5_read_pInt6(dataset,loc_id,datasetName,parallel)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt6: h5dclose_f')
  call h5sclose_f(filespace_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt6: h5sclose_f/filespace_id')
+ call h5sclose_f(memspace_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt6: h5sclose_f/memspace_id')
 
 end subroutine HDF5_read_pInt6
 
@@ -1625,7 +1593,7 @@ subroutine HDF5_read_pInt7(dataset,loc_id,datasetName,parallel)
  if (present(parallel)) then; if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt7: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pInt7: MPI_allreduce')
  endif; endif
 #endif
@@ -1633,12 +1601,11 @@ subroutine HDF5_read_pInt7(dataset,loc_id,datasetName,parallel)
  myStart     = int([0,0,0,0,0,0,sum(readSize(1:worldrank))],HSIZE_T)
  globalShape = [localShape(1:6),sum(readSize)]
 
-  !--------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt7: h5screate_simple_f/memspace_id')
- 
+                        int(localShape,HSIZE_T))
+if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
@@ -1662,7 +1629,7 @@ subroutine HDF5_read_pInt7(dataset,loc_id,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr, &
-                file_space_id = filespace_id, xfer_prp = plist_id)
+                file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt7: h5dread_f')
 
 !--------------------------------------------------------------------------------------------------
@@ -1673,6 +1640,8 @@ subroutine HDF5_read_pInt7(dataset,loc_id,datasetName,parallel)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt7: h5dclose_f')
  call h5sclose_f(filespace_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt7: h5sclose_f/filespace_id')
+ call h5sclose_f(memspace_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt7: h5sclose_f/memspace_id')
 
 end subroutine HDF5_read_pInt7
 
@@ -1714,7 +1683,7 @@ subroutine HDF5_write_pReal1(dataset,loc_id,datasetName,parallel)
  if (present(parallel)) then; if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal1: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_write_pReal1: MPI_allreduce')
  endif; endif
 #endif
@@ -1802,7 +1771,7 @@ subroutine HDF5_write_pReal2(dataset,loc_id,datasetName,parallel)
  if (present(parallel)) then; if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal2: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_write_pReal2: MPI_allreduce')
  endif; endif
 #endif
@@ -1890,7 +1859,7 @@ subroutine HDF5_write_pReal3(dataset,loc_id,datasetName,parallel)
  if (present(parallel)) then; if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal3: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_write_pReal3: MPI_allreduce')
  endif; endif
 #endif
@@ -1978,7 +1947,7 @@ subroutine HDF5_write_pReal4(dataset,loc_id,datasetName,parallel)
  if (present(parallel)) then; if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal4: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_write_pReal4: MPI_allreduce')
  endif; endif
 #endif
@@ -2066,7 +2035,7 @@ subroutine HDF5_write_pReal5(dataset,loc_id,datasetName,parallel)
  if (present(parallel)) then; if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal5: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_write_pReal5: MPI_allreduce')
  endif; endif
 #endif
@@ -2154,7 +2123,7 @@ subroutine HDF5_write_pReal6(dataset,loc_id,datasetName,parallel)
  if (present(parallel)) then; if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal6: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_write_pReal6: MPI_allreduce')
  endif; endif
 #endif
@@ -2242,7 +2211,7 @@ subroutine HDF5_write_pReal7(dataset,loc_id,datasetName,parallel)
  if (present(parallel)) then; if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal7: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_write_pReal7: MPI_allreduce')
  endif; endif
 #endif
@@ -2332,7 +2301,7 @@ subroutine HDF5_write_pInt1(dataset,loc_id,datasetName,parallel)
  if (present(parallel)) then; if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt1: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_write_pInt1: MPI_allreduce')
  endif; endif
 #endif
@@ -2420,7 +2389,7 @@ subroutine HDF5_write_pInt2(dataset,loc_id,datasetName,parallel)
  if (present(parallel)) then; if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt2: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_write_pInt2: MPI_allreduce')
  endif; endif
 #endif
@@ -2508,7 +2477,7 @@ subroutine HDF5_write_pInt3(dataset,loc_id,datasetName,parallel)
  if (present(parallel)) then; if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt3: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_write_pInt3: MPI_allreduce')
  endif; endif
 #endif
@@ -2596,7 +2565,7 @@ subroutine HDF5_write_pInt4(dataset,loc_id,datasetName,parallel)
  if (present(parallel)) then; if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt4: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_write_pInt4: MPI_allreduce')
  endif; endif
 #endif
@@ -2684,7 +2653,7 @@ subroutine HDF5_write_pInt5(dataset,loc_id,datasetName,parallel)
  if (present(parallel)) then; if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt5: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_write_pInt5: MPI_allreduce')
  endif; endif
 #endif
@@ -2772,7 +2741,7 @@ subroutine HDF5_write_pInt6(dataset,loc_id,datasetName,parallel)
  if (present(parallel)) then; if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt6: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_write_pInt6: MPI_allreduce')
  endif; endif
 #endif
@@ -2860,7 +2829,7 @@ subroutine HDF5_write_pInt7(dataset,loc_id,datasetName,parallel)
  if (present(parallel)) then; if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt7: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_write_pInt7: MPI_allreduce')
  endif; endif
 #endif
@@ -2913,11 +2882,5 @@ end subroutine HDF5_write_pInt7
 end module HDF5_Utilities
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-
-
-
-
 
 
