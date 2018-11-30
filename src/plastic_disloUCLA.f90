@@ -63,7 +63,8 @@ module plastic_disloUCLA
    real(pReal) :: &
      aTolRho, &
      grainSize, &
-SolidSolutionStrength  !< Strength due to elements in solid solution
+     SolidSolutionStrength, &  !< Strength due to elements in solid solution
+     mu
    real(pReal),                 allocatable, dimension(:) :: &
      B, &  !< friction coeff. B (kMC)
      rho0, &                                                                        !< initial edge dislocation density per slip system for each family and instance
@@ -242,6 +243,7 @@ do p = 1_pInt, size(phase_plasticityInstance)
              stt => state(phase_plasticityInstance(p)))
 
    structure          = config_phase(p)%getString('lattice_structure')
+   prm%mu = lattice_mu(p)
 
    prm%aTolRho = config_phase(p)%getFloat('atol_rho')
 !--------------------------------------------------------------------------------------------------
@@ -306,6 +308,7 @@ do p = 1_pInt, size(phase_plasticityInstance)
      prm%clambda   = math_expand(prm%clambda,  prm%Nslip)
       
       instance = phase_plasticityInstance(p)
+      plastic_disloUCLA_totalNslip(instance) = prm%totalNslip
       if (plastic_disloUCLA_CAtomicVolume(instance) <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='cAtomicVolume ('//PLASTICITY_DISLOUCLA_label//')')
       if (plastic_disloUCLA_D0(instance) <= 0.0_pReal) &
@@ -418,10 +421,7 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
  sanityChecks: do phase = 1_pInt, size(phase_plasticity)
     myPhase: if (phase_plasticity(phase) == PLASTICITY_disloUCLA_ID) then
       instance = phase_plasticityInstance(phase)
-      if (sum(plastic_disloUCLA_Nslip(:,instance)) < 0_pInt) &
-        call IO_error(211_pInt,el=instance,ext_msg='Nslip ('//PLASTICITY_DISLOUCLA_label//')')
       do f = 1_pInt,lattice_maxNslipFamily
-        if (plastic_disloUCLA_Nslip(f,instance) > 0_pInt) then
           !if (plastic_disloUCLA_rhoEdge0(f,instance) < 0.0_pReal) &
           !  call IO_error(211_pInt,el=instance,ext_msg='rhoEdge0 ('//PLASTICITY_DISLOUCLA_label//')')
           !if (plastic_disloUCLA_rhoEdgeDip0(f,instance) < 0.0_pReal) & 
@@ -432,12 +432,10 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
           !  call IO_error(211_pInt,el=instance,ext_msg='v0 ('//PLASTICITY_DISLOUCLA_label//')')
           !if (plastic_disloUCLA_tau_peierlsPerSlipFamily(f,instance) < 0.0_pReal) &
           !  call IO_error(211_pInt,el=instance,ext_msg='tau_peierls ('//PLASTICITY_DISLOUCLA_label//')')
-        endif
       enddo
 !--------------------------------------------------------------------------------------------------
 ! Determine total number of active slip systems
       plastic_disloUCLA_Nslip(:,instance) = min(lattice_NslipSystem(:,phase),plastic_disloUCLA_Nslip(:,instance))
-      plastic_disloUCLA_totalNslip(instance) = sum(plastic_disloUCLA_Nslip(:,instance))
    endif myPhase
  enddo sanityChecks
  
@@ -476,13 +474,13 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
     !* Process slip related parameters ------------------------------------------------ 
  
      mySlipFamilies: do f = 1_pInt,size(prm%Nslip,1)
-       index_myFamily = sum(plastic_disloUCLA_Nslip(1:f-1_pInt,instance))                      ! index in truncated slip system list
-       mySlipSystems: do j = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
+       index_myFamily = sum(prm%Nslip(1:f-1_pInt))                      ! index in truncated slip system list
+       mySlipSystems: do j = 1_pInt,prm%Nslip(f)
   
        !* Calculation of forest projections for edge dislocations
          otherSlipFamilies: do o = 1_pInt,size(prm%Nslip,1)
-           index_otherFamily = sum(plastic_disloUCLA_Nslip(1:o-1_pInt,instance))
-           otherSlipSystems: do k = 1_pInt,plastic_disloUCLA_Nslip(o,instance)
+           index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
+           otherSlipSystems: do k = 1_pInt,prm%Nslip(o)
              plastic_disloUCLA_forestProjectionEdge(index_myFamily+j,index_otherFamily+k,instance) = &
                abs(math_mul3x3(lattice_sn(:,sum(lattice_NslipSystem(1:f-1,phase))+j,phase), &
                                lattice_st(:,sum(lattice_NslipSystem(1:o-1,phase))+k,phase)))
@@ -535,8 +533,6 @@ subroutine plastic_disloUCLA_microstructure(temperature,ipc,ip,el)
    phase_plasticityInstance, &
    phaseAt, phasememberAt, &
    material_phase
- use lattice, only: &
-   lattice_mu
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -549,13 +545,11 @@ subroutine plastic_disloUCLA_microstructure(temperature,ipc,ip,el)
  integer(pInt) :: &
    instance, &
    ns,s, &
-   ph, &
    of
  real(pReal), dimension(plastic_disloUCLA_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
   invLambdaSlip
  !* Shortened notation
  of = phasememberAt(ipc,ip,el)
- ph = phaseAt(ipc,ip,el)
  instance = phase_plasticityInstance(phaseAt(ipc,ip,el))
  ns = plastic_disloUCLA_totalNslip(instance)
 
@@ -575,7 +569,7 @@ subroutine plastic_disloUCLA_microstructure(temperature,ipc,ip,el)
  !* threshold stress for dislocation motion
  forall (s = 1_pInt:ns) &
    mse%threshold_stress(s,of) = &
-     lattice_mu(ph)*prm%burgers(s)*&
+     prm%mu*prm%burgers(s)*&
      sqrt(dot_product(stt%rhoEdge(1_pInt:ns,of)+stt%rhoEdgeDip(1_pInt:ns,of),&
                       prm%interaction_SlipSlip(s,1:ns)))
  end associate
@@ -644,10 +638,6 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,ipc,ip,el)
    phase_plasticityInstance, &
    plasticState, &
    phaseAt, phasememberAt
- use lattice,  only: &
-   lattice_maxNslipFamily, &
-   lattice_NslipSystem, &
-   lattice_mu
 
  implicit none
  real(pReal), dimension(3,3),  intent(in):: &
@@ -659,8 +649,7 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,ipc,ip,el)
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
 
- integer(pInt) :: instance,ns,f,i,j,index_myFamily, &
-                  ph, &
+ integer(pInt) :: instance,ns,f,i,j, &
                   of
  real(pReal) :: &
    EdgeDipMinDistance,&
@@ -681,22 +670,17 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,ipc,ip,el)
 
  !* Shortened notation
  of = phasememberAt(ipc,ip,el)
- ph = phaseAt(ipc,ip,el)
- instance  = phase_plasticityInstance(ph)
+ instance  = phase_plasticityInstance(phaseAt(ipc,ip,el))
  ns = plastic_disloUCLA_totalNslip(instance) 
 
- plasticState(ph)%dotState(:,of) = 0.0_pReal
+ plasticState(phaseAt(ipc,ip,el))%dotState(:,of) = 0.0_pReal
   associate(prm => param(instance), stt => state(instance),mse => microstructure(instance))
  !* Dislocation density evolution
  call kinetics(Mp,Temperature,instance,of, &                                                
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
  dotState(instance)%accshear_slip(:,of) = (gdot_slip_pos+gdot_slip_neg)*0.5_pReal
 
- j = 0_pInt
- slipFamilies: do f = 1_pInt,lattice_maxNslipFamily
-   index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph)) ! at which index starts my family
-   slipSystems: do i = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
-     j = j+1_pInt
+do j = 1_pInt, prm%totalNslip
 
      !* Multiplication
      DotRhoMultiplication = abs(dotState(instance)%accshear_slip(j,of))/&
@@ -710,7 +694,7 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,ipc,ip,el)
        DotRhoDipFormation = 0.0_pReal
      else
        EdgeDipDistance = &
-         (3.0_pReal*lattice_mu(ph)*prm%burgers(j))/&
+         (3.0_pReal*prm%mu*prm%burgers(j))/&
          (16.0_pReal*pi*abs(tau_slip_pos(j)))
        if (EdgeDipDistance>mse%mfp(j,of)) EdgeDipDistance=mse%mfp(j,of)
        if (EdgeDipDistance<EdgeDipMinDistance) EdgeDipDistance=EdgeDipMinDistance
@@ -738,7 +722,7 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,ipc,ip,el)
        DotRhoEdgeDipClimb = 0.0_pReal
      else
        ClimbVelocity = &
-          ((3.0_pReal*lattice_mu(ph)*VacancyDiffusion*AtomicVolume)/(2.0_pReal*pi*kB*Temperature))*&
+          ((3.0_pReal*prm%mu*VacancyDiffusion*AtomicVolume)/(2.0_pReal*pi*kB*Temperature))*&
           (1/(EdgeDipDistance+EdgeDipMinDistance))
        DotRhoEdgeDipClimb = &
           (4.0_pReal*ClimbVelocity*stt%rhoEdgeDip(j,of))/(EdgeDipDistance-EdgeDipMinDistance)
@@ -753,8 +737,7 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,ipc,ip,el)
         DotRhoDipFormation-DotRhoEdgeDipAnnihilation-DotRhoEdgeDipClimb
 
  
-   enddo slipSystems
- enddo slipFamilies
+   enddo
 end associate
  
 end subroutine plastic_disloUCLA_dotState
@@ -775,8 +758,6 @@ math_mul33xx33
    phase_plasticityInstance,& 
    !plasticState, &
    phaseAt, phasememberAt
- use lattice, only: &
-   lattice_mu
 
  implicit none
  real(pReal), dimension(3,3),  intent(in) :: &
@@ -795,15 +776,13 @@ math_mul33xx33
    instance,&
    ns,&
    o,i,c,j,&
-   ph, &
    of
  real(pReal), dimension(plastic_disloUCLA_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg
  
  !* Shortened notation
  of = phasememberAt(ipc,ip,el)
- ph = phaseAt(ipc,ip,el)
- instance  = phase_plasticityInstance(ph)
+ instance  = phase_plasticityInstance(phaseAt(ipc,ip,el))
  ns = plastic_disloUCLA_totalNslip(instance)
  
  !* Required output
@@ -859,7 +838,7 @@ math_mul33xx33
  do j = 1_pInt, prm%totalNslip
               if (dNeq0(abs(math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,j))))) then
               postResults(c+j) = &
-                (3.0_pReal*lattice_mu(ph)*prm%burgers(j))/&
+                (3.0_pReal*prm%mu*prm%burgers(j))/&
                 (16.0_pReal*pi*abs(math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,j))))
               else
               postResults(c+j) = huge(1.0_pReal)
@@ -894,7 +873,7 @@ math_mul33xx33
 instance,of
 
  integer(pInt) :: &
-   f,i,j,index_myFamily
+   i,j
  real(pReal) :: StressRatio_p,StressRatio_pminus1,&
                 BoltzmannRatio,DotGamma0,stressRatio,&
                 dvel_slip, vel_slip
