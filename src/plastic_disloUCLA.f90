@@ -13,9 +13,6 @@ module plastic_disloUCLA
 
  implicit none
  private
- integer(pInt),                       dimension(:),           allocatable,         public, protected :: &
-   plastic_disloUCLA_sizePostResults                                                                !< cumulative size of post results
-
  integer(pInt),                       dimension(:,:),         allocatable, target, public :: &
    plastic_disloUCLA_sizePostResult                                                                 !< size of each post result output
 
@@ -24,9 +21,6 @@ module plastic_disloUCLA
 
  real(pReal),                                                 parameter,           private :: &
    kB = 1.38e-23_pReal                                                                              !< Boltzmann constant in J/Kelvin
-
- integer(pInt),                       dimension(:),           allocatable, target, public :: &
-   plastic_disloUCLA_Noutput                                                                        !< number of outputs per instance of this plasticity 
 
  integer(pInt),                       dimension(:),           allocatable,         private :: &
    plastic_disloUCLA_totalNslip                                                                     !< total number of active slip systems for each instance
@@ -37,7 +31,6 @@ module plastic_disloUCLA
 
  real(pReal),                         dimension(:),           allocatable,         private :: &
    plastic_disloUCLA_CAtomicVolume, &                                                               !< atomic volume in Bugers vector unit
-   plastic_disloUCLA_D0, &                                                                          !< prefactor for self-diffusion coefficient
    plastic_disloUCLA_Qsd, &                                                                         !< activation energy for dislocation climb
    plastic_disloUCLA_CEdgeDipMinDistance, &                                                         !<
    plastic_disloUCLA_dipoleFormationFactor                                                       !< scaling factor for dipole formation: 0: off, 1: on. other values not useful
@@ -64,7 +57,8 @@ module plastic_disloUCLA
      aTolRho, &
      grainSize, &
      SolidSolutionStrength, &  !< Strength due to elements in solid solution
-     mu
+     mu, &
+     D0                                                                          !< prefactor for self-diffusion coefficient
    real(pReal),                 allocatable, dimension(:) :: &
      B, &  !< friction coeff. B (kMC)
      rho0, &                                                                        !< initial edge dislocation density per slip system for each family and instance
@@ -99,8 +93,6 @@ module plastic_disloUCLA
  end type                                                                                           !< container type for internal constitutive parameters
 
  type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
- integer(kind(undefined_ID)),         dimension(:,:),         allocatable,          private :: & 
-   plastic_disloUCLA_outputID                                                                       !< ID of each post result output
  
  type, private :: tDisloUCLAState 
      real(pReal), pointer, dimension(:,:) :: &
@@ -183,10 +175,7 @@ material_allocatePlasticState
  integer(pInt) :: sizeState, sizeDotState
  integer(pInt) :: NofMyPhase
  character(len=65536) :: &
-   structure = '',&
-   tag  = '', &
-   line = ''
- real(pReal), dimension(:), allocatable :: tempPerSlip
+   structure = ''
  character(len=65536), dimension(:), allocatable :: outputs
  integer(kind(undefined_ID))  :: outputID
  integer(pInt),          dimension(0), parameter :: emptyIntArray    = [integer(pInt)::]
@@ -205,16 +194,15 @@ material_allocatePlasticState
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
 
- allocate(plastic_disloUCLA_sizePostResults(maxNinstance),                     source=0_pInt)
  allocate(plastic_disloUCLA_sizePostResult(maxval(phase_Noutput),maxNinstance),source=0_pInt)
  allocate(plastic_disloUCLA_output(maxval(phase_Noutput),maxNinstance))
           plastic_disloUCLA_output = ''
- allocate(plastic_disloUCLA_outputID(maxval(phase_Noutput),maxNinstance),      source=undefined_ID)
- allocate(plastic_disloUCLA_Noutput(maxNinstance),                             source=0_pInt)
+
+
  allocate(plastic_disloUCLA_Nslip(lattice_maxNslipFamily,maxNinstance),        source=0_pInt)
  allocate(plastic_disloUCLA_totalNslip(maxNinstance),                          source=0_pInt)
  allocate(plastic_disloUCLA_CAtomicVolume(maxNinstance),                       source=0.0_pReal)
- allocate(plastic_disloUCLA_D0(maxNinstance),                                  source=0.0_pReal)
+
  allocate(plastic_disloUCLA_Qsd(maxNinstance),                                 source=0.0_pReal)
  allocate(plastic_disloUCLA_CEdgeDipMinDistance(maxNinstance),                 source=0.0_pReal)
  allocate(plastic_disloUCLA_dipoleFormationFactor(maxNinstance),               source=1.0_pReal) !should be on by default
@@ -275,7 +263,7 @@ do p = 1_pInt, size(phase_plasticityInstance)
 
      prm%grainSize  = config_phase(p)%getFloat('grainsize')
 
-     plastic_disloUCLA_D0(phase_plasticityInstance(p)) = config_phase(p)%getFloat('qsd')
+     prm%D0 = config_phase(p)%getFloat('d0')
      plastic_disloUCLA_Qsd(phase_plasticityInstance(p)) = config_phase(p)%getFloat('qsd')
      plastic_disloUCLA_CEdgeDipMinDistance(phase_plasticityInstance(p)) = config_phase(p)%getFloat('cedgedipmindistance')
      plastic_disloUCLA_CAtomicVolume(phase_plasticityInstance(p)) = config_phase(p)%getFloat('catomicvolume')
@@ -298,9 +286,9 @@ do p = 1_pInt, size(phase_plasticityInstance)
       
       instance = phase_plasticityInstance(p)
       plastic_disloUCLA_totalNslip(instance) = prm%totalNslip
-      if (plastic_disloUCLA_CAtomicVolume(instance) <= 0.0_pReal) &
-        call IO_error(211_pInt,el=instance,ext_msg='cAtomicVolume ('//PLASTICITY_DISLOUCLA_label//')')
-      if (plastic_disloUCLA_D0(instance) <= 0.0_pReal) &
+      !if (plastic_disloUCLA_CAtomicVolume(instance) <= 0.0_pReal) &
+      !  call IO_error(211_pInt,el=instance,ext_msg='cAtomicVolume ('//PLASTICITY_DISLOUCLA_label//')')
+      if (prm%D0 <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='D0 ('//PLASTICITY_DISLOUCLA_label//')')
       if (plastic_disloUCLA_Qsd(instance) <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='Qsd ('//PLASTICITY_DISLOUCLA_label//')')
@@ -354,10 +342,6 @@ do p = 1_pInt, size(phase_plasticityInstance)
        plastic_disloUCLA_output(i,phase_plasticityInstance(p)) = outputs(i)
        plastic_disloUCLA_sizePostResult(i,phase_plasticityInstance(p)) = outputSize   
        prm%outputID = [prm%outputID, outputID]
-       plastic_disloUCLA_outputID(i,phase_plasticityInstance(p)) = outputID
-       plastic_disloUCLA_sizePostResults(phase_plasticityInstance(p)) = &
-          plastic_disloUCLA_sizePostResults(phase_plasticityInstance(p)) + outputSize
-plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) + 1_pInt
      endif
 
    enddo 
@@ -403,7 +387,7 @@ plastic_disloUCLA_Noutput(phase_plasticityInstance(p)) = plastic_disloUCLA_Noutp
    call material_allocatePlasticState(phase,NofMyPhase,sizeState,sizeDotState,0_pInt, &
                                       ns,0_pInt,0_pInt)
 
-     plasticState(phase)%sizePostResults = plastic_disloUCLA_sizePostResults(instance)
+     plasticState(phase)%sizePostResults = sum(plastic_disloUCLA_sizePostResult(:,phase_plasticityInstance(p)))
 
      offset_slip = 2_pInt*plasticState(phase)%nSlip
      plasticState(phase)%slipRate => &
@@ -646,8 +630,7 @@ do j = 1_pInt, prm%totalNslip
       !* Dislocation dipole climb
      AtomicVolume = &
         plastic_disloUCLA_CAtomicVolume(instance)*prm%burgers(j)**(3.0_pReal)
-     VacancyDiffusion = &
-        plastic_disloUCLA_D0(instance)*exp(-plastic_disloUCLA_Qsd(instance)/(kB*Temperature))
+     VacancyDiffusion = prm%D0*exp(-plastic_disloUCLA_Qsd(instance)/(kB*Temperature))
      if (dEq0(tau_slip_pos(j))) then
        DotRhoEdgeDipClimb = 0.0_pReal
      else
