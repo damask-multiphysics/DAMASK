@@ -25,10 +25,6 @@ module plastic_disloUCLA
  integer(pInt),                       dimension(:),           allocatable,         private :: &
    plastic_disloUCLA_totalNslip                                                                     !< total number of active slip systems for each instance
 
- integer(pInt),                       dimension(:,:),         allocatable,         private :: &
-   plastic_disloUCLA_Nslip                                                                          !< number of active slip systems for each family and instance
-
-
  real(pReal),                         dimension(:),           allocatable,         private :: &
    plastic_disloUCLA_CAtomicVolume, &                                                               !< atomic volume in Bugers vector unit
    plastic_disloUCLA_Qsd, &                                                                         !< activation energy for dislocation climb
@@ -76,7 +72,9 @@ module plastic_disloUCLA
      viscosity, &                                                                   !< friction coeff. B (kMC)
      !*    
      tau_Peierls, &
-     nonSchmidCoeff
+     nonSchmidCoeff, &
+     atomicVolume, &
+     minDipDistance
    real(pReal),                 allocatable, dimension(:,:) :: &
      interaction_SlipSlip                                                                           !< slip resistance from slip activity
    real(pReal),                 allocatable, dimension(:,:,:) :: &
@@ -90,6 +88,8 @@ module plastic_disloUCLA
      Nslip                                                                                          !< number of active slip systems for each family
    integer(kind(undefined_ID)), allocatable, dimension(:) :: &
      outputID                                                                                       !< ID of each post result output
+   logical :: &
+     dipoleformation
  end type                                                                                           !< container type for internal constitutive parameters
 
  type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
@@ -168,7 +168,7 @@ material_allocatePlasticState
  integer(pInt), intent(in) :: fileUnit
 
  integer(pInt) :: maxNinstance,phase,maxTotalNslip,&
-                  f,instance,j,k,o,ns, i, &
+                  f,instance,j,k,o, i, &
                   outputSize, &
                   offset_slip, index_myFamily, index_otherFamily, &
                   startIndex, endIndex, p
@@ -199,12 +199,13 @@ material_allocatePlasticState
           plastic_disloUCLA_output = ''
 
 
- allocate(plastic_disloUCLA_Nslip(lattice_maxNslipFamily,maxNinstance),        source=0_pInt)
  allocate(plastic_disloUCLA_totalNslip(maxNinstance),                          source=0_pInt)
+
  allocate(plastic_disloUCLA_CAtomicVolume(maxNinstance),                       source=0.0_pReal)
+ allocate(plastic_disloUCLA_CEdgeDipMinDistance(maxNinstance),                 source=0.0_pReal)
 
  allocate(plastic_disloUCLA_Qsd(maxNinstance),                                 source=0.0_pReal)
- allocate(plastic_disloUCLA_CEdgeDipMinDistance(maxNinstance),                 source=0.0_pReal)
+
  allocate(plastic_disloUCLA_dipoleFormationFactor(maxNinstance),               source=1.0_pReal) !should be on by default
  
  allocate(param(maxNinstance))
@@ -217,7 +218,8 @@ do p = 1_pInt, size(phase_plasticityInstance)
    if (phase_plasticity(p) /= PLASTICITY_DISLOUCLA_ID) cycle
    associate(prm => param(phase_plasticityInstance(p)), &
              dot => dotState(phase_plasticityInstance(p)), &
-             stt => state(phase_plasticityInstance(p)))
+             stt => state(phase_plasticityInstance(p)), &
+             mse => microstructure(phase_plasticityInstance(p)))
 
    structure          = config_phase(p)%getString('lattice_structure')
    prm%mu = lattice_mu(p)
@@ -302,9 +304,6 @@ do p = 1_pInt, size(phase_plasticityInstance)
    endif slipActive
 
 
-!--------------------------------------------------------------------------------------------------
-!  phase outputs
-
 #if defined(__GFORTRAN__)
   outputs = ['GfortranBug86277']
   outputs = config_phase(p)%getStrings('(output)',defaultVal=outputs)
@@ -345,8 +344,7 @@ do p = 1_pInt, size(phase_plasticityInstance)
      endif
 
    enddo 
-   end associate
- enddo
+
 
  
 
@@ -361,31 +359,18 @@ do p = 1_pInt, size(phase_plasticityInstance)
           !if (plastic_disloUCLA_tau_peierlsPerSlipFamily(f,instance) < 0.0_pReal) &
           !  call IO_error(211_pInt,el=instance,ext_msg='tau_peierls ('//PLASTICITY_DISLOUCLA_label//')')
 
- 
-!--------------------------------------------------------------------------------------------------
-! allocation of variables whose size depends on the total number of active slip systems
- maxTotalNslip = maxval(plastic_disloUCLA_totalNslip)
- 
- allocate(plastic_disloUCLA_forestProjectionEdge(maxTotalNslip,maxTotalNslip,maxNinstance), &
-                                                                                       source=0.0_pReal)
-
-
- initializeInstances: do phase = 1_pInt, size(phase_plasticity)
-   myPhase2: if (phase_plasticity(phase) == PLASTICITY_disloUCLA_ID) then
-     p = phase
+     phase = p
      NofMyPhase=count(material_phase==phase)
      instance = phase_plasticityInstance(phase)
-     ns = plastic_disloUCLA_totalNslip(instance)
 
-    associate(prm => param(instance), stt=>state(instance),mse => microstructure(phase_plasticityInstance(p)))
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
 
-     sizeDotState     = int(size(['rhoEdge     ','rhoEdgeDip  ','accshearslip']),pInt) * ns
+     sizeDotState     = int(size(['rhoEdge     ','rhoEdgeDip  ','accshearslip']),pInt) * prm%totalNslip
      sizeState        = sizeDotState
 
    call material_allocatePlasticState(phase,NofMyPhase,sizeState,sizeDotState,0_pInt, &
-                                      ns,0_pInt,0_pInt)
+                                      prm%totalNslip,0_pInt,0_pInt)
 
      plasticState(phase)%sizePostResults = sum(plastic_disloUCLA_sizePostResult(:,phase_plasticityInstance(p)))
 
@@ -394,40 +379,23 @@ do p = 1_pInt, size(phase_plasticityInstance)
        plasticState(phase)%dotState(offset_slip+1:offset_slip+plasticState(phase)%nSlip,1:NofMyPhase)
      plasticState(phase)%accumulatedSlip => &
        plasticState(phase)%state   (offset_slip+1:offset_slip+plasticState(phase)%nSlip,1:NofMyPhase)
-    !* Process slip related parameters ------------------------------------------------ 
- 
-     mySlipFamilies: do f = 1_pInt,size(prm%Nslip,1)
-       index_myFamily = sum(prm%Nslip(1:f-1_pInt))                      ! index in truncated slip system list
-       mySlipSystems: do j = 1_pInt,prm%Nslip(f)
-  
-       !* Calculation of forest projections for edge dislocations
-         otherSlipFamilies: do o = 1_pInt,size(prm%Nslip,1)
-           index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
-           otherSlipSystems: do k = 1_pInt,prm%Nslip(o)
-             plastic_disloUCLA_forestProjectionEdge(index_myFamily+j,index_otherFamily+k,instance) = &
-               abs(math_mul3x3(lattice_sn(:,sum(lattice_NslipSystem(1:f-1,phase))+j,phase), &
-                               lattice_st(:,sum(lattice_NslipSystem(1:o-1,phase))+k,phase)))
-         enddo otherSlipSystems; enddo otherSlipFamilies
- 
-       enddo mySlipSystems
-     enddo mySlipFamilies
   
      startIndex=1_pInt
-     endIndex=ns
+     endIndex=prm%totalNslip
      stt%rhoEdge=>plasticState(phase)%state(startIndex:endIndex,:)
      stt%rhoEdge= spread(prm%rho0,2,NofMyPhase)
      dotState(instance)%rhoEdge=>plasticState(phase)%dotState(startIndex:endIndex,:)
      plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
 
      startIndex=endIndex+1_pInt
-     endIndex=endIndex+ns
+     endIndex=endIndex+prm%totalNslip
      stt%rhoEdgeDip=>plasticState(phase)%state(startIndex:endIndex,:)
      stt%rhoEdgeDip= spread(prm%rhoDip0,2,NofMyPhase)
      dotState(instance)%rhoEdgeDip=>plasticState(phase)%dotState(startIndex:endIndex,:)
      plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
 
      startIndex=endIndex+1_pInt
-     endIndex=endIndex+ns
+     endIndex=endIndex+prm%totalNslip
      stt%accshear_slip=>plasticState(phase)%state(startIndex:endIndex,:)
      dotState(instance)%accshear_slip=>plasticState(phase)%dotState(startIndex:endIndex,:)
      plasticState(p)%aTolState(startIndex:endIndex) = 1e6_pReal
@@ -441,9 +409,39 @@ do p = 1_pInt, size(phase_plasticityInstance)
 
      plasticState(p)%state0 = plasticState(p)%state                                                 ! ToDo: this could be done centrally
    end associate
-   endif myPhase2
 
- enddo initializeInstances
+ enddo
+
+
+ allocate(plastic_disloUCLA_forestProjectionEdge(maxval(plastic_disloUCLA_totalNslip),&
+                                                 maxval(plastic_disloUCLA_totalNslip),maxNinstance), &
+                                                                                       source=0.0_pReal)
+
+do p = 1_pInt, size(phase_plasticityInstance)
+   if (phase_plasticity(p) /= PLASTICITY_DISLOUCLA_ID) cycle
+   associate(prm => param(phase_plasticityInstance(p)), &
+             dot => dotState(phase_plasticityInstance(p)), &
+             stt => state(phase_plasticityInstance(p)), &
+             mse => microstructure(phase_plasticityInstance(p)))
+
+     mySlipFamilies: do f = 1_pInt,size(prm%Nslip,1)
+       index_myFamily = sum(prm%Nslip(1:f-1_pInt))                      ! index in truncated slip system list
+       mySlipSystems: do j = 1_pInt,prm%Nslip(f)
+  
+       !* Calculation of forest projections for edge dislocations
+         otherSlipFamilies: do o = 1_pInt,size(prm%Nslip,1)
+           index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
+           otherSlipSystems: do k = 1_pInt,prm%Nslip(o)
+             plastic_disloUCLA_forestProjectionEdge(index_myFamily+j,index_otherFamily+k,instance) = &
+               abs(math_mul3x3(lattice_sn(:,sum(lattice_NslipSystem(1:f-1,p))+j,p), &
+                               lattice_st(:,sum(lattice_NslipSystem(1:o-1,p))+k,p)))
+         enddo otherSlipSystems; enddo otherSlipFamilies
+ 
+       enddo mySlipSystems
+     enddo mySlipFamilies
+   end associate
+
+enddo
  
 end subroutine plastic_disloUCLA_init
 
@@ -572,7 +570,6 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
    EdgeDipMinDistance,&
    AtomicVolume,&
    VacancyDiffusion,&
-   DotRhoMultiplication,&
    EdgeDipDistance, &
    DotRhoEdgeDipAnnihilation, &
    DotRhoEdgeEdgeAnnihilation, &
@@ -588,22 +585,18 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
  ns = plastic_disloUCLA_totalNslip(instance) 
  dotState(instance)%whole(:,of) = 0.0_pReal
 
-  associate(prm => param(instance), stt => state(instance),mse => microstructure(instance))
+  associate(prm => param(instance), stt => state(instance),dot => dotState(instance), mse => microstructure(instance))
  !* Dislocation density evolution
  call kinetics(Mp,Temperature,instance,of, &                                                
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
  dotState(instance)%accshear_slip(:,of) = (gdot_slip_pos+gdot_slip_neg)*0.5_pReal
 
 do j = 1_pInt, prm%totalNslip
+     EdgeDipMinDistance = plastic_disloUCLA_CEdgeDipMinDistance(instance)*prm%burgers(j)
+     AtomicVolume = plastic_disloUCLA_CAtomicVolume(instance)*prm%burgers(j)**(3.0_pReal)
 
-     !* Multiplication
-     DotRhoMultiplication = abs(dotState(instance)%accshear_slip(j,of))/&
-                               (prm%burgers(j)* &
-                                mse%mfp(j,of))
- 
+
      !* Dipole formation
-     EdgeDipMinDistance = &
-       plastic_disloUCLA_CEdgeDipMinDistance(instance)*prm%burgers(j)
      if (dEq0(tau_slip_pos(j))) then
        DotRhoDipFormation = 0.0_pReal
      else
@@ -620,7 +613,7 @@ do j = 1_pInt, prm%totalNslip
     !* Spontaneous annihilation of 2 single edge dislocations
     DotRhoEdgeEdgeAnnihilation = &
         ((2.0_pReal*EdgeDipMinDistance)/prm%burgers(j))*&
-        stt%rhoEdge(j,of)*abs(dotState(instance)%accshear_slip(j,of))
+        stt%rhoEdge(j,of)*abs(dot%accshear_slip(j,of))
  
     !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
     DotRhoEdgeDipAnnihilation = &
@@ -628,8 +621,6 @@ do j = 1_pInt, prm%totalNslip
         stt%rhoEdgeDip(j,of)*abs(dotState(instance)%accshear_slip(j,of))
  
       !* Dislocation dipole climb
-     AtomicVolume = &
-        plastic_disloUCLA_CAtomicVolume(instance)*prm%burgers(j)**(3.0_pReal)
      VacancyDiffusion = prm%D0*exp(-plastic_disloUCLA_Qsd(instance)/(kB*Temperature))
      if (dEq0(tau_slip_pos(j))) then
        DotRhoEdgeDipClimb = 0.0_pReal
@@ -642,12 +633,14 @@ do j = 1_pInt, prm%totalNslip
      endif
  
      !* Edge dislocation density rate of change
-     dotState(instance)%rhoEdge(j,of) = &
-        DotRhoMultiplication-DotRhoDipFormation-DotRhoEdgeEdgeAnnihilation
+     dot%rhoEdge(j,of) = abs(dot%accshear_slip(j,of))/(prm%burgers(j)*mse%mfp(j,of)) & ! multiplication
+                       - DotRhoDipFormation &
+                       - DotRhoEdgeEdgeAnnihilation
  
      !* Edge dislocation dipole density rate of change
-     dotState(instance)%rhoEdgeDip(j,of) = &
-        DotRhoDipFormation-DotRhoEdgeDipAnnihilation-DotRhoEdgeDipClimb
+     dot%rhoEdgeDip(j,of) = DotRhoDipFormation &
+                          - DotRhoEdgeDipAnnihilation &
+                          - DotRhoEdgeDipClimb
 
  
    enddo
