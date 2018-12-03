@@ -678,94 +678,82 @@ end subroutine plastic_disloUCLA_dotState
 !--------------------------------------------------------------------------------------------------
 function plastic_disloUCLA_postResults(Mp,Temperature,instance,of) result(postResults)
  use prec, only: &
-   tol_math_check, &
    dEq, dNeq0
  use math, only: &
    pi, &
-math_mul33xx33
+   math_mul33xx33
 
  implicit none
- real(pReal), dimension(3,3),  intent(in) :: &
-   Mp                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
- real(pReal),                intent(in) :: &
-   temperature                                                                                      !< temperature at integration point
- integer(pInt),              intent(in) :: &
-   instance,of
+ real(pReal), dimension(3,3), intent(in) :: &
+   Mp                                                                                               !< Mandel stress
+ real(pReal),                 intent(in) :: &
+   Temperature                                                                                      !< Mandel stress
+ integer(pInt),               intent(in) :: &
+   instance, &
+   of
 
- real(pReal), dimension(plastic_disloUCLA_sizePostResults(instance)) :: &
-                                           postResults
+ real(pReal), dimension(sum(plastic_disloUCLA_sizePostResult(:,instance))) :: &
+  postResults
 
  integer(pInt) :: &
-   ns,&
-   o,c,j
- real(pReal), dimension(plastic_disloUCLA_totalNslip(instance)) :: &
-   gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg
+   o,c,i
+ real(pReal), dimension(param(instance)%totalNslip) :: &
+   gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos, &
+   gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg
 
- ns = plastic_disloUCLA_totalNslip(instance)
+ associate( prm => param(instance), stt => state(instance), mse => microstructure(instance))
 
- c = 0_pInt
  postResults = 0.0_pReal
- associate (prm => param(instance),stt =>state(instance),mse => microstructure(instance))
- do o = 1_pInt,plastic_disloUCLA_Noutput(instance)
-    select case(plastic_disloUCLA_outputID(o,instance))
- 
-      case (rho_ID)
-        postResults(c+1_pInt:c+ns) = stt%rhoEdge(1_pInt:ns,of)
-        c = c + ns
-      case (rhoDip_ID)
-        postResults(c+1_pInt:c+ns) = stt%rhoEdgeDip(1_pInt:ns,of)
-        c = c + ns
-      case (shearrate_ID,stressexponent_ID)
- call kinetics(Mp,Temperature,instance,of, &                                                
-                 gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
+ c = 0_pInt
 
-        if     (plastic_disloUCLA_outputID(o,instance) == shearrate_ID) then
-          postResults(c+1:c+ns) = (gdot_slip_pos + gdot_slip_neg)*0.5_pReal
-          c = c + ns
-        elseif(plastic_disloUCLA_outputID(o,instance) == stressexponent_ID) then
-          do j = 1_pInt, ns
-            if (dEq(gdot_slip_pos(j)+gdot_slip_neg(j),0.0_pReal)) then
-              postResults(c+j) = 0.0_pReal
-            else
-              postResults(c+j) = (tau_slip_pos(j)+tau_slip_neg(j))/&
-                                                       (gdot_slip_pos(j)+gdot_slip_neg(j))*&
-                                                       (dgdot_dtauslip_pos(j)+dgdot_dtauslip_neg(j))* 0.5_pReal
-            endif
-          enddo
-           c = c + ns
-        endif
+ outputsLoop: do o = 1_pInt,size(prm%outputID)
+   select case(prm%outputID(o))
 
-      case (accumulatedshear_ID)
-       postResults(c+1_pInt:c+ns) = &
-                      stt%accshear_slip(1_pInt:ns, of)
-        c = c + ns
-      case (mfp_ID)
-        postResults(c+1_pInt:c+ns) = mse%mfp(1_pInt:ns, of)
-        c = c + ns
-      case (resolvedstress_ID)
- do j = 1_pInt, prm%totalNslip
+     case (rho_ID)
+       postResults(c+1_pInt:c+prm%totalNslip) = stt%rhoEdge(1_pInt:prm%totalNslip,of)
+     case (rhoDip_ID)
+       postResults(c+1_pInt:c+prm%totalNslip) = stt%rhoEdgeDip(1_pInt:prm%totalNslip,of)
+     case (shearrate_ID,stressexponent_ID)
+       call kinetics(Mp,Temperature,instance,of, &                                                
+                     gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
 
-              postResults(c+j) =math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,j))
-        enddo
-        c = c + ns
-      case (thresholdstress_ID)
-        postResults(c+1_pInt:c+ns) = mse%threshold_stress(1_pInt:ns,of)
-        c = c + ns
-      case (dipoleDistance_ID)
- do j = 1_pInt, prm%totalNslip
-              if (dNeq0(abs(math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,j))))) then
-              postResults(c+j) = &
-                (3.0_pReal*prm%mu*prm%burgers(j))/&
-                (16.0_pReal*pi*abs(math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,j))))
-              else
-              postResults(c+j) = huge(1.0_pReal)
-              endif
-              postResults(c+j)=min(postResults(c+j),mse%mfp(j,of))
-        enddo
-        c = c + ns
-    end select
- enddo
-end associate
+       if    (prm%outputID(o) == shearrate_ID) then
+         postResults(c+1:c+prm%totalNslip) = (gdot_slip_pos + gdot_slip_neg)*0.5_pReal
+       elseif(prm%outputID(o) == stressexponent_ID) then
+         where (dNeq0(gdot_slip_pos+gdot_slip_neg))
+           postResults(c+1_pInt:c + prm%totalNslip) = (tau_slip_pos+tau_slip_neg) * 0.5_pReal &
+                                             / (gdot_slip_pos+gdot_slip_neg) &
+                                             * (dgdot_dtauslip_pos+dgdot_dtauslip_neg)
+         else where
+           postResults(c+1_pInt:c + prm%totalNslip) = 0.0_pReal
+         end where
+       endif
+     case (accumulatedshear_ID)
+       postResults(c+1_pInt:c+prm%totalNslip) = stt%accshear_slip(1_pInt:prm%totalNslip, of)
+     case (mfp_ID)
+       postResults(c+1_pInt:c+prm%totalNslip) = mse%mfp(1_pInt:prm%totalNslip, of)
+     case (resolvedstress_ID)
+       do i = 1_pInt, prm%totalNslip
+         postResults(c+i) =math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i))
+       enddo
+     case (thresholdstress_ID)
+       postResults(c+1_pInt:c+prm%totalNslip) = mse%threshold_stress(1_pInt:prm%totalNslip,of)
+     case (dipoleDistance_ID)
+       do i = 1_pInt, prm%totalNslip
+         if (dNeq0(abs(math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i))))) then
+           postResults(c+i) = (3.0_pReal*prm%mu*prm%burgers(i)) &
+                            / (16.0_pReal*pi*abs(math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i))))
+         else
+           postResults(c+i) = huge(1.0_pReal)
+         endif
+           postResults(c+i)=min(postResults(c+i),mse%mfp(i,of))
+       enddo
+   end select
+
+   c = c + prm%totalNslip
+ enddo outputsLoop
+ end associate
+
 end function plastic_disloUCLA_postResults
 
 
