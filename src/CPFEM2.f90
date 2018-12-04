@@ -10,8 +10,8 @@ module CPFEM2
 
  public :: &
    CPFEM_age, &
-   CPFEM_initAll
-
+   CPFEM_initAll, &
+   CPFEM_results
 contains
 
 
@@ -20,8 +20,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_initAll()
  use prec, only: &
-   pInt
- use prec, only: &
+   pInt, &
    prec_init
  use numerics, only: &
    numerics_init
@@ -139,12 +138,10 @@ subroutine CPFEM_init
  character(len=1024) :: rankStr, PlasticItem, HomogItem
  integer(HID_T) :: fileHandle, groupPlasticID, groupHomogID
 
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
-   flush(6)
- endif mainProcess
+ flush(6)
 
  ! *** restore the last converged values of each essential variable from the binary file
  if (restartRead) then
@@ -187,6 +184,7 @@ subroutine CPFEM_init
  endif
 
 end subroutine CPFEM_init
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forwards data after successful increment
@@ -247,74 +245,96 @@ subroutine CPFEM_age()
    getSolverJobName
 
  implicit none
-
  integer(pInt)    ::  i, ph, homog, mySource
  character(len=32) :: rankStr, PlasticItem, HomogItem
  integer(HID_T) :: fileHandle, groupPlastic, groupHomog
 
-if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
-  write(6,'(a)') '<< CPFEM >> aging states'
+ if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
+   write(6,'(a)') '<< CPFEM >> aging states'
 
-  crystallite_F0  = crystallite_partionedF                                                    ! crystallite deformation (_subF is perturbed...)
-  crystallite_Fp0 = crystallite_Fp                                                            ! crystallite plastic deformation
-  crystallite_Lp0 = crystallite_Lp                                                            ! crystallite plastic velocity
-  crystallite_Fi0 = crystallite_Fi                                                            ! crystallite intermediate deformation
-  crystallite_Li0 = crystallite_Li                                                            ! crystallite intermediate velocity
-  crystallite_dPdF0 = crystallite_dPdF                                                        ! crystallite stiffness
-  crystallite_Tstar0_v = crystallite_Tstar_v                                                  ! crystallite 2nd Piola Kirchhoff stress
-  
-  forall (i = 1:size(plasticState)) plasticState(i)%state0 = plasticState(i)%state            ! copy state in this lengthy way because: A component cannot be an array if the encompassing structure is an array
-  
-  do i = 1, size(sourceState)
-    do mySource = 1,phase_Nsources(i)
-      sourceState(i)%p(mySource)%state0 = sourceState(i)%p(mySource)%state                    ! copy state in this lengthy way because: A component cannot be an array if the encompassing structure is an array
-  enddo; enddo
-  
-  do homog = 1_pInt, material_Nhomogenization
-    homogState       (homog)%state0 =  homogState       (homog)%state
-    thermalState     (homog)%state0 =  thermalState     (homog)%state
-    damageState      (homog)%state0 =  damageState      (homog)%state
-    vacancyfluxState (homog)%state0 =  vacancyfluxState (homog)%state
-    hydrogenfluxState(homog)%state0 =  hydrogenfluxState(homog)%state
-  enddo
+ crystallite_F0  = crystallite_partionedF
+ crystallite_Fp0 = crystallite_Fp
+ crystallite_Lp0 = crystallite_Lp
+ crystallite_Fi0 = crystallite_Fi
+ crystallite_Li0 = crystallite_Li
+ crystallite_dPdF0 = crystallite_dPdF
+ crystallite_Tstar0_v = crystallite_Tstar_v
+ 
+ forall (i = 1:size(plasticState)) plasticState(i)%state0 = plasticState(i)%state            ! copy state in this lengthy way because: A component cannot be an array if the encompassing structure is an array
+ 
+ do i = 1, size(sourceState)
+   do mySource = 1,phase_Nsources(i)
+     sourceState(i)%p(mySource)%state0 = sourceState(i)%p(mySource)%state                    ! copy state in this lengthy way because: A component cannot be an array if the encompassing structure is an array
+ enddo; enddo
+ 
+ do homog = 1_pInt, material_Nhomogenization
+   homogState       (homog)%state0 =  homogState       (homog)%state
+   thermalState     (homog)%state0 =  thermalState     (homog)%state
+   damageState      (homog)%state0 =  damageState      (homog)%state
+   vacancyfluxState (homog)%state0 =  vacancyfluxState (homog)%state
+   hydrogenfluxState(homog)%state0 =  hydrogenfluxState(homog)%state
+ enddo
 
-if (restartWrite) then
-  if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
-    write(6,'(a)') '<< CPFEM >> writing restart variables of last converged step to hdf5 file'
-  write(rankStr,'(a1,i0)')'_',worldrank
+ if (restartWrite) then
+   if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
+     write(6,'(a)') '<< CPFEM >> writing restart variables of last converged step to hdf5 file'
+   
+   write(rankStr,'(a1,i0)')'_',worldrank
+   fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
+   
+   call HDF5_write(material_phase,      fileHandle,'recordedPhase')
+   call HDF5_write(crystallite_F0,      fileHandle,'convergedF')
+   call HDF5_write(crystallite_Fp0,     fileHandle,'convergedFp')
+   call HDF5_write(crystallite_Fi0,     fileHandle,'convergedFi')
+   call HDF5_write(crystallite_Lp0,     fileHandle,'convergedLp')
+   call HDF5_write(crystallite_Li0,     fileHandle,'convergedLi')
+   call HDF5_write(crystallite_dPdF0,   fileHandle,'convergeddPdF')
+   call HDF5_write(crystallite_Tstar0_v,fileHandle,'convergedTstar')
+   
+   groupPlastic = HDF5_addGroup(fileHandle,'PlasticPhases')
+   do ph = 1_pInt,size(phase_plasticity)
+     write(PlasticItem,*) ph,'_'
+     call HDF5_write(plasticState(ph)%state0,groupPlastic,trim(PlasticItem)//'convergedStateConst')
+   enddo
+   call HDF5_closeGroup(groupPlastic)
 
-  fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
-  
-  call HDF5_write(material_phase,      fileHandle,'recordedPhase')
-  call HDF5_write(crystallite_F0,      fileHandle,'convergedF')
-  call HDF5_write(crystallite_Fp0,     fileHandle,'convergedFp')
-  call HDF5_write(crystallite_Fi0,     fileHandle,'convergedFi')
-  call HDF5_write(crystallite_Lp0,     fileHandle,'convergedLp')
-  call HDF5_write(crystallite_Li0,     fileHandle,'convergedLi')
-  call HDF5_write(crystallite_dPdF0,   fileHandle,'convergeddPdF')
-  call HDF5_write(crystallite_Tstar0_v,fileHandle,'convergedTstar')
-  
-  groupPlastic = HDF5_addGroup(fileHandle,'PlasticPhases')
-  do ph = 1_pInt,size(phase_plasticity)
-    write(PlasticItem,*) ph,'_'
-    call HDF5_write(plasticState(ph)%state0,groupPlastic,trim(PlasticItem)//'convergedStateConst')
-  enddo
-  call HDF5_closeGroup(groupPlastic)
+   groupHomog = HDF5_addGroup(fileHandle,'HomogStates')
+   do homog = 1_pInt, material_Nhomogenization
+     write(HomogItem,*) homog,'_'
+     call HDF5_write(homogState(homog)%state0,groupHomog,trim(HomogItem)//'convergedStateHomog')
+   enddo
+   call HDF5_closeGroup(groupHomog)
+   
+   call HDF5_closeFile(fileHandle)
+   restartWrite = .false.
+ endif
 
-  groupHomog = HDF5_addGroup(fileHandle,'HomogStates')
-  do homog = 1_pInt, material_Nhomogenization
-    write(HomogItem,*) homog,'_'
-    call HDF5_write(homogState(homog)%state0,groupHomog,trim(HomogItem)//'convergedStateHomog')
-  enddo
-  call HDF5_closeGroup(groupHomog)
-  
-  call HDF5_closeFile(fileHandle)
-  restartWrite = .false.
-endif
-
-if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
-  write(6,'(a)') '<< CPFEM >> done aging states'
+ if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
+   write(6,'(a)') '<< CPFEM >> done aging states'
 
 end subroutine CPFEM_age
+
+!--------------------------------------------------------------------------------------------------
+!> @brief triggers writing of the results
+!--------------------------------------------------------------------------------------------------
+subroutine CPFEM_results(inc)
+ use prec, only: &
+   pInt
+ use results
+ use HDF5_utilities
+ use constitutive, only: &
+   constitutive_results
+
+ implicit none
+ integer(pInt), intent(in) :: inc
+ character(len=16)        :: incChar
+
+ call results_openJobFile
+ write(incChar,*) inc
+ call HDF5_closeGroup(results_addGroup(trim('inc'//trim(adjustl(incChar))))) 
+ call constitutive_results()
+ call results_closeJobFile
+
+end subroutine CPFEM_results
 
 end module CPFEM2

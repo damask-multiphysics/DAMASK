@@ -46,7 +46,8 @@ program DAMASK_spectral
    grid, &
    geomSize
  use CPFEM2, only: &
-   CPFEM_initAll
+   CPFEM_initAll, &
+   CPFEM_results
  use FEsolving, only: &
    restartWrite, &
    restartInc
@@ -601,6 +602,7 @@ program DAMASK_spectral
            if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_write')
          enddo
          fileOffset = fileOffset + sum(outputSize)                                                  ! forward to current file position
+         call CPFEM_results(inc)
        endif
        if (              loadCases(currentLoadCase)%restartFrequency > 0_pInt &                     ! writing of restart info requested ...
            .and. mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0_pInt) then               ! ... and at frequency of writing restart information

@@ -25,7 +25,8 @@ module constitutive
    constitutive_SandItsTangents, &
    constitutive_collectDotState, &
    constitutive_collectDeltaState, &
-   constitutive_postResults
+   constitutive_postResults, &
+   constitutive_results
 
  private :: &
    constitutive_hooke_SandItsTangents
@@ -1178,5 +1179,13 @@ function constitutive_postResults(S6, Fi, FeArray, ipc, ip, el)
  enddo SourceLoop
 
 end function constitutive_postResults
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief  contains the constitutive equation for calculating the velocity gradient
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_results()
+
+end subroutine constitutive_results
 
 end module constitutive
