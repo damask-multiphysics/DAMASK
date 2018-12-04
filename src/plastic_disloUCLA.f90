@@ -26,10 +26,7 @@ module plastic_disloUCLA
    plastic_disloUCLA_totalNslip                                                                     !< total number of active slip systems for each instance
 
  real(pReal),                         dimension(:),           allocatable,         private :: &
-   plastic_disloUCLA_CAtomicVolume, &                                                               !< atomic volume in Bugers vector unit
-   plastic_disloUCLA_Qsd, &                                                                         !< activation energy for dislocation climb
-   plastic_disloUCLA_CEdgeDipMinDistance, &                                                         !<
-   plastic_disloUCLA_dipoleFormationFactor                                                       !< scaling factor for dipole formation: 0: off, 1: on. other values not useful
+   plastic_disloUCLA_Qsd                                                                            !< activation energy for dislocation climb
 
 
  real(pReal),                         dimension(:,:,:),       allocatable,         private :: &
@@ -200,13 +197,8 @@ material_allocatePlasticState
 
 
  allocate(plastic_disloUCLA_totalNslip(maxNinstance),                          source=0_pInt)
-
- allocate(plastic_disloUCLA_CAtomicVolume(maxNinstance),                       source=0.0_pReal)
- allocate(plastic_disloUCLA_CEdgeDipMinDistance(maxNinstance),                 source=0.0_pReal)
-
  allocate(plastic_disloUCLA_Qsd(maxNinstance),                                 source=0.0_pReal)
 
- allocate(plastic_disloUCLA_dipoleFormationFactor(maxNinstance),               source=1.0_pReal) !should be on by default
  
  allocate(param(maxNinstance))
  allocate(state(maxNinstance))
@@ -267,9 +259,11 @@ do p = 1_pInt, size(phase_plasticityInstance)
 
      prm%D0 = config_phase(p)%getFloat('d0')
      plastic_disloUCLA_Qsd(phase_plasticityInstance(p)) = config_phase(p)%getFloat('qsd')
-     plastic_disloUCLA_CEdgeDipMinDistance(phase_plasticityInstance(p)) = config_phase(p)%getFloat('cedgedipmindistance')
-     plastic_disloUCLA_CAtomicVolume(phase_plasticityInstance(p)) = config_phase(p)%getFloat('catomicvolume')
-     plastic_disloUCLA_dipoleFormationFactor(phase_plasticityInstance(p)) = config_phase(p)%getFloat('dipoleformationfactor')
+
+
+     prm%dipoleformation = config_phase(p)%getFloat('dipoleformationfactor') > 0.0_pReal !should be on by default
+     prm%atomicVolume = config_phase(p)%getFloat('catomicvolume') * prm%burgers**3.0_pReal
+     prm%minDipDistance = config_phase(p)%getFloat('cedgedipmindistance') * prm%burgers
 
      ! expand: family => system
      prm%rho0   = math_expand(prm%rho0,  prm%Nslip)
@@ -285,15 +279,17 @@ do p = 1_pInt, size(phase_plasticityInstance)
      prm%v0   = math_expand(prm%v0,  prm%Nslip)
      prm%B   = math_expand(prm%B,  prm%Nslip)
      prm%clambda   = math_expand(prm%clambda,  prm%Nslip)
+     prm%atomicVolume   = math_expand(prm%atomicVolume,  prm%Nslip)
+     prm%minDipDistance   = math_expand(prm%minDipDistance,  prm%Nslip)
       
       instance = phase_plasticityInstance(p)
       plastic_disloUCLA_totalNslip(instance) = prm%totalNslip
       !if (plastic_disloUCLA_CAtomicVolume(instance) <= 0.0_pReal) &
       !  call IO_error(211_pInt,el=instance,ext_msg='cAtomicVolume ('//PLASTICITY_DISLOUCLA_label//')')
-      if (prm%D0 <= 0.0_pReal) &
-        call IO_error(211_pInt,el=instance,ext_msg='D0 ('//PLASTICITY_DISLOUCLA_label//')')
-      if (plastic_disloUCLA_Qsd(instance) <= 0.0_pReal) &
-        call IO_error(211_pInt,el=instance,ext_msg='Qsd ('//PLASTICITY_DISLOUCLA_label//')')
+     ! if (prm%D0 <= 0.0_pReal) &
+     !   call IO_error(211_pInt,el=instance,ext_msg='D0 ('//PLASTICITY_DISLOUCLA_label//')')
+     ! if (plastic_disloUCLA_Qsd(instance) <= 0.0_pReal) &
+     !   call IO_error(211_pInt,el=instance,ext_msg='Qsd ('//PLASTICITY_DISLOUCLA_label//')')
      ! if (plastic_disloUCLA_aTolRho(instance) <= 0.0_pReal) &
      !   call IO_error(211_pInt,el=instance,ext_msg='aTolRho ('//PLASTICITY_DISLOUCLA_label//')')   
 
@@ -564,82 +560,70 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
    temperature                                                                                      !< temperature at integration point
  integer(pInt),              intent(in) :: &
  instance, of
- integer(pInt) :: ns,j
+ integer(pInt) :: j
 
  real(pReal) :: &
-   EdgeDipMinDistance,&
-   AtomicVolume,&
    VacancyDiffusion,&
-   EdgeDipDistance, &
    DotRhoEdgeDipAnnihilation, &
    DotRhoEdgeEdgeAnnihilation, &
-   ClimbVelocity, &
-   DotRhoEdgeDipClimb, &
-   DotRhoDipFormation
+   DotRhoEdgeDipClimb
  real(pReal), dimension(plastic_disloUCLA_totalNslip(instance)) :: &
    gdot_slip_pos, gdot_slip_neg,&
    tau_slip_pos,&
    tau_slip_neg, &
-   dgdot_dtauslip_neg,dgdot_dtauslip_pos
+   dgdot_dtauslip_neg,dgdot_dtauslip_pos,DotRhoDipFormation, ClimbVelocity, EdgeDipDistance
 
- ns = plastic_disloUCLA_totalNslip(instance) 
- dotState(instance)%whole(:,of) = 0.0_pReal
 
-  associate(prm => param(instance), stt => state(instance),dot => dotState(instance), mse => microstructure(instance))
- !* Dislocation density evolution
+
+
+ associate(prm => param(instance), stt => state(instance),dot => dotState(instance), mse => microstructure(instance))
+
  call kinetics(Mp,Temperature,instance,of, &                                                
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
- dotState(instance)%accshear_slip(:,of) = (gdot_slip_pos+gdot_slip_neg)*0.5_pReal
+ 
+ dot%whole(:,of) = 0.0_pReal
+ dot%accshear_slip(:,of) = (gdot_slip_pos+gdot_slip_neg)*0.5_pReal
 
-do j = 1_pInt, prm%totalNslip
-     EdgeDipMinDistance = plastic_disloUCLA_CEdgeDipMinDistance(instance)*prm%burgers(j)
-     AtomicVolume = plastic_disloUCLA_CAtomicVolume(instance)*prm%burgers(j)**(3.0_pReal)
+ do j = 1_pInt, prm%totalNslip
 
 
      !* Dipole formation
-     if (dEq0(tau_slip_pos(j))) then
-       DotRhoDipFormation = 0.0_pReal
+     if (dEq0(tau_slip_pos(j)) .or. (.not. prm%dipoleformation)) then
+       DotRhoDipFormation(j) = 0.0_pReal
+       EdgeDipDistance(j)=mse%mfp(j,of)        !ToDo MD@FR: correct? was not handled properly before
      else
-       EdgeDipDistance = &
+       EdgeDipDistance(j) = &
          (3.0_pReal*prm%mu*prm%burgers(j))/&
          (16.0_pReal*pi*abs(tau_slip_pos(j)))
-       if (EdgeDipDistance>mse%mfp(j,of)) EdgeDipDistance=mse%mfp(j,of)
-       if (EdgeDipDistance<EdgeDipMinDistance) EdgeDipDistance=EdgeDipMinDistance
-       DotRhoDipFormation = &
-         ((2.0_pReal*EdgeDipDistance)/prm%burgers(j))*&
-         stt%rhoEdge(j,of)*abs(dotState(instance)%accshear_slip(j,of))*plastic_disloUCLA_dipoleFormationFactor(instance)
+       if (EdgeDipDistance(j)>mse%mfp(j,of)) EdgeDipDistance(j)=mse%mfp(j,of)
+       if (EdgeDipDistance(j)<prm%minDipDistance(j)) EdgeDipDistance(j)=prm%minDipDistance(j)
+       DotRhoDipFormation(j) = &
+         ((2.0_pReal*EdgeDipDistance(j))/prm%burgers(j))*&
+         stt%rhoEdge(j,of)*abs(dot%accshear_slip(j,of))
      endif
- 
-    !* Spontaneous annihilation of 2 single edge dislocations
-    DotRhoEdgeEdgeAnnihilation = &
-        ((2.0_pReal*EdgeDipMinDistance)/prm%burgers(j))*&
-        stt%rhoEdge(j,of)*abs(dot%accshear_slip(j,of))
- 
-    !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
-    DotRhoEdgeDipAnnihilation = &
-        ((2.0_pReal*EdgeDipMinDistance)/prm%burgers(j))*&
-        stt%rhoEdgeDip(j,of)*abs(dotState(instance)%accshear_slip(j,of))
  
       !* Dislocation dipole climb
      VacancyDiffusion = prm%D0*exp(-plastic_disloUCLA_Qsd(instance)/(kB*Temperature))
      if (dEq0(tau_slip_pos(j))) then
        DotRhoEdgeDipClimb = 0.0_pReal
      else
-       ClimbVelocity = &
-          ((3.0_pReal*prm%mu*VacancyDiffusion*AtomicVolume)/(2.0_pReal*pi*kB*Temperature))*&
-          (1/(EdgeDipDistance+EdgeDipMinDistance))
+       ClimbVelocity(j) = &
+          ((3.0_pReal*prm%mu*VacancyDiffusion*prm%atomicVolume(j))/(2.0_pReal*pi*kB*Temperature))*&
+          (1/(EdgeDipDistance(j)+prm%minDipDistance(j)))
        DotRhoEdgeDipClimb = &
-          (4.0_pReal*ClimbVelocity*stt%rhoEdgeDip(j,of))/(EdgeDipDistance-EdgeDipMinDistance)
+          (4.0_pReal*ClimbVelocity(j)*stt%rhoEdgeDip(j,of))/(EdgeDipDistance(j)-prm%minDipDistance(j))
      endif
  
      !* Edge dislocation density rate of change
      dot%rhoEdge(j,of) = abs(dot%accshear_slip(j,of))/(prm%burgers(j)*mse%mfp(j,of)) & ! multiplication
-                       - DotRhoDipFormation &
-                       - DotRhoEdgeEdgeAnnihilation
+                       - DotRhoDipFormation(j) &
+                       - ((2.0_pReal*prm%minDipDistance(j))/prm%burgers(j))*&
+        stt%rhoEdge(j,of)*abs(dot%accshear_slip(j,of)) !* Spontaneous annihilation of 2 single edge dislocations
  
      !* Edge dislocation dipole density rate of change
-     dot%rhoEdgeDip(j,of) = DotRhoDipFormation &
-                          - DotRhoEdgeDipAnnihilation &
+     dot%rhoEdgeDip(j,of) = DotRhoDipFormation(j) &
+                          - ((2.0_pReal*prm%minDipDistance(j))/prm%burgers(j))*&
+        stt%rhoEdgeDip(j,of)*abs(dot%accshear_slip(j,of)) & !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
                           - DotRhoEdgeDipClimb
 
  
@@ -797,9 +781,7 @@ instance,of
                      * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j))  &
                      )
                        
-              gdot_slip_pos(j) = DotGamma0 &
-                       * vel_slip & 
-                       * sign(1.0_pReal,tau_slip_pos(j))
+              gdot_slip_pos(j) = DotGamma0 * sign(vel_slip,tau_slip_pos(j))
               !* Derivatives of shear rates 
 
               dvel_slip = &
@@ -866,9 +848,7 @@ instance,of
                      * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q(j))  &
                      )
               
-              gdot_slip_neg(j) = DotGamma0 &
-                       * vel_slip & 
-                       * sign(1.0_pReal,tau_slip_neg(j))
+              gdot_slip_neg(j) = DotGamma0 * sign(vel_slip,tau_slip_neg(j))
               !* Derivatives of shear rates 
               dvel_slip = &
                    2.0_pReal*prm%burgers(j) &
