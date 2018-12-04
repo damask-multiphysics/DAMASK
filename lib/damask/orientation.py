@@ -33,7 +33,7 @@ class Quaternion:
     All methods and naming conventions based on Rowenhorst_etal2015
     Convention 1: coordinate frames are right-handed
     Convention 2: a rotation angle ω is taken to be positive for a counterclockwise rotation
-                  when viewing from the end point of the rotation axis unit vector towards the origin
+                  when viewing from the end point of the rotation axis towards the origin
     Convention 3: rotations will be interpreted in the passive sense
     Convention 4: Euler angle triplets are implemented using the Bunge convention,
                   with the angular ranges as [0, 2π],[0, π],[0, 2π]
@@ -49,11 +49,11 @@ class Quaternion:
 
     def __init__(self,
                  quatArray = [1.0,0.0,0.0,0.0]):
-      """Initializes to identity if not given"""
-      self.w, \
-      self.x, \
-      self.y, \
-      self.z = quatArray
+      """Initializes to identity unless specified"""
+      (self.w,
+       self.x,
+       self.y,
+       self.z ) = quatArray
       self.homomorph()
 
     def __iter__(self):
@@ -61,16 +61,15 @@ class Quaternion:
       return iter([self.w,self.x,self.y,self.z])
 
     def __copy__(self):
-      """Create copy"""
+      """Copy"""
       Q = Quaternion([self.w,self.x,self.y,self.z])
       return Q
 
     copy = __copy__
 
     def __repr__(self):
-      """Readbable string"""
-      return 'Quaternion(real=%+.6f, imag=<%+.6f, %+.6f, %+.6f>)' % \
-          (self.w, self.x, self.y, self.z)
+      """Readable string"""
+      return 'Quaternion(real=%+.6f, imag=<%+.6f, %+.6f, %+.6f>)' % (self.w, self.x, self.y, self.z)
 
     def __pow__(self, exponent):
       """Power"""
@@ -95,6 +94,8 @@ class Quaternion:
 
     def __mul__(self, other):
       """Multiplication"""
+      # Rowenhorst_etal2015 MSMSE: value of P is selected as -1
+      P = -1.0
       try:                                                          # quaternion
           Aw = self.w
           Ax = self.x
@@ -106,9 +107,9 @@ class Quaternion:
           Bz = other.z
           Q = Quaternion()
           Q.w = - Ax * Bx - Ay * By - Az * Bz + Aw * Bw
-          Q.x = + Ax * Bw + Ay * Bz - Az * By + Aw * Bx
-          Q.y = - Ax * Bz + Ay * Bw + Az * Bx + Aw * By
-          Q.z = + Ax * By - Ay * Bx + Az * Bw + Aw * Bz
+          Q.x = + Ax * Bw + Aw * Bx + P * (Ay * Bz - Az * By)
+          Q.y = + Ay * Bw + Aw * By + P * (Az * Bx - Ax * Bz)
+          Q.z = + Az * Bw + Aw * Bz + P * (Ax * By - Ay * Bx)
           return Q
       except: pass
       try:                                                         # vector (perform active rotation, i.e. q*v*q.conjugated)
@@ -120,16 +121,14 @@ class Quaternion:
           Vy = other[1]
           Vz = other[2]
 
-          return np.array([\
-             w * w * Vx + 2 * y * w * Vz - 2 * z * w * Vy + \
-             x * x * Vx + 2 * y * x * Vy + 2 * z * x * Vz - \
-             z * z * Vx - y * y * Vx,
-             2 * x * y * Vx + y * y * Vy + 2 * z * y * Vz + \
-             2 * w * z * Vx - z * z * Vy + w * w * Vy - \
-             2 * x * w * Vz - x * x * Vy,
-             2 * x * z * Vx + 2 * y * z * Vy + \
-             z * z * Vz - 2 * w * y * Vx - y * y * Vz + \
-             2 * w * x * Vy - x * x * Vz + w * w * Vz ])
+          A = w**2 - x**2 - y**2 - z**2
+          B = 2.0*(x*Vx +  y*Vy + z*Vz)
+                    
+          return np.array([
+            A*Vx + B*x + 2*P*w * (y*Vz - z*Vy),
+            A*Vy + B*y + 2*P*w * (z*Vx - x*Vz),
+            A*Vz + B*z + 2*P*w * (x*Vy - y*Vx),
+            ])
       except: pass
       try:                                                        # scalar
           Q = self.copy()
@@ -143,6 +142,8 @@ class Quaternion:
 
     def __imul__(self, other):
       """In-place multiplication"""
+      # Rowenhorst_etal2015 MSMSE: value of P is selected as -1
+      P = -1.0
       try:                                                        # Quaternion
           Aw = self.w
           Ax = self.x
@@ -153,9 +154,9 @@ class Quaternion:
           By = other.y
           Bz = other.z
           self.w = - Ax * Bx - Ay * By - Az * Bz + Aw * Bw
-          self.x = + Ax * Bw + Ay * Bz - Az * By + Aw * Bx
-          self.y = - Ax * Bz + Ay * Bw + Az * Bx + Aw * By
-          self.z = + Ax * By - Ay * Bx + Az * Bw + Aw * Bz
+          self.x = + Ax * Bw + Aw * Bx + P * (Ay * Bz - Az * By)
+          self.y = + Ay * Bw + Aw * By + P * (Az * Bx - Ax * Bz)
+          self.z = + Az * Bw + Aw * Bz + P * (Ax * By - Ay * Bx)
       except: pass
       return self
 
@@ -314,13 +315,15 @@ class Quaternion:
 
     def asM(self):                                                # to find Averaging Quaternions (see F. Landis Markley et al.)
       return np.outer([i for i in self],[i for i in self])
-
+      
     def asMatrix(self):
+      # Rowenhorst_etal2015 MSMSE: value of P is selected as -1
+      P = -1.0
       qbarhalf = 0.5*(self.w**2 - self.x**2 - self.y**2 - self.z**2)
       return 2.0*np.array(
-        [[      qbarhalf + self.x**2    , self.x*self.y - self.w*self.z, self.x*self.z + self.w*self.y],
-         [ self.x*self.y + self.w*self.z,      qbarhalf + self.y**2    , self.y*self.z - self.w*self.x],
-         [ self.x*self.z - self.w*self.y, self.y*self.z + self.w*self.x,      qbarhalf + self.z**2    ],
+        [[      qbarhalf + self.x**2      , self.x*self.y -P* self.w*self.z, self.x*self.z +P* self.w*self.y],
+         [ self.x*self.y +P* self.w*self.z,      qbarhalf + self.y**2      , self.y*self.z -P* self.w*self.x],
+         [ self.x*self.z -P* self.w*self.y, self.y*self.z +P* self.w*self.x,      qbarhalf + self.z**2      ],
         ])
 
     def asAngleAxis(self,
@@ -346,18 +349,20 @@ class Quaternion:
     def asEulers(self,
                  degrees = False):
       """Orientation as Bunge-Euler angles."""
-      q03 = self.w**2+self.z**2
-      q12 = self.x**2+self.y**2
+      # Rowenhorst_etal2015 MSMSE: value of P is selected as -1
+      P   = -1.0
+      q03 = self.w**2 + self.z**2
+      q12 = self.x**2 + self.y**2
       chi = np.sqrt(q03*q12)
       
       if abs(chi) < 1e-10 and abs(q12) < 1e-10:
-        eulers = np.array([math.atan2(-2*self.w*self.z,self.w**2-self.z**2),0,0])
+        eulers = np.array([math.atan2(-2*P*self.w*self.z,self.w**2-self.z**2),0,0])
       elif abs(chi) < 1e-10 and abs(q03) < 1e-10:
-        eulers = np.array([math.atan2( 2*self.x*self.y,self.x**2-self.y**2),np.pi,0])
+        eulers = np.array([math.atan2( 2  *self.x*self.y,self.x**2-self.y**2),np.pi,0])
       else:
-        eulers = np.array([math.atan2((self.x*self.z-self.w*self.y)/chi,(-self.w*self.x-self.y*self.z)/chi),
+        eulers = np.array([math.atan2((self.x*self.z-P*self.w*self.y)/chi,(-P*self.w*self.x-self.y*self.z)/chi),
                            math.atan2(2*chi,q03-q12),
-                           math.atan2((self.w*self.y+self.x*self.z)/chi,( self.y*self.z-self.w*self.x)/chi),
+                           math.atan2((P*self.w*self.y+self.x*self.z)/chi,( self.y*self.z-P*self.w*self.x)/chi),
                           ])
 
       return np.degrees(eulers) if degrees else eulers
@@ -371,8 +376,9 @@ class Quaternion:
 
     @classmethod
     def fromRandom(cls,randomSeed = None):
+      import binascii
       if randomSeed is None:
-        randomSeed = int(os.urandom(4).encode('hex'), 16)
+        randomSeed = int(binascii.hexlify(os.urandom(4)),16)
       np.random.seed(randomSeed)
       r = np.random.random(3)
       w = math.cos(2.0*math.pi*r[0])*math.sqrt(r[2])
@@ -420,10 +426,12 @@ class Quaternion:
       c = np.cos(0.5*eulers[1])
       s = np.sin(0.5*eulers[1])
 
-      w =  c * np.cos(sigma) 
-      x = -s * np.cos(delta) 
-      y = -s * np.sin(delta)
-      z = -c * np.sin(sigma) 
+      # Rowenhorst_etal2015 MSMSE: value of P is selected as -1
+      P = -1.0
+      w =       c * np.cos(sigma) 
+      x =  -P * s * np.cos(delta) 
+      y =  -P * s * np.sin(delta)
+      z =  -P * c * np.sin(sigma) 
       return cls([w,x,y,z])
 
 
@@ -435,16 +443,18 @@ class Quaternion:
       if m.shape != (3,3) and np.prod(m.shape) == 9:
         m = m.reshape(3,3)
 
-      w = 0.5*math.sqrt(1.+m[0,0]+m[1,1]+m[2,2])
-      x = 0.5*math.sqrt(1.+m[0,0]-m[1,1]-m[2,2])
-      y = 0.5*math.sqrt(1.-m[0,0]+m[1,1]-m[2,2])
-      z = 0.5*math.sqrt(1.-m[0,0]-m[1,1]+m[2,2])
+      # Rowenhorst_etal2015 MSMSE: value of P is selected as -1
+      P = -1.0
+      w =  0.5*math.sqrt(1.+m[0,0]+m[1,1]+m[2,2])
+      x = P*0.5*math.sqrt(1.+m[0,0]-m[1,1]-m[2,2])
+      y = P*0.5*math.sqrt(1.-m[0,0]+m[1,1]-m[2,2])
+      z = P*0.5*math.sqrt(1.-m[0,0]-m[1,1]+m[2,2])
 
       x *= -1 if m[2,1] < m[1,2] else 1
       y *= -1 if m[0,2] < m[2,0] else 1
       z *= -1 if m[1,0] < m[0,1] else 1
 
-      return cls( np.array([w,x,y,z])/math.sqrt(w**2 + x**2 + y**2 + z**2))
+      return cls(np.array([w,x,y,z])/math.sqrt(w**2 + x**2 + y**2 + z**2))
 
 
     @classmethod
