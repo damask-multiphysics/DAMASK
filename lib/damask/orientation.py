@@ -27,15 +27,22 @@ class Rodrigues:
 
 # ******************************************************************************************
 class Quaternion:
-    """
+    u"""
     Orientation represented as unit quaternion.
     
-    All methods and naming conventions based on http://www.euclideanspace.com/maths/algebra/realNormedAlgebra/quaternions.
+    All methods and naming conventions based on Rowenhorst_etal2015
+    Convention 1: coordinate frames are right-handed
+    Convention 2: a rotation angle ω is taken to be positive for a counterclockwise rotation
+                  when viewing from the end point of the rotation axis unit vector towards the origin
+    Convention 3: rotations will be interpreted in the passive sense
+    Convention 4: Euler angle triplets are implemented using the Bunge convention,
+                  with the angular ranges as [0, 2π],[0, π],[0, 2π]
+    Convention 5: the rotation angle ω is limited to the interval [0, π]
 
     w is the real part, (x, y, z) are the imaginary parts.
-    Representation of rotation is in ACTIVE form!
-    (Derived directly or through angleAxis, Euler angles, or active matrix)
-    Vector "a" (defined in coordinate system "A") is actively rotated to new coordinates "b".
+
+    Vector "a" (defined in coordinate system "A") is passively rotated
+               resulting in new coordinates "b" when expressed in system "B".
     b = Q * a
     b = np.dot(Q.asMatrix(),a)
     """
@@ -309,10 +316,12 @@ class Quaternion:
       return np.outer([i for i in self],[i for i in self])
 
     def asMatrix(self):
-      return np.array(
-        [[1.0-2.0*(self.y*self.y+self.z*self.z),     2.0*(self.x*self.y-self.z*self.w),     2.0*(self.x*self.z+self.y*self.w)],
-         [    2.0*(self.x*self.y+self.z*self.w), 1.0-2.0*(self.x*self.x+self.z*self.z),     2.0*(self.y*self.z-self.x*self.w)],
-         [    2.0*(self.x*self.z-self.y*self.w),     2.0*(self.x*self.w+self.y*self.z), 1.0-2.0*(self.x*self.x+self.y*self.y)]])
+      qbarhalf = 0.5*(self.w**2 - self.x**2 - self.y**2 - self.z**2)
+      return 2.0*np.array(
+        [[      qbarhalf + self.x**2    , self.x*self.y - self.w*self.z, self.x*self.z + self.w*self.y],
+         [ self.x*self.y + self.w*self.z,      qbarhalf + self.y**2    , self.y*self.z - self.w*self.x],
+         [ self.x*self.z - self.w*self.y, self.y*self.z + self.w*self.x,      qbarhalf + self.z**2    ],
+        ])
 
     def asAngleAxis(self,
                     degrees = False):
@@ -335,52 +344,23 @@ class Quaternion:
       return np.inf*np.ones(3) if self.w == 0.0 else np.array([self.x, self.y, self.z])/self.w
 
     def asEulers(self,
-                 type = "bunge",
-                 degrees = False,
-                 standardRange = False):
-      """
-      Orientation as Bunge-Euler angles.
+                 degrees = False):
+      """Orientation as Bunge-Euler angles."""
+      q03 = self.w**2+self.z**2
+      q12 = self.x**2+self.y**2
+      chi = np.sqrt(q03*q12)
+      
+      if abs(chi) < 1e-10 and abs(q12) < 1e-10:
+        eulers = np.array([math.atan2(-2*self.w*self.z,self.w**2-self.z**2),0,0])
+      elif abs(chi) < 1e-10 and abs(q03) < 1e-10:
+        eulers = np.array([math.atan2( 2*self.x*self.y,self.x**2-self.y**2),np.pi,0])
+      else:
+        eulers = np.array([math.atan2((self.x*self.z-self.w*self.y)/chi,(-self.w*self.x-self.y*self.z)/chi),
+                           math.atan2(2*chi,q03-q12),
+                           math.atan2((self.w*self.y+self.x*self.z)/chi,( self.y*self.z-self.w*self.x)/chi),
+                          ])
 
-      Conversion of ACTIVE rotation to Euler angles taken from:
-      Melcher, A.; Unser, A.; Reichhardt, M.; Nestler, B.; Poetschke, M.; Selzer, M.
-      Conversion of EBSD data by a quaternion based algorithm to be used for grain structure simulations
-      Technische Mechanik 30 (2010) pp 401--413.
-      """
-      angles = [0.0,0.0,0.0]
-
-      if type.lower() == 'bunge' or type.lower() == 'zxz':
-        if   abs(self.x) < 1e-4 and abs(self.y) < 1e-4:
-          x = self.w**2 - self.z**2
-          y = 2.*self.w*self.z
-          angles[0] = math.atan2(y,x)
-        elif abs(self.w) < 1e-4 and abs(self.z) < 1e-4:
-          x = self.x**2 - self.y**2
-          y = 2.*self.x*self.y
-          angles[0] = math.atan2(y,x)
-          angles[1] = math.pi
-        else:
-          chi = math.sqrt((self.w**2 + self.z**2)*(self.x**2 + self.y**2))
-
-          x = (self.w * self.x - self.y * self.z)/2./chi
-          y = (self.w * self.y + self.x * self.z)/2./chi
-          angles[0] = math.atan2(y,x)
-
-          x = self.w**2 + self.z**2 - (self.x**2 + self.y**2)
-          y = 2.*chi
-          angles[1] = math.atan2(y,x)
-
-          x = (self.w * self.x + self.y * self.z)/2./chi
-          y = (self.z * self.x - self.y * self.w)/2./chi
-          angles[2] = math.atan2(y,x)
-
-        if standardRange:
-          angles[0] %= 2*math.pi
-          if angles[1] < 0.0:
-            angles[1] += math.pi
-            angles[2] *= -1.0
-          angles[2] %= 2*math.pi
-
-      return np.degrees(angles) if degrees else angles
+      return np.degrees(eulers) if degrees else eulers
 
 
 #    # Static constructors
@@ -408,7 +388,7 @@ class Quaternion:
       halfangle = math.atan(np.linalg.norm(rodrigues))
       c = math.cos(halfangle)
       w = c
-      x,y,z = c*rodrigues
+      x,y,z = rodrigues/c
       return cls([w,x,y,z])
 
 
@@ -431,24 +411,19 @@ class Quaternion:
     @classmethod
     def fromEulers(cls,
                    eulers,
-                   type = 'Bunge',
                    degrees = False):
       if not isinstance(eulers, np.ndarray): eulers = np.array(eulers,dtype='d')
       eulers = np.radians(eulers) if degrees else eulers
 
-      c = np.cos(0.5 * eulers)
-      s = np.sin(0.5 * eulers)
+      sigma = 0.5*(eulers[0]+eulers[2])
+      delta = 0.5*(eulers[0]-eulers[2])
+      c = np.cos(0.5*eulers[1])
+      s = np.sin(0.5*eulers[1])
 
-      if type.lower() == 'bunge' or type.lower() == 'zxz':
-        w =   c[0] * c[1] * c[2] - s[0] * c[1] * s[2]
-        x =   c[0] * s[1] * c[2] + s[0] * s[1] * s[2]
-        y = - c[0] * s[1] * s[2] + s[0] * s[1] * c[2]
-        z =   c[0] * c[1] * s[2] + s[0] * c[1] * c[2]
-      else:
-        w = c[0] * c[1] * c[2] - s[0] * s[1] * s[2]
-        x = s[0] * s[1] * c[2] + c[0] * c[1] * s[2]
-        y = s[0] * c[1] * c[2] + c[0] * s[1] * s[2]
-        z = c[0] * s[1] * c[2] - s[0] * c[1] * s[2]
+      w =  c * np.cos(sigma) 
+      x = -s * np.cos(delta) 
+      y = -s * np.sin(delta)
+      z = -c * np.sin(sigma) 
       return cls([w,x,y,z])
 
 
@@ -460,49 +435,16 @@ class Quaternion:
       if m.shape != (3,3) and np.prod(m.shape) == 9:
         m = m.reshape(3,3)
 
-      tr = np.trace(m)
-      if tr > 1e-8:
-        s = math.sqrt(tr + 1.0)*2.0
+      w = 0.5*math.sqrt(1.+m[0,0]+m[1,1]+m[2,2])
+      x = 0.5*math.sqrt(1.+m[0,0]-m[1,1]-m[2,2])
+      y = 0.5*math.sqrt(1.-m[0,0]+m[1,1]-m[2,2])
+      z = 0.5*math.sqrt(1.-m[0,0]-m[1,1]+m[2,2])
 
-        return cls(
-          [ s*0.25,
-            (m[2,1] - m[1,2])/s,
-            (m[0,2] - m[2,0])/s,
-            (m[1,0] - m[0,1])/s,
-          ])
+      x *= -1 if m[2,1] < m[1,2] else 1
+      y *= -1 if m[0,2] < m[2,0] else 1
+      z *= -1 if m[1,0] < m[0,1] else 1
 
-      elif m[0,0] > m[1,1] and m[0,0] > m[2,2]:
-        t = m[0,0] - m[1,1] - m[2,2] + 1.0
-        s = 2.0*math.sqrt(t)
-
-        return cls(
-          [ (m[2,1] - m[1,2])/s,
-            s*0.25,
-            (m[0,1] + m[1,0])/s,
-            (m[2,0] + m[0,2])/s,
-          ])
-
-      elif m[1,1] > m[2,2]:
-        t = -m[0,0] + m[1,1] - m[2,2] + 1.0
-        s = 2.0*math.sqrt(t)
-
-        return cls(
-          [ (m[0,2] - m[2,0])/s,
-            (m[0,1] + m[1,0])/s,
-            s*0.25,
-            (m[1,2] + m[2,1])/s,
-          ])
-
-      else:
-        t = -m[0,0] - m[1,1] + m[2,2] + 1.0
-        s = 2.0*math.sqrt(t)
-
-        return cls(
-          [ (m[1,0] - m[0,1])/s,
-            (m[2,0] + m[0,2])/s,
-            (m[1,2] + m[2,1])/s,
-            s*0.25,
-          ])
+      return cls( np.array([w,x,y,z])/math.sqrt(w**2 + x**2 + y**2 + z**2))
 
 
     @classmethod
@@ -663,7 +605,7 @@ class Symmetry:
                             quaternion,
                             who = []):
     """List of symmetrically equivalent quaternions based on own symmetry."""
-    return [quaternion*q for q in self.symmetryQuats(who)]
+    return [q*quaternion for q in self.symmetryQuats(who)]
 
 
   def inFZ(self,R):
@@ -829,7 +771,7 @@ class Orientation:
       else:
         self.quaternion = Quaternion.fromRandom(randomSeed=random)
     elif isinstance(Eulers, np.ndarray) and Eulers.shape == (3,):                                   # based on given Euler angles
-      self.quaternion = Quaternion.fromEulers(Eulers,type='bunge',degrees=degrees)
+      self.quaternion = Quaternion.fromEulers(Eulers,degrees=degrees)
     elif isinstance(matrix, np.ndarray) :                                                           # based on given rotation matrix
       self.quaternion = Quaternion.fromMatrix(matrix)
     elif isinstance(angleAxis, np.ndarray) and angleAxis.shape == (4,):                             # based on given angle and rotation axis
@@ -855,16 +797,15 @@ class Orientation:
     return 'Symmetry: %s\n' % (self.symmetry) + \
            'Quaternion: %s\n' % (self.quaternion) + \
            'Matrix:\n%s\n' % ( '\n'.join(['\t'.join(map(str,self.asMatrix()[i,:])) for i in range(3)]) ) + \
-           'Bunge Eulers / deg: %s' % ('\t'.join(map(str,self.asEulers('bunge',degrees=True))) )
+           'Bunge Eulers / deg: %s' % ('\t'.join(map(str,self.asEulers(degrees=True))) )
 
   def asQuaternion(self):
     return self.quaternion.asList()
 
   def asEulers(self,
-               type = 'bunge',
                degrees = False,
-               standardRange = False):
-    return self.quaternion.asEulers(type, degrees, standardRange)
+              ):
+    return self.quaternion.asEulers(degrees)
   eulers = property(asEulers)
 
   def asRodrigues(self):
@@ -912,13 +853,13 @@ class Orientation:
     """
     if self.symmetry != other.symmetry: raise TypeError('disorientation between different symmetry classes not supported yet.')
 
-    misQ = self.quaternion.conjugated()*other.quaternion
+    misQ = other.quaternion*self.quaternion.conjugated()
     mySymQs    =  self.symmetry.symmetryQuats() if SST else self.symmetry.symmetryQuats()[:1]       # take all or only first sym operation
     otherSymQs = other.symmetry.symmetryQuats()
     
     for i,sA in enumerate(mySymQs):
       for j,sB in enumerate(otherSymQs):
-        theQ = sA.conjugated()*misQ*sB
+        theQ = sB*misQ*sA.conjugated()
         for k in range(2):
           theQ.conjugate()
           breaker = self.symmetry.inFZ(theQ) \
@@ -929,7 +870,7 @@ class Orientation:
 
 # disorientation, own sym, other sym, self-->other: True, self<--other: False
     return (Orientation(quaternion = theQ,symmetry = self.symmetry.lattice),
-            i,j,k == 1)                                                                             
+            i,j, k == 1)                                                                             
 
 
   def inversePole(self,
@@ -939,10 +880,10 @@ class Orientation:
     """Axis rotated according to orientation (using crystal symmetry to ensure location falls into SST)"""
     if SST:                                                                                         # pole requested to be within SST
       for i,q in enumerate(self.symmetry.equivalentQuaternions(self.quaternion)):                   # test all symmetric equivalent quaternions
-        pole = q.conjugated()*axis                                                                  # align crystal direction to axis
+        pole = q*axis                                                                               # align crystal direction to axis
         if self.symmetry.inSST(pole,proper): break                                                  # found SST version
     else:
-      pole = self.quaternion.conjugated()*axis                                                      # align crystal direction to axis
+      pole = self.quaternion*axis                                                                   # align crystal direction to axis
 
     return (pole,i if SST else 0)
 
@@ -951,7 +892,7 @@ class Orientation:
     color = np.zeros(3,'d')
 
     for q in self.symmetry.equivalentQuaternions(self.quaternion):
-      pole = q.conjugated()*axis                                                                    # align crystal direction to axis
+      pole = q*axis                                                                                 # align crystal direction to axis
       inSST,color = self.symmetry.inSST(pole,color=True)
       if inSST: break
 

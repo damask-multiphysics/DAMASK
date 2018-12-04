@@ -47,7 +47,7 @@ linker:
 
 # CMake will execute each target in the ${petsc_config_makefile}
 # to acquire corresponding PETSc Variables.
-find_program (MAKE_EXECUTABLE NAMES make gmake)
+find_program (MAKE_EXECUTABLE NAMES gmake make)
 # Find the PETSc includes directory settings
 execute_process (COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_config_makefile} "includes"
                  RESULT_VARIABLE PETSC_INCLUDES_RETURN
@@ -280,7 +280,7 @@ if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
   #   ... for uninitialized variables.
   set (DEBUG_FLAGS "${DEBUG_FLAGS} -ftrapuv")
   #   ... initializes stack local variables to an unusual value to aid error detection
-  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all0")
+  set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0")
   #   ... capture all floating-point exceptions, sets -ftz automatically
 
   set (DEBUG_FLAGS "${DEBUG_FLAGS} -warn")
