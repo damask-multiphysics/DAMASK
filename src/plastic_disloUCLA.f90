@@ -112,7 +112,7 @@ module plastic_disloUCLA
  
  public :: &
    plastic_disloUCLA_init, &
-   plastic_disloUCLA_microstructure, &
+   plastic_disloUCLA_dependentState, &
    plastic_disloUCLA_LpAndItsTangent, &
    plastic_disloUCLA_dotState, &
    plastic_disloUCLA_postResults
@@ -436,29 +436,17 @@ end subroutine plastic_disloUCLA_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_disloUCLA_microstructure(temperature,ipc,ip,el)
- use material, only: &
-   phase_plasticityInstance, &
-   phaseAt, phasememberAt, &
-   material_phase
+subroutine plastic_disloUCLA_dependentState(temperature,instance,of)
 
  implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
+ integer(pInt), intent(in)                  :: instance, of
  real(pReal),   intent(in) :: &
    temperature                                                                                      !< temperature at IP 
 
  integer(pInt) :: &
-   instance, &
-   s, &
-   of
- real(pReal), dimension(plastic_disloUCLA_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
+   s
+ real(pReal), dimension(param(instance)%totalNslip) :: &
   invLambdaSlip ! 1/mean free distance between 2 forest dislocations seen by a moving dislocation
-
- of = phasememberAt(ipc,ip,el)
- instance = phase_plasticityInstance(phaseAt(ipc,ip,el))
 
  associate(prm => param(instance), stt => state(instance),mse => microstructure(instance))
  
@@ -476,7 +464,7 @@ subroutine plastic_disloUCLA_microstructure(temperature,ipc,ip,el)
  end associate
 
 
-end subroutine plastic_disloUCLA_microstructure
+end subroutine plastic_disloUCLA_dependentState
 
 
 !--------------------------------------------------------------------------------------------------

@@ -384,7 +384,9 @@ subroutine constitutive_microstructure(orientations, Fe, Fp, ipc, ip, el)
  use prec, only: &
    pReal
  use material, only: &
+   phasememberAt, &
    phase_plasticity, &
+   phase_plasticityInstance, &
    material_phase, &
    material_homogenizationAt, &
    temperature, &
@@ -396,8 +398,8 @@ subroutine constitutive_microstructure(orientations, Fe, Fp, ipc, ip, el)
    plastic_nonlocal_microstructure
  use plastic_dislotwin, only: &
    plastic_dislotwin_microstructure
- use plastic_disloucla, only: &
-   plastic_disloucla_microstructure
+ use plastic_disloUCLA, only: &
+   plastic_disloUCLA_dependentState
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -409,7 +411,8 @@ subroutine constitutive_microstructure(orientations, Fe, Fp, ipc, ip, el)
    Fp                                                                                               !< plastic deformation gradient
  integer(pInt) :: &
    ho, &                                                                                            !< homogenization
-   tme                                                                                              !< thermal member position
+   tme, &                                                                                           !< thermal member position
+   instance, of
  real(pReal),   intent(in), dimension(:,:,:,:) :: &
    orientations                                                                                     !< crystal orientations as quaternions
 
@@ -420,7 +423,9 @@ subroutine constitutive_microstructure(orientations, Fe, Fp, ipc, ip, el)
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
      call plastic_dislotwin_microstructure(temperature(ho)%p(tme),ipc,ip,el)
    case (PLASTICITY_DISLOUCLA_ID) plasticityType
-     call plastic_disloucla_microstructure(temperature(ho)%p(tme),ipc,ip,el)
+     of = phasememberAt(ipc,ip,el)
+     instance = phase_plasticityInstance(material_phase(ipc,ip,el))
+     call plastic_disloUCLA_dependentState(temperature(ho)%p(tme),instance,of)
    case (PLASTICITY_NONLOCAL_ID) plasticityType
      call plastic_nonlocal_microstructure (Fe,Fp,ip,el)
  end select plasticityType
