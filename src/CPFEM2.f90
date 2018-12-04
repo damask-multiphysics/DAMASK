@@ -108,8 +108,7 @@ subroutine CPFEM_init
    debug_levelBasic, &
    debug_levelExtensive
  use FEsolving, only: &
-   restartRead, &
-   modelName
+   restartRead
  use material, only: &
    material_phase, &
    homogState, &
@@ -128,16 +127,17 @@ subroutine CPFEM_init
  use hdf5
  use HDF5_utilities, only: &
    HDF5_openFile, &
-   HDF5_openGroup2, &
+   HDF5_closeFile, &
+   HDF5_openGroup, &
+   HDF5_closeGroup, &
    HDF5_read
  use DAMASK_interface, only: &
    getSolverJobName
 
  implicit none
- integer(pInt) :: k,l,m,ph,homog
+ integer(pInt) :: ph,homog
  character(len=1024) :: rankStr, PlasticItem, HomogItem
- integer(HID_T) :: fileReadID, groupPlasticID, groupHomogID
- integer        :: hdferr
+ integer(HID_T) :: fileHandle, groupPlasticID, groupHomogID
 
  mainProcess: if (worldrank == 0) then 
    write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
@@ -155,28 +155,33 @@ subroutine CPFEM_init
    
    write(rankStr,'(a1,i0)')'_',worldrank
 
-   fileReadID = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
+   fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
   
-   call HDF5_read(material_phase,      fileReadID,'recordedPhase')
-   call HDF5_read(crystallite_F0,      fileReadID,'convergedF')
-   call HDF5_read(crystallite_Fp0,     fileReadID,'convergedFp')
-   call HDF5_read(crystallite_Fi0,     fileReadID,'convergedFi')
-   call HDF5_read(crystallite_Lp0,     fileReadID,'convergedLp')
-   call HDF5_read(crystallite_Li0,     fileReadID,'convergedLi')
-   call HDF5_read(crystallite_dPdF0,   fileReadID,'convergeddPdF')
-   call HDF5_read(crystallite_Tstar0_v,fileReadID,'convergedTstar')
+   call HDF5_read(material_phase,      fileHandle,'recordedPhase')
+   call HDF5_read(crystallite_F0,      fileHandle,'convergedF')
+   call HDF5_read(crystallite_Fp0,     fileHandle,'convergedFp')
+   call HDF5_read(crystallite_Fi0,     fileHandle,'convergedFi')
+   call HDF5_read(crystallite_Lp0,     fileHandle,'convergedLp')
+   call HDF5_read(crystallite_Li0,     fileHandle,'convergedLi')
+   call HDF5_read(crystallite_dPdF0,   fileHandle,'convergeddPdF')
+   call HDF5_read(crystallite_Tstar0_v,fileHandle,'convergedTstar')
    
-   groupPlasticID = HDF5_openGroup2(fileReadID,'PlasticPhases')
+   groupPlasticID = HDF5_openGroup(fileHandle,'PlasticPhases')
    do ph = 1_pInt,size(phase_plasticity)
     write(PlasticItem,*) ph,'_'
     call HDF5_read(plasticState(ph)%state0,groupPlasticID,trim(PlasticItem)//'convergedStateConst')
    enddo
+   call HDF5_closeGroup(groupPlasticID)
    
-   groupHomogID = HDF5_openGroup2(fileReadID,'HomogStates')
+   groupHomogID = HDF5_openGroup(fileHandle,'HomogStates')
    do homog = 1_pInt, material_Nhomogenization
     write(HomogItem,*) homog,'_'
     call HDF5_read(homogState(homog)%state0, groupHomogID,trim(HomogItem)//'convergedStateHomog')
    enddo
+   call HDF5_closeGroup(groupHomogID)
+
+  
+   call HDF5_closeFile(fileHandle)
    
    restartRead = .false.
  endif
@@ -234,8 +239,8 @@ subroutine CPFEM_age()
  use HDF5_utilities, only: &
    HDF5_openFile, &
    HDF5_closeFile, &
+   HDF5_addGroup, &
    HDF5_closeGroup, &
-   HDF5_addGroup2, &
    HDF5_write
  use hdf5
  use DAMASK_interface, only: &
@@ -243,11 +248,9 @@ subroutine CPFEM_age()
 
  implicit none
 
- integer(pInt) ::                                    i, k, l, m, ph, homog, mySource
+ integer(pInt)    ::  i, ph, homog, mySource
  character(len=32) :: rankStr, PlasticItem, HomogItem
  integer(HID_T) :: fileHandle, groupPlastic, groupHomog
- integer        :: hdferr
- integer(HSIZE_T)  :: hdfsize
 
 if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
   write(6,'(a)') '<< CPFEM >> aging states'
@@ -291,14 +294,14 @@ if (restartWrite) then
   call HDF5_write(crystallite_dPdF0,   fileHandle,'convergeddPdF')
   call HDF5_write(crystallite_Tstar0_v,fileHandle,'convergedTstar')
   
-  groupPlastic = HDF5_addGroup2(fileHandle,'PlasticPhases')
+  groupPlastic = HDF5_addGroup(fileHandle,'PlasticPhases')
   do ph = 1_pInt,size(phase_plasticity)
     write(PlasticItem,*) ph,'_'
     call HDF5_write(plasticState(ph)%state0,groupPlastic,trim(PlasticItem)//'convergedStateConst')
   enddo
   call HDF5_closeGroup(groupPlastic)
 
-  groupHomog = HDF5_addGroup2(fileHandle,'HomogStates')
+  groupHomog = HDF5_addGroup(fileHandle,'HomogStates')
   do homog = 1_pInt, material_Nhomogenization
     write(HomogItem,*) homog,'_'
     call HDF5_write(homogState(homog)%state0,groupHomog,trim(HomogItem)//'convergedStateHomog')

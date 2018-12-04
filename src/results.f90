@@ -31,9 +31,8 @@ module results
    HDF5_backwardMappingHomog, &
    HDF5_backwardMappingCrystallite, &
    HDF5_mappingCells, &
-   HDF5_addGroup ,&
-   HDF5_closeGroup ,&
-   HDF5_openGroup, &
+   results_addGroup, &
+   results_openGroup, &
    HDF5_writeVectorDataset, &
    HDF5_writeScalarDataset, &
    HDF5_writeTensorDataset, &
@@ -72,8 +71,6 @@ end subroutine results_openJobFile
 !> @brief closes the results file
 !--------------------------------------------------------------------------------------------------
 subroutine results_closeJobFile()
- use DAMASK_interface, only: &
-   getSolverJobName
  implicit none
 
  call HDF5_closeFile(resultsFile)
@@ -94,33 +91,27 @@ end subroutine results_addIncrement
 !--------------------------------------------------------------------------------------------------
 !> @brief open a group from the results file
 !--------------------------------------------------------------------------------------------------
-integer(HID_T) function HDF5_openGroup(groupName)
- use hdf5
+integer(HID_T) function results_openGroup(groupName)
 
  implicit none
  character(len=*), intent(in) :: groupName
- integer                      :: hdferr
+ 
+ results_openGroup = HDF5_openGroup(resultsFile,groupName)
 
- call h5gopen_f(resultsFile, trim(groupName), HDF5_openGroup, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup: h5gopen_f ('//trim(groupName)//')')
-
-end function HDF5_openGroup
+end function results_openGroup
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief adds a new group to the results file
 !--------------------------------------------------------------------------------------------------
-integer(HID_T) function HDF5_addGroup(groupName)
- use hdf5
+integer(HID_T) function results_addGroup(groupName)
 
  implicit none
  character(len=*), intent(in) :: groupName
- integer                      :: hdferr
+ 
+ results_addGroup = HDF5_addGroup(resultsFile,groupName)
 
- call h5gcreate_f(resultsFile, trim(groupName), HDF5_addGroup, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_addGroup: h5gcreate_f ('//trim(groupName)//')')
-
-end function HDF5_addGroup
+end function results_addGroup
 
 !--------------------------------------------------------------------------------------------------
 !> @brief set link to object in results file
@@ -189,7 +180,7 @@ subroutine HDF5_mappingPhase(mapping,mapping2,Nconstituents,material_phase,phase
  a = n
  allocate(namesNA(0:size(phase_name)),source=[a,phase_name])
  NmatPoints = size(mapping,1)/Nconstituents
- mapping_ID = HDF5_openGroup("current/mapGeometry")
+ mapping_ID = results_openGroup("current/mapGeometry")
 
  allocate(arrOffset(Nconstituents,NmatPoints))
  do i=1_pInt, NmatPoints
@@ -336,7 +327,7 @@ subroutine HDF5_backwardMappingPhase(material_phase,phasememberat,phase_name,dat
 
  do i=1_pInt, size(phase_name)
    write(phaseID, '(i0)') i
-   mapping_ID = HDF5_openGroup('/current/constitutive/'//trim(phaseID)//'_'//phase_name(i))
+   mapping_ID = results_openGroup('/current/constitutive/'//trim(phaseID)//'_'//phase_name(i))
    NmatPoints = count(material_phase == i)
 
 !--------------------------------------------------------------------------------------------------
@@ -436,7 +427,7 @@ subroutine HDF5_mappingHomog(material_homog,homogmemberat,homogenization_name,da
  integer(pInt),     dimension(:), allocatable :: arrOffset
 
  NmatPoints = count(material_homog /=0_pInt)
- mapping_ID = HDF5_openGroup("current/mapGeometry")
+ mapping_ID = results_openGroup("current/mapGeometry")
 
  allocate(arrOffset(NmatPoints))
  do i=1_pInt, NmatPoints
@@ -573,7 +564,7 @@ subroutine HDF5_backwardMappingHomog(material_homog,homogmemberat,homogenization
 
  do i=1_pInt, size(homogenization_name)
    write(homogID, '(i0)') i
-   mapping_ID = HDF5_openGroup('/current/homogenization/'//trim(homogID)//'_'//homogenization_name(i))
+   mapping_ID = results_openGroup('/current/homogenization/'//trim(homogID)//'_'//homogenization_name(i))
 
 !--------------------------------------------------------------------------------------------------
   ! create dataspace
@@ -679,7 +670,7 @@ subroutine HDF5_mappingCrystallite(crystalliteAt,crystmemberAt,crystallite_name,
 
  Nconstituents = size(crystmemberAt,1)
  NmatPoints = count(crystalliteAt /=0_pInt)
- mapping_ID = HDF5_openGroup("current/mapGeometry")
+ mapping_ID = results_openGroup("current/mapGeometry")
 
  allocate(position_id(Nconstituents))
 
@@ -842,7 +833,7 @@ subroutine HDF5_backwardMappingCrystallite(crystalliteAt,crystmemberAt,crystalli
  do i=1_pInt, size(crystallite_name)
    if (crystallite_name(i) == 'none') cycle
    write(crystallID, '(i0)') i
-   mapping_ID = HDF5_openGroup('/current/crystallite/'//trim(crystallID)//'_'//crystallite_name(i))
+   mapping_ID = results_openGroup('/current/crystallite/'//trim(crystallID)//'_'//crystallite_name(i))
    NmatPoints = count(crystalliteAt == i)
 
 !--------------------------------------------------------------------------------------------------
@@ -933,7 +924,7 @@ subroutine HDF5_mappingCells(mapping)
  integer(HID_T) :: mapping_id, dset_id, space_id
 
  Nnodes=size(mapping)
- mapping_ID = HDF5_openGroup("mapping")
+ mapping_ID = results_openGroup("mapping")
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace

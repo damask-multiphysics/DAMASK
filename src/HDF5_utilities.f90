@@ -68,8 +68,8 @@ module HDF5_utilities
    HDF5_addStringAttribute, &
    HDF5_addIntegerAttribute, &
    HDF5_closeGroup ,&
-   HDF5_openGroup2, &
-   HDF5_addGroup2, &
+   HDF5_openGroup, &
+   HDF5_addGroup, &
    HDF5_read, &
    HDF5_write
 contains
@@ -154,8 +154,9 @@ end function HDF5_openFile
 subroutine HDF5_closeFile(fileHandle)
 
  implicit none
- integer(HDF5_ERR_TYPE)     :: hdferr
  integer(HID_T), intent(in) :: fileHandle
+
+ integer(HDF5_ERR_TYPE)     :: hdferr
 
  call h5fclose_f(fileHandle,hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_closeFile: h5fclose_f')
@@ -164,63 +165,66 @@ end subroutine HDF5_closeFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds a new group to the fileHandle (additional to addGroup2)
+!> @brief adds a new group to the fileHandle
 !--------------------------------------------------------------------------------------------------
-integer(HID_T) function HDF5_addGroup2(fileHandle,groupName,parallel)
+integer(HID_T) function HDF5_addGroup(fileHandle,groupName)
 
  implicit none
- character(len=*), intent(in) :: groupName
  integer(HID_T), intent(in)   :: fileHandle
+ character(len=*), intent(in) :: groupName
+
  integer(HDF5_ERR_TYPE)       :: hdferr
-
- logical,intent(in), optional :: parallel
-
- integer(HID_T)               :: plist_id,gapl_id, gcpl_id, aplist_id
+ integer(HID_T)               :: aplist_id
 
  !-------------------------------------------------------------------------------------------------
-! creating a property list for data access properties
+ ! creating a property list for data access properties
  call h5pcreate_f(H5P_GROUP_ACCESS_F, aplist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup2: h5pcreate_f ('//trim(groupName)//')')
- !-------------------------------------------------------------------------------------------------
-! setting I/O mode to collective
- call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup2: h5pset_all_coll_metadata_ops_f ('//trim(groupName)//')')
- !-------------------------------------------------------------------------------------------------
-! Create group
- call h5gcreate_f(fileHandle, trim(groupName), HDF5_addGroup2, hdferr, OBJECT_NAMELEN_DEFAULT_F,gapl_id = aplist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_addGroup2: h5gcreate_f ('//trim(groupName)//')')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_addGroup: h5pcreate_f ('//trim(groupName)//')')
 
-end function HDF5_addGroup2
+ !-------------------------------------------------------------------------------------------------
+ ! setting I/O mode to collective
+ call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_addGroup: h5pset_all_coll_metadata_ops_f ('//trim(groupName)//')')
+ 
+ !-------------------------------------------------------------------------------------------------
+ ! Create group
+ call h5gcreate_f(fileHandle, trim(groupName), HDF5_addGroup, hdferr, OBJECT_NAMELEN_DEFAULT_F,gapl_id = aplist_id)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_addGroup: h5gcreate_f ('//trim(groupName)//')')
+
+end function HDF5_addGroup
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief open an existing group of a file
 !--------------------------------------------------------------------------------------------------
-integer(HID_T) function HDF5_openGroup2(FileReadID,groupName)
+integer(HID_T) function HDF5_openGroup(fileHandle,groupName)
 
  implicit none
+ integer(HID_T),   intent(in) :: fileHandle
  character(len=*), intent(in) :: groupName
- integer(HDF5_ERR_TYPE)       :: hdferr
- integer(HID_T), intent(in)   :: FileReadID
 
+
+ integer(HDF5_ERR_TYPE)       :: hdferr
  integer(HID_T)   :: aplist_id
  logical          :: is_collective
  
  
  !-------------------------------------------------------------------------------------------------
-! creating a property list for data access properties
+ ! creating a property list for data access properties
  call h5pcreate_f(H5P_GROUP_ACCESS_F, aplist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup2: h5pcreate_f ('//trim(groupName)//')')
- !-------------------------------------------------------------------------------------------------
-! setting I/O mode to collective
- call h5pget_all_coll_metadata_ops_f(aplist_id, is_collective, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup2: h5pset_all_coll_metadata_ops_f ('//trim(groupName)//')')
-  !-------------------------------------------------------------------------------------------------
-! opening the group
- call h5gopen_f(FileReadID, trim(groupName), HDF5_openGroup2, hdferr, gapl_id = aplist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup2: h5gopen_f ('//trim(groupName)//')')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup: h5pcreate_f ('//trim(groupName)//')')
 
-end function HDF5_openGroup2
+ !-------------------------------------------------------------------------------------------------
+ ! setting I/O mode to collective
+ call h5pget_all_coll_metadata_ops_f(aplist_id, is_collective, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup: h5pset_all_coll_metadata_ops_f ('//trim(groupName)//')')
+ 
+ !-------------------------------------------------------------------------------------------------
+ ! opening the group
+ call h5gopen_f(fileHandle, trim(groupName), HDF5_openGroup, hdferr, gapl_id = aplist_id)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup: h5gopen_f ('//trim(groupName)//')')
+
+end function HDF5_openGroup
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2880,7 +2884,3 @@ end subroutine HDF5_write_pInt7
 
 
 end module HDF5_Utilities
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
