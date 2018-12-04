@@ -551,7 +551,8 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
    tol_math_check, &
    dEq0
  use math, only: &
-   pi
+   PI, &
+   math_clip
 
  implicit none
  real(pReal), dimension(3,3),  intent(in):: &
@@ -559,22 +560,17 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
  real(pReal),                intent(in) :: &
    temperature                                                                                      !< temperature at integration point
  integer(pInt),              intent(in) :: &
- instance, of
+   instance, of
  integer(pInt) :: j
 
  real(pReal) :: &
-   VacancyDiffusion,&
-   DotRhoEdgeDipAnnihilation, &
-   DotRhoEdgeEdgeAnnihilation, &
-   DotRhoEdgeDipClimb
+   VacancyDiffusion
  real(pReal), dimension(plastic_disloUCLA_totalNslip(instance)) :: &
    gdot_slip_pos, gdot_slip_neg,&
    tau_slip_pos,&
    tau_slip_neg, &
-   dgdot_dtauslip_neg,dgdot_dtauslip_pos,DotRhoDipFormation, ClimbVelocity, EdgeDipDistance
-
-
-
+   dgdot_dtauslip_neg,dgdot_dtauslip_pos,DotRhoDipFormation, ClimbVelocity, EdgeDipDistance, &
+   DotRhoEdgeDipClimb
 
  associate(prm => param(instance), stt => state(instance),dot => dotState(instance), mse => microstructure(instance))
 
@@ -584,47 +580,35 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
  dot%whole(:,of) = 0.0_pReal
  dot%accshear_slip(:,of) = (gdot_slip_pos+gdot_slip_neg)*0.5_pReal
 
+ VacancyDiffusion = prm%D0*exp(-plastic_disloUCLA_Qsd(instance)/(kB*Temperature))
+
+ where(dEq0(tau_slip_pos) .or. (.not. prm%dipoleformation))
+   EdgeDipDistance = mse%mfp(:,of)        !ToDo MD@FR: correct? was not handled properly before
+   DotRhoDipFormation = 0.0_pReal
+   DotRhoEdgeDipClimb = 0.0_pReal
+ else where
+   EdgeDipDistance = math_clip((3.0_pReal*prm%mu*prm%burgers)/(16.0_pReal*PI*abs(tau_slip_pos)), &
+                               prm%minDipDistance, &        ! lower limit
+                               mse%mfp(:,of))               ! upper limit
+   DotRhoDipFormation = merge(((2.0_pReal*EdgeDipDistance)/prm%burgers)* stt%rhoEdge(:,of)*abs(dot%accshear_slip(:,of)), &
+                              0.0_pReal, &
+                              prm%dipoleformation)
+   ClimbVelocity = ((3.0_pReal*prm%mu*VacancyDiffusion*prm%atomicVolume)/(2.0_pReal*pi*kB*Temperature)) &
+                 * (1.0_pReal/(EdgeDipDistance+prm%minDipDistance))
+   DotRhoEdgeDipClimb = (4.0_pReal*ClimbVelocity*stt%rhoEdgeDip(:,of))/(EdgeDipDistance-prm%minDipDistance)
+ end where
+
  do j = 1_pInt, prm%totalNslip
-
-
-     !* Dipole formation
-     if (dEq0(tau_slip_pos(j)) .or. (.not. prm%dipoleformation)) then
-       DotRhoDipFormation(j) = 0.0_pReal
-       EdgeDipDistance(j)=mse%mfp(j,of)        !ToDo MD@FR: correct? was not handled properly before
-     else
-       EdgeDipDistance(j) = &
-         (3.0_pReal*prm%mu*prm%burgers(j))/&
-         (16.0_pReal*pi*abs(tau_slip_pos(j)))
-       if (EdgeDipDistance(j)>mse%mfp(j,of)) EdgeDipDistance(j)=mse%mfp(j,of)
-       if (EdgeDipDistance(j)<prm%minDipDistance(j)) EdgeDipDistance(j)=prm%minDipDistance(j)
-       DotRhoDipFormation(j) = &
-         ((2.0_pReal*EdgeDipDistance(j))/prm%burgers(j))*&
-         stt%rhoEdge(j,of)*abs(dot%accshear_slip(j,of))
-     endif
  
-      !* Dislocation dipole climb
-     VacancyDiffusion = prm%D0*exp(-plastic_disloUCLA_Qsd(instance)/(kB*Temperature))
-     if (dEq0(tau_slip_pos(j))) then
-       DotRhoEdgeDipClimb = 0.0_pReal
-     else
-       ClimbVelocity(j) = &
-          ((3.0_pReal*prm%mu*VacancyDiffusion*prm%atomicVolume(j))/(2.0_pReal*pi*kB*Temperature))*&
-          (1/(EdgeDipDistance(j)+prm%minDipDistance(j)))
-       DotRhoEdgeDipClimb = &
-          (4.0_pReal*ClimbVelocity(j)*stt%rhoEdgeDip(j,of))/(EdgeDipDistance(j)-prm%minDipDistance(j))
-     endif
- 
-     !* Edge dislocation density rate of change
      dot%rhoEdge(j,of) = abs(dot%accshear_slip(j,of))/(prm%burgers(j)*mse%mfp(j,of)) & ! multiplication
                        - DotRhoDipFormation(j) &
                        - ((2.0_pReal*prm%minDipDistance(j))/prm%burgers(j))*&
         stt%rhoEdge(j,of)*abs(dot%accshear_slip(j,of)) !* Spontaneous annihilation of 2 single edge dislocations
  
-     !* Edge dislocation dipole density rate of change
      dot%rhoEdgeDip(j,of) = DotRhoDipFormation(j) &
                           - ((2.0_pReal*prm%minDipDistance(j))/prm%burgers(j))*&
         stt%rhoEdgeDip(j,of)*abs(dot%accshear_slip(j,of)) & !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
-                          - DotRhoEdgeDipClimb
+                          - DotRhoEdgeDipClimb(j)
 
  
    enddo
