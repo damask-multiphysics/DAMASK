@@ -446,8 +446,6 @@ end subroutine plastic_disloUCLA_init
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_disloUCLA_microstructure(temperature,ipc,ip,el)
- use math, only: &
-   pi
  use material, only: &
    phase_plasticityInstance, &
    phaseAt, phasememberAt, &
@@ -463,34 +461,27 @@ subroutine plastic_disloUCLA_microstructure(temperature,ipc,ip,el)
 
  integer(pInt) :: &
    instance, &
-   ns,s, &
+   s, &
    of
  real(pReal), dimension(plastic_disloUCLA_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
-  invLambdaSlip
- !* Shortened notation
+  invLambdaSlip ! 1/mean free distance between 2 forest dislocations seen by a moving dislocation
+
  of = phasememberAt(ipc,ip,el)
  instance = phase_plasticityInstance(phaseAt(ipc,ip,el))
- ns = plastic_disloUCLA_totalNslip(instance)
-
 
  associate(prm => param(instance), stt => state(instance),mse => microstructure(instance))
- !* 1/mean free distance between 2 forest dislocations seen by a moving dislocation
- forall (s = 1_pInt:ns) &
-   invLambdaSlip(s) = &
-     sqrt(dot_product((stt%rhoEdge(1_pInt:ns,of)+stt%rhoEdgeDip(1_pInt:ns,of)),&
-                      plastic_disloUCLA_forestProjectionEdge(1:ns,s,instance)))/ &
-     prm%Clambda(s)
  
- !* mean free path between 2 obstacles seen by a moving dislocation
-
+ forall (s = 1_pInt:prm%totalNslip) &
+   invLambdaSlip(s) = sqrt(dot_product(stt%rhoEdge(:,of)+stt%rhoEdgeDip(:,of), &
+                                       plastic_disloUCLA_forestProjectionEdge(:,s,instance))) &
+                    / prm%Clambda(s)
+ 
  mse%mfp(:,of) = prm%grainSize/(1.0_pReal+prm%grainSize*invLambdaSlip)
 
- !* threshold stress for dislocation motion
- forall (s = 1_pInt:ns) &
-   mse%threshold_stress(s,of) = &
-     prm%mu*prm%burgers(s)*&
-     sqrt(dot_product(stt%rhoEdge(1_pInt:ns,of)+stt%rhoEdgeDip(1_pInt:ns,of),&
-                      prm%interaction_SlipSlip(s,1:ns)))
+ forall (s = 1_pInt:prm%totalNslip) &
+   mse%threshold_stress(s,of) = prm%mu*prm%burgers(s) &
+                              * sqrt(dot_product(stt%rhoEdge(:,of)+stt%rhoEdgeDip(:,of), &
+                                                 prm%interaction_SlipSlip(s,:)))
  end associate
 
 
@@ -518,7 +509,6 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,ipc,ip,el
  real(pReal), dimension(plastic_disloUCLA_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    gdot_slip_pos,gdot_slip_neg,tau_slip_pos,tau_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg
    
- !* Shortened notation
  of = phasememberAt(ipc,ip,el)
  instance  = phase_plasticityInstance(phaseAt(ipc,ip,el))
  associate(prm => param(instance))
@@ -598,20 +588,14 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
    DotRhoEdgeDipClimb = (4.0_pReal*ClimbVelocity*stt%rhoEdgeDip(:,of))/(EdgeDipDistance-prm%minDipDistance)
  end where
 
- do j = 1_pInt, prm%totalNslip
- 
-     dot%rhoEdge(j,of) = abs(dot%accshear_slip(j,of))/(prm%burgers(j)*mse%mfp(j,of)) & ! multiplication
-                       - DotRhoDipFormation(j) &
-                       - ((2.0_pReal*prm%minDipDistance(j))/prm%burgers(j))*&
-        stt%rhoEdge(j,of)*abs(dot%accshear_slip(j,of)) !* Spontaneous annihilation of 2 single edge dislocations
- 
-     dot%rhoEdgeDip(j,of) = DotRhoDipFormation(j) &
-                          - ((2.0_pReal*prm%minDipDistance(j))/prm%burgers(j))*&
-        stt%rhoEdgeDip(j,of)*abs(dot%accshear_slip(j,of)) & !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
-                          - DotRhoEdgeDipClimb(j)
+ dot%rhoEdge(:,of) = abs(dot%accshear_slip(:,of))/(prm%burgers*mse%mfp(:,of)) & ! multiplication
+                   - DotRhoDipFormation &
+                   - ((2.0_pReal*prm%minDipDistance)/prm%burgers)*stt%rhoEdge(:,of)*abs(dot%accshear_slip(:,of)) !* Spontaneous annihilation of 2 single edge dislocations
 
- 
-   enddo
+ dot%rhoEdgeDip(:,of) = DotRhoDipFormation &
+                      - ((2.0_pReal*prm%minDipDistance)/prm%burgers)* stt%rhoEdgeDip(:,of)*abs(dot%accshear_slip(:,of)) & !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
+                      - DotRhoEdgeDipClimb
+
 end associate
  
 end subroutine plastic_disloUCLA_dotState
