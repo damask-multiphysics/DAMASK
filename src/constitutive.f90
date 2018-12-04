@@ -164,7 +164,7 @@ subroutine constitutive_init()
  if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call plastic_phenopowerlaw_init
  if (any(phase_plasticity == PLASTICITY_KINEHARDENING_ID)) call plastic_kinehardening_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call plastic_dislotwin_init(FILEUNIT)
- if (any(phase_plasticity == PLASTICITY_DISLOUCLA_ID))     call plastic_disloucla_init(FILEUNIT)
+ if (any(phase_plasticity == PLASTICITY_DISLOUCLA_ID))     call plastic_disloucla_init
  if (any(phase_plasticity == PLASTICITY_NONLOCAL_ID)) then
   call plastic_nonlocal_init(FILEUNIT)
   call plastic_nonlocal_stateInit()
@@ -530,8 +530,9 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, S6, Fi, ipc, ip, e
      call plastic_dislotwin_LpAndItsTangent       (Lp,dLp_dMp,Mp,temperature(ho)%p(tme),instance,of)
 
    case (PLASTICITY_DISLOUCLA_ID) plasticityType
-     call plastic_disloucla_LpAndItsTangent       (Lp,dLp_dMp,Mp, &
-                                                   temperature(ho)%p(tme), ipc,ip,el)
+     of = phasememberAt(ipc,ip,el)
+     instance = phase_plasticityInstance(material_phase(ipc,ip,el))
+     call plastic_disloucla_LpAndItsTangent       (Lp,dLp_dMp,Mp,temperature(ho)%p(tme),instance,of)
 
  end select plasticityType
 
