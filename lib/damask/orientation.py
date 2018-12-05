@@ -72,15 +72,13 @@ class Quaternion:
 
     def __pow__(self, exponent):
       """Power"""
-      Q = Quaternion()
       omega = math.acos(self.q)
-      Q.q =          math.cos(exponent*omega)
-      Q.p = self.p * math.sin(exponent*omega)/math.sin(omega)
-      return Q
+      return self.__class__(q=         math.cos(exponent*omega),
+                            p=self.p * math.sin(exponent*omega)/math.sin(omega))
 
     def __ipow__(self, exponent):
       """In-place power"""
-      omega = math.acos(self.q[0])
+      omega = math.acos(self.q)
       self.q  = math.cos(exponent*omega)
       self.p *= math.sin(exponent*omega)/math.sin(omega)
       return self
@@ -94,9 +92,17 @@ class Quaternion:
                                 p=self.q*other.p + other.q*self.p + P * np.cross(self.p,other.p))
       except: pass
       try:                                                         # vector (perform passive rotation)
-          return  (self.q*self.q - np.dot(self.p,self.p)) * np.array(other[:3]) \
-                 + 2.0*np.dot(self.p,other[:3])           * self.p \
-                 + 2.0*P*self.q                           * np.cross(self.p,other[:3])
+          ( x, y, z) = self.p
+          (Vx,Vy,Vz) = other[0:3]
+          A = self.q*self.q - np.dot(self.p,self.p)
+          B = 2.0 * (x*Vx + y*Vy + z*Vz)
+          C = 2.0 * P*self.q
+
+          return np.array([
+            A*Vx + B*x + C*(y*Vz - z*Vy),
+            A*Vy + B*y + C*(z*Vx - x*Vz),
+            A*Vz + B*z + C*(x*Vy - y*Vx),
+            ])
       except: pass
       try:                                                        # scalar
           return self.__class__(q=self.q*other,
