@@ -855,7 +855,7 @@ class Orientation:
       M = closest.quaternion.asM() * n if i == 0 else M + closest.quaternion.asM() * n              # noqa add (multiples) of this orientation to average noqa
     eig, vec = np.linalg.eig(M/N)
 
-    return Orientation(quaternion = Quaternion(quatArray = np.real(vec.T[eig.argmax()])),
+    return Orientation(quaternion = Quaternion(quat = np.real(vec.T[eig.argmax()])),
                        symmetry = reference.symmetry.lattice)
 
 
