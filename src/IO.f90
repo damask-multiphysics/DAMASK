@@ -684,7 +684,11 @@ function IO_stringValue(string,chunkPos,myChunk,silent)
 
  logical                                                  :: warn
 
- warn = merge(silent,.false.,present(silent))
+ if (present(silent)) then
+   warn = silent
+ else
+   warn = .false.
+ endif
 
  IO_stringValue = ''
  valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1_pInt) then
