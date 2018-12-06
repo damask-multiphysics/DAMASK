@@ -158,12 +158,12 @@ Post_AverageDown:
     - master
     - release
 
-Post_General:
-  stage: postprocessing
-  script: PostProcessing/test.py
-  except:
-    - master
-    - release
+#Post_General:
+#  stage: postprocessing
+#  script: PostProcessing/test.py
+#  except:
+#    - master
+#    - release
 
 Post_GeometryReconstruction:
   stage: postprocessing
