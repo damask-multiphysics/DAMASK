@@ -258,7 +258,7 @@ for name in filenames:
 
             if len(grains) > 0:                                                                     # check immediate neighborhood first
               cos_disorientations = np.array([o.disorientation(orientations[grainID],
-                                                               SST = False)[0].quaternion.w \
+                                                               SST = False)[0].quaternion.q \
                                               for grainID in grains])                               # store disorientation per grainID
               closest_grain = np.argmax(cos_disorientations)                                        # grain among grains with closest orientation to myself
               match = 'local'
@@ -269,7 +269,7 @@ for name in filenames:
 
               if len(grains) > 0:
                 cos_disorientations = np.array([o.disorientation(orientations[grainID],
-                                                                 SST = False)[0].quaternion.w \
+                                                                 SST = False)[0].quaternion.q \
                                                 for grainID in grains])                             # store disorientation per grainID
                 closest_grain = np.argmax(cos_disorientations)                                      # grain among grains with closest orientation to myself
                 match = 'global'

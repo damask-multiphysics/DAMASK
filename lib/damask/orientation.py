@@ -62,8 +62,7 @@ class Quaternion:
 
     def __copy__(self):
       """Copy"""
-      Q = Quaternion(q=self.q,p=self.p)
-      return Q
+      return self.__class__(q=self.q,p=self.p.copy())
 
     copy = __copy__
 
@@ -73,15 +72,13 @@ class Quaternion:
 
     def __pow__(self, exponent):
       """Power"""
-      Q = Quaternion()
       omega = math.acos(self.q)
-      Q.q =          math.cos(exponent*omega)
-      Q.p = self.p * math.sin(exponent*omega)/math.sin(omega)
-      return Q
+      return self.__class__(q=         math.cos(exponent*omega),
+                            p=self.p * math.sin(exponent*omega)/math.sin(omega))
 
     def __ipow__(self, exponent):
       """In-place power"""
-      omega = math.acos(self.q[0])
+      omega = math.acos(self.q)
       self.q  = math.cos(exponent*omega)
       self.p *= math.sin(exponent*omega)/math.sin(omega)
       return self
@@ -91,21 +88,25 @@ class Quaternion:
       # Rowenhorst_etal2015 MSMSE: value of P is selected as -1
       P = -1.0
       try:                                                          # quaternion
-          Q = Quaternion()
-          Q.q = self.q*other.q - np.dot(self.p,other.p)
-          Q.p = self.q*other.p + other.q*self.p + P * np.cross(self.p,other.p)
-          return Q
+          return self.__class__(q=self.q*other.q - np.dot(self.p,other.p),
+                                p=self.q*other.p + other.q*self.p + P * np.cross(self.p,other.p))
       except: pass
       try:                                                         # vector (perform passive rotation)
-          return  (self.q*self.q - np.dot(self.p,self.p)) * np.array(other[:3]) \
-                 + 2.0*np.dot(self.p,other[:3])           * self.p \
-                 + 2.0*P*self.q                           * np.cross(self.p,other[:3])
+          ( x, y, z) = self.p
+          (Vx,Vy,Vz) = other[0:3]
+          A = self.q*self.q - np.dot(self.p,self.p)
+          B = 2.0 * (x*Vx + y*Vy + z*Vz)
+          C = 2.0 * P*self.q
+
+          return np.array([
+            A*Vx + B*x + C*(y*Vz - z*Vy),
+            A*Vy + B*y + C*(z*Vx - x*Vz),
+            A*Vz + B*z + C*(x*Vy - y*Vx),
+            ])
       except: pass
       try:                                                        # scalar
-          Q = self.copy()
-          Q.q *= other
-          Q.p *= other
-          return Q
+          return self.__class__(q=self.q*other,
+                                p=self.p*other)
       except:
           return self.copy()
 
@@ -122,9 +123,8 @@ class Quaternion:
     def __div__(self, other):
       """Division"""
       if isinstance(other, (int,float)):
-        q = self.q / other
-        p = self.p / other
-        return self.__class__(q=q,p=p)
+        return self.__class__(q=self.q / other,
+                              p=self.p / other)
       else:
           return NotImplemented
 
@@ -138,9 +138,8 @@ class Quaternion:
     def __add__(self, other):
       """Addition"""
       if isinstance(other, Quaternion):
-        q = self.q + other.q
-        p = self.p + other.p
-        return self.__class__(q=q,p=p)
+        return self.__class__(q=self.q + other.q,
+                              p=self.p + other.p)
       else:
           return NotImplemented
 
@@ -154,12 +153,10 @@ class Quaternion:
     def __sub__(self, other):
       """Subtraction"""
       if isinstance(other, Quaternion):
-          Q = self.copy()
-          Q.q -= other.q
-          Q.p -= other.p
-          return Q
+          return self.__class__(q=self.q - other.q,
+                                p=self.p - other.p)
       else:
-          return self.copy()
+          return NotImplemented
 
     def __isub__(self, other):
       """In-place subtraction"""
@@ -190,7 +187,8 @@ class Quaternion:
 
     def __cmp__(self,other):
       """Linear ordering"""
-      return (self.Rodrigues()>other.Rodrigues()) - (self.Rodrigues()<other.Rodrigues())
+      return (1 if np.linalg.norm(self.asRodrigues()) > np.linalg.norm(other.asRodrigues()) else 0) \
+           - (1 if np.linalg.norm(self.asRodrigues()) < np.linalg.norm(other.asRodrigues()) else 0)
 
     def magnitude_squared(self):
       return self.q ** 2 + np.dot(self.p,self.p)
@@ -203,7 +201,8 @@ class Quaternion:
     def normalize(self):
       d = self.magnitude()
       if d > 0.0:
-          self /= d
+          self.q /= d
+          self.p /= d
       return self
 
     def conjugate(self):
@@ -322,9 +321,11 @@ class Quaternion:
     @classmethod
     def fromRodrigues(cls, rodrigues):
       if not isinstance(rodrigues, np.ndarray): rodrigues = np.array(rodrigues)
-      halfangle = math.atan(np.linalg.norm(rodrigues))
+      norm = np.linalg.norm(rodrigues)
+      halfangle = math.atan(norm)
+      s = math.sin(halfangle)
       c = math.cos(halfangle)
-      return cls(q=c,p=rodrigues/c)
+      return cls(q=c,p=s*rodrigues/norm)
 
 
     @classmethod
@@ -860,7 +861,7 @@ class Orientation:
       M = closest.quaternion.asM() * n if i == 0 else M + closest.quaternion.asM() * n              # noqa add (multiples) of this orientation to average noqa
     eig, vec = np.linalg.eig(M/N)
 
-    return Orientation(quaternion = Quaternion(quatArray = np.real(vec.T[eig.argmax()])),
+    return Orientation(quaternion = Quaternion(quat = np.real(vec.T[eig.argmax()])),
                        symmetry = reference.symmetry.lattice)
 
 
