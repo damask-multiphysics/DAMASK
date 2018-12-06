@@ -191,7 +191,9 @@ recursive function IO_recursiveRead(fileName,cnt) result(fileContent)
     l,i, &
     myStat
 
-  if (merge(cnt,0_pInt,present(cnt))>10_pInt) call IO_error(106_pInt,ext_msg=trim(fileName))
+  if (present(cnt)) then
+    if (cnt>10_pInt) call IO_error(106_pInt,ext_msg=trim(fileName))
+  endif
 
 !--------------------------------------------------------------------------------------------------
 ! read data as stream
