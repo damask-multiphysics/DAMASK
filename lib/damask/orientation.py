@@ -311,10 +311,12 @@ class Quaternion:
         randomSeed = int(binascii.hexlify(os.urandom(4)),16)
       np.random.seed(randomSeed)
       r = np.random.random(3)
-      w = math.cos(2.0*math.pi*r[0])*math.sqrt(r[2])
-      x = math.sin(2.0*math.pi*r[1])*math.sqrt(1.0-r[2])
-      y = math.cos(2.0*math.pi*r[1])*math.sqrt(1.0-r[2])
-      z = math.sin(2.0*math.pi*r[0])*math.sqrt(r[2])
+      A = math.sqrt(max(0.0,r[2]))
+      B = math.sqrt(max(0.0,1.0-r[2]))
+      w = math.cos(2.0*math.pi*r[0])*A
+      x = math.sin(2.0*math.pi*r[1])*B
+      y = math.cos(2.0*math.pi*r[1])*B
+      z = math.sin(2.0*math.pi*r[0])*A
       return cls(quat=[w,x,y,z])
 
 
@@ -372,10 +374,10 @@ class Quaternion:
 
       # Rowenhorst_etal2015 MSMSE: value of P is selected as -1
       P = -1.0
-      w =  0.5*math.sqrt(1.+m[0,0]+m[1,1]+m[2,2])
-      x = P*0.5*math.sqrt(1.+m[0,0]-m[1,1]-m[2,2])
-      y = P*0.5*math.sqrt(1.-m[0,0]+m[1,1]-m[2,2])
-      z = P*0.5*math.sqrt(1.-m[0,0]-m[1,1]+m[2,2])
+      w =   0.5*math.sqrt(max(0.0,1.0+m[0,0]+m[1,1]+m[2,2]))
+      x = P*0.5*math.sqrt(max(0.0,1.0+m[0,0]-m[1,1]-m[2,2]))
+      y = P*0.5*math.sqrt(max(0.0,1.0-m[0,0]+m[1,1]-m[2,2]))
+      z = P*0.5*math.sqrt(max(0.0,1.0-m[0,0]-m[1,1]+m[2,2]))
 
       x *= -1 if m[2,1] < m[1,2] else 1
       y *= -1 if m[0,2] < m[2,0] else 1
@@ -668,7 +670,7 @@ class Symmetry:
     if color:                                                                                       # have to return color array
       if inSST:
         rgb = np.power(theComponents/np.linalg.norm(theComponents),0.5)                             # smoothen color ramps
-        rgb = np.minimum(np.ones(3,dtype=float),rgb)                                                        # limit to maximum intensity
+        rgb = np.minimum(np.ones(3,dtype=float),rgb)                                                # limit to maximum intensity
         rgb /= max(rgb)                                                                             # normalize to (HS)V = 1
       else:
         rgb = np.zeros(3,dtype=float)
