@@ -30,7 +30,9 @@ module prec
 
  integer(pInt), allocatable, dimension(:) :: realloc_lhs_test
  
- type, public :: group_float                                                                       !< variable length datatype used for storage of state
+ real(pReal), parameter, public :: epsijk = -1.0_pReal                                              !< parameter for orientation conversion. ToDo: Better place?
+
+ type, public :: group_float                                                                        !< variable length datatype used for storage of state
    real(pReal), dimension(:), pointer :: p
  end type group_float
 
