@@ -257,7 +257,8 @@ class Quaternion:
         ])
 
     def asAngleAxis(self,
-                    degrees = False):
+                    degrees = False,
+                    flat = False):
       if self.q > 1.:
           self.normalize()
 
@@ -270,8 +271,12 @@ class Quaternion:
         angle *= -1.
         s     *= -1.
 
-      return (np.degrees(angle) if degrees else angle,
-              np.array([1.0, 0.0, 0.0] if np.abs(angle) < 1e-6 else self.p / s))
+      if flat:
+        return np.hstack((np.degrees(angle) if degrees else angle,
+                          np.array([1.0, 0.0, 0.0] if np.abs(angle) < 1e-6 else self.p / s)))
+      else:
+        return (np.degrees(angle) if degrees else angle,
+                np.array([1.0, 0.0, 0.0] if np.abs(angle) < 1e-6 else self.p / s))
 
     def asRodrigues(self):
       return np.inf*np.ones(3) if self.q == 0.0 else self.p/self.q
@@ -749,8 +754,9 @@ class Orientation:
   rodrigues = property(asRodrigues)
 
   def asAngleAxis(self,
-                  degrees = False):
-    return self.quaternion.asAngleAxis(degrees)
+                  degrees = False,
+                  flat = False):
+    return self.quaternion.asAngleAxis(degrees,flat)
   angleAxis = property(asAngleAxis)
 
   def asMatrix(self):
