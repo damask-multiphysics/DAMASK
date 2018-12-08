@@ -34,6 +34,7 @@ module rotations
  type, public :: rotation
    type(quaternion), private :: q
    contains
+     procedure, public :: asQuaternion
      procedure, public :: asEulerAngles
      procedure, public :: asAxisAnglePair
      procedure, public :: asRodriguesFrankVector
@@ -75,6 +76,15 @@ type(rotation) function init(eu,ax,om,qu,cu,ho,ro)
   endif
 
 end function
+
+function asQuaternion(this)
+ class(rotation), intent(in) :: this
+ real(pReal), dimension(4)     :: asQuaternion
+
+ asQuaternion = [this%q%w, this%q%x, this%q%y, this%q%z]
+
+end function asQuaternion
+
 
 function asEulerAngles(this)
  class(rotation), intent(in) :: this
