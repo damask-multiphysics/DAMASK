@@ -1797,7 +1797,6 @@ function math_sampleGaussOri(center,FWHM)
    math_sampleGaussOri = math_RtoEuler(math_mul33x33(R,math_EulerToR(center)))
  endif
 
-
 end function math_sampleGaussOri
 
 
@@ -1870,11 +1869,11 @@ real(pReal) function math_sampleGaussVar(meanvalue, stddev, width)
    tol_math_check
 
  implicit none
- real(pReal), intent(in) ::            meanvalue, &      ! meanvalue of gauss distribution
-                                       stddev            ! standard deviation of gauss distribution
- real(pReal), intent(in), optional ::  width             ! width of considered values as multiples of standard deviation
- real(pReal), dimension(2) ::          rnd               ! random numbers
- real(pReal) ::                        scatter, &        ! normalized scatter around meanvalue
+ real(pReal), intent(in) ::            meanvalue, &                                                 ! meanvalue of gauss distribution
+                                       stddev                                                       ! standard deviation of gauss distribution
+ real(pReal), intent(in), optional ::  width                                                        ! width of considered values as multiples of standard deviation
+ real(pReal), dimension(2) ::          rnd                                                          ! random numbers
+ real(pReal) ::                        scatter, &                                                   ! normalized scatter around meanvalue
                                        myWidth
 
  if (abs(stddev) < tol_math_check) then
