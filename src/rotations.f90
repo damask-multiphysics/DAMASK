@@ -33,24 +33,24 @@ module rotations
  implicit none
  type, public :: rotation
    type(quaternion), private :: q
- contains
-   procedure, public :: asEulerAngles          => asEulerAngles
-   procedure, public :: asAxisAnglePair        => asAxisAnglePair
-   procedure, public :: asRodriguesFrankVector => asRodriguesFrankVector
-   procedure, public :: asRotationMatrix       => asRotationMatrix
-   procedure, public :: rotVector
-   procedure, public :: rotTensor
-   end type
+   contains
+     procedure, public :: asEulerAngles
+     procedure, public :: asAxisAnglePair
+     procedure, public :: asRodriguesFrankVector
+     procedure, public :: asRotationMatrix
+     procedure, public :: rotVector
+     procedure, public :: rotTensor
+ end type
 
  interface rotation
-     module procedure init
+   module procedure :: init
  end interface
 
 contains
 
 type(rotation) function init(eu,ax,om,qu,cu,ho,ro)
   real(pReal),      intent(in), optional, dimension(3)   :: eu, cu, ho
-  real(pReal),      intent(in), optional, dimension(4)   :: qu, ax, ro
+  real(pReal),      intent(in), optional, dimension(4)   :: ax, qu, ro
   real(pReal),      intent(in), optional, dimension(3,3) :: om
  
   if (count([present(eu),present(ax),present(om),present(qu),&
@@ -118,7 +118,6 @@ function asHomochoric(this)
  asHomochoric = qu2ho(this%q)
 
 end function asHomochoric
-
 
 !--------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
@@ -239,7 +238,9 @@ end function eu2ax
 !> @brief Euler angles to Rodrigues vector
 !--------------------------------------------------------------------------
 pure function eu2ro(eu) result(ro)
- use, intrinsic :: IEEE_ARITHMETIC
+ use, intrinsic :: IEEE_ARITHMETIC, only: &
+   IEEE_value, &
+   IEEE_positive_inf
  use math, only: &
    PI
 
