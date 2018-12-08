@@ -27,10 +27,9 @@
 ! ###################################################################
 
 module quaternions
- 
  use prec
- implicit none
 
+ implicit none
  public
  type, public :: quaternion
    real(pReal) :: w = 0.0_pReal
