@@ -10,6 +10,29 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 # --------------------------------------------------------------------
+#                     convention conformity checks
+# --------------------------------------------------------------------
+
+def check_Eulers(eulers):
+  if np.any(eulers < 0.0) or np.any(eulers > 2.0*math.pi) or eulers[1] > math.pi:      # Euler angles within valid range?
+    raise ValueError('Euler angles outside of [0..2π],[0..π],[0..2π].\n{} {} {}.'.format(*eulers))
+  return eulers
+
+def check_quaternion(q):
+  if q.q < 0.0:                                                                 # positive first quaternion component?
+    raise ValueError('quaternion has negative first component.\n{}'.format(q))
+  return q
+ 
+def check_matrix(M):
+  if abs(1.0-np.linalg.det(M)) > 1e-8:                                          # proper rotation?
+    raise ValueError('matrix is not a proper rotation.\n{}'.format(M))
+  if    abs(np.dot(M[0],M[1]))    > 1e-8 \
+     or abs(np.dot(M[1],M[2]))    > 1e-8 \
+     or abs(np.dot(M[2],M[0]))    > 1e-8:                                       # all orthogonal?
+    raise ValueError('matrix is not orthogonal.\n{}'.format(M))
+  return M
+
+# --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
 
@@ -103,6 +126,7 @@ if np.sum(input) != 1: parser.error('needs exactly one input format.')
                          (options.matrix,9,'matrix'),
                          (options.quaternion,4,'quaternion'),
                         ][np.where(input)[0][0]]                                                    # select input label that was requested
+
 toRadians = math.pi/180.0 if options.degrees else 1.0                                               # rescale degrees to radians
 r = damask.Quaternion.fromAngleAxis(toRadians*options.crystalrotation[0],options.crystalrotation[1:]) # crystal frame rotation
 R = damask.Quaternion.fromAngleAxis(toRadians*options.    labrotation[0],options.    labrotation[1:]) #     lab frame rotation
@@ -149,18 +173,21 @@ for name in filenames:
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     if   inputtype == 'eulers':
-      o = damask.Orientation(Eulers   = np.array(list(map(float,table.data[column:column+3])))*toRadians)
+      
+      o = damask.Orientation(Eulers = check_Eulers(np.array(list(map(float,table.data[column:column+3])))*toRadians))
     elif inputtype == 'rodrigues':
-      o = damask.Orientation(Rodrigues= np.array(list(map(float,table.data[column:column+3]))))
+      o = damask.Orientation(Rodrigues = np.array(list(map(float,table.data[column:column+3]))))
     elif inputtype == 'matrix':
-      o = damask.Orientation(matrix   = np.array(list(map(float,table.data[column:column+9]))).reshape(3,3))
+      
+      o = damask.Orientation(matrix = check_matrix(np.array(list(map(float,table.data[column:column+9]))).reshape(3,3)))
     elif inputtype == 'frame':
       M = np.array(list(map(float,table.data[column[0]:column[0]+3] + \
                                   table.data[column[1]:column[1]+3] + \
                                   table.data[column[2]:column[2]+3]))).reshape(3,3).T
-      o = damask.Orientation(matrix   = M/np.linalg.norm(M,axis=0))
+      o = damask.Orientation(matrix = check_matrix(M/np.linalg.norm(M,axis=0)))
     elif inputtype == 'quaternion':
-      o = damask.Orientation(quaternion = np.array(list(map(float,table.data[column:column+4]))))
+      
+      o = damask.Orientation(quaternion = check_quaternion(np.array(list(map(float,table.data[column:column+4])))))
 
     o.quaternion = r*o.quaternion*R                                                                 # apply additional lab and crystal frame rotations
 
