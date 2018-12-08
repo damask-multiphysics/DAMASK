@@ -87,11 +87,11 @@ class Quaternion:
       """Multiplication"""
       # Rowenhorst_etal2015 MSMSE: value of P is selected as -1
       P = -1.0
-      try:                                                          # quaternion
+      try:                                                           # quaternion
           return self.__class__(q=self.q*other.q - np.dot(self.p,other.p),
                                 p=self.q*other.p + other.q*self.p + P * np.cross(self.p,other.p))
       except: pass
-      try:                                                         # vector (perform passive rotation)
+      try:                                                           # vector (perform passive rotation)
           ( x, y, z) = self.p
           (Vx,Vy,Vz) = other[0:3]
           A = self.q*self.q - np.dot(self.p,self.p)
@@ -104,7 +104,7 @@ class Quaternion:
             A*Vz + B*z + C*(x*Vy - y*Vx),
             ])
       except: pass
-      try:                                                        # scalar
+      try:                                                           # scalar
           return self.__class__(q=self.q*other,
                                 p=self.p*other)
       except:
@@ -114,7 +114,7 @@ class Quaternion:
       """In-place multiplication"""
       # Rowenhorst_etal2015 MSMSE: value of P is selected as -1
       P = -1.0
-      try:                                                        # Quaternion
+      try:                                                           # Quaternion
           self.q = self.q*other.q - np.dot(self.p,other.p)
           self.p = self.q*other.p + other.q*self.p + P * np.cross(self.p,other.p)
       except: pass
@@ -237,7 +237,7 @@ class Quaternion:
     def asList(self):
       return [self.q]+list(self.p)
 
-    def asM(self):                                                # to find Averaging Quaternions (see F. Landis Markley et al.)
+    def asM(self):                                                   # to find Averaging Quaternions (see F. Landis Markley et al.)
       return np.outer(self.asList(),self.asList())
       
     def asMatrix(self):
@@ -300,7 +300,7 @@ class Quaternion:
                            math.atan2((P*self.q*self.p[1]+self.p[0]*self.p[2])/chi,( self.p[1]*self.p[2]-P*self.q*self.p[0])/chi),
                           ])
 
-      eulers %= 2.0*math.pi
+      eulers %= 2.0*math.pi                                          # enforce positive angles
       return np.degrees(eulers) if degrees else eulers
 
 
