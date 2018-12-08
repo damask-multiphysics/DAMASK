@@ -513,8 +513,12 @@ character(len=65536) function getString(this,key,defaultVal,raw)
  type(tPartitionedStringList),  pointer                      :: item
  logical                                                     :: found, &
                                                                 whole
+ if (present(raw)) then
+   whole = raw
+ else
+   whole = .false.
+ endif
 
- whole = merge(raw,.false.,present(raw))                                                            ! whole string or white space splitting
  found = present(defaultVal)
  if (found) then
    getString = trim(defaultVal)
@@ -661,7 +665,11 @@ function getStrings(this,key,defaultVal,requiredShape,raw)
                                                              cumulative
 
  cumulative = (key(1:1) == '(' .and. key(len_trim(key):len_trim(key)) == ')')
- whole = merge(raw,.false.,present(raw))
+ if (present(raw)) then
+   whole = raw
+ else
+   whole = .false.
+ endif
  found = .false.
 
  item => this

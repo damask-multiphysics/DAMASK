@@ -191,7 +191,9 @@ recursive function IO_recursiveRead(fileName,cnt) result(fileContent)
     l,i, &
     myStat
 
-  if (merge(cnt,0_pInt,present(cnt))>10_pInt) call IO_error(106_pInt,ext_msg=trim(fileName))
+  if (present(cnt)) then
+    if (cnt>10_pInt) call IO_error(106_pInt,ext_msg=trim(fileName))
+  endif
 
 !--------------------------------------------------------------------------------------------------
 ! read data as stream
@@ -684,7 +686,11 @@ function IO_stringValue(string,chunkPos,myChunk,silent)
 
  logical                                                  :: warn
 
- warn = merge(silent,.false.,present(silent))
+ if (present(silent)) then
+   warn = silent
+ else
+   warn = .false.
+ endif
 
  IO_stringValue = ''
  valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1_pInt) then
