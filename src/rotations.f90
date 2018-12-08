@@ -39,43 +39,12 @@ module rotations
      procedure, public :: asAxisAnglePair
      procedure, public :: asRodriguesFrankVector
      procedure, public :: asRotationMatrix
+     procedure, public :: fromRotationMatrix
      procedure, public :: rotVector
      procedure, public :: rotTensor
- end type
-
- interface rotation
-   module procedure :: init
- end interface
+ end type rotation
 
 contains
-
-type(rotation) function init(eu,ax,om,qu,cu,ho,ro)
-  real(pReal),      intent(in), optional, dimension(3)   :: eu, cu, ho
-  real(pReal),      intent(in), optional, dimension(4)   :: ax, qu, ro
-  real(pReal),      intent(in), optional, dimension(3,3) :: om
- 
-  if (count([present(eu),present(ax),present(om),present(qu),&
-             present(cu),present(ho),present(ro)]) > 1_pInt) write(6,*) 'invalid'
-
-  if (present(eu))  then
-    init%q = eu2qu(eu)
-  elseif (present(ax)) then
-    init%q = ax2qu(ax)
-  elseif (present(om)) then
-    init%q = om2qu(om)
-  elseif (present(qu)) then
-    init%q = quaternion(qu)
-  elseif (present(cu)) then
-    init%q = cu2qu(cu)
-  elseif (present(ho)) then
-    init%q = ho2qu(ho)
-  elseif (present(ro)) then
-    init%q = ro2qu(ro)
-  else
-    init%q = quaternion([1.0_pReal,0.0_pReal,0.0_pReal,0.0_pReal])
-  endif
-
-end function
 
 function asQuaternion(this)
  class(rotation), intent(in) :: this
@@ -128,6 +97,16 @@ function asHomochoric(this)
  asHomochoric = qu2ho(this%q)
 
 end function asHomochoric
+
+
+subroutine fromRotationMatrix(this,om)
+ class(rotation), intent(out) :: this
+ real(pReal), dimension(3,3), intent(in)  :: om
+
+ this%q = om2qu(om)
+
+end subroutine
+
 
 !--------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
