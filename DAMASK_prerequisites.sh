@@ -119,6 +119,9 @@ for executable in mpirun mpiexec; do
   getDetails $executable '--version'
 done
 
+firstLevel "CMake"
+getDetails cmake --version
+
 firstLevel "Abaqus"
 cd installation/mods_Abaqus                                                                         # to have the right environment file
 for executable in abaqus abq2017 abq2018; do
