@@ -263,8 +263,8 @@ class Quaternion:
           self.normalize()
 
       s = math.sqrt(1. - self.q**2)
-      x = 2*self.q**2 - 1.
-      y = 2*self.q * s
+      x = 2.*self.q**2 - 1.
+      y = 2.*self.q * s
 
       angle = math.atan2(y,x)
       if angle < 0.0:
@@ -300,6 +300,7 @@ class Quaternion:
                            math.atan2((P*self.q*self.p[1]+self.p[0]*self.p[2])/chi,( self.p[1]*self.p[2]-P*self.q*self.p[0])/chi),
                           ])
 
+      eulers %= 2.0*math.pi
       return np.degrees(eulers) if degrees else eulers
 
 
