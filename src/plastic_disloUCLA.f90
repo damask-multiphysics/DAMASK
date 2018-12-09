@@ -26,9 +26,6 @@ module plastic_disloUCLA
    plastic_disloUCLA_totalNslip                                                                     !< total number of active slip systems for each instance
 
 
- real(pReal),                         dimension(:,:,:),       allocatable,         private :: &
-   plastic_disloUCLA_forestProjectionEdge                                                           !< matrix of forest projections of edge dislocations for each instance
-
  enum, bind(c)
    enumerator :: undefined_ID, &
      rho_ID, &
@@ -68,7 +65,6 @@ module plastic_disloUCLA
      kink_width, &                                                                   !< width of the kink pair
      omega, &                                                                        !< attempt frequency for kink pair nucleation
      tau_Peierls 
-
    real(pReal),                 allocatable, dimension(:,:) :: &
      interaction_SlipSlip, &                                                         !< slip resistance from slip activity
      forestProjectionEdge
@@ -191,7 +187,6 @@ subroutine plastic_disloUCLA_init()
 
 
  allocate(plastic_disloUCLA_totalNslip(maxNinstance),                          source=0_pInt)
-
 
  allocate(param(maxNinstance))
  allocate(state(maxNinstance))
@@ -355,6 +350,24 @@ subroutine plastic_disloUCLA_init()
 
    plasticState(p)%sizePostResults = sum(plastic_disloUCLA_sizePostResult(:,phase_plasticityInstance(p)))
 
+   allocate(prm%forestProjectionEdge(prm%totalNslip,prm%totalNslip),source = 0.0_pReal)
+   
+   i = 0_pInt
+   mySlipFamilies: do f = 1_pInt,size(prm%Nslip,1)
+     index_myFamily = sum(prm%Nslip(1:f-1_pInt))
+
+     slipSystemsLoop: do j = 1_pInt,prm%Nslip(f)
+       i = i + 1_pInt
+       do o = 1_pInt, size(prm%Nslip,1)
+         index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
+         do k = 1_pInt,prm%Nslip(o)                                   ! loop over (active) systems in other family (slip)
+           prm%forestProjectionEdge(index_myFamily+j,index_otherFamily+k) = &
+             abs(math_mul3x3(lattice_sn(:,sum(lattice_NslipSystem(1:f-1,p))+j,p), &
+                             lattice_st(:,sum(lattice_NslipSystem(1:o-1,p))+k,p)))
+       enddo; enddo
+     enddo slipSystemsLoop
+   enddo mySlipFamilies 
+
    offset_slip = 2_pInt*plasticState(p)%nSlip
    plasticState(p)%slipRate => &
      plasticState(p)%dotState(offset_slip+1:offset_slip+plasticState(p)%nSlip,1:NofMyPhase)
@@ -390,39 +403,7 @@ subroutine plastic_disloUCLA_init()
 
    plasticState(p)%state0 = plasticState(p)%state                                                 ! ToDo: this could be done centrally
    end associate
-
  enddo
-
-
- allocate(plastic_disloUCLA_forestProjectionEdge(maxval(plastic_disloUCLA_totalNslip),&
-                                                 maxval(plastic_disloUCLA_totalNslip),maxNinstance), &
-                                                                                       source=0.0_pReal)
-
- do p = 1_pInt, size(phase_plasticityInstance)
-   if (phase_plasticity(p) /= PLASTICITY_DISLOUCLA_ID) cycle
-   associate(prm => param(phase_plasticityInstance(p)), &
-             dot => dotState(phase_plasticityInstance(p)), &
-             stt => state(phase_plasticityInstance(p)), &
-             dst => dependentState(phase_plasticityInstance(p)))
-
-     mySlipFamilies: do f = 1_pInt,size(prm%Nslip,1)
-       index_myFamily = sum(prm%Nslip(1:f-1_pInt))                      ! index in truncated slip system list
-       mySlipSystems: do j = 1_pInt,prm%Nslip(f)
-
-       !* Calculation of forest projections for edge dislocations
-         otherSlipFamilies: do o = 1_pInt,size(prm%Nslip,1)
-           index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
-           otherSlipSystems: do k = 1_pInt,prm%Nslip(o)
-             plastic_disloUCLA_forestProjectionEdge(index_myFamily+j,index_otherFamily+k,phase_plasticityInstance(p)) = &
-               abs(math_mul3x3(lattice_sn(:,sum(lattice_NslipSystem(1:f-1,p))+j,p), &
-                               lattice_st(:,sum(lattice_NslipSystem(1:o-1,p))+k,p)))
-         enddo otherSlipSystems; enddo otherSlipFamilies
-
-       enddo mySlipSystems
-     enddo mySlipFamilies
-   end associate
-
-enddo
 
 end subroutine plastic_disloUCLA_init
 
@@ -444,7 +425,7 @@ subroutine plastic_disloUCLA_dependentState(instance,of)
 
  forall (i = 1_pInt:prm%totalNslip)
    invLambdaSlip(i) = sqrt(dot_product(stt%rhoEdge(:,of)+stt%rhoEdgeDip(:,of), &
-                                       plastic_disloUCLA_forestProjectionEdge(:,i,instance))) &
+                                       prm%forestProjectionEdge(:,i))) &
                     / prm%Clambda(i)
    dst%threshold_stress(i,of) = prm%mu*prm%burgers(i) &
                               * sqrt(dot_product(stt%rhoEdge(:,of)+stt%rhoEdgeDip(:,of), &
@@ -480,8 +461,8 @@ subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,instance,
  Lp = 0.0_pReal
  dLp_dMp = 0.0_pReal
 
- call kinetics(Mp,Temperature,instance,of, &
-                 gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
+ call kinetics(prm,stt,dst,Mp,Temperature,of, &
+               gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
  slipSystems: do i = 1_pInt, prm%totalNslip
    Lp = Lp + (gdot_slip_pos(i)+gdot_slip_neg(i))*prm%Schmid_slip(1:3,1:3,i)
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
@@ -527,7 +508,7 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
 
  associate(prm => param(instance), stt => state(instance),dot => dotState(instance), dst => dependentState(instance))
 
- call kinetics(Mp,Temperature,instance,of, &
+ call kinetics(prm,stt,dst,Mp,Temperature,of, &
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
 
  dot%whole(:,of) = 0.0_pReal
@@ -546,17 +527,17 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
    DotRhoDipFormation = merge(((2.0_pReal*EdgeDipDistance)/prm%burgers)* stt%rhoEdge(:,of)*abs(dot%accshear_slip(:,of)), &
                               0.0_pReal, &
                               prm%dipoleformation)
-   ClimbVelocity = ((3.0_pReal*prm%mu*VacancyDiffusion*prm%atomicVolume)/(2.0_pReal*pi*kB*Temperature)) &
+   ClimbVelocity = (3.0_pReal*prm%mu*VacancyDiffusion*prm%atomicVolume/(2.0_pReal*pi*kB*Temperature)) &
                  * (1.0_pReal/(EdgeDipDistance+prm%minDipDistance))
    DotRhoEdgeDipClimb = (4.0_pReal*ClimbVelocity*stt%rhoEdgeDip(:,of))/(EdgeDipDistance-prm%minDipDistance)
  end where
 
  dot%rhoEdge(:,of) = abs(dot%accshear_slip(:,of))/(prm%burgers*dst%mfp(:,of)) & ! multiplication
                    - DotRhoDipFormation &
-                   - ((2.0_pReal*prm%minDipDistance)/prm%burgers)*stt%rhoEdge(:,of)*abs(dot%accshear_slip(:,of)) !* Spontaneous annihilation of 2 single edge dislocations
+                   - (2.0_pReal*prm%minDipDistance)/prm%burgers*stt%rhoEdge(:,of)*abs(dot%accshear_slip(:,of)) !* Spontaneous annihilation of 2 single edge dislocations
 
  dot%rhoEdgeDip(:,of) = DotRhoDipFormation &
-                      - ((2.0_pReal*prm%minDipDistance)/prm%burgers)* stt%rhoEdgeDip(:,of)*abs(dot%accshear_slip(:,of)) & !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
+                      - (2.0_pReal*prm%minDipDistance)/prm%burgers* stt%rhoEdgeDip(:,of)*abs(dot%accshear_slip(:,of)) & !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
                       - DotRhoEdgeDipClimb
 
 end associate
@@ -592,7 +573,7 @@ function plastic_disloUCLA_postResults(Mp,Temperature,instance,of) result(postRe
    gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos, &
    gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg
 
- associate( prm => param(instance), stt => state(instance), dst => dependentState(instance))
+ associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
 
  postResults = 0.0_pReal
  c = 0_pInt
@@ -605,7 +586,7 @@ function plastic_disloUCLA_postResults(Mp,Temperature,instance,of) result(postRe
      case (rhoDip_ID)
        postResults(c+1_pInt:c+prm%totalNslip) = stt%rhoEdgeDip(1_pInt:prm%totalNslip,of)
      case (shearrate_ID,stressexponent_ID)
-       call kinetics(Mp,Temperature,instance,of, &
+       call kinetics(prm,stt,dst,Mp,Temperature,of, &
                      gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
 
        if    (prm%outputID(o) == shearrate_ID) then
@@ -685,12 +666,13 @@ instance,of
 
 
  do j = 1_pInt, prm%totalNslip
-
-   BoltzmannRatio = prm%H0kp(j)/(kB*Temperature)
-   DotGamma0 = stt%rhoEdge(j,of)*prm%burgers(j)*prm%v0(j)
-
    tau_slip_pos(j) = math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,j))
    tau_slip_neg(j) = math_mul33xx33(Mp,prm%nonSchmid_neg(1:3,1:3,j))
+ enddo
+
+ do j = 1_pInt, prm%totalNslip
+   BoltzmannRatio = prm%H0kp(j)/(kB*Temperature)
+   DotGamma0 = stt%rhoEdge(j,of)*prm%burgers(j)*prm%v0(j)
 
    significantPositiveTau: if((abs(tau_slip_pos(j))-dst%threshold_stress(j, of)) > tol_math_check) then
 
