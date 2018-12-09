@@ -29,20 +29,25 @@ parser.add_option('-d',
 parser.add_option('-s',
                   '--symmetry',
                   dest = 'symmetry',
-                  type = 'string', metavar = 'string',
+                  metavar = 'string',
                   help = 'crystal symmetry [%default]')
 parser.add_option('-q',
                   '--quaternion',
                   dest = 'quaternion',
-                  type = 'string', metavar = 'string',
+                  metavar = 'string',
                   help = 'label of quaternion')
 parser.add_option('-p',
                   '--pos', '--position',
                   dest = 'pos',
-                  type = 'string', metavar = 'string',
+                  metavar = 'string',
                   help = 'label of coordinates [%default]')
+parser.add_option('--quiet',
+                  dest='verbose',
+                  action = 'store_false',
+                  help = 'hide status bar (useful when piping to file)')
 
 parser.set_defaults(disorientation = 5,
+                    verbose = True,
                     quaternion = 'orientation',
                     symmetry = 'cubic',
                     pos      = 'pos',
@@ -111,7 +116,7 @@ for name in filenames:
   table.data_rewind()
   while table.data_read():                                                                          # read next data line of ASCII table
 
-    if Npoints > 100 and p%(Npoints//100) == 0:                                                     # report in 1% steps if possible and avoid modulo by zero
+    if options.verbose and Npoints > 100 and p%(Npoints//100) == 0:                                 # report in 1% steps if possible and avoid modulo by zero
       damask.util.print_progress(iteration=p,total=Npoints)
 
     o = damask.Orientation(quaternion = np.array(list(map(float,table.data[column:column+4]))),
@@ -160,6 +165,7 @@ for name in filenames:
 
   outputAlive = True
   p = 0
+  damask.util.print_progress(iteration=1,total=1)
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     table.data_append(1+packingMap[grainID[p]])                                                     # add (condensed) grain ID
     outputAlive = table.data_write()                                                                # output processed line
