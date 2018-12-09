@@ -852,7 +852,7 @@ print('\n')
 if options.nodalScalar:
   Npoints = stat['NumberOfNodes']
   for n in range(Npoints):
-    if Npoints > 100 and e%(Npoints//100) == 0:                                                         # report in 1% steps if possible and avoid modulo by zero
+    if Npoints > 100 and e%(Npoints//100) == 0:                                                     # report in 1% steps if possible and avoid modulo by zero
       damask.util.print_progress(iteration=n,total=Npoints,prefix='2/3: scanning nodes     ')
     myNodeID = p.node_id(n)
     myNodeCoordinates = [p.node(n).x, p.node(n).y, p.node(n).z]
@@ -862,27 +862,27 @@ if options.nodalScalar:
 
     # generate an expression that is only true for the locations specified by options.filter
     filter = substituteLocation(options.filter, [myElemID,myNodeID,myIpID,myGrainID], myNodeCoordinates)
-    if filter != '' and not eval(filter):                                                              # for all filter expressions that are not true:...
-      continue                                                                                         # ... ignore this data point and continue with next
+    if filter != '' and not eval(filter):                                                           # for all filter expressions that are not true:...
+      continue                                                                                      # ... ignore this data point and continue with next
 
     # --- group data locations
     # generate a unique key for a group of separated data based on the separation criterium for the location
     grp = substituteLocation('#'.join(options.sep), [myElemID,myNodeID,myIpID,myGrainID], myNodeCoordinates)
 
-    if grp not in index:                                                                               # create a new group if not yet present
+    if grp not in index:                                                                            # create a new group if not yet present
       index[grp] = groupCount
-      groups.append([[0,0,0,0,0.0,0.0,0.0]])                                                           # initialize with avg location
+      groups.append([[0,0,0,0,0.0,0.0,0.0]])                                                        # initialize with avg location
       groupCount += 1
 
     groups[index[grp]][0][:4] = mapIncremental('','unique',
                                                len(groups[index[grp]])-1,
                                                groups[index[grp]][0][:4],
-                                               [myElemID,myNodeID,myIpID,myGrainID])                   # keep only if unique average location
+                                               [myElemID,myNodeID,myIpID,myGrainID])                # keep only if unique average location
     groups[index[grp]][0][4:] = mapIncremental('','avg',
                                                len(groups[index[grp]])-1,
                                                groups[index[grp]][0][4:],
-                                               myNodeCoordinates)                                      # incrementally update average location
-    groups[index[grp]].append([myElemID,myNodeID,myIpID,myGrainID,0])                                  # append a new list defining each group member
+                                               myNodeCoordinates)                                   # incrementally update average location
+    groups[index[grp]].append([myElemID,myNodeID,myIpID,myGrainID,0])                               # append a new list defining each group member
     memberCount += 1
   print('\n')
 
@@ -1030,7 +1030,7 @@ for incCount,position in enumerate(locations):     # walk through locations
   Ngroups = len(groups)
   for j,group in enumerate(groups):
     f = incCount*Ngroups + j
-    if (Ngroups*Nincs) > 100 and f%((Ngroups*Nincs)//100) == 0:                                                       # report in 1% steps if possible and avoid modulo by zero
+    if (Ngroups*Nincs) > 100 and f%((Ngroups*Nincs)//100) == 0:                                     # report in 1% steps if possible and avoid modulo by zero
       damask.util.print_progress(iteration=f,total=Ngroups*Nincs,prefix='3/3: processing points  ')
     N = 0                                                                                           # group member counter
     for (e,n,i,g,n_local) in group[1:]:                                                             # loop over group members
