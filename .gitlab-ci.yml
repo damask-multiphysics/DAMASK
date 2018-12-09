@@ -158,12 +158,12 @@ Post_AverageDown:
     - master
     - release
 
-Post_General:
-  stage: postprocessing
-  script: PostProcessing/test.py
-  except:
-    - master
-    - release
+#Post_General:
+#  stage: postprocessing
+#  script: PostProcessing/test.py
+#  except:
+#    - master
+#    - release
 
 Post_GeometryReconstruction:
   stage: postprocessing
@@ -364,12 +364,12 @@ Phenopowerlaw_singleSlip:
     - master
     - release
 
-TextureComponents:
-  stage: spectral
-  script: TextureComponents/test.py
-  except:
-    - master
-    - release
+#TextureComponents:
+#  stage: spectral
+#  script: TextureComponents/test.py
+#  except:
+#    - master
+#    - release
 
 
 ###################################################################################################

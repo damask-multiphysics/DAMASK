@@ -200,9 +200,9 @@ for name in filenames:
       if gID != -1 and gID not in alreadyChecked:                                                   # indexed point belonging to a grain not yet tested?
         alreadyChecked[gID] = True                                                                  # remember not to check again
         disorientation = o.disorientation(orientations[gID],SST = False)[0]                         # compare against other orientation
-        if disorientation.quaternion.w >  cos_disorientation:                                       # within threshold ...
+        if disorientation.quaternion.q >  cos_disorientation:                                       # within threshold ...
           candidates.append(gID)                                                                    # remember as potential candidate
-          if disorientation.quaternion.w >= bestDisorientation.w:                                   # ... and better than current best? 
+          if disorientation.quaternion.q >= bestDisorientation.q:                                   # ... and better than current best? 
             matched = True
             matchedID = gID                                                                         # remember that grain
             bestDisorientation = disorientation.quaternion
