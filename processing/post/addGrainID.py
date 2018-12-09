@@ -89,8 +89,7 @@ for name in filenames:
 # ------------------------------------------ assemble header ---------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.labels_append('grainID_{}@{:g}'.format('+'.join(options.quaternion),
-                                               options.disorientation))                        # report orientation source and disorientation
+  table.labels_append('grainID_{}@{:g}'.format(options.quaternion,options.disorientation))          # report orientation source and disorientation
   table.head_write()
 
 # ------------------------------------------ build KD tree -----------------------------------------
