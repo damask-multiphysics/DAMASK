@@ -92,10 +92,10 @@ for name in filenames:
       column = table.label_index(v)
       table.data[column:column+3] = q * np.array(list(map(float,table.data[column:column+3])))
     for t in active['tensor']:
-      column = table.label_index(v)
+      column = table.label_index(t)
       table.data[column:column+9] = \
-        np.dot(R,np.dot(np.array(list(map(float,table.data[column:column+9]]))).\
-                        reshape((3,3)),R.transpose())).reshape((9))
+        np.dot(R,np.dot(np.array(list(map(float,table.data[column:column+9]))).reshape((3,3)),
+                        R.transpose())).reshape((9))
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output finalization -----------------------------------  
