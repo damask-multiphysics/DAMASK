@@ -224,33 +224,30 @@ subroutine plastic_disloUCLA_init()
      prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
                                                              config_phase(p)%getFloats('interaction_slipslip'), &
                                                              structure(1:3))
-     prm%rho0        = config_phase(p)%getFloats('rhoedge0')
-     prm%rhoDip0     = config_phase(p)%getFloats('rhoedgedip0')
-     prm%burgers     = config_phase(p)%getFloats('slipburgers')
-     prm%H0kp        = config_phase(p)%getFloats('qedge')
-     prm%v0          = config_phase(p)%getFloats('v0')
-     prm%clambda     = config_phase(p)%getFloats('clambdaslip')
-     prm%tau_Peierls  = config_phase(p)%getFloats('tau_peierls')
-     prm%p           = config_phase(p)%getFloats('p_slip',defaultVal=[(1.0_pReal,i=1_pInt,size(prm%Nslip))])
-     prm%q           = config_phase(p)%getFloats('q_slip',defaultVal=[(1.0_pReal,i=1_pInt,size(prm%Nslip))])
-     prm%kink_height  = config_phase(p)%getFloats('kink_height')
-     prm%kink_width   = config_phase(p)%getFloats('kink_width')
-     prm%omega   = config_phase(p)%getFloats('omega')
-
-     prm%B   = config_phase(p)%getFloats('friction_coeff')
-
+     prm%rho0        = config_phase(p)%getFloats('rhoedge0',       requiredShape=shape(prm%Nslip)) 
+     prm%rhoDip0     = config_phase(p)%getFloats('rhoedgedip0',    requiredShape=shape(prm%Nslip)) 
+     prm%burgers     = config_phase(p)%getFloats('slipburgers',    requiredShape=shape(prm%Nslip)) 
+     prm%H0kp        = config_phase(p)%getFloats('qedge',          requiredShape=shape(prm%Nslip)) 
+     prm%v0          = config_phase(p)%getFloats('v0',             requiredShape=shape(prm%Nslip)) 
+     prm%clambda     = config_phase(p)%getFloats('clambdaslip',    requiredShape=shape(prm%Nslip)) 
+     prm%tau_Peierls = config_phase(p)%getFloats('tau_peierls',    requiredShape=shape(prm%Nslip))
+     prm%p           = config_phase(p)%getFloats('p_slip',         requiredShape=shape(prm%Nslip), &
+                                                 defaultVal=[(1.0_pReal,i=1_pInt,size(prm%Nslip))])
+     prm%q           = config_phase(p)%getFloats('q_slip',         requiredShape=shape(prm%Nslip), &
+                                                 defaultVal=[(1.0_pReal,i=1_pInt,size(prm%Nslip))])
+     prm%kink_height = config_phase(p)%getFloats('kink_height',    requiredShape=shape(prm%Nslip))
+     prm%kink_width  = config_phase(p)%getFloats('kink_width',     requiredShape=shape(prm%Nslip))
+     prm%omega       = config_phase(p)%getFloats('omega',          requiredShape=shape(prm%Nslip))
+     prm%B           = config_phase(p)%getFloats('friction_coeff', requiredShape=shape(prm%Nslip))
 
      prm%SolidSolutionStrength  = config_phase(p)%getFloat('solidsolutionstrength')
+     prm%grainSize              = config_phase(p)%getFloat('grainsize')
+     prm%D0                     = config_phase(p)%getFloat('d0')
+     prm%Qsd                    = config_phase(p)%getFloat('qsd')
+     prm%atomicVolume           = config_phase(p)%getFloat('catomicvolume')       * prm%burgers**3.0_pReal
+     prm%minDipDistance         = config_phase(p)%getFloat('cedgedipmindistance') * prm%burgers
+     prm%dipoleformation        = config_phase(p)%getFloat('dipoleformationfactor') > 0.0_pReal !should be on by default
 
-     prm%grainSize  = config_phase(p)%getFloat('grainsize')
-
-     prm%D0 = config_phase(p)%getFloat('d0')
-     prm%Qsd= config_phase(p)%getFloat('qsd')
-
-
-     prm%dipoleformation = config_phase(p)%getFloat('dipoleformationfactor') > 0.0_pReal !should be on by default
-     prm%atomicVolume = config_phase(p)%getFloat('catomicvolume') * prm%burgers**3.0_pReal
-     prm%minDipDistance = config_phase(p)%getFloat('cedgedipmindistance') * prm%burgers
 
      ! expand: family => system
      prm%rho0   = math_expand(prm%rho0,  prm%Nslip)
