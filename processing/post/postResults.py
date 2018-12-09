@@ -803,12 +803,6 @@ if not options.constitutiveResult:    options.constitutiveResult = []
 options.sort.reverse()
 options.sep.reverse()
 
-# --- start background messaging
-
-if options.verbose:
-  bg = damask.util.backgroundMessage()
-  bg.start()
-
 # --- parse .output and .t16 files
 
 if os.path.splitext(files[0])[1] == '':
@@ -825,18 +819,13 @@ me = {
       'Constitutive':   options.phase,
      }
 
-if options.verbose: bg.set_message('parsing .output files...')
-
 for what in me:
   outputFormat[what] = ParseOutputFormat(filename, what, me[what])
   if '_id' not in outputFormat[what]['specials']:
     print("\nsection '{}' not found in <{}>".format(me[what], what))
     print('\n'.join(map(lambda x:'  [%s]'%x, outputFormat[what]['specials']['brothers'])))
 
-if options.verbose: bg.set_message('opening result file...')
-
 p = OpenPostfile(filename+extension,options.filetype,options.nodal)
-if options.verbose: bg.set_message('parsing result file...')
 stat = ParsePostfile(p, filename, outputFormat)
 if options.filetype == 'marc':
   stat['NumberOfIncrements'] -= 1             # t16 contains one "virtual" increment (at 0)
@@ -879,8 +868,10 @@ if options.info:
 # --- build connectivity maps
 
 elementsOfNode = {}
-for e in range(stat['NumberOfElements']):
-  if options.verbose and e%1000 == 0: bg.set_message('connect elem %i...'%e)
+Nelems = stat['NumberOfElements']
+for e in range(Nelems):
+  if Nelems > 100 and e%(Nelems//100) == 0:                                                         # report in 1% steps if possible and avoid modulo by zero
+    damask.util.print_progress(iteration=e,total=Nelems,prefix='1/3: connecting elements')
   for n in map(p.node_sequence,p.element(e).items):
     if n not in elementsOfNode:
       elementsOfNode[n] = [p.element_id(e)]
@@ -899,10 +890,12 @@ index = {}
 groups = []
 groupCount = 0
 memberCount = 0
-
+print('\n')
 if options.nodalScalar:
-  for n in range(stat['NumberOfNodes']):
-    if options.verbose and n%1000 == 0: bg.set_message('scan node %i...'%n)
+  Npoints = stat['NumberOfNodes']
+  for n in range(Npoints):
+    if Npoints > 100 and e%(Npoints//100) == 0:                                                         # report in 1% steps if possible and avoid modulo by zero
+      damask.util.print_progress(iteration=n,total=Npoints,prefix='2/3: scanning nodes     ')
     myNodeID = p.node_id(n)
     myNodeCoordinates = [p.node(n).x, p.node(n).y, p.node(n).z]
     myElemID = 0
@@ -933,10 +926,13 @@ if options.nodalScalar:
                                                myNodeCoordinates)                                      # incrementally update average location
     groups[index[grp]].append([myElemID,myNodeID,myIpID,myGrainID,0])                                  # append a new list defining each group member
     memberCount += 1
+  print('\n')
 
 else:
-  for e in range(stat['NumberOfElements']):
-    if options.verbose and e%1000 == 0: bg.set_message('scan elem %i...'%e)
+  Nelems = stat['NumberOfElements']
+  for e in range(Nelems):
+    if Nelems > 100 and e%(Nelems//100) == 0:                                                         # report in 1% steps if possible and avoid modulo by zero
+      damask.util.print_progress(iteration=e,total=Nelems,prefix='2/3: scanning elements  ')
     myElemID = p.element_id(e)
     myIpCoordinates = ipCoords(p.element(e).type, list(map(lambda node: [node.x, node.y, node.z],
                                                          list(map(p.node, map(p.node_sequence, p.element(e).items))))))
@@ -976,6 +972,7 @@ else:
                                                    myIpCoordinates[n])                              # incrementally update average location
         groups[index[grp]].append([myElemID,myNodeID,myIpID,myGrainID,n])                           # append a new list defining each group member
         memberCount += 1
+  print('\n')
 
 
 # ---------------------------   sort groups   --------------------------------
@@ -1002,7 +999,6 @@ if 'none' not in map(str.lower, options.sort):
       theKeys.append('x[0][%i]'%where[criterium])
 
 sortKeys = eval('lambda x:(%s)'%(','.join(theKeys)))
-if options.verbose: bg.set_message('sorting groups...')
 groups.sort(key = sortKeys)                                                                         # in-place sorting to save mem
 
 
@@ -1020,8 +1016,6 @@ standard = ['inc'] + \
            ['elem','node','ip','grain','1_pos','2_pos','3_pos']
 
 # ---------------------------   loop over positions   --------------------------------
-
-if options.verbose: bg.set_message('getting map between positions and increments...')
 
 incAtPosition = {}
 positionOfInc = {}
@@ -1048,8 +1042,8 @@ increments = [incAtPosition[x] for x in locations] # build list of increments to
 
 time_start = time.time()
 
+Nincs = len([i for i in locations])
 for incCount,position in enumerate(locations):     # walk through locations
-
   p.moveto(position+offset_pos)                    # wind to correct position
 
 # ---------------------------   file management   --------------------------------
@@ -1075,16 +1069,14 @@ for incCount,position in enumerate(locations):     # walk through locations
 # ---------------------------   read and map data per group   --------------------------------
 
   member = 0
-  for group in groups:
-
+  Ngroups = len(groups)
+  for j,group in enumerate(groups):
+    f = incCount*Ngroups + j
+    if (Ngroups*Nincs) > 100 and f%((Ngroups*Nincs)//100) == 0:                                                       # report in 1% steps if possible and avoid modulo by zero
+      damask.util.print_progress(iteration=f,total=Ngroups*Nincs,prefix='3/3: processing points  ')
     N = 0                                                                                           # group member counter
     for (e,n,i,g,n_local) in group[1:]:                                                             # loop over group members
       member += 1
-      if member%1000 == 0:
-        time_delta = ((len(locations)*memberCount)/float(member+incCount*memberCount)-1.0)*(time.time()-time_start)
-        if options.verbose: bg.set_message('(%02i:%02i:%02i) processing point %i of %i from increment %i (position %i)...'
-          %(time_delta//3600,time_delta%3600//60,time_delta%60,member,memberCount,increments[incCount],position))
-
       newby = []                                                                                    # current member's data
 
       if options.nodalScalar:
@@ -1172,6 +1164,7 @@ for incCount,position in enumerate(locations):     # walk through locations
                                  group[0] + \
                                  mappedResult)
                         )) + '\n')
+print('')
 
 if fileOpen:
   file.close()
