@@ -654,13 +654,12 @@ math_mul33xx33
 
  integer(pInt) :: &
    j
- real(pReal) :: dvel_slip, vel_slip
  real(pReal), intent(out), dimension(prm%totalNslip) :: &
    gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg
  real(pReal), dimension(prm%totalNslip) :: &
    StressRatio, BoltzmannRatio, &
    StressRatio_p,StressRatio_pminus1, &
-   DotGamma0
+   DotGamma0, dvel_slip, vel_slip
 
  gdot_slip_pos = 0.0_pReal
  gdot_slip_neg = 0.0_pReal
@@ -676,15 +675,13 @@ math_mul33xx33
  DotGamma0 = stt%rhoEdge(:,of)*prm%burgers*prm%v0
 
  do j = 1_pInt, prm%totalNslip
-
-   significantPositiveTau: if((abs(tau_slip_pos(j))-dst%threshold_stress(j, of)) > tol_math_check) then
-
-     StressRatio(j) = ((abs(tau_slip_pos(j))-dst%threshold_stress(j, of)) &
-                 / (prm%solidSolutionStrength+prm%tau_Peierls(j)))
+   significantPositiveTau: if(abs(tau_slip_pos(j))-dst%threshold_stress(j,of) > tol_math_check) then
+     StressRatio(j) = (abs(tau_slip_pos(j))-dst%threshold_stress(j,of)) &
+                    / (prm%solidSolutionStrength+prm%tau_Peierls(j))
      StressRatio_p(j)       = StressRatio(j)** prm%p(j)
      StressRatio_pminus1(j) = StressRatio(j)**(prm%p(j)-1.0_pReal)
 
-     vel_slip = 2.0_pReal*prm%burgers(j) * prm%kink_height(j) * prm%omega(j)  &
+     vel_slip(j) = 2.0_pReal*prm%burgers(j) * prm%kink_height(j) * prm%omega(j)  &
               * ( dst%mfp(j,of) - prm%kink_width(j) ) &
             * (tau_slip_pos(j)  &
             * exp(-BoltzmannRatio(j)*(1-StressRatio_p(j)) ** prm%q(j)) ) &
@@ -695,9 +692,9 @@ math_mul33xx33
             * exp(-BoltzmannRatio(j)*(1-StressRatio_p(j)) ** prm%q(j))  &
             )
 
-     gdot_slip_pos(j) = DotGamma0(j) * sign(vel_slip,tau_slip_pos(j))
+     gdot_slip_pos(j) = DotGamma0(j) * sign(vel_slip(j),tau_slip_pos(j))
 
-     dvel_slip = 2.0_pReal*prm%burgers(j) * prm%kink_height(j) * prm%omega(j)  &
+     dvel_slip(j) = 2.0_pReal*prm%burgers(j) * prm%kink_height(j) * prm%omega(j)  &
                * ( dst%mfp(j,of) - prm%kink_width(j) ) &
           * ( &
           (exp(-BoltzmannRatio(j)*(1-StressRatio_p(j)) ** prm%q(j)) &
@@ -734,19 +731,17 @@ math_mul33xx33
           )**2.0_pReal &
           )
 
-     dgdot_dtauslip_pos(j) = DotGamma0(j) * dvel_slip
+     dgdot_dtauslip_pos(j) = DotGamma0(j) * dvel_slip(j)
 
    endif significantPositiveTau
 
-
-   significantNegativeTau: if((abs(tau_slip_neg(j))-dst%threshold_stress(j, of)) > tol_math_check) then
-
-     StressRatio(j) = ((abs(tau_slip_neg(j))-dst%threshold_stress(j, of)) &
-                 / (prm%solidSolutionStrength+prm%tau_Peierls(j)))
+   significantNegativeTau: if(abs(tau_slip_neg(j))-dst%threshold_stress(j,of) > tol_math_check) then
+     StressRatio(j) = (abs(tau_slip_neg(j))-dst%threshold_stress(j,of)) &
+                    / (prm%solidSolutionStrength+prm%tau_Peierls(j))
      StressRatio_p(j)       = StressRatio(j)** prm%p(j)
      StressRatio_pminus1(j) = StressRatio(j)**(prm%p(j)-1.0_pReal)
 
-     vel_slip = 2.0_pReal*prm%burgers(j) * prm%kink_height(j) * prm%omega(j)  &
+     vel_slip(j) = 2.0_pReal*prm%burgers(j) * prm%kink_height(j) * prm%omega(j)  &
               * ( dst%mfp(j,of) - prm%kink_width(j) ) &
             * (tau_slip_neg(j)  &
             * exp(-BoltzmannRatio(j)*(1-StressRatio_p(j)) ** prm%q(j)) ) &
@@ -757,9 +752,9 @@ math_mul33xx33
             * exp(-BoltzmannRatio(j)*(1-StressRatio_p(j)) ** prm%q(j))  &
             )
 
-     gdot_slip_neg(j) = DotGamma0(j) * sign(vel_slip,tau_slip_neg(j))
+     gdot_slip_neg(j) = DotGamma0(j) * sign(vel_slip(j),tau_slip_neg(j))
 
-     dvel_slip = 2.0_pReal*prm%burgers(j) * prm%kink_height(j) * prm%omega(j)  &
+     dvel_slip(j) = 2.0_pReal*prm%burgers(j) * prm%kink_height(j) * prm%omega(j)  &
                * ( dst%mfp(j,of) - prm%kink_width(j) ) &
           * ( &
           (exp(-BoltzmannRatio(j)*(1-StressRatio_p(j)) ** prm%q(j)) &
@@ -797,7 +792,7 @@ math_mul33xx33
           )
 
 
-     dgdot_dtauslip_neg(j) = DotGamma0(j) * dvel_slip
+     dgdot_dtauslip_neg(j) = DotGamma0(j) * dvel_slip(j)
    endif significantNegativeTau
  enddo
 
