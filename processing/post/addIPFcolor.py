@@ -26,58 +26,18 @@ parser.add_option('-s', '--symmetry',
                   dest = 'symmetry',
                   type = 'choice', choices = damask.Symmetry.lattices[1:], metavar='string',
                   help = 'crystal symmetry [%default] {{{}}} '.format(', '.join(damask.Symmetry.lattices[1:])))
-parser.add_option('-e', '--eulers',
-                  dest = 'eulers',
-                  type = 'string', metavar = 'string',
-                  help = 'Euler angles label')
-parser.add_option('-d', '--degrees',
-                  dest = 'degrees',
-                  action = 'store_true',
-                  help = 'Euler angles are given in degrees [%default]')
-parser.add_option('-m', '--matrix',
-                  dest = 'matrix',
-                  type = 'string', metavar = 'string',
-                  help = 'orientation matrix label')
-parser.add_option('-a',
-                  dest = 'a',
-                  type = 'string', metavar = 'string',
-                  help = 'crystal frame a vector label')
-parser.add_option('-b',
-                  dest = 'b',
-                  type = 'string', metavar = 'string',
-                  help = 'crystal frame b vector label')
-parser.add_option('-c',
-                  dest = 'c',
-                  type = 'string', metavar = 'string',
-                  help = 'crystal frame c vector label')
 parser.add_option('-q', '--quaternion',
                   dest = 'quaternion',
                   type = 'string', metavar = 'string',
                   help = 'quaternion label')
 
 parser.set_defaults(pole = (0.0,0.0,1.0),
+                    quaternion = 'orientation',
                     symmetry = damask.Symmetry.lattices[-1],
-                    degrees = False,
                    )
 
 (options, filenames) = parser.parse_args()
 
-input = [options.eulers     is not None,
-         options.a          is not None and \
-         options.b          is not None and \
-         options.c          is not None,
-         options.matrix     is not None,
-         options.quaternion is not None,
-        ]
-
-if np.sum(input) != 1: parser.error('needs exactly one input format.')
-
-(label,dim,inputtype) = [(options.eulers,3,'eulers'),
-                         ([options.a,options.b,options.c],[3,3,3],'frame'),
-                         (options.matrix,9,'matrix'),
-                         (options.quaternion,4,'quaternion'),
-                        ][np.where(input)[0][0]]                                                    # select input label that was requested
-toRadians = math.pi/180.0 if options.degrees else 1.0                                               # rescale degrees to radians
 pole = np.array(options.pole)
 pole /= np.linalg.norm(pole)
 
@@ -98,12 +58,12 @@ for name in filenames:
 
 # ------------------------------------------ sanity checks ----------------------------------------
 
-  if not np.all(table.label_dimension(label) == dim):
-    damask.util.croak('input {} does not have dimension {}.'.format(label,dim))
+  if not table.label_dimension(options.quaternion) == 4:
+    damask.util.croak('input {} does not have dimension 4.'.format(options.quaternion))
     table.close(dismiss = True)                                                                     # close ASCIItable and remove empty file
     continue
 
-  column = table.label_index(label)
+  column = table.label_index(options.quaternion)
 
 # ------------------------------------------ assemble header ---------------------------------------
 
@@ -115,20 +75,8 @@ for name in filenames:
 
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    if inputtype == 'eulers':
-      o = damask.Orientation(Eulers   = np.array(list(map(float,table.data[column:column+3])))*toRadians,
-                             symmetry = options.symmetry).reduced()
-    elif inputtype == 'matrix':
-      o = damask.Orientation(matrix   = np.array(list(map(float,table.data[column:column+9]))).reshape(3,3).transpose(),
-                             symmetry = options.symmetry).reduced()
-    elif inputtype == 'frame':
-      o = damask.Orientation(matrix = np.array(list(map(float,table.data[column[0]:column[0]+3] + \
-                                                         table.data[column[1]:column[1]+3] + \
-                                                         table.data[column[2]:column[2]+3]))).reshape(3,3),
-                             symmetry = options.symmetry).reduced()
-    elif inputtype == 'quaternion':
-      o = damask.Orientation(quaternion = np.array(list(map(float,table.data[column:column+4]))),
-                             symmetry   = options.symmetry).reduced()
+    o = damask.Orientation(quaternion = np.array(list(map(float,table.data[column:column+4]))),
+                           symmetry   = options.symmetry).reduced()
 
     table.data_append(o.IPFcolor(pole))
     outputAlive = table.data_write()                                                                # output processed line

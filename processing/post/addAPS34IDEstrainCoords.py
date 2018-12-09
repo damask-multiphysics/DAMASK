@@ -35,21 +35,27 @@ datainfo = {'len':3,
 
 datainfo['label']  += options.frame
 
-# --- loop over input files -------------------------------------------------------------------------
-if filenames == []:
-  filenames = ['STDIN']
+# --- loop over input files ------------------------------------------------------------------------
+
+if filenames == []: filenames = [None]
 
 for name in filenames:
-  if name == 'STDIN':
-    file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
-  else:
-    if not os.path.exists(name): continue
-    file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
-    file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  try:    table = damask.ASCIItable(name = name,
+                                    buffered = False)
+  except: continue
+  damask.util.report(scriptName,name)
 
-  table = damask.ASCIItable(file['input'],file['output'],buffered=False)                            # make unbuffered ASCII_table
-  table.head_read()                                                                                 # read ASCII header info
+# ------------------------------------------ read header ------------------------------------------
+
+  table.head_read()
+
+  if not table.label_dimension(options.quaternion) == 4:
+    damask.util.croak('input {} does not have dimension 4.'.format(options.quaternion))
+    table.close(dismiss = True)                                                                     # close ASCIItable and remove empty file
+    continue
+
+
+
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
 # --------------- figure out columns to process  ---------------------------------------------------
