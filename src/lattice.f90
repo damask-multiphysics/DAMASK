@@ -50,16 +50,11 @@ module lattice
    lattice_Strans_v                                                                                 !< Eigendeformation tensor in vector form
 
  real(pReal), allocatable, dimension(:,:), protected, public :: &
-   lattice_shearTwin, &                                                                             !< characteristic twin shear
    lattice_shearTrans                                                                               !< characteristic transformation shear
 
  integer(pInt), allocatable, dimension(:), protected, public :: &
    lattice_NnonSchmid                                                                               !< total # of non-Schmid contributions for each structure
 
- real(pReal), allocatable, dimension(:,:,:), private :: &
-   lattice_tn, &
-   lattice_td, &
-   lattice_tt
 ! END DEPRECATED
 
 
@@ -1340,7 +1335,6 @@ subroutine lattice_init
 
  allocate(lattice_Qtwin(3,3,lattice_maxNtwin,Nphases),source=0.0_pReal)
 
- allocate(lattice_shearTwin(lattice_maxNtwin,Nphases),source=0.0_pReal)
  allocate(lattice_shearTrans(lattice_maxNtrans,Nphases),source=0.0_pReal)
 
  allocate(lattice_Qtrans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
@@ -1361,9 +1355,6 @@ subroutine lattice_init
  allocate(a_fcc(Nphases),source=0.0_pReal)
  allocate(a_bcc(Nphases),source=0.0_pReal)
 
- allocate(lattice_td(3,lattice_maxNtwin,Nphases),source=0.0_pReal)
- allocate(lattice_tt(3,lattice_maxNtwin,Nphases),source=0.0_pReal)
- allocate(lattice_tn(3,lattice_maxNtwin,Nphases),source=0.0_pReal)
  allocate(lattice_sd(3,lattice_maxNslip,Nphases),source=0.0_pReal)
  allocate(lattice_st(3,lattice_maxNslip,Nphases),source=0.0_pReal)
  allocate(lattice_sn(3,lattice_maxNslip,Nphases),source=0.0_pReal)
@@ -1518,8 +1509,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
    sns
  real(pReal), dimension(3,lattice_maxNtwin) :: &
    td, tn
- real(pReal), dimension(lattice_maxNtwin) :: &
-   ts
  real(pReal), dimension(lattice_maxNtrans) :: &
    trs
  real(pReal), dimension(3,lattice_maxNtrans) :: &
@@ -1622,9 +1611,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
        sn(1:3,i) = lattice_fcc_systemSlip(4:6,i)
      enddo
      do i = 1_pInt,myNtwin                                                                          ! assign twin system vectors and shears
-       td(1:3,i) = lattice_fcc_systemTwin(1:3,i)
        tn(1:3,i) = lattice_fcc_systemTwin(4:6,i)
-       ts(i)     = lattice_fcc_shearTwin(i)
      enddo
      do i = 1_pInt, myNcleavage                                                                     ! assign cleavage system vectors
        cd(1:3,i) = lattice_fcc_systemCleavage(1:3,i)/norm2(lattice_fcc_systemCleavage(1:3,i))
@@ -1716,9 +1703,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
        sns(1:3,1:3,2,6,i) = math_tensorproduct33(-sdU, -sdU)
      enddo
      do i = 1_pInt,myNtwin                                                                          ! assign twin system vectors and shears
-       td(1:3,i) = lattice_bcc_systemTwin(1:3,i)
        tn(1:3,i) = lattice_bcc_systemTwin(4:6,i)
-       ts(i)     = lattice_bcc_shearTwin(i)
      enddo
      do i = 1_pInt, myNcleavage                                                                      ! assign cleavage system vectors
        cd(1:3,i) = lattice_bcc_systemCleavage(1:3,i)/norm2(lattice_bcc_systemCleavage(1:3,i))
@@ -1749,23 +1734,9 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
        sn(3,i) =  lattice_hex_systemSlip(8,i)/CoverA
      enddo
      do i = 1_pInt,myNtwin                                                                          ! assign twin system vectors and shears
-       td(1,i) =  lattice_hex_systemTwin(1,i)*1.5_pReal
-       td(2,i) = (lattice_hex_systemTwin(1,i)+2.0_pReal*lattice_hex_systemTwin(2,i))*&
-                                                                     0.5_pReal*sqrt(3.0_pReal)
-       td(3,i) =  lattice_hex_systemTwin(4,i)*CoverA
        tn(1,i) =  lattice_hex_systemTwin(5,i)
        tn(2,i) = (lattice_hex_systemTwin(5,i)+2.0_pReal*lattice_hex_systemTwin(6,i))/sqrt(3.0_pReal)
        tn(3,i) =  lattice_hex_systemTwin(8,i)/CoverA
-       select case(lattice_hex_shearTwin(i))                                                        ! from Christian & Mahajan 1995 p.29
-         case (1_pInt)                                                                              ! <-10.1>{10.2}
-           ts(i) = (3.0_pReal-CoverA*CoverA)/sqrt(3.0_pReal)/CoverA
-         case (2_pInt)                                                                              ! <11.6>{-1-1.1}
-           ts(i) = 1.0_pReal/CoverA
-         case (3_pInt)                                                                              ! <10.-2>{10.1}
-           ts(i) = (4.0_pReal*CoverA*CoverA-9.0_pReal)/4.0_pReal/sqrt(3.0_pReal)/CoverA
-         case (4_pInt)                                                                              ! <11.-3>{11.2}
-           ts(i) = 2.0_pReal*(CoverA*CoverA-2.0_pReal)/3.0_pReal/CoverA
-       end select
      enddo
      do i = 1_pInt, myNcleavage                                                                     ! cleavage system vectors
        cd(1,i) =  lattice_hex_systemCleavage(1,i)*1.5_pReal                                         ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)]
@@ -1861,9 +1832,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      call IO_error(0_pInt,myPhase,i,0_pInt,ext_msg = 'dilatational slip Schmid matrix')
  enddo
  do i = 1_pInt,myNtwin                                                                              ! store twin system vectors and Schmid plus rotation matrix for my structure
-   lattice_tn(1:3,i,myPhase) = tn(1:3,i)/norm2(tn(1:3,i))                                           ! make unit vector
    lattice_Qtwin(1:3,1:3,i,myPhase) = math_axisAngleToR(tn(1:3,i),180.0_pReal*INRAD)
-   lattice_shearTwin(i,myPhase)     = ts(i)
  enddo
  do i = 1_pInt,myNtrans
    lattice_Qtrans(1:3,1:3,i,myPhase) = Qtr(1:3,1:3,i)
@@ -2181,7 +2150,7 @@ function lattice_C66_twin(Ntwin,C66,structure,CoverA)
    lattice_C66_twin(1:6,1:6,i) = math_Mandel3333to66(math_rotate_forward3333(math_Mandel66to3333(C66),R))
  enddo
  
-end function
+end function lattice_C66_twin
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2716,11 +2685,11 @@ function lattice_SchmidMatrix_cleavage(Ncleavage,structure,cOverA) result(Schmid
 
  coordinateSystem = buildCoordinateSystem(Ncleavage,NcleavageMax,cleavageSystems,structure,cOverA)
 
-  do i = 1, sum(Ncleavage)
-   SchmidMatrix(1:3,1:3,1,i) = math_tensorproduct33(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
-   SchmidMatrix(1:3,1:3,2,i) = math_tensorproduct33(coordinateSystem(1:3,3,i),coordinateSystem(1:3,2,i))
-   SchmidMatrix(1:3,1:3,3,i) = math_tensorproduct33(coordinateSystem(1:3,2,i),coordinateSystem(1:3,2,i))
-  enddo
+ do i = 1, sum(Ncleavage)
+  SchmidMatrix(1:3,1:3,1,i) = math_tensorproduct33(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
+  SchmidMatrix(1:3,1:3,2,i) = math_tensorproduct33(coordinateSystem(1:3,3,i),coordinateSystem(1:3,2,i))
+  SchmidMatrix(1:3,1:3,3,i) = math_tensorproduct33(coordinateSystem(1:3,2,i),coordinateSystem(1:3,2,i))
+ enddo
 
 end function lattice_SchmidMatrix_cleavage
 

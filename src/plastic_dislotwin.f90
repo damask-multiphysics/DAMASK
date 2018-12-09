@@ -239,7 +239,7 @@ subroutine plastic_dislotwin_init(fileUnit)
  integer(pInt) :: sizeState, sizeDotState
  integer(pInt) :: NipcMyPhase   
      
- real(pReal),  allocatable, dimension(:,:) :: temp1,temp2
+ real(pReal),  allocatable, dimension(:,:) :: temp1
  
  integer(pInt),          dimension(0), parameter :: emptyIntArray    = [integer(pInt)::]
  real(pReal),            dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
@@ -370,6 +370,9 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%MaxTwinFraction = config_phase(p)%getFloat('maxtwinfraction') ! ToDo: only used in postResults
      prm%Cthresholdtwin  = config_phase(p)%getFloat('cthresholdtwin', defaultVal=0.0_pReal)
      prm%Cmfptwin        = config_phase(p)%getFloat('cmfptwin',       defaultVal=0.0_pReal) ! ToDo: How to handle that???
+
+     prm%shear_twin      = lattice_characteristicShear_Twin(prm%Ntwin,structure(1:3),&
+                                                          config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal))
 
 
      if (.not. prm%isFCC) then
@@ -627,13 +630,11 @@ subroutine plastic_dislotwin_init(fileUnit)
    allocate(prm%C66_twin(6,6,prm%totalNtwin),       source=0.0_pReal)
    if (lattice_structure(p) == LATTICE_fcc_ID) &
      allocate(prm%fcc_twinNucleationSlipPair(2,prm%totalNtwin),source = 0_pInt)
-   allocate(prm%shear_twin(prm%totalNtwin),source       = 0.0_pReal)
    i = 0_pInt
    twinFamiliesLoop: do f = 1_pInt, size(prm%Ntwin,1)
      index_myFamily = sum(prm%Ntwin(1:f-1_pInt))                      ! index in truncated twin system list
      twinSystemsLoop: do j = 1_pInt,prm%Ntwin(f)
        i = i + 1_pInt
-       prm%shear_twin(i)          = lattice_shearTwin(sum(lattice_Ntwinsystem(1:f-1,p))+j,p)
        if (lattice_structure(p) == LATTICE_fcc_ID) prm%fcc_twinNucleationSlipPair(1:2,i) = &
                       lattice_fcc_twinNucleationSlipPair(1:2,sum(lattice_Ntwinsystem(1:f-1,p))+j)
      !* Rotate twin elasticity matrices
@@ -644,7 +645,7 @@ subroutine plastic_dislotwin_init(fileUnit)
      enddo twinSystemsLoop
    enddo twinFamiliesLoop
 
- 
+
    allocate(temp1(prm%totalNtrans,prm%totalNslip),  source =0.0_pReal)
    allocate(prm%C66_trans(6,6,prm%totalNtrans)     ,source=0.0_pReal)
    allocate(prm%Schmid_trans(3,3,prm%totalNtrans),source  = 0.0_pReal)
