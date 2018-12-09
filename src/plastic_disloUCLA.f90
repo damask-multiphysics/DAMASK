@@ -150,13 +150,13 @@ subroutine plastic_disloUCLA_init()
  use lattice
 
  implicit none
- integer(pInt) :: maxNinstance,&
+ integer(pInt) :: Ninstance,&
                   f,j,k,o, i, &
                   outputSize, &
                   offset_slip, index_myFamily, index_otherFamily, &
                   startIndex, endIndex, p, &
                   sizeState, sizeDotState, &
-                  NofMyPhase
+                  NipcMyPhase
  character(len=65536) :: &
    structure = ''
  character(len=65536), dimension(:), allocatable :: outputs
@@ -171,20 +171,20 @@ subroutine plastic_disloUCLA_init()
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- maxNinstance = int(count(phase_plasticity == PLASTICITY_DISLOUCLA_ID),pInt)
- if (maxNinstance == 0_pInt) return
+ Ninstance = int(count(phase_plasticity == PLASTICITY_DISLOUCLA_ID),pInt)
+ if (Ninstance == 0_pInt) return
 
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
-   write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
+   write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
- allocate(plastic_disloUCLA_sizePostResult(maxval(phase_Noutput),maxNinstance),source=0_pInt)
- allocate(plastic_disloUCLA_output(maxval(phase_Noutput),maxNinstance))
+ allocate(plastic_disloUCLA_sizePostResult(maxval(phase_Noutput),Ninstance),source=0_pInt)
+ allocate(plastic_disloUCLA_output(maxval(phase_Noutput),Ninstance))
           plastic_disloUCLA_output = ''
 
- allocate(param(maxNinstance))
- allocate(state(maxNinstance))
- allocate(dotState(maxNinstance))
- allocate(dependentState(maxNinstance))
+ allocate(param(Ninstance))
+ allocate(state(Ninstance))
+ allocate(dotState(Ninstance))
+ allocate(dependentState(Ninstance))
 
 
  do p = 1_pInt, size(phase_plasticityInstance)
@@ -325,7 +325,7 @@ subroutine plastic_disloUCLA_init()
 
    enddo
 
-   NofMyPhase=count(material_phase==p)
+   NipcMyPhase=count(material_phase==p)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
@@ -333,7 +333,7 @@ subroutine plastic_disloUCLA_init()
    sizeDotState = int(size(['rhoEdge     ','rhoEdgeDip  ','accshearslip']),pInt) * prm%totalNslip
    sizeState    = sizeDotState
 
-   call material_allocatePlasticState(p,NofMyPhase,sizeState,sizeDotState,0_pInt, &
+   call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0_pInt, &
                                       prm%totalNslip,0_pInt,0_pInt)
 
    plasticState(p)%sizePostResults = sum(plastic_disloUCLA_sizePostResult(:,phase_plasticityInstance(p)))
@@ -358,21 +358,21 @@ subroutine plastic_disloUCLA_init()
 
    offset_slip = 2_pInt*plasticState(p)%nSlip
    plasticState(p)%slipRate => &
-     plasticState(p)%dotState(offset_slip+1:offset_slip+plasticState(p)%nSlip,1:NofMyPhase)
+     plasticState(p)%dotState(offset_slip+1:offset_slip+plasticState(p)%nSlip,1:NipcMyPhase)
    plasticState(p)%accumulatedSlip => &
-     plasticState(p)%state   (offset_slip+1:offset_slip+plasticState(p)%nSlip,1:NofMyPhase)
+     plasticState(p)%state   (offset_slip+1:offset_slip+plasticState(p)%nSlip,1:NipcMyPhase)
 
    startIndex=1_pInt
    endIndex=prm%totalNslip
    stt%rhoEdge=>plasticState(p)%state(startIndex:endIndex,:)
-   stt%rhoEdge= spread(prm%rho0,2,NofMyPhase)
+   stt%rhoEdge= spread(prm%rho0,2,NipcMyPhase)
    dot%rhoEdge=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
 
    startIndex=endIndex+1_pInt
    endIndex=endIndex+prm%totalNslip
    stt%rhoEdgeDip=>plasticState(p)%state(startIndex:endIndex,:)
-   stt%rhoEdgeDip= spread(prm%rhoDip0,2,NofMyPhase)
+   stt%rhoEdgeDip= spread(prm%rhoDip0,2,NipcMyPhase)
    dot%rhoEdgeDip=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
 
@@ -385,8 +385,8 @@ subroutine plastic_disloUCLA_init()
    dot%whole => plasticState(p)%dotState
 
 
-   allocate(dst%mfp(prm%totalNslip,NofMyPhase),source=0.0_pReal)
-   allocate(dst%threshold_stress(prm%totalNslip,NofMyPhase),source=0.0_pReal)
+   allocate(dst%mfp(prm%totalNslip,NipcMyPhase),source=0.0_pReal)
+   allocate(dst%threshold_stress(prm%totalNslip,NipcMyPhase),source=0.0_pReal)
 
 
    plasticState(p)%state0 = plasticState(p)%state                                                 ! ToDo: this could be done centrally
