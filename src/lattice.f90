@@ -52,8 +52,7 @@ module lattice
    lattice_st, &                                                                                    !< sd x sn
    lattice_sd, &                                                                                    !< slip direction of slip system
    lattice_Stwin_v, &
-   lattice_Strans_v, &                                                                              !< Eigendeformation tensor in vector form
-   lattice_projectionTrans                                                                          !< Matrix for projection of slip to fault-band (twin) systems for strain-induced martensite nucleation
+   lattice_Strans_v                                                                                 !< Eigendeformation tensor in vector form
 
  real(pReal), allocatable, dimension(:,:), protected, public :: &
    lattice_shearTwin, &                                                                             !< characteristic twin shear
@@ -1353,7 +1352,6 @@ subroutine lattice_init
  allocate(lattice_Qtrans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
  allocate(lattice_Strans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
  allocate(lattice_Strans_v(6,lattice_maxNtrans,Nphases),source=0.0_pReal)
- allocate(lattice_projectionTrans(lattice_maxNtrans,lattice_maxNtrans,Nphases),source=0.0_pReal)
 
  allocate(lattice_NslipSystem(lattice_maxNslipFamily,Nphases),source=0_pInt)
  allocate(lattice_NtwinSystem(lattice_maxNtwinFamily,Nphases),source=0_pInt)
@@ -1701,8 +1699,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      lattice_interactionSlipTrans(1:myNslip,1:myNtrans,myPhase)     = lattice_fccTohex_interactionSlipTrans
      lattice_interactionTransSlip(1:myNtrans,1:myNslip,myPhase)     = lattice_fccTohex_interactionTransSlip
      lattice_interactionTransTrans(1:myNtrans,1:myNtrans,myPhase)   = lattice_fccTohex_interactionTransTrans
-     lattice_projectionTrans(1:myNtrans,1:myNtrans,myPhase)         = LATTICE_fccTobcc_projectionTrans*&
-       LATTICE_fccTobcc_projectionTransFactor
 
 !--------------------------------------------------------------------------------------------------
 ! bcc
