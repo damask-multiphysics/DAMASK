@@ -28,12 +28,9 @@ module lattice
 
  integer(pInt), allocatable, dimension(:,:,:), protected, public :: &
    lattice_interactionSlipSlip, &                                                                   !< Slip--slip interaction type
-   lattice_interactionSlipTwin, &                                                                   !< Slip--twin interaction type
-   lattice_interactionTwinSlip, &                                                                   !< Twin--slip interaction type
-   lattice_interactionTwinTwin, &                                                                   !< Twin--twin interaction type
    lattice_interactionSlipTrans, &                                                                  !< Slip--trans interaction type
-   lattice_interactionTransSlip, &                                                                  !< Trans--slip interaction type
-   lattice_interactionTransTrans                                                                    !< Trans--trans interaction type
+   lattice_interactionTransSlip                                                                     !< Trans--slip interaction type
+
 
  real(pReal), allocatable, dimension(:,:,:,:,:), protected, public :: &
    lattice_Sslip, &                                                                                 !< Schmid and non-Schmid matrices
@@ -44,14 +41,12 @@ module lattice
    lattice_Scleavage_v, &                                                                           !< Mandel notation of lattice_Scleavege
    lattice_Qtrans, &                                                                                !< Total rotation: Q = R*B
    lattice_Strans, &                                                                                !< Eigendeformation tensor for phase transformation
-   lattice_Stwin, &
    lattice_Qtwin
 
  real(pReal), allocatable, dimension(:,:,:), protected, public :: &
    lattice_sn, &                                                                                    !< normal direction of slip system
    lattice_st, &                                                                                    !< sd x sn
    lattice_sd, &                                                                                    !< slip direction of slip system
-   lattice_Stwin_v, &
    lattice_Strans_v                                                                                 !< Eigendeformation tensor in vector form
 
  real(pReal), allocatable, dimension(:,:), protected, public :: &
@@ -1344,8 +1339,6 @@ subroutine lattice_init
  allocate(lattice_Scleavage_v(6,3,lattice_maxNslip,Nphases),source=0.0_pReal)
 
  allocate(lattice_Qtwin(3,3,lattice_maxNtwin,Nphases),source=0.0_pReal)
- allocate(lattice_Stwin(3,3,lattice_maxNtwin,Nphases),source=0.0_pReal)
- allocate(lattice_Stwin_v(6,lattice_maxNtwin,Nphases),source=0.0_pReal)
 
  allocate(lattice_shearTwin(lattice_maxNtwin,Nphases),source=0.0_pReal)
  allocate(lattice_shearTrans(lattice_maxNtrans,Nphases),source=0.0_pReal)
@@ -1360,12 +1353,8 @@ subroutine lattice_init
  allocate(lattice_NcleavageSystem(lattice_maxNcleavageFamily,Nphases),source=0_pInt)
 
  allocate(lattice_interactionSlipSlip(lattice_maxNslip,lattice_maxNslip,Nphases),source=0_pInt)     ! other:me
- allocate(lattice_interactionSlipTwin(lattice_maxNslip,lattice_maxNtwin,Nphases),source=0_pInt)     ! other:me
- allocate(lattice_interactionTwinSlip(lattice_maxNtwin,lattice_maxNslip,Nphases),source=0_pInt)     ! other:me
- allocate(lattice_interactionTwinTwin(lattice_maxNtwin,lattice_maxNtwin,Nphases),source=0_pInt)     ! other:me
  allocate(lattice_interactionSlipTrans(lattice_maxNslip,lattice_maxNtrans,Nphases),source=0_pInt)   ! other:me
  allocate(lattice_interactionTransSlip(lattice_maxNtrans,lattice_maxNslip,Nphases),source=0_pInt)   ! other:me
- allocate(lattice_interactionTransTrans(lattice_maxNtrans,lattice_maxNtrans,Nphases),source=0_pInt) ! other:me
 
  allocate(CoverA(Nphases),source=0.0_pReal)
  allocate(CoverA_trans(Nphases),source=0.0_pReal)
@@ -1694,12 +1683,8 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      lattice_NcleavageSystem(1:lattice_maxNcleavageFamily,myPhase)  = lattice_fcc_NcleavageSystem
      lattice_NnonSchmid(myPhase)                                    = lattice_fcc_NnonSchmid
      lattice_interactionSlipSlip(1:myNslip,1:myNslip,myPhase)       = lattice_fcc_interactionSlipSlip
-     lattice_interactionSlipTwin(1:myNslip,1:myNtwin,myPhase)       = lattice_fcc_interactionSlipTwin
-     lattice_interactionTwinSlip(1:myNtwin,1:myNslip,myPhase)       = lattice_fcc_interactionTwinSlip
-     lattice_interactionTwinTwin(1:myNtwin,1:myNtwin,myPhase)       = lattice_fcc_interactionTwinTwin
      lattice_interactionSlipTrans(1:myNslip,1:myNtrans,myPhase)     = lattice_fccTohex_interactionSlipTrans
      lattice_interactionTransSlip(1:myNtrans,1:myNslip,myPhase)     = lattice_fccTohex_interactionTransSlip
-     lattice_interactionTransTrans(1:myNtrans,1:myNtrans,myPhase)   = lattice_fccTohex_interactionTransTrans
 
 !--------------------------------------------------------------------------------------------------
 ! bcc
@@ -1746,9 +1731,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      lattice_NcleavageSystem(1:lattice_maxNcleavageFamily,myPhase)  = lattice_bcc_NcleavageSystem
      lattice_NnonSchmid(myPhase)                                    = lattice_bcc_NnonSchmid
      lattice_interactionSlipSlip(1:myNslip,1:myNslip,myPhase)       = lattice_bcc_interactionSlipSlip
-     lattice_interactionSlipTwin(1:myNslip,1:myNtwin,myPhase)       = lattice_bcc_interactionSlipTwin
-     lattice_interactionTwinSlip(1:myNtwin,1:myNslip,myPhase)       = lattice_bcc_interactionTwinSlip
-     lattice_interactionTwinTwin(1:myNtwin,1:myNtwin,myPhase)       = lattice_bcc_interactionTwinTwin
 
 !--------------------------------------------------------------------------------------------------
 ! hex (including conversion from miller-bravais (a1=a2=a3=c) to miller (a, b, c) indices)
@@ -1803,9 +1785,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      lattice_NcleavageSystem(1:lattice_maxNcleavageFamily,myPhase)  = lattice_hex_NcleavageSystem
      lattice_NnonSchmid(myPhase)                                    = lattice_hex_NnonSchmid
      lattice_interactionSlipSlip(1:myNslip,1:myNslip,myPhase)       = lattice_hex_interactionSlipSlip
-     lattice_interactionSlipTwin(1:myNslip,1:myNtwin,myPhase)       = lattice_hex_interactionSlipTwin
-     lattice_interactionTwinSlip(1:myNtwin,1:myNslip,myPhase)       = lattice_hex_interactionTwinSlip
-     lattice_interactionTwinTwin(1:myNtwin,1:myNtwin,myPhase)       = lattice_hex_interactionTwinTwin
 
 !--------------------------------------------------------------------------------------------------
 ! bct
@@ -1882,17 +1861,9 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      call IO_error(0_pInt,myPhase,i,0_pInt,ext_msg = 'dilatational slip Schmid matrix')
  enddo
  do i = 1_pInt,myNtwin                                                                              ! store twin system vectors and Schmid plus rotation matrix for my structure
-   lattice_td(1:3,i,myPhase) = td(1:3,i)/norm2(td(1:3,i))                                           ! make unit vector
    lattice_tn(1:3,i,myPhase) = tn(1:3,i)/norm2(tn(1:3,i))                                           ! make unit vector
-   lattice_tt(1:3,i,myPhase) = math_crossproduct(lattice_td(1:3,i,myPhase), &
-                                                  lattice_tn(1:3,i,myPhase))
-   lattice_Stwin(1:3,1:3,i,myPhase) = math_tensorproduct33(lattice_td(1:3,i,myPhase), &
-                                                         lattice_tn(1:3,i,myPhase))
-   lattice_Stwin_v(1:6,i,myPhase)   = math_Mandel33to6(math_symmetric33(lattice_Stwin(1:3,1:3,i,myPhase)))
    lattice_Qtwin(1:3,1:3,i,myPhase) = math_axisAngleToR(tn(1:3,i),180.0_pReal*INRAD)
    lattice_shearTwin(i,myPhase)     = ts(i)
-   if (abs(math_trace33(lattice_Stwin(1:3,1:3,i,myPhase))) > tol_math_check) &
-     call IO_error(301_pInt,myPhase,ext_msg = 'dilatational twin Schmid matrix')
  enddo
  do i = 1_pInt,myNtrans
    lattice_Qtrans(1:3,1:3,i,myPhase) = Qtr(1:3,1:3,i)
