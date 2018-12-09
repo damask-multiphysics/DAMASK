@@ -46,32 +46,32 @@ module plastic_disloUCLA
    real(pReal) :: &
      aTolRho, &
      grainSize, &
-     SolidSolutionStrength, &  !< Strength due to elements in solid solution
+     SolidSolutionStrength, &                                                       !< Strength due to elements in solid solution
      mu, &
      D0, &                                                                          !< prefactor for self-diffusion coefficient
      Qsd                                                                            !< activation energy for dislocation climb
    real(pReal),                 allocatable, dimension(:) :: &
-     B, &  !< friction coeff. B (kMC)
      rho0, &                                                                        !< initial edge dislocation density per slip system for each family and instance
      rhoDip0, &                                                                     !< initial edge dipole density per slip system for each family and instance
      burgers, &                                                                     !< absolute length of burgers vector [m] for each slip system and instance
+     nonSchmidCoeff, &
+     minDipDistance, &
+     CLambda, &                                                                     !< Adj. parameter for distance between 2 forest dislocations for each slip system and instance
+     atomicVolume, &
+     !* mobility law parameters
      H0kp, &                                                                        !< activation energy for glide [J] for each slip system and instance
      v0, &                                                                          !< dislocation velocity prefactor [m/s] for each family and instance
-     CLambda, &                                                                     !< Adj. parameter for distance between 2 forest dislocations for each slip system and instance
      p, &                                                                           !< p-exponent in glide velocity
      q, &                                                                           !< q-exponent in glide velocity
-     !* mobility law parameters
+     B, &                                                                            !< friction coeff. B (kMC)
      kink_height, &                                                                  !< height of the kink pair
      kink_width, &                                                                   !< width of the kink pair
-     omega, &                                                                   !<       attempt frequency for kink pair nucleation
-     viscosity, &                                                                   !< friction coeff. B (kMC)
-     !*
-     tau_Peierls, &
-     nonSchmidCoeff, &
-     atomicVolume, &
-     minDipDistance
+     omega, &                                                                        !< attempt frequency for kink pair nucleation
+     tau_Peierls 
+
    real(pReal),                 allocatable, dimension(:,:) :: &
-     interaction_SlipSlip                                                                           !< slip resistance from slip activity
+     interaction_SlipSlip, &                                                         !< slip resistance from slip activity
+     forestProjectionEdge
    real(pReal),                 allocatable, dimension(:,:,:) :: &
      Schmid_slip, &
      Schmid_twin, &
@@ -90,11 +90,11 @@ module plastic_disloUCLA
  type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
 
  type, private :: tDisloUCLAState
-     real(pReal), pointer, dimension(:,:) :: &
-       rhoEdge, &
-       rhoEdgeDip, &
-       accshear_slip, &
-       whole
+   real(pReal), pointer, dimension(:,:) :: &
+     rhoEdge, &
+     rhoEdgeDip, &
+     accshear_slip, &
+     whole
  end type
 
  type, private :: tDisloUCLAdependentState
@@ -637,7 +637,7 @@ function plastic_disloUCLA_postResults(Mp,Temperature,instance,of) result(postRe
          else
            postResults(c+i) = huge(1.0_pReal)
          endif
-           postResults(c+i)=min(postResults(c+i),dst%mfp(i,of))
+         postResults(c+i)=min(postResults(c+i),dst%mfp(i,of))
        enddo
    end select
 
