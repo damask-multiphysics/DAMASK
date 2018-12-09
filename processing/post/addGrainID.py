@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,time,copy
@@ -78,7 +78,7 @@ for name in filenames:
     errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.pos))
   if not np.all(table.label_dimension(options.quaternion) == 4):
     errors.append('input "{}" does not have dimension 4.'.format(options.quaternion))
-  else:  column = table.label_index(label)
+  else:  column = table.label_index(options.quaternion)
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
@@ -93,25 +93,14 @@ for name in filenames:
                                                options.disorientation))                        # report orientation source and disorientation
   table.head_write()
 
-# ------------------------------------------ process data ------------------------------------------
-
 # ------------------------------------------ build KD tree -----------------------------------------
 
   table.data_readArray(options.pos)                                                                 # read position vectors
   grainID = -np.ones(len(table.data),dtype=int)
-
-# --- start background messaging
-
-  bg = damask.util.backgroundMessage()
-  bg.start()
-
-  start = tick = time.clock()
-  bg.set_message('building KD tree...')
+  Npoints = table.data.shape[0]
   kdtree = spatial.KDTree(copy.deepcopy(table.data))
 
 # ------------------------------------------ assign grain IDs --------------------------------------
-
-  tick = time.clock()
 
   orientations = []                                                                                 # quaternions found for grain
   memberCounts = []                                                                                 # number of voxels in grain
@@ -123,13 +112,10 @@ for name in filenames:
   table.data_rewind()
   while table.data_read():                                                                          # read next data line of ASCII table
 
-    if p > 0 and p % 1000 == 0:
+    if Npoints > 100 and p%(Npoints//100) == 0:                                                     # report in 1% steps if possible and avoid modulo by zero
+      damask.util.print_progress(iteration=p,total=Npoints)
 
-      time_delta = (time.clock()-tick) * (len(grainID) - p) / p
-      bg.set_message('(%02i:%02i:%02i) processing point %i of %i (grain count %i)...'\
-            %(time_delta//3600,time_delta%3600//60,time_delta%60,p,len(grainID),np.count_nonzero(memberCounts)))
-
-    o = damask.Orientation(quaternion = np.array(map(float,table.data[column:column+4])),
+    o = damask.Orientation(quaternion = np.array(list(map(float,table.data[column:column+4]))),
                            symmetry   = options.symmetry).reduced()
 
     matched        = False
@@ -179,8 +165,6 @@ for name in filenames:
     table.data_append(1+packingMap[grainID[p]])                                                     # add (condensed) grain ID
     outputAlive = table.data_write()                                                                # output processed line
     p += 1
-
-  bg.set_message('done after {} seconds'.format(time.clock()-start))
 
 # ------------------------------------------ output finalization -----------------------------------  
 
