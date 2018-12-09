@@ -66,7 +66,7 @@ for name in filenames:
   for i,dim in enumerate(table.label_dimension(options.data)):
     label = options.data[i]
     if dim == -1:
-      remarks.append('{} "{}" not found...'.format(datatype,me))
+      remarks.append('"{}" not found...'.format(label))
     elif dim ==  3:
       remarks.append('adding vector "{}"...'.format(label))
       active['vector'].append(label)

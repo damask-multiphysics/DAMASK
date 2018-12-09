@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
+import os,sys
 import numpy as np
 from optparse import OptionParser
 import damask
