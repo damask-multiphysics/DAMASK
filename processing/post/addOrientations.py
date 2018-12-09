@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
+import os,sys
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -14,19 +14,19 @@ scriptID   = ' '.join([scriptName,damask.version])
 # --------------------------------------------------------------------
 
 def check_Eulers(eulers):
-  if np.any(eulers < 0.0) or np.any(eulers > 2.0*math.pi) or eulers[1] > math.pi:                   # Euler angles within valid range?
+  if np.any(eulers < 0.0) or np.any(eulers > 2.0*np.pi) or eulers[1] > np.pi:                       # Euler angles within valid range?
     raise ValueError('Euler angles outside of [0..2π],[0..π],[0..2π].\n{} {} {}.'.format(*eulers))
   return eulers
 
 def check_quaternion(q):
   if q[0] < 0.0:                                                                                    # positive first quaternion component?
-    raise ValueError('quaternion has negative first component.\n{}'.format(q))
-  if not(np.isclose(np.linalg.norm(q), 1.0)):                                                       # unit quaternion?
+    raise ValueError('quaternion has negative first component.\n{}'.format(q[0]))
+  if not np.isclose(np.linalg.norm(q), 1.0):                                                        # unit quaternion?
     raise ValueError('quaternion is not of unit length.\n{} {} {} {}'.format(*q))
   return q
  
 def check_matrix(M):
-  if abs(1.0-np.linalg.det(M)) > 1e-8:                                                              # proper rotation?
+  if not np.isclose(np.linalg.det(M),1.0):                                                          # proper rotation?
     raise ValueError('matrix is not a proper rotation.\n{}'.format(M))
   if    abs(np.dot(M[0],M[1]))    > 1e-8 \
      or abs(np.dot(M[1],M[2]))    > 1e-8 \
@@ -129,7 +129,7 @@ if np.sum(input) != 1: parser.error('needs exactly one input format.')
                          (options.quaternion,4,'quaternion'),
                         ][np.where(input)[0][0]]                                                    # select input label that was requested
 
-toRadians = math.pi/180.0 if options.degrees else 1.0                                               # rescale degrees to radians
+toRadians = np.pi/180.0 if options.degrees else 1.0                                                 # rescale degrees to radians
 r = damask.Quaternion.fromAngleAxis(toRadians*options.crystalrotation[0],options.crystalrotation[1:]) # crystal frame rotation
 R = damask.Quaternion.fromAngleAxis(toRadians*options.    labrotation[0],options.    labrotation[1:]) #     lab frame rotation
 
