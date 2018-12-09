@@ -125,6 +125,8 @@ subroutine plastic_disloUCLA_init()
    compiler_version, &
    compiler_options
 #endif
+ use prec, only: &
+   pStringLen
  use debug, only: &
    debug_level,&
    debug_constitutive,&
@@ -157,8 +159,9 @@ subroutine plastic_disloUCLA_init()
                   startIndex, endIndex, p, &
                   sizeState, sizeDotState, &
                   NipcMyPhase
- character(len=65536) :: &
-   structure = ''
+ character(len=pStringLen) :: &
+   structure = '',&
+   extmsg = ''
  character(len=65536), dimension(:), allocatable :: outputs
  integer(kind(undefined_ID))  :: outputID
  integer(pInt),          dimension(0), parameter :: emptyIntArray    = [integer(pInt)::]
@@ -218,11 +221,12 @@ subroutine plastic_disloUCLA_init()
                                                              config_phase(p)%getFloats('interaction_slipslip'), &
                                                              structure(1:3))
      prm%rho0        = config_phase(p)%getFloats('rhoedge0',       requiredShape=shape(prm%Nslip)) 
-     prm%rhoDip0     = config_phase(p)%getFloats('rhoedgedip0',    requiredShape=shape(prm%Nslip)) 
-     prm%burgers     = config_phase(p)%getFloats('slipburgers',    requiredShape=shape(prm%Nslip)) 
-     prm%H0kp        = config_phase(p)%getFloats('qedge',          requiredShape=shape(prm%Nslip)) 
-     prm%v0          = config_phase(p)%getFloats('v0',             requiredShape=shape(prm%Nslip)) 
-     prm%clambda     = config_phase(p)%getFloats('clambdaslip',    requiredShape=shape(prm%Nslip)) 
+     prm%rhoDip0     = config_phase(p)%getFloats('rhoedgedip0',    requiredShape=shape(prm%Nslip))
+     prm%v0          = config_phase(p)%getFloats('v0',             requiredShape=shape(prm%Nslip))
+     prm%burgers     = config_phase(p)%getFloats('slipburgers',    requiredShape=shape(prm%Nslip))
+     prm%H0kp        = config_phase(p)%getFloats('qedge',          requiredShape=shape(prm%Nslip))
+
+     prm%clambda     = config_phase(p)%getFloats('clambdaslip',    requiredShape=shape(prm%Nslip))
      prm%tau_Peierls = config_phase(p)%getFloats('tau_peierls',    requiredShape=shape(prm%Nslip))
      prm%p           = config_phase(p)%getFloats('p_slip',         requiredShape=shape(prm%Nslip), &
                                                  defaultVal=[(1.0_pReal,i=1_pInt,size(prm%Nslip))])
@@ -258,25 +262,22 @@ subroutine plastic_disloUCLA_init()
      prm%atomicVolume   = math_expand(prm%atomicVolume,   prm%Nslip)
      prm%minDipDistance = math_expand(prm%minDipDistance, prm%Nslip)
 
-      !if (plastic_disloUCLA_CAtomicVolume(instance) <= 0.0_pReal) &
-      !  call IO_error(211_pInt,el=instance,ext_msg='cAtomicVolume ('//PLASTICITY_DISLOUCLA_label//')')
-     ! if (prm%D0 <= 0.0_pReal) &
-     !   call IO_error(211_pInt,el=instance,ext_msg='D0 ('//PLASTICITY_DISLOUCLA_label//')')
-     ! if (plastic_disloUCLA_Qsd(instance) <= 0.0_pReal) &
-     !   call IO_error(211_pInt,el=instance,ext_msg='Qsd ('//PLASTICITY_DISLOUCLA_label//')')
+     ! sanity checks
+     if (any(prm%rho0         <  0.0_pReal))         extmsg = trim(extmsg)//' rhoedge0'
+     if (any(prm%rhoDip0      <  0.0_pReal))         extmsg = trim(extmsg)//' rhoedgedip0'
+     if (any(prm%v0           <  0.0_pReal))         extmsg = trim(extmsg)//' v0'
+     if (any(prm%burgers      <= 0.0_pReal))         extmsg = trim(extmsg)//' slipburgers'
+     if (any(prm%H0kp         <= 0.0_pReal))         extmsg = trim(extmsg)//' qedge'
+     if (any(prm%tau_peierls  <  0.0_pReal))         extmsg = trim(extmsg)//' tau_peierls'
+
+     if (    prm%D0           <= 0.0_pReal)          extmsg = trim(extmsg)//' d0'
+     if (    prm%Qsd          <= 0.0_pReal)          extmsg = trim(extmsg)//' qsd'
+   
+     !if (plastic_disloUCLA_CAtomicVolume(instance) <= 0.0_pReal) &
+     !  call IO_error(211_pInt,el=instance,ext_msg='cAtomicVolume ('//PLASTICITY_DISLOUCLA_label//')')
+
      ! if (plastic_disloUCLA_aTolRho(instance) <= 0.0_pReal) &
      !   call IO_error(211_pInt,el=instance,ext_msg='aTolRho ('//PLASTICITY_DISLOUCLA_label//')')
-     !if (plastic_disloUCLA_rhoEdge0(f,instance) < 0.0_pReal) &
-          !  call IO_error(211_pInt,el=instance,ext_msg='rhoEdge0 ('//PLASTICITY_DISLOUCLA_label//')')
-          !if (plastic_disloUCLA_rhoEdgeDip0(f,instance) < 0.0_pReal) &
-          !  call IO_error(211_pInt,el=instance,ext_msg='rhoEdgeDip0 ('//PLASTICITY_DISLOUCLA_label//')')
-          !if (plastic_disloUCLA_burgersPerSlipFamily(f,instance) <= 0.0_pReal) &
-          !  call IO_error(211_pInt,el=instance,ext_msg='slipBurgers ('//PLASTICITY_DISLOUCLA_label//')')
-          !if (plastic_disloUCLA_v0PerSlipFamily(f,instance) <= 0.0_pReal) &
-          !  call IO_error(211_pInt,el=instance,ext_msg='v0 ('//PLASTICITY_DISLOUCLA_label//')')
-          !if (plastic_disloUCLA_tau_peierlsPerSlipFamily(f,instance) < 0.0_pReal) &
-          !  call IO_error(211_pInt,el=instance,ext_msg='tau_peierls ('//PLASTICITY_DISLOUCLA_label//')')
-
 
    else slipActive
      allocate(prm%rho0(0))
