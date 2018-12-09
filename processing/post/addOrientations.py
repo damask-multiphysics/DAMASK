@@ -28,9 +28,9 @@ def check_quaternion(q):
 def check_matrix(M):
   if not np.isclose(np.linalg.det(M),1.0):                                                          # proper rotation?
     raise ValueError('matrix is not a proper rotation.\n{}'.format(M))
-  if    abs(np.dot(M[0],M[1]))    > 1e-8 \
-     or abs(np.dot(M[1],M[2]))    > 1e-8 \
-     or abs(np.dot(M[2],M[0]))    > 1e-8:                                                           # all orthogonal?
+  if    not np.isclose(np.dot(M[0],M[1]), 0.0) \
+     or not np.isclose(np.dot(M[1],M[2]), 0.0) \
+     or not np.isclose(np.dot(M[2],M[0]), 0.0):                                                     # all orthogonal?
     raise ValueError('matrix is not orthogonal.\n{}'.format(M))
   return M
 
