@@ -123,45 +123,18 @@ parser.add_option('-n', '--normal',
                   dest = 'normal',
                   type = 'float', nargs = 3, metavar = 'float float float',
                   help = 'stress plane normal in lab frame [%default]')
-parser.add_option('-e', '--eulers',
-                  dest = 'eulers',
-                  type = 'string', metavar = 'string',
-                  help = 'Euler angles label')
-parser.add_option('-d', '--degrees',
-                  dest = 'degrees',
-                  action = 'store_true',
-                  help = 'Euler angles are given in degrees [%default]')
-parser.add_option('-m', '--matrix',
-                  dest = 'matrix',
-                  type = 'string', metavar = 'string',
-                  help = 'orientation matrix label')
-parser.add_option('-a',
-                  dest = 'a',
-                  type = 'string', metavar = 'string',
-                  help = 'crystal frame a vector label')
-parser.add_option('-b',
-                  dest = 'b',
-                  type = 'string', metavar = 'string',
-                  help = 'crystal frame b vector label')
-parser.add_option('-c',
-                  dest = 'c',
-                  type = 'string', metavar = 'string',
-                  help = 'crystal frame c vector label')
 parser.add_option('-q', '--quaternion',
                   dest = 'quaternion',
-                  type = 'string', metavar = 'string',
+                  metavar = 'string',
                   help = 'quaternion label')
 
 parser.set_defaults(force = (0.0,0.0,1.0),
                     normal = None,
                     lattice = latticeChoices[0],
                     CoverA = math.sqrt(8./3.),
-                    degrees = False,
                    )
 
 (options, filenames) = parser.parse_args()
-
-toRadians = math.pi/180.0 if options.degrees else 1.0                                               # rescale degrees to radians
 
 force = np.array(options.force)
 force /= np.linalg.norm(force)
@@ -173,22 +146,6 @@ if options.normal:
     parser.error('stress plane normal not orthogonal to force direction')
 else:
   normal = force
-
-input = [options.eulers     is not None,
-         options.a          is not None and \
-         options.b          is not None and \
-         options.c          is not None,
-         options.matrix     is not None,
-         options.quaternion is not None,
-        ]
-
-if np.sum(input) != 1: parser.error('needs exactly one input format.')
-
-(label,dim,inputtype) = [(options.eulers,3,'eulers'),
-                         ([options.a,options.b,options.c],[3,3,3],'frame'),
-                         (options.matrix,9,'matrix'),
-                         (options.quaternion,4,'quaternion'),
-                        ][np.where(input)[0][0]]                                                    # select input label that was requested
 
 slip_direction = np.zeros((len(slipSystems[options.lattice]),3),'f')
 slip_normal    = np.zeros_like(slip_direction)
@@ -227,13 +184,12 @@ for name in filenames:
   table.head_read()
 
 # ------------------------------------------ sanity checks ----------------------------------------
-
-  if not np.all(table.label_dimension(label) == dim):
-    damask.util.croak('input {} does not have dimension {}.'.format(label,dim))
+  if not table.label_dimension(options.quaternion) == 4:
+    damask.util.croak('input {} does not have dimension 4.'.format(options.quaternion))
     table.close(dismiss = True)                                                                     # close ASCIItable and remove empty file
     continue
 
-  column = table.label_index(label)
+  column = table.label_index(options.quaternion)
 
 # ------------------------------------------ assemble header ---------------------------------------
 
@@ -251,17 +207,7 @@ for name in filenames:
 
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    if inputtype == 'eulers':
-      o = damask.Orientation(Eulers = np.array(list(map(float,table.data[column:column+3])))*toRadians,)
-    elif inputtype == 'matrix':
-      o = damask.Orientation(matrix = np.array(list(map(float,table.data[column:column+9]))).reshape(3,3).transpose(),)
-    elif inputtype == 'frame':
-      o = damask.Orientation(matrix = np.array(list(map(float,table.data[column[0]:column[0]+3] + \
-                                                              table.data[column[1]:column[1]+3] + \
-                                                              table.data[column[2]:column[2]+3]))).reshape(3,3),)
-    elif inputtype == 'quaternion':
-      o = damask.Orientation(quaternion = np.array(list(map(float,table.data[column:column+4]))),)
-
+    o = damask.Orientation(quaternion = np.array(list(map(float,table.data[column:column+4]))))
 
     table.data_append(  np.abs(  np.sum(slip_direction * (o.quaternion * force) ,axis=1) \
                                * np.sum(slip_normal    * (o.quaternion * normal),axis=1)))
