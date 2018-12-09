@@ -1034,7 +1034,7 @@ for incCount,position in enumerate(locations):     # walk through locations
   Ngroups = len(groups)
   for j,group in enumerate(groups):
     f = incCount*Ngroups + j
-    if options.verbose and (Ngroups*Nincs) > 100 and f%((Ngroups*Nincs)//100) == 0:                                     # report in 1% steps if possible and avoid modulo by zero
+    if options.verbose and (Ngroups*Nincs) > 100 and f%((Ngroups*Nincs)//100) == 0:                 # report in 1% steps if possible and avoid modulo by zero
       damask.util.print_progress(iteration=f,total=Ngroups*Nincs,prefix='3/3: processing points  ')
     N = 0                                                                                           # group member counter
     for (e,n,i,g,n_local) in group[1:]:                                                             # loop over group members
