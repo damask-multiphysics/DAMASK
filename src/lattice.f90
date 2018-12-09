@@ -1268,6 +1268,7 @@ real(pReal), dimension(4,36), parameter, private :: &
   lattice_interaction_TwinTwin, &
   lattice_interaction_SlipTwin, &
   lattice_interaction_TwinSlip, &
+  lattice_interaction_TransTrans, &
   lattice_characteristicShear_Twin
 
 contains
@@ -2570,6 +2571,9 @@ function lattice_interaction_TransTrans(Ntrans,interactionValues,structure,targe
  if (trim(structure) == 'fcc' .and. trim(targetStructure) == 'hex') then
    interactionTypes = lattice_fccToHex_interactionTransTrans
    NtransMax        = lattice_fcc_Ntrans
+ elseif (trim(structure) == 'fcc' .and. trim(targetStructure) == 'bcc') then
+   interactionTypes = lattice_fccToHex_interactionTransTrans                                        !< ToDo: The definition for bcc does not exist yet
+   NtransMax        = lattice_fcc_Ntrans
  else
    call IO_error(132_pInt,ext_msg=trim(structure)//' => '//trim(targetStructure))
  end if
@@ -2827,7 +2831,7 @@ function buildCoordinateSystem(active,maximum,system,structure,cOverA)
          normal    = system(4:6,j)
    
        case ('hex')
-     !ToDo: check c/a ratio
+     !ToDo: check if c/a ratio is sensible
          ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)])
          direction = [ system(1,j)*1.5_pReal, &
                       (system(1,j)+2.0_pReal*system(2,j))*sqrt(0.75_pReal), &
@@ -2839,7 +2843,7 @@ function buildCoordinateSystem(active,maximum,system,structure,cOverA)
                        system(8,j)/CoverA ]
 
        case ('bct')
-     !ToDo: check c/a ratio
+     !ToDo: check if c/a ratio is sensible
          direction = [system(1:2,j),system(3,i)*CoverA]
          normal    = [system(4:5,j),system(6,i)/CoverA]
 

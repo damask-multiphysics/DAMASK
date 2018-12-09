@@ -245,14 +245,6 @@ subroutine plastic_dislotwin_init(fileUnit)
  real(pReal),            dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
 
- type(tParameters) :: &
-   prm
- type(tDislotwinState) :: &
-   stt, &
-   dot
- type(tDislotwinMicrostructure) :: &
-   mse
-
  integer(kind(undefined_ID)) :: &
    outputID                                                                                         !< ID of each post result output
 
@@ -411,7 +403,10 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%xc_trans         = config_phase(p)%getFloat('xc_trans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
      prm%L0_trans         = config_phase(p)%getFloat('l0_trans')
 
-     prm%interaction_TransTrans = spread(config_phase(p)%getFloats('interaction_transtrans'),2,1)     
+     prm%interaction_TransTrans = lattice_interaction_TransTrans(prm%Ntrans,&
+                                                             config_phase(p)%getFloats('interaction_transtrans'), &
+                                                             structure(1:3),&
+                                                             trim(config_phase(p)%getString('trans_lattice_structure')))
      if (lattice_structure(p) /= LATTICE_fcc_ID) then
         prm%Ndot0_trans = config_phase(p)%getFloats('ndot0_trans')
         prm%Ndot0_trans = math_expand(prm%Ndot0_trans,prm%Ntrans)
@@ -651,7 +646,6 @@ subroutine plastic_dislotwin_init(fileUnit)
 
  
    allocate(temp1(prm%totalNtrans,prm%totalNslip),  source =0.0_pReal)
-   allocate(temp2(prm%totalNtrans,prm%totalNtrans), source =0.0_pReal)        
    allocate(prm%C66_trans(6,6,prm%totalNtrans)     ,source=0.0_pReal)
    allocate(prm%Schmid_trans(3,3,prm%totalNtrans),source  = 0.0_pReal)
    i = 0_pInt
@@ -675,21 +669,9 @@ subroutine plastic_dislotwin_init(fileUnit)
                                                                sum(lattice_NslipSystem(1:o-1_pInt,p))+k, &
                                                                p) ,1 )
        enddo; enddo
-
-       do o = 1_pInt,size(prm%Ntrans,1)
-         index_otherFamily = sum(prm%Ntrans(1:o-1_pInt))
-         do k = 1_pInt,prm%Ntrans(o)                                  ! loop over (active) systems in other family (trans)
-           temp2(index_myFamily+j,index_otherFamily+k) = &
-                 prm%interaction_TransTrans(lattice_interactionTransTrans( &
-                                                               sum(lattice_NtransSystem(1:f-1_pInt,p))+j, &
-                                                               sum(lattice_NtransSystem(1:o-1_pInt,p))+k, &
-                                                               p),1 )
-       enddo; enddo
-
      enddo transSystemsLoop
    enddo transFamiliesLoop
    prm%interaction_TransSlip  = temp1; deallocate(temp1)    
-   prm%interaction_TransTrans = temp2; deallocate(temp2)    
 
    startIndex=1_pInt
    endIndex=prm%totalNslip
