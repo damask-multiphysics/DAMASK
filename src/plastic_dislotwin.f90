@@ -416,8 +416,7 @@ subroutine plastic_dislotwin_init(fileUnit)
 
      prm%interaction_TransTrans = lattice_interaction_TransTrans(prm%Ntrans,&
                                                              config_phase(p)%getFloats('interaction_transtrans'), &
-                                                             structure(1:3),&
-                                                             trim(config_phase(p)%getString('trans_lattice_structure')))
+                                                             structure(1:3))
      if (lattice_structure(p) /= LATTICE_fcc_ID) then
         prm%Ndot0_trans = config_phase(p)%getFloats('ndot0_trans')
         prm%Ndot0_trans = math_expand(prm%Ndot0_trans,prm%Ntrans)
