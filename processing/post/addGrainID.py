@@ -117,7 +117,7 @@ for name in filenames:
   while table.data_read():                                                                          # read next data line of ASCII table
 
     if options.verbose and Npoints > 100 and p%(Npoints//100) == 0:                                 # report in 1% steps if possible and avoid modulo by zero
-      damask.util.print_progress(iteration=p,total=Npoints)
+      damask.util.progressBar(iteration=p,total=Npoints)
 
     o = damask.Orientation(quaternion = np.array(list(map(float,table.data[column:column+4]))),
                            symmetry   = options.symmetry).reduced()
@@ -165,7 +165,7 @@ for name in filenames:
 
   outputAlive = True
   p = 0
-  damask.util.print_progress(iteration=1,total=1)
+  damask.util.progressBar(iteration=1,total=1)
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     table.data_append(1+packingMap[grainID[p]])                                                     # add (condensed) grain ID
     outputAlive = table.data_write()                                                                # output processed line
