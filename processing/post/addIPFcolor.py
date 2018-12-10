@@ -18,18 +18,21 @@ Add RGB color value corresponding to TSL-OIM scheme for inverse pole figures.
 
 """, version = scriptID)
 
-parser.add_option('-p', '--pole',
+parser.add_option('-p',
+                  '--pole',
                   dest = 'pole',
                   type = 'float', nargs = 3, metavar = 'float float float',
                   help = 'lab frame direction for inverse pole figure [%default]')
-parser.add_option('-s', '--symmetry',
+parser.add_option('-s',
+                  '--symmetry',
                   dest = 'symmetry',
                   type = 'choice', choices = damask.Symmetry.lattices[1:], metavar='string',
                   help = 'crystal symmetry [%default] {{{}}} '.format(', '.join(damask.Symmetry.lattices[1:])))
-parser.add_option('-q', '--quaternion',
+parser.add_option('-o',
+                  '--orientation',
                   dest = 'quaternion',
-                  type = 'string', metavar = 'string',
-                  help = 'quaternion label')
+                  metavar = 'string',
+                  help = 'label of crystal orientation given as unit quaternion [%default]')
 
 parser.set_defaults(pole = (0.0,0.0,1.0),
                     quaternion = 'orientation',

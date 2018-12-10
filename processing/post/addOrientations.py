@@ -54,49 +54,53 @@ outputChoices = {
                   'angleaxis':  ['aaxs',4],
                 }
 
-parser.add_option('-o', '--output',
+parser.add_option('-o',
+                  '--output',
                   dest = 'output',
                   action = 'extend', metavar = '<string LIST>',
                   help = 'output orientation formats {{{}}}'.format(', '.join(outputChoices)))
-parser.add_option('-d', '--degrees',
+parser.add_option('-d',
+                  '--degrees',
                   dest = 'degrees',
                   action = 'store_true',
                   help = 'all angles in degrees')
-parser.add_option('-R', '--labrotation',
+parser.add_option('-R',
+                  '--labrotation',
                   dest='labrotation',
                   type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
                   help = 'angle and axis of additional lab frame rotation')
-parser.add_option('-r', '--crystalrotation',
+parser.add_option('-r',
+                  '--crystalrotation',
                   dest='crystalrotation',
                   type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
                   help = 'angle and axis of additional crystal frame rotation')
-parser.add_option(      '--eulers',
+parser.add_option('--eulers',
                   dest = 'eulers',
-                  type = 'string', metavar = 'string',
+                  metavar = 'string',
                   help = 'Euler angles label')
-parser.add_option(      '--rodrigues',
+parser.add_option('--rodrigues',
                   dest = 'rodrigues',
-                  type = 'string', metavar = 'string',
+                  metavar = 'string',
                   help = 'Rodrigues vector label')
-parser.add_option(      '--matrix',
+parser.add_option('--matrix',
                   dest = 'matrix',
-                  type = 'string', metavar = 'string',
+                  metavar = 'string',
                   help = 'orientation matrix label')
-parser.add_option(       '--quaternion',
+parser.add_option('--quaternion',
                   dest = 'quaternion',
-                  type = 'string', metavar = 'string',
+                  metavar = 'string',
                   help = 'quaternion label')
 parser.add_option('-x',
                   dest = 'x',
-                  type = 'string', metavar = 'string',
+                  metavar = 'string',
                   help = 'label of lab x vector (expressed in crystal coords)')
 parser.add_option('-y',
                   dest = 'y',
-                  type = 'string', metavar = 'string',
+                  metavar = 'string',
                   help = 'label of lab y vector (expressed in crystal coords)')
 parser.add_option('-z',
                   dest = 'z',
-                  type = 'string', metavar = 'string',
+                  metavar = 'string',
                   help = 'label of lab z vector (expressed in crystal coords)')
 
 parser.set_defaults(output = [],

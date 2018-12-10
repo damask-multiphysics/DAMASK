@@ -109,26 +109,31 @@ Add columns listing Schmid factors (and optional trace vector of selected system
 """, version = scriptID)
 
 latticeChoices = ('fcc','bcc','hex')
-parser.add_option('-l','--lattice',
+parser.add_option('-l',
+                  '--lattice',
                   dest = 'lattice', type = 'choice', choices = latticeChoices, metavar='string',
                   help = 'type of lattice structure [%default] {}'.format(latticeChoices))
 parser.add_option('--covera',
                   dest = 'CoverA', type = 'float', metavar = 'float',
                   help = 'C over A ratio for hexagonal systems')
-parser.add_option('-f', '--force',
+parser.add_option('-f',
+                  '--force',
                   dest = 'force',
                   type = 'float', nargs = 3, metavar = 'float float float',
                   help = 'force direction in lab frame [%default]')
-parser.add_option('-n', '--normal',
+parser.add_option('-n',
+                  '--normal',
                   dest = 'normal',
                   type = 'float', nargs = 3, metavar = 'float float float',
-                  help = 'stress plane normal in lab frame [%default]')
-parser.add_option('-q', '--quaternion',
+                  help = 'stress plane normal in lab frame, per default perpendicular to the force')
+parser.add_option('-o',
+                  '--orientation',
                   dest = 'quaternion',
                   metavar = 'string',
-                  help = 'quaternion label')
+                  help = 'label of crystal orientation given as unit quaternion [%default]')
 
 parser.set_defaults(force = (0.0,0.0,1.0),
+                    quaternion='orientation',
                     normal = None,
                     lattice = latticeChoices[0],
                     CoverA = math.sqrt(8./3.),
@@ -139,7 +144,7 @@ parser.set_defaults(force = (0.0,0.0,1.0),
 force = np.array(options.force)
 force /= np.linalg.norm(force)
 
-if options.normal:
+if options.normal is not None:
   normal = np.array(options.normal)
   normal /= np.linalg.norm(normal)
   if abs(np.dot(force,normal)) > 1e-3:

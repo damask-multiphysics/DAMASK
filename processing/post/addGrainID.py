@@ -31,11 +31,11 @@ parser.add_option('-s',
                   dest = 'symmetry',
                   metavar = 'string',
                   help = 'crystal symmetry [%default]')
-parser.add_option('-q',
-                  '--quaternion',
+parser.add_option('-o',
+                  '--orientation',
                   dest = 'quaternion',
                   metavar = 'string',
-                  help = 'label of quaternion')
+                  help = 'label of crystal orientation given as unit quaternion [%default]')
 parser.add_option('-p',
                   '--pos', '--position',
                   dest = 'pos',

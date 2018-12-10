@@ -14,22 +14,24 @@ scriptID   = ' '.join([scriptName,damask.version])
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Add x,y coordinates of stereographic projection of given direction (pole) in crystal frame.
+Add coordinates of stereographic projection of given direction (pole) in crystal frame.
 
 """, version = scriptID)
 
-parser.add_option('-p', '--pole',
+parser.add_option('-p',
+                  '--pole',
                   dest = 'pole',
                   type = 'float', nargs = 3, metavar = 'float float float',
                   help = 'crystal frame direction for pole figure [%default]')
 parser.add_option('--polar',
                   dest = 'polar',
                   action = 'store_true',
-                  help = 'output polar coordinates r,phi [%default]')
-parser.add_option('-q', '--quaternion',
+                  help = 'output polar coordinates (r,φ) instead of Cartesian coordinates (x,y)')
+parser.add_option('-o',
+                  '--orientation',
                   dest = 'quaternion',
-                  type = 'string', metavar = 'string',
-                  help = 'quaternion label')
+                  metavar = 'string',
+                  help = 'label of crystal orientation given as unit quaternion [%default]')
 
 parser.set_defaults(pole = (1.0,0.0,0.0),
                     quaternion = 'orientation',
