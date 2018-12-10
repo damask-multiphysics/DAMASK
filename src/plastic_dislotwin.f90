@@ -107,7 +107,7 @@ module plastic_dislotwin
      interaction_TransSlip, &                                                                       !< coefficients for trans-slip interaction for each interaction type
      interaction_TransTrans                                                                         !< coefficients for trans-trans interaction for each interaction type
    integer(pInt),                  dimension(:,:),            allocatable :: & 
-     fcc_twinNucleationSlipPair
+     fcc_twinNucleationSlipPair                                                                     ! ToDo: Better name? Is also use for trans
    real(pReal),                  dimension(:,:),            allocatable :: & 
      forestProjectionEdge, &
      C66
@@ -124,7 +124,7 @@ module plastic_dislotwin
      outputID                                                                                       !< ID of each post result output
    
    logical :: &
-     isFCC                                                                                          !< twinning and transformation models are for fcc
+     fccTwinTransNucleation                                                                             !< twinning and transformation models are for fcc
    integer(pInt) :: & 
      totalNslip, &                                                                                          !< number of active slip systems for each family and instance
      totalNtwin, &                                                                                          !< number of active twin systems for each family and instance
@@ -288,7 +288,6 @@ subroutine plastic_dislotwin_init(fileUnit)
              mse => microstructure(phase_plasticityInstance(p)))
 
    ! This data is read in already in lattice
-   prm%isFCC = merge(.true., .false., lattice_structure(p) == LATTICE_FCC_ID)
    prm%mu = lattice_mu(p)
    prm%nu = lattice_nu(p)
    prm%C66 = lattice_C66(1:6,1:6,p)
@@ -301,6 +300,13 @@ subroutine plastic_dislotwin_init(fileUnit)
    prm%Nslip =  config_phase(p)%getInts('nslip',defaultVal=emptyIntArray)
    prm%totalNslip = sum(prm%Nslip)
    slipActive: if (prm%totalNslip > 0_pInt) then
+
+     prm%fccTwinTransNucleation = merge(.true., .false., lattice_structure(p) == LATTICE_FCC_ID) &
+                                .and. (prm%Nslip(1) == 12_pInt)
+     if(prm%fccTwinTransNucleation) &
+       prm%fcc_twinNucleationSlipPair = lattice_fcc_twinNucleationSlipPair
+
+
      prm%Schmid_slip          = lattice_SchmidMatrix_slip(prm%Nslip,structure(1:3),&
                                                           config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal))
      prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
@@ -374,8 +380,10 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%shear_twin      = lattice_characteristicShear_Twin(prm%Ntwin,structure(1:3),&
                                                           config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal))
 
+     prm%C66_twin        = lattice_C66_twin(prm%Ntwin,prm%C66,structure(1:3),&
+                                                          config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal))
 
-     if (.not. prm%isFCC) then
+     if (.not. prm%fccTwinTransNucleation) then
        prm%Ndot0_twin = config_phase(p)%getFloats('ndot0_twin') 
        prm%Ndot0_twin = math_expand(prm%Ndot0_twin,prm%Ntwin)
      endif
@@ -435,12 +443,15 @@ subroutine plastic_dislotwin_init(fileUnit)
                                                              structure(1:3)) 
      prm%interaction_TwinSlip = lattice_interaction_TwinSlip(prm%Ntwin,prm%Nslip,&
                                                              config_phase(p)%getFloats('interaction_twinslip'), &
-                                                             structure(1:3)) 
+                                                             structure(1:3))
+     if (prm%fccTwinTransNucleation .and. prm%totalNtwin > 12_pInt) write(6,*) 'mist' ! ToDo: implement better test. The model will fail also if ntwin is [6,6]
    endif    
 
    if (prm%totalNslip > 0_pInt .and. prm%totalNtrans > 0_pInt) then
      prm%interaction_TransSlip = spread(config_phase(p)%getFloats('interaction_transslip'),2,1)     
      prm%interaction_SlipTrans = spread(config_phase(p)%getFloats('interaction_sliptrans'),2,1)     
+
+     if (prm%fccTwinTransNucleation .and. prm%totalNtrans > 12_pInt) write(6,*) 'mist' ! ToDo: implement better test. The model will fail also if ntrans is [6,6]
    endif    
 
 
@@ -583,8 +594,8 @@ subroutine plastic_dislotwin_init(fileUnit)
 ! allocate state arrays
    NipcMyPhase=count(material_phase==p)
    sizeDotState     = int(size(['rho         ','rhoDip      ','accshearslip']),pInt) * prm%totalNslip &
-                    + int(size(['twinFraction','accsheartwin']),pInt) * prm%totalNtwin &
-                    + int(size(['stressTransFraction','strainTransFraction']),pInt) * prm%totalNtrans
+                    + int(size(['twinFraction','accsheartwin']),pInt)                * prm%totalNtwin &
+                    + int(size(['stressTransFraction','strainTransFraction']),pInt)  * prm%totalNtrans
    sizeState        = sizeDotState
 
    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0_pInt, &
@@ -597,7 +608,9 @@ subroutine plastic_dislotwin_init(fileUnit)
        plasticState(p)%dotState(offset_slip+1:offset_slip+plasticState(p)%nslip,1:NipcMyPhase)
    plasticState(p)%accumulatedSlip => &
        plasticState(p)%state   (offset_slip+1:offset_slip+plasticState(p)%nslip,1:NipcMyPhase)
-      
+
+
+! DEPRECATED BEGIN
    allocate(temp1(prm%totalNslip,prm%totalNtrans),source =0.0_pReal)        
    allocate(prm%forestProjectionEdge(prm%totalNslip,prm%totalNslip),source   = 0.0_pReal)
    i = 0_pInt
@@ -627,25 +640,6 @@ subroutine plastic_dislotwin_init(fileUnit)
    enddo mySlipFamilies   
    prm%interaction_SlipTrans = temp1; deallocate(temp1)    
 
-   allocate(prm%C66_twin(6,6,prm%totalNtwin),       source=0.0_pReal)
-   if (lattice_structure(p) == LATTICE_fcc_ID) &
-     allocate(prm%fcc_twinNucleationSlipPair(2,prm%totalNtwin),source = 0_pInt)
-   i = 0_pInt
-   twinFamiliesLoop: do f = 1_pInt, size(prm%Ntwin,1)
-     index_myFamily = sum(prm%Ntwin(1:f-1_pInt))                      ! index in truncated twin system list
-     twinSystemsLoop: do j = 1_pInt,prm%Ntwin(f)
-       i = i + 1_pInt
-       if (lattice_structure(p) == LATTICE_fcc_ID) prm%fcc_twinNucleationSlipPair(1:2,i) = &
-                      lattice_fcc_twinNucleationSlipPair(1:2,sum(lattice_Ntwinsystem(1:f-1,p))+j)
-     !* Rotate twin elasticity matrices
-       index_otherFamily = sum(lattice_NtwinSystem(1:f-1_pInt,p))                             ! index in full lattice twin list
-       prm%C66_twin(1:6,1:6,index_myFamily+j) = &
-         math_Mandel3333to66(math_rotate_forward3333(lattice_C3333(1:3,1:3,1:3,1:3,p),&
-                                                     lattice_Qtwin(1:3,1:3,index_otherFamily+j,p)))
-     enddo twinSystemsLoop
-   enddo twinFamiliesLoop
-
-
    allocate(temp1(prm%totalNtrans,prm%totalNslip),  source =0.0_pReal)
    allocate(prm%C66_trans(6,6,prm%totalNtrans)     ,source=0.0_pReal)
    allocate(prm%Schmid_trans(3,3,prm%totalNtrans),source  = 0.0_pReal)
@@ -672,7 +666,8 @@ subroutine plastic_dislotwin_init(fileUnit)
        enddo; enddo
      enddo transSystemsLoop
    enddo transFamiliesLoop
-   prm%interaction_TransSlip  = temp1; deallocate(temp1)    
+   prm%interaction_TransSlip  = temp1; deallocate(temp1)  
+! DEPRECATED END  
 
    startIndex=1_pInt
    endIndex=prm%totalNslip
@@ -1051,7 +1046,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,instance,
    significantTransStress: if (tau > tol_math_check) then
      StressRatio_s = (mse%threshold_stress_trans(i,of)/tau)**prm%s(i)
 
-     isFCCtrans: if (prm%isFCC) then
+     isFCCtrans: if (prm%fccTwinTransNucleation) then
        s1=prm%fcc_twinNucleationSlipPair(1,i)
        s2=prm%fcc_twinNucleationSlipPair(2,i)
        if (tau < mse%tau_r_trans(i,of)) then
@@ -1189,7 +1184,7 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
    
    significantTwinStress: if (tau > tol_math_check) then
      StressRatio_r = (mse%threshold_stress_twin(i,of)/tau)**prm%r(i)
-     isFCCtwin: if (prm%isFCC) then
+     isFCCtwin: if (prm%fccTwinTransNucleation) then
        s1=prm%fcc_twinNucleationSlipPair(1,i)
        s2=prm%fcc_twinNucleationSlipPair(2,i)
        if (tau < mse%tau_r_twin(i,of)) then
@@ -1215,7 +1210,7 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
   
   significantTransStress: if (tau > tol_math_check) then
      StressRatio_s = (mse%threshold_stress_trans(i,of)/tau)**prm%s(i)
-     isFCCtrans: if (prm%isFCC) then
+     isFCCtrans: if (prm%fccTwinTransNucleation) then
        s1=prm%fcc_twinNucleationSlipPair(1,i)
        s2=prm%fcc_twinNucleationSlipPair(2,i)
        if (tau < mse%tau_r_trans(i,of)) then
@@ -1358,7 +1353,7 @@ pure subroutine kinetics_twin(prm,stt,mse,of,Mp,temperature,gdot_slip,gdot_twin,
 
  do i = 1_pInt, prm%totalNtwin
    tau(i) = math_mul33xx33(Mp,prm%Schmid_twin(1:3,1:3,i))
-   isFCC: if (prm%isFCC) then
+   isFCC: if (prm%fccTwinTransNucleation) then
      s1=prm%fcc_twinNucleationSlipPair(1,i)
      s2=prm%fcc_twinNucleationSlipPair(2,i)
      if (tau(i) < mse%tau_r_twin(i,of)) then
@@ -1430,7 +1425,7 @@ pure subroutine kinetics_trans(prm,stt,mse,of,Mp,temperature,gdot_slip,gdot_tran
 
  do i = 1_pInt, prm%totalNtrans
    tau(i) = math_mul33xx33(Mp,prm%Schmid_trans(1:3,1:3,i))
-   isFCC: if (prm%isFCC) then
+   isFCC: if (prm%fccTwinTransNucleation) then
      s1=prm%fcc_twinNucleationSlipPair(1,i)
      s2=prm%fcc_twinNucleationSlipPair(2,i)
      if (tau(i) < mse%tau_r_trans(i,of)) then
@@ -1605,7 +1600,7 @@ function plastic_dislotwin_postResults(Mp,Temperature,instance,of) result(postRe
          tau = math_mul33xx33(Mp,prm%Schmid_twin(1:3,1:3,j))
 
          if ( tau > 0.0_pReal ) then
-           isFCCtwin: if (prm%isFCC) then
+           isFCCtwin: if (prm%fccTwinTransNucleation) then
              s1=prm%fcc_twinNucleationSlipPair(1,j)
              s2=prm%fcc_twinNucleationSlipPair(2,j)
              if (tau < mse%tau_r_twin(j,of)) then
