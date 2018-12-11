@@ -236,7 +236,6 @@ subroutine plastic_dislotwin_init
  integer(pInt) :: sizeState, sizeDotState
  integer(pInt) :: NipcMyPhase   
      
- real(pReal),  allocatable, dimension(:,:) :: temp1
  integer(pInt), dimension(1,200), parameter :: lattice_ntranssystem = 12 ! HACK!!
  integer(pInt),          dimension(0), parameter :: emptyIntArray    = [integer(pInt)::]
  real(pReal),            dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
@@ -607,7 +606,6 @@ subroutine plastic_dislotwin_init
 
 
 ! DEPRECATED BEGIN
-   allocate(temp1(prm%totalNslip,prm%totalNtrans),source =0.0_pReal)        
    allocate(prm%forestProjectionEdge(prm%totalNslip,prm%totalNslip),source   = 0.0_pReal)
    i = 0_pInt
    mySlipFamilies: do f = 1_pInt,size(prm%Nslip,1)
