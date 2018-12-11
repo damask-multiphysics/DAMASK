@@ -2398,7 +2398,7 @@ function lattice_interaction_SlipTrans(Nslip,Ntrans,interactionValues,structure)
      NslipMax         = LATTICE_FCC_NSLIPSYSTEM
      NtransMax        = LATTICE_FCC_NTRANSSYSTEM
    case default
-     call IO_error(132_pInt,ext_msg=trim(structure)//' (twin slip interaction)')
+     call IO_error(132_pInt,ext_msg=trim(structure)//' (slip trans interaction)')
  end select
 
  !if (size(interactionValues) > maxval(interactionTypes)) &
@@ -2503,7 +2503,7 @@ function lattice_interaction_TransSlip(Ntrans,Nslip,interactionValues,structure)
  real(pReal),      dimension(:),                   intent(in) :: interactionValues                  !< interaction values trans-trans
  character(len=*),                                 intent(in) :: &
    structure                                                                                        !< lattice structure of parent crystal
- real(pReal),     dimension(sum(Nslip),sum(Ntrans))           :: interactionMatrix
+ real(pReal),     dimension(sum(Ntrans),sum(Nslip))           :: interactionMatrix
 
  integer(pInt),   dimension(:),                   allocatable :: NtransMax, &
                                                                  NslipMax
@@ -2515,7 +2515,7 @@ function lattice_interaction_TransSlip(Ntrans,Nslip,interactionValues,structure)
      NslipMax         = LATTICE_FCC_NSLIPSYSTEM
      NtransMax        = LATTICE_FCC_NTRANSSYSTEM
    case default
-     call IO_error(132_pInt,ext_msg=trim(structure)//' (twin slip interaction)')
+     call IO_error(132_pInt,ext_msg=trim(structure)//' (trans slip interaction)')
  end select
 
  !if (size(interactionValues) > maxval(interactionTypes)) &

@@ -446,9 +446,13 @@ subroutine plastic_dislotwin_init(fileUnit)
      if (prm%fccTwinTransNucleation .and. prm%totalNtwin > 12_pInt) write(6,*) 'mist' ! ToDo: implement better test. The model will fail also if ntwin is [6,6]
    endif    
 
-   if (prm%totalNslip > 0_pInt .and. prm%totalNtrans > 0_pInt) then
-     prm%interaction_TransSlip = spread(config_phase(p)%getFloats('interaction_transslip'),2,1)     
-     prm%interaction_SlipTrans = spread(config_phase(p)%getFloats('interaction_sliptrans'),2,1)     
+   if (prm%totalNslip > 0_pInt .and. prm%totalNtrans > 0_pInt) then  
+     prm%interaction_SlipTrans = lattice_interaction_SlipTrans(prm%Nslip,prm%Ntrans,&
+                                                               config_phase(p)%getFloats('interaction_sliptrans'), &
+                                                               structure(1:3)) 
+     prm%interaction_TransSlip = lattice_interaction_TransSlip(prm%Ntrans,prm%Nslip,&
+                                                               config_phase(p)%getFloats('interaction_transslip'), &
+                                                               structure(1:3))
 
      if (prm%fccTwinTransNucleation .and. prm%totalNtrans > 12_pInt) write(6,*) 'mist' ! ToDo: implement better test. The model will fail also if ntrans is [6,6]
    endif    
@@ -615,7 +619,6 @@ subroutine plastic_dislotwin_init(fileUnit)
    i = 0_pInt
    mySlipFamilies: do f = 1_pInt,size(prm%Nslip,1)
      index_myFamily = sum(prm%Nslip(1:f-1_pInt))
-
      slipSystemsLoop: do j = 1_pInt,prm%Nslip(f)
        i = i + 1_pInt
        do o = 1_pInt, size(prm%Nslip,1)
@@ -625,21 +628,9 @@ subroutine plastic_dislotwin_init(fileUnit)
              abs(math_mul3x3(lattice_sn(:,sum(lattice_NslipSystem(1:f-1,p))+j,p), &
                              lattice_st(:,sum(lattice_NslipSystem(1:o-1,p))+k,p)))
        enddo; enddo
-       do o = 1_pInt,size(prm%Ntrans,1)
-         index_otherFamily = sum(prm%Ntrans(1:o-1_pInt))
-         do k = 1_pInt,prm%Ntrans(o)                                  ! loop over (active) systems in other family (trans)
-           temp1(index_myFamily+j,index_otherFamily+k) = &
-                 prm%interaction_SlipTrans(lattice_interactionSlipTrans( &
-                                                               sum(lattice_NslipSystem(1:f-1_pInt,p))+j, &
-                                                               sum(lattice_NtransSystem(1:o-1_pInt,p))+k, &
-                                                               p),1 )
-       enddo; enddo
-  
      enddo slipSystemsLoop
-   enddo mySlipFamilies   
-   prm%interaction_SlipTrans = temp1; deallocate(temp1)    
+   enddo mySlipFamilies 
 
-   allocate(temp1(prm%totalNtrans,prm%totalNslip),  source =0.0_pReal)
    allocate(prm%C66_trans(6,6,prm%totalNtrans)     ,source=0.0_pReal)
    allocate(prm%Schmid_trans(3,3,prm%totalNtrans),source  = 0.0_pReal)
    i = 0_pInt
@@ -653,19 +644,8 @@ subroutine plastic_dislotwin_init(fileUnit)
        prm%C66_trans(1:6,1:6,index_myFamily+j) = &
          math_Mandel3333to66(math_rotate_forward3333(lattice_trans_C3333(1:3,1:3,1:3,1:3,p),&
                                                      lattice_Qtrans(1:3,1:3,index_otherFamily+j,p)))
-     !* Interaction matrices
-       do o = 1_pInt,size(prm%Nslip,1)
-         index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
-         do k = 1_pInt,prm%Nslip(o)                                   ! loop over (active) systems in other family (slip)
-           temp1(index_myFamily+j,index_otherFamily+k) = &
-                 prm%interaction_TransSlip(lattice_interactionTransSlip( &
-                                                               sum(lattice_NtransSystem(1:f-1_pInt,p))+j, &
-                                                               sum(lattice_NslipSystem(1:o-1_pInt,p))+k, &
-                                                               p) ,1 )
-       enddo; enddo
      enddo transSystemsLoop
    enddo transFamiliesLoop
-   prm%interaction_TransSlip  = temp1; deallocate(temp1)  
 ! DEPRECATED END  
 
    startIndex=1_pInt
@@ -715,11 +695,11 @@ subroutine plastic_dislotwin_init(fileUnit)
    plasticState(p)%state0 = plasticState(p)%state
    dot%whole => plasticState(p)%dotState
 
-   allocate(mse%invLambdaSlip(prm%totalNslip,NipcMyPhase),source=0.0_pReal)
-   allocate(mse%invLambdaSlipTwin(prm%totalNslip,NipcMyPhase),source=0.0_pReal)
-   allocate(mse%invLambdaTwin(prm%totalNtwin,NipcMyPhase),source=0.0_pReal)
-   allocate(mse%invLambdaSlipTrans(prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
-   allocate(mse%invLambdaTrans(prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
+   allocate(mse%invLambdaSlip     (prm%totalNslip,NipcMyPhase),source=0.0_pReal)
+   allocate(mse%invLambdaSlipTwin (prm%totalNslip,NipcMyPhase),source=0.0_pReal)
+   allocate(mse%invLambdaSlipTrans(prm%totalNslip,NipcMyPhase),source=0.0_pReal)
+   allocate(mse%invLambdaTwin     (prm%totalNtwin,NipcMyPhase),source=0.0_pReal)
+   allocate(mse%invLambdaTrans    (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
 
    allocate(mse%mfp_slip(prm%totalNslip,NipcMyPhase),  source=0.0_pReal)
    allocate(mse%mfp_twin(prm%totalNtwin,NipcMyPhase),  source=0.0_pReal)
@@ -756,8 +736,6 @@ function plastic_dislotwin_homogenizedC(ipc,ip,el)
    ipc, &                                                                                          !< component-ID of integration point
    ip, &                                                                                           !< integration point
    el                                                                                              !< element
- type(tParameters)     :: prm
- type(tDislotwinState) :: stt
 
  integer(pInt) :: i, &
                   of
@@ -814,10 +792,6 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
    x0, &
    fOverStacksize, &
    ftransOverLamellarSize
-   
- type(tParameters)     :: prm                                                                       !< parameters of present instance
- type(tDislotwinState) :: stt                                                                       !< state of present instance
- type(tDislotwinMicrostructure) :: mse
 
  of = phasememberAt(ipc,ip,el)
 
@@ -858,7 +832,7 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
 
  !* 1/mean free distance between 2 martensite lamellar from different systems seen by a moving dislocation
  if (prm%totalNtrans > 0_pInt .and. prm%totalNslip > 0_pInt) &
-   mse%invLambdaSlipTrans(1_pInt:prm%totalNslip,of) = &
+   mse%invLambdaSlipTrans(1_pInt:prm%totalNslip,of) = &                                  ! ToDo: does not work if Ntrans is not 12
       matmul(prm%interaction_SlipTrans,ftransOverLamellarSize)/(1.0_pReal-sumf_trans)
 
  !* 1/mean free distance between 2 martensite stacks from different systems seen by a growing martensite (1/lambda_trans)
@@ -930,10 +904,6 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,instance,
    math_symmetric33, &
    math_mul33xx33, &
    math_mul33x3
- use material, only: &
-   material_phase, &
-   phase_plasticityInstance, &
-   phasememberAt
  
  implicit none
  real(pReal), dimension(3,3),     intent(out) :: Lp
@@ -975,9 +945,6 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,instance,
         0, 1,-1, &
         0, 1, 1  &
         ],pReal),[ 3,6])
-        
- type(tParameters)     :: prm                                                                       !< parameters of present instance
- type(tDislotwinState) :: ste                                                                       !< state of present instance
 
  associate(prm => param(instance), stt => state(instance), mse => microstructure(instance))
 
@@ -1089,10 +1056,7 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
    math_Mandel6to33, &
    pi
  use material, only: &
-   material_phase, &
-   phase_plasticityInstance, &
-   plasticState, &
-   phasememberAt
+   plasticState
 
  implicit none
  real(pReal), dimension(3,3),  intent(in):: &
@@ -1477,11 +1441,6 @@ function plastic_dislotwin_postResults(Mp,Temperature,instance,of) result(postRe
    PI, &
    math_mul33xx33, &
    math_Mandel6to33
- use material, only: &
-   material_phase, &
-   plasticState, &
-   phase_plasticityInstance,& 
-   phasememberAt
 
  implicit none
  real(pReal), dimension(3,3),intent(in) :: &
