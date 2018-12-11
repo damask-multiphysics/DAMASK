@@ -302,9 +302,11 @@ subroutine plastic_dislotwin_init
      if(prm%fccTwinTransNucleation) &
        prm%fcc_twinNucleationSlipPair = lattice_fcc_twinNucleationSlipPair
 
-
      prm%Schmid_slip          = lattice_SchmidMatrix_slip(prm%Nslip,structure(1:3),&
                                                           config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal))
+     prm%forestProjectionEdge= lattice_forestProjection  (prm%Nslip,structure(1:3),&
+                                                          config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal))
+
      prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
                                                              config_phase(p)%getFloats('interaction_slipslip'), &
                                                              structure(1:3))
@@ -606,22 +608,6 @@ subroutine plastic_dislotwin_init
 
 
 ! DEPRECATED BEGIN
-   allocate(prm%forestProjectionEdge(prm%totalNslip,prm%totalNslip),source   = 0.0_pReal)
-   i = 0_pInt
-   mySlipFamilies: do f = 1_pInt,size(prm%Nslip,1)
-     index_myFamily = sum(prm%Nslip(1:f-1_pInt))
-     slipSystemsLoop: do j = 1_pInt,prm%Nslip(f)
-       i = i + 1_pInt
-       do o = 1_pInt, size(prm%Nslip,1)
-         index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
-         do k = 1_pInt,prm%Nslip(o)                                   ! loop over (active) systems in other family (slip)
-           prm%forestProjectionEdge(index_myFamily+j,index_otherFamily+k) = &
-             abs(math_mul3x3(lattice_sn(:,sum(lattice_NslipSystem(1:f-1,p))+j,p), &
-                             lattice_st(:,sum(lattice_NslipSystem(1:o-1,p))+k,p)))
-       enddo; enddo
-     enddo slipSystemsLoop
-   enddo mySlipFamilies 
-
    allocate(prm%C66_trans(6,6,prm%totalNtrans)     ,source=0.0_pReal)
    allocate(prm%Schmid_trans(3,3,prm%totalNtrans),source  = 0.0_pReal)
    i = 0_pInt

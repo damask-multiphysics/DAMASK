@@ -865,6 +865,7 @@ module lattice
   lattice_interaction_SlipTwin, &
   lattice_interaction_SlipTrans, &
   lattice_interaction_TwinSlip, &
+  lattice_forestProjection, &
   lattice_characteristicShear_Twin, &
   lattice_C66_twin
 
@@ -1065,85 +1066,7 @@ end subroutine lattice_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief   xxx
-!--------------------------------------------------------------------------------------------------
-subroutine lattice_Trans(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
- use math, only: &
-   math_crossproduct, &
-   math_tensorproduct33, &
-   math_mul33x33, &
-   math_mul33x3, &
-   math_axisAngleToR, &
-   INRAD, &
-   MATH_I3
- use IO, only: &
-   IO_error
-
- implicit none
- integer(pInt), dimension(:), intent(in) :: &
-   Ntrans
- real(pReal),  dimension(3,3,sum(Ntrans)), intent(out) :: &
-   S, Q
- real(pReal),                 intent(in), optional :: &
-   cOverA, &
-   a_fcc, &
-   a_bcc
-
- real(pReal), dimension(3,3) :: &
-   R, &
-   U, & ! Bain deformation
-   B, &
-   ss, sd
- real(pReal), dimension(3) :: &
-   x, y, z
- integer(pInt) :: &
-   i
-
- 
- if (size(Ntrans) < 1_pInt .or. size(Ntrans) > 1_pInt) print*, 'mist'
- 
-
- if (present(a_fcc) .and. present(a_bcc)) then      ! fcc -> bcc transformation
-   if ( a_fcc <= 0.0_pReal .or. a_bcc <= 0.0_pReal) print*, 'mist'
-   do i = 1_pInt,sum(Ntrans)
-     R = math_axisAngleToR(lattice_fccTobcc_systemTrans(1:3,i), &                ! Pitsch rotation
-                           lattice_fccTobcc_systemTrans(4,i)*INRAD)
-     B = math_axisAngleToR(lattice_fccTobcc_bainRot(1:3,i), &                    ! Rotation of fcc to Bain coordinate system
-                           lattice_fccTobcc_bainRot(4,i)*INRAD)
-     x = real(LATTICE_fccTobcc_bainVariant(1:3,i),pReal)
-     y = real(LATTICE_fccTobcc_bainVariant(4:6,i),pReal)
-     z = real(LATTICE_fccTobcc_bainVariant(7:9,i),pReal)                                                             
-
-     U = (a_bcc/a_fcc)*math_tensorproduct33(x,x) &
-       + (a_bcc/a_fcc)*math_tensorproduct33(y,y) * sqrt(2.0_pReal) &
-       + (a_bcc/a_fcc)*math_tensorproduct33(z,z) * sqrt(2.0_pReal)
-     Q(1:3,1:3,i) = math_mul33x33(R,B)
-     S(1:3,1:3,i) = math_mul33x33(R,U) - MATH_I3
-   enddo
- elseif (present(cOverA)) then
-   ss      = MATH_I3
-   sd      = MATH_I3
-   ss(1,3) = sqrt(2.0_pReal)/4.0_pReal
-   if (cOverA > 1.0_pReal .and. cOverA < 2.0_pReal) &
-     sd(3,3) = cOverA/sqrt(8.0_pReal/3.0_pReal)
-
-   do i = 1_pInt,sum(Ntrans)
-     x = lattice_fccTohex_systemTrans(1:3,i)/norm2(lattice_fccTohex_systemTrans(1:3,i))
-     z = lattice_fccTohex_systemTrans(4:6,i)/norm2(lattice_fccTohex_systemTrans(4:6,i))
-     y = -math_crossproduct(x,z)
-     Q(1:3,1,i) = x
-     Q(1:3,2,i) = y
-     Q(1:3,3,i) = z
-     S(1:3,1:3,i) = math_mul33x33(Q(1:3,1:3,i), math_mul33x33(math_mul33x33(sd,ss), transpose(Q(1:3,1:3,i)))) - MATH_I3
-   enddo
- endif
-   
-
-end subroutine lattice_Trans
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief   Calculation of Schmid matrices, etc.
+!> @brief !!!!!!!DEPRECTATED!!!!!!
 !--------------------------------------------------------------------------------------------------
 subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
  use prec, only: &
@@ -1385,7 +1308,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      lattice_interactionSlipSlip(1:myNslip,1:myNslip,myPhase)      = lattice_hex_interactionSlipSlip
 
      lattice_Scleavage(1:3,1:3,1:3,1:myNcleavage,myPhase) = &
-     lattice_SchmidMatrix_cleavage(lattice_fcc_ncleavagesystem,'hex',covera)
+     lattice_SchmidMatrix_cleavage(lattice_hex_ncleavagesystem,'hex',covera)
 
      do i = 1_pInt,myNslip                                                                          ! assign slip system vectors
        sd(1,i) =  lattice_hex_systemSlip(1,i)*1.5_pReal                                             ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)]
@@ -1453,8 +1376,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      lattice_Sslip_v(1:6,j,i,myPhase) = &
        math_Mandel33to6(math_symmetric33(lattice_Sslip(1:3,1:3,j,i,myPhase)))
    enddo
-   if (abs(math_trace33(lattice_Sslip(1:3,1:3,1,i,myPhase))) > tol_math_check) &
-     call IO_error(0_pInt,myPhase,i,0_pInt,ext_msg = 'dilatational slip Schmid matrix')
  enddo
  do i = 1_pInt,myNtrans
    lattice_Qtrans(1:3,1:3,i,myPhase) = Qtr(1:3,1:3,i)
@@ -1852,7 +1773,8 @@ end function lattice_C66_twin
 !>  ToDo: Completely untested and incomplete
 !--------------------------------------------------------------------------------------------------
 function lattice_C66_trans(Ntrans,C_parent66,structure_parent, &
-                                  C_target66,structure_target)
+                                  C_target66,structure_target, &
+                                  CoverA_trans,a_bcc,a_fcc)
  use prec, only: &
   tol_math_check
  use IO, only: &
@@ -1910,7 +1832,7 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_parent, &
    if (abs(C_target_unrotated66(i,i))<tol_math_check) &
    call IO_error(135_pInt,el=i,ext_msg='matrix diagonal "el"ement in transformation')
  enddo
-
+lattice_C66_trans = 0.0_pReal
  do i = 1, sum(Ntrans)
 !   R = math_axisAngleToR(coordinateSystem(1:3,2,i), 180.0_pReal * INRAD)                            ! ToDo: Why always 180 deg?
 !   lattice_C66_trans(1:6,1:6,i) = math_Mandel3333to66(math_rotate_forward3333(math_Mandel66to3333(C66),R))
@@ -2464,8 +2386,8 @@ function lattice_SchmidMatrix_slip(Nslip,structure,cOverA) result(SchmidMatrix)
  implicit none
  integer(pInt),    dimension(:),            intent(in) :: Nslip                              !< number of active slip systems per family
  character(len=*),                          intent(in) :: structure                          !< lattice structure
- real(pReal),     dimension(3,3,sum(Nslip))            :: SchmidMatrix
  real(pReal),                               intent(in) :: cOverA
+ real(pReal),     dimension(3,3,sum(Nslip))            :: SchmidMatrix
 
  real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
  real(pReal),     dimension(:,:), allocatable          :: slipSystems
@@ -2520,8 +2442,8 @@ function lattice_SchmidMatrix_twin(Ntwin,structure,cOverA) result(SchmidMatrix)
  implicit none
  integer(pInt),    dimension(:),            intent(in) :: Ntwin                              !< number of active twin systems per family
  character(len=*),                          intent(in) :: structure                          !< lattice structure
- real(pReal),     dimension(3,3,sum(Ntwin))            :: SchmidMatrix
  real(pReal),                               intent(in) :: cOverA
+ real(pReal),     dimension(3,3,sum(Ntwin))            :: SchmidMatrix
 
  real(pReal),     dimension(3,3,sum(Ntwin))            :: coordinateSystem
  real(pReal),     dimension(:,:), allocatable          :: twinSystems
@@ -2562,19 +2484,16 @@ end function lattice_SchmidMatrix_twin
 !> @brief Calculates Schmid matrix for active cleavage systems
 !--------------------------------------------------------------------------------------------------
 function lattice_SchmidMatrix_cleavage(Ncleavage,structure,cOverA) result(SchmidMatrix)
- use prec, only: &
-   tol_math_check
+ use math, only: &
+   math_tensorproduct33
  use IO, only: &
    IO_error
- use math, only: &
-   math_trace33, &
-   math_tensorproduct33
 
  implicit none
  integer(pInt),    dimension(:),            intent(in) :: Ncleavage                          !< number of active cleavage systems per family
  character(len=*),                          intent(in) :: structure                          !< lattice structure
- real(pReal),     dimension(3,3,3,sum(Ncleavage))      :: SchmidMatrix
  real(pReal),                               intent(in) :: cOverA
+ real(pReal),     dimension(3,3,3,sum(Ncleavage))      :: SchmidMatrix
 
  real(pReal),     dimension(3,3,sum(Ncleavage))        :: coordinateSystem
  real(pReal),     dimension(:,:), allocatable          :: cleavageSystems
@@ -2615,6 +2534,57 @@ function lattice_SchmidMatrix_cleavage(Ncleavage,structure,cOverA) result(Schmid
  enddo
 
 end function lattice_SchmidMatrix_cleavage
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Calculates forest projection (for edge dislocations)
+!--------------------------------------------------------------------------------------------------
+function lattice_forestProjection(Nslip,structure,cOverA) result(projection)
+ use math, only: &
+   math_mul3x3
+ use IO, only: &
+   IO_error
+
+ implicit none
+ integer(pInt),    dimension(:),            intent(in) :: Nslip                              !< number of active slip systems per family
+ character(len=*),                          intent(in) :: structure                          !< lattice structure
+ real(pReal),                               intent(in) :: cOverA
+ real(pReal),     dimension(sum(Nslip),sum(Nslip))     :: projection
+
+ real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
+ real(pReal),     dimension(:,:), allocatable          :: slipSystems
+ integer(pInt),   dimension(:), allocatable            :: NslipMax
+ integer(pInt) :: i, j
+
+ select case(structure)
+   case('fcc')
+     NslipMax    = LATTICE_FCC_NSLIPSYSTEM
+     slipSystems = LATTICE_FCC_SYSTEMSLIP
+   case('bcc')
+     NslipMax    = LATTICE_BCC_NSLIPSYSTEM
+     slipSystems = LATTICE_BCC_SYSTEMSLIP
+   case('hex','hexagonal')                                                                          ! ToDo: "No alias policy": long or short?
+     NslipMax    = LATTICE_HEX_NSLIPSYSTEM
+     slipSystems = LATTICE_HEX_SYSTEMSLIP
+   case('bct')
+     NslipMax    = LATTICE_BCT_NSLIPSYSTEM
+     slipSystems = LATTICE_BCT_SYSTEMSLIP
+   case default
+     call IO_error(130_pInt,ext_msg=trim(structure)//' (lattice_forrestProjection)')
+ end select
+
+ if (any(NslipMax(1:size(Nslip)) - Nslip < 0_pInt)) &
+   call IO_error(145_pInt,ext_msg='Nslip '//trim(structure))
+ if (any(Nslip < 0_pInt)) &
+   call IO_error(144_pInt,ext_msg='Nslip '//trim(structure))
+
+ coordinateSystem = buildCoordinateSystem(Nslip,NslipMax,slipSystems,structure,cOverA)
+ 
+ do i=1_pInt, sum(Nslip); do j=1_pInt, sum(Nslip)
+   projection(i,j) = abs(math_mul3x3(coordinateSystem(1:3,2,i),coordinateSystem(1:3,3,j)))
+ enddo; enddo
+
+end function lattice_forestProjection
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2714,11 +2684,86 @@ function buildCoordinateSystem(active,maximum,system,structure,cOverA)
 
      buildCoordinateSystem(1:3,1,i) = direction/norm2(direction)
      buildCoordinateSystem(1:3,2,i) = normal/norm2(normal)
-     buildCoordinateSystem(1:3,3,i) = math_crossproduct(direction,normal)
+     buildCoordinateSystem(1:3,3,i) = math_crossproduct(buildCoordinateSystem(1:3,1,i),&
+                                                        buildCoordinateSystem(1:3,2,i))
 
    enddo activeSystems
  enddo activeFamilies
 
 end function buildCoordinateSystem
+
+!--------------------------------------------------------------------------------------------------
+!> @brief   xxx
+!--------------------------------------------------------------------------------------------------
+subroutine lattice_Trans(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
+ use math, only: &
+   math_crossproduct, &
+   math_tensorproduct33, &
+   math_mul33x33, &
+   math_mul33x3, &
+   math_axisAngleToR, &
+   INRAD, &
+   MATH_I3
+ use IO, only: &
+   IO_error
+
+ implicit none
+ integer(pInt), dimension(:), intent(in) :: &
+   Ntrans
+ real(pReal),  dimension(3,3,sum(Ntrans)), intent(out) :: &
+   S, Q
+ real(pReal),                 intent(in), optional :: &
+   cOverA, &
+   a_fcc, &
+   a_bcc
+
+ real(pReal), dimension(3,3) :: &
+   R, &
+   U, & ! Bain deformation
+   B, &
+   ss, sd
+ real(pReal), dimension(3) :: &
+   x, y, z
+ integer(pInt) :: &
+   i
+
+ if (size(Ntrans) < 1_pInt .or. size(Ntrans) > 1_pInt) print*, 'mist'
+ 
+ if (present(a_fcc) .and. present(a_bcc)) then      ! fcc -> bcc transformation
+   if ( a_fcc <= 0.0_pReal .or. a_bcc <= 0.0_pReal) print*, 'mist'
+   do i = 1_pInt,sum(Ntrans)
+     R = math_axisAngleToR(lattice_fccTobcc_systemTrans(1:3,i), &                ! Pitsch rotation
+                           lattice_fccTobcc_systemTrans(4,i)*INRAD)
+     B = math_axisAngleToR(lattice_fccTobcc_bainRot(1:3,i), &                    ! Rotation of fcc to Bain coordinate system
+                           lattice_fccTobcc_bainRot(4,i)*INRAD)
+     x = real(LATTICE_fccTobcc_bainVariant(1:3,i),pReal)
+     y = real(LATTICE_fccTobcc_bainVariant(4:6,i),pReal)
+     z = real(LATTICE_fccTobcc_bainVariant(7:9,i),pReal)                                                             
+
+     U = (a_bcc/a_fcc)*math_tensorproduct33(x,x) &
+       + (a_bcc/a_fcc)*math_tensorproduct33(y,y) * sqrt(2.0_pReal) &
+       + (a_bcc/a_fcc)*math_tensorproduct33(z,z) * sqrt(2.0_pReal)
+     Q(1:3,1:3,i) = math_mul33x33(R,B)
+     S(1:3,1:3,i) = math_mul33x33(R,U) - MATH_I3
+   enddo
+ elseif (present(cOverA)) then
+   ss      = MATH_I3
+   sd      = MATH_I3
+   ss(1,3) = sqrt(2.0_pReal)/4.0_pReal
+   if (cOverA > 1.0_pReal .and. cOverA < 2.0_pReal) &
+     sd(3,3) = cOverA/sqrt(8.0_pReal/3.0_pReal)
+
+   do i = 1_pInt,sum(Ntrans)
+     x = lattice_fccTohex_systemTrans(1:3,i)/norm2(lattice_fccTohex_systemTrans(1:3,i))
+     z = lattice_fccTohex_systemTrans(4:6,i)/norm2(lattice_fccTohex_systemTrans(4:6,i))
+     y = -math_crossproduct(x,z)
+     Q(1:3,1,i) = x
+     Q(1:3,2,i) = y
+     Q(1:3,3,i) = z
+     S(1:3,1:3,i) = math_mul33x33(Q(1:3,1:3,i), math_mul33x33(math_mul33x33(sd,ss), transpose(Q(1:3,1:3,i)))) - MATH_I3
+   enddo
+ endif
+   
+end subroutine lattice_Trans
 
 end module lattice
