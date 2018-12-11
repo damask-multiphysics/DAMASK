@@ -104,7 +104,6 @@ module plastic_dislotwin
      interaction_TwinSlip, &                                                                        !< coefficients for twin-slip interaction for each interaction type
      interaction_TwinTwin, &                                                                        !< coefficients for twin-twin interaction for each interaction type
      interaction_SlipTrans, &                                                                       !< coefficients for slip-trans interaction for each interaction type
-     interaction_TransSlip, &                                                                       !< coefficients for trans-slip interaction for each interaction type
      interaction_TransTrans                                                                         !< coefficients for trans-trans interaction for each interaction type
    integer(pInt),                  dimension(:,:),            allocatable :: & 
      fcc_twinNucleationSlipPair                                                                     ! ToDo: Better name? Is also use for trans
@@ -190,7 +189,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_dislotwin_init(fileUnit)
+subroutine plastic_dislotwin_init
 #if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
  use, intrinsic :: iso_fortran_env, only: &
    compiler_version, &
@@ -230,8 +229,6 @@ subroutine plastic_dislotwin_init(fileUnit)
  use lattice
 
  implicit none
- integer(pInt), intent(in) :: fileUnit
-
  integer(pInt) :: Ninstance,&
                   f,j,i,k,o,p, &
                   offset_slip, index_myFamily, index_otherFamily, &
@@ -240,7 +237,7 @@ subroutine plastic_dislotwin_init(fileUnit)
  integer(pInt) :: NipcMyPhase   
      
  real(pReal),  allocatable, dimension(:,:) :: temp1
- 
+ integer(pInt), dimension(1,200), parameter :: lattice_ntranssystem = 12 ! HACK!!
  integer(pInt),          dimension(0), parameter :: emptyIntArray    = [integer(pInt)::]
  real(pReal),            dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
@@ -450,10 +447,6 @@ subroutine plastic_dislotwin_init(fileUnit)
      prm%interaction_SlipTrans = lattice_interaction_SlipTrans(prm%Nslip,prm%Ntrans,&
                                                                config_phase(p)%getFloats('interaction_sliptrans'), &
                                                                structure(1:3)) 
-     prm%interaction_TransSlip = lattice_interaction_TransSlip(prm%Ntrans,prm%Nslip,&
-                                                               config_phase(p)%getFloats('interaction_transslip'), &
-                                                               structure(1:3))
-
      if (prm%fccTwinTransNucleation .and. prm%totalNtrans > 12_pInt) write(6,*) 'mist' ! ToDo: implement better test. The model will fail also if ntrans is [6,6]
    endif    
 
@@ -695,25 +688,23 @@ subroutine plastic_dislotwin_init(fileUnit)
    plasticState(p)%state0 = plasticState(p)%state
    dot%whole => plasticState(p)%dotState
 
-   allocate(mse%invLambdaSlip     (prm%totalNslip,NipcMyPhase),source=0.0_pReal)
-   allocate(mse%invLambdaSlipTwin (prm%totalNslip,NipcMyPhase),source=0.0_pReal)
-   allocate(mse%invLambdaSlipTrans(prm%totalNslip,NipcMyPhase),source=0.0_pReal)
-   allocate(mse%invLambdaTwin     (prm%totalNtwin,NipcMyPhase),source=0.0_pReal)
-   allocate(mse%invLambdaTrans    (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
+   allocate(mse%invLambdaSlip         (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
+   allocate(mse%invLambdaSlipTwin     (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
+   allocate(mse%invLambdaSlipTrans    (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
+   allocate(mse%mfp_slip              (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
+   allocate(mse%threshold_stress_slip (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
 
-   allocate(mse%mfp_slip(prm%totalNslip,NipcMyPhase),  source=0.0_pReal)
-   allocate(mse%mfp_twin(prm%totalNtwin,NipcMyPhase),  source=0.0_pReal)
-   allocate(mse%mfp_trans(prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
+   allocate(mse%invLambdaTwin         (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
+   allocate(mse%mfp_twin              (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
+   allocate(mse%threshold_stress_twin (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
+   allocate(mse%tau_r_twin            (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
+   allocate(mse%twinVolume            (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
 
-   allocate(mse%threshold_stress_slip(prm%totalNslip,NipcMyPhase),  source=0.0_pReal)
-   allocate(mse%threshold_stress_twin(prm%totalNtwin,NipcMyPhase),  source=0.0_pReal)
+   allocate(mse%invLambdaTrans        (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
+   allocate(mse%mfp_trans             (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
    allocate(mse%threshold_stress_trans(prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
-
-   allocate(mse%tau_r_twin(prm%totalNtwin,NipcMyPhase),   source=0.0_pReal)
-   allocate(mse%tau_r_trans(prm%totalNtrans,NipcMyPhase), source=0.0_pReal)
-
-   allocate(mse%twinVolume(prm%totalNtwin,NipcMyPhase),   source=0.0_pReal)
-   allocate(mse%martensiteVolume(prm%totalNtrans,NipcMyPhase), source=0.0_pReal)
+   allocate(mse%tau_r_trans           (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
+   allocate(mse%martensiteVolume      (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
 
    end associate
  enddo
@@ -1075,12 +1066,6 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
             tau
  real(pReal), dimension(plasticState(instance)%Nslip) :: &
  gdot_slip
-
-
- type(tParameters) :: prm
- type(tDislotwinState) :: stt, dot
- type(tDislotwinMicrostructure) :: mse
-
 
  associate(prm => param(instance),    stt => state(instance), &
            dot => dotstate(instance), mse => microstructure(instance))

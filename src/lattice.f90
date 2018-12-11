@@ -16,18 +16,14 @@ module lattice
 ! BEGIN DEPRECATED
  integer(pInt), parameter, public :: &
    LATTICE_maxNslipFamily     =  13_pInt, &                                                         !< max # of slip system families over lattice structures
-   LATTICE_maxNtransFamily    =  1_pInt, &                                                          !< max # of transformation system families over lattice structures
    LATTICE_maxNcleavageFamily =  3_pInt                                                             !< max # of transformation system families over lattice structures
 
  integer(pInt), allocatable, dimension(:,:), protected, public :: &
    lattice_NslipSystem, &                                                                           !< total # of slip systems in each family
-   lattice_NtransSystem, &                                                                          !< total # of transformation systems in each family
    lattice_NcleavageSystem                                                                          !< total # of transformation systems in each family
 
  integer(pInt), allocatable, dimension(:,:,:), protected, public :: &
-   lattice_interactionSlipSlip, &                                                                   !< Slip--slip interaction type
-   lattice_interactionSlipTrans, &                                                                  !< Slip--trans interaction type
-   lattice_interactionTransSlip                                                                     !< Trans--slip interaction type
+   lattice_interactionSlipSlip                                                                  !< Slip--slip interaction type
 
  real(pReal), allocatable, dimension(:,:,:,:,:), protected, public :: &
    lattice_Sslip, &                                                                                 !< Schmid and non-Schmid matrices
@@ -49,7 +45,6 @@ module lattice
 
  integer(pInt), allocatable, dimension(:), protected, public :: &
    lattice_NnonSchmid                                                                               !< total # of non-Schmid contributions for each structure
-
 ! END DEPRECATED
 
 
@@ -61,7 +56,7 @@ module lattice
  integer(pInt), dimension(1), parameter, public :: &
    LATTICE_FCC_NTWINSYSTEM = int([12],pInt)                                                         !< # of twin systems per family for fcc
 
- integer(pInt), dimension(LATTICE_maxNtransFamily), parameter, public :: &
+ integer(pInt), dimension(1), parameter, public :: &
    LATTICE_fcc_NtransSystem = int([12],pInt)                                                        !< # of transformation systems per family for fcc
 
  integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
@@ -187,36 +182,6 @@ module lattice
                                                                                                     !<10: similar to glissile junctions in <110>{111} btw one {110} and one {111} plane
                                                                                                     !<11: crossing btw one {110} and one {111} plane
                                                                                                     !<12: collinear btw one {110} and one {111} plane
-
-
-
-
-
- integer(pInt), dimension(LATTICE_FCC_NSLIP,LATTICE_fcc_Ntrans), parameter, public :: &
-   LATTICE_FCC_INTERACTIONSLIPTRANS = reshape(int( [&
-     1,1,1,3,3,3,2,2,2,3,3,3, & ! ---> trans
-     1,1,1,3,3,3,3,3,3,2,2,2, & ! |
-     1,1,1,2,2,2,3,3,3,3,3,3, & ! |
-     3,3,3,1,1,1,3,3,3,2,2,2, & ! v slip
-     3,3,3,1,1,1,2,2,2,3,3,3, &
-     2,2,2,1,1,1,3,3,3,3,3,3, &
-     2,2,2,3,3,3,1,1,1,3,3,3, &
-     3,3,3,2,2,2,1,1,1,3,3,3, &
-     3,3,3,3,3,3,1,1,1,2,2,2, &
-     3,3,3,2,2,2,3,3,3,1,1,1, &
-     2,2,2,3,3,3,3,3,3,1,1,1, &
-     3,3,3,3,3,3,2,2,2,1,1,1, &
-     
-     4,4,4,4,4,4,4,4,4,4,4,4, &
-     4,4,4,4,4,4,4,4,4,4,4,4, &
-     4,4,4,4,4,4,4,4,4,4,4,4, &
-     4,4,4,4,4,4,4,4,4,4,4,4, &
-     4,4,4,4,4,4,4,4,4,4,4,4, &
-     4,4,4,4,4,4,4,4,4,4,4,4  &
-     ],pInt),shape(LATTICE_FCC_INTERACTIONSLIPTRANS),order=[2,1])                                   !< Slip--trans interaction types for fcc
-
- integer(pInt), dimension(LATTICE_fcc_Ntrans,LATTICE_FCC_NSLIP), parameter, public :: &
-   LATTICE_FCC_interactionTransSlip = 1_pInt                                                           !< Trans--Slip interaction types for fcc
 
  real(pReal), dimension(LATTICE_fcc_Ntrans), parameter, private :: &
    LATTICE_fccTohex_shearTrans = sqrt(1.0_pReal/8.0_pReal)
@@ -900,7 +865,6 @@ module lattice
   lattice_interaction_SlipTwin, &
   lattice_interaction_SlipTrans, &
   lattice_interaction_TwinSlip, &
-  lattice_interaction_TransSlip, &
   lattice_characteristicShear_Twin, &
   lattice_C66_twin
 
@@ -973,21 +937,16 @@ subroutine lattice_init
  allocate(lattice_NnonSchmid(Nphases), source=0_pInt)
  allocate(lattice_Sslip(3,3,1+2*lattice_maxNnonSchmid,lattice_maxNslip,Nphases),source=0.0_pReal)
  allocate(lattice_Sslip_v(6,1+2*lattice_maxNnonSchmid,lattice_maxNslip,Nphases),source=0.0_pReal)
+ allocate(lattice_NslipSystem(lattice_maxNslipFamily,Nphases),source=0_pInt)
+ allocate(lattice_interactionSlipSlip(lattice_maxNslip,lattice_maxNslip,Nphases),source=0_pInt)     ! other:me
+
  allocate(lattice_Scleavage(3,3,3,lattice_maxNslip,Nphases),source=0.0_pReal)
  allocate(lattice_Scleavage_v(6,3,lattice_maxNslip,Nphases),source=0.0_pReal)
-
- allocate(lattice_shearTrans(lattice_maxNtrans,Nphases),source=0.0_pReal)
-
- allocate(lattice_Qtrans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
- allocate(lattice_Strans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
-
- allocate(lattice_NslipSystem(lattice_maxNslipFamily,Nphases),source=0_pInt)
- allocate(lattice_NtransSystem(lattice_maxNtransFamily,Nphases),source=0_pInt)
  allocate(lattice_NcleavageSystem(lattice_maxNcleavageFamily,Nphases),source=0_pInt)
 
- allocate(lattice_interactionSlipSlip(lattice_maxNslip,lattice_maxNslip,Nphases),source=0_pInt)     ! other:me
- allocate(lattice_interactionSlipTrans(lattice_maxNslip,lattice_maxNtrans,Nphases),source=0_pInt)   ! other:me
- allocate(lattice_interactionTransSlip(lattice_maxNtrans,lattice_maxNslip,Nphases),source=0_pInt)   ! other:me
+ allocate(lattice_shearTrans(lattice_maxNtrans,Nphases),source=0.0_pReal)
+ allocate(lattice_Qtrans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
+ allocate(lattice_Strans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
 
  allocate(CoverA(Nphases),source=0.0_pReal)
  allocate(CoverA_trans(Nphases),source=0.0_pReal)
@@ -1377,8 +1336,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase)          = lattice_fcc_NslipSystem
      lattice_NcleavageSystem(1:lattice_maxNcleavageFamily,myPhase)  = lattice_fcc_NcleavageSystem
      lattice_interactionSlipSlip(1:myNslip,1:myNslip,myPhase)       = lattice_fcc_interactionSlipSlip
-     lattice_interactionSlipTrans(1:myNslip,1:myNtrans,myPhase)     = lattice_fcc_interactionSlipTrans
-     lattice_interactionTransSlip(1:myNtrans,1:myNslip,myPhase)     = lattice_fcc_interactionTransSlip
 
 !--------------------------------------------------------------------------------------------------
 ! bcc
@@ -2392,9 +2349,32 @@ function lattice_interaction_SlipTrans(Nslip,Ntrans,interactionValues,structure)
                                                                  NtransMax
  integer(pInt),   dimension(:,:),                 allocatable :: interactionTypes
 
+ integer(pInt), dimension(LATTICE_FCC_NSLIP,LATTICE_fcc_Ntrans), parameter :: &
+   FCC_INTERACTIONSLIPTRANS = reshape(int( [&
+     1,1,1,3,3,3,2,2,2,3,3,3, & ! ---> trans
+     1,1,1,3,3,3,3,3,3,2,2,2, & ! |
+     1,1,1,2,2,2,3,3,3,3,3,3, & ! |
+     3,3,3,1,1,1,3,3,3,2,2,2, & ! v slip
+     3,3,3,1,1,1,2,2,2,3,3,3, &
+     2,2,2,1,1,1,3,3,3,3,3,3, &
+     2,2,2,3,3,3,1,1,1,3,3,3, &
+     3,3,3,2,2,2,1,1,1,3,3,3, &
+     3,3,3,3,3,3,1,1,1,2,2,2, &
+     3,3,3,2,2,2,3,3,3,1,1,1, &
+     2,2,2,3,3,3,3,3,3,1,1,1, &
+     3,3,3,3,3,3,2,2,2,1,1,1, &
+     
+     4,4,4,4,4,4,4,4,4,4,4,4, &
+     4,4,4,4,4,4,4,4,4,4,4,4, &
+     4,4,4,4,4,4,4,4,4,4,4,4, &
+     4,4,4,4,4,4,4,4,4,4,4,4, &
+     4,4,4,4,4,4,4,4,4,4,4,4, &
+     4,4,4,4,4,4,4,4,4,4,4,4  &
+     ],pInt),shape(FCC_INTERACTIONSLIPTRANS),order=[2,1])                                   !< Slip--trans interaction types for fcc
+
  select case(structure)
    case('fcc')
-     interactionTypes = LATTICE_FCC_INTERACTIONSLIPTRANS
+     interactionTypes = FCC_INTERACTIONSLIPTRANS
      NslipMax         = LATTICE_FCC_NSLIPSYSTEM
      NtransMax        = LATTICE_FCC_NTRANSSYSTEM
    case default
@@ -2487,42 +2467,6 @@ function lattice_interaction_TwinSlip(Ntwin,Nslip,interactionValues,structure) r
  interactionMatrix = buildInteraction(Ntwin,Nslip,NtwinMax,NslipMax,interactionValues,interactionTypes)
 
 end function lattice_interaction_TwinSlip
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Populates trans-trans interaction matrix
-!> details: only active transformation systems are considered
-!--------------------------------------------------------------------------------------------------
-function lattice_interaction_TransSlip(Ntrans,Nslip,interactionValues,structure) result(interactionMatrix)
- use IO, only: &
-   IO_error
-
- implicit none
- integer(pInt),    dimension(:),                   intent(in) :: Ntrans, &                          !< number of active trans systems per family
-                                                                 Nslip                              !< number of active slip systems per family
- real(pReal),      dimension(:),                   intent(in) :: interactionValues                  !< interaction values trans-trans
- character(len=*),                                 intent(in) :: &
-   structure                                                                                        !< lattice structure of parent crystal
- real(pReal),     dimension(sum(Ntrans),sum(Nslip))           :: interactionMatrix
-
- integer(pInt),   dimension(:),                   allocatable :: NtransMax, &
-                                                                 NslipMax
- integer(pInt),   dimension(:,:),                 allocatable :: interactionTypes
-
- select case(structure)
-   case('fcc')
-     interactionTypes = LATTICE_FCC_INTERACTIONTRANSSLIP
-     NslipMax         = LATTICE_FCC_NSLIPSYSTEM
-     NtransMax        = LATTICE_FCC_NTRANSSYSTEM
-   case default
-     call IO_error(132_pInt,ext_msg=trim(structure)//' (trans slip interaction)')
- end select
-
- !if (size(interactionValues) > maxval(interactionTypes)) &
- !  call IO_error(0_pInt) ! ToDo
- interactionMatrix = buildInteraction(Ntrans,Nslip,NtransMax,NslipMax,interactionValues,interactionTypes)
-
-end function lattice_interaction_TransSlip
 
 
 !--------------------------------------------------------------------------------------------------
