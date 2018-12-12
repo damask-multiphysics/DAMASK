@@ -331,7 +331,8 @@ subroutine CPFEM_results(inc)
 
  call results_openJobFile
  write(incChar,*) inc
- call HDF5_closeGroup(results_addGroup(trim('inc'//trim(adjustl(incChar))))) 
+ call HDF5_closeGroup(results_addGroup(trim('inc'//trim(adjustl(incChar)))))
+ call results_setLink(trim('inc'//trim(adjustl(incChar))),'current')
  call constitutive_results()
  call results_closeJobFile
 

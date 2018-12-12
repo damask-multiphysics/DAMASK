@@ -1193,10 +1193,25 @@ subroutine constitutive_results()
    PLASTICITY_DISLOUCLA_ID, &
    PLASTICITY_NONLOCAL_ID
 #if defined(PETSc) || defined(DAMASKHDF5)
+ use results
+ use HDF5_utilities
+ use config, only: &
+   config_name_phase => phase_name                                                                  ! anticipate logical name
+ use material, only: &
+   material_phase_plasticity_type => phase_plasticity
  use plastic_phenopowerlaw, only: &
    plastic_phenopowerlaw_results
-   
-   call plastic_phenopowerlaw_results
+ 
+ implicit none
+ integer(pInt) :: p  
+ call HDF5_closeGroup(results_addGroup('current/phase'))                                              
+ do p=1,size(config_name_phase)                                                                           
+   call HDF5_closeGroup(results_addGroup('current/phase/'//trim(config_name_phase(p))))
+   if (material_phase_plasticity_type(p) == PLASTICITY_PHENOPOWERLAW_ID) then
+     call plastic_phenopowerlaw_results(p,'current/phase/'//trim(config_name_phase(p)))
+   endif
+ enddo      
+
 #endif
 
 

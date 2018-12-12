@@ -13,7 +13,7 @@ module HDF5_utilities
 #endif
 
  implicit none
- private
+ public
  integer(pInt), parameter, private :: &
    HDF5_ERR_TYPE = 4_pInt                                                                           !< kind of the integer return in the HDF5 library
 
@@ -71,7 +71,8 @@ module HDF5_utilities
    HDF5_openGroup, &
    HDF5_addGroup, &
    HDF5_read, &
-   HDF5_write
+   HDF5_write, &
+   HDF5_setLink
 contains
 
 subroutine HDF5_utilities_init
@@ -304,7 +305,28 @@ subroutine HDF5_addIntegerAttribute(entity,attrLabel,attrValue)
 
 end subroutine HDF5_addIntegerAttribute
 
+!--------------------------------------------------------------------------------------------------
+!> @brief set link to object in results file
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_setLink(fileHandle,path,link)
+ use hdf5
 
+ implicit none
+ character(len=*), intent(in) :: path, link
+  integer(HID_T),  intent(in) :: fileHandle
+ integer(HDF5_ERR_TYPE)       :: hdferr
+ logical                      :: linkExists
+
+ call h5lexists_f(fileHandle, link,linkExists, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_setLink: h5lexists_soft_f ('//trim(link)//')')
+ if (linkExists) then
+   call h5ldelete_f(fileHandle,link, hdferr)
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_setLink: h5ldelete_soft_f ('//trim(link)//')')
+ endif
+ call h5lcreate_soft_f(path, fileHandle, link, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_setLink: h5lcreate_soft_f ('//trim(path)//' '//trim(link)//')')
+
+end subroutine HDF5_setLink
 
 !--------------------------------------------------------------------------------------------------
 !> @brief subroutine for reading dataset of type pReal with 1 dimensions

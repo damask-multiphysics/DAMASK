@@ -749,8 +749,29 @@ end function plastic_phenopowerlaw_postResults
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_phenopowerlaw_results()
+subroutine plastic_phenopowerlaw_results(instance,group)
 #if defined(PETSc) || defined(DAMASKHDF5)
+ use results
+
+ implicit none
+ integer(pInt), intent(in) :: instance
+ character(len=*) :: group
+ integer(pInt) :: o
+ 
+ associate(prm => param(instance), stt => state(instance))
+ outputsLoop: do o = 1_pInt,size(prm%outputID)
+   select case(prm%outputID(o))
+     case (resistance_slip_ID)
+       call results_writeVectorDataset(group,stt%xi_slip,'xi_slip','Pa')
+     case (accumulatedshear_slip_ID)
+       call results_writeVectorDataset(group,stt%gamma_slip,'gamma_slip','1/s')
+   end select
+ enddo outputsLoop
+ end associate
+ !results_writeVectorDataset
+#else
+ integer(pInt), intent(in) :: instance
+ character(len=*) :: group
 #endif
 end subroutine plastic_phenopowerlaw_results
 
