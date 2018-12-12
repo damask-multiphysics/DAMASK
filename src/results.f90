@@ -33,7 +33,7 @@ module results
    HDF5_mappingCells, &
    results_addGroup, &
    results_openGroup, &
-   HDF5_writeVectorDataset, &
+   results_writeVectorDataset, &
    HDF5_writeScalarDataset, &
    HDF5_writeTensorDataset, &
    HDF5_removeLink
@@ -988,16 +988,16 @@ subroutine HDF5_addTensor3DDataset(group,Nnodes,tensorSize,label,SIunit)
 
 end subroutine HDF5_addTensor3DDataset
 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief creates a new vector dataset in the given group location   !!!TODO: really necessary?
+!> @brief creates a new vector dataset in the given group location
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_writeVectorDataset(group,dataset,label,SIunit,dataspace_size,mpiOffset)
+subroutine results_writeVectorDataset(group,dataset,label,SIunit)
  use hdf5
 
  implicit none
  integer(HID_T),   intent(in)                 :: group
  character(len=*), intent(in)                 :: SIunit,label
- integer(pInt),    intent(in)                 :: dataspace_size, mpiOffset
  real(pReal),      intent(in), dimension(:,:) :: dataset
 
  integer        :: hdferr, vectorSize
@@ -1009,43 +1009,11 @@ subroutine HDF5_writeVectorDataset(group,dataset,label,SIunit,dataspace_size,mpi
  if(any(shape(dataset) == 0)) return
 
  vectorSize = size(dataset,1)
-
- call HDF5_addVectorDataset(group,dataspace_size,vectorSize,label,SIunit)                   ! here nNodes need to be global
  call h5dopen_f(group, label, dset_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeVectorDataset: h5dopen_f')
 
- ! Define and select hyperslabs
- counter(1) = vectorSize                    ! how big i am
- counter(2) = size(dataset,2)
- fileOffset(1)  = 0                         ! where i start to write my data
- fileOffset(2)  = mpiOffset
 
- call h5screate_simple_f(2, counter, memspace, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeVectorDataset: h5screate_simple_f')
- call h5dget_space_f(dset_id, space_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeVectorDataset: h5dget_space_f')
- call h5sselect_hyperslab_f(space_id, H5S_SELECT_SET_F, fileOffset, counter, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeVectorDataset: h5sselect_hyperslab_f')
-
- ! Create property list for collective dataset write
-#ifdef PETSc
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeVectorDataset: h5pcreate_f')
- call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeVectorDataset: h5pset_dxpl_mpio_f')
-#endif
-
- ! Write the dataset collectively
- call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, dataset, int([vectorSize, dataspace_size],HSIZE_T), hdferr, &
-                 file_space_id = space_id, mem_space_id = memspace, xfer_prp = plist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeVectorDataset: h5dwrite_f')
-
- call h5sclose_f(space_id, hdferr)
- call h5sclose_f(memspace, hdferr)
- call h5dclose_f(dset_id, hdferr)
- call h5pclose_f(plist_id, hdferr)
-
-end subroutine HDF5_writeVectorDataset
+end subroutine results_writeVectorDataset
 
 !--------------------------------------------------------------------------------------------------
 !> @brief creates a new tensor dataset in the given group location

@@ -99,7 +99,8 @@ module plastic_phenopowerlaw
    plastic_phenopowerlaw_init, &
    plastic_phenopowerlaw_LpAndItsTangent, &
    plastic_phenopowerlaw_dotState, &
-   plastic_phenopowerlaw_postResults
+   plastic_phenopowerlaw_postResults, &
+   plastic_phenopowerlaw_results
 
 contains
 
@@ -744,5 +745,13 @@ function plastic_phenopowerlaw_postResults(Mp,instance,of) result(postResults)
  end associate
 
 end function plastic_phenopowerlaw_postResults
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine plastic_phenopowerlaw_results()
+#if defined(PETSc) || defined(DAMASKHDF5)
+#endif
+end subroutine plastic_phenopowerlaw_results
 
 end module plastic_phenopowerlaw

@@ -1182,9 +1182,23 @@ end function constitutive_postResults
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief  contains the constitutive equation for calculating the velocity gradient
+!> @brief writes constitutive results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_results()
+ use material, only: &
+   PLASTICITY_ISOTROPIC_ID, &
+   PLASTICITY_PHENOPOWERLAW_ID, &
+   PLASTICITY_KINEHARDENING_ID, &
+   PLASTICITY_DISLOTWIN_ID, &
+   PLASTICITY_DISLOUCLA_ID, &
+   PLASTICITY_NONLOCAL_ID
+#if defined(PETSc) || defined(DAMASKHDF5)
+ use plastic_phenopowerlaw, only: &
+   plastic_phenopowerlaw_results
+   
+   call plastic_phenopowerlaw_results
+#endif
+
 
 end subroutine constitutive_results
 
