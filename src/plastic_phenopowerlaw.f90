@@ -148,12 +148,6 @@ subroutine plastic_phenopowerlaw_init
  real(pReal),            dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
 
- type(tParameters) :: &
-   prm
- type(tPhenopowerlawState) :: &
-   stt, &
-   dot
-
  integer(kind(undefined_ID)) :: &
    outputID                                                                                         !< ID of each post result output
 
@@ -161,7 +155,7 @@ subroutine plastic_phenopowerlaw_init
    structure = '',&
    extmsg = ''
  character(len=65536), dimension(:), allocatable :: &
-  outputs
+   outputs
 
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_PHENOPOWERLAW_label//' init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -398,6 +392,8 @@ end subroutine plastic_phenopowerlaw_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
+!> @details asumme that deformation by dislocation glide affects twinned and untwinned volume 
+!  equally (Taylor assumption). Twinning happens only in untwinned volume (
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
@@ -420,19 +416,15 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
    gdot_slip_pos,gdot_slip_neg
  real(pReal), dimension(param(instance)%totalNtwin) :: &
    gdot_twin,dgdot_dtautwin
-
- type(tParameters)          :: prm
- type(tPhenopowerlawState)  :: stt
-
- associate(prm => param(instance), stt => state(instance))
-
+   
  Lp = 0.0_pReal
  dLp_dMp = 0.0_pReal
-
+ 
+ associate(prm => param(instance), stt => state(instance))
+ 
  call kinetics_slip(prm,stt,of,Mp,gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg)
  slipSystems: do i = 1_pInt, prm%totalNslip
-   Lp = Lp + (1.0_pReal- sum(stt%gamma_twin(:,of)/prm%gamma_twin_char)) &                           ! only shear in untwinned volume
-           * (gdot_slip_pos(i)+gdot_slip_neg(i))*prm%Schmid_slip(1:3,1:3,i)
+   Lp = Lp + (gdot_slip_pos(i)+gdot_slip_neg(i))*prm%Schmid_slip(1:3,1:3,i)
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
                       + dgdot_dtauslip_pos(i) * prm%Schmid_slip(k,l,i) * prm%nonSchmid_pos(m,n,i) &
@@ -446,8 +438,8 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
                       + dgdot_dtautwin(i)*prm%Schmid_twin(k,l,i)*prm%Schmid_twin(m,n,i)
  enddo twinSystems
+ 
  end associate
-
 
 end subroutine plastic_phenopowerlaw_LpAndItsTangent
 
@@ -473,9 +465,6 @@ subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
  real(pReal), dimension(param(instance)%totalNslip) :: &
    left_SlipSlip,right_SlipSlip, &
    gdot_slip_pos,gdot_slip_neg
-
- type(tParameters)         :: prm
- type(tPhenopowerlawState) :: dot,stt
 
  associate(prm => param(instance),  stt => state(instance),  dot => dotState(instance))
 
@@ -506,7 +495,7 @@ subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
 ! hardening
  hardeningSlip: do i = 1_pInt, prm%totalNslip
    dot%xi_slip(i,of) = dot_product(prm%interaction_SlipSlip(i,:),right_SlipSlip*dot%gamma_slip(:,of)) &
-                           * c_SlipSlip * left_SlipSlip(i) &
+                     * c_SlipSlip * left_SlipSlip(i) &
                      + dot_product(prm%interaction_SlipTwin(i,:),dot%gamma_twin(:,of))
  enddo hardeningSlip
 
@@ -522,8 +511,9 @@ end subroutine plastic_phenopowerlaw_dotState
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates shear rates on slip systems and derivatives with respect to resolved stress
-!> @details: Shear rates are calculated only optionally. NOTE: Against the common convention, the
-!> result (i.e. intent(out)) variables are the last to have the optional arguments at the end
+!> @details Shear rates are calculated only optionally. 
+! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to 
+! have the optional arguments at the end
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_slip(prm,stt,of,Mp,gdot_slip_pos,gdot_slip_neg, &
                            dgdot_dtau_slip_pos,dgdot_dtau_slip_neg)
@@ -595,9 +585,11 @@ end subroutine kinetics_slip
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates shear rates on twin systems and derivatives with respect to resolved stress
-!> @details: Derivates are calculated only optionally. NOTE: Against the common convention, the
-!> result (i.e. intent(out)) variables are the last to have the optional arguments at the end
+!> @brief calculates shear rates on twin systems and derivatives with respect to resolved stress.
+!  twinning is assumed to take place only in untwinned volume.
+!> @details Derivates are calculated only optionally.
+! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to 
+! have the optional arguments at the end.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_twin(prm,stt,of,Mp,gdot_twin,dgdot_dtau_twin)
  use prec, only: &
@@ -667,13 +659,10 @@ function plastic_phenopowerlaw_postResults(Mp,instance,of) result(postResults)
  real(pReal), dimension(param(instance)%totalNslip) :: &
    gdot_slip_pos,gdot_slip_neg
 
- type(tParameters)          :: prm
- type(tPhenopowerlawState)  :: stt
-
- associate( prm => param(instance), stt => state(instance))
-
  postResults = 0.0_pReal
  c = 0_pInt
+ 
+ associate( prm => param(instance), stt => state(instance))
 
  outputsLoop: do o = 1_pInt,size(prm%outputID)
    select case(prm%outputID(o))
@@ -711,6 +700,7 @@ function plastic_phenopowerlaw_postResults(Mp,instance,of) result(postResults)
 
    end select
  enddo outputsLoop
+ 
  end associate
 
 end function plastic_phenopowerlaw_postResults
