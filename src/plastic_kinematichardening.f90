@@ -450,22 +450,7 @@ param(instance)%outputID = prm%outputID
            case ('crss0')
              param(instance)%crss0(1:Nchunks_SlipFamilies) = tempPerSlip(1:Nchunks_SlipFamilies)  
          end select
-          
-!--------------------------------------------------------------------------------------------------
-! parameters depending on number of interactions 
-       case ('nonschmidcoeff')
-         if (chunkPos(1) < 1_pInt + Nchunks_nonSchmid) &
-           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_KINEHARDENING_label//')')
-         do j = 1_pInt,Nchunks_nonSchmid
-           param(instance)%nonSchmidCoeff(j) = IO_floatValue(line,chunkPos,1_pInt+j)
-         enddo  
-!--------------------------------------------------------------------------------------------------
-       case ('gdot0')
-         param(instance)%gdot0                    = IO_floatValue(line,chunkPos,2_pInt)
-             
-       case ('n_slip')
-         param(instance)%n_slip                   = IO_floatValue(line,chunkPos,2_pInt)
-               
+
        case default
 
      end select
@@ -532,7 +517,7 @@ end subroutine plastic_kinehardening_init
 !> @brief calculation of shear rates (\dot \gamma)
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
-                                            Mp,ph,instance,of)
+                                            Mp,instance,of)
 
  use math
  use lattice, only: &
@@ -545,7 +530,6 @@ subroutine plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
  real(pReal), dimension(3,3), intent(in) :: &
    Mp
  integer(pInt),               intent(in) :: &
-   ph, &                                                                                           !< phase ID
    instance, &                                                                                     !< instance of that phase
    of                                                                                              !< index of phaseMember
  real(pReal), dimension(plastic_kinehardening_totalNslip(instance)), intent(out) :: &
@@ -557,34 +541,22 @@ subroutine plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
  integer(pInt) :: &
    index_myFamily, &
    f,i,j,k
+ associate(prm => paramNew(instance), stt => state(instance))
+ do i = 1_pInt, prm%totalNslip
+   tau_pos(i) = math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i)) 
+   tau_neg(i) = math_mul33xx33(Mp,prm%nonSchmid_neg(1:3,1:3,i))
+ enddo
 
-
- j = 0_pInt
- slipFamilies: do f = 1_pInt,lattice_maxNslipFamily
-   index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                         ! at which index starts my family
-   slipSystems: do i = 1_pInt,plastic_kinehardening_Nslip(f,instance)
-     j = j + 1_pInt
-     tau_pos(j) = math_mul33xx33(Mp,lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph))
-     tau_neg(j) = tau_pos(j)
-     nonSchmidSystems: do k = 1,lattice_NnonSchmid(ph)
-       tau_pos(j) = tau_pos(j) + param(instance)%nonSchmidCoeff(k)* &
-                                 math_mul33xx33(Mp,lattice_Sslip(1:3,1:3,2*k+0,index_myFamily+i,ph))
-       tau_neg(j) = tau_neg(j) + param(instance)%nonSchmidCoeff(k)* &
-                                 math_mul33xx33(Mp,lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph))
-     enddo nonSchmidSystems
-   enddo slipSystems
- enddo slipFamilies
-
- gdot_pos = 0.5_pReal * param(instance)%gdot0 * &
+ gdot_pos = 0.5_pReal * prm%gdot0 * &
             (abs(tau_pos-state(instance)%crss_back(:,of))/ &
-            state(instance)%crss(:,of))**param(instance)%n_slip &
+            state(instance)%crss(:,of))**prm%n_slip &
             *sign(1.0_pReal,tau_pos-state(instance)%crss_back(:,of)) 
- gdot_neg = 0.5_pReal * param(instance)%gdot0 * &
+ gdot_neg = 0.5_pReal * prm%gdot0 * &
             (abs(tau_neg-state(instance)%crss_back(:,of))/ &
-            state(instance)%crss(:,of))**param(instance)%n_slip &
+            state(instance)%crss(:,of))**prm%n_slip &
             *sign(1.0_pReal,tau_neg-state(instance)%crss_back(:,of)) 
             
-
+end associate
 end subroutine plastic_kinehardening_shearRates
 
 
@@ -633,7 +605,7 @@ subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp, &
  dLp_dMp = 0.0_pReal
 
  call plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
-                                       Mp,ph,instance,of)
+                                       Mp,instance,of)
  tau_pos = tau_pos - stt%crss_back(:,of)
  tau_neg = tau_neg - stt%crss_back(:,of)
 
@@ -643,14 +615,14 @@ subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp, &
 
      ! Calculation of the tangent of Lp                                                              ! sensitivity of Lp
      if (dNeq0(gdot_pos(j))) then
-       dgdot_dtau_pos = gdot_pos(j)*param(instance)%n_slip/tau_pos(j)
+       dgdot_dtau_pos = gdot_pos(j)*prm%n_slip/tau_pos(j)
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLp_dMp(k,l,m,n) = &
          dLp_dMp(k,l,m,n) + dgdot_dtau_pos*prm%Schmid_slip(k,l,j)*prm%nonSchmid_pos(m,n,j)
      endif
 
      if (dNeq0(gdot_neg(j))) then
-       dgdot_dtau_neg = gdot_neg(j)*param(instance)%n_slip/tau_neg(j)
+       dgdot_dtau_neg = gdot_neg(j)*prm%n_slip/tau_neg(j)
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLp_dMp(k,l,m,n) = &
          dLp_dMp(k,l,m,n) + dgdot_dtau_neg*prm%Schmid_slip(k,l,j)*prm%nonSchmid_neg(m,n,j)
@@ -695,7 +667,7 @@ subroutine plastic_kinehardening_deltaState(Mp,ipc,ip,el)
  instance = phase_plasticityInstance(ph)
 
  call plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
-                                       Mp,ph,instance,of)
+                                       Mp,instance,of)
  sense = merge(state(instance)%sense(:,of), &                                                       ! keep existing...
                sign(1.0_pReal,gdot_pos+gdot_neg), &                                                 ! ...or have a defined 
                dEq0(gdot_pos+gdot_neg,1e-10_pReal))                                                 ! current sense of shear direction
@@ -772,7 +744,7 @@ subroutine plastic_kinehardening_dotState(Mp,ipc,ip,el)
 
 
  call plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
-                                       Mp,ph,instance,of)
+                                       Mp,instance,of)
 
  dot%accshear(:,of) = abs(gdot_pos+gdot_neg)
  sumGamma = sum(stt%accshear(:,of))       
@@ -844,7 +816,7 @@ function plastic_kinehardening_postResults(Mp,ipc,ip,el) result(postResults)
  c = 0_pInt
 
  call plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
-                                       Mp,ph,instance,of) 
+                                       Mp,instance,of) 
  associate( prm => paramNew(instance), stt => state(instance))
  outputsLoop: do o = 1_pInt,plastic_kinehardening_Noutput(instance)
    select case(prm%outputID(o))
