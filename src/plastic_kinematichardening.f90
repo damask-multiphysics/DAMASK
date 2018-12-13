@@ -87,8 +87,6 @@ module plastic_kinehardening
      gamma0, &                                                                                      !< accumulated shear at last switch of stress sense
      accshear                                                                                       !< accumulated (absolute) shear
 
-   real(pReal), pointer, dimension(:) :: &                                                          !< scalars along NipcMyInstance
-     sumGamma                                                                                       !< accumulated shear across all systems
  end type
 
  type(tParameters), dimension(:), allocatable, private :: &
@@ -258,11 +256,11 @@ subroutine plastic_kinehardening_init(fileUnit)
 
      prm%crss0                = config_phase(p)%getFloats('crss0',   requiredShape=shape(prm%Nslip))
      prm%tau1                 = config_phase(p)%getFloats('tau1', requiredShape=shape(prm%Nslip))
-     prm%tau1_b                 = config_phase(p)%getFloats('tau1_b', requiredShape=shape(prm%Nslip))
-     prm%theta0                 = config_phase(p)%getFloats('theta0', requiredShape=shape(prm%Nslip))
-     prm%theta1                 = config_phase(p)%getFloats('theta1', requiredShape=shape(prm%Nslip))
-     prm%theta0_b                 = config_phase(p)%getFloats('theta0_b', requiredShape=shape(prm%Nslip))
-     prm%theta1_b                 = config_phase(p)%getFloats('theta1_b', requiredShape=shape(prm%Nslip))
+     prm%tau1_b               = config_phase(p)%getFloats('tau1_b', requiredShape=shape(prm%Nslip))
+     prm%theta0               = config_phase(p)%getFloats('theta0', requiredShape=shape(prm%Nslip))
+     prm%theta1               = config_phase(p)%getFloats('theta1', requiredShape=shape(prm%Nslip))
+     prm%theta0_b             = config_phase(p)%getFloats('theta0_b', requiredShape=shape(prm%Nslip))
+     prm%theta1_b             = config_phase(p)%getFloats('theta1_b', requiredShape=shape(prm%Nslip))
 
 
      prm%gdot0           = config_phase(p)%getFloat('gdot0')
@@ -324,8 +322,7 @@ param(instance)%outputID = prm%outputID
 ! allocate state arrays
      sizeDotState = nSlip &                                        !< crss
                   + nSlip &                                        !< crss_back
-                  + nSlip &                                        !< accumulated (absolute) shear
-                  + 1_pInt                                         !< sum(gamma)
+                  + nSlip                                          !< accumulated (absolute) shear
                
      sizeDeltaState = nSlip &                                      !< sense of acting shear stress (-1 or +1)
                     + nSlip &                                      !< backstress at last switch of stress sense
@@ -361,13 +358,6 @@ param(instance)%outputID = prm%outputID
      stt%accshear          => plasticState(p)%state    (startIndex  :endIndex  ,1:NipcMyPhase)
      dot%accshear          => plasticState(p)%dotState (startIndex-o:endIndex-o,1:NipcMyPhase)
      plasticState(p)%aTolState(startIndex-o:endIndex-o) = prm%aTolShear
-     
-!    .............................................
-     startIndex = endIndex + 1_pInt
-     endIndex   = endIndex + 1_pInt
-     stt%sumGamma        => plasticState(p)%state    (startIndex             ,1:NipcMyPhase)
-     dot%sumGamma        => plasticState(p)%dotState (startIndex-o           ,1:NipcMyPhase)
-     plasticState(p)%aTolState(startIndex-o:endIndex-o) =prm%aTolShear
      
 !----------------------------------------------------------------------------------------------
 !locally define deltaState alias
@@ -846,16 +836,22 @@ subroutine plastic_kinehardening_dotState(Mp,ipc,ip,el)
  real(pReal), dimension(plastic_kinehardening_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    gdot_pos,gdot_neg, &
    tau_pos,tau_neg
+ real(pReal) :: &
+   sumGamma
  
  of = phasememberAt(ipc,ip,el)
  ph = phaseAt(ipc,ip,el)
  instance = phase_plasticityInstance(ph)
  nSlip = plastic_kinehardening_totalNslip(instance)
- 
- dotState(instance)%sumGamma(of) = 0.0_pReal
+
+ associate( prm => paramNew(instance), stt => state(instance), dot => dotState(instance))
+
 
  call plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
                                        Mp,ph,instance,of)
+
+ dot%accshear(:,of) = abs(gdot_pos+gdot_neg)
+ sumGamma = sum(stt%accshear(:,of))       
                                        
  j = 0_pInt
  slipFamilies: do f = 1_pInt,lattice_maxNslipFamily
@@ -865,8 +861,8 @@ subroutine plastic_kinehardening_dotState(Mp,ipc,ip,el)
           dot_product(param(instance)%hardeningMatrix_SlipSlip(j,1:nSlip),abs(gdot_pos+gdot_neg)) * &
           ( param(instance)%theta1(f) + &
            (param(instance)%theta0(f) - param(instance)%theta1(f) &
-            + param(instance)%theta0(f)*param(instance)%theta1(f)*state(instance)%sumGamma(of)/param(instance)%tau1(f)) &
-           *exp(-state(instance)%sumGamma(of)*param(instance)%theta0(f)/param(instance)%tau1(f)) &                   ! V term depending on the harding law
+            + param(instance)%theta0(f)*param(instance)%theta1(f)*sumGamma/param(instance)%tau1(f)) &
+           *exp(-sumGamma*param(instance)%theta0(f)/param(instance)%tau1(f)) &                   ! V term depending on the harding law
           )
      dotState(instance)%crss_back(j,of) = &                                                                          ! evolution of back stress resistance j
           state(instance)%sense(j,of)*abs(gdot_pos(j)+gdot_neg(j)) * &
@@ -878,10 +874,9 @@ subroutine plastic_kinehardening_dotState(Mp,ipc,ip,el)
                  *param(instance)%theta0_b(f)/(param(instance)%tau1_b(f)+state(instance)%chi0(j,of))) &
           )                                                                                                    ! V term depending on the harding law for back stress
     
-     dotState(instance)%accshear(j,of) = abs(gdot_pos(j)+gdot_neg(j))
-     dotState(instance)%sumGamma(of) = dotState(instance)%sumGamma(of) + dotState(instance)%accshear(j,of)
    enddo slipSystems
  enddo slipFamilies
+ end associate
 
 end subroutine plastic_kinehardening_dotState
 
