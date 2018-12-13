@@ -1197,7 +1197,9 @@ subroutine constitutive_results()
  use HDF5_utilities
  use config, only: &
    config_name_phase => phase_name                                                                  ! anticipate logical name
+   
  use material, only: &
+   phase_plasticityInstance, &
    material_phase_plasticity_type => phase_plasticity
  use plastic_phenopowerlaw, only: &
    plastic_phenopowerlaw_results
@@ -1208,7 +1210,7 @@ subroutine constitutive_results()
  do p=1,size(config_name_phase)                                                                           
    call HDF5_closeGroup(results_addGroup('current/phase/'//trim(config_name_phase(p))))
    if (material_phase_plasticity_type(p) == PLASTICITY_PHENOPOWERLAW_ID) then
-     call plastic_phenopowerlaw_results(p,'current/phase/'//trim(config_name_phase(p)))
+     call plastic_phenopowerlaw_results(phase_plasticityInstance(p),'current/phase/'//trim(config_name_phase(p)))
    endif
  enddo      
 
