@@ -2639,6 +2639,11 @@ function buildCoordinateSystem(active,complete,system,structure,cOverA)
    f, &                                                                                             !< index of my family
    s                                                                                                !< index of my system in current family
 
+ if (trim(structure) == 'bct' .and. cOverA > 2.0_pReal) &
+   call IO_error(131_pInt,ext_msg='buildCoordinateSystem:'//trim(structure))
+ if (trim(structure) == 'hex' .and. (cOverA < 1.0_pReal .or. cOverA > 2.0_pReal)) &
+   call IO_error(131_pInt,ext_msg='buildCoordinateSystem:'//trim(structure))
+
  a = 0_pInt
  activeFamilies: do f = 1_pInt,size(active,1)
    activeSystems: do s = 1_pInt,active(f)
@@ -2647,13 +2652,12 @@ function buildCoordinateSystem(active,complete,system,structure,cOverA)
 
      select case(trim(structure))
 
-       case ('fcc','bcc')
+       case ('fcc','bcc','iso','ort','bct')
          direction = system(1:3,c)
          normal    = system(4:6,c)
 
        case ('hex')
          if (cOverA < 1.0_pReal .or. cOverA > 2.0_pReal) &
-           call IO_error(131_pInt,ext_msg='buildCoordinateSystem:'//trim(structure))
 
          direction = [ system(1,c)*1.5_pReal, &
                       (system(1,c)+2.0_pReal*system(2,c))*sqrt(0.75_pReal), &
@@ -2662,12 +2666,6 @@ function buildCoordinateSystem(active,complete,system,structure,cOverA)
          normal    = [ system(5,c), &
                       (system(5,c)+2.0_pReal*system(6,c))/sqrt(3.0_pReal), &
                        system(8,c)/cOverA ]                                                         ! plane (hkil)->(h (h+2k)/sqrt(3) l/(c/a))
-
-       case ('bct')
-         if (cOverA > 2.0_pReal) &
-           call IO_error(131_pInt,ext_msg='buildCoordinateSystem:'//trim(structure))
-         direction = [system(1:2,c),system(3,c)*cOverA]
-         normal    = [system(4:5,c),system(6,c)/cOverA]
 
        case default
          call IO_error(137_pInt,ext_msg='buildCoordinateSystem: '//trim(structure))
