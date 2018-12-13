@@ -416,12 +416,6 @@ param(instance)%outputID = prm%outputID
        Nchunks_SlipSlip     = maxval(lattice_interactionSlipSlip(:,:,phase))
        Nchunks_nonSchmid    = lattice_NnonSchmid(phase)
        allocate(param(instance)%crss0   (Nchunks_SlipFamilies), source=0.0_pReal)
-       allocate(param(instance)%tau1    (Nchunks_SlipFamilies), source=0.0_pReal)
-       allocate(param(instance)%tau1_b  (Nchunks_SlipFamilies), source=0.0_pReal)
-       allocate(param(instance)%theta0  (Nchunks_SlipFamilies), source=0.0_pReal)
-       allocate(param(instance)%theta1  (Nchunks_SlipFamilies), source=0.0_pReal)
-       allocate(param(instance)%theta0_b(Nchunks_SlipFamilies), source=0.0_pReal)
-       allocate(param(instance)%theta1_b(Nchunks_SlipFamilies), source=0.0_pReal)
        allocate(param(instance)%nonSchmidCoeff(Nchunks_nonSchmid),      source=0.0_pReal)
        if(allocated(tempPerSlip)) deallocate(tempPerSlip)
        allocate(tempPerSlip(Nchunks_SlipFamilies))
@@ -455,18 +449,6 @@ param(instance)%outputID = prm%outputID
          select case(tag)
            case ('crss0')
              param(instance)%crss0(1:Nchunks_SlipFamilies) = tempPerSlip(1:Nchunks_SlipFamilies)  
-           case ('tau1')
-             param(instance)%tau1(1:Nchunks_SlipFamilies) = tempPerSlip(1:Nchunks_SlipFamilies)  
-           case ('tau1_b')
-             param(instance)%tau1_b(1:Nchunks_SlipFamilies) = tempPerSlip(1:Nchunks_SlipFamilies)  
-           case ('theta0')
-             param(instance)%theta0(1:Nchunks_SlipFamilies) = tempPerSlip(1:Nchunks_SlipFamilies)  
-           case ('theta1')
-             param(instance)%theta1(1:Nchunks_SlipFamilies) = tempPerSlip(1:Nchunks_SlipFamilies)  
-           case ('theta0_b')
-             param(instance)%theta0_b(1:Nchunks_SlipFamilies) = tempPerSlip(1:Nchunks_SlipFamilies)  
-           case ('theta1_b')
-             param(instance)%theta1_b(1:Nchunks_SlipFamilies) = tempPerSlip(1:Nchunks_SlipFamilies)  
          end select
           
 !--------------------------------------------------------------------------------------------------
@@ -510,14 +492,14 @@ param(instance)%outputID = prm%outputID
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
  
-     if (any(plastic_kinehardening_Nslip (1:nSlipFamilies,instance) > 0_pInt &
-             .and. param(instance)%crss0 (1:nSlipFamilies)          < 0.0_pReal)) extmsg = trim(extmsg)//' crss0'
-     if (any(plastic_kinehardening_Nslip (1:nSlipFamilies,instance) > 0_pInt &
-             .and. param(instance)%tau1  (1:nSlipFamilies)         <= 0.0_pReal)) extmsg = trim(extmsg)//' tau1'
-     if (any(plastic_kinehardening_Nslip (1:nSlipFamilies,instance) > 0_pInt &
-             .and. param(instance)%tau1_b(1:nSlipFamilies)         < 0.0_pReal)) extmsg = trim(extmsg)//' tau1_b'
-     if (param(instance)%gdot0            <= 0.0_pReal) extmsg = trim(extmsg)//' gdot0'
-     if (param(instance)%n_slip           <= 0.0_pReal) extmsg = trim(extmsg)//' n_slip'               
+   !  if (any(plastic_kinehardening_Nslip (1:nSlipFamilies,instance) > 0_pInt &
+   !          .and. param(instance)%crss0 (1:nSlipFamilies)          < 0.0_pReal)) extmsg = trim(extmsg)//' crss0'
+   !  if (any(plastic_kinehardening_Nslip (1:nSlipFamilies,instance) > 0_pInt &
+   !          .and. param(instance)%tau1  (1:nSlipFamilies)         <= 0.0_pReal)) extmsg = trim(extmsg)//' tau1'
+   !  if (any(plastic_kinehardening_Nslip (1:nSlipFamilies,instance) > 0_pInt &
+   !          .and. param(instance)%tau1_b(1:nSlipFamilies)         < 0.0_pReal)) extmsg = trim(extmsg)//' tau1_b'
+   !  if (param(instance)%gdot0            <= 0.0_pReal) extmsg = trim(extmsg)//' gdot0'
+   !  if (param(instance)%n_slip           <= 0.0_pReal) extmsg = trim(extmsg)//' n_slip'               
      if (extmsg /= '') then 
        extmsg = trim(extmsg)//' ('//PLASTICITY_KINEHARDENING_label//')'                                 ! prepare error message identifier
        call IO_error(211_pInt,ip=instance,ext_msg=extmsg)
