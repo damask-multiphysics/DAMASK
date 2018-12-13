@@ -520,11 +520,6 @@ subroutine plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
                                             Mp,instance,of)
 
  use math
- use lattice, only: &
-   lattice_NslipSystem, &
-   lattice_Sslip, &
-   lattice_maxNslipFamily, &
-   lattice_NnonSchmid
 
  implicit none
  real(pReal), dimension(3,3), intent(in) :: &
@@ -532,7 +527,7 @@ subroutine plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
  integer(pInt),               intent(in) :: &
    instance, &                                                                                     !< instance of that phase
    of                                                                                              !< index of phaseMember
- real(pReal), dimension(plastic_kinehardening_totalNslip(instance)), intent(out) :: &
+ real(pReal), dimension(paramNew(instance)%totalNslip), intent(out) :: &
    gdot_pos, &                                                                                     !< shear rates from positive line segments
    gdot_neg, &                                                                                     !< shear rates from negative line segments
    tau_pos, &                                                                                      !< shear stress on positive line segments
@@ -563,42 +558,31 @@ end subroutine plastic_kinehardening_shearRates
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp, &
-                                                 Mp,ipc,ip,el)
+subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
  use prec, only: &
    dNeq0
- use material, only: &
-   phaseAt, phasememberAt, &
-   phase_plasticityInstance
-
+   
  implicit none
  real(pReal), dimension(3,3), intent(out) :: &
    Lp                                                                                               !< plastic velocity gradient
  real(pReal), dimension(3,3,3,3), intent(out) :: &
    dLp_dMp                                                                                          !< derivative of Lp with respect to the Mandel stress
 
- integer(pInt),               intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
  real(pReal), dimension(3,3), intent(in) :: &
-   Mp
+   Mp                                                                                               !< Mandel stress
+ integer(pInt),               intent(in) :: &
+   instance, &
+   of
 
  integer(pInt) :: &
-   instance, &
-   f,i,j,k,l,m,n, &
-   of, &
-   ph
+   f,i,j,k,l,m,n
+
    
- real(pReal), dimension(plastic_kinehardening_totalNslip(phase_plasticityInstance(phaseAt(ipc,ip,el)))) :: &
+ real(pReal), dimension(paramNew(instance)%totalNslip) :: &
    gdot_pos,gdot_neg, &
    tau_pos,tau_neg
  real(pReal) :: &
    dgdot_dtau_pos,dgdot_dtau_neg
-
- ph = phaseAt(ipc,ip,el)                                                                            !< figures phase for each material point 
- of = phasememberAt(ipc,ip,el)                                                                      !< index of the positions of each constituent of material point, phasememberAt is a function in material that helps figure them out
- instance = phase_plasticityInstance(ph)
 
  associate(prm => paramNew(instance), stt => state(instance))
  Lp = 0.0_pReal 
@@ -636,35 +620,22 @@ end subroutine plastic_kinehardening_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates (instantaneous) incremental change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_kinehardening_deltaState(Mp,ipc,ip,el)
+subroutine plastic_kinehardening_deltaState(Mp,instance,of)
  use prec, only: &
    dNeq, &
    dEq0
- use material, only: &
-   phaseAt, &
-   phasememberAt, &
-   phase_plasticityInstance
- 
+   
  implicit none
- real(pReal), dimension(3,3), intent(in) :: &
-   Mp
- integer(pInt),             intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
- real(pReal), dimension(plastic_kinehardening_totalNslip(phase_plasticityInstance(phaseAt(ipc,ip,el)))) :: &
+ real(pReal), dimension(3,3),  intent(in) :: &
+   Mp                                                                                               !< Mandel stress
+ integer(pInt),              intent(in) :: &
+   instance, &
+   of
+
+ real(pReal), dimension(paramNew(instance)%totalNslip) :: &
    gdot_pos,gdot_neg, &
    tau_pos,tau_neg, &
    sense
- integer(pInt) :: &
-   ph, &
-   instance, &                                                                                      !< instance of my instance (unique number of my constitutive model)
-   of, &
-   j                                                                                                !< shortcut notation for offset position in state array
-
- ph = phaseAt(ipc,ip,el)
- of = phasememberAt(ipc,ip,el)                                                                      ! phasememberAt should be tackled by material and be renamed to material_phasemember
- instance = phase_plasticityInstance(ph)
 
  call plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
                                        Mp,instance,of)
@@ -707,38 +678,24 @@ end subroutine plastic_kinehardening_deltaState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_kinehardening_dotState(Mp,ipc,ip,el)
- use lattice, only: &
-   lattice_maxNslipFamily
- use material, only: &
-   material_phase, &
-   phaseAt, phasememberAt, &
-   phase_plasticityInstance
+subroutine plastic_kinehardening_dotState(Mp,instance,of)
 
  implicit none
  real(pReal), dimension(3,3),  intent(in) :: &
-   Mp
+   Mp                                                                                               !< Mandel stress
  integer(pInt),              intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element !< microstructure state
+   instance, &
+   of                                                 !< element !< microstructure state
 
  integer(pInt) :: &
-   instance,ph, &
-   f,i,j, &
-   nSlip, &
-   of
+   f,i,j
  
- real(pReal), dimension(plastic_kinehardening_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
+ real(pReal), dimension(paramNew(instance)%totalNslip) :: &
    gdot_pos,gdot_neg, &
    tau_pos,tau_neg
  real(pReal) :: &
    sumGamma
  
- of = phasememberAt(ipc,ip,el)
- ph = phaseAt(ipc,ip,el)
- instance = phase_plasticityInstance(ph)
- nSlip = plastic_kinehardening_totalNslip(instance)
 
  associate( prm => paramNew(instance), stt => state(instance), dot => dotState(instance))
 
@@ -775,84 +732,67 @@ end subroutine plastic_kinehardening_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-function plastic_kinehardening_postResults(Mp,ipc,ip,el) result(postResults)
- use math
- use material, only: &
-   material_phase, &
-   phaseAt, phasememberAt, &
-   phase_plasticityInstance
- use lattice, only: &
-   lattice_Sslip, &
-   lattice_maxNslipFamily, &
-   lattice_NslipSystem
+function plastic_kinehardening_postResults(Mp,instance,of) result(postResults)
+ use math, only: &
+   math_mul33xx33
 
  implicit none
  real(pReal), dimension(3,3), intent(in) :: &
-   Mp
+   Mp                                                                                               !< Mandel stress
  integer(pInt),             intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element                                                                                        !< microstructure state
+   instance, &
+   of
 
- real(pReal), dimension(sum(plastic_kinehardening_sizePostResult(:,phase_plasticityInstance(material_phase(ipc,ip,el))))) :: &
+ real(pReal), dimension(sum(plastic_kinehardening_sizePostResult(:,instance))) :: &
    postResults
  integer(pInt) :: &
-   instance,ph, of, &
-   nSlip,&
-   o,f,i,c,j,&
-   index_myFamily
+   o,c,f,j
    
- real(pReal), dimension(plastic_kinehardening_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
+ real(pReal), dimension(paramNew(instance)%totalNslip) :: &
    gdot_pos,gdot_neg, &
    tau_pos,tau_neg
 
- of = phasememberAt(ipc,ip,el)
- ph = phaseAt(ipc,ip,el)
- instance = phase_plasticityInstance(ph)
-
- nSlip = plastic_kinehardening_totalNslip(instance)
- 
  postResults = 0.0_pReal
  c = 0_pInt
 
  call plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
-                                       Mp,instance,of) 
+                                       Mp,instance,of)
  associate( prm => paramNew(instance), stt => state(instance))
  outputsLoop: do o = 1_pInt,plastic_kinehardening_Noutput(instance)
    select case(prm%outputID(o))
      case (crss_ID)
-       postResults(c+1_pInt:c+nSlip) = stt%crss(:,of)
-       c = c + nSlip
+       postResults(c+1_pInt:c+prm%totalNslip) = stt%crss(:,of)
+       c = c + prm%totalNslip
        
      case(crss_back_ID)
-       postResults(c+1_pInt:c+nSlip) = stt%crss_back(:,of)
-       c = c + nSlip
+       postResults(c+1_pInt:c+prm%totalNslip) = stt%crss_back(:,of)
+       c = c + prm%totalNslip
        
      case (sense_ID)
-       postResults(c+1_pInt:c+nSlip) = stt%sense(:,of)
-       c = c + nSlip
+       postResults(c+1_pInt:c+prm%totalNslip) = stt%sense(:,of)
+       c = c + prm%totalNslip
                                                                         
      case (chi0_ID)
-       postResults(c+1_pInt:c+nSlip) = stt%chi0(:,of)
-       c = c + nSlip
+       postResults(c+1_pInt:c+prm%totalNslip) = stt%chi0(:,of)
+       c = c + prm%totalNslip
        
      case (gamma0_ID)
-       postResults(c+1_pInt:c+nSlip) = stt%gamma0(:,of)
-       c = c + nSlip
+       postResults(c+1_pInt:c+prm%totalNslip) = stt%gamma0(:,of)
+       c = c + prm%totalNslip
      
      case (accshear_ID)
-       postResults(c+1_pInt:c+nSlip) = stt%accshear(:,of)
-       c = c + nSlip
+       postResults(c+1_pInt:c+prm%totalNslip) = stt%accshear(:,of)
+       c = c + prm%totalNslip
        
      case (shearrate_ID)
-       postResults(c+1_pInt:c+nSlip) = gdot_pos+gdot_neg
-       c = c + nSlip
+       postResults(c+1_pInt:c+prm%totalNslip) = gdot_pos+gdot_neg
+       c = c + prm%totalNslip
 
      case (resolvedstress_ID)
        do j = 1_pInt, prm%totalNslip
          postResults(c+j) = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,j))
        enddo
-       c = c + nSlip
+       c = c + prm%totalNslip
        
    end select
  enddo outputsLoop

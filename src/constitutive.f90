@@ -516,7 +516,9 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, S6, Fi, ipc, ip, e
      call plastic_phenopowerlaw_LpAndItsTangent   (Lp,dLp_dMp, Mp,instance,of)
 
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
-     call plastic_kinehardening_LpAndItsTangent   (Lp,dLp_dMp, Mp,ipc,ip,el)
+     of = phasememberAt(ipc,ip,el)
+     instance = phase_plasticityInstance(material_phase(ipc,ip,el))
+     call plastic_kinehardening_LpAndItsTangent   (Lp,dLp_dMp, Mp,instance,of)
 
    case (PLASTICITY_NONLOCAL_ID) plasticityType
      call plastic_nonlocal_LpAndItsTangent        (Lp,dLp_dMp99, math_Mandel33to6(Mp), &
@@ -918,7 +920,9 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
      call plastic_phenopowerlaw_dotState(Mp,instance,of)
 
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
-     call plastic_kinehardening_dotState(Mp,ipc,ip,el)
+     of = phasememberAt(ipc,ip,el)
+     instance = phase_plasticityInstance(material_phase(ipc,ip,el))
+     call plastic_kinehardening_dotState(Mp,instance,of)
 
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
      call plastic_dislotwin_dotState    (math_Mandel33to6(Mp),temperature(ho)%p(tme), &
@@ -972,6 +976,8 @@ subroutine constitutive_collectDeltaState(S6, Fe, Fi, ipc, ip, el)
    math_Mandel33to6, &
    math_mul33x33
  use material, only: &
+   phasememberAt, &
+   phase_plasticityInstance, &
    phase_plasticity, &
    phase_source, &
    phase_Nsources, &
@@ -1003,19 +1009,22 @@ subroutine constitutive_collectDeltaState(S6, Fe, Fi, ipc, ip, el)
    Fe, &                                                                                            !< elastic deformation gradient
    Fi                                                                                               !< intermediate deformation gradient
  real(pReal),               dimension(3,3) :: &
-   Mstar
+   Mp
  integer(pInt) :: &
-   s                                                                                                !< counter in source loop
+   s, &                                                                                                !< counter in source loop
+   instance, of
 
- Mstar  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),math_Mandel6to33(S6))
+ Mp  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),math_Mandel6to33(S6))
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
 
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
-     call plastic_kinehardening_deltaState(Mstar,ipc,ip,el)
+     of = phasememberAt(ipc,ip,el)
+     instance = phase_plasticityInstance(material_phase(ipc,ip,el))
+     call plastic_kinehardening_deltaState(Mp,instance,of)
 
    case (PLASTICITY_NONLOCAL_ID) plasticityType
-     call plastic_nonlocal_deltaState(math_Mandel33to6(Mstar),ip,el)
+     call plastic_nonlocal_deltaState(math_Mandel33to6(Mp),ip,el)
 
  end select plasticityType
 
@@ -1140,8 +1149,10 @@ function constitutive_postResults(S6, Fi, FeArray, ipc, ip, el)
      constitutive_postResults(startPos:endPos) = &
        plastic_phenopowerlaw_postResults(Mp,instance,of)
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
+     of = phasememberAt(ipc,ip,el)
+     instance = phase_plasticityInstance(material_phase(ipc,ip,el))
      constitutive_postResults(startPos:endPos) = &
-       plastic_kinehardening_postResults(Mp,ipc,ip,el)
+       plastic_kinehardening_postResults(Mp,instance,of)
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
        plastic_dislotwin_postResults(S6,temperature(ho)%p(tme),ipc,ip,el)
