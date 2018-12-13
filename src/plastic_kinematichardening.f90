@@ -930,31 +930,31 @@ function plastic_kinehardening_postResults(Mp,ipc,ip,el) result(postResults)
 
  call plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
                                        Mp,ph,instance,of) 
-
+ associate( prm => paramNew(instance), stt => state(instance))
  outputsLoop: do o = 1_pInt,plastic_kinehardening_Noutput(instance)
-   select case(param(instance)%outputID(o))
+   select case(prm%outputID(o))
      case (crss_ID)
-       postResults(c+1_pInt:c+nSlip) = state(instance)%crss(:,of)
+       postResults(c+1_pInt:c+nSlip) = stt%crss(:,of)
        c = c + nSlip
        
      case(crss_back_ID)
-       postResults(c+1_pInt:c+nSlip) = state(instance)%crss_back(:,of)
+       postResults(c+1_pInt:c+nSlip) = stt%crss_back(:,of)
        c = c + nSlip
        
      case (sense_ID)
-       postResults(c+1_pInt:c+nSlip) = state(instance)%sense(:,of)
+       postResults(c+1_pInt:c+nSlip) = stt%sense(:,of)
        c = c + nSlip
                                                                         
      case (chi0_ID)
-       postResults(c+1_pInt:c+nSlip) = state(instance)%chi0(:,of)
+       postResults(c+1_pInt:c+nSlip) = stt%chi0(:,of)
        c = c + nSlip
        
      case (gamma0_ID)
-       postResults(c+1_pInt:c+nSlip) = state(instance)%gamma0(:,of)
+       postResults(c+1_pInt:c+nSlip) = stt%gamma0(:,of)
        c = c + nSlip
      
      case (accshear_ID)
-       postResults(c+1_pInt:c+nSlip) = state(instance)%accshear(:,of)
+       postResults(c+1_pInt:c+nSlip) = stt%accshear(:,of)
        c = c + nSlip
        
      case (shearrate_ID)
@@ -975,6 +975,7 @@ function plastic_kinehardening_postResults(Mp,ipc,ip,el) result(postResults)
        
    end select
  enddo outputsLoop
+ end associate
 
 end function plastic_kinehardening_postResults
 
@@ -984,8 +985,7 @@ end function plastic_kinehardening_postResults
 !> @details: Shear rates are calculated only optionally. NOTE: Against the common convention, the
 !> result (i.e. intent(out)) variables are the last to have the optional arguments at the end
 !--------------------------------------------------------------------------------------------------
-pure subroutine kinetics(prm,stt,of,Mp,gdot_pos,gdot_neg, &
-                           dgdot_dtau_pos,dgdot_dtau_neg)
+pure subroutine kinetics(prm,stt,of,Mp,gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_dtau_neg)
  use prec, only: &
   dNeq0
  use math, only: &
