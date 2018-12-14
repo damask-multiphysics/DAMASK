@@ -225,7 +225,7 @@ subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar3333, ipc,
              + lattice_thermalExpansion33(1:3,1:3,2,phase)*(T - TRef)**1 &                           ! linear    coefficient
              + lattice_thermalExpansion33(1:3,1:3,3,phase)*(T - TRef)**2 &                           ! quadratic coefficient
              ) / &
-      (1.0_pReal \
+      (1.0_pReal &
             + lattice_thermalExpansion33(1:3,1:3,1,phase)*(T - TRef)**1 / 1. &
             + lattice_thermalExpansion33(1:3,1:3,2,phase)*(T - TRef)**2 / 2. &
             + lattice_thermalExpansion33(1:3,1:3,3,phase)*(T - TRef)**3 / 3. &

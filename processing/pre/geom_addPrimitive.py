@@ -64,11 +64,11 @@ if options.dimension is None:
   parser.error('no dimension specified.')   
 if options.angleaxis is not None:
   options.angleaxis = list(map(float,options.angleaxis))
-  rotation = damask.Quaternion().fromAngleAxis(np.radians(options.angleaxis[0]) if options.degrees else options.angleaxis[0],
-                                               options.angleaxis[1:4])
+  rotation = damask.Quaternion.fromAngleAxis(np.radians(options.angleaxis[0]) if options.degrees else options.angleaxis[0],
+                                             options.angleaxis[1:4])
 elif options.quaternion is not None:
-  options.quaternion = map(float,options.quaternion)
-  rotation = damask.Quaternion(options.quaternion)
+  options.quaternion = list(map(float,options.quaternion))
+  rotation = damask.Quaternion(quat=options.quaternion)
 else:
   rotation = damask.Quaternion()
 
