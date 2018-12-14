@@ -954,7 +954,7 @@ subroutine results_writeVectorDataset(group,dataset,label,SIunit)
  integer(HID_T)        :: groupHandle
  
  groupHandle = results_openGroup(group)
- call HDF5_write(dataset,groupHandle,label)
+ call HDF5_write(groupHandle,dataset,label)
  call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeVectorDataset
