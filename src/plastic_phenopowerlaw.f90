@@ -53,7 +53,7 @@ module plastic_phenopowerlaw
      xi_twin_0, &                                                                                   !< initial critical shear stress for twin
      xi_slip_sat, &                                                                                 !< maximum critical shear stress for slip
      nonSchmidCoeff, &
-     H_int, &                                                                                       !< per family hardening activity (optional) !ToDo: Better name!
+     H_int, &                                                                                       !< per family hardening activity (optional)
      gamma_twin_char                                                                                !< characteristic shear for twins
    real(pReal),                 allocatable, dimension(:,:) :: &
      interaction_SlipSlip, &                                                                        !< slip resistance from slip activity
@@ -234,8 +234,8 @@ subroutine plastic_phenopowerlaw_init
 
      ! sanity checks
      if (prm%gdot0_slip <= 0.0_pReal)           extmsg = trim(extmsg)//'gdot0_slip '
-     if (dEq0(prm%a_slip))                      extmsg = trim(extmsg)//'a_slip '                              ! ToDo: negative values ok?
-     if (dEq0(prm%n_slip))                      extmsg = trim(extmsg)//'n_slip '                              ! ToDo: negative values ok?
+     if (dEq0(prm%a_slip))                      extmsg = trim(extmsg)//'a_slip '                    ! ToDo: negative values ok?
+     if (dEq0(prm%n_slip))                      extmsg = trim(extmsg)//'n_slip '                    ! ToDo: negative values ok?
      if (any(prm%xi_slip_0   <= 0.0_pReal))     extmsg = trim(extmsg)//'xi_slip_0 '
      if (any(prm%xi_slip_sat <  prm%xi_slip_0)) extmsg = trim(extmsg)//'xi_slip_sat '
    else slipActive
@@ -268,7 +268,7 @@ subroutine plastic_phenopowerlaw_init
 
      ! sanity checks
      if (prm%gdot0_twin <= 0.0_pReal)  extmsg = trim(extmsg)//'gdot0_twin '
-     if (dEq0(prm%n_twin))             extmsg = trim(extmsg)//'n_twin '                                      ! ToDo: negative values ok?
+     if (dEq0(prm%n_twin))             extmsg = trim(extmsg)//'n_twin '                             ! ToDo: negative values ok?
    else twinActive
      allocate(prm%interaction_TwinTwin(0,0))
      allocate(prm%xi_twin_0(0))
@@ -285,8 +285,8 @@ subroutine plastic_phenopowerlaw_init
                                                              config_phase(p)%getFloats('interaction_twinslip'), &
                                                              structure(1:3))
    else slipAndTwinActive
-     allocate(prm%interaction_SlipTwin(prm%totalNslip,prm%TotalNtwin))                                        ! at least one dimension is 0
-     allocate(prm%interaction_TwinSlip(prm%totalNtwin,prm%TotalNslip))                                        ! at least one dimension is 0
+     allocate(prm%interaction_SlipTwin(prm%totalNslip,prm%TotalNtwin))                              ! at least one dimension is 0
+     allocate(prm%interaction_TwinSlip(prm%totalNtwin,prm%TotalNslip))                              ! at least one dimension is 0
      prm%h0_TwinSlip = 0.0_pReal
    endif slipAndTwinActive
 
