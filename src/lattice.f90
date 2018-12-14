@@ -2657,12 +2657,9 @@ function buildCoordinateSystem(active,complete,system,structure,cOverA)
          normal    = system(4:6,c)
 
        case ('hex')
-         if (cOverA < 1.0_pReal .or. cOverA > 2.0_pReal) &
-
          direction = [ system(1,c)*1.5_pReal, &
                       (system(1,c)+2.0_pReal*system(2,c))*sqrt(0.75_pReal), &
                        system(4,c)*cOverA ]                                                         ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)])
-
          normal    = [ system(5,c), &
                       (system(5,c)+2.0_pReal*system(6,c))/sqrt(3.0_pReal), &
                        system(8,c)/cOverA ]                                                         ! plane (hkil)->(h (h+2k)/sqrt(3) l/(c/a))
