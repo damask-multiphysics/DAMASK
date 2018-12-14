@@ -33,7 +33,6 @@ module IO
    IO_write_jobIntFile, &
    IO_read_realFile, &
    IO_read_intFile, &
-   IO_hybridIA, &
    IO_isBlank, &
    IO_getTag, &
    IO_stringPos, &
@@ -192,7 +191,9 @@ recursive function IO_recursiveRead(fileName,cnt) result(fileContent)
     l,i, &
     myStat
 
-  if (merge(cnt,0_pInt,present(cnt))>10_pInt) call IO_error(106_pInt,ext_msg=trim(fileName))
+  if (present(cnt)) then
+    if (cnt>10_pInt) call IO_error(106_pInt,ext_msg=trim(fileName))
+  endif
 
 !--------------------------------------------------------------------------------------------------
 ! read data as stream
@@ -583,223 +584,6 @@ logical function IO_abaqus_hasNoPart(fileUnit)
 620 end function IO_abaqus_hasNoPart
 #endif
 
-!--------------------------------------------------------------------------------------------------
-!> @brief hybrid IA sampling of ODFfile
-!--------------------------------------------------------------------------------------------------
-function IO_hybridIA(Nast,ODFfileName)
- use prec, only: &
-   tol_math_check
-
- implicit none
- integer(pInt),                 intent(in)   :: Nast                                                !< number of samples?
- real(pReal), dimension(3,Nast)              :: IO_hybridIA
- character(len=*),              intent(in)   :: ODFfileName                                         !< name of ODF file including total path
-
-!--------------------------------------------------------------------------------------------------
-! math module is not available
- real(pReal),      parameter  :: PI = 3.141592653589793_pReal
- real(pReal),      parameter  :: INRAD = PI/180.0_pReal
-
- integer(pInt) :: i,j,bin,NnonZero,Nset,Nreps,reps,phi1,Phi,phi2
- integer(pInt), allocatable, dimension(:)   :: chunkPos
- integer(pInt), dimension(3)                :: steps                                                !< number of steps in phi1, Phi, and phi2 direction
- integer(pInt), dimension(4)                :: columns                                              !< columns in linearODF file where eulerangles and density are located
- integer(pInt), dimension(:), allocatable   :: binSet
- real(pReal) :: center,sum_dV_V,prob,dg_0,C,lowerC,upperC,rnd
- real(pReal), dimension(2,3)                :: limits                                               !< starting and end values for eulerangles
- real(pReal), dimension(3)                  :: deltas, &                                            !< angular step size in phi1, Phi, and phi2 direction
-                                               eulers                                               !< euler angles when reading from file
- real(pReal), dimension(:,:,:), allocatable :: dV_V
- character(len=65536) :: line, keyword
- integer(pInt)                                :: headerLength
- integer(pInt),               parameter       :: FILEUNIT = 999_pInt
-
- IO_hybridIA = 0.0_pReal                                                                           ! initialize return value for case of error
- write(6,'(/,a,/)',advance='no') ' Using linear ODF file: '//trim(ODFfileName)
- write(6,'(/,a)') ' Eisenlohr et al., Computational Materials Science, 42(4):670–678, 2008'
- write(6,'(a)')   ' https://doi.org/10.1016/j.commatsci.2007.09.015'
-
-
-!--------------------------------------------------------------------------------------------------
-! parse header of ODF file
- call IO_open_file(FILEUNIT,ODFfileName)
- headerLength = 0_pInt
- line=IO_read(FILEUNIT)
- chunkPos = IO_stringPos(line)
- keyword = IO_lc(IO_StringValue(line,chunkPos,2_pInt,.true.))
- if (keyword(1:4) == 'head') then
-   headerLength = IO_intValue(line,chunkPos,1_pInt) + 1_pInt
- else
-   call IO_error(error_ID=156_pInt, ext_msg='no header found')
- endif
-
-!--------------------------------------------------------------------------------------------------
-! figure out columns containing data
- do i = 1_pInt, headerLength-1_pInt
-   line=IO_read(FILEUNIT)
- enddo
- columns = 0_pInt
- chunkPos = IO_stringPos(line)
- do i = 1_pInt, chunkPos(1)
-   select case ( IO_lc(IO_StringValue(line,chunkPos,i,.true.)) )
-     case ('phi1')
-      columns(1) = i
-     case ('phi')
-      columns(2) = i
-     case ('phi2')
-      columns(3) = i
-     case ('intensity')
-      columns(4) = i
-   end select
- enddo
-
- if (any(columns<1)) call IO_error(error_ID = 156_pInt, ext_msg='could not find expected header')
-
-!--------------------------------------------------------------------------------------------------
-! determine limits, number of steps and step size
- limits(1,1:3) = 721.0_pReal
- limits(2,1:3) =  -1.0_pReal
- steps  = 0_pInt
-
- line=IO_read(FILEUNIT)
- do while (trim(line) /= IO_EOF)
-   chunkPos = IO_stringPos(line)
-   eulers=[IO_floatValue(line,chunkPos,columns(1)),&
-           IO_floatValue(line,chunkPos,columns(2)),&
-           IO_floatValue(line,chunkPos,columns(3))]
-   steps = steps + merge(1,0,eulers>limits(2,1:3))
-   limits(1,1:3) = min(limits(1,1:3),eulers)
-   limits(2,1:3) = max(limits(2,1:3),eulers)
-   line=IO_read(FILEUNIT)
- enddo
-
- deltas = (limits(2,1:3)-limits(1,1:3))/real(steps-1_pInt,pReal)
-
- write(6,'(/,a,/,3(2x,f12.4,1x))',advance='no') ' Starting angles / ° = ',limits(1,1:3)
- write(6,'(/,a,/,3(2x,f12.4,1x))',advance='no') ' Ending angles / ° =   ',limits(2,1:3)
- write(6,'(/,a,/,3(2x,f12.4,1x))',advance='no') ' Angular steps / ° =   ',deltas
-
- if (all(abs(limits(1,1:3)) < tol_math_check)) then
-   write(6,'(/,a,/)',advance='no') ' assuming vertex centered data'
-   center = 0.0_pReal                                                                               ! no need to shift
-   if (any(mod(int(limits(2,1:3),pInt),90)==0)) &
-     call IO_error(error_ID = 156_pInt, ext_msg='linear ODF data repeated at right boundary')
- else
-   write(6,'(/,a,/)',advance='no') ' assuming cell centered data'
-   center = 0.5_pReal                                                                               ! shift data by half of a bin
- endif
-
- limits = limits*INRAD
- deltas = deltas*INRAD
-
-!--------------------------------------------------------------------------------------------------
-! read in data
- allocate(dV_V(steps(3),steps(2),steps(1)),source=0.0_pReal)
- sum_dV_V = 0.0_pReal
- dg_0 = deltas(1)*deltas(3)*2.0_pReal*sin(deltas(2)/2.0_pReal)
- NnonZero = 0_pInt
-
- call IO_checkAndRewind(FILEUNIT)                                                                   ! forward
- do i = 1_pInt, headerLength
-   line=IO_read(FILEUNIT)
- enddo
-
- do phi1=1_pInt,steps(1); do Phi=1_pInt,steps(2); do phi2=1_pInt,steps(3)
-   line=IO_read(FILEUNIT)
-   chunkPos = IO_stringPos(line)
-   eulers=[IO_floatValue(line,chunkPos,columns(1)),&                                                ! read in again for consistency check only
-           IO_floatValue(line,chunkPos,columns(2)),&
-           IO_floatValue(line,chunkPos,columns(3))]*INRAD
-   if (any(abs((real([phi1,phi,phi2],pReal) -1.0_pReal + center)*deltas-eulers)>tol_math_check)) &  ! check if data is in expected order (phi2 fast) and correct for Fortran starting at 1
-     call IO_error(error_ID = 156_pInt, ext_msg='linear ODF data not in expected order')
-
-   prob = IO_floatValue(line,chunkPos,columns(4))
-   if (prob > 0.0_pReal) then
-      NnonZero = NnonZero+1_pInt
-      sum_dV_V = sum_dV_V+prob
-    else
-      prob = 0.0_pReal
-    endif
-    dV_V(phi2,Phi,phi1) = prob*dg_0*sin((real(Phi-1_pInt,pReal)+center)*deltas(2))
- enddo; enddo; enddo
- close(FILEUNIT)
- dV_V = dV_V/sum_dV_V                                                                               ! normalize to 1
-
-!--------------------------------------------------------------------------------------------------
-! now fix bounds
- Nset = max(Nast,NnonZero)                                                                          ! if less than non-zero voxel count requested, sample at least that much
- lowerC = 0.0_pReal
- upperC = real(Nset, pReal)
-
- do while (hybridIA_reps(dV_V,steps,upperC) < Nset)
-   lowerC = upperC
-   upperC = upperC*2.0_pReal
- enddo
-
-!--------------------------------------------------------------------------------------------------
-! binary search for best C
- do
-   C = (upperC+lowerC)/2.0_pReal
-   Nreps = hybridIA_reps(dV_V,steps,C)
-   if (abs(upperC-lowerC) < upperC*1.0e-14_pReal) then
-     C = upperC
-     Nreps = hybridIA_reps(dV_V,steps,C)
-     exit
-   elseif (Nreps < Nset) then
-     lowerC = C
-   elseif (Nreps > Nset) then
-     upperC = C
-   else
-     exit
-   endif
- enddo
-
- allocate(binSet(Nreps))
- bin = 0_pInt                                                                                       ! bin counter
- i = 1_pInt                                                                                         ! set counter
- do phi1=1_pInt,steps(1); do Phi=1_pInt,steps(2) ;do phi2=1_pInt,steps(3)
-   reps = nint(C*dV_V(phi2,Phi,phi1), pInt)
-   binSet(i:i+reps-1) = bin
-   bin = bin+1_pInt                                                                                 ! advance bin
-   i = i+reps                                                                                       ! advance set
- enddo; enddo; enddo
-
- do i=1_pInt,Nast
-   if (i < Nast) then
-     call random_number(rnd)
-     j = nint(rnd*real(Nreps-i,pReal)+real(i,pReal)+0.5_pReal,pInt)
-   else
-     j = i
-   endif
-   bin = binSet(j)
-   IO_hybridIA(1,i) = deltas(1)*(real(mod(bin/(steps(3)*steps(2)),steps(1)),pReal)+center)          ! phi1
-   IO_hybridIA(2,i) = deltas(2)*(real(mod(bin/ steps(3)          ,steps(2)),pReal)+center)          ! Phi
-   IO_hybridIA(3,i) = deltas(3)*(real(mod(bin                    ,steps(3)),pReal)+center)          ! phi2
-   binSet(j) = binSet(i)
- enddo
-
- contains
- !--------------------------------------------------------------------------------------------------
- !> @brief counts hybrid IA repetitions
- !--------------------------------------------------------------------------------------------------
- integer(pInt) pure function hybridIA_reps(dV_V,steps,C)
-
-  implicit none
-  integer(pInt), intent(in), dimension(3)                          :: steps                          !< number of bins in Euler space
-  real(pReal),   intent(in), dimension(steps(3),steps(2),steps(1)) :: dV_V                           !< needs description
-  real(pReal),   intent(in)                                        :: C                              !< needs description
-
-  integer(pInt) :: phi1,Phi,phi2
-
-  hybridIA_reps = 0_pInt
-  do phi1=1_pInt,steps(1); do Phi =1_pInt,steps(2); do phi2=1_pInt,steps(3)
-    hybridIA_reps = hybridIA_reps+nint(C*dV_V(phi2,Phi,phi1), pInt)
-  enddo; enddo; enddo
-
- end function hybridIA_reps
-
-end function IO_hybridIA
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief identifies strings without content
@@ -902,7 +686,11 @@ function IO_stringValue(string,chunkPos,myChunk,silent)
 
  logical                                                  :: warn
 
- warn = merge(silent,.false.,present(silent))
+ if (present(silent)) then
+   warn = silent
+ else
+   warn = .false.
+ endif
 
  IO_stringValue = ''
  valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1_pInt) then
@@ -1758,7 +1546,6 @@ integer(pInt) function IO_verifyIntValue (string,validChars,myName)
                                  validChars, &                                                        !< valid characters in string
                                  myName                                                               !< name of caller function (for debugging)
  integer(pInt)                :: readStatus, invalidWhere
- !character(len=len(trim(string))) :: trimmed does not work with ifort 14.0.1
 
  IO_verifyIntValue = 0_pInt
 
@@ -1788,7 +1575,6 @@ real(pReal) function IO_verifyFloatValue (string,validChars,myName)
                                  myName                                                               !< name of caller function (for debugging)
 
  integer(pInt)                :: readStatus, invalidWhere
- !character(len=len(trim(string))) :: trimmed does not work with ifort 14.0.1
 
  IO_verifyFloatValue = 0.0_pReal
 

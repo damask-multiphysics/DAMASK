@@ -120,8 +120,8 @@ subroutine spectral_damage_init()
      trim(snes_type) == 'vinewtonssls') then
    call DMGetGlobalVector(damage_grid,lBound,ierr); CHKERRQ(ierr)
    call DMGetGlobalVector(damage_grid,uBound,ierr); CHKERRQ(ierr)
-   call VecSet(lBound,0.0,ierr); CHKERRQ(ierr)
-   call VecSet(uBound,1.0,ierr); CHKERRQ(ierr)
+   call VecSet(lBound,0.0_pReal,ierr); CHKERRQ(ierr)
+   call VecSet(uBound,1.0_pReal,ierr); CHKERRQ(ierr)
    call SNESVISetVariableBounds(damage_snes,lBound,uBound,ierr)                                     !< variable bounds for variational inequalities like contact mechanics, damage etc.
    call DMRestoreGlobalVector(damage_grid,lBound,ierr); CHKERRQ(ierr)
    call DMRestoreGlobalVector(damage_grid,uBound,ierr); CHKERRQ(ierr)
@@ -134,7 +134,7 @@ subroutine spectral_damage_init()
  xend = xstart + xend - 1
  yend = ystart + yend - 1
  zend = zstart + zend - 1 
- call VecSet(solution,1.0,ierr); CHKERRQ(ierr)
+ call VecSet(solution,1.0_pReal,ierr); CHKERRQ(ierr)
  allocate(damage_current(grid(1),grid(2),grid3), source=1.0_pReal)
  allocate(damage_lastInc(grid(1),grid(2),grid3), source=1.0_pReal)
  allocate(damage_stagInc(grid(1),grid(2),grid3), source=1.0_pReal)

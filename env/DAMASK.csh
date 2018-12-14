@@ -44,7 +44,6 @@ if ( $?prompt ) then
   echo "DAMASK             $DAMASK_ROOT"
   echo "Spectral Solver    $SOLVER" 
   echo "Post Processing    $PROCESSING"
-  echo "Multithreading     DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
   if ( $?PETSC_DIR) then
     echo "PETSc location     $PETSC_DIR"
   endif
@@ -52,8 +51,10 @@ if ( $?prompt ) then
     echo "MSC.Marc/Mentat    $MSC_ROOT"
   endif
   echo
+  echo "Multithreading     DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
   echo `limit datasize`
   echo `limit stacksize`
+  echo
 endif
 
 setenv DAMASK_NUM_THREADS $DAMASK_NUM_THREADS
