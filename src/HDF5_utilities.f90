@@ -60,13 +60,22 @@ module HDF5_utilities
    module procedure HDF5_write_pInt7  !ABOVE 8 DIMENSIONS IT GIVES ERROR: THE CALL TO H5DREAD_F DOESNT WORK
 
  end interface HDF5_write
-
+!--------------------------------------------------------------------------------------------------
+!> @brief attached attributes of type char,pInt or pReal to a file/dataset/group
+!--------------------------------------------------------------------------------------------------
+ interface HDF5_attributes
+   module procedure HDF5_addStringAttribute
+   module procedure HDF5_addIntegerAttribute
+   module procedure HDF5_addRealAttribute
+ end interface HDF5_attributes
+!--------------------------------------------------------------------------------------------------
  public :: &
    HDF5_utilities_init, &
    HDF5_openFile, &
    HDF5_closeFile, &
    HDF5_addStringAttribute, &
    HDF5_addIntegerAttribute, &
+   HDF5_addRealAttribute, &
    HDF5_closeGroup ,&
    HDF5_openGroup, &
    HDF5_addGroup, &
@@ -275,7 +284,7 @@ end subroutine HDF5_addStringAttribute
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds a StringAttribute to the results file
+!> @brief adds a IntegerAttribute to the results file
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_addIntegerAttribute(entity,attrLabel,attrValue)
 
@@ -288,7 +297,7 @@ subroutine HDF5_addIntegerAttribute(entity,attrLabel,attrValue)
 
  call h5screate_f(H5S_SCALAR_F,space_id,hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addIntegerAttribute: h5screate_f')
- call h5tcopy_f(H5T_NATIVE_Integer, type_id, hdferr)
+ call h5tcopy_f(H5T_NATIVE_INTEGER, type_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addIntegerAttribute: h5tcopy_f')
  call h5tset_size_f(type_id, 1_HSIZE_T, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addIntegerAttribute: h5tset_size_f')
@@ -304,6 +313,37 @@ subroutine HDF5_addIntegerAttribute(entity,attrLabel,attrValue)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addIntegerAttribute: h5sclose_f')
 
 end subroutine HDF5_addIntegerAttribute
+
+!--------------------------------------------------------------------------------------------------
+!> @brief adds a Real number Attribute to the results file
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_addRealAttribute(entity,attrLabel,attrValue)
+
+ implicit none
+ integer(HID_T),   intent(in)  :: entity
+ character(len=*), intent(in)  :: attrLabel
+ real(pReal),    intent(in)    :: attrValue
+ integer(HDF5_ERR_TYPE)        :: hdferr
+ integer(HID_T)                :: attr_id, space_id, type_id
+
+ call h5screate_f(H5S_SCALAR_F,space_id,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addRealAttribute: h5screate_f')
+ call h5tcopy_f(H5T_NATIVE_DOUBLE, type_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addRealAttribute: h5tcopy_f')
+ call h5tset_size_f(type_id, 8_HSIZE_T, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addRealAttribute: h5tset_size_f')
+ call h5acreate_f(entity, trim(attrLabel),type_id,space_id,attr_id,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addRealAttribute: h5acreate_f')
+ call h5awrite_f(attr_id, type_id, attrValue, int([1],HSIZE_T), hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addRealAttribute: h5awrite_f')
+ call h5aclose_f(attr_id,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addRealAttribute: h5aclose_f')
+ call h5tclose_f(type_id,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addRealAttribute: h5tclose_f')
+ call h5sclose_f(space_id,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addRealAttribute: h5sclose_f')
+
+end subroutine HDF5_addRealAttribute
 
 !--------------------------------------------------------------------------------------------------
 !> @brief set link to object in results file
@@ -382,8 +422,8 @@ subroutine HDF5_read_pReal1(loc_id,dataset,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                        int(localShape,HSIZE_T))
-if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
+                         int(localShape,HSIZE_T))
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
@@ -477,8 +517,8 @@ subroutine HDF5_read_pReal2(loc_id,dataset,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                        int(localShape,HSIZE_T))
-if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
+                         int(localShape,HSIZE_T))
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
@@ -572,8 +612,8 @@ subroutine HDF5_read_pReal3(loc_id,dataset,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                        int(localShape,HSIZE_T))
-if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
+                         int(localShape,HSIZE_T))
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
@@ -667,8 +707,8 @@ subroutine HDF5_read_pReal4(loc_id,dataset,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                        int(localShape,HSIZE_T))
-if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
+                         int(localShape,HSIZE_T))
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
@@ -762,8 +802,8 @@ subroutine HDF5_read_pReal5(loc_id,dataset,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                        int(localShape,HSIZE_T))
-if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
+                         int(localShape,HSIZE_T))
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
@@ -857,8 +897,8 @@ subroutine HDF5_read_pReal6(loc_id,dataset,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                        int(localShape,HSIZE_T))
-if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
+                         int(localShape,HSIZE_T))
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
@@ -952,8 +992,8 @@ subroutine HDF5_read_pReal7(loc_id,dataset,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                        int(localShape,HSIZE_T))
-if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
+                         int(localShape,HSIZE_T))
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
@@ -1048,8 +1088,8 @@ subroutine HDF5_read_pInt1(loc_id,dataset,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                        int(localShape,HSIZE_T))
-if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
+                         int(localShape,HSIZE_T))
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
@@ -1145,8 +1185,8 @@ subroutine HDF5_read_pInt2(loc_id,dataset,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                        int(localShape,HSIZE_T))
-if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
+                         int(localShape,HSIZE_T))
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
@@ -1242,8 +1282,8 @@ subroutine HDF5_read_pInt3(loc_id,dataset,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                        int(localShape,HSIZE_T))
-if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
+                         int(localShape,HSIZE_T))
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
@@ -1339,8 +1379,8 @@ subroutine HDF5_read_pInt4(loc_id,dataset,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                        int(localShape,HSIZE_T))
-if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
+                         int(localShape,HSIZE_T))
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
@@ -1436,8 +1476,8 @@ subroutine HDF5_read_pInt5(loc_id,dataset,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                        int(localShape,HSIZE_T))
-if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
+                         int(localShape,HSIZE_T))
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
@@ -1533,8 +1573,8 @@ subroutine HDF5_read_pInt6(loc_id,dataset,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                        int(localShape,HSIZE_T))
-if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
+                         int(localShape,HSIZE_T))
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
@@ -1630,8 +1670,8 @@ subroutine HDF5_read_pInt7(loc_id,dataset,datasetName,parallel)
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                        int(localShape,HSIZE_T))
-if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
+                         int(localShape,HSIZE_T))
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
 !--------------------------------------------------------------------------------------------------
 ! set I/O mode for read operations to collective
  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
@@ -1729,7 +1769,7 @@ subroutine HDF5_write_pReal1(loc_id,dataset,datasetName,parallel)
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in file (global shape)
-  call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
+ call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
                          int(globalShape,HSIZE_T))
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal1: h5dget_space_f')
 
@@ -1820,7 +1860,7 @@ subroutine HDF5_write_pReal2(loc_id,dataset,datasetName,parallel)
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in file (global shape)
-  call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
+ call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
                          int(globalShape,HSIZE_T))
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal2: h5dget_space_f')
 
@@ -1911,7 +1951,7 @@ subroutine HDF5_write_pReal3(loc_id,dataset,datasetName,parallel)
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in file (global shape)
-  call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
+ call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
                          int(globalShape,HSIZE_T))
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal3: h5dget_space_f')
 
@@ -2002,7 +2042,7 @@ subroutine HDF5_write_pReal4(loc_id,dataset,datasetName,parallel)
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in file (global shape)
-  call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
+ call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
                          int(globalShape,HSIZE_T))
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal4: h5dget_space_f')
 
@@ -2093,7 +2133,7 @@ subroutine HDF5_write_pReal5(loc_id,dataset,datasetName,parallel)
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in file (global shape)
-  call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
+ call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
                          int(globalShape,HSIZE_T))
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal5: h5dget_space_f')
 
@@ -2184,7 +2224,7 @@ subroutine HDF5_write_pReal6(loc_id,dataset,datasetName,parallel)
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in file (global shape)
-  call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
+ call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
                          int(globalShape,HSIZE_T))
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal6: h5dget_space_f')
 
@@ -2275,7 +2315,7 @@ subroutine HDF5_write_pReal7(loc_id,dataset,datasetName,parallel)
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in file (global shape)
-  call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
+ call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
                          int(globalShape,HSIZE_T))
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal7: h5dget_space_f')
 
@@ -2337,7 +2377,7 @@ subroutine HDF5_write_pInt1(loc_id,dataset,datasetName,parallel)
 !-------------------------------------------------------------------------------------------------
 ! determine shape of dataset
  localShape = shape(dataset)
-if (any(localShape(1:size(localShape)) == 0)) return
+ if (any(localShape(1:size(localShape)) == 0)) return
 
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for transfer properties
@@ -2366,7 +2406,7 @@ if (any(localShape(1:size(localShape)) == 0)) return
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in file (global shape)
-  call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
+ call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
                          int(globalShape,HSIZE_T))
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt1: h5dget_space_f')
 
@@ -2426,7 +2466,7 @@ subroutine HDF5_write_pInt2(loc_id,dataset,datasetName,parallel)
 !-------------------------------------------------------------------------------------------------
 ! determine shape of dataset
  localShape = shape(dataset)
-if (any(localShape(1:size(localShape)) == 0)) return
+ if (any(localShape(1:size(localShape)) == 0)) return
 
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for transfer properties
@@ -2455,7 +2495,7 @@ if (any(localShape(1:size(localShape)) == 0)) return
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in file (global shape)
-  call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
+ call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
                          int(globalShape,HSIZE_T))
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt2: h5dget_space_f')
 
@@ -2515,7 +2555,7 @@ subroutine HDF5_write_pInt3(loc_id,dataset,datasetName,parallel)
 !-------------------------------------------------------------------------------------------------
 ! determine shape of dataset
  localShape = shape(dataset)
-if (any(localShape(1:size(localShape)) == 0)) return
+ if (any(localShape(1:size(localShape)) == 0)) return
 
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for transfer properties
@@ -2544,7 +2584,7 @@ if (any(localShape(1:size(localShape)) == 0)) return
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in file (global shape)
-  call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
+ call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
                          int(globalShape,HSIZE_T))
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt3: h5dget_space_f')
 
@@ -2604,7 +2644,7 @@ subroutine HDF5_write_pInt4(loc_id,dataset,datasetName,parallel)
 !-------------------------------------------------------------------------------------------------
 ! determine shape of dataset
  localShape = shape(dataset)
-if (any(localShape(1:size(localShape)) == 0)) return
+ if (any(localShape(1:size(localShape)) == 0)) return
 
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for transfer properties
@@ -2633,7 +2673,7 @@ if (any(localShape(1:size(localShape)) == 0)) return
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in file (global shape)
-  call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
+ call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
                          int(globalShape,HSIZE_T))
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt4: h5dget_space_f')
 
@@ -2693,7 +2733,7 @@ subroutine HDF5_write_pInt5(loc_id,dataset,datasetName,parallel)
 !-------------------------------------------------------------------------------------------------
 ! determine shape of dataset
  localShape = shape(dataset)
-if (any(localShape(1:size(localShape)) == 0)) return
+ if (any(localShape(1:size(localShape)) == 0)) return
 
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for transfer properties
@@ -2722,7 +2762,7 @@ if (any(localShape(1:size(localShape)) == 0)) return
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in file (global shape)
-  call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
+ call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
                          int(globalShape,HSIZE_T))
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt5: h5dget_space_f')
 
@@ -2782,7 +2822,7 @@ subroutine HDF5_write_pInt6(loc_id,dataset,datasetName,parallel)
 !-------------------------------------------------------------------------------------------------
 ! determine shape of dataset
  localShape = shape(dataset)
-if (any(localShape(1:size(localShape)) == 0)) return
+ if (any(localShape(1:size(localShape)) == 0)) return
 
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for transfer properties
@@ -2811,7 +2851,7 @@ if (any(localShape(1:size(localShape)) == 0)) return
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in file (global shape)
-  call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
+ call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
                          int(globalShape,HSIZE_T))
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt6: h5dget_space_f')
 
@@ -2871,7 +2911,7 @@ subroutine HDF5_write_pInt7(loc_id,dataset,datasetName,parallel)
 !-------------------------------------------------------------------------------------------------
 ! determine shape of dataset
  localShape = shape(dataset)
-if (any(localShape(1:size(localShape)) == 0)) return
+ if (any(localShape(1:size(localShape)) == 0)) return
 
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for transfer properties
@@ -2900,7 +2940,7 @@ if (any(localShape(1:size(localShape)) == 0)) return
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in file (global shape)
-  call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
+ call h5screate_simple_f(size(globalShape), int(globalShape,HSIZE_T), filespace_id, hdferr, &
                          int(globalShape,HSIZE_T))
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt7: h5dget_space_f')
 
@@ -2935,7 +2975,7 @@ end subroutine HDF5_write_pInt7
 
 end module HDF5_Utilities
 
-!!!!!!!!!!!!
+
 
 
 
