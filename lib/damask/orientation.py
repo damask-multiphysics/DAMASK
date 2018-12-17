@@ -161,8 +161,8 @@ class Quaternion:
 
     def __eq__(self,other):
       """Equal (sufficiently close) to each other"""
-      return math.isclose(( self-other).magnitude(),0.0) \
-          or math.isclose((-self-other).magnitude(),0.0)
+      return np.isclose(( self-other).magnitude(),0.0) \
+          or np.isclose((-self-other).magnitude(),0.0)
 
     def __ne__(self,other):
       """Not equal (sufficiently close) to each other"""
@@ -230,10 +230,10 @@ class Quaternion:
 
       angle = 2.0*math.acos(self.q)
 
-      if math.isclose(angle,0.0):
+      if np.isclose(angle,0.0):
         angle = 0.0
         axis  = np.array([0.0,0.0,1.0])
-      elif math.isclose(self.q,0.0):
+      elif np.isclose(self.q,0.0):
         angle = math.pi
         axis  = self.p
       else:
@@ -244,7 +244,7 @@ class Quaternion:
       return np.hstack((angle,axis)) if flat else (angle,axis)
 
     def asRodrigues(self):
-      return np.inf*np.ones(3) if math.isclose(self.q,0.0) else self.p/self.q
+      return np.inf*np.ones(3) if np.isclose(self.q,0.0) else self.p/self.q
 
     def asEulers(self,
                  degrees = False):
@@ -255,9 +255,9 @@ class Quaternion:
       q12 = self.p[0]**2 + self.p[1]**2
       chi = np.sqrt(q03*q12)
       
-      if math.isclose(chi,0.0) and math.isclose(q12,0.0):
+      if np.isclose(chi,0.0) and np.isclose(q12,0.0):
         eulers = np.array([math.atan2(-2*P*self.q*self.p[2],self.q**2-self.p[2]**2),0,0])
-      elif math.isclose(chi,0.0) and math.isclose(q03,0.0):
+      elif np.isclose(chi,0.0) and np.isclose(q03,0.0):
         eulers = np.array([math.atan2( 2  *self.p[0]*self.p[1],self.p[0]**2-self.p[1]**2),np.pi,0])
       else:
         eulers = np.array([math.atan2((self.p[0]*self.p[2]-P*self.q*self.p[1])/chi,(-P*self.q*self.p[0]-self.p[1]*self.p[2])/chi),
