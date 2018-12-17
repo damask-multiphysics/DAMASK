@@ -154,13 +154,13 @@ subroutine CPFEM_init
 
    fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
   
-   call HDF5_read(fileHandle,material_phase,'recordedPhase')
-   call HDF5_read(fileHandle,         crystallite_F0,'convergedF')
-   call HDF5_read(fileHandle,        crystallite_Fp0,'convergedFp')
-   call HDF5_read(fileHandle,        crystallite_Fi0,'convergedFi')
-   call HDF5_read(fileHandle,        crystallite_Lp0,'convergedLp')
-   call HDF5_read(fileHandle,        crystallite_Li0,'convergedLi')
-   call HDF5_read(fileHandle,   crystallite_dPdF0, 'convergeddPdF')
+   call HDF5_read(fileHandle,material_phase,      'recordedPhase')
+   call HDF5_read(fileHandle,crystallite_F0,      'convergedF')
+   call HDF5_read(fileHandle,crystallite_Fp0,     'convergedFp')
+   call HDF5_read(fileHandle,crystallite_Fi0,     'convergedFi')
+   call HDF5_read(fileHandle,crystallite_Lp0,     'convergedLp')
+   call HDF5_read(fileHandle,crystallite_Li0,     'convergedLi')
+   call HDF5_read(fileHandle,crystallite_dPdF0,   'convergeddPdF')
    call HDF5_read(fileHandle,crystallite_Tstar0_v,'convergedTstar')
    
    groupPlasticID = HDF5_openGroup(fileHandle,'PlasticPhases')
@@ -282,13 +282,13 @@ subroutine CPFEM_age()
    write(rankStr,'(a1,i0)')'_',worldrank
    fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
    
-   call HDF5_write(fileHandle,       material_phase,'recordedPhase')
-   call HDF5_write(fileHandle,          crystallite_F0,'convergedF')
-   call HDF5_write(fileHandle,        crystallite_Fp0,'convergedFp')
-   call HDF5_write(fileHandle,        crystallite_Fi0,'convergedFi')
-   call HDF5_write(fileHandle,        crystallite_Lp0,'convergedLp')
-   call HDF5_write(fileHandle,        crystallite_Li0,'convergedLi')
-   call HDF5_write(fileHandle,    crystallite_dPdF0,'convergeddPdF')
+   call HDF5_write(fileHandle,material_phase,      'recordedPhase')
+   call HDF5_write(fileHandle,crystallite_F0,      'convergedF')
+   call HDF5_write(fileHandle,crystallite_Fp0,     'convergedFp')
+   call HDF5_write(fileHandle,crystallite_Fi0,     'convergedFi')
+   call HDF5_write(fileHandle,crystallite_Lp0,     'convergedLp')
+   call HDF5_write(fileHandle,crystallite_Li0,     'convergedLi')
+   call HDF5_write(fileHandle,crystallite_dPdF0,   'convergeddPdF')
    call HDF5_write(fileHandle,crystallite_Tstar0_v,'convergedTstar')
    
    groupPlastic = HDF5_addGroup(fileHandle,'PlasticPhases')
@@ -317,7 +317,7 @@ end subroutine CPFEM_age
 !--------------------------------------------------------------------------------------------------
 !> @brief triggers writing of the results
 !--------------------------------------------------------------------------------------------------
-subroutine CPFEM_results(inc)
+subroutine CPFEM_results(inc,time)
  use prec, only: &
    pInt
  use results
@@ -327,13 +327,12 @@ subroutine CPFEM_results(inc)
 
  implicit none
  integer(pInt), intent(in) :: inc
- character(len=16)        :: incChar
+ real(pReal),   intent(in) :: time
 
  call results_openJobFile
- write(incChar,*) inc
- call HDF5_closeGroup(results_addGroup(trim('inc'//trim(adjustl(incChar)))))
- call results_setLink(trim('inc'//trim(adjustl(incChar))),'current')
+ call results_addIncrement(inc,time)
  call constitutive_results()
+ call results_removeLink('current') ! put this into closeJobFile
  call results_closeJobFile
 
 end subroutine CPFEM_results

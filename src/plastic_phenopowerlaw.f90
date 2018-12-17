@@ -757,7 +757,7 @@ subroutine plastic_phenopowerlaw_results(instance,group)
  integer(pInt), intent(in) :: instance
  character(len=*) :: group
  integer(pInt) :: o
- 
+
  associate(prm => param(instance), stt => state(instance))
  outputsLoop: do o = 1_pInt,size(prm%outputID)
    select case(prm%outputID(o))
@@ -768,7 +768,6 @@ subroutine plastic_phenopowerlaw_results(instance,group)
    end select
  enddo outputsLoop
  end associate
- !results_writeVectorDataset
 #else
  integer(pInt), intent(in) :: instance
  character(len=*) :: group

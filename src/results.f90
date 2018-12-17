@@ -24,18 +24,11 @@ module results
    results_openJobFile, &
    results_closeJobFile, &
    results_addIncrement, &
-   HDF5_mappingPhase, &
-   HDF5_mappingHomog, &
-   HDF5_mappingCrystallite, &
-   HDF5_backwardMappingPhase, &
-   HDF5_backwardMappingHomog, &
-   HDF5_backwardMappingCrystallite, &
-   HDF5_mappingCells, &
    results_addGroup, &
    results_openGroup, &
    results_writeVectorDataset, &
    results_setLink, &
-   HDF5_removeLink
+   results_removeLink
 contains
 
 subroutine results_init
@@ -62,7 +55,9 @@ subroutine results_openJobFile()
  implicit none
 
  resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','a',.true.)
-
+ call HDF5_addAttribute(resultsFile,'DADF5version',0.1_pReal)
+ call HDF5_addAttribute(resultsFile,'DAMASKversion',DAMASKVERSION)
+ 
 end subroutine results_openJobFile
 
 
@@ -80,10 +75,16 @@ end subroutine results_closeJobFile
 !--------------------------------------------------------------------------------------------------
 !> @brief closes the results file
 !--------------------------------------------------------------------------------------------------
-subroutine results_addIncrement()
+subroutine results_addIncrement(inc,time)
+ 
  implicit none
+ integer(pInt), intent(in) :: inc
+ real(pReal),   intent(in) :: time
+ character(len=pStringLen) :: incChar
 
- call HDF5_addIntegerAttribute(resultsFile,'test',1)
+ call HDF5_closeGroup(results_addGroup(trim('inc'//trim(adjustl(incChar)))))
+ call results_setLink(trim('inc'//trim(adjustl(incChar))),'current')
+ call HDF5_addAttribute(resultsFile,'time/s',time,trim('inc'//trim(adjustl(incChar))))
 
 end subroutine results_addIncrement
 
@@ -112,6 +113,7 @@ integer(HID_T) function results_addGroup(groupName)
 
 end function results_addGroup
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief set link to object in results file
 !--------------------------------------------------------------------------------------------------
@@ -126,10 +128,11 @@ subroutine results_setLink(path,link)
 
 end subroutine results_setLink
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief remove link to an object
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_removeLink(link)
+subroutine results_removeLink(link)
  use hdf5
 
  implicit none
@@ -137,9 +140,27 @@ subroutine HDF5_removeLink(link)
  integer                      :: hdferr
 
  call h5ldelete_f(resultsFile,link, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_removeLink: h5ldelete_soft_f ('//trim(link)//')')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'results_removeLink: h5ldelete_soft_f ('//trim(link)//')')
 
-end subroutine HDF5_removeLink
+end subroutine results_removeLink
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief stores a vector dataset in a group
+!--------------------------------------------------------------------------------------------------
+subroutine results_writeVectorDataset(group,dataset,label,SIunit)
+
+ implicit none
+ character(len=*), intent(in)                 :: SIunit,label,group
+ real(pReal),      intent(inout), dimension(:,:) :: dataset
+ integer(HID_T)        :: groupHandle
+ 
+ groupHandle = results_openGroup(group)
+ call HDF5_write(groupHandle,dataset,label)
+ call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
+ call HDF5_closeGroup(groupHandle)
+
+end subroutine results_writeVectorDataset
 
 
 !--------------------------------------------------------------------------------------------------
@@ -942,22 +963,6 @@ subroutine HDF5_mappingCells(mapping)
  call HDF5_closeGroup(mapping_ID)
 
 end subroutine HDF5_mappingCells
-
-!--------------------------------------------------------------------------------------------------
-!> @brief creates a new vector dataset in the given group location
-!--------------------------------------------------------------------------------------------------
-subroutine results_writeVectorDataset(group,dataset,label,SIunit)
-
- implicit none
- character(len=*), intent(in)                 :: SIunit,label,group
- real(pReal),      intent(inout), dimension(:,:) :: dataset
- integer(HID_T)        :: groupHandle
- 
- groupHandle = results_openGroup(group)
- call HDF5_write(groupHandle,dataset,label)
- call HDF5_closeGroup(groupHandle)
-
-end subroutine results_writeVectorDataset
 
 
 end module results
