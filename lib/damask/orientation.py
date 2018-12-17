@@ -416,7 +416,7 @@ class Symmetry:
 
 
   def __repr__(self):
-    """Readbable string"""
+    """Readable string"""
     return '{}'.format(self.lattice)
 
 
@@ -502,7 +502,7 @@ class Symmetry:
                   ]
 
     return list(map(Quaternion,
-               np.array(symQuats)[np.atleast_1d(np.array(who)) if who != [] else range(len(symQuats))]))
+                    np.array(symQuats)[np.atleast_1d(np.array(who)) if who != [] else range(len(symQuats))]))
     
     
   def equivalentQuaternions(self,
