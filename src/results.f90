@@ -82,6 +82,7 @@ subroutine results_addIncrement(inc,time)
  real(pReal),   intent(in) :: time
  character(len=pStringLen) :: incChar
 
+ write(incChar,*) inc
  call HDF5_closeGroup(results_addGroup(trim('inc'//trim(adjustl(incChar)))))
  call results_setLink(trim('inc'//trim(adjustl(incChar))),'current')
  call HDF5_addAttribute(resultsFile,'time/s',time,trim('inc'//trim(adjustl(incChar))))
