@@ -8,24 +8,6 @@ import math,os
 import numpy as np
 
 # ******************************************************************************************
-class Rodrigues:
-
-    def __init__(self, vector = np.zeros(3)):
-      self.vector = vector
-
-    def asQuaternion(self):
-      norm = np.linalg.norm(self.vector)
-      halfAngle = np.arctan(norm)
-      return Quaternion(np.cos(halfAngle),np.sin(halfAngle)*self.vector/norm)
-
-    def asAngleAxis(self):
-      norm = np.linalg.norm(self.vector)
-      halfAngle = np.arctan(norm)
-      return (2.0*halfAngle,self.vector/norm)
-
-
-
-# ******************************************************************************************
 class Quaternion:
     u"""
     Orientation represented as unit quaternion.
@@ -178,12 +160,13 @@ class Quaternion:
     magnitude = __abs__
 
     def __eq__(self,other):
-      """Equal at e-8 precision"""
-      return (self-other).magnitude() < 1e-8 or (-self-other).magnitude() < 1e-8
+      """Equal (sufficiently close) to each other"""
+      return math.isclose(( self-other).magnitude(),0.0) \
+          or math.isclose((-self-other).magnitude(),0.0)
 
     def __ne__(self,other):
-      """Not equal at e-8 precision"""
-      return not self.__eq__(self,other)
+      """Not equal (sufficiently close) to each other"""
+      return not self.__eq__(other)
 
     def __cmp__(self,other):
       """Linear ordering"""
@@ -192,11 +175,6 @@ class Quaternion:
 
     def magnitude_squared(self):
       return self.q ** 2 + np.dot(self.p,self.p)
-
-    def identity(self):
-      self.q = 1.
-      self.p = np.zeros(3,dtype=float)
-      return self
 
     def normalize(self):
       d = self.magnitude()
@@ -207,13 +185,6 @@ class Quaternion:
 
     def conjugate(self):
       self.p = -self.p
-      return self
-
-    def inverse(self):
-      d = self.magnitude()
-      if d > 0.0:
-        self.conjugate()
-        self /= d
       return self
 
     def homomorph(self):
@@ -227,9 +198,6 @@ class Quaternion:
 
     def conjugated(self):
       return self.copy().conjugate()
-
-    def inversed(self):
-      return self.copy().inverse()
 
     def homomorphed(self):
       return self.copy().homomorph()
@@ -259,27 +227,24 @@ class Quaternion:
     def asAngleAxis(self,
                     degrees = False,
                     flat = False):
-      if self.q > 1.:
-          self.normalize()
 
-      s = math.sqrt(1. - self.q**2)
-      x = 2.*self.q**2 - 1.
-      y = 2.*self.q * s
+      angle = 2.0*math.acos(self.q)
 
-      angle = math.atan2(y,x)
-      if angle < 0.0:
-        angle *= -1.
-        s     *= -1.
-
-      if flat:
-        return np.hstack((np.degrees(angle) if degrees else angle,
-                          np.array([1.0, 0.0, 0.0] if np.abs(angle) < 1e-6 else self.p / s)))
+      if math.isclose(angle,0.0):
+        angle = 0.0
+        axis  = np.array([0.0,0.0,1.0])
+      elif math.isclose(self.q,0.0):
+        angle = math.pi
+        axis  = self.p
       else:
-        return (np.degrees(angle) if degrees else angle,
-                np.array([1.0, 0.0, 0.0] if np.abs(angle) < 1e-6 else self.p / s))
+        axis  = np.sign(self.q)*self.p/np.linalg.norm(self.p)
+
+      angle = np.degrees(angle) if degrees else angle
+
+      return np.hstack((angle,axis)) if flat else (angle,axis)
 
     def asRodrigues(self):
-      return np.inf*np.ones(3) if self.q == 0.0 else self.p/self.q
+      return np.inf*np.ones(3) if math.isclose(self.q,0.0) else self.p/self.q
 
     def asEulers(self,
                  degrees = False):
@@ -290,9 +255,9 @@ class Quaternion:
       q12 = self.p[0]**2 + self.p[1]**2
       chi = np.sqrt(q03*q12)
       
-      if abs(chi) < 1e-10 and abs(q12) < 1e-10:
+      if math.isclose(chi,0.0) and math.isclose(q12,0.0):
         eulers = np.array([math.atan2(-2*P*self.q*self.p[2],self.q**2-self.p[2]**2),0,0])
-      elif abs(chi) < 1e-10 and abs(q03) < 1e-10:
+      elif math.isclose(chi,0.0) and math.isclose(q03,0.0):
         eulers = np.array([math.atan2( 2  *self.p[0]*self.p[1],self.p[0]**2-self.p[1]**2),np.pi,0])
       else:
         eulers = np.array([math.atan2((self.p[0]*self.p[2]-P*self.q*self.p[1])/chi,(-P*self.q*self.p[0]-self.p[1]*self.p[2])/chi),
@@ -456,11 +421,11 @@ class Symmetry:
 
 
   def __eq__(self, other):
-    """Equal"""
+    """Equal to other"""
     return self.lattice == other.lattice
 
   def __neq__(self, other):
-    """Not equal"""
+    """Not equal to other"""
     return not self.__eq__(other)
 
   def __cmp__(self,other):
@@ -549,7 +514,7 @@ class Symmetry:
 
   def inFZ(self,R):
     """Check whether given Rodrigues vector falls into fundamental zone of own symmetry."""
-    if isinstance(R, Quaternion): R = R.asRodrigues()                                               # translate accidentially passed quaternion
+    if isinstance(R, Quaternion): R = R.asRodrigues()                                               # translate accidentally passed quaternion
 # fundamental zone in Rodrigues space is point symmetric around origin
     R = abs(R)                                                                                      
     if self.lattice == 'cubic':
