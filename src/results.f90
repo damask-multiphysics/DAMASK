@@ -52,11 +52,15 @@ end subroutine results_init
 subroutine results_openJobFile()
  use DAMASK_interface, only: &
    getSolverJobName
+
  implicit none
+ character(len=pStringLen) :: commandLine
 
  resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','a',.true.)
- call HDF5_addAttribute(resultsFile,'DADF5version',0.1_pReal)
- call HDF5_addAttribute(resultsFile,'DAMASKversion',DAMASKVERSION)
+ call HDF5_addAttribute(resultsFile,'DADF5',0.1_pReal)
+ call HDF5_addAttribute(resultsFile,'DAMASK',DAMASKVERSION)
+ call get_command(commandLine)
+ call HDF5_addAttribute(resultsFile,'call',trim(commandLine))
  
 end subroutine results_openJobFile
 
