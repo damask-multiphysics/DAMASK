@@ -504,9 +504,8 @@ subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
  do j = 1_pInt, prm%totalNslip
 
-     Lp = Lp + (gdot_pos(j)+gdot_neg(j))*prm%Schmid_slip(1:3,1:3,j)                                 ! sum of all gdot*SchmidTensor gives Lp
+     Lp = Lp + (gdot_pos(j)+gdot_neg(j))*prm%Schmid_slip(1:3,1:3,j)
 
-     ! Calculation of the tangent of Lp                                                              ! sensitivity of Lp
      if (dNeq0(gdot_pos(j))) then
        dgdot_dtau_pos = gdot_pos(j)*prm%n_slip/tau_pos(j)
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
@@ -616,24 +615,22 @@ subroutine plastic_kinehardening_dotState(Mp,instance,of)
  sumGamma = sum(stt%accshear(:,of))       
                  
  do j = 1_pInt, prm%totalNslip
-     dot%crss(j,of) = &                                                                               ! evolution of slip resistance j
-          dot_product(prm%interaction_SlipSlip(j,:),abs(gdot_pos+gdot_neg)) * &
-          ( prm%theta1(j) + &
-           (prm%theta0(j) - prm%theta1(j) &
+   dot%crss(j,of) = &
+          dot_product(prm%interaction_SlipSlip(j,:),dot%accshear(:,of)) * &
+          ( prm%theta1(j) +  (prm%theta0(j) - prm%theta1(j) &
             + prm%theta0(j)*prm%theta1(j)*sumGamma/prm%tau1(j)) &
            *exp(-sumGamma*prm%theta0(j)/prm%tau1(j)) &                   ! V term depending on the harding law
           )
-     dot%crss_back(j,of) = &                                                                          ! evolution of back stress resistance j
-          stt%sense(j,of)*abs(gdot_pos(j)+gdot_neg(j)) * &
-          ( prm%theta1_b(j) + &
-           (prm%theta0_b(j) - prm%theta1_b(j) &
-            + prm%theta0_b(j)*prm%theta1_b(j)/(prm%tau1_b(j)+stt%chi0(j,of)) &
-            *(stt%accshear(j,of)-state(instance)%gamma0(j,of))) &
-           *exp(-(state(instance)%accshear(j,of)-state(instance)%gamma0(j,of)) &
-                 *prm%theta0_b(j)/(prm%tau1_b(j)+state(instance)%chi0(j,of))) &
-          )                                                                                                    ! V term depending on the harding law for back stress
+ enddo
+ dot%crss_back(:,of) = &
+          stt%sense(:,of)*dot%accshear(:,of) * &
+          ( prm%theta1_b + &
+           (prm%theta0_b - prm%theta1_b &
+            + prm%theta0_b*prm%theta1_b/(prm%tau1_b+stt%chi0(:,of))*(stt%accshear(:,of)-stt%gamma0(:,of))&
+           ) &
+           *exp(-(stt%accshear(:,of)-stt%gamma0(:,of)) *prm%theta0_b/(prm%tau1_b+stt%chi0(:,of))) &
+          )  ! V term depending on the harding law for back stress
     
-   enddo
  end associate
 
 end subroutine plastic_kinehardening_dotState
