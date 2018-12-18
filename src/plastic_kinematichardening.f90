@@ -491,8 +491,7 @@ subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
    
  real(pReal), dimension(paramNew(instance)%totalNslip) :: &
    gdot_pos,gdot_neg, &
-   tau_pos,tau_neg
- real(pReal) :: &
+   tau_pos,tau_neg, &
    dgdot_dtau_pos,dgdot_dtau_neg
 
  associate(prm => paramNew(instance), stt => state(instance))
@@ -501,25 +500,24 @@ subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
  call plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
                                        Mp,instance,of)
+ where (dNeq0(gdot_pos)) 
+   dgdot_dtau_pos = gdot_pos*prm%n_slip/tau_pos
+ else where
+   dgdot_dtau_pos = 0.0_pReal
+ end where
+
+where (dNeq0(gdot_neg)) 
+  dgdot_dtau_neg = gdot_neg*prm%n_slip/tau_neg
+else where
+  dgdot_dtau_neg = 0.0_pReal
+end where
 
  do j = 1_pInt, prm%totalNslip
-
-     Lp = Lp + (gdot_pos(j)+gdot_neg(j))*prm%Schmid_slip(1:3,1:3,j)
-
-     if (dNeq0(gdot_pos(j))) then
-       dgdot_dtau_pos = gdot_pos(j)*prm%n_slip/tau_pos(j)
-       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-         dLp_dMp(k,l,m,n) = &
-         dLp_dMp(k,l,m,n) + dgdot_dtau_pos*prm%Schmid_slip(k,l,j)*prm%nonSchmid_pos(m,n,j)
-     endif
-
-     if (dNeq0(gdot_neg(j))) then
-       dgdot_dtau_neg = gdot_neg(j)*prm%n_slip/tau_neg(j)
-       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-         dLp_dMp(k,l,m,n) = &
-         dLp_dMp(k,l,m,n) + dgdot_dtau_neg*prm%Schmid_slip(k,l,j)*prm%nonSchmid_neg(m,n,j)
-     endif
-
+   Lp = Lp + (gdot_pos(j)+gdot_neg(j))*prm%Schmid_slip(1:3,1:3,j)
+   forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
+     dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
+                      + dgdot_dtau_pos(j)*prm%Schmid_slip(k,l,j)*prm%nonSchmid_pos(m,n,j) &
+                      + dgdot_dtau_neg(j)*prm%Schmid_slip(k,l,j)*prm%nonSchmid_neg(m,n,j)
  enddo
 end associate
 
