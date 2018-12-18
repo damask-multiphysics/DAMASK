@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
 from optparse import OptionParser
@@ -244,7 +244,7 @@ for name in filenames:
     continue
   damask.util.report(scriptName,name)
 
-  randomSeed = int(os.urandom(4).encode('hex'), 16)  if options.randomSeed is None else options.randomSeed         # random seed per file for second phase
+  randomSeed = int(os.urandom(4).hex(), 16)  if options.randomSeed is None else options.randomSeed         # random seed per file for second phase
   random.seed(randomSeed)
 
 # ------------------------------------------ read header and data ---------------------------------

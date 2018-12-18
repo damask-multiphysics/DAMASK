@@ -78,8 +78,8 @@ echo PETSC_DIR: $PETSC_DIR
 ls $PETSC_DIR/lib
 
 firstLevel "Python"
-DEFAULT_PYTHON=python2.7
-for executable in python python2 python3 python2.7; do
+DEFAULT_PYTHON=python3
+for executable in python python3; do
   getDetails $executable '--version'
 done
 secondLevel "Details on $DEFAULT_PYTHON:"
@@ -118,6 +118,9 @@ firstLevel "MPI Launchers"
 for executable in mpirun mpiexec; do
   getDetails $executable '--version'
 done
+
+firstLevel "CMake"
+getDetails cmake --version
 
 firstLevel "Abaqus"
 cd installation/mods_Abaqus                                                                         # to have the right environment file

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math
@@ -46,7 +46,7 @@ parser.set_defaults(origin = (0.0,0.0,0.0),
 datatype = 'f' if options.real else 'i'
 
 sub = {}
-for i in range(len(options.substitute)/2):                                                          # split substitution list into "from" -> "to"
+for i in range(len(options.substitute)//2):                                                         # split substitution list into "from" -> "to"
   sub[int(options.substitute[i*2])] = int(options.substitute[i*2+1])
 
 # --- loop over input files ----------------------------------------------------------------------

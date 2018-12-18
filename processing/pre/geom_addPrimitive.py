@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math
@@ -63,12 +63,12 @@ parser.set_defaults(center = (.0,.0,.0),
 if options.dimension is None:
   parser.error('no dimension specified.')   
 if options.angleaxis is not None:
-  options.angleaxis = map(float,options.angleaxis)
-  rotation = damask.Quaternion().fromAngleAxis(np.radians(options.angleaxis[0]) if options.degrees else options.angleaxis[0],
-                                               options.angleaxis[1:4])
+  options.angleaxis = list(map(float,options.angleaxis))
+  rotation = damask.Quaternion.fromAngleAxis(np.radians(options.angleaxis[0]) if options.degrees else options.angleaxis[0],
+                                             options.angleaxis[1:4])
 elif options.quaternion is not None:
-  options.quaternion = map(float,options.quaternion)
-  rotation = damask.Quaternion(options.quaternion)
+  options.quaternion = list(map(float,options.quaternion))
+  rotation = damask.Quaternion(quat=options.quaternion)
 else:
   rotation = damask.Quaternion()
 
@@ -137,17 +137,17 @@ for name in filenames:
                             indexing='ij')
     # Padding handling
     X = np.roll(np.roll(np.roll(X,
-            -grid[0]/2, axis=0), 
-            -grid[1]/2, axis=1), 
-            -grid[2]/2, axis=2)
+            -grid[0]//2, axis=0), 
+            -grid[1]//2, axis=1), 
+            -grid[2]//2, axis=2)
     Y = np.roll(np.roll(np.roll(Y,
-            -grid[0]/2, axis=0), 
-            -grid[1]/2, axis=1), 
-            -grid[2]/2, axis=2)
+            -grid[0]//2, axis=0), 
+            -grid[1]//2, axis=1), 
+            -grid[2]//2, axis=2)
     Z = np.roll(np.roll(np.roll(Z,
-            -grid[0]/2, axis=0), 
-            -grid[1]/2, axis=1), 
-            -grid[2]/2, axis=2)
+            -grid[0]//2, axis=0), 
+            -grid[1]//2, axis=1), 
+            -grid[2]//2, axis=2)
   else: # nonperiodic, much lighter on resources
     # change to coordinate space where the primitive is the unit sphere/cube/etc
     (X, Y, Z) = np.meshgrid(np.arange(0, grid[0], dtype=np.float32), 

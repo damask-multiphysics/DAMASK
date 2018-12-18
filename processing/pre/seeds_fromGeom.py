@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -42,8 +42,8 @@ parser.set_defaults(whitelist = [],
 
 (options,filenames) = parser.parse_args()
 
-options.whitelist = map(int,options.whitelist)
-options.blacklist = map(int,options.blacklist)
+options.whitelist = list(map(int,options.whitelist))
+options.blacklist = list(map(int,options.blacklist))
 
 # --- loop over output files -------------------------------------------------------------------------
 

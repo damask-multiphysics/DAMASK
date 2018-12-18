@@ -21,16 +21,19 @@ set() {
 source $DAMASK_ROOT/CONFIG
 unset -f set
 
+# add BRANCH if DAMASK_ROOT is a git repository
+cd $DAMASK_ROOT >/dev/null; BRANCH=$(git branch 2>/dev/null| grep -E '^\* '); cd - >/dev/null
+
 # add DAMASK_BIN if present
-[ "x$DAMASK_BIN != x" ] && PATH=$DAMASK_BIN:$PATH
+[[ "x$DAMASK_BIN" != "x" ]] && PATH=$DAMASK_BIN:$PATH
 
 SOLVER=$(which DAMASK_spectral || true 2>/dev/null)
-[ "x$SOLVER" = "x" ] && SOLVER=$(blink 'Not found!')
+[[ "x$SOLVER" == "x" ]] && SOLVER=$(blink 'Not found!')
 
 PROCESSING=$(which postResults || true 2>/dev/null)
-[ "x$PROCESSING" = "x" ] && PROCESSING=$(blink 'Not found!')
+[[ "x$PROCESSING" == "x" ]] && PROCESSING=$(blink 'Not found!')
 
-[ "x$DAMASK_NUM_THREADS" = "x" ] && DAMASK_NUM_THREADS=1
+[[ "x$DAMASK_NUM_THREADS" == "x" ]] && DAMASK_NUM_THREADS=1
 
 # currently, there is no information that unlimited causes problems
 # still, http://software.intel.com/en-us/forums/topic/501500 suggest to fix it
@@ -50,16 +53,16 @@ if [ ! -z "$PS1" ]; then
   echo https://damask.mpie.de
   echo
   echo "Using environment with ..."
-  echo "DAMASK             $DAMASK_ROOT"
+  echo "DAMASK             $DAMASK_ROOT $BRANCH"
   echo "Spectral Solver    $SOLVER" 
   echo "Post Processing    $PROCESSING"
-  if [ "x$PETSC_DIR"   != "x" ]; then
+  if [ "x$PETSC_DIR" != "x" ]; then
     echo -n "PETSc location     "
     [ -d $PETSC_DIR ] && echo $PETSC_DIR || blink $PETSC_DIR
     [[ $(canonicalPath "$PETSC_DIR") == $PETSC_DIR ]] \
     || echo "               ~~> "$(canonicalPath "$PETSC_DIR")
   fi
-  [[ "x$PETSC_ARCH"  == "x" ]] \
+  [[ "x$PETSC_ARCH" == "x" ]] \
   || echo "PETSc architecture $PETSC_ARCH"
   echo -n "MSC.Marc/Mentat    "
   [ -d $MSC_ROOT ] && echo $MSC_ROOT || blink $MSC_ROOT
@@ -81,12 +84,13 @@ if [ ! -z "$PS1" ]; then
            size=$(( 1024*$(ulimit -s) )); \
            print('{:.4g} {}'.format(size / (1 << ((int(math.log(size,2) / 10) if size else 0) * 10)), \
            ['bytes','KiB','MiB','GiB','TiB','EiB','ZiB'][int(math.log(size,2) / 10) if size else 0]))")
+  echo
 fi
 
 export DAMASK_NUM_THREADS
 export PYTHONPATH=$DAMASK_ROOT/lib:$PYTHONPATH
 
-for var in BASE STAT SOLVER PROCESSING FREE DAMASK_BIN; do
+for var in BASE STAT SOLVER PROCESSING FREE DAMASK_BIN BRANCH; do
   unset "${var}"
 done
 for var in DAMASK MSC; do

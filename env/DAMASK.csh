@@ -7,6 +7,11 @@ set DAMASK_ROOT=`python -c "import os,sys; print(os.path.realpath(os.path.expand
 
 source $DAMASK_ROOT/CONFIG
 
+# add BRANCH if DAMASK_ROOT is a git repository
+cd $DAMASK_ROOT >/dev/null
+set BRANCH = `git branch 2>/dev/null| grep -E '^\* ')`
+cd - >/dev/null
+
 # if DAMASK_BIN is present
 if ( $?DAMASK_BIN) then
   set path = ($DAMASK_BIN $path)
@@ -41,10 +46,9 @@ if ( $?prompt ) then
   echo https://damask.mpie.de
   echo
   echo Using environment with ...
-  echo "DAMASK             $DAMASK_ROOT"
+  echo "DAMASK             $DAMASK_ROOT $BRANCH"
   echo "Spectral Solver    $SOLVER" 
   echo "Post Processing    $PROCESSING"
-  echo "Multithreading     DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
   if ( $?PETSC_DIR) then
     echo "PETSc location     $PETSC_DIR"
   endif
@@ -52,8 +56,10 @@ if ( $?prompt ) then
     echo "MSC.Marc/Mentat    $MSC_ROOT"
   endif
   echo
+  echo "Multithreading     DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
   echo `limit datasize`
   echo `limit stacksize`
+  echo
 endif
 
 setenv DAMASK_NUM_THREADS $DAMASK_NUM_THREADS

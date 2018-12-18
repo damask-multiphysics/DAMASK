@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math,time
@@ -43,7 +43,7 @@ parser.add_option('-e', '--eulers',
 parser.add_option('-d', '--degrees',
                   dest = 'degrees',
                   action = 'store_true',
-                  help = 'angles are given in degrees [%default]')
+                  help = 'all angles are in degrees')
 parser.add_option('-m', '--matrix',
                   dest = 'matrix',
                   type = 'string', metavar = 'string',
@@ -71,7 +71,7 @@ parser.add_option('--axes',
 parser.add_option('-s', '--symmetry',
                   dest = 'symmetry',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'crystal symmetry %default {{{}}} '.format(', '.join(damask.Symmetry.lattices[1:])))
+                  help = 'crystal symmetry of each phase %default {{{}}} '.format(', '.join(damask.Symmetry.lattices[1:])))
 parser.add_option('--homogenization',
                   dest = 'homogenization',
                   type = 'int', metavar = 'int',
@@ -234,7 +234,7 @@ for name in filenames:
             o = damask.Orientation(Eulers = myData[colOri:colOri+3]*toRadians,
                                    symmetry = mySym)
           elif inputtype == 'matrix':
-            o = damask.Orientation(matrix = myData[colOri:colOri+9].reshape(3,3).transpose(),
+            o = damask.Orientation(matrix = myData[colOri:colOri+9].reshape(3,3),
                                    symmetry = mySym)
           elif inputtype == 'frame':
             o = damask.Orientation(matrix = np.hstack((myData[colOri[0]:colOri[0]+3],
@@ -246,7 +246,7 @@ for name in filenames:
             o = damask.Orientation(quaternion = myData[colOri:colOri+4],
                                    symmetry = mySym)
           
-          cos_disorientations = -np.ones(1,dtype='f')                                               # largest possible disorientation
+          cos_disorientations = -np.ones(1,dtype=float)                                             # largest possible disorientation
           closest_grain = -1                                                                        # invalid neighbor
 
           if options.tolerance > 0.0:                                                               # only try to compress orientations if asked to
@@ -258,7 +258,7 @@ for name in filenames:
 
             if len(grains) > 0:                                                                     # check immediate neighborhood first
               cos_disorientations = np.array([o.disorientation(orientations[grainID],
-                                                               SST = False)[0].quaternion.w \
+                                                               SST = False)[0].quaternion.q \
                                               for grainID in grains])                               # store disorientation per grainID
               closest_grain = np.argmax(cos_disorientations)                                        # grain among grains with closest orientation to myself
               match = 'local'
@@ -269,7 +269,7 @@ for name in filenames:
 
               if len(grains) > 0:
                 cos_disorientations = np.array([o.disorientation(orientations[grainID],
-                                                                 SST = False)[0].quaternion.w \
+                                                                 SST = False)[0].quaternion.q \
                                                 for grainID in grains])                             # store disorientation per grainID
                 closest_grain = np.argmax(cos_disorientations)                                      # grain among grains with closest orientation to myself
                 match = 'global'

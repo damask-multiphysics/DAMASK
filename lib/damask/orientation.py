@@ -27,220 +27,159 @@ class Rodrigues:
 
 # ******************************************************************************************
 class Quaternion:
-    """
+    u"""
     Orientation represented as unit quaternion.
     
-    All methods and naming conventions based on http://www.euclideanspace.com/maths/algebra/realNormedAlgebra/quaternions.
+    All methods and naming conventions based on Rowenhorst_etal2015
+    Convention 1: coordinate frames are right-handed
+    Convention 2: a rotation angle ω is taken to be positive for a counterclockwise rotation
+                  when viewing from the end point of the rotation axis towards the origin
+    Convention 3: rotations will be interpreted in the passive sense
+    Convention 4: Euler angle triplets are implemented using the Bunge convention,
+                  with the angular ranges as [0, 2π],[0, π],[0, 2π]
+    Convention 5: the rotation angle ω is limited to the interval [0, π]
 
     w is the real part, (x, y, z) are the imaginary parts.
-    Representation of rotation is in ACTIVE form!
-    (Derived directly or through angleAxis, Euler angles, or active matrix)
-    Vector "a" (defined in coordinate system "A") is actively rotated to new coordinates "b".
+
+    Vector "a" (defined in coordinate system "A") is passively rotated
+               resulting in new coordinates "b" when expressed in system "B".
     b = Q * a
     b = np.dot(Q.asMatrix(),a)
     """
 
     def __init__(self,
-                 quatArray = [1.0,0.0,0.0,0.0]):
-      """Initializes to identity if not given"""
-      self.w, \
-      self.x, \
-      self.y, \
-      self.z = quatArray
+                 quat = None,
+                 q    =  1.0,
+                 p    = np.zeros(3,dtype=float)):
+      """Initializes to identity unless specified"""
+      self.q = quat[0] if quat is not None else q
+      self.p = np.array(quat[1:4]) if quat is not None else p
       self.homomorph()
 
     def __iter__(self):
       """Components"""
-      return iter([self.w,self.x,self.y,self.z])
+      return iter(self.asList())
 
     def __copy__(self):
-      """Create copy"""
-      Q = Quaternion([self.w,self.x,self.y,self.z])
-      return Q
+      """Copy"""
+      return self.__class__(q=self.q,p=self.p.copy())
 
     copy = __copy__
 
     def __repr__(self):
-      """Readbable string"""
-      return 'Quaternion(real=%+.6f, imag=<%+.6f, %+.6f, %+.6f>)' % \
-          (self.w, self.x, self.y, self.z)
+      """Readable string"""
+      return 'Quaternion(real={q:+.6f}, imag=<{p[0]:+.6f}, {p[1]:+.6f}, {p[2]:+.6f}>)'.format(q=self.q,p=self.p)
 
     def __pow__(self, exponent):
       """Power"""
-      omega = math.acos(self.w)
-      vRescale = math.sin(exponent*omega)/math.sin(omega)
-      Q = Quaternion()
-      Q.w = math.cos(exponent*omega)
-      Q.x = self.x * vRescale
-      Q.y = self.y * vRescale
-      Q.z = self.z * vRescale
-      return Q
+      omega = math.acos(self.q)
+      return self.__class__(q=         math.cos(exponent*omega),
+                            p=self.p * math.sin(exponent*omega)/math.sin(omega))
 
     def __ipow__(self, exponent):
       """In-place power"""
-      omega    = math.acos(self.w)
-      vRescale = math.sin(exponent*omega)/math.sin(omega)
-      self.w  = np.cos(exponent*omega)
-      self.x *= vRescale
-      self.y *= vRescale
-      self.z *= vRescale
+      omega = math.acos(self.q)
+      self.q  = math.cos(exponent*omega)
+      self.p *= math.sin(exponent*omega)/math.sin(omega)
       return self
 
     def __mul__(self, other):
       """Multiplication"""
+      # Rowenhorst_etal2015 MSMSE: value of P is selected as -1
+      P = -1.0
       try:                                                          # quaternion
-          Aw = self.w
-          Ax = self.x
-          Ay = self.y
-          Az = self.z
-          Bw = other.w
-          Bx = other.x
-          By = other.y
-          Bz = other.z
-          Q = Quaternion()
-          Q.w = - Ax * Bx - Ay * By - Az * Bz + Aw * Bw
-          Q.x = + Ax * Bw + Ay * Bz - Az * By + Aw * Bx
-          Q.y = - Ax * Bz + Ay * Bw + Az * Bx + Aw * By
-          Q.z = + Ax * By - Ay * Bx + Az * Bw + Aw * Bz
-          return Q
+          return self.__class__(q=self.q*other.q - np.dot(self.p,other.p),
+                                p=self.q*other.p + other.q*self.p + P * np.cross(self.p,other.p))
       except: pass
-      try:                                                         # vector (perform active rotation, i.e. q*v*q.conjugated)
-          w = self.w
-          x = self.x
-          y = self.y
-          z = self.z
-          Vx = other[0]
-          Vy = other[1]
-          Vz = other[2]
+      try:                                                         # vector (perform passive rotation)
+          ( x, y, z) = self.p
+          (Vx,Vy,Vz) = other[0:3]
+          A = self.q*self.q - np.dot(self.p,self.p)
+          B = 2.0 * (x*Vx + y*Vy + z*Vz)
+          C = 2.0 * P*self.q
 
-          return np.array([\
-             w * w * Vx + 2 * y * w * Vz - 2 * z * w * Vy + \
-             x * x * Vx + 2 * y * x * Vy + 2 * z * x * Vz - \
-             z * z * Vx - y * y * Vx,
-             2 * x * y * Vx + y * y * Vy + 2 * z * y * Vz + \
-             2 * w * z * Vx - z * z * Vy + w * w * Vy - \
-             2 * x * w * Vz - x * x * Vy,
-             2 * x * z * Vx + 2 * y * z * Vy + \
-             z * z * Vz - 2 * w * y * Vx - y * y * Vz + \
-             2 * w * x * Vy - x * x * Vz + w * w * Vz ])
+          return np.array([
+            A*Vx + B*x + C*(y*Vz - z*Vy),
+            A*Vy + B*y + C*(z*Vx - x*Vz),
+            A*Vz + B*z + C*(x*Vy - y*Vx),
+            ])
       except: pass
       try:                                                        # scalar
-          Q = self.copy()
-          Q.w *= other
-          Q.x *= other
-          Q.y *= other
-          Q.z *= other
-          return Q
+          return self.__class__(q=self.q*other,
+                                p=self.p*other)
       except:
           return self.copy()
 
     def __imul__(self, other):
       """In-place multiplication"""
+      # Rowenhorst_etal2015 MSMSE: value of P is selected as -1
+      P = -1.0
       try:                                                        # Quaternion
-          Aw = self.w
-          Ax = self.x
-          Ay = self.y
-          Az = self.z
-          Bw = other.w
-          Bx = other.x
-          By = other.y
-          Bz = other.z
-          self.w = - Ax * Bx - Ay * By - Az * Bz + Aw * Bw
-          self.x = + Ax * Bw + Ay * Bz - Az * By + Aw * Bx
-          self.y = - Ax * Bz + Ay * Bw + Az * Bx + Aw * By
-          self.z = + Ax * By - Ay * Bx + Az * Bw + Aw * Bz
+          self.q = self.q*other.q - np.dot(self.p,other.p)
+          self.p = self.q*other.p + other.q*self.p + P * np.cross(self.p,other.p)
       except: pass
       return self
 
     def __div__(self, other):
       """Division"""
       if isinstance(other, (int,float)):
-        w = self.w / other
-        x = self.x / other
-        y = self.y / other
-        z = self.z / other
-        return self.__class__([w,x,y,z])
+        return self.__class__(q=self.q / other,
+                              p=self.p / other)
       else:
           return NotImplemented
 
     def __idiv__(self, other):
       """In-place division"""
       if isinstance(other, (int,float)):
-          self.w /= other
-          self.x /= other
-          self.y /= other
-          self.z /= other
+          self.q /= other
+          self.p /= other
       return self
 
     def __add__(self, other):
       """Addition"""
       if isinstance(other, Quaternion):
-        w = self.w + other.w
-        x = self.x + other.x
-        y = self.y + other.y
-        z = self.z + other.z
-        return self.__class__([w,x,y,z])
+        return self.__class__(q=self.q + other.q,
+                              p=self.p + other.p)
       else:
           return NotImplemented
 
     def __iadd__(self, other):
       """In-place addition"""
       if isinstance(other, Quaternion):
-          self.w += other.w
-          self.x += other.x
-          self.y += other.y
-          self.z += other.z
+          self.q += other.q
+          self.p += other.p
       return self
 
     def __sub__(self, other):
       """Subtraction"""
       if isinstance(other, Quaternion):
-          Q = self.copy()
-          Q.w -= other.w
-          Q.x -= other.x
-          Q.y -= other.y
-          Q.z -= other.z
-          return Q
+          return self.__class__(q=self.q - other.q,
+                                p=self.p - other.p)
       else:
-          return self.copy()
+          return NotImplemented
 
     def __isub__(self, other):
       """In-place subtraction"""
       if isinstance(other, Quaternion):
-          self.w -= other.w
-          self.x -= other.x
-          self.y -= other.y
-          self.z -= other.z
+          self.q -= other.q
+          self.p -= other.p
       return self
 
     def __neg__(self):
       """Additive inverse"""
-      self.w = -self.w
-      self.x = -self.x
-      self.y = -self.y
-      self.z = -self.z
+      self.q = -self.q
+      self.p = -self.p
       return self
 
     def __abs__(self):
       """Norm"""
-      return math.sqrt(self.w ** 2 + \
-                       self.x ** 2 + \
-                       self.y ** 2 + \
-                       self.z ** 2)
+      return math.sqrt(self.q ** 2 + np.dot(self.p,self.p))
 
     magnitude = __abs__
 
     def __eq__(self,other):
       """Equal at e-8 precision"""
-      return (abs(self.w-other.w) < 1e-8 and \
-              abs(self.x-other.x) < 1e-8 and \
-              abs(self.y-other.y) < 1e-8 and \
-              abs(self.z-other.z) < 1e-8) \
-              or \
-             (abs(-self.w-other.w) < 1e-8 and \
-              abs(-self.x-other.x) < 1e-8 and \
-              abs(-self.y-other.y) < 1e-8 and \
-              abs(-self.z-other.z) < 1e-8)
+      return (self-other).magnitude() < 1e-8 or (-self-other).magnitude() < 1e-8
 
     def __ne__(self,other):
       """Not equal at e-8 precision"""
@@ -248,31 +187,26 @@ class Quaternion:
 
     def __cmp__(self,other):
       """Linear ordering"""
-      return (self.Rodrigues()>other.Rodrigues()) - (self.Rodrigues()<other.Rodrigues())
+      return (1 if np.linalg.norm(self.asRodrigues()) > np.linalg.norm(other.asRodrigues()) else 0) \
+           - (1 if np.linalg.norm(self.asRodrigues()) < np.linalg.norm(other.asRodrigues()) else 0)
 
     def magnitude_squared(self):
-      return self.w ** 2 + \
-             self.x ** 2 + \
-             self.y ** 2 + \
-             self.z ** 2
+      return self.q ** 2 + np.dot(self.p,self.p)
 
     def identity(self):
-      self.w = 1.
-      self.x = 0.
-      self.y = 0.
-      self.z = 0.
+      self.q = 1.
+      self.p = np.zeros(3,dtype=float)
       return self
 
     def normalize(self):
       d = self.magnitude()
       if d > 0.0:
-          self /= d
+          self.q /= d
+          self.p /= d
       return self
 
     def conjugate(self):
-      self.x = -self.x
-      self.y = -self.y
-      self.z = -self.z
+      self.p = -self.p
       return self
 
     def inverse(self):
@@ -283,11 +217,9 @@ class Quaternion:
       return self
 
     def homomorph(self):
-      if self.w < 0.0:
-        self.w = -self.w
-        self.x = -self.x
-        self.y = -self.y
-        self.z = -self.z
+      if self.q < 0.0:
+        self.q = -self.q
+        self.p = -self.p
       return self
 
     def normalized(self):
@@ -303,25 +235,35 @@ class Quaternion:
       return self.copy().homomorph()
 
     def asList(self):
-      return [i for i in self]
+      return [self.q]+list(self.p)
 
     def asM(self):                                                # to find Averaging Quaternions (see F. Landis Markley et al.)
-      return np.outer([i for i in self],[i for i in self])
-
+      return np.outer(self.asList(),self.asList())
+      
     def asMatrix(self):
-      return np.array(
-        [[1.0-2.0*(self.y*self.y+self.z*self.z),     2.0*(self.x*self.y-self.z*self.w),     2.0*(self.x*self.z+self.y*self.w)],
-         [    2.0*(self.x*self.y+self.z*self.w), 1.0-2.0*(self.x*self.x+self.z*self.z),     2.0*(self.y*self.z-self.x*self.w)],
-         [    2.0*(self.x*self.z-self.y*self.w),     2.0*(self.x*self.w+self.y*self.z), 1.0-2.0*(self.x*self.x+self.y*self.y)]])
+      # Rowenhorst_etal2015 MSMSE: value of P is selected as -1
+      P = -1.0
+      qbarhalf = 0.5*(self.q**2 - np.dot(self.p,self.p))
+      return 2.0*np.array(
+        [[        qbarhalf + self.p[0]**2          ,
+           self.p[0]*self.p[1] -P* self.q*self.p[2],
+           self.p[0]*self.p[2] +P* self.q*self.p[1] ],
+         [ self.p[0]*self.p[1] +P* self.q*self.p[2],
+                  qbarhalf + self.p[1]**2          ,
+           self.p[1]*self.p[2] -P* self.q*self.p[0] ],
+         [ self.p[0]*self.p[2] -P* self.q*self.p[1],
+           self.p[1]*self.p[2] +P* self.q*self.p[0],
+                  qbarhalf + self.p[2]**2           ],
+        ])
 
     def asAngleAxis(self,
                     degrees = False):
-      if self.w > 1:
+      if self.q > 1.:
           self.normalize()
 
-      s = math.sqrt(1. - self.w**2)
-      x = 2*self.w**2 - 1.
-      y = 2*self.w * s
+      s = math.sqrt(1. - self.q**2)
+      x = 2*self.q**2 - 1.
+      y = 2*self.q * s
 
       angle = math.atan2(y,x)
       if angle < 0.0:
@@ -329,58 +271,31 @@ class Quaternion:
         s     *= -1.
 
       return (np.degrees(angle) if degrees else angle,
-              np.array([1.0, 0.0, 0.0] if np.abs(angle) < 1e-6 else [self.x / s, self.y / s, self.z / s]))
+              np.array([1.0, 0.0, 0.0] if np.abs(angle) < 1e-6 else self.p / s))
 
     def asRodrigues(self):
-      return np.inf*np.ones(3) if self.w == 0.0 else np.array([self.x, self.y, self.z])/self.w
+      return np.inf*np.ones(3) if self.q == 0.0 else self.p/self.q
 
     def asEulers(self,
-                 type = "bunge",
-                 degrees = False,
-                 standardRange = False):
-      """
-      Orientation as Bunge-Euler angles.
+                 degrees = False):
+      """Orientation as Bunge-Euler angles."""
+      # Rowenhorst_etal2015 MSMSE: value of P is selected as -1
+      P   = -1.0
+      q03 = self.q**2 + self.p[2]**2
+      q12 = self.p[0]**2 + self.p[1]**2
+      chi = np.sqrt(q03*q12)
+      
+      if abs(chi) < 1e-10 and abs(q12) < 1e-10:
+        eulers = np.array([math.atan2(-2*P*self.q*self.p[2],self.q**2-self.p[2]**2),0,0])
+      elif abs(chi) < 1e-10 and abs(q03) < 1e-10:
+        eulers = np.array([math.atan2( 2  *self.p[0]*self.p[1],self.p[0]**2-self.p[1]**2),np.pi,0])
+      else:
+        eulers = np.array([math.atan2((self.p[0]*self.p[2]-P*self.q*self.p[1])/chi,(-P*self.q*self.p[0]-self.p[1]*self.p[2])/chi),
+                           math.atan2(2*chi,q03-q12),
+                           math.atan2((P*self.q*self.p[1]+self.p[0]*self.p[2])/chi,( self.p[1]*self.p[2]-P*self.q*self.p[0])/chi),
+                          ])
 
-      Conversion of ACTIVE rotation to Euler angles taken from:
-      Melcher, A.; Unser, A.; Reichhardt, M.; Nestler, B.; Poetschke, M.; Selzer, M.
-      Conversion of EBSD data by a quaternion based algorithm to be used for grain structure simulations
-      Technische Mechanik 30 (2010) pp 401--413.
-      """
-      angles = [0.0,0.0,0.0]
-
-      if type.lower() == 'bunge' or type.lower() == 'zxz':
-        if   abs(self.x) < 1e-4 and abs(self.y) < 1e-4:
-          x = self.w**2 - self.z**2
-          y = 2.*self.w*self.z
-          angles[0] = math.atan2(y,x)
-        elif abs(self.w) < 1e-4 and abs(self.z) < 1e-4:
-          x = self.x**2 - self.y**2
-          y = 2.*self.x*self.y
-          angles[0] = math.atan2(y,x)
-          angles[1] = math.pi
-        else:
-          chi = math.sqrt((self.w**2 + self.z**2)*(self.x**2 + self.y**2))
-
-          x = (self.w * self.x - self.y * self.z)/2./chi
-          y = (self.w * self.y + self.x * self.z)/2./chi
-          angles[0] = math.atan2(y,x)
-
-          x = self.w**2 + self.z**2 - (self.x**2 + self.y**2)
-          y = 2.*chi
-          angles[1] = math.atan2(y,x)
-
-          x = (self.w * self.x + self.y * self.z)/2./chi
-          y = (self.z * self.x - self.y * self.w)/2./chi
-          angles[2] = math.atan2(y,x)
-
-        if standardRange:
-          angles[0] %= 2*math.pi
-          if angles[1] < 0.0:
-            angles[1] += math.pi
-            angles[2] *= -1.0
-          angles[2] %= 2*math.pi
-
-      return np.degrees(angles) if degrees else angles
+      return np.degrees(eulers) if degrees else eulers
 
 
 #    # Static constructors
@@ -391,25 +306,26 @@ class Quaternion:
 
     @classmethod
     def fromRandom(cls,randomSeed = None):
+      import binascii
       if randomSeed is None:
-        randomSeed = int(os.urandom(4).encode('hex'), 16)
+        randomSeed = int(binascii.hexlify(os.urandom(4)),16)
       np.random.seed(randomSeed)
       r = np.random.random(3)
       w = math.cos(2.0*math.pi*r[0])*math.sqrt(r[2])
       x = math.sin(2.0*math.pi*r[1])*math.sqrt(1.0-r[2])
       y = math.cos(2.0*math.pi*r[1])*math.sqrt(1.0-r[2])
       z = math.sin(2.0*math.pi*r[0])*math.sqrt(r[2])
-      return cls([w,x,y,z])
+      return cls(quat=[w,x,y,z])
 
 
     @classmethod
     def fromRodrigues(cls, rodrigues):
       if not isinstance(rodrigues, np.ndarray): rodrigues = np.array(rodrigues)
-      halfangle = math.atan(np.linalg.norm(rodrigues))
+      norm = np.linalg.norm(rodrigues)
+      halfangle = math.atan(norm)
+      s = math.sin(halfangle)
       c = math.cos(halfangle)
-      w = c
-      x,y,z = c*rodrigues
-      return cls([w,x,y,z])
+      return cls(q=c,p=s*rodrigues/norm)
 
 
     @classmethod
@@ -417,39 +333,33 @@ class Quaternion:
                       angle,
                       axis,
                       degrees = False):
-      if not isinstance(axis, np.ndarray): axis = np.array(axis,dtype='d')
+      if not isinstance(axis, np.ndarray): axis = np.array(axis,dtype=float)
       axis = axis.astype(float)/np.linalg.norm(axis)
       angle = np.radians(angle) if degrees else angle
       s = math.sin(0.5 * angle)
-      w = math.cos(0.5 * angle)
-      x = axis[0] * s
-      y = axis[1] * s
-      z = axis[2] * s
-      return cls([w,x,y,z])
+      c = math.cos(0.5 * angle)
+      return cls(q=c,p=axis*s)
 
 
     @classmethod
     def fromEulers(cls,
                    eulers,
-                   type = 'Bunge',
                    degrees = False):
-      if not isinstance(eulers, np.ndarray): eulers = np.array(eulers,dtype='d')
+      if not isinstance(eulers, np.ndarray): eulers = np.array(eulers,dtype=float)
       eulers = np.radians(eulers) if degrees else eulers
 
-      c = np.cos(0.5 * eulers)
-      s = np.sin(0.5 * eulers)
+      sigma = 0.5*(eulers[0]+eulers[2])
+      delta = 0.5*(eulers[0]-eulers[2])
+      c = np.cos(0.5*eulers[1])
+      s = np.sin(0.5*eulers[1])
 
-      if type.lower() == 'bunge' or type.lower() == 'zxz':
-        w =   c[0] * c[1] * c[2] - s[0] * c[1] * s[2]
-        x =   c[0] * s[1] * c[2] + s[0] * s[1] * s[2]
-        y = - c[0] * s[1] * s[2] + s[0] * s[1] * c[2]
-        z =   c[0] * c[1] * s[2] + s[0] * c[1] * c[2]
-      else:
-        w = c[0] * c[1] * c[2] - s[0] * s[1] * s[2]
-        x = s[0] * s[1] * c[2] + c[0] * c[1] * s[2]
-        y = s[0] * c[1] * c[2] + c[0] * s[1] * s[2]
-        z = c[0] * s[1] * c[2] - s[0] * c[1] * s[2]
-      return cls([w,x,y,z])
+      # Rowenhorst_etal2015 MSMSE: value of P is selected as -1
+      P = -1.0
+      w =       c * np.cos(sigma) 
+      x =  -P * s * np.cos(delta) 
+      y =  -P * s * np.sin(delta)
+      z =  -P * c * np.sin(sigma) 
+      return cls(quat=[w,x,y,z])
 
 
 # Modified Method to calculate Quaternion from Orientation Matrix,
@@ -460,49 +370,18 @@ class Quaternion:
       if m.shape != (3,3) and np.prod(m.shape) == 9:
         m = m.reshape(3,3)
 
-      tr = np.trace(m)
-      if tr > 1e-8:
-        s = math.sqrt(tr + 1.0)*2.0
+      # Rowenhorst_etal2015 MSMSE: value of P is selected as -1
+      P = -1.0
+      w =  0.5*math.sqrt(1.+m[0,0]+m[1,1]+m[2,2])
+      x = P*0.5*math.sqrt(1.+m[0,0]-m[1,1]-m[2,2])
+      y = P*0.5*math.sqrt(1.-m[0,0]+m[1,1]-m[2,2])
+      z = P*0.5*math.sqrt(1.-m[0,0]-m[1,1]+m[2,2])
 
-        return cls(
-          [ s*0.25,
-            (m[2,1] - m[1,2])/s,
-            (m[0,2] - m[2,0])/s,
-            (m[1,0] - m[0,1])/s,
-          ])
+      x *= -1 if m[2,1] < m[1,2] else 1
+      y *= -1 if m[0,2] < m[2,0] else 1
+      z *= -1 if m[1,0] < m[0,1] else 1
 
-      elif m[0,0] > m[1,1] and m[0,0] > m[2,2]:
-        t = m[0,0] - m[1,1] - m[2,2] + 1.0
-        s = 2.0*math.sqrt(t)
-
-        return cls(
-          [ (m[2,1] - m[1,2])/s,
-            s*0.25,
-            (m[0,1] + m[1,0])/s,
-            (m[2,0] + m[0,2])/s,
-          ])
-
-      elif m[1,1] > m[2,2]:
-        t = -m[0,0] + m[1,1] - m[2,2] + 1.0
-        s = 2.0*math.sqrt(t)
-
-        return cls(
-          [ (m[0,2] - m[2,0])/s,
-            (m[0,1] + m[1,0])/s,
-            s*0.25,
-            (m[1,2] + m[2,1])/s,
-          ])
-
-      else:
-        t = -m[0,0] - m[1,1] + m[2,2] + 1.0
-        s = 2.0*math.sqrt(t)
-
-        return cls(
-          [ (m[1,0] - m[0,1])/s,
-            (m[2,0] + m[0,2])/s,
-            (m[1,2] + m[2,1])/s,
-            s*0.25,
-          ])
+      return cls(quat=np.array([w,x,y,z])/math.sqrt(w**2 + x**2 + y**2 + z**2))
 
 
     @classmethod
@@ -516,36 +395,30 @@ class Quaternion:
         assert isinstance(q1, Quaternion) and isinstance(q2, Quaternion)
         Q = cls()
 
-        costheta = q1.w * q2.w + q1.x * q2.x + q1.y * q2.y + q1.z * q2.z
+        costheta = q1.q*q2.q + np.dot(q1.p,q2.p)
         if costheta < 0.:
             costheta = -costheta
             q1 = q1.conjugated()
-        elif costheta > 1:
-            costheta = 1
+        elif costheta > 1.:
+            costheta = 1.
 
         theta = math.acos(costheta)
         if abs(theta) < 0.01:
-            Q.w = q2.w
-            Q.x = q2.x
-            Q.y = q2.y
-            Q.z = q2.z
+            Q.q = q2.q
+            Q.p = q2.p
             return Q
 
         sintheta = math.sqrt(1.0 - costheta * costheta)
         if abs(sintheta) < 0.01:
-            Q.w = (q1.w + q2.w) * 0.5
-            Q.x = (q1.x + q2.x) * 0.5
-            Q.y = (q1.y + q2.y) * 0.5
-            Q.z = (q1.z + q2.z) * 0.5
+            Q.q = (q1.q + q2.q) * 0.5
+            Q.p = (q1.p + q2.p) * 0.5
             return Q
 
-        ratio1 = math.sin((1 - t) * theta) / sintheta
-        ratio2 = math.sin(t * theta) / sintheta
+        ratio1 = math.sin((1.0 - t) * theta) / sintheta
+        ratio2 = math.sin(       t  * theta) / sintheta
 
-        Q.w = q1.w * ratio1 + q2.w * ratio2
-        Q.x = q1.x * ratio1 + q2.x * ratio2
-        Q.y = q1.y * ratio1 + q2.y * ratio2
-        Q.z = q1.z * ratio1 + q2.z * ratio2
+        Q.q = q1.q * ratio1 + q2.q * ratio2
+        Q.p = q1.p * ratio1 + q2.p * ratio2
         return Q
 
 
@@ -571,7 +444,7 @@ class Symmetry:
 
   def __repr__(self):
     """Readbable string"""
-    return '%s' % (self.lattice)
+    return '{}'.format(self.lattice)
 
 
   def __eq__(self, other):
@@ -584,7 +457,7 @@ class Symmetry:
 
   def __cmp__(self,other):
     """Linear ordering"""
-    myOrder = Symmetry.lattices.index(self.lattice)
+    myOrder    = Symmetry.lattices.index(self.lattice)
     otherOrder = Symmetry.lattices.index(other.lattice)
     return (myOrder > otherOrder) - (myOrder < otherOrder)
 
@@ -663,7 +536,7 @@ class Symmetry:
                             quaternion,
                             who = []):
     """List of symmetrically equivalent quaternions based on own symmetry."""
-    return [quaternion*q for q in self.symmetryQuats(who)]
+    return [q*quaternion for q in self.symmetryQuats(who)]
 
 
   def inFZ(self,R):
@@ -780,7 +653,7 @@ class Symmetry:
       else:
         return True
 
-    v = np.array(vector,dtype = float)
+    v = np.array(vector,dtype=float)
     if proper:                                                                                      # check both improper ...
       theComponents = np.dot(basis['improper'],v)
       inSST = np.all(theComponents >= 0.0)
@@ -795,10 +668,10 @@ class Symmetry:
     if color:                                                                                       # have to return color array
       if inSST:
         rgb = np.power(theComponents/np.linalg.norm(theComponents),0.5)                             # smoothen color ramps
-        rgb = np.minimum(np.ones(3,'d'),rgb)                                                        # limit to maximum intensity
+        rgb = np.minimum(np.ones(3,dtype=float),rgb)                                                        # limit to maximum intensity
         rgb /= max(rgb)                                                                             # normalize to (HS)V = 1
       else:
-        rgb = np.zeros(3,'d')
+        rgb = np.zeros(3,dtype=float)
       return (inSST,rgb)
     else:
       return inSST
@@ -829,7 +702,7 @@ class Orientation:
       else:
         self.quaternion = Quaternion.fromRandom(randomSeed=random)
     elif isinstance(Eulers, np.ndarray) and Eulers.shape == (3,):                                   # based on given Euler angles
-      self.quaternion = Quaternion.fromEulers(Eulers,type='bunge',degrees=degrees)
+      self.quaternion = Quaternion.fromEulers(Eulers,degrees=degrees)
     elif isinstance(matrix, np.ndarray) :                                                           # based on given rotation matrix
       self.quaternion = Quaternion.fromMatrix(matrix)
     elif isinstance(angleAxis, np.ndarray) and angleAxis.shape == (4,):                             # based on given angle and rotation axis
@@ -838,8 +711,9 @@ class Orientation:
       self.quaternion = Quaternion.fromRodrigues(Rodrigues)
     elif isinstance(quaternion, Quaternion):                                                        # based on given quaternion
       self.quaternion = quaternion.homomorphed()
-    elif isinstance(quaternion, np.ndarray) and quaternion.shape == (4,):                           # based on given quaternion-like array
-      self.quaternion = Quaternion(quaternion).homomorphed()
+    elif (isinstance(quaternion, np.ndarray) and quaternion.shape == (4,)) or \
+         (isinstance(quaternion, list)       and len(quaternion)  ==  4  ):                         # based on given quaternion-like array
+      self.quaternion = Quaternion(quat=quaternion).homomorphed()
 
     self.symmetry = Symmetry(symmetry)
 
@@ -852,19 +726,20 @@ class Orientation:
 
   def __repr__(self):
     """Value as all implemented representations"""
-    return 'Symmetry: %s\n' % (self.symmetry) + \
-           'Quaternion: %s\n' % (self.quaternion) + \
-           'Matrix:\n%s\n' % ( '\n'.join(['\t'.join(map(str,self.asMatrix()[i,:])) for i in range(3)]) ) + \
-           'Bunge Eulers / deg: %s' % ('\t'.join(map(str,self.asEulers('bunge',degrees=True))) )
+    return '\n'.join([
+              'Symmetry: {}'.format(self.symmetry),
+              'Quaternion: {}'.format(self.quaternion),
+              'Matrix:\n{}'.format( '\n'.join(['\t'.join(list(map(str,self.asMatrix()[i,:]))) for i in range(3)]) ),
+              'Bunge Eulers / deg: {}'.format('\t'.join(list(map(str,self.asEulers(degrees=True)))) ),
+              ])
 
   def asQuaternion(self):
     return self.quaternion.asList()
 
   def asEulers(self,
-               type = 'bunge',
                degrees = False,
-               standardRange = False):
-    return self.quaternion.asEulers(type, degrees, standardRange)
+              ):
+    return self.quaternion.asEulers(degrees)
   eulers = property(asEulers)
 
   def asRodrigues(self):
@@ -912,13 +787,13 @@ class Orientation:
     """
     if self.symmetry != other.symmetry: raise TypeError('disorientation between different symmetry classes not supported yet.')
 
-    misQ = self.quaternion.conjugated()*other.quaternion
+    misQ = other.quaternion*self.quaternion.conjugated()
     mySymQs    =  self.symmetry.symmetryQuats() if SST else self.symmetry.symmetryQuats()[:1]       # take all or only first sym operation
     otherSymQs = other.symmetry.symmetryQuats()
     
     for i,sA in enumerate(mySymQs):
       for j,sB in enumerate(otherSymQs):
-        theQ = sA.conjugated()*misQ*sB
+        theQ = sB*misQ*sA.conjugated()
         for k in range(2):
           theQ.conjugate()
           breaker = self.symmetry.inFZ(theQ) \
@@ -929,7 +804,7 @@ class Orientation:
 
 # disorientation, own sym, other sym, self-->other: True, self<--other: False
     return (Orientation(quaternion = theQ,symmetry = self.symmetry.lattice),
-            i,j,k == 1)                                                                             
+            i,j, k == 1)                                                                             
 
 
   def inversePole(self,
@@ -939,10 +814,10 @@ class Orientation:
     """Axis rotated according to orientation (using crystal symmetry to ensure location falls into SST)"""
     if SST:                                                                                         # pole requested to be within SST
       for i,q in enumerate(self.symmetry.equivalentQuaternions(self.quaternion)):                   # test all symmetric equivalent quaternions
-        pole = q.conjugated()*axis                                                                  # align crystal direction to axis
+        pole = q*axis                                                                               # align crystal direction to axis
         if self.symmetry.inSST(pole,proper): break                                                  # found SST version
     else:
-      pole = self.quaternion.conjugated()*axis                                                      # align crystal direction to axis
+      pole = self.quaternion*axis                                                                   # align crystal direction to axis
 
     return (pole,i if SST else 0)
 
@@ -951,7 +826,7 @@ class Orientation:
     color = np.zeros(3,'d')
 
     for q in self.symmetry.equivalentQuaternions(self.quaternion):
-      pole = q.conjugated()*axis                                                                    # align crystal direction to axis
+      pole = q*axis                                                                                 # align crystal direction to axis
       inSST,color = self.symmetry.inSST(pole,color=True)
       if inSST: break
 
@@ -986,7 +861,7 @@ class Orientation:
       M = closest.quaternion.asM() * n if i == 0 else M + closest.quaternion.asM() * n              # noqa add (multiples) of this orientation to average noqa
     eig, vec = np.linalg.eig(M/N)
 
-    return Orientation(quaternion = Quaternion(quatArray = np.real(vec.T[eig.argmax()])),
+    return Orientation(quaternion = Quaternion(quat = np.real(vec.T[eig.argmax()])),
                        symmetry = reference.symmetry.lattice)
 
 
