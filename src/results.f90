@@ -162,7 +162,8 @@ subroutine results_writeVectorDataset(group,dataset,label,SIunit)
  
  groupHandle = results_openGroup(group)
  call HDF5_write(groupHandle,dataset,label)
- call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
+ if (HDF5_objectExists(groupHandle,label)) &
+   call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
  call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeVectorDataset

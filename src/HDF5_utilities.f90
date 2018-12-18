@@ -82,7 +82,8 @@ module HDF5_utilities
    HDF5_addGroup, &
    HDF5_read, &
    HDF5_write, &
-   HDF5_setLink
+   HDF5_setLink, &
+   HDF5_objectExists
 contains
 
 subroutine HDF5_utilities_init
@@ -241,16 +242,44 @@ end function HDF5_openGroup
 !--------------------------------------------------------------------------------------------------
 !> @brief close a group
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_closeGroup(ID)
+subroutine HDF5_closeGroup(group_id)
 
  implicit none
- integer(HID_T), intent(in) :: ID
+ integer(HID_T), intent(in) :: group_id
  integer(HDF5_ERR_TYPE)     :: hdferr
 
- call h5gclose_f(ID, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_closeGroup: h5gclose_f (el is ID)', el = int(ID,pInt))
+ call h5gclose_f(group_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_closeGroup: h5gclose_f (el is ID)', el = int(group_id,pInt))
 
 end subroutine HDF5_closeGroup
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief check whether a group or a dataset exists
+!--------------------------------------------------------------------------------------------------
+logical function HDF5_objectExists(loc_id,path)
+
+ implicit none
+ integer(HID_T),   intent(in)  :: loc_id
+ character(len=*), intent(in), optional  :: path
+ integer(HDF5_ERR_TYPE)     :: hdferr
+ character(len=256)            :: p
+ 
+ if (present(path)) then
+   p = trim(path)
+ else
+   p = '.'
+ endif
+
+ call h5lexists_f(loc_id, p, HDF5_objectExists, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_objectExists: h5oexists_by_name_f')
+ 
+ if(HDF5_objectExists) then
+   call h5oexists_by_name_f(loc_id, p, HDF5_objectExists, hdferr)
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_objectExists: h5oexists_by_name_f')
+ endif
+
+end function HDF5_objectExists
 
 
 !--------------------------------------------------------------------------------------------------
