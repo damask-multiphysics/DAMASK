@@ -21,6 +21,9 @@ set() {
 source $DAMASK_ROOT/CONFIG
 unset -f set
 
+# add BRANCH if DAMASK_ROOT is a git repository
+cd $DAMASK_ROOT >/dev/null; BRANCH=$(git branch 2>/dev/null| grep -E '^\* '); cd - >/dev/null
+
 # add DAMASK_BIN if present
 [ "x$DAMASK_BIN != x" ] && PATH=$DAMASK_BIN:$PATH
 
@@ -50,7 +53,7 @@ if [ ! -z "$PS1" ]; then
   echo https://damask.mpie.de
   echo
   echo "Using environment with ..."
-  echo "DAMASK             $DAMASK_ROOT"
+  echo "DAMASK             $DAMASK_ROOT $BRANCH"
   echo "Spectral Solver    $SOLVER" 
   echo "Post Processing    $PROCESSING"
   if [ "x$PETSC_DIR"   != "x" ]; then
@@ -87,7 +90,7 @@ fi
 export DAMASK_NUM_THREADS
 export PYTHONPATH=$DAMASK_ROOT/lib:$PYTHONPATH
 
-for var in BASE STAT SOLVER PROCESSING FREE DAMASK_BIN; do
+for var in BASE STAT SOLVER PROCESSING FREE DAMASK_BIN BRANCH; do
   unset "${var}"
 done
 for var in DAMASK MSC; do
