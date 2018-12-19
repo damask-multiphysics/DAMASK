@@ -425,8 +425,9 @@ end subroutine plastic_kinehardening_init
 !> @brief calculation of shear rates (\dot \gamma)
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
-                                            Mp,instance,of)
-
+                                            Mp,instance,of, dgdot_dtau_pos, &
+   dgdot_dtau_neg)
+ use prec
  use math
 
  implicit none
@@ -440,6 +441,9 @@ subroutine plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
    gdot_neg, &                                                                                     !< shear rates from negative line segments
    tau_pos, &                                                                                      !< shear stress on positive line segments
    tau_neg                                                                                         !< shear stress on negative line segments
+ real(pReal), dimension(paramNew(instance)%totalNslip), intent(out),optional :: &
+   dgdot_dtau_pos, &
+   dgdot_dtau_neg
 
  integer(pInt) :: &
    i
@@ -455,7 +459,22 @@ subroutine plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
 
  gdot_pos = sign(0.5_pReal * prm%gdot0 *(abs(tau_pos)/ state(instance)%crss(:,of))**prm%n_slip,tau_pos) 
  gdot_neg = sign(0.5_pReal * prm%gdot0 *(abs(tau_neg)/ state(instance)%crss(:,of))**prm%n_slip,tau_neg) 
-            
+
+ if (present(dgdot_dtau_pos)) then
+   where(dNeq0(gdot_pos))
+     dgdot_dtau_pos = gdot_pos*prm%n_slip/tau_pos
+   else where
+     dgdot_dtau_pos = 0.0_pReal
+   end where
+ endif
+ if (present(dgdot_dtau_neg)) then
+   where(dNeq0(gdot_neg))
+     dgdot_dtau_neg = gdot_neg*prm%n_slip/tau_neg
+   else where
+     dgdot_dtau_neg = 0.0_pReal
+   end where
+ endif
+
 end associate
 end subroutine plastic_kinehardening_shearRates
 
@@ -493,18 +512,7 @@ subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
  dLp_dMp = 0.0_pReal
 
  call plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
-                                       Mp,instance,of)
- where (dNeq0(gdot_pos)) 
-   dgdot_dtau_pos = gdot_pos*prm%n_slip/tau_pos
- else where
-   dgdot_dtau_pos = 0.0_pReal
- end where
-
-where (dNeq0(gdot_neg)) 
-  dgdot_dtau_neg = gdot_neg*prm%n_slip/tau_neg
-else where
-  dgdot_dtau_neg = 0.0_pReal
-end where
+                                       Mp,instance,of,dgdot_dtau_pos,dgdot_dtau_neg)
 
  do j = 1_pInt, prm%totalNslip
    Lp = Lp + (gdot_pos(j)+gdot_neg(j))*prm%Schmid_slip(1:3,1:3,j)
