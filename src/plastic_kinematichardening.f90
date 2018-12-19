@@ -453,14 +453,8 @@ subroutine plastic_kinehardening_shearRates(gdot_pos,gdot_neg,tau_pos,tau_neg, &
  tau_pos = tau_pos - stt%crss_back(:,of)
  tau_neg = tau_neg - stt%crss_back(:,of)
 
- gdot_pos = 0.5_pReal * prm%gdot0 * &
-            (abs(tau_pos)/ &
-            state(instance)%crss(:,of))**prm%n_slip &
-            *sign(1.0_pReal,tau_pos) 
- gdot_neg = 0.5_pReal * prm%gdot0 * &
-            (abs(tau_neg)/ &
-            state(instance)%crss(:,of))**prm%n_slip &
-            *sign(1.0_pReal,tau_neg) 
+ gdot_pos = sign(0.5_pReal * prm%gdot0 *(abs(tau_pos)/ state(instance)%crss(:,of))**prm%n_slip,tau_pos) 
+ gdot_neg = sign(0.5_pReal * prm%gdot0 *(abs(tau_neg)/ state(instance)%crss(:,of))**prm%n_slip,tau_neg) 
             
 end associate
 end subroutine plastic_kinehardening_shearRates
