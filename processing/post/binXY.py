@@ -120,7 +120,7 @@ for name in filenames:
   delta = minmax[:,1]-minmax[:,0]
   (grid,xedges,yedges) = np.histogram2d(table.data[:,0],table.data[:,1],
                                         bins=options.bins,
-                                        range=minmax[0:2,0:2],
+                                        range=minmax[:2],
                                         weights=None if options.weight is None else table.data[:,2])
 
   if options.normCol:
