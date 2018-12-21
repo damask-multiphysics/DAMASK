@@ -90,6 +90,7 @@ module plastic_disloUCLA
  type, private :: tDisloUCLAdependentState
    real(pReal), allocatable,     dimension(:,:) :: &
      mfp, &
+     dislocationSpacing, &
      threshold_stress
  end type tDisloUCLAdependentState
 
@@ -382,6 +383,7 @@ subroutine plastic_disloUCLA_init()
 
 
    allocate(dst%mfp(prm%totalNslip,NipcMyPhase),source=0.0_pReal)
+   allocate(dst%dislocationSpacing(prm%totalNslip,NipcMyPhase),source=0.0_pReal)
    allocate(dst%threshold_stress(prm%totalNslip,NipcMyPhase),source=0.0_pReal)
 
 
@@ -402,20 +404,18 @@ subroutine plastic_disloUCLA_dependentState(instance,of)
 
  integer(pInt) :: &
    i
- real(pReal), dimension(param(instance)%totalNslip) :: &
-  dislocationSpacing ! 1/mean free distance between 2 forest dislocations seen by a moving dislocation
 
  associate(prm => param(instance), stt => state(instance),dst => dependentState(instance))
 
  forall (i = 1_pInt:prm%totalNslip)
-   dislocationSpacing(i) = sqrt(dot_product(stt%rhoEdge(:,of)+stt%rhoEdgeDip(:,of), &
+   dst%dislocationSpacing(i,of) = sqrt(dot_product(stt%rhoEdge(:,of)+stt%rhoEdgeDip(:,of), &
                                        prm%forestProjectionEdge(:,i)))
    dst%threshold_stress(i,of) = prm%mu*prm%burgers(i) &
                               * sqrt(dot_product(stt%rhoEdge(:,of)+stt%rhoEdgeDip(:,of), &
                                                  prm%interaction_SlipSlip(i,:)))
  end forall
 
- dst%mfp(:,of) = prm%grainSize/(1.0_pReal+prm%grainSize*dislocationSpacing/prm%Clambda)
+ dst%mfp(:,of) = prm%grainSize/(1.0_pReal+prm%grainSize*dst%dislocationSpacing(:,of)/prm%Clambda)
  end associate
 
 
@@ -471,7 +471,7 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
 
  implicit none
  real(pReal), dimension(3,3),  intent(in):: &
-   Mp                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+   Mp                                                                                               !< Mandel stress
  real(pReal),                intent(in) :: &
    temperature                                                                                      !< temperature at integration point
  integer(pInt),              intent(in) :: &
@@ -492,12 +492,11 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
 
  dot%whole(:,of) = 0.0_pReal
- dot%accshear_slip(:,of) = (gdot_slip_pos+gdot_slip_neg)
+ dot%accshear_slip(:,of) = (gdot_slip_pos+gdot_slip_neg)                                            ! ToDo: needs to be abs
 
  VacancyDiffusion = prm%D0*exp(-prm%Qsd/(kB*Temperature))
 
  where(dEq0(tau_slip_pos))
-   EdgeDipDistance = dst%mfp(:,of)        !ToDo MD@FR: correct? was not handled properly before
    DotRhoDipFormation = 0.0_pReal
    DotRhoEdgeDipClimb = 0.0_pReal
  else where
@@ -517,7 +516,7 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
                    - (2.0_pReal*prm%minDipDistance)/prm%burgers*stt%rhoEdge(:,of)*abs(dot%accshear_slip(:,of)) !* Spontaneous annihilation of 2 single edge dislocations
 
  dot%rhoEdgeDip(:,of) = DotRhoDipFormation &
-                      - (2.0_pReal*prm%minDipDistance)/prm%burgers* stt%rhoEdgeDip(:,of)*abs(dot%accshear_slip(:,of)) & !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
+                      - (2.0_pReal*prm%minDipDistance)/prm%burgers*stt%rhoEdgeDip(:,of)*abs(dot%accshear_slip(:,of)) & !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
                       - DotRhoEdgeDipClimb
 
 end associate
@@ -603,8 +602,8 @@ pure subroutine kinetics(prm,stt,dst,Mp,Temperature,of, &
    tol_math_check, &
    dEq, dNeq0
  use math, only: &
-   pi, &
-math_mul33xx33
+   PI, &
+   math_mul33xx33
 
  implicit none
  type(tParameters), intent(in) :: &
@@ -637,132 +636,132 @@ math_mul33xx33
  BoltzmannRatio = prm%H0kp/(kB*Temperature)
  DotGamma0 = stt%rhoEdge(:,of)*prm%burgers*prm%v0
 
-   significantPositiveTau: where(abs(tau_slip_pos)-dst%threshold_stress(:,of) > tol_math_check)
-     StressRatio = (abs(tau_slip_pos)-dst%threshold_stress(:,of)) &
-                    / (prm%solidSolutionStrength+prm%tau_Peierls)
-     StressRatio_p       = StressRatio** prm%p
-     StressRatio_pminus1 = StressRatio**(prm%p-1.0_pReal)
+ significantPositiveTau: where(abs(tau_slip_pos)-dst%threshold_stress(:,of) > tol_math_check)
+   StressRatio = (abs(tau_slip_pos)-dst%threshold_stress(:,of)) &
+                  / (prm%solidSolutionStrength+prm%tau_Peierls)
+   StressRatio_p       = StressRatio** prm%p
+   StressRatio_pminus1 = StressRatio**(prm%p-1.0_pReal)
 
-     vel_slip = 2.0_pReal*prm%burgers * prm%kink_height * prm%omega  &
-              * ( dst%mfp(:,of) - prm%kink_width ) &
-            * (tau_slip_pos  &
-            * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q) ) &
-            / ( &
-            2.0_pReal*(prm%burgers**2.0_pReal)*tau_slip_pos &
-            + prm%omega * prm%B &
-            *(( dst%mfp(:,of) - prm%kink_width )**2.0_pReal) &
-            * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)  &
-            )
-
-     gdot_slip_pos = DotGamma0 * sign(vel_slip,tau_slip_pos) * 0.5_pReal
-
-     dvel_slip = 2.0_pReal*prm%burgers * prm%kink_height * prm%omega  &
-               * ( dst%mfp(:,of) - prm%kink_width ) &
-          * ( &
-          (exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q) &
-          + tau_slip_pos &
-          * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q))&
-          *BoltzmannRatio*prm%p&
-          *prm%q/&
-          (prm%solidSolutionStrength+prm%tau_Peierls)*&
-          StressRatio_pminus1*(1-StressRatio_p)**(prm%q-1.0_pReal)  ) &
-          ) &
-          *  (2.0_pReal*(prm%burgers**2.0_pReal)*tau_slip_pos &
-          +  prm%omega * prm%B &
-          *(( dst%mfp(:,of) - prm%kink_width )**2.0_pReal) &
-          * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)  &
-          ) &
-          -  (tau_slip_pos &
-          * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q) )  &
-          *  (2.0_pReal*(prm%burgers**2.0_pReal) &
-          +  prm%omega * prm%B &
-          *(( dst%mfp(:,of) - prm%kink_width )**2.0_pReal) &
-          * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q))&
-          *BoltzmannRatio*prm%p&
-          *prm%q/&
-          (prm%solidSolutionStrength+prm%tau_Peierls)*&
-          StressRatio_pminus1*(1-StressRatio_p)**(prm%q-1.0_pReal)  )&
-          ) &
-          )  &
-          / (  &
-          ( &
+   vel_slip = 2.0_pReal*prm%burgers * prm%kink_height * prm%omega  &
+            * ( dst%mfp(:,of) - prm%kink_width ) &
+          * (tau_slip_pos  &
+          * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q) ) &
+          / ( &
           2.0_pReal*(prm%burgers**2.0_pReal)*tau_slip_pos &
           + prm%omega * prm%B &
           *(( dst%mfp(:,of) - prm%kink_width )**2.0_pReal) &
           * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)  &
-          )**2.0_pReal &
           )
 
-     dgdot_dtauslip_pos = DotGamma0 * dvel_slip* 0.5_pReal
-else where significantPositiveTau
- gdot_slip_pos = 0.0_pReal
- dgdot_dtauslip_pos = 0.0_pReal
-end where significantPositiveTau
+   gdot_slip_pos = DotGamma0 * sign(vel_slip,tau_slip_pos) * 0.5_pReal
 
-   significantNegativeTau: where(abs(tau_slip_neg)-dst%threshold_stress(:,of) > tol_math_check)
-     StressRatio = (abs(tau_slip_neg)-dst%threshold_stress(:,of)) &
-                    / (prm%solidSolutionStrength+prm%tau_Peierls)
-     StressRatio_p       = StressRatio** prm%p
-     StressRatio_pminus1 = StressRatio**(prm%p-1.0_pReal)
+   dvel_slip = 2.0_pReal*prm%burgers * prm%kink_height * prm%omega  &
+             * ( dst%mfp(:,of) - prm%kink_width ) &
+        * ( &
+        (exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q) &
+        + tau_slip_pos &
+        * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q))&
+        *BoltzmannRatio*prm%p&
+        *prm%q/&
+        (prm%solidSolutionStrength+prm%tau_Peierls)*&
+        StressRatio_pminus1*(1-StressRatio_p)**(prm%q-1.0_pReal)  ) &
+        ) &
+        *  (2.0_pReal*(prm%burgers**2.0_pReal)*tau_slip_pos &
+        +  prm%omega * prm%B &
+        *(( dst%mfp(:,of) - prm%kink_width )**2.0_pReal) &
+        * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)  &
+        ) &
+        -  (tau_slip_pos &
+        * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q) )  &
+        *  (2.0_pReal*(prm%burgers**2.0_pReal) &
+        +  prm%omega * prm%B &
+        *(( dst%mfp(:,of) - prm%kink_width )**2.0_pReal) &
+        * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q))&
+        *BoltzmannRatio*prm%p&
+        *prm%q/&
+        (prm%solidSolutionStrength+prm%tau_Peierls)*&
+        StressRatio_pminus1*(1-StressRatio_p)**(prm%q-1.0_pReal)  )&
+        ) &
+        )  &
+        / (  &
+        ( &
+        2.0_pReal*(prm%burgers**2.0_pReal)*tau_slip_pos &
+        + prm%omega * prm%B &
+        *(( dst%mfp(:,of) - prm%kink_width )**2.0_pReal) &
+        * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)  &
+        )**2.0_pReal &
+        )
 
-     vel_slip = 2.0_pReal*prm%burgers * prm%kink_height * prm%omega  &
-              * ( dst%mfp(:,of) - prm%kink_width ) &
-            * (tau_slip_neg  &
-            * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q) ) &
-            / ( &
-            2.0_pReal*(prm%burgers**2.0_pReal)*tau_slip_neg &
-            + prm%omega * prm%B &
-            *(( dst%mfp(:,of) - prm%kink_width )**2.0_pReal) &
-            * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)  &
-            )
+   dgdot_dtauslip_pos = DotGamma0 * dvel_slip* 0.5_pReal
+ else where significantPositiveTau
+   gdot_slip_pos = 0.0_pReal
+   dgdot_dtauslip_pos = 0.0_pReal
+ end where significantPositiveTau
 
-     gdot_slip_neg = DotGamma0 * sign(vel_slip,tau_slip_neg) * 0.5_pReal
+ significantNegativeTau: where(abs(tau_slip_neg)-dst%threshold_stress(:,of) > tol_math_check)
+   StressRatio = (abs(tau_slip_neg)-dst%threshold_stress(:,of)) &
+                  / (prm%solidSolutionStrength+prm%tau_Peierls)
+   StressRatio_p       = StressRatio** prm%p
+   StressRatio_pminus1 = StressRatio**(prm%p-1.0_pReal)
 
-     dvel_slip = 2.0_pReal*prm%burgers * prm%kink_height * prm%omega  &
-               * ( dst%mfp(:,of) - prm%kink_width ) &
-          * ( &
-          (exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q) &
-          + tau_slip_neg &
-          * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q))&
-          *BoltzmannRatio*prm%p&
-          *prm%q/&
-          (prm%solidSolutionStrength+prm%tau_Peierls)*&
-          StressRatio_pminus1*(1-StressRatio_p)**(prm%q-1.0_pReal)  ) &
-          ) &
-          *  (2.0_pReal*(prm%burgers**2.0_pReal)*tau_slip_neg &
-          +  prm%omega * prm%B &
-          *(( dst%mfp(:,of) - prm%kink_width )**2.0_pReal) &
-          * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)  &
-          ) &
-          -  (tau_slip_neg &
-          * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q) )  &
-          *  (2.0_pReal*(prm%burgers**2.0_pReal) &
-          +  prm%omega * prm%B &
-          *(( dst%mfp(:,of) - prm%kink_width )**2.0_pReal) &
-          * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q))&
-          *BoltzmannRatio*prm%p&
-          *prm%q/&
-          (prm%solidSolutionStrength+prm%tau_Peierls)*&
-          StressRatio_pminus1*(1-StressRatio_p)**(prm%q-1.0_pReal)  )&
-          ) &
-          )  &
-          / (  &
-          ( &
+   vel_slip = 2.0_pReal*prm%burgers * prm%kink_height * prm%omega  &
+            * ( dst%mfp(:,of) - prm%kink_width ) &
+          * (tau_slip_neg  &
+          * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q) ) &
+          / ( &
           2.0_pReal*(prm%burgers**2.0_pReal)*tau_slip_neg &
           + prm%omega * prm%B &
           *(( dst%mfp(:,of) - prm%kink_width )**2.0_pReal) &
           * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)  &
-          )**2.0_pReal &
           )
 
+   gdot_slip_neg = DotGamma0 * sign(vel_slip,tau_slip_neg) * 0.5_pReal
 
-     dgdot_dtauslip_neg = DotGamma0 * dvel_slip * 0.5_pReal
-else where significantNegativeTau
- gdot_slip_neg = 0.0_pReal
- dgdot_dtauslip_neg = 0.0_pReal
-end where significantNegativeTau
+   dvel_slip = 2.0_pReal*prm%burgers * prm%kink_height * prm%omega  &
+             * ( dst%mfp(:,of) - prm%kink_width ) &
+        * ( &
+        (exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q) &
+        + tau_slip_neg &
+        * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q))&
+        *BoltzmannRatio*prm%p&
+        *prm%q/&
+        (prm%solidSolutionStrength+prm%tau_Peierls)*&
+        StressRatio_pminus1*(1-StressRatio_p)**(prm%q-1.0_pReal)  ) &
+        ) &
+        *  (2.0_pReal*(prm%burgers**2.0_pReal)*tau_slip_neg &
+        +  prm%omega * prm%B &
+        *(( dst%mfp(:,of) - prm%kink_width )**2.0_pReal) &
+        * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)  &
+        ) &
+        -  (tau_slip_neg &
+        * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q) )  &
+        *  (2.0_pReal*(prm%burgers**2.0_pReal) &
+        +  prm%omega * prm%B &
+        *(( dst%mfp(:,of) - prm%kink_width )**2.0_pReal) &
+        * (abs(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q))&
+        *BoltzmannRatio*prm%p&
+        *prm%q/&
+        (prm%solidSolutionStrength+prm%tau_Peierls)*&
+        StressRatio_pminus1*(1-StressRatio_p)**(prm%q-1.0_pReal)  )&
+        ) &
+        )  &
+        / (  &
+        ( &
+        2.0_pReal*(prm%burgers**2.0_pReal)*tau_slip_neg &
+        + prm%omega * prm%B &
+        *(( dst%mfp(:,of) - prm%kink_width )**2.0_pReal) &
+        * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)  &
+        )**2.0_pReal &
+        )
 
+
+   dgdot_dtauslip_neg = DotGamma0 * dvel_slip * 0.5_pReal
+ else where significantNegativeTau
+   gdot_slip_neg = 0.0_pReal
+   dgdot_dtauslip_neg = 0.0_pReal
+ end where significantNegativeTau
 
 end subroutine kinetics
+
 
 end module plastic_disloUCLA
