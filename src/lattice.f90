@@ -869,7 +869,8 @@ module lattice
   lattice_interaction_TwinSlip, &
   lattice_forestProjection, &
   lattice_characteristicShear_Twin, &
-  lattice_C66_twin
+  lattice_C66_twin, &
+  lattice_C66_trans
 
 contains
 
@@ -1793,6 +1794,7 @@ function lattice_C66_trans(Ntrans,C_parent66, &
    structure_target                                                                                 !< lattice structure
  real(pReal),     dimension(6,6),          intent(in) :: C_parent66
  real(pReal),     dimension(6,6)            :: C_bar66, C_target_unrotated66
+  real(pReal),     dimension(3,3,3,3)       :: C_target_unrotated
  real(pReal),     dimension(6,6,sum(Ntrans))            :: lattice_C66_trans
  real(pReal),     dimension(3,3,sum(Ntrans))            :: Q,S
  real(pReal) :: a_bcc, a_fcc, CoverA_trans
@@ -1822,17 +1824,16 @@ function lattice_C66_trans(Ntrans,C_parent66, &
    write(6,*) "Mist"
  endif
 
+
  do i = 1_pInt, 6_pInt
    if (abs(C_target_unrotated66(i,i))<tol_math_check) &
    call IO_error(135_pInt,el=i,ext_msg='matrix diagonal "el"ement in transformation')
  enddo
- lattice_C66_trans = 0.0_pReal
- 
+ C_target_unrotated = math_Mandel66to3333(C_target_unrotated66)
  call lattice_Trans(Q,S,Ntrans,CoverA_trans,a_fcc,a_bcc)
 
  do i = 1, sum(Ntrans)
-!   R = math_axisAngleToR(coordinateSystem(1:3,2,i), 180.0_pReal * INRAD)                            ! ToDo: Why always 180 deg?
-!   lattice_C66_trans(1:6,1:6,i) = math_Mandel3333to66(math_rotate_forward3333(math_Mandel66to3333(C66),R))
+   lattice_C66_trans(1:6,1:6,i) = math_Mandel3333to66(math_rotate_forward3333(C_target_unrotated,Q(1:3,1:3,i)))
  enddo
 end function
 

@@ -281,19 +281,20 @@ subroutine plastic_dislotwin_init
    associate(prm => param(phase_plasticityInstance(p)), &
              dot => dotState(phase_plasticityInstance(p)), &
              stt => state(phase_plasticityInstance(p)), &
-             mse => microstructure(phase_plasticityInstance(p)))
+             mse => microstructure(phase_plasticityInstance(p)), &
+             config   => config_phase(p))
 
    ! This data is read in already in lattice
    prm%mu = lattice_mu(p)
    prm%nu = lattice_nu(p)
    prm%C66 = lattice_C66(1:6,1:6,p)
 
-   structure          = config_phase(p)%getString('lattice_structure')
+   structure          = config%getString('lattice_structure')
 
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
-   prm%Nslip =  config_phase(p)%getInts('nslip',defaultVal=emptyIntArray)
+   prm%Nslip =  config%getInts('nslip',defaultVal=emptyIntArray)
    prm%totalNslip = sum(prm%Nslip)
    slipActive: if (prm%totalNslip > 0_pInt) then
 
@@ -303,28 +304,28 @@ subroutine plastic_dislotwin_init
        prm%fcc_twinNucleationSlipPair = lattice_fcc_twinNucleationSlipPair
 
      prm%Schmid_slip          = lattice_SchmidMatrix_slip(prm%Nslip,structure(1:3),&
-                                                          config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal))
+                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
      prm%forestProjectionEdge= lattice_forestProjection  (prm%Nslip,structure(1:3),&
-                                                          config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal))
+                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
 
      prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
-                                                             config_phase(p)%getFloats('interaction_slipslip'), &
+                                                             config%getFloats('interaction_slipslip'), &
                                                              structure(1:3))
 
-     prm%rho0                 = config_phase(p)%getFloats('rhoedge0',   requiredShape=shape(prm%Nslip))  !ToDo: rename to rho_0
-     prm%rhoDip0              = config_phase(p)%getFloats('rhoedgedip0',requiredShape=shape(prm%Nslip))  !ToDo: rename to rho_dip_0
-     prm%v0                   = config_phase(p)%getFloats('v0',         requiredShape=shape(prm%Nslip))
-     prm%burgers_slip         = config_phase(p)%getFloats('slipburgers',requiredShape=shape(prm%Nslip))
-     prm%Qedge                = config_phase(p)%getFloats('qedge',      requiredShape=shape(prm%Nslip))  !ToDo: rename (ask Karo)
-     prm%CLambdaSlip          = config_phase(p)%getFloats('clambdaslip',requiredShape=shape(prm%Nslip))
-     prm%p                    = config_phase(p)%getFloats('p_slip',     requiredShape=shape(prm%Nslip))
-     prm%q                    = config_phase(p)%getFloats('q_slip',     requiredShape=shape(prm%Nslip))
-     prm%B                    = config_phase(p)%getFloats('b',          requiredShape=shape(prm%Nslip), &
+     prm%rho0                 = config%getFloats('rhoedge0',   requiredShape=shape(prm%Nslip))  !ToDo: rename to rho_0
+     prm%rhoDip0              = config%getFloats('rhoedgedip0',requiredShape=shape(prm%Nslip))  !ToDo: rename to rho_dip_0
+     prm%v0                   = config%getFloats('v0',         requiredShape=shape(prm%Nslip))
+     prm%burgers_slip         = config%getFloats('slipburgers',requiredShape=shape(prm%Nslip))
+     prm%Qedge                = config%getFloats('qedge',      requiredShape=shape(prm%Nslip))  !ToDo: rename (ask Karo)
+     prm%CLambdaSlip          = config%getFloats('clambdaslip',requiredShape=shape(prm%Nslip))
+     prm%p                    = config%getFloats('p_slip',     requiredShape=shape(prm%Nslip))
+     prm%q                    = config%getFloats('q_slip',     requiredShape=shape(prm%Nslip))
+     prm%B                    = config%getFloats('b',          requiredShape=shape(prm%Nslip), &
                                                           defaultVal=[(0.0_pReal, i=1,size(prm%Nslip))])
-     prm%tau_peierls          = config_phase(p)%getFloats('tau_peierls',requiredShape=shape(prm%Nslip), &
+     prm%tau_peierls          = config%getFloats('tau_peierls',requiredShape=shape(prm%Nslip), &
                                                           defaultVal=[(0.0_pReal, i=1,size(prm%Nslip))])
 
-     prm%CEdgeDipMinDistance  = config_phase(p)%getFloat('cedgedipmindistance')
+     prm%CEdgeDipMinDistance  = config%getFloat('cedgedipmindistance')
 
      ! expand: family => system
      prm%rho0         = math_expand(prm%rho0,        prm%Nslip)
@@ -356,33 +357,33 @@ subroutine plastic_dislotwin_init
 
 !--------------------------------------------------------------------------------------------------
 ! twin related parameters
-   prm%Ntwin      = config_phase(p)%getInts('ntwin', defaultVal=emptyIntArray)
+   prm%Ntwin      = config%getInts('ntwin', defaultVal=emptyIntArray)
    prm%totalNtwin = sum(prm%Ntwin)
    if (prm%totalNtwin > 0_pInt) then
      prm%Schmid_twin          = lattice_SchmidMatrix_twin(prm%Ntwin,structure(1:3),&
-                                                          config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal))
+                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
      prm%interaction_TwinTwin = lattice_interaction_TwinTwin(prm%Ntwin,&
-                                                             config_phase(p)%getFloats('interaction_twintwin'), &
+                                                             config%getFloats('interaction_twintwin'), &
                                                              structure(1:3))
 
-     prm%burgers_twin = config_phase(p)%getFloats('twinburgers')
-     prm%twinsize     = config_phase(p)%getFloats('twinsize')
-     prm%r            = config_phase(p)%getFloats('r_twin')
+     prm%burgers_twin = config%getFloats('twinburgers')
+     prm%twinsize     = config%getFloats('twinsize')
+     prm%r            = config%getFloats('r_twin')
 
-     prm%xc_twin         = config_phase(p)%getFloat('xc_twin')
-     prm%L0_twin         = config_phase(p)%getFloat('l0_twin')
-     prm%MaxTwinFraction = config_phase(p)%getFloat('maxtwinfraction') ! ToDo: only used in postResults
-     prm%Cthresholdtwin  = config_phase(p)%getFloat('cthresholdtwin', defaultVal=0.0_pReal)
-     prm%Cmfptwin        = config_phase(p)%getFloat('cmfptwin',       defaultVal=0.0_pReal) ! ToDo: How to handle that???
+     prm%xc_twin         = config%getFloat('xc_twin')
+     prm%L0_twin         = config%getFloat('l0_twin')
+     prm%MaxTwinFraction = config%getFloat('maxtwinfraction') ! ToDo: only used in postResults
+     prm%Cthresholdtwin  = config%getFloat('cthresholdtwin', defaultVal=0.0_pReal)
+     prm%Cmfptwin        = config%getFloat('cmfptwin',       defaultVal=0.0_pReal) ! ToDo: How to handle that???
 
      prm%shear_twin      = lattice_characteristicShear_Twin(prm%Ntwin,structure(1:3),&
-                                                          config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal))
+                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
 
      prm%C66_twin        = lattice_C66_twin(prm%Ntwin,prm%C66,structure(1:3),&
-                                                          config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal))
+                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
 
      if (.not. prm%fccTwinTransNucleation) then
-       prm%Ndot0_twin = config_phase(p)%getFloats('ndot0_twin') 
+       prm%Ndot0_twin = config%getFloats('ndot0_twin') 
        prm%Ndot0_twin = math_expand(prm%Ndot0_twin,prm%Ntwin)
      endif
 
@@ -399,29 +400,36 @@ subroutine plastic_dislotwin_init
   
 !--------------------------------------------------------------------------------------------------
 ! transformation related parameters
-   prm%Ntrans      = config_phase(p)%getInts('ntrans', defaultVal=emptyIntArray)
+   prm%Ntrans      = config%getInts('ntrans', defaultVal=emptyIntArray)
    prm%totalNtrans = sum(prm%Ntrans)
    if (prm%totalNtrans > 0_pInt) then
-     prm%burgers_trans = config_phase(p)%getFloats('transburgers')
+     prm%burgers_trans = config%getFloats('transburgers')
      prm%burgers_trans = math_expand(prm%burgers_trans,prm%Ntrans)
      
-     prm%Cthresholdtrans  = config_phase(p)%getFloat('cthresholdtrans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
-     prm%transStackHeight = config_phase(p)%getFloat('transstackheight', defaultVal=0.0_pReal) ! ToDo: How to handle that???
-     prm%Cmfptrans        = config_phase(p)%getFloat('cmfptrans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
-     prm%deltaG           = config_phase(p)%getFloat('deltag')
-     prm%xc_trans         = config_phase(p)%getFloat('xc_trans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
-     prm%L0_trans         = config_phase(p)%getFloat('l0_trans')
+     prm%Cthresholdtrans  = config%getFloat('cthresholdtrans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
+     prm%transStackHeight = config%getFloat('transstackheight', defaultVal=0.0_pReal) ! ToDo: How to handle that???
+     prm%Cmfptrans        = config%getFloat('cmfptrans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
+     prm%deltaG           = config%getFloat('deltag')
+     prm%xc_trans         = config%getFloat('xc_trans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
+     prm%L0_trans         = config%getFloat('l0_trans')
 
      prm%interaction_TransTrans = lattice_interaction_TransTrans(prm%Ntrans,&
-                                                             config_phase(p)%getFloats('interaction_transtrans'), &
+                                                             config%getFloats('interaction_transtrans'), &
                                                              structure(1:3))
+                                                             
+     prm%C66_trans        = lattice_C66_trans(prm%Ntrans,prm%C66, &
+                                  config%getString('trans_lattice_structure'), &
+                                  0.0_pReal, &
+                                  config%getFloat('a_bcc', defaultVal=0.0_pReal), &
+                                  config%getFloat('a_fcc', defaultVal=0.0_pReal))
+                                                 
      if (lattice_structure(p) /= LATTICE_fcc_ID) then
-        prm%Ndot0_trans = config_phase(p)%getFloats('ndot0_trans')
+        prm%Ndot0_trans = config%getFloats('ndot0_trans')
         prm%Ndot0_trans = math_expand(prm%Ndot0_trans,prm%Ntrans)
      endif
-     prm%lamellarsizePerTransSystem = config_phase(p)%getFloats('lamellarsize')
+     prm%lamellarsizePerTransSystem = config%getFloats('lamellarsize')
      prm%lamellarsizePerTransSystem = math_expand(prm%lamellarsizePerTransSystem,prm%Ntrans)
-     prm%s = config_phase(p)%getFloats('s_trans',defaultVal=[0.0_pReal])
+     prm%s = config%getFloats('s_trans',defaultVal=[0.0_pReal])
      prm%s = math_expand(prm%s,prm%Ntrans)
    else
      allocate(prm%lamellarsizePerTransSystem(0))
@@ -429,48 +437,48 @@ subroutine plastic_dislotwin_init
    endif
    
    if (sum(prm%Ntwin) > 0_pInt  .or. prm%totalNtrans > 0_pInt) then
-     prm%SFE_0K     = config_phase(p)%getFloat('sfe_0k')
-     prm%dSFE_dT    = config_phase(p)%getFloat('dsfe_dt')
-     prm%VcrossSlip = config_phase(p)%getFloat('vcrossslip')
+     prm%SFE_0K     = config%getFloat('sfe_0k')
+     prm%dSFE_dT    = config%getFloat('dsfe_dt')
+     prm%VcrossSlip = config%getFloat('vcrossslip')
    endif
    
    if (prm%totalNslip > 0_pInt .and. prm%totalNtwin > 0_pInt) then
      prm%interaction_SlipTwin = lattice_interaction_SlipTwin(prm%Nslip,prm%Ntwin,&
-                                                             config_phase(p)%getFloats('interaction_sliptwin'), &
+                                                             config%getFloats('interaction_sliptwin'), &
                                                              structure(1:3)) 
      prm%interaction_TwinSlip = lattice_interaction_TwinSlip(prm%Ntwin,prm%Nslip,&
-                                                             config_phase(p)%getFloats('interaction_twinslip'), &
+                                                             config%getFloats('interaction_twinslip'), &
                                                              structure(1:3))
      if (prm%fccTwinTransNucleation .and. prm%totalNtwin > 12_pInt) write(6,*) 'mist' ! ToDo: implement better test. The model will fail also if ntwin is [6,6]
    endif    
 
    if (prm%totalNslip > 0_pInt .and. prm%totalNtrans > 0_pInt) then  
      prm%interaction_SlipTrans = lattice_interaction_SlipTrans(prm%Nslip,prm%Ntrans,&
-                                                               config_phase(p)%getFloats('interaction_sliptrans'), &
+                                                               config%getFloats('interaction_sliptrans'), &
                                                                structure(1:3)) 
      if (prm%fccTwinTransNucleation .and. prm%totalNtrans > 12_pInt) write(6,*) 'mist' ! ToDo: implement better test. The model will fail also if ntrans is [6,6]
    endif    
 
 
-   prm%aTolRho       = config_phase(p)%getFloat('atol_rho', defaultVal=0.0_pReal)
-   prm%aTolTwinFrac  = config_phase(p)%getFloat('atol_twinfrac', defaultVal=0.0_pReal)
-   prm%aTolTransFrac = config_phase(p)%getFloat('atol_transfrac', defaultVal=0.0_pReal)
+   prm%aTolRho       = config%getFloat('atol_rho', defaultVal=0.0_pReal)
+   prm%aTolTwinFrac  = config%getFloat('atol_twinfrac', defaultVal=0.0_pReal)
+   prm%aTolTransFrac = config%getFloat('atol_transfrac', defaultVal=0.0_pReal)
 
-   prm%CAtomicVolume = config_phase(p)%getFloat('catomicvolume')
-   prm%GrainSize =  config_phase(p)%getFloat('grainsize')
+   prm%CAtomicVolume = config%getFloat('catomicvolume')
+   prm%GrainSize     = config%getFloat('grainsize')
 
 
-   prm%D0 = config_phase(p)%getFloat('d0')
-   prm%Qsd = config_phase(p)%getFloat('qsd')
-   prm%SolidSolutionStrength = config_phase(p)%getFloat('solidsolutionstrength')
-   if (config_phase(p)%keyExists('dipoleformationfactor')) call IO_error(1,ext_msg='use /nodipoleformation/')
-   prm%dipoleformation = .not. config_phase(p)%keyExists('/nodipoleformation/')
-   prm%sbVelocity   = config_phase(p)%getFloat('shearbandvelocity',defaultVal=0.0_pReal)
+   prm%D0 = config%getFloat('d0')
+   prm%Qsd = config%getFloat('qsd')
+   prm%SolidSolutionStrength = config%getFloat('solidsolutionstrength')
+   if (config%keyExists('dipoleformationfactor')) call IO_error(1,ext_msg='use /nodipoleformation/')
+   prm%dipoleformation = .not. config%keyExists('/nodipoleformation/')
+   prm%sbVelocity   = config%getFloat('shearbandvelocity',defaultVal=0.0_pReal)
    if (prm%sbVelocity > 0.0_pReal) then  
-     prm%sbResistance = config_phase(p)%getFloat('shearbandresistance')
-     prm%sbQedge = config_phase(p)%getFloat('qedgepersbsystem')
-     prm%pShearBand = config_phase(p)%getFloat('p_shearband')
-     prm%qShearBand = config_phase(p)%getFloat('q_shearband')
+     prm%sbResistance = config%getFloat('shearbandresistance')
+     prm%sbQedge = config%getFloat('qedgepersbsystem')
+     prm%pShearBand = config%getFloat('p_shearband')
+     prm%qShearBand = config%getFloat('q_shearband')
    endif
 
        !if (Ndot0PerTwinFamily(f,p) < 0.0_pReal) &
@@ -511,7 +519,7 @@ subroutine plastic_dislotwin_init
        prm%qShearBand <= 0.0_pReal) &
      call IO_error(211_pInt,el=p,ext_msg='qShearBand ('//PLASTICITY_DISLOTWIN_label//')')
  
-   outputs = config_phase(p)%getStrings('(output)', defaultVal=emptyStringArray)
+   outputs = config%getStrings('(output)', defaultVal=emptyStringArray)
    allocate(prm%outputID(0))
    do i= 1_pInt, size(outputs)
      outputID = undefined_ID
@@ -608,7 +616,6 @@ subroutine plastic_dislotwin_init
 
 
 ! DEPRECATED BEGIN
-   allocate(prm%C66_trans(6,6,prm%totalNtrans)     ,source=0.0_pReal)
    allocate(prm%Schmid_trans(3,3,prm%totalNtrans),source  = 0.0_pReal)
    i = 0_pInt
    transFamiliesLoop: do f = 1_pInt,size(prm%Ntrans,1)
@@ -616,14 +623,10 @@ subroutine plastic_dislotwin_init
      transSystemsLoop: do j = 1_pInt,prm%Ntrans(f)
        i = i + 1_pInt
        prm%Schmid_trans(1:3,1:3,i) = lattice_Strans(1:3,1:3,sum(lattice_Ntranssystem(1:f-1,p))+j,p)
-     !* Rotate trans elasticity matrices
-       index_otherFamily = sum(lattice_NtransSystem(1:f-1_pInt,p))                                  ! index in full lattice trans list
-       prm%C66_trans(1:6,1:6,index_myFamily+j) = &
-         math_Mandel3333to66(math_rotate_forward3333(lattice_trans_C3333(1:3,1:3,1:3,1:3,p),&
-                                                     lattice_Qtrans(1:3,1:3,index_otherFamily+j,p)))
      enddo transSystemsLoop
    enddo transFamiliesLoop
-! DEPRECATED END  
+! DEPRECATED END
+
 
    startIndex=1_pInt
    endIndex=prm%totalNslip
