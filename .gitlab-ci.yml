@@ -158,12 +158,12 @@ Post_AverageDown:
     - master
     - release
 
-#Post_General:
-#  stage: postprocessing
-#  script: PostProcessing/test.py
-#  except:
-#    - master
-#    - release
+Post_General:
+  stage: postprocessing
+  script: PostProcessing/test.py
+  except:
+    - master
+    - release
 
 Post_GeometryReconstruction:
   stage: postprocessing
@@ -364,12 +364,12 @@ Phenopowerlaw_singleSlip:
     - master
     - release
 
-#TextureComponents:
-#  stage: spectral
-#  script: TextureComponents/test.py
-#  except:
-#    - master
-#    - release
+TextureComponents:
+  stage: spectral
+  script: TextureComponents/test.py
+  except:
+    - master
+    - release
 
 
 ###################################################################################################
@@ -468,27 +468,24 @@ AbaqusStd:
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
     - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT abaqus
-  except:
-    - master
-    - release
+  only:
+    - development
 
 Marc:
   stage: createDocumentation
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
     - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT marc
-  except:
-    - master
-    - release
+  only:
+    - development
 
 Spectral:
   stage: createDocumentation
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
     - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT spectral
-  except:
-    - master
-    - release
+  only:
+    - development
 
 ##################################################################################################
 backupData:
