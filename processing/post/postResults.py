@@ -121,12 +121,8 @@ class MPIEspectral_result:    # mimic py_post result object
       self._logscales   = self._keyedPackedArray('logscales',count=self.N_loadcases,type='i')
 
     self.size         = self._keyedPackedArray('size:',count=3,type='d')
-    if self.size == [None,None,None]:                                                               # no 'size' found, try legacy alias 'dimension'
-      self.size       = self._keyedPackedArray('dimension',count=3,type='d')
 
     self.grid         = self._keyedPackedArray('grid:',count=3,type='i')
-    if self.grid == [None,None,None]:                                                               # no 'grid' found, try legacy alias 'resolution'
-      self.grid         = self._keyedPackedArray('resolution',count=3,type='i')
 
     self.N_nodes      = (self.grid[0]+1)*(self.grid[1]+1)*(self.grid[2]+1)
     self.N_elements   =  self.grid[0]   * self.grid[1]   * self.grid[2]
@@ -142,13 +138,8 @@ class MPIEspectral_result:    # mimic py_post result object
 
 # parameters for file handling depending on output format
 
-    if options.legacy:
-       self.tagLen=8
-       self.fourByteLimit = 2**31 -1 -8
-    else:
-       self.tagLen=0
+    self.tagLen=0
     self.expectedFileSize = self.dataOffset+self.N_increments*(self.tagLen+self.N_elements*self.N_element_scalars*8)
-    if options.legacy: self.expectedFileSize+=self.expectedFileSize//self.fourByteLimit*8             # add extra 8 bytes for additional headers at 4 GB limits
     if self.expectedFileSize != self.filesize:
       print('\n**\n* Unexpected file size. Incomplete simulation or file corrupted!\n**')
 
@@ -280,42 +271,16 @@ class MPIEspectral_result:    # mimic py_post result object
     return self.N_element_scalars
 
   def element_scalar(self,e,idx):
-    if not options.legacy:
-      incStart =  self.dataOffset \
-               +  self.position*8*self.N_elements*self.N_element_scalars
-      where = (e*self.N_element_scalars + idx)*8
-      try:
-        self.file.seek(incStart+where)
-        value = struct.unpack('d',self.file.read(8))[0]
-      except:
-        print('seeking {}'.format(incStart+where))
-        print('e {} idx {}'.format(e,idx))
-        sys.exit(1)
-
-    else:
-      self.fourByteLimit = 2**31 -1 -8
-# header & footer + extra header and footer for 4 byte int range (Fortran)
-# values
-      incStart =  self.dataOffset \
-               +  self.position*8*( 1 + self.N_elements*self.N_element_scalars*8//self.fourByteLimit \
-                                    + self.N_elements*self.N_element_scalars)
-
-      where = (e*self.N_element_scalars + idx)*8
-      try:
-        if where%self.fourByteLimit + 8 >= self.fourByteLimit:                       # danger of reading into fortran record footer at 4 byte limit
-          data=''
-          for i in range(8):
-            self.file.seek(incStart+where+(where//self.fourByteLimit)*8+4)
-            data  += self.file.read(1)
-            where += 1
-          value = struct.unpack('d',data)[0]
-        else:
-          self.file.seek(incStart+where+(where//self.fourByteLimit)*8+4)
-          value = struct.unpack('d',self.file.read(8))[0]
-      except:
-        print('seeking {}'.format(incStart+where+(where//self.fourByteLimit)*8+4))
-        print('e {} idx {}'.format(e,idx))
-        sys.exit(1)
+    incStart =  self.dataOffset \
+             +  self.position*8*self.N_elements*self.N_element_scalars
+    where = (e*self.N_element_scalars + idx)*8
+    try:
+      self.file.seek(incStart+where)
+      value = struct.unpack('d',self.file.read(8))[0]
+    except:
+      print('seeking {}'.format(incStart+where))
+      print('e {} idx {}'.format(e,idx))
+      sys.exit(1)
 
     return [elemental_scalar(node,value) for node in self.element(e).items]
 
@@ -645,8 +610,6 @@ of already processed data points for evaluation.
 
 parser.add_option('-i','--info', action='store_true', dest='info',
                   help='list contents of resultfile')
-parser.add_option('-l','--legacy', action='store_true', dest='legacy',
-                  help='data format of spectral solver is in legacy format (no MPI out)')
 parser.add_option('-n','--nodal', action='store_true', dest='nodal',
                   help='data is extrapolated to nodal value')
 parser.add_option(    '--prefix', dest='prefix',
@@ -673,10 +636,7 @@ parser.add_option('-p','--type', dest='filetype',
                   help = 'type of result file [auto]')
 parser.add_option('-q','--quiet', dest='verbose',
                   action = 'store_false',
-                  help = 'suppress verbose output')
-parser.add_option('--verbose', dest='verbose',
-                  action = 'store_true',
-                  help = 'enable verbose output')
+                  help = 'hide status bar (useful when piping to file)')
 
 group_material = OptionGroup(parser,'Material identifier')
 
@@ -718,9 +678,8 @@ parser.add_option_group(group_general)
 parser.add_option_group(group_special)
 
 parser.set_defaults(info = False,
-                    verbose = False,
-                    legacy = False,
                     nodal = False,
+                    verbose = True,
                     prefix = '',
                     suffix = '',
                     dir = 'postProc',
@@ -746,6 +705,8 @@ parser.set_defaults(info = False,
 if files == []:
   parser.print_help()
   parser.error('no file specified...')
+
+damask.util.report(scriptName,files[0])
 
 if not os.path.exists(files[0]):
   parser.print_help()
@@ -803,12 +764,6 @@ if not options.constitutiveResult:    options.constitutiveResult = []
 options.sort.reverse()
 options.sep.reverse()
 
-# --- start background messaging
-
-if options.verbose:
-  bg = damask.util.backgroundMessage()
-  bg.start()
-
 # --- parse .output and .t16 files
 
 if os.path.splitext(files[0])[1] == '':
@@ -825,18 +780,13 @@ me = {
       'Constitutive':   options.phase,
      }
 
-if options.verbose: bg.set_message('parsing .output files...')
-
 for what in me:
   outputFormat[what] = ParseOutputFormat(filename, what, me[what])
   if '_id' not in outputFormat[what]['specials']:
     print("\nsection '{}' not found in <{}>".format(me[what], what))
     print('\n'.join(map(lambda x:'  [%s]'%x, outputFormat[what]['specials']['brothers'])))
 
-if options.verbose: bg.set_message('opening result file...')
-
 p = OpenPostfile(filename+extension,options.filetype,options.nodal)
-if options.verbose: bg.set_message('parsing result file...')
 stat = ParsePostfile(p, filename, outputFormat)
 if options.filetype == 'marc':
   stat['NumberOfIncrements'] -= 1             # t16 contains one "virtual" increment (at 0)
@@ -879,8 +829,10 @@ if options.info:
 # --- build connectivity maps
 
 elementsOfNode = {}
-for e in range(stat['NumberOfElements']):
-  if options.verbose and e%1000 == 0: bg.set_message('connect elem %i...'%e)
+Nelems = stat['NumberOfElements']
+for e in range(Nelems):
+  if options.verbose and Nelems > 100 and e%(Nelems//100) == 0:                                     # report in 1% steps if possible and avoid modulo by zero
+    damask.util.progressBar(iteration=e,total=Nelems,prefix='1/3: connecting elements')
   for n in map(p.node_sequence,p.element(e).items):
     if n not in elementsOfNode:
       elementsOfNode[n] = [p.element_id(e)]
@@ -899,10 +851,13 @@ index = {}
 groups = []
 groupCount = 0
 memberCount = 0
+damask.util.progressBar(iteration=1,total=1,prefix='1/3: connecting elements')
 
 if options.nodalScalar:
-  for n in range(stat['NumberOfNodes']):
-    if options.verbose and n%1000 == 0: bg.set_message('scan node %i...'%n)
+  Npoints = stat['NumberOfNodes']
+  for n in range(Npoints):
+    if options.verbose and Npoints > 100 and e%(Npoints//100) == 0:                                 # report in 1% steps if possible and avoid modulo by zero
+      damask.util.progressBar(iteration=n,total=Npoints,prefix='2/3: scanning nodes     ')
     myNodeID = p.node_id(n)
     myNodeCoordinates = [p.node(n).x, p.node(n).y, p.node(n).z]
     myElemID = 0
@@ -911,32 +866,35 @@ if options.nodalScalar:
 
     # generate an expression that is only true for the locations specified by options.filter
     filter = substituteLocation(options.filter, [myElemID,myNodeID,myIpID,myGrainID], myNodeCoordinates)
-    if filter != '' and not eval(filter):                                                              # for all filter expressions that are not true:...
-      continue                                                                                         # ... ignore this data point and continue with next
+    if filter != '' and not eval(filter):                                                           # for all filter expressions that are not true:...
+      continue                                                                                      # ... ignore this data point and continue with next
 
     # --- group data locations
     # generate a unique key for a group of separated data based on the separation criterium for the location
     grp = substituteLocation('#'.join(options.sep), [myElemID,myNodeID,myIpID,myGrainID], myNodeCoordinates)
 
-    if grp not in index:                                                                               # create a new group if not yet present
+    if grp not in index:                                                                            # create a new group if not yet present
       index[grp] = groupCount
-      groups.append([[0,0,0,0,0.0,0.0,0.0]])                                                           # initialize with avg location
+      groups.append([[0,0,0,0,0.0,0.0,0.0]])                                                        # initialize with avg location
       groupCount += 1
 
     groups[index[grp]][0][:4] = mapIncremental('','unique',
                                                len(groups[index[grp]])-1,
                                                groups[index[grp]][0][:4],
-                                               [myElemID,myNodeID,myIpID,myGrainID])                   # keep only if unique average location
+                                               [myElemID,myNodeID,myIpID,myGrainID])                # keep only if unique average location
     groups[index[grp]][0][4:] = mapIncremental('','avg',
                                                len(groups[index[grp]])-1,
                                                groups[index[grp]][0][4:],
-                                               myNodeCoordinates)                                      # incrementally update average location
-    groups[index[grp]].append([myElemID,myNodeID,myIpID,myGrainID,0])                                  # append a new list defining each group member
+                                               myNodeCoordinates)                                   # incrementally update average location
+    groups[index[grp]].append([myElemID,myNodeID,myIpID,myGrainID,0])                               # append a new list defining each group member
     memberCount += 1
+  damask.util.progressBar(iteration=1,total=1,prefix='2/3: scanning nodes     ')
 
 else:
-  for e in range(stat['NumberOfElements']):
-    if options.verbose and e%1000 == 0: bg.set_message('scan elem %i...'%e)
+  Nelems = stat['NumberOfElements']
+  for e in range(Nelems):
+    if options.verbose and Nelems > 100 and e%(Nelems//100) == 0:                                   # report in 1% steps if possible and avoid modulo by zero
+      damask.util.progressBar(iteration=e,total=Nelems,prefix='2/3: scanning elements  ')
     myElemID = p.element_id(e)
     myIpCoordinates = ipCoords(p.element(e).type, list(map(lambda node: [node.x, node.y, node.z],
                                                          list(map(p.node, map(p.node_sequence, p.element(e).items))))))
@@ -976,6 +934,7 @@ else:
                                                    myIpCoordinates[n])                              # incrementally update average location
         groups[index[grp]].append([myElemID,myNodeID,myIpID,myGrainID,n])                           # append a new list defining each group member
         memberCount += 1
+  damask.util.progressBar(iteration=1,total=1,prefix='2/3: scanning elements  ')
 
 
 # ---------------------------   sort groups   --------------------------------
@@ -1002,7 +961,6 @@ if 'none' not in map(str.lower, options.sort):
       theKeys.append('x[0][%i]'%where[criterium])
 
 sortKeys = eval('lambda x:(%s)'%(','.join(theKeys)))
-if options.verbose: bg.set_message('sorting groups...')
 groups.sort(key = sortKeys)                                                                         # in-place sorting to save mem
 
 
@@ -1020,8 +978,6 @@ standard = ['inc'] + \
            ['elem','node','ip','grain','1_pos','2_pos','3_pos']
 
 # ---------------------------   loop over positions   --------------------------------
-
-if options.verbose: bg.set_message('getting map between positions and increments...')
 
 incAtPosition = {}
 positionOfInc = {}
@@ -1048,8 +1004,8 @@ increments = [incAtPosition[x] for x in locations] # build list of increments to
 
 time_start = time.time()
 
+Nincs = len([i for i in locations])
 for incCount,position in enumerate(locations):     # walk through locations
-
   p.moveto(position+offset_pos)                    # wind to correct position
 
 # ---------------------------   file management   --------------------------------
@@ -1075,16 +1031,14 @@ for incCount,position in enumerate(locations):     # walk through locations
 # ---------------------------   read and map data per group   --------------------------------
 
   member = 0
-  for group in groups:
-
+  Ngroups = len(groups)
+  for j,group in enumerate(groups):
+    f = incCount*Ngroups + j
+    if options.verbose and (Ngroups*Nincs) > 100 and f%((Ngroups*Nincs)//100) == 0:                 # report in 1% steps if possible and avoid modulo by zero
+      damask.util.progressBar(iteration=f,total=Ngroups*Nincs,prefix='3/3: processing points  ')
     N = 0                                                                                           # group member counter
     for (e,n,i,g,n_local) in group[1:]:                                                             # loop over group members
       member += 1
-      if member%1000 == 0:
-        time_delta = ((len(locations)*memberCount)/float(member+incCount*memberCount)-1.0)*(time.time()-time_start)
-        if options.verbose: bg.set_message('(%02i:%02i:%02i) processing point %i of %i from increment %i (position %i)...'
-          %(time_delta//3600,time_delta%3600//60,time_delta%60,member,memberCount,increments[incCount],position))
-
       newby = []                                                                                    # current member's data
 
       if options.nodalScalar:
@@ -1172,6 +1126,7 @@ for incCount,position in enumerate(locations):     # walk through locations
                                  group[0] + \
                                  mappedResult)
                         )) + '\n')
+damask.util.progressBar(iteration=1,total=1,prefix='3/3: processing points  ')
 
 if fileOpen:
   file.close()

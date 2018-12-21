@@ -302,7 +302,7 @@ subroutine math_check
  endif
  
 end subroutine math_check
- 
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Quicksort algorithm for two-dimensional integer arrays
@@ -2625,12 +2625,9 @@ real(pReal) pure elemental function math_clip(a, left, right)
  real(pReal), intent(in) :: a
  real(pReal), intent(in), optional :: left, right
 
-   
- math_clip = min ( &
-                   max (merge(left, -huge(a), present(left)), a), &
-                        merge(right, huge(a), present(right)) &
-                  )
-
+ math_clip = a
+ if (present(left))   math_clip = max(left,math_clip)
+ if (present(right))  math_clip = min(right,math_clip)
  if (present(left) .and. present(right)) &
    math_clip = merge (IEEE_value(1.0_pReal,IEEE_quiet_NaN),math_clip, left>right)
 
