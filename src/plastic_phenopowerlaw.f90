@@ -217,9 +217,9 @@ subroutine plastic_phenopowerlaw_init
                                                              config_phase(p)%getFloats('interaction_slipslip'), &
                                                              structure(1:3))
 
-     prm%xi_slip_0            = config_phase(p)%getFloats('tau0_slip',   requiredShape=shape(prm%Nslip))
-     prm%xi_slip_sat          = config_phase(p)%getFloats('tausat_slip', requiredShape=shape(prm%Nslip))
-     prm%H_int                = config_phase(p)%getFloats('h_int',       requiredShape=shape(prm%Nslip), &
+     prm%xi_slip_0            = config_phase(p)%getFloats('tau0_slip',   requiredSize=size(prm%Nslip))
+     prm%xi_slip_sat          = config_phase(p)%getFloats('tausat_slip', requiredSize=size(prm%Nslip))
+     prm%H_int                = config_phase(p)%getFloats('h_int',       requiredSize=size(prm%Nslip), &
                                                                          defaultVal=[(0.0_pReal,i=1_pInt,size(prm%Nslip))])
  
      prm%gdot0_slip           = config_phase(p)%getFloat('gdot0_slip')
@@ -256,7 +256,7 @@ subroutine plastic_phenopowerlaw_init
      prm%gamma_twin_char      = lattice_characteristicShear_twin(prm%Ntwin,structure(1:3),&
                                                             config_phase(p)%getFloat('c/a'))
 
-     prm%xi_twin_0            = config_phase(p)%getFloats('tau0_twin',requiredShape=shape(prm%Ntwin))
+     prm%xi_twin_0            = config_phase(p)%getFloats('tau0_twin',requiredSize=size(prm%Ntwin))
 
      prm%gdot0_twin           = config_phase(p)%getFloat('gdot0_twin')
      prm%n_twin               = config_phase(p)%getFloat('n_twin')
