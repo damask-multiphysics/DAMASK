@@ -599,9 +599,12 @@ function plastic_disloUCLA_postResults(Mp,Temperature,instance,of) result(postRe
 
 end function plastic_disloUCLA_postResults
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return array of constitutive results
+!-------------------------------------------------------------------------------------------------- 
+!> @brief Shear rates on slip systems, their derivatives with respect to resolved stress and the
+!  resolved stresss
+!> @details Derivatives and resolved stress are calculated only optionally.                                             
+! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to      
+! have the optional arguments at the end                                                            
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics(Mp,Temperature,instance,of, &
                  gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg,tau_slip_pos1,tau_slip_neg1)
