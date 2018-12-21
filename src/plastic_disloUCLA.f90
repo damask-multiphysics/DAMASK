@@ -29,10 +29,8 @@ module plastic_disloUCLA
      shearrate_ID, &
      accumulatedshear_ID, &
      mfp_ID, &
-     resolvedstress_ID, &
      thresholdstress_ID, &
-     dipoledistance_ID, &
-     stressexponent_ID
+     dipoledistance_ID
  end enum
 
  type, private :: tParameters
@@ -309,14 +307,10 @@ subroutine plastic_disloUCLA_init()
          outputID = merge(accumulatedshear_ID,undefined_ID,prm%totalNslip>0_pInt)
        case ('mfp','mfp_slip')
          outputID = merge(mfp_ID,undefined_ID,prm%totalNslip>0_pInt)
-       case ('resolved_stress','resolved_stress_slip')
-         outputID = merge(resolvedstress_ID,undefined_ID,prm%totalNslip>0_pInt)
        case ('threshold_stress','threshold_stress_slip')
          outputID = merge(thresholdstress_ID,undefined_ID,prm%totalNslip>0_pInt)
        case ('edge_dipole_distance')
          outputID = merge(dipoleDistance_ID,undefined_ID,prm%totalNslip>0_pInt)
-       case ('stress_exponent')
-         outputID = merge(stressexponent_ID,undefined_ID,prm%totalNslip>0_pInt)
      end select
 
      if (outputID /= undefined_ID) then
@@ -461,9 +455,6 @@ pure subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,inst
  enddo slipSystems
  end associate
 
- Lp = 0.5_pReal * Lp
- dLp_dMp = 0.5_pReal * dLp_dMp
-
 end subroutine plastic_disloUCLA_LpAndItsTangent
 
 
@@ -501,7 +492,7 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
                  gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
 
  dot%whole(:,of) = 0.0_pReal
- dot%accshear_slip(:,of) = (gdot_slip_pos+gdot_slip_neg)*0.5_pReal
+ dot%accshear_slip(:,of) = (gdot_slip_pos+gdot_slip_neg)
 
  VacancyDiffusion = prm%D0*exp(-prm%Qsd/(kB*Temperature))
 
@@ -574,29 +565,14 @@ function plastic_disloUCLA_postResults(Mp,Temperature,instance,of) result(postRe
        postResults(c+1_pInt:c+prm%totalNslip) = stt%rhoEdge(1_pInt:prm%totalNslip,of)
      case (rhoDip_ID)
        postResults(c+1_pInt:c+prm%totalNslip) = stt%rhoEdgeDip(1_pInt:prm%totalNslip,of)
-     case (shearrate_ID,stressexponent_ID)
+     case (shearrate_ID)
        call kinetics(prm,stt,dst,Mp,Temperature,of, &
-                     gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
-
-       if    (prm%outputID(o) == shearrate_ID) then
-         postResults(c+1:c+prm%totalNslip) = (gdot_slip_pos + gdot_slip_neg)*0.5_pReal
-       elseif(prm%outputID(o) == stressexponent_ID) then
-         where (dNeq0(gdot_slip_pos+gdot_slip_neg))
-           postResults(c+1_pInt:c + prm%totalNslip) = (tau_slip_pos+tau_slip_neg) * 0.5_pReal &
-                                             / (gdot_slip_pos+gdot_slip_neg) &
-                                             * (dgdot_dtauslip_pos+dgdot_dtauslip_neg)
-         else where
-           postResults(c+1_pInt:c + prm%totalNslip) = 0.0_pReal
-         end where
-       endif
+                    gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
+       postResults(c+1:c+prm%totalNslip) = gdot_slip_pos + gdot_slip_neg
      case (accumulatedshear_ID)
        postResults(c+1_pInt:c+prm%totalNslip) = stt%accshear_slip(1_pInt:prm%totalNslip, of)
      case (mfp_ID)
        postResults(c+1_pInt:c+prm%totalNslip) = dst%mfp(1_pInt:prm%totalNslip, of)
-     case (resolvedstress_ID)
-       do i = 1_pInt, prm%totalNslip
-         postResults(c+i) =math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i))
-       enddo
      case (thresholdstress_ID)
        postResults(c+1_pInt:c+prm%totalNslip) = dst%threshold_stress(1_pInt:prm%totalNslip,of)
      case (dipoleDistance_ID)
@@ -678,7 +654,7 @@ math_mul33xx33
             * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)  &
             )
 
-     gdot_slip_pos = DotGamma0 * sign(vel_slip,tau_slip_pos)
+     gdot_slip_pos = DotGamma0 * sign(vel_slip,tau_slip_pos) * 0.5_pReal
 
      dvel_slip = 2.0_pReal*prm%burgers * prm%kink_height * prm%omega  &
                * ( dst%mfp(:,of) - prm%kink_width ) &
@@ -717,7 +693,7 @@ math_mul33xx33
           )**2.0_pReal &
           )
 
-     dgdot_dtauslip_pos = DotGamma0 * dvel_slip
+     dgdot_dtauslip_pos = DotGamma0 * dvel_slip* 0.5_pReal
 else where significantPositiveTau
  gdot_slip_pos = 0.0_pReal
  dgdot_dtauslip_pos = 0.0_pReal
@@ -740,7 +716,7 @@ end where significantPositiveTau
             * exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)  &
             )
 
-     gdot_slip_neg = DotGamma0 * sign(vel_slip,tau_slip_neg)
+     gdot_slip_neg = DotGamma0 * sign(vel_slip,tau_slip_neg) * 0.5_pReal
 
      dvel_slip = 2.0_pReal*prm%burgers * prm%kink_height * prm%omega  &
                * ( dst%mfp(:,of) - prm%kink_width ) &
@@ -780,7 +756,7 @@ end where significantPositiveTau
           )
 
 
-     dgdot_dtauslip_neg = DotGamma0 * dvel_slip
+     dgdot_dtauslip_neg = DotGamma0 * dvel_slip * 0.5_pReal
 else where significantNegativeTau
  gdot_slip_neg = 0.0_pReal
  dgdot_dtauslip_neg = 0.0_pReal
