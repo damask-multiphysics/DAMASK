@@ -437,15 +437,15 @@ pure subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,inst
  integer(pInt) :: i,k,l,m,n
 
  real(pReal), dimension(param(instance)%totalNslip) :: &
-   gdot_slip_pos,gdot_slip_neg,tau_slip_pos,tau_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg
+   gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg
 
  associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
 
  Lp = 0.0_pReal
  dLp_dMp = 0.0_pReal
 
- call kinetics(prm,stt,dst,Mp,Temperature,of, &
-               gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
+ call kinetics(Mp,Temperature,instance,of, &
+                 gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg)
  slipSystems: do i = 1_pInt, prm%totalNslip
    Lp = Lp + (gdot_slip_pos(i)+gdot_slip_neg(i))*prm%Schmid_slip(1:3,1:3,i)
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
@@ -488,8 +488,8 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
 
  associate(prm => param(instance), stt => state(instance),dot => dotState(instance), dst => dependentState(instance))
 
- call kinetics(prm,stt,dst,Mp,Temperature,of, &
-                 gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
+ call kinetics(Mp,Temperature,instance,of, &
+                 gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg,tau_slip_pos,tau_slip_neg)
 
  dot%whole(:,of) = 0.0_pReal
  dot%accshear_slip(:,of) = (gdot_slip_pos+gdot_slip_neg)                                            ! ToDo: needs to be abs
@@ -549,8 +549,8 @@ function plastic_disloUCLA_postResults(Mp,Temperature,instance,of) result(postRe
  integer(pInt) :: &
    o,c,i
  real(pReal), dimension(param(instance)%totalNslip) :: &
-   gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos, &
-   gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg
+   gdot_slip_pos,dgdot_dtauslip_pos, &
+   gdot_slip_neg,dgdot_dtauslip_neg
 
  associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
 
@@ -565,8 +565,8 @@ function plastic_disloUCLA_postResults(Mp,Temperature,instance,of) result(postRe
      case (rhoDip_ID)
        postResults(c+1_pInt:c+prm%totalNslip) = stt%rhoEdgeDip(1_pInt:prm%totalNslip,of)
      case (shearrate_ID)
-       call kinetics(prm,stt,dst,Mp,Temperature,of, &
-                    gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
+       call kinetics(Mp,Temperature,instance,of, &
+                 gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg)
        postResults(c+1:c+prm%totalNslip) = gdot_slip_pos + gdot_slip_neg
      case (accumulatedshear_ID)
        postResults(c+1_pInt:c+prm%totalNslip) = stt%accshear_slip(1_pInt:prm%totalNslip, of)
@@ -596,8 +596,8 @@ end function plastic_disloUCLA_postResults
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-pure subroutine kinetics(prm,stt,dst,Mp,Temperature,of, &
-                 gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg)
+pure subroutine kinetics(Mp,Temperature,instance,of, &
+                 gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg,tau_slip_pos1,tau_slip_neg1)
  use prec, only: &
    tol_math_check, &
    dEq, dNeq0
@@ -606,32 +606,35 @@ pure subroutine kinetics(prm,stt,dst,Mp,Temperature,of, &
    math_mul33xx33
 
  implicit none
- type(tParameters), intent(in) :: &
-   prm
- type(tDisloUCLAState), intent(in) :: &
-   stt
- type(tDisloUCLAdependentState), intent(in) :: &
-   dst
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
  real(pReal),                intent(in) :: &
    temperature                                                                                      !< temperature at integration point
  integer(pInt),              intent(in) :: &
-   of
+   of, instance
 
  integer(pInt) :: &
    j
- real(pReal), intent(out), dimension(prm%totalNslip) :: &
-   gdot_slip_pos,dgdot_dtauslip_pos,tau_slip_pos,gdot_slip_neg,dgdot_dtauslip_neg,tau_slip_neg
- real(pReal), dimension(prm%totalNslip) :: &
+ real(pReal), intent(out), dimension(param(instance)%totalNslip) :: &
+   gdot_slip_pos,gdot_slip_neg
+ real(pReal), intent(out), optional, dimension(param(instance)%totalNslip) :: &
+   dgdot_dtauslip_pos,tau_slip_pos1,dgdot_dtauslip_neg,tau_slip_neg1
+ real(pReal), dimension(param(instance)%totalNslip) :: &
    StressRatio, BoltzmannRatio, &
    StressRatio_p,StressRatio_pminus1, &
-   DotGamma0, dvel_slip, vel_slip
+   DotGamma0, dvel_slip, vel_slip, &
+   tau_slip_pos,tau_slip_neg
 
+ associate(prm => param(instance), stt => state(instance),dot => dotState(instance), dst => dependentState(instance))
+ 
  do j = 1_pInt, prm%totalNslip
    tau_slip_pos(j) = math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,j))
    tau_slip_neg(j) = math_mul33xx33(Mp,prm%nonSchmid_neg(1:3,1:3,j))
  enddo
+ 
+  
+ if (present(tau_slip_pos1)) tau_slip_pos1 = tau_slip_pos
+ if (present(tau_slip_neg1)) tau_slip_neg1 = tau_slip_neg
 
  BoltzmannRatio = prm%H0kp/(kB*Temperature)
  DotGamma0 = stt%rhoEdge(:,of)*prm%burgers*prm%v0
@@ -654,7 +657,11 @@ pure subroutine kinetics(prm,stt,dst,Mp,Temperature,of, &
           )
 
    gdot_slip_pos = DotGamma0 * sign(vel_slip,tau_slip_pos) * 0.5_pReal
+ else where significantPositiveTau
+   gdot_slip_pos = 0.0_pReal
+ end where significantPositiveTau
 
+ significantPositiveTau2: where(abs(tau_slip_pos)-dst%threshold_stress(:,of) > tol_math_check)
    dvel_slip = 2.0_pReal*prm%burgers * prm%kink_height * prm%omega  &
              * ( dst%mfp(:,of) - prm%kink_width ) &
         * ( &
@@ -693,10 +700,9 @@ pure subroutine kinetics(prm,stt,dst,Mp,Temperature,of, &
         )
 
    dgdot_dtauslip_pos = DotGamma0 * dvel_slip* 0.5_pReal
- else where significantPositiveTau
-   gdot_slip_pos = 0.0_pReal
+ else where significantPositiveTau2
    dgdot_dtauslip_pos = 0.0_pReal
- end where significantPositiveTau
+ end where significantPositiveTau2
 
  significantNegativeTau: where(abs(tau_slip_neg)-dst%threshold_stress(:,of) > tol_math_check)
    StressRatio = (abs(tau_slip_neg)-dst%threshold_stress(:,of)) &
@@ -716,7 +722,11 @@ pure subroutine kinetics(prm,stt,dst,Mp,Temperature,of, &
           )
 
    gdot_slip_neg = DotGamma0 * sign(vel_slip,tau_slip_neg) * 0.5_pReal
+ else where significantNegativeTau
+   gdot_slip_neg = 0.0_pReal
+ end where significantNegativeTau
 
+ significantNegativeTau2: where(abs(tau_slip_neg)-dst%threshold_stress(:,of) > tol_math_check)
    dvel_slip = 2.0_pReal*prm%burgers * prm%kink_height * prm%omega  &
              * ( dst%mfp(:,of) - prm%kink_width ) &
         * ( &
@@ -756,10 +766,11 @@ pure subroutine kinetics(prm,stt,dst,Mp,Temperature,of, &
 
 
    dgdot_dtauslip_neg = DotGamma0 * dvel_slip * 0.5_pReal
- else where significantNegativeTau
-   gdot_slip_neg = 0.0_pReal
+ else where significantNegativeTau2
    dgdot_dtauslip_neg = 0.0_pReal
- end where significantNegativeTau
+ end where significantNegativeTau2
+
+ end associate
 
 end subroutine kinetics
 
