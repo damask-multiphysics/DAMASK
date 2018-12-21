@@ -39,30 +39,30 @@ module plastic_disloUCLA
    real(pReal) :: &
      aTolRho, &
      grainSize, &
-     SolidSolutionStrength, &                                                       !< Strength due to elements in solid solution
+     SolidSolutionStrength, &                                                                       !< Strength due to elements in solid solution
      mu, &
-     D0, &                                                                          !< prefactor for self-diffusion coefficient
-     Qsd                                                                            !< activation energy for dislocation climb
+     D0, &                                                                                          !< prefactor for self-diffusion coefficient
+     Qsd                                                                                            !< activation energy for dislocation climb
    real(pReal),                 allocatable, dimension(:) :: &
-     rho0, &                                                                        !< initial edge dislocation density per slip system for each family and instance
-     rhoDip0, &                                                                     !< initial edge dipole density per slip system for each family and instance
-     burgers, &                                                                     !< absolute length of burgers vector [m] for each slip system and instance
+     rho0, &                                                                                        !< initial edge dislocation density per slip system for each family and instance
+     rhoDip0, &                                                                                     !< initial edge dipole density per slip system for each family and instance
+     burgers, &                                                                                     !< absolute length of burgers vector [m] for each slip system and instance
      nonSchmidCoeff, &
      minDipDistance, &
-     CLambda, &                                                                     !< Adj. parameter for distance between 2 forest dislocations for each slip system and instance
+     CLambda, &                                                                                     !< Adj. parameter for distance between 2 forest dislocations for each slip system and instance
      atomicVolume, &
      !* mobility law parameters
-     H0kp, &                                                                        !< activation energy for glide [J] for each slip system and instance
-     v0, &                                                                          !< dislocation velocity prefactor [m/s] for each family and instance
-     p, &                                                                           !< p-exponent in glide velocity
-     q, &                                                                           !< q-exponent in glide velocity
-     B, &                                                                            !< friction coeff. B (kMC)
-     kink_height, &                                                                  !< height of the kink pair
-     kink_width, &                                                                   !< width of the kink pair
-     omega, &                                                                        !< attempt frequency for kink pair nucleation
+     H0kp, &                                                                                        !< activation energy for glide [J] for each slip system and instance
+     v0, &                                                                                          !< dislocation velocity prefactor [m/s] for each family and instance
+     p, &                                                                                           !< p-exponent in glide velocity
+     q, &                                                                                           !< q-exponent in glide velocity
+     B, &                                                                                           !< friction coefficient
+     kink_height, &                                                                                 !< height of the kink pair
+     kink_width, &                                                                                  !< width of the kink pair
+     omega, &                                                                                       !< attempt frequency for kink pair nucleation
      tau_Peierls 
    real(pReal),                 allocatable, dimension(:,:) :: &
-     interaction_SlipSlip, &                                                         !< slip resistance from slip activity
+     interaction_SlipSlip, &                                                                        !< slip resistance from slip activity
      forestProjectionEdge
    real(pReal),                 allocatable, dimension(:,:,:) :: &
      Schmid_slip, &
@@ -152,13 +152,14 @@ subroutine plastic_disloUCLA_init()
  use lattice
 
  implicit none
- integer(pInt) :: Ninstance,&
-                  f,j,k,o, i, &
-                  outputSize, &
-                  offset_slip, index_myFamily, index_otherFamily, &
-                  startIndex, endIndex, p, &
-                  sizeState, sizeDotState, &
-                  NipcMyPhase
+ integer(pInt) :: &
+   Ninstance, &
+   f,j,k,o, i, &
+   outputSize, &
+   offset_slip, index_myFamily, index_otherFamily, &
+   startIndex, endIndex, p, &
+   sizeState, sizeDotState, &
+   NipcMyPhase
  character(len=pStringLen) :: &
    structure = '',&
    extmsg = ''
@@ -403,25 +404,24 @@ end subroutine plastic_disloUCLA_init
 subroutine plastic_disloUCLA_dependentState(instance,of)
 
  implicit none
- integer(pInt), intent(in)                  :: instance, of
+ integer(pInt), intent(in) :: instance, of
 
  integer(pInt) :: &
    i
  real(pReal), dimension(param(instance)%totalNslip) :: &
-  invLambdaSlip ! 1/mean free distance between 2 forest dislocations seen by a moving dislocation
+  dislocationSpacing ! 1/mean free distance between 2 forest dislocations seen by a moving dislocation
 
  associate(prm => param(instance), stt => state(instance),dst => dependentState(instance))
 
  forall (i = 1_pInt:prm%totalNslip)
-   invLambdaSlip(i) = sqrt(dot_product(stt%rhoEdge(:,of)+stt%rhoEdgeDip(:,of), &
-                                       prm%forestProjectionEdge(:,i))) &
-                    / prm%Clambda(i)
+   dislocationSpacing(i) = sqrt(dot_product(stt%rhoEdge(:,of)+stt%rhoEdgeDip(:,of), &
+                                       prm%forestProjectionEdge(:,i)))
    dst%threshold_stress(i,of) = prm%mu*prm%burgers(i) &
                               * sqrt(dot_product(stt%rhoEdge(:,of)+stt%rhoEdgeDip(:,of), &
                                                  prm%interaction_SlipSlip(i,:)))
  end forall
 
- dst%mfp(:,of) = prm%grainSize/(1.0_pReal+prm%grainSize*invLambdaSlip)
+ dst%mfp(:,of) = prm%grainSize/(1.0_pReal+prm%grainSize*dislocationSpacing/prm%Clambda)
  end associate
 
 
