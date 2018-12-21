@@ -1769,8 +1769,8 @@ end function lattice_C66_twin
 !> @brief Rotated elasticity matrices for transformation in Mandel notation
 !> ToDo: Completely untested and incomplete and undocumented
 !--------------------------------------------------------------------------------------------------
-function lattice_C66_trans(Ntrans,C_parent66,structure_parent, &
-                                  C_target66,structure_target, &
+function lattice_C66_trans(Ntrans,C_parent66, &
+                                  structure_target, &
                                   CoverA_trans,a_bcc,a_fcc)
  use prec, only: &
   tol_math_check
@@ -1790,17 +1790,14 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_parent, &
  implicit none
  integer(pInt),    dimension(:),            intent(in) :: Ntrans                                    !< number of active twin systems per family
  character(len=*),                          intent(in) :: &
-   structure_target, &                                !< lattice structure
-   structure_parent                                !< lattice structure
- real(pReal),      dimension(6,6),          intent(in) :: C_parent66, C_target66
+   structure_target                                                                                 !< lattice structure
+ real(pReal),     dimension(6,6),          intent(in) :: C_parent66
  real(pReal),     dimension(6,6)            :: C_bar66, C_target_unrotated66
  real(pReal),     dimension(6,6,sum(Ntrans))            :: lattice_C66_trans
-
- real(pReal),     dimension(3,3)                       :: Q,S
+ real(pReal),     dimension(3,3,sum(Ntrans))            :: Q,S
  real(pReal) :: a_bcc, a_fcc, CoverA_trans
  integer(pInt) :: i
 
- if (trim(structure_parent) /= 'hex') write(6,*) "Mist"
 
 !--------------------------------------------------------------------------------------------------
 ! elasticity matrix of the target phase in cube orientation
@@ -1829,7 +1826,10 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_parent, &
    if (abs(C_target_unrotated66(i,i))<tol_math_check) &
    call IO_error(135_pInt,el=i,ext_msg='matrix diagonal "el"ement in transformation')
  enddo
-lattice_C66_trans = 0.0_pReal
+ lattice_C66_trans = 0.0_pReal
+ 
+ call lattice_Trans(Q,S,Ntrans,CoverA_trans,a_fcc,a_bcc)
+
  do i = 1, sum(Ntrans)
 !   R = math_axisAngleToR(coordinateSystem(1:3,2,i), 180.0_pReal * INRAD)                            ! ToDo: Why always 180 deg?
 !   lattice_C66_trans(1:6,1:6,i) = math_Mandel3333to66(math_rotate_forward3333(math_Mandel66to3333(C66),R))
