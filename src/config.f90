@@ -142,7 +142,7 @@ subroutine config_init()
     
      case (trim(material_partPhase))
        call parseFile(phase_name,config_phase,line,fileContent(i+1:))
-       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Phase parsed'; flush(6)
+       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Phase          parsed'; flush(6)
     
      case (trim(material_partMicrostructure))
        call parseFile(microstructure_name,config_microstructure,line,fileContent(i+1:))
@@ -150,7 +150,7 @@ subroutine config_init()
     
      case (trim(material_partCrystallite))
        call parseFile(crystallite_name,config_crystallite,line,fileContent(i+1:))
-       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Crystallite parsed'; flush(6)
+       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Crystallite    parsed'; flush(6)
     
      case (trim(material_partHomogenization))
        call parseFile(homogenization_name,config_homogenization,line,fileContent(i+1:))
@@ -158,7 +158,7 @@ subroutine config_init()
     
      case (trim(material_partTexture))
        call parseFile(texture_name,config_texture,line,fileContent(i+1:))
-       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Texture parsed'; flush(6)
+       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Texture        parsed'; flush(6)
 
    end select
 
