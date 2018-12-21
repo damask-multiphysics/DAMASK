@@ -579,8 +579,8 @@ end function plastic_phenopowerlaw_postResults
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates shear rates on slip systems and derivatives with respect to resolved stress
-!> @details Shear rates are calculated only optionally. 
+!> @brief Shear rates on slip systems and their derivatives with respect to resolved stress
+!> @details Derivatives are calculated only optionally. 
 ! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to 
 ! have the optional arguments at the end
 !--------------------------------------------------------------------------------------------------
@@ -655,7 +655,7 @@ end subroutine kinetics_slip
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates shear rates on twin systems and derivatives with respect to resolved stress.
+!> @brief Shear rates on twin systems and their derivatives with respect to resolved stress.
 !  twinning is assumed to take place only in untwinned volume.
 !> @details Derivates are calculated only optionally.
 ! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to 
