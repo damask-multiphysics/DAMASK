@@ -440,6 +440,8 @@ subroutine plastic_kinehardening_deltaState(Mp,instance,of)
    gdot_pos,gdot_neg, &
    sense
 
+ associate( prm => paramNew(instance), stt => state(instance), del => deltaState(instance))
+ 
  call plastic_kinehardening_shearRates(Mp,instance,of,gdot_pos,gdot_neg)
  sense = merge(state(instance)%sense(:,of), &                                                       ! keep existing...
                sign(1.0_pReal,gdot_pos+gdot_neg), &                                                 ! ...or have a defined 
@@ -463,15 +465,17 @@ subroutine plastic_kinehardening_deltaState(Mp,instance,of)
 #endif
 !--------------------------------------------------------------------------------------------------
 ! switch in sense of shear?
- where(dNeq(sense,state(instance)%sense(:,of),0.1_pReal))
-   deltaState(instance)%sense (:,of) = sense - state(instance)%sense(:,of)                              ! switch sense
-   deltaState(instance)%chi0  (:,of) = abs(state(instance)%crss_back(:,of)) - state(instance)%chi0(:,of)   ! remember current backstress magnitude
-   deltaState(instance)%gamma0(:,of) = state(instance)%accshear(:,of) - state(instance)%gamma0(:,of)       ! remember current accumulated shear
+ where(dNeq(sense,stt%sense(:,of),0.1_pReal))
+   del%sense (:,of) = sense - stt%sense(:,of)                                                       ! switch sense
+   del%chi0  (:,of) = abs(stt%crss_back(:,of)) - stt%chi0(:,of)                                     ! remember current backstress magnitude
+   del%gamma0(:,of) = stt%accshear(:,of) - stt%gamma0(:,of)                                         ! remember current accumulated shear
  else where
-   deltaState(instance)%sense (:,of) = 0.0_pReal                                                           ! no change
-   deltaState(instance)%chi0  (:,of) = 0.0_pReal
-   deltaState(instance)%gamma0(:,of) = 0.0_pReal
+   del%sense (:,of) = 0.0_pReal
+   del%chi0  (:,of) = 0.0_pReal
+   del%gamma0(:,of) = 0.0_pReal
  end where
+ 
+ end associate
 
 end subroutine plastic_kinehardening_deltaState
 
