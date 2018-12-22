@@ -83,8 +83,7 @@ module plastic_kinehardening
  end type
 
  type(tParameters), dimension(:), allocatable, private :: &
-   param, &                                                                                            !< containers of constitutive parameters (len Ninstance)
-   paramNew ! temp
+   param                                                                                            !< containers of constitutive parameters (len Ninstance)
 
  type(tKinehardeningState), allocatable, dimension(:), private :: &
    dotState, &
@@ -99,7 +98,7 @@ module plastic_kinehardening
    plastic_kinehardening_deltaState, &
    plastic_kinehardening_postResults
  private :: &
-   plastic_kinehardening_shearRates
+   kinetics
 
 
 contains
@@ -149,7 +148,6 @@ subroutine plastic_kinehardening_init
    outputSize, &
    offset_slip, &
    startIndex, endIndex, &
-   nSlip, &
    sizeDotState, &
    sizeState, &
    sizeDeltaState
@@ -164,7 +162,6 @@ subroutine plastic_kinehardening_init
  character(len=65536), dimension(:), allocatable :: &
   outputs
  character(len=65536) :: &
-   tag       = '', &
    extmsg    = '', &
    structure    = ''
 
@@ -186,7 +183,6 @@ subroutine plastic_kinehardening_init
  allocate(plastic_kinehardening_Nslip(lattice_maxNslipFamily,Ninstance),  source=0_pInt)
  
  allocate(param(Ninstance))                                                                      ! one container of parameters per instance
- allocate(paramNew(Ninstance))
  allocate(state(Ninstance))
  allocate(dotState(Ninstance))
  allocate(deltaState(Ninstance))
@@ -194,7 +190,7 @@ subroutine plastic_kinehardening_init
  do p = 1_pInt, size(phase_plasticityInstance)
    if (phase_plasticity(p) /= PLASTICITY_KINEHARDENING_ID) cycle
      instance = phase_plasticityInstance(p)                                                     ! which instance of my phase
-   associate(prm => paramNew(phase_plasticityInstance(p)), &
+   associate(prm => param(phase_plasticityInstance(p)), &
              dot => dotState(phase_plasticityInstance(p)), &
              delta => deltaState(phase_plasticityInstance(p)), &
              stt => state(phase_plasticityInstance(p)))
@@ -295,8 +291,7 @@ subroutine plastic_kinehardening_init
       endif
 
    end do
-   param(instance)%outputID = prm%outputID
-   nslip = prm%totalNslip
+
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
    NipcMyPhase = count(material_phase == p)                                                         ! number of constituents with my phase
@@ -305,27 +300,27 @@ subroutine plastic_kinehardening_init
    sizeState = sizeDotState + sizeDeltaState
 
    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,sizeDeltaState, &
-                                      nSlip,0_pInt,0_pInt)
+                                      prm%totalNslip,0_pInt,0_pInt)
                                       
    plasticState(p)%sizePostResults = sum(plastic_kinehardening_sizePostResult(:,phase_plasticityInstance(p)))
    plasticState(p)%offsetDeltaState = sizeDotState
 
 
      startIndex = 1_pInt
-     endIndex   = nSlip
+     endIndex   =  prm%totalNslip
      stt%crss          => plasticState(p)%state    (startIndex:endIndex,1:NipcMyPhase)
      dot%crss          => plasticState(p)%dotState (startIndex:endIndex,1:NipcMyPhase)
      stt%crss = spread(prm%crss0, 2, NipcMyPhase)
      plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolResistance
      
      startIndex = endIndex + 1_pInt
-     endIndex   = endIndex + nSlip 
+     endIndex   = endIndex +  prm%totalNslip 
      stt%crss_back          => plasticState(p)%state    (startIndex:endIndex,1:NipcMyPhase)
      dot%crss_back          => plasticState(p)%dotState (startIndex:endIndex,1:NipcMyPhase)
      plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolResistance
      
      startIndex = endIndex + 1_pInt
-     endIndex   = endIndex + nSlip
+     endIndex   = endIndex +  prm%totalNslip
      stt%accshear          => plasticState(p)%state    (startIndex:endIndex,1:NipcMyPhase)
      dot%accshear          => plasticState(p)%dotState (startIndex:endIndex,1:NipcMyPhase)
      plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolShear
@@ -335,17 +330,17 @@ subroutine plastic_kinehardening_init
      o = endIndex
      
      startIndex = endIndex + 1_pInt
-     endIndex   = endIndex + nSlip
+     endIndex   = endIndex +  prm%totalNslip
      stt%sense          => plasticState(p)%state     (startIndex  :endIndex  ,1:NipcMyPhase)
      delta%sense        => plasticState(p)%deltaState(startIndex-o:endIndex-o,1:NipcMyPhase)
      
      startIndex = endIndex + 1_pInt
-     endIndex   = endIndex + nSlip
+     endIndex   = endIndex +  prm%totalNslip
      stt%chi0           => plasticState(p)%state     (startIndex  :endIndex  ,1:NipcMyPhase)
      delta%chi0         => plasticState(p)%deltaState(startIndex-o:endIndex-o,1:NipcMyPhase)
 
      startIndex = endIndex + 1_pInt
-     endIndex   = endIndex + nSlip
+     endIndex   = endIndex +  prm%totalNslip
      stt%gamma0         => plasticState(p)%state     (startIndex  :endIndex  ,1:NipcMyPhase)         
      delta%gamma0       => plasticState(p)%deltaState(startIndex-o:endIndex-o,1:NipcMyPhase)
      
@@ -399,15 +394,15 @@ subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
    j,k,l,m,n
 
    
- real(pReal), dimension(paramNew(instance)%totalNslip) :: &
+ real(pReal), dimension(param(instance)%totalNslip) :: &
    gdot_pos,gdot_neg, &
    dgdot_dtau_pos,dgdot_dtau_neg
 
- associate(prm => paramNew(instance), stt => state(instance))
+ associate(prm => param(instance), stt => state(instance))
  Lp = 0.0_pReal 
  dLp_dMp = 0.0_pReal
 
- call plastic_kinehardening_shearRates(Mp,instance,of,gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_dtau_neg)
+ call kinetics(Mp,instance,of,gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_dtau_neg)
 
  do j = 1_pInt, prm%totalNslip
    Lp = Lp + (gdot_pos(j)+gdot_neg(j))*prm%Schmid_slip(1:3,1:3,j)
@@ -436,33 +431,30 @@ subroutine plastic_kinehardening_deltaState(Mp,instance,of)
    instance, &
    of
 
- real(pReal), dimension(paramNew(instance)%totalNslip) :: &
+ real(pReal), dimension(param(instance)%totalNslip) :: &
    gdot_pos,gdot_neg, &
    sense
 
- associate( prm => paramNew(instance), stt => state(instance), del => deltaState(instance))
+ associate( prm => param(instance), stt => state(instance), del => deltaState(instance))
  
- call plastic_kinehardening_shearRates(Mp,instance,of,gdot_pos,gdot_neg)
+ call kinetics(Mp,instance,of,gdot_pos,gdot_neg)
  sense = merge(state(instance)%sense(:,of), &                                                       ! keep existing...
                sign(1.0_pReal,gdot_pos+gdot_neg), &                                                 ! ...or have a defined 
                dEq0(gdot_pos+gdot_neg,1e-10_pReal))                                                 ! current sense of shear direction
 
 #ifdef DEBUG
-!         if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &
+!         if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &               ! ToDo: We need an inverse mapping of ->el, ip, co
 !            .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
 !                   .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
 !           write(6,'(a)') '======= kinehardening delta state ======='
 !         endif
-#endif
-
-
-#ifdef DEBUG
 !         if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &
 !            .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
 !                   .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
 !           write(6,'(i2,1x,f7.4,1x,f7.4)') j,sense(j),state(instance)%sense(j,of)
 !         endif
 #endif
+
 !--------------------------------------------------------------------------------------------------
 ! switch in sense of shear?
  where(dNeq(sense,stt%sense(:,of),0.1_pReal))
@@ -480,7 +472,6 @@ subroutine plastic_kinehardening_deltaState(Mp,instance,of)
 end subroutine plastic_kinehardening_deltaState
 
 
-
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
@@ -491,20 +482,19 @@ subroutine plastic_kinehardening_dotState(Mp,instance,of)
    Mp                                                                                               !< Mandel stress
  integer(pInt),              intent(in) :: &
    instance, &
-   of                                                 !< element !< microstructure state
+   of
 
  integer(pInt) :: &
    j
- 
- real(pReal), dimension(paramNew(instance)%totalNslip) :: &
+ real(pReal), dimension(param(instance)%totalNslip) :: &
    gdot_pos,gdot_neg
  real(pReal) :: &
    sumGamma
  
 
- associate( prm => paramNew(instance), stt => state(instance), dot => dotState(instance))
+ associate( prm => param(instance), stt => state(instance), dot => dotState(instance))
 
- call plastic_kinehardening_shearRates(Mp,instance,of,gdot_pos,gdot_neg)
+ call kinetics(Mp,instance,of,gdot_pos,gdot_neg)
  dot%accshear(:,of) = abs(gdot_pos+gdot_neg)
  sumGamma = sum(stt%accshear(:,of))       
                  
@@ -546,16 +536,16 @@ function plastic_kinehardening_postResults(Mp,instance,of) result(postResults)
  integer(pInt) :: &
    o,c,j
    
- real(pReal), dimension(paramNew(instance)%totalNslip) :: &
+ real(pReal), dimension(param(instance)%totalNslip) :: &
    gdot_pos,gdot_neg
 
  postResults = 0.0_pReal
  c = 0_pInt
 
 
- associate( prm => paramNew(instance), stt => state(instance))
+ associate( prm => param(instance), stt => state(instance))
  
- call plastic_kinehardening_shearRates(Mp,instance,of,gdot_pos,gdot_neg)
+ call kinetics(Mp,instance,of,gdot_pos,gdot_neg)
  
  outputsLoop: do o = 1_pInt,plastic_kinehardening_Noutput(instance)
    select case(prm%outputID(o))
@@ -584,12 +574,10 @@ function plastic_kinehardening_postResults(Mp,instance,of) result(postResults)
        c = c + prm%totalNslip
        
      case (shearrate_ID)
-       
        postResults(c+1_pInt:c+prm%totalNslip) = gdot_pos+gdot_neg
        c = c + prm%totalNslip
 
      case (resolvedstress_ID)
-     
        do j = 1_pInt, prm%totalNslip
          postResults(c+j) = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,j))
        enddo
@@ -619,32 +607,29 @@ pure subroutine kinetics(Mp,instance,of,gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_d
  integer(pInt),     intent(in) :: &
    instance, & 
    of
- real(pReal), dimension(paramNew(instance)%totalNslip), intent(out) :: &
+ real(pReal), dimension(param(instance)%totalNslip), intent(out) :: &
    gdot_pos, &
    gdot_neg
- real(pReal), dimension(paramNew(instance)%totalNslip), optional, intent(out) :: &
+ real(pReal), dimension(param(instance)%totalNslip), optional, intent(out) :: &
    dgdot_dtau_pos, &
    dgdot_dtau_neg
 
 
- real(pReal), dimension(paramNew(instance)%totalNslip) :: &
+ real(pReal), dimension(param(instance)%totalNslip) :: &
    tau_pos, &
    tau_neg
  integer(pInt) :: i
  logical       :: nonSchmidActive
 
- associate( prm => paramNew(instance), stt => state(instance))
+ associate( prm => param(instance), stt => state(instance))
  
  nonSchmidActive = size(prm%nonSchmidCoeff) > 0_pInt
 
  do i = 1_pInt, prm%totalNslip
-   tau_pos(i) =       math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i))
-   tau_neg(i) = merge(math_mul33xx33(Mp,prm%nonSchmid_neg(1:3,1:3,i)), &
+   tau_pos(i) =       math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i)) - stt%crss_back(i,of)
+   tau_neg(i) = merge(math_mul33xx33(Mp,prm%nonSchmid_neg(1:3,1:3,i)) - stt%crss_back(i,of), &
                            0.0_pReal, nonSchmidActive)
  enddo
-
- tau_pos = tau_pos - stt%crss_back(:,of)
- tau_neg = tau_neg - stt%crss_back(:,of)
 
  where(dNeq0(tau_pos))
    gdot_pos = prm%gdot0 * merge(0.5_pReal,1.0_pReal, nonSchmidActive) &                             ! 1/2 if non-Schmid active
@@ -677,64 +662,5 @@ pure subroutine kinetics(Mp,instance,of,gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_d
  end associate
 
 end subroutine kinetics
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculation of shear rates (\dot \gamma)
-!--------------------------------------------------------------------------------------------------
-subroutine plastic_kinehardening_shearRates(Mp,instance,of, &
-                                            gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_dtau_neg)
- use prec
- use math
-
- implicit none
- real(pReal), dimension(3,3), intent(in) :: &
-   Mp
- integer(pInt),               intent(in) :: &
-   instance, &                                                                                     !< instance of that phase
-   of                                                                                              !< index of phaseMember
- real(pReal), dimension(paramNew(instance)%totalNslip), intent(out) :: &
-   gdot_pos, &                                                                                     !< shear rates from positive line segments
-   gdot_neg                                                                                        !< shear rates from negative line segments
- real(pReal), dimension(paramNew(instance)%totalNslip), intent(out),optional :: &
-   dgdot_dtau_pos, &
-   dgdot_dtau_neg
- real(pReal), dimension(paramNew(instance)%totalNslip) :: &
-   tau_pos, &                                                                                      !< shear stress on positive line segments
-   tau_neg                                                                                         !< shear stress on negative line segments
- integer(pInt) :: &
-   i
-   
- associate(prm => paramNew(instance), stt => state(instance))
- do i = 1_pInt, prm%totalNslip
-   tau_pos(i) = math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i)) 
-   tau_neg(i) = math_mul33xx33(Mp,prm%nonSchmid_neg(1:3,1:3,i))
- enddo
- 
- tau_pos = tau_pos - stt%crss_back(:,of)
- tau_neg = tau_neg - stt%crss_back(:,of)
- 
-
- gdot_pos = sign(0.5_pReal * prm%gdot0 *(abs(tau_pos)/ state(instance)%crss(:,of))**prm%n_slip,tau_pos) 
- gdot_neg = sign(0.5_pReal * prm%gdot0 *(abs(tau_neg)/ state(instance)%crss(:,of))**prm%n_slip,tau_neg) 
-
- if (present(dgdot_dtau_pos)) then
-   where(dNeq0(gdot_pos))
-     dgdot_dtau_pos = gdot_pos*prm%n_slip/tau_pos
-   else where
-     dgdot_dtau_pos = 0.0_pReal
-   end where
- endif
- if (present(dgdot_dtau_neg)) then
-   where(dNeq0(gdot_neg))
-     dgdot_dtau_neg = gdot_neg*prm%n_slip/tau_neg
-   else where
-     dgdot_dtau_neg = 0.0_pReal
-   end where
- endif
-
-end associate
-
-end subroutine plastic_kinehardening_shearRates
 
 end module plastic_kinehardening
