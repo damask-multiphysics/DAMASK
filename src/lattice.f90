@@ -32,17 +32,12 @@ module lattice
 
  real(pReal), allocatable, dimension(:,:,:,:), protected, public :: &
    lattice_Sslip_v, &                                                                               !< Mandel notation of lattice_Sslip
-   lattice_Scleavage_v, &                                                                           !< Mandel notation of lattice_Scleavege
-   lattice_Qtrans, &                                                                                !< Total rotation: Q = R*B
-   lattice_Strans                                                                                   !< Eigendeformation tensor for phase transformation
+   lattice_Scleavage_v                                                                              !< Mandel notation of lattice_Scleavege
 
  real(pReal), allocatable, dimension(:,:,:), protected, public :: &
    lattice_sn, &                                                                                    !< normal direction of slip system
    lattice_st, &                                                                                    !< sd x sn
    lattice_sd                                                                                       !< slip direction of slip system
-
- real(pReal), allocatable, dimension(:,:), protected, private :: &
-   lattice_shearTrans                                                                               !< characteristic transformation shear
 
  integer(pInt), allocatable, dimension(:), protected, public :: &
    lattice_NnonSchmid                                                                               !< total # of non-Schmid contributions for each structure
@@ -70,7 +65,7 @@ module lattice
    LATTICE_FCC_NCLEAVAGE  = sum(LATTICE_FCC_NCLEAVAGESYSTEM)                                        !< total # of cleavage systems for fcc
 
  real(pReal), dimension(3+3,LATTICE_FCC_NSLIP), parameter, private :: &
-   LATTICE_fcc_systemSlip = reshape(real([&
+   LATTICE_FCC_SYSTEMSLIP = reshape(real([&
     ! Slip direction     Plane normal                                                               ! SCHMID-BOAS notation
       0, 1,-1,     1, 1, 1, &                                                                       ! B2
      -1, 0, 1,     1, 1, 1, &                                                                       ! B4
@@ -115,22 +110,6 @@ module lattice
 
  character(len=*), dimension(1), parameter, public :: LATTICE_FCC_TWINFAMILY_NAME = &
    ['<-2 1 1>{1 1 1}']
-
- real(pReal), dimension(3+3,LATTICE_FCC_NTRANS), parameter, private :: &
-   LATTICE_fccTohex_systemTrans = reshape(real( [&
-     -2, 1, 1,     1, 1, 1, &
-      1,-2, 1,     1, 1, 1, &
-      1, 1,-2,     1, 1, 1, &
-      2,-1, 1,    -1,-1, 1, &
-     -1, 2, 1,    -1,-1, 1, &
-     -1,-1,-2,    -1,-1, 1, &
-     -2,-1,-1,     1,-1,-1, &
-      1, 2,-1,     1,-1,-1, &
-      1,-1, 2,     1,-1,-1, &
-      2, 1,-1,    -1, 1,-1, &
-     -1,-2,-1,    -1, 1,-1, &
-     -1, 1, 2,    -1, 1,-1  &
-     ],pReal),shape(LATTICE_FCCTOHEX_SYSTEMTRANS))
 
 
  integer(pInt), dimension(2_pInt,LATTICE_FCC_NTWIN), parameter, public :: &
@@ -184,95 +163,6 @@ module lattice
                                                                                                     !<10: similar to glissile junctions in <110>{111} btw one {110} and one {111} plane
                                                                                                     !<11: crossing btw one {110} and one {111} plane
                                                                                                     !<12: collinear btw one {110} and one {111} plane
-
- real(pReal), dimension(LATTICE_fcc_Ntrans), parameter, private :: &
-   LATTICE_fccTohex_shearTrans = sqrt(1.0_pReal/8.0_pReal)
-
- real(pReal), dimension(4,LATTICE_fcc_Ntrans), parameter, private :: &
-   LATTICE_FCCTOBCC_SYSTEMTRANS = reshape([&
-     0.0, 1.0, 0.0,     10.26, &                                                                    ! Pitsch OR (Ma & Hartmaier 2014, Table 3)
-     0.0, 1.0, 0.0,    -10.26, &
-     0.0, 0.0, 1.0,     10.26, &
-     0.0, 0.0, 1.0,    -10.26, &
-     1.0, 0.0, 0.0,     10.26, &
-     1.0, 0.0, 0.0,    -10.26, &
-     0.0, 0.0, 1.0,     10.26, &
-     0.0, 0.0, 1.0,    -10.26, &
-     1.0, 0.0, 0.0,     10.26, &
-     1.0, 0.0, 0.0,    -10.26, &
-     0.0, 1.0, 0.0,     10.26, &
-     0.0, 1.0, 0.0,    -10.26  &
-     ],shape(LATTICE_FCCTOBCC_SYSTEMTRANS))
-
- integer(pInt), dimension(9,LATTICE_fcc_Ntrans), parameter, private :: &
-   LATTICE_FCCTOBCC_BAINVARIANT = reshape(int( [&
-     1, 0, 0, 0, 1, 0, 0, 0, 1, &                                                                   ! Pitsch OR (Ma & Hartmaier 2014, Table 3)
-     1, 0, 0, 0, 1, 0, 0, 0, 1, &
-     1, 0, 0, 0, 1, 0, 0, 0, 1, &
-     1, 0, 0, 0, 1, 0, 0, 0, 1, &
-     0, 1, 0, 1, 0, 0, 0, 0, 1, &
-     0, 1, 0, 1, 0, 0, 0, 0, 1, &
-     0, 1, 0, 1, 0, 0, 0, 0, 1, &
-     0, 1, 0, 1, 0, 0, 0, 0, 1, &
-     0, 0, 1, 1, 0, 0, 0, 1, 0, &
-     0, 0, 1, 1, 0, 0, 0, 1, 0, &
-     0, 0, 1, 1, 0, 0, 0, 1, 0, &
-     0, 0, 1, 1, 0, 0, 0, 1, 0  &
-     ],pInt),shape(LATTICE_FCCTOBCC_BAINVARIANT))
-
- real(pReal), dimension(4,LATTICE_fcc_Ntrans), parameter, private :: &
-   LATTICE_FCCTOBCC_BAINROT = reshape([&
-     1.0, 0.0, 0.0,     45.0, &                                                                     ! Rotate fcc austensite to bain variant
-     1.0, 0.0, 0.0,     45.0, &
-     1.0, 0.0, 0.0,     45.0, &
-     1.0, 0.0, 0.0,     45.0, &
-     0.0, 1.0, 0.0,     45.0, &
-     0.0, 1.0, 0.0,     45.0, &
-     0.0, 1.0, 0.0,     45.0, &
-     0.0, 1.0, 0.0,     45.0, &
-     0.0, 0.0, 1.0,     45.0, &
-     0.0, 0.0, 1.0,     45.0, &
-     0.0, 0.0, 1.0,     45.0, &
-     0.0, 0.0, 1.0,     45.0  &
-     ],shape(LATTICE_FCCTOBCC_BAINROT))
-
- real(pReal), dimension(LATTICE_fcc_Ntrans,LATTICE_fcc_Ntrans), parameter, private :: &             ! Matrix for projection of shear from slip system to fault-band (twin) systems
-   LATTICE_FCCTOBCC_PROJECTIONTRANS = reshape(real([&                                               ! For ns = nt = nr
-     0, 1,-1,  0, 0, 0,  0, 0, 0,  0, 0, 0, &
-    -1, 0, 1,  0, 0, 0,  0, 0, 0,  0, 0, 0, &
-     1,-1, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0, &
-     0, 0, 0,  0, 1,-1,  0, 0, 0,  0, 0, 0, &
-     0, 0, 0, -1, 0, 1,  0, 0, 0,  0, 0, 0, &
-     0, 0, 0,  1,-1, 0,  0, 0, 0,  0, 0, 0, &
-     0, 0, 0,  0, 0, 0,  0, 1,-1,  0, 0, 0, &
-     0, 0, 0,  0, 0, 0, -1, 0, 1,  0, 0, 0, &
-     0, 0, 0,  0, 0, 0,  1,-1, 0,  0, 0, 0, &
-     0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 1,-1, &
-     0, 0, 0,  0, 0, 0,  0, 0, 0, -1, 0, 1, &
-     0, 0, 0,  0, 0, 0,  0, 0, 0,  1,-1, 0  &
-     ],pReal),shape(LATTICE_FCCTOBCC_PROJECTIONTRANS),order=[2,1])
-
- real(pReal), parameter, private  :: &
-   LATTICE_fccTobcc_projectionTransFactor = sqrt(3.0_pReal/4.0_pReal)
-
- real(pReal), parameter, public  :: &
-   LATTICE_fccTobcc_shearCritTrans = 0.0224
-
- integer(pInt), dimension(2_pInt,LATTICE_fcc_Ntrans), parameter, public :: &
-   LATTICE_FCCTOBCC_TRANSNUCLEATIONTWINPAIR = reshape(int( [&
-     4,  7, &
-     1, 10, &
-     1,  4, &
-     7, 10, &
-     2,  8, &
-     5, 11, &
-     8, 11, &
-     2,  5, &
-     6, 12, &
-     3,  9, &
-     3, 12, &
-     6,  9  &
-     ],pInt),shape(LATTICE_FCCTOBCC_TRANSNUCLEATIONTWINPAIR))
 
  real(pReal), dimension(3+3,LATTICE_fcc_Ncleavage), parameter, private :: &
    LATTICE_fcc_systemCleavage = reshape(real([&
@@ -332,31 +222,6 @@ module lattice
       1,-1, 1,    -1, 1, 2, &
      -1, 1, 1,     1,-1, 2, &
       1, 1, 1,     1, 1,-2  &
-   !  Slip system <111>{123}
-   !  1, 1,-1,     1, 2, 3, &
-   !  1,-1, 1,    -1, 2, 3, &
-   ! -1, 1, 1,     1,-2, 3, &
-   !  1, 1, 1,     1, 2,-3, &
-   !  1,-1, 1,     1, 3, 2, &
-   !  1, 1,-1,    -1, 3, 2, &
-   !  1, 1, 1,     1,-3, 2, &
-   ! -1, 1, 1,     1, 3,-2, &
-   !  1, 1,-1,     2, 1, 3, &
-   !  1,-1, 1,    -2, 1, 3, &
-   ! -1, 1, 1,     2,-1, 3, &
-   !  1, 1, 1,     2, 1,-3, &
-   !  1,-1, 1,     2, 3, 1, &
-   !  1, 1,-1,    -2, 3, 1, &
-   !  1, 1, 1,     2,-3, 1, &
-   ! -1, 1, 1,     2, 3,-1, &
-   ! -1, 1, 1,     3, 1, 2, &
-   !  1, 1, 1,    -3, 1, 2, &
-   !  1, 1,-1,     3,-1, 2, &
-   !  1,-1, 1,     3, 1,-2, &
-   ! -1, 1, 1,     3, 2, 1, &
-   !  1, 1, 1,    -3, 2, 1, &
-   !  1, 1,-1,     3,-2, 1, &
-   !  1,-1, 1,     3, 2,-1  &
      ],pReal),shape(LATTICE_BCC_SYSTEMSLIP))
 
  character(len=*), dimension(2), parameter, public :: LATTICE_BCC_SLIPFAMILY_NAME = &
@@ -581,10 +446,7 @@ module lattice
      42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,37,36,37,37, &
      42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,37,37,36,37, &
      42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,37,37,37,36  &
-    !
-           ],pInt),shape(LATTICE_HEX_INTERACTIONSLIPSLIP),order=[2,1])                                     !< Slip--slip interaction types for hex (onion peel naming scheme)
-
-
+    ],pInt),shape(LATTICE_HEX_INTERACTIONSLIPSLIP),order=[2,1])                                     !< Slip--slip interaction types for hex (onion peel naming scheme)
 
 
  real(pReal), dimension(4+4,LATTICE_hex_Ncleavage), parameter, private :: &
@@ -755,8 +617,8 @@ module lattice
    182,182, 181,181, 180,180, 179,179,179,179, 178,178, 177,177,177,177, 176,176, 175,175, 174,174,174,174, 173,173,173,173,173,173,173,173,  172, 172, 172, 172, 171,171,171,171,171,171,171,171, 169,170,170,170,170,169,170,170, &
    182,182, 181,181, 180,180, 179,179,179,179, 178,178, 177,177,177,177, 176,176, 175,175, 174,174,174,174, 173,173,173,173,173,173,173,173,  172, 172, 172, 172, 171,171,171,171,171,171,171,171, 169,170,170,170,170,170,169,170, &
    182,182, 181,181, 180,180, 179,179,179,179, 178,178, 177,177,177,177, 176,176, 175,175, 174,174,174,174, 173,173,173,173,173,173,173,173,  172, 172, 172, 172, 171,171,171,171,171,171,171,171, 169,170,170,170,170,170,170,169  &
-
  ],pInt),[lattice_bct_Nslip,lattice_bct_Nslip],order=[2,1])
+
 
 !--------------------------------------------------------------------------------------------------
 ! isotropic
@@ -774,13 +636,14 @@ module lattice
       1, 0, 0,     0, 0, 1  &
      ],pReal),[ 3_pInt + 3_pInt,LATTICE_iso_Ncleavage])
 
+
 !--------------------------------------------------------------------------------------------------
 ! orthorhombic
  integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
-   LATTICE_ort_NcleavageSystem = int([1, 1, 1],pInt)                                              !< # of cleavage systems per family for ortho
+   LATTICE_ort_NcleavageSystem = int([1, 1, 1],pInt)                                                !< # of cleavage systems per family for ortho
 
  integer(pInt), parameter, private  :: &
-   LATTICE_ort_Ncleavage  = sum(lattice_ort_NcleavageSystem)                                    !< total # of cleavage systems for ortho
+   LATTICE_ort_Ncleavage  = sum(lattice_ort_NcleavageSystem)                                        !< total # of cleavage systems for ortho
 
  real(pReal), dimension(3+3,LATTICE_ort_Ncleavage), parameter, private :: &
    LATTICE_ort_systemCleavage = reshape(real([&
@@ -795,19 +658,16 @@ module lattice
    LATTICE_maxNslip        = max(LATTICE_FCC_NSLIP,LATTICE_BCC_NSLIP,LATTICE_HEX_NSLIP, &
                                  LATTICE_bct_Nslip), &                                              !< max # of slip systems over lattice structures
    LATTICE_maxNnonSchmid   =     LATTICE_bcc_NnonSchmid, &                                          !< max # of non-Schmid contributions over lattice structures
-   LATTICE_maxNtrans       =     LATTICE_fcc_Ntrans, &                                              !< max # of transformation systems over lattice structures
    LATTICE_maxNcleavage    = max(LATTICE_fcc_Ncleavage,LATTICE_bcc_Ncleavage, &
                                  LATTICE_hex_Ncleavage, &
-                                 LATTICE_iso_Ncleavage,LATTICE_ort_Ncleavage), &                  !< max # of cleavage systems over lattice structures
+                                 LATTICE_iso_Ncleavage,LATTICE_ort_Ncleavage), &                    !< max # of cleavage systems over lattice structures
    LATTICE_maxNinteraction = 182_pInt
 
 !END DEPRECATED
- real(pReal),                          dimension(:,:,:),     allocatable, private :: &
-  temp66
  real(pReal),                          dimension(:,:,:),     allocatable, public, protected :: &
    lattice_C66
  real(pReal),                              dimension(:,:,:,:,:),   allocatable, public, protected :: &
-   lattice_C3333, lattice_trans_C3333
+   lattice_C3333
  real(pReal),                              dimension(:),   allocatable, public, protected :: &
    lattice_mu, lattice_nu
 
@@ -860,6 +720,8 @@ module lattice
   LATTICE_hex_ID, &
   lattice_SchmidMatrix_slip, &
   lattice_SchmidMatrix_twin, &
+  lattice_SchmidMatrix_trans, &
+  lattice_SchmidMatrix_cleavage, &
   lattice_nonSchmidMatrix, &
   lattice_interaction_SlipSlip, &
   lattice_interaction_TwinTwin, &
@@ -896,10 +758,8 @@ subroutine lattice_init
  integer(pInt) :: i,p
  real(pReal),  dimension(:), allocatable :: &
    temp, &
-   CoverA, &                                                                                        !< c/a ratio for low symmetry type lattice
-   CoverA_trans, &                                                                                  !< c/a ratio for transformed hex type lattice
-   a_fcc, &                                                                                         !< lattice parameter a for fcc austenite
-   a_bcc                                                                                            !< lattice paramater a for bcc martensite
+   CoverA                                                                                           !< c/a ratio for low symmetry type lattice
+
 
  write(6,'(/,a)') ' <<<+-  lattice init  -+>>>'
  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
@@ -910,9 +770,8 @@ subroutine lattice_init
  allocate(lattice_structure(Nphases),source = LATTICE_undefined_ID)
  allocate(trans_lattice_structure(Nphases),source = LATTICE_undefined_ID)
  allocate(lattice_C66(6,6,Nphases),  source=0.0_pReal)
- allocate(temp66(6,6,Nphases),  source=0.0_pReal)
  allocate(lattice_C3333(3,3,3,3,Nphases),  source=0.0_pReal)
- allocate(lattice_trans_C3333(3,3,3,3,Nphases),  source=0.0_pReal)
+ 
  allocate(lattice_thermalExpansion33     (3,3,3,Nphases), source=0.0_pReal)                       ! constant, linear, quadratic coefficients
  allocate(lattice_thermalConductivity33  (3,3,Nphases), source=0.0_pReal)
  allocate(lattice_damageDiffusion33      (3,3,Nphases), source=0.0_pReal)
@@ -948,14 +807,8 @@ subroutine lattice_init
  allocate(lattice_Scleavage_v(6,3,lattice_maxNslip,Nphases),source=0.0_pReal)
  allocate(lattice_NcleavageSystem(lattice_maxNcleavageFamily,Nphases),source=0_pInt)
 
- allocate(lattice_shearTrans(lattice_maxNtrans,Nphases),source=0.0_pReal)
- allocate(lattice_Qtrans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
- allocate(lattice_Strans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
-
  allocate(CoverA(Nphases),source=0.0_pReal)
- allocate(CoverA_trans(Nphases),source=0.0_pReal)
- allocate(a_fcc(Nphases),source=0.0_pReal)
- allocate(a_bcc(Nphases),source=0.0_pReal)
+
 
  allocate(lattice_sd(3,lattice_maxNslip,Nphases),source=0.0_pReal)
  allocate(lattice_st(3,lattice_maxNslip,Nphases),source=0.0_pReal)
@@ -998,20 +851,8 @@ subroutine lattice_init
    lattice_C66(5,5,p) = config_phase(p)%getFloat('c55',defaultVal=0.0_pReal)
    lattice_C66(6,6,p) = config_phase(p)%getFloat('c66',defaultVal=0.0_pReal)
 
-   temp66(1,1,p) = config_phase(p)%getFloat('c11_trans',defaultVal=0.0_pReal)
-   temp66(1,2,p) = config_phase(p)%getFloat('c12_trans',defaultVal=0.0_pReal)
-   temp66(1,3,p) = config_phase(p)%getFloat('c13_trans',defaultVal=0.0_pReal)
-   temp66(2,2,p) = config_phase(p)%getFloat('c22_trans',defaultVal=0.0_pReal)
-   temp66(2,3,p) = config_phase(p)%getFloat('c23_trans',defaultVal=0.0_pReal)
-   temp66(3,3,p) = config_phase(p)%getFloat('c33_trans',defaultVal=0.0_pReal)
-   temp66(4,4,p) = config_phase(p)%getFloat('c44_trans',defaultVal=0.0_pReal)
-   temp66(5,5,p) = config_phase(p)%getFloat('c55_trans',defaultVal=0.0_pReal)
-   temp66(6,6,p) = config_phase(p)%getFloat('c66_trans',defaultVal=0.0_pReal)
 
    CoverA(p)       = config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal)
-   CoverA_trans(p) = config_phase(p)%getFloat('c/a_trans',defaultVal=0.0_pReal)
-   a_fcc(p)        = config_phase(p)%getFloat('a_fcc',defaultVal=0.0_pReal)
-   a_bcc(p)        = config_phase(p)%getFloat('a_bcc',defaultVal=0.0_pReal)
 
    lattice_thermalConductivity33(1,1,p) = config_phase(p)%getFloat('thermal_conductivity11',defaultVal=0.0_pReal)
    lattice_thermalConductivity33(2,2,p) = config_phase(p)%getFloat('thermal_conductivity22',defaultVal=0.0_pReal)
@@ -1062,7 +903,7 @@ subroutine lattice_init
        .and. lattice_structure(i) == LATTICE_hex_ID) call IO_error(131_pInt,el=i)                        ! checking physical significance of c/a
    if ((CoverA(i) > 2.0_pReal) &
        .and. lattice_structure(i) == LATTICE_bct_ID) call IO_error(131_pInt,el=i)                        ! checking physical significance of c/a
-   call lattice_initializeStructure(i, CoverA(i), CoverA_trans(i), a_fcc(i), a_bcc(i))
+   call lattice_initializeStructure(i, CoverA(i))
  enddo
 
 end subroutine lattice_init
@@ -1071,7 +912,7 @@ end subroutine lattice_init
 !--------------------------------------------------------------------------------------------------
 !> @brief !!!!!!!DEPRECTATED!!!!!!
 !--------------------------------------------------------------------------------------------------
-subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
+subroutine lattice_initializeStructure(myPhase,CoverA)
  use prec, only: &
   tol_math_check
  use math, only: &
@@ -1094,30 +935,18 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
  implicit none
  integer(pInt), intent(in) :: myPhase
  real(pReal), intent(in) :: &
-   CoverA, &
-   CoverA_trans, &
-   a_fcc, &
-   a_bcc
+   CoverA
 
  real(pReal), dimension(3) :: &
    sdU, snU, &
    np,  nn
- real(pReal), dimension(3,3) :: &
-   sstr, sdtr, sttr
  real(pReal), dimension(3,lattice_maxNslip) :: &
    sd,  sn
  real(pReal), dimension(3,3,2,lattice_maxNnonSchmid,lattice_maxNslip) :: &
    sns
- real(pReal), dimension(lattice_maxNtrans) :: &
-   trs
- real(pReal), dimension(3,lattice_maxNtrans) :: &
-   xtr, ytr, ztr
- real(pReal), dimension(3,3,lattice_maxNtrans) :: &
-   Rtr, Utr, Btr, Qtr, Str
  integer(pInt) :: &
-  i,j, &
-  myNslip, myNtrans, myNcleavage
- real(pReal) :: c11bar, c12bar, c13bar, c14bar, c33bar, c44bar, A, B
+  j, i,  &
+  myNslip, myNcleavage
 
  lattice_C66(1:6,1:6,myPhase) = lattice_symmetrizeC66(lattice_structure(myPhase),&
                                                       lattice_C66(1:6,1:6,myPhase))
@@ -1138,44 +967,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      call IO_error(135_pInt,el=i,ip=myPhase,ext_msg='matrix diagonal "el"ement of phase "ip"')
  enddo
 
-! Elasticity matrices for transformed phase
- select case(lattice_structure(myPhase))
-   case (LATTICE_fcc_ID)
-     select case(trans_lattice_structure(myPhase))
-       case (LATTICE_bcc_ID)
-         lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase) = lattice_C3333(1:3,1:3,1:3,1:3,myPhase)
-         temp66(1:6,1:6,myPhase) = math_Mandel3333to66(lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase))
-         do i = 1_pInt, 6_pInt
-           if (abs(temp66(i,i,myPhase))<tol_math_check) &
-           call IO_error(135_pInt,el=i,ip=myPhase,ext_msg='matrix diagonal "el"ement of phase "ip" in fcc-->bcc transformation')
-         enddo
-       case (LATTICE_hex_ID)
-         c11bar = (lattice_C66(1,1,myPhase) + lattice_C66(1,2,myPhase) + 2.0_pReal*lattice_C66(4,4,myPhase))/2.0_pReal
-         c12bar = (lattice_C66(1,1,myPhase) + 5.0_pReal*lattice_C66(1,2,myPhase) - 2.0_pReal*lattice_C66(4,4,myPhase))/6.0_pReal
-         c33bar = (lattice_C66(1,1,myPhase) + 2.0_pReal*lattice_C66(1,2,myPhase) + 4.0_pReal*lattice_C66(4,4,myPhase))/3.0_pReal
-         c13bar = (lattice_C66(1,1,myPhase) + 2.0_pReal*lattice_C66(1,2,myPhase) - 2.0_pReal*lattice_C66(4,4,myPhase))/3.0_pReal
-         c44bar = (lattice_C66(1,1,myPhase) - lattice_C66(1,2,myPhase) + lattice_C66(4,4,myPhase))/3.0_pReal
-         c14bar = (lattice_C66(1,1,myPhase) - lattice_C66(1,2,myPhase) - 2.0_pReal*lattice_C66(4,4,myPhase)) &
-                                                             /(3.0_pReal*sqrt(2.0_pReal))
-         A = c14bar**(2.0_pReal)/c44bar
-         B = c14bar**(2.0_pReal)/(0.5_pReal*(c11bar - c12bar))
-         temp66(1,1,myPhase) = c11bar - A
-         temp66(1,2,myPhase) = c12bar + A
-         temp66(1,3,myPhase) = c13bar
-         temp66(3,3,myPhase) = c33bar
-         temp66(4,4,myPhase) = c44bar - B
-
-         temp66(1:6,1:6,myPhase) = lattice_symmetrizeC66(trans_lattice_structure(myPhase),&
-                                                                    temp66(1:6,1:6,myPhase))
-         lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase) = math_Voigt66to3333(temp66(1:6,1:6,myPhase))
-         temp66(1:6,1:6,myPhase) = math_Mandel3333to66(lattice_trans_C3333(1:3,1:3,1:3,1:3,myPhase))
-         do i = 1_pInt, 6_pInt
-           if (abs(temp66(i,i,myPhase))<tol_math_check) &
-           call IO_error(135_pInt,el=i,ip=myPhase,ext_msg='matrix diagonal "el"ement of phase "ip" in fcc-->hex transformation')
-         enddo
-     end select
- end select
-
  forall (i = 1_pInt:3_pInt) &
    lattice_thermalExpansion33 (1:3,1:3,i,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
                                                                          lattice_thermalExpansion33   (1:3,1:3,i,myPhase))
@@ -1195,7 +986,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
  lattice_hydrogenfluxMobility33 (1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
                                                                          lattice_hydrogenfluxMobility33 (1:3,1:3,myPhase))
  myNslip       = 0_pInt
- myNtrans      = 0_pInt
  myNcleavage   = 0_pInt
 
  select case(lattice_structure(myPhase))
@@ -1203,7 +993,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
 ! fcc
    case (LATTICE_fcc_ID)
      myNslip     = LATTICE_FCC_NSLIP
-     myNtrans    = lattice_fcc_Ntrans
      myNcleavage = lattice_fcc_Ncleavage
      lattice_NslipSystem    (1:lattice_maxNslipFamily,myPhase)      = lattice_fcc_NslipSystem
      lattice_NcleavageSystem(1:lattice_maxNcleavageFamily,myPhase)  = lattice_fcc_NcleavageSystem
@@ -1216,51 +1005,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
        sd(1:3,i) = lattice_fcc_systemSlip(1:3,i)
        sn(1:3,i) = lattice_fcc_systemSlip(4:6,i)
      enddo
-
-     ! Phase transformation
-     select case(trans_lattice_structure(myPhase))
-       case (LATTICE_bcc_ID)                                                                        ! fcc to bcc transformation
-         do i = 1_pInt,myNtrans
-           Rtr(1:3,1:3,i) = math_axisAngleToR(lattice_fccTobcc_systemTrans(1:3,i), &                ! Pitsch rotation
-                              lattice_fccTobcc_systemTrans(4,i)*INRAD)
-           Btr(1:3,1:3,i) = math_axisAngleToR(lattice_fccTobcc_bainRot(1:3,i), &                    ! Rotation of fcc to Bain coordinate system
-                              lattice_fccTobcc_bainRot(4,i)*INRAD)
-           xtr(1:3,i) = real(LATTICE_fccTobcc_bainVariant(1:3,i),pReal)
-           ytr(1:3,i) = real(LATTICE_fccTobcc_bainVariant(4:6,i),pReal)
-           ztr(1:3,i) = real(LATTICE_fccTobcc_bainVariant(7:9,i),pReal)
-           Utr(1:3,1:3,i) = 0.0_pReal                                                               ! Bain deformation
-           if ((a_fcc > 0.0_pReal) .and. (a_bcc > 0.0_pReal)) then
-             Utr(1:3,1:3,i) = (a_bcc/a_fcc)*math_tensorproduct33(xtr(1:3,i), xtr(1:3,i)) + &
-              sqrt(2.0_pReal)*(a_bcc/a_fcc)*math_tensorproduct33(ytr(1:3,i), ytr(1:3,i)) + &
-              sqrt(2.0_pReal)*(a_bcc/a_fcc)*math_tensorproduct33(ztr(1:3,i), ztr(1:3,i))
-           endif
-           Qtr(1:3,1:3,i) = math_mul33x33(Rtr(1:3,1:3,i), Btr(1:3,1:3,i))
-           Str(1:3,1:3,i) = math_mul33x33(Rtr(1:3,1:3,i), Utr(1:3,1:3,i)) - MATH_I3
-         enddo
-       case (LATTICE_hex_ID)
-         sstr(1:3,1:3) = MATH_I3
-         sstr(1,3)     = sqrt(2.0_pReal)/4.0_pReal
-         sdtr(1:3,1:3) = MATH_I3
-         if (CoverA_trans > 1.0_pReal .and. CoverA_trans < 2.0_pReal) then
-           sdtr(3,3) = CoverA_trans/sqrt(8.0_pReal/3.0_pReal)
-         endif
-         sttr = math_mul33x33(sdtr, sstr)
-         do i = 1_pInt,myNtrans
-           xtr(1:3,i) = lattice_fccTohex_systemTrans(1:3,i)/norm2(lattice_fccTohex_systemTrans(1:3,i))
-           ztr(1:3,i) = lattice_fccTohex_systemTrans(4:6,i)/norm2(lattice_fccTohex_systemTrans(4:6,i))
-           ytr(1:3,i) = -math_crossproduct(xtr(1:3,i), ztr(1:3,i))
-           Rtr(1:3,1,i) = xtr(1:3,i)
-           Rtr(1:3,2,i) = ytr(1:3,i)
-           Rtr(1:3,3,i) = ztr(1:3,i)
-           Qtr(1:3,1:3,i) = Rtr(1:3,1:3,i)
-           Str(1:3,1:3,i) = math_mul33x33(Rtr(1:3,1:3,i), math_mul33x33(sttr, transpose(Rtr(1:3,1:3,i))))
-           Str(1:3,1:3,i) = Str(1:3,1:3,i) - MATH_I3
-           trs(i)     = lattice_fccTohex_shearTrans(i)
-         enddo
-       case default
-         Qtr = 0.0_pReal
-         Str = 0.0_pReal
-     end select
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1377,11 +1121,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA,CoverA_trans,a_fcc,a_bcc)
      lattice_Sslip_v(1:6,j,i,myPhase) = &
        math_Mandel33to6(math_symmetric33(lattice_Sslip(1:3,1:3,j,i,myPhase)))
    enddo
- enddo
- do i = 1_pInt,myNtrans
-   lattice_Qtrans(1:3,1:3,i,myPhase) = Qtr(1:3,1:3,i)
-   lattice_Strans(1:3,1:3,i,myPhase) = Str(1:3,1:3,i)
-   lattice_shearTrans(i,myPhase)     = trs(i)
  enddo
 
  do i = 1_pInt,myNcleavage                                                                          ! store slip system vectors and Schmid matrix for my structure
@@ -1830,7 +1569,7 @@ function lattice_C66_trans(Ntrans,C_parent66, &
    call IO_error(135_pInt,el=i,ext_msg='matrix diagonal "el"ement in transformation')
  enddo
  C_target_unrotated = math_Mandel66to3333(C_target_unrotated66)
- call lattice_Trans(Q,S,Ntrans,CoverA_trans,a_fcc,a_bcc)
+ call buildTransformationSystem(Q,S,Ntrans,CoverA_trans,a_fcc,a_bcc)
 
  do i = 1, sum(Ntrans)
    lattice_C66_trans(1:6,1:6,i) = math_Mandel3333to66(math_rotate_forward3333(C_target_unrotated,Q(1:3,1:3,i)))
@@ -2464,6 +2203,38 @@ end function lattice_SchmidMatrix_twin
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Schmid matrix for twinning
+!> details only active twin systems are considered
+!--------------------------------------------------------------------------------------------------
+function lattice_SchmidMatrix_trans(Ntrans,structure_target,cOverA,a_bcc,a_fcc) result(SchmidMatrix)
+ use prec, only: &
+   tol_math_check
+ use IO, only: &
+   IO_error
+ use math, only: &
+   math_trace33, &
+   math_tensorproduct33
+
+ implicit none
+ integer(pInt),    dimension(:),            intent(in) :: Ntrans                                    !< number of active twin systems per family
+ real(pReal),                               intent(in) :: cOverA                                    !< c/a ratio
+ real(pReal),     dimension(3,3,sum(Ntrans))            :: SchmidMatrix
+
+ integer(pInt) :: i
+
+ character(len=*),                          intent(in) :: &
+   structure_target                                                                                 !< lattice structure
+
+ real(pReal),     dimension(3,3,sum(Ntrans))            :: devNull
+ real(pReal) :: a_bcc, a_fcc
+! ToDo: Error checking!!!!!!!!!!!!!!!!!!!
+ call buildTransformationSystem(devNull,SchmidMatrix,Ntrans,cOverA,a_fcc,a_bcc)
+
+ 
+end function lattice_SchmidMatrix_trans
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Schmid matrix for cleavage
 !> details only active cleavage systems are considered
 !--------------------------------------------------------------------------------------------------
@@ -2680,12 +2451,16 @@ function buildCoordinateSystem(active,complete,system,structure,cOverA)
 
 end function buildCoordinateSystem
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief Helper function to define transformation systems
-! Needed for Schmid_trans + C66_trans
-! ToDo: completely untested and uncommented
+! Needed to calculate Schmid matrix and rotated stiffness matrices.
+! @details: set c/a   = 0.0 for fcc -> bcc transformation
+!           set a_bcc = 0.0 for fcc -> bcc transformation
 !--------------------------------------------------------------------------------------------------
-subroutine lattice_Trans(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
+subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
+ use prec, only: &
+   dEq0
  use math, only: &
    math_crossproduct, &
    math_tensorproduct33, &
@@ -2701,30 +2476,93 @@ subroutine lattice_Trans(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
  integer(pInt), dimension(:), intent(in) :: &
    Ntrans
  real(pReal),  dimension(3,3,sum(Ntrans)), intent(out) :: &
-   S, Q
- real(pReal),                 intent(in), optional :: &
-   cOverA, &
-   a_fcc, &
-   a_bcc
+   Q, &                                                                                             !< Total rotation: Q = R*B
+   S                                                                                                !< Eigendeformation tensor for phase transformation
+ real(pReal),                 intent(in) :: &
+   cOverA, &                                                                                        !< c/a for target hex structure
+   a_bcc, &                                                                                         !< lattice parameter a for target bcc structure
+   a_fcc                                                                                            !< lattice parameter a for parent fcc structure
 
  real(pReal), dimension(3,3) :: &
-   R, &
-   U, & ! Bain deformation
-   B, &
+   R, &                                                                                             !< Pitsch rotation
+   U, &                                                                                             !< Bain deformation
+   B, &                                                                                             !< Rotation of fcc to Bain coordinate system
    ss, sd
  real(pReal), dimension(3) :: &
    x, y, z
  integer(pInt) :: &
    i
+ real(pReal), dimension(3+3,LATTICE_FCC_NTRANS), parameter :: &
+   LATTICE_FCCTOHEX_SYSTEMTRANS = reshape(real( [&
+     -2, 1, 1,     1, 1, 1, &
+      1,-2, 1,     1, 1, 1, &
+      1, 1,-2,     1, 1, 1, &
+      2,-1, 1,    -1,-1, 1, &
+     -1, 2, 1,    -1,-1, 1, &
+     -1,-1,-2,    -1,-1, 1, &
+     -2,-1,-1,     1,-1,-1, &
+      1, 2,-1,     1,-1,-1, &
+      1,-1, 2,     1,-1,-1, &
+      2, 1,-1,    -1, 1,-1, &
+     -1,-2,-1,    -1, 1,-1, &
+     -1, 1, 2,    -1, 1,-1  &
+     ],pReal),shape(LATTICE_FCCTOHEX_SYSTEMTRANS))
+      real(pReal), dimension(4,LATTICE_fcc_Ntrans), parameter :: &
+   LATTICE_FCCTOBCC_SYSTEMTRANS = reshape([&
+     0.0, 1.0, 0.0,     10.26, &                                                                    ! Pitsch OR (Ma & Hartmaier 2014, Table 3)
+     0.0, 1.0, 0.0,    -10.26, &
+     0.0, 0.0, 1.0,     10.26, &
+     0.0, 0.0, 1.0,    -10.26, &
+     1.0, 0.0, 0.0,     10.26, &
+     1.0, 0.0, 0.0,    -10.26, &
+     0.0, 0.0, 1.0,     10.26, &
+     0.0, 0.0, 1.0,    -10.26, &
+     1.0, 0.0, 0.0,     10.26, &
+     1.0, 0.0, 0.0,    -10.26, &
+     0.0, 1.0, 0.0,     10.26, &
+     0.0, 1.0, 0.0,    -10.26  &
+     ],shape(LATTICE_FCCTOBCC_SYSTEMTRANS))
+
+ integer(pInt), dimension(9,LATTICE_fcc_Ntrans), parameter :: &
+   LATTICE_FCCTOBCC_BAINVARIANT = reshape(int( [&
+     1, 0, 0, 0, 1, 0, 0, 0, 1, &                                                                   ! Pitsch OR (Ma & Hartmaier 2014, Table 3)
+     1, 0, 0, 0, 1, 0, 0, 0, 1, &
+     1, 0, 0, 0, 1, 0, 0, 0, 1, &
+     1, 0, 0, 0, 1, 0, 0, 0, 1, &
+     0, 1, 0, 1, 0, 0, 0, 0, 1, &
+     0, 1, 0, 1, 0, 0, 0, 0, 1, &
+     0, 1, 0, 1, 0, 0, 0, 0, 1, &
+     0, 1, 0, 1, 0, 0, 0, 0, 1, &
+     0, 0, 1, 1, 0, 0, 0, 1, 0, &
+     0, 0, 1, 1, 0, 0, 0, 1, 0, &
+     0, 0, 1, 1, 0, 0, 0, 1, 0, &
+     0, 0, 1, 1, 0, 0, 0, 1, 0  &
+     ],pInt),shape(LATTICE_FCCTOBCC_BAINVARIANT))
+
+ real(pReal), dimension(4,LATTICE_fcc_Ntrans), parameter :: &
+   LATTICE_FCCTOBCC_BAINROT = reshape([&
+     1.0, 0.0, 0.0,     45.0, &                                                                     ! Rotate fcc austensite to bain variant
+     1.0, 0.0, 0.0,     45.0, &
+     1.0, 0.0, 0.0,     45.0, &
+     1.0, 0.0, 0.0,     45.0, &
+     0.0, 1.0, 0.0,     45.0, &
+     0.0, 1.0, 0.0,     45.0, &
+     0.0, 1.0, 0.0,     45.0, &
+     0.0, 1.0, 0.0,     45.0, &
+     0.0, 0.0, 1.0,     45.0, &
+     0.0, 0.0, 1.0,     45.0, &
+     0.0, 0.0, 1.0,     45.0, &
+     0.0, 0.0, 1.0,     45.0  &
+     ],shape(LATTICE_FCCTOBCC_BAINROT))
 
  if (size(Ntrans) < 1_pInt .or. size(Ntrans) > 1_pInt) print*, 'mist'
 
- if (present(a_fcc) .and. present(a_bcc)) then      ! fcc -> bcc transformation
-   if ( a_fcc <= 0.0_pReal .or. a_bcc <= 0.0_pReal) print*, 'mist'
+ if (a_bcc > 0.0_pReal .and. dEq0(cOverA)) then                                                     ! fcc -> bcc transformation
+   if (a_bcc <= 0.0_pReal) print*, 'mist'
    do i = 1_pInt,sum(Ntrans)
-     R = math_axisAngleToR(lattice_fccTobcc_systemTrans(1:3,i), &                ! Pitsch rotation
+     R = math_axisAngleToR(lattice_fccTobcc_systemTrans(1:3,i), &
                            lattice_fccTobcc_systemTrans(4,i)*INRAD)
-     B = math_axisAngleToR(lattice_fccTobcc_bainRot(1:3,i), &                    ! Rotation of fcc to Bain coordinate system
+     B = math_axisAngleToR(lattice_fccTobcc_bainRot(1:3,i), & 
                            lattice_fccTobcc_bainRot(4,i)*INRAD)
      x = real(LATTICE_fccTobcc_bainVariant(1:3,i),pReal)
      y = real(LATTICE_fccTobcc_bainVariant(4:6,i),pReal)
@@ -2736,7 +2574,7 @@ subroutine lattice_Trans(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
      Q(1:3,1:3,i) = math_mul33x33(R,B)
      S(1:3,1:3,i) = math_mul33x33(R,U) - MATH_I3
    enddo
- elseif (present(cOverA)) then
+ elseif (cOverA > 0.0_pReal .and. dEq0(a_bcc)) then                                                 ! fcc -> hex transformation
    ss      = MATH_I3
    sd      = MATH_I3
    ss(1,3) = sqrt(2.0_pReal)/4.0_pReal
@@ -2750,10 +2588,10 @@ subroutine lattice_Trans(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
      Q(1:3,1,i) = x
      Q(1:3,2,i) = y
      Q(1:3,3,i) = z
-     S(1:3,1:3,i) = math_mul33x33(Q(1:3,1:3,i), math_mul33x33(math_mul33x33(sd,ss), transpose(Q(1:3,1:3,i)))) - MATH_I3
+     S(1:3,1:3,i) = math_mul33x33(Q(1:3,1:3,i), math_mul33x33(math_mul33x33(sd,ss), transpose(Q(1:3,1:3,i)))) - MATH_I3  ! ToDo: This is of interest for the Schmid matrix only
    enddo
  endif
 
-end subroutine lattice_Trans
+end subroutine buildTransformationSystem
 
 end module lattice

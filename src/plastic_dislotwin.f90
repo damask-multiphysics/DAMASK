@@ -108,7 +108,7 @@ module plastic_dislotwin
    integer(pInt),                  dimension(:,:),            allocatable :: & 
      fcc_twinNucleationSlipPair                                                                     ! ToDo: Better name? Is also use for trans
    real(pReal),                  dimension(:,:),            allocatable :: & 
-     forestProjectionEdge, &
+     forestProjection, &
      C66
    real(pReal),                  dimension(:,:,:),            allocatable :: &
      Schmid_trans, &
@@ -305,7 +305,7 @@ subroutine plastic_dislotwin_init
 
      prm%Schmid_slip          = lattice_SchmidMatrix_slip(prm%Nslip,structure(1:3),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
-     prm%forestProjectionEdge= lattice_forestProjection  (prm%Nslip,structure(1:3),&
+     prm%forestProjection     = lattice_forestProjection (prm%Nslip,structure(1:3),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
 
      prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
@@ -323,7 +323,7 @@ subroutine plastic_dislotwin_init
      prm%B                    = config%getFloats('b',          requiredShape=shape(prm%Nslip), &
                                                           defaultVal=[(0.0_pReal, i=1,size(prm%Nslip))])
      prm%tau_peierls          = config%getFloats('tau_peierls',requiredShape=shape(prm%Nslip), &
-                                                          defaultVal=[(0.0_pReal, i=1,size(prm%Nslip))])
+                                                          defaultVal=[(0.0_pReal, i=1,size(prm%Nslip))]) ! Deprecated
 
      prm%CEdgeDipMinDistance  = config%getFloat('cedgedipmindistance')
 
@@ -337,7 +337,7 @@ subroutine plastic_dislotwin_init
      prm%p            = math_expand(prm%p,           prm%Nslip)
      prm%q            = math_expand(prm%q,           prm%Nslip)
      prm%B            = math_expand(prm%B,           prm%Nslip)
-     prm%tau_peierls  = math_expand(prm%tau_peierls, prm%Nslip)
+     prm%tau_peierls  = math_expand(prm%tau_peierls, prm%Nslip)                                      
 
      ! sanity checks
      if (any(prm%rho0         <  0.0_pReal))         extmsg = trim(extmsg)//'rho0 '
@@ -422,6 +422,12 @@ subroutine plastic_dislotwin_init
                                   0.0_pReal, &
                                   config%getFloat('a_bcc', defaultVal=0.0_pReal), &
                                   config%getFloat('a_fcc', defaultVal=0.0_pReal))
+                                  
+      prm%Schmid_trans        = lattice_SchmidMatrix_trans(prm%Ntrans, &
+                                  config%getString('trans_lattice_structure'), &
+                                  0.0_pReal, &
+                                  config%getFloat('a_bcc', defaultVal=0.0_pReal), &
+                                  config%getFloat('a_fcc', defaultVal=0.0_pReal))
                                                  
      if (lattice_structure(p) /= LATTICE_fcc_ID) then
         prm%Ndot0_trans = config%getFloats('ndot0_trans')
@@ -470,7 +476,7 @@ subroutine plastic_dislotwin_init
 
    prm%D0 = config%getFloat('d0')
    prm%Qsd = config%getFloat('qsd')
-   prm%SolidSolutionStrength = config%getFloat('solidsolutionstrength')
+   prm%SolidSolutionStrength = config%getFloat('solidsolutionstrength')                              ! Deprecated
    if (config%keyExists('dipoleformationfactor')) call IO_error(1,ext_msg='use /nodipoleformation/')
    prm%dipoleformation = .not. config%keyExists('/nodipoleformation/')
    prm%sbVelocity   = config%getFloat('shearbandvelocity',defaultVal=0.0_pReal)
@@ -613,19 +619,6 @@ subroutine plastic_dislotwin_init
        plasticState(p)%dotState(offset_slip+1:offset_slip+plasticState(p)%nslip,1:NipcMyPhase)
    plasticState(p)%accumulatedSlip => &
        plasticState(p)%state   (offset_slip+1:offset_slip+plasticState(p)%nslip,1:NipcMyPhase)
-
-
-! DEPRECATED BEGIN
-   allocate(prm%Schmid_trans(3,3,prm%totalNtrans),source  = 0.0_pReal)
-   i = 0_pInt
-   transFamiliesLoop: do f = 1_pInt,size(prm%Ntrans,1)
-     index_myFamily = sum(prm%Ntrans(1:f-1_pInt))                                                   ! index in truncated trans system list
-     transSystemsLoop: do j = 1_pInt,prm%Ntrans(f)
-       i = i + 1_pInt
-       prm%Schmid_trans(1:3,1:3,i) = lattice_Strans(1:3,1:3,sum(lattice_Ntranssystem(1:f-1,p))+j,p)
-     enddo transSystemsLoop
-   enddo transFamiliesLoop
-! DEPRECATED END
 
 
    startIndex=1_pInt
@@ -793,7 +786,7 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
  forall (i = 1_pInt:prm%totalNslip) &
    mse%invLambdaSlip(i,of) = &
      sqrt(dot_product((stt%rhoEdge(1_pInt:prm%totalNslip,of)+stt%rhoEdgeDip(1_pInt:prm%totalNslip,of)),&
-                      prm%forestProjectionEdge(1:prm%totalNslip,i)))/prm%CLambdaSlip(i)
+                      prm%forestProjection(1:prm%totalNslip,i)))/prm%CLambdaSlip(i)
 
  !* 1/mean free distance between 2 twin stacks from different systems seen by a moving dislocation
  !$OMP CRITICAL (evilmatmul)
