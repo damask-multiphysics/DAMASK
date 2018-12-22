@@ -540,8 +540,9 @@ subroutine plastic_kinehardening_dotState(Mp,instance,of)
                  
  do j = 1_pInt, prm%totalNslip
    dot%crss(j,of) = dot_product(prm%interaction_SlipSlip(j,:),dot%accshear(:,of)) &
-                  * (  prm%theta1(j) + prm%theta0(j) - prm%theta1(j) &
-                     + prm%theta0(j)*prm%theta1(j)*sumGamma/prm%tau1(j)*exp(-sumGamma*prm%theta0(j)/prm%tau1(j)) &
+                  * (  prm%theta1(j) &
+                     + (prm%theta0(j) - prm%theta1(j) + prm%theta0(j)*prm%theta1(j)*sumGamma/prm%tau1(j)) &
+                                                     *exp(-sumGamma*prm%theta0(j)/prm%tau1(j)) &
                     )
  enddo
  dot%crss_back(:,of) = stt%sense(:,of)*dot%accshear(:,of) * &
