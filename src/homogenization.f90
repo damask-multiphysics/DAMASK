@@ -25,8 +25,7 @@ module homogenization
    materialpoint_sizeResults, &
    homogenization_maxSizePostResults, &
    thermal_maxSizePostResults, &
-   damage_maxSizePostResults, &
-   porosity_maxSizePostResults
+   damage_maxSizePostResults
 
  real(pReal),   dimension(:,:,:,:),     allocatable, private :: &
    materialpoint_subF0, &                                                                           !< def grad of IP at beginning of homogenization increment
@@ -98,8 +97,6 @@ subroutine homogenization_init
  use damage_none
  use damage_local
  use damage_nonlocal
- use porosity_none
- use porosity_phasefield
  use IO
  use numerics, only: &
    worldrank
@@ -147,14 +144,6 @@ subroutine homogenization_init
    call damage_local_init(FILEUNIT)
  if (any(damage_type == DAMAGE_nonlocal_ID)) &
    call damage_nonlocal_init(FILEUNIT)
-
-!--------------------------------------------------------------------------------------------------
-! parse porosity from config file
- call IO_checkAndRewind(FILEUNIT)
- if (any(porosity_type == POROSITY_none_ID)) &
-   call porosity_none_init()
- if (any(porosity_type == POROSITY_phasefield_ID)) &
-   call porosity_phasefield_init(FILEUNIT)
 
 !--------------------------------------------------------------------------------------------------
 ! write description file for homogenization output
@@ -251,30 +240,6 @@ subroutine homogenization_init
            enddo
          endif
        endif
-       i = porosity_typeInstance(p)                                                                     ! which instance of this porosity type
-       valid = .true.                                                                                   ! assume valid
-       select case(porosity_type(p))                                                                    ! split per porosity type
-         case (POROSITY_none_ID)
-           outputName = POROSITY_none_label
-           thisNoutput => null()
-           thisOutput => null()
-           thisSize   => null()
-         case (POROSITY_phasefield_ID)
-           outputName = POROSITY_phasefield_label
-           thisNoutput => porosity_phasefield_Noutput
-           thisOutput => porosity_phasefield_output
-           thisSize   => porosity_phasefield_sizePostResult
-         case default
-           valid = .false.
-       end select
-       if (valid) then
-         write(FILEUNIT,'(a)') '(porosity)'//char(9)//trim(outputName)
-         if (porosity_type(p) /= POROSITY_none_ID) then
-           do e = 1,thisNoutput(i)
-             write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
-           enddo
-         endif
-       endif
      endif
    enddo
    close(FILEUNIT)
@@ -304,19 +269,16 @@ subroutine homogenization_init
  homogenization_maxSizePostResults = 0_pInt
  thermal_maxSizePostResults        = 0_pInt
  damage_maxSizePostResults         = 0_pInt
- porosity_maxSizePostResults       = 0_pInt
  do p = 1,size(config_homogenization)
    homogenization_maxSizePostResults = max(homogenization_maxSizePostResults,homogState       (p)%sizePostResults)
    thermal_maxSizePostResults        = max(thermal_maxSizePostResults,       thermalState     (p)%sizePostResults)
    damage_maxSizePostResults         = max(damage_maxSizePostResults        ,damageState      (p)%sizePostResults)
-   porosity_maxSizePostResults       = max(porosity_maxSizePostResults      ,porosityState    (p)%sizePostResults)
  enddo
 
  materialpoint_sizeResults = 1 &                                                                    ! grain count
                            + 1 + homogenization_maxSizePostResults &                                ! homogSize & homogResult
                                + thermal_maxSizePostResults        &
                                + damage_maxSizePostResults         &
-                               + porosity_maxSizePostResults       &
                            + homogenization_maxNgrains * (1 + crystallite_maxSizePostResults &      ! crystallite size & crystallite results
                                                         + 1 + constitutive_plasticity_maxSizePostResults &     ! constitutive size & constitutive results
                                                             + constitutive_source_maxSizePostResults)
@@ -375,7 +337,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    homogState, &
    thermalState, &
    damageState, &
-   porosityState, &
    phase_Nsources, &
    mappingHomogenization, &
    phaseAt, phasememberAt, &
@@ -482,10 +443,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
      damageState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
        damageState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
        damageState(mappingHomogenization(2,i,e))%State0(   :,mappingHomogenization(1,i,e))          ! ...internal damage state
-   forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
-     porosityState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
-       porosityState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
-       porosityState(mappingHomogenization(2,i,e))%State0(   :,mappingHomogenization(1,i,e))        ! ...internal porosity state
  enddo
  NiterationHomog = 0_pInt
 
@@ -559,10 +516,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
              damageState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
                damageState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
                damageState(mappingHomogenization(2,i,e))%State(    :,mappingHomogenization(1,i,e))  ! ...internal damage state
-           forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
-             porosityState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
-               porosityState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
-               porosityState(mappingHomogenization(2,i,e))%State(    :,mappingHomogenization(1,i,e))! ...internal porosity state
            materialpoint_subF0(1:3,1:3,i,e) = materialpoint_subF(1:3,1:3,i,e)                       ! ...def grad
          endif steppingNeeded
 
@@ -626,10 +579,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
              damageState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
                damageState(mappingHomogenization(2,i,e))%State(    :,mappingHomogenization(1,i,e)) = &
                damageState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e))  ! ...internal damage state
-           forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
-             porosityState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
-               porosityState(mappingHomogenization(2,i,e))%State(    :,mappingHomogenization(1,i,e)) = &
-               porosityState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e))! ...internal porosity state
          endif
        endif converged
 
@@ -735,7 +684,6 @@ subroutine materialpoint_postResults
    homogState, &
    thermalState, &
    damageState, &
-   porosityState, &
    plasticState, &
    sourceState, &
    material_phase, &
@@ -764,8 +712,7 @@ subroutine materialpoint_postResults
 
        theSize = homogState       (mappingHomogenization(2,i,e))%sizePostResults &
                + thermalState     (mappingHomogenization(2,i,e))%sizePostResults &
-               + damageState      (mappingHomogenization(2,i,e))%sizePostResults &
-               + porosityState    (mappingHomogenization(2,i,e))%sizePostResults
+               + damageState      (mappingHomogenization(2,i,e))%sizePostResults
        materialpoint_results(thePos+1,i,e) = real(theSize,pReal)                                    ! tell size of homogenization results
        thePos = thePos + 1_pInt
 
@@ -967,11 +914,9 @@ function homogenization_postResults(ip,el)
    homogState, &
    thermalState, &
    damageState, &
-   porosityState, &
    homogenization_type, &
    thermal_type, &
    damage_type, &
-   porosity_type, &
    HOMOGENIZATION_NONE_ID, &
    HOMOGENIZATION_ISOSTRAIN_ID, &
    HOMOGENIZATION_RGC_ID, &
@@ -980,9 +925,7 @@ function homogenization_postResults(ip,el)
    THERMAL_conduction_ID, &
    DAMAGE_none_ID, &
    DAMAGE_local_ID, &
-   DAMAGE_nonlocal_ID, &
-   POROSITY_none_ID, &
-   POROSITY_phasefield_ID
+   DAMAGE_nonlocal_ID
  use homogenization_isostrain, only: &
    homogenization_isostrain_postResults
  use homogenization_RGC, only: &
@@ -995,8 +938,6 @@ function homogenization_postResults(ip,el)
    damage_local_postResults
  use damage_nonlocal, only: &
    damage_nonlocal_postResults
- use porosity_phasefield, only: &
-   porosity_phasefield_postResults
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -1004,8 +945,7 @@ function homogenization_postResults(ip,el)
    el                                                                                               !< element number
  real(pReal), dimension(  homogState       (mappingHomogenization(2,ip,el))%sizePostResults &
                         + thermalState     (mappingHomogenization(2,ip,el))%sizePostResults &
-                        + damageState      (mappingHomogenization(2,ip,el))%sizePostResults &
-                        + porosityState    (mappingHomogenization(2,ip,el))%sizePostResults) :: &
+                        + damageState      (mappingHomogenization(2,ip,el))%sizePostResults) :: &
    homogenization_postResults
  integer(pInt) :: &
    startPos, endPos
@@ -1059,18 +999,6 @@ function homogenization_postResults(ip,el)
      homogenization_postResults(startPos:endPos) = &
        damage_nonlocal_postResults(ip, el)
  end select chosenDamage
-
-
- startPos = endPos + 1_pInt
- endPos   = endPos + porosityState(mappingHomogenization(2,ip,el))%sizePostResults
- chosenPorosity: select case (porosity_type(mesh_element(3,el)))
-   case (POROSITY_none_ID) chosenPorosity
-
-   case (POROSITY_phasefield_ID) chosenPorosity
-     homogenization_postResults(startPos:endPos) = &
-       porosity_phasefield_postResults(ip, el)
- end select chosenPorosity
-
 
 end function homogenization_postResults
 
