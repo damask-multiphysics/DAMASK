@@ -374,9 +374,7 @@ subroutine plastic_kinehardening_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
- use prec, only: &
-   dNeq0
+pure subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
    
  implicit none
  real(pReal), dimension(3,3), intent(out) :: &
@@ -392,13 +390,12 @@ subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
  integer(pInt) :: &
    j,k,l,m,n
-
-   
  real(pReal), dimension(param(instance)%totalNslip) :: &
    gdot_pos,gdot_neg, &
    dgdot_dtau_pos,dgdot_dtau_neg
 
  associate(prm => param(instance), stt => state(instance))
+
  Lp = 0.0_pReal 
  dLp_dMp = 0.0_pReal
 
@@ -411,7 +408,8 @@ subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
                       + dgdot_dtau_pos(j)*prm%Schmid_slip(k,l,j)*prm%nonSchmid_pos(m,n,j) &
                       + dgdot_dtau_neg(j)*prm%Schmid_slip(k,l,j)*prm%nonSchmid_neg(m,n,j)
  enddo
-end associate
+ 
+ end associate
 
 end subroutine plastic_kinehardening_LpAndItsTangent
 
@@ -628,7 +626,7 @@ pure subroutine kinetics(Mp,instance,of,gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_d
  do i = 1_pInt, prm%totalNslip
    tau_pos(i) =       math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i)) - stt%crss_back(i,of)
    tau_neg(i) = merge(math_mul33xx33(Mp,prm%nonSchmid_neg(1:3,1:3,i)) - stt%crss_back(i,of), &
-                           0.0_pReal, nonSchmidActive)
+                      0.0_pReal, nonSchmidActive)
  enddo
 
  where(dNeq0(tau_pos))
