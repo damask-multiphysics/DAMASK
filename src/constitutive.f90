@@ -479,7 +479,9 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, S6, Fi, ipc, ip, e
      dLp_dMp = 0.0_pReal
 
    case (PLASTICITY_ISOTROPIC_ID) plasticityType
-     call plastic_isotropic_LpAndItsTangent       (Lp,dLp_dMp,Mp,ipc,ip,el)
+     of = phasememberAt(ipc,ip,el)
+     instance = phase_plasticityInstance(material_phase(ipc,ip,el))
+     call plastic_isotropic_LpAndItsTangent       (Lp,dLp_dMp,Mp,instance,of)
 
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
      of = phasememberAt(ipc,ip,el)

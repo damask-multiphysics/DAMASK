@@ -26,7 +26,7 @@ module plastic_isotropic
  end enum
 
  type, private :: tParameters
-  real(pReal) :: &
+   real(pReal) :: &
      fTaylor, &                                                                                     !< Taylor factor
      tau0, &                                                                                        !< initial critical stress
      gdot0, &                                                                                       !< reference strain rate
@@ -41,9 +41,11 @@ module plastic_isotropic
      tausat_SinhFitD, &
      aTolFlowstress, &
      aTolShear
-  integer(kind(undefined_ID)), allocatable, dimension(:) :: & 
+   integer(pInt) :: &
+     of_debug = 0_pInt
+   integer(kind(undefined_ID)), allocatable, dimension(:) :: & 
      outputID
-  logical :: &
+   logical :: &
      dilatation
  end type
 
@@ -80,8 +82,14 @@ subroutine plastic_isotropic_init()
    compiler_options
 #endif
  use debug, only: &
+#ifdef DEBUG
+   debug_e, &
+   debug_i, &
+   debug_g, &
+   debug_levelExtensive, &
+#endif
    debug_level, &
-   debug_constitutive, &
+   debug_constitutive,&
    debug_levelBasic
  use math, only: &
    math_Mandel3333to66, &
@@ -90,6 +98,9 @@ subroutine plastic_isotropic_init()
    IO_error, &
    IO_timeStamp
  use material, only: &
+#ifdef DEBUG
+   phasememberAt, &
+#endif
    phase_plasticity, &
    phase_plasticityInstance, &
    phase_Noutput, &
@@ -127,7 +138,7 @@ subroutine plastic_isotropic_init()
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
 
-! public variables
+
  allocate(plastic_isotropic_sizePostResult(maxval(phase_Noutput), maxNinstance),source=0_pInt)
  allocate(plastic_isotropic_output(maxval(phase_Noutput), maxNinstance))
           plastic_isotropic_output = ''
@@ -140,6 +151,13 @@ subroutine plastic_isotropic_init()
    if (phase_plasticity(p) /= PLASTICITY_ISOTROPIC_ID) cycle
    instance = phase_plasticityInstance(p)
    associate(prm => param(instance))
+   
+#ifdef DEBUG
+   if  (p==material_phase(debug_g,debug_i,debug_e)) then
+      prm%of_debug = phasememberAt(debug_g,debug_i,debug_e)
+   endif
+#endif
+
    prm%tau0            =  config_phase(p)%getFloat('tau0')
    prm%tausat          =  config_phase(p)%getFloat('tausat')
    prm%gdot0           =  config_phase(p)%getFloat('gdot0')
@@ -232,23 +250,17 @@ end subroutine plastic_isotropic_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ipc,ip,el)
+subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
+#ifdef DEBUG
  use debug, only: &
    debug_level, &
-   debug_constitutive, &
-   debug_levelBasic, &
+   debug_constitutive,&
    debug_levelExtensive, &
-   debug_levelSelective, &
-   debug_e, &
-   debug_i, &
-   debug_g
+   debug_levelSelective
+#endif
  use math, only: &
    math_deviatoric33, &
    math_mul33xx33
- use material, only: &
-   phasememberAt, &
-   material_phase, &
-   phase_plasticityInstance
 
  implicit none
  real(pReal), dimension(3,3),     intent(out) :: &
@@ -257,51 +269,41 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ipc,ip,el)
    dLp_dMp                                                                                          !< derivative of Lp with respect to the Mandel stress
 
  real(pReal), dimension(3,3), intent(in) :: &
-   Mp                
+   Mp                                                                                               !< Mandel stress
  integer(pInt),               intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
+   instance, &
+   of
 
- 
  real(pReal), dimension(3,3) :: &
    Mp_dev                                                                                           !< deviatoric part of the Mandel stress
  real(pReal) :: &
    gamma_dot, &                                                                                     !< strainrate
-   norm_Mp_dev, &                                                                                   !< euclidean norm of the Mandel stress
-   squarenorm_Mp_dev                                                                                !< square of the euclidean norm of the Mandel stress
+   norm_Mp_dev, &                                                                                   !< norm of the deviatoric part of the Mandel stress
+   squarenorm_Mp_dev                                                                                !< square of the norm of the deviatoric part of the Mandel stress
  integer(pInt) :: &
-   instance, of, &
    k, l, m, n
 
- of = phasememberAt(ipc,ip,el)                                                                      ! phasememberAt should be tackled by material and be renamed to material_phasemember
- instance = phase_plasticityInstance(material_phase(ipc,ip,el))
- associate(prm => param(instance))
+ associate(prm => param(instance), stt => state(instance))
  
  Mp_dev = math_deviatoric33(Mp)
  squarenorm_Mp_dev = math_mul33xx33(Mp_dev,Mp_dev)
  norm_Mp_dev = sqrt(squarenorm_Mp_dev) 
 
- if (norm_Mp_dev <= 0.0_pReal) then
-   Lp = 0.0_pReal
-   dLp_dMp = 0.0_pReal
- else
+ if (norm_Mp_dev > 0.0_pReal) then
    gamma_dot = prm%gdot0 &
-             * ( sqrt(1.5_pReal) * norm_Mp_dev / prm%fTaylor / state(instance)%flowstress(of) ) &
+             * ( sqrt(1.5_pReal) * norm_Mp_dev / prm%fTaylor / stt%flowstress(of) ) &
              **prm%n
 
    Lp = Mp_dev/norm_Mp_dev * gamma_dot/prm%fTaylor 
-
+#ifdef DEBUG
    if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &
-       .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
-              .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
-     write(6,'(a,i8,1x,i2,1x,i3)') '<< CONST isotropic >> at el ip g ',el,ip,ipc
+       .and. (of == prm%of_debug .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
      write(6,'(/,a,/,3(12x,3(f12.4,1x)/))') '<< CONST isotropic >> Tstar (dev) / MPa', &
                                       transpose(Mp_dev)*1.0e-6_pReal
      write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> norm Tstar / MPa', norm_Mp_dev*1.0e-6_pReal
      write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> gdot', gamma_dot
    end if
-
+#endif
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
      dLp_dMp(k,l,m,n) = (prm%n-1.0_pReal) * Mp_dev(k,l)*Mp_dev(m,n) / squarenorm_Mp_dev
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
@@ -309,6 +311,9 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ipc,ip,el)
    forall (k=1_pInt:3_pInt,m=1_pInt:3_pInt) &
      dLp_dMp(k,k,m,m) = dLp_dMp(k,k,m,m) - 1.0_pReal/3.0_pReal
    dLp_dMp = gamma_dot / prm%fTaylor * dLp_dMp / norm_Mp_dev
+ else
+   Lp = 0.0_pReal
+   dLp_dMp = 0.0_pReal
  end if
  
  end associate
@@ -318,6 +323,7 @@ end subroutine plastic_isotropic_LpAndItsTangent
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
+! ToDo: Rename to Tstar to Mi?
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,instance,of)
  use math, only: &
@@ -392,13 +398,10 @@ subroutine plastic_isotropic_dotState(Mp,instance,of)
    gamma_dot, &                                                                                     !< strainrate
    hardening, &                                                                                     !< hardening coefficient
    saturation, &                                                                                    !< saturation flowstress
-   norm_Mp                                                                                          !< norm of the Mandel stress
-
+   norm_Mp                                                                                          !< norm of the (deviatoric) Mandel stress
 
  associate(prm => param(instance), stt => state(instance), dot => dotState(instance))
  
-!--------------------------------------------------------------------------------------------------
-! norm of (deviatoric) Mandel stress
  if (prm%dilatation) then
    norm_Mp = sqrt(math_mul33xx33(Mp,Mp))
  else
@@ -407,8 +410,6 @@ subroutine plastic_isotropic_dotState(Mp,instance,of)
  
  gamma_dot = prm%gdot0 * (sqrt(1.5_pReal) * norm_Mp /(prm%fTaylor*stt%flowstress(of))) **prm%n
  
-!--------------------------------------------------------------------------------------------------
-! hardening coefficient
  if (abs(gamma_dot) > 1e-12_pReal) then
    if (dEq0(prm%tausat_SinhFitA)) then
      saturation = prm%tausat
