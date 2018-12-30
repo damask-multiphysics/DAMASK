@@ -538,6 +538,9 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, S6, Fi, ipc, ip, e
    math_mul33x33, &
    math_Mandel6to33
  use material, only: &
+   phasememberAt, &
+   phase_plasticity, &
+   phase_plasticityInstance, &
    phase_plasticity, &
    material_phase, &
    phase_kinematics, &
@@ -569,19 +572,18 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, S6, Fi, ipc, ip, e
  real(pReal),   intent(out), dimension(3,3,3,3) :: &
    dLi_dS, &                                                                                        !< derivative of Li with respect to S
    dLi_dFi
+ 
  real(pReal), dimension(3,3) :: &
-   my_Li                                                                                            !< intermediate velocity gradient
- real(pReal), dimension(3,3,3,3) :: &
-   my_dLi_dS
- real(pReal), dimension(3,3) :: &
+   my_Li, &                                                                                            !< intermediate velocity gradient
    FiInv, &
    temp_33
+ real(pReal), dimension(3,3,3,3) :: &
+   my_dLi_dS
  real(pReal) :: &
    detFi
  integer(pInt) :: &
-   k                                                                                                !< counter in kinematics loop
- integer(pInt) :: &
-   i, j
+   k, i, j, &
+   instance, of
 
  Li = 0.0_pReal
  dLi_dS  = 0.0_pReal
@@ -589,7 +591,9 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, S6, Fi, ipc, ip, e
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_isotropic_ID) plasticityType
-     call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, math_Mandel6to33(S6), ipc, ip, el)
+     of = phasememberAt(ipc,ip,el)
+     instance = phase_plasticityInstance(material_phase(ipc,ip,el))
+     call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, math_Mandel6to33(S6),instance,of)
    case default plasticityType
      my_Li = 0.0_pReal
      my_dLi_dS = 0.0_pReal
