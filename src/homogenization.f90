@@ -1091,6 +1091,8 @@ function homogenization_postResults(ip,el)
  use mesh, only: &
    mesh_element
  use material, only: &
+   thermalMapping, &
+   thermal_typeInstance, &
    mappingHomogenization, &
    homogState, &
    thermalState, &
@@ -1153,7 +1155,7 @@ function homogenization_postResults(ip,el)
                         + hydrogenfluxState(mappingHomogenization(2,ip,el))%sizePostResults) :: &
    homogenization_postResults
  integer(pInt) :: &
-   startPos, endPos
+   startPos, endPos, homog
 
  homogenization_postResults = 0.0_pReal
 
@@ -1184,11 +1186,13 @@ function homogenization_postResults(ip,el)
    case (THERMAL_isothermal_ID) chosenThermal
 
    case (THERMAL_adiabatic_ID) chosenThermal
+     homog = mappingHomogenization(2,ip,el)
      homogenization_postResults(startPos:endPos) = &
-       thermal_adiabatic_postResults(ip, el)
+       thermal_adiabatic_postResults(homog,thermal_typeInstance(homog),thermalMapping(homog)%p(ip,el))
    case (THERMAL_conduction_ID) chosenThermal
+     homog = mappingHomogenization(2,ip,el)
      homogenization_postResults(startPos:endPos) = &
-       thermal_conduction_postResults(ip, el)
+       thermal_conduction_postResults(homog,thermal_typeInstance(homog),thermalMapping(homog)%p(ip,el))
  end select chosenThermal
 
  startPos = endPos + 1_pInt

@@ -10,8 +10,6 @@ module thermal_adiabatic
 
  implicit none
  private
- integer(pInt),                       dimension(:),           allocatable,         public, protected :: &
-   thermal_adiabatic_sizePostResults                                                           !< cumulative size of post results
 
  integer(pInt),                       dimension(:,:),         allocatable, target, public :: &
    thermal_adiabatic_sizePostResult                                                            !< size of each post result output
@@ -98,7 +96,6 @@ subroutine thermal_adiabatic_init(fileUnit)
  maxNinstance = int(count(thermal_type == THERMAL_adiabatic_ID),pInt)
  if (maxNinstance == 0_pInt) return
  
- allocate(thermal_adiabatic_sizePostResults(maxNinstance),                               source=0_pInt)
  allocate(thermal_adiabatic_sizePostResult (maxval(homogenization_Noutput),maxNinstance),source=0_pInt)
  allocate(thermal_adiabatic_output         (maxval(homogenization_Noutput),maxNinstance))
           thermal_adiabatic_output = ''
@@ -157,14 +154,13 @@ subroutine thermal_adiabatic_init(fileUnit)
  
        if (mySize > 0_pInt) then  ! any meaningful output found
           thermal_adiabatic_sizePostResult(o,instance) = mySize
-          thermal_adiabatic_sizePostResults(instance)  = thermal_adiabatic_sizePostResults(instance) + mySize
        endif
      enddo outputsLoop
 
 ! allocate state arrays
      sizeState = 1_pInt
      thermalState(section)%sizeState = sizeState
-     thermalState(section)%sizePostResults = thermal_adiabatic_sizePostResults(instance)
+     thermalState(section)%sizePostResults = sum(thermal_adiabatic_sizePostResult(:,instance))
      allocate(thermalState(section)%state0   (sizeState,NofMyHomog), source=thermal_initialT(section))
      allocate(thermalState(section)%subState0(sizeState,NofMyHomog), source=thermal_initialT(section))
      allocate(thermalState(section)%state    (sizeState,NofMyHomog), source=thermal_initialT(section))
@@ -344,6 +340,7 @@ function thermal_adiabatic_getSpecificHeat(ip,el)
  
 end function thermal_adiabatic_getSpecificHeat
  
+ 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns homogenized mass density
 !--------------------------------------------------------------------------------------------------
@@ -381,42 +378,38 @@ function thermal_adiabatic_getMassDensity(ip,el)
    thermal_adiabatic_getMassDensity/real(homogenization_Ngrains(mesh_element(3,el)),pReal)
  
 end function thermal_adiabatic_getMassDensity
- 
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of thermal results
 !--------------------------------------------------------------------------------------------------
-function thermal_adiabatic_postResults(ip,el)
+function thermal_adiabatic_postResults(homog,instance,of) result(postResults)
  use material, only: &
-   mappingHomogenization, &
-   thermal_typeInstance, &
-   thermalMapping, &
    temperature
 
  implicit none
  integer(pInt),              intent(in) :: &
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
- real(pReal), dimension(thermal_adiabatic_sizePostResults(thermal_typeInstance(mappingHomogenization(2,ip,el)))) :: &
-   thermal_adiabatic_postResults
+   homog, &
+   instance, &
+   of
+
+ real(pReal), dimension(sum(thermal_adiabatic_sizePostResult(:,instance))) :: &
+   postResults
 
  integer(pInt) :: &
-   instance, homog, offset, o, c
-   
- homog     = mappingHomogenization(2,ip,el)
- offset    = thermalMapping(homog)%p(ip,el)
- instance  = thermal_typeInstance(homog)
+   o, c
 
  c = 0_pInt
- thermal_adiabatic_postResults = 0.0_pReal
 
  do o = 1_pInt,thermal_adiabatic_Noutput(instance)
     select case(thermal_adiabatic_outputID(o,instance))
  
       case (temperature_ID)
-        thermal_adiabatic_postResults(c+1_pInt) = temperature(homog)%p(offset)
+        postResults(c+1_pInt) = temperature(homog)%p(of)
         c = c + 1
     end select
  enddo
+ 
 end function thermal_adiabatic_postResults
 
 end module thermal_adiabatic

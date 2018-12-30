@@ -10,8 +10,6 @@ module thermal_conduction
 
  implicit none
  private
- integer(pInt),                       dimension(:),           allocatable,         public, protected :: &
-   thermal_conduction_sizePostResults                                                           !< cumulative size of post results
 
  integer(pInt),                       dimension(:,:),         allocatable, target, public :: &
    thermal_conduction_sizePostResult                                                            !< size of each post result output
@@ -99,7 +97,6 @@ subroutine thermal_conduction_init(fileUnit)
  maxNinstance = int(count(thermal_type == THERMAL_conduction_ID),pInt)
  if (maxNinstance == 0_pInt) return
  
- allocate(thermal_conduction_sizePostResults(maxNinstance),                               source=0_pInt)
  allocate(thermal_conduction_sizePostResult (maxval(homogenization_Noutput),maxNinstance),source=0_pInt)
  allocate(thermal_conduction_output         (maxval(homogenization_Noutput),maxNinstance))
           thermal_conduction_output = ''
@@ -144,42 +141,40 @@ subroutine thermal_conduction_init(fileUnit)
  enddo parsingFile
  
  initializeInstances: do section = 1_pInt, size(thermal_type)
-   if (thermal_type(section) == THERMAL_conduction_ID) then
-     NofMyHomog=count(material_homog==section)
-     instance = thermal_typeInstance(section)
+   if (thermal_type(section) /= THERMAL_conduction_ID) cycle
+   NofMyHomog=count(material_homog==section)
+   instance = thermal_typeInstance(section)
 
 !--------------------------------------------------------------------------------------------------
 !  Determine size of postResults array
-     outputsLoop: do o = 1_pInt,thermal_conduction_Noutput(instance)
-       select case(thermal_conduction_outputID(o,instance))
-         case(temperature_ID)
-           mySize = 1_pInt
-       end select
+   outputsLoop: do o = 1_pInt,thermal_conduction_Noutput(instance)
+     select case(thermal_conduction_outputID(o,instance))
+      case(temperature_ID)
+         mySize = 1_pInt
+     end select
  
-       if (mySize > 0_pInt) then  ! any meaningful output found
-          thermal_conduction_sizePostResult(o,instance) = mySize
-          thermal_conduction_sizePostResults(instance)  = thermal_conduction_sizePostResults(instance) + mySize
-       endif
-     enddo outputsLoop
+     if (mySize > 0_pInt) then  ! any meaningful output found
+       thermal_conduction_sizePostResult(o,instance) = mySize
+     endif
+   enddo outputsLoop
 
 ! allocate state arrays
-     sizeState = 0_pInt
-     thermalState(section)%sizeState = sizeState
-     thermalState(section)%sizePostResults = thermal_conduction_sizePostResults(instance)
-     allocate(thermalState(section)%state0   (sizeState,NofMyHomog))
-     allocate(thermalState(section)%subState0(sizeState,NofMyHomog))
-     allocate(thermalState(section)%state    (sizeState,NofMyHomog))
+   sizeState = 0_pInt
+   thermalState(section)%sizeState = sizeState
+   thermalState(section)%sizePostResults = sum(thermal_conduction_sizePostResult(:,instance))
+   allocate(thermalState(section)%state0   (sizeState,NofMyHomog))
+   allocate(thermalState(section)%subState0(sizeState,NofMyHomog))
+   allocate(thermalState(section)%state    (sizeState,NofMyHomog))
 
-     nullify(thermalMapping(section)%p)
-     thermalMapping(section)%p => mappingHomogenization(1,:,:)
-     deallocate(temperature    (section)%p)
-     allocate  (temperature    (section)%p(NofMyHomog), source=thermal_initialT(section))
-     deallocate(temperatureRate(section)%p)
-     allocate  (temperatureRate(section)%p(NofMyHomog), source=0.0_pReal)
+   nullify(thermalMapping(section)%p)
+   thermalMapping(section)%p => mappingHomogenization(1,:,:)
+   deallocate(temperature    (section)%p)
+   allocate  (temperature    (section)%p(NofMyHomog), source=thermal_initialT(section))
+   deallocate(temperatureRate(section)%p)
+   allocate  (temperatureRate(section)%p(NofMyHomog), source=0.0_pReal)
      
-   endif
- 
  enddo initializeInstances
+ 
 end subroutine thermal_conduction_init
 
 !--------------------------------------------------------------------------------------------------
@@ -261,6 +256,7 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
  
 end subroutine thermal_conduction_getSourceAndItsTangent
  
+
 !--------------------------------------------------------------------------------------------------
 !> @brief returns homogenized thermal conductivity in reference configuration
 !--------------------------------------------------------------------------------------------------
@@ -298,7 +294,8 @@ function thermal_conduction_getConductivity33(ip,el)
    thermal_conduction_getConductivity33/real(homogenization_Ngrains(mesh_element(3,el)),pReal)
  
 end function thermal_conduction_getConductivity33
- 
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief returns homogenized specific heat capacity
 !--------------------------------------------------------------------------------------------------
@@ -374,7 +371,8 @@ function thermal_conduction_getMassDensity(ip,el)
    thermal_conduction_getMassDensity/real(homogenization_Ngrains(mesh_element(3,el)),pReal)
  
 end function thermal_conduction_getMassDensity
- 
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief updates thermal state with solution from heat conduction PDE
 !--------------------------------------------------------------------------------------------------
@@ -403,41 +401,37 @@ subroutine thermal_conduction_putTemperatureAndItsRate(T,Tdot,ip,el)
 
 end subroutine thermal_conduction_putTemperatureAndItsRate
  
+ 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of thermal results
 !--------------------------------------------------------------------------------------------------
-function thermal_conduction_postResults(ip,el)
+function thermal_conduction_postResults(homog,instance,of) result(postResults)
  use material, only: &
-   mappingHomogenization, &
-   thermal_typeInstance, &
-   temperature, &
-   thermalMapping
+   temperature
 
  implicit none
  integer(pInt),              intent(in) :: &
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
- real(pReal), dimension(thermal_conduction_sizePostResults(thermal_typeInstance(mappingHomogenization(2,ip,el)))) :: &
-   thermal_conduction_postResults
+   homog, &
+   instance, &
+   of
+
+ real(pReal), dimension(sum(thermal_conduction_sizePostResult(:,instance))) :: &
+   postResults
 
  integer(pInt) :: &
-   instance, homog, offset, o, c
-   
- homog     = mappingHomogenization(2,ip,el)
- offset    = thermalMapping(homog)%p(ip,el)
- instance  = thermal_typeInstance(homog)
+   o, c
 
  c = 0_pInt
- thermal_conduction_postResults = 0.0_pReal
 
  do o = 1_pInt,thermal_conduction_Noutput(instance)
     select case(thermal_conduction_outputID(o,instance))
  
       case (temperature_ID)
-        thermal_conduction_postResults(c+1_pInt) = temperature(homog)%p(offset)
+        postResults(c+1_pInt) = temperature(homog)%p(of)
         c = c + 1
     end select
  enddo
+ 
 end function thermal_conduction_postResults
 
 end module thermal_conduction
