@@ -32,6 +32,18 @@ module source_thermal_externalheat
    source_thermal_externalheat_time, &
    source_thermal_externalheat_rate
 
+
+ type, private :: tParameters                                                                       !< container type for internal constitutive parameters
+   real(pReal), dimension(:), allocatable :: &
+     time, &
+     rate
+   integer(pInt) :: &
+     nInterval
+ end type tParameters
+
+ type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
+
+
  public :: &
    source_thermal_externalheat_init, &
    source_thermal_externalheat_dotState, &
@@ -76,6 +88,7 @@ subroutine source_thermal_externalheat_init(fileUnit)
    material_phase, &  
    sourceState
  use config, only: &
+   config_phase, &
    material_Nphase, &
    MATERIAL_partPhase
  use numerics,only: &
@@ -87,7 +100,7 @@ subroutine source_thermal_externalheat_init(fileUnit)
  integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: maxNinstance,phase,instance,source,sourceOffset
  integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
- integer(pInt) :: NofMyPhase,interval   
+ integer(pInt) :: NofMyPhase,interval,p   
  character(len=65536) :: &
    tag  = '', &
    line = ''
@@ -117,10 +130,14 @@ subroutine source_thermal_externalheat_init(fileUnit)
  allocate(source_thermal_externalheat_output  (maxval(phase_Noutput),maxNinstance))
           source_thermal_externalheat_output = ''
  allocate(source_thermal_externalheat_Noutput(maxNinstance),                             source=0_pInt) 
- allocate(source_thermal_externalheat_nIntervals(maxNinstance),                          source=0_pInt) 
 
+ allocate(source_thermal_externalheat_nIntervals(maxNinstance),                          source=0_pInt) 
  allocate(temp_time(maxNinstance,1000), source=0.0_pReal) 
  allocate(temp_rate(maxNinstance,1000), source=0.0_pReal) 
+
+ do p=1, size(config_phase)
+   if (all(phase_source(:,p) /= SOURCE_thermal_externalheat_ID)) cycle
+ enddo
 
  rewind(fileUnit)
  phase = 0_pInt
@@ -238,26 +255,22 @@ end subroutine source_thermal_externalheat_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local heat generation rate 
 !--------------------------------------------------------------------------------------------------
-subroutine source_thermal_externalheat_getRateAndItsTangent(TDot, dTDot_dT, ipc, ip, el)
+subroutine source_thermal_externalheat_getRateAndItsTangent(TDot, dTDot_dT, phase, constituent)
  use material, only: &
-   phaseAt, phasememberAt, &
    sourceState
 
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
+   phase, &
+   constituent
  real(pReal),  intent(out) :: &
    TDot, &
    dTDot_dT
  integer(pInt) :: &
-   instance, phase, constituent, sourceOffset, interval
+   instance, sourceOffset, interval
  real(pReal) :: &
    frac_time   
 
- phase = phaseAt(ipc,ip,el)
- constituent = phasememberAt(ipc,ip,el)
  instance = source_thermal_externalheat_instance(phase)
  sourceOffset = source_thermal_externalheat_offset(phase)
 

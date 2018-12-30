@@ -27,6 +27,15 @@ module source_thermal_dissipation
  real(pReal),                         dimension(:),           allocatable,        private :: &
    source_thermal_dissipation_coldworkCoeff
 
+
+ type, private :: tParameters                                                                       !< container type for internal constitutive parameters
+   real(pReal) :: &
+     coldworkCoeff
+ end type tParameters
+
+ type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
+
+
  public :: &
    source_thermal_dissipation_init, &
    source_thermal_dissipation_getRateAndItsTangent
@@ -70,6 +79,7 @@ subroutine source_thermal_dissipation_init(fileUnit)
    material_phase, &  
    sourceState
  use config, only: &
+   config_phase, &
    material_Nphase, &
    MATERIAL_partPhase
  use numerics,only: &
@@ -79,9 +89,9 @@ subroutine source_thermal_dissipation_init(fileUnit)
  integer(pInt), intent(in) :: fileUnit
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt) :: maxNinstance,phase,instance,source,sourceOffset
+ integer(pInt) :: Ninstance,phase,instance,source,sourceOffset
  integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
- integer(pInt) :: NofMyPhase   
+ integer(pInt) :: NofMyPhase,p   
  character(len=65536) :: &
    tag  = '', &
    line = ''
@@ -90,10 +100,10 @@ subroutine source_thermal_dissipation_init(fileUnit)
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  
- maxNinstance = int(count(phase_source == SOURCE_thermal_dissipation_ID),pInt)
- if (maxNinstance == 0_pInt) return
+ Ninstance = int(count(phase_source == SOURCE_thermal_dissipation_ID),pInt)
+ if (Ninstance == 0_pInt) return
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
-   write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
+   write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
  
  allocate(source_thermal_dissipation_offset(material_Nphase), source=0_pInt)
  allocate(source_thermal_dissipation_instance(material_Nphase), source=0_pInt)
@@ -105,12 +115,17 @@ subroutine source_thermal_dissipation_init(fileUnit)
    enddo    
  enddo
    
- allocate(source_thermal_dissipation_sizePostResults(maxNinstance),                     source=0_pInt)
- allocate(source_thermal_dissipation_sizePostResult(maxval(phase_Noutput),maxNinstance),source=0_pInt)
- allocate(source_thermal_dissipation_output  (maxval(phase_Noutput),maxNinstance))
+ allocate(source_thermal_dissipation_sizePostResults(Ninstance),                     source=0_pInt)
+ allocate(source_thermal_dissipation_sizePostResult(maxval(phase_Noutput),Ninstance),source=0_pInt)
+ allocate(source_thermal_dissipation_output  (maxval(phase_Noutput),Ninstance))
           source_thermal_dissipation_output = ''
- allocate(source_thermal_dissipation_Noutput(maxNinstance),                             source=0_pInt) 
- allocate(source_thermal_dissipation_coldworkCoeff(maxNinstance),                       source=0.0_pReal) 
+ allocate(source_thermal_dissipation_Noutput(Ninstance),                             source=0_pInt)
+
+ allocate(source_thermal_dissipation_coldworkCoeff(Ninstance),                       source=0.0_pReal) 
+
+ do p=1, size(config_phase)
+   if (all(phase_source(:,p) /= SOURCE_thermal_dissipation_ID)) cycle
+ enddo
 
  rewind(fileUnit)
  phase = 0_pInt
@@ -181,17 +196,14 @@ end subroutine source_thermal_dissipation_init
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local vacancy generation rate 
 !--------------------------------------------------------------------------------------------------
-subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDOT_dT, Tstar_v, Lp, ipc, ip, el)
+subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDOT_dT, Tstar_v, Lp, phase, constituent)
  use math, only: &
    math_Mandel6to33
- use material, only: &
-   phaseAt, phasememberAt
 
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
+   phase, &
+   constituent
  real(pReal),  intent(in), dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
  real(pReal),  intent(in), dimension(3,3) :: &
@@ -200,10 +212,8 @@ subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDOT_dT, Tstar
    TDot, &
    dTDOT_dT
  integer(pInt) :: &
-   instance, phase, constituent 
+   instance
 
- phase = phaseAt(ipc,ip,el)
- constituent = phasememberAt(ipc,ip,el)
  instance = source_thermal_dissipation_instance(phase)
  
  TDot = source_thermal_dissipation_coldworkCoeff(instance)* &

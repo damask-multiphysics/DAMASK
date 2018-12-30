@@ -192,6 +192,7 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
    homogenization_Ngrains, &
    mappingHomogenization, &
    phaseAt, &
+   phasememberAt, &
    thermal_typeInstance, &
    phase_Nsources, &
    phase_source, &
@@ -221,7 +222,8 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
    offset, &
    instance, &
    grain, &
-   source
+   source, &
+   constituent
    
  homog  = mappingHomogenization(2,ip,el)
  offset = mappingHomogenization(1,ip,el)
@@ -231,17 +233,18 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
  dTdot_dT = 0.0_pReal
  do grain = 1, homogenization_Ngrains(homog)
    phase = phaseAt(grain,ip,el)
+   constituent = phasememberAt(grain,ip,el)
    do source = 1, phase_Nsources(phase)
      select case(phase_source(source,phase))                                                   
        case (SOURCE_thermal_dissipation_ID)
         call source_thermal_dissipation_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
                                                              crystallite_Tstar_v(1:6,grain,ip,el), &
                                                              crystallite_Lp(1:3,1:3,grain,ip,el), &
-                                                             grain, ip, el)
+                                                             phase, constituent)
 
        case (SOURCE_thermal_externalheat_ID)
         call source_thermal_externalheat_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
-                                                              grain, ip, el)
+                                                              phase, constituent)
 
        case default
         my_Tdot = 0.0_pReal
@@ -363,8 +366,8 @@ function thermal_conduction_getMassDensity(ip,el)
  homog  = mappingHomogenization(2,ip,el)
   
  do grain = 1, homogenization_Ngrains(mesh_element(3,el))
-   thermal_conduction_getMassDensity = thermal_conduction_getMassDensity + &
-    lattice_massDensity(material_phase(grain,ip,el))
+   thermal_conduction_getMassDensity = thermal_conduction_getMassDensity &
+                                     + lattice_massDensity(material_phase(grain,ip,el))
  enddo
 
  thermal_conduction_getMassDensity = &
