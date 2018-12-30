@@ -64,7 +64,8 @@ module plastic_kinehardening
      nonSchmid_pos, &
      nonSchmid_neg
    integer(pInt) :: &
-     totalNslip                                                                                     !< total number of active slip system
+     totalNslip, &                                                                                  !< total number of active slip system
+     of_debug = 0_pInt
    integer(pInt),               allocatable, dimension(:) :: &
      Nslip                                                                                          !< number of active slip systems for each family
    integer(kind(undefined_ID)), allocatable, dimension(:) :: &
@@ -114,6 +115,12 @@ subroutine plastic_kinehardening_init
  use prec, only: &
    dEq0
  use debug, only: &
+#ifdef DEBUG
+   debug_e, &
+   debug_i, &
+   debug_g, &
+   debug_levelExtensive, &
+#endif
    debug_level, &
    debug_constitutive,&
    debug_levelBasic
@@ -123,6 +130,9 @@ subroutine plastic_kinehardening_init
    IO_error, &
    IO_timeStamp
  use material, only: &
+#ifdef DEBUG
+   phasememberAt, &
+#endif
    phase_plasticity, &
    phase_plasticityInstance, &
    phase_Noutput, &
@@ -195,8 +205,13 @@ subroutine plastic_kinehardening_init
              delta => deltaState(phase_plasticityInstance(p)), &
              stt => state(phase_plasticityInstance(p)))
 
-   structure          = config_phase(p)%getString('lattice_structure')
+#ifdef DEBUG
+   if  (p==material_phase(debug_g,debug_i,debug_e)) then
+      prm%of_debug = phasememberAt(debug_g,debug_i,debug_e)
+   endif
+#endif
 
+   structure          = config_phase(p)%getString('lattice_structure')
 !--------------------------------------------------------------------------------------------------
 !  optional parameters that need to be defined
    prm%aTolResistance = config_phase(p)%getFloat('atol_resistance',defaultVal=1.0_pReal)
@@ -421,7 +436,14 @@ subroutine plastic_kinehardening_deltaState(Mp,instance,of)
  use prec, only: &
    dNeq, &
    dEq0
-   
+#ifdef DEBUG
+ use debug, only: &
+   debug_level, &
+   debug_constitutive,&
+   debug_levelExtensive, &
+   debug_levelSelective
+#endif
+
  implicit none
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
@@ -441,16 +463,12 @@ subroutine plastic_kinehardening_deltaState(Mp,instance,of)
                dEq0(gdot_pos+gdot_neg,1e-10_pReal))                                                 ! current sense of shear direction
 
 #ifdef DEBUG
-!         if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &               ! ToDo: We need an inverse mapping of ->el, ip, co
-!            .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
-!                   .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
-!           write(6,'(a)') '======= kinehardening delta state ======='
-!         endif
-!         if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &
-!            .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
-!                   .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
-!           write(6,'(i2,1x,f7.4,1x,f7.4)') j,sense(j),state(instance)%sense(j,of)
-!         endif
+ if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &
+            .and. (of == prm%of_debug &
+                   .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
+   write(6,'(a)') '======= kinehardening delta state ======='
+   write(6,*) sense,state(instance)%sense(:,of)
+ endif
 #endif
 
 !--------------------------------------------------------------------------------------------------
@@ -537,9 +555,8 @@ function plastic_kinehardening_postResults(Mp,instance,of) result(postResults)
  real(pReal), dimension(param(instance)%totalNslip) :: &
    gdot_pos,gdot_neg
 
- postResults = 0.0_pReal
- c = 0_pInt
 
+ c = 0_pInt
 
  associate( prm => param(instance), stt => state(instance))
  
