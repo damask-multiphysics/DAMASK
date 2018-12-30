@@ -82,8 +82,7 @@ module plastic_phenopowerlaw
      xi_slip, &
      xi_twin, &
      gamma_slip, &
-     gamma_twin, &
-     whole
+     gamma_twin
  end type
 
  type(tPhenopowerlawState), allocatable, dimension(:), private :: &
@@ -95,6 +94,9 @@ module plastic_phenopowerlaw
    plastic_phenopowerlaw_LpAndItsTangent, &
    plastic_phenopowerlaw_dotState, &
    plastic_phenopowerlaw_postResults
+ private :: &
+   kinetics_slip, &
+   kinetics_twin
 
 contains
 
@@ -110,8 +112,7 @@ subroutine plastic_phenopowerlaw_init
    compiler_options
 #endif
  use prec, only: &
-   pStringLen, &
-   dEq0
+   pStringLen
  use debug, only: &
    debug_level, &
    debug_constitutive,&
@@ -119,7 +120,6 @@ subroutine plastic_phenopowerlaw_init
  use math, only: &
    math_expand
  use IO, only: &
-   IO_warning, &
    IO_error, &
    IO_timeStamp
  use material, only: &
@@ -149,7 +149,7 @@ subroutine plastic_phenopowerlaw_init
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
 
  integer(kind(undefined_ID)) :: &
-   outputID                                                                                         !< ID of each post result output
+   outputID
 
  character(len=pStringLen) :: &
    structure = '',&
@@ -157,7 +157,7 @@ subroutine plastic_phenopowerlaw_init
  character(len=65536), dimension(:), allocatable :: &
    outputs
 
- write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_PHENOPOWERLAW_label//' init  -+>>>'
+ write(6,'(/,a)')   ' <<<+-  plastic_'//PLASTICITY_PHENOPOWERLAW_label//' init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
@@ -207,7 +207,7 @@ subroutine plastic_phenopowerlaw_init
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
      if(structure=='bcc') then
        prm%nonSchmidCoeff     = config%getFloats('nonschmid_coefficients',&
-                                                          defaultVal = emptyRealArray)
+                                                 defaultVal = emptyRealArray)
        prm%nonSchmid_pos      = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1_pInt)
        prm%nonSchmid_neg      = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1_pInt)
      else
@@ -221,7 +221,7 @@ subroutine plastic_phenopowerlaw_init
      prm%xi_slip_0            = config%getFloats('tau0_slip',   requiredSize=size(prm%Nslip))
      prm%xi_slip_sat          = config%getFloats('tausat_slip', requiredSize=size(prm%Nslip))
      prm%H_int                = config%getFloats('h_int',       requiredSize=size(prm%Nslip), &
-                                                                         defaultVal=[(0.0_pReal,i=1_pInt,size(prm%Nslip))])
+                                                                defaultVal=[(0.0_pReal,i=1_pInt,size(prm%Nslip))])
  
      prm%gdot0_slip           = config%getFloat('gdot0_slip')
      prm%n_slip               = config%getFloat('n_slip')
@@ -234,9 +234,9 @@ subroutine plastic_phenopowerlaw_init
      prm%H_int       = math_expand(prm%H_int,      prm%Nslip)
 
      ! sanity checks
-     if (prm%gdot0_slip <= 0.0_pReal)           extmsg = trim(extmsg)//'gdot0_slip '
-     if (dEq0(prm%a_slip))                      extmsg = trim(extmsg)//'a_slip '                    ! ToDo: negative values ok?
-     if (dEq0(prm%n_slip))                      extmsg = trim(extmsg)//'n_slip '                    ! ToDo: negative values ok?
+     if (prm%gdot0_slip      <= 0.0_pReal)      extmsg = trim(extmsg)//'gdot0_slip '
+     if (prm%a_slip          <= 0.0_pReal)      extmsg = trim(extmsg)//'a_slip '
+     if (prm%n_slip          <= 0.0_pReal)      extmsg = trim(extmsg)//'n_slip '
      if (any(prm%xi_slip_0   <= 0.0_pReal))     extmsg = trim(extmsg)//'xi_slip_0 '
      if (any(prm%xi_slip_sat <  prm%xi_slip_0)) extmsg = trim(extmsg)//'xi_slip_sat '
    else slipActive
@@ -269,7 +269,7 @@ subroutine plastic_phenopowerlaw_init
 
      ! sanity checks
      if (prm%gdot0_twin <= 0.0_pReal)  extmsg = trim(extmsg)//'gdot0_twin '
-     if (dEq0(prm%n_twin))             extmsg = trim(extmsg)//'n_twin '                             ! ToDo: negative values ok?
+     if (prm%n_twin     <= 0.0_pReal)  extmsg = trim(extmsg)//'n_twin '
    else twinActive
      allocate(prm%interaction_TwinTwin(0,0))
      allocate(prm%xi_twin_0(0))
@@ -341,7 +341,7 @@ subroutine plastic_phenopowerlaw_init
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-   NipcMyPhase = count(material_phase == p)                                                         ! number of IPCs containing my phase
+   NipcMyPhase = count(material_phase == p)
    sizeState = size(['tau_slip  ','gamma_slip']) * prm%TotalNslip &
              + size(['tau_twin  ','gamma_twin']) * prm%TotalNtwin
    sizeDotState = sizeState
@@ -349,7 +349,6 @@ subroutine plastic_phenopowerlaw_init
    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0_pInt, &
                                       prm%totalNslip,prm%totalNtwin,0_pInt)
    plasticState(p)%sizePostResults = sum(plastic_phenopowerlaw_sizePostResult(:,phase_plasticityInstance(p)))
-
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
@@ -383,7 +382,6 @@ subroutine plastic_phenopowerlaw_init
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolShear
 
    plasticState(p)%state0 = plasticState(p)%state                                                   ! ToDo: this could be done centrally
-   dot%whole => plasticState(p)%dotState
 
    end associate
  enddo
@@ -469,7 +467,6 @@ subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
 
  associate(prm => param(instance),  stt => state(instance),  dot => dotState(instance))
 
- dot%whole(:,of) = 0.0_pReal
  sumGamma = sum(stt%gamma_slip(:,of))
  sumF     = sum(stt%gamma_twin(:,of)/prm%gamma_twin_char)
 

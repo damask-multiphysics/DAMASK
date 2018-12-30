@@ -1,6 +1,7 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine for isotropic plasticity
 !> @details Isotropic Plasticity which resembles the phenopowerlaw plasticity without
 !! resolving the stress on the slip systems. Will give the response of phenopowerlaw for an
@@ -10,15 +11,15 @@ module plastic_isotropic
  use prec, only: &
    pReal,&
    pInt
- 
+
  implicit none
  private
  integer(pInt),                       dimension(:,:),   allocatable, target, public :: &
    plastic_isotropic_sizePostResult                                                                 !< size of each post result output
  character(len=64),                   dimension(:,:),   allocatable, target, public :: &
    plastic_isotropic_output                                                                         !< name of each post result output
- 
- enum, bind(c) 
+
+ enum, bind(c)
    enumerator :: &
      undefined_ID, &
      flowstress_ID, &
@@ -50,9 +51,9 @@ module plastic_isotropic
  end type
 
  type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
- 
+
  type, private :: tIsotropicState
-   real(pReal), pointer,     dimension(:) :: &
+   real(pReal), pointer, dimension(:) :: &
      flowstress, &
      accumulatedShear
  end type
@@ -60,8 +61,8 @@ module plastic_isotropic
  type(tIsotropicState), allocatable, dimension(:), private :: &
    dotState, &
    state
-   
- public  :: &
+
+ public :: &
    plastic_isotropic_init, &
    plastic_isotropic_LpAndItsTangent, &
    plastic_isotropic_LiAndItsTangent, &
@@ -81,6 +82,8 @@ subroutine plastic_isotropic_init()
    compiler_version, &
    compiler_options
 #endif
+ use prec, only: &
+   pStringLen
  use debug, only: &
 #ifdef DEBUG
    debug_e, &
@@ -91,9 +94,6 @@ subroutine plastic_isotropic_init()
    debug_level, &
    debug_constitutive,&
    debug_levelBasic
- use math, only: &
-   math_Mandel3333to66, &
-   math_Voigt66to3333
  use IO, only: &
    IO_error, &
    IO_timeStamp
@@ -112,76 +112,94 @@ subroutine plastic_isotropic_init()
  use config, only: &
    MATERIAL_partPhase, &
    config_phase
- use lattice  
+ use lattice
 
  implicit none
- 
  integer(pInt) :: &
-   p, & 
-   instance, &
-   maxNinstance, &
-   sizeDotState, &
-   sizeState
- character(len=65536) :: &
-   extmsg    = ''
- integer(pInt) :: NipcMyPhase,i
+   Ninstance, &
+   p, i, &
+   NipcMyPhase, &
+   sizeState, sizeDotState
+   
+ character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
+ 
  integer(kind(undefined_ID)) :: &
-   outputID                                                                                         !< ID of each post result output
+   outputID
 
- character(len=65536), dimension(:), allocatable :: outputs
+ character(len=pStringLen) :: &
+   extmsg = ''
+ character(len=65536), dimension(:), allocatable :: &
+   outputs
 
- write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_ISOTROPIC_label//' init  -+>>>'
+ write(6,'(/,a)')   ' <<<+-  plastic_'//PLASTICITY_ISOTROPIC_label//' init  -+>>>'
+ write(6,'(/,a)')   ' Maiti and Eisenlohr, Scripta Materialia, 145:37-40, 2018'
+ write(6,'(/,a)')   ' https://doi.org/10.1016/j.scriptamat.2017.09.047'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- 
- maxNinstance = int(count(phase_plasticity == PLASTICITY_ISOTROPIC_ID),pInt)
+
+ Ninstance = int(count(phase_plasticity == PLASTICITY_ISOTROPIC_ID),pInt)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
-   write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
+   write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
-
- allocate(plastic_isotropic_sizePostResult(maxval(phase_Noutput), maxNinstance),source=0_pInt)
- allocate(plastic_isotropic_output(maxval(phase_Noutput), maxNinstance))
+ allocate(plastic_isotropic_sizePostResult(maxval(phase_Noutput), Ninstance),source=0_pInt)
+ allocate(plastic_isotropic_output(maxval(phase_Noutput), Ninstance))
           plastic_isotropic_output = ''
 
- allocate(param(maxNinstance))                                                                      ! one container of parameters per instance
- allocate(state(maxNinstance))                                                                      ! internal state aliases
- allocate(dotState(maxNinstance))
+ allocate(param(Ninstance))
+ allocate(state(Ninstance))
+ allocate(dotState(Ninstance))
 
  do p = 1_pInt, size(phase_plasticityInstance)
    if (phase_plasticity(p) /= PLASTICITY_ISOTROPIC_ID) cycle
-   instance = phase_plasticityInstance(p)
-   associate(prm => param(instance))
+   associate(prm => param(phase_plasticityInstance(p)), &
+             dot => dotState(phase_plasticityInstance(p)), &
+             stt => state(phase_plasticityInstance(p)), &
+             config => config_phase(p))
    
 #ifdef DEBUG
    if  (p==material_phase(debug_g,debug_i,debug_e)) then
-      prm%of_debug = phasememberAt(debug_g,debug_i,debug_e)
+     prm%of_debug = phasememberAt(debug_g,debug_i,debug_e)
    endif
 #endif
 
-   prm%tau0            =  config_phase(p)%getFloat('tau0')
-   prm%tausat          =  config_phase(p)%getFloat('tausat')
-   prm%gdot0           =  config_phase(p)%getFloat('gdot0')
-   prm%n               =  config_phase(p)%getFloat('n')
-   prm%h0              =  config_phase(p)%getFloat('h0')
-   prm%fTaylor         =  config_phase(p)%getFloat('m')
-   prm%h0_slopeLnRate  =  config_phase(p)%getFloat('h0_slopelnrate', defaultVal=0.0_pReal)
-   prm%tausat_SinhFitA =  config_phase(p)%getFloat('tausat_sinhfita',defaultVal=0.0_pReal)
-   prm%tausat_SinhFitB =  config_phase(p)%getFloat('tausat_sinhfitb',defaultVal=0.0_pReal)
-   prm%tausat_SinhFitC =  config_phase(p)%getFloat('tausat_sinhfitc',defaultVal=0.0_pReal)
-   prm%tausat_SinhFitD =  config_phase(p)%getFloat('tausat_sinhfitd',defaultVal=0.0_pReal)
-   prm%a               =  config_phase(p)%getFloat('a')
-   prm%aTolFlowStress  =  config_phase(p)%getFloat('atol_flowstress',defaultVal=1.0_pReal)
-   prm%aTolShear       =  config_phase(p)%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
+   prm%tau0            =  config%getFloat('tau0')
+   prm%tausat          =  config%getFloat('tausat')
+   prm%gdot0           =  config%getFloat('gdot0')
+   prm%n               =  config%getFloat('n')
+   prm%h0              =  config%getFloat('h0')
+   prm%fTaylor         =  config%getFloat('m')
+   prm%h0_slopeLnRate  =  config%getFloat('h0_slopelnrate', defaultVal=0.0_pReal)
+   prm%tausat_SinhFitA =  config%getFloat('tausat_sinhfita',defaultVal=0.0_pReal)
+   prm%tausat_SinhFitB =  config%getFloat('tausat_sinhfitb',defaultVal=0.0_pReal)
+   prm%tausat_SinhFitC =  config%getFloat('tausat_sinhfitc',defaultVal=0.0_pReal)
+   prm%tausat_SinhFitD =  config%getFloat('tausat_sinhfitd',defaultVal=0.0_pReal)
+   prm%a               =  config%getFloat('a')
+   prm%aTolFlowStress  =  config%getFloat('atol_flowstress',defaultVal=1.0_pReal)
+   prm%aTolShear       =  config%getFloat('atol_shear',     defaultVal=1.0e-6_pReal)
    
-   prm%dilatation      = config_phase(p)%keyExists('/dilatation/')
+   prm%dilatation      = config%keyExists('/dilatation/')
 
-#if defined(__GFORTRAN__)
-   outputs = ['GfortranBug86277']
-   outputs = config_phase(p)%getStrings('(output)',defaultVal=outputs)
-   if (outputs(1) == 'GfortranBug86277') outputs = [character(len=65536)::]
-#else
-   outputs = config_phase(p)%getStrings('(output)',defaultVal=[character(len=65536)::])
-#endif
+!--------------------------------------------------------------------------------------------------
+!  sanity checks
+   extmsg = ''
+   if (prm%aTolShear        <= 0.0_pReal) extmsg = trim(extmsg)//'aTolShear ' 
+   if (prm%tau0              < 0.0_pReal) extmsg = trim(extmsg)//'tau0 ' 
+   if (prm%gdot0            <= 0.0_pReal) extmsg = trim(extmsg)//'gdot0 ' 
+   if (prm%n                <= 0.0_pReal) extmsg = trim(extmsg)//'n ' 
+   if (prm%tausat           <= prm%tau0)  extmsg = trim(extmsg)//'tausat '
+   if (prm%a                <= 0.0_pReal) extmsg = trim(extmsg)//'a ' 
+   if (prm%fTaylor          <= 0.0_pReal) extmsg = trim(extmsg)//'m ' 
+   if (prm%aTolFlowstress   <= 0.0_pReal) extmsg = trim(extmsg)//'atol_flowstress '
+   if (prm%aTolShear        <= 0.0_pReal) extmsg = trim(extmsg)//'atol_shear ' 
+   
+!--------------------------------------------------------------------------------------------------
+!  exit if any parameter is out of range
+   if (extmsg /= '') &
+     call IO_error(211_pInt,ext_msg=trim(extmsg)//'('//PLASTICITY_ISOTROPIC_label//')')
+
+!--------------------------------------------------------------------------------------------------
+!  output pararameters
+   outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
    allocate(prm%outputID(0))
    do i=1_pInt, size(outputs)
      outputID = undefined_ID
@@ -198,48 +216,34 @@ subroutine plastic_isotropic_init()
       prm%outputID = [prm%outputID , outputID]
     endif
 
-   enddo
-
-!--------------------------------------------------------------------------------------------------
-!  sanity checks
-   extmsg = ''
-   if (prm%aTolShear        <= 0.0_pReal) extmsg = trim(extmsg)//"'aTolShear' "
-   if (prm%tau0              < 0.0_pReal) extmsg = trim(extmsg)//"'tau0' "
-   if (prm%gdot0            <= 0.0_pReal) extmsg = trim(extmsg)//"'gdot0' "
-   if (prm%n                <= 0.0_pReal) extmsg = trim(extmsg)//"'n' "
-   if (prm%tausat           <= prm%tau0)    extmsg = trim(extmsg)//"'tausat' "
-   if (prm%a                <= 0.0_pReal) extmsg = trim(extmsg)//"'a' " 
-   if (prm%fTaylor          <= 0.0_pReal) extmsg = trim(extmsg)//"'m' "
-   if (prm%aTolFlowstress   <= 0.0_pReal) extmsg = trim(extmsg)//"'atol_flowstress' "
-   if (extmsg /= '') call IO_error(211_pInt,ip=instance,&
-                          ext_msg=trim(extmsg)//'('//PLASTICITY_ISOTROPIC_label//')')
+   end do
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-   NipcMyPhase = count(material_phase == p)                                                   ! number of own material points (including point components ipc)
+   NipcMyPhase = count(material_phase == p)
+   sizeState   = size(["flowstress       ","accumulated_shear"])
+   sizeDotState = sizeState
 
-   sizeDotState   = size(["flowstress       ","accumulated_shear"])
-   sizeState = sizeDotState
    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0_pInt, &
                                       1_pInt,0_pInt,0_pInt)
    plasticState(p)%sizePostResults = sum(plastic_isotropic_sizePostResult(:,phase_plasticityInstance(p)))
-                                      
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
-
-   state(instance)%flowstress             => plasticState(p)%state    (1,1:NipcMyPhase)
-   dotState(instance)%flowstress          => plasticState(p)%dotState (1,1:NipcMyPhase)
-   plasticState(p)%state0(1,1:NipcMyPhase) = prm%tau0
+   stt%flowstress  => plasticState(p)%state    (1,1:NipcMyPhase)
+   stt%flowstress  = prm%tau0
+   dot%flowstress  => plasticState(p)%dotState (1,1:NipcMyPhase)
    plasticState(p)%aTolState(1)       =  prm%aTolFlowstress
 
-   state(instance)%accumulatedShear       => plasticState(p)%state    (2,1:NipcMyPhase)
-   dotState(instance)%accumulatedShear    => plasticState(p)%dotState (2,1:NipcMyPhase)
-   plasticState(p)%state0 (2,1:NipcMyPhase) = 0.0_pReal
+   stt%accumulatedShear  => plasticState(p)%state    (2,1:NipcMyPhase)
+   dot%accumulatedShear  => plasticState(p)%dotState (2,1:NipcMyPhase)
    plasticState(p)%aTolState(2)       =  prm%aTolShear
    ! global alias
    plasticState(p)%slipRate           => plasticState(p)%dotState(2:2,1:NipcMyPhase)
    plasticState(p)%accumulatedSlip    => plasticState(p)%state   (2:2,1:NipcMyPhase)
+   
+   plasticState(p)%state0 = plasticState(p)%state                                                   ! ToDo: this could be done centrally
+   
   end associate
 
  enddo
@@ -290,9 +294,7 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
  norm_Mp_dev = sqrt(squarenorm_Mp_dev) 
 
  if (norm_Mp_dev > 0.0_pReal) then
-   gamma_dot = prm%gdot0 &
-             * ( sqrt(1.5_pReal) * norm_Mp_dev / prm%fTaylor / stt%flowstress(of) ) &
-             **prm%n
+   gamma_dot = prm%gdot0 * (sqrt(1.5_pReal) * norm_Mp_dev/(prm%fTaylor*stt%flowstress(of))) **prm%n
 
    Lp = Mp_dev/norm_Mp_dev * gamma_dot/prm%fTaylor 
 #ifdef DEBUG
@@ -323,7 +325,7 @@ end subroutine plastic_isotropic_LpAndItsTangent
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
-! ToDo: Rename to Tstar to Mi?
+! ToDo: Rename Tstar to Mi?
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,instance,of)
  use math, only: &
@@ -459,8 +461,6 @@ function plastic_isotropic_postResults(Mp,instance,of) result(postResults)
 
  associate(prm => param(instance), stt => state(instance))
  
-!--------------------------------------------------------------------------------------------------
-! norm of (deviatoric) Mandel stress
  if (prm%dilatation) then
    norm_Mp = sqrt(math_mul33xx33(Mp,Mp))
  else
