@@ -300,8 +300,7 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ipc,ip,el)
      write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> norm Tstar / MPa', norm_Mp_dev*1.0e-6_pReal
      write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> gdot', gamma_dot
    end if
-!--------------------------------------------------------------------------------------------------
-! Calculation of the tangent of Lp
+
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
      dLp_dMp(k,l,m,n) = (prm%n-1.0_pReal) * Mp_dev(k,l)*Mp_dev(m,n) / squarenorm_Mp_dev
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
@@ -312,6 +311,7 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ipc,ip,el)
  end if
  
  end associate
+ 
 end subroutine plastic_isotropic_LpAndItsTangent
 
 
@@ -331,7 +331,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,instance,of)
  
  real(pReal), dimension(3,3),   intent(in) :: &
    Tstar                                                                                            !< Mandel stress
- integer(pInt),               intent(in) :: &
+ integer(pInt),                 intent(in) :: &
    instance, &
    of
 
@@ -350,14 +350,10 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,instance,of)
  squarenorm_Tstar_sph = math_mul33xx33(Tstar_sph,Tstar_sph)
  norm_Tstar_sph = sqrt(squarenorm_Tstar_sph) 
 
- if (prm%dilatation .and. norm_Tstar_sph > 0.0_pReal) then                                          ! Tstar == 0 or J2 plascitiy --> both Li and dLi_dTstar are zero
-   gamma_dot = prm%gdot0 &
-             * (sqrt(1.5_pReal) * norm_Tstar_sph / prm%fTaylor / stt%flowstress(of) ) **prm%n
+ if (prm%dilatation .and. norm_Tstar_sph > 0.0_pReal) then                                          ! no stress or J2 plastitiy --> Li and its derivative are zero
+   gamma_dot = prm%gdot0 * (sqrt(1.5_pReal) * norm_Tstar_sph /(prm%fTaylor*stt%flowstress(of))) **prm%n
 
    Li = Tstar_sph/norm_Tstar_sph * gamma_dot/prm%fTaylor
-
-   !--------------------------------------------------------------------------------------------------
-   ! Calculation of the tangent of Li
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
      dLi_dTstar(k,l,m,n) = (prm%n-1.0_pReal) * Tstar_sph(k,l)*Tstar_sph(m,n) / squarenorm_Tstar_sph
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
@@ -365,8 +361,8 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,instance,of)
 
    dLi_dTstar = gamma_dot / prm%fTaylor * dLi_dTstar / norm_Tstar_sph
  else
-    Li = 0.0_pReal
-    dLi_dTstar = 0.0_pReal
+   Li = 0.0_pReal
+   dLi_dTstar = 0.0_pReal
  endif
  
  end associate
@@ -377,52 +373,46 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,instance,of)
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_isotropic_dotState(Tstar_v,ipc,ip,el)
+subroutine plastic_isotropic_dotState(Mp,ipc,ip,el)
  use prec, only: &
    dEq0
  use math, only: &
-   math_mul6x6
+   math_mul33xx33, &
+   math_deviatoric33
  use material, only: &
    phasememberAt, &
    material_phase, &
    phase_plasticityInstance
  
  implicit none
- real(pReal), dimension(6), intent(in):: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal), dimension(3,3), intent(in) :: &
+   Mp                                                                                               !< Mandel stress    
  integer(pInt),             intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- real(pReal), dimension(6) :: &
-   Tstar_dev_v                                                                                      !< deviatoric 2nd Piola Kirchhoff stress tensor in Mandel notation
  real(pReal) :: &
    gamma_dot, &                                                                                     !< strainrate
    hardening, &                                                                                     !< hardening coefficient
    saturation, &                                                                                    !< saturation flowstress
-   norm_Tstar_v                                                                                     !< euclidean norm of Tstar_dev
+   norm_Mp                                                                                          !< norm of the Mandel stress
  integer(pInt) :: &
-   instance, &                                                                                      !< instance of my instance (unique number of my constitutive model)
+   instance, &
    of                                                                                               !< shortcut notation for offset position in state array
 
  of = phasememberAt(ipc,ip,el)                                                                      ! phasememberAt should be tackled by material and be renamed to material_phasemember
  instance = phase_plasticityInstance(material_phase(ipc,ip,el))
- associate(prm => param(instance))
+ associate(prm => param(instance), stt => state(instance), dot => dotState(instance))
  
 !--------------------------------------------------------------------------------------------------
-! norm of (deviatoric) 2nd Piola-Kirchhoff stress
+! norm of (deviatoric) Mandel stress
  if (prm%dilatation) then
-   norm_Tstar_v = sqrt(math_mul6x6(Tstar_v,Tstar_v))
+   norm_Mp = sqrt(math_mul33xx33(Mp,Mp))
  else
-   Tstar_dev_v(1:3) = Tstar_v(1:3) - sum(Tstar_v(1:3))/3.0_pReal
-   Tstar_dev_v(4:6) = Tstar_v(4:6)
-   norm_Tstar_v = sqrt(math_mul6x6(Tstar_dev_v,Tstar_dev_v))
- end if
-!--------------------------------------------------------------------------------------------------
-! strain rate 
- gamma_dot = prm%gdot0 * ( sqrt(1.5_pReal) * norm_Tstar_v & 
-            / &!-----------------------------------------------------------------------------------
-           (prm%fTaylor*state(instance)%flowstress(of) ))**prm%n
+   norm_Mp = sqrt(math_mul33xx33(math_deviatoric33(Mp),math_deviatoric33(Mp)))
+ endif
+ 
+ gamma_dot = prm%gdot0 * (sqrt(1.5_pReal) * norm_Mp /(prm%fTaylor*stt%flowstress(of))) **prm%n
  
 !--------------------------------------------------------------------------------------------------
 ! hardening coefficient
@@ -431,26 +421,24 @@ subroutine plastic_isotropic_dotState(Tstar_v,ipc,ip,el)
      saturation = prm%tausat
    else
      saturation = prm%tausat &
-                + asinh( (gamma_dot / prm%tausat_SinhFitA&
-                         )**(1.0_pReal / prm%tausat_SinhFitD)&
+                + asinh( (gamma_dot / prm%tausat_SinhFitA)**(1.0_pReal / prm%tausat_SinhFitD) &
                        )**(1.0_pReal / prm%tausat_SinhFitC) &
-                   / ( prm%tausat_SinhFitB &
-                       * (gamma_dot / prm%gdot0)**(1.0_pReal / prm%n) &
-                     )
+                   / prm%tausat_SinhFitB * (gamma_dot / prm%gdot0)**(1.0_pReal / prm%n)
    endif
    hardening = ( prm%h0 + prm%h0_slopeLnRate * log(gamma_dot) ) &
-               * abs( 1.0_pReal - state(instance)%flowstress(of)/saturation )**prm%a &
-               * sign(1.0_pReal, 1.0_pReal - state(instance)%flowstress(of)/saturation)
+               * abs( 1.0_pReal - stt%flowstress(of)/saturation )**prm%a &
+               * sign(1.0_pReal, 1.0_pReal - stt%flowstress(of)/saturation)
  else
    hardening = 0.0_pReal
  endif
 
- dotState(instance)%flowstress      (of) = hardening * gamma_dot
- dotState(instance)%accumulatedShear(of) =             gamma_dot
+ dot%flowstress      (of) = hardening * gamma_dot
+ dot%accumulatedShear(of) =             gamma_dot
  
  end associate
 
 end subroutine plastic_isotropic_dotState
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
