@@ -231,7 +231,7 @@ end subroutine plastic_isotropic_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
+subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ipc,ip,el)
  use debug, only: &
    debug_level, &
    debug_constitutive, &
@@ -242,9 +242,6 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
    debug_i, &
    debug_g
  use math, only: &
-   math_mul6x6, &
-   math_Mandel6to33, &
-   math_Plain3333to99, &
    math_deviatoric33, &
    math_mul33xx33
  use material, only: &
@@ -253,13 +250,13 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
    phase_plasticityInstance
 
  implicit none
- real(pReal), dimension(3,3), intent(out) :: &
+ real(pReal), dimension(3,3),     intent(out) :: &
    Lp                                                                                               !< plastic velocity gradient
- real(pReal), dimension(9,9), intent(out) :: &
-   dLp_dTstar99                                                                                     !< derivative of Lp with respect to 2nd Piola Kirchhoff stress
+ real(pReal), dimension(3,3,3,3), intent(out) :: &
+   dLp_dMp                                                                                          !< derivative of Lp with respect to the Mandel stress
 
- real(pReal), dimension(6),   intent(in) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal), dimension(3,3), intent(in) :: &
+   Mp                
  integer(pInt),               intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -267,13 +264,11 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
 
  
  real(pReal), dimension(3,3) :: &
-   Tstar_dev_33                                                                                     !< deviatoric part of the 2nd Piola Kirchhoff stress tensor as 2nd order tensor
- real(pReal), dimension(3,3,3,3) :: &
-   dLp_dTstar_3333                                                                                  !< derivative of Lp with respect to Tstar as 4th order tensor
+   Mp_dev                                                                                           !< deviatoric part of the Mandel stress
  real(pReal) :: &
    gamma_dot, &                                                                                     !< strainrate
-   norm_Tstar_dev, &                                                                                !< euclidean norm of Tstar_dev
-   squarenorm_Tstar_dev                                                                             !< square of the euclidean norm of Tstar_dev
+   norm_Mp_dev, &                                                                                   !< euclidean norm of the Mandel stress
+   squarenorm_Mp_dev                                                                                !< square of the euclidean norm of the Mandel stress
  integer(pInt) :: &
    instance, of, &
    k, l, m, n
@@ -282,40 +277,38 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
  instance = phase_plasticityInstance(material_phase(ipc,ip,el))
  associate(prm => param(instance))
  
- Tstar_dev_33 = math_deviatoric33(math_Mandel6to33(Tstar_v))                                        ! deviatoric part of 2nd Piola-Kirchhoff stress
- squarenorm_Tstar_dev = math_mul33xx33(Tstar_dev_33,Tstar_dev_33)
- norm_Tstar_dev = sqrt(squarenorm_Tstar_dev) 
+ Mp_dev = math_deviatoric33(Mp)
+ squarenorm_Mp_dev = math_mul33xx33(Mp_dev,Mp_dev)
+ norm_Mp_dev = sqrt(squarenorm_Mp_dev) 
 
- if (norm_Tstar_dev <= 0.0_pReal) then                                                              ! Tstar == 0 --> both Lp and dLp_dTstar are zero
+ if (norm_Mp_dev <= 0.0_pReal) then
    Lp = 0.0_pReal
-   dLp_dTstar99 = 0.0_pReal
+   dLp_dMp = 0.0_pReal
  else
    gamma_dot = prm%gdot0 &
-             * ( sqrt(1.5_pReal) * norm_Tstar_dev / prm%fTaylor / state(instance)%flowstress(of) ) &
+             * ( sqrt(1.5_pReal) * norm_Mp_dev / prm%fTaylor / state(instance)%flowstress(of) ) &
              **prm%n
 
-   Lp = Tstar_dev_33/norm_Tstar_dev * gamma_dot/prm%fTaylor 
+   Lp = Mp_dev/norm_Mp_dev * gamma_dot/prm%fTaylor 
 
    if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &
        .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
               .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
      write(6,'(a,i8,1x,i2,1x,i3)') '<< CONST isotropic >> at el ip g ',el,ip,ipc
      write(6,'(/,a,/,3(12x,3(f12.4,1x)/))') '<< CONST isotropic >> Tstar (dev) / MPa', &
-                                      transpose(Tstar_dev_33(1:3,1:3))*1.0e-6_pReal
-     write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> norm Tstar / MPa', norm_Tstar_dev*1.0e-6_pReal
+                                      transpose(Mp_dev)*1.0e-6_pReal
+     write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> norm Tstar / MPa', norm_Mp_dev*1.0e-6_pReal
      write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> gdot', gamma_dot
    end if
 !--------------------------------------------------------------------------------------------------
 ! Calculation of the tangent of Lp
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-     dLp_dTstar_3333(k,l,m,n) = (prm%n-1.0_pReal) * &
-                                      Tstar_dev_33(k,l)*Tstar_dev_33(m,n) / squarenorm_Tstar_dev
+     dLp_dMp(k,l,m,n) = (prm%n-1.0_pReal) * Mp_dev(k,l)*Mp_dev(m,n) / squarenorm_Mp_dev
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
-     dLp_dTstar_3333(k,l,k,l) = dLp_dTstar_3333(k,l,k,l) + 1.0_pReal
+     dLp_dMp(k,l,k,l) = dLp_dMp(k,l,k,l) + 1.0_pReal
    forall (k=1_pInt:3_pInt,m=1_pInt:3_pInt) &
-     dLp_dTstar_3333(k,k,m,m) = dLp_dTstar_3333(k,k,m,m) - 1.0_pReal/3.0_pReal
-   dLp_dTstar99 = math_Plain3333to99(gamma_dot / prm%fTaylor * &
-                                      dLp_dTstar_3333 / norm_Tstar_dev)
+     dLp_dMp(k,k,m,m) = dLp_dMp(k,k,m,m) - 1.0_pReal/3.0_pReal
+   dLp_dMp = gamma_dot / prm%fTaylor * dLp_dMp / norm_Mp_dev
  end if
  
  end associate
@@ -324,7 +317,7 @@ end subroutine plastic_isotropic_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar_3333,Tstar_v,ipc,ip,el)
+subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,ipc,ip,el)
  use math, only: &
    math_mul6x6, &
    math_Mandel6to33, &
@@ -340,16 +333,16 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar_3333,Tstar_v,ipc,ip,e
  real(pReal), dimension(3,3), intent(out) :: &
    Li                                                                                               !< plastic velocity gradient
  real(pReal), dimension(3,3,3,3), intent(out)  :: &
-   dLi_dTstar_3333                                                                                  !< derivative of Li with respect to Tstar as 4th order tensor
- real(pReal), dimension(6),   intent(in) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+   dLi_dTstar                                                                                 !< derivative of Li with respect to Tstar as 4th order tensor
+ real(pReal), dimension(3,3),   intent(in) :: &
+   Tstar                                                                                            !< 2nd Piola Kirchhoff stress tensor in Mandel notation
  integer(pInt),               intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
  
  real(pReal), dimension(3,3) :: &
-   Tstar_sph_33                                                                                     !< sphiatoric part of the 2nd Piola Kirchhoff stress tensor as 2nd order tensor
+   Tstar_sph                                                                                        !< sphiatoric part of the 2nd Piola Kirchhoff stress tensor as 2nd order tensor
  real(pReal) :: &
    gamma_dot, &                                                                                     !< strainrate
    norm_Tstar_sph, &                                                                                !< euclidean norm of Tstar_sph
@@ -362,30 +355,28 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar_3333,Tstar_v,ipc,ip,e
  instance = phase_plasticityInstance(material_phase(ipc,ip,el))
  associate(prm => param(instance))
  
- Tstar_sph_33 = math_spherical33(math_Mandel6to33(Tstar_v))                                         ! spherical part of 2nd Piola-Kirchhoff stress
- squarenorm_Tstar_sph = math_mul33xx33(Tstar_sph_33,Tstar_sph_33)
+ Tstar_sph = math_spherical33(Tstar)
+ squarenorm_Tstar_sph = math_mul33xx33(Tstar_sph,Tstar_sph)
  norm_Tstar_sph = sqrt(squarenorm_Tstar_sph) 
 
- if (prm%dilatation .and. norm_Tstar_sph > 0.0_pReal) then                              ! Tstar == 0 or J2 plascitiy --> both Li and dLi_dTstar are zero
+ if (prm%dilatation .and. norm_Tstar_sph > 0.0_pReal) then                                          ! Tstar == 0 or J2 plascitiy --> both Li and dLi_dTstar are zero
    gamma_dot = prm%gdot0 &
                * (sqrt(1.5_pReal) * norm_Tstar_sph / prm%fTaylor / state(instance)%flowstress(of) ) &
                **prm%n
 
-   Li = Tstar_sph_33/norm_Tstar_sph * gamma_dot/prm%fTaylor
+   Li = Tstar_sph/norm_Tstar_sph * gamma_dot/prm%fTaylor
 
    !--------------------------------------------------------------------------------------------------
    ! Calculation of the tangent of Li
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-     dLi_dTstar_3333(k,l,m,n) = (prm%n-1.0_pReal) * &
-                                      Tstar_sph_33(k,l)*Tstar_sph_33(m,n) / squarenorm_Tstar_sph
+     dLi_dTstar(k,l,m,n) = (prm%n-1.0_pReal) * Tstar_sph(k,l)*Tstar_sph(m,n) / squarenorm_Tstar_sph
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
-     dLi_dTstar_3333(k,l,k,l) = dLi_dTstar_3333(k,l,k,l) + 1.0_pReal
+     dLi_dTstar(k,l,k,l) = dLi_dTstar(k,l,k,l) + 1.0_pReal
 
-   dLi_dTstar_3333 = gamma_dot / prm%fTaylor * &
-                                      dLi_dTstar_3333 / norm_Tstar_sph
+   dLi_dTstar = gamma_dot / prm%fTaylor * dLi_dTstar / norm_Tstar_sph
  else
-  Li = 0.0_pReal
-  dLi_dTstar_3333 = 0.0_pReal
+    Li = 0.0_pReal
+    dLi_dTstar = 0.0_pReal
  endif
  
  end associate

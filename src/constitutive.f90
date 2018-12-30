@@ -479,8 +479,7 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, S6, Fi, ipc, ip, e
      dLp_dMp = 0.0_pReal
 
    case (PLASTICITY_ISOTROPIC_ID) plasticityType
-     call plastic_isotropic_LpAndItsTangent       (Lp,dLp_dMp99, math_Mandel33to6(Mp),ipc,ip,el)
-     dLp_dMp = math_Plain99to3333(dLp_dMp99)                                                        ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
+     call plastic_isotropic_LpAndItsTangent       (Lp,dLp_dMp,Mp,ipc,ip,el)
 
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
      of = phasememberAt(ipc,ip,el)
@@ -527,6 +526,7 @@ end subroutine constitutive_LpAndItsTangents
 
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
+! ToDo: MD: S is Mi?
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, S6, Fi, ipc, ip, el)
  use prec, only: &
@@ -535,7 +535,8 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, S6, Fi, ipc, ip, e
    math_I3, &
    math_inv33, &
    math_det33, &
-   math_mul33x33
+   math_mul33x33, &
+   math_Mandel6to33
  use material, only: &
    phase_plasticity, &
    material_phase, &
@@ -588,7 +589,7 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, S6, Fi, ipc, ip, e
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_isotropic_ID) plasticityType
-     call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, S6, ipc, ip, el)
+     call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, math_Mandel6to33(S6), ipc, ip, el)
    case default plasticityType
      my_Li = 0.0_pReal
      my_dLi_dS = 0.0_pReal
