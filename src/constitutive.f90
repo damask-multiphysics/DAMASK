@@ -1074,7 +1074,7 @@ function constitutive_postResults(S6, Fi, FeArray, ipc, ip, el)
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_ISOTROPIC_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
-       plastic_isotropic_postResults(S6,ipc,ip,el)
+       plastic_isotropic_postResults(Mp,ipc,ip,el)
 
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
      of = phasememberAt(ipc,ip,el)

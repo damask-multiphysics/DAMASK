@@ -200,10 +200,11 @@ subroutine plastic_isotropic_init()
 ! allocate state arrays
    NipcMyPhase = count(material_phase == p)                                                   ! number of own material points (including point components ipc)
 
-    sizeDotState   = size(["flowstress       ","accumulated_shear"])
-     sizeState = sizeDotState
+   sizeDotState   = size(["flowstress       ","accumulated_shear"])
+   sizeState = sizeDotState
    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0_pInt, &
                                       1_pInt,0_pInt,0_pInt)
+   plasticState(p)%sizePostResults = sum(plastic_isotropic_sizePostResult(:,phase_plasticityInstance(p)))
                                       
 
 !--------------------------------------------------------------------------------------------------
@@ -330,7 +331,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,instance,of)
    dLi_dTstar                                                                                       !< derivative of Li with respect to the Mandel stress
  
  real(pReal), dimension(3,3),   intent(in) :: &
-   Tstar                                                                                            !< Mandel stress
+   Tstar                                                                                            !< Mandel stress ToDo: Mi?
  integer(pInt),                 intent(in) :: &
    instance, &
    of
@@ -443,9 +444,10 @@ end subroutine plastic_isotropic_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-function plastic_isotropic_postResults(Tstar_v,ipc,ip,el)
+function plastic_isotropic_postResults(Mp,ipc,ip,el)
  use math, only: &
-   math_mul6x6
+   math_mul33xx33, &
+   math_deviatoric33
  use material, only: &
    plasticState, &
    material_phase, &
@@ -453,20 +455,19 @@ function plastic_isotropic_postResults(Tstar_v,ipc,ip,el)
    phase_plasticityInstance
 
  implicit none
- real(pReal), dimension(6),  intent(in) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal), dimension(3,3), intent(in) :: &
+   Mp                                                                                               !< Mandel stress    
  integer(pInt),              intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
  
- real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%sizePostResults) :: &
-                                           plastic_isotropic_postResults
+ real(pReal), dimension(sum(plastic_isotropic_sizePostResult(:,phase_plasticityInstance(material_phase(ipc,ip,el))))) :: &
+   plastic_isotropic_postResults
 
- real(pReal), dimension(6) :: &
-   Tstar_dev_v                                                                                      !< deviatoric 2nd Piola Kirchhoff stress tensor in Mandel notation
+
  real(pReal) :: &
-   norm_Tstar_v                                                                                     ! euclidean norm of Tstar_dev
+   norm_Mp                                                                                          !< norm of the Mandel stress
  integer(pInt) :: &
    instance, &                                                                                      !< instance of my instance (unique number of my constitutive model)
    of, &                                                                                            !< shortcut notation for offset position in state array
@@ -478,14 +479,12 @@ function plastic_isotropic_postResults(Tstar_v,ipc,ip,el)
  associate(prm => param(instance))
  
 !--------------------------------------------------------------------------------------------------
-! norm of (deviatoric) 2nd Piola-Kirchhoff stress
+! norm of (deviatoric) Mandel stress
  if (prm%dilatation) then
-   norm_Tstar_v = sqrt(math_mul6x6(Tstar_v,Tstar_v))
+   norm_Mp = sqrt(math_mul33xx33(Mp,Mp))
  else
-   Tstar_dev_v(1:3) = Tstar_v(1:3) - sum(Tstar_v(1:3))/3.0_pReal
-   Tstar_dev_v(4:6) = Tstar_v(4:6)
-   norm_Tstar_v = sqrt(math_mul6x6(Tstar_dev_v,Tstar_dev_v))
- end if
+   norm_Mp = sqrt(math_mul33xx33(math_deviatoric33(Mp),math_deviatoric33(Mp)))
+ endif
  
  c = 0_pInt
  plastic_isotropic_postResults = 0.0_pReal
@@ -497,7 +496,7 @@ function plastic_isotropic_postResults(Tstar_v,ipc,ip,el)
        c = c + 1_pInt
      case (strainrate_ID)
        plastic_isotropic_postResults(c+1_pInt) = &
-                prm%gdot0 * (            sqrt(1.5_pReal) * norm_Tstar_v & 
+                prm%gdot0 * (            sqrt(1.5_pReal) * norm_Mp & 
              / &!----------------------------------------------------------------------------------
               (prm%fTaylor * state(instance)%flowstress(of)) ) ** prm%n
        c = c + 1_pInt
