@@ -13,7 +13,6 @@ module thermal_conduction
 
  integer(pInt),                       dimension(:,:),         allocatable, target, public :: &
    thermal_conduction_sizePostResult                                                            !< size of each post result output
-
  character(len=64),                   dimension(:,:),         allocatable, target, public :: &
    thermal_conduction_output                                                                    !< name of each post result output
    
@@ -44,25 +43,15 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine thermal_conduction_init(fileUnit)
+subroutine thermal_conduction_init
 #if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
  use, intrinsic :: iso_fortran_env, only: &
    compiler_version, &
    compiler_options
 #endif
  use IO, only: &
-   IO_read, &
-   IO_lc, &
-   IO_getTag, &
-   IO_isBlank, &
-   IO_stringPos, &
-   IO_stringValue, &
-   IO_floatValue, &
-   IO_intValue, &
-   IO_warning, &
    IO_error, &
-   IO_timeStamp, &
-   IO_EOF
+   IO_timeStamp
  use material, only: &
    thermal_type, &
    thermal_typeInstance, &
@@ -77,18 +66,15 @@ subroutine thermal_conduction_init(fileUnit)
    temperature, &
    temperatureRate
  use config, only: &
-   material_partHomogenization
+   material_partHomogenization, &
+   config_homogenization
 
  implicit none
- integer(pInt), intent(in) :: fileUnit
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt) :: maxNinstance,mySize=0_pInt,section,instance,o
+ integer(pInt) :: maxNinstance,mySize=0_pInt,section,instance,o,i
  integer(pInt) :: sizeState
  integer(pInt) :: NofMyHomog   
- character(len=65536) :: &
-   tag  = '', &
-   line = ''
+ character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
+ character(len=65536), dimension(:), allocatable :: outputs
 
  write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_CONDUCTION_label//' init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -103,47 +89,20 @@ subroutine thermal_conduction_init(fileUnit)
  allocate(thermal_conduction_outputID       (maxval(homogenization_Noutput),maxNinstance),source=undefined_ID)
  allocate(thermal_conduction_Noutput        (maxNinstance),                               source=0_pInt) 
 
- rewind(fileUnit)
- section = 0_pInt
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partHomogenization)! wind forward to <homogenization>
-   line = IO_read(fileUnit)
- enddo
- 
- parsingFile: do while (trim(line) /= IO_EOF)                                                       ! read through sections of homog part
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit                                                                                           
-   endif   
-   if (IO_getTag(line,'[',']') /= '') then                                                          ! next homog section
-     section = section + 1_pInt                                                                     ! advance homog section counter
-     cycle                                                                                          ! skip to next line
-   endif
-
-   if (section > 0_pInt ) then; if (thermal_type(section) == THERMAL_conduction_ID) then             ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
-
-     instance = thermal_typeInstance(section)                                                       ! which instance of my thermal is present homog
-     chunkPos = IO_stringPos(line)
-     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
-     select case(tag)
-       case ('(output)')
-         select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
-           case ('temperature')
-             thermal_conduction_Noutput(instance) = thermal_conduction_Noutput(instance) + 1_pInt
-             thermal_conduction_outputID(thermal_conduction_Noutput(instance),instance) = temperature_ID
-             thermal_conduction_output(thermal_conduction_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-          end select
-
-     end select
-   endif; endif
- enddo parsingFile
  
  initializeInstances: do section = 1_pInt, size(thermal_type)
    if (thermal_type(section) /= THERMAL_conduction_ID) cycle
    NofMyHomog=count(material_homog==section)
    instance = thermal_typeInstance(section)
+   outputs = config_homogenization(section)%getStrings('(output)',defaultVal=emptyStringArray)
+   do i=1_pInt, size(outputs)
+     select case(outputs(i))
+       case('temperature')
+             thermal_conduction_Noutput(instance) = thermal_conduction_Noutput(instance) + 1_pInt
+             thermal_conduction_outputID(thermal_conduction_Noutput(instance),instance) = temperature_ID
+             thermal_conduction_output(thermal_conduction_Noutput(instance),instance) = outputs(i)
+     end select
+   enddo
 
 !--------------------------------------------------------------------------------------------------
 !  Determine size of postResults array

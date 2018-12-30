@@ -139,11 +139,11 @@ subroutine homogenization_init
 ! parse thermal from config file
  call IO_checkAndRewind(FILEUNIT)
  if (any(thermal_type == THERMAL_isothermal_ID)) &
-   call thermal_isothermal_init()
+   call thermal_isothermal_init
  if (any(thermal_type == THERMAL_adiabatic_ID)) &
-   call thermal_adiabatic_init(FILEUNIT)
+   call thermal_adiabatic_init
  if (any(thermal_type == THERMAL_conduction_ID)) &
-   call thermal_conduction_init(FILEUNIT)
+   call thermal_conduction_init
 
 !--------------------------------------------------------------------------------------------------
 ! parse damage from config file
