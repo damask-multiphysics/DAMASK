@@ -716,10 +716,7 @@ subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, Fe, Fi, ipc, ip
    phase_stiffnessDegradation, &
    damage, &
    damageMapping, &
-   porosity, &
-   porosityMapping, &
-   STIFFNESS_DEGRADATION_damage_ID, &
-   STIFFNESS_DEGRADATION_porosity_ID
+   STIFFNESS_DEGRADATION_damage_ID
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -749,8 +746,6 @@ subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, Fe, Fi, ipc, ip
    degradationType: select case(phase_stiffnessDegradation(d,material_phase(ipc,ip,el)))
      case (STIFFNESS_DEGRADATION_damage_ID) degradationType
        C = C * damage(ho)%p(damageMapping(ho)%p(ip,el))**2_pInt
-     case (STIFFNESS_DEGRADATION_porosity_ID) degradationType
-       C = C * porosity(ho)%p(porosityMapping(ho)%p(ip,el))**2_pInt
    end select degradationType
  enddo DegradationLoop
 

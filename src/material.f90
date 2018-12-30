@@ -40,15 +40,12 @@ module material
    KINEMATICS_cleavage_opening_label    = 'cleavage_opening', &
    KINEMATICS_slipplane_opening_label   = 'slipplane_opening', &
    STIFFNESS_DEGRADATION_damage_label   = 'damage', &
-   STIFFNESS_DEGRADATION_porosity_label = 'porosity', &
    THERMAL_isothermal_label             = 'isothermal', &
    THERMAL_adiabatic_label              = 'adiabatic', &
    THERMAL_conduction_label             = 'conduction', &
    DAMAGE_none_label                    = 'none', &
    DAMAGE_local_label                   = 'local', &
    DAMAGE_nonlocal_label                = 'nonlocal', &
-   POROSITY_none_label                  = 'none', &
-   POROSITY_phasefield_label            = 'phasefield', &
    HOMOGENIZATION_none_label            = 'none', &
    HOMOGENIZATION_isostrain_label       = 'isostrain', &
    HOMOGENIZATION_rgc_label             = 'rgc'
@@ -89,8 +86,7 @@ module material
 
  enum, bind(c)
    enumerator :: STIFFNESS_DEGRADATION_undefined_ID, &
-                 STIFFNESS_DEGRADATION_damage_ID, &
-                 STIFFNESS_DEGRADATION_porosity_ID
+                 STIFFNESS_DEGRADATION_damage_ID
  end enum
 
  enum, bind(c)
@@ -104,12 +100,6 @@ module material
                  DAMAGE_local_ID, &
                  DAMAGE_nonlocal_ID
  end enum
-
- enum, bind(c)
-   enumerator :: POROSITY_none_ID, &
-                 POROSITY_phasefield_ID
- end enum
-
 
  enum, bind(c)
    enumerator :: HOMOGENIZATION_undefined_ID, &
@@ -126,8 +116,6 @@ module material
    thermal_type                                                                                     !< thermal transport model
  integer(kind(DAMAGE_none_ID)),              dimension(:),   allocatable, public, protected :: &
    damage_type                                                                                      !< nonlocal damage model
- integer(kind(POROSITY_none_ID)),            dimension(:),   allocatable, public, protected :: &
-   porosity_type                                                                                    !< porosity evolution model
 
  integer(kind(SOURCE_undefined_ID)),         dimension(:,:), allocatable, public, protected :: &
    phase_source, &                                                                                  !< active sources mechanisms of each phase
@@ -153,13 +141,11 @@ module material
    homogenization_typeInstance, &                                                                   !< instance of particular type of each homogenization
    thermal_typeInstance, &                                                                          !< instance of particular type of each thermal transport
    damage_typeInstance, &                                                                           !< instance of particular type of each nonlocal damage
-   porosity_typeInstance, &                                                                         !< instance of particular type of each porosity model
    microstructure_crystallite                                                                       !< crystallite setting ID of each microstructure ! DEPRECATED !!!!
 
  real(pReal), dimension(:), allocatable, public, protected :: &
    thermal_initialT, &                                                                              !< initial temperature per each homogenization
-   damage_initialPhi, &                                                                             !< initial damage per each homogenization
-   porosity_initialPhi                                                                              !< initial posority per each homogenization
+   damage_initialPhi                                                                                !< initial damage per each homogenization
 
 ! NEW MAPPINGS 
  integer(pInt), dimension(:), allocatable, public, protected :: &
@@ -189,8 +175,7 @@ module material
  type(tState),        allocatable, dimension(:), public :: &
    homogState, &
    thermalState, &
-   damageState, &
-   porosityState
+   damageState
 
  integer(pInt), dimension(:,:,:), allocatable, public, protected :: &
    material_texture                                                                                 !< texture (index) of each grain,IP,element
@@ -240,13 +225,11 @@ module material
 
  type(tHomogMapping), allocatable, dimension(:), public :: &
    thermalMapping, &                                                                                !< mapping for thermal state/fields
-   damageMapping, &                                                                                 !< mapping for damage state/fields
-   porosityMapping                                                                                  !< mapping for porosity state/fields
+   damageMapping                                                                                    !< mapping for damage state/fields
 
  type(group_float),  allocatable, dimension(:), public :: &
    temperature, &                                                                                   !< temperature field
    damage, &                                                                                        !< damage field
-   porosity, &                                                                                      !< porosity field
    temperatureRate                                                                                  !< temperature change rate field
 
  public :: &
@@ -270,15 +253,12 @@ module material
    KINEMATICS_slipplane_opening_ID, &
    KINEMATICS_thermal_expansion_ID, &
    STIFFNESS_DEGRADATION_damage_ID, &
-   STIFFNESS_DEGRADATION_porosity_ID, &
    THERMAL_isothermal_ID, &
    THERMAL_adiabatic_ID, &
    THERMAL_conduction_ID, &
    DAMAGE_none_ID, &
    DAMAGE_local_ID, &
    DAMAGE_nonlocal_ID, &
-   POROSITY_none_ID, &
-   POROSITY_phasefield_ID, &
    HOMOGENIZATION_none_ID, &
    HOMOGENIZATION_isostrain_ID, &
    HOMOGENIZATION_RGC_ID
@@ -370,15 +350,12 @@ subroutine material_init()
  allocate(homogState         (size(config_homogenization)))
  allocate(thermalState       (size(config_homogenization)))
  allocate(damageState        (size(config_homogenization)))
- allocate(porosityState      (size(config_homogenization)))
 
  allocate(thermalMapping     (size(config_homogenization)))
  allocate(damageMapping      (size(config_homogenization)))
- allocate(porosityMapping    (size(config_homogenization)))
 
  allocate(temperature        (size(config_homogenization)))
  allocate(damage             (size(config_homogenization)))
- allocate(porosity           (size(config_homogenization)))
 
  allocate(temperatureRate    (size(config_homogenization)))
 
@@ -453,10 +430,8 @@ subroutine material_init()
  do myHomog = 1,size(config_homogenization)
    thermalMapping     (myHomog)%p => mappingHomogenizationConst
    damageMapping      (myHomog)%p => mappingHomogenizationConst
-   porosityMapping    (myHomog)%p => mappingHomogenizationConst
    allocate(temperature     (myHomog)%p(1), source=thermal_initialT(myHomog))
    allocate(damage          (myHomog)%p(1), source=damage_initialPhi(myHomog))
-   allocate(porosity        (myHomog)%p(1), source=porosity_initialPhi(myHomog))
    allocate(temperatureRate (myHomog)%p(1), source=0.0_pReal)
  enddo
 
@@ -481,17 +456,14 @@ subroutine material_parseHomogenization
  allocate(homogenization_type(size(config_homogenization)),           source=HOMOGENIZATION_undefined_ID)
  allocate(thermal_type(size(config_homogenization)),                  source=THERMAL_isothermal_ID)
  allocate(damage_type (size(config_homogenization)),                  source=DAMAGE_none_ID)
- allocate(porosity_type (size(config_homogenization)),                source=POROSITY_none_ID)
  allocate(homogenization_typeInstance(size(config_homogenization)),   source=0_pInt)
  allocate(thermal_typeInstance(size(config_homogenization)),          source=0_pInt)
  allocate(damage_typeInstance(size(config_homogenization)),           source=0_pInt)
- allocate(porosity_typeInstance(size(config_homogenization)),         source=0_pInt)
  allocate(homogenization_Ngrains(size(config_homogenization)),        source=0_pInt)
  allocate(homogenization_Noutput(size(config_homogenization)),        source=0_pInt)
  allocate(homogenization_active(size(config_homogenization)),         source=.false.)  !!!!!!!!!!!!!!!
  allocate(thermal_initialT(size(config_homogenization)),              source=300.0_pReal)
  allocate(damage_initialPhi(size(config_homogenization)),             source=1.0_pReal)
- allocate(porosity_initialPhi(size(config_homogenization)),           source=1.0_pReal)
 
  forall (h = 1_pInt:size(config_homogenization)) &
    homogenization_active(h) = any(mesh_homogenizationAt == h)
@@ -550,25 +522,6 @@ subroutine material_parseHomogenization
      end select
 
    endif
-   
-
-
-   if (config_homogenization(h)%keyExists('porosity')) then
-     !ToDo?
-
-     tag = config_homogenization(h)%getString('porosity')
-     select case (trim(tag))
-       case(POROSITY_NONE_label)
-         porosity_type(h) = POROSITY_none_ID
-       case(POROSITY_phasefield_label)
-         porosity_type(h) = POROSITY_phasefield_ID
-       case default
-         call IO_error(500_pInt,ext_msg=trim(tag))
-      end select
-
-   endif
-
-
 
  enddo
 
@@ -576,7 +529,6 @@ subroutine material_parseHomogenization
    homogenization_typeInstance(h)  = count(homogenization_type(1:h)  == homogenization_type(h))
    thermal_typeInstance(h)         = count(thermal_type       (1:h)  == thermal_type       (h))
    damage_typeInstance(h)          = count(damage_type        (1:h)  == damage_type        (h))
-   porosity_typeInstance(h)        = count(porosity_type      (1:h)  == porosity_type      (h))
  enddo
 
  homogenization_maxNgrains = maxval(homogenization_Ngrains,homogenization_active)
@@ -797,8 +749,6 @@ subroutine material_parsePhase
      select case (trim(str(stiffDegradationCtr)))
        case (STIFFNESS_DEGRADATION_damage_label)
          phase_stiffnessDegradation(stiffDegradationCtr,p) = STIFFNESS_DEGRADATION_damage_ID
-       case (STIFFNESS_DEGRADATION_porosity_label)
-         phase_stiffnessDegradation(stiffDegradationCtr,p) = STIFFNESS_DEGRADATION_porosity_ID
     end select
    enddo
  enddo

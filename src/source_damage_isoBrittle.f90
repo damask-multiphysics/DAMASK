@@ -246,10 +246,7 @@ subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
    sourceState, &
    material_homog, &
    phase_NstiffnessDegradations, &
-   phase_stiffnessDegradation, &
-   porosity, &
-   porosityMapping, &  
-   STIFFNESS_DEGRADATION_porosity_ID
+   phase_stiffnessDegradation
  use math, only : &
    math_mul33x33, &
    math_mul66x6, &
