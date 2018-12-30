@@ -861,7 +861,7 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
 
    case (PLASTICITY_ISOTROPIC_ID) plasticityType
-     call plastic_isotropic_dotState    (Mp,ipc,ip,el)
+     call plastic_isotropic_dotState    (Mp,instance,of)
 
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
      of = phasememberAt(ipc,ip,el)
@@ -1073,8 +1073,10 @@ function constitutive_postResults(S6, Fi, FeArray, ipc, ip, el)
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_ISOTROPIC_ID) plasticityType
+     of = phasememberAt(ipc,ip,el)
+     instance = phase_plasticityInstance(material_phase(ipc,ip,el))
      constitutive_postResults(startPos:endPos) = &
-       plastic_isotropic_postResults(Mp,ipc,ip,el)
+       plastic_isotropic_postResults(Mp,instance,of)
 
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
      of = phasememberAt(ipc,ip,el)

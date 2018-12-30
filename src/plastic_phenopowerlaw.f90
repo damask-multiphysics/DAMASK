@@ -532,7 +532,6 @@ function plastic_phenopowerlaw_postResults(Mp,instance,of) result(postResults)
  real(pReal), dimension(param(instance)%totalNslip) :: &
    gdot_slip_pos,gdot_slip_neg
 
- postResults = 0.0_pReal
  c = 0_pInt
  
  associate( prm => param(instance), stt => state(instance))

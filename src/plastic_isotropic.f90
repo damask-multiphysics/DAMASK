@@ -374,35 +374,27 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,instance,of)
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_isotropic_dotState(Mp,ipc,ip,el)
+subroutine plastic_isotropic_dotState(Mp,instance,of)
  use prec, only: &
    dEq0
  use math, only: &
    math_mul33xx33, &
    math_deviatoric33
- use material, only: &
-   phasememberAt, &
-   material_phase, &
-   phase_plasticityInstance
- 
+
  implicit none
- real(pReal), dimension(3,3), intent(in) :: &
-   Mp                                                                                               !< Mandel stress    
- integer(pInt),             intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
+ real(pReal), dimension(3,3),  intent(in) :: &
+   Mp                                                                                               !< Mandel stress
+ integer(pInt),                intent(in) :: &
+   instance, &
+   of
+
  real(pReal) :: &
    gamma_dot, &                                                                                     !< strainrate
    hardening, &                                                                                     !< hardening coefficient
    saturation, &                                                                                    !< saturation flowstress
    norm_Mp                                                                                          !< norm of the Mandel stress
- integer(pInt) :: &
-   instance, &
-   of                                                                                               !< shortcut notation for offset position in state array
 
- of = phasememberAt(ipc,ip,el)                                                                      ! phasememberAt should be tackled by material and be renamed to material_phasemember
- instance = phase_plasticityInstance(material_phase(ipc,ip,el))
+
  associate(prm => param(instance), stt => state(instance), dot => dotState(instance))
  
 !--------------------------------------------------------------------------------------------------
@@ -444,39 +436,27 @@ end subroutine plastic_isotropic_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-function plastic_isotropic_postResults(Mp,ipc,ip,el)
+function plastic_isotropic_postResults(Mp,instance,of) result(postResults)
  use math, only: &
    math_mul33xx33, &
    math_deviatoric33
- use material, only: &
-   plasticState, &
-   material_phase, &
-   phasememberAt, &
-   phase_plasticityInstance
 
  implicit none
- real(pReal), dimension(3,3), intent(in) :: &
-   Mp                                                                                               !< Mandel stress    
- integer(pInt),              intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
- 
- real(pReal), dimension(sum(plastic_isotropic_sizePostResult(:,phase_plasticityInstance(material_phase(ipc,ip,el))))) :: &
-   plastic_isotropic_postResults
+ real(pReal), dimension(3,3),  intent(in) :: &
+   Mp                                                                                               !< Mandel stress
+ integer(pInt),                intent(in) :: &
+   instance, &
+   of
 
+ real(pReal), dimension(sum(plastic_isotropic_sizePostResult(:,instance))) :: &
+   postResults
 
  real(pReal) :: &
    norm_Mp                                                                                          !< norm of the Mandel stress
  integer(pInt) :: &
-   instance, &                                                                                      !< instance of my instance (unique number of my constitutive model)
-   of, &                                                                                            !< shortcut notation for offset position in state array
-   c, &
-   o
+   o,c
 
- of = phasememberAt(ipc,ip,el)                                                                      ! phasememberAt should be tackled by material and be renamed to material_phasemember
- instance = phase_plasticityInstance(material_phase(ipc,ip,el))
- associate(prm => param(instance))
+ associate(prm => param(instance), stt => state(instance))
  
 !--------------------------------------------------------------------------------------------------
 ! norm of (deviatoric) Mandel stress
@@ -487,18 +467,15 @@ function plastic_isotropic_postResults(Mp,ipc,ip,el)
  endif
  
  c = 0_pInt
- plastic_isotropic_postResults = 0.0_pReal
 
  outputsLoop: do o = 1_pInt,size(prm%outputID)
    select case(prm%outputID(o))
      case (flowstress_ID)
-       plastic_isotropic_postResults(c+1_pInt) = state(instance)%flowstress(of)
+       postResults(c+1_pInt) = stt%flowstress(of)
        c = c + 1_pInt
      case (strainrate_ID)
-       plastic_isotropic_postResults(c+1_pInt) = &
-                prm%gdot0 * (            sqrt(1.5_pReal) * norm_Mp & 
-             / &!----------------------------------------------------------------------------------
-              (prm%fTaylor * state(instance)%flowstress(of)) ) ** prm%n
+       postResults(c+1_pInt) = prm%gdot0 &
+                             * (sqrt(1.5_pReal) * norm_Mp /(prm%fTaylor * stt%flowstress(of)))**prm%n
        c = c + 1_pInt
    end select
  enddo outputsLoop
