@@ -53,6 +53,23 @@ module source_damage_anisoDuctile
    source_damage_anisoDuctile_outputID                                                                  !< ID of each post result output
 
 
+ type, private :: tParameters                                                                       !< container type for internal constitutive parameters
+   real(pReal) :: &
+     aTol, &
+     sdot_0, &
+     N
+   real(pReal), dimension(:), allocatable :: &
+     critPlasticStrain, &
+     critLoad
+   integer(pInt) :: &
+     totalNslip
+   integer(pInt), dimension(:), allocatable :: &
+     Nslip
+ end type tParameters
+
+ type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
+
+
  public :: &
    source_damage_anisoDuctile_init, &
    source_damage_anisoDuctile_dotState, &
@@ -98,6 +115,7 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
    material_phase, &  
    sourceState
  use config, only: &
+   config_phase, &
    material_Nphase, &
    MATERIAL_partPhase
  use numerics,only: &
@@ -110,9 +128,9 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
  integer(pInt), intent(in) :: fileUnit
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt) :: maxNinstance,mySize=0_pInt,phase,instance,source,sourceOffset,o
+ integer(pInt) :: Ninstance,mySize=0_pInt,phase,instance,source,sourceOffset,o
  integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
- integer(pInt) :: NofMyPhase   
+ integer(pInt) :: NofMyPhase,p   
  integer(pInt) :: Nchunks_SlipFamilies = 0_pInt, j   
  character(len=65536) :: &
    tag  = '', &
@@ -122,11 +140,11 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- maxNinstance = int(count(phase_source == SOURCE_damage_anisoDuctile_ID),pInt)
- if (maxNinstance == 0_pInt) return
+ Ninstance = int(count(phase_source == SOURCE_damage_anisoDuctile_ID),pInt)
+ if (Ninstance == 0_pInt) return
  
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
-   write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
+   write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
  
  allocate(source_damage_anisoDuctile_offset(material_Nphase), source=0_pInt)
  allocate(source_damage_anisoDuctile_instance(material_Nphase), source=0_pInt)
@@ -138,19 +156,24 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
    enddo    
  enddo
    
- allocate(source_damage_anisoDuctile_sizePostResults(maxNinstance),                     source=0_pInt)
- allocate(source_damage_anisoDuctile_sizePostResult(maxval(phase_Noutput),maxNinstance),source=0_pInt)
- allocate(source_damage_anisoDuctile_output(maxval(phase_Noutput),maxNinstance))
+ allocate(source_damage_anisoDuctile_sizePostResults(Ninstance),                     source=0_pInt)
+ allocate(source_damage_anisoDuctile_sizePostResult(maxval(phase_Noutput),Ninstance),source=0_pInt)
+ allocate(source_damage_anisoDuctile_output(maxval(phase_Noutput),Ninstance))
           source_damage_anisoDuctile_output = ''
- allocate(source_damage_anisoDuctile_outputID(maxval(phase_Noutput),maxNinstance),      source=undefined_ID)
- allocate(source_damage_anisoDuctile_Noutput(maxNinstance),                             source=0_pInt) 
- allocate(source_damage_anisoDuctile_critLoad(lattice_maxNslipFamily,maxNinstance), source=0.0_pReal) 
- allocate(source_damage_anisoDuctile_critPlasticStrain(lattice_maxNslipFamily,maxNinstance),source=0.0_pReal) 
- allocate(source_damage_anisoDuctile_Nslip(lattice_maxNslipFamily,maxNinstance),        source=0_pInt)
- allocate(source_damage_anisoDuctile_totalNslip(maxNinstance),                          source=0_pInt)
- allocate(source_damage_anisoDuctile_N(maxNinstance),                                   source=0.0_pReal) 
- allocate(source_damage_anisoDuctile_sdot_0(maxNinstance),                              source=0.0_pReal) 
- allocate(source_damage_anisoDuctile_aTol(maxNinstance),                                source=0.0_pReal) 
+ allocate(source_damage_anisoDuctile_outputID(maxval(phase_Noutput),Ninstance),      source=undefined_ID)
+ allocate(source_damage_anisoDuctile_Noutput(Ninstance),                             source=0_pInt)
+
+ allocate(source_damage_anisoDuctile_critLoad(lattice_maxNslipFamily,Ninstance), source=0.0_pReal) 
+ allocate(source_damage_anisoDuctile_critPlasticStrain(lattice_maxNslipFamily,Ninstance),source=0.0_pReal) 
+ allocate(source_damage_anisoDuctile_Nslip(lattice_maxNslipFamily,Ninstance),        source=0_pInt)
+ allocate(source_damage_anisoDuctile_totalNslip(Ninstance),                          source=0_pInt)
+ allocate(source_damage_anisoDuctile_N(Ninstance),                                   source=0.0_pReal) 
+ allocate(source_damage_anisoDuctile_sdot_0(Ninstance),                              source=0.0_pReal) 
+ allocate(source_damage_anisoDuctile_aTol(Ninstance),                                source=0.0_pReal) 
+
+ do p=1, size(config_phase)
+   if (all(phase_source(:,p) /= SOURCE_damage_anisoDuctile_ID)) cycle
+ enddo
 
  rewind(fileUnit)
  phase = 0_pInt
@@ -338,26 +361,22 @@ end subroutine source_damage_anisoDuctile_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local part of nonlocal damage driving force
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_anisoDuctile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, ipc, ip,  el)
+subroutine source_damage_anisoDuctile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
  use material, only: &
-   phaseAt, phasememberAt, &
    sourceState
 
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
+   phase, &
+   constituent
  real(pReal),  intent(in) :: &
    phi
  real(pReal),  intent(out) :: &
    localphiDot, &
    dLocalphiDot_dPhi
  integer(pInt) :: &
-   phase, constituent, sourceOffset
+   sourceOffset
 
- phase = phaseAt(ipc,ip,el)
- constituent = phasememberAt(ipc,ip,el)
  sourceOffset = source_damage_anisoDuctile_offset(phase)
  
  localphiDot = 1.0_pReal - &
@@ -371,25 +390,21 @@ end subroutine source_damage_anisoDuctile_getRateAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of local damage results
 !--------------------------------------------------------------------------------------------------
-function source_damage_anisoDuctile_postResults(ipc,ip,el)
+function source_damage_anisoDuctile_postResults(phase, constituent)
  use material, only: &
-   phaseAt, phasememberAt, &
    sourceState
 
  implicit none
- integer(pInt),              intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
+ integer(pInt), intent(in) :: &
+   phase, &
+   constituent
  real(pReal), dimension(source_damage_anisoDuctile_sizePostResults( &
-                          source_damage_anisoDuctile_instance(phaseAt(ipc,ip,el)))) :: &
+                          source_damage_anisoDuctile_instance(phase))) :: &
    source_damage_anisoDuctile_postResults
 
  integer(pInt) :: &
-   instance, phase, constituent, sourceOffset, o, c
+   instance, sourceOffset, o, c
    
- phase = phaseAt(ipc,ip,el)
- constituent = phasememberAt(ipc,ip,el)
  instance = source_damage_anisoDuctile_instance(phase)
  sourceOffset = source_damage_anisoDuctile_offset(phase)
 

@@ -39,6 +39,16 @@ module source_damage_isoBrittle
    source_damage_isoBrittle_outputID                                                                  !< ID of each post result output
 
 
+ type, private :: tParameters                                                                       !< container type for internal constitutive parameters
+   real(pReal) :: &
+     critStrainEnergy, &
+     N, &
+     aTol
+ end type tParameters
+
+ type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
+
+
  public :: &
    source_damage_isoBrittle_init, &
    source_damage_isoBrittle_deltaState, &
@@ -84,6 +94,7 @@ subroutine source_damage_isoBrittle_init(fileUnit)
    material_phase, &  
    sourceState
  use config, only: &
+   config_phase, &
    material_Nphase, &
    MATERIAL_partPhase
  use numerics,only: &
@@ -93,9 +104,9 @@ subroutine source_damage_isoBrittle_init(fileUnit)
  integer(pInt), intent(in) :: fileUnit
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt) :: maxNinstance,mySize=0_pInt,phase,instance,source,sourceOffset,o
+ integer(pInt) :: Ninstance,mySize=0_pInt,phase,instance,source,sourceOffset,o
  integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
- integer(pInt) :: NofMyPhase   
+ integer(pInt) :: NofMyPhase,p   
  character(len=65536) :: &
    tag  = '', &
    line = ''
@@ -104,11 +115,11 @@ subroutine source_damage_isoBrittle_init(fileUnit)
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- maxNinstance = int(count(phase_source == SOURCE_damage_isoBrittle_ID),pInt)
- if (maxNinstance == 0_pInt) return
+ Ninstance = int(count(phase_source == SOURCE_damage_isoBrittle_ID),pInt)
+ if (Ninstance == 0_pInt) return
  
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
-   write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
+   write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
  
  allocate(source_damage_isoBrittle_offset(material_Nphase), source=0_pInt)
  allocate(source_damage_isoBrittle_instance(material_Nphase), source=0_pInt)
@@ -120,15 +131,20 @@ subroutine source_damage_isoBrittle_init(fileUnit)
    enddo    
  enddo
    
- allocate(source_damage_isoBrittle_sizePostResults(maxNinstance),                     source=0_pInt)
- allocate(source_damage_isoBrittle_sizePostResult(maxval(phase_Noutput),maxNinstance),source=0_pInt)
- allocate(source_damage_isoBrittle_output(maxval(phase_Noutput),maxNinstance))
+ allocate(source_damage_isoBrittle_sizePostResults(Ninstance),                     source=0_pInt)
+ allocate(source_damage_isoBrittle_sizePostResult(maxval(phase_Noutput),Ninstance),source=0_pInt)
+ allocate(source_damage_isoBrittle_output(maxval(phase_Noutput),Ninstance))
           source_damage_isoBrittle_output = ''
- allocate(source_damage_isoBrittle_outputID(maxval(phase_Noutput),maxNinstance),      source=undefined_ID)
- allocate(source_damage_isoBrittle_Noutput(maxNinstance),                             source=0_pInt) 
- allocate(source_damage_isoBrittle_critStrainEnergy(maxNinstance),                    source=0.0_pReal) 
- allocate(source_damage_isoBrittle_N(maxNinstance),                                   source=1.0_pReal) 
- allocate(source_damage_isoBrittle_aTol(maxNinstance),                                source=0.0_pReal) 
+ allocate(source_damage_isoBrittle_outputID(maxval(phase_Noutput),Ninstance),      source=undefined_ID)
+ allocate(source_damage_isoBrittle_Noutput(Ninstance),                             source=0_pInt)
+
+ allocate(source_damage_isoBrittle_critStrainEnergy(Ninstance),                    source=0.0_pReal) 
+ allocate(source_damage_isoBrittle_N(Ninstance),                                   source=1.0_pReal) 
+ allocate(source_damage_isoBrittle_aTol(Ninstance),                                source=0.0_pReal) 
+
+ do p=1, size(config_phase)
+   if (all(phase_source(:,p) /= SOURCE_damage_isoBrittle_ID)) cycle
+ enddo
 
  rewind(fileUnit)
  phase = 0_pInt
@@ -306,26 +322,22 @@ end subroutine source_damage_isoBrittle_deltaState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local part of nonlocal damage driving force
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_isoBrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, ipc, ip, el)
+subroutine source_damage_isoBrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
  use material, only: &
-   phaseAt, phasememberAt, &
    sourceState
 
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
+   phase, &
+   constituent
  real(pReal),  intent(in) :: &
    phi
  real(pReal),  intent(out) :: &
    localphiDot, &
    dLocalphiDot_dPhi
  integer(pInt) :: &
-   phase, constituent, instance, sourceOffset
+   instance, sourceOffset
 
- phase = phaseAt(ipc,ip,el)
- constituent = phasememberAt(ipc,ip,el)
  instance = source_damage_isoBrittle_instance(phase)
  sourceOffset = source_damage_isoBrittle_offset(phase)
  
@@ -340,25 +352,21 @@ end subroutine source_damage_isoBrittle_getRateAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of local damage results
 !--------------------------------------------------------------------------------------------------
-function source_damage_isoBrittle_postResults(ipc,ip,el)
+function source_damage_isoBrittle_postResults(phase, constituent)
  use material, only: &
-   phaseAt, phasememberAt, &
    sourceState
 
  implicit none
- integer(pInt),              intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
+ integer(pInt), intent(in) :: &
+   phase, &
+   constituent
  real(pReal), dimension(source_damage_isoBrittle_sizePostResults( &
-                         source_damage_isoBrittle_instance(phaseAt(ipc,ip,el)))) :: &
+                         source_damage_isoBrittle_instance(phase))) :: &
    source_damage_isoBrittle_postResults
 
  integer(pInt) :: &
-   instance, phase, constituent, sourceOffset, o, c
+   instance, sourceOffset, o, c
    
- phase = phaseAt(ipc,ip,el)
- constituent = phasememberAt(ipc,ip,el)
  instance = source_damage_isoBrittle_instance(phase)
  sourceOffset = source_damage_isoBrittle_offset(phase)
 

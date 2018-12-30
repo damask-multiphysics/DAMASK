@@ -186,8 +186,8 @@ subroutine constitutive_init()
 !--------------------------------------------------------------------------------------------------
 ! parse kinematic mechanisms from config file
  call IO_checkAndRewind(FILEUNIT)
- if (any(phase_kinematics == KINEMATICS_cleavage_opening_ID))  call kinematics_cleavage_opening_init(FILEUNIT)
- if (any(phase_kinematics == KINEMATICS_slipplane_opening_ID)) call kinematics_slipplane_opening_init(FILEUNIT)
+ if (any(phase_kinematics == KINEMATICS_cleavage_opening_ID))  call kinematics_cleavage_opening_init
+ if (any(phase_kinematics == KINEMATICS_slipplane_opening_ID)) call kinematics_slipplane_opening_init
  if (any(phase_kinematics == KINEMATICS_thermal_expansion_ID)) call kinematics_thermal_expansion_init(FILEUNIT)
  if (any(phase_kinematics == KINEMATICS_vacancy_strain_ID))    call kinematics_vacancy_strain_init(FILEUNIT)
  if (any(phase_kinematics == KINEMATICS_hydrogen_strain_ID))   call kinematics_hydrogen_strain_init(FILEUNIT)
@@ -1173,16 +1173,18 @@ function constitutive_postResults(S6, Fi, FeArray, ipc, ip, el)
  SourceLoop: do s = 1_pInt, phase_Nsources(material_phase(ipc,ip,el))
    startPos = endPos + 1_pInt
    endPos = endPos + sourceState(material_phase(ipc,ip,el))%p(s)%sizePostResults
+   of = phasememberAt(ipc,ip,el)
    sourceType: select case (phase_source(s,material_phase(ipc,ip,el)))
      case (SOURCE_damage_isoBrittle_ID) sourceType
-       constitutive_postResults(startPos:endPos) = source_damage_isoBrittle_postResults(ipc, ip, el)
+       constitutive_postResults(startPos:endPos) = source_damage_isoBrittle_postResults(material_phase(ipc,ip,el),of)
      case (SOURCE_damage_isoDuctile_ID) sourceType
-       constitutive_postResults(startPos:endPos) = source_damage_isoDuctile_postResults(ipc, ip, el)
+       constitutive_postResults(startPos:endPos) = source_damage_isoDuctile_postResults(material_phase(ipc,ip,el),of)
      case (SOURCE_damage_anisoBrittle_ID) sourceType
-       constitutive_postResults(startPos:endPos) = source_damage_anisoBrittle_postResults(ipc, ip, el)
+       constitutive_postResults(startPos:endPos) = source_damage_anisoBrittle_postResults(material_phase(ipc,ip,el),of)
      case (SOURCE_damage_anisoDuctile_ID) sourceType
-       constitutive_postResults(startPos:endPos) = source_damage_anisoDuctile_postResults(ipc, ip, el)
+       constitutive_postResults(startPos:endPos) = source_damage_anisoDuctile_postResults(material_phase(ipc,ip,el),of)
    end select sourceType
+
  enddo SourceLoop
 
 end function constitutive_postResults
