@@ -64,10 +64,10 @@ for name in filenames:
 
 # ------------------------------------------ sanity checks ----------------------------------------
 
-  items = OrderedDict({
-            'strain': {'dim': 9, 'shape': [3,3], 'labels':options.strain, 'active':[], 'column': []},
-            'stress': {'dim': 9, 'shape': [3,3], 'labels':options.stress, 'active':[], 'column': []},
-          })
+  items = OrderedDict([
+            ('strain', {'dim': 9, 'shape': [3,3], 'labels':options.strain, 'active':[], 'column': []}),
+            ('stress', {'dim': 9, 'shape': [3,3], 'labels':options.stress, 'active':[], 'column': []})
+          ])
   errors  = []
   remarks = []
   
