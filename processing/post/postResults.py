@@ -830,10 +830,9 @@ if options.info:
 
 elementsOfNode = {}
 Nelems = stat['NumberOfElements']
-starttime = time.time()
 for e in range(Nelems):
-  if options.verbose and Nelems > 100 and e%(Nelems//100) == 0:                                     # report in 1% steps if possible and avoid modulo by zero
-    damask.util.progressBar(iteration=e,total=Nelems,start=starttime,prefix='1/3: connecting elements')
+  if options.verbose and Nelems >= 50 and e%(Nelems//50) == 0:                                      # report in 2% steps if possible and avoid modulo by zero
+    damask.util.progressBar(iteration=e,total=Nelems,prefix='1/3: connecting elements')
   for n in map(p.node_sequence,p.element(e).items):
     if n not in elementsOfNode:
       elementsOfNode[n] = [p.element_id(e)]
@@ -856,10 +855,9 @@ damask.util.progressBar(iteration=1,total=1,prefix='1/3: connecting elements')
 
 if options.nodalScalar:
   Npoints = stat['NumberOfNodes']
-  starttime = time.time()
   for n in range(Npoints):
-    if options.verbose and Npoints > 100 and e%(Npoints//100) == 0:                                 # report in 1% steps if possible and avoid modulo by zero
-      damask.util.progressBar(iteration=n,total=Npoints,start=starttime,prefix='2/3: scanning nodes     ')
+    if options.verbose and Npoints >= 50 and e%(Npoints//50) == 0:                                  # report in 2% steps if possible and avoid modulo by zero
+      damask.util.progressBar(iteration=n,total=Npoints,prefix='2/3: scanning nodes     ')
     myNodeID = p.node_id(n)
     myNodeCoordinates = [p.node(n).x, p.node(n).y, p.node(n).z]
     myElemID = 0
@@ -894,10 +892,9 @@ if options.nodalScalar:
 
 else:
   Nelems = stat['NumberOfElements']
-  starttime = time.time()
   for e in range(Nelems):
-    if options.verbose and Nelems > 100 and e%(Nelems//100) == 0:                                   # report in 1% steps if possible and avoid modulo by zero
-      damask.util.progressBar(iteration=e,total=Nelems,start=starttime,prefix='2/3: scanning elements  ')
+    if options.verbose and Nelems >= 50 and e%(Nelems//50) == 0:                                    # report in 2% steps if possible and avoid modulo by zero
+      damask.util.progressBar(iteration=e,total=Nelems,prefix='2/3: scanning elements  ')
     myElemID = p.element_id(e)
     myIpCoordinates = ipCoords(p.element(e).type, list(map(lambda node: [node.x, node.y, node.z],
                                                          list(map(p.node, map(p.node_sequence, p.element(e).items))))))
@@ -1035,11 +1032,10 @@ for incCount,position in enumerate(locations):     # walk through locations
 
   member = 0
   Ngroups = len(groups)
-  starttime = time.time()
   for j,group in enumerate(groups):
     f = incCount*Ngroups + j
-    if options.verbose and (Ngroups*Nincs) > 100 and f%((Ngroups*Nincs)//100) == 0:                 # report in 1% steps if possible and avoid modulo by zero
-      damask.util.progressBar(iteration=f,total=Ngroups*Nincs,start=starttime,prefix='3/3: processing points  ')
+    if options.verbose and (Ngroups*Nincs) >= 50 and f%((Ngroups*Nincs)//50) == 0:                  # report in 2% steps if possible and avoid modulo by zero
+      damask.util.progressBar(iteration=f,total=Ngroups*Nincs,prefix='3/3: processing points  ')
     N = 0                                                                                           # group member counter
     for (e,n,i,g,n_local) in group[1:]:                                                             # loop over group members
       member += 1
@@ -1091,7 +1087,7 @@ for incCount,position in enumerate(locations):     # walk through locations
                                       ['Crystallite']*len(options.crystalliteResult) +
                                       ['Constitutive']*len(options.constitutiveResult)
                                       ):
-          outputIndex = (list(zip(*outputFormat[resultType]['outputs']))[0]).index(label)             # find the position of this output in the outputFormat
+          outputIndex = (list(zip(*outputFormat[resultType]['outputs']))[0]).index(label)           # find the position of this output in the outputFormat
           length = int(outputFormat[resultType]['outputs'][outputIndex][1])
           thisHead = heading('_',[[component,''.join( label.split() )] for component in range(int(length>1),length+int(length>1))])
           if assembleHeader: header += thisHead
