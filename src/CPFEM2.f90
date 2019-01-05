@@ -203,8 +203,6 @@ subroutine CPFEM_age()
    homogState, &
    thermalState, &
    damageState, &
-   vacancyfluxState, &
-   hydrogenfluxState, &
    material_phase, &
    phase_plasticity, &
    phase_Nsources
@@ -268,8 +266,6 @@ if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
     homogState       (homog)%state0 =  homogState       (homog)%state
     thermalState     (homog)%state0 =  thermalState     (homog)%state
     damageState      (homog)%state0 =  damageState      (homog)%state
-    vacancyfluxState (homog)%state0 =  vacancyfluxState (homog)%state
-    hydrogenfluxState(homog)%state0 =  hydrogenfluxState(homog)%state
   enddo
 
 if (restartWrite) then

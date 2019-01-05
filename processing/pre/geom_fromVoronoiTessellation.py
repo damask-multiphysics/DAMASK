@@ -323,12 +323,13 @@ for name in filenames:
                        ]
     if hasEulers:
       config_header += ['<texture>']
+      theAxes = [] if options.axes is None else ['axes\t{} {} {}'.format(*options.axes)]
       for ID in grainIDs:
         eulerID = np.nonzero(grains == ID)[0][0]                                                    # find first occurrence of this grain id
         config_header += ['[Grain{}]'.format(str(ID).zfill(formatwidth)),
                           '(gauss)\tphi1 {:g}\tPhi {:g}\tphi2 {:g}\tscatter 0.0\tfraction 1.0'.format(*eulers[eulerID])
-                         ]
-        if options.axes is not None: config_header.append('axes\t{} {} {}'.format(*options.axes))
+                         ] + theAxes
+    config_header += ['<!skip>']
   
   table.labels_clear()
   table.info_clear()

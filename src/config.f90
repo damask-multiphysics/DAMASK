@@ -142,7 +142,7 @@ subroutine config_init()
     
      case (trim(material_partPhase))
        call parseFile(phase_name,config_phase,line,fileContent(i+1:))
-       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Phase parsed'; flush(6)
+       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Phase          parsed'; flush(6)
     
      case (trim(material_partMicrostructure))
        call parseFile(microstructure_name,config_microstructure,line,fileContent(i+1:))
@@ -150,7 +150,7 @@ subroutine config_init()
     
      case (trim(material_partCrystallite))
        call parseFile(crystallite_name,config_crystallite,line,fileContent(i+1:))
-       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Crystallite parsed'; flush(6)
+       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Crystallite    parsed'; flush(6)
     
      case (trim(material_partHomogenization))
        call parseFile(homogenization_name,config_homogenization,line,fileContent(i+1:))
@@ -158,7 +158,7 @@ subroutine config_init()
     
      case (trim(material_partTexture))
        call parseFile(texture_name,config_texture,line,fileContent(i+1:))
-       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Texture parsed'; flush(6)
+       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Texture        parsed'; flush(6)
 
    end select
 
@@ -550,7 +550,7 @@ end function getString
 !> @details for cumulative keys, "()", values from all occurrences are return. Otherwise only all
 !! values from the last occurrence. If key is not found exits with error unless default is given.
 !--------------------------------------------------------------------------------------------------
-function getFloats(this,key,defaultVal,requiredShape)
+function getFloats(this,key,defaultVal,requiredShape,requiredSize)
  use IO, only: &
    IO_error, &
    IO_stringValue, &
@@ -561,7 +561,8 @@ function getFloats(this,key,defaultVal,requiredShape)
  class(tPartitionedStringList), target, intent(in)   :: this
  character(len=*),              intent(in)           :: key
  real(pReal),   dimension(:),   intent(in), optional :: defaultVal
- integer(pInt), dimension(:),   intent(in), optional :: requiredShape
+ integer(pInt), dimension(:),   intent(in), optional :: requiredShape ! not useful (is always 1D array)
+ integer(pInt),                 intent(in), optional :: requiredSize
  type(tPartitionedStringList),  pointer              :: item
  integer(pInt)                                       :: i
  logical                                             :: found, &
@@ -588,6 +589,9 @@ function getFloats(this,key,defaultVal,requiredShape)
  if (.not. found) then
    if (present(defaultVal)) then; getFloats = defaultVal; else; call IO_error(140_pInt,ext_msg=key); endif
  endif
+ if (present(requiredSize)) then
+   if(requiredSize /= size(getFloats)) call IO_error(146,ext_msg=key)
+ endif
 
 end function getFloats
 
@@ -597,7 +601,7 @@ end function getFloats
 !> @details for cumulative keys, "()", values from all occurrences are return. Otherwise only all
 !! values from the last occurrence. If key is not found exits with error unless default is given.
 !--------------------------------------------------------------------------------------------------
-function getInts(this,key,defaultVal,requiredShape)
+function getInts(this,key,defaultVal,requiredShape,requiredSize)
  use IO, only: &
    IO_error, &
    IO_stringValue, &
@@ -608,7 +612,8 @@ function getInts(this,key,defaultVal,requiredShape)
  class(tPartitionedStringList), target, intent(in)   :: this
  character(len=*),              intent(in)           :: key
  integer(pInt), dimension(:),   intent(in), optional :: defaultVal, &
-                                                        requiredShape
+                                                        requiredShape ! not useful (is always 1D array)
+ integer(pInt),                 intent(in), optional :: requiredSize
  type(tPartitionedStringList),  pointer              :: item
  integer(pInt)                                       :: i
  logical                                             :: found, &
@@ -634,6 +639,9 @@ function getInts(this,key,defaultVal,requiredShape)
 
  if (.not. found) then
    if (present(defaultVal)) then; getInts = defaultVal; else; call IO_error(140_pInt,ext_msg=key); endif
+ endif
+ if (present(requiredSize)) then
+   if(requiredSize /= size(getInts)) call IO_error(146,ext_msg=key)
  endif
 
 end function getInts
