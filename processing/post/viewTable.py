@@ -61,7 +61,14 @@ for name in filenames:
     table = damask.ASCIItable(name = name,
                               buffered = False, labeled = options.labeled, readonly = True)
   except: continue
-  damask.util.report(scriptName,name)
+  details = ', '.join(
+                      (['header'] if options.table                  else []) +
+                      (['info']   if options.head or options.info   else []) +
+                      (['labels'] if options.head or options.labels else []) +
+                      (['data']   if options.data                   else []) +
+                      []
+                     )
+  damask.util.report(scriptName,name + ('' if details == '' else ' -- '+details))
 
 # ------------------------------------------ output head ---------------------------------------  
 
