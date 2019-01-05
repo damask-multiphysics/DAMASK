@@ -318,7 +318,7 @@ subroutine show(this)
  do while (associated(item%next))
    write(6,'(a)') ' '//trim(item%string%val)
    item => item%next
- end do
+ enddo
 
 end subroutine show
 
@@ -391,7 +391,7 @@ logical function keyExists(this,key)
  do while (associated(item%next) .and. .not. keyExists)
    keyExists = trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)
    item => item%next
- end do
+ enddo
 
 end function keyExists
 
@@ -417,7 +417,7 @@ integer(pInt) function countKeys(this,key)
    if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) &
      countKeys = countKeys + 1_pInt
    item => item%next
- end do
+ enddo
 
 end function countKeys
 
@@ -451,7 +451,7 @@ real(pReal) function getFloat(this,key,defaultVal)
      getFloat = IO_FloatValue(item%string%val,item%string%pos,2)
    endif
    item => item%next
- end do
+ enddo
 
  if (.not. found) call IO_error(140_pInt,ext_msg=key)
 
@@ -487,7 +487,7 @@ integer(pInt) function getInt(this,key,defaultVal)
      getInt = IO_IntValue(item%string%val,item%string%pos,2)
    endif
    item => item%next
- end do
+ enddo
 
  if (.not. found) call IO_error(140_pInt,ext_msg=key)
 
@@ -538,7 +538,7 @@ character(len=65536) function getString(this,key,defaultVal,raw)
      endif
    endif
    item => item%next
- end do
+ enddo
 
  if (.not. found) call IO_error(140_pInt,ext_msg=key)
 
@@ -584,7 +584,7 @@ function getFloats(this,key,defaultVal,requiredShape,requiredSize)
      enddo
    endif
    item => item%next
- end do
+ enddo
 
  if (.not. found) then
    if (present(defaultVal)) then; getFloats = defaultVal; else; call IO_error(140_pInt,ext_msg=key); endif
@@ -635,7 +635,7 @@ function getInts(this,key,defaultVal,requiredShape,requiredSize)
      enddo
    endif
    item => item%next
- end do
+ enddo
 
  if (.not. found) then
    if (present(defaultVal)) then; getInts = defaultVal; else; call IO_error(140_pInt,ext_msg=key); endif
@@ -712,7 +712,7 @@ function getStrings(this,key,defaultVal,requiredShape,raw)
      endif notAllocated
    endif
    item => item%next
- end do
+ enddo
 
  if (.not. found) then
    if (present(defaultVal)) then; getStrings = defaultVal; else; call IO_error(140_pInt,ext_msg=key); endif

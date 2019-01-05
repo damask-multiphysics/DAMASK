@@ -171,7 +171,7 @@ subroutine plastic_phenopowerlaw_init
  allocate(state(Ninstance))
  allocate(dotState(Ninstance))
 
- do p = 1_pInt, size(phase_plasticityInstance)
+ do p = 1_pInt, size(phase_plasticity)
    if (phase_plasticity(p) /= PLASTICITY_PHENOPOWERLAW_ID) cycle
    associate(prm => param(phase_plasticityInstance(p)), &
              dot => dotState(phase_plasticityInstance(p)), &
@@ -336,7 +336,7 @@ subroutine plastic_phenopowerlaw_init
        prm%outputID = [prm%outputID, outputID]
      endif
 
-   end do
+   enddo
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays

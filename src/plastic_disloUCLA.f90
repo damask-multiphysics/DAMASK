@@ -189,7 +189,7 @@ subroutine plastic_disloUCLA_init()
  allocate(dependentState(Ninstance))
 
 
- do p = 1_pInt, size(phase_plasticityInstance)
+ do p = 1_pInt, size(phase_plasticity)
    if (phase_plasticity(p) /= PLASTICITY_DISLOUCLA_ID) cycle
    associate(prm => param(phase_plasticityInstance(p)), &
              dot => dotState(phase_plasticityInstance(p)), &
@@ -325,7 +325,7 @@ subroutine plastic_disloUCLA_init()
        prm%outputID = [prm%outputID, outputID]
      endif
 
-   end do
+   enddo
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
