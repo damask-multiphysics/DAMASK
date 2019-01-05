@@ -1,5 +1,5 @@
 # -*- coding: UTF-8 no BOM -*-
-import sys,time,random,threading,os,subprocess,shlex,time
+import sys,time,random,threading,os,subprocess,shlex
 import numpy as np
 from optparse import Option
 
@@ -144,7 +144,6 @@ def progressBar(iteration, total, prefix='', bar_length=50):
       prefix      - Optional  : prefix string (Str)
       bar_length  - Optional  : character length of bar (Int)
   """
-  
   fraction = iteration / float(total)
   if not hasattr(progressBar, "last_fraction"):                                                     # first call to function
     progressBar.start_time    = time.time()
