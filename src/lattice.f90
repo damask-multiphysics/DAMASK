@@ -662,8 +662,8 @@ module lattice
                                  LATTICE_hex_Ncleavage, &
                                  LATTICE_iso_Ncleavage,LATTICE_ort_Ncleavage), &                    !< max # of cleavage systems over lattice structures
    LATTICE_maxNinteraction = 182_pInt
-
 !END DEPRECATED
+
  real(pReal),                          dimension(:,:,:),     allocatable, public, protected :: &
    lattice_C66
  real(pReal),                              dimension(:,:,:,:,:),   allocatable, public, protected :: &
@@ -676,26 +676,12 @@ module lattice
    lattice_thermalExpansion33
  real(pReal),                              dimension(:,:,:),   allocatable, public, protected :: &
    lattice_thermalConductivity33, &
-   lattice_damageDiffusion33, &
-   lattice_vacancyfluxDiffusion33, &
-   lattice_vacancyfluxMobility33, &
-   lattice_porosityDiffusion33, &
-   lattice_hydrogenfluxDiffusion33, &
-   lattice_hydrogenfluxMobility33
+   lattice_damageDiffusion33
  real(pReal),                              dimension(:),       allocatable, public, protected :: &
    lattice_damageMobility, &
-   lattice_porosityMobility, &
    lattice_massDensity, &
    lattice_specificHeat, &
-   lattice_vacancyFormationEnergy, &
-   lattice_vacancySurfaceEnergy, &
-   lattice_vacancyVol, &
-   lattice_hydrogenFormationEnergy, &
-   lattice_hydrogenSurfaceEnergy, &
-   lattice_hydrogenVol, &
-   lattice_referenceTemperature, &
-   lattice_equilibriumVacancyConcentration, &
-   lattice_equilibriumHydrogenConcentration
+   lattice_referenceTemperature
 ! SHOULD NOT BE PART OF LATTICE END
 
  enum, bind(c)
@@ -775,24 +761,10 @@ subroutine lattice_init
  allocate(lattice_thermalExpansion33     (3,3,3,Nphases), source=0.0_pReal)                       ! constant, linear, quadratic coefficients
  allocate(lattice_thermalConductivity33  (3,3,Nphases), source=0.0_pReal)
  allocate(lattice_damageDiffusion33      (3,3,Nphases), source=0.0_pReal)
- allocate(lattice_vacancyfluxDiffusion33 (3,3,Nphases), source=0.0_pReal)
- allocate(lattice_vacancyfluxMobility33  (3,3,Nphases), source=0.0_pReal)
- allocate(lattice_PorosityDiffusion33    (3,3,Nphases), source=0.0_pReal)
- allocate(lattice_hydrogenfluxDiffusion33(3,3,Nphases), source=0.0_pReal)
- allocate(lattice_hydrogenfluxMobility33 (3,3,Nphases), source=0.0_pReal)
  allocate(lattice_damageMobility         (    Nphases), source=0.0_pReal)
- allocate(lattice_PorosityMobility       (    Nphases), source=0.0_pReal)
  allocate(lattice_massDensity            (    Nphases), source=0.0_pReal)
  allocate(lattice_specificHeat           (    Nphases), source=0.0_pReal)
- allocate(lattice_vacancyFormationEnergy (    Nphases), source=0.0_pReal)
- allocate(lattice_vacancySurfaceEnergy   (    Nphases), source=0.0_pReal)
- allocate(lattice_vacancyVol             (    Nphases), source=0.0_pReal)
- allocate(lattice_hydrogenFormationEnergy(    Nphases), source=0.0_pReal)
- allocate(lattice_hydrogenSurfaceEnergy  (    Nphases), source=0.0_pReal)
- allocate(lattice_hydrogenVol            (    Nphases), source=0.0_pReal)
  allocate(lattice_referenceTemperature   (    Nphases), source=300.0_pReal)
- allocate(lattice_equilibriumVacancyConcentration(Nphases), source=0.0_pReal)
- allocate(lattice_equilibriumHydrogenConcentration(Nphases),source=0.0_pReal)
 
  allocate(lattice_mu(Nphases),       source=0.0_pReal)
  allocate(lattice_nu(Nphases),       source=0.0_pReal)
@@ -808,7 +780,6 @@ subroutine lattice_init
  allocate(lattice_NcleavageSystem(lattice_maxNcleavageFamily,Nphases),source=0_pInt)
 
  allocate(CoverA(Nphases),source=0.0_pReal)
-
 
  allocate(lattice_sd(3,lattice_maxNslip,Nphases),source=0.0_pReal)
  allocate(lattice_st(3,lattice_maxNslip,Nphases),source=0.0_pReal)
@@ -866,36 +837,12 @@ subroutine lattice_init
    lattice_thermalExpansion33(3,3,1:size(temp),p) = temp
 
    lattice_specificHeat(p) = config_phase(p)%getFloat( 'specific_heat',defaultVal=0.0_pReal)
-   lattice_vacancyFormationEnergy(p) = config_phase(p)%getFloat( 'vacancyformationenergy',defaultVal=0.0_pReal)
-   lattice_vacancySurfaceEnergy(p) = config_phase(p)%getFloat( 'vacancyvolume',defaultVal=0.0_pReal)
-   lattice_vacancyVol(p) = config_phase(p)%getFloat( 'vacancysurfaceenergy',defaultVal=0.0_pReal)
-   lattice_hydrogenFormationEnergy(p) = config_phase(p)%getFloat( 'hydrogenformationenergy',defaultVal=0.0_pReal)
-   lattice_hydrogenSurfaceEnergy(p) = config_phase(p)%getFloat( 'hydrogensurfaceenergy',defaultVal=0.0_pReal)
-   lattice_hydrogenVol(p) = config_phase(p)%getFloat( 'hydrogenvolume',defaultVal=0.0_pReal)
    lattice_massDensity(p) = config_phase(p)%getFloat( 'mass_density',defaultVal=0.0_pReal)
    lattice_referenceTemperature(p) = config_phase(p)%getFloat( 'reference_temperature',defaultVal=0.0_pReal)
    lattice_DamageDiffusion33(1,1,p) = config_phase(p)%getFloat( 'damage_diffusion11',defaultVal=0.0_pReal)
    lattice_DamageDiffusion33(2,2,p) = config_phase(p)%getFloat( 'damage_diffusion22',defaultVal=0.0_pReal)
    lattice_DamageDiffusion33(3,3,p) = config_phase(p)%getFloat( 'damage_diffusion33',defaultVal=0.0_pReal)
    lattice_DamageMobility(p) = config_phase(p)%getFloat( 'damage_mobility',defaultVal=0.0_pReal)
-   lattice_vacancyfluxDiffusion33(1,1,p) = config_phase(p)%getFloat( 'vacancyflux_diffusion11',defaultVal=0.0_pReal)
-   lattice_vacancyfluxDiffusion33(2,2,p) = config_phase(p)%getFloat( 'vacancyflux_diffusion22',defaultVal=0.0_pReal)
-   lattice_vacancyfluxDiffusion33(3,3,p) = config_phase(p)%getFloat( 'vacancyflux_diffusion33',defaultVal=0.0_pReal)
-   lattice_vacancyfluxMobility33(1,1,p) = config_phase(p)%getFloat( 'vacancyflux_mobility11',defaultVal=0.0_pReal)
-   lattice_vacancyfluxMobility33(2,2,p) = config_phase(p)%getFloat( 'vacancyflux_mobility22',defaultVal=0.0_pReal)
-   lattice_vacancyfluxMobility33(3,3,p) = config_phase(p)%getFloat( 'vacancyflux_mobility33',defaultVal=0.0_pReal)
-   lattice_PorosityDiffusion33(1,1,p) = config_phase(p)%getFloat( 'porosity_diffusion11',defaultVal=0.0_pReal)
-   lattice_PorosityDiffusion33(2,2,p) = config_phase(p)%getFloat( 'porosity_diffusion22',defaultVal=0.0_pReal)
-   lattice_PorosityDiffusion33(3,3,p) = config_phase(p)%getFloat( 'porosity_diffusion33',defaultVal=0.0_pReal)
-   lattice_PorosityMobility(p) = config_phase(p)%getFloat( 'porosity_mobility',defaultVal=0.0_pReal)
-   lattice_hydrogenfluxDiffusion33(1,1,p) = config_phase(p)%getFloat( 'hydrogenflux_diffusion11',defaultVal=0.0_pReal)
-   lattice_hydrogenfluxDiffusion33(2,2,p) = config_phase(p)%getFloat( 'hydrogenflux_diffusion22',defaultVal=0.0_pReal)
-   lattice_hydrogenfluxDiffusion33(3,3,p) = config_phase(p)%getFloat( 'hydrogenflux_diffusion33',defaultVal=0.0_pReal)
-   lattice_hydrogenfluxMobility33(1,1,p) = config_phase(p)%getFloat( 'hydrogenflux_mobility11',defaultVal=0.0_pReal)
-   lattice_hydrogenfluxMobility33(2,2,p) = config_phase(p)%getFloat( 'hydrogenflux_mobility22',defaultVal=0.0_pReal)
-   lattice_hydrogenfluxMobility33(3,3,p) = config_phase(p)%getFloat( 'hydrogenflux_mobility33',defaultVal=0.0_pReal)
-   lattice_equilibriumVacancyConcentration(p) = config_phase(p)%getFloat( 'vacancy_eqcv',defaultVal=0.0_pReal)
-   lattice_equilibriumHydrogenConcentration(p) = config_phase(p)%getFloat( 'hydrogen_eqch',defaultVal=0.0_pReal)
  enddo
 
  do i = 1_pInt,Nphases
@@ -975,16 +922,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
                                                                          lattice_thermalConductivity33  (1:3,1:3,myPhase))
  lattice_DamageDiffusion33      (1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
                                                                          lattice_DamageDiffusion33      (1:3,1:3,myPhase))
- lattice_vacancyfluxDiffusion33 (1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
-                                                                         lattice_vacancyfluxDiffusion33 (1:3,1:3,myPhase))
- lattice_vacancyfluxMobility33  (1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
-                                                                         lattice_vacancyfluxMobility33  (1:3,1:3,myPhase))
- lattice_PorosityDiffusion33    (1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
-                                                                         lattice_PorosityDiffusion33    (1:3,1:3,myPhase))
- lattice_hydrogenfluxDiffusion33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
-                                                                         lattice_hydrogenfluxDiffusion33(1:3,1:3,myPhase))
- lattice_hydrogenfluxMobility33 (1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
-                                                                         lattice_hydrogenfluxMobility33 (1:3,1:3,myPhase))
  myNslip       = 0_pInt
  myNcleavage   = 0_pInt
 
@@ -2218,14 +2155,12 @@ function lattice_SchmidMatrix_trans(Ntrans,structure_target,cOverA,a_bcc,a_fcc) 
  implicit none
  integer(pInt),    dimension(:),            intent(in) :: Ntrans                                    !< number of active twin systems per family
  real(pReal),                               intent(in) :: cOverA                                    !< c/a ratio
- real(pReal),     dimension(3,3,sum(Ntrans))            :: SchmidMatrix
-
- integer(pInt) :: i
+ real(pReal),     dimension(3,3,sum(Ntrans))           :: SchmidMatrix
 
  character(len=*),                          intent(in) :: &
    structure_target                                                                                 !< lattice structure
 
- real(pReal),     dimension(3,3,sum(Ntrans))            :: devNull
+ real(pReal),     dimension(3,3,sum(Ntrans))           :: devNull
  real(pReal) :: a_bcc, a_fcc
 ! ToDo: Error checking!!!!!!!!!!!!!!!!!!!
  call buildTransformationSystem(devNull,SchmidMatrix,Ntrans,cOverA,a_fcc,a_bcc)
@@ -2555,10 +2490,10 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
      0.0, 0.0, 1.0,     45.0  &
      ],shape(LATTICE_FCCTOBCC_BAINROT))
 
- if (size(Ntrans) < 1_pInt .or. size(Ntrans) > 1_pInt) print*, 'mist'
+ if (size(Ntrans) < 1_pInt .or. size(Ntrans) > 1_pInt) print*, 'mist'                               ! ToDo
 
  if (a_bcc > 0.0_pReal .and. dEq0(cOverA)) then                                                     ! fcc -> bcc transformation
-   if (a_bcc <= 0.0_pReal) print*, 'mist'
+   if (a_bcc <= 0.0_pReal) print*, 'mist'                                                           ! ToDo
    do i = 1_pInt,sum(Ntrans)
      R = math_axisAngleToR(lattice_fccTobcc_systemTrans(1:3,i), &
                            lattice_fccTobcc_systemTrans(4,i)*INRAD)

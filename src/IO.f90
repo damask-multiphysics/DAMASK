@@ -1255,6 +1255,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
    msg = 'negative number systems requested'
  case (145_pInt)
    msg = 'too many systems requested'
+ case (146_pInt)
+   msg = 'number of values does not match'
 
 !--------------------------------------------------------------------------------------------------
 ! material error messages and related messages in mesh

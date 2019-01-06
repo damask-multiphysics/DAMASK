@@ -304,8 +304,6 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
    homogState, &
    thermalState, &
    damageState, &
-   vacancyfluxState, &
-   hydrogenfluxState, &
    phaseAt, phasememberAt, &
    material_phase, &
    phase_plasticity, &
@@ -421,8 +419,6 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
      homogState       (homog)%state0 =  homogState       (homog)%state
      thermalState     (homog)%state0 =  thermalState     (homog)%state
      damageState      (homog)%state0 =  damageState      (homog)%state
-     vacancyfluxState (homog)%state0 =  vacancyfluxState (homog)%state
-     hydrogenfluxState(homog)%state0 =  hydrogenfluxState(homog)%state
    enddo
   
 
