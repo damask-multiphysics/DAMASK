@@ -595,7 +595,7 @@ subroutine plastic_phenopowerlaw_results(instance,group)
      case (resistance_slip_ID)
        call results_writeVectorDataset(group,stt%xi_slip,'xi_slip','Pa')
      case (accumulatedshear_slip_ID)
-       call results_writeVectorDataset(group,stt%gamma_slip,'gamma_slip','1/s')
+       call results_writeVectorDataset(group,stt%gamma_slip,'gamma_slip','-')
    end select
  enddo outputsLoop
  end associate
