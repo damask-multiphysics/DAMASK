@@ -177,7 +177,6 @@ subroutine CPFEM_init
    enddo
    call HDF5_closeGroup(groupHomogID)
 
-  
    call HDF5_closeFile(fileHandle)
    
    restartRead = .false.
@@ -209,8 +208,6 @@ subroutine CPFEM_age()
    homogState, &
    thermalState, &
    damageState, &
-   vacancyfluxState, &
-   hydrogenfluxState, &
    material_phase, &
    phase_plasticity, &
    phase_Nsources
@@ -271,8 +268,6 @@ subroutine CPFEM_age()
    homogState       (homog)%state0 =  homogState       (homog)%state
    thermalState     (homog)%state0 =  thermalState     (homog)%state
    damageState      (homog)%state0 =  damageState      (homog)%state
-   vacancyfluxState (homog)%state0 =  vacancyfluxState (homog)%state
-   hydrogenfluxState(homog)%state0 =  hydrogenfluxState(homog)%state
  enddo
 
  if (restartWrite) then
@@ -332,7 +327,7 @@ subroutine CPFEM_results(inc,time)
  call results_openJobFile
  call results_addIncrement(inc,time)
  call constitutive_results()
- call results_removeLink('current') ! put this into closeJobFile
+ call results_removeLink('current') ! ToDo: put this into closeJobFile
  call results_closeJobFile
 
 end subroutine CPFEM_results

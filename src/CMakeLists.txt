@@ -94,9 +94,7 @@ list(APPEND OBJECTFILES $<TARGET_OBJECTS:PLASTIC>)
 add_library (KINEMATICS OBJECT
   "kinematics_cleavage_opening.f90"
   "kinematics_slipplane_opening.f90"
-  "kinematics_thermal_expansion.f90"
-  "kinematics_vacancy_strain.f90"
-  "kinematics_hydrogen_strain.f90")
+  "kinematics_thermal_expansion.f90")
 add_dependencies(KINEMATICS DAMASK_HELPERS)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:KINEMATICS>)
 
@@ -106,10 +104,7 @@ add_library (SOURCE OBJECT
   "source_damage_isoBrittle.f90"
   "source_damage_isoDuctile.f90"
   "source_damage_anisoBrittle.f90"
-  "source_damage_anisoDuctile.f90"
-  "source_vacancy_phenoplasticity.f90"
-  "source_vacancy_irradiation.f90"
-  "source_vacancy_thermalfluc.f90")
+  "source_damage_anisoDuctile.f90")
 add_dependencies(SOURCE DAMASK_HELPERS)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:SOURCE>)
 
@@ -128,25 +123,6 @@ add_library(HOMOGENIZATION OBJECT
 add_dependencies(HOMOGENIZATION CRYSTALLITE)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:HOMOGENIZATION>)
 
-add_library(HYDROGENFLUX OBJECT
-  "hydrogenflux_isoconc.f90"
-  "hydrogenflux_cahnhilliard.f90")
-add_dependencies(HYDROGENFLUX CRYSTALLITE)
-list(APPEND OBJECTFILES $<TARGET_OBJECTS:HYDROGENFLUX>)
-
-add_library(POROSITY OBJECT
-  "porosity_none.f90"
-  "porosity_phasefield.f90")
-add_dependencies(POROSITY CRYSTALLITE)
-list(APPEND OBJECTFILES $<TARGET_OBJECTS:POROSITY>)
-
-add_library(VACANCYFLUX OBJECT
-  "vacancyflux_isoconc.f90"
-  "vacancyflux_isochempot.f90"
-  "vacancyflux_cahnhilliard.f90")
-add_dependencies(VACANCYFLUX CRYSTALLITE)
-list(APPEND OBJECTFILES $<TARGET_OBJECTS:VACANCYFLUX>)
-
 add_library(DAMAGE OBJECT
   "damage_none.f90"
   "damage_local.f90"
@@ -162,7 +138,7 @@ add_dependencies(THERMAL CRYSTALLITE)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:THERMAL>)
 
 add_library(DAMASK_ENGINE OBJECT "homogenization.f90")
-add_dependencies(DAMASK_ENGINE THERMAL DAMAGE VACANCYFLUX POROSITY HYDROGENFLUX HOMOGENIZATION)
+add_dependencies(DAMASK_ENGINE THERMAL DAMAGE HOMOGENIZATION)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:DAMASK_ENGINE>)
 
 add_library(DAMASK_CPFE OBJECT "CPFEM2.f90")

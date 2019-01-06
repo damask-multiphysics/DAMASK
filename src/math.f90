@@ -2617,7 +2617,7 @@ end function math_rotate_forward3333
 !> @brief limits a scalar value to a certain range (either one or two sided)
 ! Will return NaN if left > right
 !--------------------------------------------------------------------------------------------------
-real(pReal) pure function math_clip(a, left, right)
+real(pReal) pure elemental function math_clip(a, left, right)
  use, intrinsic :: &
    IEEE_arithmetic
 

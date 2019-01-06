@@ -493,8 +493,8 @@ class ASCIItable():
                           (d if str(c) != str(labels[present[i]]) else 
                            1)))
       use = np.array(columns) if len(columns) > 0 else None
-      
-      self.tags = list(np.array(self.tags)[use])                                                    # update labels with valid subset
+
+      self.tags = list(np.array(self.__IO__['tags'])[use])                                         # update labels with valid subset
 
     self.data = np.loadtxt(self.__IO__['in'],usecols=use,ndmin=2)
 #    self.data = np.genfromtxt(self.__IO__['in'],dtype=None,names=self.tags,usecols=use)
