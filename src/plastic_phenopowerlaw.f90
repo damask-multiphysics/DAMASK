@@ -77,6 +77,7 @@ module plastic_phenopowerlaw
 
  type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
 
+
  type, private :: tPhenopowerlawState
    real(pReal), pointer, dimension(:,:) :: &
      xi_slip, &
@@ -392,9 +393,9 @@ end subroutine plastic_phenopowerlaw_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !> @details asumme that deformation by dislocation glide affects twinned and untwinned volume 
-!  equally (Taylor assumption). Twinning happens only in untwinned volume (
+!  equally (Taylor assumption). Twinning happens only in untwinned volume
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
+pure subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
  implicit none
  real(pReal), dimension(3,3),     intent(out) :: &
@@ -411,11 +412,11 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
  integer(pInt) :: &
    i,k,l,m,n
  real(pReal), dimension(param(instance)%totalNslip) :: &
-   dgdot_dtauslip_pos,dgdot_dtauslip_neg, &
-   gdot_slip_pos,gdot_slip_neg
+   gdot_slip_pos,gdot_slip_neg, &
+   dgdot_dtauslip_pos,dgdot_dtauslip_neg
  real(pReal), dimension(param(instance)%totalNtwin) :: &
    gdot_twin,dgdot_dtautwin
-   
+
  Lp = 0.0_pReal
  dLp_dMp = 0.0_pReal
  
@@ -626,7 +627,7 @@ pure subroutine kinetics_slip(Mp,instance,of, &
  end where
 
  where(dNeq0(tau_slip_neg))
-   gdot_slip_neg = 0.5_pReal*prm%gdot0_slip &
+   gdot_slip_neg = prm%gdot0_slip * 0.5_pReal &                                                     ! only used if non-Schmid active, always 1/2
                  * sign(abs(tau_slip_neg/stt%xi_slip(:,of))**prm%n_slip,  tau_slip_neg)
  else where
    gdot_slip_neg = 0.0_pReal
