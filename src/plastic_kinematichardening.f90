@@ -178,7 +178,7 @@ subroutine plastic_kinehardening_init
    if (phase_plasticity(p) /= PLASTICITY_KINEHARDENING_ID) cycle
    associate(prm => param(phase_plasticityInstance(p)), &
              dot => dotState(phase_plasticityInstance(p)), &
-             delta => deltaState(phase_plasticityInstance(p)), &
+             dlt => deltaState(phase_plasticityInstance(p)), &
              stt => state(phase_plasticityInstance(p)),&
              config => config_phase(p))
 
@@ -196,8 +196,8 @@ subroutine plastic_kinehardening_init
    prm%aTolShear      = config%getFloat('atol_shear',     defaultVal=1.0e-6_pReal)
 
    ! sanity checks
-   if (prm%aTolResistance <= 0.0_pReal) extmsg = trim(extmsg)//'aTolresistance '
-   if (prm%aTolShear      <= 0.0_pReal) extmsg = trim(extmsg)//'aTolShear '
+   if (prm%aTolResistance <= 0.0_pReal) extmsg = trim(extmsg)//' aTolresistance'
+   if (prm%aTolShear      <= 0.0_pReal) extmsg = trim(extmsg)//' aTolShear'
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
@@ -208,7 +208,7 @@ subroutine plastic_kinehardening_init
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
      if(structure=='bcc') then
        prm%nonSchmidCoeff     = config%getFloats('nonschmid_coefficients',&
-                                                          defaultVal = emptyRealArray)
+                                                 defaultVal = emptyRealArray)
        prm%nonSchmid_pos      = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1_pInt)
        prm%nonSchmid_neg      = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1_pInt)
      else
@@ -219,25 +219,27 @@ subroutine plastic_kinehardening_init
                                                              config%getFloats('interaction_slipslip'), &
                                                              structure(1:3))
 
-     prm%crss0                = config%getFloats('crss0',   requiredShape=shape(prm%Nslip))
-     prm%tau1                 = config%getFloats('tau1', requiredShape=shape(prm%Nslip))
-     prm%tau1_b               = config%getFloats('tau1_b', requiredShape=shape(prm%Nslip))
-     prm%theta0               = config%getFloats('theta0', requiredShape=shape(prm%Nslip))
-     prm%theta1               = config%getFloats('theta1', requiredShape=shape(prm%Nslip))
-     prm%theta0_b             = config%getFloats('theta0_b', requiredShape=shape(prm%Nslip))
-     prm%theta1_b             = config%getFloats('theta1_b', requiredShape=shape(prm%Nslip))
+     prm%crss0    = config%getFloats('crss0',    requiredShape=shape(prm%Nslip))
+     prm%tau1     = config%getFloats('tau1',     requiredShape=shape(prm%Nslip))
+     prm%tau1_b   = config%getFloats('tau1_b',   requiredShape=shape(prm%Nslip))
+     prm%theta0   = config%getFloats('theta0',   requiredShape=shape(prm%Nslip))
+     prm%theta1   = config%getFloats('theta1',   requiredShape=shape(prm%Nslip))
+     prm%theta0_b = config%getFloats('theta0_b', requiredShape=shape(prm%Nslip))
+     prm%theta1_b = config%getFloats('theta1_b', requiredShape=shape(prm%Nslip))
+     
+     prm%gdot0  = config%getFloat('gdot0')
+     prm%n_slip = config%getFloat('n_slip')
 
      ! expand: family => system
-     prm%crss0   = math_expand(prm%crss0,  prm%Nslip)
-     prm%tau1 = math_expand(prm%tau1,prm%Nslip)
-     prm%tau1_b       = math_expand(prm%tau1_b,      prm%Nslip)
-     prm%theta0 = math_expand(prm%theta0,prm%Nslip)
-     prm%theta1 = math_expand(prm%theta1,prm%Nslip)
+     prm%crss0    = math_expand(prm%crss0,   prm%Nslip)
+     prm%tau1     = math_expand(prm%tau1,    prm%Nslip)
+     prm%tau1_b   = math_expand(prm%tau1_b,  prm%Nslip)
+     prm%theta0   = math_expand(prm%theta0,  prm%Nslip)
+     prm%theta1   = math_expand(prm%theta1,  prm%Nslip)
      prm%theta0_b = math_expand(prm%theta0_b,prm%Nslip)
      prm%theta1_b = math_expand(prm%theta1_b,prm%Nslip)
 
-     prm%gdot0           = config%getFloat('gdot0')
-     prm%n_slip          = config%getFloat('n_slip')
+
 
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
@@ -260,31 +262,25 @@ subroutine plastic_kinehardening_init
    allocate(prm%outputID(0))
    do i=1_pInt, size(outputs)
      outputID = undefined_ID
+     outputSize = prm%totalNslip
      select case(outputs(i))
+     
         case ('resistance')
           outputID = merge(crss_ID,undefined_ID,prm%totalNslip>0_pInt)
-          outputSize = prm%totalNslip
         case ('accumulatedshear')
           outputID = merge(accshear_ID,undefined_ID,prm%totalNslip>0_pInt)
-          outputSize = prm%totalNslip
         case ('shearrate')
           outputID = merge(shearrate_ID,undefined_ID,prm%totalNslip>0_pInt)
-          outputSize = prm%totalNslip
         case ('resolvedstress')
           outputID = merge(resolvedstress_ID,undefined_ID,prm%totalNslip>0_pInt)
-          outputSize = prm%totalNslip
         case ('backstress')
           outputID = merge(crss_back_ID,undefined_ID,prm%totalNslip>0_pInt)
-          outputSize = prm%totalNslip
         case ('sense')
           outputID = merge(sense_ID,undefined_ID,prm%totalNslip>0_pInt)
-          outputSize = prm%totalNslip
         case ('chi0')
           outputID = merge(chi0_ID,undefined_ID,prm%totalNslip>0_pInt)
-          outputSize = prm%totalNslip
         case ('gamma0')
           outputID = merge(gamma0_ID,undefined_ID,prm%totalNslip>0_pInt)
-          outputSize = prm%totalNslip
 
       end select
 
@@ -335,18 +331,18 @@ subroutine plastic_kinehardening_init
    o = plasticState(p)%offsetDeltaState
    startIndex = endIndex + 1_pInt
    endIndex   = endIndex + prm%totalNslip
-   stt%sense          => plasticState(p)%state     (startIndex  :endIndex  ,:)
-   delta%sense        => plasticState(p)%deltaState(startIndex-o:endIndex-o,:)
+   stt%sense          => plasticState(p)%state   (startIndex  :endIndex  ,:)
+   dlt%sense        => plasticState(p)%deltaState(startIndex-o:endIndex-o,:)
    
    startIndex = endIndex + 1_pInt
    endIndex   = endIndex +  prm%totalNslip
-   stt%chi0           => plasticState(p)%state     (startIndex  :endIndex  ,:)
-   delta%chi0         => plasticState(p)%deltaState(startIndex-o:endIndex-o,:)
+   stt%chi0           => plasticState(p)%state   (startIndex  :endIndex  ,:)
+   dlt%chi0         => plasticState(p)%deltaState(startIndex-o:endIndex-o,:)
 
    startIndex = endIndex + 1_pInt
    endIndex   = endIndex +  prm%totalNslip
-   stt%gamma0         => plasticState(p)%state     (startIndex  :endIndex  ,:)
-   delta%gamma0       => plasticState(p)%deltaState(startIndex-o:endIndex-o,:)
+   stt%gamma0         => plasticState(p)%state   (startIndex  :endIndex  ,:)
+   dlt%gamma0       => plasticState(p)%deltaState(startIndex-o:endIndex-o,:)
    
    plasticState(p)%state0 = plasticState(p)%state                                                   ! ToDo: this could be done centrally
 
@@ -425,7 +421,7 @@ subroutine plastic_kinehardening_deltaState(Mp,instance,of)
    gdot_pos,gdot_neg, &
    sense
 
- associate(prm => param(instance), stt => state(instance), del => deltaState(instance))
+ associate(prm => param(instance), stt => state(instance), dlt => deltaState(instance))
  
  call kinetics(Mp,instance,of,gdot_pos,gdot_neg)
  sense = merge(state(instance)%sense(:,of), &                                                       ! keep existing...
@@ -444,13 +440,13 @@ subroutine plastic_kinehardening_deltaState(Mp,instance,of)
 !--------------------------------------------------------------------------------------------------
 ! switch in sense of shear?
  where(dNeq(sense,stt%sense(:,of),0.1_pReal))
-   del%sense (:,of) = sense - stt%sense(:,of)                                                       ! switch sense
-   del%chi0  (:,of) = abs(stt%crss_back(:,of)) - stt%chi0(:,of)                                     ! remember current backstress magnitude
-   del%gamma0(:,of) = stt%accshear(:,of) - stt%gamma0(:,of)                                         ! remember current accumulated shear
+   dlt%sense (:,of) = sense - stt%sense(:,of)                                                       ! switch sense
+   dlt%chi0  (:,of) = abs(stt%crss_back(:,of)) - stt%chi0(:,of)                                     ! remember current backstress magnitude
+   dlt%gamma0(:,of) = stt%accshear(:,of) - stt%gamma0(:,of)                                         ! remember current accumulated shear
  else where
-   del%sense (:,of) = 0.0_pReal
-   del%chi0  (:,of) = 0.0_pReal
-   del%gamma0(:,of) = 0.0_pReal
+   dlt%sense (:,of) = 0.0_pReal
+   dlt%chi0  (:,of) = 0.0_pReal
+   dlt%gamma0(:,of) = 0.0_pReal
  end where
  
  end associate
@@ -470,7 +466,6 @@ subroutine plastic_kinehardening_dotState(Mp,instance,of)
    instance, &
    of
 
-
  integer(pInt) :: &
    i
  real(pReal), dimension(param(instance)%totalNslip) :: &
@@ -478,8 +473,7 @@ subroutine plastic_kinehardening_dotState(Mp,instance,of)
  real(pReal) :: &
    sumGamma
  
-
- associate( prm => param(instance), stt => state(instance), dot => dotState(instance))
+ associate(prm => param(instance), stt => state(instance), dot => dotState(instance))
 
  call kinetics(Mp,instance,of,gdot_pos,gdot_neg)
  dot%accshear(:,of) = abs(gdot_pos+gdot_neg)
@@ -489,7 +483,7 @@ subroutine plastic_kinehardening_dotState(Mp,instance,of)
    dot%crss(i,of) = dot_product(prm%interaction_SlipSlip(i,:),dot%accshear(:,of)) &
                   * (  prm%theta1(i) &
                      + (prm%theta0(i) - prm%theta1(i) + prm%theta0(i)*prm%theta1(i)*sumGamma/prm%tau1(i)) &
-                                                     *exp(-sumGamma*prm%theta0(i)/prm%tau1(i)) &
+                     * exp(-sumGamma*prm%theta0(i)/prm%tau1(i)) &
                     )
  enddo
  dot%crss_back(:,of) = stt%sense(:,of)*dot%accshear(:,of) * &
@@ -534,41 +528,30 @@ function plastic_kinehardening_postResults(Mp,instance,of) result(postResults)
  
  outputsLoop: do o = 1_pInt,size(prm%outputID)
    select case(prm%outputID(o))
+   
      case (crss_ID)
        postResults(c+1_pInt:c+prm%totalNslip) = stt%crss(:,of)
-       c = c + prm%totalNslip
-       
      case(crss_back_ID)
        postResults(c+1_pInt:c+prm%totalNslip) = stt%crss_back(:,of)
-       c = c + prm%totalNslip
-       
      case (sense_ID)
-       postResults(c+1_pInt:c+prm%totalNslip) = stt%sense(:,of)
-       c = c + prm%totalNslip
-                                                                        
+       postResults(c+1_pInt:c+prm%totalNslip) = stt%sense(:,of)                                                  
      case (chi0_ID)
        postResults(c+1_pInt:c+prm%totalNslip) = stt%chi0(:,of)
-       c = c + prm%totalNslip
-       
      case (gamma0_ID)
        postResults(c+1_pInt:c+prm%totalNslip) = stt%gamma0(:,of)
-       c = c + prm%totalNslip
-     
      case (accshear_ID)
        postResults(c+1_pInt:c+prm%totalNslip) = stt%accshear(:,of)
-       c = c + prm%totalNslip
-       
      case (shearrate_ID)
        postResults(c+1_pInt:c+prm%totalNslip) = gdot_pos+gdot_neg
-       c = c + prm%totalNslip
-
      case (resolvedstress_ID)
        do i = 1_pInt, prm%totalNslip
          postResults(c+i) = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,i))
        enddo
-       c = c + prm%totalNslip
-
+       
    end select
+   
+   c = c + prm%totalNslip
+   
  enddo outputsLoop
 
  end associate
