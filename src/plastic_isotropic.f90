@@ -50,14 +50,14 @@ module plastic_isotropic
      dilatation
  end type
 
- type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
-
  type, private :: tIsotropicState
    real(pReal), pointer, dimension(:) :: &
      flowstress, &
      accumulatedShear
  end type
 
+
+ type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
  type(tIsotropicState), allocatable, dimension(:), private :: &
    dotState, &
    state
@@ -140,8 +140,8 @@ subroutine plastic_isotropic_init()
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
- allocate(plastic_isotropic_sizePostResult(maxval(phase_Noutput), Ninstance),source=0_pInt)
- allocate(plastic_isotropic_output(maxval(phase_Noutput), Ninstance))
+ allocate(plastic_isotropic_sizePostResult(maxval(phase_Noutput),Ninstance),source=0_pInt)
+ allocate(plastic_isotropic_output(maxval(phase_Noutput),Ninstance))
           plastic_isotropic_output = ''
 
  allocate(param(Ninstance))
@@ -161,35 +161,35 @@ subroutine plastic_isotropic_init()
    endif
 #endif
 
-   prm%tau0            =  config%getFloat('tau0')
-   prm%tausat          =  config%getFloat('tausat')
-   prm%gdot0           =  config%getFloat('gdot0')
-   prm%n               =  config%getFloat('n')
-   prm%h0              =  config%getFloat('h0')
-   prm%fTaylor         =  config%getFloat('m')
-   prm%h0_slopeLnRate  =  config%getFloat('h0_slopelnrate', defaultVal=0.0_pReal)
-   prm%tausat_SinhFitA =  config%getFloat('tausat_sinhfita',defaultVal=0.0_pReal)
-   prm%tausat_SinhFitB =  config%getFloat('tausat_sinhfitb',defaultVal=0.0_pReal)
-   prm%tausat_SinhFitC =  config%getFloat('tausat_sinhfitc',defaultVal=0.0_pReal)
-   prm%tausat_SinhFitD =  config%getFloat('tausat_sinhfitd',defaultVal=0.0_pReal)
-   prm%a               =  config%getFloat('a')
-   prm%aTolFlowStress  =  config%getFloat('atol_flowstress',defaultVal=1.0_pReal)
-   prm%aTolShear       =  config%getFloat('atol_shear',     defaultVal=1.0e-6_pReal)
+   prm%tau0            = config%getFloat('tau0')
+   prm%tausat          = config%getFloat('tausat')
+   prm%gdot0           = config%getFloat('gdot0')
+   prm%n               = config%getFloat('n')
+   prm%h0              = config%getFloat('h0')
+   prm%fTaylor         = config%getFloat('m')
+   prm%h0_slopeLnRate  = config%getFloat('h0_slopelnrate', defaultVal=0.0_pReal)
+   prm%tausat_SinhFitA = config%getFloat('tausat_sinhfita',defaultVal=0.0_pReal)
+   prm%tausat_SinhFitB = config%getFloat('tausat_sinhfitb',defaultVal=0.0_pReal)
+   prm%tausat_SinhFitC = config%getFloat('tausat_sinhfitc',defaultVal=0.0_pReal)
+   prm%tausat_SinhFitD = config%getFloat('tausat_sinhfitd',defaultVal=0.0_pReal)
+   prm%a               = config%getFloat('a')
+   prm%aTolFlowStress  = config%getFloat('atol_flowstress',defaultVal=1.0_pReal)
+   prm%aTolShear       = config%getFloat('atol_shear',     defaultVal=1.0e-6_pReal)
 
    prm%dilatation      = config%keyExists('/dilatation/')
 
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
    extmsg = ''
-   if (prm%aTolShear        <= 0.0_pReal) extmsg = trim(extmsg)//'aTolShear '
-   if (prm%tau0              < 0.0_pReal) extmsg = trim(extmsg)//'tau0 '
-   if (prm%gdot0            <= 0.0_pReal) extmsg = trim(extmsg)//'gdot0 '
-   if (prm%n                <= 0.0_pReal) extmsg = trim(extmsg)//'n '
-   if (prm%tausat           <= prm%tau0)  extmsg = trim(extmsg)//'tausat '
-   if (prm%a                <= 0.0_pReal) extmsg = trim(extmsg)//'a '
-   if (prm%fTaylor          <= 0.0_pReal) extmsg = trim(extmsg)//'m '
-   if (prm%aTolFlowstress   <= 0.0_pReal) extmsg = trim(extmsg)//'atol_flowstress '
-   if (prm%aTolShear        <= 0.0_pReal) extmsg = trim(extmsg)//'atol_shear '
+   if (prm%aTolShear      <= 0.0_pReal) extmsg = trim(extmsg)//' aTolShear'
+   if (prm%tau0            < 0.0_pReal) extmsg = trim(extmsg)//' tau0'
+   if (prm%gdot0          <= 0.0_pReal) extmsg = trim(extmsg)//' gdot0'
+   if (prm%n              <= 0.0_pReal) extmsg = trim(extmsg)//' n'
+   if (prm%tausat         <= prm%tau0)  extmsg = trim(extmsg)//' tausat'
+   if (prm%a              <= 0.0_pReal) extmsg = trim(extmsg)//' a'
+   if (prm%fTaylor        <= 0.0_pReal) extmsg = trim(extmsg)//' m'
+   if (prm%aTolFlowstress <= 0.0_pReal) extmsg = trim(extmsg)//' atol_flowstress'
+   if (prm%aTolShear      <= 0.0_pReal) extmsg = trim(extmsg)//' atol_shear'
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
@@ -231,17 +231,17 @@ subroutine plastic_isotropic_init()
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
-   stt%flowstress  => plasticState(p)%state    (1,1:NipcMyPhase)
+   stt%flowstress  => plasticState(p)%state   (1,:)
    stt%flowstress  = prm%tau0
-   dot%flowstress  => plasticState(p)%dotState (1,1:NipcMyPhase)
-   plasticState(p)%aTolState(1)       =  prm%aTolFlowstress
+   dot%flowstress  => plasticState(p)%dotState(1,:)
+   plasticState(p)%aTolState(1) = prm%aTolFlowstress
 
-   stt%accumulatedShear  => plasticState(p)%state    (2,1:NipcMyPhase)
-   dot%accumulatedShear  => plasticState(p)%dotState (2,1:NipcMyPhase)
-   plasticState(p)%aTolState(2)       =  prm%aTolShear
+   stt%accumulatedShear  => plasticState(p)%state   (2,:)
+   dot%accumulatedShear  => plasticState(p)%dotState(2,:)
+   plasticState(p)%aTolState(2) = prm%aTolShear
    ! global alias
-   plasticState(p)%slipRate           => plasticState(p)%dotState(2:2,1:NipcMyPhase)
-   plasticState(p)%accumulatedSlip    => plasticState(p)%state   (2:2,1:NipcMyPhase)
+   plasticState(p)%slipRate        => plasticState(p)%dotState(2:2,:)
+   plasticState(p)%accumulatedSlip => plasticState(p)%state   (2:2,:)
 
    plasticState(p)%state0 = plasticState(p)%state                                                   ! ToDo: this could be done centrally
 

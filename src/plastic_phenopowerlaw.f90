@@ -74,9 +74,6 @@ module plastic_phenopowerlaw
      outputID                                                                                       !< ID of each post result output
  end type                                                                                           !< container type for internal constitutive parameters
 
- type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
-
-
  type, private :: tPhenopowerlawState
    real(pReal), pointer, dimension(:,:) :: &
      xi_slip, &
@@ -85,6 +82,8 @@ module plastic_phenopowerlaw
      gamma_twin
  end type
 
+
+ type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
  type(tPhenopowerlawState), allocatable, dimension(:), private :: &
    dotState, &
    state
@@ -233,9 +232,9 @@ subroutine plastic_phenopowerlaw_init
      prm%H_int       = math_expand(prm%H_int,      prm%Nslip)
 
      ! sanity checks
-     if (prm%gdot0_slip      <= 0.0_pReal)      extmsg = trim(extmsg)//' gdot0_slip'
-     if (prm%a_slip          <= 0.0_pReal)      extmsg = trim(extmsg)//' a_slip'
-     if (prm%n_slip          <= 0.0_pReal)      extmsg = trim(extmsg)//' n_slip'
+     if (    prm%gdot0_slip  <= 0.0_pReal)      extmsg = trim(extmsg)//' gdot0_slip'
+     if (    prm%a_slip      <= 0.0_pReal)      extmsg = trim(extmsg)//' a_slip'
+     if (    prm%n_slip      <= 0.0_pReal)      extmsg = trim(extmsg)//' n_slip'
      if (any(prm%xi_slip_0   <= 0.0_pReal))     extmsg = trim(extmsg)//' xi_slip_0'
      if (any(prm%xi_slip_sat <  prm%xi_slip_0)) extmsg = trim(extmsg)//' xi_slip_sat'
    else slipActive
@@ -342,8 +341,8 @@ subroutine plastic_phenopowerlaw_init
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
    NipcMyPhase = count(material_phase == p)
-   sizeDotState = size(['tau_slip  ','gamma_slip']) * prm%TotalNslip &
-                + size(['tau_twin  ','gamma_twin']) * prm%TotalNtwin
+   sizeDotState = size(['tau_slip  ','gamma_slip']) * prm%totalNslip &
+                + size(['tau_twin  ','gamma_twin']) * prm%totalNtwin
    sizeState = sizeDotState
 
    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0_pInt, &
@@ -466,7 +465,7 @@ subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
    left_SlipSlip,right_SlipSlip, &
    gdot_slip_pos,gdot_slip_neg
 
- associate(prm => param(instance),  stt => state(instance),  dot => dotState(instance))
+ associate(prm => param(instance), stt => state(instance), dot => dotState(instance))
 
  sumGamma = sum(stt%gamma_slip(:,of))
  sumF     = sum(stt%gamma_twin(:,of)/prm%gamma_twin_char)

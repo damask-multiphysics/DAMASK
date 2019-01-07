@@ -77,8 +77,6 @@ module plastic_disloUCLA
      dipoleformation
  end type                                                                                           !< container type for internal constitutive parameters
 
- type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
-
  type, private :: tDisloUCLAState
    real(pReal), pointer, dimension(:,:) :: &
      rhoEdge, &
@@ -93,6 +91,8 @@ module plastic_disloUCLA
      threshold_stress
  end type tDisloUCLAdependentState
 
+
+ type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
  type(tDisloUCLAState ), allocatable, dimension(:), private :: &
    dotState, &
    state
@@ -109,6 +109,7 @@ module plastic_disloUCLA
    kinetics
 
 contains
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief module initialization
@@ -152,7 +153,7 @@ subroutine plastic_disloUCLA_init()
    f,j,k,o, &
    Ninstance, &
    p, i, &
-   NipcMyPhase, outputSize, &
+   NipcMyPhase, &
    sizeState, sizeDotState, &
    startIndex, endIndex
 
@@ -217,7 +218,7 @@ subroutine plastic_disloUCLA_init()
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
      if(structure=='bcc') then
        prm%nonSchmidCoeff     = config%getFloats('nonschmid_coefficients',&
-                                                          defaultVal = emptyRealArray)
+                                                 defaultVal = emptyRealArray)
        prm%nonSchmid_pos      = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1_pInt)
        prm%nonSchmid_neg      = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1_pInt)
      else
@@ -272,17 +273,17 @@ subroutine plastic_disloUCLA_init()
      prm%tau0 = prm%tau_peierls + prm%SolidSolutionStrength
 
      ! sanity checks
-     if (any(prm%rho0         <  0.0_pReal)) extmsg = trim(extmsg)//' rhoedge0'
-     if (any(prm%rhoDip0      <  0.0_pReal)) extmsg = trim(extmsg)//' rhoedgedip0'
-     if (any(prm%v0           <  0.0_pReal)) extmsg = trim(extmsg)//' v0'
-     if (any(prm%burgers      <= 0.0_pReal)) extmsg = trim(extmsg)//' slipburgers'
-     if (any(prm%H0kp         <= 0.0_pReal)) extmsg = trim(extmsg)//' qedge'
-     if (any(prm%tau_peierls  <  0.0_pReal)) extmsg = trim(extmsg)//' tau_peierls'
-     if (    prm%D0           <= 0.0_pReal)  extmsg = trim(extmsg)//' d0'
-     if (    prm%Qsd          <= 0.0_pReal)  extmsg = trim(extmsg)//' qsd'
+     if (    prm%D0             <= 0.0_pReal)  extmsg = trim(extmsg)//' d0'
+     if (    prm%Qsd            <= 0.0_pReal)  extmsg = trim(extmsg)//' qsd'
+     if (any(prm%rho0           <  0.0_pReal)) extmsg = trim(extmsg)//' rhoedge0'
+     if (any(prm%rhoDip0        <  0.0_pReal)) extmsg = trim(extmsg)//' rhoedgedip0'
+     if (any(prm%v0             <  0.0_pReal)) extmsg = trim(extmsg)//' v0'
+     if (any(prm%burgers        <= 0.0_pReal)) extmsg = trim(extmsg)//' slipburgers'
+     if (any(prm%H0kp           <= 0.0_pReal)) extmsg = trim(extmsg)//' qedge'
+     if (any(prm%tau_peierls    <  0.0_pReal)) extmsg = trim(extmsg)//' tau_peierls'
+     if (any(prm%minDipDistance <= 0.0_pReal)) extmsg = trim(extmsg)//' cedgedipmindistance or slipburgers'
+     if (any(prm%atomicVolume   <= 0.0_pReal)) extmsg = trim(extmsg)//' catomicvolume or slipburgers'
 
-     !if (plastic_disloUCLA_CAtomicVolume(instance) <= 0.0_pReal) &
-     !  call IO_error(211_pInt,el=instance,ext_msg='cAtomicVolume ('//PLASTICITY_DISLOUCLA_label//')')
    else slipActive
      allocate(prm%rho0(0))
      allocate(prm%rhoDip0(0))
@@ -299,7 +300,6 @@ subroutine plastic_disloUCLA_init()
    allocate(prm%outputID(0))
    do i=1_pInt, size(outputs)
      outputID = undefined_ID
-     outputSize = prm%totalNslip
      select case(trim(outputs(i)))
 
        case ('edge_density')
@@ -321,7 +321,7 @@ subroutine plastic_disloUCLA_init()
 
      if (outputID /= undefined_ID) then
        plastic_disloUCLA_output(i,phase_plasticityInstance(p)) = outputs(i)
-       plastic_disloUCLA_sizePostResult(i,phase_plasticityInstance(p)) = outputSize
+       plastic_disloUCLA_sizePostResult(i,phase_plasticityInstance(p)) = prm%totalNslip
        prm%outputID = [prm%outputID, outputID]
      endif
 
@@ -329,7 +329,7 @@ subroutine plastic_disloUCLA_init()
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-   NipcMyPhase = count(material_phase==p)
+   NipcMyPhase = count(material_phase == p)
    sizeDotState = int(size(['rhoEdge     ','rhoEdgeDip  ','accshearslip']),pInt) * prm%totalNslip
    sizeState = sizeDotState
 
@@ -375,7 +375,7 @@ subroutine plastic_disloUCLA_init()
    endIndex   = endIndex + prm%totalNslip
    stt%accshear_slip=>plasticState(p)%state(startIndex:endIndex,:)
    dot%accshear_slip=>plasticState(p)%dotState(startIndex:endIndex,:)
-   plasticState(p)%aTolState(startIndex:endIndex) = 1e6_pReal
+   plasticState(p)%aTolState(startIndex:endIndex) = 1e6_pReal                  !ToDo: better make optional parameter
    ! global alias
    plasticState(p)%slipRate        => plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%accumulatedSlip => plasticState(p)%state(startIndex:endIndex,:)
@@ -415,8 +415,8 @@ pure subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,inst
  integer(pInt) :: &
    i,k,l,m,n
  real(pReal), dimension(param(instance)%totalNslip) :: &
-   dgdot_dtauslip_pos,dgdot_dtauslip_neg, &
-   gdot_slip_pos,gdot_slip_neg
+   gdot_slip_pos,gdot_slip_neg, &
+   dgdot_dtauslip_pos,dgdot_dtauslip_neg
 
  Lp = 0.0_pReal
  dLp_dMp = 0.0_pReal
@@ -424,13 +424,13 @@ pure subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,inst
  associate(prm => param(instance))
 
  call kinetics(Mp,Temperature,instance,of,gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg)
- slipSystems: do i = 1_pInt, prm%totalNslip
+ do i = 1_pInt, prm%totalNslip
    Lp = Lp + (gdot_slip_pos(i)+gdot_slip_neg(i))*prm%Schmid_slip(1:3,1:3,i)
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
                       + dgdot_dtauslip_pos(i) * prm%Schmid_slip(k,l,i) * prm%nonSchmid_pos(m,n,i) &
                       + dgdot_dtauslip_neg(i) * prm%Schmid_slip(k,l,i) * prm%nonSchmid_neg(m,n,i)
- enddo slipSystems
+ enddo
 
  end associate
 
@@ -449,12 +449,13 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
    math_clip
 
  implicit none
- real(pReal), dimension(3,3),  intent(in):: &
+ real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
- real(pReal),                intent(in) :: &
+ real(pReal),                  intent(in) :: &
    temperature                                                                                      !< temperature
- integer(pInt),              intent(in) :: &
-   instance, of
+ integer(pInt),                intent(in) :: &
+   instance, &
+   of
 
  real(pReal) :: &
    VacancyDiffusion
@@ -507,7 +508,9 @@ end subroutine plastic_disloUCLA_dotState
 subroutine plastic_disloUCLA_dependentState(instance,of)
 
  implicit none
- integer(pInt), intent(in) :: instance, of
+ integer(pInt),                intent(in) :: &
+   instance, &
+   of
 
  integer(pInt) :: &
    i
@@ -526,7 +529,6 @@ subroutine plastic_disloUCLA_dependentState(instance,of)
  dst%dislocationSpacing(:,of) = dst%mfp(:,of)                                                       ! ToDo: Hack to recover wrong behavior for the moment
 
  end associate
-
 
 end subroutine plastic_disloUCLA_dependentState
 
