@@ -32,24 +32,23 @@ module plastic_kinehardening
 
  type, private :: tParameters
    real(pReal) :: &
-     gdot0, &                                                                                       !< reference shear strain rate for slip (input parameter)
-     n_slip, &                                                                                      !< stress exponent for slip (input parameter)
+     gdot0, &                                                                                       !< reference shear strain rate for slip
+     n, &                                                                                           !< stress exponent for slip
      aTolResistance, &
      aTolShear
    real(pReal),                 allocatable, dimension(:) :: &
-     crss0, &                                                                                       !< initial critical shear stress for slip (input parameter, per family)
+     crss0, &                                                                                       !< initial critical shear stress for slip
      theta0, &                                                                                      !< initial hardening rate of forward stress for each slip
-     theta1, &                                                                                      !< asymptotic hardening rate of forward stress for each slip >
-     theta0_b, &                                                                                    !< initial hardening rate of back stress for each slip >
-     theta1_b, &                                                                                    !< asymptotic hardening rate of back stress for each slip >
+     theta1, &                                                                                      !< asymptotic hardening rate of forward stress for each slip
+     theta0_b, &                                                                                    !< initial hardening rate of back stress for each slip
+     theta1_b, &                                                                                    !< asymptotic hardening rate of back stress for each slip
      tau1, &
      tau1_b, &
      nonSchmidCoeff
    real(pReal),                 allocatable, dimension(:,:) :: &
      interaction_slipslip                                                                           !< slip resistance from slip activity
    real(pReal),                 allocatable, dimension(:,:,:) :: &
-     Schmid_slip, &
-     Schmid_twin, &
+     Schmid, &
      nonSchmid_pos, &
      nonSchmid_neg
    integer(pInt) :: &
@@ -203,16 +202,16 @@ subroutine plastic_kinehardening_init
    prm%Nslip      = config%getInts('nslip',defaultVal=emptyIntArray)
    prm%totalNslip = sum(prm%Nslip)
    slipActive: if (prm%totalNslip > 0_pInt) then
-     prm%Schmid_slip          = lattice_SchmidMatrix_slip(prm%Nslip,structure(1:3),&
-                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
+     prm%Schmid          = lattice_SchmidMatrix_slip(prm%Nslip,structure(1:3),&
+                                                     config%getFloat('c/a',defaultVal=0.0_pReal))
      if(structure=='bcc') then
        prm%nonSchmidCoeff     = config%getFloats('nonschmid_coefficients',&
                                                  defaultVal = emptyRealArray)
        prm%nonSchmid_pos      = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1_pInt)
        prm%nonSchmid_neg      = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1_pInt)
      else
-       prm%nonSchmid_pos      = prm%Schmid_slip
-       prm%nonSchmid_neg      = prm%Schmid_slip
+       prm%nonSchmid_pos      = prm%Schmid
+       prm%nonSchmid_neg      = prm%Schmid
      endif
      prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
                                                              config%getFloats('interaction_slipslip'), &
@@ -227,7 +226,7 @@ subroutine plastic_kinehardening_init
      prm%theta1_b = config%getFloats('theta1_b', requiredShape=shape(prm%Nslip))
 
      prm%gdot0  = config%getFloat('gdot0')
-     prm%n_slip = config%getFloat('n_slip')
+     prm%n = config%getFloat('n_slip')
 
      ! expand: family => system
      prm%crss0    = math_expand(prm%crss0,   prm%Nslip)
@@ -242,8 +241,8 @@ subroutine plastic_kinehardening_init
 
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
-     if (     prm%gdot0 <= 0.0_pReal)   extmsg = trim(extmsg)//' gdot0'
-     if (    prm%n_slip <= 0.0_pReal)   extmsg = trim(extmsg)//' n_slip'
+     if (    prm%gdot0  <= 0.0_pReal)   extmsg = trim(extmsg)//' gdot0'
+     if (    prm%n      <= 0.0_pReal)   extmsg = trim(extmsg)//' n_slip'
      if (any(prm%crss0  <= 0.0_pReal))  extmsg = trim(extmsg)//' crss0'
      if (any(prm%tau1   <= 0.0_pReal))  extmsg = trim(extmsg)//' tau1'
      if (any(prm%tau1_b <= 0.0_pReal))  extmsg = trim(extmsg)//' tau1_b'
@@ -384,11 +383,11 @@ pure subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
  call kinetics(Mp,instance,of,gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_dtau_neg)
 
  do i = 1_pInt, prm%totalNslip
-   Lp = Lp + (gdot_pos(i)+gdot_neg(i))*prm%Schmid_slip(1:3,1:3,i)
+   Lp = Lp + (gdot_pos(i)+gdot_neg(i))*prm%Schmid(1:3,1:3,i)
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                      + dgdot_dtau_pos(i) * prm%Schmid_slip(k,l,i) * prm%nonSchmid_pos(m,n,i) &
-                      + dgdot_dtau_neg(i) * prm%Schmid_slip(k,l,i) * prm%nonSchmid_neg(m,n,i)
+                      + dgdot_dtau_pos(i) * prm%Schmid(k,l,i) * prm%nonSchmid_pos(m,n,i) &
+                      + dgdot_dtau_neg(i) * prm%Schmid(k,l,i) * prm%nonSchmid_neg(m,n,i)
  enddo
 
  end associate
@@ -546,7 +545,7 @@ function plastic_kinehardening_postResults(Mp,instance,of) result(postResults)
        postResults(c+1_pInt:c+prm%totalNslip) = gdot_pos+gdot_neg
      case (resolvedstress_ID)
        do i = 1_pInt, prm%totalNslip
-         postResults(c+i) = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,i))
+         postResults(c+i) = math_mul33xx33(Mp,prm%Schmid(1:3,1:3,i))
        enddo
 
    end select
@@ -605,28 +604,28 @@ pure subroutine kinetics(Mp,instance,of, &
 
  where(dNeq0(tau_pos))
    gdot_pos = prm%gdot0 * merge(0.5_pReal,1.0_pReal, nonSchmidActive) &                             ! 1/2 if non-Schmid active
-            * sign(abs(tau_pos/stt%crss(:,of))**prm%n_slip,  tau_pos)
+            * sign(abs(tau_pos/stt%crss(:,of))**prm%n,  tau_pos)
  else where
    gdot_pos = 0.0_pReal
  end where
 
  where(dNeq0(tau_neg))
    gdot_neg = prm%gdot0 * 0.5_pReal &                                                               ! only used if non-Schmid active, always 1/2
-            * sign(abs(tau_neg/stt%crss(:,of))**prm%n_slip,  tau_neg)
+            * sign(abs(tau_neg/stt%crss(:,of))**prm%n,  tau_neg)
  else where
    gdot_neg = 0.0_pReal
  end where
 
  if (present(dgdot_dtau_pos)) then
    where(dNeq0(gdot_pos))
-     dgdot_dtau_pos = gdot_pos*prm%n_slip/tau_pos
+     dgdot_dtau_pos = gdot_pos*prm%n/tau_pos
    else where
      dgdot_dtau_pos = 0.0_pReal
    end where
  endif
  if (present(dgdot_dtau_neg)) then
    where(dNeq0(gdot_neg))
-     dgdot_dtau_neg = gdot_neg*prm%n_slip/tau_neg
+     dgdot_dtau_neg = gdot_neg*prm%n/tau_neg
    else where
      dgdot_dtau_neg = 0.0_pReal
    end where
