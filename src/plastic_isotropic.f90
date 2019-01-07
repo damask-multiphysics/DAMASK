@@ -44,7 +44,7 @@ module plastic_isotropic
      aTolShear
    integer(pInt) :: &
      of_debug = 0_pInt
-   integer(kind(undefined_ID)), allocatable, dimension(:) :: & 
+   integer(kind(undefined_ID)), allocatable, dimension(:) :: &
      outputID
    logical :: &
      dilatation
@@ -119,7 +119,7 @@ subroutine plastic_isotropic_init()
    p, i, &
    NipcMyPhase, &
    sizeState, sizeDotState
-   
+
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
 
  integer(kind(undefined_ID)) :: &
@@ -154,7 +154,7 @@ subroutine plastic_isotropic_init()
              dot => dotState(phase_plasticityInstance(p)), &
              stt => state(phase_plasticityInstance(p)), &
              config => config_phase(p))
-   
+
 #ifdef DEBUG
    if  (p==material_phase(debug_g,debug_i,debug_e)) then
      prm%of_debug = phasememberAt(debug_g,debug_i,debug_e)
@@ -175,22 +175,22 @@ subroutine plastic_isotropic_init()
    prm%a               =  config%getFloat('a')
    prm%aTolFlowStress  =  config%getFloat('atol_flowstress',defaultVal=1.0_pReal)
    prm%aTolShear       =  config%getFloat('atol_shear',     defaultVal=1.0e-6_pReal)
-   
+
    prm%dilatation      = config%keyExists('/dilatation/')
 
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
    extmsg = ''
-   if (prm%aTolShear        <= 0.0_pReal) extmsg = trim(extmsg)//'aTolShear ' 
-   if (prm%tau0              < 0.0_pReal) extmsg = trim(extmsg)//'tau0 ' 
-   if (prm%gdot0            <= 0.0_pReal) extmsg = trim(extmsg)//'gdot0 ' 
-   if (prm%n                <= 0.0_pReal) extmsg = trim(extmsg)//'n ' 
+   if (prm%aTolShear        <= 0.0_pReal) extmsg = trim(extmsg)//'aTolShear '
+   if (prm%tau0              < 0.0_pReal) extmsg = trim(extmsg)//'tau0 '
+   if (prm%gdot0            <= 0.0_pReal) extmsg = trim(extmsg)//'gdot0 '
+   if (prm%n                <= 0.0_pReal) extmsg = trim(extmsg)//'n '
    if (prm%tausat           <= prm%tau0)  extmsg = trim(extmsg)//'tausat '
-   if (prm%a                <= 0.0_pReal) extmsg = trim(extmsg)//'a ' 
-   if (prm%fTaylor          <= 0.0_pReal) extmsg = trim(extmsg)//'m ' 
+   if (prm%a                <= 0.0_pReal) extmsg = trim(extmsg)//'a '
+   if (prm%fTaylor          <= 0.0_pReal) extmsg = trim(extmsg)//'m '
    if (prm%aTolFlowstress   <= 0.0_pReal) extmsg = trim(extmsg)//'atol_flowstress '
-   if (prm%aTolShear        <= 0.0_pReal) extmsg = trim(extmsg)//'atol_shear ' 
-   
+   if (prm%aTolShear        <= 0.0_pReal) extmsg = trim(extmsg)//'atol_shear '
+
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
    if (extmsg /= '') &
@@ -242,7 +242,7 @@ subroutine plastic_isotropic_init()
    ! global alias
    plasticState(p)%slipRate           => plasticState(p)%dotState(2:2,1:NipcMyPhase)
    plasticState(p)%accumulatedSlip    => plasticState(p)%state   (2:2,1:NipcMyPhase)
-   
+
    plasticState(p)%state0 = plasticState(p)%state                                                   ! ToDo: this could be done centrally
 
    end associate
@@ -289,15 +289,15 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
    k, l, m, n
 
  associate(prm => param(instance), stt => state(instance))
- 
+
  Mp_dev = math_deviatoric33(Mp)
  squarenorm_Mp_dev = math_mul33xx33(Mp_dev,Mp_dev)
- norm_Mp_dev = sqrt(squarenorm_Mp_dev) 
+ norm_Mp_dev = sqrt(squarenorm_Mp_dev)
 
  if (norm_Mp_dev > 0.0_pReal) then
    gamma_dot = prm%gdot0 * (sqrt(1.5_pReal) * norm_Mp_dev/(prm%fTaylor*stt%flowstress(of))) **prm%n
 
-   Lp = Mp_dev/norm_Mp_dev * gamma_dot/prm%fTaylor 
+   Lp = Mp_dev/norm_Mp_dev * gamma_dot/prm%fTaylor
 #ifdef DEBUG
    if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &
        .and. (of == prm%of_debug .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
@@ -318,7 +318,7 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
    Lp = 0.0_pReal
    dLp_dMp = 0.0_pReal
  end if
- 
+
  end associate
 
 end subroutine plastic_isotropic_LpAndItsTangent
@@ -338,7 +338,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,instance,of)
    Li                                                                                               !< inleastic velocity gradient
  real(pReal), dimension(3,3,3,3), intent(out)  :: &
    dLi_dTstar                                                                                       !< derivative of Li with respect to the Mandel stress
- 
+
  real(pReal), dimension(3,3),   intent(in) :: &
    Tstar                                                                                            !< Mandel stress ToDo: Mi?
  integer(pInt),                 intent(in) :: &
@@ -355,10 +355,10 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,instance,of)
    k, l, m, n
 
  associate(prm => param(instance), stt => state(instance))
- 
+
  Tstar_sph = math_spherical33(Tstar)
  squarenorm_Tstar_sph = math_mul33xx33(Tstar_sph,Tstar_sph)
- norm_Tstar_sph = sqrt(squarenorm_Tstar_sph) 
+ norm_Tstar_sph = sqrt(squarenorm_Tstar_sph)
 
  if (prm%dilatation .and. norm_Tstar_sph > 0.0_pReal) then                                          ! no stress or J2 plastitiy --> Li and its derivative are zero
    gamma_dot = prm%gdot0 * (sqrt(1.5_pReal) * norm_Tstar_sph /(prm%fTaylor*stt%flowstress(of))) **prm%n
@@ -404,15 +404,15 @@ subroutine plastic_isotropic_dotState(Mp,instance,of)
    norm_Mp                                                                                          !< norm of the (deviatoric) Mandel stress
 
  associate(prm => param(instance), stt => state(instance), dot => dotState(instance))
- 
+
  if (prm%dilatation) then
    norm_Mp = sqrt(math_mul33xx33(Mp,Mp))
  else
    norm_Mp = sqrt(math_mul33xx33(math_deviatoric33(Mp),math_deviatoric33(Mp)))
  endif
- 
+
  gamma_dot = prm%gdot0 * (sqrt(1.5_pReal) * norm_Mp /(prm%fTaylor*stt%flowstress(of))) **prm%n
- 
+
  if (abs(gamma_dot) > 1e-12_pReal) then
    if (dEq0(prm%tausat_SinhFitA)) then
      saturation = prm%tausat
@@ -431,7 +431,7 @@ subroutine plastic_isotropic_dotState(Mp,instance,of)
 
  dot%flowstress      (of) = hardening * gamma_dot
  dot%accumulatedShear(of) =             gamma_dot
- 
+
  end associate
 
 end subroutine plastic_isotropic_dotState
@@ -461,13 +461,13 @@ function plastic_isotropic_postResults(Mp,instance,of) result(postResults)
    o,c
 
  associate(prm => param(instance), stt => state(instance))
- 
+
  if (prm%dilatation) then
    norm_Mp = sqrt(math_mul33xx33(Mp,Mp))
  else
    norm_Mp = sqrt(math_mul33xx33(math_deviatoric33(Mp),math_deviatoric33(Mp)))
  endif
- 
+
  c = 0_pInt
 
  outputsLoop: do o = 1_pInt,size(prm%outputID)
@@ -483,7 +483,7 @@ function plastic_isotropic_postResults(Mp,instance,of) result(postResults)
 
    end select
  enddo outputsLoop
- 
+
  end associate
 
 end function plastic_isotropic_postResults

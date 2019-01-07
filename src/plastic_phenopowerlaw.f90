@@ -221,7 +221,7 @@ subroutine plastic_phenopowerlaw_init
      prm%xi_slip_sat          = config%getFloats('tausat_slip', requiredSize=size(prm%Nslip))
      prm%H_int                = config%getFloats('h_int',       requiredSize=size(prm%Nslip), &
                                                                 defaultVal=[(0.0_pReal,i=1_pInt,size(prm%Nslip))])
- 
+
      prm%gdot0_slip           = config%getFloat('gdot0_slip')
      prm%n_slip               = config%getFloat('n_slip')
      prm%a_slip               = config%getFloat('a_slip')
@@ -392,7 +392,7 @@ end subroutine plastic_phenopowerlaw_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
-!> @details asummes that deformation by dislocation glide affects twinned and untwinned volume 
+!> @details asummes that deformation by dislocation glide affects twinned and untwinned volume
 !  equally (Taylor assumption). Twinning happens only in untwinned volume
 !--------------------------------------------------------------------------------------------------
 pure subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
@@ -419,9 +419,9 @@ pure subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
  Lp = 0.0_pReal
  dLp_dMp = 0.0_pReal
- 
+
  associate(prm => param(instance))
- 
+
  call kinetics_slip(Mp,instance,of,gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg)
  slipSystems: do i = 1_pInt, prm%totalNslip
    Lp = Lp + (gdot_slip_pos(i)+gdot_slip_neg(i))*prm%Schmid_slip(1:3,1:3,i)
@@ -438,7 +438,7 @@ pure subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
                       + dgdot_dtautwin(i)*prm%Schmid_twin(k,l,i)*prm%Schmid_twin(m,n,i)
  enddo twinSystems
- 
+
  end associate
 
 end subroutine plastic_phenopowerlaw_LpAndItsTangent
@@ -578,8 +578,8 @@ end function plastic_phenopowerlaw_postResults
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Shear rates on slip systems and their derivatives with respect to resolved stress
-!> @details Derivatives are calculated only optionally. 
-! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to 
+!> @details Derivatives are calculated only optionally.
+! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
 ! have the optional arguments at the end
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_slip(Mp,instance,of, &
@@ -610,7 +610,7 @@ pure subroutine kinetics_slip(Mp,instance,of, &
  logical       :: nonSchmidActive
 
  associate(prm => param(instance), stt => state(instance))
- 
+
  nonSchmidActive = size(prm%nonSchmidCoeff) > 0_pInt
 
  do i = 1_pInt, prm%totalNslip
@@ -656,7 +656,7 @@ end subroutine kinetics_slip
 !> @brief Shear rates on twin systems and their derivatives with respect to resolved stress.
 !  twinning is assumed to take place only in untwinned volume.
 !> @details Derivates are calculated only optionally.
-! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to 
+! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
 ! have the optional arguments at the end.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_twin(Mp,instance,of,&
@@ -672,7 +672,7 @@ pure subroutine kinetics_twin(Mp,instance,of,&
  integer(pInt),                intent(in) :: &
    instance, &
    of
-   
+
  real(pReal), dimension(param(instance)%totalNtwin), intent(out) :: &
    gdot_twin
  real(pReal), dimension(param(instance)%totalNtwin), intent(out), optional :: &
@@ -681,17 +681,17 @@ pure subroutine kinetics_twin(Mp,instance,of,&
  real(pReal), dimension(param(instance)%totalNtwin) :: &
    tau_twin
  integer(pInt) :: i
- 
+
  associate(prm => param(instance), stt => state(instance))
 
  do i = 1_pInt, prm%totalNtwin
    tau_twin(i)  = math_mul33xx33(Mp,prm%Schmid_twin(1:3,1:3,i))
  enddo
- 
+
  where(tau_twin > 0.0_pReal)
    gdot_twin = (1.0_pReal-sum(stt%gamma_twin(:,of)/prm%gamma_twin_char)) &                          ! only twin in untwinned volume fraction
              * prm%gdot0_twin*(abs(tau_twin)/stt%xi_twin(:,of))**prm%n_twin
- else where            
+ else where
    gdot_twin = 0.0_pReal
  end where
 
@@ -702,7 +702,7 @@ pure subroutine kinetics_twin(Mp,instance,of,&
      dgdot_dtau_twin = 0.0_pReal
    end where
  endif
- 
+
  end associate
 
 end subroutine kinetics_twin

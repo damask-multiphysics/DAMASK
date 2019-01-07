@@ -227,7 +227,7 @@ subroutine plastic_disloUCLA_init()
      prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
                                                              config%getFloats('interaction_slipslip'), &
                                                              structure(1:3))
-     prm%rho0        = config%getFloats('rhoedge0',       requiredShape=shape(prm%Nslip)) 
+     prm%rho0        = config%getFloats('rhoedge0',       requiredShape=shape(prm%Nslip))
      prm%rhoDip0     = config%getFloats('rhoedgedip0',    requiredShape=shape(prm%Nslip))
      prm%v0          = config%getFloats('v0',             requiredShape=shape(prm%Nslip))
      prm%burgers     = config%getFloats('slipburgers',    requiredShape=shape(prm%Nslip))
@@ -268,7 +268,7 @@ subroutine plastic_disloUCLA_init()
      prm%clambda        = math_expand(prm%clambda,        prm%Nslip)
      prm%atomicVolume   = math_expand(prm%atomicVolume,   prm%Nslip)
      prm%minDipDistance = math_expand(prm%minDipDistance, prm%Nslip)
-     
+
      prm%tau0 = prm%tau_peierls + prm%SolidSolutionStrength
 
      ! sanity checks
@@ -280,7 +280,7 @@ subroutine plastic_disloUCLA_init()
      if (any(prm%tau_peierls  <  0.0_pReal)) extmsg = trim(extmsg)//' tau_peierls'
      if (    prm%D0           <= 0.0_pReal)  extmsg = trim(extmsg)//' d0'
      if (    prm%Qsd          <= 0.0_pReal)  extmsg = trim(extmsg)//' qsd'
-   
+
      !if (plastic_disloUCLA_CAtomicVolume(instance) <= 0.0_pReal) &
      !  call IO_error(211_pInt,el=instance,ext_msg='cAtomicVolume ('//PLASTICITY_DISLOUCLA_label//')')
    else slipActive
@@ -338,7 +338,7 @@ subroutine plastic_disloUCLA_init()
    plasticState(p)%sizePostResults = sum(plastic_disloUCLA_sizePostResult(:,phase_plasticityInstance(p)))
 
    allocate(prm%forestProjectionEdge(prm%totalNslip,prm%totalNslip),source = 0.0_pReal)
-   
+
    i = 0_pInt
    mySlipFamilies: do f = 1_pInt,size(prm%Nslip,1)
      index_myFamily = sum(prm%Nslip(1:f-1_pInt))
@@ -416,7 +416,7 @@ subroutine plastic_disloUCLA_dependentState(instance,of)
 
  dst%mfp(:,of) = prm%grainSize/(1.0_pReal+prm%grainSize*dst%dislocationSpacing(:,of)/prm%Clambda)
  dst%dislocationSpacing(:,of) = dst%mfp(:,of)                                                       ! ToDo: Hack to recover wrong behavior for the moment
- 
+
  end associate
 
 
@@ -450,7 +450,7 @@ pure subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,inst
 
  Lp = 0.0_pReal
  dLp_dMp = 0.0_pReal
- 
+
  associate(prm => param(instance))
 
  call kinetics(Mp,Temperature,instance,of,gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg)
@@ -461,7 +461,7 @@ pure subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,inst
                       + dgdot_dtauslip_pos(i) * prm%Schmid_slip(k,l,i) * prm%nonSchmid_pos(m,n,i) &
                       + dgdot_dtauslip_neg(i) * prm%Schmid_slip(k,l,i) * prm%nonSchmid_neg(m,n,i)
  enddo slipSystems
- 
+
  end associate
 
 end subroutine plastic_disloUCLA_LpAndItsTangent
@@ -600,12 +600,12 @@ function plastic_disloUCLA_postResults(Mp,Temperature,instance,of) result(postRe
 end function plastic_disloUCLA_postResults
 
 
-!-------------------------------------------------------------------------------------------------- 
+!--------------------------------------------------------------------------------------------------
 !> @brief Shear rates on slip systems, their derivatives with respect to resolved stress and the
 !  resolved stresss
-!> @details Derivatives and resolved stress are calculated only optionally.                                             
-! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to      
-! have the optional arguments at the end                                                            
+!> @details Derivatives and resolved stress are calculated only optionally.
+! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
+! have the optional arguments at the end
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics(Mp,Temperature,instance,of, &
                  gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg,tau_slip_pos1,tau_slip_neg1)
@@ -642,13 +642,13 @@ pure subroutine kinetics(Mp,Temperature,instance,of, &
  integer(pInt) :: j
 
  associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
- 
+
  do j = 1_pInt, prm%totalNslip
    tau_slip_pos(j) = math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,j))
    tau_slip_neg(j) = math_mul33xx33(Mp,prm%nonSchmid_neg(1:3,1:3,j))
  enddo
- 
-  
+
+
  if (present(tau_slip_pos1)) tau_slip_pos1 = tau_slip_pos
  if (present(tau_slip_neg1)) tau_slip_neg1 = tau_slip_neg
 
@@ -735,7 +735,7 @@ pure subroutine kinetics(Mp,Temperature,instance,of, &
               )  &
             /(2.0_pReal*prm%burgers**2.0_pReal*tau_slip_neg &
               + prm%omega * prm%B* effectiveLength**2.0_pReal* needsGoodName )**2.0_pReal
-        
+
    dgdot_dtauslip_neg = DotGamma0 * dvel_slip * 0.5_pReal
  else where significantNegativeTau2
    dgdot_dtauslip_neg = 0.0_pReal
