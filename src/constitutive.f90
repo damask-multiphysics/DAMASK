@@ -25,7 +25,8 @@ module constitutive
    constitutive_SandItsTangents, &
    constitutive_collectDotState, &
    constitutive_collectDeltaState, &
-   constitutive_postResults
+   constitutive_postResults, &
+   constitutive_results
 
  private :: &
    constitutive_hooke_SandItsTangents
@@ -1125,5 +1126,44 @@ function constitutive_postResults(S6, Fi, FeArray, ipc, ip, el)
  enddo SourceLoop
 
 end function constitutive_postResults
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes constitutive results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_results()
+ use material, only: &
+   PLASTICITY_ISOTROPIC_ID, &
+   PLASTICITY_PHENOPOWERLAW_ID, &
+   PLASTICITY_KINEHARDENING_ID, &
+   PLASTICITY_DISLOTWIN_ID, &
+   PLASTICITY_DISLOUCLA_ID, &
+   PLASTICITY_NONLOCAL_ID
+#if defined(PETSc) || defined(DAMASKHDF5)
+ use results
+ use HDF5_utilities
+ use config, only: &
+   config_name_phase => phase_name                                                                  ! anticipate logical name
+   
+ use material, only: &
+   phase_plasticityInstance, &
+   material_phase_plasticity_type => phase_plasticity
+ use plastic_phenopowerlaw, only: &
+   plastic_phenopowerlaw_results
+ 
+ implicit none
+ integer(pInt) :: p  
+ call HDF5_closeGroup(results_addGroup('current/phase'))                                              
+ do p=1,size(config_name_phase)                                                                           
+   call HDF5_closeGroup(results_addGroup('current/phase/'//trim(config_name_phase(p))))
+   if (material_phase_plasticity_type(p) == PLASTICITY_PHENOPOWERLAW_ID) then
+     call plastic_phenopowerlaw_results(phase_plasticityInstance(p),'current/phase/'//trim(config_name_phase(p)))
+   endif
+ enddo      
+
+#endif
+
+
+end subroutine constitutive_results
 
 end module constitutive

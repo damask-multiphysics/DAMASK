@@ -1,4 +1,4 @@
-!--------------------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Reads in the material configuration from file
 !> @details Reads the material configuration file, where solverJobName.materialConfig takes
@@ -220,7 +220,7 @@ subroutine parseFile(sectionNames,part,line, &
  partPosition = [partPosition, i]                                                                   ! needed when actually storing content
 
  do i = 1_pInt, size(partPosition) -1_pInt
-   sectionNames(i) = trim(adjustl(fileContent(partPosition(i))))
+   sectionNames(i) = trim(adjustl(IO_getTag(fileContent(partPosition(i)),'[',']')))
    do j = partPosition(i) + 1_pInt,  partPosition(i+1) -1_pInt
      call part(i)%add(trim(adjustl(fileContent(j))))
    enddo

@@ -46,7 +46,8 @@ program DAMASK_spectral
    grid, &
    geomSize
  use CPFEM2, only: &
-   CPFEM_initAll
+   CPFEM_initAll, &
+   CPFEM_results
  use FEsolving, only: &
    restartWrite, &
    restartInc
@@ -80,6 +81,7 @@ program DAMASK_spectral
  use spectral_mech_Polarisation
  use spectral_damage
  use spectral_thermal
+ use results
 
  implicit none
 
@@ -157,6 +159,9 @@ program DAMASK_spectral
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
+
+ call results_openJobFile()
+ call results_closeJobFile()
 !--------------------------------------------------------------------------------------------------
 ! initialize field solver information
  nActiveFields = 1
@@ -420,6 +425,7 @@ program DAMASK_spectral
 
  writeUndeformed: if (interface_restartInc < 1_pInt) then
    write(6,'(1/,a)') ' ... writing initial configuration to file ........................'
+   call CPFEM_results(0_pInt,0.0_pReal)
    do i = 1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1         ! slice the output of my process in chunks not exceeding the limit for one output
      outputIndex = int([(i-1_pInt)*((maxRealOut)/materialpoint_sizeResults)+1_pInt, &               ! QUESTION: why not starting i at 0 instead of murky 1?
                              min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
@@ -596,6 +602,7 @@ program DAMASK_spectral
            if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_write')
          enddo
          fileOffset = fileOffset + sum(outputSize)                                                  ! forward to current file position
+         call CPFEM_results(totalIncsCounter,time)
        endif
        if (              loadCases(currentLoadCase)%restartFrequency > 0_pInt &                     ! writing of restart info requested ...
            .and. mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0_pInt) then               ! ... and at frequency of writing restart information
