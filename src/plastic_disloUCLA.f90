@@ -394,36 +394,6 @@ end subroutine plastic_disloUCLA_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates derived quantities from state
-!--------------------------------------------------------------------------------------------------
-subroutine plastic_disloUCLA_dependentState(instance,of)
-
- implicit none
- integer(pInt), intent(in) :: instance, of
-
- integer(pInt) :: &
-   i
-
- associate(prm => param(instance), stt => state(instance),dst => dependentState(instance))
-
- forall (i = 1_pInt:prm%totalNslip)
-   dst%dislocationSpacing(i,of) = sqrt(dot_product(stt%rhoEdge(:,of)+stt%rhoEdgeDip(:,of), &
-                                       prm%forestProjectionEdge(:,i)))
-   dst%threshold_stress(i,of) = prm%mu*prm%burgers(i) &
-                              * sqrt(dot_product(stt%rhoEdge(:,of)+stt%rhoEdgeDip(:,of), &
-                                                 prm%interaction_SlipSlip(i,:)))
- end forall
-
- dst%mfp(:,of) = prm%grainSize/(1.0_pReal+prm%grainSize*dst%dislocationSpacing(:,of)/prm%Clambda)
- dst%dislocationSpacing(:,of) = dst%mfp(:,of)                                                       ! ToDo: Hack to recover wrong behavior for the moment
-
- end associate
-
-
-end subroutine plastic_disloUCLA_dependentState
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
 pure subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,instance,of)
@@ -529,6 +499,36 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
  end associate
 
 end subroutine plastic_disloUCLA_dotState
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates derived quantities from state
+!--------------------------------------------------------------------------------------------------
+subroutine plastic_disloUCLA_dependentState(instance,of)
+
+ implicit none
+ integer(pInt), intent(in) :: instance, of
+
+ integer(pInt) :: &
+   i
+
+ associate(prm => param(instance), stt => state(instance),dst => dependentState(instance))
+
+ forall (i = 1_pInt:prm%totalNslip)
+   dst%dislocationSpacing(i,of) = sqrt(dot_product(stt%rhoEdge(:,of)+stt%rhoEdgeDip(:,of), &
+                                       prm%forestProjectionEdge(:,i)))
+   dst%threshold_stress(i,of) = prm%mu*prm%burgers(i) &
+                              * sqrt(dot_product(stt%rhoEdge(:,of)+stt%rhoEdgeDip(:,of), &
+                                                 prm%interaction_SlipSlip(i,:)))
+ end forall
+
+ dst%mfp(:,of) = prm%grainSize/(1.0_pReal+prm%grainSize*dst%dislocationSpacing(:,of)/prm%Clambda)
+ dst%dislocationSpacing(:,of) = dst%mfp(:,of)                                                       ! ToDo: Hack to recover wrong behavior for the moment
+
+ end associate
+
+
+end subroutine plastic_disloUCLA_dependentState
 
 
 !--------------------------------------------------------------------------------------------------

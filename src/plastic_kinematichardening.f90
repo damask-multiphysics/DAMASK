@@ -398,6 +398,50 @@ end subroutine plastic_kinehardening_LpAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief calculates the rate of change of microstructure
+!--------------------------------------------------------------------------------------------------
+subroutine plastic_kinehardening_dotState(Mp,instance,of)
+
+ implicit none
+ real(pReal), dimension(3,3),  intent(in) :: &
+   Mp                                                                                               !< Mandel stress
+ integer(pInt),                intent(in) :: &
+   instance, &
+   of
+
+ integer(pInt) :: &
+   i
+ real(pReal), dimension(param(instance)%totalNslip) :: &
+   gdot_pos,gdot_neg
+ real(pReal) :: &
+   sumGamma
+
+ associate(prm => param(instance), stt => state(instance), dot => dotState(instance))
+
+ call kinetics(Mp,instance,of,gdot_pos,gdot_neg)
+ dot%accshear(:,of) = abs(gdot_pos+gdot_neg)
+ sumGamma = sum(stt%accshear(:,of))
+
+ do i = 1_pInt, prm%totalNslip
+   dot%crss(i,of) = dot_product(prm%interaction_SlipSlip(i,:),dot%accshear(:,of)) &
+                  * (  prm%theta1(i) &
+                     + (prm%theta0(i) - prm%theta1(i) + prm%theta0(i)*prm%theta1(i)*sumGamma/prm%tau1(i)) &
+                     * exp(-sumGamma*prm%theta0(i)/prm%tau1(i)) &
+                    )
+ enddo
+ dot%crss_back(:,of) = stt%sense(:,of)*dot%accshear(:,of) * &
+          ( prm%theta1_b + &
+            (prm%theta0_b - prm%theta1_b &
+              + prm%theta0_b*prm%theta1_b/(prm%tau1_b+stt%chi0(:,of))*(stt%accshear(:,of)-stt%gamma0(:,of))&
+            ) *exp(-(stt%accshear(:,of)-stt%gamma0(:,of)) *prm%theta0_b/(prm%tau1_b+stt%chi0(:,of))) &
+          )
+
+ end associate
+
+end subroutine plastic_kinehardening_dotState
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief calculates (instantaneous) incremental change of microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_kinehardening_deltaState(Mp,instance,of)
@@ -454,50 +498,6 @@ subroutine plastic_kinehardening_deltaState(Mp,instance,of)
  end associate
 
 end subroutine plastic_kinehardening_deltaState
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates the rate of change of microstructure
-!--------------------------------------------------------------------------------------------------
-subroutine plastic_kinehardening_dotState(Mp,instance,of)
-
- implicit none
- real(pReal), dimension(3,3),  intent(in) :: &
-   Mp                                                                                               !< Mandel stress
- integer(pInt),                intent(in) :: &
-   instance, &
-   of
-
- integer(pInt) :: &
-   i
- real(pReal), dimension(param(instance)%totalNslip) :: &
-   gdot_pos,gdot_neg
- real(pReal) :: &
-   sumGamma
-
- associate(prm => param(instance), stt => state(instance), dot => dotState(instance))
-
- call kinetics(Mp,instance,of,gdot_pos,gdot_neg)
- dot%accshear(:,of) = abs(gdot_pos+gdot_neg)
- sumGamma = sum(stt%accshear(:,of))
-
- do i = 1_pInt, prm%totalNslip
-   dot%crss(i,of) = dot_product(prm%interaction_SlipSlip(i,:),dot%accshear(:,of)) &
-                  * (  prm%theta1(i) &
-                     + (prm%theta0(i) - prm%theta1(i) + prm%theta0(i)*prm%theta1(i)*sumGamma/prm%tau1(i)) &
-                     * exp(-sumGamma*prm%theta0(i)/prm%tau1(i)) &
-                    )
- enddo
- dot%crss_back(:,of) = stt%sense(:,of)*dot%accshear(:,of) * &
-          ( prm%theta1_b + &
-            (prm%theta0_b - prm%theta1_b &
-              + prm%theta0_b*prm%theta1_b/(prm%tau1_b+stt%chi0(:,of))*(stt%accshear(:,of)-stt%gamma0(:,of))&
-            ) *exp(-(stt%accshear(:,of)-stt%gamma0(:,of)) *prm%theta0_b/(prm%tau1_b+stt%chi0(:,of))) &
-          )
-
- end associate
-
-end subroutine plastic_kinehardening_dotState
 
 
 !--------------------------------------------------------------------------------------------------
