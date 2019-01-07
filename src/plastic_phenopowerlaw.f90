@@ -191,7 +191,7 @@ subroutine plastic_phenopowerlaw_init
    prm%aTolResistance = config%getFloat('atol_resistance',defaultVal=1.0_pReal)
    prm%aTolShear      = config%getFloat('atol_shear',     defaultVal=1.0e-6_pReal)
    prm%aTolTwinfrac   = config%getFloat('atol_twinfrac',  defaultVal=1.0e-6_pReal)
-   
+
    ! sanity checks
    if (prm%aTolResistance <= 0.0_pReal) extmsg = trim(extmsg)//' aTolresistance'
    if (prm%aTolShear      <= 0.0_pReal) extmsg = trim(extmsg)//' aTolShear'
@@ -392,7 +392,7 @@ end subroutine plastic_phenopowerlaw_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
-!> @details asumme that deformation by dislocation glide affects twinned and untwinned volume 
+!> @details asummes that deformation by dislocation glide affects twinned and untwinned volume 
 !  equally (Taylor assumption). Twinning happens only in untwinned volume
 !--------------------------------------------------------------------------------------------------
 pure subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
@@ -523,7 +523,7 @@ function plastic_phenopowerlaw_postResults(Mp,instance,of) result(postResults)
    of
 
  real(pReal), dimension(sum(plastic_phenopowerlaw_sizePostResult(:,instance))) :: &
-  postResults
+   postResults
 
  integer(pInt) :: &
    o,c,i
@@ -595,13 +595,14 @@ pure subroutine kinetics_slip(Mp,instance,of, &
  integer(pInt),                intent(in) :: &
    instance, &
    of
-   
+
  real(pReal),                  intent(out), dimension(param(instance)%totalNslip) :: &
    gdot_slip_pos, &
    gdot_slip_neg
  real(pReal),                  intent(out), optional, dimension(param(instance)%totalNslip) :: &
    dgdot_dtau_slip_pos, &
    dgdot_dtau_slip_neg
+
  real(pReal), dimension(param(instance)%totalNslip) :: &
    tau_slip_pos, &
    tau_slip_neg
