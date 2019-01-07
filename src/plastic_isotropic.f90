@@ -9,7 +9,7 @@
 !--------------------------------------------------------------------------------------------------
 module plastic_isotropic
  use prec, only: &
-   pReal,&
+   pReal, &
    pInt
 
  implicit none
@@ -71,7 +71,6 @@ module plastic_isotropic
 
 contains
 
-
 !--------------------------------------------------------------------------------------------------
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
@@ -92,7 +91,7 @@ subroutine plastic_isotropic_init()
    debug_levelExtensive, &
 #endif
    debug_level, &
-   debug_constitutive,&
+   debug_constitutive, &
    debug_levelBasic
  use IO, only: &
    IO_error, &
@@ -122,7 +121,7 @@ subroutine plastic_isotropic_init()
    sizeState, sizeDotState
    
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
- 
+
  integer(kind(undefined_ID)) :: &
    outputID
 
@@ -149,7 +148,7 @@ subroutine plastic_isotropic_init()
  allocate(state(Ninstance))
  allocate(dotState(Ninstance))
 
- do p = 1_pInt, size(phase_plasticityInstance)
+ do p = 1_pInt, size(phase_plasticity)
    if (phase_plasticity(p) /= PLASTICITY_ISOTROPIC_ID) cycle
    associate(prm => param(phase_plasticityInstance(p)), &
              dot => dotState(phase_plasticityInstance(p)), &
@@ -204,25 +203,27 @@ subroutine plastic_isotropic_init()
    do i=1_pInt, size(outputs)
      outputID = undefined_ID
      select case(outputs(i))
+
        case ('flowstress')
          outputID = flowstress_ID
        case ('strainrate')
          outputID = strainrate_ID
+
      end select
-     
+
      if (outputID /= undefined_ID) then
-      plastic_isotropic_output(i,phase_plasticityInstance(p)) = outputs(i)
-      plastic_isotropic_sizePostResult(i,phase_plasticityInstance(p)) = 1_pInt
-      prm%outputID = [prm%outputID , outputID]
+       plastic_isotropic_output(i,phase_plasticityInstance(p)) = outputs(i)
+       plastic_isotropic_sizePostResult(i,phase_plasticityInstance(p)) = 1_pInt
+       prm%outputID = [prm%outputID, outputID]
     endif
 
-   end do
+   enddo
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
    NipcMyPhase = count(material_phase == p)
-   sizeState   = size(["flowstress       ","accumulated_shear"])
-   sizeDotState = sizeState
+   sizeDotState = size(['flowstress       ','accumulated_shear'])
+   sizeState = sizeDotState
 
    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0_pInt, &
                                       1_pInt,0_pInt,0_pInt)
@@ -243,8 +244,8 @@ subroutine plastic_isotropic_init()
    plasticState(p)%accumulatedSlip    => plasticState(p)%state   (2:2,1:NipcMyPhase)
    
    plasticState(p)%state0 = plasticState(p)%state                                                   ! ToDo: this could be done centrally
-   
-  end associate
+
+   end associate
 
  enddo
 
@@ -319,7 +320,7 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
  end if
  
  end associate
- 
+
 end subroutine plastic_isotropic_LpAndItsTangent
 
 
@@ -373,9 +374,9 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,instance,of)
    Li = 0.0_pReal
    dLi_dTstar = 0.0_pReal
  endif
- 
+
  end associate
- 
+
  end subroutine plastic_isotropic_LiAndItsTangent
 
 
@@ -471,6 +472,7 @@ function plastic_isotropic_postResults(Mp,instance,of) result(postResults)
 
  outputsLoop: do o = 1_pInt,size(prm%outputID)
    select case(prm%outputID(o))
+
      case (flowstress_ID)
        postResults(c+1_pInt) = stt%flowstress(of)
        c = c + 1_pInt
@@ -478,6 +480,7 @@ function plastic_isotropic_postResults(Mp,instance,of) result(postResults)
        postResults(c+1_pInt) = prm%gdot0 &
                              * (sqrt(1.5_pReal) * norm_Mp /(prm%fTaylor * stt%flowstress(of)))**prm%n
        c = c + 1_pInt
+
    end select
  enddo outputsLoop
  

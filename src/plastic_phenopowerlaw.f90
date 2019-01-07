@@ -2,12 +2,11 @@
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief material subroutine for phenomenological crystal plasticity formulation using a powerlaw
-!! fitting
+!> @brief  phenomenological crystal plasticity formulation using a powerlaw fitting
 !--------------------------------------------------------------------------------------------------
 module plastic_phenopowerlaw
  use prec, only: &
-   pReal,&
+   pReal, &
    pInt
 
  implicit none
@@ -101,7 +100,6 @@ module plastic_phenopowerlaw
 
 contains
 
-
 !--------------------------------------------------------------------------------------------------
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
@@ -174,7 +172,7 @@ subroutine plastic_phenopowerlaw_init
  allocate(state(Ninstance))
  allocate(dotState(Ninstance))
 
- do p = 1_pInt, size(phase_plasticityInstance)
+ do p = 1_pInt, size(phase_plasticity)
    if (phase_plasticity(p) /= PLASTICITY_PHENOPOWERLAW_ID) cycle
    associate(prm => param(phase_plasticityInstance(p)), &
              dot => dotState(phase_plasticityInstance(p)), &
@@ -195,9 +193,9 @@ subroutine plastic_phenopowerlaw_init
    prm%aTolTwinfrac   = config%getFloat('atol_twinfrac',  defaultVal=1.0e-6_pReal)
    
    ! sanity checks
-   if (prm%aTolResistance <= 0.0_pReal) extmsg = trim(extmsg)//'aTolresistance '
-   if (prm%aTolShear      <= 0.0_pReal) extmsg = trim(extmsg)//'aTolShear '
-   if (prm%aTolTwinfrac   <= 0.0_pReal) extmsg = trim(extmsg)//'atoltwinfrac '
+   if (prm%aTolResistance <= 0.0_pReal) extmsg = trim(extmsg)//' aTolresistance'
+   if (prm%aTolShear      <= 0.0_pReal) extmsg = trim(extmsg)//' aTolShear'
+   if (prm%aTolTwinfrac   <= 0.0_pReal) extmsg = trim(extmsg)//' atoltwinfrac'
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
@@ -235,11 +233,11 @@ subroutine plastic_phenopowerlaw_init
      prm%H_int       = math_expand(prm%H_int,      prm%Nslip)
 
      ! sanity checks
-     if (prm%gdot0_slip      <= 0.0_pReal)      extmsg = trim(extmsg)//'gdot0_slip '
-     if (prm%a_slip          <= 0.0_pReal)      extmsg = trim(extmsg)//'a_slip '
-     if (prm%n_slip          <= 0.0_pReal)      extmsg = trim(extmsg)//'n_slip '
-     if (any(prm%xi_slip_0   <= 0.0_pReal))     extmsg = trim(extmsg)//'xi_slip_0 '
-     if (any(prm%xi_slip_sat <  prm%xi_slip_0)) extmsg = trim(extmsg)//'xi_slip_sat '
+     if (prm%gdot0_slip      <= 0.0_pReal)      extmsg = trim(extmsg)//' gdot0_slip'
+     if (prm%a_slip          <= 0.0_pReal)      extmsg = trim(extmsg)//' a_slip'
+     if (prm%n_slip          <= 0.0_pReal)      extmsg = trim(extmsg)//' n_slip'
+     if (any(prm%xi_slip_0   <= 0.0_pReal))     extmsg = trim(extmsg)//' xi_slip_0'
+     if (any(prm%xi_slip_sat <  prm%xi_slip_0)) extmsg = trim(extmsg)//' xi_slip_sat'
    else slipActive
      allocate(prm%interaction_SlipSlip(0,0))
      allocate(prm%xi_slip_0(0))
@@ -269,8 +267,8 @@ subroutine plastic_phenopowerlaw_init
      prm%xi_twin_0   = math_expand(prm%xi_twin_0,  prm%Ntwin)
 
      ! sanity checks
-     if (prm%gdot0_twin <= 0.0_pReal)  extmsg = trim(extmsg)//'gdot0_twin '
-     if (prm%n_twin     <= 0.0_pReal)  extmsg = trim(extmsg)//'n_twin '
+     if (prm%gdot0_twin <= 0.0_pReal)  extmsg = trim(extmsg)//' gdot0_twin'
+     if (prm%n_twin     <= 0.0_pReal)  extmsg = trim(extmsg)//' n_twin'
    else twinActive
      allocate(prm%interaction_TwinTwin(0,0))
      allocate(prm%xi_twin_0(0))
@@ -304,48 +302,49 @@ subroutine plastic_phenopowerlaw_init
    do i=1_pInt, size(outputs)
      outputID = undefined_ID
      select case(outputs(i))
-        case ('resistance_slip')
-          outputID = merge(resistance_slip_ID,undefined_ID,prm%totalNslip>0_pInt)
-          outputSize = prm%totalNslip
-        case ('accumulatedshear_slip')
-          outputID = merge(accumulatedshear_slip_ID,undefined_ID,prm%totalNslip>0_pInt)
-          outputSize = prm%totalNslip
-        case ('shearrate_slip')
-          outputID = merge(shearrate_slip_ID,undefined_ID,prm%totalNslip>0_pInt)
-          outputSize = prm%totalNslip
-        case ('resolvedstress_slip')
-          outputID = merge(resolvedstress_slip_ID,undefined_ID,prm%totalNslip>0_pInt)
-          outputSize = prm%totalNslip
 
-        case ('resistance_twin')
-          outputID = merge(resistance_twin_ID,undefined_ID,prm%totalNtwin>0_pInt)
-          outputSize = prm%totalNtwin
-        case ('accumulatedshear_twin')
-          outputID = merge(accumulatedshear_twin_ID,undefined_ID,prm%totalNtwin>0_pInt)
-          outputSize = prm%totalNtwin
-        case ('shearrate_twin')
-          outputID = merge(shearrate_twin_ID,undefined_ID,prm%totalNtwin>0_pInt)
-          outputSize = prm%totalNtwin
-        case ('resolvedstress_twin')
-          outputID = merge(resolvedstress_twin_ID,undefined_ID,prm%totalNtwin>0_pInt)
-          outputSize = prm%totalNtwin
+       case ('resistance_slip')
+         outputID = merge(resistance_slip_ID,undefined_ID,prm%totalNslip>0_pInt)
+         outputSize = prm%totalNslip
+       case ('accumulatedshear_slip')
+         outputID = merge(accumulatedshear_slip_ID,undefined_ID,prm%totalNslip>0_pInt)
+         outputSize = prm%totalNslip
+       case ('shearrate_slip')
+         outputID = merge(shearrate_slip_ID,undefined_ID,prm%totalNslip>0_pInt)
+         outputSize = prm%totalNslip
+       case ('resolvedstress_slip')
+         outputID = merge(resolvedstress_slip_ID,undefined_ID,prm%totalNslip>0_pInt)
+         outputSize = prm%totalNslip
 
-      end select
+       case ('resistance_twin')
+         outputID = merge(resistance_twin_ID,undefined_ID,prm%totalNtwin>0_pInt)
+         outputSize = prm%totalNtwin
+       case ('accumulatedshear_twin')
+         outputID = merge(accumulatedshear_twin_ID,undefined_ID,prm%totalNtwin>0_pInt)
+         outputSize = prm%totalNtwin
+       case ('shearrate_twin')
+         outputID = merge(shearrate_twin_ID,undefined_ID,prm%totalNtwin>0_pInt)
+         outputSize = prm%totalNtwin
+       case ('resolvedstress_twin')
+         outputID = merge(resolvedstress_twin_ID,undefined_ID,prm%totalNtwin>0_pInt)
+         outputSize = prm%totalNtwin
 
-      if (outputID /= undefined_ID) then
-        plastic_phenopowerlaw_output(i,phase_plasticityInstance(p)) = outputs(i)
-        plastic_phenopowerlaw_sizePostResult(i,phase_plasticityInstance(p)) = outputSize
-        prm%outputID = [prm%outputID , outputID]
-      endif
+     end select
 
-   end do
+     if (outputID /= undefined_ID) then
+       plastic_phenopowerlaw_output(i,phase_plasticityInstance(p)) = outputs(i)
+       plastic_phenopowerlaw_sizePostResult(i,phase_plasticityInstance(p)) = outputSize
+       prm%outputID = [prm%outputID, outputID]
+     endif
+
+   enddo
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
    NipcMyPhase = count(material_phase == p)
-   sizeState = size(['tau_slip  ','gamma_slip']) * prm%TotalNslip &
-             + size(['tau_twin  ','gamma_twin']) * prm%TotalNtwin
-   sizeDotState = sizeState
+   sizeDotState = size(['tau_slip  ','gamma_slip']) * prm%TotalNslip &
+                + size(['tau_twin  ','gamma_twin']) * prm%TotalNtwin
+   sizeState = sizeDotState
 
    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0_pInt, &
                                       prm%totalNslip,prm%totalNtwin,0_pInt)
@@ -385,6 +384,7 @@ subroutine plastic_phenopowerlaw_init
    plasticState(p)%state0 = plasticState(p)%state                                                   ! ToDo: this could be done centrally
 
    end associate
+
  enddo
 
 end subroutine plastic_phenopowerlaw_init
@@ -516,14 +516,14 @@ function plastic_phenopowerlaw_postResults(Mp,instance,of) result(postResults)
    math_mul33xx33
 
  implicit none
- real(pReal), dimension(3,3),  intent(in) :: &
+ real(pReal), dimension(3,3), intent(in) :: &
    Mp                                                                                               !< Mandel stress
- integer(pInt),                intent(in) :: &
+ integer(pInt),               intent(in) :: &
    instance, &
    of
 
  real(pReal), dimension(sum(plastic_phenopowerlaw_sizePostResult(:,instance))) :: &
-   postResults
+  postResults
 
  integer(pInt) :: &
    o,c,i
@@ -531,8 +531,8 @@ function plastic_phenopowerlaw_postResults(Mp,instance,of) result(postResults)
    gdot_slip_pos,gdot_slip_neg
 
  c = 0_pInt
- 
- associate( prm => param(instance), stt => state(instance))
+
+ associate(prm => param(instance), stt => state(instance))
 
  outputsLoop: do o = 1_pInt,size(prm%outputID)
    select case(prm%outputID(o))
@@ -570,7 +570,7 @@ function plastic_phenopowerlaw_postResults(Mp,instance,of) result(postResults)
 
    end select
  enddo outputsLoop
- 
+
  end associate
 
 end function plastic_phenopowerlaw_postResults
@@ -585,7 +585,7 @@ end function plastic_phenopowerlaw_postResults
 pure subroutine kinetics_slip(Mp,instance,of, &
                               gdot_slip_pos,gdot_slip_neg,dgdot_dtau_slip_pos,dgdot_dtau_slip_neg)
  use prec, only: &
-  dNeq0
+   dNeq0
  use math, only: &
    math_mul33xx33
 
@@ -596,13 +596,12 @@ pure subroutine kinetics_slip(Mp,instance,of, &
    instance, &
    of
    
- real(pReal), dimension(param(instance)%totalNslip), intent(out) :: &
+ real(pReal),                  intent(out), dimension(param(instance)%totalNslip) :: &
    gdot_slip_pos, &
    gdot_slip_neg
- real(pReal), dimension(param(instance)%totalNslip), intent(out), optional :: &
+ real(pReal),                  intent(out), optional, dimension(param(instance)%totalNslip) :: &
    dgdot_dtau_slip_pos, &
    dgdot_dtau_slip_neg
-
  real(pReal), dimension(param(instance)%totalNslip) :: &
    tau_slip_pos, &
    tau_slip_neg
