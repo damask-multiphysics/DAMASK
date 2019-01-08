@@ -60,7 +60,6 @@ subroutine plastic_none_init
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
    NipcMyPhase = count(material_phase == p)
-
    call material_allocatePlasticState(p,NipcMyPhase,0_pInt,0_pInt,0_pInt, &
                                       0_pInt,0_pInt,0_pInt)
    plasticState(p)%sizePostResults = 0_pInt

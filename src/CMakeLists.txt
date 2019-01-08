@@ -29,24 +29,28 @@ add_library(IO OBJECT "IO.f90")
 add_dependencies(IO DAMASK_INTERFACE)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:IO>)
 
-add_library(HDF5_UTILITIES OBJECT "HDF5_utilities.f90")
-add_dependencies(HDF5_UTILITIES IO)
-list(APPEND OBJECTFILES $<TARGET_OBJECTS:HDF5_UTILITIES>)
-
 add_library(NUMERICS OBJECT "numerics.f90")
-add_dependencies(NUMERICS HDF5_UTILITIES)
+add_dependencies(NUMERICS IO)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:NUMERICS>)
 
 add_library(DEBUG OBJECT "debug.f90")
 add_dependencies(DEBUG NUMERICS)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:DEBUG>)
 
-add_library(CONFIG OBJECT "config.f90")
-add_dependencies(CONFIG DEBUG)
-list(APPEND OBJECTFILES $<TARGET_OBJECTS:CONFIG>)
+add_library(DAMASK_CONFIG OBJECT "config.f90")
+add_dependencies(DAMASK_CONFIG DEBUG)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:DAMASK_CONFIG>)
+
+add_library(HDF5_UTILITIES OBJECT "HDF5_utilities.f90")
+add_dependencies(HDF5_UTILITIES DAMASK_CONFIG)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:HDF5_UTILITIES>)
+
+add_library(RESULTS OBJECT "results.f90")
+add_dependencies(RESULTS HDF5_UTILITIES)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:RESULTS>)
 
 add_library(FEsolving OBJECT "FEsolving.f90")
-add_dependencies(FEsolving DEBUG)
+add_dependencies(FEsolving RESULTS)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:FEsolving>)
 
 add_library(DAMASK_MATH OBJECT "math.f90")
@@ -68,7 +72,7 @@ elseif (PROJECT_NAME STREQUAL "DAMASK_FEM")
 endif()
 
 add_library(MATERIAL OBJECT "material.f90")
-add_dependencies(MATERIAL MESH CONFIG)
+add_dependencies(MATERIAL MESH DAMASK_CONFIG)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:MATERIAL>)
 
 add_library(DAMASK_HELPERS OBJECT "lattice.f90")
