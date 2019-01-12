@@ -922,6 +922,8 @@ function homogenization_postResults(ip,el)
  use mesh, only: &
    mesh_element
  use material, only: &
+   material_homogenizationAt, &
+   homogenization_typeInstance,&
    mappingHomogenization, &
    homogState, &
    thermalState, &
@@ -958,45 +960,42 @@ function homogenization_postResults(ip,el)
                         + damageState      (mappingHomogenization(2,ip,el))%sizePostResults) :: &
    homogenization_postResults
  integer(pInt) :: &
-   startPos, endPos
+   startPos, endPos ,&
+   of, instance
+
 
  homogenization_postResults = 0.0_pReal
-
  startPos = 1_pInt
  endPos   = homogState(mappingHomogenization(2,ip,el))%sizePostResults
  chosenHomogenization: select case (homogenization_type(mesh_element(3,el)))
-   case (HOMOGENIZATION_NONE_ID,HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
 
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
-     homogenization_postResults(startPos:endPos) = &
-       homogenization_RGC_postResults(ip,el)
+     instance = homogenization_typeInstance(material_homogenizationAt(el))
+     of = mappingHomogenization(1,ip,el)
+     homogenization_postResults(startPos:endPos) = homogenization_RGC_postResults(instance,of)
+     
  end select chosenHomogenization
 
  startPos = endPos + 1_pInt
  endPos   = endPos + thermalState(mappingHomogenization(2,ip,el))%sizePostResults
  chosenThermal: select case (thermal_type(mesh_element(3,el)))
-   case (THERMAL_isothermal_ID) chosenThermal
 
    case (THERMAL_adiabatic_ID) chosenThermal
-     homogenization_postResults(startPos:endPos) = &
-       thermal_adiabatic_postResults(ip, el)
+     homogenization_postResults(startPos:endPos) = thermal_adiabatic_postResults(ip, el)
    case (THERMAL_conduction_ID) chosenThermal
-     homogenization_postResults(startPos:endPos) = &
-       thermal_conduction_postResults(ip, el)
+     homogenization_postResults(startPos:endPos) =  thermal_conduction_postResults(ip, el)
+     
  end select chosenThermal
 
  startPos = endPos + 1_pInt
  endPos   = endPos + damageState(mappingHomogenization(2,ip,el))%sizePostResults
  chosenDamage: select case (damage_type(mesh_element(3,el)))
-   case (DAMAGE_none_ID) chosenDamage
 
    case (DAMAGE_local_ID) chosenDamage
-     homogenization_postResults(startPos:endPos) = &
-       damage_local_postResults(ip, el)
-
+     homogenization_postResults(startPos:endPos) = damage_local_postResults(ip, el)
    case (DAMAGE_nonlocal_ID) chosenDamage
-     homogenization_postResults(startPos:endPos) = &
-       damage_nonlocal_postResults(ip, el)
+     homogenization_postResults(startPos:endPos) = damage_nonlocal_postResults(ip, el)
+     
  end select chosenDamage
 
 end function homogenization_postResults
