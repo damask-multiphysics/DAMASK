@@ -4,6 +4,7 @@
 import os,sys,math
 import numpy as np
 from optparse import OptionParser
+from collections import OrderedDict
 import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
@@ -63,10 +64,10 @@ for name in filenames:
 
 # ------------------------------------------ sanity checks ----------------------------------------
 
-  items = {
-            'strain': {'dim': 9, 'shape': [3,3], 'labels':options.strain, 'active':[], 'column': []},
-            'stress': {'dim': 9, 'shape': [3,3], 'labels':options.stress, 'active':[], 'column': []},
-          }
+  items = OrderedDict([
+            ('strain', {'dim': 9, 'shape': [3,3], 'labels':options.strain, 'active':[], 'column': []}),
+            ('stress', {'dim': 9, 'shape': [3,3], 'labels':options.stress, 'active':[], 'column': []})
+          ])
   errors  = []
   remarks = []
   

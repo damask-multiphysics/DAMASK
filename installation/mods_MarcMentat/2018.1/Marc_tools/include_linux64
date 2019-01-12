@@ -63,7 +63,6 @@ else
  INTEGER_PATH=/$MARC_INTEGER_SIZE
 fi
 
-FCOMP=ifort
 INTELPATH="/opt/intel/compilers_and_libraries_2017/linux"
 
 # find the root directory of the compiler installation:
@@ -97,6 +96,16 @@ elif test -d "$INTELPATH"; then
  fi
 else
  FCOMPROOT=
+fi
+
+# DAMASK uses the HDF5 compiler wrapper around the Intel compiler
+if test "$DAMASK_HDF5" = "ON";then
+  H5FC="$(h5fc -shlib -show)"
+  HDF5_LIB=${H5FC//ifort/}
+  FCOMP="$H5FC -DDAMASKHDF5"
+  echo $FCOMP
+else
+  FCOMP=ifort
 fi
 
 # AEM
@@ -535,23 +544,17 @@ else
   DAMASKVERSION="'N/A'"
 fi
 
-if test "$DAMASK_HDF5" = "ON";then
-  DFCOMP="$(h5fc -show) -DDAMASKHDF5"
-else
-  DFCOMP=$FCOMP
-fi
 
-#
 # DAMASK compiler calls: additional flags are in line 2 OpenMP flags in line 3
-DFORTLOWMP="$DFCOMP -c -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB  -O0 $I8FFLAGS -I$MARC_SOURCE/common \
+DFORTLOWMP="$FCOMP -c -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB  -O0 $I8FFLAGS -I$MARC_SOURCE/common \
  -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2018.1 -DDAMASKVERSION=$DAMASKVERSION \
  -qopenmp -qopenmp-threadprivate=compat\
   $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
-DFORTRANMP="$DFCOMP -c -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB  -O1 $I8FFLAGS -I$MARC_SOURCE/common \
+DFORTRANMP="$FCOMP -c -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB  -O1 $I8FFLAGS -I$MARC_SOURCE/common \
  -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2018.1 -DDAMASKVERSION=$DAMASKVERSION \
  -qopenmp -qopenmp-threadprivate=compat\
   $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
-DFORTHIGHMP="$DFCOMP -c -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB  -fno-alias -O2 $I8FFLAGS -I$MARC_SOURCE/common \
+DFORTHIGHMP="$FCOMP -c -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB  -fno-alias -O2 $I8FFLAGS -I$MARC_SOURCE/common \
  -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2018.1 -DDAMASKVERSION=$DAMASKVERSION \
  -qopenmp -qopenmp-threadprivate=compat\
   $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
@@ -570,15 +573,15 @@ then
 fi
 
       # DAMASK compiler calls: additional flags are in line 2 OpenMP flags in line 3
-  DFORTLOWMP="$DFCOMP -c -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
+  DFORTLOWMP="$FCOMP -c -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
    -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2018.1 -DDAMASKVERSION=$DAMASKVERSION \
    -qopenmp -qopenmp-threadprivate=compat\
     $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
-  DFORTRANMP="$DFCOMP -c -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
+  DFORTRANMP="$FCOMP -c -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
    -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2018.1 -DDAMASKVERSION=$DAMASKVERSION \
    -qopenmp -qopenmp-threadprivate=compat\
     $MUMPS_INCLUDE $I8DEFINES  -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
-  DFORTHIGHMP="$DFCOMP -c -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB  -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
+  DFORTHIGHMP="$FCOMP -c -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB  -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
    -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2018.1 -DDAMASKVERSION=$DAMASKVERSION \
    -qopenmp -qopenmp-threadprivate=compat\
     $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
@@ -744,7 +747,7 @@ SECLIBS="-L$MARC_LIB -llapi"
 
 SOLVERLIBS="${BCSSOLVERLIBS} ${VKISOLVERLIBS} ${CASISOLVERLIBS} ${MF2SOLVERLIBS} \
   $MKLLIB -L$MARC_MKL -liomp5 \
-  $MARC_LIB/blas_src.a ${ACSI_LIB}/ACSI_MarcLib.a $KDTREE2_LIB/kdtree2.a "
+  $MARC_LIB/blas_src.a ${ACSI_LIB}/ACSI_MarcLib.a $KDTREE2_LIB/kdtree2.a $HDF5_LIB "
 
 SOLVERLIBS_DLL=${SOLVERLIBS}
 if test "$AEM_DLL" -eq 1
