@@ -2,7 +2,7 @@
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief dummy homogenization homogenization scheme
+!> @brief dummy homogenization homogenization scheme for 1 constituent per material point
 !--------------------------------------------------------------------------------------------------
 module homogenization_none
 
@@ -24,9 +24,14 @@ subroutine homogenization_none_init()
    compiler_options
 #endif
  use prec, only: &
-   pInt 
+   pInt
+ use debug, only: &
+   debug_HOMOGENIZATION, &
+   debug_level, &
+   debug_levelBasic
  use IO, only: &
    IO_timeStamp
+
  use material, only: &
    homogenization_type, &
    material_homog, &
@@ -36,12 +41,17 @@ subroutine homogenization_none_init()
 
  implicit none
  integer(pInt) :: &
+   Ninstance, &
    h, &
    NofMyHomog
 
  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_NONE_label//' init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
+
+ Ninstance = int(count(homogenization_type == HOMOGENIZATION_NONE_ID),pInt)
+ if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0_pInt) &
+   write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
  do h = 1_pInt, size(homogenization_type)
    if (homogenization_type(h) /= HOMOGENIZATION_NONE_ID) cycle

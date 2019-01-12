@@ -7,12 +7,13 @@
 module homogenization_isostrain
  use prec, only: &
    pInt
- 
+
  implicit none
  private
  enum, bind(c) 
-   enumerator :: parallel_ID, &
-                 average_ID
+   enumerator :: &
+     parallel_ID, &
+     average_ID
  end enum
 
  type, private :: tParameters                                                                       !< container type for internal constitutive parameters
@@ -59,22 +60,17 @@ subroutine homogenization_isostrain_init()
  
  implicit none
  integer(pInt) :: &
-   h
- integer :: &
-   Ninstance
- integer :: &
-   NofMyHomog                                                                                       ! no pInt (stores a system dependen value from 'count'
+   Ninstance, &
+   h, &
+   NofMyHomog
  character(len=65536) :: &
    tag  = ''
- type(tParameters) :: prm
- 
+
  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_ISOSTRAIN_label//' init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- Ninstance = count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
- if (Ninstance == 0) return
- 
+ Ninstance = int(count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID),pInt)
  if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
@@ -82,12 +78,13 @@ subroutine homogenization_isostrain_init()
 
  do h = 1_pInt, size(homogenization_type)
    if (homogenization_type(h) /= HOMOGENIZATION_ISOSTRAIN_ID) cycle
-   associate(prm => param(homogenization_typeInstance(h)))
+   
+   associate(prm => param(homogenization_typeInstance(h)),&
+             config => config_homogenization(h))
   
    prm%Nconstituents = config_homogenization(h)%getInt('nconstituents')
    tag = 'sum'
-   tag = config_homogenization(h)%getString('mapping',defaultVal = tag)
-   select case(trim(tag))
+   select case(trim(config%getString('mapping',defaultVal = tag)))
      case ('sum')
        prm%mapping = parallel_ID
      case ('avg')
@@ -97,12 +94,12 @@ subroutine homogenization_isostrain_init()
    end select
 
    NofMyHomog = count(material_homog == h)
-
    homogState(h)%sizeState       = 0_pInt
    homogState(h)%sizePostResults = 0_pInt
    allocate(homogState(h)%state0   (0_pInt,NofMyHomog))
    allocate(homogState(h)%subState0(0_pInt,NofMyHomog))
    allocate(homogState(h)%state    (0_pInt,NofMyHomog))
+   
    end associate
 
  enddo
@@ -120,16 +117,18 @@ subroutine homogenization_isostrain_partitionDeformation(F,avgF,instance)
    homogenization_maxNgrains
  
  implicit none
- real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(out) :: F                         !< partioned def grad per grain
- real(pReal),   dimension (3,3),                           intent(in)  :: avgF                      !< my average def grad
+ real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(out) :: F                         !< partitioned deformation gradient
+ 
+ real(pReal),   dimension (3,3),                           intent(in)  :: avgF                      !< average deformation gradient at material point
  integer(pInt),                                            intent(in)  :: instance 
- type(tParameters) :: &
-   prm
+
 
  associate(prm => param(instance))
+ 
  F(1:3,1:3,1:prm%Nconstituents) = spread(avgF,3,prm%Nconstituents)
  if (homogenization_maxNgrains > prm%Nconstituents) &
    F(1:3,1:3,prm%Nconstituents+1_pInt:homogenization_maxNgrains) = 0.0_pReal
+
  end associate
 
 end subroutine homogenization_isostrain_partitionDeformation
@@ -147,13 +146,13 @@ subroutine homogenization_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P
  implicit none
  real(pReal),   dimension (3,3),                               intent(out) :: avgP                  !< average stress at material point
  real(pReal),   dimension (3,3,3,3),                           intent(out) :: dAvgPdAvgF            !< average stiffness at material point
- real(pReal),   dimension (3,3,homogenization_maxNgrains),     intent(in)  :: P                     !< array of current grain stresses
- real(pReal),   dimension (3,3,3,3,homogenization_maxNgrains), intent(in)  :: dPdF                  !< array of current grain stiffnesses
+
+ real(pReal),   dimension (3,3,homogenization_maxNgrains),     intent(in)  :: P                     !< partitioned stresses
+ real(pReal),   dimension (3,3,3,3,homogenization_maxNgrains), intent(in)  :: dPdF                  !< partitioned stiffnesses
  integer(pInt),                                                intent(in)  :: instance 
- type(tParameters) :: &
-   prm
 
  associate(prm => param(instance))
+ 
  select case (prm%mapping)
    case (parallel_ID)
      avgP       = sum(P,3)
@@ -162,6 +161,7 @@ subroutine homogenization_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P
      avgP       = sum(P,3)   /real(prm%Nconstituents,pReal)
      dAvgPdAvgF = sum(dPdF,5)/real(prm%Nconstituents,pReal)
  end select
+ 
  end associate
 
 end subroutine homogenization_isostrain_averageStressAndItsTangent
