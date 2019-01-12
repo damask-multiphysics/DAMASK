@@ -47,23 +47,28 @@ module homogenization_RGC
  type, private :: tRGCstate
    real(pReal), pointer,     dimension(:) :: &
      work, &
-     penaltyEnergy, &
-     volumeDiscrepancy, &
-     relaxationRate_avg, &
-     relaxationRate_max
+     penaltyEnergy
    real(pReal), pointer,     dimension(:,:) :: &
-     relaxationVector, &
-     mismatch
+     relaxationVector
  end type tRGCstate
 
  type, private :: tRGCdependentState
+   real(pReal), allocatable,     dimension(:) :: &
+     volumeDiscrepancy, &
+     relaxationRate_avg, &
+     relaxationRate_max
+   real(pReal), allocatable,     dimension(:,:) :: &
+     mismatch
    real(pReal), allocatable,     dimension(:,:,:) :: &
      orientation
  end type tRGCdependentState
 
- type(tparameters),          dimension(:), allocatable, private :: param                            !< containers of parameters (len Ninstance)
- type(tRGCstate),            dimension(:), allocatable, private :: state
- type(tRGCdependentState),   dimension(:), allocatable, private :: dependentState
+ type(tparameters),          dimension(:), allocatable, private :: &
+   param
+ type(tRGCstate),            dimension(:), allocatable, private :: &
+   state
+ type(tRGCdependentState),   dimension(:), allocatable, private :: &
+   dependentState
 
  public :: &
    homogenization_RGC_init, &
@@ -215,9 +220,7 @@ subroutine homogenization_RGC_init()
                          + prm%Nconstituents(1)*(prm%Nconstituents(2)-1_pInt)*prm%Nconstituents(3) &
                          + prm%Nconstituents(1)*prm%Nconstituents(2)*(prm%Nconstituents(3)-1_pInt))
    sizeState = nIntFaceTot &
-             + size(['avg constitutive work']) + size(['overall mismatch']) * 3_pInt &
-             + size(['average penalty energy        ','volume discrepancy            ',&
-                     'avg relaxation rate component ','max relaxation rate componenty'])
+             + size(['avg constitutive work ','average penalty energy'])
 
    homogState(h)%sizeState = sizeState
    homogState(h)%sizePostResults = sum(homogenization_RGC_sizePostResult(:,homogenization_typeInstance(h)))
@@ -227,13 +230,13 @@ subroutine homogenization_RGC_init()
 
    stt%relaxationVector   => homogState(h)%state(1:nIntFaceTot,:)
    stt%work               => homogState(h)%state(nIntFaceTot+1,:)
-   stt%mismatch           => homogState(h)%state(nIntFaceTot+2:nIntFaceTot+4,:)
-   stt%penaltyEnergy      => homogState(h)%state(nIntFaceTot+5,:)
-   stt%volumeDiscrepancy  => homogState(h)%state(nIntFaceTot+6,:)
-   stt%relaxationRate_avg => homogState(h)%state(nIntFaceTot+7,:)
-   stt%relaxationRate_max => homogState(h)%state(nIntFaceTot+8,:)
+   stt%penaltyEnergy      => homogState(h)%state(nIntFaceTot+2,:)
 
-   allocate(dst%orientation(3,3,NofMyHomog))
+   allocate(dst%volumeDiscrepancy(     NofMyHomog))
+   allocate(dst%relaxationRate_avg(    NofMyHomog))
+   allocate(dst%relaxationRate_max(    NofMyHomog))
+   allocate(dst%mismatch(          3,  NofMyHomog))
+   allocate(dst%orientation(       3,3,NofMyHomog))
 
 
 !--------------------------------------------------------------------------------------------------
@@ -381,7 +384,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  instance  = homogenization_typeInstance(material_homogenizationAt(el))
  of = mappingHomogenization(1,ip,el)
  
- associate(stt => state(instance), prm => param(instance))
+ associate(stt => state(instance), dst => dependentState(instance), prm => param(instance))
  
 !--------------------------------------------------------------------------------------------------
 ! get the dimension of the cluster (grains and interfaces)
@@ -415,7 +418,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! calculating volume discrepancy and stress penalty related to overall volume discrepancy 
- call volumePenalty(D,stt%volumeDiscrepancy(of),avgF,F,nGrain,instance,of)
+ call volumePenalty(D,dst%volumeDiscrepancy(of),avgF,F,nGrain,instance,of)
 
 #ifdef DEBUG
  if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt) then
@@ -519,21 +522,21 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
      enddo; enddo
    enddo
 
-   stt%mismatch(1:3,of)       = sum(NN,2)/real(nGrain,pReal)
-   stt%relaxationRate_avg(of) = sum(abs(drelax))/dt/real(3_pInt*nIntFaceTot,pReal)
-   stt%relaxationRate_max(of) = maxval(abs(drelax))/dt
+   dst%mismatch(1:3,of)       = sum(NN,2)/real(nGrain,pReal)
+   dst%relaxationRate_avg(of) = sum(abs(drelax))/dt/real(3_pInt*nIntFaceTot,pReal)
+   dst%relaxationRate_max(of) = maxval(abs(drelax))/dt
    
 #ifdef DEBUG
    if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
         .and. debug_e == el .and. debug_i == ip) then
      write(6,'(1x,a30,1x,e15.8)')   'Constitutive work: ',stt%work(of)
-     write(6,'(1x,a30,3(1x,e15.8))')'Magnitude mismatch: ',stt%mismatch(1,of), &
-                                                           stt%mismatch(2,of), &
-                                                           stt%mismatch(3,of)
+     write(6,'(1x,a30,3(1x,e15.8))')'Magnitude mismatch: ',dst%mismatch(1,of), &
+                                                           dst%mismatch(2,of), &
+                                                           dst%mismatch(3,of)
      write(6,'(1x,a30,1x,e15.8)')   'Penalty energy: ',          stt%penaltyEnergy(of)
-     write(6,'(1x,a30,1x,e15.8,/)') 'Volume discrepancy: ',      stt%volumeDiscrepancy(of)
-     write(6,'(1x,a30,1x,e15.8)')   'Maximum relaxation rate: ', stt%relaxationRate_max(of)
-     write(6,'(1x,a30,1x,e15.8,/)') 'Average relaxation rate: ', stt%relaxationRate_avg(of)
+     write(6,'(1x,a30,1x,e15.8,/)') 'Volume discrepancy: ',      dst%volumeDiscrepancy(of)
+     write(6,'(1x,a30,1x,e15.8)')   'Maximum relaxation rate: ', dst%relaxationRate_max(of)
+     write(6,'(1x,a30,1x,e15.8,/)') 'Average relaxation rate: ', dst%relaxationRate_avg(of)
      flush(6)
    endif
 #endif
@@ -1087,7 +1090,7 @@ pure function homogenization_RGC_postResults(instance,of) result(postResults)
  real(pReal), dimension(sum(homogenization_RGC_sizePostResult(:,instance))) :: &
    postResults
 
- associate(prm => param(instance), stt => state(instance))
+ associate(stt => state(instance), dst => dependentState(instance), prm => param(instance))
 
  c = 0_pInt
 
@@ -1098,19 +1101,19 @@ pure function homogenization_RGC_postResults(instance,of) result(postResults)
        postResults(c+1) = stt%work(of)
        c = c + 1_pInt
      case (magnitudemismatch_ID)
-       postResults(c+1:c+3) = stt%mismatch(1:3,of)
+       postResults(c+1:c+3) = dst%mismatch(1:3,of)
        c = c + 3_pInt
      case (penaltyenergy_ID)
        postResults(c+1) = stt%penaltyEnergy(of)
        c = c + 1_pInt
      case (volumediscrepancy_ID)
-       postResults(c+1) = stt%volumeDiscrepancy(of)
+       postResults(c+1) = dst%volumeDiscrepancy(of)
        c = c + 1_pInt
      case (averagerelaxrate_ID)
-       postResults(c+1) = stt%relaxationrate_avg(of)
+       postResults(c+1) = dst%relaxationrate_avg(of)
        c = c + 1_pInt
      case (maximumrelaxrate_ID)
-       postResults(c+1) = stt%relaxationrate_max(of)
+       postResults(c+1) = dst%relaxationrate_max(of)
        c = c + 1_pInt
    end select
    
