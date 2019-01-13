@@ -792,7 +792,7 @@ function homogenization_updateState(ip,el)
    homogenization_type, &
    thermal_type, &
    damage_type, &
-   homogenization_maxNgrains, &
+   homogenization_Ngrains, &
    HOMOGENIZATION_RGC_ID, &
    THERMAL_adiabatic_ID, &
    DAMAGE_local_ID
@@ -819,12 +819,12 @@ function homogenization_updateState(ip,el)
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
      homogenization_updateState = &
        homogenization_updateState .and. &
-        homogenization_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
-                                       crystallite_partionedF(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
-                                       crystallite_partionedF0(1:3,1:3,1:homogenization_maxNgrains,ip,el),&
+        homogenization_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
+                                       crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
+                                       crystallite_partionedF0(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el),&
                                        materialpoint_subF(1:3,1:3,ip,el),&
                                        materialpoint_subdt(ip,el), &
-                                       crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_maxNgrains,ip,el), &
+                                       crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
                                        ip, &
                                        el)
  end select chosenHomogenization

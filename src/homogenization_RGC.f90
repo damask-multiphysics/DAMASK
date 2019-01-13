@@ -332,8 +332,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  use material, only: &
    material_homogenizationAt, &
    homogenization_typeInstance, &
-   mappingHomogenization, &
-   homogenization_maxNgrains
+   mappingHomogenization
  use numerics, only: &
    absTol_RGC, &
    relTol_RGC, &
@@ -347,30 +346,33 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 
  implicit none
 
- real(pReal), dimension (3,3,homogenization_maxNgrains),     intent(in)    :: & 
+ real(pReal), dimension (:,:,:),     intent(in)    :: & 
    P,&                                                                                              !< array of P
    F,&                                                                                              !< array of F
    F0                                                                                               !< array of initial F
- real(pReal), dimension (3,3,3,3,homogenization_maxNgrains), intent(in) :: dPdF                     !< array of current grain stiffness
- real(pReal), dimension (3,3),                               intent(in) :: avgF                     !< average F
- real(pReal),                                                intent(in) :: dt                       !< time increment
- integer(pInt),                                              intent(in) :: &
+ real(pReal), dimension (:,:,:,:,:), intent(in) :: dPdF                                             !< array of current grain stiffness
+ real(pReal), dimension (3,3),       intent(in) :: avgF                                             !< average F
+ real(pReal),                        intent(in) :: dt                                               !< time increment
+ integer(pInt),                      intent(in) :: &
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
 
  logical, dimension(2)        :: homogenization_RGC_updateState
+
  integer(pInt), dimension (4) :: intFaceN,intFaceP,faceID
  integer(pInt), dimension (3) :: nGDim,iGr3N,iGr3P,stresLoc
- integer(pInt), dimension (2) :: residLoc
- integer(pInt) instance,iNum,i,j,nIntFaceTot,iGrN,iGrP,iMun,iFace,k,l,ipert,iGrain,nGrain, of
- real(pReal), dimension (3,3,homogenization_maxNgrains) :: R,pF,pR,D,pD
- real(pReal), dimension (3,homogenization_maxNgrains)   :: NN,devNull33
- real(pReal), dimension (3)                             :: normP,normN,mornP,mornN
- real(pReal) :: residMax,stresMax,devNull
- logical error
-
+ integer(pInt) :: instance,iNum,i,j,nIntFaceTot,iGrN,iGrP,iMun,iFace,k,l,ipert,iGrain,nGrain, of
+ real(pReal), dimension (3,3,size(P,3)) :: R,pF,pR,D,pD
+ real(pReal), dimension (3,size(P,3))   :: NN,devNull
+ real(pReal), dimension (3)             :: normP,normN,mornP,mornN
+ real(pReal) :: residMax,stresMax
+ logical :: error
  real(pReal), dimension(:,:), allocatable :: tract,jmatrix,jnverse,smatrix,pmatrix,rmatrix
  real(pReal), dimension(:), allocatable   :: resid,relax,p_relax,p_resid,drelax
+#ifdef DEBUG
+ integer(pInt), dimension (3) :: stresLoc
+ integer(pInt), dimension (2) :: residLoc
+#endif
  
  zeroTimeStep: if(dEq0(dt)) then
    homogenization_RGC_updateState = .true.                                                          ! pretend everything is fine and return
@@ -475,13 +477,13 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 !--------------------------------------------------------------------------------------------------
 ! convergence check for stress residual
  stresMax = maxval(abs(P))                                                                          ! get the maximum of first Piola-Kirchhoff (material) stress
- stresLoc = int(maxloc(abs(P)),pInt)                                                                ! get the location of the maximum stress
  residMax = maxval(abs(tract))                                                                      ! get the maximum of the residual
- residLoc = int(maxloc(abs(tract)),pInt)                                                            ! get the position of the maximum residual
 
 #ifdef DEBUG
  if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
      .and. debug_e == el .and. debug_i == ip) then
+   stresLoc = int(maxloc(abs(P)),pInt)                                                                ! get the location of the maximum stress
+   residLoc = int(maxloc(abs(tract)),pInt)                                                            ! get the position of the maximum residual
    write(6,'(1x,a)')' '
    write(6,'(1x,a,1x,i2,1x,i4)')'RGC residual check ...',ip,el
    write(6,'(1x,a15,1x,e15.8,1x,a7,i3,1x,a12,i2,i2)')'Max stress: ',stresMax, &
@@ -637,8 +639,8 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
    p_relax(ipert) = relax(ipert) + pPert_RGC                                                        ! perturb the relaxation vector
    stt%relaxationVector(:,of) = p_relax
    call grainDeformation(pF,avgF,instance,of)                                                       ! rain deformation from perturbed state
-   call stressPenalty(pR,DevNull33, avgF,pF,ip,el,instance,of)                                      ! stress penalty due to interface mismatch from perturbed state
-   call volumePenalty(pD,devNull,   avgF,pF,nGrain,instance,of)                                     ! stress penalty due to volume discrepancy from perturbed state
+   call stressPenalty(pR,DevNull,      avgF,pF,ip,el,instance,of)                                   ! stress penalty due to interface mismatch from perturbed state
+   call volumePenalty(pD,devNull(1,1), avgF,pF,nGrain,instance,of)                                  ! stress penalty due to volume discrepancy from perturbed state
 
 !--------------------------------------------------------------------------------------------------
 ! computing the global stress residual array from the perturbed state
@@ -774,12 +776,12 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
     xSmoo_RGC
   
   implicit none
-  real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(out) :: rPen                      !< stress-like penalty
-  real(pReal),   dimension (3,homogenization_maxNgrains),   intent(out) :: nMis                      !< total amount of mismatch
+  real(pReal),   dimension (:,:,:), intent(out) :: rPen                                             !< stress-like penalty
+  real(pReal),   dimension (:,:),   intent(out) :: nMis                                             !< total amount of mismatch
   
-  real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(in)  :: fDef                      !< deformation gradients
-  real(pReal),   dimension (3,3),                           intent(in)  :: avgF                      !< initial effective stretch tensor
-  integer(pInt),                                            intent(in)  :: ip,el,instance,of
+  real(pReal),   dimension (:,:,:), intent(in)  :: fDef                                             !< deformation gradients
+  real(pReal),   dimension (3,3),   intent(in)  :: avgF                                             !< initial effective stretch tensor
+  integer(pInt),                    intent(in)  :: ip,el,instance,of
   
   integer(pInt), dimension (4)   :: intFace
   integer(pInt), dimension (3)   :: iGrain3,iGNghb3,nGDim
@@ -894,17 +896,17 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
     volDiscrPow_RGC
  
   implicit none
-  real(pReal), dimension (3,3,homogenization_maxNgrains), intent(out) :: vPen                        ! stress-like penalty due to volume
-  real(pReal), intent(out)                  :: vDiscrep                                              ! total volume discrepancy
+  real(pReal), dimension (:,:,:), intent(out) :: vPen                                               ! stress-like penalty due to volume
+  real(pReal),                    intent(out) :: vDiscrep                                           ! total volume discrepancy
   
-  real(pReal), dimension (3,3,homogenization_maxNgrains), intent(in)  :: fDef                        ! deformation gradients
-  real(pReal), dimension (3,3), intent(in)  :: fAvg                                                  ! overall deformation gradient
+  real(pReal), dimension (:,:,:), intent(in)  :: fDef                                               ! deformation gradients
+  real(pReal), dimension (3,3),   intent(in)  :: fAvg                                               ! overall deformation gradient
   integer(pInt), intent(in) :: &
     Ngrain, &
     instance, &
     of
     
-  real(pReal), dimension (homogenization_maxNgrains) :: gVol
+  real(pReal), dimension(size(vPen,3)) :: gVol
   integer(pInt) :: i
    
  !--------------------------------------------------------------------------------------------------
