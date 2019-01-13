@@ -97,9 +97,6 @@ subroutine homogenization_RGC_init()
    compiler_version, &
    compiler_options
 #endif
- use prec, only: &
-   pReal, &
-   pInt 
  use debug, only: &
 #ifdef DEBUG
    debug_i, &
@@ -115,6 +112,10 @@ subroutine homogenization_RGC_init()
    IO_error, &
    IO_timeStamp
  use material, only: &
+#ifdef DEBUG
+   material_homogenizationAt, &
+   mappingHomogenization, &
+#endif
    homogenization_type, &
    material_homog, &
    homogState, &
@@ -171,9 +172,9 @@ subroutine homogenization_RGC_init()
              config => config_homogenization(h))
              
 #ifdef DEBUG
-   !if  (h==material_homogenizationAt(debug_e)) then
-   !   prm%of_debug = mappingHomogenization(1,debug_i,debug_e)
-   !endif
+   if  (h==material_homogenizationAt(debug_e)) then
+     prm%of_debug = mappingHomogenization(1,debug_i,debug_e)
+   endif
 #endif
 
    prm%Nconstituents = config%getInts('clustersize',requiredShape=[3])
@@ -323,9 +324,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  use debug, only: &
    debug_level, &
    debug_homogenization,&
-   debug_levelExtensive, &
-   debug_e, &
-   debug_i
+   debug_levelExtensive
 #endif
  use math, only: &
    math_invert2
@@ -360,7 +359,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  logical, dimension(2)        :: homogenization_RGC_updateState
 
  integer(pInt), dimension (4) :: intFaceN,intFaceP,faceID
- integer(pInt), dimension (3) :: nGDim,iGr3N,iGr3P,stresLoc
+ integer(pInt), dimension (3) :: nGDim,iGr3N,iGr3P
  integer(pInt) :: instance,iNum,i,j,nIntFaceTot,iGrN,iGrP,iMun,iFace,k,l,ipert,iGrain,nGrain, of
  real(pReal), dimension (3,3,size(P,3)) :: R,pF,pR,D,pD
  real(pReal), dimension (3,size(P,3))   :: NN,devNull
@@ -481,7 +480,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 
 #ifdef DEBUG
  if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
-     .and. debug_e == el .and. debug_i == ip) then
+     .and. prm%of_debug == of) then
    stresLoc = int(maxloc(abs(P)),pInt)                                                                ! get the location of the maximum stress
    residLoc = int(maxloc(abs(tract)),pInt)                                                            ! get the position of the maximum residual
    write(6,'(1x,a)')' '
@@ -502,10 +501,8 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
    homogenization_RGC_updateState = .true.
 #ifdef DEBUG
     if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
-        .and. debug_e == el .and. debug_i == ip) then 
-     write(6,'(1x,a55,/)')'... done and happy'
-     flush(6)
-   endif
+        .and. prm%of_debug == of) write(6,'(1x,a55,/)')'... done and happy'
+    flush(6)
 #endif
 
 !--------------------------------------------------------------------------------------------------
@@ -525,7 +522,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
    
 #ifdef DEBUG
    if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
-        .and. debug_e == el .and. debug_i == ip) then
+       .and. prm%of_debug == of) then
      write(6,'(1x,a30,1x,e15.8)')   'Constitutive work: ',stt%work(of)
      write(6,'(1x,a30,3(1x,e15.8))')'Magnitude mismatch: ',dst%mismatch(1,of), &
                                                            dst%mismatch(2,of), &
@@ -547,10 +544,8 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
    
 #ifdef DEBUG
    if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
-       .and. debug_e == el .and. debug_i == ip) then
-     write(6,'(1x,a55,/)')'... broken'
-     flush(6)
-   endif
+     .and. prm%of_debug == of) write(6,'(1x,a,/)') '... broken'
+   flush(6)
 #endif
 
    return
@@ -558,10 +553,8 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  else                                                                                               ! proceed with computing the Jacobian and state update
 #ifdef DEBUG
    if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
-     .and. debug_e == el .and. debug_i == ip) then
-     write(6,'(1x,a55,/)')'... not yet done'
-     flush(6)
-   endif
+     .and. prm%of_debug == of) write(6,'(1x,a,/)') '... not yet done'
+   flush(6)
 #endif
    
  endif
