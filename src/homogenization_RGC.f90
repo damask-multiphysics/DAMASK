@@ -106,7 +106,7 @@ subroutine homogenization_RGC_init()
    debug_homogenization, &
    debug_levelBasic
  use math, only: &
-   math_EulerToR,&
+   math_EulerToR, &
    INRAD
  use IO, only: &
    IO_error, &
@@ -180,9 +180,11 @@ subroutine homogenization_RGC_init()
    prm%Nconstituents = config%getInts('clustersize',requiredShape=[3])
    if (homogenization_Ngrains(h) /= product(prm%Nconstituents)) &
      call IO_error(211_pInt,ext_msg='clustersize ('//HOMOGENIZATION_RGC_label//')')
+
    prm%xiAlpha = config%getFloat('scalingparameter')
    prm%ciAlpha = config%getFloat('overproportionality')
-   prm%dAlpha  = config%getFloats('grainsize',requiredShape=[3])
+
+   prm%dAlpha  = config%getFloats('grainsize',         requiredShape=[3])
    prm%angles  = config%getFloats('clusterorientation',requiredShape=[3])
 
    outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
@@ -239,15 +241,15 @@ subroutine homogenization_RGC_init()
    stt%work               => homogState(h)%state(nIntFaceTot+1,:)
    stt%penaltyEnergy      => homogState(h)%state(nIntFaceTot+2,:)
 
-   allocate(dst%volumeDiscrepancy(     NofMyHomog))
-   allocate(dst%relaxationRate_avg(    NofMyHomog))
-   allocate(dst%relaxationRate_max(    NofMyHomog))
-   allocate(dst%mismatch(          3,  NofMyHomog))
-   allocate(dst%orientation(       3,3,NofMyHomog))
+   allocate(dst%volumeDiscrepancy(   NofMyHomog))
+   allocate(dst%relaxationRate_avg(  NofMyHomog))
+   allocate(dst%relaxationRate_max(  NofMyHomog))
+   allocate(dst%mismatch(          3,NofMyHomog))
 
 !--------------------------------------------------------------------------------------------------
 ! assigning cluster orientations
-   dst%orientation = spread(math_EulerToR(prm%angles*inRad),3,NofMyHomog)
+   dependentState(homogenization_typeInstance(h))%orientation = spread(math_EulerToR(prm%angles*inRad),3,NofMyHomog)
+   !dst%orientation = spread(math_EulerToR(prm%angles*inRad),3,NofMyHomog) ifort version 18.0.1 crashes (for whatever reason)
 
    end associate
    
