@@ -81,7 +81,7 @@ module plastic_disloUCLA
      rhoEdge, &
      rhoEdgeDip, &
      accshear
- end type
+ end type tDisloUCLAState
 
  type, private :: tDisloUCLAdependentState
    real(pReal), allocatable, dimension(:,:) :: &
@@ -90,13 +90,13 @@ module plastic_disloUCLA
      threshold_stress
  end type tDisloUCLAdependentState
 
-
- type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
- type(tDisloUCLAState ), allocatable, dimension(:), private :: &
+!--------------------------------------------------------------------------------------------------
+! containers for parameters and state
+ type(tParameters),              allocatable, dimension(:), private :: param
+ type(tDisloUCLAState ),         allocatable, dimension(:), private :: &
    dotState, &
    state
- type(tDisloUCLAdependentState), allocatable, dimension(:), private :: &
-   dependentState
+ type(tDisloUCLAdependentState), allocatable, dimension(:), private :: dependentState
 
  public :: &
    plastic_disloUCLA_init, &

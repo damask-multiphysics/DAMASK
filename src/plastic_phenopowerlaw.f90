@@ -72,7 +72,7 @@ module plastic_phenopowerlaw
      Ntwin                                                                                          !< number of active twin systems for each family
    integer(kind(undefined_ID)), allocatable, dimension(:) :: &
      outputID                                                                                       !< ID of each post result output
- end type                                                                                           !< container type for internal constitutive parameters
+ end type tParameters
 
  type, private :: tPhenopowerlawState
    real(pReal), pointer, dimension(:,:) :: &
@@ -80,10 +80,11 @@ module plastic_phenopowerlaw
      xi_twin, &
      gamma_slip, &
      gamma_twin
- end type
+ end type tPhenopowerlawState
 
-
- type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
+!--------------------------------------------------------------------------------------------------
+! containers for parameters and state
+ type(tParameters),         allocatable, dimension(:), private :: param
  type(tPhenopowerlawState), allocatable, dimension(:), private :: &
    dotState, &
    state

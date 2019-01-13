@@ -58,7 +58,7 @@ module plastic_kinehardening
      Nslip                                                                                          !< number of active slip systems for each family
    integer(kind(undefined_ID)), allocatable, dimension(:) :: &
      outputID                                                                                       !< ID of each post result output
- end type
+ end type tParameters
 
  type, private :: tKinehardeningState
    real(pReal), pointer, dimension(:,:) :: &                                                        !< vectors along NipcMyInstance
@@ -68,10 +68,11 @@ module plastic_kinehardening
      chi0, &                                                                                        !< backstress at last switch of stress sense
      gamma0, &                                                                                      !< accumulated shear at last switch of stress sense
      accshear                                                                                       !< accumulated (absolute) shear
- end type
+ end type tKinehardeningState
 
-
- type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
+!--------------------------------------------------------------------------------------------------
+! containers for parameters and state
+ type(tParameters),         allocatable, dimension(:), private :: param
  type(tKinehardeningState), allocatable, dimension(:), private :: &
    dotState, &
    deltaState, &
