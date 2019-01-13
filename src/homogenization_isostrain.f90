@@ -110,26 +110,16 @@ end subroutine homogenization_isostrain_init
 !--------------------------------------------------------------------------------------------------
 !> @brief partitions the deformation gradient onto the constituents
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_isostrain_partitionDeformation(F,avgF,instance)
+subroutine homogenization_isostrain_partitionDeformation(F,avgF)
  use prec, only: &
    pReal
- use material, only: &
-   homogenization_maxNgrains
  
  implicit none
- real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(out) :: F                         !< partitioned deformation gradient
+ real(pReal),   dimension (:,:,:), intent(out) :: F                                                 !< partitioned deformation gradient
  
- real(pReal),   dimension (3,3),                           intent(in)  :: avgF                      !< average deformation gradient at material point
- integer(pInt),                                            intent(in)  :: instance 
+ real(pReal),   dimension (3,3),   intent(in)  :: avgF                                              !< average deformation gradient at material point
 
-
- associate(prm => param(instance))
- 
- F(1:3,1:3,1:prm%Nconstituents) = spread(avgF,3,prm%Nconstituents)
- if (homogenization_maxNgrains > prm%Nconstituents) &
-   F(1:3,1:3,prm%Nconstituents+1_pInt:homogenization_maxNgrains) = 0.0_pReal
-
- end associate
+ F = spread(avgF,3,size(F,3))
 
 end subroutine homogenization_isostrain_partitionDeformation
 
@@ -140,16 +130,14 @@ end subroutine homogenization_isostrain_partitionDeformation
 subroutine homogenization_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,instance)
  use prec, only: &
    pReal
- use material, only: &
-   homogenization_maxNgrains
  
  implicit none
- real(pReal),   dimension (3,3),                               intent(out) :: avgP                  !< average stress at material point
- real(pReal),   dimension (3,3,3,3),                           intent(out) :: dAvgPdAvgF            !< average stiffness at material point
+ real(pReal),   dimension (3,3),       intent(out) :: avgP                                          !< average stress at material point
+ real(pReal),   dimension (3,3,3,3),   intent(out) :: dAvgPdAvgF                                    !< average stiffness at material point
 
- real(pReal),   dimension (3,3,homogenization_maxNgrains),     intent(in)  :: P                     !< partitioned stresses
- real(pReal),   dimension (3,3,3,3,homogenization_maxNgrains), intent(in)  :: dPdF                  !< partitioned stiffnesses
- integer(pInt),                                                intent(in)  :: instance 
+ real(pReal),   dimension (:,:,:),     intent(in)  :: P                                             !< partitioned stresses
+ real(pReal),   dimension (:,:,:,:,:), intent(in)  :: dPdF                                          !< partitioned stiffnesses
+ integer(pInt),                        intent(in)  :: instance 
 
  associate(prm => param(instance))
  
