@@ -99,6 +99,7 @@ module math
    math_invert33, &
    math_invSym3333, &
    math_invert, &
+   math_invert2, &
    math_symmetric33, &
    math_symmetric66, &
    math_skew33, &
@@ -779,6 +780,7 @@ end function math_inv33
 !   direct Cramer inversion of matrix A.
 !   also returns determinant
 !   returns error if not possible, i.e. if det close to zero
+!   ToDo: has wrong order of arguments (out should be first)
 !--------------------------------------------------------------------------------------------------
 pure subroutine math_invert33(A, InvA, DetA, error)
  use prec, only: &
@@ -848,7 +850,36 @@ end function math_invSym3333
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief invert quare matrix of arbitrary dimension
+!--------------------------------------------------------------------------------------------------
+subroutine math_invert2(InvA, error, A)
+
+ implicit none
+ real(pReal), dimension(:,:), intent(in)  :: A
+
+ real(pReal), dimension(size(A,1),size(A,2)), intent(out) :: invA
+ logical, intent(out) :: error
+
+ integer(pInt) :: ierr
+ integer(pInt), dimension(size(A,1))       :: ipiv
+ real(pReal),   dimension(size(A,1))       :: work
+ 
+ external :: &
+  dgetrf, &
+  dgetri
+ 
+ invA = A 
+ call dgetrf(size(A,1),size(A,2),invA,size(A,1),ipiv,ierr)
+ call dgetri(size(A,1),InvA,size(A,1),ipiv,work,size(A,1),ierr)
+ error = merge(.true.,.false., ierr /= 0_pInt)
+ 
+end subroutine math_invert2
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief invert matrix of arbitrary dimension
+! Obsolete: has wrong order of arguments and superflouous argumen myDim
+! use math_inver2 instead
 !--------------------------------------------------------------------------------------------------
 subroutine math_invert(myDim,A, InvA, error)
 
@@ -1926,6 +1957,7 @@ end function math_symmetricEulers
 
 !--------------------------------------------------------------------------------------------------
 !> @brief eigenvalues and eigenvectors of symmetric matrix m
+! ToDo: has wrong order of arguments
 !--------------------------------------------------------------------------------------------------
 subroutine math_eigenValuesVectorsSym(m,values,vectors,error)
 
@@ -1952,6 +1984,7 @@ end subroutine math_eigenValuesVectorsSym
 !> @author Joachim Kopp, Max–Planck–Institut für Kernphysik, Heidelberg (Copyright (C) 2006)
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @details See http://arxiv.org/abs/physics/0610206 (DSYEVH3)
+! ToDo: has wrong order of arguments
 !--------------------------------------------------------------------------------------------------
 subroutine math_eigenValuesVectorsSym33(m,values,vectors)
  
