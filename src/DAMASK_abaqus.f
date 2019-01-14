@@ -322,8 +322,8 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
 
  statev = materialpoint_results(1:min(nstatv,materialpoint_sizeResults),npt,mesh_FEasCP('elem', noel))
 
- if ( terminallyIll ) pnewdt = 0.5_pReal                                                            ! force cutback directly ?
-!$ call omp_set_num_threads(defaultNumThreadsInt)                                                  ! reset number of threads to stored default value
+ if (terminallyIll) pnewdt = 0.5_pReal                                                              ! force cutback directly ?
+!$ call omp_set_num_threads(defaultNumThreadsInt)                                                   ! reset number of threads to stored default value
 
 end subroutine UMAT
 
@@ -331,12 +331,12 @@ end subroutine UMAT
 !--------------------------------------------------------------------------------------------------
 !> @brief calls the exit function of Abaqus/Standard
 !--------------------------------------------------------------------------------------------------
-subroutine quit(mpie_error)
+subroutine quit(DAMASK_error)
  use prec, only: &
    pInt
  
  implicit none
- integer(pInt) :: mpie_error
+ integer(pInt) :: DAMASK_error
 
  flush(6)
  call xit

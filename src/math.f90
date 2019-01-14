@@ -24,6 +24,14 @@ module math
      0.0_pReal,0.0_pReal,1.0_pReal  &
      ],[3,3])                                                                                       !< 3x3 Identity
 
+! ToDo MD: Our naming scheme is a little bit odd: We use essentially the re-ordering according to Nye
+! (convenient because Abaqus and Marc want to have 12 on position 4)
+! but weight the shear components according to Mandel (convenient for matrix multiplications)
+! I suggest to keep Voigt3333to66 (required for reading in elasticity matrices) but rename
+! mapMandel to mapNye, math_MandelXtoY to math_XtoY and math_PlainXtoY to math_XtoY.
+! It is then clear that math_33to9 just reorders and math_33to6 does the "DAMASK conversion"
+! without leaving the impression that it follows any established convention
+
  integer(pInt), dimension (2,6), parameter, private :: &
    mapMandel = reshape([&
      1_pInt,1_pInt, &
@@ -32,7 +40,7 @@ module math
      1_pInt,2_pInt, &
      2_pInt,3_pInt, &
      1_pInt,3_pInt  &
-     ],[2,6])                                                                                       !< arrangement in Mandel notation
+     ],[2,6])                                                                                       !< arrangement in Mandel notation. Differs from https://en.wikipedia.org/wiki/Voigt_notation#Mandel_notation
 
  real(pReal), dimension(6), parameter, private :: &
    nrmMandel = [&
@@ -870,7 +878,7 @@ subroutine math_invert(myDim,A, InvA, error)
  invA = A 
  call dgetrf(myDim,myDim,invA,myDim,ipiv,ierr)
  call dgetri(myDim,InvA,myDim,ipiv,work,myDim,ierr)
- error = merge(.true.,.false., ierr /= 0_pInt)                                                      ! http://fortraninacworld.blogspot.de/2012/12/ternary-operator.html
+ error = merge(.true.,.false., ierr /= 0_pInt)
  
 end subroutine math_invert
 
@@ -1163,7 +1171,6 @@ end function math_Plain66toMandel66
 pure function math_Mandel3333to66(m3333)
 
  implicit none
-
  real(pReal), dimension(3,3,3,3), intent(in) :: m3333
  real(pReal), dimension(6,6) :: math_Mandel3333to66
  integer(pInt) :: i,j
