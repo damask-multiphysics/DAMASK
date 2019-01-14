@@ -80,8 +80,6 @@ module crystallite
  logical,                    dimension(:,:),           allocatable, private :: &
    crystallite_clearToWindForward, &                                                                !< description not available
    crystallite_clearToCutback, &                                                                    !< description not available
-   crystallite_syncSubFrac, &                                                                       !< description not available
-   crystallite_syncSubFracCompleted, &                                                              !< description not available
    crystallite_neighborEnforcedCutback                                                              !< description not available
 
  enum, bind(c)
@@ -248,8 +246,6 @@ subroutine crystallite_init
  allocate(crystallite_todo(cMax,iMax,eMax),                  source=.false.)
  allocate(crystallite_converged(cMax,iMax,eMax),             source=.true.)
  allocate(crystallite_clearToWindForward(iMax,eMax),         source=.true.)
- allocate(crystallite_syncSubFrac(iMax,eMax),                source=.false.)
- allocate(crystallite_syncSubFracCompleted(iMax,eMax),       source=.false.)
  allocate(crystallite_clearToCutback(iMax,eMax),             source=.true.)
  allocate(crystallite_neighborEnforcedCutback(iMax,eMax),    source=.false.)
  allocate(crystallite_output(maxval(crystallite_Noutput), &
@@ -444,8 +440,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
  use numerics, only: &
    subStepMinCryst, &
    subStepSizeCryst, &
-   stepIncreaseCryst, &
-   numerics_timeSyncing
+   stepIncreaseCryst
 #ifdef DEBUG
  use debug, only: &
    debug_level, &
@@ -600,235 +595,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) &
      write(6,'(a,i6)') '<< CRYST >> crystallite iteration ',NiterationCrystallite
 #endif
-   timeSyncing1: if (any(.not. crystallite_localPlasticity) .and. numerics_timeSyncing) then
-
-    ! Time synchronization can only be used for nonlocal calculations, and only there it makes sense.
-    ! The idea is that in nonlocal calculations often the vast majority of the ips
-    ! converges in one iteration whereas a small fraction of ips has to do a lot of cutbacks.
-    ! Hence, we try to minimize the computational effort by just doing a lot of cutbacks
-    ! in the vicinity of the "bad" ips and leave the easily converged volume more or less as it is.
-    ! However, some synchronization of the time step has to be done at the border between "bad" ips
-    ! and the ones that immediately converged.
-
-     if (any(crystallite_syncSubFrac)) then
-
-       ! Just did a time synchronization.
-       ! If all synchronizers converged, then do nothing else than winding them forward.
-       ! If any of the synchronizers did not converge, something went completely wrong
-       ! and its not clear how to fix this, so all nonlocals become terminally ill.
-
-       if (any(crystallite_syncSubFrac .and. .not. crystallite_converged(1,:,:))) then
-#ifdef DEBUG
-         if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
-           do e = FEsolving_execElem(1),FEsolving_execElem(2)
-             do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-               if (crystallite_syncSubFrac(i,e) .and. .not. crystallite_converged(1,i,e)) &
-                 write(6,'(a,i8,1x,i2)') '<< CRYST >> time synchronization: failed at el,ip ',e,i
-             enddo
-           enddo
-         endif
-#endif
-         crystallite_syncSubFrac = .false.
-         where(.not. crystallite_localPlasticity)
-           crystallite_substep = 0.0_pReal
-           crystallite_todo = .false.
-         endwhere
-       else
-         !$OMP PARALLEL DO
-         do e = FEsolving_execElem(1),FEsolving_execElem(2)
-           do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-             crystallite_clearToWindForward(i,e) = crystallite_localPlasticity(1,i,e) .or. crystallite_syncSubFrac(i,e)
-             crystallite_clearToCutback(i,e) = crystallite_localPlasticity(1,i,e)
-           enddo
-         enddo
-         !$OMP END PARALLEL DO
-#ifdef DEBUG
-         if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) &
-           write(6,'(a,i6)') '<< CRYST >> time synchronization: wind forward'
-#endif
-       endif
-
-     elseif (any(crystallite_syncSubFracCompleted)) then
-
-       ! Just completed a time synchronization.
-       ! Make sure that the ips that synchronized their time step start non-converged
-
-       do e = FEsolving_execElem(1),FEsolving_execElem(2)
-         do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-           if (crystallite_syncSubFracCompleted(i,e)) crystallite_converged(1,i,e) = .false.
-           crystallite_syncSubFracCompleted(i,e) = .false.
-           crystallite_clearToWindForward(i,e) = crystallite_localPlasticity(1,i,e)
-           crystallite_clearToCutback(i,e) = crystallite_localPlasticity(1,i,e) .or. .not. crystallite_converged(1,i,e)
-         enddo
-       enddo
-#ifdef DEBUG
-       if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) &
-         write(6,'(a,i6)') '<< CRYST >> time synchronization: done, proceed with cutback'
-#endif
-     else
-
-       ! Normal calculation.
-       ! If all converged and are at the end of the time increment, then just do a final wind forward.
-       ! If all converged, but not all reached the end of the time increment, then we only wind
-       ! those forward that are still on their way, all others have to wait.
-       ! If some did not converge and all are still at the start of the time increment,
-       ! then all non-convergers force their converged neighbors to also do a cutback.
-       ! In case that some ips have already wound forward to an intermediate time (subfrac),
-       ! then all those ips that converged in the first iteration, but now have a non-converged neighbor
-       ! have to synchronize their time step to the same intermediate time. If such a synchronization
-       ! takes place, all other ips have to wait and only the synchronizers do a cutback. In the next
-       ! iteration those will do a wind forward while all others still wait.
-
-       !$OMP PARALLEL DO
-       do e = FEsolving_execElem(1),FEsolving_execElem(2)
-         do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-           crystallite_clearToWindForward(i,e) = crystallite_localPlasticity(1,i,e)
-           crystallite_clearToCutback(i,e) = crystallite_localPlasticity(1,i,e)
-         enddo
-       enddo
-       !$OMP END PARALLEL DO
-       if (all(crystallite_localPlasticity .or. crystallite_converged)) then
-         if (all(crystallite_localPlasticity .or. crystallite_subStep + crystallite_subFrac >= 1.0_pReal)) then
-           crystallite_clearToWindForward = .true.   ! final wind forward
-#ifdef DEBUG
-           if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) &
-             write(6,'(a,i6)') '<< CRYST >> final wind forward'
-#endif
-         else
-           !$OMP PARALLEL DO
-           do e = FEsolving_execElem(1),FEsolving_execElem(2)
-             do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-               crystallite_clearToWindForward(i,e) = crystallite_localPlasticity(1,i,e) .or. crystallite_subStep(1,i,e) < 1.0_pReal
-             enddo
-           enddo
-           !$OMP END PARALLEL DO
-#ifdef DEBUG
-           if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) &
-             write(6,'(a,i6)') '<< CRYST >> wind forward'
-#endif
-         endif
-       else
-         subFracIntermediate = maxval(crystallite_subFrac, mask=.not.crystallite_localPlasticity)
-         if (dNeq0(subFracIntermediate)) then
-           crystallite_neighborEnforcedCutback = .false.  ! look for ips that require a cutback because of a nonconverged neighbor
-           !$OMP PARALLEL
-           !$OMP DO PRIVATE(neighboring_e,neighboring_i)
-             do e = FEsolving_execElem(1),FEsolving_execElem(2)
-               do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-                 if (.not. crystallite_localPlasticity(1,i,e) .and. crystallite_converged(1,i,e)) then
-                   do n = 1_pInt,FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,e))))
-                     neighboring_e = mesh_ipNeighborhood(1,n,i,e)
-                     neighboring_i = mesh_ipNeighborhood(2,n,i,e)
-                     if (neighboring_e > 0_pInt .and. neighboring_i > 0_pInt) then
-                       if (.not. crystallite_localPlasticity(1,neighboring_i,neighboring_e) &
-                           .and. .not. crystallite_converged(1,neighboring_i,neighboring_e)) then
-                         crystallite_neighborEnforcedCutback(i,e) = .true.
-#ifdef DEBUG
-                         if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) &
-                            write(6,'(a12,i5,1x,i2,a,i5,1x,i2)') '<< CRYST >> ', neighboring_e,neighboring_i, &
-                                                                 ' enforced cutback at ',e,i
-#endif
-                         exit
-                       endif
-                     endif
-                   enddo
-                 endif
-               enddo
-             enddo
-           !$OMP END DO
-           !$OMP DO
-           do e = FEsolving_execElem(1),FEsolving_execElem(2)
-             do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-               if(crystallite_neighborEnforcedCutback(i,e)) crystallite_converged(1,i,e) = .false.
-             enddo
-           enddo
-           !$OMP END DO
-           !$OMP END PARALLEL
-         else
-           crystallite_syncSubFrac = .false.  ! look for ips that have to do a time synchronization because of a nonconverged neighbor
-           !$OMP PARALLEL
-           !$OMP DO PRIVATE(neighboring_e,neighboring_i)
-           do e = FEsolving_execElem(1),FEsolving_execElem(2)
-             do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-               if (.not. crystallite_localPlasticity(1,i,e) .and. dNeq0(crystallite_subFrac(1,i,e))) then
-                 do n = 1_pInt,FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,e))))
-                   neighboring_e = mesh_ipNeighborhood(1,n,i,e)
-                   neighboring_i = mesh_ipNeighborhood(2,n,i,e)
-                   if (neighboring_e > 0_pInt .and. neighboring_i > 0_pInt) then
-                     if (.not. crystallite_localPlasticity(1,neighboring_i,neighboring_e) &
-                         .and. .not. crystallite_converged(1,neighboring_i,neighboring_e)) then
-                       crystallite_syncSubFrac(i,e) = .true.
-#ifdef DEBUG
-                       if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) &
-                         write(6,'(a12,i5,1x,i2,a,i5,1x,i2)') '<< CRYST >> ',neighboring_e,neighboring_i, &
-                                                             ' enforced time synchronization at ',e,i
-#endif
-                       exit
-                     endif
-                   endif
-                 enddo
-               endif
-             enddo
-           enddo
-           !$OMP END DO
-           !$OMP DO
-           do e = FEsolving_execElem(1),FEsolving_execElem(2)
-             do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-               if(crystallite_syncSubFrac(i,e)) crystallite_converged(1,i,e) = .false.
-             enddo
-           enddo
-           !$OMP END DO
-           !$OMP END PARALLEL
-         endif
-         where(.not. crystallite_localPlasticity .and. crystallite_subStep < 1.0_pReal) &
-           crystallite_converged = .false.
-         if (any(crystallite_syncSubFrac)) then   ! have to do syncing now, so all wait except for the synchronizers which do a cutback
-           !$OMP PARALLEL DO
-           do e = FEsolving_execElem(1),FEsolving_execElem(2)
-             do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-               crystallite_clearToWindForward(i,e) = crystallite_localPlasticity(1,i,e)
-               crystallite_clearToCutback(i,e) = crystallite_localPlasticity(1,i,e) .or. crystallite_syncSubFrac(i,e)
-             enddo
-           enddo
-           !$OMP END PARALLEL DO
-#ifdef DEBUG
-           if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) &
-             write(6,'(a,i6)') '<< CRYST >> time synchronization: cutback'
-#endif
-         else
-           !$OMP PARALLEL DO
-           do e = FEsolving_execElem(1),FEsolving_execElem(2)
-             do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-               if(.not. crystallite_converged(1,i,e)) crystallite_clearToCutback(i,e) = .true.
-             enddo
-           enddo
-           !$OMP END PARALLEL DO
-#ifdef DEBUG
-           if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) &
-             write(6,'(a,i6)') '<< CRYST >> cutback'
-#endif
-         endif
-       endif
-     endif
-
-     ! Make sure that all cutbackers start with the same substep
-
-     where(.not. crystallite_localPlasticity .and. .not. crystallite_converged) &
-       crystallite_subStep = minval(crystallite_subStep, mask=.not. crystallite_localPlasticity &
-                                                              .and. .not. crystallite_converged)
-
-     ! Those that do neither wind forward nor cutback are not to do
-
-     !$OMP PARALLEL DO
-     elementLooping2: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-       do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-         if(.not. crystallite_clearToWindForward(i,e) .and. .not. crystallite_clearToCutback(i,e)) &
-           crystallite_todo(1,i,e) = .false.
-       enddo
-     enddo elementLooping2
-     !$OMP END PARALLEL DO
-
-   endif timeSyncing1
 
    !$OMP PARALLEL DO PRIVATE(formerSubStep)
      elementLooping3: do e = FEsolving_execElem(1),FEsolving_execElem(2)
@@ -856,13 +622,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                  sourceState(phaseAt(c,i,e))%p(mySource)%state(    :,phasememberAt(c,i,e))
                enddo
                crystallite_subTstar0_v(1:6,c,i,e) = crystallite_Tstar_v(1:6,c,i,e)                   ! ...2nd PK stress
-               if (crystallite_syncSubFrac(i,e)) then                                                ! if we just did a synchronization of states, then we wind forward without any further time integration
-                 crystallite_syncSubFracCompleted(i,e) = .true.
-                 crystallite_syncSubFrac(i,e) = .false.
-                 crystallite_todo(c,i,e) = .false.
-               else
-                 crystallite_todo(c,i,e) = .true.
-               endif
+               crystallite_todo(c,i,e) = .true.
 #ifdef DEBUG
                if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
                    .and. ((e == debug_e .and. i == debug_i .and. c == debug_g) &
@@ -878,11 +638,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
            ! --- cutback ---
 
            elseif (.not. crystallite_converged(c,i,e) .and. crystallite_clearToCutback(i,e)) then
-             if (crystallite_syncSubFrac(i,e)) then                                                  ! synchronize time
-               crystallite_subStep(c,i,e) = subFracIntermediate
-             else
-               crystallite_subStep(c,i,e) = subStepSizeCryst * crystallite_subStep(c,i,e)            ! cut step in half and restore...
-             endif
+             crystallite_subStep(c,i,e) = subStepSizeCryst * crystallite_subStep(c,i,e)              ! cut step in half and restore...
              crystallite_Fp(1:3,1:3,c,i,e) = crystallite_subFp0(1:3,1:3,c,i,e)                       ! ...plastic def grad
              crystallite_invFp(1:3,1:3,c,i,e) = math_inv33(crystallite_Fp(1:3,1:3,c,i,e))
              crystallite_Fi(1:3,1:3,c,i,e) = crystallite_subFi0(1:3,1:3,c,i,e)                       ! ...intermediate def grad
@@ -932,29 +688,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
        enddo      ! IPs
      enddo elementLooping3
    !$OMP END PARALLEL DO
-
-   timeSyncing2: if(numerics_timeSyncing) then
-     if (any(.not. crystallite_localPlasticity .and. .not. crystallite_todo .and. .not. crystallite_converged &
-             .and. crystallite_subStep <= subStepMinCryst)) then                                     ! no way of rescuing a nonlocal ip that violated the lower time step limit, ...
-#ifdef DEBUG
-       if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
-         elementLooping4: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-           do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-             do c = 1,homogenization_Ngrains(mesh_element(3,e))
-               if (.not. crystallite_localPlasticity(c,i,e) .and. .not. crystallite_todo(c,i,e) &
-                   .and. .not. crystallite_converged(c,i,e) .and. crystallite_subStep(c,i,e) <= subStepMinCryst) &
-                 write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> nonlocal violated minimum subStep at el ip ipc ',e,i,c
-             enddo
-           enddo
-         enddo elementLooping4
-       endif
-#endif
-       where(.not. crystallite_localPlasticity)
-         crystallite_todo = .false.                                                                  ! ... so let all nonlocal ips die peacefully
-         crystallite_subStep = 0.0_pReal
-       endwhere
-     endif
-   endif timeSyncing2
 
 #ifdef DEBUG
    if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
@@ -2268,8 +2001,6 @@ subroutine integrateStateEuler()
    debug_levelExtensive, &
    debug_levelSelective
 #endif
- use numerics, only: &
-   numerics_timeSyncing
  use FEsolving, only: &
    FEsolving_execElem, &
    FEsolving_execIP
@@ -2340,7 +2071,7 @@ eIter = FEsolving_execElem(1:2)
            NaN = NaN .or. any(IEEE_is_NaN(sourceState(p)%p(mySource)%dotState(:,c)))
          enddo
          if (NaN) then                                                                                       ! NaN occured in any dotState
-           if (.not. crystallite_localPlasticity(g,i,e) .and. .not. numerics_timeSyncing) then               ! if broken non-local...
+           if (.not. crystallite_localPlasticity(g,i,e)) then               ! if broken non-local...
              !$OMP CRITICAL (checkTodo)
                crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
              !$OMP END CRITICAL (checkTodo)
@@ -2397,8 +2128,7 @@ eIter = FEsolving_execElem(1:2)
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
          crystallite_todo(g,i,e) = stateJump(g,i,e)
          !$OMP FLUSH(crystallite_todo)
-         if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e) &                 ! if broken non-local...
-             .and. .not. numerics_timeSyncing) then
+         if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then                ! if broken non-local...
            !$OMP CRITICAL (checkTodo)
              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                          ! ...all non-locals skipped
            !$OMP END CRITICAL (checkTodo)
@@ -2431,8 +2161,7 @@ eIter = FEsolving_execElem(1:2)
      if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
        crystallite_todo(g,i,e) = integrateStress(g,i,e)
        !$OMP FLUSH(crystallite_todo)
-       if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e) &                  ! if broken non-local...
-           .and. .not. numerics_timeSyncing) then
+       if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then                  ! if broken non-local...
          !$OMP CRITICAL (checkTodo)
            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                           ! ...all non-locals skipped
          !$OMP END CRITICAL (checkTodo)
@@ -2456,8 +2185,7 @@ eIter = FEsolving_execElem(1:2)
  ! --- CHECK NON-LOCAL CONVERGENCE ---
 
  if (.not. singleRun) then                                                                                 ! if not requesting Integration of just a single IP
-   if (any(.not. crystallite_converged .and. .not. crystallite_localPlasticity) &                          ! any non-local not yet converged (or broken)...
-       .and. .not. numerics_timeSyncing) &
+   if (any(.not. crystallite_converged .and. .not. crystallite_localPlasticity) ) &                         ! any non-local not yet converged (or broken)...
      crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                       ! ...restart all non-local as not converged
  endif
 
