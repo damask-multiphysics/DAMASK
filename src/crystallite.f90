@@ -65,8 +65,7 @@ module crystallite
    crystallite_subF,  &                                                                             !< def grad to be reached at end of crystallite inc
    crystallite_subF0, &                                                                             !< def grad at start of crystallite inc
    crystallite_subLp0,&                                                                             !< plastic velocity grad at start of crystallite inc
-   crystallite_subLi0,&                                                                             !< intermediate velocity grad at start of crystallite inc
-   crystallite_disorientation                                                                       !< disorientation between two neighboring ips (only calculated for single grain IPs)
+   crystallite_subLi0                                                                               !< intermediate velocity grad at start of crystallite inc
  real(pReal),                dimension(:,:,:,:,:,:,:), allocatable, public :: &
    crystallite_dPdF, &                                                                              !< current individual dPdF per grain (end of converged time step)
    crystallite_dPdF0, &                                                                             !< individual dPdF per grain at start of FE inc
@@ -244,8 +243,6 @@ subroutine crystallite_init
  allocate(crystallite_orientation(4,cMax,iMax,eMax),         source=0.0_pReal)
  allocate(crystallite_orientation0(4,cMax,iMax,eMax),        source=0.0_pReal)
  allocate(crystallite_rotation(4,cMax,iMax,eMax),            source=0.0_pReal)
- if (any(plasticState%nonLocal)) &
-   allocate(crystallite_disorientation(4,nMax,cMax,iMax,eMax),source=0.0_pReal)
  allocate(crystallite_localPlasticity(cMax,iMax,eMax),       source=.true.)
  allocate(crystallite_requested(cMax,iMax,eMax),             source=.false.)
  allocate(crystallite_todo(cMax,iMax,eMax),                  source=.false.)
@@ -3534,29 +3531,23 @@ end function integrateStress
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates orientations and disorientations (in case of single grain ips)
+!> @brief calculates orientations
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_orientations
  use math, only: &
    math_rotationalPart33, &
-   math_RtoQ, &
-   math_qConj
+   math_RtoQ
  use FEsolving, only: &
    FEsolving_execElem, &
    FEsolving_execIP
  use material, only: &
+   plasticState, &
    material_phase, &
-   homogenization_Ngrains, &
-   plasticState
+   homogenization_Ngrains
  use mesh, only: &
-   mesh_element, &
-   mesh_ipNeighborhood, &
-   FE_NipNeighbors, &
-   FE_geomtype, &
-   FE_celltype
+   mesh_element
  use lattice, only: &
-   lattice_qDisorientation, &
-   lattice_structure
+   lattice_qDisorientation
  use plastic_nonlocal, only: &
    plastic_nonlocal_updateCompatibility
 
@@ -3565,27 +3556,20 @@ subroutine crystallite_orientations
    c, &                                                                                             !< counter in integration point component loop
    i, &                                                                                             !< counter in integration point loop
    e, &                                                                                             !< counter in element loop
-   n, &                                                                                             !< counter in neighbor loop
-   neighboring_e, &                                                                                 !< neighbor element
-   neighboring_i, &                                                                                 !< neighbor integration point
-   myPhase, &                    ! phase
-   neighboringPhase
- real(pReal), dimension(4) :: &
-   orientation
+   myPhase                  ! phase
 
  ! --- CALCULATE ORIENTATION AND LATTICE ROTATION ---
 
-!$OMP PARALLEL DO PRIVATE(orientation)
+!$OMP PARALLEL DO
  do e = FEsolving_execElem(1),FEsolving_execElem(2)
    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
      do c = 1_pInt,homogenization_Ngrains(mesh_element(3,e))
 ! somehow this subroutine is not threadsafe, so need critical statement here; not clear, what exactly the problem is
 !$OMP CRITICAL (polarDecomp)
-       orientation = math_RtoQ(transpose(math_rotationalPart33(crystallite_Fe(1:3,1:3,c,i,e))))
+       crystallite_orientation(1:4,c,i,e) = math_RtoQ(transpose(math_rotationalPart33(crystallite_Fe(1:3,1:3,c,i,e))))
 !$OMP END CRITICAL (polarDecomp)
        crystallite_rotation(1:4,c,i,e) = lattice_qDisorientation(crystallite_orientation0(1:4,c,i,e), &! active rotation from initial
-                                                                  orientation)                         ! to current orientation (with no symmetry)
-       crystallite_orientation(1:4,c,i,e) = orientation
+                                                                crystallite_orientation(1:4,c,i,e))  ! to current orientation (with no symmetry)
  enddo; enddo; enddo
 !$OMP END PARALLEL DO
  
@@ -3594,40 +3578,13 @@ subroutine crystallite_orientations
  ! --- we use crystallite_orientation from above, so need a separate loop
   
  nonlocalPresent: if (any(plasticState%nonLocal)) then
-!$OMP PARALLEL DO PRIVATE(myPhase,neighboring_e,neighboring_i,neighboringPhase)
+!$OMP PARALLEL DO PRIVATE(myPhase)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        myPhase = material_phase(1,i,e)                                                              ! get my phase (non-local models make no sense with more than one grain per material point)
        if (plasticState(myPhase)%nonLocal) then                                                     ! if nonlocal model
-         ! --- calculate disorientation between me and my neighbor ---
-
-         do n = 1_pInt,FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,e))))                 ! loop through my neighbors
-           neighboring_e = mesh_ipNeighborhood(1,n,i,e)
-           neighboring_i = mesh_ipNeighborhood(2,n,i,e)
-           if (neighboring_e > 0 .and. neighboring_i > 0) then                                      ! if neighbor exists
-             neighboringPhase = material_phase(1,neighboring_i,neighboring_e)                       ! get my neighbor's phase
-             if (plasticState(neighboringPhase)%nonLocal) then                                      ! neighbor got also nonlocal plasticity
-               if (lattice_structure(myPhase) == lattice_structure(neighboringPhase)) then          ! if my neighbor has same crystal structure like me
-                 crystallite_disorientation(:,n,1,i,e) = &
-                   lattice_qDisorientation( crystallite_orientation(1:4,1,i,e), &
-                                            crystallite_orientation(1:4,1,neighboring_i,neighboring_e), &
-                                            lattice_structure(myPhase))                             ! calculate disorientation for given symmetry
-               else                                                                                 ! for neighbor with different phase
-                 crystallite_disorientation(:,n,1,i,e) = [0.0_pReal, 1.0_pReal, 0.0_pReal, 0.0_pReal]! 180 degree rotation about 100 axis
-               endif
-             else                                                                                   ! for neighbor with local plasticity
-               crystallite_disorientation(:,n,1,i,e) = [-1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal]! homomorphic identity
-             endif
-           else                                                                                     ! no existing neighbor
-             crystallite_disorientation(:,n,1,i,e) = [-1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal]  ! homomorphic identity
-           endif
-         enddo
-
-
          ! --- calculate compatibility and transmissivity between me and my neighbor ---
-
          call plastic_nonlocal_updateCompatibility(crystallite_orientation,i,e)
-
        endif
    enddo; enddo
 !$OMP END PARALLEL DO
