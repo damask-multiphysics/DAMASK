@@ -459,7 +459,7 @@ pure function math_identity2nd(dimen)
  real(pReal), dimension(dimen,dimen) :: math_identity2nd
 
  math_identity2nd = 0.0_pReal
- forall (i=1_pInt:dimen) math_identity2nd(i,i) = 1.0_pReal
+ forall(i=1_pInt:dimen) math_identity2nd(i,i) = 1.0_pReal
 
 end function math_identity2nd
 
@@ -476,10 +476,8 @@ pure function math_identity4th(dimen)
  real(pReal), dimension(dimen,dimen)             ::  identity2nd
 
  identity2nd = math_identity2nd(dimen)
- do concurrent(i=1_pInt:dimen,j=1_pInt:dimen,k=1_pInt:dimen,l=1_pInt:dimen) 
-   math_identity4th(i,j,k,l) &
-     = 0.5_pReal*(identity2nd(i,k)*identity2nd(j,l)+identity2nd(i,l)*identity2nd(j,k))
- enddo
+ forall(i=1_pInt:dimen,j=1_pInt:dimen,k=1_pInt:dimen,l=1_pInt:dimen) &
+   math_identity4th(i,j,k,l) = 0.5_pReal*(identity2nd(i,k)*identity2nd(j,l)+identity2nd(i,l)*identity2nd(j,k))
 
 end function math_identity4th
 
@@ -548,7 +546,7 @@ pure function math_tensorproduct(A,B)
  real(pReal), dimension(size(A,1),size(B,1)) ::  math_tensorproduct
  integer(pInt) :: i,j
 
- forall (i=1_pInt:size(A,1),j=1_pInt:size(B,1)) math_tensorproduct(i,j) = A(i)*B(j)
+ forall(i=1_pInt:size(A,1),j=1_pInt:size(B,1)) math_tensorproduct(i,j) = A(i)*B(j)
 
 end function math_tensorproduct
 
@@ -563,7 +561,7 @@ pure function math_tensorproduct33(A,B)
  real(pReal), dimension(3), intent(in) ::  A,B
  integer(pInt) :: i,j
 
- forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_tensorproduct33(i,j) = A(i)*B(j)
+ forall(i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_tensorproduct33(i,j) = A(i)*B(j)
 
 end function math_tensorproduct33
 
@@ -604,9 +602,7 @@ real(pReal) pure function math_mul33xx33(A,B)
  integer(pInt) :: i,j
  real(pReal), dimension(3,3) ::              C
 
- do concurrent(i=1_pInt:3_pInt,j=1_pInt:3_pInt) 
-   C(i,j) = A(i,j) * B(i,j)
- enddo
+ forall(i=1_pInt:3_pInt,j=1_pInt:3_pInt) C(i,j) = A(i,j) * B(i,j)
  math_mul33xx33 = sum(C)
 
 end function math_mul33xx33
@@ -623,9 +619,7 @@ pure function math_mul3333xx33(A,B)
  real(pReal), dimension(3,3), intent(in) ::  B
  integer(pInt) :: i,j 
 
- do concurrent(i = 1_pInt:3_pInt,j = 1_pInt:3_pInt)
-   math_mul3333xx33(i,j) = sum(A(i,j,1:3,1:3)*B(1:3,1:3))
- enddo
+ forall(i = 1_pInt:3_pInt,j = 1_pInt:3_pInt) math_mul3333xx33(i,j) = sum(A(i,j,1:3,1:3)*B(1:3,1:3))
 
 end function math_mul3333xx33
 
@@ -641,9 +635,8 @@ pure function math_mul3333xx3333(A,B)
  real(pReal), dimension(3,3,3,3), intent(in) ::  B
  real(pReal), dimension(3,3,3,3) :: math_mul3333xx3333
 
- do concurrent(i = 1_pInt:3_pInt,j = 1_pInt:3_pInt, k = 1_pInt:3_pInt, l= 1_pInt:3_pInt)
+ forall(i = 1_pInt:3_pInt,j = 1_pInt:3_pInt, k = 1_pInt:3_pInt, l= 1_pInt:3_pInt) &
    math_mul3333xx3333(i,j,k,l) = sum(A(i,j,1:3,1:3)*B(1:3,1:3,k,l))
- enddo
 
 end function math_mul3333xx3333
 
@@ -658,9 +651,7 @@ pure function math_mul33x33(A,B)
  real(pReal), dimension(3,3), intent(in) ::  A,B
  integer(pInt) :: i,j
 
- do concurrent(i=1_pInt:3_pInt,j=1_pInt:3_pInt)
-   math_mul33x33(i,j) = A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j)
- enddo
+ forall(i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_mul33x33(i,j) = A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j)
 
 end function math_mul33x33
 
@@ -675,10 +666,9 @@ pure function math_mul66x66(A,B)
  real(pReal), dimension(6,6), intent(in) ::  A,B
  integer(pInt) :: i,j
 
- do concurrent(i=1_pInt:6_pInt,j=1_pInt:6_pInt)
+ forall(i=1_pInt:6_pInt,j=1_pInt:6_pInt) &
    math_mul66x66(i,j) = A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j) &
                       + A(i,4)*B(4,j) + A(i,5)*B(5,j) + A(i,6)*B(6,j)
- enddo
 
 end function math_mul66x66
 
@@ -693,11 +683,10 @@ pure function math_mul99x99(A,B)
  real(pReal), dimension(9,9), intent(in) ::  A,B
  integer(pInt)  i,j
 
- do concurrent(i=1_pInt:9_pInt,j=1_pInt:9_pInt) 
+ forall(i=1_pInt:9_pInt,j=1_pInt:9_pInt) &
    math_mul99x99(i,j) = A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j) &
                       + A(i,4)*B(4,j) + A(i,5)*B(5,j) + A(i,6)*B(6,j) &
                       + A(i,7)*B(7,j) + A(i,8)*B(8,j) + A(i,9)*B(9,j)
- enddo
 
 end function math_mul99x99
 
@@ -745,9 +734,8 @@ pure function math_mul66x6(A,B)
  real(pReal), dimension(6),   intent(in) ::  B
  integer(pInt) :: i
 
- forall (i=1_pInt:6_pInt) math_mul66x6(i) = &
-   A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3) + &
-   A(i,4)*B(4) + A(i,5)*B(5) + A(i,6)*B(6)
+ forall (i=1_pInt:6_pInt) math_mul66x6(i) = A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3) &
+                                          + A(i,4)*B(4) + A(i,5)*B(5) + A(i,6)*B(6)
 
 end function math_mul66x6
 
@@ -1113,7 +1101,7 @@ pure function math_33to9(m33)
  
  integer(pInt) :: i
 
- forall (i=1_pInt:9_pInt) math_33to9(i) = m33(mapPlain(1,i),mapPlain(2,i))
+ forall(i=1_pInt:9_pInt) math_33to9(i) = m33(mapPlain(1,i),mapPlain(2,i))
 
 end function math_33to9
 
@@ -1129,7 +1117,7 @@ pure function math_9to33(v9)
  
  integer(pInt) :: i
 
- forall (i=1_pInt:9_pInt) math_9to33(mapPlain(1,i),mapPlain(2,i)) = v9(i)
+ forall(i=1_pInt:9_pInt) math_9to33(mapPlain(1,i),mapPlain(2,i)) = v9(i)
 
 end function math_9to33
 
@@ -1156,7 +1144,7 @@ pure function math_33to6(m33,weighted)
    w = nrmMandel
  endif
 
- forall (i=1_pInt:6_pInt) math_33to6(i) = w(i)*m33(mapNye(1,i),mapNye(2,i))
+ forall(i=1_pInt:6_pInt) math_33to6(i) = w(i)*m33(mapNye(1,i),mapNye(2,i))
 
 end function math_33to6
 
@@ -1202,9 +1190,8 @@ pure function math_3333to99(m3333)
 
  integer(pInt) :: i,j
 
- do concurrent(i=1_pInt:9_pInt,j=1_pInt:9_pInt)
+ forall(i=1_pInt:9_pInt,j=1_pInt:9_pInt) &
    math_3333to99(i,j) = m3333(mapPlain(1,i),mapPlain(2,i),mapPlain(1,j),mapPlain(2,j))
- enddo
 
 end function math_3333to99
 
@@ -1220,9 +1207,8 @@ pure function math_99to3333(m99)
 
  integer(pInt) :: i,j
 
- do concurrent(i=1_pInt:9_pInt,j=1_pInt:9_pInt)
+ forall(i=1_pInt:9_pInt,j=1_pInt:9_pInt) &
    math_99to3333(mapPlain(1,i),mapPlain(2,i),mapPlain(1,j),mapPlain(2,j)) = m99(i,j)
- enddo
 
 end function math_99to3333
 
@@ -1249,9 +1235,8 @@ pure function math_3333to66(m3333,weighted)
    w = nrmMandel
  endif
 
- do concurrent(i=1_pInt:6_pInt,j=1_pInt:6_pInt) 
+ forall(i=1_pInt:6_pInt,j=1_pInt:6_pInt) &
    math_3333to66(i,j) = w(i)*w(j)*m3333(mapNye(1,i),mapNye(2,i),mapNye(1,j),mapNye(2,j))
- enddo
 
 end function math_3333to66
 
@@ -1711,9 +1696,7 @@ pure function math_qToR(q)
  real(pReal), dimension(3,3) :: math_qToR, T,S
  integer(pInt) :: i, j
 
- do concurrent (i = 1_pInt:3_pInt, j = 1_pInt:3_pInt)
-   T(i,j) = q(i+1_pInt) * q(j+1_pInt)
- enddo
+ forall(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt) T(i,j) = q(i+1_pInt) * q(j+1_pInt)
 
  S = reshape( [0.0_pReal,     -q(4),      q(3), &
                     q(4), 0.0_pReal,     -q(2), &
