@@ -83,11 +83,11 @@ module math
  end interface math_Plain9to33
  
  interface math_Mandel33to6
-   module procedure math_33to6
+   module procedure math_sym33to6
  end interface math_Mandel33to6
  
   interface math_Mandel6to33
-   module procedure math_6to33
+   module procedure math_6toSym33
  end interface math_Mandel6to33
  
   interface math_Plain3333to99
@@ -99,11 +99,11 @@ module math
  end interface math_Plain99to3333
  
  interface math_Mandel3333to66
-   module procedure math_3333to66
+   module procedure math_sym3333to66
  end interface math_Mandel3333to66
  
  interface math_Mandel66to3333
-   module procedure math_66to3333
+   module procedure math_66toSym3333
  end interface math_Mandel66to3333
  
  public :: &
@@ -156,12 +156,12 @@ module math
    math_det33, &
    math_33to9, &
    math_9to33, &
-   math_33to6, &
-   math_6to33, &
+   math_sym33to6, &
+   math_6toSym33, &
    math_3333to99, &
    math_99to3333, &
-   math_3333to66, &
-   math_66to3333, &
+   math_sym3333to66, &
+   math_66toSym3333, &
    math_Voigt66to3333, &
    math_qRand, &
    math_qMul, &
@@ -878,11 +878,11 @@ function math_invSym3333(A)
   dgetrf, &
   dgetri
 
- temp66_real = math_3333to66(A)
+ temp66_real = math_sym3333to66(A)
  call dgetrf(6,6,temp66_real,6,ipiv6,ierr)
  call dgetri(6,temp66_real,6,ipiv6,work6,6,ierr)
  if (ierr == 0_pInt) then
-   math_invSym3333 = math_66to3333(temp66_real)
+   math_invSym3333 = math_66toSym3333(temp66_real)
  else
    call IO_error(400_pInt, ext_msg = 'math_invSym3333')
  endif
@@ -1128,10 +1128,10 @@ end function math_9to33
 ! components according to Mandel. Advisable for matrix operations.
 ! Unweighted conversion only changes order according to Nye
 !--------------------------------------------------------------------------------------------------
-pure function math_33to6(m33,weighted)
+pure function math_sym33to6(m33,weighted)
 
  implicit none
- real(pReal), dimension(6)               :: math_33to6
+ real(pReal), dimension(6)               :: math_sym33to6
  real(pReal), dimension(3,3), intent(in) :: m33
  logical,     optional,       intent(in) :: weighted
  
@@ -1144,9 +1144,9 @@ pure function math_33to6(m33,weighted)
    w = nrmMandel
  endif
 
- forall(i=1_pInt:6_pInt) math_33to6(i) = w(i)*m33(mapNye(1,i),mapNye(2,i))
+ forall(i=1_pInt:6_pInt) math_sym33to6(i) = w(i)*m33(mapNye(1,i),mapNye(2,i))
 
-end function math_33to6
+end function math_sym33to6
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1155,10 +1155,10 @@ end function math_33to6
 ! components according to Mandel. Advisable for matrix operations.
 ! Unweighted conversion only changes order according to Nye
 !--------------------------------------------------------------------------------------------------
-pure function math_6to33(v6,weighted)
+pure function math_6toSym33(v6,weighted)
 
  implicit none
- real(pReal), dimension(3,3)           :: math_6to33
+ real(pReal), dimension(3,3)           :: math_6toSym33
  real(pReal), dimension(6), intent(in) :: v6
  logical,     optional,     intent(in) :: weighted
 
@@ -1172,11 +1172,11 @@ pure function math_6to33(v6,weighted)
  endif
 
  do i=1_pInt,6_pInt
-   math_6to33(mapNye(1,i),mapNye(2,i)) = w(i)*v6(i)
-   math_6to33(mapNye(2,i),mapNye(1,i)) = w(i)*v6(i)
+   math_6toSym33(mapNye(1,i),mapNye(2,i)) = w(i)*v6(i)
+   math_6toSym33(mapNye(2,i),mapNye(1,i)) = w(i)*v6(i)
  enddo
 
-end function math_6to33
+end function math_6toSym33
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1219,10 +1219,10 @@ end function math_99to3333
 ! components according to Mandel. Advisable for matrix operations.
 ! Unweighted conversion only changes order according to Nye
 !--------------------------------------------------------------------------------------------------
-pure function math_3333to66(m3333,weighted)
+pure function math_sym3333to66(m3333,weighted)
 
  implicit none
- real(pReal), dimension(6,6)                 :: math_3333to66
+ real(pReal), dimension(6,6)                 :: math_sym3333to66
  real(pReal), dimension(3,3,3,3), intent(in) :: m3333
  logical,     optional,           intent(in) :: weighted
 
@@ -1236,9 +1236,9 @@ pure function math_3333to66(m3333,weighted)
  endif
 
  forall(i=1_pInt:6_pInt,j=1_pInt:6_pInt) &
-   math_3333to66(i,j) = w(i)*w(j)*m3333(mapNye(1,i),mapNye(2,i),mapNye(1,j),mapNye(2,j))
+   math_sym3333to66(i,j) = w(i)*w(j)*m3333(mapNye(1,i),mapNye(2,i),mapNye(1,j),mapNye(2,j))
 
-end function math_3333to66
+end function math_sym3333to66
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1247,10 +1247,10 @@ end function math_3333to66
 ! components according to Mandel. Advisable for matrix operations.
 ! Unweighted conversion only changes order according to Nye
 !--------------------------------------------------------------------------------------------------
-pure function math_66to3333(m66,weighted)
+pure function math_66toSym3333(m66,weighted)
 
  implicit none
- real(pReal), dimension(3,3,3,3)            :: math_66to3333
+ real(pReal), dimension(3,3,3,3)            :: math_66toSym3333
  real(pReal), dimension(6,6),    intent(in) :: m66
  logical,     optional,          intent(in) :: weighted
  
@@ -1264,13 +1264,13 @@ pure function math_66to3333(m66,weighted)
  endif
 
  do i=1_pInt,6_pInt; do j=1_pInt, 6_pInt
-   math_66to3333(mapNye(1,i),mapNye(2,i),mapNye(1,j),mapNye(2,j)) = w(i)*w(j)*m66(i,j)
-   math_66to3333(mapNye(2,i),mapNye(1,i),mapNye(1,j),mapNye(2,j)) = w(i)*w(j)*m66(i,j)
-   math_66to3333(mapNye(1,i),mapNye(2,i),mapNye(2,j),mapNye(1,j)) = w(i)*w(j)*m66(i,j)
-   math_66to3333(mapNye(2,i),mapNye(1,i),mapNye(2,j),mapNye(1,j)) = w(i)*w(j)*m66(i,j)
+   math_66toSym3333(mapNye(1,i),mapNye(2,i),mapNye(1,j),mapNye(2,j)) = w(i)*w(j)*m66(i,j)
+   math_66toSym3333(mapNye(2,i),mapNye(1,i),mapNye(1,j),mapNye(2,j)) = w(i)*w(j)*m66(i,j)
+   math_66toSym3333(mapNye(1,i),mapNye(2,i),mapNye(2,j),mapNye(1,j)) = w(i)*w(j)*m66(i,j)
+   math_66toSym3333(mapNye(2,i),mapNye(1,i),mapNye(2,j),mapNye(1,j)) = w(i)*w(j)*m66(i,j)
  enddo; enddo
 
-end function math_66to3333
+end function math_66toSym3333
 
 
 !--------------------------------------------------------------------------------------------------
