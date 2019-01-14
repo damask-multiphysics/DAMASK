@@ -29,7 +29,7 @@ module math
      1.0_pReal,       1.0_pReal,       1.0_pReal, &
      sqrt(2.0_pReal), sqrt(2.0_pReal), sqrt(2.0_pReal) ]                                            !< weighting for Mandel notation (forward)
 
- real(pReal), dimension(6), parameter , public :: &
+ real(pReal), dimension(6), parameter , private :: &
    invnrmMandel = [&
      1.0_pReal,                 1.0_pReal,                 1.0_pReal, &
      1.0_pReal/sqrt(2.0_pReal), 1.0_pReal/sqrt(2.0_pReal), 1.0_pReal/sqrt(2.0_pReal) ]              !< weighting for Mandel notation (backward)
@@ -1180,7 +1180,7 @@ end function math_6to33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 3333 matrix into vector 99
+!> @brief convert 3333 matrix into 99 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_3333to99(m3333)
 
@@ -1197,7 +1197,7 @@ end function math_3333to99
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 99 vector into 3333 matrix
+!> @brief convert 99 matrix into 3333 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_99to3333(m99)
 
@@ -1214,7 +1214,7 @@ end function math_99to3333
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert symmetric 3333 matrix into 66 vector
+!> @brief convert symmetric 3333 matrix into 66 matrix
 !> @details Weighted conversion (default) rearranges according to Nye and weights shear
 ! components according to Mandel. Advisable for matrix operations.
 ! Unweighted conversion only changes order according to Nye
@@ -1242,7 +1242,7 @@ end function math_3333to66
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 66 vector into symmetric 3333 matrix
+!> @brief convert 66 matrix into symmetric 3333 matrix
 !> @details Weighted conversion (default) rearranges according to Nye and weights shear
 ! components according to Mandel. Advisable for matrix operations.
 ! Unweighted conversion only changes order according to Nye
@@ -1274,7 +1274,7 @@ end function math_66to3333
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert Voigt matrix 66 back to symmetric 3333 tensor
+!> @brief convert 66 Voigt matrix into symmetric 3333 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_Voigt66to3333(m66)
 

@@ -594,7 +594,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
        ! translate from P to CS
        Kirchhoff = math_mul33x33(materialpoint_P(1:3,1:3,ip,elCP), transpose(materialpoint_F(1:3,1:3,ip,elCP)))
        J_inverse  = 1.0_pReal / math_det33(materialpoint_F(1:3,1:3,ip,elCP))
-       CPFEM_cs(1:6,ip,elCP) = math_33to6(J_inverse * Kirchhoff)
+       CPFEM_cs(1:6,ip,elCP) = math_33to6(J_inverse * Kirchhoff,weighted=.false.)
 
        !  translate from dP/dF to dCS/dE
        H = 0.0_pReal
@@ -610,7 +610,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
        forall(i=1:3, j=1:3,k=1:3,l=1:3) &
          H_sym(i,j,k,l) = 0.25_pReal * (H(i,j,k,l) + H(j,i,k,l) + H(i,j,l,k) + H(j,i,l,k))
 
-       CPFEM_dcsde(1:6,1:6,ip,elCP) = math_3333to66(J_inverse * H_sym)
+       CPFEM_dcsde(1:6,1:6,ip,elCP) = math_3333to66(J_inverse * H_sym,weighted=.false.)
 
      endif terminalIllness
    endif validCalculation
@@ -637,7 +637,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
 
 
  !*** remember extreme values of stress ...
- cauchyStress33 = math_6to33(CPFEM_cs(1:6,ip,elCP))
+ cauchyStress33 = math_6to33(CPFEM_cs(1:6,ip,elCP),weighted=.false.)
  if (maxval(cauchyStress33) > debug_stressMax) then
    debug_stressMaxLocation = [elCP, ip]
    debug_stressMax = maxval(cauchyStress33)
@@ -647,7 +647,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
    debug_stressMin = minval(cauchyStress33)
  endif
  !*** ... and Jacobian
- jacobian3333 = math_66to3333(CPFEM_dcsdE(1:6,1:6,ip,elCP))
+ jacobian3333 = math_66to3333(CPFEM_dcsdE(1:6,1:6,ip,elCP),weighted=.false.)
  if (maxval(jacobian3333) > debug_jacobianMax) then
    debug_jacobianMaxLocation = [elCP, ip]
    debug_jacobianMax = maxval(jacobian3333)
