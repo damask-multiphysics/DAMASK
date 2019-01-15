@@ -73,14 +73,10 @@ module crystallite
  logical,                    dimension(:,:,:),         allocatable, public :: &
    crystallite_requested                                                                            !< flag to request crystallite calculation
  logical,                    dimension(:,:,:),         allocatable, public, protected :: &
-   crystallite_converged, &                                                                         !< convergence flag
-   crystallite_localPlasticity                                                                      !< indicates this grain to have purely local constitutive law
+   crystallite_converged                                                                            !< convergence flag
  logical,                    dimension(:,:,:),         allocatable, private :: &
+   crystallite_localPlasticity, &                                                                   !< indicates this grain to have purely local constitutive law
    crystallite_todo                                                                                 !< flag to indicate need for further computation
- logical,                    dimension(:,:),           allocatable, private :: &
-   crystallite_clearToWindForward, &                                                                !< description not available
-   crystallite_clearToCutback, &                                                                    !< description not available
-   crystallite_neighborEnforcedCutback                                                              !< description not available
 
  enum, bind(c)
    enumerator :: undefined_ID, &
@@ -245,9 +241,6 @@ subroutine crystallite_init
  allocate(crystallite_requested(cMax,iMax,eMax),             source=.false.)
  allocate(crystallite_todo(cMax,iMax,eMax),                  source=.false.)
  allocate(crystallite_converged(cMax,iMax,eMax),             source=.true.)
- allocate(crystallite_clearToWindForward(iMax,eMax),         source=.true.)
- allocate(crystallite_clearToCutback(iMax,eMax),             source=.true.)
- allocate(crystallite_neighborEnforcedCutback(iMax,eMax),    source=.false.)
  allocate(crystallite_output(maxval(crystallite_Noutput), &
                              size(config_crystallite))) ;       crystallite_output = ''
  allocate(crystallite_outputID(maxval(crystallite_Noutput), &
@@ -601,7 +594,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
          do c = 1,homogenization_Ngrains(mesh_element(3,e))
            ! --- wind forward ---
 
-           if (crystallite_converged(c,i,e) .and. crystallite_clearToWindForward(i,e)) then
+           if (crystallite_converged(c,i,e)) then
              formerSubStep = crystallite_subStep(c,i,e)
              crystallite_subFrac(c,i,e) = crystallite_subFrac(c,i,e) + crystallite_subStep(c,i,e)
              crystallite_subStep(c,i,e) = min(1.0_pReal - crystallite_subFrac(c,i,e), &
@@ -636,7 +629,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
            ! --- cutback ---
 
-           elseif (.not. crystallite_converged(c,i,e) .and. crystallite_clearToCutback(i,e)) then
+           elseif (.not. crystallite_converged(c,i,e)) then
              crystallite_subStep(c,i,e) = subStepSizeCryst * crystallite_subStep(c,i,e)              ! cut step in half and restore...
              crystallite_Fp(1:3,1:3,c,i,e) = crystallite_subFp0(1:3,1:3,c,i,e)                       ! ...plastic def grad
              crystallite_invFp(1:3,1:3,c,i,e) = math_inv33(crystallite_Fp(1:3,1:3,c,i,e))
@@ -672,7 +665,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
            ! --- prepare for integration ---
 
-           if (crystallite_todo(c,i,e) .and. (crystallite_clearToWindForward(i,e) .or. crystallite_clearToCutback(i,e))) then
+           if (crystallite_todo(c,i,e)) then
              crystallite_subF(1:3,1:3,c,i,e) = crystallite_subF0(1:3,1:3,c,i,e) &
                                              + crystallite_subStep(c,i,e) * (crystallite_partionedF(1:3,1:3,c,i,e) &
                                              - crystallite_partionedF0(1:3,1:3,c,i,e))
