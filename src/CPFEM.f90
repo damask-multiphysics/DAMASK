@@ -286,12 +286,11 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
    math_identity2nd, &
    math_mul33x33, &
    math_det33, &
-   math_transpose33, &
-   math_I3, &
-   math_Mandel3333to66, &
-   math_Mandel66to3333, &
-   math_Mandel33to6, &
-   math_Mandel6to33
+   math_delta, &
+   math_sym3333to66, &
+   math_66toSym3333, &
+   math_sym33to6, &
+   math_6toSym33
  use mesh, only: &
    mesh_FEasCP, &
    mesh_NcpElems, &
@@ -353,8 +352,8 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
  integer(pInt), intent(in) ::                        mode                                           !< computation mode  1: regular computation plus aging of results
  real(pReal), intent(in) ::                          temperature_inp                                !< temperature
  logical, intent(in) ::                              parallelExecution                              !< flag indicating parallel computation of requested IPs
- real(pReal), dimension(6), intent(out) ::           cauchyStress                                   !< stress vector in Mandel notation
- real(pReal), dimension(6,6), intent(out) ::         jacobian                                       !< jacobian in Mandel notation (Consistent tangent dcs/dE)
+ real(pReal), dimension(6), intent(out) ::           cauchyStress                                   !< stress as 6 vector
+ real(pReal), dimension(6,6), intent(out) ::         jacobian                                       !< jacobian as 66 tensor (Consistent tangent dcs/dE)
 
  real(pReal)                                         J_inverse, &                                   ! inverse of Jacobian
                                                      rnd
@@ -534,8 +533,8 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
        if (iand(debug_level(debug_CPFEM), debug_levelBasic) /=  0_pInt) then
            write(6,'(a,1x,i8,1x,i2)') '<< CPFEM >> OUTDATED at elFE ip',elFE,ip
            write(6,'(a,/,3(12x,3(f10.6,1x),/))') '<< CPFEM >> FFN1 old:',&
-                                             math_transpose33(materialpoint_F(1:3,1:3,ip,elCP))
-           write(6,'(a,/,3(12x,3(f10.6,1x),/))') '<< CPFEM >> FFN1 now:',math_transpose33(ffn1)
+                                             transpose(materialpoint_F(1:3,1:3,ip,elCP))
+           write(6,'(a,/,3(12x,3(f10.6,1x),/))') '<< CPFEM >> FFN1 now:',transpose(ffn1)
        endif
        outdatedFFN1 = .true.
      endif
@@ -593,26 +592,25 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
        endif
 
        ! translate from P to CS
-       Kirchhoff = math_mul33x33(materialpoint_P(1:3,1:3,ip,elCP), math_transpose33(materialpoint_F(1:3,1:3,ip,elCP)))
+       Kirchhoff = math_mul33x33(materialpoint_P(1:3,1:3,ip,elCP), transpose(materialpoint_F(1:3,1:3,ip,elCP)))
        J_inverse  = 1.0_pReal / math_det33(materialpoint_F(1:3,1:3,ip,elCP))
-       CPFEM_cs(1:6,ip,elCP) = math_Mandel33to6(J_inverse * Kirchhoff)
+       CPFEM_cs(1:6,ip,elCP) = math_sym33to6(J_inverse * Kirchhoff,weighted=.false.)
 
        !  translate from dP/dF to dCS/dE
        H = 0.0_pReal
        do i=1,3; do j=1,3; do k=1,3; do l=1,3; do m=1,3; do n=1,3
-         H(i,j,k,l) = H(i,j,k,l) + &
-                       materialpoint_F(j,m,ip,elCP) * &
-                       materialpoint_F(l,n,ip,elCP) * &
-                       materialpoint_dPdF(i,m,k,n,ip,elCP) - &
-                       math_I3(j,l) * materialpoint_F(i,m,ip,elCP) * materialpoint_P(k,m,ip,elCP) + &
-                       0.5_pReal * (math_I3(i,k) * Kirchhoff(j,l) + math_I3(j,l) * Kirchhoff(i,k) + &
-                                  math_I3(i,l) * Kirchhoff(j,k) + math_I3(j,k) * Kirchhoff(i,l))
+         H(i,j,k,l) = H(i,j,k,l) &
+                    +  materialpoint_F(j,m,ip,elCP) * materialpoint_F(l,n,ip,elCP) &
+                                                    * materialpoint_dPdF(i,m,k,n,ip,elCP) &
+                    -  math_delta(j,l) * materialpoint_F(i,m,ip,elCP) * materialpoint_P(k,m,ip,elCP) &
+                    +  0.5_pReal * (  Kirchhoff(j,l)*math_delta(i,k) + Kirchhoff(i,k)*math_delta(j,l) &
+                                    + Kirchhoff(j,k)*math_delta(i,l) + Kirchhoff(i,l)*math_delta(j,k))
        enddo; enddo; enddo; enddo; enddo; enddo
 
        forall(i=1:3, j=1:3,k=1:3,l=1:3) &
          H_sym(i,j,k,l) = 0.25_pReal * (H(i,j,k,l) + H(j,i,k,l) + H(i,j,l,k) + H(j,i,l,k))
 
-       CPFEM_dcsde(1:6,1:6,ip,elCP) = math_Mandel3333to66(J_inverse * H_sym)
+       CPFEM_dcsde(1:6,1:6,ip,elCP) = math_sym3333to66(J_inverse * H_sym,weighted=.false.)
 
      endif terminalIllness
    endif validCalculation
@@ -639,7 +637,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
 
 
  !*** remember extreme values of stress ...
- cauchyStress33 = math_Mandel6to33(CPFEM_cs(1:6,ip,elCP))
+ cauchyStress33 = math_6toSym33(CPFEM_cs(1:6,ip,elCP),weighted=.false.)
  if (maxval(cauchyStress33) > debug_stressMax) then
    debug_stressMaxLocation = [elCP, ip]
    debug_stressMax = maxval(cauchyStress33)
@@ -649,7 +647,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
    debug_stressMin = minval(cauchyStress33)
  endif
  !*** ... and Jacobian
- jacobian3333 = math_Mandel66to3333(CPFEM_dcsdE(1:6,1:6,ip,elCP))
+ jacobian3333 = math_66toSym3333(CPFEM_dcsdE(1:6,1:6,ip,elCP),weighted=.false.)
  if (maxval(jacobian3333) > debug_jacobianMax) then
    debug_jacobianMaxLocation = [elCP, ip]
    debug_jacobianMax = maxval(jacobian3333)
