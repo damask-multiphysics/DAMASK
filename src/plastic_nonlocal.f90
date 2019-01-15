@@ -150,61 +150,34 @@ module plastic_nonlocal
  
  enum, bind(c) 
    enumerator :: undefined_ID, &
-                 rho_ID, &
-                 delta_ID, &
-                 rho_edge_ID, &
-                 rho_screw_ID, &
-                 rho_sgl_ID, &
-                 delta_sgl_ID, &
-                 rho_sgl_edge_ID, &
-                 rho_sgl_edge_pos_ID, &
-                 rho_sgl_edge_neg_ID, &
-                 rho_sgl_screw_ID, &
-                 rho_sgl_screw_pos_ID, &
-                 rho_sgl_screw_neg_ID, &
-                 rho_sgl_mobile_ID, &
-                 rho_sgl_edge_mobile_ID, &
                  rho_sgl_edge_pos_mobile_ID, &
                  rho_sgl_edge_neg_mobile_ID, &
-                 rho_sgl_screw_mobile_ID, &
                  rho_sgl_screw_pos_mobile_ID, &
                  rho_sgl_screw_neg_mobile_ID, &
-                 rho_sgl_immobile_ID, &
-                 rho_sgl_edge_immobile_ID, &
                  rho_sgl_edge_pos_immobile_ID, &
                  rho_sgl_edge_neg_immobile_ID, &
-                 rho_sgl_screw_immobile_ID, &
                  rho_sgl_screw_pos_immobile_ID, &
                  rho_sgl_screw_neg_immobile_ID, &
-                 rho_dip_ID, &
-                 delta_dip_ID, &
                  rho_dip_edge_ID, &
                  rho_dip_screw_ID, &
-                 excess_rho_ID, &
-                 excess_rho_edge_ID, &
-                 excess_rho_screw_ID, &
                  rho_forest_ID, &
                  shearrate_ID, &
                  resolvedstress_ID, &
                  resolvedstress_external_ID, &
                  resolvedstress_back_ID, &
                  resistance_ID, &
-                 rho_dot_ID, &
                  rho_dot_sgl_ID, &
                  rho_dot_sgl_mobile_ID, &
                  rho_dot_dip_ID, &
                  rho_dot_gen_ID, &
                  rho_dot_gen_edge_ID, &
                  rho_dot_gen_screw_ID, &
-                 rho_dot_sgl2dip_ID, &
                  rho_dot_sgl2dip_edge_ID, &
                  rho_dot_sgl2dip_screw_ID, &
                  rho_dot_ann_ath_ID, &
-                 rho_dot_ann_the_ID, &
                  rho_dot_ann_the_edge_ID, &
                  rho_dot_ann_the_screw_ID, &
                  rho_dot_edgejogs_ID, &
-                 rho_dot_flux_ID, &
                  rho_dot_flux_mobile_ID, &
                  rho_dot_flux_edge_ID, &
                  rho_dot_flux_screw_ID, &
@@ -212,28 +185,9 @@ module plastic_nonlocal
                  velocity_edge_neg_ID, &
                  velocity_screw_pos_ID, &
                  velocity_screw_neg_ID, &
-                 slipdirectionx_ID, &
-                 slipdirectiony_ID, &
-                 slipdirectionz_ID, &
-                 slipnormalx_ID, &
-                 slipnormaly_ID, &
-                 slipnormalz_ID, &
-                 fluxdensity_edge_posx_ID, &
-                 fluxdensity_edge_posy_ID, &
-                 fluxdensity_edge_posz_ID, &
-                 fluxdensity_edge_negx_ID, &
-                 fluxdensity_edge_negy_ID, &
-                 fluxdensity_edge_negz_ID, &
-                 fluxdensity_screw_posx_ID, &
-                 fluxdensity_screw_posy_ID, &
-                 fluxdensity_screw_posz_ID, &
-                 fluxdensity_screw_negx_ID, &
-                 fluxdensity_screw_negy_ID, &
-                 fluxdensity_screw_negz_ID, &
                  maximumdipoleheight_edge_ID, &
                  maximumdipoleheight_screw_ID, &
-                 accumulatedshear_ID, &
-                 dislocationstress_ID
+                 accumulatedshear_ID
  end enum
  integer(kind(undefined_ID)), dimension(:,:),   allocatable, private :: & 
    plastic_nonlocal_outputID                                                              !< ID of each post result output
@@ -426,76 +380,6 @@ allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstances),                  s
      select case(tag)
        case ('(output)')
          select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
-           case ('rho')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('delta')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = delta_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('rho_edge')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_edge_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('rho_screw')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_screw_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('rho_sgl')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('delta_sgl')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = delta_sgl_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('rho_sgl_edge')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_edge_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('rho_sgl_edge_pos')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_edge_pos_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('rho_sgl_edge_neg')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_edge_neg_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('rho_sgl_screw')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_screw_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('rho_sgl_screw_pos')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_screw_pos_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('rho_sgl_screw_neg')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_screw_neg_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('rho_sgl_mobile')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_mobile_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('rho_sgl_edge_mobile')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_edge_mobile_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('rho_sgl_edge_pos_mobile')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_edge_pos_mobile_ID
@@ -504,11 +388,6 @@ allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstances),                  s
            case ('rho_sgl_edge_neg_mobile')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_edge_neg_mobile_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('rho_sgl_screw_mobile')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_screw_mobile_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('rho_sgl_screw_pos_mobile')
@@ -521,29 +400,9 @@ allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstances),                  s
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_screw_neg_mobile_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('rho_sgl_immobile')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_immobile_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('rho_sgl_edge_immobile')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_edge_immobile_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('rho_sgl_edge_pos_immobile')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_edge_pos_immobile_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('rho_sgl_edge_neg_immobile')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_edge_neg_immobile_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('rho_sgl_screw_immobile')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_screw_immobile_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('rho_sgl_screw_pos_immobile')
@@ -556,16 +415,6 @@ allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstances),                  s
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_screw_neg_immobile_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('rho_dip')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dip_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('delta_dip')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = delta_dip_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('rho_dip_edge')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dip_edge_ID
@@ -574,21 +423,6 @@ allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstances),                  s
            case ('rho_dip_screw')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dip_screw_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('excess_rho')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = excess_rho_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('excess_rho_edge')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = excess_rho_edge_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('excess_rho_screw')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = excess_rho_screw_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('rho_forest')
@@ -621,11 +455,6 @@ allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstances),                  s
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = resistance_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('rho_dot')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('rho_dot_sgl')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_sgl_ID
@@ -656,11 +485,6 @@ allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstances),                  s
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_gen_screw_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('rho_dot_sgl2dip')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_sgl2dip_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('rho_dot_sgl2dip_edge')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_sgl2dip_edge_ID
@@ -676,11 +500,6 @@ allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstances),                  s
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_ann_ath_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('rho_dot_ann_the')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_ann_the_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('rho_dot_ann_the_edge')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_ann_the_edge_ID
@@ -694,11 +513,6 @@ allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstances),                  s
            case ('rho_dot_edgejogs')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_edgejogs_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('rho_dot_flux')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_flux_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('rho_dot_flux_mobile')
@@ -736,96 +550,6 @@ allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstances),                  s
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = velocity_screw_neg_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('slipdirection.x')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = slipdirectionx_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('slipdirection.y')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = slipdirectiony_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('slipdirection.z')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = slipdirectionz_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('slipnormal.x')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = slipnormalx_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('slipnormal.y')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = slipnormaly_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('slipnormal.z')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = slipnormalz_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('fluxdensity_edge_pos.x')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_edge_posx_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('fluxdensity_edge_pos.y')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_edge_posy_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('fluxdensity_edge_pos.z')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_edge_posz_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('fluxdensity_edge_neg.x')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_edge_negx_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('fluxdensity_edge_neg.y')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_edge_negy_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('fluxdensity_edge_neg.z')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_edge_negz_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('fluxdensity_screw_pos.x')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_screw_posx_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('fluxdensity_screw_pos.y')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_screw_posy_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('fluxdensity_screw_pos.z')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_screw_posz_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('fluxdensity_screw_neg.x')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_screw_negx_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('fluxdensity_screw_neg.y')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_screw_negy_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('fluxdensity_screw_neg.z')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_screw_negz_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('maximumdipoleheight_edge')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = maximumdipoleheight_edge_ID
@@ -839,11 +563,6 @@ allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstances),                  s
            case ('accumulatedshear','accumulated_shear')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = accumulatedshear_ID
-             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
-               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-           case ('dislocationstress')
-             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
-             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = dislocationstress_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,chunkPos,2_pInt))
          end select
@@ -1195,93 +914,8 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                
      
      outputsLoop: do o = 1_pInt,plastic_nonlocal_Noutput(instance)
        select case(plastic_nonlocal_outputID(o,instance))
-         case( rho_ID, &
-               delta_ID, &
-               rho_edge_ID, &
-               rho_screw_ID, &
-               rho_sgl_ID, &
-               delta_sgl_ID, &
-               rho_sgl_edge_ID, &
-               rho_sgl_edge_pos_ID, &
-               rho_sgl_edge_neg_ID, &
-               rho_sgl_screw_ID, &
-               rho_sgl_screw_pos_ID, &
-               rho_sgl_screw_neg_ID, &
-               rho_sgl_mobile_ID, &
-               rho_sgl_edge_mobile_ID, &
-               rho_sgl_edge_pos_mobile_ID, &
-               rho_sgl_edge_neg_mobile_ID, &
-               rho_sgl_screw_mobile_ID, &
-               rho_sgl_screw_pos_mobile_ID, &
-               rho_sgl_screw_neg_mobile_ID, &
-               rho_sgl_immobile_ID, &
-               rho_sgl_edge_immobile_ID, &
-               rho_sgl_edge_pos_immobile_ID, &
-               rho_sgl_edge_neg_immobile_ID, &
-               rho_sgl_screw_immobile_ID, &
-               rho_sgl_screw_pos_immobile_ID, &
-               rho_sgl_screw_neg_immobile_ID, &
-               rho_dip_ID, &
-               delta_dip_ID, &
-               rho_dip_edge_ID, &
-               rho_dip_screw_ID, &
-               excess_rho_ID, &
-               excess_rho_edge_ID, &
-               excess_rho_screw_ID, &
-               rho_forest_ID, &
-               shearrate_ID, &
-               resolvedstress_ID, &
-               resolvedstress_external_ID, &
-               resolvedstress_back_ID, &
-               resistance_ID, &
-               rho_dot_ID, &
-               rho_dot_sgl_ID, &
-               rho_dot_sgl_mobile_ID, &
-               rho_dot_dip_ID, &
-               rho_dot_gen_ID, &
-               rho_dot_gen_edge_ID, &
-               rho_dot_gen_screw_ID, &
-               rho_dot_sgl2dip_ID, &
-               rho_dot_sgl2dip_edge_ID, &
-               rho_dot_sgl2dip_screw_ID, &
-               rho_dot_ann_ath_ID, &
-               rho_dot_ann_the_ID, &
-               rho_dot_ann_the_edge_ID, &
-               rho_dot_ann_the_screw_ID, &
-               rho_dot_edgejogs_ID, &
-               rho_dot_flux_ID, &
-               rho_dot_flux_mobile_ID, &
-               rho_dot_flux_edge_ID, &
-               rho_dot_flux_screw_ID, &
-               velocity_edge_pos_ID, &
-               velocity_edge_neg_ID, &
-               velocity_screw_pos_ID, &
-               velocity_screw_neg_ID, &
-               slipdirectionx_ID, &
-               slipdirectiony_ID, &
-               slipdirectionz_ID, &
-               slipnormalx_ID, &
-               slipnormaly_ID, &
-               slipnormalz_ID, &
-               fluxdensity_edge_posx_ID, &
-               fluxdensity_edge_posy_ID, &
-               fluxdensity_edge_posz_ID, &
-               fluxdensity_edge_negx_ID, &
-               fluxdensity_edge_negy_ID, &
-               fluxdensity_edge_negz_ID, &
-               fluxdensity_screw_posx_ID, &
-               fluxdensity_screw_posy_ID, &
-               fluxdensity_screw_posz_ID, &
-               fluxdensity_screw_negx_ID, &
-               fluxdensity_screw_negy_ID, &
-               fluxdensity_screw_negz_ID, &
-               maximumdipoleheight_edge_ID, &
-               maximumdipoleheight_screw_ID, &
-               accumulatedshear_ID )
-           mySize = totalNslip(instance)
-         case(dislocationstress_ID)
-           mySize = 6_pInt
          case default
+           mySize = totalNslip(instance)
        end select
    
        if (mySize > 0_pInt) then                                                                       ! any meaningful output found                               
@@ -3655,45 +3289,6 @@ forall (s = 1_pInt:ns) &
 
 outputsLoop: do o = 1_pInt,plastic_nonlocal_Noutput(instance)
   select case(plastic_nonlocal_outputID(o,instance))
-    case (rho_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(abs(rhoSgl),2) + sum(rhoDip,2)
-      cs = cs + ns
-      
-    case (rho_sgl_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(abs(rhoSgl),2)
-      cs = cs + ns
-      
-    case (rho_sgl_mobile_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(abs(rhoSgl(1:ns,1:4)),2)
-      cs = cs + ns
-      
-    case (rho_sgl_immobile_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoSgl(1:ns,5:8),2)
-      cs = cs + ns
-      
-    case (rho_dip_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoDip,2)
-      cs = cs + ns
-      
-    case (rho_edge_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(abs(rhoSgl(1:ns,[1,2,5,6])),2) + rhoDip(1:ns,1)
-      cs = cs + ns
-      
-    case (rho_sgl_edge_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(abs(rhoSgl(1:ns,[1,2,5,6])),2)
-      cs = cs + ns
-      
-    case (rho_sgl_edge_mobile_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoSgl(1:ns,1:2),2)
-      cs = cs + ns
-      
-    case (rho_sgl_edge_immobile_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoSgl(1:ns,5:6),2)
-      cs = cs + ns
-      
-    case (rho_sgl_edge_pos_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,1) + abs(rhoSgl(1:ns,5))
-      cs = cs + ns
       
     case (rho_sgl_edge_pos_mobile_ID)
       plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,1)
@@ -3701,10 +3296,6 @@ outputsLoop: do o = 1_pInt,plastic_nonlocal_Noutput(instance)
       
     case (rho_sgl_edge_pos_immobile_ID)
       plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,5)
-      cs = cs + ns
-      
-    case (rho_sgl_edge_neg_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,2) + abs(rhoSgl(1:ns,6))
       cs = cs + ns
       
     case (rho_sgl_edge_neg_mobile_ID)
@@ -3719,36 +3310,12 @@ outputsLoop: do o = 1_pInt,plastic_nonlocal_Noutput(instance)
       plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDip(1:ns,1)
       cs = cs + ns
       
-    case (rho_screw_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(abs(rhoSgl(1:ns,[3,4,7,8])),2) + rhoDip(1:ns,2)
-      cs = cs + ns
-      
-    case (rho_sgl_screw_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(abs(rhoSgl(1:ns,[3,4,7,8])),2)
-      cs = cs + ns
-            
-    case (rho_sgl_screw_mobile_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoSgl(1:ns,3:4),2)
-      cs = cs + ns
-      
-    case (rho_sgl_screw_immobile_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoSgl(1:ns,7:8),2)
-      cs = cs + ns
-      
-    case (rho_sgl_screw_pos_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,3) + abs(rhoSgl(1:ns,7))
-      cs = cs + ns
-      
     case (rho_sgl_screw_pos_mobile_ID)
       plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,3)
       cs = cs + ns
       
     case (rho_sgl_screw_pos_immobile_ID)
       plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,7)
-      cs = cs + ns
-      
-    case (rho_sgl_screw_neg_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,4) + abs(rhoSgl(1:ns,8))
       cs = cs + ns
 
     case (rho_sgl_screw_neg_mobile_ID)
@@ -3763,37 +3330,8 @@ outputsLoop: do o = 1_pInt,plastic_nonlocal_Noutput(instance)
       plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDip(1:ns,2)
       cs = cs + ns
       
-    case (excess_rho_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = (rhoSgl(1:ns,1) + abs(rhoSgl(1:ns,5))) &
-                                                         - (rhoSgl(1:ns,2) + abs(rhoSgl(1:ns,6))) &
-                                                         + (rhoSgl(1:ns,3) + abs(rhoSgl(1:ns,7))) &
-                                                         - (rhoSgl(1:ns,4) + abs(rhoSgl(1:ns,8)))
-      cs = cs + ns
-      
-    case (excess_rho_edge_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = (rhoSgl(1:ns,1) + abs(rhoSgl(1:ns,5))) &
-                                                         - (rhoSgl(1:ns,2) + abs(rhoSgl(1:ns,6)))
-      cs = cs + ns
-      
-    case (excess_rho_screw_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = (rhoSgl(1:ns,3) + abs(rhoSgl(1:ns,7))) &
-                                                         - (rhoSgl(1:ns,4) + abs(rhoSgl(1:ns,8)))
-      cs = cs + ns
-      
     case (rho_forest_ID)
       plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoForest
-      cs = cs + ns
-    
-    case (delta_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = 1.0_pReal / sqrt(sum(abs(rhoSgl),2) + sum(rhoDip,2))
-      cs = cs + ns
-      
-    case (delta_sgl_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = 1.0_pReal / sqrt(sum(abs(rhoSgl),2))
-      cs = cs + ns
-      
-    case (delta_dip_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = 1.0_pReal / sqrt(sum(rhoDip,2))
       cs = cs + ns
       
     case (shearrate_ID)
@@ -3818,12 +3356,6 @@ outputsLoop: do o = 1_pInt,plastic_nonlocal_Noutput(instance)
     case (resistance_ID)
       plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = tauThreshold
       cs = cs + ns
-    
-    case (rho_dot_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoDotSgl(1:ns,1:4),2) &
-                                                         + sum(rhoDotSgl(1:ns,5:8)*sign(1.0_pReal,rhoSgl(1:ns,5:8)),2) &
-                                                         + sum(rhoDotDip,2)
-      cs = cs + ns
       
     case (rho_dot_sgl_ID)
       plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoDotSgl(1:ns,1:4),2) &
@@ -3838,7 +3370,7 @@ outputsLoop: do o = 1_pInt,plastic_nonlocal_Noutput(instance)
       plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoDotDip,2)
       cs = cs + ns
     
-    case (rho_dot_gen_ID)
+    case (rho_dot_gen_ID)  ! Obsolete
       plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDotMultiplicationOutput(1:ns,1,1_pInt,ip,el) &
                                                          + rhoDotMultiplicationOutput(1:ns,2,1_pInt,ip,el)
       cs = cs + ns
@@ -3849,11 +3381,6 @@ outputsLoop: do o = 1_pInt,plastic_nonlocal_Noutput(instance)
 
     case (rho_dot_gen_screw_ID)
       plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDotMultiplicationOutput(1:ns,2,1_pInt,ip,el)
-      cs = cs + ns
-      
-    case (rho_dot_sgl2dip_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDotSingle2DipoleGlideOutput(1:ns,1,1_pInt,ip,el) &
-                                                         + rhoDotSingle2DipoleGlideOutput(1:ns,2,1_pInt,ip,el)
       cs = cs + ns
     
     case (rho_dot_sgl2dip_edge_ID)
@@ -3867,11 +3394,6 @@ outputsLoop: do o = 1_pInt,plastic_nonlocal_Noutput(instance)
     case (rho_dot_ann_ath_ID)
       plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDotAthermalAnnihilationOutput(1:ns,1,1_pInt,ip,el) & 
                                                          + rhoDotAthermalAnnihilationOutput(1:ns,2,1_pInt,ip,el)
-      cs = cs + ns
-      
-    case (rho_dot_ann_the_ID) 
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDotThermalAnnihilationOutput(1:ns,1,1_pInt,ip,el) & 
-                                                         + rhoDotThermalAnnihilationOutput(1:ns,2,1_pInt,ip,el)
       cs = cs + ns
 
     case (rho_dot_ann_the_edge_ID) 
@@ -3888,11 +3410,6 @@ outputsLoop: do o = 1_pInt,plastic_nonlocal_Noutput(instance)
 
     case (rho_dot_flux_mobile_ID)
       plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoDotFluxOutput(1:ns,1:4,1_pInt,ip,el),2)
-      cs = cs + ns
-    
-    case (rho_dot_flux_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoDotFluxOutput(1:ns,1:4,1_pInt,ip,el),2) &
-                          + sum(rhoDotFluxOutput(1:ns,5:8,1_pInt,ip,el)*sign(1.0_pReal,rhoSgl(1:ns,5:8)),2)
       cs = cs + ns
     
     case (rho_dot_flux_edge_ID)
@@ -3921,78 +3438,6 @@ outputsLoop: do o = 1_pInt,plastic_nonlocal_Noutput(instance)
       plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = v(1:ns,4)
       cs = cs + ns
     
-    case (slipdirectionx_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = m_currentconf(1,1:ns,1)
-      cs = cs + ns
-    
-    case (slipdirectiony_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = m_currentconf(2,1:ns,1)
-      cs = cs + ns
-    
-    case (slipdirectionz_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = m_currentconf(3,1:ns,1)
-      cs = cs + ns
-    
-    case (slipnormalx_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = n_currentconf(1,1:ns)
-      cs = cs + ns
-    
-    case (slipnormaly_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = n_currentconf(2,1:ns)
-      cs = cs + ns
-    
-    case (slipnormalz_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = n_currentconf(3,1:ns)
-      cs = cs + ns
-    
-    case (fluxdensity_edge_posx_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,1) * v(1:ns,1) * m_currentconf(1,1:ns,1)
-      cs = cs + ns
-    
-    case (fluxdensity_edge_posy_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,1) * v(1:ns,1) * m_currentconf(2,1:ns,1)
-      cs = cs + ns
-    
-    case (fluxdensity_edge_posz_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,1) * v(1:ns,1) * m_currentconf(3,1:ns,1)
-      cs = cs + ns
-    
-    case (fluxdensity_edge_negx_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = - rhoSgl(1:ns,2) * v(1:ns,2) * m_currentconf(1,1:ns,1)
-      cs = cs + ns
-    
-    case (fluxdensity_edge_negy_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = - rhoSgl(1:ns,2) * v(1:ns,2) * m_currentconf(2,1:ns,1)
-      cs = cs + ns
-    
-    case (fluxdensity_edge_negz_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = - rhoSgl(1:ns,2) * v(1:ns,2) * m_currentconf(3,1:ns,1)
-      cs = cs + ns
-    
-    case (fluxdensity_screw_posx_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,3) * v(1:ns,3) * m_currentconf(1,1:ns,2)
-      cs = cs + ns
-    
-    case (fluxdensity_screw_posy_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,3) * v(1:ns,3) * m_currentconf(2,1:ns,2)
-      cs = cs + ns
-    
-    case (fluxdensity_screw_posz_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,3) * v(1:ns,3) * m_currentconf(3,1:ns,2)
-      cs = cs + ns
-    
-    case (fluxdensity_screw_negx_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = - rhoSgl(1:ns,4) * v(1:ns,4) * m_currentconf(1,1:ns,2)
-      cs = cs + ns
-    
-    case (fluxdensity_screw_negy_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = - rhoSgl(1:ns,4) * v(1:ns,4) * m_currentconf(2,1:ns,2)
-      cs = cs + ns
-    
-    case (fluxdensity_screw_negz_ID)
-      plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = - rhoSgl(1:ns,4) * v(1:ns,4) * m_currentconf(3,1:ns,2)
-      cs = cs + ns
-    
     case (maximumdipoleheight_edge_ID)
       plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = dUpper(1:ns,1)
       cs = cs + ns
@@ -4000,17 +3445,7 @@ outputsLoop: do o = 1_pInt,plastic_nonlocal_Noutput(instance)
     case (maximumdipoleheight_screw_ID)
       plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = dUpper(1:ns,2)
       cs = cs + ns
-    
-    case(dislocationstress_ID)
-      sigma = plastic_nonlocal_dislocationstress(Fe, ip, el)
-      plastic_nonlocal_postResults(cs+1_pInt) = sigma(1,1)
-      plastic_nonlocal_postResults(cs+2_pInt) = sigma(2,2)
-      plastic_nonlocal_postResults(cs+3_pInt) = sigma(3,3)
-      plastic_nonlocal_postResults(cs+4_pInt) = sigma(1,2)
-      plastic_nonlocal_postResults(cs+5_pInt) = sigma(2,3)
-      plastic_nonlocal_postResults(cs+6_pInt) = sigma(3,1)
-      cs = cs + 6_pInt
-    
+
     case(accumulatedshear_ID)
       plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = plasticState(ph)%state(iGamma(1:ns,instance),of)
       cs = cs + ns
