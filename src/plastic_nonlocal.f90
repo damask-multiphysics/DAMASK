@@ -405,6 +405,11 @@ allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstances),                  s
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_edge_pos_immobile_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+           case ('rho_sgl_edge_neg_immobile')
+             plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
+             plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_edge_neg_immobile_ID
+             plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
+               IO_lc(IO_stringValue(line,chunkPos,2_pInt))
            case ('rho_sgl_screw_pos_immobile')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_screw_pos_immobile_ID
