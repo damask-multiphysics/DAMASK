@@ -155,7 +155,6 @@ subroutine CPFEM_init
    crystallite_Lp0, &
    crystallite_Fi0, &
    crystallite_Li0, &
-   crystallite_dPdF0, &
    crystallite_Tstar0_v
 
  implicit none
@@ -207,9 +206,6 @@ subroutine CPFEM_init
    read (777,rec=1) crystallite_Li0
    close (777)
 
-   call IO_read_realFile(777,'convergeddPdF'//trim(rankStr),modelName,size(crystallite_dPdF0))
-   read (777,rec=1) crystallite_dPdF0
-   close (777)
 
    call IO_read_realFile(777,'convergedTstar'//trim(rankStr),modelName,size(crystallite_Tstar0_v))
    read (777,rec=1) crystallite_Tstar0_v
@@ -326,7 +322,6 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
    crystallite_Lp, &
    crystallite_Li0, &
    crystallite_Li, &
-   crystallite_dPdF0, &
    crystallite_dPdF, &
    crystallite_Tstar0_v, &
    crystallite_Tstar_v
@@ -398,7 +393,6 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
    crystallite_Lp0 = crystallite_Lp                                                            ! crystallite plastic velocity
    crystallite_Fi0 = crystallite_Fi                                                            ! crystallite intermediate deformation
    crystallite_Li0 = crystallite_Li                                                            ! crystallite intermediate velocity
-   crystallite_dPdF0 = crystallite_dPdF                                                        ! crystallite stiffness
    crystallite_Tstar0_v = crystallite_Tstar_v                                                  ! crystallite 2nd Piola Kirchhoff stress
 
    forall ( i = 1:size(plasticState    )) plasticState(i)%state0     = plasticState(i)%state   ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
@@ -452,10 +446,6 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
 
      call IO_write_jobRealFile(777,'convergedLi'//trim(rankStr),size(crystallite_Li0))
      write (777,rec=1) crystallite_Li0
-     close (777)
-
-     call IO_write_jobRealFile(777,'convergeddPdF'//trim(rankStr),size(crystallite_dPdF0))
-     write (777,rec=1) crystallite_dPdF0
      close (777)
 
      call IO_write_jobRealFile(777,'convergedTstar'//trim(rankStr),size(crystallite_Tstar0_v))
