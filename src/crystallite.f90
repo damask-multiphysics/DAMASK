@@ -67,9 +67,7 @@ module crystallite
    crystallite_subLp0,&                                                                             !< plastic velocity grad at start of crystallite inc
    crystallite_subLi0                                                                               !< intermediate velocity grad at start of crystallite inc
  real(pReal),                dimension(:,:,:,:,:,:,:), allocatable, public :: &
-   crystallite_dPdF, &                                                                              !< current individual dPdF per grain (end of converged time step)
-   crystallite_dPdF0, &                                                                             !< individual dPdF per grain at start of FE inc
-   crystallite_partioneddPdF0                                                                       !< individual dPdF per grain at start of homog inc
+   crystallite_dPdF                                                                                 !< current individual dPdF per grain (end of converged time step)
  logical,                    dimension(:,:,:),         allocatable, public :: &
    crystallite_requested                                                                            !< flag to request crystallite calculation
  logical,                    dimension(:,:,:),         allocatable, public, protected :: &
@@ -228,8 +226,6 @@ subroutine crystallite_init
  allocate(crystallite_subLi0(3,3,cMax,iMax,eMax),            source=0.0_pReal)
  allocate(crystallite_Li(3,3,cMax,iMax,eMax),                source=0.0_pReal)
  allocate(crystallite_dPdF(3,3,3,3,cMax,iMax,eMax),          source=0.0_pReal)
- allocate(crystallite_dPdF0(3,3,3,3,cMax,iMax,eMax),         source=0.0_pReal)
- allocate(crystallite_partioneddPdF0(3,3,3,3,cMax,iMax,eMax),source=0.0_pReal)
  allocate(crystallite_dt(cMax,iMax,eMax),                    source=0.0_pReal)
  allocate(crystallite_subdt(cMax,iMax,eMax),                 source=0.0_pReal)
  allocate(crystallite_subFrac(cMax,iMax,eMax),               source=0.0_pReal)
@@ -560,7 +556,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
          crystallite_subLp0(1:3,1:3,c,i,e) = crystallite_partionedLp0(1:3,1:3,c,i,e)                  ! ...plastic velocity grad
          crystallite_subFi0(1:3,1:3,c,i,e) = crystallite_partionedFi0(1:3,1:3,c,i,e)                  ! ...intermediate def grad
          crystallite_subLi0(1:3,1:3,c,i,e) = crystallite_partionedLi0(1:3,1:3,c,i,e)                  ! ...intermediate velocity grad
-         crystallite_dPdF0(1:3,1:3,1:3,1:3,c,i,e) = crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,c,i,e) ! ...stiffness
          crystallite_subF0(1:3,1:3,c,i,e) = crystallite_partionedF0(1:3,1:3,c,i,e)                    ! ...def grad
          crystallite_subTstar0_v(1:6,c,i,e) = crystallite_partionedTstar0_v(1:6,c,i,e)                !...2nd PK stress
          crystallite_subFrac(c,i,e) = 0.0_pReal
