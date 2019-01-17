@@ -239,7 +239,7 @@ subroutine plastic_phenopowerlaw_init
      if (    prm%a_slip      <= 0.0_pReal)      extmsg = trim(extmsg)//' a_slip'
      if (    prm%n_slip      <= 0.0_pReal)      extmsg = trim(extmsg)//' n_slip'
      if (any(prm%xi_slip_0   <= 0.0_pReal))     extmsg = trim(extmsg)//' xi_slip_0'
-     if (any(prm%xi_slip_sat <  prm%xi_slip_0)) extmsg = trim(extmsg)//' xi_slip_sat'
+     if (any(prm%xi_slip_sat <= 0.0_pReal))     extmsg = trim(extmsg)//' xi_slip_sat'
    else slipActive
      allocate(prm%interaction_SlipSlip(0,0))
      allocate(prm%xi_slip_0(0))
