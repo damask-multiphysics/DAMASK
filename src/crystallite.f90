@@ -456,8 +456,8 @@ function crystallite_stress()
  use math, only: &
    math_inv33, &
    math_mul33x33, &
-   math_Mandel6to33, &
-   math_Mandel33to6
+   math_6toSym33, &
+   math_sym33to6
  use mesh, only: &
    mesh_NcpElems, &
    mesh_element, &
@@ -525,8 +525,8 @@ function crystallite_stress()
        crystallite_subLp0(1:3,1:3,c,i,e) = crystallite_partionedLp0(1:3,1:3,c,i,e)
        crystallite_subFi0(1:3,1:3,c,i,e) = crystallite_partionedFi0(1:3,1:3,c,i,e)
        crystallite_subLi0(1:3,1:3,c,i,e) = crystallite_partionedLi0(1:3,1:3,c,i,e)
-       crystallite_subF0(1:3,1:3,c,i,e) = crystallite_partionedF0(1:3,1:3,c,i,e)
-       crystallite_subS0(1:3,1:3,c,i,e) = math_Mandel6to33(crystallite_partionedTstar0_v(1:6,c,i,e))
+       crystallite_subF0(1:3,1:3,c,i,e)  = crystallite_partionedF0(1:3,1:3,c,i,e)
+       crystallite_subS0(1:3,1:3,c,i,e)  = math_6toSym33(crystallite_partionedTstar0_v(1:6,c,i,e))
        crystallite_subFrac(c,i,e) = 0.0_pReal
        crystallite_subStep(c,i,e) = 1.0_pReal/subStepSizeCryst
        crystallite_todo(c,i,e) = .true.
@@ -570,7 +570,7 @@ function crystallite_stress()
              crystallite_subLi0(1:3,1:3,c,i,e) = crystallite_Li  (1:3,1:3,c,i,e)
              crystallite_subFp0(1:3,1:3,c,i,e) = crystallite_Fp  (1:3,1:3,c,i,e)
              crystallite_subFi0(1:3,1:3,c,i,e) = crystallite_Fi  (1:3,1:3,c,i,e)
-             crystallite_subS0 (1:3,1:3,c,i,e) = math_mandel6to33(crystallite_Tstar_v(1:6,c,i,e))
+             crystallite_subS0 (1:3,1:3,c,i,e) = math_6toSym33(crystallite_Tstar_v(1:6,c,i,e))
              !if abbrevation, make c and p private in omp
              plasticState(    phaseAt(c,i,e))%subState0(:,phasememberAt(c,i,e)) &
                = plasticState(phaseAt(c,i,e))%state(    :,phasememberAt(c,i,e))
@@ -598,7 +598,7 @@ function crystallite_stress()
            crystallite_invFi(1:3,1:3,c,i,e) = math_inv33(crystallite_Fi    (1:3,1:3,c,i,e))
            crystallite_Lp   (1:3,1:3,c,i,e) =            crystallite_subLp0(1:3,1:3,c,i,e)
            crystallite_Li   (1:3,1:3,c,i,e) =            crystallite_subLi0(1:3,1:3,c,i,e)
-           crystallite_Tstar_v(1:6,c,i,e)   = math_mandel33to6(crystallite_subS0(1:3,1:3,c,i,e))
+           crystallite_Tstar_v(1:6,c,i,e)   = math_sym33to6(crystallite_subS0(1:3,1:3,c,i,e))
            plasticState    (phaseAt(c,i,e))%state(    :,phasememberAt(c,i,e)) &
              = plasticState(phaseAt(c,i,e))%subState0(:,phasememberAt(c,i,e))
            do s = 1_pInt, phase_Nsources(phaseAt(c,i,e))
@@ -719,10 +719,9 @@ subroutine crystallite_stressTangent()
    math_inv33, &
    math_identity2nd, &
    math_mul33x33, &
-   math_Mandel6to33, &
-   math_Mandel33to6, &
-   math_Plain3333to99, &
-   math_Plain99to3333, &
+   math_6toSym33, &
+   math_3333to99, &
+   math_99to3333, &
    math_I3, &
    math_mul3333xx3333, &
    math_mul33xx33, &
@@ -789,13 +788,13 @@ subroutine crystallite_stressTangent()
            rhs_3333(1:3,1:3,o,p) = rhs_3333(1:3,1:3,o,p) &
                                  - crystallite_subdt(c,i,e)*math_mul33x33(invSubFi0,dLidS(1:3,1:3,o,p))
          enddo;enddo
-         call math_invert2(temp_99,error,math_Plain3333to99(lhs_3333))
+         call math_invert2(temp_99,error,math_3333to99(lhs_3333))
          if (error) then
            call IO_warning(warning_ID=600_pInt,el=e,ip=i,g=c, &
                            ext_msg='inversion error in analytic tangent calculation')
            dFidS = 0.0_pReal
          else
-           dFidS = math_mul3333xx3333(math_Plain99to3333(temp_99),rhs_3333)
+           dFidS = math_mul3333xx3333(math_99to3333(temp_99),rhs_3333)
          endif
          dLidS = math_mul3333xx3333(dLidFi,dFidS) + dLidS
        endif
@@ -815,46 +814,46 @@ subroutine crystallite_stressTangent()
                                                crystallite_invFp (1:3,1:3,c,i,e)), &
                                     math_inv33(crystallite_subFi0(1:3,1:3,c,i,e)))
 
-       do concurrent(p=1_pInt:3_pInt, o=1_pInt:3_pInt) 
+       forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) 
          rhs_3333(p,o,1:3,1:3)  = math_mul33x33(dSdFe(p,o,1:3,1:3),temp_33_1)
          temp_3333(1:3,1:3,p,o) = math_mul33x33(math_mul33x33(temp_33_2,dLpdS(1:3,1:3,p,o)), &
                                                 crystallite_invFi(1:3,1:3,c,i,e)) &
                                 + math_mul33x33(temp_33_3,dLidS(1:3,1:3,p,o))
-       enddo
+       end forall
        lhs_3333 = crystallite_subdt(c,i,e)*math_mul3333xx3333(dSdFe,temp_3333) + &
                   math_mul3333xx3333(dSdFi,dFidS)
 
-       call math_invert2(temp_99,error,math_identity2nd(9_pInt)+math_Plain3333to99(lhs_3333))
+       call math_invert2(temp_99,error,math_identity2nd(9_pInt)+math_3333to99(lhs_3333))
        if (error) then
          call IO_warning(warning_ID=600_pInt,el=e,ip=i,g=c, &
                          ext_msg='inversion error in analytic tangent calculation')
          dSdF = rhs_3333
        else
-         dSdF = math_mul3333xx3333(math_Plain99to3333(temp_99),rhs_3333)
+         dSdF = math_mul3333xx3333(math_99to3333(temp_99),rhs_3333)
        endif
 
 !--------------------------------------------------------------------------------------------------
 ! calculate dFpinvdF
        temp_3333 = math_mul3333xx3333(dLpdS,dSdF)
-       do concurrent(p=1_pInt:3_pInt, o=1_pInt:3_pInt)
+       forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt)
          dFpinvdF(1:3,1:3,p,o) &
            = -crystallite_subdt(c,i,e) &
            * math_mul33x33(math_inv33(crystallite_subFp0(1:3,1:3,c,i,e)), &
                            math_mul33x33(temp_3333(1:3,1:3,p,o),crystallite_invFi(1:3,1:3,c,i,e)))
-       enddo
+       end forall
 
 !--------------------------------------------------------------------------------------------------
 ! assemble dPdF
        temp_33_1 = math_mul33x33(crystallite_invFp(1:3,1:3,c,i,e), &
-                            math_mul33x33(math_Mandel6to33(crystallite_Tstar_v(1:6,c,i,e)), &
+                            math_mul33x33(math_6toSym33(crystallite_Tstar_v(1:6,c,i,e)), &
                                           transpose(crystallite_invFp(1:3,1:3,c,i,e))))
-       temp_33_2 = math_mul33x33(math_Mandel6to33(crystallite_Tstar_v(1:6,c,i,e)), &
+       temp_33_2 = math_mul33x33(math_6toSym33(crystallite_Tstar_v(1:6,c,i,e)), &
                             transpose(crystallite_invFp(1:3,1:3,c,i,e)))
        temp_33_3 = math_mul33x33(crystallite_subF(1:3,1:3,c,i,e), &
                             crystallite_invFp(1:3,1:3,c,i,e))
        temp_33_4 = math_mul33x33(math_mul33x33(crystallite_subF(1:3,1:3,c,i,e), &
                                           crystallite_invFp(1:3,1:3,c,i,e)), &
-                            math_Mandel6to33(crystallite_Tstar_v(1:6,c,i,e)))
+                            math_6toSym33(crystallite_Tstar_v(1:6,c,i,e)))
 
        crystallite_dPdF(1:3,1:3,1:3,1:3,c,i,e) = 0.0_pReal
        do p=1_pInt, 3_pInt
@@ -1080,9 +1079,9 @@ logical function integrateStress(&
  real(pReal), dimension(9,9) ::      dRLp_dLp, &                                                     ! partial derivative of residuum (Jacobian for Newton-Raphson scheme)
                                      dRLp_dLp2, &                                                    ! working copy of dRdLp
                                      dRLi_dLi                                                        ! partial derivative of residuumI (Jacobian for Newton-Raphson scheme)
- real(pReal), dimension(3,3,3,3)::   dS_dFe, &                                                   ! partial derivative of 2nd Piola-Kirchhoff stress
+ real(pReal), dimension(3,3,3,3)::   dS_dFe, &                                                       ! partial derivative of 2nd Piola-Kirchhoff stress
                                      dS_dFi, &
-                                     dFe_dLp, &                                                  ! partial derivative of elastic deformation gradient
+                                     dFe_dLp, &                                                      ! partial derivative of elastic deformation gradient
                                      dFe_dLi, &
                                      dFi_dLi, &
                                      dLp_dFi, &
@@ -1508,7 +1507,7 @@ function crystallite_postResults(ipc, ip, el)
    math_det33, &
    math_I3, &
    inDeg, &
-   math_Mandel6to33
+   math_6toSym33
  use mesh, only: &
    mesh_element, &
    mesh_ipVolume, &
@@ -1617,7 +1616,7 @@ function crystallite_postResults(ipc, ip, el)
      case (s_ID)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = &
-         reshape(math_Mandel6to33(crystallite_Tstar_v(1:6,ipc,ip,el)),[mySize])
+         reshape(math_6toSym33(crystallite_Tstar_v(1:6,ipc,ip,el)),[mySize])
      case (elasmatrix_ID)
        mySize = 36_pInt
        crystallite_postResults(c+1:c+mySize) = reshape(constitutive_homogenizedC(ipc,ip,el),[mySize])
