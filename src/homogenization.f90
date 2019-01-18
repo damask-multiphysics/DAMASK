@@ -363,8 +363,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    crystallite_partionedTstar0_v, &
    crystallite_dt, &
    crystallite_requested, &
-   crystallite_converged, &
-   crystallite_stressAndItsTangent, &
+   crystallite_stress, &
+   crystallite_stressTangent, &
    crystallite_orientations
 #ifdef DEBUG
  use debug, only: &
@@ -619,7 +619,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 ! crystallite integration
 ! based on crystallite_partionedF0,.._partionedF
 ! incrementing by crystallite_dt
-     call crystallite_stressAndItsTangent(updateJaco)                                                ! request stress and tangent calculation for constituent grains
+     materialpoint_converged = crystallite_stress() !ToDo: MD not sure if that is the best logic
 
 !--------------------------------------------------------------------------------------------------
 ! state update
@@ -628,9 +628,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
        IpLooping3: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
          if (      materialpoint_requested(i,e) .and. &
              .not. materialpoint_doneAndHappy(1,i,e)) then
-           if (.not. all(crystallite_converged(:,i,e))) then
+           if (.not. materialpoint_converged(i,e)) then
              materialpoint_doneAndHappy(1:2,i,e) = [.true.,.false.]
-             materialpoint_converged(i,e) = .false.
            else
              materialpoint_doneAndHappy(1:2,i,e) = homogenization_updateState(i,e)
              materialpoint_converged(i,e) = all(materialpoint_doneAndHappy(1:2,i,e))                  ! converged if done and happy
@@ -645,6 +644,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    NiterationHomog = NiterationHomog + 1_pInt
 
  enddo cutBackLooping
+ 
+ if(updateJaco) call crystallite_stressTangent
 
  if (.not. terminallyIll ) then
    call crystallite_orientations()                                                                  ! calculate crystal orientations

@@ -145,6 +145,7 @@ module math
    math_invert33, &
    math_invSym3333, &
    math_invert, &
+   math_invert2, &
    math_symmetric33, &
    math_symmetric66, &
    math_skew33, &
@@ -888,6 +889,7 @@ function math_invSym3333(A)
  endif
 
 end function math_invSym3333
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief invert quadratic matrix of arbitrary dimension
