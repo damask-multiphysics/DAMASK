@@ -880,9 +880,6 @@ subroutine crystallite_orientations
  use math, only: &
    math_rotationalPart33, &
    math_RtoQ
- use FEsolving, only: &
-   FEsolving_execElem, &
-   FEsolving_execIP
  use material, only: &
    plasticState, &
    material_phase, &
@@ -898,37 +895,25 @@ subroutine crystallite_orientations
  integer(pInt) &
    c, &                                                                                             !< counter in integration point component loop
    i, &                                                                                             !< counter in integration point loop
-   e, &                                                                                             !< counter in element loop
-   myPhase                  ! phase
-
- ! --- CALCULATE ORIENTATION AND LATTICE ROTATION ---
+   e                                                                                                !< counter in element loop
 
 !$OMP PARALLEL DO
  do e = FEsolving_execElem(1),FEsolving_execElem(2)
    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
      do c = 1_pInt,homogenization_Ngrains(mesh_element(3,e))
-! somehow this subroutine is not threadsafe, so need critical statement here; not clear, what exactly the problem is
-!$OMP CRITICAL (polarDecomp)
        crystallite_orientation(1:4,c,i,e) = math_RtoQ(transpose(math_rotationalPart33(crystallite_Fe(1:3,1:3,c,i,e))))
-!$OMP END CRITICAL (polarDecomp)
        crystallite_rotation(1:4,c,i,e) = lattice_qDisorientation(crystallite_orientation0(1:4,c,i,e), &! active rotation from initial
-                                                                crystallite_orientation(1:4,c,i,e))  ! to current orientation (with no symmetry)
+                                                                 crystallite_orientation(1:4,c,i,e))  ! to current orientation (with no symmetry)
  enddo; enddo; enddo
 !$OMP END PARALLEL DO
  
-  
- ! --- UPDATE SOME ADDITIONAL VARIABLES THAT ARE NEEDED FOR NONLOCAL MATERIAL ---
  ! --- we use crystallite_orientation from above, so need a separate loop
-  
  nonlocalPresent: if (any(plasticState%nonLocal)) then
-!$OMP PARALLEL DO PRIVATE(myPhase)
+!$OMP PARALLEL DO
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-       myPhase = material_phase(1,i,e)                                                              ! get my phase (non-local models make no sense with more than one grain per material point)
-       if (plasticState(myPhase)%nonLocal) then                                                     ! if nonlocal model
-         ! --- calculate compatibility and transmissivity between me and my neighbor ---
+       if (plasticState(material_phase(1,i,e))%nonLocal) &                                                     ! if nonlocal model
          call plastic_nonlocal_updateCompatibility(crystallite_orientation,i,e)
-       endif
    enddo; enddo
 !$OMP END PARALLEL DO
  endif nonlocalPresent
