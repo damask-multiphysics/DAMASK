@@ -1570,9 +1570,6 @@ subroutine integrateStateFPI()
  use numerics, only: &
    nState, &
    rTol_crystalliteState
- use FEsolving, only: &
-   FEsolving_execElem, &
-   FEsolving_execIP
  use mesh, only: &
    mesh_element, &
    mesh_NcpElems
@@ -2031,9 +2028,6 @@ subroutine integrateStateEuler()
    debug_levelExtensive, &
    debug_levelSelective
 #endif
- use FEsolving, only: &
-   FEsolving_execElem, &
-   FEsolving_execIP
  use mesh, only: &
    mesh_element, &
    mesh_NcpElems
@@ -2241,9 +2235,6 @@ subroutine integrateStateAdaptiveEuler()
 #endif
  use numerics, only: &
    rTol_crystalliteState
- use FEsolving, only: &
-   FEsolving_execElem, &
-   FEsolving_execIP
  use mesh, only: &
    mesh_element, &
    mesh_NcpElems, &
@@ -2565,9 +2556,6 @@ subroutine integrateStateRK4()
    debug_levelExtensive, &
    debug_levelSelective
 #endif
- use FEsolving, only: &
-   FEsolving_execElem, &
-   FEsolving_execIP
  use mesh, only: &
    mesh_element, &
    mesh_NcpElems
@@ -2857,9 +2845,6 @@ subroutine integrateStateRKCK45()
 #endif
  use numerics, only: &
    rTol_crystalliteState
- use FEsolving, only: &
-   FEsolving_execElem, &
-   FEsolving_execIP
  use mesh, only: &
    mesh_element, &
    mesh_NcpElems, &
