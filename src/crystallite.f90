@@ -117,13 +117,13 @@ module crystallite
    crystallite_push33ToRef, &
    crystallite_postResults
  private :: &
+   integrateStress, &
    integrateState, &
    integrateStateFPI, &
    integrateStateEuler, &
    integrateStateAdaptiveEuler, &
    integrateStateRK4, &
    integrateStateRKCK45, &
-   integrateStress, &
    stateJump
 
 contains
@@ -874,99 +874,66 @@ end subroutine crystallite_stressTangent
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates a jump in the state according to the current state and the current stress
-!> returns true, if state jump was successfull or not needed. false indicates NaN in delta state
+!> @brief calculates orientations
 !--------------------------------------------------------------------------------------------------
-logical function stateJump(ipc,ip,el)
- use, intrinsic :: &
-   IEEE_arithmetic
- use prec, only: &
-   dNeq0
-#ifdef DEBUG
- use debug, only: &
-   debug_e, &
-   debug_i, &
-   debug_g, &
-   debug_level, &
-   debug_crystallite, &
-   debug_levelExtensive, &
-   debug_levelSelective
-#endif
+subroutine crystallite_orientations
+ use math, only: &
+   math_rotationalPart33, &
+   math_RtoQ
+ use FEsolving, only: &
+   FEsolving_execElem, &
+   FEsolving_execIP
  use material, only: &
    plasticState, &
-   sourceState, &
-   phase_Nsources, &
-   phaseAt, phasememberAt
- use constitutive, only: &
-   constitutive_collectDeltaState
+   material_phase, &
+   homogenization_Ngrains
+ use mesh, only: &
+   mesh_element
+ use lattice, only: &
+   lattice_qDisorientation
+ use plastic_nonlocal, only: &
+   plastic_nonlocal_updateCompatibility
 
  implicit none
- integer(pInt), intent(in):: &
-   el, &                       ! element index
-   ip, &                       ! integration point index
-   ipc                         ! grain index
+ integer(pInt) &
+   c, &                                                                                             !< counter in integration point component loop
+   i, &                                                                                             !< counter in integration point loop
+   e, &                                                                                             !< counter in element loop
+   myPhase                  ! phase
 
- integer(pInt) :: &
-   c, &
-   p, &
-   mySource, &
-   myOffsetPlasticDeltaState, &
-   myOffsetSourceDeltaState, &
-   mySizePlasticDeltaState, &
-   mySizeSourceDeltaState
+ ! --- CALCULATE ORIENTATION AND LATTICE ROTATION ---
 
- c = phasememberAt(ipc,ip,el)
- p = phaseAt(ipc,ip,el)
+!$OMP PARALLEL DO
+ do e = FEsolving_execElem(1),FEsolving_execElem(2)
+   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+     do c = 1_pInt,homogenization_Ngrains(mesh_element(3,e))
+! somehow this subroutine is not threadsafe, so need critical statement here; not clear, what exactly the problem is
+!$OMP CRITICAL (polarDecomp)
+       crystallite_orientation(1:4,c,i,e) = math_RtoQ(transpose(math_rotationalPart33(crystallite_Fe(1:3,1:3,c,i,e))))
+!$OMP END CRITICAL (polarDecomp)
+       crystallite_rotation(1:4,c,i,e) = lattice_qDisorientation(crystallite_orientation0(1:4,c,i,e), &! active rotation from initial
+                                                                crystallite_orientation(1:4,c,i,e))  ! to current orientation (with no symmetry)
+ enddo; enddo; enddo
+!$OMP END PARALLEL DO
+ 
+  
+ ! --- UPDATE SOME ADDITIONAL VARIABLES THAT ARE NEEDED FOR NONLOCAL MATERIAL ---
+ ! --- we use crystallite_orientation from above, so need a separate loop
+  
+ nonlocalPresent: if (any(plasticState%nonLocal)) then
+!$OMP PARALLEL DO PRIVATE(myPhase)
+   do e = FEsolving_execElem(1),FEsolving_execElem(2)
+     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+       myPhase = material_phase(1,i,e)                                                              ! get my phase (non-local models make no sense with more than one grain per material point)
+       if (plasticState(myPhase)%nonLocal) then                                                     ! if nonlocal model
+         ! --- calculate compatibility and transmissivity between me and my neighbor ---
+         call plastic_nonlocal_updateCompatibility(crystallite_orientation,i,e)
+       endif
+   enddo; enddo
+!$OMP END PARALLEL DO
+ endif nonlocalPresent
 
- call constitutive_collectDeltaState(crystallite_Tstar_v(1:6,ipc,ip,el), &
-                                     crystallite_Fe(1:3,1:3,ipc,ip,el), &
-                                     crystallite_Fi(1:3,1:3,ipc,ip,el), &
-                                     ipc,ip,el)
-
- myOffsetPlasticDeltaState = plasticState(p)%offsetDeltaState
- mySizePlasticDeltaState   = plasticState(p)%sizeDeltaState
-
- if( any(IEEE_is_NaN(plasticState(p)%deltaState(1:mySizePlasticDeltaState,c)))) then                                       ! NaN occured in deltaState
-   stateJump = .false.
-   return
- endif
-
- plasticState(p)%state(myOffsetPlasticDeltaState + 1_pInt                 : &
-                       myOffsetPlasticDeltaState + mySizePlasticDeltaState,c) = &
- plasticState(p)%state(myOffsetPlasticDeltaState + 1_pInt                 : &
-                       myOffsetPlasticDeltaState + mySizePlasticDeltaState,c) + &
-    plasticState(p)%deltaState(1:mySizePlasticDeltaState,c)
-
- do mySource = 1_pInt, phase_Nsources(p)
-   myOffsetSourceDeltaState = sourceState(p)%p(mySource)%offsetDeltaState
-   mySizeSourceDeltaState   = sourceState(p)%p(mySource)%sizeDeltaState
-   if (any(IEEE_is_NaN(sourceState(p)%p(mySource)%deltaState(1:mySizeSourceDeltaState,c)))) then   ! NaN occured in deltaState
-     stateJump = .false.
-     return
-   endif
-   sourceState(p)%p(mySource)%state(myOffsetSourceDeltaState + 1_pInt                : &
-                                    myOffsetSourceDeltaState + mySizeSourceDeltaState,c) = &
-   sourceState(p)%p(mySource)%state(myOffsetSourceDeltaState + 1_pInt                : &
-                                    myOffsetSourceDeltaState + mySizeSourceDeltaState,c) + &
-     sourceState(p)%p(mySource)%deltaState(1:mySizeSourceDeltaState,c)
- enddo
-
-#ifdef DEBUG
- if (any(dNeq0(plasticState(p)%deltaState(1:mySizePlasticDeltaState,c))) &
-     .and. iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
-     .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
-             .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-   write(6,'(a,i8,1x,i2,1x,i3, /)') '<< CRYST >> update state at el ip ipc ',el,ip,ipc
-   write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> deltaState', plasticState(p)%deltaState(1:mySizePlasticDeltaState,c)
-   write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state', &
-     plasticState(p)%state(myOffsetPlasticDeltaState + 1_pInt                : &
-                           myOffsetPlasticDeltaState + mySizePlasticDeltaState,c)
- endif
-#endif
-
- stateJump = .true.
-
-end function stateJump
+end subroutine crystallite_orientations
 
 
 !--------------------------------------------------------------------------------------------------
@@ -994,6 +961,154 @@ function crystallite_push33ToRef(ipc,ip,el, tensor33)
  crystallite_push33ToRef = math_mul33x33(transpose(T),math_mul33x33(tensor33,T))
 
 end function crystallite_push33ToRef
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief return results of particular grain
+!--------------------------------------------------------------------------------------------------
+function crystallite_postResults(ipc, ip, el)
+ use math, only: &
+   math_qToEuler, &
+   math_qToEulerAxisAngle, &
+   math_mul33x33, &
+   math_det33, &
+   math_I3, &
+   inDeg, &
+   math_6toSym33
+ use mesh, only: &
+   mesh_element, &
+   mesh_ipVolume, &
+   mesh_maxNipNeighbors, &
+   mesh_ipNeighborhood, &
+   FE_NipNeighbors, &
+   FE_geomtype, &
+   FE_celltype
+ use material, only: &
+   plasticState, &
+   sourceState, &
+   microstructure_crystallite, &
+   crystallite_Noutput, &
+   material_phase, &
+   material_texture, &
+   homogenization_Ngrains
+ use constitutive, only: &
+   constitutive_homogenizedC, &
+   constitutive_postResults
+
+ implicit none
+ integer(pInt), intent(in):: &
+   el, &                         !< element index
+   ip, &                         !< integration point index
+   ipc                           !< grain index
+
+ real(pReal), dimension(1+crystallite_sizePostResults(microstructure_crystallite(mesh_element(4,el))) + &
+                        1+plasticState(material_phase(ipc,ip,el))%sizePostResults + &
+                          sum(sourceState(material_phase(ipc,ip,el))%p(:)%sizePostResults)) :: &
+   crystallite_postResults
+ real(pReal) :: &
+   detF
+ integer(pInt) :: &
+   o, &
+   c, &
+   crystID, &
+   mySize, &
+   n
+
+
+ crystID = microstructure_crystallite(mesh_element(4,el))
+
+ crystallite_postResults = 0.0_pReal
+ c = 0_pInt
+ crystallite_postResults(c+1) = real(crystallite_sizePostResults(crystID),pReal)                  ! size of results from cryst
+ c = c + 1_pInt
+
+ do o = 1_pInt,crystallite_Noutput(crystID)
+   mySize = 0_pInt
+   select case(crystallite_outputID(o,crystID))
+     case (phase_ID)
+       mySize = 1_pInt
+       crystallite_postResults(c+1) = real(material_phase(ipc,ip,el),pReal)                         ! phaseID of grain
+     case (texture_ID)
+       mySize = 1_pInt
+       crystallite_postResults(c+1) = real(material_texture(ipc,ip,el),pReal)                       ! textureID of grain
+     case (volume_ID)
+       mySize = 1_pInt
+       detF = math_det33(crystallite_partionedF(1:3,1:3,ipc,ip,el))                                 ! V_current = det(F) * V_reference
+       crystallite_postResults(c+1) = detF * mesh_ipVolume(ip,el) &
+                                           / real(homogenization_Ngrains(mesh_element(3,el)),pReal) ! grain volume (not fraction but absolute)
+     case (orientation_ID)
+       mySize = 4_pInt
+       crystallite_postResults(c+1:c+mySize) = crystallite_orientation(1:4,ipc,ip,el)               ! grain orientation as quaternion
+     case (eulerangles_ID)
+       mySize = 3_pInt
+       crystallite_postResults(c+1:c+mySize) = inDeg &
+                                             * math_qToEuler(crystallite_orientation(1:4,ipc,ip,el)) ! grain orientation as Euler angles in degree
+     case (grainrotation_ID)
+       mySize = 4_pInt
+       crystallite_postResults(c+1:c+mySize) = &
+           math_qToEulerAxisAngle(crystallite_rotation(1:4,ipc,ip,el))                              ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
+       crystallite_postResults(c+4) = inDeg * crystallite_postResults(c+4)                          ! angle in degree
+
+! remark: tensor output is of the form 11,12,13, 21,22,23, 31,32,33
+! thus row index i is slow, while column index j is fast. reminder: "row is slow"
+
+     case (defgrad_ID)
+       mySize = 9_pInt
+       crystallite_postResults(c+1:c+mySize) = &
+         reshape(transpose(crystallite_partionedF(1:3,1:3,ipc,ip,el)),[mySize])
+     case (fe_ID)
+       mySize = 9_pInt
+       crystallite_postResults(c+1:c+mySize) = &
+         reshape(transpose(crystallite_Fe(1:3,1:3,ipc,ip,el)),[mySize])
+     case (fp_ID)
+       mySize = 9_pInt
+       crystallite_postResults(c+1:c+mySize) = &
+         reshape(transpose(crystallite_Fp(1:3,1:3,ipc,ip,el)),[mySize])
+     case (fi_ID)
+       mySize = 9_pInt
+       crystallite_postResults(c+1:c+mySize) = &
+         reshape(transpose(crystallite_Fi(1:3,1:3,ipc,ip,el)),[mySize])
+     case (lp_ID)
+       mySize = 9_pInt
+       crystallite_postResults(c+1:c+mySize) = &
+         reshape(transpose(crystallite_Lp(1:3,1:3,ipc,ip,el)),[mySize])
+     case (li_ID)
+       mySize = 9_pInt
+       crystallite_postResults(c+1:c+mySize) = &
+         reshape(transpose(crystallite_Li(1:3,1:3,ipc,ip,el)),[mySize])
+     case (p_ID)
+       mySize = 9_pInt
+       crystallite_postResults(c+1:c+mySize) = &
+         reshape(transpose(crystallite_P(1:3,1:3,ipc,ip,el)),[mySize])
+     case (s_ID)
+       mySize = 9_pInt
+       crystallite_postResults(c+1:c+mySize) = &
+         reshape(math_6toSym33(crystallite_Tstar_v(1:6,ipc,ip,el)),[mySize])
+     case (elasmatrix_ID)
+       mySize = 36_pInt
+       crystallite_postResults(c+1:c+mySize) = reshape(constitutive_homogenizedC(ipc,ip,el),[mySize])
+     case(neighboringelement_ID)
+       mySize = mesh_maxNipNeighbors
+       crystallite_postResults(c+1:c+mySize) = 0.0_pReal
+       forall (n = 1_pInt:FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,el))))) &
+         crystallite_postResults(c+n) = real(mesh_ipNeighborhood(1,n,ip,el),pReal)
+     case(neighboringip_ID)
+       mySize = mesh_maxNipNeighbors
+       crystallite_postResults(c+1:c+mySize) = 0.0_pReal
+       forall (n = 1_pInt:FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,el))))) &
+         crystallite_postResults(c+n) = real(mesh_ipNeighborhood(2,n,ip,el),pReal)
+   end select
+   c = c + mySize
+ enddo
+
+ crystallite_postResults(c+1) = real(plasticState(material_phase(ipc,ip,el))%sizePostResults,pReal)             ! size of constitutive results
+ c = c + 1_pInt
+ if (size(crystallite_postResults)-c > 0_pInt) &
+   crystallite_postResults(c+1:size(crystallite_postResults)) = &
+      constitutive_postResults(crystallite_Tstar_v(1:6,ipc,ip,el), crystallite_Fi(1:3,1:3,ipc,ip,el), &
+                               crystallite_Fe, ipc, ip, el)
+
+end function crystallite_postResults
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1432,216 +1547,6 @@ logical function integrateStress(&
 #endif
 
 end function integrateStress
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates orientations
-!--------------------------------------------------------------------------------------------------
-subroutine crystallite_orientations
- use math, only: &
-   math_rotationalPart33, &
-   math_RtoQ
- use FEsolving, only: &
-   FEsolving_execElem, &
-   FEsolving_execIP
- use material, only: &
-   plasticState, &
-   material_phase, &
-   homogenization_Ngrains
- use mesh, only: &
-   mesh_element
- use lattice, only: &
-   lattice_qDisorientation
- use plastic_nonlocal, only: &
-   plastic_nonlocal_updateCompatibility
-
- implicit none
- integer(pInt) &
-   c, &                                                                                             !< counter in integration point component loop
-   i, &                                                                                             !< counter in integration point loop
-   e, &                                                                                             !< counter in element loop
-   myPhase                  ! phase
-
- ! --- CALCULATE ORIENTATION AND LATTICE ROTATION ---
-
-!$OMP PARALLEL DO
- do e = FEsolving_execElem(1),FEsolving_execElem(2)
-   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-     do c = 1_pInt,homogenization_Ngrains(mesh_element(3,e))
-! somehow this subroutine is not threadsafe, so need critical statement here; not clear, what exactly the problem is
-!$OMP CRITICAL (polarDecomp)
-       crystallite_orientation(1:4,c,i,e) = math_RtoQ(transpose(math_rotationalPart33(crystallite_Fe(1:3,1:3,c,i,e))))
-!$OMP END CRITICAL (polarDecomp)
-       crystallite_rotation(1:4,c,i,e) = lattice_qDisorientation(crystallite_orientation0(1:4,c,i,e), &! active rotation from initial
-                                                                crystallite_orientation(1:4,c,i,e))  ! to current orientation (with no symmetry)
- enddo; enddo; enddo
-!$OMP END PARALLEL DO
- 
-  
- ! --- UPDATE SOME ADDITIONAL VARIABLES THAT ARE NEEDED FOR NONLOCAL MATERIAL ---
- ! --- we use crystallite_orientation from above, so need a separate loop
-  
- nonlocalPresent: if (any(plasticState%nonLocal)) then
-!$OMP PARALLEL DO PRIVATE(myPhase)
-   do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-       myPhase = material_phase(1,i,e)                                                              ! get my phase (non-local models make no sense with more than one grain per material point)
-       if (plasticState(myPhase)%nonLocal) then                                                     ! if nonlocal model
-         ! --- calculate compatibility and transmissivity between me and my neighbor ---
-         call plastic_nonlocal_updateCompatibility(crystallite_orientation,i,e)
-       endif
-   enddo; enddo
-!$OMP END PARALLEL DO
- endif nonlocalPresent
-
-end subroutine crystallite_orientations
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return results of particular grain
-!--------------------------------------------------------------------------------------------------
-function crystallite_postResults(ipc, ip, el)
- use math, only: &
-   math_qToEuler, &
-   math_qToEulerAxisAngle, &
-   math_mul33x33, &
-   math_det33, &
-   math_I3, &
-   inDeg, &
-   math_6toSym33
- use mesh, only: &
-   mesh_element, &
-   mesh_ipVolume, &
-   mesh_maxNipNeighbors, &
-   mesh_ipNeighborhood, &
-   FE_NipNeighbors, &
-   FE_geomtype, &
-   FE_celltype
- use material, only: &
-   plasticState, &
-   sourceState, &
-   microstructure_crystallite, &
-   crystallite_Noutput, &
-   material_phase, &
-   material_texture, &
-   homogenization_Ngrains
- use constitutive, only: &
-   constitutive_homogenizedC, &
-   constitutive_postResults
-
- implicit none
- integer(pInt), intent(in):: &
-   el, &                         !< element index
-   ip, &                         !< integration point index
-   ipc                           !< grain index
-
- real(pReal), dimension(1+crystallite_sizePostResults(microstructure_crystallite(mesh_element(4,el))) + &
-                        1+plasticState(material_phase(ipc,ip,el))%sizePostResults + &
-                          sum(sourceState(material_phase(ipc,ip,el))%p(:)%sizePostResults)) :: &
-   crystallite_postResults
- real(pReal) :: &
-   detF
- integer(pInt) :: &
-   o, &
-   c, &
-   crystID, &
-   mySize, &
-   n
-
-
- crystID = microstructure_crystallite(mesh_element(4,el))
-
- crystallite_postResults = 0.0_pReal
- c = 0_pInt
- crystallite_postResults(c+1) = real(crystallite_sizePostResults(crystID),pReal)                  ! size of results from cryst
- c = c + 1_pInt
-
- do o = 1_pInt,crystallite_Noutput(crystID)
-   mySize = 0_pInt
-   select case(crystallite_outputID(o,crystID))
-     case (phase_ID)
-       mySize = 1_pInt
-       crystallite_postResults(c+1) = real(material_phase(ipc,ip,el),pReal)                         ! phaseID of grain
-     case (texture_ID)
-       mySize = 1_pInt
-       crystallite_postResults(c+1) = real(material_texture(ipc,ip,el),pReal)                       ! textureID of grain
-     case (volume_ID)
-       mySize = 1_pInt
-       detF = math_det33(crystallite_partionedF(1:3,1:3,ipc,ip,el))                                 ! V_current = det(F) * V_reference
-       crystallite_postResults(c+1) = detF * mesh_ipVolume(ip,el) &
-                                           / real(homogenization_Ngrains(mesh_element(3,el)),pReal) ! grain volume (not fraction but absolute)
-     case (orientation_ID)
-       mySize = 4_pInt
-       crystallite_postResults(c+1:c+mySize) = crystallite_orientation(1:4,ipc,ip,el)               ! grain orientation as quaternion
-     case (eulerangles_ID)
-       mySize = 3_pInt
-       crystallite_postResults(c+1:c+mySize) = inDeg &
-                                             * math_qToEuler(crystallite_orientation(1:4,ipc,ip,el)) ! grain orientation as Euler angles in degree
-     case (grainrotation_ID)
-       mySize = 4_pInt
-       crystallite_postResults(c+1:c+mySize) = &
-           math_qToEulerAxisAngle(crystallite_rotation(1:4,ipc,ip,el))                              ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
-       crystallite_postResults(c+4) = inDeg * crystallite_postResults(c+4)                          ! angle in degree
-
-! remark: tensor output is of the form 11,12,13, 21,22,23, 31,32,33
-! thus row index i is slow, while column index j is fast. reminder: "row is slow"
-
-     case (defgrad_ID)
-       mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = &
-         reshape(transpose(crystallite_partionedF(1:3,1:3,ipc,ip,el)),[mySize])
-     case (fe_ID)
-       mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = &
-         reshape(transpose(crystallite_Fe(1:3,1:3,ipc,ip,el)),[mySize])
-     case (fp_ID)
-       mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = &
-         reshape(transpose(crystallite_Fp(1:3,1:3,ipc,ip,el)),[mySize])
-     case (fi_ID)
-       mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = &
-         reshape(transpose(crystallite_Fi(1:3,1:3,ipc,ip,el)),[mySize])
-     case (lp_ID)
-       mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = &
-         reshape(transpose(crystallite_Lp(1:3,1:3,ipc,ip,el)),[mySize])
-     case (li_ID)
-       mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = &
-         reshape(transpose(crystallite_Li(1:3,1:3,ipc,ip,el)),[mySize])
-     case (p_ID)
-       mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = &
-         reshape(transpose(crystallite_P(1:3,1:3,ipc,ip,el)),[mySize])
-     case (s_ID)
-       mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = &
-         reshape(math_6toSym33(crystallite_Tstar_v(1:6,ipc,ip,el)),[mySize])
-     case (elasmatrix_ID)
-       mySize = 36_pInt
-       crystallite_postResults(c+1:c+mySize) = reshape(constitutive_homogenizedC(ipc,ip,el),[mySize])
-     case(neighboringelement_ID)
-       mySize = mesh_maxNipNeighbors
-       crystallite_postResults(c+1:c+mySize) = 0.0_pReal
-       forall (n = 1_pInt:FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,el))))) &
-         crystallite_postResults(c+n) = real(mesh_ipNeighborhood(1,n,ip,el),pReal)
-     case(neighboringip_ID)
-       mySize = mesh_maxNipNeighbors
-       crystallite_postResults(c+1:c+mySize) = 0.0_pReal
-       forall (n = 1_pInt:FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,el))))) &
-         crystallite_postResults(c+n) = real(mesh_ipNeighborhood(2,n,ip,el),pReal)
-   end select
-   c = c + mySize
- enddo
-
- crystallite_postResults(c+1) = real(plasticState(material_phase(ipc,ip,el))%sizePostResults,pReal)             ! size of constitutive results
- c = c + 1_pInt
- if (size(crystallite_postResults)-c > 0_pInt) &
-   crystallite_postResults(c+1:size(crystallite_postResults)) = &
-      constitutive_postResults(crystallite_Tstar_v(1:6,ipc,ip,el), crystallite_Fi(1:3,1:3,ipc,ip,el), &
-                               crystallite_Fe, ipc, ip, el)
-
-end function crystallite_postResults
 
 
 !--------------------------------------------------------------------------------------------------
@@ -3428,5 +3333,101 @@ subroutine integrateStateRKCK45()
    crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                       ! ...restart all non-local as not converged
 
 end subroutine integrateStateRKCK45
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates a jump in the state according to the current state and the current stress
+!> returns true, if state jump was successfull or not needed. false indicates NaN in delta state
+!--------------------------------------------------------------------------------------------------
+logical function stateJump(ipc,ip,el)
+ use, intrinsic :: &
+   IEEE_arithmetic
+ use prec, only: &
+   dNeq0
+#ifdef DEBUG
+ use debug, only: &
+   debug_e, &
+   debug_i, &
+   debug_g, &
+   debug_level, &
+   debug_crystallite, &
+   debug_levelExtensive, &
+   debug_levelSelective
+#endif
+ use material, only: &
+   plasticState, &
+   sourceState, &
+   phase_Nsources, &
+   phaseAt, phasememberAt
+ use constitutive, only: &
+   constitutive_collectDeltaState
+
+ implicit none
+ integer(pInt), intent(in):: &
+   el, &                       ! element index
+   ip, &                       ! integration point index
+   ipc                         ! grain index
+
+ integer(pInt) :: &
+   c, &
+   p, &
+   mySource, &
+   myOffsetPlasticDeltaState, &
+   myOffsetSourceDeltaState, &
+   mySizePlasticDeltaState, &
+   mySizeSourceDeltaState
+
+ c = phasememberAt(ipc,ip,el)
+ p = phaseAt(ipc,ip,el)
+
+ call constitutive_collectDeltaState(crystallite_Tstar_v(1:6,ipc,ip,el), &
+                                     crystallite_Fe(1:3,1:3,ipc,ip,el), &
+                                     crystallite_Fi(1:3,1:3,ipc,ip,el), &
+                                     ipc,ip,el)
+
+ myOffsetPlasticDeltaState = plasticState(p)%offsetDeltaState
+ mySizePlasticDeltaState   = plasticState(p)%sizeDeltaState
+
+ if( any(IEEE_is_NaN(plasticState(p)%deltaState(1:mySizePlasticDeltaState,c)))) then                                       ! NaN occured in deltaState
+   stateJump = .false.
+   return
+ endif
+
+ plasticState(p)%state(myOffsetPlasticDeltaState + 1_pInt                 : &
+                       myOffsetPlasticDeltaState + mySizePlasticDeltaState,c) = &
+ plasticState(p)%state(myOffsetPlasticDeltaState + 1_pInt                 : &
+                       myOffsetPlasticDeltaState + mySizePlasticDeltaState,c) + &
+    plasticState(p)%deltaState(1:mySizePlasticDeltaState,c)
+
+ do mySource = 1_pInt, phase_Nsources(p)
+   myOffsetSourceDeltaState = sourceState(p)%p(mySource)%offsetDeltaState
+   mySizeSourceDeltaState   = sourceState(p)%p(mySource)%sizeDeltaState
+   if (any(IEEE_is_NaN(sourceState(p)%p(mySource)%deltaState(1:mySizeSourceDeltaState,c)))) then   ! NaN occured in deltaState
+     stateJump = .false.
+     return
+   endif
+   sourceState(p)%p(mySource)%state(myOffsetSourceDeltaState + 1_pInt                : &
+                                    myOffsetSourceDeltaState + mySizeSourceDeltaState,c) = &
+   sourceState(p)%p(mySource)%state(myOffsetSourceDeltaState + 1_pInt                : &
+                                    myOffsetSourceDeltaState + mySizeSourceDeltaState,c) + &
+     sourceState(p)%p(mySource)%deltaState(1:mySizeSourceDeltaState,c)
+ enddo
+
+#ifdef DEBUG
+ if (any(dNeq0(plasticState(p)%deltaState(1:mySizePlasticDeltaState,c))) &
+     .and. iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
+     .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
+             .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
+   write(6,'(a,i8,1x,i2,1x,i3, /)') '<< CRYST >> update state at el ip ipc ',el,ip,ipc
+   write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> deltaState', plasticState(p)%deltaState(1:mySizePlasticDeltaState,c)
+   write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state', &
+     plasticState(p)%state(myOffsetPlasticDeltaState + 1_pInt                : &
+                           myOffsetPlasticDeltaState + mySizePlasticDeltaState,c)
+ endif
+#endif
+
+ stateJump = .true.
+
+end function stateJump
 
 end module crystallite
