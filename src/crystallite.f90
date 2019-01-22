@@ -2102,13 +2102,13 @@ eIter = FEsolving_execElem(1:2)
          c = phasememberAt(g,i,e)
          mySizePlasticDotState = plasticState(p)%sizeDotState
          plasticState(p)%state(   1:mySizePlasticDotState,c) = &
-         plasticState(p)%state(   1:mySizePlasticDotState,c) &
+         plasticState(p)%subState0(   1:mySizePlasticDotState,c) &
        + plasticState(p)%dotState(1:mySizePlasticDotState,c) &
        * crystallite_subdt(g,i,e)
          do mySource = 1_pInt, phase_Nsources(p)
            mySizeSourceDotState = sourceState(p)%p(mySource)%sizeDotState
            sourceState(p)%p(mySource)%state(   1:mySizeSourceDotState,c) = &
-           sourceState(p)%p(mySource)%state(   1:mySizeSourceDotState,c) &
+           sourceState(p)%p(mySource)%subState0(   1:mySizeSourceDotState,c) &
          + sourceState(p)%p(mySource)%dotState(1:mySizeSourceDotState,c) &
          * crystallite_subdt(g,i,e)
          enddo
