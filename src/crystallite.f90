@@ -1601,7 +1601,6 @@ subroutine integrateStateFPI()
    tempSourceState
  logical :: &
    converged, &
-   NaN, &
    singleRun, &                                                                                     ! flag indicating computation for single (g,i,e) triple
    doneWithIntegration
 
@@ -1890,9 +1889,6 @@ subroutine integrateStateEuler()
    mesh_element, &
    mesh_NcpElems
  use material, only: &
-   plasticState, &
-   sourceState, &
-   phaseAt, phasememberAt, &
    phase_Nsources, &
    homogenization_Ngrains
  use constitutive, only: &
@@ -1904,19 +1900,14 @@ subroutine integrateStateEuler()
  integer(pInt) :: &
    e, &                                                                                             ! element index in element loop
    i, &                                                                                             ! integration point index in ip loop
-   g, &                                                                                             ! grain index in grain loop
-   p, &                                                                                             ! phase loop
-   c, &
-   mySource, &
-   mySizePlasticDotState, &
-   mySizeSourceDotState
+   g                                                                                                ! grain index in grain loop
+
  integer(pInt), dimension(2) :: &
    eIter                                                                                            ! bounds for element iteration
  integer(pInt), dimension(2,mesh_NcpElems) :: &
    iIter, &                                                                                         ! bounds for ip iteration
    gIter                                                                                            ! bounds for grain iteration
  logical :: &
-   NaN, &
    singleRun                                                                                        ! flag indicating computation for single (g,i,e) triple
 
 
@@ -2314,14 +2305,11 @@ subroutine integrateStateRK4()
                                                p, &                                                  ! phase loop
                                                c, &
                                                n, &
-                                               mySource, &
-                                               mySizePlasticDotState, &
-                                               mySizeSourceDotState
+                                               mySource
  integer(pInt), dimension(2) ::                eIter                                                 ! bounds for element iteration
  integer(pInt), dimension(2,mesh_NcpElems) ::  iIter, &                                              ! bounds for ip iteration
                                                gIter                                                 ! bounds for grain iteration
- logical   ::                                  NaN, &
-                                               singleRun                                             ! flag indicating computation for single (g,i,e) triple
+ logical   ::                                  singleRun                                             ! flag indicating computation for single (g,i,e) triple
 
  eIter = FEsolving_execElem(1:2)
  do e = eIter(1),eIter(2)
@@ -2532,7 +2520,6 @@ subroutine integrateStateRKCK45()
    sourceStateResiduum, &                                                                           ! residuum from evolution in microstructure
    relSourceStateResiduum                                                                           ! relative residuum from evolution in microstructure
  logical :: &
-   NaN, &
    singleRun                                                                                        ! flag indicating computation for single (g,i,e) triple
 
  eIter = FEsolving_execElem(1:2)
@@ -2815,8 +2802,6 @@ end subroutine integrateStateRKCK45
 !> @brief tbd
 !--------------------------------------------------------------------------------------------------
 subroutine update_dependentState()
- use material, only: &
-   plasticState
  use constitutive, only: &
    constitutive_dependentState => constitutive_microstructure
 
@@ -2825,8 +2810,7 @@ subroutine update_dependentState()
                                                i, &                                                  ! integration point index in ip loop
                                                g                                                     ! grain index in grain loop
 
- !$OMP PARALLEL
-   !$OMP DO
+ !$OMP PARALLEL DO
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do g = 1,homogenization_Ngrains(mesh_element(3,e))
@@ -2836,8 +2820,7 @@ subroutine update_dependentState()
                                           crystallite_Fp(1:3,1:3,g,i,e), &
                                           g, i, e)
    enddo; enddo; enddo
-   !$OMP ENDDO
- !$OMP END PARALLEL
+ !$OMP END PARALLEL DO
 
 end subroutine update_dependentState
 
