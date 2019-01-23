@@ -1975,19 +1975,9 @@ eIter = FEsolving_execElem(1:2)
      enddo; enddo; enddo
    !$OMP ENDDO
 
-
-   ! --- UPDATE DEPENDENT STATES ---
-
-   !$OMP DO
-     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) &
-         call constitutive_microstructure(crystallite_orientation,       &
-                                          crystallite_Fe(1:3,1:3,g,i,e), &
-                                          crystallite_Fp(1:3,1:3,g,i,e), &
-                                          g, i, e)                                                           ! update dependent state variables to be consistent with basic states
-   enddo; enddo; enddo
-   !$OMP ENDDO
   !$OMP END PARALLEL
+
+   call update_dependentState
 
 
  !$OMP PARALLEL
@@ -2204,16 +2194,9 @@ subroutine integrateStateAdaptiveEuler()
    !$OMP PARALLEL
    ! --- DOT STATE (HEUN METHOD) ---
 
-   !$OMP DO
-     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
-       if (crystallite_todo(g,i,e)) &
-         call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
-                                           crystallite_Fe, &
-                                           crystallite_Fi(1:3,1:3,g,i,e), &
-                                           crystallite_Fp, &
-                                           crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
-     enddo; enddo; enddo
-   !$OMP ENDDO
+   !$OMP END PARALLEL
+   call update_dotState(1.0_pReal)
+   !$OMP PARALLEL
    !$OMP DO PRIVATE(p,c,NaN)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
@@ -2447,19 +2430,9 @@ subroutine integrateStateRK4()
        endif
      enddo; enddo; enddo
    !$OMP ENDDO
-
-
-   ! --- update dependent states ---
-
-   !$OMP DO
-     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
-       if (crystallite_todo(g,i,e)) &
-         call constitutive_microstructure(crystallite_orientation,       &
-                                          crystallite_Fe(1:3,1:3,g,i,e), &
-                                          crystallite_Fp(1:3,1:3,g,i,e), &
-                                          g, i, e)                                                         ! update dependent state variables to be consistent with basic states
-     enddo; enddo; enddo
-   !$OMP ENDDO
+   !$OMP END PARALLEL
+   call update_dependentState
+   !$OMP PARALLEL
 
 
    ! --- stress integration ---
@@ -2679,20 +2652,12 @@ subroutine integrateStateRKCK45()
        endif
      enddo; enddo; enddo
    !$OMP ENDDO
+   !$OMP END PARALLEL
 
 
-   ! --- update dependent states ---
 
-   !$OMP DO
-     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
-       if (crystallite_todo(g,i,e)) &
-         call constitutive_microstructure(crystallite_orientation,       &
-                                          crystallite_Fe(1:3,1:3,g,i,e), &
-                                          crystallite_Fp(1:3,1:3,g,i,e), &
-                                          g, i, e)                                                         ! update dependent state variables to be consistent with basic states
-     enddo; enddo; enddo
-   !$OMP ENDDO
-
+ call update_dependentState
+   !$OMP PARALLEL
 
    ! --- stress integration ---
 
@@ -2836,21 +2801,11 @@ subroutine integrateStateRKCK45()
      endif
    enddo; enddo; enddo
  !$OMP ENDDO
+   !$OMP END PARALLEL
 
+ call update_dependentState
 
-!--------------------------------------------------------------------------------------------------
-! --- UPDATE DEPENDENT STATES IF RESIDUUM BELOW TOLERANCE ---
- !$OMP DO
-   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-     if (crystallite_todo(g,i,e)) &
-       call constitutive_microstructure(crystallite_orientation,       &
-                                        crystallite_Fe(1:3,1:3,g,i,e), &
-                                        crystallite_Fp(1:3,1:3,g,i,e), &
-                                        g, i, e)                                                           ! update dependent state variables to be consistent with basic states
-  enddo; enddo; enddo
- !$OMP ENDDO
-
-
+   !$OMP PARALLEL
 !--------------------------------------------------------------------------------------------------
 ! --- FINAL STRESS INTEGRATION STEP IF RESIDUUM BELOW TOLERANCE ---
  !$OMP DO
@@ -2890,6 +2845,36 @@ subroutine integrateStateRKCK45()
 
 end subroutine integrateStateRKCK45
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief tbd
+!--------------------------------------------------------------------------------------------------
+subroutine update_dependentState()
+ use material, only: &
+   plasticState
+ use constitutive, only: &
+   constitutive_dependentState => constitutive_microstructure
+
+ implicit none
+ integer(pInt) ::                              e, &                                                  ! element index in element loop
+                                               i, &                                                  ! integration point index in ip loop
+                                               g                                                     ! grain index in grain loop
+
+ !$OMP PARALLEL
+   !$OMP DO
+   do e = FEsolving_execElem(1),FEsolving_execElem(2)
+     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+       do g = 1,homogenization_Ngrains(mesh_element(3,e))
+         if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) &
+         call constitutive_dependentState(crystallite_orientation,       &
+                                          crystallite_Fe(1:3,1:3,g,i,e), &
+                                          crystallite_Fp(1:3,1:3,g,i,e), &
+                                          g, i, e)
+   enddo; enddo; enddo
+   !$OMP ENDDO
+ !$OMP END PARALLEL
+
+end subroutine update_dependentState
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Standard forwarding of state as state = state0 + dotState * (delta t)
