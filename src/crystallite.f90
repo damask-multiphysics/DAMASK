@@ -1647,73 +1647,8 @@ subroutine integrateStateFPI()
 
  ! --- DOT STATES ---
 
- !$OMP PARALLEL
- !$OMP DO
-   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)             ! iterate over elements, ips and grains
-     if (crystallite_todo(g,i,e)) &
-       call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
-                                         crystallite_Fe, &
-                                         crystallite_Fi(1:3,1:3,g,i,e), &
-                                         crystallite_Fp, &
-                                         crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
-   enddo; enddo; enddo
-
- !$OMP ENDDO
- !$OMP DO PRIVATE(p,c,NaN)
-   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-     !$OMP FLUSH(crystallite_todo)
-     if (crystallite_todo(g,i,e)) then
-       p = phaseAt(g,i,e)
-       c = phasememberAt(g,i,e)
-       NaN = any(IEEE_is_NaN(plasticState(p)%dotState(:,c)))
-       do mySource = 1_pInt, phase_Nsources(p)
-         NaN = NaN .or. any(IEEE_is_NaN(sourceState(p)%p(mySource)%dotState(:,c)))
-       enddo
-       if (NaN) then                                                                                       ! NaN occured in any dotState
-#ifdef DEBUG
-         if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
-           write(6,*) '<< CRYST >> dotstate ',plasticState(p)%dotState(:,c)
-#endif
-         if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken is a non-local...
-           !$OMP CRITICAL (checkTodo)
-             crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals done (and broken)
-           !$OMP END CRITICAL (checkTodo)
-         else                                                                                              ! broken one was local...
-           crystallite_todo(g,i,e) = .false.                                                               ! ... done (and broken)
-         endif
-       endif
-     endif
-   enddo; enddo; enddo
- !$OMP ENDDO
-
- ! --- UPDATE STATE  ---
-#ifdef DEBUG
- if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
-   write(6,'(a,i8,a)') '<< CRYST >> ', count(crystallite_todo(:,:,:)),' grains todo after preguess of state'
-#endif
-
- !$OMP DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,p,c)
-   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-     if (crystallite_todo(g,i,e)) then
-       p = phaseAt(g,i,e)
-       c = phasememberAt(g,i,e)
-       mySizePlasticDotState = plasticState(p)%sizeDotState
-       plasticState(p)%state(1:mySizePlasticDotState,c) = &
-         plasticState(p)%subState0(1:mySizePlasticDotState,c) &
-       + plasticState(p)%dotState (1:mySizePlasticDotState,c) &
-       * crystallite_subdt(g,i,e)
-       do mySource = 1_pInt, phase_Nsources(p)
-         mySizeSourceDotState = sourceState(p)%p(mySource)%sizeDotState
-         sourceState(p)%p(mySource)%state(1:mySizeSourceDotState,c) = &
-           sourceState(p)%p(mySource)%subState0(1:mySizeSourceDotState,c) &
-         + sourceState(p)%p(mySource)%dotState (1:mySizeSourceDotState,c) &
-         * crystallite_subdt(g,i,e)
-       enddo
-     endif
-   enddo; enddo; enddo
- !$OMP ENDDO
-
- !$OMP END PARALLEL
+  call update_dotState(1.0_pReal)
+  call update_state(1.0_pReal)
 
  ! --+>> STATE LOOP <<+--
 
@@ -2016,43 +1951,11 @@ eIter = FEsolving_execElem(1:2)
  singleRun = (eIter(1) == eIter(2) .and. iIter(1,eIter(1)) == iIter(2,eIter(2)))
 
  call update_dotState(1.0_pReal)
+ call update_State(1.0_pReal)
 
  !$OMP PARALLEL
 
-   ! --- UPDATE STATE  ---
 
-   !$OMP DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,p,c)
-     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
-         p = phaseAt(g,i,e)
-         c = phasememberAt(g,i,e)
-         mySizePlasticDotState = plasticState(p)%sizeDotState
-         plasticState(p)%state(   1:mySizePlasticDotState,c) = &
-         plasticState(p)%subState0(   1:mySizePlasticDotState,c) &
-       + plasticState(p)%dotState(1:mySizePlasticDotState,c) &
-       * crystallite_subdt(g,i,e)
-         do mySource = 1_pInt, phase_Nsources(p)
-           mySizeSourceDotState = sourceState(p)%p(mySource)%sizeDotState
-           sourceState(p)%p(mySource)%state(   1:mySizeSourceDotState,c) = &
-           sourceState(p)%p(mySource)%subState0(   1:mySizeSourceDotState,c) &
-         + sourceState(p)%p(mySource)%dotState(1:mySizeSourceDotState,c) &
-         * crystallite_subdt(g,i,e)
-         enddo
-
-#ifdef DEBUG
-         if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
-             .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
-                     .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-           p = phaseAt(g,i,e)
-           c = phasememberAt(g,i,e)
-           write(6,'(a,i8,1x,i2,1x,i3,/)')       '<< CRYST >> update state at el ip g ',e,i,g
-           write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> dotState',  plasticState(p)%dotState(1:mySizePlasticDotState,c)
-           write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state', plasticState(p)%state   (1:mySizePlasticDotState,c)
-         endif
-#endif
-       endif
-     enddo; enddo; enddo
-   !$OMP ENDDO
 
 
    ! --- STATE JUMP ---
@@ -2523,42 +2426,11 @@ subroutine integrateStateRK4()
        endif
      enddo; enddo; enddo
    !$OMP ENDDO
+   !$OMP END PARALLEL
 
-   !$OMP DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,p,c)
-     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
-       if (crystallite_todo(g,i,e)) then
+   call update_state(TIMESTEPFRACTION(n))
 
-         p = phaseAt(g,i,e)
-         c = phasememberAt(g,i,e)
-         mySizePlasticDotState = plasticState(p)%sizeDotState
-         plasticState(p)%state    (1:mySizePlasticDotState,c) = &
-         plasticState(p)%subState0(1:mySizePlasticDotState,c) &
-       + plasticState(p)%dotState (1:mySizePlasticDotState,c) &
-       * crystallite_subdt(g,i,e) * timeStepFraction(n)
-         do mySource = 1_pInt, phase_Nsources(p)
-           mySizeSourceDotState = sourceState(p)%p(mySource)%sizeDotState
-           sourceState(p)%p(mySource)%state    (1:mySizeSourceDotState,c)  = &
-           sourceState(p)%p(mySource)%subState0(1:mySizeSourceDotState,c) &
-         + sourceState(p)%p(mySource)%dotState (1:mySizeSourceDotState,c) &
-         * crystallite_subdt(g,i,e) * timeStepFraction(n)
-         enddo
-
-#ifdef DEBUG
-         if (n == 4 &
-             .and. iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
-             .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
-                    .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then ! final integration step
-
-           write(6,'(a,i8,1x,i2,1x,i3,/)')       '<< CRYST >> updateState at el ip g ',e,i,g
-           write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> dotState',  plasticState(p)%dotState(1:mySizePlasticDotState,c)
-           write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state', plasticState(p)%state(1:mySizePlasticDotState,c)
-         endif
-#endif
-       endif
-     enddo; enddo; enddo
-   !$OMP ENDDO
-
-
+   !$OMP PARALLEL
    ! --- state jump ---
 
    !$OMP DO
@@ -2784,27 +2656,11 @@ subroutine integrateStateRKCK45()
        endif
      enddo; enddo; enddo
    !$OMP ENDDO
+   !$OMP END PARALLEL
 
-   !$OMP DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,p,cc)
-     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
-       if (crystallite_todo(g,i,e)) then
-         p = phaseAt(g,i,e)
-         cc = phasememberAt(g,i,e)
-         mySizePlasticDotState = plasticState(p)%sizeDotState
-         plasticState    (p)%state    (1:mySizePlasticDotState,    cc) = &
-         plasticState    (p)%subState0(1:mySizePlasticDotState,    cc) &
-       + plasticState    (p)%dotState (1:mySizePlasticDotState,    cc) &
-       * crystallite_subdt(g,i,e)
-         do mySource = 1_pInt, phase_Nsources(p)
-           mySizeSourceDotState  = sourceState(p)%p(mySource)%sizeDotState
-           sourceState(p)%p(mySource)%state    (1:mySizeSourceDotState,cc) = &
-           sourceState(p)%p(mySource)%subState0(1:mySizeSourceDotState,cc) &
-         + sourceState(p)%p(mySource)%dotState (1:mySizeSourceDotState,cc) &
-         * crystallite_subdt(g,i,e)
-         enddo
-       endif
-     enddo; enddo; enddo
-   !$OMP ENDDO
+    call update_state(1.0_pReal) !MD: 1.0 correct?
+
+   !$OMP PARALLEL
 
 
    ! --- state jump ---
@@ -2908,31 +2764,11 @@ subroutine integrateStateRKCK45()
      endif
    enddo; enddo; enddo
  !$OMP ENDDO
+ !$OMP END PARALLEL
 
- ! --- state and update ---
-
- !$OMP DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,p,cc)
-   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-     if (crystallite_todo(g,i,e)) then
-
-         p = phaseAt(g,i,e)
-         cc = phasememberAt(g,i,e)
-         mySizePlasticDotState = plasticState(p)%sizeDotState
-         plasticState(p)%state    (1:mySizePlasticDotState,cc) = &
-         plasticState(p)%subState0(1:mySizePlasticDotState,cc) &
-       + plasticState(p)%dotState (1:mySizePlasticDotState,cc) &
-       * crystallite_subdt(g,i,e)
-         do mySource = 1_pInt, phase_Nsources(p)
-           mySizeSourceDotState = sourceState(p)%p(mySource)%sizeDotState
-           sourceState(p)%p(mySource)%state    (1:mySizeSourceDotState,cc) = &
-           sourceState(p)%p(mySource)%subState0(1:mySizeSourceDotState,cc) &
-         + sourceState(p)%p(mySource)%dotState (1:mySizeSourceDotState,cc)&
-         * crystallite_subdt(g,i,e)
-         enddo
-     endif
-   enddo; enddo; enddo
- !$OMP ENDDO
-
+ call update_state(1.0_pReal)
+ 
+!$OMP PARALLEL
  ! --- relative residui and state convergence ---
 
  !$OMP DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,p,cc,s)
@@ -3053,6 +2889,52 @@ subroutine integrateStateRKCK45()
    crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                       ! ...restart all non-local as not converged
 
 end subroutine integrateStateRKCK45
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Standard forwarding of state as state = state0 + dotState * (delta t)
+!--------------------------------------------------------------------------------------------------
+subroutine update_state(timeFraction)
+ use material, only: &
+   plasticState, &
+   sourceState, &
+   phase_Nsources, &
+   phaseAt, phasememberAt
+
+ implicit none
+ real(pReal), intent(in) :: &
+   timeFraction
+ integer(pInt) :: &
+   e, &                                                                                             !< element index in element loop
+   i, &                                                                                             !< integration point index in ip loop
+   g, &                                                                                             !< grain index in grain loop
+   p, &
+   c, &
+   s, &
+   mySize
+
+ !$OMP PARALLEL DO PRIVATE(mySize,p,c)
+   do e = FEsolving_execElem(1),FEsolving_execElem(2)
+     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+     do g = 1,homogenization_Ngrains(mesh_element(3,e))
+         if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
+       p = phaseAt(g,i,e); c = phasememberAt(g,i,e)
+
+       mySize = plasticState(p)%sizeDotState
+       plasticState(p)%state(1:mySize,c) = plasticState(p)%subState0(1:mySize,c) &
+                                         + plasticState(p)%dotState (1:mySize,c) &
+                                         * crystallite_subdt(g,i,e) * timeFraction
+       do s = 1_pInt, phase_Nsources(p)
+         mySize = sourceState(p)%p(s)%sizeDotState
+         sourceState(p)%p(s)%state(1:mySize,c) = sourceState(p)%p(s)%subState0(1:mySize,c) &
+                                               + sourceState(p)%p(s)%dotState (1:mySize,c) &
+                                               * crystallite_subdt(g,i,e) * timeFraction
+       enddo
+     endif
+ enddo; enddo; enddo
+ !$OMP END PARALLEL DO
+
+end subroutine update_state
 
 
 !--------------------------------------------------------------------------------------------------
