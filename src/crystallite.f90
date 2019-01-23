@@ -656,9 +656,9 @@ function crystallite_stress()
 #endif
 !--------------------------------------------------------------------------------------------------
 !  integrate --- requires fully defined state array (basic + dependent state)
-   if (any(crystallite_todo)) call integrateState()                                                ! TODO: unroll into proper elementloop to avoid N^2 for single point evaluation
-   where(.not. crystallite_converged .and. crystallite_subStep > subStepMinCryst) &                ! do not try non-converged & fully cutbacked any further
-     crystallite_todo = .true.                                                                     ! TODO: again unroll this into proper elementloop to avoid N^2 for single point evaluation
+   if (any(crystallite_todo)) call integrateState()                                                 ! TODO: unroll into proper elementloop to avoid N^2 for single point evaluation
+   where(.not. crystallite_converged .and. crystallite_subStep > subStepMinCryst) &                 ! do not try non-converged but fully cutbacked any further
+     crystallite_todo = .true.                                                                      ! TODO: again unroll this into proper elementloop to avoid N^2 for single point evaluation
 
    NiterationCrystallite = NiterationCrystallite + 1_pInt
 
@@ -1579,6 +1579,7 @@ subroutine integrateStateFPI()
    g, &                                                                                             !< grain index in grain loop
    p, &
    c, &
+   s, &
    mySource, &
    mySizePlasticDotState, &                                                                         ! size of dot states
    mySizeSourceDotState
@@ -1617,36 +1618,8 @@ subroutine integrateStateFPI()
    write(6,'(a,i8,a)') '<< CRYST >> ', count(crystallite_todo(:,:,:)),' grains todo at start of state integration'
 #endif
 
-!--------------------------------------------------------------------------------------------------
-! initialize dotState
- if (.not. singleRun) then
-   forall(p = 1_pInt:size(plasticState))
-     plasticState(p)%previousDotState  = 0.0_pReal
-     plasticState(p)%previousDotState2 = 0.0_pReal
-   end forall
-   do p = 1_pInt, size(sourceState); do mySource = 1_pInt, phase_Nsources(p)
-     sourceState(p)%p(mySource)%previousDotState  = 0.0_pReal
-     sourceState(p)%p(mySource)%previousDotState2 = 0.0_pReal
-   enddo; enddo
- else
-   e = eIter(1)
-   i = iIter(1,e)
-   do g = gIter(1,e), gIter(2,e)
-     p = phaseAt(g,i,e)
-     c = phasememberAt(g,i,e)
-     plasticState(p)%previousDotState (:,c) = 0.0_pReal
-     plasticState(p)%previousDotState2(:,c) = 0.0_pReal
-     do mySource = 1_pInt, phase_Nsources(p)
-       sourceState(p)%p(mySource)%previousDotState (:,c) = 0.0_pReal
-       sourceState(p)%p(mySource)%previousDotState2(:,c) = 0.0_pReal
-     enddo
-   enddo
- endif
 
  ! --+>> PREGUESS FOR STATE <<+--
-
- ! --- DOT STATES ---
-
   call update_dotState(1.0_pReal)
   call update_state(1.0_pReal)
 
@@ -1657,27 +1630,32 @@ subroutine integrateStateFPI()
  crystalliteLooping: do while (.not. doneWithIntegration .and. NiterationState < nState)
    NiterationState = NiterationState + 1_pInt
 
-   !$OMP PARALLEL
+   ! store previousDotState and previousDotState2
+   !$OMP PARALLEL DO PRIVATE(p,c)
+   do e = FEsolving_execElem(1),FEsolving_execElem(2)
+     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+       do g = 1,homogenization_Ngrains(mesh_element(3,e))
+       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
+         p = phaseAt(g,i,e); c = phasememberAt(g,i,e)
 
-   ! --- UPDATE DEPENDENT STATES ---
-
-   !$OMP DO PRIVATE(p,c)
-     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) &
-         call constitutive_microstructure(crystallite_orientation,       &
-                                          crystallite_Fe(1:3,1:3,g,i,e), &
-                                          crystallite_Fp(1:3,1:3,g,i,e), &
-                                          g, i, e)                                                           ! update dependent state variables to be consistent with basic states
-       p = phaseAt(g,i,e)
-       c = phasememberAt(g,i,e)
-       plasticState(p)%previousDotState2(:,c) = plasticState(p)%previousDotState(:,c)
-       plasticState(p)%previousDotState (:,c) = plasticState(p)%dotState(:,c)
-       do mySource = 1_pInt, phase_Nsources(p)
-         sourceState(p)%p(mySource)%previousDotState2(:,c) = sourceState(p)%p(mySource)%previousDotState(:,c)
-         sourceState(p)%p(mySource)%previousDotState (:,c) = sourceState(p)%p(mySource)%dotState(:,c)
+         plasticState(p)%previousDotState2(:,c) = merge(plasticState(p)%previousDotState(:,c),&
+                                                        0.0_pReal,&
+                                                        NiterationState > 1_pInt)
+         plasticState(p)%previousDotState (:,c) = plasticState(p)%dotState(:,c)
+         do s = 1_pInt, phase_Nsources(p)
+           sourceState(p)%p(s)%previousDotState2(:,c) = merge(sourceState(p)%p(s)%previousDotState(:,c),&
+                                                              0.0_pReal, &
+                                                              NiterationState > 1_pInt)
+           sourceState(p)%p(s)%previousDotState (:,c) = sourceState(p)%p(s)%dotState(:,c)
+         enddo
+       endif
        enddo
-     enddo; enddo; enddo
-   !$OMP ENDDO
+     enddo
+   enddo
+   !$OMP END PARALLEL DO
+
+   call update_dependentState
+   !$OMP PARALLEL
 
    ! --- STRESS INTEGRATION ---
 
@@ -2158,20 +2136,9 @@ subroutine integrateStateAdaptiveEuler()
        endif
      enddo; enddo; enddo
    !$OMP ENDDO
-
-
-   ! --- UPDATE DEPENDENT STATES (EULER INTEGRATION) ---
-
-   !$OMP DO
-     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
-       if (crystallite_todo(g,i,e)) &
-         call constitutive_microstructure(crystallite_orientation,       &
-                                          crystallite_Fe(1:3,1:3,g,i,e), &
-                                          crystallite_Fp(1:3,1:3,g,i,e), &
-                                          g, i, e)                                                         ! update dependent state variables to be consistent with basic states
-     enddo; enddo; enddo
-   !$OMP ENDDO
  !$OMP END PARALLEL
+
+  call update_dependentState
 
 
  ! --- STRESS INTEGRATION (EULER INTEGRATION) ---
@@ -2191,11 +2158,9 @@ subroutine integrateStateAdaptiveEuler()
    enddo; enddo; enddo
  !$OMP END PARALLEL DO
 
-   !$OMP PARALLEL
-   ! --- DOT STATE (HEUN METHOD) ---
 
-   !$OMP END PARALLEL
    call update_dotState(1.0_pReal)
+   
    !$OMP PARALLEL
    !$OMP DO PRIVATE(p,c,NaN)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
