@@ -902,6 +902,7 @@ contains
       self%cellFace = CELLFACE4
    end select
    
+   self%nIPneighbors = size(self%IPneighbor,1)
    
    write(6,*) 'tElement_init'
    
