@@ -380,7 +380,6 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_get_damaskOptions, &
    mesh_build_cellconnectivity, &
    mesh_build_ipAreas, &
-   mesh_tell_statistics, &
    FE_mapElemtype, &
    mesh_faceMatch, &
    mesh_build_FEdata, &
