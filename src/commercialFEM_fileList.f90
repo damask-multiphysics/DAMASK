@@ -12,7 +12,12 @@
 #endif
 #include "math.f90"
 #include "FEsolving.f90"
-#include "mesh.f90"
+#ifdef Abaqus
+#include "mesh_abaqus.f90"
+#endif
+#ifdef Marc4DAMASK
+#include "mesh_marc.f90"
+#endif
 #include "material.f90"
 #include "lattice.f90"
 #include "source_thermal_dissipation.f90"

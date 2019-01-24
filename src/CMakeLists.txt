@@ -59,7 +59,7 @@ list(APPEND OBJECTFILES $<TARGET_OBJECTS:DAMASK_MATH>)
 
 # SPECTRAL solver and FEM solver use different mesh files
 if (PROJECT_NAME STREQUAL "DAMASK_spectral")
-      add_library(MESH OBJECT "mesh.f90")
+      add_library(MESH OBJECT "mesh_grid.f90")
       add_dependencies(MESH DAMASK_MATH)
       list(APPEND OBJECTFILES $<TARGET_OBJECTS:MESH>)
 elseif (PROJECT_NAME STREQUAL "DAMASK_FEM")
