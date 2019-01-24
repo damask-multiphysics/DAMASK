@@ -2798,15 +2798,17 @@ subroutine update_dotState(timeFraction)
    c, &
    s 
  logical :: &
-   NaN
+   NaN, &
+   nonlocalStop
+   
+   nonlocalStop = .false.
 
- !$OMP PARALLEL
-   !$OMP DO PRIVATE (p,c,NaN)
+   !$OMP PARALLEL DO PRIVATE (p,c,NaN)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
      do g = 1,homogenization_Ngrains(mesh_element(3,e))
-         !$OMP FLUSH(crystallite_todo)
-         if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
+         !$OMP FLUSH(nonlocalStop)
+         if (nonlocalStop .or. (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e))) then
            call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
                                              crystallite_Fe, &
                                              crystallite_Fi(1:3,1:3,g,i,e), &
@@ -2819,16 +2821,13 @@ subroutine update_dotState(timeFraction)
            enddo
            if (NaN) then
              crystallite_todo(g,i,e) = .false.                                                      ! this one done (and broken)
-             if (.not. crystallite_localPlasticity(g,i,e)) then                                     ! if broken is a local...
-               !$OMP CRITICAL (checkTodo)
-                 crystallite_todo = crystallite_todo .and. crystallite_localPlasticity              ! ...all non-locals done (and broken)
-               !$OMP END CRITICAL (checkTodo)
-             endif
+             if (.not. crystallite_localPlasticity(g,i,e)) nonlocalStop = .True.
            endif
          endif
    enddo; enddo; enddo
-   !$OMP ENDDO
- !$OMP END PARALLEL
+   !$OMP END PARALLEL DO
+
+ if (nonlocalStop) crystallite_todo = crystallite_todo .and. crystallite_localPlasticity 
 
 end subroutine update_DotState
 
@@ -2868,14 +2867,18 @@ subroutine update_deltaState
       mySource, &
    c, &
    s 
-  logical :: NaN
+ logical :: &
+   NaN, &
+   nonlocalStop
+   
+   nonlocalStop = .false.
 
    !$OMP PARALLEL DO PRIVATE(p,c,myOffset,mySize,mySource,NaN)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
      do g = 1,homogenization_Ngrains(mesh_element(3,e))
-       !$OMP FLUSH(crystallite_todo)
-       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then                   ! converged and still alive...
+         !$OMP FLUSH(nonlocalStop)
+         if (nonlocalStop .or. (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e))) then
         call constitutive_collectDeltaState(math_6toSym33(crystallite_Tstar_v(1:6,g,i,e)), &
                                      crystallite_Fe(1:3,1:3,g,i,e), &
                                      crystallite_Fi(1:3,1:3,g,i,e), &
@@ -2904,19 +2907,15 @@ subroutine update_deltaState
         endif
          
          crystallite_todo(g,i,e) = .not. NaN
-         !$OMP FLUSH(crystallite_todo)
          if (.not. crystallite_todo(g,i,e)) then                                                             ! if state jump fails, then convergence is broken
            crystallite_converged(g,i,e) = .false.
-           if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
-             !$OMP CRITICAL (checkTodo)
-               crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
-             !$OMP END CRITICAL (checkTodo)
-           endif
+           if (.not. crystallite_localPlasticity(g,i,e)) nonlocalStop = .true.
          endif
        endif
      enddo; enddo; enddo
    !$OMP END PARALLEL DO
-
+ if (nonlocalStop) crystallite_todo = crystallite_todo .and. crystallite_localPlasticity
+ 
 end subroutine update_deltaState
 
 
