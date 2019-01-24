@@ -61,17 +61,21 @@ add_library(MATH OBJECT "math.f90")
 add_dependencies(MATH FEsolving)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:MATH>)
 
+add_library(MESH_BASE OBJECT "mesh_base.f90")
+add_dependencies(MESH_BASE MATH)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:MESH_BASE>)
+
 # SPECTRAL solver and FEM solver use different mesh files
 if (PROJECT_NAME STREQUAL "DAMASK_spectral")
       add_library(MESH OBJECT "mesh_grid.f90")
-      add_dependencies(MESH MATH ELEMENT)
+      add_dependencies(MESH MATH)
       list(APPEND OBJECTFILES $<TARGET_OBJECTS:MESH>)
 elseif (PROJECT_NAME STREQUAL "DAMASK_FEM")
       add_library(FEZoo OBJECT "FEM_zoo.f90")
       add_dependencies(FEZoo MATH)
       list(APPEND OBJECTFILES $<TARGET_OBJECTS:FEZoo>)
       add_library(MESH  OBJECT "mesh_FEM.f90")
-      add_dependencies(MESH FEZoo ELEMENT)
+      add_dependencies(MESH FEZoo)
       list(APPEND OBJECTFILES $<TARGET_OBJECTS:MESH>)
 endif()
 
