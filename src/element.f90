@@ -900,7 +900,27 @@ contains
       self%cellFace = CELLFACE3
     case(4_pInt)
       self%cellFace = CELLFACE4
-   end select 
+   end select
+   
+   
+   write(6,*) 'tElement_init'
+   
+   write(6,*)'elemType                 ',self%elemType
+   write(6,*)'geomType                 ',self%geomType
+   write(6,*)'cellType                 ',self%cellType
+   write(6,*)'Nnodes                   ',self%Nnodes
+   write(6,*)'Ncellnodes               ',self%Ncellnodes
+   write(6,*)'NcellnodesPerCell        ',self%NcellnodesPerCell
+   write(6,*)'nIPs                     ',self%nIPs
+   write(6,*)'nIPneighbors             ',self%nIPneighbors
+   write(6,*)'maxNnodeAtIP             ',self%maxNnodeAtIP
+   write(6,*)'Cell                     ',self%Cell
+   write(6,*)'NnodeAtIP                ',self%NnodeAtIP
+   write(6,*)'IPneighbor               ',self%IPneighbor
+   write(6,*)'cellFace                 ',self%cellFace
+   write(6,*)'cellNodeParentNodeWeights',self%cellNodeParentNodeWeights
+   
+   
  end subroutine tElement_init
 
 
