@@ -854,7 +854,7 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
  integer(pInt) :: &
    ho, &                                                                                            !< homogenization
    tme, &                                                                                           !< thermal member position
-   s, &                                                                                                !< counter in source loop
+   s, &                                                                                             !< counter in source loop
    instance, of
 
  ho = material_homogenizationAt(el)
@@ -920,7 +920,7 @@ end subroutine constitutive_collectDotState
 !> @brief for constitutive models having an instantaneous change of state
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_collectDeltaState(S6, Fe, Fi, ipc, ip, el)
+subroutine constitutive_collectDeltaState(S, Fe, Fi, ipc, ip, el)
  use prec, only: &
    pReal, &
    pLongInt
@@ -929,8 +929,7 @@ subroutine constitutive_collectDeltaState(S6, Fe, Fi, ipc, ip, el)
    debug_constitutive, &
    debug_levelBasic
  use math, only: &
-   math_Mandel6to33, &
-   math_Mandel33to6, &
+   math_sym33to6, &
    math_mul33x33
  use material, only: &
    phasememberAt, &
@@ -954,18 +953,17 @@ subroutine constitutive_collectDeltaState(S6, Fe, Fi, ipc, ip, el)
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- real(pReal),   intent(in),  dimension(6) :: &
-   S6                                                                                               !< 2nd Piola Kirchhoff stress (vector notation)
  real(pReal),   intent(in), dimension(3,3) :: &
+   S, &                                                                                             !< 2nd Piola Kirchhoff stress
    Fe, &                                                                                            !< elastic deformation gradient
    Fi                                                                                               !< intermediate deformation gradient
  real(pReal),               dimension(3,3) :: &
    Mp
  integer(pInt) :: &
-   s, &                                                                                                !< counter in source loop
+   i, &
    instance, of
 
- Mp  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),math_Mandel6to33(S6))
+ Mp  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),S)
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
 
@@ -975,13 +973,13 @@ subroutine constitutive_collectDeltaState(S6, Fe, Fi, ipc, ip, el)
      call plastic_kinehardening_deltaState(Mp,instance,of)
 
    case (PLASTICITY_NONLOCAL_ID) plasticityType
-     call plastic_nonlocal_deltaState(math_Mandel33to6(Mp),ip,el)
+     call plastic_nonlocal_deltaState(math_sym33to6(Mp),ip,el)
 
  end select plasticityType
 
- sourceLoop: do s = 1_pInt, phase_Nsources(material_phase(ipc,ip,el))
+ sourceLoop: do i = 1_pInt, phase_Nsources(material_phase(ipc,ip,el))
 
-    sourceType: select case (phase_source(s,material_phase(ipc,ip,el)))
+    sourceType: select case (phase_source(i,material_phase(ipc,ip,el)))
 
      case (SOURCE_damage_isoBrittle_ID) sourceType
        call source_damage_isoBrittle_deltaState  (constitutive_homogenizedC(ipc,ip,el), Fe, &
