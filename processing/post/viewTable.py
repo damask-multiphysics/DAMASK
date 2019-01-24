@@ -68,7 +68,7 @@ for name in filenames:
                       (['data']   if options.data                   else []) +
                       []
                      )
-  damask.util.report(scriptName,name + ('' if details == '' else ' -- '+details))
+  damask.util.report(scriptName,(name if name is not None else '') + ('' if details == '' else ' -- '+details))
 
 # ------------------------------------------ output head ---------------------------------------  
 
