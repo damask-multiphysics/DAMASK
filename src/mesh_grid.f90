@@ -379,11 +379,24 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_spectral_build_ipNeighborhood
 
  type, public, extends(tMesh) :: tMesh_grid
+ 
+  integer(pInt), dimension(3), public :: &
+   grid                                                                                             !< (global) grid
+ integer(pInt), public :: &
+   mesh_NcpElemsGlobal, &                                                                           !< total number of CP elements in global mesh
+   grid3, &                                                                                         !< (local) grid in 3rd direction
+   grid3Offset                                                                                      !< (local) grid offset in 3rd direction
+ real(pReal), dimension(3), public :: &
+   geomSize
+ real(pReal), public :: &
+   size3, &                                                                                         !< (local) size in 3rd direction
+   size3offset
+   
    contains
    procedure :: init   => tMesh_grid_init
  end type tMesh_grid
  
- type(tMesh_grid), public :: theMesh
+ type(tMesh_grid), public, protected :: theMesh
  
 contains
 
@@ -444,6 +457,7 @@ subroutine mesh_init(ip,el)
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
+ call theMesh%init
  call mesh_build_FEdata                                                                             ! get properties of the different types of elements
  mesh_unitlength = numerics_unitlength                                                              ! set physical extent of a length unit in mesh
 
@@ -517,7 +531,6 @@ subroutine mesh_init(ip,el)
 !!!!!!!!!!!!!!!!!!!!!!!!
 
 
- call theMesh%init
  
 end subroutine mesh_init
 
@@ -2194,7 +2207,7 @@ subroutine mesh_build_FEdata
     5,6,7,8,  &
     1,4,3,2   &
     ],pInt),[FE_NcellnodesPerCellface(me),FE_NipNeighbors(me)])
-
+  
 
 end subroutine mesh_build_FEdata
 
