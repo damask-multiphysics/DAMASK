@@ -2932,6 +2932,40 @@ subroutine update_dotState(timeFraction)
 end subroutine update_DotState
 
 
+subroutine update_deltaState
+
+ implicit none
+ integer(pInt) :: &
+   e, &                                                                                             !< element index in element loop
+   i, &                                                                                             !< integration point index in ip loop
+   g, &                                                                                             !< grain index in grain loop
+   p, &
+   c, &
+   s 
+
+   !$OMP PARALLEL DO
+   do e = FEsolving_execElem(1),FEsolving_execElem(2)
+     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+     do g = 1,homogenization_Ngrains(mesh_element(3,e))
+       !$OMP FLUSH(crystallite_todo)
+       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then                   ! converged and still alive...
+         crystallite_todo(g,i,e) = stateJump(g,i,e)
+         !$OMP FLUSH(crystallite_todo)
+         if (.not. crystallite_todo(g,i,e)) then                                                             ! if state jump fails, then convergence is broken
+           crystallite_converged(g,i,e) = .false.
+           if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
+             !$OMP CRITICAL (checkTodo)
+               crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
+             !$OMP END CRITICAL (checkTodo)
+           endif
+         endif
+       endif
+     enddo; enddo; enddo
+   !$OMP END PARALLEL DO
+
+end subroutine update_deltaState
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates a jump in the state according to the current state and the current stress
 !> returns true, if state jump was successfull or not needed. false indicates NaN in delta state
@@ -2971,10 +3005,8 @@ logical function stateJump(ipc,ip,el)
    c, &
    p, &
    mySource, &
-   myOffsetPlasticDeltaState, &
-   myOffsetSourceDeltaState, &
-   mySizePlasticDeltaState, &
-   mySizeSourceDeltaState
+   myOffset, &
+   mySize
 
  c = phasememberAt(ipc,ip,el)
  p = phaseAt(ipc,ip,el)
@@ -2984,44 +3016,40 @@ logical function stateJump(ipc,ip,el)
                                      crystallite_Fi(1:3,1:3,ipc,ip,el), &
                                      ipc,ip,el)
 
- myOffsetPlasticDeltaState = plasticState(p)%offsetDeltaState
- mySizePlasticDeltaState   = plasticState(p)%sizeDeltaState
+ myOffset = plasticState(p)%offsetDeltaState
+ mySize   = plasticState(p)%sizeDeltaState
 
- if( any(IEEE_is_NaN(plasticState(p)%deltaState(1:mySizePlasticDeltaState,c)))) then                                       ! NaN occured in deltaState
+ if( any(IEEE_is_NaN(plasticState(p)%deltaState(1:mySize,c)))) then                                       ! NaN occured in deltaState
    stateJump = .false.
    return
  endif
 
- plasticState(p)%state(myOffsetPlasticDeltaState + 1_pInt                 : &
-                       myOffsetPlasticDeltaState + mySizePlasticDeltaState,c) = &
- plasticState(p)%state(myOffsetPlasticDeltaState + 1_pInt                 : &
-                       myOffsetPlasticDeltaState + mySizePlasticDeltaState,c) + &
-    plasticState(p)%deltaState(1:mySizePlasticDeltaState,c)
+ plasticState(p)%state(myOffset + 1_pInt: myOffset + mySize,c) = &
+ plasticState(p)%state(myOffset + 1_pInt: myOffset + mySize,c) + &
+    plasticState(p)%deltaState(1:mySize,c)
 
  do mySource = 1_pInt, phase_Nsources(p)
-   myOffsetSourceDeltaState = sourceState(p)%p(mySource)%offsetDeltaState
-   mySizeSourceDeltaState   = sourceState(p)%p(mySource)%sizeDeltaState
-   if (any(IEEE_is_NaN(sourceState(p)%p(mySource)%deltaState(1:mySizeSourceDeltaState,c)))) then   ! NaN occured in deltaState
+   myOffset = sourceState(p)%p(mySource)%offsetDeltaState
+  mySize   = sourceState(p)%p(mySource)%sizeDeltaState
+   if (any(IEEE_is_NaN(sourceState(p)%p(mySource)%deltaState(1:mySize,c)))) then   ! NaN occured in deltaState
      stateJump = .false.
      return
    endif
-   sourceState(p)%p(mySource)%state(myOffsetSourceDeltaState + 1_pInt                : &
-                                    myOffsetSourceDeltaState + mySizeSourceDeltaState,c) = &
-   sourceState(p)%p(mySource)%state(myOffsetSourceDeltaState + 1_pInt                : &
-                                    myOffsetSourceDeltaState + mySizeSourceDeltaState,c) + &
-     sourceState(p)%p(mySource)%deltaState(1:mySizeSourceDeltaState,c)
+   sourceState(p)%p(mySource)%state(myOffset + 1_pInt:myOffset +mySize,c) = &
+   sourceState(p)%p(mySource)%state(myOffset + 1_pInt:myOffset +mySize,c) + &
+     sourceState(p)%p(mySource)%deltaState(1:mySize,c)
  enddo
 
 #ifdef DEBUG
- if (any(dNeq0(plasticState(p)%deltaState(1:mySizePlasticDeltaState,c))) &
+ if (any(dNeq0(plasticState(p)%deltaState(1:mySize,c))) &
      .and. iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
      .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
              .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
    write(6,'(a,i8,1x,i2,1x,i3, /)') '<< CRYST >> update state at el ip ipc ',el,ip,ipc
-   write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> deltaState', plasticState(p)%deltaState(1:mySizePlasticDeltaState,c)
+   write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> deltaState', plasticState(p)%deltaState(1:mySize,c)
    write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state', &
-     plasticState(p)%state(myOffsetPlasticDeltaState + 1_pInt                : &
-                           myOffsetPlasticDeltaState + mySizePlasticDeltaState,c)
+     plasticState(p)%state(myOffset + 1_pInt                : &
+                           myOffset + mySize,c)
  endif
 #endif
 
