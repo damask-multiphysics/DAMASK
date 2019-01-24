@@ -8,6 +8,7 @@
 module mesh
  use, intrinsic :: iso_c_binding
  use prec, only: pReal, pInt
+ use mesh_base
 
  implicit none
  private
@@ -368,7 +369,6 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_get_damaskOptions, &
    mesh_build_cellconnectivity, &
    mesh_build_ipAreas, &
-   FE_mapElemtype, &
    mesh_faceMatch, &
    mesh_build_FEdata, &
    mesh_spectral_getHomogenization, &
@@ -378,9 +378,23 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_spectral_build_elements, &
    mesh_spectral_build_ipNeighborhood
 
-
+ type, public, extends(tMesh) :: tMesh_grid
+   contains
+   procedure :: init   => tMesh_grid_init
+ end type tMesh_grid
+ 
+ type(tMesh_grid), public :: theMesh
+ 
 contains
 
+subroutine tMesh_grid_init(self)
+ 
+ implicit none
+ class(tMesh_grid) :: self
+ 
+ call self%elem%init(10_pInt)
+ 
+end subroutine tMesh_grid_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief initializes the mesh by calling all necessary private routines the mesh module
@@ -502,6 +516,9 @@ subroutine mesh_init(ip,el)
  mesh_CPnodeID          = mesh_element(5:4+mesh_NipsPerElem,:)
 !!!!!!!!!!!!!!!!!!!!!!!!
 
+
+ call theMesh%init
+ 
 end subroutine mesh_init
 
 !--------------------------------------------------------------------------------------------------
@@ -985,7 +1002,7 @@ subroutine mesh_spectral_count_cpSizes
  implicit none
  integer(pInt) :: t,g,c
 
- t = FE_mapElemtype('C3D8R')                                                                        ! fake 3D hexahedral 8 node 1 IP element
+ t = 10_pInt
  g = FE_geomtype(t)
  c = FE_celltype(g)
 
@@ -1112,7 +1129,7 @@ subroutine mesh_spectral_build_elements(fileUnit)
    enddo
  enddo
 
- elemType = FE_mapElemtype('C3D8R')
+ elemType = 10_pInt
  elemOffset = product(grid(1:2))*grid3Offset
  e = 0_pInt
  do while (e < mesh_NcpElems)                                                                       ! fill expected number of elements, stop at end of data (or blank line!)
@@ -1375,68 +1392,6 @@ subroutine mesh_build_ipAreas
  !$OMP END PARALLEL DO
 
 end subroutine mesh_build_ipAreas
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief mapping of FE element types to internal representation
-!--------------------------------------------------------------------------------------------------
-integer(pInt) function FE_mapElemtype(what)
- use IO, only: IO_lc, IO_error
-
- implicit none
- character(len=*), intent(in) :: what
-
- select case (IO_lc(what))
-    case (   '6')
-      FE_mapElemtype = 1_pInt            ! Two-dimensional Plane Strain Triangle
-    case ( '155', &
-           '125', &
-           '128')
-      FE_mapElemtype = 2_pInt            ! Two-dimensional Plane Strain triangle (155: cubic shape function, 125/128: second order isoparametric)
-    case ( '11', &
-           'cpe4', &
-           'cpe4t')
-      FE_mapElemtype = 3_pInt            ! Arbitrary Quadrilateral Plane-strain
-    case ( '27', &
-           'cpe8', &
-           'cpe8t')
-      FE_mapElemtype = 4_pInt            ! Plane Strain, Eight-node Distorted Quadrilateral
-    case ( '54')
-      FE_mapElemtype = 5_pInt            ! Plane Strain, Eight-node Distorted Quadrilateral with reduced integration
-    case ( '134', &
-           'c3d4', &
-           'c3d4t')
-      FE_mapElemtype = 6_pInt            ! Three-dimensional Four-node Tetrahedron
-    case ( '157')
-      FE_mapElemtype = 7_pInt            ! Three-dimensional, Low-order, Tetrahedron, Herrmann Formulations
-    case ( '127')
-      FE_mapElemtype = 8_pInt            ! Three-dimensional Ten-node Tetrahedron
-    case ( '136', &
-           'c3d6', &
-           'c3d6t')
-      FE_mapElemtype = 9_pInt            ! Three-dimensional Arbitrarily Distorted Pentahedral
-    case ( '117', &
-           '123', &
-           'c3d8r', &
-           'c3d8rt')
-      FE_mapElemtype = 10_pInt           ! Three-dimensional Arbitrarily Distorted linear hexahedral with reduced integration
-    case ( '7', &
-           'c3d8', &
-           'c3d8t')
-      FE_mapElemtype = 11_pInt           ! Three-dimensional Arbitrarily Distorted Brick
-    case ( '57', &
-           'c3d20r', &
-           'c3d20rt')
-      FE_mapElemtype = 12_pInt           ! Three-dimensional Arbitrarily Distorted quad hexahedral with reduced integration
-    case ( '21', &
-           'c3d20', &
-           'c3d20t')
-      FE_mapElemtype = 13_pInt           ! Three-dimensional Arbitrarily Distorted quadratic hexahedral
-    case default
-      call IO_error(error_ID=190_pInt,ext_msg=IO_lc(what))
- end select
-
-end function FE_mapElemtype
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2282,7 +2237,7 @@ integer(pInt) function mesh_get_nodeAtIP(elemtypeFE,ip)
 
  mesh_get_nodeAtIP = 0_pInt
 
- elemtype = FE_mapElemtype(elemtypeFE)
+ elemtype = 10_pInt
  geomtype = FE_geomtype(elemtype)
  if (FE_Nips(geomtype) >= ip .and. FE_Nips(geomtype) <= FE_Nnodes(elemtype)) &
    mesh_get_nodeAtIP = FE_nodesAtIP(1,ip,geomtype)
