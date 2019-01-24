@@ -2958,6 +2958,8 @@ logical function stateJump(ipc,ip,el)
    phaseAt, phasememberAt
  use constitutive, only: &
    constitutive_collectDeltaState
+ use math, only: &
+   math_6toSym33
 
  implicit none
  integer(pInt), intent(in):: &
@@ -2977,7 +2979,7 @@ logical function stateJump(ipc,ip,el)
  c = phasememberAt(ipc,ip,el)
  p = phaseAt(ipc,ip,el)
 
- call constitutive_collectDeltaState(crystallite_Tstar_v(1:6,ipc,ip,el), &
+ call constitutive_collectDeltaState(math_6toSym33(crystallite_Tstar_v(1:6,ipc,ip,el)), &
                                      crystallite_Fe(1:3,1:3,ipc,ip,el), &
                                      crystallite_Fi(1:3,1:3,ipc,ip,el), &
                                      ipc,ip,el)
