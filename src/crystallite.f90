@@ -1921,32 +1921,8 @@ eIter = FEsolving_execElem(1:2)
 
  call update_dotState(1.0_pReal)
  call update_State(1.0_pReal)
-
- !$OMP PARALLEL
-
-
-
-
-   ! --- STATE JUMP ---
-
-   !$OMP DO
-     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                   ! iterate over elements, ips and grains
-       !$OMP FLUSH(crystallite_todo)
-       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
-         crystallite_todo(g,i,e) = stateJump(g,i,e)
-         !$OMP FLUSH(crystallite_todo)
-         if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then                ! if broken non-local...
-           !$OMP CRITICAL (checkTodo)
-             crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                          ! ...all non-locals skipped
-           !$OMP END CRITICAL (checkTodo)
-         endif
-       endif
-     enddo; enddo; enddo
-   !$OMP ENDDO
-
-  !$OMP END PARALLEL
-
-   call update_dependentState
+ call update_deltaState
+ call update_dependentState
 
 
  !$OMP PARALLEL
@@ -2109,26 +2085,8 @@ subroutine integrateStateAdaptiveEuler()
        endif
      enddo; enddo; enddo
    !$OMP ENDDO
-
-
-   ! --- STATE JUMP ---
-
-   !$OMP DO
-     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
-       !$OMP FLUSH(crystallite_todo)
-       if (crystallite_todo(g,i,e)) then
-         crystallite_todo(g,i,e) = stateJump(g,i,e)
-         !$OMP FLUSH(crystallite_todo)
-         if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then            ! if broken non-local...
-           !$OMP CRITICAL (checkTodo)
-             crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
-           !$OMP END CRITICAL (checkTodo)
-         endif
-       endif
-     enddo; enddo; enddo
-   !$OMP ENDDO
  !$OMP END PARALLEL
-
+  call update_deltaState
   call update_dependentState
 
 
@@ -2365,25 +2323,7 @@ subroutine integrateStateRK4()
    !$OMP END PARALLEL
 
    call update_state(TIMESTEPFRACTION(n))
-
-   !$OMP PARALLEL
-   ! --- state jump ---
-
-   !$OMP DO
-     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-       !$OMP FLUSH(crystallite_todo)
-       if (crystallite_todo(g,i,e)) then
-         crystallite_todo(g,i,e) = stateJump(g,i,e)
-         !$OMP FLUSH(crystallite_todo)
-         if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then              ! if broken non-local...
-           !$OMP CRITICAL (checkTodo)
-             crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                           ! ...all non-locals skipped
-           !$OMP END CRITICAL (checkTodo)
-         endif
-       endif
-     enddo; enddo; enddo
-   !$OMP ENDDO
-   !$OMP END PARALLEL
+   call update_deltaState
    call update_dependentState
    !$OMP PARALLEL
 
@@ -2584,31 +2524,8 @@ subroutine integrateStateRKCK45()
    !$OMP END PARALLEL
 
     call update_state(1.0_pReal) !MD: 1.0 correct?
-
-   !$OMP PARALLEL
-
-
-   ! --- state jump ---
-
-   !$OMP DO
-     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                   ! iterate over elements, ips and grains
-       !$OMP FLUSH(crystallite_todo)
-       if (crystallite_todo(g,i,e)) then
-         crystallite_todo(g,i,e) = stateJump(g,i,e)
-         !$OMP FLUSH(crystallite_todo)
-         if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then             ! if broken non-local...
-           !$OMP CRITICAL (checkTodo)
-             crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                          ! ...all non-locals skipped
-           !$OMP END CRITICAL (checkTodo)
-         endif
-       endif
-     enddo; enddo; enddo
-   !$OMP ENDDO
-   !$OMP END PARALLEL
-
-
-
- call update_dependentState
+    call update_deltaState
+    call update_dependentState
    !$OMP PARALLEL
 
    ! --- stress integration ---
@@ -2736,25 +2653,9 @@ subroutine integrateStateRKCK45()
    enddo; enddo; enddo
  !$OMP ENDDO
 
+!$OMP END PARALLEL
 
- ! --- STATE JUMP ---
-
- !$OMP DO
-   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-     !$OMP FLUSH(crystallite_todo)
-     if (crystallite_todo(g,i,e)) then
-       crystallite_todo(g,i,e) = stateJump(g,i,e)
-       !$OMP FLUSH(crystallite_todo)
-       if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then              ! if broken non-local...
-         !$OMP CRITICAL (checkTodo)
-           crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                           ! ...all non-locals skipped
-         !$OMP END CRITICAL (checkTodo)
-       endif
-     endif
-   enddo; enddo; enddo
- !$OMP ENDDO
-   !$OMP END PARALLEL
-
+ call update_deltaState
  call update_dependentState
 
    !$OMP PARALLEL
@@ -2964,11 +2865,12 @@ subroutine update_deltaState
    p, &
       mySize, &
    myOffset, &
+      mySource, &
    c, &
    s 
   logical :: NaN
 
-   !$OMP PARALLEL DO PRIVATE(p,c,myOffset,mySize)
+   !$OMP PARALLEL DO PRIVATE(p,c,myOffset,mySize,mySource,NaN)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
      do g = 1,homogenization_Ngrains(mesh_element(3,e))
@@ -2988,10 +2890,20 @@ subroutine update_deltaState
            plasticState(p)%state(myOffset + 1_pInt: myOffset + mySize,c) = &
            plasticState(p)%state(myOffset + 1_pInt: myOffset + mySize,c) + &
            plasticState(p)%deltaState(1:mySize,c)
-
+           do mySource = 1_pInt, phase_Nsources(p)
+             myOffset = sourceState(p)%p(mySource)%offsetDeltaState
+             mySize   = sourceState(p)%p(mySource)%sizeDeltaState
+             NaN = NaN .or. any(IEEE_is_NaN(sourceState(p)%p(mySource)%deltaState(1:mySize,c)))
+             
+             if (.not. NaN) then
+               sourceState(p)%p(mySource)%state(myOffset + 1_pInt:myOffset +mySize,c) = &
+               sourceState(p)%p(mySource)%state(myOffset + 1_pInt:myOffset +mySize,c) + &
+                  sourceState(p)%p(mySource)%deltaState(1:mySize,c)
+             endif
+          enddo
         endif
          
-         crystallite_todo(g,i,e) = stateJump(g,i,e)
+         crystallite_todo(g,i,e) = .not. NaN
          !$OMP FLUSH(crystallite_todo)
          if (.not. crystallite_todo(g,i,e)) then                                                             ! if state jump fails, then convergence is broken
            crystallite_converged(g,i,e) = .false.
