@@ -302,7 +302,6 @@ subroutine plastic_kinehardening_init
    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,sizeDeltaState, &
                                       prm%totalNslip,0_pInt,0_pInt)
    plasticState(p)%sizePostResults = sum(plastic_kinehardening_sizePostResult(:,phase_plasticityInstance(p)))
-   plasticState(p)%offsetDeltaState = sizeDotState
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
