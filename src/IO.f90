@@ -1236,6 +1236,10 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
    msg = 'zero entry on stiffness diagonal'
  case (136_pInt)
    msg = 'zero entry on stiffness diagonal for transformed phase'
+ case (137_pInt)
+   msg = 'not defined for lattice structure'
+ case (138_pInt)
+   msg = 'not enough interaction parameters given'
 
 !--------------------------------------------------------------------------------------------------
 ! errors related to the parsing of material.config
