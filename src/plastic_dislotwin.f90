@@ -312,17 +312,17 @@ subroutine plastic_dislotwin_init
                                                              config%getFloats('interaction_slipslip'), &
                                                              structure(1:3))
 
-     prm%rho0                 = config%getFloats('rhoedge0',   requiredShape=shape(prm%Nslip))  !ToDo: rename to rho_0
-     prm%rhoDip0              = config%getFloats('rhoedgedip0',requiredShape=shape(prm%Nslip))  !ToDo: rename to rho_dip_0
-     prm%v0                   = config%getFloats('v0',         requiredShape=shape(prm%Nslip))
-     prm%burgers_slip         = config%getFloats('slipburgers',requiredShape=shape(prm%Nslip))
-     prm%Qedge                = config%getFloats('qedge',      requiredShape=shape(prm%Nslip))  !ToDo: rename (ask Karo)
-     prm%CLambdaSlip          = config%getFloats('clambdaslip',requiredShape=shape(prm%Nslip))
-     prm%p                    = config%getFloats('p_slip',     requiredShape=shape(prm%Nslip))
-     prm%q                    = config%getFloats('q_slip',     requiredShape=shape(prm%Nslip))
-     prm%B                    = config%getFloats('b',          requiredShape=shape(prm%Nslip), &
+     prm%rho0                 = config%getFloats('rhoedge0',   requiredSize=size(prm%Nslip))  !ToDo: rename to rho_0
+     prm%rhoDip0              = config%getFloats('rhoedgedip0',requiredSize=size(prm%Nslip))  !ToDo: rename to rho_dip_0
+     prm%v0                   = config%getFloats('v0',         requiredSize=size(prm%Nslip))
+     prm%burgers_slip         = config%getFloats('slipburgers',requiredSize=size(prm%Nslip))
+     prm%Qedge                = config%getFloats('qedge',      requiredSize=size(prm%Nslip))  !ToDo: rename (ask Karo)
+     prm%CLambdaSlip          = config%getFloats('clambdaslip',requiredSize=size(prm%Nslip))
+     prm%p                    = config%getFloats('p_slip',     requiredSize=size(prm%Nslip))
+     prm%q                    = config%getFloats('q_slip',     requiredSize=size(prm%Nslip))
+     prm%B                    = config%getFloats('b',          requiredSize=size(prm%Nslip), &
                                                           defaultVal=[(0.0_pReal, i=1,size(prm%Nslip))])
-     prm%tau_peierls          = config%getFloats('tau_peierls',requiredShape=shape(prm%Nslip), &
+     prm%tau_peierls          = config%getFloats('tau_peierls',requiredSize=size(prm%Nslip), &
                                                           defaultVal=[(0.0_pReal, i=1,size(prm%Nslip))]) ! Deprecated
 
      prm%CEdgeDipMinDistance  = config%getFloat('cedgedipmindistance')
@@ -366,9 +366,9 @@ subroutine plastic_dislotwin_init
                                                              config%getFloats('interaction_twintwin'), &
                                                              structure(1:3))
 
-     prm%burgers_twin = config%getFloats('twinburgers')
-     prm%twinsize     = config%getFloats('twinsize')
-     prm%r            = config%getFloats('r_twin')
+     prm%burgers_twin = config%getFloats('twinburgers',     requiredSize=size(prm%Ntwin))
+     prm%twinsize     = config%getFloats('twinsize',     requiredSize=size(prm%Ntwin))
+     prm%r            = config%getFloats('r_twin',     requiredSize=size(prm%Ntwin))
 
      prm%xc_twin         = config%getFloat('xc_twin')
      prm%L0_twin         = config%getFloat('l0_twin')
