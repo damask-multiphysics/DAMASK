@@ -33,10 +33,7 @@ module plastic_dislotwin
      resolved_stress_slip_ID, &
      threshold_stress_slip_ID, &
      edge_dipole_distance_ID, &
-     stress_exponent_ID, &
      twin_fraction_ID, &
-     shear_rate_twin_ID, &
-     accumulated_shear_twin_ID, &
      mfp_twin_ID, &
      resolved_stress_twin_ID, &
      threshold_stress_twin_ID, &
@@ -137,7 +134,6 @@ module plastic_dislotwin
      rhoEdgeDip, &
      accshear_slip, &
      twinFraction, &
-     accshear_twin, &
      stressTransFraction, &
      strainTransFraction, &
      whole
@@ -545,18 +541,9 @@ subroutine plastic_dislotwin_init
        case ('edge_dipole_distance')
          outputID = merge(edge_dipole_distance_ID,undefined_ID,prm%totalNslip > 0_pInt)
          outputSize = prm%totalNslip
-       case ('stress_exponent')
-         outputID = merge(stress_exponent_ID,undefined_ID,prm%totalNslip > 0_pInt)
-         outputSize = prm%totalNslip
 
        case ('twin_fraction')
          outputID = merge(twin_fraction_ID,undefined_ID,prm%totalNtwin >0_pInt)
-         outputSize = prm%totalNtwin
-       case ('shear_rate_twin','shearrate_twin')
-         outputID = merge(shear_rate_twin_ID,undefined_ID,prm%totalNtwin >0_pInt)
-         outputSize = prm%totalNtwin
-       case ('accumulated_shear_twin')
-         outputID = merge(accumulated_shear_twin_ID,undefined_ID,prm%totalNtwin >0_pInt)
          outputSize = prm%totalNtwin
        case ('mfp_twin')
          outputID = merge(mfp_twin_ID,undefined_ID,prm%totalNtwin >0_pInt)
@@ -596,7 +583,7 @@ subroutine plastic_dislotwin_init
 ! allocate state arrays
    NipcMyPhase = count(material_phase == p)
    sizeDotState = int(size(['rho         ','rhoDip      ','accshearslip']),pInt) * prm%totalNslip &
-                + int(size(['twinFraction','accsheartwin']),pInt)                * prm%totalNtwin &
+                + int(size(['twinFraction']),pInt)                               * prm%totalNtwin &
                 + int(size(['stressTransFraction','strainTransFraction']),pInt)  * prm%totalNtrans
    sizeState = sizeDotState
 
@@ -635,12 +622,6 @@ subroutine plastic_dislotwin_init
    stt%twinFraction=>plasticState(p)%state(startIndex:endIndex,:)
    dot%twinFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTwinFrac
-   
-   startIndex = endIndex + 1_pInt
-   endIndex=endIndex+prm%totalNtwin
-   stt%accshear_twin=>plasticState(p)%state(startIndex:endIndex,:)
-   dot%accshear_twin=>plasticState(p)%dotState(startIndex:endIndex,:)
-   plasticState(p)%aTolState(startIndex:endIndex) = 1.0e6_pReal
    
    startIndex = endIndex + 1_pInt
    endIndex=endIndex+prm%totalNtrans
@@ -992,7 +973,6 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
        Ndot0_twin=prm%Ndot0_twin(i)
      endif isFCCtwin
      dot%twinFraction(i,of) = f_unrotated * mse%twinVolume(i,of)*Ndot0_twin*exp(-StressRatio_r)
-     dot%accshear_twin(i,of) = dot%twinFraction(i,of) * prm%shear_twin(i)
    endif significantTwinStress
  
  enddo twinState
@@ -1019,9 +999,6 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
      endif isFCCtrans
      dot%strainTransFraction(i,of) = f_unrotated * &
                              mse%martensiteVolume(i,of)*Ndot0_trans*exp(-StressRatio_s)
-        !* Dotstate for accumulated shear due to transformation
-        !dot%accshear_trans(i,of) = dot%strainTransFraction(i,of) * &
-        !                                                  lattice_sheartrans(index_myfamily+i,ph)
    endif significantTransStress
  
  enddo transState
@@ -1246,56 +1223,7 @@ function plastic_dislotwin_postResults(Mp,Temperature,instance,of) result(postRe
  !      c = c + 6_pInt
      case (twin_fraction_ID)
        postResults(c+1_pInt:c+prm%totalNtwin) = stt%twinFraction(1_pInt:prm%totalNtwin,of)
-       c = c + prm%totalNtwin
-     case (shear_rate_twin_ID)
-       do j = 1_pInt, prm%totalNslip
-         tau = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,j))
-         if((abs(tau)-mse%threshold_stress_slip(j,of)) > tol_math_check) then
-           StressRatio_p = ((abs(tau)-mse%threshold_stress_slip(j,of))/&
-                           (prm%SolidSolutionStrength+&
-                            prm%tau_peierls(j)))&
-                                              **prm%p(j)
-           StressRatio_pminus1 = ((abs(tau)-mse%threshold_stress_slip(j,of))/&
-                                 (prm%SolidSolutionStrength+&
-                                  prm%tau_peierls(j)))&
-                                              **(prm%p(j)-1.0_pReal)
-           BoltzmannRatio = prm%Qedge(j)/(kB*Temperature)
-           DotGamma0 =  stt%rhoEdge(j,of)*prm%burgers_slip(j)* prm%v0(j)
- 
-           gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
-                          prm%q(j))*sign(1.0_pReal,tau)
-         else
-           gdot_slip(j) = 0.0_pReal
-         endif
-       enddo
-
-       do j = 1_pInt, prm%totalNtwin
-         tau = math_mul33xx33(Mp,prm%Schmid_twin(1:3,1:3,j))
-
-         if ( tau > 0.0_pReal ) then
-           isFCCtwin: if (prm%fccTwinTransNucleation) then
-             s1=prm%fcc_twinNucleationSlipPair(1,j)
-             s2=prm%fcc_twinNucleationSlipPair(2,j)
-             if (tau < mse%tau_r_twin(j,of)) then
-                 Ndot0_twin=(abs(gdot_slip(s1))*(stt%rhoEdge(s2,of)+stt%rhoEdgeDip(s2,of))+&
-                        abs(gdot_slip(s2))*(stt%rhoEdge(s1,of)+stt%rhoEdgeDip(s1,of)))/&
-                       (prm%L0_twin* prm%burgers_slip(j))*&
-                       (1.0_pReal-exp(-prm%VcrossSlip/(kB*Temperature)* (mse%tau_r_twin(j,of)-tau)))
-              else
-               Ndot0_twin=0.0_pReal
-              end if
-            else isFCCtwin
-              Ndot0_twin=prm%Ndot0_twin(j)
-            endif isFCCtwin
-            StressRatio_r = (mse%threshold_stress_twin(j,of)/tau) **prm%r(j)
-            postResults(c+j) = (prm%MaxTwinFraction-sumf_twin)*prm%shear_twin(j) &
-                             * mse%twinVolume(j,of)*Ndot0_twin*exp(-StressRatio_r)
-         endif
-       enddo
-       c = c + prm%totalNtwin
-     case (accumulated_shear_twin_ID)
-       postResults(c+1_pInt:c+prm%totalNtwin) = stt%accshear_twin(1_pInt:prm%totalNtwin,of)
-       c = c + prm%totalNtwin     
+       c = c + prm%totalNtwin    
      case (mfp_twin_ID)
        postResults(c+1_pInt:c+prm%totalNtwin) = mse%mfp_twin(1_pInt:prm%totalNtwin,of)
        c = c + prm%totalNtwin
@@ -1307,34 +1235,7 @@ function plastic_dislotwin_postResults(Mp,Temperature,instance,of) result(postRe
      case (threshold_stress_twin_ID)
        postResults(c+1_pInt:c+prm%totalNtwin) = mse%threshold_stress_twin(1_pInt:prm%totalNtwin,of)
        c = c + prm%totalNtwin
-     case (stress_exponent_ID)
-       do j = 1_pInt, prm%totalNslip
-         tau = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,j))
-         if((abs(tau)-mse%threshold_stress_slip(j,of)) > tol_math_check) then
-           StressRatio_p = ((abs(tau)-mse%threshold_stress_slip(j,of))/&
-                           (prm%SolidSolutionStrength+&
-                            prm%tau_peierls(j)))&
-                                              **prm%p(j)
-           StressRatio_pminus1 = ((abs(tau)-mse%threshold_stress_slip(j,of))/&
-                                 (prm%SolidSolutionStrength+&
-                                  prm%tau_peierls(j)))&
-                                              **(prm%p(j)-1.0_pReal)
-           BoltzmannRatio = prm%Qedge(j)/(kB*Temperature)
-           DotGamma0 = stt%rhoEdge(j,of)*prm%burgers_slip(j)* prm%v0(j)
 
-           gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
-                        prm%q(j))*sign(1.0_pReal,tau)
-
-           dgdot_dtauslip = abs(gdot_slip(j))*BoltzmannRatio*prm%p(j) *prm%q(j)/&
-             (prm%SolidSolutionStrength+ prm%tau_peierls(j))*&
-             StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)
-         else
-           gdot_slip(j) = 0.0_pReal
-           dgdot_dtauslip = 0.0_pReal
-         endif
-         postResults(c+j) = merge(0.0_pReal,(tau/gdot_slip(j))*dgdot_dtauslip,dEq0(gdot_slip(j)))
-       enddo
-       c = c + prm%totalNslip
      case (stress_trans_fraction_ID)
        postResults(c+1_pInt:c+prm%totalNtrans) = stt%stressTransFraction(1_pInt:prm%totalNtrans,of)
        c = c + prm%totalNtrans
