@@ -772,7 +772,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,instance,
  Lp = 0.0_pReal
  dLp_dMp = 0.0_pReal 
 
- call kinetics_slip(prm,stt,mse,of,Mp,temperature,gdot_slip,dgdot_dtau_slip)
+ call kinetics_slip(Mp,temperature,instance,of,gdot_slip,dgdot_dtau_slip)
  slipContribution: do i = 1_pInt, prm%totalNslip
    Lp = Lp + gdot_slip(i)*prm%Schmid_slip(1:3,1:3,i)
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
@@ -900,7 +900,7 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
              - sum(stt%stressTransFraction(1_pInt:prm%totalNtrans,of)) &
              - sum(stt%strainTransFraction(1_pInt:prm%totalNtrans,of))
 
- call kinetics_slip(prm,stt,mse,of,Mp,temperature,gdot_slip)
+ call kinetics_slip(Mp,temperature,instance,of,gdot_slip)
  slipState: do i = 1_pInt, prm%totalNslip
    tau = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,i))
 
@@ -1172,7 +1172,7 @@ function plastic_dislotwin_postResults(Mp,Temperature,instance,of) result(postRe
        postResults(c+1_pInt:c+prm%totalNslip) = stt%rhoEdgeDip(1_pInt:prm%totalNslip,of)
        c = c + prm%totalNslip
      case (shear_rate_slip_ID)
-       call kinetics_slip(prm,stt,mse,of,Mp,temperature,postResults(c+1:c+prm%totalNslip))
+       call kinetics_slip(Mp,temperature,instance,of,postResults(c+1:c+prm%totalNslip))
        c = c + prm%totalNslip
      case (accumulated_shear_slip_ID)
       postResults(c+1_pInt:c+prm%totalNslip)  = stt%accshear_slip(1_pInt:prm%totalNslip,of)
@@ -1246,9 +1246,14 @@ end function plastic_dislotwin_postResults
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates shear rates on slip systems
+!> @brief Shear rates on slip systems, their derivatives with respect to resolved stress and the
+!  resolved stresss
+!> @details Derivatives and resolved stress are calculated only optionally.
+! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
+! have the optional arguments at the end
 !--------------------------------------------------------------------------------------------------
-pure subroutine kinetics_slip(prm,stt,mse,of,Mp,temperature,gdot_slip,dgdot_dtau_slip)
+pure subroutine kinetics_slip(Mp,Temperature,instance,of, &
+                              gdot_slip,dgdot_dtau_slip,tau_slip)
  use prec, only: &
   tol_math_check, &
   dNeq0
@@ -1256,43 +1261,42 @@ pure subroutine kinetics_slip(prm,stt,mse,of,Mp,temperature,gdot_slip,dgdot_dtau
    math_mul33xx33
 
  implicit none
- type(tParameters), intent(in) :: &
-   prm
- type(tDislotwinState), intent(in) :: &
-   stt
- integer(pInt),     intent(in) :: &
+ real(pReal), dimension(3,3),  intent(in) :: &
+   Mp                                                                                               !< Mandel stress
+ real(pReal),                  intent(in) :: &
+   temperature                                                                                      !< temperature
+ integer(pInt),                intent(in) :: &
+   instance, &
    of
- type(tDislotwinMicrostructure), intent(in) :: &
-   mse
- real(pReal), dimension(prm%totalNslip), intent(out) :: &
+   
+ real(pReal), dimension(param(instance)%totalNslip), intent(out) :: &
    gdot_slip
- real(pReal), dimension(prm%totalNslip), optional, intent(out) :: &
-   dgdot_dtau_slip
- real(pReal), dimension(prm%totalNslip) :: &
+ real(pReal), dimension(param(instance)%totalNslip), optional, intent(out) :: &
+   dgdot_dtau_slip, &
+   tau_slip
+ real(pReal), dimension(param(instance)%totalNslip) :: &
    dgdot_dtau
- real(pReal), dimension(3,3), intent(in) :: &
-   Mp
- real(pReal), intent(in) :: &
-   temperature
 
- real, dimension(prm%totalNslip) :: &
+ real, dimension(param(instance)%totalNslip) :: &
    tau, &
    stressRatio, &
    StressRatio_p, &
    BoltzmannRatio, &
-   v_wait_inverse, &                                  !< inverse of the effective velocity of a dislocation waiting at obstacles (unsigned)
-   v_run_inverse, &                                   !< inverse of the velocity of a free moving dislocation (unsigned)
+   v_wait_inverse, &                                                                                !< inverse of the effective velocity of a dislocation waiting at obstacles (unsigned)
+   v_run_inverse, &                                                                                 !< inverse of the velocity of a free moving dislocation (unsigned)
    dV_wait_inverse_dTau, &
    dV_run_inverse_dTau, &
    dV_dTau, &
-   tau_eff                                            !< effective resolved stress
+   tau_eff                                                                                          !< effective resolved stress
  integer(pInt) :: i 
+ 
+ associate(prm => param(instance), stt => state(instance), dst => microstructure(instance))
 
  do i = 1_pInt, prm%totalNslip
    tau(i) = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,i))
  enddo
  
- tau_eff = abs(tau)-mse%threshold_stress_slip(:,of)
+ tau_eff = abs(tau)-dst%threshold_stress_slip(:,of)
    
  significantStress: where(tau_eff > tol_math_check)
    stressRatio    = tau_eff/(prm%SolidSolutionStrength+prm%tau_peierls)
@@ -1317,6 +1321,9 @@ pure subroutine kinetics_slip(prm,stt,mse,of,Mp,temperature,gdot_slip,dgdot_dtau
  end where significantStress
  
  if(present(dgdot_dtau_slip)) dgdot_dtau_slip = dgdot_dtau
+ if(present(tau_slip))        tau_slip        = tau
+ 
+ end associate
 
 end subroutine kinetics_slip
 
@@ -1340,7 +1347,7 @@ pure subroutine kinetics_twin(prm,stt,mse,of,Mp,temperature,gdot_slip,gdot_twin,
    of
  type(tDislotwinMicrostructure), intent(in) :: &
    mse
- real(pReal), dimension(prm%totalNslip), intent(out) :: &
+ real(pReal), dimension(prm%totalNslip), intent(in) :: &
    gdot_slip
  real(pReal), dimension(prm%totalNtwin), intent(out) :: &
    gdot_twin
