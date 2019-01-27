@@ -11,19 +11,19 @@ module plastic_dislotwin
  use prec, only: &
    pReal, &
    pInt
-    
+
  implicit none
  private
  integer(pInt),                       dimension(:,:),         allocatable, target, public :: &
-   plastic_dislotwin_sizePostResult                                                            !< size of each post result output
+   plastic_dislotwin_sizePostResult                                                                 !< size of each post result output
  character(len=64),                   dimension(:,:),         allocatable, target, public :: &
-   plastic_dislotwin_output                                                                    !< name of each post result output
- 
- real(pReal),                                                 parameter,           private :: &
-   kB = 1.38e-23_pReal                                                                         !< Boltzmann constant in J/Kelvin
+   plastic_dislotwin_output                                                                         !< name of each post result output
 
- enum, bind(c) 
-   enumerator :: & 
+ real(pReal),                                                 parameter,           private :: &
+   kB = 1.38e-23_pReal                                                                              !< Boltzmann constant in J/Kelvin
+
+ enum, bind(c)
+   enumerator :: &
      undefined_ID, &
      edge_density_ID, &
      dipole_density_ID, &
@@ -45,7 +45,7 @@ module plastic_dislotwin
      stress_trans_fraction_ID, &
      strain_trans_fraction_ID
  end enum
- 
+
  type, private :: tParameters
    real(pReal) :: &
      mu, &
@@ -99,12 +99,12 @@ module plastic_dislotwin
      shear_twin, &                                                                                  !< characteristic shear for twins
      B                                                                                              !< drag coefficient
    real(pReal),                  dimension(:,:),            allocatable :: & 
-     interaction_SlipSlip, &                                                                        !< coefficients for slip-slip interaction for each interaction type
-     interaction_SlipTwin, &                                                                        !< coefficients for slip-twin interaction for each interaction type
-     interaction_TwinSlip, &                                                                        !< coefficients for twin-slip interaction for each interaction type
-     interaction_TwinTwin, &                                                                        !< coefficients for twin-twin interaction for each interaction type
-     interaction_SlipTrans, &                                                                       !< coefficients for slip-trans interaction for each interaction type
-     interaction_TransTrans                                                                         !< coefficients for trans-trans interaction for each interaction type
+     interaction_SlipSlip, &                                                                        !< 
+     interaction_SlipTwin, &                                                                        !< 
+     interaction_TwinSlip, &                                                                        !< 
+     interaction_TwinTwin, &                                                                        !< 
+     interaction_SlipTrans, &                                                                       !< 
+     interaction_TransTrans                                                                         !< 
    integer(pInt),                  dimension(:,:),            allocatable :: & 
      fcc_twinNucleationSlipPair                                                                     ! ToDo: Better name? Is also use for trans
    real(pReal),                  dimension(:,:),            allocatable :: & 
@@ -116,27 +116,21 @@ module plastic_dislotwin
      Schmid_twin, &
      C66_twin, &
      C66_trans
-   logical :: &
-     dipoleFormation                                                                                !< flag indicating consideration of dipole formation
-
-   integer(kind(undefined_ID)),         dimension(:),         allocatable :: &
-     outputID                                                                                       !< ID of each post result output
-   
-   logical :: &
-     fccTwinTransNucleation                                                                             !< twinning and transformation models are for fcc
    integer(pInt) :: & 
-     totalNslip, &                                                                                          !< number of active slip systems for each family and instance
-     totalNtwin, &                                                                                          !< number of active twin systems for each family and instance
-    totalNtrans                                                                                            !< number of active transformation systems for each family and instance 
+     totalNslip, &                                                                                   !< total number of active slip system
+     totalNtwin, &                                                                                   !< total number of active twin system
+     totalNtrans                                                                                     !< total number of active transformation system 
    integer(pInt),                  dimension(:),            allocatable :: & 
-     Nslip, &                                                                                          !< number of active slip systems for each family and instance
-     Ntwin, &                                                                                          !< number of active twin systems for each family and instance
-     Ntrans                                                                                            !< number of active transformation systems for each family and instance
-  end type 
-  
-  type(tParameters), dimension(:), allocatable, private :: param                                    !< containers of constitutive parameters (len Ninstance)
- 
- 
+     Nslip, &                                                                                        !< number of active slip systems for each family
+     Ntwin, &                                                                                        !< number of active twin systems for each family
+     Ntrans                                                                                          !< number of active transformation systems for each family
+   integer(kind(undefined_ID)),         dimension(:),         allocatable :: &
+     outputID                                                                                        !< ID of each post result output
+   logical :: &
+     fccTwinTransNucleation, &                                                                       !< twinning and transformation models are for fcc
+     dipoleFormation                                                                                 !< flag indicating consideration of dipole formation
+ end type                                                                                            !< container type for internal constitutive parameters
+
  type, private :: tDislotwinState
    real(pReal), pointer, dimension(:,:) :: &
      rhoEdge, &
@@ -150,7 +144,7 @@ module plastic_dislotwin
  end type tDislotwinState
 
  type, private :: tDislotwinMicrostructure
-   real(pReal), allocatable,     dimension(:,:) :: &
+   real(pReal), allocatable, dimension(:,:) :: &
      invLambdaSlip, &
      invLambdaSlipTwin, &
      invLambdaTwin, &
@@ -168,11 +162,13 @@ module plastic_dislotwin
      tau_r_trans                                                               !< stress to bring partial close together for each trans system and instance
  end type tDislotwinMicrostructure
 
+!--------------------------------------------------------------------------------------------------
+! containers for parameters and state
+ type(tParameters),              allocatable, dimension(:), private :: param
  type(tDislotwinState), allocatable, dimension(:), private :: &
-   state, &
-   dotState
- type(tDislotwinMicrostructure), allocatable, dimension(:), private :: &
-   microstructure
+   dotState, &
+   state
+ type(tDislotwinMicrostructure), allocatable, dimension(:), private :: microstructure
 
  public :: &
    plastic_dislotwin_init, &
@@ -181,6 +177,10 @@ module plastic_dislotwin
    plastic_dislotwin_LpAndItsTangent, &
    plastic_dislotwin_dotState, &
    plastic_dislotwin_postResults
+ private :: &
+   kinetics_slip, &
+   kinetics_twin, &
+   kinetics_trans
 
 contains
 
@@ -205,9 +205,6 @@ subroutine plastic_dislotwin_init
    debug_constitutive,&
    debug_levelBasic
  use math, only: &
-   math_rotate_forward3333, &
-   math_Mandel3333to66, &
-   math_mul3x3, &
    math_expand,&
    PI
  use IO, only: &
@@ -229,25 +226,25 @@ subroutine plastic_dislotwin_init
  use lattice
 
  implicit none
- integer(pInt) :: Ninstance,&
-                  i,p, &
-                  offset_slip, &
-                  startIndex, endIndex, outputSize
- integer(pInt) :: sizeState, sizeDotState
- integer(pInt) :: NipcMyPhase   
-     
+ integer(pInt) :: &
+   Ninstance, &
+   p, i, &
+   NipcMyPhase, outputSize, &
+   sizeState, sizeDotState, &
+   startIndex, endIndex
+
  integer(pInt), dimension(1,200), parameter :: lattice_ntranssystem = 12 ! HACK!!
  integer(pInt),          dimension(0), parameter :: emptyIntArray    = [integer(pInt)::]
  real(pReal),            dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
 
  integer(kind(undefined_ID)) :: &
-   outputID                                                                                         !< ID of each post result output
+   outputID
 
  character(len=pStringLen) :: &
    extmsg = ''
  character(len=65536), dimension(:), allocatable :: &
-  outputs
+   outputs
 
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_DISLOTWIN_label//' init  -+>>>'
  write(6,'(/,a)')   ' A. Ma and F. Roters, Acta Materialia, 52(12):3603–3612, 2004'
@@ -258,10 +255,9 @@ subroutine plastic_dislotwin_init
  write(6,'(a,/)')   ' https://doi.org/10.1016/j.actamat.2016.07.032'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- 
+
  Ninstance = int(count(phase_plasticity == PLASTICITY_DISLOTWIN_ID),pInt)
- if (Ninstance == 0_pInt) return
- 
+
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
  
@@ -275,7 +271,7 @@ subroutine plastic_dislotwin_init
  allocate(dotState(Ninstance))
  allocate(microstructure(Ninstance))
 
- do p = 1_pInt, size(phase_plasticityInstance)
+ do p = 1_pInt, size(phase_plasticity)
    if (phase_plasticity(p) /= PLASTICITY_DISLOTWIN_ID) cycle
    associate(prm => param(phase_plasticityInstance(p)), &
              dot => dotState(phase_plasticityInstance(p)), &
@@ -291,23 +287,21 @@ subroutine plastic_dislotwin_init
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
-   prm%Nslip =  config%getInts('nslip',defaultVal=emptyIntArray)
+   prm%Nslip      = config%getInts('nslip',defaultVal=emptyIntArray)
    prm%totalNslip = sum(prm%Nslip)
    slipActive: if (prm%totalNslip > 0_pInt) then
+     prm%Schmid_slip          = lattice_SchmidMatrix_slip(prm%Nslip,config%getString('lattice_structure'),&
+                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
+     prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
+                                                             config%getFloats('interaction_slipslip'), &
+                                                             config%getString('lattice_structure'))
+     prm%forestProjection     = lattice_forestProjection (prm%Nslip,config%getString('lattice_structure'),&
+                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
 
      prm%fccTwinTransNucleation = merge(.true., .false., lattice_structure(p) == LATTICE_FCC_ID) &
                                 .and. (prm%Nslip(1) == 12_pInt)
      if(prm%fccTwinTransNucleation) &
        prm%fcc_twinNucleationSlipPair = lattice_fcc_twinNucleationSlipPair
-
-     prm%Schmid_slip          = lattice_SchmidMatrix_slip(prm%Nslip,config%getString('lattice_structure'),&
-                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
-     prm%forestProjection     = lattice_forestProjection (prm%Nslip,config%getString('lattice_structure'),&
-                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
-
-     prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
-                                                             config%getFloats('interaction_slipslip'), &
-                                                             config%getString('lattice_structure'))
 
      prm%rho0                 = config%getFloats('rhoedge0',   requiredSize=size(prm%Nslip))  !ToDo: rename to rho_0
      prm%rhoDip0              = config%getFloats('rhoedgedip0',requiredSize=size(prm%Nslip))  !ToDo: rename to rho_dip_0
@@ -595,75 +589,72 @@ subroutine plastic_dislotwin_init
        plastic_dislotwin_sizePostResult(i,phase_plasticityInstance(p)) = outputSize
        prm%outputID = [prm%outputID, outputID]
      endif
+
    enddo
 
-   
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-   NipcMyPhase=count(material_phase==p)
-   sizeDotState     = int(size(['rho         ','rhoDip      ','accshearslip']),pInt) * prm%totalNslip &
-                    + int(size(['twinFraction','accsheartwin']),pInt)                * prm%totalNtwin &
-                    + int(size(['stressTransFraction','strainTransFraction']),pInt)  * prm%totalNtrans
-   sizeState        = sizeDotState
+   NipcMyPhase = count(material_phase == p)
+   sizeDotState = int(size(['rho         ','rhoDip      ','accshearslip']),pInt) * prm%totalNslip &
+                + int(size(['twinFraction','accsheartwin']),pInt)                * prm%totalNtwin &
+                + int(size(['stressTransFraction','strainTransFraction']),pInt)  * prm%totalNtrans
+   sizeState = sizeDotState
 
    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0_pInt, &
                                       prm%totalNslip,prm%totalNtwin,prm%totalNtrans)
    plasticState(p)%sizePostResults = sum(plastic_dislotwin_sizePostResult(:,phase_plasticityInstance(p)))
 
-   ! ToDo: do later on
-   offset_slip = 2_pInt*plasticState(p)%nslip
-   plasticState(p)%slipRate        => &
-       plasticState(p)%dotState(offset_slip+1:offset_slip+plasticState(p)%nslip,1:NipcMyPhase)
-   plasticState(p)%accumulatedSlip => &
-       plasticState(p)%state   (offset_slip+1:offset_slip+plasticState(p)%nslip,1:NipcMyPhase)
 
-
-   startIndex=1_pInt
-   endIndex=prm%totalNslip
+!--------------------------------------------------------------------------------------------------
+! locally defined state aliases and initialization of state0 and aTolState
+   startIndex = 1_pInt
+   endIndex   = prm%totalNslip
    stt%rhoEdge=>plasticState(p)%state(startIndex:endIndex,:)
    stt%rhoEdge= spread(prm%rho0,2,NipcMyPhase)
    dot%rhoEdge=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
 
-   startIndex=endIndex+1
-   endIndex=endIndex+prm%totalNslip
+   startIndex = endIndex + 1_pInt
+   endIndex   = endIndex + prm%totalNslip
    stt%rhoEdgeDip=>plasticState(p)%state(startIndex:endIndex,:)
    stt%rhoEdgeDip= spread(prm%rhoDip0,2,NipcMyPhase)
    dot%rhoEdgeDip=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
-   
-   startIndex=endIndex+1
-   endIndex=endIndex+prm%totalNslip
+
+   startIndex = endIndex + 1_pInt
+   endIndex   = endIndex + prm%totalNslip
    stt%accshear_slip=>plasticState(p)%state(startIndex:endIndex,:)
    dot%accshear_slip=>plasticState(p)%dotState(startIndex:endIndex,:)
-   plasticState(p)%aTolState(startIndex:endIndex) = 1.0e6_pReal
+   plasticState(p)%aTolState(startIndex:endIndex) = 1.0e6_pReal  !ToDo: better make optional parameter
+   ! global alias
+   plasticState(p)%slipRate        => plasticState(p)%dotState(startIndex:endIndex,:)
+   plasticState(p)%accumulatedSlip => plasticState(p)%state(startIndex:endIndex,:)
    
-   startIndex=endIndex+1
+   startIndex = endIndex + 1_pInt
    endIndex=endIndex+prm%totalNtwin
    stt%twinFraction=>plasticState(p)%state(startIndex:endIndex,:)
    dot%twinFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTwinFrac
    
-   startIndex=endIndex+1
+   startIndex = endIndex + 1_pInt
    endIndex=endIndex+prm%totalNtwin
    stt%accshear_twin=>plasticState(p)%state(startIndex:endIndex,:)
    dot%accshear_twin=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = 1.0e6_pReal
    
-   startIndex=endIndex+1
+   startIndex = endIndex + 1_pInt
    endIndex=endIndex+prm%totalNtrans
    stt%stressTransFraction=>plasticState(p)%state(startIndex:endIndex,:)
    dot%stressTransFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTransFrac
    
-   startIndex=endIndex+1
+   startIndex = endIndex + 1_pInt
    endIndex=endIndex+prm%totalNtrans
    stt%strainTransFraction=>plasticState(p)%state(startIndex:endIndex,:)
    dot%strainTransFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTransFrac
 
-   plasticState(p)%state0 = plasticState(p)%state
-   dot%whole => plasticState(p)%dotState
+   dot%whole => plasticState(p)%dotState !ToDo: needed?
 
    allocate(mse%invLambdaSlip         (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
    allocate(mse%invLambdaSlipTwin     (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
@@ -683,10 +674,14 @@ subroutine plastic_dislotwin_init
    allocate(mse%tau_r_trans           (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
    allocate(mse%martensiteVolume      (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
 
+   plasticState(p)%state0 = plasticState(p)%state                                                   ! ToDo: this could be done centrally
+
    end associate
+
  enddo
- 
+
 end subroutine plastic_dislotwin_init
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the homogenized elasticity matrix
@@ -894,7 +889,6 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
    dEq0
  use math, only: &
    math_mul33xx33, &
-   math_Mandel6to33, &
    pi
  use material, only: &
    plasticState
@@ -1164,8 +1158,7 @@ function plastic_dislotwin_postResults(Mp,Temperature,instance,of) result(postRe
    dEq0
  use math, only: &
    PI, &
-   math_mul33xx33, &
-   math_Mandel6to33
+   math_mul33xx33
 
  implicit none
  real(pReal), dimension(3,3),intent(in) :: &
