@@ -231,7 +231,7 @@ subroutine plastic_dislotwin_init
  implicit none
  integer(pInt) :: Ninstance,&
                   f,j,i,k,o,p, &
-                  offset_slip, index_myFamily, index_otherFamily, &
+                  offset_slip, &
                   startIndex, endIndex, outputSize
  integer(pInt) :: sizeState, sizeDotState
  integer(pInt) :: NipcMyPhase   
@@ -303,9 +303,9 @@ subroutine plastic_dislotwin_init
      if(prm%fccTwinTransNucleation) &
        prm%fcc_twinNucleationSlipPair = lattice_fcc_twinNucleationSlipPair
 
-     prm%Schmid_slip          = lattice_SchmidMatrix_slip(prm%Nslip,structure(1:3),&
+     prm%Schmid_slip          = lattice_SchmidMatrix_slip(prm%Nslip,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
-     prm%forestProjection     = lattice_forestProjection (prm%Nslip,structure(1:3),&
+     prm%forestProjection     = lattice_forestProjection (prm%Nslip,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
 
      prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
@@ -360,11 +360,11 @@ subroutine plastic_dislotwin_init
    prm%Ntwin      = config%getInts('ntwin', defaultVal=emptyIntArray)
    prm%totalNtwin = sum(prm%Ntwin)
    if (prm%totalNtwin > 0_pInt) then
-     prm%Schmid_twin          = lattice_SchmidMatrix_twin(prm%Ntwin,structure(1:3),&
+     prm%Schmid_twin          = lattice_SchmidMatrix_twin(prm%Ntwin,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
      prm%interaction_TwinTwin = lattice_interaction_TwinTwin(prm%Ntwin,&
                                                              config%getFloats('interaction_twintwin'), &
-                                                             structure(1:3))
+                                                            config%getString('lattice_structure'))
 
      prm%burgers_twin = config%getFloats('twinburgers',     requiredSize=size(prm%Ntwin))
      prm%twinsize     = config%getFloats('twinsize',     requiredSize=size(prm%Ntwin))
@@ -376,10 +376,10 @@ subroutine plastic_dislotwin_init
      prm%Cthresholdtwin  = config%getFloat('cthresholdtwin', defaultVal=0.0_pReal)
      prm%Cmfptwin        = config%getFloat('cmfptwin',       defaultVal=0.0_pReal) ! ToDo: How to handle that???
 
-     prm%shear_twin      = lattice_characteristicShear_Twin(prm%Ntwin,structure(1:3),&
+     prm%shear_twin      = lattice_characteristicShear_Twin(prm%Ntwin,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
 
-     prm%C66_twin        = lattice_C66_twin(prm%Ntwin,prm%C66,structure(1:3),&
+     prm%C66_twin        = lattice_C66_twin(prm%Ntwin,prm%C66,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
 
      if (.not. prm%fccTwinTransNucleation) then
@@ -415,7 +415,7 @@ subroutine plastic_dislotwin_init
 
      prm%interaction_TransTrans = lattice_interaction_TransTrans(prm%Ntrans,&
                                                              config%getFloats('interaction_transtrans'), &
-                                                             structure(1:3))
+                                                             config%getString('lattice_structure'))
                                                              
      prm%C66_trans        = lattice_C66_trans(prm%Ntrans,prm%C66, &
                                   config%getString('trans_lattice_structure'), &
@@ -1166,6 +1166,208 @@ end subroutine plastic_dislotwin_dotState
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief return array of constitutive results
+!--------------------------------------------------------------------------------------------------
+function plastic_dislotwin_postResults(Mp,Temperature,instance,of) result(postResults)
+ use prec, only: &
+   tol_math_check, &
+   dEq0
+ use math, only: &
+   PI, &
+   math_mul33xx33, &
+   math_Mandel6to33
+
+ implicit none
+ real(pReal), dimension(3,3),intent(in) :: &
+   Mp                                                                                               !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal),                intent(in) :: &
+   temperature                                                                                      !< temperature at integration point
+ integer(pInt),              intent(in) :: &
+   instance, &
+   of
+
+ real(pReal), dimension(sum(plastic_dislotwin_sizePostResult(:,instance))) :: &
+   postResults
+
+ integer(pInt) :: &
+   o,c,j,&
+   s1,s2
+ real(pReal) :: sumf_twin,tau,StressRatio_p,StressRatio_pminus1,BoltzmannRatio,DotGamma0,StressRatio_r,Ndot0_twin,dgdot_dtauslip, &
+   stressRatio
+ real(pReal), dimension(param(instance)%totalNslip) :: &
+   gdot_slip
+ 
+ type(tParameters) :: prm
+ type(tDislotwinState) :: stt
+ type(tDislotwinMicrostructure) :: mse
+ 
+
+ associate(prm => param(instance), stt => state(instance), mse => microstructure(instance))
+
+ sumf_twin = sum(stt%twinFraction(1_pInt:prm%totalNtwin,of))
+ 
+ c = 0_pInt
+ postResults = 0.0_pReal
+ do o = 1_pInt,size(prm%outputID)
+   select case(prm%outputID(o))
+ 
+     case (edge_density_ID)
+       postResults(c+1_pInt:c+prm%totalNslip) = stt%rhoEdge(1_pInt:prm%totalNslip,of)
+       c = c + prm%totalNslip
+     case (dipole_density_ID)
+       postResults(c+1_pInt:c+prm%totalNslip) = stt%rhoEdgeDip(1_pInt:prm%totalNslip,of)
+       c = c + prm%totalNslip
+     case (shear_rate_slip_ID)
+       call kinetics_slip(prm,stt,mse,of,Mp,temperature,postResults(c+1:c+prm%totalNslip))
+       c = c + prm%totalNslip
+     case (accumulated_shear_slip_ID)
+      postResults(c+1_pInt:c+prm%totalNslip)  = stt%accshear_slip(1_pInt:prm%totalNslip,of)
+       c = c + prm%totalNslip
+     case (mfp_slip_ID)
+       postResults(c+1_pInt:c+prm%totalNslip) = mse%mfp_slip(1_pInt:prm%totalNslip,of)
+       c = c + prm%totalNslip
+     case (resolved_stress_slip_ID)
+       do j = 1_pInt, prm%totalNslip
+         postResults(c+j) = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,j))
+       enddo
+       c = c + prm%totalNslip
+     case (threshold_stress_slip_ID)
+       postResults(c+1_pInt:c+prm%totalNslip) = mse%threshold_stress_slip(1_pInt:prm%totalNslip,of)
+       c = c + prm%totalNslip
+     case (edge_dipole_distance_ID)
+       do j = 1_pInt, prm%totalNslip
+         postResults(c+j) = (3.0_pReal*prm%mu*prm%burgers_slip(j)) &
+                          / (16.0_pReal*PI*abs(math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,j))))
+         postResults(c+j)=min(postResults(c+j),mse%mfp_slip(j,of))
+ !       postResults(c+j)=max(postResults(c+j),&
+ !                                                       plasticState(ph)%state(4*ns+2*nt+2*nr+j, of))
+       enddo
+       c = c + prm%totalNslip
+ !     case (resolved_stress_shearband_ID)
+ !       do j = 1_pInt,6_pInt                                                                       ! loop over all shearband families
+ !          postResults(c+j) = dot_product(Tstar_v,sbSv(1:6,j,ipc,ip,el))
+ !       enddo
+ !       c = c + 6_pInt
+ !     case (shear_rate_shearband_ID)
+ !       do j = 1_pInt,6_pInt                                                                       ! loop over all shearbands
+ !         tau = dot_product(Tstar_v,sbSv(1:6,j,ipc,ip,el))
+ !         if (abs(tau) < tol_math_check) then
+ !           StressRatio_p = 0.0_pReal
+ !           StressRatio_pminus1 = 0.0_pReal
+ !         else
+ !           StressRatio_p = (abs(tau)/prm%sbResistance)**prm%pShearBand
+ !           StressRatio_pminus1 = (abs(tau)/prm%sbResistance)**(prm%pShearBand-1.0_pReal)
+ !         endif
+ !         BoltzmannRatio = prm%sbQedge/(kB*Temperature)
+ !         DotGamma0 = prm%sbVelocity
+ !         postResults(c+j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**prm%qShearBand)*&
+ !                            sign(1.0_pReal,tau)
+ !       enddo 
+ !      c = c + 6_pInt
+     case (twin_fraction_ID)
+       postResults(c+1_pInt:c+prm%totalNtwin) = stt%twinFraction(1_pInt:prm%totalNtwin,of)
+       c = c + prm%totalNtwin
+     case (shear_rate_twin_ID)
+       do j = 1_pInt, prm%totalNslip
+         tau = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,j))
+         if((abs(tau)-mse%threshold_stress_slip(j,of)) > tol_math_check) then
+           StressRatio_p = ((abs(tau)-mse%threshold_stress_slip(j,of))/&
+                           (prm%SolidSolutionStrength+&
+                            prm%tau_peierls(j)))&
+                                              **prm%p(j)
+           StressRatio_pminus1 = ((abs(tau)-mse%threshold_stress_slip(j,of))/&
+                                 (prm%SolidSolutionStrength+&
+                                  prm%tau_peierls(j)))&
+                                              **(prm%p(j)-1.0_pReal)
+           BoltzmannRatio = prm%Qedge(j)/(kB*Temperature)
+           DotGamma0 =  stt%rhoEdge(j,of)*prm%burgers_slip(j)* prm%v0(j)
+ 
+           gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
+                          prm%q(j))*sign(1.0_pReal,tau)
+         else
+           gdot_slip(j) = 0.0_pReal
+         endif
+       enddo
+
+       do j = 1_pInt, prm%totalNtwin
+         tau = math_mul33xx33(Mp,prm%Schmid_twin(1:3,1:3,j))
+
+         if ( tau > 0.0_pReal ) then
+           isFCCtwin: if (prm%fccTwinTransNucleation) then
+             s1=prm%fcc_twinNucleationSlipPair(1,j)
+             s2=prm%fcc_twinNucleationSlipPair(2,j)
+             if (tau < mse%tau_r_twin(j,of)) then
+                 Ndot0_twin=(abs(gdot_slip(s1))*(stt%rhoEdge(s2,of)+stt%rhoEdgeDip(s2,of))+&
+                        abs(gdot_slip(s2))*(stt%rhoEdge(s1,of)+stt%rhoEdgeDip(s1,of)))/&
+                       (prm%L0_twin* prm%burgers_slip(j))*&
+                       (1.0_pReal-exp(-prm%VcrossSlip/(kB*Temperature)* (mse%tau_r_twin(j,of)-tau)))
+              else
+               Ndot0_twin=0.0_pReal
+              end if
+            else isFCCtwin
+              Ndot0_twin=prm%Ndot0_twin(j)
+            endif isFCCtwin
+            StressRatio_r = (mse%threshold_stress_twin(j,of)/tau) **prm%r(j)
+            postResults(c+j) = (prm%MaxTwinFraction-sumf_twin)*prm%shear_twin(j) &
+                             * mse%twinVolume(j,of)*Ndot0_twin*exp(-StressRatio_r)
+         endif
+       enddo
+       c = c + prm%totalNtwin
+     case (accumulated_shear_twin_ID)
+       postResults(c+1_pInt:c+prm%totalNtwin) = stt%accshear_twin(1_pInt:prm%totalNtwin,of)
+       c = c + prm%totalNtwin     
+     case (mfp_twin_ID)
+       postResults(c+1_pInt:c+prm%totalNtwin) = mse%mfp_twin(1_pInt:prm%totalNtwin,of)
+       c = c + prm%totalNtwin
+     case (resolved_stress_twin_ID)
+       do j = 1_pInt, prm%totalNtwin
+         postResults(c+j) = math_mul33xx33(Mp,prm%Schmid_twin(1:3,1:3,j))
+       enddo
+       c = c + prm%totalNtwin
+     case (threshold_stress_twin_ID)
+       postResults(c+1_pInt:c+prm%totalNtwin) = mse%threshold_stress_twin(1_pInt:prm%totalNtwin,of)
+       c = c + prm%totalNtwin
+     case (stress_exponent_ID)
+       do j = 1_pInt, prm%totalNslip
+         tau = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,j))
+         if((abs(tau)-mse%threshold_stress_slip(j,of)) > tol_math_check) then
+           StressRatio_p = ((abs(tau)-mse%threshold_stress_slip(j,of))/&
+                           (prm%SolidSolutionStrength+&
+                            prm%tau_peierls(j)))&
+                                              **prm%p(j)
+           StressRatio_pminus1 = ((abs(tau)-mse%threshold_stress_slip(j,of))/&
+                                 (prm%SolidSolutionStrength+&
+                                  prm%tau_peierls(j)))&
+                                              **(prm%p(j)-1.0_pReal)
+           BoltzmannRatio = prm%Qedge(j)/(kB*Temperature)
+           DotGamma0 = stt%rhoEdge(j,of)*prm%burgers_slip(j)* prm%v0(j)
+
+           gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
+                        prm%q(j))*sign(1.0_pReal,tau)
+
+           dgdot_dtauslip = abs(gdot_slip(j))*BoltzmannRatio*prm%p(j) *prm%q(j)/&
+             (prm%SolidSolutionStrength+ prm%tau_peierls(j))*&
+             StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)
+         else
+           gdot_slip(j) = 0.0_pReal
+           dgdot_dtauslip = 0.0_pReal
+         endif
+         postResults(c+j) = merge(0.0_pReal,(tau/gdot_slip(j))*dgdot_dtauslip,dEq0(gdot_slip(j)))
+       enddo
+       c = c + prm%totalNslip
+     case (stress_trans_fraction_ID)
+       postResults(c+1_pInt:c+prm%totalNtrans) = stt%stressTransFraction(1_pInt:prm%totalNtrans,of)
+       c = c + prm%totalNtrans
+     case (strain_trans_fraction_ID)
+       postResults(c+1_pInt:c+prm%totalNtrans) = stt%strainTransFraction(1_pInt:prm%totalNtrans,of)
+       c = c + prm%totalNtrans
+   end select
+ enddo
+ end associate
+end function plastic_dislotwin_postResults
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief calculates shear rates on slip systems
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_slip(prm,stt,mse,of,Mp,temperature,gdot_slip,dgdot_dtau_slip)
@@ -1394,206 +1596,5 @@ pure subroutine kinetics_trans(prm,stt,mse,of,Mp,temperature,gdot_slip,gdot_tran
 ! if(present(dgdot_dtau_twin)) dgdot_dtau_twin = dgdot_dtau
 !
 end subroutine kinetics_trans
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return array of constitutive results
-!--------------------------------------------------------------------------------------------------
-function plastic_dislotwin_postResults(Mp,Temperature,instance,of) result(postResults)
- use prec, only: &
-   tol_math_check, &
-   dEq0
- use math, only: &
-   PI, &
-   math_mul33xx33, &
-   math_Mandel6to33
-
- implicit none
- real(pReal), dimension(3,3),intent(in) :: &
-   Mp                                                                                               !< 2nd Piola Kirchhoff stress tensor in Mandel notation
- real(pReal),                intent(in) :: &
-   temperature                                                                                      !< temperature at integration point
- integer(pInt),              intent(in) :: &
-   instance, &
-   of
-
- real(pReal), dimension(sum(plastic_dislotwin_sizePostResult(:,instance))) :: &
-   postResults
-
- integer(pInt) :: &
-   o,c,j,&
-   s1,s2
- real(pReal) :: sumf_twin,tau,StressRatio_p,StressRatio_pminus1,BoltzmannRatio,DotGamma0,StressRatio_r,Ndot0_twin,dgdot_dtauslip, &
-   stressRatio
- real(pReal), dimension(param(instance)%totalNslip) :: &
-   gdot_slip
- 
- type(tParameters) :: prm
- type(tDislotwinState) :: stt
- type(tDislotwinMicrostructure) :: mse
- 
-
- associate(prm => param(instance), stt => state(instance), mse => microstructure(instance))
-
- sumf_twin = sum(stt%twinFraction(1_pInt:prm%totalNtwin,of))
- 
- c = 0_pInt
- postResults = 0.0_pReal
- do o = 1_pInt,size(prm%outputID)
-   select case(prm%outputID(o))
- 
-     case (edge_density_ID)
-       postResults(c+1_pInt:c+prm%totalNslip) = stt%rhoEdge(1_pInt:prm%totalNslip,of)
-       c = c + prm%totalNslip
-     case (dipole_density_ID)
-       postResults(c+1_pInt:c+prm%totalNslip) = stt%rhoEdgeDip(1_pInt:prm%totalNslip,of)
-       c = c + prm%totalNslip
-     case (shear_rate_slip_ID)
-       call kinetics_slip(prm,stt,mse,of,Mp,temperature,postResults(c+1:c+prm%totalNslip))
-       c = c + prm%totalNslip
-     case (accumulated_shear_slip_ID)
-      postResults(c+1_pInt:c+prm%totalNslip)  = stt%accshear_slip(1_pInt:prm%totalNslip,of)
-       c = c + prm%totalNslip
-     case (mfp_slip_ID)
-       postResults(c+1_pInt:c+prm%totalNslip) = mse%mfp_slip(1_pInt:prm%totalNslip,of)
-       c = c + prm%totalNslip
-     case (resolved_stress_slip_ID)
-       do j = 1_pInt, prm%totalNslip
-         postResults(c+j) = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,j))
-       enddo
-       c = c + prm%totalNslip
-     case (threshold_stress_slip_ID)
-       postResults(c+1_pInt:c+prm%totalNslip) = mse%threshold_stress_slip(1_pInt:prm%totalNslip,of)
-       c = c + prm%totalNslip
-     case (edge_dipole_distance_ID)
-       do j = 1_pInt, prm%totalNslip
-         postResults(c+j) = (3.0_pReal*prm%mu*prm%burgers_slip(j)) &
-                          / (16.0_pReal*PI*abs(math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,j))))
-         postResults(c+j)=min(postResults(c+j),mse%mfp_slip(j,of))
- !       postResults(c+j)=max(postResults(c+j),&
- !                                                       plasticState(ph)%state(4*ns+2*nt+2*nr+j, of))
-       enddo
-       c = c + prm%totalNslip
- !     case (resolved_stress_shearband_ID)
- !       do j = 1_pInt,6_pInt                                                                       ! loop over all shearband families
- !          postResults(c+j) = dot_product(Tstar_v,sbSv(1:6,j,ipc,ip,el))
- !       enddo
- !       c = c + 6_pInt
- !     case (shear_rate_shearband_ID)
- !       do j = 1_pInt,6_pInt                                                                       ! loop over all shearbands
- !         tau = dot_product(Tstar_v,sbSv(1:6,j,ipc,ip,el))
- !         if (abs(tau) < tol_math_check) then
- !           StressRatio_p = 0.0_pReal
- !           StressRatio_pminus1 = 0.0_pReal
- !         else
- !           StressRatio_p = (abs(tau)/prm%sbResistance)**prm%pShearBand
- !           StressRatio_pminus1 = (abs(tau)/prm%sbResistance)**(prm%pShearBand-1.0_pReal)
- !         endif
- !         BoltzmannRatio = prm%sbQedge/(kB*Temperature)
- !         DotGamma0 = prm%sbVelocity
- !         postResults(c+j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**prm%qShearBand)*&
- !                            sign(1.0_pReal,tau)
- !       enddo 
- !      c = c + 6_pInt
-     case (twin_fraction_ID)
-       postResults(c+1_pInt:c+prm%totalNtwin) = stt%twinFraction(1_pInt:prm%totalNtwin,of)
-       c = c + prm%totalNtwin
-     case (shear_rate_twin_ID)
-       do j = 1_pInt, prm%totalNslip
-         tau = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,j))
-         if((abs(tau)-mse%threshold_stress_slip(j,of)) > tol_math_check) then
-           StressRatio_p = ((abs(tau)-mse%threshold_stress_slip(j,of))/&
-                           (prm%SolidSolutionStrength+&
-                            prm%tau_peierls(j)))&
-                                              **prm%p(j)
-           StressRatio_pminus1 = ((abs(tau)-mse%threshold_stress_slip(j,of))/&
-                                 (prm%SolidSolutionStrength+&
-                                  prm%tau_peierls(j)))&
-                                              **(prm%p(j)-1.0_pReal)
-           BoltzmannRatio = prm%Qedge(j)/(kB*Temperature)
-           DotGamma0 =  stt%rhoEdge(j,of)*prm%burgers_slip(j)* prm%v0(j)
- 
-           gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
-                          prm%q(j))*sign(1.0_pReal,tau)
-         else
-           gdot_slip(j) = 0.0_pReal
-         endif
-       enddo
-
-       do j = 1_pInt, prm%totalNtwin
-         tau = math_mul33xx33(Mp,prm%Schmid_twin(1:3,1:3,j))
-
-         if ( tau > 0.0_pReal ) then
-           isFCCtwin: if (prm%fccTwinTransNucleation) then
-             s1=prm%fcc_twinNucleationSlipPair(1,j)
-             s2=prm%fcc_twinNucleationSlipPair(2,j)
-             if (tau < mse%tau_r_twin(j,of)) then
-                 Ndot0_twin=(abs(gdot_slip(s1))*(stt%rhoEdge(s2,of)+stt%rhoEdgeDip(s2,of))+&
-                        abs(gdot_slip(s2))*(stt%rhoEdge(s1,of)+stt%rhoEdgeDip(s1,of)))/&
-                       (prm%L0_twin* prm%burgers_slip(j))*&
-                       (1.0_pReal-exp(-prm%VcrossSlip/(kB*Temperature)* (mse%tau_r_twin(j,of)-tau)))
-              else
-               Ndot0_twin=0.0_pReal
-              end if
-            else isFCCtwin
-              Ndot0_twin=prm%Ndot0_twin(j)
-            endif isFCCtwin
-            StressRatio_r = (mse%threshold_stress_twin(j,of)/tau) **prm%r(j)
-            postResults(c+j) = (prm%MaxTwinFraction-sumf_twin)*prm%shear_twin(j) &
-                             * mse%twinVolume(j,of)*Ndot0_twin*exp(-StressRatio_r)
-         endif
-       enddo
-       c = c + prm%totalNtwin
-     case (accumulated_shear_twin_ID)
-       postResults(c+1_pInt:c+prm%totalNtwin) = stt%accshear_twin(1_pInt:prm%totalNtwin,of)
-       c = c + prm%totalNtwin     
-     case (mfp_twin_ID)
-       postResults(c+1_pInt:c+prm%totalNtwin) = mse%mfp_twin(1_pInt:prm%totalNtwin,of)
-       c = c + prm%totalNtwin
-     case (resolved_stress_twin_ID)
-       do j = 1_pInt, prm%totalNtwin
-         postResults(c+j) = math_mul33xx33(Mp,prm%Schmid_twin(1:3,1:3,j))
-       enddo
-       c = c + prm%totalNtwin
-     case (threshold_stress_twin_ID)
-       postResults(c+1_pInt:c+prm%totalNtwin) = mse%threshold_stress_twin(1_pInt:prm%totalNtwin,of)
-       c = c + prm%totalNtwin
-     case (stress_exponent_ID)
-       do j = 1_pInt, prm%totalNslip
-         tau = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,j))
-         if((abs(tau)-mse%threshold_stress_slip(j,of)) > tol_math_check) then
-           StressRatio_p = ((abs(tau)-mse%threshold_stress_slip(j,of))/&
-                           (prm%SolidSolutionStrength+&
-                            prm%tau_peierls(j)))&
-                                              **prm%p(j)
-           StressRatio_pminus1 = ((abs(tau)-mse%threshold_stress_slip(j,of))/&
-                                 (prm%SolidSolutionStrength+&
-                                  prm%tau_peierls(j)))&
-                                              **(prm%p(j)-1.0_pReal)
-           BoltzmannRatio = prm%Qedge(j)/(kB*Temperature)
-           DotGamma0 = stt%rhoEdge(j,of)*prm%burgers_slip(j)* prm%v0(j)
-
-           gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
-                        prm%q(j))*sign(1.0_pReal,tau)
-
-           dgdot_dtauslip = abs(gdot_slip(j))*BoltzmannRatio*prm%p(j) *prm%q(j)/&
-             (prm%SolidSolutionStrength+ prm%tau_peierls(j))*&
-             StressRatio_pminus1*(1-StressRatio_p)**(prm%q(j)-1.0_pReal)
-         else
-           gdot_slip(j) = 0.0_pReal
-           dgdot_dtauslip = 0.0_pReal
-         endif
-         postResults(c+j) = merge(0.0_pReal,(tau/gdot_slip(j))*dgdot_dtauslip,dEq0(gdot_slip(j)))
-       enddo
-       c = c + prm%totalNslip
-     case (stress_trans_fraction_ID)
-       postResults(c+1_pInt:c+prm%totalNtrans) = stt%stressTransFraction(1_pInt:prm%totalNtrans,of)
-       c = c + prm%totalNtrans
-     case (strain_trans_fraction_ID)
-       postResults(c+1_pInt:c+prm%totalNtrans) = stt%strainTransFraction(1_pInt:prm%totalNtrans,of)
-       c = c + prm%totalNtrans
-   end select
- enddo
- end associate
-end function plastic_dislotwin_postResults
 
 end module plastic_dislotwin
