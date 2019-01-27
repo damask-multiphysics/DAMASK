@@ -39,7 +39,6 @@ module plastic_dislotwin
      threshold_stress_twin_ID, &
      resolved_stress_shearband_ID, &
      shear_rate_shearband_ID, &
-     stress_trans_fraction_ID, &
      strain_trans_fraction_ID
  end enum
 
@@ -133,7 +132,6 @@ module plastic_dislotwin
      rhoEdgeDip, &
      accshear_slip, &
      twinFraction, &
-     stressTransFraction, &
      strainTransFraction, &
      whole
  end type tDislotwinState
@@ -558,9 +556,6 @@ subroutine plastic_dislotwin_init
          outputID = shear_rate_shearband_ID
          outputSize = 6_pInt
          
-       case ('stress_trans_fraction')
-         outputID = stress_trans_fraction_ID
-         outputSize = prm%totalNtrans
        case ('strain_trans_fraction')
          outputID = strain_trans_fraction_ID
          outputSize = prm%totalNtrans
@@ -580,7 +575,7 @@ subroutine plastic_dislotwin_init
    NipcMyPhase = count(material_phase == p)
    sizeDotState = int(size(['rho         ','rhoDip      ','accshearslip']),pInt) * prm%totalNslip &
                 + int(size(['twinFraction']),pInt)                               * prm%totalNtwin &
-                + int(size(['stressTransFraction','strainTransFraction']),pInt)  * prm%totalNtrans
+                + int(size(['strainTransFraction']),pInt)                        * prm%totalNtrans
    sizeState = sizeDotState
 
    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0_pInt, &
@@ -618,12 +613,6 @@ subroutine plastic_dislotwin_init
    stt%twinFraction=>plasticState(p)%state(startIndex:endIndex,:)
    dot%twinFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTwinFrac
-   
-   startIndex = endIndex + 1_pInt
-   endIndex=endIndex+prm%totalNtrans
-   stt%stressTransFraction=>plasticState(p)%state(startIndex:endIndex,:)
-   dot%stressTransFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
-   plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTransFrac
    
    startIndex = endIndex + 1_pInt
    endIndex=endIndex+prm%totalNtrans
@@ -687,7 +676,6 @@ function plastic_dislotwin_homogenizedC(ipc,ip,el) result(homogenizedC)
 
  f_unrotated = 1.0_pReal &
              - sum(stt%twinFraction(1_pInt:prm%totalNtwin,of)) &
-             - sum(stt%stressTransFraction(1_pInt:prm%totalNtrans,of)) &
              - sum(stt%strainTransFraction(1_pInt:prm%totalNtrans,of))
 
  homogenizedC = f_unrotated * prm%C66
@@ -697,7 +685,7 @@ function plastic_dislotwin_homogenizedC(ipc,ip,el) result(homogenizedC)
  enddo
  do i=1_pInt,prm%totalNtrans
    homogenizedC = homogenizedC &
-                +(stt%stressTransFraction(i,of)+stt%strainTransFraction(i,of))*prm%C66_trans(1:6,1:6,i)
+                + stt%strainTransFraction(i,of)*prm%C66_trans(1:6,1:6,i)
  enddo
 
  end associate
@@ -765,7 +753,6 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,instance,
 
  f_unrotated = 1.0_pReal &
              - sum(stt%twinFraction(1_pInt:prm%totalNtwin,of)) &
-             - sum(stt%stressTransFraction(1_pInt:prm%totalNtrans,of)) &
              - sum(stt%strainTransFraction(1_pInt:prm%totalNtrans,of))
 
  Lp = 0.0_pReal
@@ -873,7 +860,6 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
 
  f_unrotated = 1.0_pReal &
              - sum(stt%twinFraction(1_pInt:prm%totalNtwin,of)) &
-             - sum(stt%stressTransFraction(1_pInt:prm%totalNtrans,of)) &
              - sum(stt%strainTransFraction(1_pInt:prm%totalNtrans,of))
 
  call kinetics_slip(Mp,temperature,instance,of,gdot_slip)
@@ -966,8 +952,7 @@ subroutine plastic_dislotwin_dependentState(temperature,instance,of)
            mse => microstructure(instance))
 
  sumf_twin  = sum(stt%twinFraction(1:prm%totalNtwin,of))
- sumf_trans = sum(stt%stressTransFraction(1:prm%totalNtrans,of)) &
-            + sum(stt%strainTransFraction(1:prm%totalNtrans,of))
+ sumf_trans = sum(stt%strainTransFraction(1:prm%totalNtrans,of))
 
  sfe = prm%SFE_0K + prm%dSFE_dT * Temperature
  
@@ -1153,9 +1138,6 @@ function plastic_dislotwin_postResults(Mp,Temperature,instance,of) result(postRe
        postResults(c+1_pInt:c+prm%totalNtwin) = mse%threshold_stress_twin(1_pInt:prm%totalNtwin,of)
        c = c + prm%totalNtwin
 
-     case (stress_trans_fraction_ID)
-       postResults(c+1_pInt:c+prm%totalNtrans) = 0.0_pReal
-       c = c + prm%totalNtrans
      case (strain_trans_fraction_ID)
        postResults(c+1_pInt:c+prm%totalNtrans) = stt%strainTransFraction(1_pInt:prm%totalNtrans,of)
        c = c + prm%totalNtrans
