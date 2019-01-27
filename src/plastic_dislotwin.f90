@@ -53,7 +53,6 @@ module plastic_dislotwin
      GrainSize, &                                                                                   !<grain size
      pShearBand, &                                                                                  !< p-exponent in shear band velocity
      qShearBand, &                                                                                  !< q-exponent in shear band velocity
-     MaxTwinFraction, &                                                                             !<max allowed total twin volume fraction
      CEdgeDipMinDistance, &                                                                         !<
      Cmfptwin, &                                                                                    !<
      Cthresholdtwin, &                                                                              !<
@@ -359,7 +358,6 @@ subroutine plastic_dislotwin_init
 
      prm%xc_twin         = config%getFloat('xc_twin')
      prm%L0_twin         = config%getFloat('l0_twin')
-     prm%MaxTwinFraction = config%getFloat('maxtwinfraction') ! ToDo: only used in postResults
      prm%Cthresholdtwin  = config%getFloat('cthresholdtwin', defaultVal=0.0_pReal)
      prm%Cmfptwin        = config%getFloat('cmfptwin',       defaultVal=0.0_pReal) ! ToDo: How to handle that???
 
@@ -794,13 +792,14 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,instance,
    do i = 1_pInt,6_pInt
      sb_s = 0.5_pReal*sqrt(2.0_pReal)*math_mul33x3(eigVectors,sb_sComposition(1:3,i))
      sb_m = 0.5_pReal*sqrt(2.0_pReal)*math_mul33x3(eigVectors,sb_mComposition(1:3,i))
-     Schmid_shearBand = math_tensorproduct33(sb_s,sb_m)
+     Schmid_shearBand = math_tensorproduct33(0.5_pReal*sqrt(2.0_pReal)*math_mul33x3(eigVectors,sb_sComposition(1:3,i)),&
+                                             0.5_pReal*sqrt(2.0_pReal)*math_mul33x3(eigVectors,sb_mComposition(1:3,i)))
      tau = math_mul33xx33(Mp,Schmid_shearBand)
    
      significantShearBandStress: if (abs(tau) > tol_math_check) then
        StressRatio_p       = (abs(tau)/prm%sbResistance)**prm%pShearBand
        gdot_sb = sign(prm%sbVelocity*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**prm%qShearBand), tau)
-       dgdot_dtau = ((abs(gdot_sb)*BoltzmannRatio* prm%pShearBand*prm%qShearBand)/ prm%sbResistance) &
+       dgdot_dtau = (abs(gdot_sb)*BoltzmannRatio* prm%pShearBand*prm%qShearBand)/ prm%sbResistance &
                   * (abs(tau)/prm%sbResistance)**(prm%pShearBand-1.0_pReal) &
                   * (1.0_pReal-StressRatio_p)**(prm%qShearBand-1.0_pReal)
  
@@ -814,13 +813,11 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,instance,
  endif shearBandingContribution
  
  call kinetics_twin(prm,stt,mse,of,Mp,temperature,gdot_slip,gdot_twin,dgdot_dtau_twin)
- gdot_twin       = f_unrotated * gdot_twin
- dgdot_dtau_twin = f_unrotated * dgdot_dtau_twin
  twinContibution: do i = 1_pInt, prm%totalNtwin
-   Lp = Lp + gdot_twin(i)*prm%Schmid_twin(1:3,1:3,i)
+   Lp = Lp + gdot_twin(i)*prm%Schmid_twin(1:3,1:3,i) * f_unrotated
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                      + dgdot_dtau_twin(i)* prm%Schmid_twin(k,l,i)*prm%Schmid_twin(m,n,i)
+                      + dgdot_dtau_twin(i)* prm%Schmid_twin(k,l,i)*prm%Schmid_twin(m,n,i) * f_unrotated
  enddo twinContibution
 
  transConstribution: do i = 1_pInt, prm%totalNtrans
