@@ -48,16 +48,17 @@ module plastic_isotropic
      outputID
    logical :: &
      dilatation
- end type
+ end type tParameters
 
  type, private :: tIsotropicState
    real(pReal), pointer, dimension(:) :: &
      flowstress, &
      accumulatedShear
- end type
+ end type tIsotropicState
 
-
- type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
+!--------------------------------------------------------------------------------------------------
+! containers for parameters and state
+ type(tParameters),     allocatable, dimension(:), private :: param
  type(tIsotropicState), allocatable, dimension(:), private :: &
    dotState, &
    state

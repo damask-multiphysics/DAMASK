@@ -127,9 +127,6 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
    calcMode, &
    terminallyIll, &
    symmetricSolver
- use math, only: &
-   math_transpose33,&
-   invnrmMandel
  use debug, only: &
    debug_level, &
    debug_LEVELBASIC, &
@@ -235,9 +232,9 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
    write(6,'(a,i12)')        ' Nodes:                         ', nnode
    write(6,'(a,i1)')         ' Deformation gradient:          ', itel
    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' Deformation gradient at t=n:', &
-                                 math_transpose33(ffn)
+                                 transpose(ffn)
    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' Deformation gradient at t=n+1:', &
-                                 math_transpose33(ffn1)
+                                 transpose(ffn1)
  endif
 
  !$ defaultNumThreadsInt = omp_get_num_threads()                                                    ! remember number of threads set by Marc
@@ -357,8 +354,8 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
 !     Marc:   11, 22, 33, 12, 23, 13
 !     Marc:   11, 22, 33, 12
 
- forall(i=1:ngens) d(1:ngens,i) = invnrmMandel(i)*ddsdde(1:ngens,i)*invnrmMandel(1:ngens)
- s(1:ndi+nshear) = stress(1:ndi+nshear)*invnrmMandel(1:ndi+nshear)
+ d = ddsdde(1:ngens,1:ngens)
+ s = stress(1:ndi+nshear)
  g = 0.0_pReal
  if(symmetricSolver) d = 0.5_pReal*(d+transpose(d))
 

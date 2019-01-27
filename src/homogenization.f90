@@ -347,7 +347,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    crystallite_Li0, &
    crystallite_Li, &
    crystallite_dPdF, &
-   crystallite_dPdF0, &
    crystallite_Tstar0_v, &
    crystallite_Tstar_v, &
    crystallite_partionedF0, &
@@ -356,12 +355,11 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    crystallite_partionedLp0, &
    crystallite_partionedFi0, &
    crystallite_partionedLi0, &
-   crystallite_partioneddPdF0, &
    crystallite_partionedTstar0_v, &
    crystallite_dt, &
    crystallite_requested, &
-   crystallite_converged, &
-   crystallite_stressAndItsTangent, &
+   crystallite_stress, &
+   crystallite_stressTangent, &
    crystallite_orientations
 #ifdef DEBUG
  use debug, only: &
@@ -414,7 +412,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
      crystallite_partionedLp0(1:3,1:3,g,i,e) = crystallite_Lp0(1:3,1:3,g,i,e)                       ! ...plastic velocity grads
      crystallite_partionedFi0(1:3,1:3,g,i,e) = crystallite_Fi0(1:3,1:3,g,i,e)                       ! ...intermediate def grads
      crystallite_partionedLi0(1:3,1:3,g,i,e) = crystallite_Li0(1:3,1:3,g,i,e)                       ! ...intermediate velocity grads
-     crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,g,i,e) = crystallite_dPdF0(1:3,1:3,1:3,1:3,g,i,e)   ! ...stiffness
      crystallite_partionedF0(1:3,1:3,g,i,e) = crystallite_F0(1:3,1:3,g,i,e)                         ! ...def grads
      crystallite_partionedTstar0_v(1:6,g,i,e) = crystallite_Tstar0_v(1:6,g,i,e)                     ! ...2nd PK stress
 
@@ -484,9 +481,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
            crystallite_partionedLi0(1:3,1:3,1:myNgrains,i,e) = &
              crystallite_Li(1:3,1:3,1:myNgrains,i,e)                                                ! ...intermediate velocity grads
 
-           crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,1:myNgrains,i,e) = &
-             crystallite_dPdF(1:3,1:3,1:3,1:3,1:myNgrains,i,e)                                      ! ...stiffness
-
            crystallite_partionedTstar0_v(1:6,1:myNgrains,i,e) = &
              crystallite_Tstar_v(1:6,1:myNgrains,i,e)                                               ! ...2nd PK stress
 
@@ -550,8 +544,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
              crystallite_partionedFi0(1:3,1:3,1:myNgrains,i,e)                                      ! ...intermediate def grads
            crystallite_Li(1:3,1:3,1:myNgrains,i,e) = &
              crystallite_partionedLi0(1:3,1:3,1:myNgrains,i,e)                                      ! ...intermediate velocity grads
-           crystallite_dPdF(1:3,1:3,1:3,1:3,1:myNgrains,i,e) = &
-             crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,1:myNgrains,i,e)                            ! ...stiffness
            crystallite_Tstar_v(1:6,1:myNgrains,i,e) = &
               crystallite_partionedTstar0_v(1:6,1:myNgrains,i,e)                                    ! ...2nd PK stress
            do g = 1, myNgrains
@@ -622,7 +614,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 ! crystallite integration
 ! based on crystallite_partionedF0,.._partionedF
 ! incrementing by crystallite_dt
-     call crystallite_stressAndItsTangent(updateJaco)                                                ! request stress and tangent calculation for constituent grains
+     materialpoint_converged = crystallite_stress() !ToDo: MD not sure if that is the best logic
 
 !--------------------------------------------------------------------------------------------------
 ! state update
@@ -631,9 +623,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
        IpLooping3: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
          if (      materialpoint_requested(i,e) .and. &
              .not. materialpoint_doneAndHappy(1,i,e)) then
-           if (.not. all(crystallite_converged(:,i,e))) then
+           if (.not. materialpoint_converged(i,e)) then
              materialpoint_doneAndHappy(1:2,i,e) = [.true.,.false.]
-             materialpoint_converged(i,e) = .false.
            else
              materialpoint_doneAndHappy(1:2,i,e) = updateState(i,e)
              materialpoint_converged(i,e) = all(materialpoint_doneAndHappy(1:2,i,e))                  ! converged if done and happy
@@ -648,6 +639,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    NiterationHomog = NiterationHomog + 1_pInt
 
  enddo cutBackLooping
+ 
+ if(updateJaco) call crystallite_stressTangent
 
  if (.not. terminallyIll ) then
    call crystallite_orientations()                                                                  ! calculate crystal orientations

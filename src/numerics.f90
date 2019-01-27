@@ -276,8 +276,6 @@ subroutine numerics_init
          numerics_integrator = IO_intValue(line,chunkPos,2_pInt)
        case ('usepingpong')
          usepingpong = IO_intValue(line,chunkPos,2_pInt) > 0_pInt
-       case ('timesyncing')
-         numerics_timeSyncing = IO_intValue(line,chunkPos,2_pInt) > 0_pInt
        case ('unitlength')
          numerics_unitlength = IO_floatValue(line,chunkPos,2_pInt)
 
@@ -454,8 +452,6 @@ subroutine numerics_init
  end select
 #endif
 
- numerics_timeSyncing = numerics_timeSyncing .and. all(numerics_integrator==2_pInt)                 ! timeSyncing only allowed for explicit Euler integrator
-
 !--------------------------------------------------------------------------------------------------
 ! writing parameters to output
  write(6,'(a24,1x,es8.1)')  ' relevantStrain:         ',relevantStrain
@@ -476,7 +472,6 @@ subroutine numerics_init
  write(6,'(a24,1x,es8.1)')  ' rTol_crystalliteStress: ',rTol_crystalliteStress
  write(6,'(a24,1x,es8.1)')  ' aTol_crystalliteStress: ',aTol_crystalliteStress
  write(6,'(a24,2(1x,i8))')  ' integrator:             ',numerics_integrator
- write(6,'(a24,1x,L8)')     ' timeSyncing:            ',numerics_timeSyncing
  write(6,'(a24,1x,L8)')     ' use ping pong scheme:   ',usepingpong
  write(6,'(a24,1x,es8.1,/)')' unitlength:             ',numerics_unitlength
 

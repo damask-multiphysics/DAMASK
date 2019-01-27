@@ -81,7 +81,7 @@ module plastic_disloUCLA
      rhoEdge, &
      rhoEdgeDip, &
      accshear
- end type
+ end type tDisloUCLAState
 
  type, private :: tDisloUCLAdependentState
    real(pReal), allocatable, dimension(:,:) :: &
@@ -90,13 +90,13 @@ module plastic_disloUCLA
      threshold_stress
  end type tDisloUCLAdependentState
 
-
- type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
- type(tDisloUCLAState ), allocatable, dimension(:), private :: &
+!--------------------------------------------------------------------------------------------------
+! containers for parameters and state
+ type(tParameters),              allocatable, dimension(:), private :: param
+ type(tDisloUCLAState),          allocatable, dimension(:), private :: &
    dotState, &
    state
- type(tDisloUCLAdependentState), allocatable, dimension(:), private :: &
-   dependentState
+ type(tDisloUCLAdependentState), allocatable, dimension(:), private :: dependentState
 
  public :: &
    plastic_disloUCLA_init, &
@@ -164,7 +164,6 @@ subroutine plastic_disloUCLA_init()
    outputID
 
  character(len=pStringLen) :: &
-   structure = '',&
    extmsg = ''
  character(len=65536), dimension(:), allocatable :: &
    outputs
@@ -197,8 +196,6 @@ subroutine plastic_disloUCLA_init()
              dst => dependentState(phase_plasticityInstance(p)), &
              config => config_phase(p))
 
-   structure = config%getString('lattice_structure')
-
 !--------------------------------------------------------------------------------------------------
 !  optional parameters that need to be defined
    prm%mu = lattice_mu(p)
@@ -213,36 +210,37 @@ subroutine plastic_disloUCLA_init()
    prm%Nslip      = config%getInts('nslip',defaultVal=emptyIntArray)
    prm%totalNslip = sum(prm%Nslip)
    slipActive: if (prm%totalNslip > 0_pInt) then
-     prm%Schmid          = lattice_SchmidMatrix_slip(prm%Nslip,structure(1:3),&
-                                                     config%getFloat('c/a',defaultVal=0.0_pReal))
-     if(structure=='bcc') then
-       prm%nonSchmidCoeff     = config%getFloats('nonschmid_coefficients',&
+     prm%Schmid = lattice_SchmidMatrix_slip(prm%Nslip,config%getString('lattice_structure'),&
+                                            config%getFloat('c/a',defaultVal=0.0_pReal))
+
+     if(trim(config%getString('lattice_structure')) == 'bcc') then
+       prm%nonSchmidCoeff = config%getFloats('nonschmid_coefficients',&
                                                  defaultVal = emptyRealArray)
-       prm%nonSchmid_pos      = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1_pInt)
-       prm%nonSchmid_neg      = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1_pInt)
+       prm%nonSchmid_pos  = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1_pInt)
+       prm%nonSchmid_neg  = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1_pInt)
      else
-       prm%nonSchmid_pos      = prm%Schmid
-       prm%nonSchmid_neg      = prm%Schmid
+       prm%nonSchmid_pos  = prm%Schmid
+       prm%nonSchmid_neg  = prm%Schmid
      endif
      prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
                                                              config%getFloats('interaction_slipslip'), &
-                                                             structure(1:3))
-     prm%rho0        = config%getFloats('rhoedge0',       requiredShape=shape(prm%Nslip))
-     prm%rhoDip0     = config%getFloats('rhoedgedip0',    requiredShape=shape(prm%Nslip))
-     prm%v0          = config%getFloats('v0',             requiredShape=shape(prm%Nslip))
-     prm%burgers     = config%getFloats('slipburgers',    requiredShape=shape(prm%Nslip))
-     prm%H0kp        = config%getFloats('qedge',          requiredShape=shape(prm%Nslip))
+                                                             config%getString('lattice_structure'))
+     prm%rho0        = config%getFloats('rhoedge0',       requiredSize=size(prm%Nslip))
+     prm%rhoDip0     = config%getFloats('rhoedgedip0',    requiredSize=size(prm%Nslip))
+     prm%v0          = config%getFloats('v0',             requiredSize=size(prm%Nslip))
+     prm%burgers     = config%getFloats('slipburgers',    requiredSize=size(prm%Nslip))
+     prm%H0kp        = config%getFloats('qedge',          requiredSize=size(prm%Nslip))
 
-     prm%clambda     = config%getFloats('clambdaslip',    requiredShape=shape(prm%Nslip))
-     prm%tau_Peierls = config%getFloats('tau_peierls',    requiredShape=shape(prm%Nslip))  ! ToDo: Deprecated
-     prm%p           = config%getFloats('p_slip',         requiredShape=shape(prm%Nslip), &
+     prm%clambda     = config%getFloats('clambdaslip',    requiredSize=size(prm%Nslip))
+     prm%tau_Peierls = config%getFloats('tau_peierls',    requiredSize=size(prm%Nslip))  ! ToDo: Deprecated
+     prm%p           = config%getFloats('p_slip',         requiredSize=size(prm%Nslip), &
                                         defaultVal=[(1.0_pReal,i=1_pInt,size(prm%Nslip))])
-     prm%q           = config%getFloats('q_slip',         requiredShape=shape(prm%Nslip), &
+     prm%q           = config%getFloats('q_slip',         requiredSize=size(prm%Nslip), &
                                         defaultVal=[(1.0_pReal,i=1_pInt,size(prm%Nslip))])
-     prm%kink_height = config%getFloats('kink_height',    requiredShape=shape(prm%Nslip))
-     prm%w           = config%getFloats('kink_width',     requiredShape=shape(prm%Nslip))
-     prm%omega       = config%getFloats('omega',          requiredShape=shape(prm%Nslip))
-     prm%B           = config%getFloats('friction_coeff', requiredShape=shape(prm%Nslip))
+     prm%kink_height = config%getFloats('kink_height',    requiredSize=size(prm%Nslip))
+     prm%w           = config%getFloats('kink_width',     requiredSize=size(prm%Nslip))
+     prm%omega       = config%getFloats('omega',          requiredSize=size(prm%Nslip))
+     prm%B           = config%getFloats('friction_coeff', requiredSize=size(prm%Nslip))
 
      prm%SolidSolutionStrength  = config%getFloat('solidsolutionstrength')                 ! ToDo: Deprecated
      prm%grainSize              = config%getFloat('grainsize')
@@ -250,7 +248,7 @@ subroutine plastic_disloUCLA_init()
      prm%Qsd                    = config%getFloat('qsd')
      prm%atomicVolume           = config%getFloat('catomicvolume')       * prm%burgers**3.0_pReal
      prm%minDipDistance         = config%getFloat('cedgedipmindistance') * prm%burgers
-     prm%dipoleformation        = config%getFloat('dipoleformationfactor') > 0.0_pReal !should be on by default, ToDo: change to /key/-key
+     prm%dipoleformation        = config%getFloat('dipoleformationfactor') > 0.0_pReal !should be on by default, ToDo: change to /key/-type key
 
      ! expand: family => system
      prm%rho0           = math_expand(prm%rho0,           prm%Nslip)
