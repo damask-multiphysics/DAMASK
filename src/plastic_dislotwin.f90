@@ -532,9 +532,6 @@ subroutine plastic_dislotwin_init
        case ('threshold_stress_slip')
          outputID= merge(threshold_stress_slip_ID,undefined_ID,prm%totalNslip > 0_pInt)
          outputSize = prm%totalNslip
-       case ('edge_dipole_distance')
-         outputID = merge(edge_dipole_distance_ID,undefined_ID,prm%totalNslip > 0_pInt)
-         outputSize = prm%totalNslip
 
        case ('twin_fraction')
          outputID = merge(twin_fraction_ID,undefined_ID,prm%totalNtwin >0_pInt)
@@ -548,13 +545,6 @@ subroutine plastic_dislotwin_init
        case ('threshold_stress_twin')
          outputID = merge(threshold_stress_twin_ID,undefined_ID,prm%totalNtwin >0_pInt)
          outputSize = prm%totalNtwin
-         
-       case ('resolved_stress_shearband')
-         outputID = resolved_stress_shearband_ID
-         outputSize = 6_pInt
-       case ('shear_rate_shearband','shearrate_shearband')
-         outputID = shear_rate_shearband_ID
-         outputSize = 6_pInt
          
        case ('strain_trans_fraction')
          outputID = strain_trans_fraction_ID
@@ -1093,36 +1083,7 @@ function plastic_dislotwin_postResults(Mp,Temperature,instance,of) result(postRe
      case (threshold_stress_slip_ID)
        postResults(c+1_pInt:c+prm%totalNslip) = dst%threshold_stress_slip(1_pInt:prm%totalNslip,of)
        c = c + prm%totalNslip
-     case (edge_dipole_distance_ID)
-       do j = 1_pInt, prm%totalNslip
-         postResults(c+j) = (3.0_pReal*prm%mu*prm%burgers_slip(j)) &
-                          / (16.0_pReal*PI*abs(math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,j))))
-         postResults(c+j)=min(postResults(c+j),dst%mfp_slip(j,of))
- !       postResults(c+j)=max(postResults(c+j),&
- !                                                       plasticState(ph)%state(4*ns+2*nt+2*nr+j, of))
-       enddo
-       c = c + prm%totalNslip
- !     case (resolved_stress_shearband_ID)
- !       do j = 1_pInt,6_pInt                                                                       ! loop over all shearband families
- !          postResults(c+j) = dot_product(Tstar_v,sbSv(1:6,j,ipc,ip,el))
- !       enddo
- !       c = c + 6_pInt
- !     case (shear_rate_shearband_ID)
- !       do j = 1_pInt,6_pInt                                                                       ! loop over all shearbands
- !         tau = dot_product(Tstar_v,sbSv(1:6,j,ipc,ip,el))
- !         if (abs(tau) < tol_math_check) then
- !           StressRatio_p = 0.0_pReal
- !           StressRatio_pminus1 = 0.0_pReal
- !         else
- !           StressRatio_p = (abs(tau)/prm%sbResistance)**prm%pShearBand
- !           StressRatio_pminus1 = (abs(tau)/prm%sbResistance)**(prm%pShearBand-1.0_pReal)
- !         endif
- !         BoltzmannRatio = prm%sbQedge/(kB*Temperature)
- !         DotGamma0 = prm%sbVelocity
- !         postResults(c+j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**prm%qShearBand)*&
- !                            sign(1.0_pReal,tau)
- !       enddo 
- !      c = c + 6_pInt
+
      case (twin_fraction_ID)
        postResults(c+1_pInt:c+prm%totalNtwin) = stt%twinFraction(1_pInt:prm%totalNtwin,of)
        c = c + prm%totalNtwin    
