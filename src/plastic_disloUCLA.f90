@@ -28,8 +28,7 @@ module plastic_disloUCLA
      shearrate_ID, &
      accumulatedshear_ID, &
      mfp_ID, &
-     thresholdstress_ID, &
-     dipoledistance_ID
+     thresholdstress_ID
  end enum
 
  type, private :: tParameters
@@ -312,8 +311,6 @@ subroutine plastic_disloUCLA_init()
          outputID = merge(mfp_ID,undefined_ID,prm%totalNslip>0_pInt)
        case ('threshold_stress','threshold_stress_slip')
          outputID = merge(thresholdstress_ID,undefined_ID,prm%totalNslip>0_pInt)
-       case ('edge_dipole_distance')
-         outputID = merge(dipoleDistance_ID,undefined_ID,prm%totalNslip>0_pInt)
 
      end select
 
@@ -560,16 +557,6 @@ function plastic_disloUCLA_postResults(Mp,Temperature,instance,of) result(postRe
        postResults(c+1_pInt:c+prm%totalNslip) = dst%mfp(1_pInt:prm%totalNslip, of)
      case (thresholdstress_ID)
        postResults(c+1_pInt:c+prm%totalNslip) = dst%threshold_stress(1_pInt:prm%totalNslip,of)
-     case (dipoleDistance_ID)                                                                       ! ToDo: Discuss required changes with Franz
-       do i = 1_pInt, prm%totalNslip
-         if (dNeq0(abs(math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i))))) then
-           postResults(c+i) = (3.0_pReal*prm%mu*prm%burgers(i)) &
-                            / (16.0_pReal*pi*abs(math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i))))
-         else
-           postResults(c+i) = huge(1.0_pReal)
-         endif
-         postResults(c+i)=min(postResults(c+i),dst%mfp(i,of))
-       enddo
 
    end select
 
