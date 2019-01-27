@@ -86,7 +86,7 @@ module plastic_dislotwin
      Ndot0_trans, &                                                                                 !< trans nucleation rate [1/m³s] for each trans system
      twinsize, &                                                                                    !< twin thickness [m] for each twin system
      CLambdaSlip, &                                                                                 !< Adj. parameter for distance between 2 forest dislocations for each slip system
-     lamellarsizePerTransSystem, &                                                                  !< martensite lamellar thickness [m] for each trans system and instance
+     lamellarsize, &                                                                  !< martensite lamellar thickness [m] for each trans system and instance
      p, &                                                                                           !< p-exponent in glide velocity
      q, &                                                                                           !< q-exponent in glide velocity
      r, &                                                                                           !< r-exponent in twin nucleation rate
@@ -132,16 +132,15 @@ module plastic_dislotwin
      rhoEdgeDip, &
      accshear_slip, &
      twinFraction, &
-     strainTransFraction, &
-     whole
+     strainTransFraction
  end type tDislotwinState
 
  type, private :: tDislotwinMicrostructure
    real(pReal), allocatable, dimension(:,:) :: &
      invLambdaSlip, &
      invLambdaSlipTwin, &
-     invLambdaTwin, &
      invLambdaSlipTrans, &
+     invLambdaTwin, &
      invLambdaTrans, &
      mfp_slip, &
      mfp_twin, &
@@ -151,8 +150,8 @@ module plastic_dislotwin
      threshold_stress_trans, &
      twinVolume, &
      martensiteVolume, &
-     tau_r_twin, &                                                             !< stress to bring partial close together for each twin system and instance
-     tau_r_trans                                                               !< stress to bring partial close together for each trans system and instance
+     tau_r_twin, &                                                                                  !< stress to bring partial close together for each twin system and instance
+     tau_r_trans                                                                                    !< stress to bring partial close together for each trans system and instance
  end type tDislotwinMicrostructure
 
 !--------------------------------------------------------------------------------------------------
@@ -414,12 +413,12 @@ subroutine plastic_dislotwin_init
         prm%Ndot0_trans = config%getFloats('ndot0_trans')
         prm%Ndot0_trans = math_expand(prm%Ndot0_trans,prm%Ntrans)
      endif
-     prm%lamellarsizePerTransSystem = config%getFloats('lamellarsize')
-     prm%lamellarsizePerTransSystem = math_expand(prm%lamellarsizePerTransSystem,prm%Ntrans)
+     prm%lamellarsize = config%getFloats('lamellarsize')
+     prm%lamellarsize = math_expand(prm%lamellarsize,prm%Ntrans)
      prm%s = config%getFloats('s_trans',defaultVal=[0.0_pReal])
      prm%s = math_expand(prm%s,prm%Ntrans)
    else
-     allocate(prm%lamellarsizePerTransSystem(0))
+     allocate(prm%lamellarsize(0))
      allocate(prm%burgers_trans(0))
    endif
    
@@ -610,8 +609,6 @@ subroutine plastic_dislotwin_init
    dot%strainTransFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTransFrac
 
-   dot%whole => plasticState(p)%dotState !ToDo: needed?
-
    allocate(dst%invLambdaSlip         (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
    allocate(dst%invLambdaSlipTwin     (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
    allocate(dst%invLambdaSlipTrans    (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
@@ -621,14 +618,15 @@ subroutine plastic_dislotwin_init
    allocate(dst%invLambdaTwin         (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
    allocate(dst%mfp_twin              (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
    allocate(dst%threshold_stress_twin (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
-   allocate(dst%tau_r_twin            (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
+   allocate(dst%tau_r_twin            (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)  !* equilibrium separation of partial dislocations (twin)
    allocate(dst%twinVolume            (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
 
    allocate(dst%invLambdaTrans        (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
    allocate(dst%mfp_trans             (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
    allocate(dst%threshold_stress_trans(prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
-   allocate(dst%tau_r_trans           (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
+   allocate(dst%tau_r_trans           (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)   !* equilibrium separation of partial dislocations (trans)
    allocate(dst%martensiteVolume      (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
+
 
    plasticState(p)%state0 = plasticState(p)%state                                                   ! ToDo: this could be done centrally
 
@@ -846,8 +844,6 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
  associate(prm => param(instance),    stt => state(instance), &
            dot => dotstate(instance), dst => microstructure(instance))
 
- dot%whole(:,of) = 0.0_pReal
-
  f_unrotated = 1.0_pReal &
              - sum(stt%twinFraction(1_pInt:prm%totalNtwin,of)) &
              - sum(stt%strainTransFraction(1_pInt:prm%totalNtrans,of))
@@ -948,7 +944,7 @@ subroutine plastic_dislotwin_dependentState(temperature,instance,of)
  
  !* rescaled volume fraction for topology
  fOverStacksize         =  stt%twinFraction(1_pInt:prm%totalNtwin,of)/prm%twinsize  !ToDo: this is per system
- ftransOverLamellarSize =  sumf_trans/prm%lamellarsizePerTransSystem                !ToDo: But this not ...
+ ftransOverLamellarSize =  sumf_trans/prm%lamellarsize                !ToDo: But this not ...
  !Todo: Physically ok, but naming could be adjusted
 
 
@@ -1010,16 +1006,15 @@ subroutine plastic_dislotwin_dependentState(temperature,instance,of)
          (sfe/(3.0_pReal*prm%burgers_trans) + 3.0_pReal*prm%burgers_trans*prm%mu/&
               (prm%L0_trans*prm%burgers_slip) + prm%transStackHeight*prm%deltaG/ (3.0_pReal*prm%burgers_trans) )    
  
-  ! final volume after growth
- dst%twinVolume(:,of) = (PI/4.0_pReal)*prm%twinsize*dst%mfp_twin(:,of)**2.0_pReal
- dst%martensiteVolume(:,of) = (PI/4.0_pReal)*prm%lamellarsizePerTransSystem*dst%mfp_trans(:,of)**2.0_pReal
 
- !* equilibrium separation of partial dislocations (twin)
- x0 = prm%mu*prm%burgers_twin**2.0_pReal/(sfe*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)
+ dst%twinVolume(:,of)       = (PI/4.0_pReal)*prm%twinsize*dst%mfp_twin(:,of)**2.0_pReal
+ dst%martensiteVolume(:,of) = (PI/4.0_pReal)*prm%lamellarsize*dst%mfp_trans(:,of)**2.0_pReal
+
+
+ x0 = prm%mu*prm%burgers_twin**2.0_pReal/(SFE*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)
  dst%tau_r_twin(:,of) = prm%mu*prm%burgers_twin/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%xc_twin)+cos(pi/3.0_pReal)/x0)
 
- !* equilibrium separation of partial dislocations (trans)
- x0 = prm%mu*prm%burgers_trans**2.0_pReal/(sfe*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)
+ x0 = prm%mu*prm%burgers_trans**2.0_pReal/(SFE*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)
  dst%tau_r_trans(:,of) = prm%mu*prm%burgers_trans/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%xc_trans)+cos(pi/3.0_pReal)/x0)
 
  end associate
