@@ -686,7 +686,7 @@ end subroutine plastic_dislotwin_init
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the homogenized elasticity matrix
 !--------------------------------------------------------------------------------------------------
-function plastic_dislotwin_homogenizedC(ipc,ip,el)
+function plastic_dislotwin_homogenizedC(ipc,ip,el) result(homogenizedC)
  use material, only: &
   material_phase, &
   phase_plasticityInstance, &
@@ -694,7 +694,7 @@ function plastic_dislotwin_homogenizedC(ipc,ip,el)
  
  implicit none
  real(pReal), dimension(6,6) :: &
-   plastic_dislotwin_homogenizedC
+   homogenizedC
  integer(pInt), intent(in) :: &
    ipc, &                                                                                          !< component-ID of integration point
    ip, &                                                                                           !< integration point
@@ -713,18 +713,19 @@ function plastic_dislotwin_homogenizedC(ipc,ip,el)
              - sum(stt%stressTransFraction(1_pInt:prm%totalNtrans,of)) &
              - sum(stt%strainTransFraction(1_pInt:prm%totalNtrans,of))
 
- plastic_dislotwin_homogenizedC = f_unrotated * prm%C66
+ homogenizedC = f_unrotated * prm%C66
  do i=1_pInt,prm%totalNtwin
-    plastic_dislotwin_homogenizedC = plastic_dislotwin_homogenizedC &
-                                   + stt%twinFraction(i,of)*prm%C66_twin(1:6,1:6,i)
+   homogenizedC = homogenizedC &
+                + stt%twinFraction(i,of)*prm%C66_twin(1:6,1:6,i)
  enddo
  do i=1_pInt,prm%totalNtrans
-    plastic_dislotwin_homogenizedC = plastic_dislotwin_homogenizedC &
-                                   +(stt%stressTransFraction(i,of)+stt%strainTransFraction(i,of))*&
-                                                            prm%C66_trans(1:6,1:6,i)
+   homogenizedC = homogenizedC &
+                +(stt%stressTransFraction(i,of)+stt%strainTransFraction(i,of))*prm%C66_trans(1:6,1:6,i)
  enddo
+
  end associate
- end function plastic_dislotwin_homogenizedC
+ 
+end function plastic_dislotwin_homogenizedC
 
 
 !--------------------------------------------------------------------------------------------------
