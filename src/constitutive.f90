@@ -365,7 +365,7 @@ subroutine constitutive_microstructure(orientations, Fe, Fp, ipc, ip, el)
  use plastic_nonlocal, only: &
    plastic_nonlocal_microstructure
  use plastic_dislotwin, only: &
-   plastic_dislotwin_microstructure
+   plastic_dislotwin_dependentState
  use plastic_disloUCLA, only: &
    plastic_disloUCLA_dependentState
 
@@ -389,7 +389,9 @@ subroutine constitutive_microstructure(orientations, Fe, Fp, ipc, ip, el)
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
-     call plastic_dislotwin_microstructure(temperature(ho)%p(tme),ipc,ip,el)
+     of = phasememberAt(ipc,ip,el)
+     instance = phase_plasticityInstance(material_phase(ipc,ip,el))
+     call plastic_dislotwin_dependentState(temperature(ho)%p(tme),instance,of)
    case (PLASTICITY_DISLOUCLA_ID) plasticityType
      of = phasememberAt(ipc,ip,el)
      instance = phase_plasticityInstance(material_phase(ipc,ip,el))
