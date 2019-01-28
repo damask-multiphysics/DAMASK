@@ -1568,8 +1568,6 @@ subroutine integrateStateFPI()
    mySizePlasticDotState, &                                                                         ! size of dot states
    mySizeSourceDotState
  real(pReal) :: &
-   dot_prod12, &
-   dot_prod22, &
    stateDamper
  real(pReal), dimension(constitutive_plasticity_maxSizeDotState) :: &
    plasticStateResiduum, &
@@ -1620,8 +1618,7 @@ subroutine integrateStateFPI()
 !$OMP PARALLEL
    ! --- UPDATE STATE  ---
 
-   !$OMP DO PRIVATE(dot_prod12,dot_prod22, &
-   !$OMP&           mySizePlasticDotState,mySizeSourceDotState, &
+   !$OMP DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState, &
    !$OMP&           plasticStateResiduum,sourceStateResiduum, &
    !$OMP&           stateDamper, &
    !$OMP&           tempPlasticState,tempSourceState,converged,p,c)
@@ -1632,23 +1629,9 @@ subroutine integrateStateFPI()
 
          p = phaseAt(g,i,e)
          c = phasememberAt(g,i,e)
-         dot_prod12 = dot_product(  plasticState(p)%dotState         (:,c) &
-                                  - plasticState(p)%previousDotState (:,c), &
-                                    plasticState(p)%previousDotState (:,c) &
-                                  - plasticState(p)%previousDotState2(:,c))
-         dot_prod22 = dot_product(  plasticState(p)%previousDotState (:,c) &
-                                  - plasticState(p)%previousDotState2(:,c), &
-                                    plasticState(p)%previousDotState (:,c) &
-                                  - plasticState(p)%previousDotState2(:,c))
-         if (      dot_prod22 > 0.0_pReal &
-             .and. (     dot_prod12 < 0.0_pReal &
-                    .or. dot_product(plasticState(p)%dotState(:,c), &
-                                     plasticState(p)%previousDotState(:,c)) < 0.0_pReal) ) then
-           stateDamper = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
-         else
-           stateDamper = 1.0_pReal
-         endif
-         ! --- get residui ---
+           StateDamper = damper(plasticState(p)%dotState         (:,c), &
+                                plasticState(p)%previousDotState (:,c), &
+                                plasticState(p)%previousDotState2(:,c))
 
          mySizePlasticDotState = plasticState(p)%sizeDotState
          plasticStateResiduum(1:mySizePlasticDotState) = &
@@ -1670,25 +1653,9 @@ subroutine integrateStateFPI()
                                        * (1.0_pReal - stateDamper)
 
          do s = 1_pInt, phase_Nsources(p)
-           mySizeSourceDotState  = sourceState(p)%p(s)%sizeDotState
-           dot_prod12 = dot_product(  sourceState(p)%p(s)%dotState         (:,c) &
-                                    - sourceState(p)%p(s)%previousDotState (:,c), &
-                                      sourceState(p)%p(s)%previousDotState (:,c) &
-                                    - sourceState(p)%p(s)%previousDotState2(:,c))
-           dot_prod22 = dot_product(  sourceState(p)%p(s)%previousDotState (:,c) &
-                                    - sourceState(p)%p(s)%previousDotState2(:,c), &
-                                      sourceState(p)%p(s)%previousDotState (:,c) &
-                                    - sourceState(p)%p(s)%previousDotState2(:,c))
-
-           if (      dot_prod22 > 0.0_pReal &
-               .and. (     dot_prod12 < 0.0_pReal &
-                      .or. dot_product(sourceState(p)%p(s)%dotState(:,c), &
-                                       sourceState(p)%p(s)%previousDotState(:,c)) < 0.0_pReal) ) then
-             stateDamper = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
-           else
-             stateDamper = 1.0_pReal
-           endif
-         ! --- get residui ---
+             StateDamper = damper(sourceState(p)%p(s)%dotState         (:,c), &
+                                  sourceState(p)%p(s)%previousDotState (:,c), &
+                                  sourceState(p)%p(s)%previousDotState2(:,c))
            mySizeSourceDotState  = sourceState(p)%p(s)%sizeDotState
            sourceStateResiduum(1:mySizeSourceDotState,s) = &
              sourceState(p)%p(s)%state(1:mySizeSourceDotState,c)      &
