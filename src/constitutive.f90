@@ -365,7 +365,7 @@ subroutine constitutive_microstructure(orientations, Fe, Fp, ipc, ip, el)
  use plastic_nonlocal, only: &
    plastic_nonlocal_microstructure
  use plastic_dislotwin, only: &
-   plastic_dislotwin_microstructure
+   plastic_dislotwin_dependentState
  use plastic_disloUCLA, only: &
    plastic_disloUCLA_dependentState
 
@@ -389,7 +389,9 @@ subroutine constitutive_microstructure(orientations, Fe, Fp, ipc, ip, el)
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
-     call plastic_dislotwin_microstructure(temperature(ho)%p(tme),ipc,ip,el)
+     of = phasememberAt(ipc,ip,el)
+     instance = phase_plasticityInstance(material_phase(ipc,ip,el))
+     call plastic_dislotwin_dependentState(temperature(ho)%p(tme),instance,of)
    case (PLASTICITY_DISLOUCLA_ID) plasticityType
      of = phasememberAt(ipc,ip,el)
      instance = phase_plasticityInstance(material_phase(ipc,ip,el))
@@ -409,9 +411,9 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, S6, Fi, ipc, ip, e
    pReal
  use math, only: &
    math_mul33x33, &
-   math_Mandel6to33, &
-   math_Mandel33to6, &
-   math_Plain99to3333
+   math_6toSym33, &
+   math_sym33to6, &
+   math_99to3333
  use material, only: &
    phasememberAt, &
    phase_plasticity, &
@@ -470,7 +472,7 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, S6, Fi, ipc, ip, e
  ho = material_homogenizationAt(el)
  tme = thermalMapping(ho)%p(ip,el)
 
- S  = math_Mandel6to33(S6)
+ S  = math_6toSym33(S6)
  Mp  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),S)
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
@@ -495,9 +497,9 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, S6, Fi, ipc, ip, e
      call plastic_kinehardening_LpAndItsTangent   (Lp,dLp_dMp, Mp,instance,of)
 
    case (PLASTICITY_NONLOCAL_ID) plasticityType
-     call plastic_nonlocal_LpAndItsTangent        (Lp,dLp_dMp99, math_Mandel33to6(Mp), &
+     call plastic_nonlocal_LpAndItsTangent        (Lp,dLp_dMp99, math_sym33to6(Mp), &
                                                    temperature(ho)%p(tme),ip,el)
-     dLp_dMp = math_Plain99to3333(dLp_dMp99)                                                        ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
+     dLp_dMp = math_99to3333(dLp_dMp99)                                                             ! ToDo: We revert here the last statement in plastic_xx_LpAndItsTanget
 
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
      of = phasememberAt(ipc,ip,el)
@@ -540,7 +542,7 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, S6, Fi, ipc, ip, e
    math_inv33, &
    math_det33, &
    math_mul33x33, &
-   math_Mandel6to33
+   math_6toSym33
  use material, only: &
    phasememberAt, &
    phase_plasticity, &
@@ -597,7 +599,7 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, S6, Fi, ipc, ip, e
    case (PLASTICITY_isotropic_ID) plasticityType
      of = phasememberAt(ipc,ip,el)
      instance = phase_plasticityInstance(material_phase(ipc,ip,el))
-     call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, math_Mandel6to33(S6),instance,of)
+     call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, math_6toSym33(S6),instance,of)
    case default plasticityType
      my_Li = 0.0_pReal
      my_dLi_dS = 0.0_pReal
@@ -716,7 +718,7 @@ subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, Fe, Fi, ipc, ip
  use math, only : &
    math_mul33x33, &
    math_mul3333xx33, &
-   math_Mandel66to3333, &
+   math_66toSym3333, &
    math_I3
  use material, only: &
    material_phase, &
@@ -749,7 +751,7 @@ subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, Fe, Fi, ipc, ip
    i, j
 
  ho = material_homogenizationAt(el)
- C = math_Mandel66to3333(constitutive_homogenizedC(ipc,ip,el))
+ C = math_66toSym3333(constitutive_homogenizedC(ipc,ip,el))
 
  DegradationLoop: do d = 1_pInt, phase_NstiffnessDegradations(material_phase(ipc,ip,el))
    degradationType: select case(phase_stiffnessDegradation(d,material_phase(ipc,ip,el)))
@@ -784,8 +786,8 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
    debug_levelBasic
  use math, only: &
    math_mul33x33, &
-   math_Mandel6to33, &
-   math_Mandel33to6, &
+   math_6toSym33, &
+   math_sym33to6, &
    math_mul33x33
  use mesh, only: &
    mesh_NcpElems, &
@@ -860,7 +862,7 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
  ho = material_homogenizationAt(el)
  tme = thermalMapping(ho)%p(ip,el)
 
- Mp  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),math_Mandel6to33(S6))
+ Mp  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),math_6toSym33(S6))
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
 
@@ -890,7 +892,7 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
      call plastic_disloucla_dotState    (Mp,temperature(ho)%p(tme),instance,of)
 
    case (PLASTICITY_NONLOCAL_ID) plasticityType
-     call plastic_nonlocal_dotState     (math_Mandel33to6(Mp),FeArray,FpArray,temperature(ho)%p(tme), &
+     call plastic_nonlocal_dotState     (math_sym33to6(Mp),FeArray,FpArray,temperature(ho)%p(tme), &
                                          subdt,subfracArray,ip,el)
  end select plasticityType
 
@@ -999,7 +1001,7 @@ function constitutive_postResults(S6, Fi, FeArray, ipc, ip, el)
  use prec, only: &
    pReal
  use math, only: &
-  math_Mandel6to33, &
+  math_6toSym33, &
   math_mul33x33
  use mesh, only: &
    mesh_NcpElems, &
@@ -1074,7 +1076,7 @@ function constitutive_postResults(S6, Fi, FeArray, ipc, ip, el)
 
  constitutive_postResults = 0.0_pReal
 
- Mp  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),math_Mandel6to33(S6))
+ Mp  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),math_6toSym33(S6))
 
  ho = material_homogenizationAt(el)
  tme = thermalMapping(ho)%p(ip,el)

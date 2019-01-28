@@ -28,8 +28,7 @@ module plastic_disloUCLA
      shearrate_ID, &
      accumulatedshear_ID, &
      mfp_ID, &
-     thresholdstress_ID, &
-     dipoledistance_ID
+     thresholdstress_ID
  end enum
 
  type, private :: tParameters
@@ -73,7 +72,7 @@ module plastic_disloUCLA
    integer(kind(undefined_ID)), allocatable, dimension(:) :: &
      outputID                                                                                       !< ID of each post result output
    logical :: &
-     dipoleformation
+     dipoleFormation                                                                                !< flag indicating consideration of dipole formation
  end type                                                                                           !< container type for internal constitutive parameters
 
  type, private :: tDisloUCLAState
@@ -127,7 +126,6 @@ subroutine plastic_disloUCLA_init()
    debug_constitutive,&
    debug_levelBasic
  use math, only: &
-   math_mul3x3, &
    math_expand
  use IO, only: &
    IO_error, &
@@ -148,8 +146,6 @@ subroutine plastic_disloUCLA_init()
 
  implicit none
  integer(pInt) :: &
-   index_myFamily, index_otherFamily, &
-   f,j,k,o, &
    Ninstance, &
    p, i, &
    NipcMyPhase, &
@@ -222,9 +218,13 @@ subroutine plastic_disloUCLA_init()
        prm%nonSchmid_pos  = prm%Schmid
        prm%nonSchmid_neg  = prm%Schmid
      endif
+
      prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
                                                              config%getFloats('interaction_slipslip'), &
                                                              config%getString('lattice_structure'))
+     prm%forestProjectionEdge = lattice_forestProjection(prm%Nslip,config%getString('lattice_structure'),&
+                                                         config%getFloat('c/a',defaultVal=0.0_pReal))
+
      prm%rho0        = config%getFloats('rhoedge0',       requiredSize=size(prm%Nslip))
      prm%rhoDip0     = config%getFloats('rhoedgedip0',    requiredSize=size(prm%Nslip))
      prm%v0          = config%getFloats('v0',             requiredSize=size(prm%Nslip))
@@ -311,8 +311,6 @@ subroutine plastic_disloUCLA_init()
          outputID = merge(mfp_ID,undefined_ID,prm%totalNslip>0_pInt)
        case ('threshold_stress','threshold_stress_slip')
          outputID = merge(thresholdstress_ID,undefined_ID,prm%totalNslip>0_pInt)
-       case ('edge_dipole_distance')
-         outputID = merge(dipoleDistance_ID,undefined_ID,prm%totalNslip>0_pInt)
 
      end select
 
@@ -334,24 +332,6 @@ subroutine plastic_disloUCLA_init()
                                       prm%totalNslip,0_pInt,0_pInt)
    plasticState(p)%sizePostResults = sum(plastic_disloUCLA_sizePostResult(:,phase_plasticityInstance(p)))
 
-   allocate(prm%forestProjectionEdge(prm%totalNslip,prm%totalNslip),source = 0.0_pReal)
-
-   i = 0_pInt
-   mySlipFamilies: do f = 1_pInt,size(prm%Nslip,1)
-     index_myFamily = sum(prm%Nslip(1:f-1_pInt))
-
-     slipSystemsLoop: do j = 1_pInt,prm%Nslip(f)
-       i = i + 1_pInt
-       do o = 1_pInt, size(prm%Nslip,1)
-         index_otherFamily = sum(prm%Nslip(1:o-1_pInt))
-         do k = 1_pInt,prm%Nslip(o)                                   ! loop over (active) systems in other family (slip)
-           prm%forestProjectionEdge(index_myFamily+j,index_otherFamily+k) = &
-             abs(math_mul3x3(lattice_sn(:,sum(lattice_NslipSystem(1:f-1,p))+j,p), &
-                             lattice_st(:,sum(lattice_NslipSystem(1:o-1,p))+k,p)))
-       enddo; enddo
-     enddo slipSystemsLoop
-   enddo mySlipFamilies
-
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
    startIndex = 1_pInt
@@ -372,7 +352,7 @@ subroutine plastic_disloUCLA_init()
    endIndex   = endIndex + prm%totalNslip
    stt%accshear=>plasticState(p)%state(startIndex:endIndex,:)
    dot%accshear=>plasticState(p)%dotState(startIndex:endIndex,:)
-   plasticState(p)%aTolState(startIndex:endIndex) = 1e6_pReal                  !ToDo: better make optional parameter
+   plasticState(p)%aTolState(startIndex:endIndex) = 1.0e6_pReal  !ToDo: better make optional parameter
    ! global alias
    plasticState(p)%slipRate        => plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%accumulatedSlip => plasticState(p)%state(startIndex:endIndex,:)
@@ -577,16 +557,6 @@ function plastic_disloUCLA_postResults(Mp,Temperature,instance,of) result(postRe
        postResults(c+1_pInt:c+prm%totalNslip) = dst%mfp(1_pInt:prm%totalNslip, of)
      case (thresholdstress_ID)
        postResults(c+1_pInt:c+prm%totalNslip) = dst%threshold_stress(1_pInt:prm%totalNslip,of)
-     case (dipoleDistance_ID)                                                                       ! ToDo: Discuss required changes with Franz
-       do i = 1_pInt, prm%totalNslip
-         if (dNeq0(abs(math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i))))) then
-           postResults(c+i) = (3.0_pReal*prm%mu*prm%burgers(i)) &
-                            / (16.0_pReal*pi*abs(math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i))))
-         else
-           postResults(c+i) = huge(1.0_pReal)
-         endif
-         postResults(c+i)=min(postResults(c+i),dst%mfp(i,of))
-       enddo
 
    end select
 
