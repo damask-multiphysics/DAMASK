@@ -12,7 +12,7 @@ module mesh
 #include <petsc/finclude/petscis.h>
 #include <petsc/finclude/petscdmda.h>
  use prec, only: pReal, pInt
-
+ use mesh_base
 use PETScdmplex
 use PETScdmda
 use PETScis
@@ -79,6 +79,17 @@ use PETScis
 
  integer(pInt), dimension(1_pInt), parameter, public :: FE_NipNeighbors = &                  !< number of ip neighbors / cell faces in a specific cell type
  int([6],pInt)
+ 
+  type, public, extends(tMesh) :: tMesh_FEM
+
+   
+   contains
+   procedure :: init   => tMesh_FEM_init
+ end type tMesh_FEM
+ 
+ type(tMesh_FEM), public, protected :: theMesh
+ 
+
 
 
  public :: &
@@ -88,6 +99,23 @@ use PETScis
    mesh_cellCenterCoordinates
 
 contains
+
+subroutine tMesh_FEM_init(self,dimen,order)
+ 
+ implicit none
+ integer(pInt), intent(in) :: dimen,order
+ class(tMesh_FEM) :: self
+ 
+ if (dimen == 2_pInt) then
+   if (order == 1_pInt) call self%elem%init(1_pInt)
+   if (order == 2_pInt) call self%elem%init(2_pInt)
+ elseif(dimen == 3_pInt) then
+   if (order == 1_pInt) call self%elem%init(6_pInt)
+   if (order == 2_pInt) call self%elem%init(8_pInt)
+ endif
+
+ 
+end subroutine tMesh_FEM_init
 
 
 !--------------------------------------------------------------------------------------------------
@@ -213,6 +241,8 @@ subroutine mesh_init()
 
  FE_Nips(FE_geomtype(1_pInt)) = FEM_Zoo_nQuadrature(dimPlex,integrationOrder)
  mesh_maxNips = FE_Nips(1_pInt)
+ 
+ write(6,*) 'mesh_maxNips',mesh_maxNips
  call mesh_FEM_build_ipCoordinates(dimPlex,FEM_Zoo_QuadraturePoints(dimPlex,integrationOrder)%p)
  call mesh_FEM_build_ipVolumes(dimPlex)
  
@@ -243,7 +273,7 @@ subroutine mesh_init()
  mesh_homogenizationAt = mesh_element(3,:)
  mesh_microstructureAt = mesh_element(4,:)
 !!!!!!!!!!!!!!!!!!!!!!!!
-
+ call theMesh%init(dimplex,integrationOrder)
 end subroutine mesh_init
 
 

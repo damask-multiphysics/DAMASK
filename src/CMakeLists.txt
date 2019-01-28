@@ -62,7 +62,7 @@ add_dependencies(MATH FEsolving)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:MATH>)
 
 add_library(MESH_BASE OBJECT "mesh_base.f90")
-add_dependencies(MESH_BASE MATH)
+add_dependencies(MESH_BASE MATH ELEMENT)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:MESH_BASE>)
 
 # SPECTRAL solver and FEM solver use different mesh files
