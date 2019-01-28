@@ -69,7 +69,7 @@ module crystallite
    crystallite_subS0, &                                                                             !< 2nd Piola-Kirchhoff stress vector at start of crystallite inc
    crystallite_invFp, &                                                                             !< inverse of current plastic def grad (end of converged time step)
    crystallite_subFp0,&                                                                             !< plastic def grad at start of crystallite inc
-   crystallite_invFi, &                                                                             !< inverse of current intermediate def grad
+   crystallite_invFi, &                                                                             !< inverse of current intermediate def grad (end of converged time step)
    crystallite_subFi0,&                                                                             !< intermediate def grad at start of crystallite inc
    crystallite_subF,  &                                                                             !< def grad to be reached at end of crystallite inc
    crystallite_subF0, &                                                                             !< def grad at start of crystallite inc
@@ -666,14 +666,14 @@ function crystallite_stress()
 ! return whether converged or not
  crystallite_stress = .false.
  elementLooping5: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                              ! iterate over IPs of this element to be processed
+   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
      crystallite_stress(i,e) = all(crystallite_converged(:,i,e)) 
    enddo
  enddo elementLooping5
 
 #ifdef DEBUG
  elementLooping6: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                              ! iterate over IPs of this element to be processed
+   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
      do c = 1,homogenization_Ngrains(mesh_element(3,e))
        if (.not. crystallite_converged(c,i,e)) then
          if(iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
@@ -844,17 +844,16 @@ subroutine crystallite_stressTangent()
 !--------------------------------------------------------------------------------------------------
 ! assemble dPdF
        temp_33_1 = math_mul33x33(crystallite_invFp(1:3,1:3,c,i,e), &
-                            math_mul33x33(math_6toSym33(crystallite_Tstar_v(1:6,c,i,e)), &
-                                          transpose(crystallite_invFp(1:3,1:3,c,i,e))))
+                                 math_mul33x33(math_6toSym33(crystallite_Tstar_v(1:6,c,i,e)), &
+                                               transpose(crystallite_invFp(1:3,1:3,c,i,e))))
        temp_33_2 = math_mul33x33(math_6toSym33(crystallite_Tstar_v(1:6,c,i,e)), &
-                            transpose(crystallite_invFp(1:3,1:3,c,i,e)))
+                                 transpose(crystallite_invFp(1:3,1:3,c,i,e)))
        temp_33_3 = math_mul33x33(crystallite_subF(1:3,1:3,c,i,e), &
-                            crystallite_invFp(1:3,1:3,c,i,e))
+                                 crystallite_invFp(1:3,1:3,c,i,e))
        temp_33_4 = math_mul33x33(math_mul33x33(crystallite_subF(1:3,1:3,c,i,e), &
-                                          crystallite_invFp(1:3,1:3,c,i,e)), &
-                            math_6toSym33(crystallite_Tstar_v(1:6,c,i,e)))
+                                               crystallite_invFp(1:3,1:3,c,i,e)), &
+                                 math_6toSym33(crystallite_Tstar_v(1:6,c,i,e)))
 
-       crystallite_dPdF(1:3,1:3,1:3,1:3,c,i,e) = 0.0_pReal
        do p=1_pInt, 3_pInt
          crystallite_dPdF(p,1:3,p,1:3,c,i,e) = transpose(temp_33_1)
        enddo
@@ -1628,10 +1627,10 @@ subroutine integrateStateFPI()
    !$OMP&           plasticStateResiduum,sourceStateResiduum, &
    !$OMP&           plasticStatedamper,sourceStateDamper, &
    !$OMP&           tempPlasticState,tempSourceState,converged,p,c)
-       do e = FEsolving_execElem(1),FEsolving_execElem(2)
+   do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do g = 1,homogenization_Ngrains(mesh_element(3,e))
-if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
+       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
 
          p = phaseAt(g,i,e)
          c = phasememberAt(g,i,e)
@@ -1787,9 +1786,9 @@ if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
 
  contains
 
-!--------------------------------------------------------------------------------------------------
-!> @brief calculate the damping for correction of state and dot state
-!--------------------------------------------------------------------------------------------------
+ !--------------------------------------------------------------------------------------------------
+ !> @brief calculate the damping for correction of state and dot state
+ !--------------------------------------------------------------------------------------------------
  real(pReal) pure function damper(current,previous,previous2)
  
  implicit none
