@@ -177,15 +177,15 @@ subroutine homogenization_RGC_init()
    endif
 #endif
 
-   prm%Nconstituents = config%getInts('clustersize',requiredShape=[3])
+   prm%Nconstituents = config%getInts('clustersize',requiredSize=3)
    if (homogenization_Ngrains(h) /= product(prm%Nconstituents)) &
      call IO_error(211_pInt,ext_msg='clustersize ('//HOMOGENIZATION_RGC_label//')')
 
    prm%xiAlpha = config%getFloat('scalingparameter')
    prm%ciAlpha = config%getFloat('overproportionality')
 
-   prm%dAlpha  = config%getFloats('grainsize',         requiredShape=[3])
-   prm%angles  = config%getFloats('clusterorientation',requiredShape=[3])
+   prm%dAlpha  = config%getFloats('grainsize',         requiredSize=3)
+   prm%angles  = config%getFloats('clusterorientation',requiredSize=3)
 
    outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
    allocate(prm%outputID(0))
