@@ -2,7 +2,7 @@
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief dummy homogenization homogenization scheme
+!> @brief dummy homogenization homogenization scheme for 1 constituent per material point
 !--------------------------------------------------------------------------------------------------
 module homogenization_none
 
@@ -24,35 +24,46 @@ subroutine homogenization_none_init()
    compiler_options
 #endif
  use prec, only: &
-   pReal, &
-   pInt 
+   pInt
+ use debug, only: &
+   debug_HOMOGENIZATION, &
+   debug_level, &
+   debug_levelBasic
  use IO, only: &
    IO_timeStamp
- use material
- use config
- 
+
+ use material, only: &
+   homogenization_type, &
+   material_homog, &
+   homogState, &
+   HOMOGENIZATION_NONE_LABEL, &
+   HOMOGENIZATION_NONE_ID
+
  implicit none
  integer(pInt) :: &
-   homog, &
+   Ninstance, &
+   h, &
    NofMyHomog
 
  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_NONE_label//' init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- initializeInstances: do homog = 1_pInt, material_Nhomogenization
+ Ninstance = int(count(homogenization_type == HOMOGENIZATION_NONE_ID),pInt)
+ if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0_pInt) &
+   write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+
+ do h = 1_pInt, size(homogenization_type)
+   if (homogenization_type(h) /= HOMOGENIZATION_NONE_ID) cycle
    
-   myhomog: if (homogenization_type(homog) == HOMOGENIZATION_none_ID) then
-     NofMyHomog = count(material_homog == homog)
-     homogState(homog)%sizeState = 0_pInt
-     homogState(homog)%sizePostResults = 0_pInt
-     allocate(homogState(homog)%state0   (0_pInt,NofMyHomog), source=0.0_pReal)
-     allocate(homogState(homog)%subState0(0_pInt,NofMyHomog), source=0.0_pReal)
-     allocate(homogState(homog)%state    (0_pInt,NofMyHomog), source=0.0_pReal)
+   NofMyHomog = count(material_homog == h)
+   homogState(h)%sizeState = 0_pInt
+   homogState(h)%sizePostResults = 0_pInt
+   allocate(homogState(h)%state0   (0_pInt,NofMyHomog))
+   allocate(homogState(h)%subState0(0_pInt,NofMyHomog))
+   allocate(homogState(h)%state    (0_pInt,NofMyHomog))
 
-   endif myhomog
- enddo initializeInstances
-
+ enddo
 
 end subroutine homogenization_none_init
 

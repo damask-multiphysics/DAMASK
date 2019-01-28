@@ -1998,6 +1998,7 @@ end function math_symmetricEulers
 
 !--------------------------------------------------------------------------------------------------
 !> @brief eigenvalues and eigenvectors of symmetric matrix m
+! ToDo: has wrong oder of arguments
 !--------------------------------------------------------------------------------------------------
 subroutine math_eigenValuesVectorsSym(m,values,vectors,error)
 
@@ -2021,9 +2022,10 @@ end subroutine math_eigenValuesVectorsSym
 !--------------------------------------------------------------------------------------------------
 !> @brief eigenvalues and eigenvectors of symmetric 33 matrix m using an analytical expression
 !> and the general LAPACK powered version for arbritrary sized matrices as fallback
-!> @author Joachim Kopp, Max–Planck–Institut für Kernphysik, Heidelberg (Copyright (C) 2006)
+!> @author Joachim Kopp, Max-Planck-Institut für Kernphysik, Heidelberg (Copyright (C) 2006)
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @details See http://arxiv.org/abs/physics/0610206 (DSYEVH3)
+! ToDo: has wrong oder of arguments
 !--------------------------------------------------------------------------------------------------
 subroutine math_eigenValuesVectorsSym33(m,values,vectors)
  
