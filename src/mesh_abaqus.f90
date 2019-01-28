@@ -406,9 +406,6 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_mapMaterial                                                                                 !< name of elementSet for material
  integer(pInt), dimension(:,:), allocatable :: &
    mesh_mapElemSet                                                                                  !< list of elements in elementSet
- integer(pInt), dimension(:,:), allocatable, target :: &
-   mesh_mapFEtoCPelem, &                                                                            !< [sorted FEid, corresponding CPid]
-   mesh_mapFEtoCPnode                                                                               !< [sorted FEid, corresponding CPid]
  logical:: noPart                                                                         !< for cases where the ABAQUS input file does not use part/assembly information
 
  contains 
@@ -419,7 +416,7 @@ integer(pInt), dimension(:,:), allocatable, private :: &
  
 contains
 
-subroutine tMesh_abaqus_init
+subroutine tMesh_abaqus_init(self)
  implicit none
  class(tMesh_abaqus) :: self
  
@@ -453,7 +450,8 @@ subroutine mesh_init(ip,el)
    numerics_unitlength, &
    worldrank
  use FEsolving, only: &
-   FEsolving_execElem, &
+   modelName, &
+   calcMode, &   FEsolving_execElem, &
    FEsolving_execIP
 
  implicit none

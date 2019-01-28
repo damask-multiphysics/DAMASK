@@ -3,7 +3,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Christoph Koords, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Sets up the mesh for the solvers MSC.Marc, Abaqus and the spectral solver
+!> @brief Sets up the mesh for the solver MSC.Marc
 !--------------------------------------------------------------------------------------------------
 module mesh
  use, intrinsic :: iso_c_binding
@@ -400,8 +400,6 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_marc_count_cpSizes, &
    mesh_marc_build_elements
 
-contains
-
 type, public, extends(tMesh) :: tMesh_marc
  
  integer(pInt), public :: &
@@ -417,10 +415,7 @@ type, public, extends(tMesh) :: tMesh_marc
    mapMaterial                                                                                 !< name of elementSet for material
  integer(pInt), dimension(:), allocatable :: &
    Marc_matNumber                                                                                   !< array of material numbers for hypoelastic material (Marc only)
- integer(pInt), dimension(:,:), allocatable, target:: &
-   mesh_mapFEtoCPelem, &                                                                            !< [sorted FEid, corresponding CPid]
-   mesh_mapFEtoCPnode
- integer(pInt), private :: &
+ integer(pInt) :: &
    mesh_Nelems, &                                                                                   !< total number of elements in mesh (including non-DAMASK elements)
    mesh_maxNnodes, &                                                                                !< max number of nodes in any CP element
    mesh_NelemSets, &
@@ -435,6 +430,8 @@ type, public, extends(tMesh) :: tMesh_marc
 end type tMesh_marc
 
  type(tMesh_marc), public, protected :: theMesh
+ 
+ 
 contains
 
 subroutine tMesh_marc_init(self)

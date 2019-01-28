@@ -13,6 +13,7 @@
 #include "math.f90"
 #include "FEsolving.f90"
 #include "element.f90"
+#include "mesh_base.f90"
 #ifdef Abaqus
 #include "mesh_abaqus.f90"
 #endif
