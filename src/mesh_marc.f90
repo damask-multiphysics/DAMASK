@@ -8,6 +8,7 @@
 module mesh
  use, intrinsic :: iso_c_binding
  use prec, only: pReal, pInt
+ use mesh_base
 
  implicit none
  private
@@ -401,6 +402,46 @@ integer(pInt), dimension(:,:), allocatable, private :: &
 
 contains
 
+type, public, extends(tMesh) :: tMesh_marc
+ 
+ integer(pInt), public :: &
+   nElemsAll, &
+   maxNelemInSet, &
+   NelemSets,&
+   MarcVersion, &                                                                                 !< Version of input file format ToDo: Better Name?
+   hypoelasticTableStyle, &                                                                      !< Table style
+   initialcondTableStyle
+ character(len=64), dimension(:), allocatable :: &
+   nameElemSet,&                                                                                 !< names of elementSet
+   mesh_nameElemSet, &                                                                              !< names of elementSet
+   mapMaterial                                                                                 !< name of elementSet for material
+ integer(pInt), dimension(:), allocatable :: &
+   Marc_matNumber                                                                                   !< array of material numbers for hypoelastic material (Marc only)
+ integer(pInt), dimension(:,:), allocatable, target:: &
+   mesh_mapFEtoCPelem, &                                                                            !< [sorted FEid, corresponding CPid]
+   mesh_mapFEtoCPnode
+ integer(pInt), private :: &
+   mesh_Nelems, &                                                                                   !< total number of elements in mesh (including non-DAMASK elements)
+   mesh_maxNnodes, &                                                                                !< max number of nodes in any CP element
+   mesh_NelemSets, &
+   mesh_maxNelemInSet
+ integer(pInt), dimension(:,:), allocatable :: &
+   mesh_mapElemSet                                                                                  !< list of elements in elementSet
+ integer(pInt), dimension(2):: &
+   mesh_maxValStateVar = 0_pInt
+   
+ contains
+   procedure :: init => tMesh_marc_init
+end type tMesh_marc
+
+ type(tMesh_marc), public, protected :: theMesh
+contains
+
+subroutine tMesh_marc_init(self)
+ implicit none
+ class(tMesh_marc) :: self
+
+end subroutine tMesh_marc_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief initializes the mesh by calling all necessary private routines the mesh module
@@ -478,6 +519,8 @@ subroutine mesh_init(ip,el)
  call mesh_marc_build_elements(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
 
+ 
+ 
  call mesh_get_damaskOptions(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Got DAMASK options'; flush(6)
  call mesh_build_cellconnectivity
@@ -2767,3 +2810,7 @@ end function mesh_get_nodeAtIP
 
 
 end module mesh
+
+
+
+
