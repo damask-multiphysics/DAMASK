@@ -1861,18 +1861,13 @@ real(pReal), dimension(constitutive_plasticity_maxSizeDotState,            &
 ! contribution to state and relative residui and from Euler integration
  call update_dotState(1.0_pReal)
 
- !$OMP PARALLEL
-
-
-   ! --- STATE UPDATE (EULER INTEGRATION) ---
-
-   !$OMP DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,p,c)
+ !$OMP PARALLEL DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,p,c)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do g = 1,homogenization_Ngrains(mesh_element(3,e))
-       if (crystallite_todo(g,i,e)) then
-         p = phaseAt(g,i,e)
-         c = phasememberAt(g,i,e)
+   if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
+     p = phaseAt(g,i,e); c = phasememberAt(g,i,e)
+
          mySizePlasticDotState = plasticState(p)%sizeDotState
          plasticStateResiduum(1:mySizePlasticDotState,g,i,e) = &
        - 0.5_pReal &
@@ -1895,28 +1890,24 @@ real(pReal), dimension(constitutive_plasticity_maxSizeDotState,            &
          enddo
        endif
      enddo; enddo; enddo
-   !$OMP ENDDO
- !$OMP END PARALLEL
+ !$OMP END PARALLEL DO
+
   call update_deltaState
   call update_dependentState
   call update_stress(1.0_pReal)
   call update_dotState(1.0_pReal)
    
-   !$OMP PARALLEL
-   ! --- ERROR ESTIMATE FOR STATE  (HEUN METHOD) ---
-
-   !$OMP SINGLE
    relPlasticStateResiduum = 0.0_pReal
    relSourceStateResiduum = 0.0_pReal
-   !$OMP END SINGLE
 
-   !$OMP DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,converged,p,c,s)
+
+ !$OMP PARALLEL DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,converged,p,c,s)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do g = 1,homogenization_Ngrains(mesh_element(3,e))
-       if (crystallite_todo(g,i,e)) then
-         p = phaseAt(g,i,e)
-         c = phasememberAt(g,i,e)
+       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
+         p = phaseAt(g,i,e); c = phasememberAt(g,i,e)
+
          ! --- contribution of heun step to absolute residui ---
          mySizePlasticDotState = plasticState(p)%sizeDotState
          plasticStateResiduum(1:mySizePlasticDotState,g,i,e) = &
@@ -1958,8 +1949,7 @@ real(pReal), dimension(constitutive_plasticity_maxSizeDotState,            &
          if (converged) crystallite_converged(g,i,e) = .true.                                       ! ... converged per definitionem
        endif
      enddo; enddo; enddo
-   !$OMP ENDDO
- !$OMP END PARALLEL
+ !$OMP END PARALLEL DO
 
 
  ! --- NONLOCAL CONVERGENCE CHECK ---
