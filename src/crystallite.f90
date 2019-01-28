@@ -1571,8 +1571,7 @@ subroutine integrateStateFPI()
  real(pReal) :: &
    dot_prod12, &
    dot_prod22, &
-   plasticStateDamper, &                                                                            ! damper for integration of state
-   sourceStateDamper
+   stateDamper
  real(pReal), dimension(constitutive_plasticity_maxSizeDotState) :: &
    plasticStateResiduum, &
    tempPlasticState
@@ -1625,7 +1624,7 @@ subroutine integrateStateFPI()
    !$OMP DO PRIVATE(dot_prod12,dot_prod22, &
    !$OMP&           mySizePlasticDotState,mySizeSourceDotState, &
    !$OMP&           plasticStateResiduum,sourceStateResiduum, &
-   !$OMP&           plasticStatedamper,sourceStateDamper, &
+   !$OMP&           stateDamper, &
    !$OMP&           tempPlasticState,tempSourceState,converged,p,c)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
@@ -1646,9 +1645,9 @@ subroutine integrateStateFPI()
              .and. (     dot_prod12 < 0.0_pReal &
                     .or. dot_product(plasticState(p)%dotState(:,c), &
                                      plasticState(p)%previousDotState(:,c)) < 0.0_pReal) ) then
-           plasticStateDamper = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
+           stateDamper = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
          else
-           plasticStateDamper = 1.0_pReal
+           stateDamper = 1.0_pReal
          endif
          ! --- get residui ---
 
@@ -1656,9 +1655,9 @@ subroutine integrateStateFPI()
          plasticStateResiduum(1:mySizePlasticDotState) = &
            plasticState(p)%state(1:mySizePlasticDotState,c)      &
          - plasticState(p)%subState0(1:mySizePlasticDotState,c)  &
-         - (  plasticState(p)%dotState(1:mySizePlasticDotState,c) * plasticStateDamper &
+         - (  plasticState(p)%dotState(1:mySizePlasticDotState,c) * stateDamper &
             + plasticState(p)%previousDotState(1:mySizePlasticDotState,c) &
-            * (1.0_pReal - plasticStateDamper)) * crystallite_subdt(g,i,e)
+            * (1.0_pReal - stateDamper)) * crystallite_subdt(g,i,e)
 
          ! --- correct state with residuum ---
          tempPlasticState(1:mySizePlasticDotState) = &
@@ -1667,9 +1666,9 @@ subroutine integrateStateFPI()
 
          ! --- store corrected dotState --- (cannot do this before state update, because not sure how to flush pointers in openmp)
 
-         plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) * plasticStateDamper &
+         plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) * stateDamper &
                                        + plasticState(p)%previousDotState(:,c) &
-                                       * (1.0_pReal - plasticStateDamper)
+                                       * (1.0_pReal - stateDamper)
 
          do mySource = 1_pInt, phase_Nsources(p)
            mySizeSourceDotState  = sourceState(p)%p(mySource)%sizeDotState
@@ -1686,18 +1685,18 @@ subroutine integrateStateFPI()
                .and. (     dot_prod12 < 0.0_pReal &
                       .or. dot_product(sourceState(p)%p(mySource)%dotState(:,c), &
                                        sourceState(p)%p(mySource)%previousDotState(:,c)) < 0.0_pReal) ) then
-             sourceStateDamper = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
+             stateDamper = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
            else
-             sourceStateDamper = 1.0_pReal
+             stateDamper = 1.0_pReal
            endif
          ! --- get residui ---
            mySizeSourceDotState  = sourceState(p)%p(mySource)%sizeDotState
            sourceStateResiduum(1:mySizeSourceDotState,mySource) = &
              sourceState(p)%p(mySource)%state(1:mySizeSourceDotState,c)      &
            - sourceState(p)%p(mySource)%subState0(1:mySizeSourceDotState,c)  &
-           - (  sourceState(p)%p(mySource)%dotState(1:mySizeSourceDotState,c) * sourceStateDamper &
+           - (  sourceState(p)%p(mySource)%dotState(1:mySizeSourceDotState,c) * stateDamper &
               + sourceState(p)%p(mySource)%previousDotState(1:mySizeSourceDotState,c) &
-              * (1.0_pReal - sourceStateDamper)) * crystallite_subdt(g,i,e)
+              * (1.0_pReal - stateDamper)) * crystallite_subdt(g,i,e)
 
          ! --- correct state with residuum ---
            tempSourceState(1:mySizeSourceDotState,mySource) = &
@@ -1706,9 +1705,9 @@ subroutine integrateStateFPI()
 
          ! --- store corrected dotState --- (cannot do this before state update, because not sure how to flush pointers in openmp)
            sourceState(p)%p(mySource)%dotState(:,c) = &
-             sourceState(p)%p(mySource)%dotState(:,c) * sourceStateDamper &
+             sourceState(p)%p(mySource)%dotState(:,c) * stateDamper &
            + sourceState(p)%p(mySource)%previousDotState(:,c) &
-           * (1.0_pReal - sourceStateDamper)
+           * (1.0_pReal - stateDamper)
          enddo
 
 
