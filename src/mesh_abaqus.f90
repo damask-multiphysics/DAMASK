@@ -8,6 +8,7 @@
 module mesh
  use, intrinsic :: iso_c_binding
  use prec, only: pReal, pInt
+ use mesh_base
 
  implicit none
  private
@@ -62,11 +63,9 @@ module mesh
 
  logical, dimension(3), public, protected :: mesh_periodicSurface                                   !< flag indicating periodic outer surfaces (used for fluxes)
 
-#if defined(Marc4DAMASK) || defined(Abaqus)
  integer(pInt), private :: &
    mesh_maxNelemInSet, &
    mesh_Nmaterials
-#endif
 
  integer(pInt), dimension(2), private :: &
    mesh_maxValStateVar = 0_pInt
@@ -329,7 +328,6 @@ integer(pInt), dimension(:,:), allocatable, private :: &
       6  & ! (3D 8node)
   ],pInt)
 
-
  integer(pInt), dimension(FE_Ngeomtypes), parameter, private :: FE_maxNnodesAtIP = &                !< maximum number of parent nodes that belong to an IP for a specific type of element
  int([ &
       3, & ! element   6 (2D 3node 1ip)
@@ -344,19 +342,6 @@ integer(pInt), dimension(:,:), allocatable, private :: &
       4  & ! element  21 (3D 20node 27ip)
   ],pInt)
 
-#if defined(Spectral)
- integer(pInt), dimension(3), public, protected :: &
-   grid                                                                                             !< (global) grid
- integer(pInt), public, protected :: &
-   mesh_NcpElemsGlobal, &                                                                           !< total number of CP elements in global mesh
-   grid3, &                                                                                         !< (local) grid in 3rd direction
-   grid3Offset                                                                                      !< (local) grid offset in 3rd direction
- real(pReal), dimension(3), public, protected :: &
-   geomSize
- real(pReal), public, protected :: &
-   size3, &                                                                                         !< (local) size in 3rd direction
-   size3offset                                                                                      !< (local) size offset in 3rd direction
-#elif defined(Marc4DAMASK) || defined(Abaqus)
  integer(pInt), private :: &
    mesh_Nelems, &                                                                                   !< total number of elements in mesh (including non-DAMASK elements)
    mesh_maxNnodes, &                                                                                !< max number of nodes in any CP element
@@ -370,17 +355,7 @@ integer(pInt), dimension(:,:), allocatable, private :: &
  integer(pInt), dimension(:,:), allocatable, target, private :: &
    mesh_mapFEtoCPelem, &                                                                            !< [sorted FEid, corresponding CPid]
    mesh_mapFEtoCPnode                                                                               !< [sorted FEid, corresponding CPid]
-#endif
-#if defined(Marc4DAMASK)
- integer(pInt), private :: &
-   MarcVersion, &                                                                                   !< Version of input file format (Marc only)
-   hypoelasticTableStyle, &                                                                         !< Table style (Marc only)
-   initialcondTableStyle                                                                            !< Table style (Marc only)
- integer(pInt), dimension(:), allocatable, private :: &
-   Marc_matNumber                                                                                   !< array of material numbers for hypoelastic material (Marc only)
-#elif defined(Abaqus)
  logical, private :: noPart                                                                         !< for cases where the ABAQUS input file does not use part/assembly information
-#endif
 
  public :: &
    mesh_init, &
@@ -391,12 +366,7 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_get_Ncellnodes, &
    mesh_get_unitlength, &
    mesh_get_nodeAtIP, &
-#if defined(Spectral)
-   mesh_spectral_getGrid, &
-   mesh_spectral_getSize
-#elif defined(Marc4DAMASK) || defined(Abaqus)
    mesh_FEasCP
-#endif
 
  private :: &
    mesh_get_damaskOptions, &
@@ -406,32 +376,9 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    FE_mapElemtype, &
    mesh_faceMatch, &
    mesh_build_FEdata, &
-#if defined(Spectral)
-   mesh_spectral_getHomogenization, &
-   mesh_spectral_count, &
-   mesh_spectral_count_cpSizes, &
-   mesh_spectral_build_nodes, &
-   mesh_spectral_build_elements, &
-   mesh_spectral_build_ipNeighborhood
-#elif defined(Marc4DAMASK) || defined(Abaqus)
    mesh_build_nodeTwins, &
    mesh_build_sharedElems, &
    mesh_build_ipNeighborhood, &
-#endif
-#if defined(Marc4DAMASK)
-   mesh_marc_get_fileFormat, &
-   mesh_marc_get_tableStyles, &
-   mesh_marc_get_matNumber, &
-   mesh_marc_count_nodesAndElements, &
-   mesh_marc_count_elementSets, &
-   mesh_marc_map_elementSets, &
-   mesh_marc_count_cpElements, &
-   mesh_marc_map_Elements, &
-   mesh_marc_map_nodes, &
-   mesh_marc_build_nodes, &
-   mesh_marc_count_cpSizes, &
-   mesh_marc_build_elements
-#elif defined(Abaqus)
    mesh_abaqus_count_nodesAndElements, &
    mesh_abaqus_count_elementSets, &
    mesh_abaqus_count_materials, &
@@ -443,10 +390,40 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_abaqus_build_nodes, &
    mesh_abaqus_count_cpSizes, &
    mesh_abaqus_build_elements
-#endif
 
+
+ type, public, extends(tMesh) :: tMesh_Abaqus
+ 
+ integer(pInt):: &
+   mesh_Nelems, &                                                                                   !< total number of elements in mesh (including non-DAMASK elements)
+   mesh_maxNnodes, &                                                                                !< max number of nodes in any CP element
+   mesh_NelemSets, &
+   mesh_maxNelemInSet, &
+   mesh_Nmaterials
+ character(len=64), dimension(:), allocatable :: &
+   mesh_nameElemSet, &                                                                              !< names of elementSet
+   mesh_nameMaterial, &                                                                             !< names of material in solid section
+   mesh_mapMaterial                                                                                 !< name of elementSet for material
+ integer(pInt), dimension(:,:), allocatable :: &
+   mesh_mapElemSet                                                                                  !< list of elements in elementSet
+ integer(pInt), dimension(:,:), allocatable, target :: &
+   mesh_mapFEtoCPelem, &                                                                            !< [sorted FEid, corresponding CPid]
+   mesh_mapFEtoCPnode                                                                               !< [sorted FEid, corresponding CPid]
+ logical:: noPart                                                                         !< for cases where the ABAQUS input file does not use part/assembly information
+
+ contains 
+   procedure :: init=>tMesh_abaqus_init
+ end type tMesh_Abaqus
+ 
+ type(tMesh_Abaqus), public, protected :: theMesh
+ 
 contains
 
+subroutine tMesh_abaqus_init
+ implicit none
+ class(tMesh_abaqus) :: self
+ 
+end subroutine tMesh_abaqus_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief initializes the mesh by calling all necessary private routines the mesh module
@@ -458,21 +435,10 @@ subroutine mesh_init(ip,el)
    compiler_version, &
    compiler_options
 #endif
-#ifdef Spectral
-#include <petsc/finclude/petscsys.h>
- use PETScsys
-#endif
  use DAMASK_interface
  use IO, only: &
-#ifdef Abaqus
    IO_abaqus_hasNoPart, &
-#endif
-#ifdef Spectral
-   IO_open_file, &
-   IO_error, &
-#else
    IO_open_InputFile, &
-#endif
    IO_timeStamp, &
    IO_error, &
    IO_write_jobFile
@@ -487,19 +453,10 @@ subroutine mesh_init(ip,el)
    numerics_unitlength, &
    worldrank
  use FEsolving, only: &
-#ifndef Spectral
-   modelName, &
-   calcMode, &
-#endif
    FEsolving_execElem, &
    FEsolving_execIP
 
  implicit none
-#ifdef Spectral
- include 'fftw3-mpi.f03'
- integer(C_INTPTR_T) :: devNull, local_K, local_K_offset
- integer :: ierr, worldsize
-#endif
  integer(pInt), parameter :: FILEUNIT = 222_pInt
  integer(pInt), intent(in), optional :: el, ip
  integer(pInt) :: j
@@ -514,65 +471,6 @@ subroutine mesh_init(ip,el)
 
  myDebug = (iand(debug_level(debug_mesh),debug_levelBasic) /= 0_pInt)
 
-#ifdef Spectral
- call fftw_mpi_init()
- call IO_open_file(FILEUNIT,geometryFile)                                                           ! parse info from geometry file...
- if (myDebug) write(6,'(a)') ' Opened geometry file'; flush(6)
- grid     = mesh_spectral_getGrid(fileUnit)
- call MPI_comm_size(PETSC_COMM_WORLD, worldsize, ierr)
- if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_comm_size')
- if(worldsize>grid(3)) call IO_error(894_pInt, ext_msg='number of processes exceeds grid(3)')
-
- geomSize = mesh_spectral_getSize(fileUnit)
- devNull = fftw_mpi_local_size_3d(int(grid(3),C_INTPTR_T), &
-                                  int(grid(2),C_INTPTR_T), &
-                                  int(grid(1),C_INTPTR_T)/2+1, &
-                                  PETSC_COMM_WORLD, &
-                                  local_K, &                                                        ! domain grid size along z
-                                  local_K_offset)                                                   ! domain grid offset along z
- grid3       = int(local_K,pInt)
- grid3Offset = int(local_K_offset,pInt)
- size3       = geomSize(3)*real(grid3,pReal)      /real(grid(3),pReal)
- size3Offset = geomSize(3)*real(grid3Offset,pReal)/real(grid(3),pReal)
- if (myDebug) write(6,'(a)') ' Grid partitioned'; flush(6)
- call mesh_spectral_count()
- if (myDebug) write(6,'(a)') ' Counted nodes/elements'; flush(6)
- call mesh_spectral_count_cpSizes
- if (myDebug) write(6,'(a)') ' Built CP statistics'; flush(6)
- call mesh_spectral_build_nodes()
- if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
- call mesh_spectral_build_elements(FILEUNIT)
- if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
-#elif defined Marc4DAMASK
- call IO_open_inputFile(FILEUNIT,modelName)                                                         ! parse info from input file...
- if (myDebug) write(6,'(a)') ' Opened input file'; flush(6)
- call mesh_marc_get_fileFormat(FILEUNIT)
- if (myDebug) write(6,'(a)') ' Got input file format'; flush(6)
- call mesh_marc_get_tableStyles(FILEUNIT)
- if (myDebug) write(6,'(a)') ' Got table styles'; flush(6)
- if (MarcVersion > 12) then
-   call mesh_marc_get_matNumber(FILEUNIT)
-   if (myDebug) write(6,'(a)') ' Got hypoleastic material number'; flush(6)
- endif
- call mesh_marc_count_nodesAndElements(FILEUNIT)
- if (myDebug) write(6,'(a)') ' Counted nodes/elements'; flush(6)
- call mesh_marc_count_elementSets(FILEUNIT)
- if (myDebug) write(6,'(a)') ' Counted element sets'; flush(6)
- call mesh_marc_map_elementSets(FILEUNIT)
- if (myDebug) write(6,'(a)') ' Mapped element sets'; flush(6)
- call mesh_marc_count_cpElements(FILEUNIT)
- if (myDebug) write(6,'(a)') ' Counted CP elements'; flush(6)
- call mesh_marc_map_elements(FILEUNIT)
- if (myDebug) write(6,'(a)') ' Mapped elements'; flush(6)
- call mesh_marc_map_nodes(FILEUNIT)
- if (myDebug) write(6,'(a)') ' Mapped nodes'; flush(6)
- call mesh_marc_build_nodes(FILEUNIT)
- if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
- call mesh_marc_count_cpSizes(FILEUNIT)
- if (myDebug) write(6,'(a)') ' Counted CP sizes'; flush(6)
- call mesh_marc_build_elements(FILEUNIT)
- if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
-#elif defined Abaqus
  call IO_open_inputFile(FILEUNIT,modelName)                                                         ! parse info from input file...
  if (myDebug) write(6,'(a)') ' Opened input file'; flush(6)
  noPart = IO_abaqus_hasNoPart(FILEUNIT)
@@ -598,8 +496,6 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Counted CP sizes'; flush(6)
  call mesh_abaqus_build_elements(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
-#endif
-
  call mesh_get_damaskOptions(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Got DAMASK options'; flush(6)
  call mesh_build_cellconnectivity
@@ -613,40 +509,29 @@ subroutine mesh_init(ip,el)
  call mesh_build_ipAreas
  if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
  close (FILEUNIT)
-
-#if defined(Marc4DAMASK) || defined(Abaqus)
  call mesh_build_nodeTwins
  if (myDebug) write(6,'(a)') ' Built node twins'; flush(6)
  call mesh_build_sharedElems
  if (myDebug) write(6,'(a)') ' Built shared elements'; flush(6)
  call mesh_build_ipNeighborhood
-#else
- call mesh_spectral_build_ipNeighborhood
-#endif
  if (myDebug) write(6,'(a)') ' Built IP neighborhood'; flush(6)
 
  if (worldrank == 0_pInt) then
    call mesh_tell_statistics
  endif
 
-#if defined(Marc4DAMASK) || defined(Abaqus)
  if (usePingPong .and. (mesh_Nelems /= mesh_NcpElems)) &
    call IO_error(600_pInt)                                                                          ! ping-pong must be disabled when having non-DAMASK elements
-#endif
  if (debug_e < 1 .or. debug_e > mesh_NcpElems) &
    call IO_error(602_pInt,ext_msg='element')                                                        ! selected element does not exist
  if (debug_i < 1 .or. debug_i > FE_Nips(FE_geomtype(mesh_element(2_pInt,debug_e)))) &
    call IO_error(602_pInt,ext_msg='IP')                                                             ! selected element does not have requested IP
-
  FEsolving_execElem = [ 1_pInt,mesh_NcpElems ]                                                      ! parallel loop bounds set to comprise all DAMASK elements
  allocate(FEsolving_execIP(2_pInt,mesh_NcpElems), source=1_pInt)                                    ! parallel loop bounds set to comprise from first IP...
  forall (j = 1_pInt:mesh_NcpElems) FEsolving_execIP(2,j) = FE_Nips(FE_geomtype(mesh_element(2,j)))  ! ...up to own IP count for each element
-
-#if defined(Marc4DAMASK) || defined(Abaqus)
  allocate(calcMode(mesh_maxNips,mesh_NcpElems))
  calcMode = .false.                                                                                 ! pretend to have collected what first call is asking (F = I)
  calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                       ! first ip,el needs to be already pingponged to "calc"
-#endif
 
 !!!! COMPATIBILITY HACK !!!!
 ! for a homogeneous mesh, all elements have the same number of IPs and and cell nodes.
@@ -662,7 +547,6 @@ subroutine mesh_init(ip,el)
 end subroutine mesh_init
 
 
-#if defined(Marc4DAMASK) || defined(Abaqus)
 !--------------------------------------------------------------------------------------------------
 !> @brief Gives the FE to CP ID mapping by binary search through lookup array
 !! valid questions (what) are 'elem', 'node'
@@ -711,7 +595,7 @@ integer(pInt) function mesh_FEasCP(what,myID)
  enddo binarySearch
 
 end function mesh_FEasCP
-#endif
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Split CP elements into cells.
@@ -953,456 +837,6 @@ pure function mesh_cellCenterCoordinates(ip,el)
  end function mesh_cellCenterCoordinates
 
 
-#ifdef Spectral
-!--------------------------------------------------------------------------------------------------
-!> @brief Reads grid information from geometry file. If fileUnit is given,
-!! assumes an opened file, otherwise tries to open the one specified in geometryFile
-!--------------------------------------------------------------------------------------------------
-function mesh_spectral_getGrid(fileUnit)
- use IO, only: &
-   IO_checkAndRewind, &
-   IO_open_file, &
-   IO_stringPos, &
-   IO_lc, &
-   IO_stringValue, &
-   IO_intValue, &
-   IO_floatValue, &
-   IO_error
- use DAMASK_interface, only: &
-   geometryFile
-
- implicit none
- integer(pInt), dimension(3)                      :: mesh_spectral_getGrid
- integer(pInt), intent(in), optional              :: fileUnit
- integer(pInt), allocatable, dimension(:)         :: chunkPos
-
- integer(pInt)                                    :: headerLength = 0_pInt
- character(len=1024) :: line, &
-                        keyword
- integer(pInt) :: i, j, myFileUnit
- logical :: gotGrid = .false.
-
- mesh_spectral_getGrid = -1_pInt
- if(.not. present(fileUnit)) then
-   myFileUnit = 289_pInt
-   call IO_open_file(myFileUnit,trim(geometryFile))
- else
-   myFileUnit = fileUnit
- endif
-
- call IO_checkAndRewind(myFileUnit)
-
- read(myFileUnit,'(a1024)') line
- chunkPos = IO_stringPos(line)
- keyword = IO_lc(IO_StringValue(line,chunkPos,2_pInt,.true.))
- if (keyword(1:4) == 'head') then
-   headerLength = IO_intValue(line,chunkPos,1_pInt) + 1_pInt
- else
-   call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_getGrid')
- endif
- rewind(myFileUnit)
- do i = 1_pInt, headerLength
-   read(myFileUnit,'(a1024)') line
-   chunkPos = IO_stringPos(line)
-   select case ( IO_lc(IO_StringValue(line,chunkPos,1_pInt,.true.)) )
-     case ('grid')
-       gotGrid = .true.
-       do j = 2_pInt,6_pInt,2_pInt
-         select case (IO_lc(IO_stringValue(line,chunkPos,j)))
-           case('a')
-              mesh_spectral_getGrid(1) = IO_intValue(line,chunkPos,j+1_pInt)
-           case('b')
-              mesh_spectral_getGrid(2) = IO_intValue(line,chunkPos,j+1_pInt)
-           case('c')
-              mesh_spectral_getGrid(3) = IO_intValue(line,chunkPos,j+1_pInt)
-         end select
-       enddo
-   end select
- enddo
-
- if(.not. present(fileUnit)) close(myFileUnit)
-
- if (.not. gotGrid) &
-   call IO_error(error_ID = 845_pInt, ext_msg='grid')
- if(any(mesh_spectral_getGrid < 1_pInt)) &
-   call IO_error(error_ID = 843_pInt, ext_msg='mesh_spectral_getGrid')
-
-end function mesh_spectral_getGrid
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Reads size information from geometry file. If fileUnit is given,
-!! assumes an opened file, otherwise tries to open the one specified in geometryFile
-!--------------------------------------------------------------------------------------------------
-function mesh_spectral_getSize(fileUnit)
- use IO, only: &
-   IO_checkAndRewind, &
-   IO_open_file, &
-   IO_stringPos, &
-   IO_lc, &
-   IO_stringValue, &
-   IO_intValue, &
-   IO_floatValue, &
-   IO_error
- use DAMASK_interface, only: &
-   geometryFile
-
- implicit none
- real(pReal), dimension(3)                        :: mesh_spectral_getSize
- integer(pInt), intent(in), optional              :: fileUnit
- integer(pInt), allocatable, dimension(:)         :: chunkPos
- integer(pInt)                                    :: headerLength = 0_pInt
- character(len=1024) :: line, &
-                        keyword
- integer(pInt) :: i, j, myFileUnit
- logical :: gotSize = .false.
-
- mesh_spectral_getSize = -1.0_pReal
- if(.not. present(fileUnit)) then
-   myFileUnit = 289_pInt
-   call IO_open_file(myFileUnit,trim(geometryFile))
- else
-   myFileUnit = fileUnit
- endif
-
- call IO_checkAndRewind(myFileUnit)
-
- read(myFileUnit,'(a1024)') line
- chunkPos = IO_stringPos(line)
- keyword = IO_lc(IO_StringValue(line,chunkPos,2_pInt,.true.))
- if (keyword(1:4) == 'head') then
-   headerLength = IO_intValue(line,chunkPos,1_pInt) + 1_pInt
- else
-   call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_getSize')
- endif
- rewind(myFileUnit)
- do i = 1_pInt, headerLength
-   read(myFileUnit,'(a1024)') line
-   chunkPos = IO_stringPos(line)
-   select case ( IO_lc(IO_StringValue(line,chunkPos,1,.true.)) )
-     case ('size')
-       gotSize = .true.
-       do j = 2_pInt,6_pInt,2_pInt
-         select case (IO_lc(IO_stringValue(line,chunkPos,j)))
-           case('x')
-              mesh_spectral_getSize(1) = IO_floatValue(line,chunkPos,j+1_pInt)
-           case('y')
-              mesh_spectral_getSize(2) = IO_floatValue(line,chunkPos,j+1_pInt)
-           case('z')
-              mesh_spectral_getSize(3) = IO_floatValue(line,chunkPos,j+1_pInt)
-         end select
-       enddo
-   end select
- enddo
-
- if(.not. present(fileUnit)) close(myFileUnit)
-
- if (.not. gotSize) &
-   call IO_error(error_ID = 845_pInt, ext_msg='size')
- if (any(mesh_spectral_getSize<=0.0_pReal)) &
-   call IO_error(error_ID = 844_pInt, ext_msg='mesh_spectral_getSize')
-
-end function mesh_spectral_getSize
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Reads homogenization information from geometry file. If fileUnit is given,
-!! assumes an opened file, otherwise tries to open the one specified in geometryFile
-!--------------------------------------------------------------------------------------------------
-integer(pInt) function mesh_spectral_getHomogenization(fileUnit)
- use IO, only: &
-   IO_checkAndRewind, &
-   IO_open_file, &
-   IO_stringPos, &
-   IO_lc, &
-   IO_stringValue, &
-   IO_intValue, &
-   IO_error
- use DAMASK_interface, only: &
-   geometryFile
-
- implicit none
- integer(pInt), intent(in), optional              :: fileUnit
- integer(pInt), allocatable, dimension(:)         :: chunkPos
- integer(pInt)                                    :: headerLength = 0_pInt
- character(len=1024) :: line, &
-                        keyword
- integer(pInt) :: i, myFileUnit
- logical :: gotHomogenization = .false.
-
- mesh_spectral_getHomogenization = -1_pInt
- if(.not. present(fileUnit)) then
-   myFileUnit = 289_pInt
-   call IO_open_file(myFileUnit,trim(geometryFile))
- else
-   myFileUnit = fileUnit
- endif
-
- call IO_checkAndRewind(myFileUnit)
-
- read(myFileUnit,'(a1024)') line
- chunkPos = IO_stringPos(line)
- keyword = IO_lc(IO_StringValue(line,chunkPos,2_pInt,.true.))
- if (keyword(1:4) == 'head') then
-   headerLength = IO_intValue(line,chunkPos,1_pInt) + 1_pInt
- else
-   call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_getHomogenization')
- endif
- rewind(myFileUnit)
- do i = 1_pInt, headerLength
-   read(myFileUnit,'(a1024)') line
-   chunkPos = IO_stringPos(line)
-   select case ( IO_lc(IO_StringValue(line,chunkPos,1,.true.)) )
-     case ('homogenization')
-       gotHomogenization = .true.
-       mesh_spectral_getHomogenization = IO_intValue(line,chunkPos,2_pInt)
-   end select
- enddo
-
- if(.not. present(fileUnit)) close(myFileUnit)
-
- if (.not. gotHomogenization ) &
-   call IO_error(error_ID = 845_pInt, ext_msg='homogenization')
- if (mesh_spectral_getHomogenization<1_pInt) &
-   call IO_error(error_ID = 842_pInt, ext_msg='mesh_spectral_getHomogenization')
-
-end function mesh_spectral_getHomogenization
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Count overall number of nodes and elements in mesh and stores them in
-!! 'mesh_Nelems', 'mesh_Nnodes' and 'mesh_NcpElems'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_count()
-
- implicit none
-
- mesh_NcpElems= product(grid(1:2))*grid3
- mesh_Nnodes  = product(grid(1:2) + 1_pInt)*(grid3 + 1_pInt)
-
- mesh_NcpElemsGlobal = product(grid)
-
-end subroutine mesh_spectral_count
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Gets maximum count of nodes, IPs, IP neighbors, and subNodes among cpElements.
-!! Sets global values 'mesh_maxNips', 'mesh_maxNipNeighbors',
-!! and 'mesh_maxNcellnodes'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_count_cpSizes
-
- implicit none
- integer(pInt) :: t,g,c
-
- t = FE_mapElemtype('C3D8R')                                                                        ! fake 3D hexahedral 8 node 1 IP element
- g = FE_geomtype(t)
- c = FE_celltype(g)
-
- mesh_maxNips =         FE_Nips(g)
- mesh_maxNipNeighbors = FE_NipNeighbors(c)
- mesh_maxNcellnodes =   FE_Ncellnodes(g)
-
-end subroutine mesh_spectral_count_cpSizes
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Store x,y,z coordinates of all nodes in mesh.
-!! Allocates global arrays 'mesh_node0' and 'mesh_node'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_build_nodes()
-
- implicit none
- integer(pInt) :: n
-
- allocate (mesh_node0 (3,mesh_Nnodes), source = 0.0_pReal)
- allocate (mesh_node  (3,mesh_Nnodes), source = 0.0_pReal)
-
- forall (n = 0_pInt:mesh_Nnodes-1_pInt)
-   mesh_node0(1,n+1_pInt) = mesh_unitlength * &
-           geomSize(1)*real(mod(n,(grid(1)+1_pInt) ),pReal) &
-                                                  / real(grid(1),pReal)
-   mesh_node0(2,n+1_pInt) = mesh_unitlength * &
-           geomSize(2)*real(mod(n/(grid(1)+1_pInt),(grid(2)+1_pInt)),pReal) &
-                                                  / real(grid(2),pReal)
-   mesh_node0(3,n+1_pInt) = mesh_unitlength * &
-           size3*real(mod(n/(grid(1)+1_pInt)/(grid(2)+1_pInt),(grid3+1_pInt)),pReal) &
-                                                  / real(grid3,pReal) + &
-           size3offset
- end forall
-
- mesh_node = mesh_node0
-
-end subroutine mesh_spectral_build_nodes
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Store FEid, type, material, texture, and node list per element.
-!! Allocates global array 'mesh_element'
-!> @todo does the IO_error makes sense?
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_build_elements(fileUnit)
- use IO, only: &
-   IO_checkAndRewind, &
-   IO_lc, &
-   IO_stringValue, &
-   IO_stringPos, &
-   IO_error, &
-   IO_continuousIntValues, &
-   IO_intValue, &
-   IO_countContinuousIntValues
-
- implicit none
- integer(pInt), intent(in) :: &
-   fileUnit
- integer(pInt), allocatable, dimension(:)         :: chunkPos
- integer(pInt) :: &
-   e, i, &
-   headerLength = 0_pInt, &
-   maxDataPerLine, &
-   homog, &
-   elemType, &
-   elemOffset
- integer(pInt),     dimension(:), allocatable :: &
-   microstructures, &
-   microGlobal
- integer(pInt),     dimension(1,1) :: &
-   dummySet = 0_pInt
- character(len=65536) :: &
-   line, &
-   keyword
- character(len=64), dimension(1) :: &
-   dummyName = ''
-
- homog = mesh_spectral_getHomogenization(fileUnit)
-
-!--------------------------------------------------------------------------------------------------
-! get header length
- call IO_checkAndRewind(fileUnit)
- read(fileUnit,'(a65536)') line
- chunkPos = IO_stringPos(line)
- keyword = IO_lc(IO_StringValue(line,chunkPos,2_pInt,.true.))
- if (keyword(1:4) == 'head') then
-   headerLength = IO_intValue(line,chunkPos,1_pInt) + 1_pInt
- else
-   call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_build_elements')
- endif
-
-!--------------------------------------------------------------------------------------------------
-! get maximum microstructure index
- call IO_checkAndRewind(fileUnit)
- do i = 1_pInt, headerLength
-   read(fileUnit,'(a65536)') line
- enddo
-
- maxDataPerLine = 0_pInt
- i = 1_pInt
-
- do while (i > 0_pInt)
-   i = IO_countContinuousIntValues(fileUnit)
-   maxDataPerLine = max(maxDataPerLine, i)                                                          ! found a longer line?
- enddo
- allocate(mesh_element    (4_pInt+8_pInt,mesh_NcpElems), source = 0_pInt)
- allocate(microstructures (1_pInt+maxDataPerLine),  source = 1_pInt)                                ! prepare to receive counter and max data size
- allocate(microGlobal     (mesh_NcpElemsGlobal), source = 1_pInt)
-
-!--------------------------------------------------------------------------------------------------
-! read in microstructures
- call IO_checkAndRewind(fileUnit)
- do i=1_pInt,headerLength
-   read(fileUnit,'(a65536)') line
- enddo
-
- e = 0_pInt
- do while (e < mesh_NcpElemsGlobal .and. microstructures(1) > 0_pInt)                               ! fill expected number of elements, stop at end of data (or blank line!)
-   microstructures = IO_continuousIntValues(fileUnit,maxDataPerLine,dummyName,dummySet,0_pInt)      ! get affected elements
-   do i = 1_pInt,microstructures(1_pInt)
-     e = e+1_pInt                                                                                   ! valid element entry
-     microGlobal(e) = microstructures(1_pInt+i)
-   enddo
- enddo
-
- elemType = FE_mapElemtype('C3D8R')
- elemOffset = product(grid(1:2))*grid3Offset
- e = 0_pInt
- do while (e < mesh_NcpElems)                                                                       ! fill expected number of elements, stop at end of data (or blank line!)
-   e = e+1_pInt                                                                                     ! valid element entry
-   mesh_element( 1,e) = -1_pInt                                                                     ! DEPRECATED
-   mesh_element( 2,e) = elemType                                                                    ! elem type
-   mesh_element( 3,e) = homog                                                                       ! homogenization
-   mesh_element( 4,e) = microGlobal(e+elemOffset)                                                   ! microstructure
-   mesh_element( 5,e) = e + (e-1_pInt)/grid(1) + &
-                                     ((e-1_pInt)/(grid(1)*grid(2)))*(grid(1)+1_pInt)                ! base node
-   mesh_element( 6,e) = mesh_element(5,e) + 1_pInt
-   mesh_element( 7,e) = mesh_element(5,e) + grid(1) + 2_pInt
-   mesh_element( 8,e) = mesh_element(5,e) + grid(1) + 1_pInt
-   mesh_element( 9,e) = mesh_element(5,e) +(grid(1) + 1_pInt) * (grid(2) + 1_pInt)                  ! second floor base node
-   mesh_element(10,e) = mesh_element(9,e) + 1_pInt
-   mesh_element(11,e) = mesh_element(9,e) + grid(1) + 2_pInt
-   mesh_element(12,e) = mesh_element(9,e) + grid(1) + 1_pInt
-   mesh_maxValStateVar(1) = max(mesh_maxValStateVar(1),mesh_element(3,e))                           ! needed for statistics
-   mesh_maxValStateVar(2) = max(mesh_maxValStateVar(2),mesh_element(4,e))
- enddo
-
- if (e /= mesh_NcpElems) call IO_error(880_pInt,e)
-
-end subroutine mesh_spectral_build_elements
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief build neighborhood relations for spectral
-!> @details assign globals: mesh_ipNeighborhood
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_build_ipNeighborhood
-
- implicit none
- integer(pInt) :: &
-  x,y,z, &
-  e
- allocate(mesh_ipNeighborhood(3,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems),source=0_pInt)
-
- e = 0_pInt
- do z = 0_pInt,grid3-1_pInt
-   do y = 0_pInt,grid(2)-1_pInt
-     do x = 0_pInt,grid(1)-1_pInt
-       e = e + 1_pInt
-         mesh_ipNeighborhood(1,1,1,e) = z * grid(1) * grid(2) &
-                                      + y * grid(1) &
-                                      + modulo(x+1_pInt,grid(1)) &
-                                      + 1_pInt
-         mesh_ipNeighborhood(1,2,1,e) = z * grid(1) * grid(2) &
-                                      + y * grid(1) &
-                                      + modulo(x-1_pInt,grid(1)) &
-                                      + 1_pInt
-         mesh_ipNeighborhood(1,3,1,e) = z * grid(1) * grid(2) &
-                                      + modulo(y+1_pInt,grid(2)) * grid(1) &
-                                      + x &
-                                      + 1_pInt
-         mesh_ipNeighborhood(1,4,1,e) = z * grid(1) * grid(2) &
-                                      + modulo(y-1_pInt,grid(2)) * grid(1) &
-                                      + x &
-                                      + 1_pInt
-         mesh_ipNeighborhood(1,5,1,e) = modulo(z+1_pInt,grid3) * grid(1) * grid(2) &
-                                      + y * grid(1) &
-                                      + x &
-                                      + 1_pInt
-         mesh_ipNeighborhood(1,6,1,e) = modulo(z-1_pInt,grid3) * grid(1) * grid(2) &
-                                      + y * grid(1) &
-                                      + x &
-                                      + 1_pInt
-         mesh_ipNeighborhood(2,1:6,1,e) = 1_pInt
-         mesh_ipNeighborhood(3,1,1,e) = 2_pInt
-         mesh_ipNeighborhood(3,2,1,e) = 1_pInt
-         mesh_ipNeighborhood(3,3,1,e) = 4_pInt
-         mesh_ipNeighborhood(3,4,1,e) = 3_pInt
-         mesh_ipNeighborhood(3,5,1,e) = 6_pInt
-         mesh_ipNeighborhood(3,6,1,e) = 5_pInt
-     enddo
-   enddo
- enddo
-
-end subroutine mesh_spectral_build_ipNeighborhood
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief builds mesh of (distorted) cubes for given coordinates (= center of the cubes)
@@ -1492,622 +926,8 @@ function mesh_nodesAroundCentres(gDim,Favg,centres) result(nodes)
  nodes = nodes/8.0_pReal
 
 end function mesh_nodesAroundCentres
-#endif
 
-#ifdef Marc4DAMASK
-!--------------------------------------------------------------------------------------------------
-!> @brief Figures out version of Marc input file format and stores ist as MarcVersion
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_get_fileFormat(fileUnit)
- use IO, only: &
-   IO_lc, &
-   IO_intValue, &
-   IO_stringValue, &
-   IO_stringPos
 
- implicit none
- integer(pInt), intent(in) :: fileUnit
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=300) line
-
-610 FORMAT(A300)
-
- rewind(fileUnit)
- do
-   read (fileUnit,610,END=620) line
-   chunkPos = IO_stringPos(line)
-   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'version') then
-     MarcVersion = IO_intValue(line,chunkPos,2_pInt)
-     exit
-   endif
- enddo
-
-620 end subroutine mesh_marc_get_fileFormat
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Figures out table styles (Marc only) and stores to 'initialcondTableStyle' and
-!! 'hypoelasticTableStyle'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_get_tableStyles(fileUnit)
- use IO, only: &
-   IO_lc, &
-   IO_intValue, &
-   IO_stringValue, &
-   IO_stringPos
-
- implicit none
- integer(pInt), intent(in) :: fileUnit
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=300) line
-
- initialcondTableStyle = 0_pInt
- hypoelasticTableStyle = 0_pInt
-
-610 FORMAT(A300)
-
- rewind(fileUnit)
- do
-   read (fileUnit,610,END=620) line
-   chunkPos = IO_stringPos(line)
-
-   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'table' .and. chunkPos(1_pInt) > 5) then
-     initialcondTableStyle = IO_intValue(line,chunkPos,4_pInt)
-     hypoelasticTableStyle = IO_intValue(line,chunkPos,5_pInt)
-     exit
-   endif
- enddo
-
-620 end subroutine mesh_marc_get_tableStyles
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Figures out material number of hypoelastic material and stores it in Marc_matNumber array
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_get_matNumber(fileUnit)
- use IO, only: &
-   IO_lc, &
-   IO_intValue, &
-   IO_stringValue, &
-   IO_stringPos
-
- implicit none
- integer(pInt), intent(in) :: fileUnit
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt) :: i, j, data_blocks
- character(len=300) line
-
-610 FORMAT(A300)
-
- rewind(fileUnit)
-
- data_blocks = 1_pInt
- do
-  read (fileUnit,610,END=620) line
-  chunkPos = IO_stringPos(line)
-  if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'hypoelastic') then
-    read (fileUnit,610,END=620) line
-    if (len(trim(line))/=0_pInt) then
-      chunkPos = IO_stringPos(line)
-      data_blocks = IO_intValue(line,chunkPos,1_pInt)
-    endif
-    allocate(Marc_matNumber(data_blocks))
-    do i=1_pInt,data_blocks                                                                        ! read all data blocks
-      read (fileUnit,610,END=620) line
-      chunkPos = IO_stringPos(line)
-      Marc_matNumber(i) = IO_intValue(line,chunkPos,1_pInt)
-      do j=1_pint,2_pInt + hypoelasticTableStyle                                                   ! read 2 or 3 remaining lines of data block
-        read (fileUnit,610,END=620) line
-      enddo
-    enddo
-    exit
-  endif
- enddo
-
-620 end subroutine mesh_marc_get_matNumber
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Count overall number of nodes and elements in mesh and stores the numbers in
-!! 'mesh_Nelems' and 'mesh_Nnodes'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_count_nodesAndElements(fileUnit)
- use IO, only: &
-   IO_lc, &
-   IO_stringValue, &
-   IO_stringPos, &
-   IO_IntValue
-
- implicit none
- integer(pInt), intent(in) :: fileUnit
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=300) line
-
- mesh_Nnodes = 0_pInt
- mesh_Nelems = 0_pInt
-
-610 FORMAT(A300)
-
- rewind(fileUnit)
- do
-   read (fileUnit,610,END=620) line
-   chunkPos = IO_stringPos(line)
-
-   if ( IO_lc(IO_StringValue(line,chunkPos,1_pInt)) == 'sizing') &
-       mesh_Nelems = IO_IntValue (line,chunkPos,3_pInt)
-   if ( IO_lc(IO_StringValue(line,chunkPos,1_pInt)) == 'coordinates') then
-     read (fileUnit,610,END=620) line
-     chunkPos = IO_stringPos(line)
-     mesh_Nnodes = IO_IntValue (line,chunkPos,2_pInt)
-     exit                                                                                          ! assumes that "coordinates" comes later in file
-   endif
- enddo
-
-620 end subroutine mesh_marc_count_nodesAndElements
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Count overall number of element sets in mesh. Stores to 'mesh_NelemSets', and
-!! 'mesh_maxNelemInSet'
-!--------------------------------------------------------------------------------------------------
- subroutine mesh_marc_count_elementSets(fileUnit)
- use IO, only: &
-   IO_lc, &
-   IO_stringValue, &
-   IO_stringPos, &
-   IO_countContinuousIntValues
-
- implicit none
- integer(pInt), intent(in) :: fileUnit
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=300) line
-
- mesh_NelemSets     = 0_pInt
- mesh_maxNelemInSet = 0_pInt
-
-610 FORMAT(A300)
-
- rewind(fileUnit)
- do
-   read (fileUnit,610,END=620) line
-   chunkPos = IO_stringPos(line)
-
-   if ( IO_lc(IO_StringValue(line,chunkPos,1_pInt)) == 'define' .and. &
-        IO_lc(IO_StringValue(line,chunkPos,2_pInt)) == 'element' ) then
-     mesh_NelemSets = mesh_NelemSets + 1_pInt
-     mesh_maxNelemInSet = max(mesh_maxNelemInSet, &
-                              IO_countContinuousIntValues(fileUnit))
-   endif
- enddo
-
-620 end subroutine mesh_marc_count_elementSets
-
-
-!********************************************************************
-! map element sets
-!
-! allocate globals: mesh_nameElemSet, mesh_mapElemSet
-!********************************************************************
-subroutine mesh_marc_map_elementSets(fileUnit)
-
- use IO,   only: IO_lc, &
-                 IO_stringValue, &
-                 IO_stringPos, &
-                 IO_continuousIntValues
-
- implicit none
- integer(pInt), intent(in) :: fileUnit
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=300) :: line
- integer(pInt) :: elemSet = 0_pInt
-
- allocate (mesh_nameElemSet(mesh_NelemSets)); mesh_nameElemSet = ''
- allocate (mesh_mapElemSet(1_pInt+mesh_maxNelemInSet,mesh_NelemSets), source=0_pInt)
-
-610 FORMAT(A300)
-
- rewind(fileUnit)
- do
-   read (fileUnit,610,END=640) line
-   chunkPos = IO_stringPos(line)
-   if( (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'define' ) .and. &
-       (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'element' ) ) then
-      elemSet = elemSet+1_pInt
-      mesh_nameElemSet(elemSet) = trim(IO_stringValue(line,chunkPos,4_pInt))
-      mesh_mapElemSet(:,elemSet) = &
-        IO_continuousIntValues(fileUnit,mesh_maxNelemInSet,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
-   endif
- enddo
-
-640 end subroutine mesh_marc_map_elementSets
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Count overall number of CP elements in mesh and stores them in 'mesh_NcpElems'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_count_cpElements(fileUnit)
-
- use IO,   only: IO_lc, &
-                 IO_stringValue, &
-                 IO_stringPos, &
-                 IO_countContinuousIntValues, &
-                 IO_error, &
-                 IO_intValue, &
-                 IO_countNumericalDataLines
-
- implicit none
- integer(pInt), intent(in) :: fileUnit
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt) :: i
- character(len=300):: line
-
- mesh_NcpElems = 0_pInt
-
-610 FORMAT(A300)
-
- rewind(fileUnit)
- if (MarcVersion < 13) then                                                                             ! Marc 2016 or earlier
-   do
-     read (fileUnit,610,END=620) line
-     chunkPos = IO_stringPos(line)
-     if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'hypoelastic') then
-       do i=1_pInt,3_pInt+hypoelasticTableStyle  ! Skip 3 or 4 lines
-         read (fileUnit,610,END=620) line
-       enddo
-       mesh_NcpElems = mesh_NcpElems + IO_countContinuousIntValues(fileUnit)                            ! why not simply mesh_NcpElems = IO_countContinuousIntValues(fileUnit)? not fully correct as hypoelastic can have multiple data fields, needs update
-       exit
-     endif
-   enddo
- else                                                                                                   ! Marc2017 and later
-   do
-     read (fileUnit,610,END=620) line
-     chunkPos = IO_stringPos(line)
-     if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'connectivity') then
-       read (fileUnit,610,END=620) line
-       chunkPos = IO_stringPos(line)
-       if (any(Marc_matNumber==IO_intValue(line,chunkPos,6_pInt))) then
-         mesh_NcpElems = mesh_NcpElems + IO_countNumericalDataLines(fileUnit)
-       endif
-     endif
-   enddo
- end if
-
-620 end subroutine mesh_marc_count_cpElements
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Maps elements from FE ID to internal (consecutive) representation.
-!! Allocates global array 'mesh_mapFEtoCPelem'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_map_elements(fileUnit)
-
- use math, only: math_qsort
- use IO,   only: IO_lc, &
-                 IO_intValue, &
-                 IO_stringValue, &
-                 IO_stringPos, &
-                 IO_continuousIntValues
-
- implicit none
- integer(pInt), intent(in) :: fileUnit
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=300) :: line, &
-                       tmp
-
- integer(pInt), dimension (1_pInt+mesh_NcpElems) :: contInts
- integer(pInt) :: i,cpElem = 0_pInt
-
- allocate (mesh_mapFEtoCPelem(2,mesh_NcpElems), source = 0_pInt)
-
-610 FORMAT(A300)
-
- contInts = 0_pInt
- rewind(fileUnit)
- do
-   read (fileUnit,610,END=660) line
-   chunkPos = IO_stringPos(line)
-   if (MarcVersion < 13) then                                                                             ! Marc 2016 or earlier
-     if( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'hypoelastic' ) then
-       do i=1_pInt,3_pInt+hypoelasticTableStyle                                                           ! skip three (or four if new table style!) lines
-         read (fileUnit,610,END=660) line
-       enddo
-       contInts = IO_continuousIntValues(fileUnit,mesh_NcpElems,mesh_nameElemSet,&
-                                              mesh_mapElemSet,mesh_NelemSets)
-       exit
-     endif  
-   else                                                                                                   ! Marc2017 and later
-     if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'connectivity') then
-       read (fileUnit,610,END=660) line
-       chunkPos = IO_stringPos(line)
-       if(any(Marc_matNumber==IO_intValue(line,chunkPos,6_pInt))) then
-         do 
-           read (fileUnit,610,END=660) line
-           chunkPos = IO_stringPos(line)
-           tmp = IO_lc(IO_stringValue(line,chunkPos,1_pInt))
-           if (verify(trim(tmp),"0123456789")/=0) then                                                          ! found keyword
-             exit
-           else
-             contInts(1) = contInts(1) + 1_pInt  
-             read (tmp,*) contInts(contInts(1)+1)     
-           endif
-         enddo
-       endif  
-     endif
-   endif    
- enddo    
-660 do i = 1_pInt,contInts(1)
-      cpElem = cpElem+1_pInt
-      mesh_mapFEtoCPelem(1,cpElem) = contInts(1_pInt+i)
-      mesh_mapFEtoCPelem(2,cpElem) = cpElem
-    enddo
- 
-call math_qsort(mesh_mapFEtoCPelem,1_pInt,int(size(mesh_mapFEtoCPelem,2_pInt),pInt))                  ! should be mesh_NcpElems
-
-end subroutine mesh_marc_map_elements
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Maps node from FE ID to internal (consecutive) representation.
-!! Allocates global array 'mesh_mapFEtoCPnode'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_map_nodes(fileUnit)
-
- use math, only: math_qsort
- use IO,   only: IO_lc, &
-                 IO_stringValue, &
-                 IO_stringPos, &
-                 IO_fixedIntValue
-
- implicit none
- integer(pInt), intent(in) :: fileUnit
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=300) line
-
- integer(pInt), dimension (mesh_Nnodes) :: node_count
- integer(pInt) :: i
-
- allocate (mesh_mapFEtoCPnode(2_pInt,mesh_Nnodes),source=0_pInt)
-
-610 FORMAT(A300)
-
- node_count = 0_pInt
-
- rewind(fileUnit)
- do
-   read (fileUnit,610,END=650) line
-   chunkPos = IO_stringPos(line)
-   if( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'coordinates' ) then
-     read (fileUnit,610,END=650) line                                                               ! skip crap line
-     do i = 1_pInt,mesh_Nnodes
-       read (fileUnit,610,END=650) line
-       mesh_mapFEtoCPnode(1_pInt,i) = IO_fixedIntValue (line,[ 0_pInt,10_pInt],1_pInt)
-       mesh_mapFEtoCPnode(2_pInt,i) = i
-     enddo
-     exit
-   endif
- enddo
-
-650 call math_qsort(mesh_mapFEtoCPnode,1_pInt,int(size(mesh_mapFEtoCPnode,2_pInt),pInt))
-
-end subroutine mesh_marc_map_nodes
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief store x,y,z coordinates of all nodes in mesh.
-!! Allocates global arrays 'mesh_node0' and 'mesh_node'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_build_nodes(fileUnit)
-
- use IO, only: &
-   IO_lc, &
-   IO_stringValue, &
-   IO_stringPos, &
-   IO_fixedIntValue, &
-   IO_fixedNoEFloatValue
-
- implicit none
- integer(pInt), intent(in) :: fileUnit
-
- integer(pInt), dimension(5), parameter :: node_ends = int([0,10,30,50,70],pInt)
- integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=300) :: line
- integer(pInt) :: i,j,m
-
- allocate ( mesh_node0 (3,mesh_Nnodes), source=0.0_pReal)
- allocate ( mesh_node  (3,mesh_Nnodes), source=0.0_pReal)
-
-610 FORMAT(A300)
-
- rewind(fileUnit)
- do
-   read (fileUnit,610,END=670) line
-   chunkPos = IO_stringPos(line)
-   if( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'coordinates' ) then
-     read (fileUnit,610,END=670) line                                                               ! skip crap line
-     do i=1_pInt,mesh_Nnodes
-       read (fileUnit,610,END=670) line
-       m = mesh_FEasCP('node',IO_fixedIntValue(line,node_ends,1_pInt))
-       do j = 1_pInt,3_pInt
-         mesh_node0(j,m) = mesh_unitlength * IO_fixedNoEFloatValue(line,node_ends,j+1_pInt)
-       enddo
-     enddo
-     exit
-   endif
- enddo
-
-670 mesh_node = mesh_node0
-
-end subroutine mesh_marc_build_nodes
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Gets maximum count of nodes, IPs, IP neighbors, and cellnodes among cpElements.
-!! Sets global values 'mesh_maxNnodes', 'mesh_maxNips', 'mesh_maxNipNeighbors',
-!! and 'mesh_maxNcellnodes'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_count_cpSizes(fileUnit)
-
- use IO,   only: IO_lc, &
-                 IO_stringValue, &
-                 IO_stringPos, &
-                 IO_intValue, &
-                 IO_skipChunks
-
- implicit none
- integer(pInt), intent(in) :: fileUnit
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=300) :: line
- integer(pInt) :: i,t,g,e,c
-
- mesh_maxNnodes       = 0_pInt
- mesh_maxNips         = 0_pInt
- mesh_maxNipNeighbors = 0_pInt
- mesh_maxNcellnodes   = 0_pInt
-
-610 FORMAT(A300)
- rewind(fileUnit)
- do
-   read (fileUnit,610,END=630) line
-   chunkPos = IO_stringPos(line)
-   if( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'connectivity' ) then
-     read (fileUnit,610,END=630) line                                                               ! Garbage line
-     do i=1_pInt,mesh_Nelems                                                                        ! read all elements
-       read (fileUnit,610,END=630) line
-       chunkPos = IO_stringPos(line)                                                                ! limit to id and type
-       e = mesh_FEasCP('elem',IO_intValue(line,chunkPos,1_pInt))
-       if (e /= 0_pInt) then
-         t = FE_mapElemtype(IO_stringValue(line,chunkPos,2_pInt))
-         g = FE_geomtype(t)
-         c = FE_celltype(g)
-         mesh_maxNnodes =       max(mesh_maxNnodes,FE_Nnodes(t))
-         mesh_maxNips =         max(mesh_maxNips,FE_Nips(g))
-         mesh_maxNipNeighbors = max(mesh_maxNipNeighbors,FE_NipNeighbors(c))
-         mesh_maxNcellnodes =   max(mesh_maxNcellnodes,FE_Ncellnodes(g))
-         call IO_skipChunks(fileUnit,FE_Nnodes(t)-(chunkPos(1_pInt)-2_pInt))                        ! read on if FE_Nnodes exceeds node count present on current line
-       endif
-     enddo
-     exit
-   endif
- enddo
-
-630 end subroutine mesh_marc_count_cpSizes
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Store FEid, type, mat, tex, and node list per element.
-!! Allocates global array 'mesh_element'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_build_elements(fileUnit)
-
- use IO,   only: IO_lc, &
-                 IO_stringValue, &
-                 IO_fixedNoEFloatValue, &
-                 IO_skipChunks, &
-                 IO_stringPos, &
-                 IO_intValue, &
-                 IO_continuousIntValues, &
-                 IO_error
-
- implicit none
- integer(pInt), intent(in) :: fileUnit
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=300) line
-
- integer(pInt), dimension(1_pInt+mesh_NcpElems) :: contInts
- integer(pInt) :: i,j,t,sv,myVal,e,nNodesAlreadyRead
-
- allocate(mesh_element(4_pInt+mesh_maxNnodes,mesh_NcpElems), source=0_pInt)
- mesh_elemType = -1_pInt
-
-610 FORMAT(A300)
-
- rewind(fileUnit)
- do
-   read (fileUnit,610,END=620) line
-   chunkPos = IO_stringPos(line)
-   if( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'connectivity' ) then
-     read (fileUnit,610,END=620) line                                                               ! garbage line
-     do i = 1_pInt,mesh_Nelems
-       read (fileUnit,610,END=620) line
-       chunkPos = IO_stringPos(line)
-       e = mesh_FEasCP('elem',IO_intValue(line,chunkPos,1_pInt))
-       if (e /= 0_pInt) then                                                                        ! disregard non CP elems
-         mesh_element(1,e) = -1_pInt                                                                ! DEPRECATED
-         t = FE_mapElemtype(IO_StringValue(line,chunkPos,2_pInt))                                   ! elem type
-         if (mesh_elemType /= t .and. mesh_elemType /= -1_pInt) &
-           call IO_error(191,el=t,ip=mesh_elemType)
-         mesh_elemType = t
-         mesh_element(2,e) = t
-         nNodesAlreadyRead = 0_pInt
-         do j = 1_pInt,chunkPos(1)-2_pInt
-           mesh_element(4_pInt+j,e) = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j+2_pInt))          ! CP ids of nodes
-         enddo
-         nNodesAlreadyRead = chunkPos(1) - 2_pInt
-         do while(nNodesAlreadyRead < FE_Nnodes(t))                                                 ! read on if not all nodes in one line
-           read (fileUnit,610,END=620) line
-           chunkPos = IO_stringPos(line)
-           do j = 1_pInt,chunkPos(1)
-             mesh_element(4_pInt+nNodesAlreadyRead+j,e) &
-               = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j))                                      ! CP ids of nodes
-           enddo
-           nNodesAlreadyRead = nNodesAlreadyRead + chunkPos(1)
-         enddo
-       endif
-     enddo
-     exit
-   endif
- enddo
-
-620 rewind(fileUnit)                                                                                ! just in case "initial state" appears before "connectivity"
- read (fileUnit,610,END=620) line
- do
-   chunkPos = IO_stringPos(line)
-   if( (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'initial') .and. &
-       (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'state') ) then
-     if (initialcondTableStyle == 2_pInt) read (fileUnit,610,END=620) line                          ! read extra line for new style
-     read (fileUnit,610,END=630) line                                                               ! read line with index of state var
-     chunkPos = IO_stringPos(line)
-     sv = IO_IntValue(line,chunkPos,1_pInt)                                                            ! figure state variable index
-     if( (sv == 2_pInt).or.(sv == 3_pInt) ) then                                                    ! only state vars 2 and 3 of interest
-       read (fileUnit,610,END=620) line                                                             ! read line with value of state var
-       chunkPos = IO_stringPos(line)
-       do while (scan(IO_stringValue(line,chunkPos,1_pInt),'+-',back=.true.)>1)                        ! is noEfloat value?
-         myVal = nint(IO_fixedNoEFloatValue(line,[0_pInt,20_pInt],1_pInt),pInt)                     ! state var's value
-         mesh_maxValStateVar(sv-1_pInt) = max(myVal,mesh_maxValStateVar(sv-1_pInt))                 ! remember max val of homogenization and microstructure index
-         if (initialcondTableStyle == 2_pInt) then
-           read (fileUnit,610,END=630) line                                                         ! read extra line
-           read (fileUnit,610,END=630) line                                                         ! read extra line
-         endif
-         contInts = IO_continuousIntValues&                                                         ! get affected elements
-                   (fileUnit,mesh_NcpElems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
-         do i = 1_pInt,contInts(1)
-           e = mesh_FEasCP('elem',contInts(1_pInt+i))
-           mesh_element(1_pInt+sv,e) = myVal
-         enddo
-         if (initialcondTableStyle == 0_pInt) read (fileUnit,610,END=620) line                      ! ignore IP range for old table style
-         read (fileUnit,610,END=630) line
-         chunkPos = IO_stringPos(line)
-       enddo
-     endif
-   else
-     read (fileUnit,610,END=630) line
-   endif
- enddo
-
-630 end subroutine mesh_marc_build_elements
-#endif
-
-#ifdef Abaqus
 !--------------------------------------------------------------------------------------------------
 !> @brief Count overall number of nodes and elements in mesh and stores them in
 !! 'mesh_Nelems' and 'mesh_Nnodes'
@@ -2791,7 +1611,7 @@ subroutine mesh_abaqus_build_elements(fileUnit)
  enddo
 
 630 end subroutine mesh_abaqus_build_elements
-#endif
+
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2807,25 +1627,14 @@ use IO, only: &
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
-#ifdef Spectral
- mesh_periodicSurface = .true.
-
- end subroutine mesh_get_damaskOptions
-
-#else
-
  integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) chunk, Nchunks
  character(len=300) :: line, damaskOption, v
  character(len=300) :: keyword
 
  mesh_periodicSurface = .false.
-#ifdef Marc4DAMASK
- keyword = '$damask'
-#endif
-#ifdef Abaqus
  keyword = '**damask'
-#endif
+
 
  rewind(fileUnit)
  do
@@ -2849,7 +1658,7 @@ use IO, only: &
 610 FORMAT(A300)
 
 620 end subroutine mesh_get_damaskOptions
-#endif
+
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2925,7 +1734,7 @@ subroutine mesh_build_ipAreas
 
 end subroutine mesh_build_ipAreas
 
-#ifndef Spectral
+
 !--------------------------------------------------------------------------------------------------
 !> @brief assignment of twin nodes for each cp node, allocate globals '_nodeTwins'
 !--------------------------------------------------------------------------------------------------
@@ -3227,7 +2036,7 @@ subroutine mesh_build_ipNeighborhood
  enddo
 
 end subroutine mesh_build_ipNeighborhood
-#endif
+
 
 
 !--------------------------------------------------------------------------------------------------
@@ -3336,14 +2145,6 @@ subroutine mesh_tell_statistics
         write(6,'(i8,1x,i5,3(1x,f12.8))') e, i, mesh_ipCoordinates(:,i,e)
       enddo
     enddo
-#ifndef Spectral
-    write(6,'(/,a,/)') 'Input Parser: NODE TWINS'
-    write(6,'(a6,3(3x,a6))') '  node','twin_x','twin_y','twin_z'
-    do n = 1_pInt,mesh_Nnodes                    ! loop over cpNodes
-      if (iand(myDebug,debug_levelSelective) /= 0_pInt .and. .not. any(mesh_element(5:,debug_e) == n)) cycle
-      write(6,'(i6,3(3x,i6))') n, mesh_nodeTwins(1:3,n)
-    enddo
-#endif
     write(6,'(/,a,/)') 'Input Parser: IP NEIGHBORHOOD'
     write(6,'(a8,1x,a10,1x,a10,1x,a3,1x,a13,1x,a13)') 'elem','IP','neighbor','','elemNeighbor','ipNeighbor'
     do e = 1_pInt,mesh_NcpElems                                                          ! loop over cpElems
