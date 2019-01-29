@@ -1551,7 +1551,6 @@ subroutine integrateStateFPI()
    homogenization_Ngrains
  use constitutive, only: &
    constitutive_collectDotState, &
-   constitutive_microstructure, &
    constitutive_plasticity_maxSizeDotState, &
    constitutive_source_maxSizeDotState
 
@@ -1569,9 +1568,9 @@ subroutine integrateStateFPI()
  real(pReal) :: &
    stateDamper
  real(pReal), dimension(constitutive_plasticity_maxSizeDotState) :: &
-   plasticStateResiduum
+   residuum_plastic                                                                                 ! residuum for plastic state
  real(pReal), dimension(constitutive_source_maxSizeDotState, maxval(phase_Nsources)) :: &
-   sourceStateResiduum
+   residuum_source                                                                                  ! residuum for source state
  logical :: &
    converged, &
    doneWithIntegration
@@ -1616,7 +1615,7 @@ subroutine integrateStateFPI()
    
    !$OMP PARALLEL
    !$OMP DO PRIVATE(sizeDotState, &
-   !$OMP&           plasticStateResiduum,sourceStateResiduum, &
+   !$OMP&           residuum_plastic,residuum_source, &
    !$OMP&           stateDamper, converged,p,c)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
@@ -1629,21 +1628,20 @@ subroutine integrateStateFPI()
                                 plasticState(p)%previousDotState2(:,c))
            sizeDotState = plasticState(p)%sizeDotState
 
-           plasticStateResiduum(1:sizeDotState) = plasticState(p)%state    (1:sizeDotState,c) &
+           residuum_plastic(1:SizeDotState) = plasticState(p)%state    (1:sizeDotState,c) &
                                             - plasticState(p)%subState0(1:sizeDotState,c)  &
                                             - (  plasticState(p)%dotState        (:,c) * stateDamper &
                                                + plasticState(p)%previousDotState(:,c) * (1.0_pReal-stateDamper) &
                                               ) * crystallite_subdt(g,i,e)
 
            plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%state(1:sizeDotState,c) &
-                                                   - plasticStateResiduum(1:sizeDotState) 
-
+                                                   - residuum_plastic(1:sizeDotState) 
            plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) * stateDamper &
                                          + plasticState(p)%previousDotState(:,c) * (1.0_pReal - stateDamper)
                                        
-         converged = all(    abs(plasticStateResiduum(1:sizeDotState)) < &
+         converged = all(    abs(residuum_plastic(1:sizeDotState)) < &
                              plasticState(p)%aTolState(1:sizeDotState) &
-                        .or. abs(plasticStateResiduum(1:sizeDotState)) < &
+                        .or. abs(residuum_plastic(1:sizeDotState)) < &
                              rTol_crystalliteState * abs( plasticState(p)%state(1:sizeDotState,c)))
                              
 
@@ -1652,26 +1650,21 @@ subroutine integrateStateFPI()
                                   sourceState(p)%p(s)%previousDotState (:,c), &
                                   sourceState(p)%p(s)%previousDotState2(:,c))
              sizeDotState  = sourceState(p)%p(s)%sizeDotState
-           sourceStateResiduum(1:sizeDotState,s) = sourceState(p)%p(s)%state    (1:sizeDotState,c)  &
+           residuum_source(1:sizeDotState,s) = sourceState(p)%p(s)%state    (1:sizeDotState,c)  &
                                                - sourceState(p)%p(s)%subState0(1:sizeDotState,c)  &
                                                - (  sourceState(p)%p(s)%dotState        (:,c) * stateDamper &
                                                   + sourceState(p)%p(s)%previousDotState(:,c) * (1.0_pReal - stateDamper) &
                                                  ) * crystallite_subdt(g,i,e)
 
-         ! --- correct state with residuum ---
-           sourceState(p)%p(s)%state(1:sizeDotState,c) = &
-             sourceState(p)%p(s)%state(1:sizeDotState,c) &
-           - sourceStateResiduum(1:sizeDotState,s)                     ! need to copy to local variable, since we cant flush a pointer in openmp
-
-           sourceState(p)%p(s)%dotState(:,c) = &
-             sourceState(p)%p(s)%dotState(:,c) * stateDamper &
-           + sourceState(p)%p(s)%previousDotState(:,c) &
-           * (1.0_pReal - stateDamper)
+           sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%state(1:sizeDotState,c) &
+                                                       - residuum_source(1:sizeDotState,s)
+           sourceState(p)%p(s)%dotState(:,c) = sourceState(p)%p(s)%dotState(:,c) * stateDamper &
+                                             + sourceState(p)%p(s)%previousDotState(:,c)* (1.0_pReal - stateDamper)
 
            converged = converged .and. &
-                       all(    abs(sourceStateResiduum(1:sizeDotState,s)) < &
+                       all(    abs(residuum_source(1:sizeDotState,s)) < &
                                sourceState(p)%p(s)%aTolState(1:sizeDotState) &
-                          .or. abs(sourceStateResiduum(1:sizeDotState,s)) < &
+                          .or. abs(residuum_source(1:sizeDotState,s)) < &
                                rTol_crystalliteState * abs(sourceState(p)%p(s)%state(1:sizeDotState,c)))
          enddo
          if (converged) crystallite_converged(g,i,e) = .true.                                                                   ! ... converged per definition
@@ -1771,8 +1764,6 @@ end subroutine integrateStateEuler
 !> @brief integrate stress, state with 1st order Euler method with adaptive step size
 !--------------------------------------------------------------------------------------------------
 subroutine integrateStateAdaptiveEuler()
- use, intrinsic :: &
-   IEEE_arithmetic
  use numerics, only: &
    rTol_crystalliteState
  use mesh, only: &
