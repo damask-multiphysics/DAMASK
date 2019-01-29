@@ -852,19 +852,30 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
  slipState: do i = 1_pInt, prm%totalNslip
    tau = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,i))
 
-   significantSlipStress2: if (dEq0(tau)) then
+   significantSlipStress: if (dEq0(tau)) then
      DotRhoDipFormation = 0.0_pReal
-   else significantSlipStress2
+     DotRhoEdgeDipClimb = 0.0_pReal
+   else significantSlipStress
      EdgeDipDistance = 3.0_pReal*prm%mu*prm%burgers_slip(i)/(16.0_pReal*PI*abs(tau))
-     if (EdgeDipDistance>dst%mfp_slip(i,of)) EdgeDipDistance = dst%mfp_slip(i,of)
-     if (EdgeDipDistance<EdgeDipMinDistance(i)) EdgeDipDistance = EdgeDipMinDistance(i)
+     EdgeDipDistance = math_clip(EdgeDipDistance, right = dst%mfp_slip(i,of))
+     EdgeDipDistance = math_clip(EdgeDipDistance, left  = EdgeDipMinDistance(i))
+
      if (prm%dipoleFormation) then
        DotRhoDipFormation = 2.0_pReal*(EdgeDipDistance-EdgeDipMinDistance(i))/prm%burgers_slip(i) &
                           * stt%rhoEdge(i,of)*abs(gdot_slip(i))
      else
        DotRhoDipFormation = 0.0_pReal
      endif
-   endif significantSlipStress2
+
+     if (dEq0(EdgeDipDistance-EdgeDipMinDistance(i))) then
+       DotRhoEdgeDipClimb = 0.0_pReal
+     else
+       ClimbVelocity = 3.0_pReal*prm%mu*VacancyDiffusion*prm%atomicVolume(i) &
+                     / (2.0_pReal*PI*kB*Temperature*(EdgeDipDistance+EdgeDipMinDistance(i)))
+       DotRhoEdgeDipClimb = 4.0_pReal*ClimbVelocity*stt%rhoEdgeDip(i,of) &
+                          / (EdgeDipDistance-EdgeDipMinDistance(i))
+     endif
+   endif significantSlipStress
  
    !* Spontaneous annihilation of 2 single edge dislocations
    DotRhoEdgeEdgeAnnihilation = 2.0_pReal*EdgeDipMinDistance(i)/prm%burgers_slip(i) &
@@ -872,20 +883,7 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
    !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
    DotRhoEdgeDipAnnihilation = 2.0_pReal*EdgeDipMinDistance(i)/prm%burgers_slip(i) &
                              * stt%rhoEdgeDip(i,of)*abs(gdot_slip(i))
- 
-   !* Dislocation dipole climb
-   if (dEq0(tau)) then
-     DotRhoEdgeDipClimb = 0.0_pReal
-   else
-     if (dEq0(EdgeDipDistance-EdgeDipMinDistance(i))) then
-       DotRhoEdgeDipClimb = 0.0_pReal
-     else
-       ClimbVelocity = 3.0_pReal*prm%mu*VacancyDiffusion*prm%atomicVolume(i)/ &
-                       (2.0_pReal*pi*kB*Temperature*(EdgeDipDistance+EdgeDipMinDistance(i)))
-       DotRhoEdgeDipClimb = 4.0_pReal*ClimbVelocity*stt%rhoEdgeDip(i,of)/ &
-                       (EdgeDipDistance-EdgeDipMinDistance(i))
-     endif
-   endif
+
    dot%rhoEdge(i,of)    = DotRhoMultiplication(i)-DotRhoDipFormation-DotRhoEdgeEdgeAnnihilation
    dot%rhoEdgeDip(i,of) = DotRhoDipFormation-DotRhoEdgeDipAnnihilation-DotRhoEdgeDipClimb
  enddo slipState
