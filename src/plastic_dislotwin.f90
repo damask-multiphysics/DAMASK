@@ -150,8 +150,8 @@ module plastic_dislotwin
      threshold_stress_trans, &
      twinVolume, &
      martensiteVolume, &
-     tau_r_twin, &                                                                                  !< stress to bring partial close together for each twin system and instance
-     tau_r_trans                                                                                    !< stress to bring partial close together for each trans system and instance
+     tau_r_twin, &                                                                                  !< stress to bring partials close together (twin)
+     tau_r_trans                                                                                    !< stress to bring partials close together (trans)
  end type tDislotwinMicrostructure
 
 !--------------------------------------------------------------------------------------------------
@@ -269,6 +269,10 @@ subroutine plastic_dislotwin_init
              dst => microstructure(phase_plasticityInstance(p)), &
              config   => config_phase(p))
 
+   prm%aTolRho       = config%getFloat('atol_rho', defaultVal=0.0_pReal)
+   prm%aTolTwinFrac  = config%getFloat('atol_twinfrac', defaultVal=0.0_pReal)
+   prm%aTolTransFrac = config%getFloat('atol_transfrac', defaultVal=0.0_pReal)
+
    ! This data is read in already in lattice
    prm%mu = lattice_mu(p)
    prm%nu = lattice_nu(p)
@@ -307,6 +311,8 @@ subroutine plastic_dislotwin_init
                                                           defaultVal=[(0.0_pReal, i=1,size(prm%Nslip))]) ! Deprecated
 
      prm%CEdgeDipMinDistance  = config%getFloat('cedgedipmindistance')
+     prm%D0                   = config%getFloat('d0')
+     prm%Qsd                  = config%getFloat('qsd')
      prm%atomicVolume         = config%getFloat('catomicvolume') * prm%burgers_slip**3.0_pReal
 
      ! expand: family => system
@@ -323,16 +329,18 @@ subroutine plastic_dislotwin_init
      prm%atomicVolume = math_expand(prm%atomicVolume,prm%Nslip)                                   
 
      ! sanity checks
-     if (any(prm%rho0         <  0.0_pReal))         extmsg = trim(extmsg)//'rho0 '
-     if (any(prm%rhoDip0      <  0.0_pReal))         extmsg = trim(extmsg)//'rhoDip0 '
-     if (any(prm%v0           <  0.0_pReal))         extmsg = trim(extmsg)//'v0 '
-     if (any(prm%burgers_slip <= 0.0_pReal))         extmsg = trim(extmsg)//'burgers_slip '
-     if (any(prm%Qedge        <= 0.0_pReal))         extmsg = trim(extmsg)//'Qedge '
-     if (any(prm%CLambdaSlip  <= 0.0_pReal))         extmsg = trim(extmsg)//'CLambdaSlip '
-     if (any(prm%B            <  0.0_pReal))         extmsg = trim(extmsg)//'B '
-     if (any(prm%tau_peierls  <  0.0_pReal))         extmsg = trim(extmsg)//'tau_peierls '
-     if (any(prm%p<=0.0_pReal .or. prm%p>1.0_pReal)) extmsg = trim(extmsg)//'p '
-     if (any(prm%q< 1.0_pReal .or. prm%q>2.0_pReal)) extmsg = trim(extmsg)//'q '
+     if (    prm%D0           <= 0.0_pReal)          extmsg = trim(extmsg)//' D0'
+     if (    prm%Qsd          <= 0.0_pReal)          extmsg = trim(extmsg)//' Qsd'
+     if (any(prm%rho0         <  0.0_pReal))         extmsg = trim(extmsg)//' rho0'
+     if (any(prm%rhoDip0      <  0.0_pReal))         extmsg = trim(extmsg)//' rhoDip0'
+     if (any(prm%v0           <  0.0_pReal))         extmsg = trim(extmsg)//' v0'
+     if (any(prm%burgers_slip <= 0.0_pReal))         extmsg = trim(extmsg)//' burgers_slip'
+     if (any(prm%Qedge        <= 0.0_pReal))         extmsg = trim(extmsg)//' Qedge'
+     if (any(prm%CLambdaSlip  <= 0.0_pReal))         extmsg = trim(extmsg)//' CLambdaSlip'
+     if (any(prm%B            <  0.0_pReal))         extmsg = trim(extmsg)//' B'
+     if (any(prm%tau_peierls  <  0.0_pReal))         extmsg = trim(extmsg)//' tau_peierls'
+     if (any(prm%p<=0.0_pReal .or. prm%p>1.0_pReal)) extmsg = trim(extmsg)//' p'
+     if (any(prm%q< 1.0_pReal .or. prm%q>2.0_pReal)) extmsg = trim(extmsg)//' q'
 
    else slipActive
      allocate(prm%burgers_slip(0))
@@ -445,66 +453,48 @@ subroutine plastic_dislotwin_init
                                                                config%getFloats('interaction_sliptrans'), &
                                                                config%getString('lattice_structure')) 
      if (prm%fccTwinTransNucleation .and. prm%totalNtrans > 12_pInt) write(6,*) 'mist' ! ToDo: implement better test. The model will fail also if ntrans is [6,6]
-   endif    
-
-
-   prm%aTolRho       = config%getFloat('atol_rho', defaultVal=0.0_pReal)
-   prm%aTolTwinFrac  = config%getFloat('atol_twinfrac', defaultVal=0.0_pReal)
-   prm%aTolTransFrac = config%getFloat('atol_transfrac', defaultVal=0.0_pReal)
-
-   prm%GrainSize     = config%getFloat('grainsize')
-
-
-   prm%D0 = config%getFloat('d0')
-   prm%Qsd = config%getFloat('qsd')
-   prm%SolidSolutionStrength = config%getFloat('solidsolutionstrength')                              ! Deprecated
-   if (config%keyExists('dipoleformationfactor')) call IO_error(1,ext_msg='use /nodipoleformation/')
-   prm%dipoleformation = .not. config%keyExists('/nodipoleformation/')
-   prm%sbVelocity   = config%getFloat('shearbandvelocity',defaultVal=0.0_pReal)
+   endif  
+  
+!--------------------------------------------------------------------------------------------------
+! shearband related parameters
+   prm%sbVelocity = config%getFloat('shearbandvelocity',defaultVal=0.0_pReal)
    if (prm%sbVelocity > 0.0_pReal) then  
      prm%sbResistance = config%getFloat('shearbandresistance')
-     prm%sbQedge = config%getFloat('qedgepersbsystem')
-     prm%pShearBand = config%getFloat('p_shearband')
-     prm%qShearBand = config%getFloat('q_shearband')
+     prm%sbQedge      = config%getFloat('qedgepersbsystem')
+     prm%pShearBand   = config%getFloat('p_shearband')
+     prm%qShearBand   = config%getFloat('q_shearband')
+     
+     ! sanity checks
+     if (prm%sbResistance  <  0.0_pReal) extmsg = trim(extmsg)//' shearbandresistance'
+     if (prm%sbQedge       <  0.0_pReal) extmsg = trim(extmsg)//' qedgepersbsystem'
+     if (prm%pShearBand    <= 0.0_pReal) extmsg = trim(extmsg)//' p_shearband'
+     if (prm%qShearBand    <= 0.0_pReal) extmsg = trim(extmsg)//' q_shearband'
    endif
+
+
+
+   prm%GrainSize             = config%getFloat('grainsize')
+   prm%SolidSolutionStrength = config%getFloat('solidsolutionstrength')                              ! Deprecated
+
+   if (config%keyExists('dipoleformationfactor')) call IO_error(1,ext_msg='use /nodipoleformation/')
+   prm%dipoleformation = .not. config%keyExists('/nodipoleformation/')
+   
 
        !if (Ndot0PerTwinFamily(f,p) < 0.0_pReal) &
         ! call IO_error(211_pInt,el=p,ext_msg='ndot0_twin ('//PLASTICITY_DISLOTWIN_label//')')
 
    if (any(prm%atomicVolume <= 0.0_pReal)) &
      call IO_error(211_pInt,el=p,ext_msg='cAtomicVolume ('//PLASTICITY_DISLOTWIN_label//')')
-   if (prm%D0 <= 0.0_pReal) &
-     call IO_error(211_pInt,el=p,ext_msg='D0 ('//PLASTICITY_DISLOTWIN_label//')')
-   if (prm%Qsd <= 0.0_pReal) &
-     call IO_error(211_pInt,el=p,ext_msg='Qsd ('//PLASTICITY_DISLOTWIN_label//')')
    if (prm%totalNtwin > 0_pInt) then
-     if (dEq0(prm%SFE_0K) .and. &
-         dEq0(prm%dSFE_dT) .and. &
-                         lattice_structure(p) == LATTICE_fcc_ID) &
-       call IO_error(211_pInt,el=p,ext_msg='SFE0K ('//PLASTICITY_DISLOTWIN_label//')')
      if (prm%aTolRho <= 0.0_pReal) &
        call IO_error(211_pInt,el=p,ext_msg='aTolRho ('//PLASTICITY_DISLOTWIN_label//')')   
      if (prm%aTolTwinFrac <= 0.0_pReal) &
        call IO_error(211_pInt,el=p,ext_msg='aTolTwinFrac ('//PLASTICITY_DISLOTWIN_label//')')
    endif
    if (prm%totalNtrans > 0_pInt) then
-     if (dEq0(prm%SFE_0K) .and. &
-         dEq0(prm%dSFE_dT) .and. &
-                         lattice_structure(p) == LATTICE_fcc_ID) &
-       call IO_error(211_pInt,el=p,ext_msg='SFE0K ('//PLASTICITY_DISLOTWIN_label//')')
      if (prm%aTolTransFrac <= 0.0_pReal) &
        call IO_error(211_pInt,el=p,ext_msg='aTolTransFrac ('//PLASTICITY_DISLOTWIN_label//')')
    endif
-   !if (prm%sbResistance < 0.0_pReal) &
-   !  call IO_error(211_pInt,el=p,ext_msg='sbResistance ('//PLASTICITY_DISLOTWIN_label//')')
-   !if (prm%sbVelocity < 0.0_pReal) &
-   !  call IO_error(211_pInt,el=p,ext_msg='sbVelocity ('//PLASTICITY_DISLOTWIN_label//')')
-   !if (prm%sbVelocity > 0.0_pReal .and. &
-   !    prm%pShearBand <= 0.0_pReal) &
-   !  call IO_error(211_pInt,el=p,ext_msg='pShearBand ('//PLASTICITY_DISLOTWIN_label//')')
-   if (prm%sbVelocity > 0.0_pReal .and. &
-       prm%qShearBand <= 0.0_pReal) &
-     call IO_error(211_pInt,el=p,ext_msg='qShearBand ('//PLASTICITY_DISLOTWIN_label//')')
  
    outputs = config%getStrings('(output)', defaultVal=emptyStringArray)
    allocate(prm%outputID(0))
@@ -599,13 +589,13 @@ subroutine plastic_dislotwin_init
    plasticState(p)%accumulatedSlip => plasticState(p)%state(startIndex:endIndex,:)
    
    startIndex = endIndex + 1_pInt
-   endIndex=endIndex+prm%totalNtwin
+   endIndex   = endIndex + prm%totalNtwin
    stt%twinFraction=>plasticState(p)%state(startIndex:endIndex,:)
    dot%twinFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTwinFrac
    
    startIndex = endIndex + 1_pInt
-   endIndex=endIndex+prm%totalNtrans
+   endIndex   = endIndex + prm%totalNtrans
    stt%strainTransFraction=>plasticState(p)%state(startIndex:endIndex,:)
    dot%strainTransFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTransFrac
@@ -619,13 +609,13 @@ subroutine plastic_dislotwin_init
    allocate(dst%invLambdaTwin         (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
    allocate(dst%mfp_twin              (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
    allocate(dst%threshold_stress_twin (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
-   allocate(dst%tau_r_twin            (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)  !* equilibrium separation of partial dislocations (twin)
+   allocate(dst%tau_r_twin            (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
    allocate(dst%twinVolume            (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
 
    allocate(dst%invLambdaTrans        (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
    allocate(dst%mfp_trans             (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
    allocate(dst%threshold_stress_trans(prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
-   allocate(dst%tau_r_trans           (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)   !* equilibrium separation of partial dislocations (trans)
+   allocate(dst%tau_r_trans           (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
    allocate(dst%martensiteVolume      (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
 
 
@@ -815,8 +805,9 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
    tol_math_check, &
    dEq0
  use math, only: &
+   math_clip, &
    math_mul33xx33, &
-   pi
+   PI 
  use material, only: &
    plasticState
 
@@ -940,7 +931,7 @@ subroutine plastic_dislotwin_dependentState(temperature,instance,of)
  sumf_twin  = sum(stt%twinFraction(1:prm%totalNtwin,of))
  sumf_trans = sum(stt%strainTransFraction(1:prm%totalNtrans,of))
 
- sfe = prm%SFE_0K + prm%dSFE_dT * Temperature
+ SFE = prm%SFE_0K + prm%dSFE_dT * Temperature
  
  !* rescaled volume fraction for topology
  fOverStacksize         =  stt%twinFraction(1_pInt:prm%totalNtwin,of)/prm%twinsize  !ToDo: this is per system
@@ -999,11 +990,11 @@ subroutine plastic_dislotwin_dependentState(temperature,instance,of)
  !* threshold stress for growing twin/martensite
  if(prm%totalNtwin == prm%totalNslip) &
  dst%threshold_stress_twin(:,of) = prm%Cthresholdtwin* &
-     (sfe/(3.0_pReal*prm%burgers_twin)+ 3.0_pReal*prm%burgers_twin*prm%mu/ &
+     (SFE/(3.0_pReal*prm%burgers_twin)+ 3.0_pReal*prm%burgers_twin*prm%mu/ &
            (prm%L0_twin*prm%burgers_slip)) ! slip burgers here correct?
  if(prm%totalNtrans == prm%totalNslip) &
    dst%threshold_stress_trans(:,of) = prm%Cthresholdtrans* &
-         (sfe/(3.0_pReal*prm%burgers_trans) + 3.0_pReal*prm%burgers_trans*prm%mu/&
+         (SFE/(3.0_pReal*prm%burgers_trans) + 3.0_pReal*prm%burgers_trans*prm%mu/&
               (prm%L0_trans*prm%burgers_slip) + prm%transStackHeight*prm%deltaG/ (3.0_pReal*prm%burgers_trans) )    
  
 
