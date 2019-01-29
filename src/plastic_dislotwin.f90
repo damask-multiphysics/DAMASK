@@ -46,7 +46,6 @@ module plastic_dislotwin
    real(pReal) :: &
      mu, &
      nu, &
-     CAtomicVolume, &                                                                               !< atomic volume in Bugers vector unit
      D0, &                                                                                          !< prefactor for self-diffusion coefficient
      Qsd, &                                                                                         !< activation energy for dislocation climb
      GrainSize, &                                                                                   !<grain size
@@ -86,7 +85,8 @@ module plastic_dislotwin
      Ndot0_trans, &                                                                                 !< trans nucleation rate [1/m³s] for each trans system
      twinsize, &                                                                                    !< twin thickness [m] for each twin system
      CLambdaSlip, &                                                                                 !< Adj. parameter for distance between 2 forest dislocations for each slip system
-     lamellarsize, &                                                                  !< martensite lamellar thickness [m] for each trans system and instance
+     atomicVolume, &
+     lamellarsize, &                                                                                !< martensite lamellar thickness [m] for each trans system and instance
      p, &                                                                                           !< p-exponent in glide velocity
      q, &                                                                                           !< q-exponent in glide velocity
      r, &                                                                                           !< r-exponent in twin nucleation rate
@@ -307,6 +307,7 @@ subroutine plastic_dislotwin_init
                                                           defaultVal=[(0.0_pReal, i=1,size(prm%Nslip))]) ! Deprecated
 
      prm%CEdgeDipMinDistance  = config%getFloat('cedgedipmindistance')
+     prm%atomicVolume         = config%getFloat('catomicvolume') * prm%burgers_slip**3.0_pReal
 
      ! expand: family => system
      prm%rho0         = math_expand(prm%rho0,        prm%Nslip)
@@ -318,7 +319,8 @@ subroutine plastic_dislotwin_init
      prm%p            = math_expand(prm%p,           prm%Nslip)
      prm%q            = math_expand(prm%q,           prm%Nslip)
      prm%B            = math_expand(prm%B,           prm%Nslip)
-     prm%tau_peierls  = math_expand(prm%tau_peierls, prm%Nslip)                                      
+     prm%tau_peierls  = math_expand(prm%tau_peierls, prm%Nslip)
+     prm%atomicVolume = math_expand(prm%atomicVolume,prm%Nslip)                                   
 
      ! sanity checks
      if (any(prm%rho0         <  0.0_pReal))         extmsg = trim(extmsg)//'rho0 '
@@ -450,7 +452,6 @@ subroutine plastic_dislotwin_init
    prm%aTolTwinFrac  = config%getFloat('atol_twinfrac', defaultVal=0.0_pReal)
    prm%aTolTransFrac = config%getFloat('atol_transfrac', defaultVal=0.0_pReal)
 
-   prm%CAtomicVolume = config%getFloat('catomicvolume')
    prm%GrainSize     = config%getFloat('grainsize')
 
 
@@ -470,7 +471,7 @@ subroutine plastic_dislotwin_init
        !if (Ndot0PerTwinFamily(f,p) < 0.0_pReal) &
         ! call IO_error(211_pInt,el=p,ext_msg='ndot0_twin ('//PLASTICITY_DISLOTWIN_label//')')
 
-   if (prm%CAtomicVolume <= 0.0_pReal) &
+   if (any(prm%atomicVolume <= 0.0_pReal)) &
      call IO_error(211_pInt,el=p,ext_msg='cAtomicVolume ('//PLASTICITY_DISLOTWIN_label//')')
    if (prm%D0 <= 0.0_pReal) &
      call IO_error(211_pInt,el=p,ext_msg='D0 ('//PLASTICITY_DISLOTWIN_label//')')
@@ -830,7 +831,7 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
 
  integer(pInt) :: i
  real(pReal) :: f_unrotated,&
-             EdgeDipMinDistance,AtomicVolume,VacancyDiffusion,&
+             EdgeDipMinDistance,VacancyDiffusion,&
              EdgeDipDistance, ClimbVelocity,DotRhoEdgeDipClimb,DotRhoEdgeDipAnnihilation, &
              DotRhoDipFormation,DotRhoMultiplication,DotRhoEdgeEdgeAnnihilation, &
             tau
@@ -859,11 +860,11 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
    significantSlipStress2: if (dEq0(tau)) then
      DotRhoDipFormation = 0.0_pReal
    else significantSlipStress2
-     EdgeDipDistance = (3.0_pReal*prm%mu*prm%burgers_slip(i))/(16.0_pReal*PI*abs(tau))
+     EdgeDipDistance = 3.0_pReal*prm%mu*prm%burgers_slip(i)/(16.0_pReal*PI*abs(tau))
      if (EdgeDipDistance>dst%mfp_slip(i,of)) EdgeDipDistance = dst%mfp_slip(i,of)
      if (EdgeDipDistance<EdgeDipMinDistance) EdgeDipDistance = EdgeDipMinDistance
      if (prm%dipoleFormation) then
-       DotRhoDipFormation = ((2.0_pReal*(EdgeDipDistance-EdgeDipMinDistance))/prm%burgers_slip(i)) &
+       DotRhoDipFormation = 2.0_pReal*(EdgeDipDistance-EdgeDipMinDistance)/prm%burgers_slip(i) &
                           * stt%rhoEdge(i,of)*abs(gdot_slip(i))
      else
        DotRhoDipFormation = 0.0_pReal
@@ -878,7 +879,6 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
                              * stt%rhoEdgeDip(i,of)*abs(gdot_slip(i))
  
    !* Dislocation dipole climb
-   AtomicVolume     = prm%CAtomicVolume*prm%burgers_slip(i)**(3.0_pReal) ! no need to calculate this over and over again
    VacancyDiffusion = prm%D0*exp(-prm%Qsd/(kB*Temperature))
 
    if (dEq0(tau)) then
@@ -887,7 +887,7 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
      if (dEq0(EdgeDipDistance-EdgeDipMinDistance)) then
        DotRhoEdgeDipClimb = 0.0_pReal
      else
-       ClimbVelocity = 3.0_pReal*prm%mu*VacancyDiffusion*AtomicVolume/ &
+       ClimbVelocity = 3.0_pReal*prm%mu*VacancyDiffusion*prm%atomicVolume(i)/ &
                        (2.0_pReal*pi*kB*Temperature*(EdgeDipDistance+EdgeDipMinDistance))
        DotRhoEdgeDipClimb = 4.0_pReal*ClimbVelocity*stt%rhoEdgeDip(i,of)/ &
                        (EdgeDipDistance-EdgeDipMinDistance)
@@ -918,10 +918,10 @@ subroutine plastic_dislotwin_dependentState(temperature,instance,of)
 
  implicit none
  integer(pInt), intent(in) :: &
-   instance, &                                                                                           !< component-ID of integration point
+   instance, &
    of
  real(pReal),   intent(in) :: &
-   temperature                                                                                      !< temperature at IP 
+   temperature
 
  integer(pInt) :: &
    i
