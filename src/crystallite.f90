@@ -1893,19 +1893,13 @@ subroutine integrateStateRK4()
  use, intrinsic :: &
    IEEE_arithmetic
  use mesh, only: &
-   mesh_element, &
-   mesh_NcpElems
+   mesh_element
  use material, only: &
    homogenization_Ngrains, &
    plasticState, &
    sourceState, &
    phase_Nsources, &
    phaseAt, phasememberAt
- use config, only: &
-   material_Nphase
- use constitutive, only: &
-   constitutive_collectDotState, &
-   constitutive_microstructure
 
  implicit none
  real(pReal), dimension(4), parameter :: &
@@ -1920,65 +1914,28 @@ subroutine integrateStateRK4()
                                                c, &
                                                n, &
                                                s
- integer(pInt), dimension(2) ::                eIter                                                 ! bounds for element iteration
- integer(pInt), dimension(2,mesh_NcpElems) ::  iIter, &                                              ! bounds for ip iteration
-                                               gIter                                                 ! bounds for grain iteration
- logical   ::                                  singleRun                                             ! flag indicating computation for single (g,i,e) triple
-
- eIter = FEsolving_execElem(1:2)
- do e = eIter(1),eIter(2)
-   iIter(1:2,e) = FEsolving_execIP(1:2,e)
-   gIter(1:2,e) = [ 1_pInt,homogenization_Ngrains(mesh_element(3,e))]
- enddo
-
- singleRun = (eIter(1) == eIter(2) .and. iIter(1,eIter(1)) == iIter(2,eIter(2)))
-
-!--------------------------------------------------------------------------------------------------
-! initialize dotState
- if (.not. singleRun) then
-   do p = 1_pInt, material_Nphase
-     plasticState(p)%RK4dotState = 0.0_pReal
-     do s = 1_pInt, phase_Nsources(p)
-       sourceState(p)%p(s)%RK4dotState = 0.0_pReal
-     enddo
-   enddo
- else
-   e = eIter(1)
-   i = iIter(1,e)
-   do g = gIter(1,e), gIter(2,e)
-     plasticState(phaseAt(g,i,e))%RK4dotState(:,phasememberAt(g,i,e)) = 0.0_pReal
-     do s = 1_pInt, phase_Nsources(phaseAt(g,i,e))
-       sourceState(phaseAt(g,i,e))%p(s)%RK4dotState(:,phasememberAt(g,i,e)) = 0.0_pReal
-     enddo
-   enddo
- endif
 
  call update_dotState(1.0_pReal)
 
-!--------------------------------------------------------------------------------------------------
-! --- SECOND TO FOURTH RUNGE KUTTA STEP PLUS FINAL INTEGRATION ---
 
  do n = 1_pInt,4_pInt
-   ! --- state update ---
 
-   !$OMP PARALLEL
-   !$OMP DO PRIVATE(p,c)
+   !$OMP PARALLEL DO PRIVATE(p,c)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do g = 1,homogenization_Ngrains(mesh_element(3,e))
        if (crystallite_todo(g,i,e)) then
          p = phaseAt(g,i,e); c = phasememberAt(g,i,e)
 
-         plasticState(p)%RK4dotState(:,c) = plasticState(p)%RK4dotState(:,c) &
-                                          + weight(n)*plasticState(p)%dotState(:,c)
+         plasticState(p)%RK4dotState(:,c) = WEIGHT(n)*plasticState(p)%dotState(:,c) &
+                                          + merge(plasticState(p)%RK4dotState(:,c),0.0_pReal,n>1_pInt)
          do s = 1_pInt, phase_Nsources(p)
-           sourceState(p)%p(s)%RK4dotState(:,c) = sourceState(p)%p(s)%RK4dotState(:,c) &
-                                                       + weight(n)*sourceState(p)%p(s)%dotState(:,c)
+           sourceState(p)%p(s)%RK4dotState(:,c) = WEIGHT(n)*sourceState(p)%p(s)%dotState(:,c) &
+                                                + merge(sourceState(p)%p(s)%RK4dotState(:,c),0.0_pReal,n>1_pInt)
          enddo
        endif
      enddo; enddo; enddo
-   !$OMP ENDDO
-   !$OMP END PARALLEL
+   !$OMP END PARALLEL DO
 
    call update_state(TIMESTEPFRACTION(n))
    call update_deltaState
@@ -1988,9 +1945,8 @@ subroutine integrateStateRK4()
    ! --- dot state and RK dot state---
 
    first3steps: if (n < 4) then
-     call update_dotState(timeStepFraction(n))
+     call update_dotState(TIMESTEPFRACTION(n))
    endif first3steps
- 
 
  enddo
 
@@ -2458,9 +2414,8 @@ subroutine update_deltaState
    i, &                                                                                             !< integration point index in ip loop
    g, &                                                                                             !< grain index in grain loop
    p, &
-      mySize, &
+   mySize, &
    myOffset, &
-      mySource, &
    c, &
    s 
  logical :: &
@@ -2469,7 +2424,7 @@ subroutine update_deltaState
    
    nonlocalStop = .false.
 
-   !$OMP PARALLEL DO PRIVATE(p,c,myOffset,mySize,mySource,NaN)
+   !$OMP PARALLEL DO PRIVATE(p,c,myOffset,mySize,NaN)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
      do g = 1,homogenization_Ngrains(mesh_element(3,e))
@@ -2489,15 +2444,15 @@ subroutine update_deltaState
            plasticState(p)%state(myOffset + 1_pInt: myOffset + mySize,c) = &
            plasticState(p)%state(myOffset + 1_pInt: myOffset + mySize,c) + &
            plasticState(p)%deltaState(1:mySize,c)
-           do mySource = 1_pInt, phase_Nsources(p)
-             myOffset = sourceState(p)%p(mySource)%offsetDeltaState
-             mySize   = sourceState(p)%p(mySource)%sizeDeltaState
-             NaN = NaN .or. any(IEEE_is_NaN(sourceState(p)%p(mySource)%deltaState(1:mySize,c)))
+           do s = 1_pInt, phase_Nsources(p)
+             myOffset = sourceState(p)%p(s)%offsetDeltaState
+             mySize   = sourceState(p)%p(s)%sizeDeltaState
+             NaN = NaN .or. any(IEEE_is_NaN(sourceState(p)%p(s)%deltaState(1:mySize,c)))
              
              if (.not. NaN) then
-               sourceState(p)%p(mySource)%state(myOffset + 1_pInt:myOffset +mySize,c) = &
-               sourceState(p)%p(mySource)%state(myOffset + 1_pInt:myOffset +mySize,c) + &
-                  sourceState(p)%p(mySource)%deltaState(1:mySize,c)
+               sourceState(p)%p(s)%state(myOffset + 1_pInt:myOffset +mySize,c) = &
+               sourceState(p)%p(s)%state(myOffset + 1_pInt:myOffset +mySize,c) + &
+                  sourceState(p)%p(s)%deltaState(1:mySize,c)
              endif
           enddo
         endif
