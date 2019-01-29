@@ -1565,8 +1565,7 @@ subroutine integrateStateFPI()
    p, &
    c, &
    s, &
-   mySizePlasticDotState, &                                                                         ! size of dot states
-   mySizeSourceDotState
+   sizeDotState
  real(pReal) :: &
    stateDamper
  real(pReal), dimension(constitutive_plasticity_maxSizeDotState) :: &
@@ -1618,7 +1617,7 @@ subroutine integrateStateFPI()
 !$OMP PARALLEL
    ! --- UPDATE STATE  ---
 
-   !$OMP DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState, &
+   !$OMP DO PRIVATE(sizeDotState, &
    !$OMP&           plasticStateResiduum,sourceStateResiduum, &
    !$OMP&           stateDamper, &
    !$OMP&           tempPlasticState,tempSourceState,converged,p,c)
@@ -1633,18 +1632,18 @@ subroutine integrateStateFPI()
                                 plasticState(p)%previousDotState (:,c), &
                                 plasticState(p)%previousDotState2(:,c))
 
-         mySizePlasticDotState = plasticState(p)%sizeDotState
-         plasticStateResiduum(1:mySizePlasticDotState) = &
-           plasticState(p)%state(1:mySizePlasticDotState,c)      &
-         - plasticState(p)%subState0(1:mySizePlasticDotState,c)  &
-         - (  plasticState(p)%dotState(1:mySizePlasticDotState,c) * stateDamper &
-            + plasticState(p)%previousDotState(1:mySizePlasticDotState,c) &
+         sizeDotState = plasticState(p)%sizeDotState
+         plasticStateResiduum(1:sizeDotState) = &
+           plasticState(p)%state(1:sizeDotState,c)      &
+         - plasticState(p)%subState0(1:sizeDotState,c)  &
+         - (  plasticState(p)%dotState(1:sizeDotState,c) * stateDamper &
+            + plasticState(p)%previousDotState(1:sizeDotState,c) &
             * (1.0_pReal - stateDamper)) * crystallite_subdt(g,i,e)
 
          ! --- correct state with residuum ---
-         tempPlasticState(1:mySizePlasticDotState) = &
-           plasticState(p)%state(1:mySizePlasticDotState,c) &
-         - plasticStateResiduum(1:mySizePlasticDotState)                              ! need to copy to local variable, since we cant flush a pointer in openmp
+         tempPlasticState(1:sizeDotState) = &
+           plasticState(p)%state(1:sizeDotState,c) &
+         - plasticStateResiduum(1:sizeDotState)                              ! need to copy to local variable, since we cant flush a pointer in openmp
 
          ! --- store corrected dotState --- (cannot do this before state update, because not sure how to flush pointers in openmp)
 
@@ -1652,29 +1651,29 @@ subroutine integrateStateFPI()
                                        + plasticState(p)%previousDotState(:,c) &
                                        * (1.0_pReal - stateDamper)
                                        
-         converged = all(    abs(plasticStateResiduum(1:mySizePlasticDotState)) < &
-                             plasticState(p)%aTolState(1:mySizePlasticDotState) &
-                        .or. abs(plasticStateResiduum(1:mySizePlasticDotState)) < &
-                             rTol_crystalliteState * abs(tempPlasticState(1:mySizePlasticDotState)))
+         converged = all(    abs(plasticStateResiduum(1:sizeDotState)) < &
+                             plasticState(p)%aTolState(1:sizeDotState) &
+                        .or. abs(plasticStateResiduum(1:sizeDotState)) < &
+                             rTol_crystalliteState * abs(tempPlasticState(1:sizeDotState)))
                              
-         plasticState(p)%state(1:mySizePlasticDotState,c) = tempPlasticState(1:mySizePlasticDotState)
+         plasticState(p)%state(1:sizeDotState,c) = tempPlasticState(1:sizeDotState)
 
          do s = 1_pInt, phase_Nsources(p)
              StateDamper = damper(sourceState(p)%p(s)%dotState         (:,c), &
                                   sourceState(p)%p(s)%previousDotState (:,c), &
                                   sourceState(p)%p(s)%previousDotState2(:,c))
-           mySizeSourceDotState  = sourceState(p)%p(s)%sizeDotState
-           sourceStateResiduum(1:mySizeSourceDotState,s) = &
-             sourceState(p)%p(s)%state(1:mySizeSourceDotState,c)      &
-           - sourceState(p)%p(s)%subState0(1:mySizeSourceDotState,c)  &
-           - (  sourceState(p)%p(s)%dotState(1:mySizeSourceDotState,c) * stateDamper &
-              + sourceState(p)%p(s)%previousDotState(1:mySizeSourceDotState,c) &
+           sizeDotState  = sourceState(p)%p(s)%sizeDotState
+           sourceStateResiduum(1:sizeDotState,s) = &
+             sourceState(p)%p(s)%state(1:sizeDotState,c)      &
+           - sourceState(p)%p(s)%subState0(1:sizeDotState,c)  &
+           - (  sourceState(p)%p(s)%dotState(1:sizeDotState,c) * stateDamper &
+              + sourceState(p)%p(s)%previousDotState(1:sizeDotState,c) &
               * (1.0_pReal - stateDamper)) * crystallite_subdt(g,i,e)
 
          ! --- correct state with residuum ---
-           tempSourceState(1:mySizeSourceDotState,s) = &
-             sourceState(p)%p(s)%state(1:mySizeSourceDotState,c) &
-           - sourceStateResiduum(1:mySizeSourceDotState,s)                     ! need to copy to local variable, since we cant flush a pointer in openmp
+           tempSourceState(1:sizeDotState,s) = &
+             sourceState(p)%p(s)%state(1:sizeDotState,c) &
+           - sourceStateResiduum(1:sizeDotState,s)                     ! need to copy to local variable, since we cant flush a pointer in openmp
 
          ! --- store corrected dotState --- (cannot do this before state update, because not sure how to flush pointers in openmp)
            sourceState(p)%p(s)%dotState(:,c) = &
@@ -1684,20 +1683,20 @@ subroutine integrateStateFPI()
          enddo
 
          do s = 1_pInt, phase_Nsources(p)
-           mySizeSourceDotState = sourceState(p)%p(s)%sizeDotState
+           sizeDotState = sourceState(p)%p(s)%sizeDotState
            converged = converged .and. &
-                       all(    abs(sourceStateResiduum(1:mySizeSourceDotState,s)) < &
-                               sourceState(p)%p(s)%aTolState(1:mySizeSourceDotState) &
-                          .or. abs(sourceStateResiduum(1:mySizeSourceDotState,s)) < &
-                               rTol_crystalliteState * abs(tempSourceState(1:mySizeSourceDotState,s)))
+                       all(    abs(sourceStateResiduum(1:sizeDotState,s)) < &
+                               sourceState(p)%p(s)%aTolState(1:sizeDotState) &
+                          .or. abs(sourceStateResiduum(1:sizeDotState,s)) < &
+                               rTol_crystalliteState * abs(tempSourceState(1:sizeDotState,s)))
          enddo
          if (converged) crystallite_converged(g,i,e) = .true.                                                                   ! ... converged per definition
 
 
          do s = 1_pInt, phase_Nsources(p)
-           mySizeSourceDotState = sourceState(p)%p(s)%sizeDotState
-           sourceState(p)%p(s)%state(1:mySizeSourceDotState,c) = &
-             tempSourceState(1:mySizeSourceDotState,s)
+           sizeDotState = sourceState(p)%p(s)%sizeDotState
+           sourceState(p)%p(s)%state(1:sizeDotState,c) = &
+             tempSourceState(1:sizeDotState,s)
          enddo
         endif
      enddo; enddo; enddo
