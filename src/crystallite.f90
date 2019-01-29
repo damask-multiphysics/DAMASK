@@ -1888,6 +1888,7 @@ end subroutine integrateStateAdaptiveEuler
 
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate stress, state with 4th order explicit Runge Kutta method
+! ToDo: This is totally BROKEN: RK4dotState is never used!!!
 !--------------------------------------------------------------------------------------------------
 subroutine integrateStateRK4()
  use, intrinsic :: &
@@ -1941,7 +1942,6 @@ subroutine integrateStateRK4()
    call update_deltaState
    call update_dependentState
    call update_stress(TIMESTEPFRACTION(n))
-
    ! --- dot state and RK dot state---
 
    first3steps: if (n < 4) then
