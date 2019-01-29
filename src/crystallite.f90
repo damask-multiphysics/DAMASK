@@ -2065,17 +2065,6 @@ end subroutine integrateStateRK4
 subroutine integrateStateRKCK45()
  use, intrinsic :: &
    IEEE_arithmetic
-#ifdef DEBUG
- use debug, only: &
-   debug_e, &
-   debug_i, &
-   debug_g, &
-   debug_level, &
-   debug_crystallite, &
-   debug_levelBasic, &
-   debug_levelExtensive, &
-   debug_levelSelective
-#endif
  use numerics, only: &
    rTol_crystalliteState
  use mesh, only: &
@@ -2098,11 +2087,11 @@ subroutine integrateStateRKCK45()
  implicit none
  real(pReal), dimension(5,5), parameter :: &
    A = reshape([&
-     .2_pReal,  .075_pReal,  .3_pReal, -11.0_pReal/54.0_pReal,  1631.0_pReal/55296.0_pReal, &
-     .0_pReal,  .225_pReal, -.9_pReal,   2.5_pReal,             175.0_pReal/512.0_pReal, &
-     .0_pReal,   .0_pReal,  1.2_pReal, -70.0_pReal/27.0_pReal,  575.0_pReal/13824.0_pReal, &
+     .2_pReal,  .075_pReal,  .3_pReal, -11.0_pReal/54.0_pReal,    1631.0_pReal/55296.0_pReal, &
+     .0_pReal,  .225_pReal, -.9_pReal,   2.5_pReal,                  175.0_pReal/512.0_pReal, &
+     .0_pReal,   .0_pReal,  1.2_pReal, -70.0_pReal/27.0_pReal,     575.0_pReal/13824.0_pReal, &
      .0_pReal,   .0_pReal,   .0_pReal,  35.0_pReal/27.0_pReal,  44275.0_pReal/110592.0_pReal, &
-     .0_pReal,   .0_pReal,   .0_pReal,    .0_pReal,             253.0_pReal/4096.0_pReal], &
+     .0_pReal,   .0_pReal,   .0_pReal,    .0_pReal,                 253.0_pReal/4096.0_pReal], &
      [5,5], order=[2,1])                                                                            !< coefficients in Butcher tableau (used for preliminary integration in stages 2 to 6)
 
  real(pReal), dimension(6), parameter :: &
