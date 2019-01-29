@@ -1919,7 +1919,7 @@ subroutine integrateStateRK4()
                                                p, &                                                  ! phase loop
                                                c, &
                                                n, &
-                                               mySource
+                                               s
  integer(pInt), dimension(2) ::                eIter                                                 ! bounds for element iteration
  integer(pInt), dimension(2,mesh_NcpElems) ::  iIter, &                                              ! bounds for ip iteration
                                                gIter                                                 ! bounds for grain iteration
@@ -1938,8 +1938,8 @@ subroutine integrateStateRK4()
  if (.not. singleRun) then
    do p = 1_pInt, material_Nphase
      plasticState(p)%RK4dotState = 0.0_pReal
-     do mySource = 1_pInt, phase_Nsources(p)
-       sourceState(p)%p(mySource)%RK4dotState = 0.0_pReal
+     do s = 1_pInt, phase_Nsources(p)
+       sourceState(p)%p(s)%RK4dotState = 0.0_pReal
      enddo
    enddo
  else
@@ -1947,8 +1947,8 @@ subroutine integrateStateRK4()
    i = iIter(1,e)
    do g = gIter(1,e), gIter(2,e)
      plasticState(phaseAt(g,i,e))%RK4dotState(:,phasememberAt(g,i,e)) = 0.0_pReal
-     do mySource = 1_pInt, phase_Nsources(phaseAt(g,i,e))
-       sourceState(phaseAt(g,i,e))%p(mySource)%RK4dotState(:,phasememberAt(g,i,e)) = 0.0_pReal
+     do s = 1_pInt, phase_Nsources(phaseAt(g,i,e))
+       sourceState(phaseAt(g,i,e))%p(s)%RK4dotState(:,phasememberAt(g,i,e)) = 0.0_pReal
      enddo
    enddo
  endif
@@ -1967,13 +1967,13 @@ subroutine integrateStateRK4()
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do g = 1,homogenization_Ngrains(mesh_element(3,e))
        if (crystallite_todo(g,i,e)) then
-         p = phaseAt(g,i,e)
-         c = phasememberAt(g,i,e)
+         p = phaseAt(g,i,e); c = phasememberAt(g,i,e)
+
          plasticState(p)%RK4dotState(:,c) = plasticState(p)%RK4dotState(:,c) &
                                           + weight(n)*plasticState(p)%dotState(:,c)
-         do mySource = 1_pInt, phase_Nsources(p)
-           sourceState(p)%p(mySource)%RK4dotState(:,c) = sourceState(p)%p(mySource)%RK4dotState(:,c) &
-                                                       + weight(n)*sourceState(p)%p(mySource)%dotState(:,c)
+         do s = 1_pInt, phase_Nsources(p)
+           sourceState(p)%p(s)%RK4dotState(:,c) = sourceState(p)%p(s)%RK4dotState(:,c) &
+                                                       + weight(n)*sourceState(p)%p(s)%dotState(:,c)
          enddo
        endif
      enddo; enddo; enddo
