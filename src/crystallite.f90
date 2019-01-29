@@ -1785,8 +1785,7 @@ subroutine integrateStateAdaptiveEuler()
    p, &
    c, &
    mySource, &
-   mySizePlasticDotState, &                                                                         ! size of dot states
-   mySizeSourceDotState
+   sizeDotState
 real(pReal), dimension(constitutive_plasticity_maxSizeDotState,            &
                         homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
    plasticStateResiduum, &                                                                          ! residuum from evolution in micrstructure
@@ -1810,31 +1809,31 @@ real(pReal), dimension(constitutive_plasticity_maxSizeDotState,            &
 ! contribution to state and relative residui and from Euler integration
  call update_dotState(1.0_pReal)
 
- !$OMP PARALLEL DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,p,c)
+ !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do g = 1,homogenization_Ngrains(mesh_element(3,e))
    if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
      p = phaseAt(g,i,e); c = phasememberAt(g,i,e)
 
-         mySizePlasticDotState = plasticState(p)%sizeDotState
-         plasticStateResiduum(1:mySizePlasticDotState,g,i,e) = &
+         sizeDotState = plasticState(p)%sizeDotState
+         plasticStateResiduum(1:sizeDotState,g,i,e) = &
        - 0.5_pReal &
-       * plasticState(p)%dotstate(1:mySizePlasticDotState,c) &
+       * plasticState(p)%dotstate(1:sizeDotState,c) &
        * crystallite_subdt(g,i,e)                                                                            ! contribution to absolute residuum in state
-         plasticState(p)%state   (1:mySizePlasticDotState,c) = &
-         plasticState(p)%state   (1:mySizePlasticDotState,c) &
-       + plasticState(p)%dotstate(1:mySizePlasticDotState,c) &
+         plasticState(p)%state   (1:sizeDotState,c) = &
+         plasticState(p)%state   (1:sizeDotState,c) &
+       + plasticState(p)%dotstate(1:sizeDotState,c) &
        * crystallite_subdt(g,i,e)
          do mySource = 1_pInt, phase_Nsources(p)
-           mySizeSourceDotState = sourceState(p)%p(mySource)%sizeDotState
-           sourceStateResiduum(1:mySizeSourceDotState,mySource,g,i,e) = &
+           sizeDotState = sourceState(p)%p(mySource)%sizeDotState
+           sourceStateResiduum(1:sizeDotState,mySource,g,i,e) = &
          - 0.5_pReal &
-         * sourceState(p)%p(mySource)%dotstate(1:mySizeSourceDotState,c) &
+         * sourceState(p)%p(mySource)%dotstate(1:sizeDotState,c) &
          * crystallite_subdt(g,i,e)                                                                         ! contribution to absolute residuum in state
-           sourceState(p)%p(mySource)%state   (1:mySizeSourceDotState,c) = &
-           sourceState(p)%p(mySource)%state   (1:mySizeSourceDotState,c) &
-         + sourceState(p)%p(mySource)%dotstate(1:mySizeSourceDotState,c) &
+           sourceState(p)%p(mySource)%state   (1:sizeDotState,c) = &
+           sourceState(p)%p(mySource)%state   (1:sizeDotState,c) &
+         + sourceState(p)%p(mySource)%dotstate(1:sizeDotState,c) &
          * crystallite_subdt(g,i,e)
          enddo
        endif
@@ -1850,7 +1849,7 @@ real(pReal), dimension(constitutive_plasticity_maxSizeDotState,            &
    relSourceStateResiduum = 0.0_pReal
 
 
- !$OMP PARALLEL DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,converged,p,c,s)
+ !$OMP PARALLEL DO PRIVATE(sizeDotState,converged,p,c,s)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do g = 1,homogenization_Ngrains(mesh_element(3,e))
@@ -1858,45 +1857,45 @@ real(pReal), dimension(constitutive_plasticity_maxSizeDotState,            &
          p = phaseAt(g,i,e); c = phasememberAt(g,i,e)
 
          ! --- contribution of heun step to absolute residui ---
-         mySizePlasticDotState = plasticState(p)%sizeDotState
-         plasticStateResiduum(1:mySizePlasticDotState,g,i,e) = &
-         plasticStateResiduum(1:mySizePlasticDotState,g,i,e) &
+         sizeDotState = plasticState(p)%sizeDotState
+         plasticStateResiduum(1:sizeDotState,g,i,e) = &
+         plasticStateResiduum(1:sizeDotState,g,i,e) &
        + 0.5_pReal * plasticState(p)%dotState(:,c) &
        * crystallite_subdt(g,i,e)                                                                           ! contribution to absolute residuum in state
        
-                converged = all(abs(relPlasticStateResiduum(1:mySizePlasticDotState,g,i,e)) < &
+                converged = all(abs(relPlasticStateResiduum(1:sizeDotState,g,i,e)) < &
                          rTol_crystalliteState .or. &
-                         abs(plasticStateResiduum(1:mySizePlasticDotState,g,i,e)) < &
-                         plasticState(p)%aTolState(1:mySizePlasticDotState))
+                         abs(plasticStateResiduum(1:sizeDotState,g,i,e)) < &
+                         plasticState(p)%aTolState(1:sizeDotState))
        
-         forall (s = 1_pInt:mySizePlasticDotState, abs(plasticState(p)%dotState(s,c)) > 0.0_pReal) &
+         forall (s = 1_pInt:sizeDotState, abs(plasticState(p)%dotState(s,c)) > 0.0_pReal) &
            relPlasticStateResiduum(s,g,i,e) = &
               plasticStateResiduum(s,g,i,e) / plasticState(p)%dotState(s,c)
               
        
          do mySource = 1_pInt, phase_Nsources(p)
-           mySizeSourceDotState = sourceState(p)%p(mySource)%sizeDotState
-           sourceStateResiduum(1:mySizeSourceDotState,mySource,g,i,e) = &
-           sourceStateResiduum(1:mySizeSourceDotState,mySource,g,i,e) &
+           sizeDotState = sourceState(p)%p(mySource)%sizeDotState
+           sourceStateResiduum(1:sizeDotState,mySource,g,i,e) = &
+           sourceStateResiduum(1:sizeDotState,mySource,g,i,e) &
          + 0.5_pReal * sourceState(p)%p(mySource)%dotState(:,c) &
          * crystallite_subdt(g,i,e)                                                                         ! contribution to absolute residuum in state
          enddo
 
 
          do mySource = 1_pInt, phase_Nsources(p)
-           mySizeSourceDotState = sourceState(p)%p(mySource)%sizeDotState
-           forall (s = 1_pInt:mySizeSourceDotState,abs(sourceState(p)%p(mySource)%dotState(s,c)) > 0.0_pReal) &
+           sizeDotState = sourceState(p)%p(mySource)%sizeDotState
+           forall (s = 1_pInt:sizeDotState,abs(sourceState(p)%p(mySource)%dotState(s,c)) > 0.0_pReal) &
              relSourceStateResiduum(s,mySource,g,i,e) = &
                 sourceStateResiduum(s,mySource,g,i,e) / sourceState(p)%p(mySource)%dotState(s,c)
          enddo
 
          do mySource = 1_pInt, phase_Nsources(p)
-           mySizeSourceDotState = sourceState(p)%p(mySource)%sizeDotState
+           sizeDotState = sourceState(p)%p(mySource)%sizeDotState
            converged = converged .and. &
-                       all(abs(relSourceStateResiduum(1:mySizeSourceDotState,mySource,g,i,e)) < &
+                       all(abs(relSourceStateResiduum(1:sizeDotState,mySource,g,i,e)) < &
                        rTol_crystalliteState .or. &
-                       abs(sourceStateResiduum(1:mySizeSourceDotState,mySource,g,i,e)) < &
-                       sourceState(p)%p(mySource)%aTolState(1:mySizeSourceDotState))
+                       abs(sourceStateResiduum(1:sizeDotState,mySource,g,i,e)) < &
+                       sourceState(p)%p(mySource)%aTolState(1:sizeDotState))
          enddo
          if (converged) crystallite_converged(g,i,e) = .true.                                       ! ... converged per definition
        endif
