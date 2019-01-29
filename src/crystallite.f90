@@ -1651,6 +1651,13 @@ subroutine integrateStateFPI()
          plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) * stateDamper &
                                        + plasticState(p)%previousDotState(:,c) &
                                        * (1.0_pReal - stateDamper)
+                                       
+         converged = all(    abs(plasticStateResiduum(1:mySizePlasticDotState)) < &
+                             plasticState(p)%aTolState(1:mySizePlasticDotState) &
+                        .or. abs(plasticStateResiduum(1:mySizePlasticDotState)) < &
+                             rTol_crystalliteState * abs(tempPlasticState(1:mySizePlasticDotState)))
+                             
+         plasticState(p)%state(1:mySizePlasticDotState,c) = tempPlasticState(1:mySizePlasticDotState)
 
          do s = 1_pInt, phase_Nsources(p)
              StateDamper = damper(sourceState(p)%p(s)%dotState         (:,c), &
@@ -1676,12 +1683,6 @@ subroutine integrateStateFPI()
            * (1.0_pReal - stateDamper)
          enddo
 
-
-         ! --- converged ? ---
-         converged = all(    abs(plasticStateResiduum(1:mySizePlasticDotState)) < &
-                             plasticState(p)%aTolState(1:mySizePlasticDotState) &
-                        .or. abs(plasticStateResiduum(1:mySizePlasticDotState)) < &
-                             rTol_crystalliteState * abs(tempPlasticState(1:mySizePlasticDotState)))
          do s = 1_pInt, phase_Nsources(p)
            mySizeSourceDotState = sourceState(p)%p(s)%sizeDotState
            converged = converged .and. &
@@ -1692,8 +1693,7 @@ subroutine integrateStateFPI()
          enddo
          if (converged) crystallite_converged(g,i,e) = .true.                                                                   ! ... converged per definition
 
-         plasticState(p)%state(1:mySizePlasticDotState,c) = &
-           tempPlasticState(1:mySizePlasticDotState)
+
          do s = 1_pInt, phase_Nsources(p)
            mySizeSourceDotState = sourceState(p)%p(s)%sizeDotState
            sourceState(p)%p(s)%state(1:mySizeSourceDotState,c) = &
