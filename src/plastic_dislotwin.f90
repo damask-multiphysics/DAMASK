@@ -822,11 +822,13 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
 
  integer(pInt) :: i
  real(pReal) :: f_unrotated,&
-             EdgeDipMinDistance,VacancyDiffusion,&
+             VacancyDiffusion,&
              EdgeDipDistance, ClimbVelocity,DotRhoEdgeDipClimb,DotRhoEdgeDipAnnihilation, &
-             DotRhoDipFormation,DotRhoMultiplication,DotRhoEdgeEdgeAnnihilation, &
+             DotRhoDipFormation,DotRhoEdgeEdgeAnnihilation, &
             tau
  real(pReal), dimension(plasticState(instance)%Nslip) :: &
+   EdgeDipMinDistance, &
+   DotRhoMultiplication, &
    gdot_slip
  real(pReal), dimension(plasticState(instance)%Ntwin) :: &
    gdot_twin
@@ -839,23 +841,25 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
  f_unrotated = 1.0_pReal &
              - sum(stt%twinFraction(1_pInt:prm%totalNtwin,of)) &
              - sum(stt%strainTransFraction(1_pInt:prm%totalNtrans,of))
+ VacancyDiffusion = prm%D0*exp(-prm%Qsd/(kB*Temperature))
 
  call kinetics_slip(Mp,temperature,instance,of,gdot_slip)
+ dot%accshear_slip(:,of) = abs(gdot_slip)
+ 
+ DotRhoMultiplication = abs(gdot_slip)/(prm%burgers_slip*dst%mfp_slip(:,of))
+ EdgeDipMinDistance   = prm%CEdgeDipMinDistance*prm%burgers_slip
  
  slipState: do i = 1_pInt, prm%totalNslip
    tau = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,i))
-
-   DotRhoMultiplication = abs(gdot_slip(i))/(prm%burgers_slip(i)*dst%mfp_slip(i,of))
-   EdgeDipMinDistance = prm%CEdgeDipMinDistance*prm%burgers_slip(i)
 
    significantSlipStress2: if (dEq0(tau)) then
      DotRhoDipFormation = 0.0_pReal
    else significantSlipStress2
      EdgeDipDistance = 3.0_pReal*prm%mu*prm%burgers_slip(i)/(16.0_pReal*PI*abs(tau))
      if (EdgeDipDistance>dst%mfp_slip(i,of)) EdgeDipDistance = dst%mfp_slip(i,of)
-     if (EdgeDipDistance<EdgeDipMinDistance) EdgeDipDistance = EdgeDipMinDistance
+     if (EdgeDipDistance<EdgeDipMinDistance(i)) EdgeDipDistance = EdgeDipMinDistance(i)
      if (prm%dipoleFormation) then
-       DotRhoDipFormation = 2.0_pReal*(EdgeDipDistance-EdgeDipMinDistance)/prm%burgers_slip(i) &
+       DotRhoDipFormation = 2.0_pReal*(EdgeDipDistance-EdgeDipMinDistance(i))/prm%burgers_slip(i) &
                           * stt%rhoEdge(i,of)*abs(gdot_slip(i))
      else
        DotRhoDipFormation = 0.0_pReal
@@ -863,30 +867,27 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
    endif significantSlipStress2
  
    !* Spontaneous annihilation of 2 single edge dislocations
-   DotRhoEdgeEdgeAnnihilation = 2.0_pReal*EdgeDipMinDistance/prm%burgers_slip(i) &
+   DotRhoEdgeEdgeAnnihilation = 2.0_pReal*EdgeDipMinDistance(i)/prm%burgers_slip(i) &
                               * stt%rhoEdge(i,of)*abs(gdot_slip(i))
    !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
-   DotRhoEdgeDipAnnihilation = 2.0_pReal*EdgeDipMinDistance/prm%burgers_slip(i) &
+   DotRhoEdgeDipAnnihilation = 2.0_pReal*EdgeDipMinDistance(i)/prm%burgers_slip(i) &
                              * stt%rhoEdgeDip(i,of)*abs(gdot_slip(i))
  
    !* Dislocation dipole climb
-   VacancyDiffusion = prm%D0*exp(-prm%Qsd/(kB*Temperature))
-
    if (dEq0(tau)) then
      DotRhoEdgeDipClimb = 0.0_pReal
    else
-     if (dEq0(EdgeDipDistance-EdgeDipMinDistance)) then
+     if (dEq0(EdgeDipDistance-EdgeDipMinDistance(i))) then
        DotRhoEdgeDipClimb = 0.0_pReal
      else
        ClimbVelocity = 3.0_pReal*prm%mu*VacancyDiffusion*prm%atomicVolume(i)/ &
-                       (2.0_pReal*pi*kB*Temperature*(EdgeDipDistance+EdgeDipMinDistance))
+                       (2.0_pReal*pi*kB*Temperature*(EdgeDipDistance+EdgeDipMinDistance(i)))
        DotRhoEdgeDipClimb = 4.0_pReal*ClimbVelocity*stt%rhoEdgeDip(i,of)/ &
-                       (EdgeDipDistance-EdgeDipMinDistance)
+                       (EdgeDipDistance-EdgeDipMinDistance(i))
      endif
    endif
-   dot%rhoEdge(i,of)    = DotRhoMultiplication-DotRhoDipFormation-DotRhoEdgeEdgeAnnihilation
+   dot%rhoEdge(i,of)    = DotRhoMultiplication(i)-DotRhoDipFormation-DotRhoEdgeEdgeAnnihilation
    dot%rhoEdgeDip(i,of) = DotRhoDipFormation-DotRhoEdgeDipAnnihilation-DotRhoEdgeDipClimb
-   dot%accshear_slip(i,of) = abs(gdot_slip(i))
  enddo slipState
  
  call kinetics_twin(Mp,temperature,gdot_slip,instance,of,gdot_twin)
