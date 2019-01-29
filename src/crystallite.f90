@@ -854,6 +854,7 @@ subroutine crystallite_stressTangent()
                                                crystallite_invFp(1:3,1:3,c,i,e)), &
                                  math_6toSym33(crystallite_Tstar_v(1:6,c,i,e)))
 
+       crystallite_dPdF(1:3,1:3,1:3,1:3,c,i,e) = 0.0_pReal
        do p=1_pInt, 3_pInt
          crystallite_dPdF(p,1:3,p,1:3,c,i,e) = transpose(temp_33_1)
        enddo
