@@ -2011,7 +2011,7 @@ subroutine integrateStateRKCK45()
    n, &
    p, &
    cc, &
-   mySource, &
+   s, &
    mySizePlasticDotState, &                                                                         ! size of dot States
    mySizeSourceDotState
 
@@ -2049,17 +2049,17 @@ subroutine integrateStateRKCK45()
          plasticState(p)%RKCK45dotState(stage,:,cc) = plasticState(p)%dotState(:,cc)
          plasticState(p)%dotState(:,cc) = A(1,stage) * plasticState(p)%RKCK45dotState(1,:,cc)
 
-         do mySource = 1_pInt, phase_Nsources(p)
-           sourceState(p)%p(mySource)%RKCK45dotState(stage,:,cc) = sourceState(p)%p(mySource)%dotState(:,cc)
-           sourceState(p)%p(mySource)%dotState(:,cc) = A(1,stage) * sourceState(p)%p(mySource)%RKCK45dotState(1,:,cc)
+         do s = 1_pInt, phase_Nsources(p)
+           sourceState(p)%p(s)%RKCK45dotState(stage,:,cc) = sourceState(p)%p(s)%dotState(:,cc)
+           sourceState(p)%p(s)%dotState(:,cc) = A(1,stage) * sourceState(p)%p(s)%RKCK45dotState(1,:,cc)
          enddo
 
          do n = 2_pInt, stage
            plasticState(p)%dotState(:,cc) = plasticState(p)%dotState(:,cc) &
                                           + A(n,stage) * plasticState(p)%RKCK45dotState(n,:,cc)
-           do mySource = 1_pInt, phase_Nsources(p)
-             sourceState(p)%p(mySource)%dotState(:,cc) = sourceState(p)%p(mySource)%dotState(:,cc) &
-                                                       + A(n,stage) * sourceState(p)%p(mySource)%RKCK45dotState(n,:,cc)
+           do s = 1_pInt, phase_Nsources(p)
+             sourceState(p)%p(s)%dotState(:,cc) = sourceState(p)%p(s)%dotState(:,cc) &
+                                                       + A(n,stage) * sourceState(p)%p(s)%RKCK45dotState(n,:,cc)
            enddo
          enddo
 
@@ -2099,18 +2099,18 @@ subroutine integrateStateRKCK45()
         plasticState(p)%dotState(:,cc) =  &
          matmul(transpose(plasticState(p)%RKCK45dotState(1:6,1:mySizePlasticDotState,cc)), B)
          
-       do mySource = 1_pInt, phase_Nsources(p)
-         mySizeSourceDotState = sourceState(p)%p(mySource)%sizeDotState
+       do s = 1_pInt, phase_Nsources(p)
+         mySizeSourceDotState = sourceState(p)%p(s)%sizeDotState
        
-         sourceState(p)%p(mySource)%RKCK45dotState(6,:,cc) = sourceState(p)%p(mySource)%dotState(:,cc)     ! store Runge-Kutta dotState
+         sourceState(p)%p(s)%RKCK45dotState(6,:,cc) = sourceState(p)%p(s)%dotState(:,cc)     ! store Runge-Kutta dotState
 
-         sourceStateResiduum(1:mySizeSourceDotState,mySource,g,i,e) = &
-           matmul(transpose(sourceState(p)%p(mySource)%RKCK45dotState(1:6,1:mySizeSourceDotState,cc)),DB) &
+         sourceStateResiduum(1:mySizeSourceDotState,s,g,i,e) = &
+           matmul(transpose(sourceState(p)%p(s)%RKCK45dotState(1:6,1:mySizeSourceDotState,cc)),DB) &
          * crystallite_subdt(g,i,e)
 
-         mySizeSourceDotState = sourceState(p)%p(mySource)%sizeDotState
-         sourceState(p)%p(mySource)%dotState(:,cc)  = &
-           matmul(transpose(sourceState(p)%p(mySource)%RKCK45dotState(1:6,1:mySizeSourceDotState,cc)),B)
+         mySizeSourceDotState = sourceState(p)%p(s)%sizeDotState
+         sourceState(p)%p(s)%dotState(:,cc)  = &
+           matmul(transpose(sourceState(p)%p(s)%RKCK45dotState(1:6,1:mySizeSourceDotState,cc)),B)
        enddo
        
      endif
@@ -2127,30 +2127,30 @@ subroutine integrateStateRKCK45()
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do g = 1,homogenization_Ngrains(mesh_element(3,e))
      if (crystallite_todo(g,i,e)) then
-       p  = phaseAt(g,i,e)
-       cc = phasememberAt(g,i,e)
+       p  = phaseAt(g,i,e); cc = phasememberAt(g,i,e)
+       
        mySizePlasticDotState = plasticState(p)%sizeDotState
        forall (u = 1_pInt:mySizePlasticDotState,    abs(plasticState(p)%state(u,cc)) > 0.0_pReal) &
          relPlasticStateResiduum(u,g,i,e) = &
             plasticStateResiduum(u,g,i,e) / plasticState(p)%state(u,cc)
 
-       do mySource = 1_pInt, phase_Nsources(p)
-         mySizeSourceDotState = sourceState(p)%p(mySource)%sizeDotState
-         forall (u = 1_pInt:mySizeSourceDotState,abs(sourceState(p)%p(mySource)%state(u,cc)) > 0.0_pReal) &
-           relSourceStateResiduum(u,mySource,g,i,e) = &
-              sourceStateResiduum(u,mySource,g,i,e) / sourceState(p)%p(mySource)%state(u,cc)
+       do s = 1_pInt, phase_Nsources(p)
+         mySizeSourceDotState = sourceState(p)%p(s)%sizeDotState
+         forall (u = 1_pInt:mySizeSourceDotState,abs(sourceState(p)%p(s)%state(u,cc)) > 0.0_pReal) &
+           relSourceStateResiduum(u,s,g,i,e) = &
+              sourceStateResiduum(u,s,g,i,e) / sourceState(p)%p(s)%state(u,cc)
        enddo
        crystallite_todo(g,i,e) = all(abs(relPlasticStateResiduum(1:mySizePlasticDotState,g,i,e)) < &
                                      rTol_crystalliteState .or. &
                                      abs(plasticStateResiduum(1:mySizePlasticDotState,g,i,e)) < &
                                      plasticState(p)%aTolState(1:mySizePlasticDotState))
-       do mySource = 1_pInt, phase_Nsources(p)
-         mySizeSourceDotState = sourceState(p)%p(mySource)%sizeDotState
+       do s = 1_pInt, phase_Nsources(p)
+         mySizeSourceDotState = sourceState(p)%p(s)%sizeDotState
          crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. &
-                                   all(abs(relSourceStateResiduum(1:mySizeSourceDotState,mySource,g,i,e)) < &
+                                   all(abs(relSourceStateResiduum(1:mySizeSourceDotState,s,g,i,e)) < &
                                        rTol_crystalliteState .or. &
-                                       abs(sourceStateResiduum(1:mySizeSourceDotState,mySource,g,i,e)) < &
-                                       sourceState(p)%p(mySource)%aTolState(1:mySizeSourceDotState))
+                                       abs(sourceStateResiduum(1:mySizeSourceDotState,s,g,i,e)) < &
+                                       sourceState(p)%p(s)%aTolState(1:mySizeSourceDotState))
        enddo
      endif
    enddo; enddo; enddo
