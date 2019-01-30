@@ -1809,7 +1809,7 @@ subroutine integrateStateAdaptiveEuler()
  do e = FEsolving_execElem(1),FEsolving_execElem(2)
    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
      do g = 1,homogenization_Ngrains(mesh_element(3,e))
-       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
+       if (crystallite_todo(g,i,e)) then
          p = phaseAt(g,i,e); c = phasememberAt(g,i,e)
          sizeDotState = plasticState(p)%sizeDotState
          
@@ -1838,7 +1838,7 @@ subroutine integrateStateAdaptiveEuler()
  do e = FEsolving_execElem(1),FEsolving_execElem(2)
    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
      do g = 1,homogenization_Ngrains(mesh_element(3,e))
-       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
+       if (crystallite_todo(g,i,e)) then
          p = phaseAt(g,i,e); c = phasememberAt(g,i,e)
          sizeDotState = plasticState(p)%sizeDotState
          
