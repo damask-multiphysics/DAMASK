@@ -1872,17 +1872,16 @@ subroutine integrateStateAdaptiveEuler()
   implicit none
   real(pReal), dimension(:), intent(in) ::&
     residuum, dotState, absoluteTolerance
-  real(pReal), dimension(size(residuum,1)) ::&
-    residuum_rel
- 
+  logical, dimension(size(residuum,1)) ::&
+    converged_array
+
   where(dNeq0(dotState))
-    residuum_rel = residuum/dotState
+    converged_array = abs(residuum) < absoluteTolerance .or. (abs(residuum/dotState) < rTol_crystalliteState)
   else where
-    residuum_rel = 0.0_pReal
+    converged_array = .true.
   end where
   
-  converged = all(abs(residuum_rel) < rTol_crystalliteState .or. &
-                  abs(residuum)     < absoluteTolerance)
+  converged = all(converged_array)
 
  end function converged
 
@@ -2153,17 +2152,16 @@ subroutine integrateStateRKCK45()
   implicit none
   real(pReal), dimension(:), intent(in) ::&
     residuum, dotState, absoluteTolerance
-  real(pReal), dimension(size(residuum,1)) ::&
-    residuum_rel
- 
+  logical, dimension(size(residuum,1)) ::&
+    converged_array
+
   where(dNeq0(dotState))
-    residuum_rel = residuum/dotState
+    converged_array = abs(residuum) < absoluteTolerance .or. (abs(residuum/dotState) < rTol_crystalliteState)
   else where
-    residuum_rel = 0.0_pReal
+    converged_array = .true.
   end where
   
-  converged = all(abs(residuum_rel) < rTol_crystalliteState .or. &
-                  abs(residuum)     < absoluteTolerance)
+  converged = all(converged_array)
 
  end function converged
 
