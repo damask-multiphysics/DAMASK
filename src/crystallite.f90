@@ -2017,13 +2017,13 @@ subroutine integrateStateRKCK45()
 
  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,            &
                         homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-   plasticStateResiduum, &                                                                          ! residuum from evolution in microstructure
-   relPlasticStateResiduum                                                                          ! relative residuum from evolution in microstructure
+   residuum_plastic, &                                                                          ! residuum from evolution in microstructure
+   residuum_plastic_rel                                                                          ! relative residuum from evolution in microstructure
  real(pReal), dimension(constitutive_source_maxSizeDotState, &
                         maxval(phase_Nsources), &
                         homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-   sourceStateResiduum, &                                                                           ! residuum from evolution in microstructure
-   relSourceStateResiduum                                                                           ! relative residuum from evolution in microstructure
+   residuum_source, &                                                                           ! residuum from evolution in microstructure
+   residuum_source_rel                                                                           ! relative residuum from evolution in microstructure
 
 
 
@@ -2076,8 +2076,8 @@ subroutine integrateStateRKCK45()
 !--------------------------------------------------------------------------------------------------
 ! --- STATE UPDATE WITH ERROR ESTIMATE FOR STATE ---
 
- relPlasticStateResiduum = 0.0_pReal
- relSourceStateResiduum = 0.0_pReal
+ residuum_plastic_rel = 0.0_pReal
+ residuum_source_rel = 0.0_pReal
  !$OMP PARALLEL DO PRIVATE(sizeDotState,p,cc)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
@@ -2089,7 +2089,7 @@ subroutine integrateStateRKCK45()
               
        plasticState(p)%RKCK45dotState(6,:,cc) = plasticState (p)%dotState(:,cc)
        
-       plasticStateResiduum(1:sizeDotState,g,i,e) = &
+       residuum_plastic(1:sizeDotState,g,i,e) = &
          matmul(transpose(plasticState(p)%RKCK45dotState(1:6,1:sizeDotState,cc)),DB) &
        * crystallite_subdt(g,i,e)
        
@@ -2101,7 +2101,7 @@ subroutine integrateStateRKCK45()
        
          sourceState(p)%p(s)%RKCK45dotState(6,:,cc) = sourceState(p)%p(s)%dotState(:,cc)     ! store Runge-Kutta dotState
 
-         sourceStateResiduum(1:sizeDotState,s,g,i,e) = &
+         residuum_source(1:sizeDotState,s,g,i,e) = &
            matmul(transpose(sourceState(p)%p(s)%RKCK45dotState(1:6,1:sizeDotState,cc)),DB) &
          * crystallite_subdt(g,i,e)
 
@@ -2128,25 +2128,25 @@ subroutine integrateStateRKCK45()
        
        sizeDotState = plasticState(p)%sizeDotState
        forall (u = 1_pInt:sizeDotState,    abs(plasticState(p)%state(u,cc)) > 0.0_pReal) &
-         relPlasticStateResiduum(u,g,i,e) = &
-            plasticStateResiduum(u,g,i,e) / plasticState(p)%state(u,cc)
+         residuum_plastic_rel(u,g,i,e) = &
+            residuum_plastic(u,g,i,e) / plasticState(p)%state(u,cc)
             
-       crystallite_todo(g,i,e) = all(abs(relPlasticStateResiduum(1:sizeDotState,g,i,e)) < &
+       crystallite_todo(g,i,e) = all(abs(residuum_plastic_rel(1:sizeDotState,g,i,e)) < &
                                     rTol_crystalliteState .or. &
-                                     abs(plasticStateResiduum(1:sizeDotState,g,i,e)) < &
+                                     abs(residuum_plastic(1:sizeDotState,g,i,e)) < &
                                      plasticState(p)%aTolState(1:sizeDotState))
 
        do s = 1_pInt, phase_Nsources(p)
          sizeDotState = sourceState(p)%p(s)%sizeDotState
          forall (u = 1_pInt:sizeDotState,abs(sourceState(p)%p(s)%state(u,cc)) > 0.0_pReal) &
-           relSourceStateResiduum(u,s,g,i,e) = &
-              sourceStateResiduum(u,s,g,i,e) / sourceState(p)%p(s)%state(u,cc)
+           residuum_source_rel(u,s,g,i,e) = &
+              residuum_source(u,s,g,i,e) / sourceState(p)%p(s)%state(u,cc)
 
          sizeDotState = sourceState(p)%p(s)%sizeDotState
          crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. &
-                                   all(abs(relSourceStateResiduum(1:sizeDotState,s,g,i,e)) < &
+                                   all(abs(residuum_source_rel(1:sizeDotState,s,g,i,e)) < &
                                        rTol_crystalliteState .or. &
-                                       abs(sourceStateResiduum(1:sizeDotState,s,g,i,e)) < &
+                                       abs(residuum_source(1:sizeDotState,s,g,i,e)) < &
                                        sourceState(p)%p(s)%aTolState(1:sizeDotState))
        enddo
      endif
