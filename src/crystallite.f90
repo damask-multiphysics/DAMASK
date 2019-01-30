@@ -2085,13 +2085,12 @@ subroutine integrateStateRKCK45()
        do s = 1_pInt, phase_Nsources(p)
          sizeDotState = sourceState(p)%p(s)%sizeDotState
        
-         sourceState(p)%p(s)%RKCK45dotState(6,:,cc) = sourceState(p)%p(s)%dotState(:,cc)     ! store Runge-Kutta dotState
-
+         sourceState(p)%p(s)%RKCK45dotState(6,:,cc) = sourceState(p)%p(s)%dotState(:,cc)
+         
          residuum_source(1:sizeDotState,s,g,i,e) = &
            matmul(transpose(sourceState(p)%p(s)%RKCK45dotState(1:6,1:sizeDotState,cc)),DB) &
          * crystallite_subdt(g,i,e)
 
-         sizeDotState = sourceState(p)%p(s)%sizeDotState
          sourceState(p)%p(s)%dotState(:,cc)  = &
            matmul(transpose(sourceState(p)%p(s)%RKCK45dotState(1:6,1:sizeDotState,cc)),B)
        enddo
@@ -2124,7 +2123,7 @@ subroutine integrateStateRKCK45()
                   all(converged(residuum_source(1:sizeDotState,s,g,i,e), &
                             sourceState(p)%p(s)%dotState(1:sizeDotState,cc), &
                             sourceState(p)%p(s)%aTolState(1:sizeDotState)))
-       enddo
+         enddo
      endif
    enddo; enddo; enddo
  !$OMP END PARALLEL DO
