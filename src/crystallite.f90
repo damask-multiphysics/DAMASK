@@ -2340,7 +2340,7 @@ subroutine update_dotState(timeFraction)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
      do g = 1,homogenization_Ngrains(mesh_element(3,e))
          !$OMP FLUSH(nonlocalStop)
-         if (nonlocalStop .or. (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e))) then
+        if ((crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) .and. .not. nonlocalStop) then
            call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
                                              crystallite_Fe, &
                                              crystallite_Fi(1:3,1:3,g,i,e), &
@@ -2399,7 +2399,7 @@ subroutine update_deltaState
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
      do g = 1,homogenization_Ngrains(mesh_element(3,e))
          !$OMP FLUSH(nonlocalStop)
-         if (nonlocalStop .or. (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e))) then
+         if ((crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) .and. .not. nonlocalStop) then
         call constitutive_collectDeltaState(math_6toSym33(crystallite_Tstar_v(1:6,g,i,e)), &
                                      crystallite_Fe(1:3,1:3,g,i,e), &
                                      crystallite_Fi(1:3,1:3,g,i,e), &
