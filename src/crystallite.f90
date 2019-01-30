@@ -1723,7 +1723,7 @@ subroutine integrateStateFPI()
    
  dot_prod12 = dot_product(current  - previous,  previous - previous2)
  dot_prod22 = dot_product(previous - previous2, previous - previous2)
- if (dot_prod22 > 0.0_pReal .and. (dot_prod12 < 0.0_pReal .or. dot_product(current,previous) < 0.0_pReal)) then
+ if ((dot_product(current,previous) < 0.0_pReal .or. dot_prod12 < 0.0_pReal) .and. dot_prod22 > 0.0_pReal) then
    damper = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
  else
    damper = 1.0_pReal
