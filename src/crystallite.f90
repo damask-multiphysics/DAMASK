@@ -2038,46 +2038,33 @@ subroutine integrateStateRKCK45()
 
    ! --- state update ---
 
-   !$OMP PARALLEL
-   !$OMP DO PRIVATE(p,cc)
+   !$OMP PARALLEL DO PRIVATE(p,cc)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do g = 1,homogenization_Ngrains(mesh_element(3,e))
        if (crystallite_todo(g,i,e)) then
          p = phaseAt(g,i,e)
          cc = phasememberAt(g,i,e)
-         plasticState(p)%RKCK45dotState(stage,:,cc) = plasticState(p)%dotState(:,cc)                       ! store Runge-Kutta dotState
+         plasticState(p)%RKCK45dotState(stage,:,cc) = plasticState(p)%dotState(:,cc)
+         plasticState(p)%dotState(:,cc) = A(1,stage) * plasticState(p)%RKCK45dotState(1,:,cc)
+
          do mySource = 1_pInt, phase_Nsources(p)
            sourceState(p)%p(mySource)%RKCK45dotState(stage,:,cc) = sourceState(p)%p(mySource)%dotState(:,cc)
-         enddo
-       endif
-     enddo; enddo; enddo
-   !$OMP ENDDO
-
-   !$OMP DO PRIVATE(p,cc,n)
-   do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-       do g = 1,homogenization_Ngrains(mesh_element(3,e))
-       if (crystallite_todo(g,i,e)) then
-         p = phaseAt(g,i,e)
-         cc = phasememberAt(g,i,e)
-
-         plasticState(p)%dotState(:,cc) = A(1,stage) * plasticState(p)%RKCK45dotState(1,:,cc)
-         do mySource = 1_pInt, phase_Nsources(p)
            sourceState(p)%p(mySource)%dotState(:,cc) = A(1,stage) * sourceState(p)%p(mySource)%RKCK45dotState(1,:,cc)
          enddo
+
          do n = 2_pInt, stage
-           plasticState(p)%dotState(:,cc) = &
-           plasticState(p)%dotState(:,cc) + A(n,stage) * plasticState(p)%RKCK45dotState(n,:,cc)
+           plasticState(p)%dotState(:,cc) = plasticState(p)%dotState(:,cc) &
+                                          + A(n,stage) * plasticState(p)%RKCK45dotState(n,:,cc)
            do mySource = 1_pInt, phase_Nsources(p)
-             sourceState(p)%p(mySource)%dotState(:,cc) = &
-             sourceState(p)%p(mySource)%dotState(:,cc) + A(n,stage) * sourceState(p)%p(mySource)%RKCK45dotState(n,:,cc)
+             sourceState(p)%p(mySource)%dotState(:,cc) = sourceState(p)%p(mySource)%dotState(:,cc) &
+                                                       + A(n,stage) * sourceState(p)%p(mySource)%RKCK45dotState(n,:,cc)
            enddo
          enddo
+
        endif
      enddo; enddo; enddo
-   !$OMP ENDDO
-   !$OMP END PARALLEL
+   !$OMP END PARALLEL DO
 
     call update_state(1.0_pReal) !MD: 1.0 correct?
     call update_deltaState
