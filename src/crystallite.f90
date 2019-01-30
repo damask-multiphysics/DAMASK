@@ -1758,10 +1758,6 @@ end subroutine integrateStateEuler
 !> @brief integrate stress, state with 1st order Euler method with adaptive step size
 !--------------------------------------------------------------------------------------------------
 subroutine integrateStateAdaptiveEuler()
- use prec, only: &
-   dNeq0
- use numerics, only: &
-   rTol_crystalliteState
  use mesh, only: &
    mesh_element, &
    mesh_NcpElems, &
@@ -1795,11 +1791,6 @@ subroutine integrateStateAdaptiveEuler()
                         maxval(phase_Nsources), &
                         homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
    residuum_source
-   
- real(pReal), dimension(constitutive_plasticity_maxSizeDotState) :: &
-   residuum_plastic_rel
- real(pReal), dimension(constitutive_source_maxSizeDotState) :: &
-   residuum_source_rel  
 
 !--------------------------------------------------------------------------------------------------
 ! contribution to state and relative residui and from Euler integration
@@ -1845,42 +1836,55 @@ subroutine integrateStateAdaptiveEuler()
          residuum_plastic(1:sizeDotState,g,i,e) = residuum_plastic(1:sizeDotState,g,i,e) &
                                                 + 0.5_pReal * plasticState(p)%dotState(:,c) * crystallite_subdt(g,i,e)
               
-         where(dNeq0(plasticState(p)%dotState(1:sizeDotState,c)))
-           residuum_plastic_rel(1:sizeDotState) = residuum_plastic(1:sizeDotState,g,i,e) &
-                                                / plasticState(p)%dotState(1:sizeDotState,c)
-         else where
-           residuum_plastic_rel(1:sizeDotState) = 0.0_pReal
-         end where
-              
-         crystallite_converged(g,i,e) = all(abs(residuum_plastic_rel(1:sizeDotState)) < &
-                         rTol_crystalliteState .or. &
-                         abs(residuum_plastic(1:sizeDotState,g,i,e)) < &
-                         plasticState(p)%aTolState(1:sizeDotState))
+         crystallite_converged(g,i,e) = converged(residuum_plastic(1:sizeDotState,g,i,e), &
+                                             plasticState(p)%dotState(1:sizeDotState,c), &
+                                             plasticState(p)%aTolState(1:sizeDotState))
 
          do s = 1_pInt, phase_Nsources(p)
            sizeDotState = sourceState(p)%p(s)%sizeDotState
            
            residuum_source(1:sizeDotState,s,g,i,e) = residuum_source(1:sizeDotState,s,g,i,e) &
                                                    + 0.5_pReal * sourceState(p)%p(s)%dotState(:,c) * crystallite_subdt(g,i,e)
-                                                       
-           where(dNeq0(sourceState(p)%p(s)%dotState(1:sizeDotState,c)))
-             residuum_source_rel(1:sizeDotState) = residuum_source(1:sizeDotState,s,g,i,e) &
-                                                 / sourceState(p)%p(s)%dotState(1:sizeDotState,c)
-           else where
-             residuum_source_rel(1:SizeDotState) = 0.0_pReal
-           end where
 
-           crystallite_converged(g,i,e) = crystallite_converged(g,i,e) .and. &
-                       all(abs(residuum_source_rel(1:sizeDotState)) < &
-                       rTol_crystalliteState .or. &
-                       abs(residuum_source(1:sizeDotState,s,g,i,e)) < &
-                       sourceState(p)%p(s)%aTolState(1:sizeDotState))
-         enddo
+           crystallite_converged(g,i,e) = crystallite_converged(g,i,e) .and.&
+                  converged(residuum_source(1:sizeDotState,s,g,i,e), &
+                            sourceState(p)%p(s)%dotState(1:sizeDotState,c), &
+                            sourceState(p)%p(s)%aTolState(1:sizeDotState))
+          enddo
+          
        endif
  enddo; enddo; enddo
  !$OMP END PARALLEL DO
 
  if (any(plasticState(:)%nonlocal)) call nonlocalConvergenceCheck
+ 
+ contains
+
+ !--------------------------------------------------------------------------------------------------
+ !> @brief determines whether a point is converged
+ !--------------------------------------------------------------------------------------------------
+ logical pure function converged(residuum,dotState,absoluteTolerance)
+  use prec, only: &
+    dNeq0
+  use numerics, only: &
+    rTol_crystalliteState
+    
+  implicit none
+  real(pReal), dimension(:), intent(in) ::&
+    residuum, dotState, absoluteTolerance
+  real(pReal), dimension(size(residuum,1)) ::&
+    residuum_rel
+ 
+  where(dNeq0(dotState))
+    residuum_rel = residuum/dotState
+  else where
+    residuum_rel = 0.0_pReal
+  end where
+  
+  converged = all(abs(residuum_rel) < rTol_crystalliteState .or. &
+                  abs(residuum)     < absoluteTolerance)
+
+ end function converged
 
 end subroutine integrateStateAdaptiveEuler
 
@@ -1958,10 +1962,6 @@ end subroutine integrateStateRK4
 !> adaptive step size  (use 5th order solution to advance = "local extrapolation")
 !--------------------------------------------------------------------------------------------------
 subroutine integrateStateRKCK45()
- use prec, only: &
-   dNeq0
- use numerics, only: &
-   rTol_crystalliteState
  use mesh, only: &
    mesh_element, &
    mesh_NcpElems, &
@@ -2018,14 +2018,9 @@ subroutine integrateStateRKCK45()
                         maxval(phase_Nsources), &
                         homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
    residuum_source                                                                   ! relative residuum from evolution in microstructure
- real(pReal), dimension(constitutive_plasticity_maxSizeDotState) :: &
-   residuum_plastic_rel
- real(pReal), dimension(constitutive_source_maxSizeDotState) :: &
-   residuum_source_rel 
 
 
  call update_dotState(1.0_pReal)
-
 
  ! --- SECOND TO SIXTH RUNGE KUTTA STEP ---
 
@@ -2121,34 +2116,18 @@ subroutine integrateStateRKCK45()
          p  = phaseAt(g,i,e); cc = phasememberAt(g,i,e)
        
          sizeDotState = plasticState(p)%sizeDotState
-         where(dNeq0(plasticState(p)%dotState(1:sizeDotState,cc)))
-           residuum_plastic_rel(1:sizeDotState) = residuum_plastic(1:sizeDotState,g,i,e) &
-                                                / plasticState(p)%state(1:sizeDotState,cc)
-         else where
-           residuum_plastic_rel(1:sizeDotState) = 0.0_pReal
-         end where
-
-            
-         crystallite_todo(g,i,e) = all(abs(residuum_plastic_rel(1:sizeDotState)) < &
-                                      rTol_crystalliteState .or. &
-                                       abs(residuum_plastic(1:sizeDotState,g,i,e)) < &
-                                       plasticState(p)%aTolState(1:sizeDotState))
+         
+         crystallite_todo(g,i,e) = converged(residuum_plastic(1:sizeDotState,g,i,e), &
+                                             plasticState(p)%dotState(1:sizeDotState,cc), &
+                                             plasticState(p)%aTolState(1:sizeDotState))
 
          do s = 1_pInt, phase_Nsources(p)
            sizeDotState = sourceState(p)%p(s)%sizeDotState
          
-            where(dNeq0(sourceState(p)%p(s)%dotState(1:sizeDotState,cc)))
-             residuum_source_rel(1:sizeDotState) = residuum_source(1:sizeDotState,s,g,i,e) &
-                                                 / sourceState(p)%p(s)%state(1:sizeDotState,cc)
-           else where
-             residuum_source_rel(1:SizeDotState) = 0.0_pReal
-           end where
-
-         crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. &
-                                   all(abs(residuum_source_rel(1:sizeDotState)) < &
-                                       rTol_crystalliteState .or. &
-                                       abs(residuum_source(1:sizeDotState,s,g,i,e)) < &
-                                       sourceState(p)%p(s)%aTolState(1:sizeDotState))
+                  crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and.&
+                  converged(residuum_source(1:sizeDotState,s,g,i,e), &
+                            sourceState(p)%p(s)%dotState(1:sizeDotState,cc), &
+                            sourceState(p)%p(s)%aTolState(1:sizeDotState))
        enddo
      endif
    enddo; enddo; enddo
@@ -2159,6 +2138,34 @@ subroutine integrateStateRKCK45()
  call update_stress(1.0_pReal)
  call setConvergenceFlag
  if (any(plasticState(:)%nonlocal)) call nonlocalConvergenceCheck
+ 
+  contains
+
+ !--------------------------------------------------------------------------------------------------
+ !> @brief determines whether a point is converged
+ !--------------------------------------------------------------------------------------------------
+ logical pure function converged(residuum,dotState,absoluteTolerance)
+  use prec, only: &
+    dNeq0
+  use numerics, only: &
+    rTol_crystalliteState
+    
+  implicit none
+  real(pReal), dimension(:), intent(in) ::&
+    residuum, dotState, absoluteTolerance
+  real(pReal), dimension(size(residuum,1)) ::&
+    residuum_rel
+ 
+  where(dNeq0(dotState))
+    residuum_rel = residuum/dotState
+  else where
+    residuum_rel = 0.0_pReal
+  end where
+  
+  converged = all(abs(residuum_rel) < rTol_crystalliteState .or. &
+                  abs(residuum)     < absoluteTolerance)
+
+ end function converged
 
 end subroutine integrateStateRKCK45
 
