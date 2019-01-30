@@ -1837,7 +1837,7 @@ subroutine integrateStateAdaptiveEuler()
                                                 + 0.5_pReal * plasticState(p)%dotState(:,c) * crystallite_subdt(g,i,e)
               
          crystallite_converged(g,i,e) = all(converged(residuum_plastic(1:sizeDotState,g,i,e), &
-                                             plasticState(p)%dotState(1:sizeDotState,c), &
+                                             plasticState(p)%state(1:sizeDotState,c), &
                                              plasticState(p)%aTolState(1:sizeDotState)))
 
          do s = 1_pInt, phase_Nsources(p)
@@ -1848,7 +1848,7 @@ subroutine integrateStateAdaptiveEuler()
 
            crystallite_converged(g,i,e) = crystallite_converged(g,i,e) .and.&
                   all(converged(residuum_source(1:sizeDotState,s,g,i,e), &
-                            sourceState(p)%p(s)%dotState(1:sizeDotState,c), &
+                            sourceState(p)%p(s)%state(1:sizeDotState,c), &
                             sourceState(p)%p(s)%aTolState(1:sizeDotState)))
           enddo
           
@@ -1863,21 +1863,21 @@ subroutine integrateStateAdaptiveEuler()
  !--------------------------------------------------------------------------------------------------
  !> @brief determines whether a point is converged
  !--------------------------------------------------------------------------------------------------
- logical pure elemental function converged(residuum,dotState,absoluteTolerance)
+ logical pure elemental function converged(residuum,state,aTol)
   use prec, only: &
     dEq0
   use numerics, only: &
-    rTol_crystalliteState
+    rTol => rTol_crystalliteState
     
   implicit none
   real(pReal), intent(in) ::&
-    residuum, dotState, absoluteTolerance
+    residuum, state, aTol
 
-  if (dEq0(dotState)) then
-    converged = .true.
+  if (dEq0(state)) then
+    converged = .true. ! ToDo: intended behavior? Not rely on absoluteTolerance
   else
-    converged =   abs(residuum)          < absoluteTolerance &
-             .or. abs(residuum/dotState) < rTol_crystalliteState
+    converged =   abs(residuum)       < aTol &
+             .or. abs(residuum/state) < rTol
   endif
 
  end function converged
@@ -2113,7 +2113,7 @@ subroutine integrateStateRKCK45()
          sizeDotState = plasticState(p)%sizeDotState
          
          crystallite_todo(g,i,e) = all(converged(residuum_plastic(1:sizeDotState,g,i,e), &
-                                             plasticState(p)%dotState(1:sizeDotState,cc), &
+                                             plasticState(p)%state(1:sizeDotState,cc), &
                                              plasticState(p)%aTolState(1:sizeDotState)))
 
          do s = 1_pInt, phase_Nsources(p)
@@ -2121,7 +2121,7 @@ subroutine integrateStateRKCK45()
          
                   crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and.&
                   all(converged(residuum_source(1:sizeDotState,s,g,i,e), &
-                            sourceState(p)%p(s)%dotState(1:sizeDotState,cc), &
+                            sourceState(p)%p(s)%state(1:sizeDotState,cc), &
                             sourceState(p)%p(s)%aTolState(1:sizeDotState)))
          enddo
      endif
@@ -2139,21 +2139,21 @@ subroutine integrateStateRKCK45()
  !--------------------------------------------------------------------------------------------------
  !> @brief determines whether a point is converged
  !--------------------------------------------------------------------------------------------------
- logical pure elemental function converged(residuum,dotState,absoluteTolerance)
+ logical pure elemental function converged(residuum,state,aTol)
   use prec, only: &
     dEq0
   use numerics, only: &
-    rTol_crystalliteState
+    rTol => rTol_crystalliteState
     
   implicit none
   real(pReal), intent(in) ::&
-    residuum, dotState, absoluteTolerance
+    residuum, state, aTol
 
-  if (dEq0(dotState)) then
-    converged = .true.
+  if (dEq0(state)) then
+    converged = .true. ! ToDo: intended behavior? Not rely on absoluteTolerance
   else
-    converged =   abs(residuum)          < absoluteTolerance &
-             .or. abs(residuum/dotState) < rTol_crystalliteState
+    converged =   abs(residuum)       < aTol &
+             .or. abs(residuum/state) < rTol
   endif
 
  end function converged
