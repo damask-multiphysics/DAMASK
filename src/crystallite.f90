@@ -1976,10 +1976,8 @@ subroutine integrateStateRKCK45()
    phaseAt, phasememberAt, &
    homogenization_maxNgrains
  use constitutive, only: &
-   constitutive_collectDotState, &
    constitutive_plasticity_maxSizeDotState, &
-   constitutive_source_maxSizeDotState, &
-   constitutive_microstructure
+   constitutive_source_maxSizeDotState
 
  implicit none
  real(pReal), dimension(5,5), parameter :: &
@@ -2059,7 +2057,7 @@ subroutine integrateStateRKCK45()
                                           + A(n,stage) * plasticState(p)%RKCK45dotState(n,:,cc)
            do s = 1_pInt, phase_Nsources(p)
              sourceState(p)%p(s)%dotState(:,cc) = sourceState(p)%p(s)%dotState(:,cc) &
-                                                       + A(n,stage) * sourceState(p)%p(s)%RKCK45dotState(n,:,cc)
+                                                + A(n,stage) * sourceState(p)%p(s)%RKCK45dotState(n,:,cc)
            enddo
          enddo
 
@@ -2088,7 +2086,7 @@ subroutine integrateStateRKCK45()
      if (crystallite_todo(g,i,e)) then
        p = phaseAt(g,i,e); cc = phasememberAt(g,i,e)
        
-              mySizePlasticDotState = plasticState(p)%sizeDotState
+       mySizePlasticDotState = plasticState(p)%sizeDotState
               
        plasticState(p)%RKCK45dotState(6,:,cc) = plasticState (p)%dotState(:,cc)
        
@@ -2133,18 +2131,18 @@ subroutine integrateStateRKCK45()
        forall (u = 1_pInt:mySizePlasticDotState,    abs(plasticState(p)%state(u,cc)) > 0.0_pReal) &
          relPlasticStateResiduum(u,g,i,e) = &
             plasticStateResiduum(u,g,i,e) / plasticState(p)%state(u,cc)
+            
+       crystallite_todo(g,i,e) = all(abs(relPlasticStateResiduum(1:mySizePlasticDotState,g,i,e)) < &
+                                    rTol_crystalliteState .or. &
+                                     abs(plasticStateResiduum(1:mySizePlasticDotState,g,i,e)) < &
+                                     plasticState(p)%aTolState(1:mySizePlasticDotState))
 
        do s = 1_pInt, phase_Nsources(p)
          mySizeSourceDotState = sourceState(p)%p(s)%sizeDotState
          forall (u = 1_pInt:mySizeSourceDotState,abs(sourceState(p)%p(s)%state(u,cc)) > 0.0_pReal) &
            relSourceStateResiduum(u,s,g,i,e) = &
               sourceStateResiduum(u,s,g,i,e) / sourceState(p)%p(s)%state(u,cc)
-       enddo
-       crystallite_todo(g,i,e) = all(abs(relPlasticStateResiduum(1:mySizePlasticDotState,g,i,e)) < &
-                                     rTol_crystalliteState .or. &
-                                     abs(plasticStateResiduum(1:mySizePlasticDotState,g,i,e)) < &
-                                     plasticState(p)%aTolState(1:mySizePlasticDotState))
-       do s = 1_pInt, phase_Nsources(p)
+
          mySizeSourceDotState = sourceState(p)%p(s)%sizeDotState
          crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. &
                                    all(abs(relSourceStateResiduum(1:mySizeSourceDotState,s,g,i,e)) < &
