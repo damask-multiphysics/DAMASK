@@ -2016,6 +2016,8 @@ subroutine integrateStateRKCK45()
    mySizePlasticDotState, &                                                                         ! size of dot States
    mySizeSourceDotState
 
+   ! ToDo: MD: once all constitutives use allocate state, attach residuum arrays to the state in case of adaptive Euler
+   ! ToDo: MD: rel residuu don't have to be pointwise
 
  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,            &
                         homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
@@ -2080,54 +2082,41 @@ subroutine integrateStateRKCK45()
 
  relPlasticStateResiduum = 0.0_pReal
  relSourceStateResiduum = 0.0_pReal
- !$OMP PARALLEL
- !$OMP DO PRIVATE(p,cc)
+ !$OMP PARALLEL DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,p,cc)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do g = 1,homogenization_Ngrains(mesh_element(3,e))
      if (crystallite_todo(g,i,e)) then
-       p = phaseAt(g,i,e)
-       cc = phasememberAt(g,i,e)
-       plasticState(p)%RKCK45dotState(6,:,cc) = plasticState (p)%dotState(:,cc)                            ! store Runge-Kutta dotState
-       do mySource = 1_pInt, phase_Nsources(p)
-         sourceState(p)%p(mySource)%RKCK45dotState(6,:,cc) = sourceState(p)%p(mySource)%dotState(:,cc)     ! store Runge-Kutta dotState
-       enddo
-     endif
-   enddo; enddo; enddo
- !$OMP ENDDO
-
- !$OMP DO PRIVATE(mySizePlasticDotState,mySizeSourceDotState,p,cc)
-   do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-       do g = 1,homogenization_Ngrains(mesh_element(3,e))
-     if (crystallite_todo(g,i,e)) then
-       p = phaseAt(g,i,e)
-       cc = phasememberAt(g,i,e)
-
-       ! --- absolute residuum in state  ---
-       mySizePlasticDotState = plasticState(p)%sizeDotState
+       p = phaseAt(g,i,e); cc = phasememberAt(g,i,e)
+       
+              mySizePlasticDotState = plasticState(p)%sizeDotState
+              
+       plasticState(p)%RKCK45dotState(6,:,cc) = plasticState (p)%dotState(:,cc)
+       
        plasticStateResiduum(1:mySizePlasticDotState,g,i,e) = &
          matmul(transpose(plasticState(p)%RKCK45dotState(1:6,1:mySizePlasticDotState,cc)),DB) &
        * crystallite_subdt(g,i,e)
+       
+        plasticState(p)%dotState(:,cc) =  &
+         matmul(transpose(plasticState(p)%RKCK45dotState(1:6,1:mySizePlasticDotState,cc)), B)
+         
        do mySource = 1_pInt, phase_Nsources(p)
          mySizeSourceDotState = sourceState(p)%p(mySource)%sizeDotState
+       
+         sourceState(p)%p(mySource)%RKCK45dotState(6,:,cc) = sourceState(p)%p(mySource)%dotState(:,cc)     ! store Runge-Kutta dotState
+
          sourceStateResiduum(1:mySizeSourceDotState,mySource,g,i,e) = &
            matmul(transpose(sourceState(p)%p(mySource)%RKCK45dotState(1:6,1:mySizeSourceDotState,cc)),DB) &
          * crystallite_subdt(g,i,e)
-       enddo
 
-       ! --- dot state ---
-       plasticState(p)%dotState(:,cc) =  &
-         matmul(transpose(plasticState(p)%RKCK45dotState(1:6,1:mySizePlasticDotState,cc)), B)
-       do mySource = 1_pInt, phase_Nsources(p)
          mySizeSourceDotState = sourceState(p)%p(mySource)%sizeDotState
          sourceState(p)%p(mySource)%dotState(:,cc)  = &
            matmul(transpose(sourceState(p)%p(mySource)%RKCK45dotState(1:6,1:mySizeSourceDotState,cc)),B)
        enddo
+       
      endif
    enddo; enddo; enddo
- !$OMP ENDDO
- !$OMP END PARALLEL
+ !$OMP END PARALLEL DO
 
  call update_state(1.0_pReal)
  
