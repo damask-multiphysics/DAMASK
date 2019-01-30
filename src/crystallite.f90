@@ -1637,7 +1637,7 @@ subroutine integrateStateFPI()
                                          + plasticState(p)%previousDotState(:,c) * (1.0_pReal - zeta)
            
            crystallite_converged(g,i,e) = all(abs(residuum_plastic(1:sizeDotState)) &
-                                          < min(plasticState(p)%aTolState(1:sizeDotState), &
+                                          < max(plasticState(p)%aTolState(1:sizeDotState), &
                                                 abs(plasticState(p)%state(1:sizeDotState,c)*rTol_crystalliteState)))
                              
 
@@ -1661,7 +1661,7 @@ subroutine integrateStateFPI()
 
              crystallite_converged(g,i,e) = crystallite_converged(g,i,e) .and. &
                                             all(abs(residuum_source(1:sizeDotState)) &
-                                            < min(sourceState(p)%p(s)%aTolState(1:sizeDotState), &
+                                            < max(sourceState(p)%p(s)%aTolState(1:sizeDotState), &
                                                   abs(sourceState(p)%p(s)%state(1:sizeDotState,c)*rTol_crystalliteState)))
            enddo
          endif
