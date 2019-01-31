@@ -56,7 +56,6 @@ subroutine constitutive_init()
    IO_checkAndRewind, &
    IO_open_jobFile_stat, &
    IO_write_jobFile, &
-   IO_write_jobIntFile, &
    IO_timeStamp
  use config, only: &
    config_phase

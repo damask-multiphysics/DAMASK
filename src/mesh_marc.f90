@@ -515,9 +515,6 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Counted CP sizes'; flush(6)
  call mesh_marc_build_elements(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
-
- 
- 
  call mesh_get_damaskOptions(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Got DAMASK options'; flush(6)
  call mesh_build_cellconnectivity
@@ -531,7 +528,6 @@ subroutine mesh_init(ip,el)
  call mesh_build_ipAreas
  if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
  close (FILEUNIT)
-
 
  call mesh_build_nodeTwins
  if (myDebug) write(6,'(a)') ' Built node twins'; flush(6)

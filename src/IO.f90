@@ -30,7 +30,6 @@ module IO
    IO_open_jobFile, &
    IO_write_jobFile, &
    IO_write_jobRealFile, &
-   IO_write_jobIntFile, &
    IO_read_realFile, &
    IO_read_intFile, &
    IO_isBlank, &
@@ -513,36 +512,6 @@ subroutine IO_write_jobRealFile(fileUnit,ext,recMultiplier)
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 
 end subroutine IO_write_jobRealFile
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief opens binary file containing array of pInt numbers to given unit for writing. File is
-!!        named after solver job name plus given extension and located in current working directory
-!--------------------------------------------------------------------------------------------------
-subroutine IO_write_jobIntFile(fileUnit,ext,recMultiplier)
- use DAMASK_interface,  only: &
-   getSolverJobName
-
- implicit none
- integer(pInt),      intent(in)           :: fileUnit                                               !< file unit
- character(len=*),   intent(in)           :: ext                                                    !< extension of file
- integer(pInt),      intent(in), optional :: recMultiplier                                          !< record length (multiple of pReal Numbers, if not given set to one)
-
- integer(pInt)                            :: myStat
- character(len=1024)                      :: path
-
- path = trim(getSolverJobName())//'.'//ext
- if (present(recMultiplier)) then
-   open(fileUnit,status='replace',form='unformatted',access='direct', &
-                 recl=pInt*recMultiplier,iostat=myStat,file=path)
- else
-   open(fileUnit,status='replace',form='unformatted',access='direct', &
-                 recl=pInt,iostat=myStat,file=path)
- endif
-
- if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
-
-end subroutine IO_write_jobIntFile
 
 
 !--------------------------------------------------------------------------------------------------
