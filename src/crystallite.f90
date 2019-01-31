@@ -819,8 +819,8 @@ subroutine crystallite_stressTangent()
                                                 crystallite_invFi(1:3,1:3,c,i,e)) &
                                 + math_mul33x33(temp_33_3,dLidS(1:3,1:3,p,o))
        end forall
-       lhs_3333 = crystallite_subdt(c,i,e)*math_mul3333xx3333(dSdFe,temp_3333) + &
-                  math_mul3333xx3333(dSdFi,dFidS)
+       lhs_3333 = crystallite_subdt(c,i,e)*math_mul3333xx3333(dSdFe,temp_3333) &
+                + math_mul3333xx3333(dSdFi,dFidS)
 
        call math_invert2(temp_99,error,math_identity2nd(9_pInt)+math_3333to99(lhs_3333))
        if (error) then
@@ -1350,11 +1350,10 @@ logical function integrateStress(&
 
      !* calculate Jacobian for correction term
      if (mod(jacoCounterLp, iJacoLpresiduum) == 0_pInt) then
-       forall(o=1_pInt:3_pInt,p=1_pInt:3_pInt) &
-         dFe_dLp(o,1:3,p,1:3) = A(o,p)*transpose(invFi_new)                                         ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
-       dFe_dLp = - dt * dFe_dLp
-       dRLp_dLp    =   math_identity2nd(9_pInt) &
-                     - math_3333to99(math_mul3333xx3333(math_mul3333xx3333(dLp_dS,dS_dFe),dFe_dLp))
+       forall(o=1_pInt:3_pInt,p=1_pInt:3_pInt) dFe_dLp(o,1:3,p,1:3) = A(o,p)*transpose(invFi_new)   ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
+       dFe_dLp  = - dt * dFe_dLp
+       dRLp_dLp = math_identity2nd(9_pInt) &
+                - math_3333to99(math_mul3333xx3333(math_mul3333xx3333(dLp_dS,dS_dFe),dFe_dLp))
 #ifdef DEBUG
        if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
            .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
@@ -2076,11 +2075,11 @@ subroutine integrateStateRKCK45()
        plasticState(p)%RKCK45dotState(6,:,cc) = plasticState (p)%dotState(:,cc)
        
        residuum_plastic(1:sizeDotState,g,i,e) = &
-         matmul(transpose(plasticState(p)%RKCK45dotState(1:6,1:sizeDotState,cc)),DB) &
+         matmul(transpose(plasticState(p)%RKCK45dotState(1:6,1:sizeDotState,cc)),DB) &              ! why transpose? Better to transpose constant DB
        * crystallite_subdt(g,i,e)
        
         plasticState(p)%dotState(:,cc) =  &
-         matmul(transpose(plasticState(p)%RKCK45dotState(1:6,1:sizeDotState,cc)), B)
+         matmul(transpose(plasticState(p)%RKCK45dotState(1:6,1:sizeDotState,cc)), B)                ! why transpose? Better to transpose constant B
          
        do s = 1_pInt, phase_Nsources(p)
          sizeDotState = sourceState(p)%p(s)%sizeDotState
