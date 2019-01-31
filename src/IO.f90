@@ -58,18 +58,10 @@ module IO
    IO_open_inputFile, &
    IO_open_logFile
 #endif
-#ifdef Abaqus
- public :: &
-   IO_abaqus_hasNoPart
-#endif
  private :: &
    IO_fixedFloatValue, &
    IO_verifyFloatValue, &
    IO_verifyIntValue
-#ifdef Abaqus
- private :: &
-   abaqus_assembleInputFile
-#endif
 
 contains
 
@@ -385,6 +377,59 @@ subroutine IO_open_inputFile(fileUnit,modelName)
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
     if (.not.abaqus_assembleInputFile(fileUnit,fileUnit+1_pInt)) call IO_error(103_pInt)            ! strip comments and concatenate any "include"s
  close(fileUnit+1_pInt)
+ 
+ contains
+ 
+!--------------------------------------------------------------------------------------------------
+!> @brief create a new input file for abaqus simulations by removing all comment lines and
+!> including "include"s
+!--------------------------------------------------------------------------------------------------
+recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
+
+ implicit none
+ integer(pInt), intent(in)                :: unit1, &
+                                             unit2
+
+
+ integer(pInt), allocatable, dimension(:) :: chunkPos
+ character(len=65536)                     :: line,fname
+ logical                                  :: createSuccess,fexist
+
+
+ do
+   read(unit2,'(A65536)',END=220) line
+   chunkPos = IO_stringPos(line)
+
+   if (IO_lc(IO_StringValue(line,chunkPos,1_pInt))=='*include') then
+     fname = trim(line(9+scan(line(9:),'='):))
+     inquire(file=fname, exist=fexist)
+     if (.not.(fexist)) then
+       !$OMP CRITICAL (write2out)
+         write(6,*)'ERROR: file does not exist error in abaqus_assembleInputFile'
+         write(6,*)'filename: ', trim(fname)
+       !$OMP END CRITICAL (write2out)
+       createSuccess = .false.
+       return
+     endif
+     open(unit2+1,err=200,status='old',file=fname)
+     if (abaqus_assembleInputFile(unit1,unit2+1_pInt)) then
+       createSuccess=.true.
+       close(unit2+1)
+     else
+       createSuccess=.false.
+       return
+     endif
+   else if (line(1:2) /= '**' .OR. line(1:8)=='**damask') then
+     write(unit1,'(A)') trim(line)
+   endif
+ enddo
+
+220 createSuccess = .true.
+ return
+
+200 createSuccess =.false.
+
+end function abaqus_assembleInputFile
 #endif
 #ifdef Marc4DAMASK
    path = trim(modelName)//inputFileExtension
@@ -554,35 +599,6 @@ subroutine IO_read_intFile(fileUnit,ext,modelName,recMultiplier)
  if (myStat /= 0) call IO_error(100_pInt,ext_msg=path)
 
 end subroutine IO_read_intFile
-
-
-#ifdef Abaqus
-!--------------------------------------------------------------------------------------------------
-!> @brief check if the input file for Abaqus contains part info
-!--------------------------------------------------------------------------------------------------
-logical function IO_abaqus_hasNoPart(fileUnit)
-
- implicit none
- integer(pInt),    intent(in)                :: fileUnit
-
- integer(pInt), allocatable, dimension(:)    :: chunkPos
- character(len=65536)                        :: line
-
- IO_abaqus_hasNoPart = .true.
-
-610 FORMAT(A65536)
- rewind(fileUnit)
- do
-   read(fileUnit,610,END=620) line
-   chunkPos = IO_stringPos(line)
-   if (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) then
-     IO_abaqus_hasNoPart = .false.
-     exit
-   endif
- enddo
-
-620 end function IO_abaqus_hasNoPart
-#endif
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1597,58 +1613,5 @@ real(pReal) function IO_verifyFloatValue (string,validChars,myName)
  endif
 
 end function IO_verifyFloatValue
-
-#ifdef Abaqus
-!--------------------------------------------------------------------------------------------------
-!> @brief create a new input file for abaqus simulations by removing all comment lines and
-!> including "include"s
-!--------------------------------------------------------------------------------------------------
-recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
-
- implicit none
- integer(pInt), intent(in)                :: unit1, &
-                                             unit2
-
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=65536)                     :: line,fname
- logical                                  :: createSuccess,fexist
-
-
- do
-   read(unit2,'(A65536)',END=220) line
-   chunkPos = IO_stringPos(line)
-
-   if (IO_lc(IO_StringValue(line,chunkPos,1_pInt))=='*include') then
-     fname = trim(line(9+scan(line(9:),'='):))
-     inquire(file=fname, exist=fexist)
-     if (.not.(fexist)) then
-       !$OMP CRITICAL (write2out)
-         write(6,*)'ERROR: file does not exist error in abaqus_assembleInputFile'
-         write(6,*)'filename: ', trim(fname)
-       !$OMP END CRITICAL (write2out)
-       createSuccess = .false.
-       return
-     endif
-     open(unit2+1,err=200,status='old',file=fname)
-     if (abaqus_assembleInputFile(unit1,unit2+1_pInt)) then
-       createSuccess=.true.
-       close(unit2+1)
-     else
-       createSuccess=.false.
-       return
-     endif
-   else if (line(1:2) /= '**' .OR. line(1:8)=='**damask') then
-     write(unit1,'(A)') trim(line)
-   endif
- enddo
-
-220 createSuccess = .true.
- return
-
-200 createSuccess =.false.
-
-end function abaqus_assembleInputFile
-#endif
 
 end module IO

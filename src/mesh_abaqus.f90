@@ -434,7 +434,6 @@ subroutine mesh_init(ip,el)
 #endif
  use DAMASK_interface
  use IO, only: &
-   IO_abaqus_hasNoPart, &
    IO_open_InputFile, &
    IO_timeStamp, &
    IO_error, &
@@ -471,7 +470,7 @@ subroutine mesh_init(ip,el)
 
  call IO_open_inputFile(FILEUNIT,modelName)                                                         ! parse info from input file...
  if (myDebug) write(6,'(a)') ' Opened input file'; flush(6)
- noPart = IO_abaqus_hasNoPart(FILEUNIT)
+ noPart = hasNoPart(FILEUNIT)
  call mesh_abaqus_count_nodesAndElements(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Counted nodes/elements'; flush(6)
  call mesh_abaqus_count_elementSets(FILEUNIT)
@@ -541,6 +540,33 @@ subroutine mesh_init(ip,el)
  mesh_microstructureAt  = mesh_element(4,:)
  mesh_CPnodeID          = mesh_element(5:4+mesh_NipsPerElem,:)
 !!!!!!!!!!!!!!!!!!!!!!!!
+
+contains
+!--------------------------------------------------------------------------------------------------
+!> @brief check if the input file for Abaqus contains part info
+!--------------------------------------------------------------------------------------------------
+logical function hasNoPart(fileUnit)
+
+ implicit none
+ integer(pInt),    intent(in)                :: fileUnit
+
+ integer(pInt), allocatable, dimension(:)    :: chunkPos
+ character(len=65536)                        :: line
+
+ hasNoPart = .true.
+
+610 FORMAT(A65536)
+ rewind(fileUnit)
+ do
+   read(fileUnit,610,END=620) line
+   chunkPos = IO_stringPos(line)
+   if (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) then
+     hasNoPart = .false.
+     exit
+   endif
+ enddo
+
+620 end function hasNoPart
 
 end subroutine mesh_init
 
@@ -1497,7 +1523,6 @@ subroutine mesh_abaqus_build_elements(fileUnit)
 
  use IO,   only: IO_lc, &
                  IO_stringValue, &
-                 IO_skipChunks, &
                  IO_stringPos, &
                  IO_intValue, &
                  IO_extractValue, &
@@ -2173,49 +2198,28 @@ integer(pInt) function FE_mapElemtype(what)
  character(len=*), intent(in) :: what
 
  select case (IO_lc(what))
-    case (   '6')
-      FE_mapElemtype = 1_pInt            ! Two-dimensional Plane Strain Triangle
-    case ( '155', &
-           '125', &
-           '128')
-      FE_mapElemtype = 2_pInt            ! Two-dimensional Plane Strain triangle (155: cubic shape function, 125/128: second order isoparametric)
-    case ( '11', &
-           'cpe4', &
+    case ( 'cpe4', &
            'cpe4t')
       FE_mapElemtype = 3_pInt            ! Arbitrary Quadrilateral Plane-strain
-    case ( '27', &
-           'cpe8', &
+    case ( 'cpe8', &
            'cpe8t')
       FE_mapElemtype = 4_pInt            ! Plane Strain, Eight-node Distorted Quadrilateral
-    case ( '54')
-      FE_mapElemtype = 5_pInt            ! Plane Strain, Eight-node Distorted Quadrilateral with reduced integration
-    case ( '134', &
-           'c3d4', &
+    case ( 'c3d4', &
            'c3d4t')
       FE_mapElemtype = 6_pInt            ! Three-dimensional Four-node Tetrahedron
-    case ( '157')
-      FE_mapElemtype = 7_pInt            ! Three-dimensional, Low-order, Tetrahedron, Herrmann Formulations
-    case ( '127')
-      FE_mapElemtype = 8_pInt            ! Three-dimensional Ten-node Tetrahedron
-    case ( '136', &
-           'c3d6', &
+    case ( 'c3d6', &
            'c3d6t')
       FE_mapElemtype = 9_pInt            ! Three-dimensional Arbitrarily Distorted Pentahedral
-    case ( '117', &
-           '123', &
-           'c3d8r', &
+    case ( 'c3d8r', &
            'c3d8rt')
       FE_mapElemtype = 10_pInt           ! Three-dimensional Arbitrarily Distorted linear hexahedral with reduced integration
-    case ( '7', &
-           'c3d8', &
+    case ( 'c3d8', &
            'c3d8t')
       FE_mapElemtype = 11_pInt           ! Three-dimensional Arbitrarily Distorted Brick
-    case ( '57', &
-           'c3d20r', &
+    case ( 'c3d20r', &
            'c3d20rt')
       FE_mapElemtype = 12_pInt           ! Three-dimensional Arbitrarily Distorted quad hexahedral with reduced integration
-    case ( '21', &
-           'c3d20', &
+    case ( 'c3d20', &
            'c3d20t')
       FE_mapElemtype = 13_pInt           ! Three-dimensional Arbitrarily Distorted quadratic hexahedral
     case default
