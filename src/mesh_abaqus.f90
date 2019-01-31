@@ -543,7 +543,11 @@ contains
 !> @brief check if the input file for Abaqus contains part info
 !--------------------------------------------------------------------------------------------------
 logical function hasNoPart(fileUnit)
-
+ use IO, only: &
+   IO_stringPos, &
+   IO_stringValue, &
+   IO_lc
+ 
  implicit none
  integer(pInt),    intent(in)                :: fileUnit
 
