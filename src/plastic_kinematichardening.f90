@@ -151,7 +151,6 @@ subroutine plastic_kinehardening_init
    outputID
 
  character(len=pStringLen) :: &
-   structure = '',&
    extmsg = ''
  character(len=65536), dimension(:), allocatable :: &
    outputs
@@ -187,8 +186,6 @@ subroutine plastic_kinehardening_init
    endif
 #endif
 
-   structure          = config%getString('lattice_structure')
-
 !--------------------------------------------------------------------------------------------------
 !  optional parameters that need to be defined
    prm%aTolResistance = config%getFloat('atol_resistance',defaultVal=1.0_pReal)
@@ -203,28 +200,29 @@ subroutine plastic_kinehardening_init
    prm%Nslip      = config%getInts('nslip',defaultVal=emptyIntArray)
    prm%totalNslip = sum(prm%Nslip)
    slipActive: if (prm%totalNslip > 0_pInt) then
-     prm%Schmid          = lattice_SchmidMatrix_slip(prm%Nslip,structure(1:3),&
-                                                     config%getFloat('c/a',defaultVal=0.0_pReal))
-     if(structure=='bcc') then
-       prm%nonSchmidCoeff     = config%getFloats('nonschmid_coefficients',&
-                                                 defaultVal = emptyRealArray)
-       prm%nonSchmid_pos      = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1_pInt)
-       prm%nonSchmid_neg      = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1_pInt)
+     prm%Schmid = lattice_SchmidMatrix_slip(prm%Nslip,config%getString('lattice_structure'),&
+                                            config%getFloat('c/a',defaultVal=0.0_pReal))
+
+     if(trim(config%getString('lattice_structure')) == 'bcc') then
+       prm%nonSchmidCoeff = config%getFloats('nonschmid_coefficients',&
+                                              defaultVal = emptyRealArray)
+       prm%nonSchmid_pos  = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1_pInt)
+       prm%nonSchmid_neg  = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1_pInt)
      else
-       prm%nonSchmid_pos      = prm%Schmid
-       prm%nonSchmid_neg      = prm%Schmid
+       prm%nonSchmid_pos  = prm%Schmid
+       prm%nonSchmid_neg  = prm%Schmid
      endif
      prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
                                                              config%getFloats('interaction_slipslip'), &
-                                                             structure(1:3))
+                                                             config%getString('lattice_structure'))
 
-     prm%crss0    = config%getFloats('crss0',    requiredShape=shape(prm%Nslip))
-     prm%tau1     = config%getFloats('tau1',     requiredShape=shape(prm%Nslip))
-     prm%tau1_b   = config%getFloats('tau1_b',   requiredShape=shape(prm%Nslip))
-     prm%theta0   = config%getFloats('theta0',   requiredShape=shape(prm%Nslip))
-     prm%theta1   = config%getFloats('theta1',   requiredShape=shape(prm%Nslip))
-     prm%theta0_b = config%getFloats('theta0_b', requiredShape=shape(prm%Nslip))
-     prm%theta1_b = config%getFloats('theta1_b', requiredShape=shape(prm%Nslip))
+     prm%crss0    = config%getFloats('crss0',    requiredSize=size(prm%Nslip))
+     prm%tau1     = config%getFloats('tau1',     requiredSize=size(prm%Nslip))
+     prm%tau1_b   = config%getFloats('tau1_b',   requiredSize=size(prm%Nslip))
+     prm%theta0   = config%getFloats('theta0',   requiredSize=size(prm%Nslip))
+     prm%theta1   = config%getFloats('theta1',   requiredSize=size(prm%Nslip))
+     prm%theta0_b = config%getFloats('theta0_b', requiredSize=size(prm%Nslip))
+     prm%theta1_b = config%getFloats('theta1_b', requiredSize=size(prm%Nslip))
 
      prm%gdot0  = config%getFloat('gdot0')
      prm%n = config%getFloat('n_slip')
@@ -302,7 +300,6 @@ subroutine plastic_kinehardening_init
    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,sizeDeltaState, &
                                       prm%totalNslip,0_pInt,0_pInt)
    plasticState(p)%sizePostResults = sum(plastic_kinehardening_sizePostResult(:,phase_plasticityInstance(p)))
-   plasticState(p)%offsetDeltaState = sizeDotState
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
