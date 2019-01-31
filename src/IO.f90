@@ -177,11 +177,10 @@ recursive function IO_recursiveRead(fileName,cnt) result(fileContent)
     fileUnit, &
     startPos, endPos, &
     myTotalLines, &                                                                                 !< # lines read from file without include statements
-    includedLines, &                                                                                !< # lines included from other file(s)
-    missingLines, &                                                                                 !< # lines missing from current file
     l,i, &
     myStat
-
+  logical :: warned
+  
   if (present(cnt)) then
     if (cnt>10_pInt) call IO_error(106_pInt,ext_msg=trim(fileName))
   endif
@@ -198,37 +197,39 @@ recursive function IO_recursiveRead(fileName,cnt) result(fileContent)
 
 !--------------------------------------------------------------------------------------------------
 ! count lines to allocate string array
-  myTotalLines = 0_pInt
+  myTotalLines = 1_pInt
   do l=1_pInt, len(rawData)
-    if (rawData(l:l) == new_line('') .or. l==len(rawData)) myTotalLines = myTotalLines+1            ! end of line or end of file without new line
+    if (rawData(l:l) == new_line('')) myTotalLines = myTotalLines+1
   enddo
   allocate(fileContent(myTotalLines))
 
 !--------------------------------------------------------------------------------------------------
 ! split raw data at end of line and handle includes
+  warned = .false.
   startPos = 1_pInt
-  endPos = 0_pInt
+  l = 1_pInt
+  do while (l <= myTotalLines)
+    endPos = merge(startPos + scan(rawData(startPos:),new_line('')) - 2_pInt,len(rawData),l /= myTotalLines)
+    if (endPos - startPos > 255_pInt) then
+      line = rawData(startPos:startPos+255_pInt)
+      if (.not. warned) then
+        call IO_warning(207_pInt,ext_msg=trim(fileName),el=l)
+        warned = .true.
+      endif
+    else
+      line = rawData(startPos:endpos)
+    endif
+    startPos = endPos + 2_pInt                                                                        ! jump to next line start
 
-  includedLines=0_pInt
-  l=0_pInt
-  do while (startPos <= len(rawData))
-    l = l + 1_pInt
-    endPos = endPos + scan(rawData(startPos:),new_line(''))
-    if(endPos < startPos) endPos = len(rawData)                                                     ! end of file without end of line
-    if(endPos - startPos >256) call IO_error(107_pInt,ext_msg=trim(fileName))
-    line = rawData(startPos:endPos-1_pInt)
-    startPos = endPos + 1_pInt
-
-    recursion: if(scan(trim(line),'{') < scan(trim(line),'}')) then
-      myTotalLines    = myTotalLines - 1_pInt
+    recursion: if (scan(trim(adjustl(line)),'{') == 1 .and. scan(trim(line),'}') > 2) then
       includedContent = IO_recursiveRead(trim(line(scan(line,'{')+1_pInt:scan(line,'}')-1_pInt)), &
-                        merge(cnt,1_pInt,present(cnt)))                                             ! to track recursion depth
-      includedLines   = includedLines + size(includedContent)
-      missingLines    = myTotalLines + includedLines - size(fileContent(1:l-1)) -size(includedContent)
-      fileContent     = [ fileContent(1:l-1_pInt), includedContent, [(dummy,i=1,missingLines)] ]    ! add content and grow array
-      l = l - 1_pInt + size(includedContent)
+                        merge(cnt,1_pInt,present(cnt)))                                               ! to track recursion depth
+      fileContent     = [ fileContent(1:l-1_pInt), includedContent, [(dummy,i=1,myTotalLines-l)] ]    ! add content and grow array
+      myTotalLines    = myTotalLines - 1_pInt + size(includedContent)
+      l               = l            - 1_pInt + size(includedContent)
     else recursion
       fileContent(l) = line
+      l = l + 1_pInt
     endif recursion
 
   enddo
@@ -1483,6 +1484,8 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
    msg = 'invalid character in string chunk'
  case (203_pInt)
    msg = 'interpretation of string chunk failed'
+ case (207_pInt)
+   msg = 'line truncated'
  case (600_pInt)
    msg = 'crystallite responds elastically'
  case (601_pInt)
