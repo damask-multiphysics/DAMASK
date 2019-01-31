@@ -1725,23 +1725,6 @@ subroutine integrateStateFPI()
  endif
    
  end function damper
- 
- !--------------------------------------------------------------------------------------------------
- !> @brief determines whether a point is converged
- !--------------------------------------------------------------------------------------------------
- logical pure function converged(residuum,state,aTol)
-  use prec, only: &
-    dEq0
-  use numerics, only: &
-    rTol => rTol_crystalliteState
-    
-  implicit none
-  real(pReal), intent(in), dimension(:) ::&
-    residuum, state, aTol
-
-  converged = all(abs(residuum) <= max(aTol, rTol*abs(state)))
-
- end function converged
 
 end subroutine integrateStateFPI
 
@@ -1870,25 +1853,6 @@ subroutine integrateStateAdaptiveEuler()
 
  if (any(plasticState(:)%nonlocal)) call nonlocalConvergenceCheck
  
- contains
-
- !--------------------------------------------------------------------------------------------------
- !> @brief determines whether a point is converged
- !--------------------------------------------------------------------------------------------------
- logical pure function converged(residuum,state,aTol)
-  use prec, only: &
-    dEq0
-  use numerics, only: &
-    rTol => rTol_crystalliteState
-    
-  implicit none
-  real(pReal), intent(in), dimension(:) ::&
-    residuum, state, aTol
-
-  converged = all(abs(residuum) <= max(aTol, rTol*abs(state)))
-
- end function converged
-
 end subroutine integrateStateAdaptiveEuler
 
 
@@ -2141,25 +2105,6 @@ subroutine integrateStateRKCK45()
  call setConvergenceFlag
  if (any(plasticState(:)%nonlocal)) call nonlocalConvergenceCheck
  
- contains
-
- !--------------------------------------------------------------------------------------------------
- !> @brief determines whether a point is converged
- !--------------------------------------------------------------------------------------------------
- logical pure function converged(residuum,state,aTol)
-  use prec, only: &
-    dEq0
-  use numerics, only: &
-    rTol => rTol_crystalliteState
-    
-  implicit none
-  real(pReal), intent(in), dimension(:) ::&
-    residuum, state, aTol
-
-  converged = all(abs(residuum) <= max(aTol, rTol*abs(state)))
-
- end function converged
-
 end subroutine integrateStateRKCK45
 
 
@@ -2199,6 +2144,24 @@ subroutine setConvergenceFlag()
  !OMP END DO PARALLEL
 
 end subroutine setConvergenceFlag
+
+
+ !--------------------------------------------------------------------------------------------------
+ !> @brief determines whether a point is converged
+ !--------------------------------------------------------------------------------------------------
+ logical pure function converged(residuum,state,aTol)
+  use prec, only: &
+    dEq0
+  use numerics, only: &
+    rTol => rTol_crystalliteState
+    
+  implicit none
+  real(pReal), intent(in), dimension(:) ::&
+    residuum, state, aTol
+
+  converged = all(abs(residuum) <= max(aTol, rTol*abs(state)))
+
+ end function converged
 
 
 !--------------------------------------------------------------------------------------------------
