@@ -67,9 +67,6 @@ module mesh
    mesh_maxNelemInSet, &
    mesh_Nmaterials
 
- integer(pInt), dimension(2), private :: &
-   mesh_maxValStateVar = 0_pInt
-
 integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_cellnodeParent                                                                              !< cellnode's parent element ID, cellnode's intra-element ID
 
@@ -371,9 +368,6 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_build_ipVolumes, &
    mesh_build_ipCoordinates, &
    mesh_cellCenterCoordinates, &
-   mesh_get_Ncellnodes, &
-   mesh_get_unitlength, &
-   mesh_get_nodeAtIP, &
    mesh_FEasCP
 
 
@@ -422,9 +416,7 @@ type, public, extends(tMesh) :: tMesh_marc
    mesh_maxNelemInSet
  integer(pInt), dimension(:,:), allocatable :: &
    mesh_mapElemSet                                                                                  !< list of elements in elementSet
- integer(pInt), dimension(2):: &
-   mesh_maxValStateVar = 0_pInt
-   
+
  contains
    procedure :: init => tMesh_marc_init
 end type tMesh_marc
@@ -1442,7 +1434,6 @@ subroutine mesh_marc_build_elements(fileUnit)
        chunkPos = IO_stringPos(line)
        do while (scan(IO_stringValue(line,chunkPos,1_pInt),'+-',back=.true.)>1)                        ! is noEfloat value?
          myVal = nint(IO_fixedNoEFloatValue(line,[0_pInt,20_pInt],1_pInt),pInt)                     ! state var's value
-         mesh_maxValStateVar(sv-1_pInt) = max(myVal,mesh_maxValStateVar(sv-1_pInt))                 ! remember max val of homogenization and microstructure index
          if (initialcondTableStyle == 2_pInt) then
            read (fileUnit,610,END=630) line                                                         ! read extra line
            read (fileUnit,610,END=630) line                                                         ! read extra line
@@ -1493,12 +1484,12 @@ use IO, only: &
    read (fileUnit,610,END=620) line
    chunkPos = IO_stringPos(line)
    Nchunks = chunkPos(1)
-   if (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == keyword .and. Nchunks > 1_pInt) then             ! found keyword for damask option and there is at least one more chunk to read
+   if (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == keyword .and. Nchunks > 1_pInt) then          ! found keyword for damask option and there is at least one more chunk to read
      damaskOption = IO_lc(IO_stringValue(line,chunkPos,2_pInt))
      select case(damaskOption)
        case('periodic')                                                                             ! damask Option that allows to specify periodic fluxes
          do chunk = 3_pInt,Nchunks                                                                  ! loop through chunks (skipping the keyword)
-            v = IO_lc(IO_stringValue(line,chunkPos,chunk))                                             ! chunk matches keyvalues x,y, or z?
+            v = IO_lc(IO_stringValue(line,chunkPos,chunk))                                          ! chunk matches keyvalues x,y, or z?
             mesh_periodicSurface(1) = mesh_periodicSurface(1) .or. v == 'x'
             mesh_periodicSurface(2) = mesh_periodicSurface(2) .or. v == 'y'
             mesh_periodicSurface(3) = mesh_periodicSurface(3) .or. v == 'z'
@@ -2738,52 +2729,5 @@ subroutine mesh_build_FEdata
 
 
 end subroutine mesh_build_FEdata
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns global variable mesh_Ncellnodes
-!--------------------------------------------------------------------------------------------------
-integer(pInt) function mesh_get_Ncellnodes()
-
- implicit none
-
- mesh_get_Ncellnodes = mesh_Ncellnodes
-
-end function mesh_get_Ncellnodes
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns global variable mesh_unitlength
-!--------------------------------------------------------------------------------------------------
-real(pReal) function mesh_get_unitlength()
-
- implicit none
-
- mesh_get_unitlength = mesh_unitlength
-
-end function mesh_get_unitlength
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns node that is located at an ip
-!> @details return zero if requested ip does not exist or not available (more ips than nodes)
-!--------------------------------------------------------------------------------------------------
-integer(pInt) function mesh_get_nodeAtIP(elemtypeFE,ip)
-
- implicit none
- character(len=*), intent(in) :: elemtypeFE
- integer(pInt),    intent(in) :: ip
- integer(pInt)                :: elemtype
- integer(pInt)                :: geomtype
-
- mesh_get_nodeAtIP = 0_pInt
-
- elemtype = FE_mapElemtype(elemtypeFE)
- geomtype = FE_geomtype(elemtype)
- if (FE_Nips(geomtype) >= ip .and. FE_Nips(geomtype) <= FE_Nnodes(elemtype)) &
-   mesh_get_nodeAtIP = FE_nodesAtIP(1,ip,geomtype)
-
-end function mesh_get_nodeAtIP
-
 
 end module mesh

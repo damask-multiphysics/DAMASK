@@ -61,10 +61,7 @@ module mesh
  real(pReal),dimension(:,:,:,:), allocatable, public, protected :: &
    mesh_ipAreaNormal                                                                                !< area normal of interface to neighboring IP (initially!)
 
- logical, dimension(3), public, protected :: mesh_periodicSurface                                   !< flag indicating periodic outer surfaces (used for fluxes)
-
- integer(pInt), dimension(2), private :: &
-   mesh_maxValStateVar = 0_pInt
+ logical, dimension(3), public, parameter :: mesh_periodicSurface = .true.                          !< flag indicating periodic outer surfaces (used for fluxes)
 
 integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_cellnodeParent                                                                              !< cellnode's parent element ID, cellnode's intra-element ID
@@ -80,9 +77,6 @@ integer(pInt), dimension(:,:), allocatable, private :: &
 
  real(pReal), dimension(:,:,:), allocatable, private :: &
    FE_cellnodeParentnodeWeights                                                                     !< list of node weights for the generation of cell nodes
-
- integer(pInt), dimension(:,:,:,:), allocatable, private :: &
-   FE_subNodeOnIPFace
 
 ! These definitions should actually reside in the FE-solver specific part (different for MARC/ABAQUS)
 ! Hence, I suggest to prefix with "FE_"
@@ -192,86 +186,6 @@ integer(pInt), dimension(:,:), allocatable, private :: &
       8  & ! element  21 (3D 20node 27ip)
   ],pInt)
 
- integer(pInt), dimension(FE_maxNfaces,FE_Ngeomtypes), parameter, private :: &
-                                                                       FE_NmatchingNodesPerFace = & !< number of matching nodes per face in a specific type of element geometry
- reshape(int([ &
-  2,2,2,0,0,0, & ! element   6 (2D 3node 1ip)
-  2,2,2,0,0,0, & ! element 125 (2D 6node 3ip)
-  2,2,2,2,0,0, & ! element  11 (2D 4node 4ip)
-  2,2,2,2,0,0, & ! element  27 (2D 8node 9ip)
-  3,3,3,3,0,0, & ! element 134 (3D 4node 1ip)
-  3,3,3,3,0,0, & ! element 127 (3D 10node 4ip)
-  3,4,4,4,3,0, & ! element 136 (3D 6node 6ip)
-  4,4,4,4,4,4, & ! element 117 (3D 8node 1ip)
-  4,4,4,4,4,4, & ! element   7 (3D 8node 8ip)
-  4,4,4,4,4,4  & ! element  21 (3D 20node 27ip)
-  ],pInt),[FE_maxNipNeighbors,FE_Ngeomtypes])
-
- integer(pInt), dimension(FE_maxNmatchingNodesPerFace,FE_maxNfaces,FE_Ngeomtypes), &
-                                                          parameter, private :: FE_face = &         !< List of node indices on each face of a specific type of element geometry
- reshape(int([&
-  1,2,0,0 , & ! element   6 (2D 3node 1ip)
-  2,3,0,0 , &
-  3,1,0,0 , &
-  0,0,0,0 , &
-  0,0,0,0 , &
-  0,0,0,0 , &
-  1,2,0,0 , & ! element 125 (2D 6node 3ip)
-  2,3,0,0 , &
-  3,1,0,0 , &
-  0,0,0,0 , &
-  0,0,0,0 , &
-  0,0,0,0 , &
-  1,2,0,0 , & ! element  11 (2D 4node 4ip)
-  2,3,0,0 , &
-  3,4,0,0 , &
-  4,1,0,0 , &
-  0,0,0,0 , &
-  0,0,0,0 , &
-  1,2,0,0 , & ! element  27 (2D 8node 9ip)
-  2,3,0,0 , &
-  3,4,0,0 , &
-  4,1,0,0 , &
-  0,0,0,0 , &
-  0,0,0,0 , &
-  1,2,3,0 , & ! element 134 (3D 4node 1ip)
-  1,4,2,0 , &
-  2,3,4,0 , &
-  1,3,4,0 , &
-  0,0,0,0 , &
-  0,0,0,0 , &
-  1,2,3,0 , & ! element 127 (3D 10node 4ip)
-  1,4,2,0 , &
-  2,4,3,0 , &
-  1,3,4,0 , &
-  0,0,0,0 , &
-  0,0,0,0 , &
-  1,2,3,0 , & ! element 136 (3D 6node 6ip)
-  1,4,5,2 , &
-  2,5,6,3 , &
-  1,3,6,4 , &
-  4,6,5,0 , &
-  0,0,0,0 , &
-  1,2,3,4 , & ! element 117 (3D 8node 1ip)
-  2,1,5,6 , &
-  3,2,6,7 , &
-  4,3,7,8 , &
-  4,1,5,8 , &
-  8,7,6,5 , &
-  1,2,3,4 , & ! element   7 (3D 8node 8ip)
-  2,1,5,6 , &
-  3,2,6,7 , &
-  4,3,7,8 , &
-  4,1,5,8 , &
-  8,7,6,5 , &
-  1,2,3,4 , & ! element  21 (3D 20node 27ip)
-  2,1,5,6 , &
-  3,2,6,7 , &
-  4,3,7,8 , &
-  4,1,5,8 , &
-  8,7,6,5   &
-  ],pInt),[FE_maxNmatchingNodesPerFace,FE_maxNfaces,FE_Ngeomtypes])
-
  integer(pInt), dimension(FE_Ngeomtypes), parameter, private :: FE_Ncellnodes = &                   !< number of cell nodes in a specific geometry type
  int([ &
       3, & ! element   6 (2D 3node 1ip)
@@ -354,29 +268,24 @@ integer(pInt), dimension(:,:), allocatable, private :: &
 
  public :: &
    mesh_init, &
-   mesh_build_cellnodes, &
-   mesh_build_ipVolumes, &
-   mesh_build_ipCoordinates, &
-   mesh_cellCenterCoordinates, &
-   mesh_get_Ncellnodes, &
-   mesh_get_unitlength, &
-   mesh_get_nodeAtIP, &
+   mesh_cellCenterCoordinates
 
-   mesh_spectral_getGrid, &
-   mesh_spectral_getSize
 
  private :: &
-   mesh_get_damaskOptions, &
    mesh_build_cellconnectivity, &
    mesh_build_ipAreas, &
-   mesh_faceMatch, &
    mesh_build_FEdata, &
    mesh_spectral_getHomogenization, &
    mesh_spectral_count, &
    mesh_spectral_count_cpSizes, &
    mesh_spectral_build_nodes, &
    mesh_spectral_build_elements, &
-   mesh_spectral_build_ipNeighborhood
+   mesh_spectral_build_ipNeighborhood, &
+   mesh_spectral_getGrid, &
+   mesh_spectral_getSize, &
+   mesh_build_cellnodes, &
+   mesh_build_ipVolumes, &
+   mesh_build_ipCoordinates
 
  type, public, extends(tMesh) :: tMesh_grid
  
@@ -437,9 +346,7 @@ subroutine mesh_init(ip,el)
    debug_mesh, &
    debug_levelBasic
  use numerics, only: &
-   usePingPong, &
-   numerics_unitlength, &
-   worldrank
+   numerics_unitlength
  use FEsolving, only: &
    FEsolving_execElem, &
    FEsolving_execIP
@@ -491,8 +398,6 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
  call mesh_spectral_build_elements(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
- call mesh_get_damaskOptions(FILEUNIT)
- if (myDebug) write(6,'(a)') ' Got DAMASK options'; flush(6)
  call mesh_build_cellconnectivity
  if (myDebug) write(6,'(a)') ' Built cell connectivity'; flush(6)
  mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)
@@ -1160,8 +1065,6 @@ subroutine mesh_spectral_build_elements(fileUnit)
    mesh_element(10,e) = mesh_element(9,e) + 1_pInt
    mesh_element(11,e) = mesh_element(9,e) + grid(1) + 2_pInt
    mesh_element(12,e) = mesh_element(9,e) + grid(1) + 1_pInt
-   mesh_maxValStateVar(1) = max(mesh_maxValStateVar(1),mesh_element(3,e))                           ! needed for statistics
-   mesh_maxValStateVar(2) = max(mesh_maxValStateVar(2),mesh_element(4,e))
  enddo
 
  if (e /= mesh_NcpElems) call IO_error(880_pInt,e)
@@ -1315,25 +1218,6 @@ end function mesh_nodesAroundCentres
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief get any additional damask options from input file, sets mesh_periodicSurface
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_get_damaskOptions(fileUnit)
-
-use IO, only: &
-  IO_lc, &
-  IO_stringValue, &
-  IO_stringPos
-
- implicit none
- integer(pInt), intent(in) :: fileUnit
-
-
- mesh_periodicSurface = .true.
-
- end subroutine mesh_get_damaskOptions
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief calculation of IP interface areas, allocate globals '_ipArea', and '_ipAreaNormal'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_ipAreas
@@ -1405,93 +1289,6 @@ subroutine mesh_build_ipAreas
  !$OMP END PARALLEL DO
 
 end subroutine mesh_build_ipAreas
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief find face-matching element of same type
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_faceMatch(elem, face ,matchingElem, matchingFace)
-
-implicit none
-integer(pInt), intent(out) ::     matchingElem, &                                                   ! matching CP element ID
-                                  matchingFace                                                      ! matching face ID
-integer(pInt), intent(in) ::      face, &                                                           ! face ID
-                                  elem                                                              ! CP elem ID
-integer(pInt), dimension(FE_NmatchingNodesPerFace(face,FE_geomtype(mesh_element(2,elem)))) :: &
-                                  myFaceNodes                                                       ! global node ids on my face
-integer(pInt)        ::           myType, &
-                                  candidateType, &
-                                  candidateElem, &
-                                  candidateFace, &
-                                  candidateFaceNode, &
-                                  minNsharedElems, &
-                                  NsharedElems, &
-                                  lonelyNode = 0_pInt, &
-                                  i, &
-                                  n, &
-                                  dir                                                               ! periodicity direction
-integer(pInt), dimension(:), allocatable :: element_seen
-logical checkTwins
-
-matchingElem = 0_pInt
-matchingFace = 0_pInt
-minNsharedElems = mesh_maxNsharedElems + 1_pInt                                                     ! init to worst case
-myType = FE_geomtype(mesh_element(2_pInt,elem))                                                     ! figure elemGeomType
-
-do n = 1_pInt,FE_NmatchingNodesPerFace(face,myType)                                                 ! loop over nodes on face
-  myFaceNodes(n) = mesh_element(4_pInt+FE_face(n,face,myType),elem)                                 ! CP id of face node
-  NsharedElems = mesh_sharedElem(1_pInt,myFaceNodes(n))                                             ! figure # shared elements for this node
-  if (NsharedElems < minNsharedElems) then
-    minNsharedElems = NsharedElems                                                                  ! remember min # shared elems
-    lonelyNode = n                                                                                  ! remember most lonely node
-  endif
-enddo
-
-allocate(element_seen(minNsharedElems))
-element_seen = 0_pInt
-
-checkCandidate: do i = 1_pInt,minNsharedElems                                                       ! iterate over lonelyNode's shared elements
-  candidateElem = mesh_sharedElem(1_pInt+i,myFaceNodes(lonelyNode))                                 ! present candidate elem
-  if (all(element_seen /= candidateElem)) then                                                      ! element seen for the first time?
-    element_seen(i) = candidateElem
-    candidateType = FE_geomtype(mesh_element(2_pInt,candidateElem))                                 ! figure elemGeomType of candidate
-checkCandidateFace: do candidateFace = 1_pInt,FE_maxNipNeighbors                                    ! check each face of candidate
-      if (FE_NmatchingNodesPerFace(candidateFace,candidateType) &
-          /= FE_NmatchingNodesPerFace(face,myType) &                                                ! incompatible face
-          .or. (candidateElem == elem .and. candidateFace == face)) then                            ! this is my face
-        cycle checkCandidateFace
-      endif
-      checkTwins = .false.
-      do n = 1_pInt,FE_NmatchingNodesPerFace(candidateFace,candidateType)                           ! loop through nodes on face
-        candidateFaceNode = mesh_element(4_pInt+FE_face(n,candidateFace,candidateType),candidateElem)
-        if (all(myFaceNodes /= candidateFaceNode)) then                                             ! candidate node does not match any of my face nodes
-          checkTwins = .true.                                                                       ! perhaps the twin nodes do match
-          exit
-        endif
-      enddo
-      if(checkTwins) then
-checkCandidateFaceTwins: do dir = 1_pInt,3_pInt
-          do n = 1_pInt,FE_NmatchingNodesPerFace(candidateFace,candidateType)                       ! loop through nodes on face
-            candidateFaceNode = mesh_element(4+FE_face(n,candidateFace,candidateType),candidateElem)
-            if (all(myFaceNodes /= mesh_nodeTwins(dir,candidateFaceNode))) then                     ! node twin does not match either
-              if (dir == 3_pInt) then
-                cycle checkCandidateFace
-              else
-                cycle checkCandidateFaceTwins                                                       ! try twins in next dimension
-              endif
-            endif
-          enddo
-          exit checkCandidateFaceTwins
-        enddo checkCandidateFaceTwins
-      endif
-      matchingFace = candidateFace
-      matchingElem = candidateElem
-      exit checkCandidate                                                                           ! found my matching candidate
-    enddo checkCandidateFace
-  endif
-enddo checkCandidate
-
-end subroutine mesh_faceMatch
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2210,52 +2007,6 @@ subroutine mesh_build_FEdata
   
 
 end subroutine mesh_build_FEdata
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns global variable mesh_Ncellnodes
-!--------------------------------------------------------------------------------------------------
-integer(pInt) function mesh_get_Ncellnodes()
-
- implicit none
-
- mesh_get_Ncellnodes = mesh_Ncellnodes
-
-end function mesh_get_Ncellnodes
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns global variable mesh_unitlength
-!--------------------------------------------------------------------------------------------------
-real(pReal) function mesh_get_unitlength()
-
- implicit none
-
- mesh_get_unitlength = mesh_unitlength
-
-end function mesh_get_unitlength
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns node that is located at an ip
-!> @details return zero if requested ip does not exist or not available (more ips than nodes)
-!--------------------------------------------------------------------------------------------------
-integer(pInt) function mesh_get_nodeAtIP(elemtypeFE,ip)
-
- implicit none
- character(len=*), intent(in) :: elemtypeFE
- integer(pInt),    intent(in) :: ip
- integer(pInt)                :: elemtype
- integer(pInt)                :: geomtype
-
- mesh_get_nodeAtIP = 0_pInt
-
- elemtype = 10_pInt
- geomtype = FE_geomtype(elemtype)
- if (FE_Nips(geomtype) >= ip .and. FE_Nips(geomtype) <= FE_Nnodes(elemtype)) &
-   mesh_get_nodeAtIP = FE_nodesAtIP(1,ip,geomtype)
-
-end function mesh_get_nodeAtIP
 
 
 end module mesh

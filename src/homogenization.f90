@@ -74,7 +74,6 @@ subroutine homogenization_init
    mesh_maxNips, &
    mesh_NcpElems, &
    mesh_element, &
-   FE_Nips, &
    FE_geomtype
  use constitutive, only: &
    constitutive_plasticity_maxSizePostResults, &
@@ -346,7 +345,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    crystallite_Lp, &
    crystallite_Li0, &
    crystallite_Li, &
-   crystallite_dPdF, &
    crystallite_Tstar0_v, &
    crystallite_Tstar_v, &
    crystallite_partionedF0, &
