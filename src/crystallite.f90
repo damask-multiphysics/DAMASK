@@ -1535,11 +1535,8 @@ end function integrateStress
 !> using Fixed Point Iteration to adapt the stepsize
 !--------------------------------------------------------------------------------------------------
 subroutine integrateStateFPI()
- use, intrinsic :: &
-   IEEE_arithmetic
  use numerics, only: &
-   nState, &
-   rTol_crystalliteState
+   nState
  use mesh, only: &
    mesh_element
  use material, only: &
@@ -1549,7 +1546,6 @@ subroutine integrateStateFPI()
    phase_Nsources, &
    homogenization_Ngrains
  use constitutive, only: &
-   constitutive_collectDotState, &
    constitutive_plasticity_maxSizeDotState, &
    constitutive_source_maxSizeDotState
 
@@ -1635,9 +1631,9 @@ subroutine integrateStateFPI()
            plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) * zeta &
                                          + plasticState(p)%previousDotState(:,c) * (1.0_pReal - zeta)
            
-           crystallite_converged(g,i,e) = all(abs(residuum_plastic(1:sizeDotState)) &
-                                          < max(plasticState(p)%aTolState(1:sizeDotState), &
-                                                abs(plasticState(p)%state(1:sizeDotState,c)*rTol_crystalliteState)))
+           crystallite_converged(g,i,e) = converged(residuum_plastic(1:sizeDotState), &
+                                                    plasticState(p)%state(1:sizeDotState,c), &
+                                                    plasticState(p)%aTolState(1:sizeDotState))
                              
 
            do s = 1_pInt, phase_Nsources(p)
@@ -1659,9 +1655,9 @@ subroutine integrateStateFPI()
                                                + sourceState(p)%p(s)%previousDotState(:,c)* (1.0_pReal - zeta)
 
              crystallite_converged(g,i,e) = crystallite_converged(g,i,e) .and. &
-                                            all(abs(residuum_source(1:sizeDotState)) &
-                                            < max(sourceState(p)%p(s)%aTolState(1:sizeDotState), &
-                                                  abs(sourceState(p)%p(s)%state(1:sizeDotState,c)*rTol_crystalliteState)))
+                  converged(residuum_source(1:sizeDotState), &
+                            sourceState(p)%p(s)%state(1:sizeDotState,c), &
+                            sourceState(p)%p(s)%aTolState(1:sizeDotState))
            enddo
          endif
    enddo; enddo; enddo
@@ -1729,6 +1725,23 @@ subroutine integrateStateFPI()
  endif
    
  end function damper
+ 
+ !--------------------------------------------------------------------------------------------------
+ !> @brief determines whether a point is converged
+ !--------------------------------------------------------------------------------------------------
+ logical pure function converged(residuum,state,aTol)
+  use prec, only: &
+    dEq0
+  use numerics, only: &
+    rTol => rTol_crystalliteState
+    
+  implicit none
+  real(pReal), intent(in), dimension(:) ::&
+    residuum, state, aTol
+
+  converged = all(abs(residuum) <= max(aTol, rTol*abs(state)))
+
+ end function converged
 
 end subroutine integrateStateFPI
 
@@ -1835,9 +1848,9 @@ subroutine integrateStateAdaptiveEuler()
          residuum_plastic(1:sizeDotState,g,i,e) = residuum_plastic(1:sizeDotState,g,i,e) &
                                                 + 0.5_pReal * plasticState(p)%dotState(:,c) * crystallite_subdt(g,i,e)
               
-         crystallite_converged(g,i,e) = all(converged(residuum_plastic(1:sizeDotState,g,i,e), &
+         crystallite_converged(g,i,e) = converged(residuum_plastic(1:sizeDotState,g,i,e), &
                                              plasticState(p)%state(1:sizeDotState,c), &
-                                             plasticState(p)%aTolState(1:sizeDotState)))
+                                             plasticState(p)%aTolState(1:sizeDotState))
 
          do s = 1_pInt, phase_Nsources(p)
            sizeDotState = sourceState(p)%p(s)%sizeDotState
@@ -1846,9 +1859,9 @@ subroutine integrateStateAdaptiveEuler()
                                                    + 0.5_pReal * sourceState(p)%p(s)%dotState(:,c) * crystallite_subdt(g,i,e)
 
            crystallite_converged(g,i,e) = crystallite_converged(g,i,e) .and.&
-                  all(converged(residuum_source(1:sizeDotState,s,g,i,e), &
+                  converged(residuum_source(1:sizeDotState,s,g,i,e), &
                             sourceState(p)%p(s)%state(1:sizeDotState,c), &
-                            sourceState(p)%p(s)%aTolState(1:sizeDotState)))
+                            sourceState(p)%p(s)%aTolState(1:sizeDotState))
           enddo
           
        endif
@@ -1862,22 +1875,17 @@ subroutine integrateStateAdaptiveEuler()
  !--------------------------------------------------------------------------------------------------
  !> @brief determines whether a point is converged
  !--------------------------------------------------------------------------------------------------
- logical pure elemental function converged(residuum,state,aTol)
+ logical pure function converged(residuum,state,aTol)
   use prec, only: &
     dEq0
   use numerics, only: &
     rTol => rTol_crystalliteState
     
   implicit none
-  real(pReal), intent(in) ::&
+  real(pReal), intent(in), dimension(:) ::&
     residuum, state, aTol
 
-  if (dEq0(state)) then
-    converged = .true. ! ToDo: intended behavior? Not rely on absoluteTolerance
-  else
-    converged =   abs(residuum)       < aTol &
-             .or. abs(residuum/state) < rTol
-  endif
+  converged = all(abs(residuum) <= max(aTol, rTol*abs(state)))
 
  end function converged
 
@@ -2111,17 +2119,17 @@ subroutine integrateStateRKCK45()
        
          sizeDotState = plasticState(p)%sizeDotState
          
-         crystallite_todo(g,i,e) = all(converged(residuum_plastic(1:sizeDotState,g,i,e), &
+         crystallite_todo(g,i,e) = converged(residuum_plastic(1:sizeDotState,g,i,e), &
                                              plasticState(p)%state(1:sizeDotState,cc), &
-                                             plasticState(p)%aTolState(1:sizeDotState)))
+                                             plasticState(p)%aTolState(1:sizeDotState))
 
          do s = 1_pInt, phase_Nsources(p)
            sizeDotState = sourceState(p)%p(s)%sizeDotState
          
                   crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and.&
-                  all(converged(residuum_source(1:sizeDotState,s,g,i,e), &
+                  converged(residuum_source(1:sizeDotState,s,g,i,e), &
                             sourceState(p)%p(s)%state(1:sizeDotState,cc), &
-                            sourceState(p)%p(s)%aTolState(1:sizeDotState)))
+                            sourceState(p)%p(s)%aTolState(1:sizeDotState))
          enddo
      endif
    enddo; enddo; enddo
@@ -2138,22 +2146,17 @@ subroutine integrateStateRKCK45()
  !--------------------------------------------------------------------------------------------------
  !> @brief determines whether a point is converged
  !--------------------------------------------------------------------------------------------------
- logical pure elemental function converged(residuum,state,aTol)
+ logical pure function converged(residuum,state,aTol)
   use prec, only: &
     dEq0
   use numerics, only: &
     rTol => rTol_crystalliteState
     
   implicit none
-  real(pReal), intent(in) ::&
+  real(pReal), intent(in), dimension(:) ::&
     residuum, state, aTol
 
-  if (dEq0(state)) then
-    converged = .true. ! ToDo: intended behavior? Not rely on absoluteTolerance
-  else
-    converged =   abs(residuum)       < aTol &
-             .or. abs(residuum/state) < rTol
-  endif
+  converged = all(abs(residuum) <= max(aTol, rTol*abs(state)))
 
  end function converged
 
