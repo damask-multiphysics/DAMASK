@@ -216,8 +216,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_init(fileUnit)
 use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
-use math,     only: math_Mandel3333to66, & 
-                    math_Voigt66to3333, & 
+use math,     only: math_Voigt66to3333, & 
                     math_mul3x3, &
                     math_transpose33
 use IO,       only: IO_read, &
@@ -245,11 +244,11 @@ use material, only: phase_plasticity, &
                     PLASTICITY_NONLOCAL_label, &
                     PLASTICITY_NONLOCAL_ID, &
                     plasticState, &
-                    material_phase
+                    material_phase, &
+                    material_allocatePlasticState
 use config, only:  MATERIAL_partPhase
 use lattice
-use numerics,only: &
-   numerics_integrator
+
 
 
 implicit none
@@ -929,30 +928,13 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                
        endif
      enddo outputsLoop
                 
-     plasticState(phase)%sizeState    = sizeState
-     plasticState(phase)%sizeDotState = sizeDotState
-     plasticState(phase)%sizeDeltaState = sizeDeltaState
+
      plasticState(phase)%sizePostResults = plastic_nonlocal_sizePostResults(instance)
      plasticState(phase)%nonlocal = .true.
-     plasticState(phase)%nSlip = totalNslip(instance)
-     plasticState(phase)%nTwin = 0_pInt
-     plasticState(phase)%nTrans= 0_pInt
-     allocate(plasticState(phase)%aTolState           (sizeState),                source=0.0_pReal)
-     allocate(plasticState(phase)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
-     allocate(plasticState(phase)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
-     allocate(plasticState(phase)%subState0           (sizeState,NofMyPhase),     source=0.0_pReal)
-     allocate(plasticState(phase)%state               (sizeState,NofMyPhase),     source=0.0_pReal)
+     call material_allocatePlasticState(phase,NofMyPhase,sizeState,sizeDotState,sizeDeltaState, &
+                                        totalNslip(instance),0_pInt,0_pInt)
 
-     allocate(plasticState(phase)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
-     if (any(numerics_integrator == 1_pInt)) then
-       allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
-       allocate(plasticState(phase)%previousDotState2 (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     endif
-     if (any(numerics_integrator == 4_pInt)) &
-       allocate(plasticState(phase)%RK4dotState       (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     if (any(numerics_integrator == 5_pInt)) &
-       allocate(plasticState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)
+       
      plasticState(phase)%slipRate => &
        plasticState(phase)%dotState(iGamma(1,instance):iGamma(ns,instance),1:NofMyPhase)
      plasticState(phase)%accumulatedSlip => &
@@ -1638,10 +1620,10 @@ end subroutine plastic_nonlocal_kinetics
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dTstar99, Tstar_v, Temperature, ip, el)
 
-use math,     only: math_Plain3333to99, &
+use math,     only: math_3333to99, &
                     math_mul6x6, &
                     math_mul33xx33, &
-                    math_Mandel6to33
+                    math_6toSym33
 use debug,    only: debug_level, &
                     debug_constitutive, &
                     debug_levelExtensive, &
@@ -1733,11 +1715,11 @@ do s = 1_pInt,ns
   tauNS(s,1) = tau(s)
   tauNS(s,2) = tau(s)
   if (tau(s) > 0.0_pReal) then
-    tauNS(s,3) = math_mul33xx33(math_Mandel6to33(Tstar_v), nonSchmidProjection(1:3,1:3,1,s,instance))
-    tauNS(s,4) = math_mul33xx33(math_Mandel6to33(Tstar_v), nonSchmidProjection(1:3,1:3,3,s,instance))
+    tauNS(s,3) = math_mul33xx33(math_6toSym33(Tstar_v), nonSchmidProjection(1:3,1:3,1,s,instance))
+    tauNS(s,4) = math_mul33xx33(math_6toSym33(Tstar_v), nonSchmidProjection(1:3,1:3,3,s,instance))
   else
-    tauNS(s,3) = math_mul33xx33(math_Mandel6to33(Tstar_v), nonSchmidProjection(1:3,1:3,2,s,instance))
-    tauNS(s,4) = math_mul33xx33(math_Mandel6to33(Tstar_v), nonSchmidProjection(1:3,1:3,4,s,instance))
+    tauNS(s,3) = math_mul33xx33(math_6toSym33(Tstar_v), nonSchmidProjection(1:3,1:3,2,s,instance))
+    tauNS(s,4) = math_mul33xx33(math_6toSym33(Tstar_v), nonSchmidProjection(1:3,1:3,4,s,instance))
   endif
 enddo
 forall (t = 1_pInt:4_pInt) &
@@ -1812,7 +1794,7 @@ do s = 1_pInt,ns
           * burgers(s,instance)
   endif
 enddo
-dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
+dLp_dTstar99 = math_3333to99(dLp_dTstar3333)
 
 
 #ifdef DEBUG
