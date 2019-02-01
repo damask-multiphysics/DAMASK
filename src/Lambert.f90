@@ -1,5 +1,6 @@
 ! ###################################################################
 ! Copyright (c) 2013-2015, Marc De Graef/Carnegie Mellon University
+! Modified      2017-2019, Martin Diehl/Max-Planck-Institut für Eisenforschung GmbH
 ! All rights reserved.
 !
 ! Redistribution and use in source and binary forms, with or without modification, are 
@@ -29,19 +30,8 @@
 !--------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
 !
-!> @brief everything that has to do with the modified Lambert projections
+!> @brief Mapping homochoric <-> cubochoric 
 !
-!> @details This module contains a number of projection functions for the modified 
-!> Lambert projection between square lattice and 2D hemisphere, hexagonal lattice
-!> and 2D hemisphere, as well as the more complex mapping between a 3D cubic grid
-!> and the unit quaternion hemisphere with positive scalar component.  In addition, there 
-!> are some other projections, such as the stereographic one.  Each function is named
-!> by the projection, the dimensionality of the starting grid, and the forward or inverse
-!> character.  For each function, there is also a single precision and a double precision
-!> version, but we use the interface formalism to have only a single call.  The Forward
-!> mapping is taken to be the one from the simple grid to the curved grid.  Since the module
-!> deals with various grids, we also add a few functions/subroutines that apply symmetry
-!> operations on those grids.
 !> References:
 !> D. Rosca, A. Morawiec, and M. De Graef. “A new method of constructing a grid 
 !> in the space of 3D rotations and its applications to texture analysis”. 
@@ -49,24 +39,23 @@
 !--------------------------------------------------------------------------
 module Lambert
  use math
- use prec
+ use prec, only: &
+   pReal
 
  implicit none
-
- real(pReal), private :: &
-   sPi  = sqrt(PI), &
-   pref = sqrt(6.0_pReal/PI), &
-   ! the following constants are used for the cube to quaternion hemisphere mapping
-   ap   = PI**(2.0_pReal/3.0_pReal), &
-   sc   = 0.897772786961286_pReal, &      ! a/ap
-   beta = 0.962874509979126_pReal, &      ! pi^(5/6)/6^(1/6)/2
-   R1   = 1.330670039491469_pReal, &      ! (3pi/4)^(1/3)
-   r2   = sqrt(2.0_pReal), &
-   pi12 = PI/12.0_pReal, &
-   prek = 1.643456402972504_pReal, &      ! R1 2^(1/4)/beta
-   r24  = sqrt(24.0_pReal)
-
  private
+ real(pReal), parameter, private :: &
+   SPI  = sqrt(PI), &
+   PREF = sqrt(6.0_pReal/PI), &
+   A    = PI**(5.0_pReal/6.0_pReal)/6.0_pReal**(1.0_pReal/6.0_pReal), &
+   AP   = PI**(2.0_pReal/3.0_pReal), &
+   SC   = A/AP, &
+   BETA = A/2.0_pReal, &
+   R1   = (3.0_pReal*PI/4.0_pReal)**(1.0_pReal/3.0_pReal), &
+   R2   = sqrt(2.0_pReal), &
+   PI12 = PI/12.0_pReal, &
+   PREK = R1 * 2.0_pReal**(1.0_pReal/4.0_pReal)/BETA
+
  public :: &
    LambertCubeToBall, &
    LambertBallToCube
@@ -78,20 +67,24 @@ contains
 
 !--------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief map from 3D cubic grid to 3D ball 
 !--------------------------------------------------------------------------
 function LambertCubeToBall(cube) result(ball)
  use, intrinsic :: IEEE_ARITHMETIC
+ use prec, only: &
+   pInt, &
+   dEq0
 
  implicit none
  real(pReal), intent(in), dimension(3) :: cube
  real(pReal),             dimension(3) :: ball, LamXYZ, XYZ
- real(pReal)                  ::  T(2), c, s, q
- real(pReal), parameter       :: eps = 1.0e-8_pReal
+ real(pReal)                 ::  T(2), c, s, q
+ real(pReal), parameter      :: eps = 1.0e-8_pReal
  integer(pInt), dimension(3) :: p
  integer(pInt), dimension(2) :: order
  
- if (maxval(abs(cube)) > ap/2.0+eps) then
+ if (maxval(abs(cube)) > AP/2.0+eps) then
    ball = IEEE_value(cube,IEEE_positive_inf)
    return
  end if
@@ -109,17 +102,17 @@ function LambertCubeToBall(cube) result(ball)
      LamXYZ = [ 0.0_pReal, 0.0_pReal, pref * XYZ(3) ]
    else special
      order = merge( [2,1], [1,2], abs(XYZ(2)) <= abs(XYZ(1)))                                        ! order of absolute values of XYZ
-     q = pi12 *  XYZ(order(1))/XYZ(order(2))                                                         ! smaller by larger
+     q = PI12 *  XYZ(order(1))/XYZ(order(2))                                                         ! smaller by larger
      c = cos(q)
      s = sin(q)
-     q = prek * XYZ(order(2))/ sqrt(r2-c)
-     T = [ (r2*c - 1.0), r2 * s] * q
+     q = prek * XYZ(order(2))/ sqrt(R2-c)
+     T = [ (R2*c - 1.0), R2 * s] * q
  
  ! transform to sphere grid (inverse Lambert)
  ! [note that there is no need to worry about dividing by zero, since XYZ(3) can not become zero]
      c = sum(T**2)
      s = Pi * c/(24.0*XYZ(3)**2)
-     c = sPi * c / r24 / XYZ(3)
+     c = sPi * c / sqrt(24.0_pReal) / XYZ(3)
      q = sqrt( 1.0 - s )
      LamXYZ = [ T(order(2)) * q, T(order(1)) * q, pref * XYZ(3) - c ]
    endif special
@@ -131,19 +124,26 @@ function LambertCubeToBall(cube) result(ball)
 
 end function LambertCubeToBall
 
+
 !--------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief map from 3D ball to 3D cubic grid  
 !--------------------------------------------------------------------------
 pure function LambertBallToCube(xyz) result(cube)
- use, intrinsic :: IEEE_ARITHMETIC
+ use, intrinsic :: IEEE_ARITHMETIC, only:&
+   IEEE_positive_inf, &
+   IEEE_value
+ use prec, only: &
+   pInt, &
+   dEq0
 
  implicit none
  real(pReal), intent(in), dimension(3) :: xyz
  real(pReal),             dimension(3) :: cube, xyz1, xyz3
  real(pReal),             dimension(2) :: Tinv, xyz2
  real(pReal)                           :: rs, qxy, q2, sq2, q, tt
- integer(pInt)         , dimension(3) :: p
+ integer(pInt),           dimension(3) :: p
  
  rs = norm2(xyz)
  if (rs > R1) then 
@@ -168,10 +168,10 @@ pure function LambertBallToCube(xyz) result(cube)
    else special
      q2 = qxy + maxval(abs(xyz2))**2
      sq2 = sqrt(q2)
-     q = (beta/r2/R1) * sqrt(q2*qxy/(q2-maxval(abs(xyz2))*sq2))
-     tt = (minval(abs(xyz2))**2+maxval(abs(xyz2))*sq2)/r2/qxy 
-     Tinv = q * sign(1.0,xyz2) * merge([ 1.0_pReal, acos(math_clip(tt,-1.0_pReal,1.0_pReal))/pi12], &
-                                       [ acos(math_clip(tt,-1.0_pReal,1.0_pReal))/pi12, 1.0_pReal], &
+     q = (beta/R2/R1) * sqrt(q2*qxy/(q2-maxval(abs(xyz2))*sq2))
+     tt = (minval(abs(xyz2))**2+maxval(abs(xyz2))*sq2)/R2/qxy 
+     Tinv = q * sign(1.0,xyz2) * merge([ 1.0_pReal, acos(math_clip(tt,-1.0_pReal,1.0_pReal))/PI12], &
+                                       [ acos(math_clip(tt,-1.0_pReal,1.0_pReal))/PI12, 1.0_pReal], &
                                        abs(xyz2(2)) <= abs(xyz2(1)))
    endif special
    
@@ -185,15 +185,19 @@ pure function LambertBallToCube(xyz) result(cube)
 
 end function LambertBallToCube
 
+
 !--------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief determine to which pyramid a point in a cubic grid belongs
 !--------------------------------------------------------------------------
 pure function GetPyramidOrder(xyz)
+ use prec, only: &
+   pInt
 
  implicit none
  real(pReal),intent(in),dimension(3) :: xyz
- integer(pInt),        dimension(3) :: GetPyramidOrder
+ integer(pInt),         dimension(3) :: GetPyramidOrder
 
  if      (((abs(xyz(1)) <=  xyz(3)).and.(abs(xyz(2)) <=  xyz(3))) .or. &
           ((abs(xyz(1)) <= -xyz(3)).and.(abs(xyz(2)) <= -xyz(3)))) then
@@ -205,7 +209,7 @@ pure function GetPyramidOrder(xyz)
           ((abs(xyz(1)) <= -xyz(2)).and.(abs(xyz(3)) <= -xyz(2)))) then
    GetPyramidOrder = [3,1,2]
  else
-   GetPyramidOrder = -1                                                                                  ! should be impossible, but might simplify debugging
+   GetPyramidOrder = -1                                                                             ! should be impossible, but might simplify debugging
  end if
 
 end function GetPyramidOrder
