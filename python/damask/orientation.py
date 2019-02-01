@@ -20,7 +20,8 @@ class Quaternion:
     Convention 4: Euler angle triplets are implemented using the Bunge convention,
                   with the angular ranges as [0, 2π],[0, π],[0, 2π]
     Convention 5: the rotation angle ω is limited to the interval [0, π]
-
+    Convention 6: P = 1 (as default)
+    
     w is the real part, (x, y, z) are the imaginary parts.
 
     Vector "a" (defined in coordinate system "A") is passively rotated

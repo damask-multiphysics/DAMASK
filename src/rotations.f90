@@ -33,6 +33,16 @@
 !> @brief rotation storage and conversion
 !> @details: rotation is internally stored as quaternion. It cabe inialized from different 
 !> represantations and also returns itself in different representations.
+!
+!  All methods and naming conventions based on Rowenhorst_etal2015
+!    Convention 1: coordinate frames are right-handed
+!    Convention 2: a rotation angle ω is taken to be positive for a counterclockwise rotation
+!                  when viewing from the end point of the rotation axis towards the origin
+!    Convention 3: rotations will be interpreted in the passive sense
+!    Convention 4: Euler angle triplets are implemented using the Bunge convention,
+!                  with the angular ranges as [0, 2π],[0, π],[0, 2π]
+!    Convention 5: the rotation angle ω is limited to the interval [0, π]
+!    Convention 6: epsijk/P = -1
 !---------------------------------------------------------------------------------------------------
 
 module rotations

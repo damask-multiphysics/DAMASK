@@ -31,6 +31,7 @@
 !> @author Marc De Graef, Carnegie Mellon University
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief general quaternion math, not limited to unit quaternions
+!> @details  w is the real part, (x, y, z) are the imaginary parts.
 !---------------------------------------------------------------------------------------------------
 module quaternions
  use prec, only: &
@@ -39,7 +40,7 @@ module quaternions
  implicit none
  public
  
- real(pReal), parameter, public :: epsijk = -1.0_pReal                                              !< parameter for orientation conversion. ToDo: Better place?
+ real(pReal), parameter, public :: epsijk = -1.0_pReal                                              !< parameter for orientation conversion.
  
  type, public :: quaternion
    real(pReal) :: w = 0.0_pReal
