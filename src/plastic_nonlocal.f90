@@ -933,7 +933,8 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                
      plasticState(phase)%nonlocal = .true.
      call material_allocatePlasticState(phase,NofMyPhase,sizeState,sizeDotState,sizeDeltaState, &
                                         totalNslip(instance),0_pInt,0_pInt)
-
+    
+     plasticState(phase)%offsetDeltaState = 0_pInt
        
      plasticState(phase)%slipRate => &
        plasticState(phase)%dotState(iGamma(1,instance):iGamma(ns,instance),1:NofMyPhase)
