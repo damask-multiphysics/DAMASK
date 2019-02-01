@@ -575,7 +575,6 @@ class Symmetry:
     proper considers only vectors with z >= 0, hence uses two neighboring SSTs.
     Return inverse pole figure color if requested.
     """
-
     if self.lattice == 'cubic':
       basis = {'improper':np.array([ [-1.            ,  0.            ,  1. ],
                                      [ np.sqrt(2.)   , -np.sqrt(2.)   ,  0. ],

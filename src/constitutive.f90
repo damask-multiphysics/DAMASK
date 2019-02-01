@@ -348,7 +348,7 @@ end function constitutive_homogenizedC
 !--------------------------------------------------------------------------------------------------
 !> @brief calls microstructure function of the different constitutive models
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_microstructure(orientations, Fe, Fp, ipc, ip, el)
+subroutine constitutive_microstructure(Fe, Fp, ipc, ip, el)
  use prec, only: &
    pReal
  use material, only: &
@@ -381,8 +381,6 @@ subroutine constitutive_microstructure(orientations, Fe, Fp, ipc, ip, el)
    ho, &                                                                                            !< homogenization
    tme, &                                                                                           !< thermal member position
    instance, of
- real(pReal),   intent(in), dimension(:,:,:,:) :: &
-   orientations                                                                                     !< crystal orientations as quaternions
 
  ho = material_homogenizationAt(el)
  tme = thermalMapping(ho)%p(ip,el)

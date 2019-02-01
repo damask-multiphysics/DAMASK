@@ -3005,10 +3005,9 @@ end subroutine plastic_nonlocal_dotState
 !* that sum up to a total of 1 are considered, all others are set to *
 !* zero.                                                             *
 !*********************************************************************
-subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
-
-use math, only:       math_mul3x3, &
-                      math_qRot
+subroutine plastic_nonlocal_updateCompatibility(orientation,i,e) 
+use math, only:       math_mul3x3, math_qRot
+use rotations, only:  rotation
 use material, only:   material_phase, &
                       material_texture, &
                       phase_localPlasticity, &
@@ -3030,7 +3029,7 @@ implicit none
 !* input variables
 integer(pInt), intent(in) ::                    i, &                                                ! ip index
                                                 e                                                   ! element index
-real(pReal), dimension(4,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+type(rotation), dimension(1,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                                 orientation                                         ! crystal orientation in quaternions
                                             
 !* local variables
@@ -3059,7 +3058,7 @@ real(pReal)                                     my_compatibilitySum, &
                                                 nThresholdValues
 logical, dimension(totalNslip(phase_plasticityInstance(material_phase(1,i,e)))) :: & 
                                                 belowThreshold
-
+type(rotation) :: rot
 
 Nneighbors = FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,e))))
 ph = material_phase(1,i,e)
@@ -3129,8 +3128,8 @@ neighbors: do n = 1_pInt,Nneighbors
   !* Finally the smallest my_compatibility value is decreased until the sum is exactly equal to one. 
   !* All values below the threshold are set to zero.
   else
-    absoluteMisorientation = lattice_qDisorientation(orientation(1:4,1,i,e), &
-                                                     orientation(1:4,1,neighbor_i,neighbor_e))      ! no symmetry
+    rot = orientation(1,i,e)%misorientation(orientation(1,neighbor_i,neighbor_e))
+    absoluteMisorientation = rot%asQuaternion()
     mySlipSystems: do s1 = 1_pInt,ns
       neighborSlipSystems: do s2 = 1_pInt,ns
         my_compatibility(1,s2,s1,n) =  math_mul3x3(slipNormal(1:3,s1), math_qRot(absoluteMisorientation, slipNormal(1:3,s2))) &
