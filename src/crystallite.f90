@@ -9,6 +9,11 @@
 !--------------------------------------------------------------------------------------------------
 
 module crystallite
+ use prec, only: &
+   pReal, &
+   pInt
+ use orientations, only: &
+   orientation
  use FEsolving, only:  &
    FEsolving_execElem, &
    FEsolving_execIP
@@ -16,9 +21,7 @@ module crystallite
    mesh_element
  use material, only: &
    homogenization_Ngrains
- use prec, only: &
-   pReal, &
-   pInt
+
 
  implicit none
 
@@ -42,6 +45,9 @@ module crystallite
    crystallite_Tstar_v, &                                                                           !< current 2nd Piola-Kirchhoff stress vector (end of converged time step) ToDo: Should be called S, 3x3
    crystallite_Tstar0_v, &                                                                          !< 2nd Piola-Kirchhoff stress vector at start of FE inc ToDo: Should be called S, 3x3
    crystallite_partionedTstar0_v                                                                    !< 2nd Piola-Kirchhoff stress vector at start of homog inc ToDo: Should be called S, 3x3
+ type(orientation),          dimension(:,:,:),      allocatable, private :: &
+   crystallite_ori, &                                                                       !< orientation as quaternion
+   crystallite_ori0                                                                      !< initial orientation as quaternion
  real(pReal),               dimension(:,:,:,:),      allocatable, private :: &
    crystallite_orientation, &                                                                       !< orientation as quaternion
    crystallite_orientation0, &                                                                      !< initial orientation as quaternion
@@ -239,6 +245,8 @@ subroutine crystallite_init
  allocate(crystallite_subStep(cMax,iMax,eMax),               source=0.0_pReal)
  allocate(crystallite_orientation(4,cMax,iMax,eMax),         source=0.0_pReal)
  allocate(crystallite_orientation0(4,cMax,iMax,eMax),        source=0.0_pReal)
+ allocate(crystallite_ori(cMax,iMax,eMax))
+ !allocate(crystallite_ori0(cMax,iMax,eMax))
  allocate(crystallite_rotation(4,cMax,iMax,eMax),            source=0.0_pReal)
  allocate(crystallite_localPlasticity(cMax,iMax,eMax),       source=.true.)
  allocate(crystallite_requested(cMax,iMax,eMax),             source=.false.)
@@ -900,6 +908,7 @@ subroutine crystallite_orientations
  do e = FEsolving_execElem(1),FEsolving_execElem(2)
    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
      do c = 1_pInt,homogenization_Ngrains(mesh_element(3,e))
+       call crystallite_ori(c,i,e)%fromRotationMatrix(transpose(math_rotationalPart33(crystallite_Fe(1:3,1:3,c,i,e))))
        crystallite_orientation(1:4,c,i,e) = math_RtoQ(transpose(math_rotationalPart33(crystallite_Fe(1:3,1:3,c,i,e))))
        crystallite_rotation(1:4,c,i,e) = lattice_qDisorientation(crystallite_orientation0(1:4,c,i,e), &! active rotation from initial
                                                                  crystallite_orientation(1:4,c,i,e))  ! to current orientation (with no symmetry)
@@ -1020,7 +1029,7 @@ function crystallite_postResults(ipc, ip, el)
                                            / real(homogenization_Ngrains(mesh_element(3,el)),pReal) ! grain volume (not fraction but absolute)
      case (orientation_ID)
        mySize = 4_pInt
-       crystallite_postResults(c+1:c+mySize) = crystallite_orientation(1:4,ipc,ip,el)               ! grain orientation as quaternion
+       crystallite_postResults(c+1:c+mySize) = crystallite_ori(ipc,ip,el)%asQuaternion()
      case (eulerangles_ID)
        mySize = 3_pInt
        crystallite_postResults(c+1:c+mySize) = inDeg &
