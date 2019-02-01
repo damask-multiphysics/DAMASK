@@ -12,8 +12,8 @@ module crystallite
  use prec, only: &
    pReal, &
    pInt
- use orientations, only: &
-   orientation
+ use rotations, only: &
+   rotation
  use FEsolving, only:  &
    FEsolving_execElem, &
    FEsolving_execIP
@@ -45,7 +45,7 @@ module crystallite
    crystallite_Tstar_v, &                                                                           !< current 2nd Piola-Kirchhoff stress vector (end of converged time step) ToDo: Should be called S, 3x3
    crystallite_Tstar0_v, &                                                                          !< 2nd Piola-Kirchhoff stress vector at start of FE inc ToDo: Should be called S, 3x3
    crystallite_partionedTstar0_v                                                                    !< 2nd Piola-Kirchhoff stress vector at start of homog inc ToDo: Should be called S, 3x3
- type(orientation),          dimension(:,:,:),      allocatable, private :: &
+ type(rotation),            dimension(:,:,:),      allocatable, private :: &
    crystallite_ori, &                                                                       !< orientation as quaternion
    crystallite_ori0                                                                      !< initial orientation as quaternion
  real(pReal),               dimension(:,:,:,:),      allocatable, private :: &
