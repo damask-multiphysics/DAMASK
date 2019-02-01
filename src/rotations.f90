@@ -42,7 +42,7 @@
 !    Convention 4: Euler angle triplets are implemented using the Bunge convention,
 !                  with the angular ranges as [0, 2π],[0, π],[0, 2π]
 !    Convention 5: the rotation angle ω is limited to the interval [0, π]
-!    Convention 6: epsijk/P = -1
+!    Convention 6: P = -1
 !---------------------------------------------------------------------------------------------------
 
 module rotations
@@ -280,7 +280,7 @@ pure function eu2ax(eu) result(ax)
  if (dEq0(alpha)) then                                                                              ! return a default identity axis-angle pair
    ax = [ 0.0_pReal, 0.0_pReal, 1.0_pReal, 0.0_pReal ]
  else
-   ax(1:3) = -epsijk/tau * [ t*cos(delta), t*sin(delta), sin(sigma) ]                               ! passive axis-angle pair so a minus sign in front
+   ax(1:3) = -P/tau * [ t*cos(delta), t*sin(delta), sin(sigma) ]                                    ! passive axis-angle pair so a minus sign in front
    ax(4) = alpha
    if (alpha < 0.0) ax = -ax                                                                        ! ensure alpha is positive
  end if
@@ -309,7 +309,7 @@ pure function eu2ro(eu) result(ro)
  if (ro(4) >= PI) then
    ro(4) = IEEE_value(ro(4),IEEE_positive_inf)
  elseif(dEq0(ro(4))) then
-   ro = [ 0.0_pReal, 0.0_pReal, epsijk, 0.0_pReal ]
+   ro = [ 0.0_pReal, 0.0_pReal, P, 0.0_pReal ]
  else
    ro(4) = tan(ro(4)*0.5)
  end if
@@ -334,10 +334,10 @@ pure function eu2qu(eu) result(qu)
  cPhi = cos(ee(2))
  sPhi = sin(ee(2))
 
- qu = quaternion([        cPhi*cos(ee(1)+ee(3)), &
-                  -epsijk*sPhi*cos(ee(1)-ee(3)), &
-                  -epsijk*sPhi*sin(ee(1)-ee(3)), &
-                  -epsijk*cPhi*sin(ee(1)+ee(3))])
+ qu = quaternion([   cPhi*cos(ee(1)+ee(3)), &
+                  -P*sPhi*cos(ee(1)-ee(3)), &
+                  -P*sPhi*sin(ee(1)-ee(3)), &
+                  -P*cPhi*sin(ee(1)+ee(3))])
  if(qu%w < 0.0_pReal) qu = qu%homomorphed() 
 
 end function eu2qu
@@ -404,7 +404,7 @@ pure function ax2om(ax) result(om)
  om(3,1) = q + s*ax(2)
  om(1,3) = q - s*ax(2)
 
- if (epsijk > 0.0) om = transpose(om)
+ if (P > 0.0) om = transpose(om)
 
 end function ax2om
 
@@ -430,14 +430,14 @@ pure function qu2eu(qu) result(eu)
  chi = sqrt(q03*q12)
  
  degenerated: if (dEq0(chi)) then
-   eu = merge([atan2(-epsijk*2.0*qu%w*qu%z,qu%w**2-qu%z**2), 0.0_pReal, 0.0_pReal], &
-              [atan2(2.0*qu%x*qu%y,qu%x**2-qu%y**2),         PI, 0.0_pReal], &
+   eu = merge([atan2(-P*2.0*qu%w*qu%z,qu%w**2-qu%z**2), 0.0_pReal, 0.0_pReal], &
+              [atan2(2.0*qu%x*qu%y,qu%x**2-qu%y**2),    PI,        0.0_pReal], &
               dEq0(q12))
  else degenerated
    chiInv = 1.0/chi
-   eu = [atan2((-epsijk*qu%w*qu%y+qu%x*qu%z)*chi, (-epsijk*qu%w*qu%x-qu%y*qu%z)*chi ), &
+   eu = [atan2((-P*qu%w*qu%y+qu%x*qu%z)*chi, (-P*qu%w*qu%x-qu%y*qu%z)*chi ), &
          atan2( 2.0*chi, q03-q12 ), &
-         atan2(( epsijk*qu%w*qu%y+qu%x*qu%z)*chi, (-epsijk*qu%w*qu%x+qu%y*qu%z)*chi )]
+         atan2(( P*qu%w*qu%y+qu%x*qu%z)*chi, (-P*qu%w*qu%x+qu%y*qu%z)*chi )]
  endif degenerated
  where(eu<0.0_pReal) eu = mod(eu+2.0_pReal*PI,[2.0_pReal*PI,PI,2.0_pReal*PI])
 
@@ -559,8 +559,8 @@ function om2ax(om) result(ax)
    if (INFO /= 0) call IO_error(0_pInt,ext_msg='Error in om2ax/(s/d)geev: (S/D)GEEV return not zero')
    i = maxloc(merge(1.0_pReal,0.0_pReal,cEq(cmplx(Wr,Wi,pReal),cmplx(1.0_pReal,0.0_pReal,pReal),tol=1.0e-14_pReal)),dim=1) ! poor substitute for findloc
    ax(1:3) = VR(1:3,i)
-   where (                     dNeq0([om(2,3)-om(3,2), om(3,1)-om(1,3), om(1,2)-om(2,1)])) &
-     ax(1:3) = sign(ax(1:3),-epsijk *[om(2,3)-om(3,2), om(3,1)-om(1,3), om(1,2)-om(2,1)])
+   where (                dNeq0([om(2,3)-om(3,2), om(3,1)-om(1,3), om(1,2)-om(2,1)])) &
+     ax(1:3) = sign(ax(1:3),-P *[om(2,3)-om(3,2), om(3,1)-om(1,3), om(1,2)-om(2,1)])
  endif
 
 end function om2ax
@@ -619,7 +619,7 @@ pure function ax2ro(ax) result(ro)
  real(pReal), parameter                :: thr = 1.0E-7
  
  if (dEq0(ax(4))) then
-   ro = [ 0.0_pReal, 0.0_pReal, epsijk, 0.0_pReal ]
+   ro = [ 0.0_pReal, 0.0_pReal, P, 0.0_pReal ]
  else 
    ro(1:3) =  ax(1:3)
    ! we need to deal with the 180 degree case
@@ -709,7 +709,7 @@ pure function qu2om(qu) result(om)
  om(3,2) = 2.0*(qu%z*qu%y+qu%w*qu%x)
  om(1,3) = 2.0*(qu%x*qu%z+qu%w*qu%y)
 
- if (epsijk < 0.0) om = transpose(om)
+ if (P < 0.0) om = transpose(om)
 
 end function qu2om
 
@@ -734,7 +734,7 @@ function om2qu(om) result(qu)
       -om(1,1) +om(2,2) -om(3,3) +1.0_pReal, &
       -om(1,1) -om(2,2) +om(3,3) +1.0_pReal]
 
- qu_A = sqrt(max(s,0.0_pReal))*0.5_pReal*[1.0_pReal,epsijk,epsijk,epsijk]
+ qu_A = sqrt(max(s,0.0_pReal))*0.5_pReal*[1.0_pReal,P,P,P]
  qu_A = qu_A/norm2(qu_A)
 
  if(any(dEq(abs(qu_A),1.0_pReal,1.0e-15_pReal))) &
@@ -803,7 +803,7 @@ pure function qu2ro(qu) result(ro)
    ro = [qu%x, qu%y, qu%z, IEEE_value(ro(4),IEEE_positive_inf)]
  else
    s = norm2([qu%x,qu%y,qu%z])
-   ro = merge ( [ 0.0_pReal, 0.0_pReal, epsijk, 0.0_pReal], &
+   ro = merge ( [ 0.0_pReal, 0.0_pReal, P, 0.0_pReal], &
                 [ qu%x/s,  qu%y/s,  qu%z/s, tan(acos(qu%w))], &
                 s < thr)                                                                            !ToDo: not save (PGI compiler)
  end if
