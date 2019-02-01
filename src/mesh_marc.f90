@@ -730,10 +730,7 @@ subroutine mesh_build_ipVolumes
  integer(pInt) ::                                e,t,g,c,i,m,f,n
  real(pReal), dimension(FE_maxNcellnodesPerCellface,FE_maxNcellfaces) :: subvolume
 
- if (.not. allocated(mesh_ipVolume)) then
-   allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems))
-   mesh_ipVolume = 0.0_pReal
- endif
+  allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
 
  !$OMP PARALLEL DO PRIVATE(t,g,c,m,subvolume)
    do e = 1_pInt,mesh_NcpElems                                                                      ! loop over cpElems
