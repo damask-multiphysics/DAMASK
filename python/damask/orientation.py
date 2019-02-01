@@ -575,19 +575,6 @@ class Symmetry:
     proper considers only vectors with z >= 0, hence uses two neighboring SSTs.
     Return inverse pole figure color if requested.
     """
-#     basis = {'cubic' :        np.linalg.inv(np.array([[0.,0.,1.],                                 # direction of red
-#                                                       [1.,0.,1.]/np.sqrt(2.),                     # direction of green
-#                                                       [1.,1.,1.]/np.sqrt(3.)]).transpose()),      # direction of blue
-#              'hexagonal' :    np.linalg.inv(np.array([[0.,0.,1.],                                 # direction of red
-#                                                       [1.,0.,0.],                                 # direction of green
-#                                                       [np.sqrt(3.),1.,0.]/np.sqrt(4.)]).transpose()),      # direction of blue
-#              'tetragonal' :   np.linalg.inv(np.array([[0.,0.,1.],                                 # direction of red
-#                                                       [1.,0.,0.],                                 # direction of green
-#                                                       [1.,1.,0.]/np.sqrt(2.)]).transpose()),      # direction of blue
-#              'orthorhombic' : np.linalg.inv(np.array([[0.,0.,1.],                                 # direction of red
-#                                                       [1.,0.,0.],                                 # direction of green
-#                                                       [0.,1.,0.]]).transpose()),                  # direction of blue
-#             }
 
     if self.lattice == 'cubic':
       basis = {'improper':np.array([ [-1.            ,  0.            ,  1. ],
@@ -854,7 +841,7 @@ class Orientation:
     if int(direction) == 0:  return None
 
     # KS from S. Morito et al./Journal of Alloys and Compounds 5775 (2013) S587-S592
-    # for KS rotation matrices also check  K. Kitahara et al./Acta Materialia 54 (2006) 1279-1288
+    # for KS rotation matrices also check K. Kitahara et al./Acta Materialia 54 (2006) 1279-1288
     # GT from Y. He et al./Journal of Applied Crystallography (2006). 39, 72-81
     # GT' from Y. He et al./Journal of Applied Crystallography (2006). 39, 72-81
     # NW from H. Kitahara et al./Materials Characterization 54 (2005) 378-386
