@@ -369,7 +369,6 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_get_damaskOptions, &
    mesh_build_cellconnectivity, &
    mesh_build_ipAreas, &
-   mesh_tell_statistics, &
    FE_mapElemtype, &
    mesh_faceMatch, &
    mesh_build_FEdata, &
@@ -515,10 +514,6 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Built shared elements'; flush(6)
  call mesh_build_ipNeighborhood
  if (myDebug) write(6,'(a)') ' Built IP neighborhood'; flush(6)
-
- if (worldrank == 0_pInt) then
-   call mesh_tell_statistics
- endif
 
  if (usePingPong .and. (mesh_Nelems /= mesh_NcpElems)) &
    call IO_error(600_pInt)                                                                          ! ping-pong must be disabled when having non-DAMASK elements
@@ -1972,133 +1967,6 @@ subroutine mesh_build_ipNeighborhood
  enddo
 
 end subroutine mesh_build_ipNeighborhood
-
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief write statistics regarding input file parsing to the output file
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_tell_statistics
- use math, only: &
-   math_range
- use IO, only: &
-   IO_error
- use debug, only: &
-   debug_level, &
-   debug_MESH, &
-   debug_LEVELBASIC, &
-   debug_LEVELEXTENSIVE, &
-   debug_LEVELSELECTIVE, &
-   debug_e, &
-   debug_i
-
- implicit none
- integer(pInt), dimension (:,:), allocatable :: mesh_HomogMicro
- character(len=64) :: myFmt
- integer(pInt) :: i,e,n,f,t,g,c, myDebug
-
- myDebug = debug_level(debug_mesh)
-
- if (mesh_maxValStateVar(1) < 1_pInt) call IO_error(error_ID=170_pInt)                              ! no homogenization specified
- if (mesh_maxValStateVar(2) < 1_pInt) call IO_error(error_ID=180_pInt)                              ! no microstructure specified
-
- allocate (mesh_HomogMicro(mesh_maxValStateVar(1),mesh_maxValStateVar(2)),source = 0_pInt)
- do e = 1_pInt,mesh_NcpElems
-   if (mesh_element(3,e) < 1_pInt) call IO_error(error_ID=170_pInt,el=e)                             ! no homogenization specified
-   if (mesh_element(4,e) < 1_pInt) call IO_error(error_ID=180_pInt,el=e)                             ! no microstructure specified
-   mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) = &
-   mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) + 1_pInt                                     ! count combinations of homogenization and microstructure
- enddo
-!$OMP CRITICAL (write2out)
-  if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
-    write(6,'(/,a,/)') ' Input Parser: STATISTICS'
-    write(6,*) mesh_NcpElems,         ' : total number of CP elements in mesh'
-    write(6,*) mesh_Nnodes,           ' : total number of nodes in mesh'
-    write(6,'(/,a,/)') ' Input Parser: HOMOGENIZATION/MICROSTRUCTURE'
-    write(6,*) mesh_maxValStateVar(1), ' : maximum homogenization index'
-    write(6,*) mesh_maxValStateVar(2), ' : maximum microstructure index'
-    write(6,*)
-    write (myFmt,'(a,i32.32,a)') '(9x,a2,1x,',mesh_maxValStateVar(2),'(i8))'
-    write(6,myFmt) '+-',math_range(mesh_maxValStateVar(2))
-    write (myFmt,'(a,i32.32,a)') '(i8,1x,a2,1x,',mesh_maxValStateVar(2),'(i8))'
-    do i=1_pInt,mesh_maxValStateVar(1)                                                              ! loop over all (possibly assigned) homogenizations
-      write(6,myFmt) i,'| ',mesh_HomogMicro(i,:)                                                    ! loop over all (possibly assigned) microstructures
-    enddo
-    write(6,'(/,a,/)') ' Input Parser: ADDITIONAL MPIE OPTIONS'
-    write(6,*) 'periodic surface : ', mesh_periodicSurface
-    write(6,*)
-    flush(6)
-  endif
-
-  if (iand(myDebug,debug_levelExtensive) /= 0_pInt) then
-    write(6,'(/,a,/)') 'Input Parser: ELEMENT TYPE'
-    write(6,'(a8,3(1x,a8))') 'elem','elemtype','geomtype','celltype'
-    do e = 1_pInt,mesh_NcpElems
-      if (iand(myDebug,debug_levelSelective)   /= 0_pInt .and. debug_e /= e) cycle
-      t = mesh_element(2,e)                      ! get elemType
-      g = FE_geomtype(t)                         ! get elemGeomType
-      c = FE_celltype(g)                         ! get cellType
-      write(6,'(i8,3(1x,i8))') e,t,g,c
-    enddo
-    write(6,'(/,a)') 'Input Parser: ELEMENT VOLUME'
-    write(6,'(/,a13,1x,e15.8)') 'total volume', sum(mesh_ipVolume)
-    write(6,'(/,a8,1x,a5,1x,a15,1x,a5,1x,a15,1x,a16)') 'elem','IP','volume','face','area','-- normal --'
-    do e = 1_pInt,mesh_NcpElems
-      if (iand(myDebug,debug_levelSelective)   /= 0_pInt .and. debug_e /= e) cycle
-      t = mesh_element(2,e)                                                              ! get element type
-      g = FE_geomtype(t)                                                                 ! get geometry type
-      c = FE_celltype(g)                                                                 ! get cell type
-      do i = 1_pInt,FE_Nips(g)
-        if (iand(myDebug,debug_levelSelective) /= 0_pInt .and. debug_i /= i) cycle
-        write(6,'(i8,1x,i5,1x,e15.8)') e,i,mesh_IPvolume(i,e)
-        do f = 1_pInt,FE_NipNeighbors(c)
-          write(6,'(i33,1x,e15.8,1x,3(f6.3,1x))') f,mesh_ipArea(f,i,e),mesh_ipAreaNormal(:,f,i,e)
-        enddo
-      enddo
-    enddo
-    write(6,'(/,a,/)') 'Input Parser: CELLNODE COORDINATES'
-    write(6,'(a8,1x,a2,1x,a8,3(1x,a12))') 'elem','IP','cellnode','x','y','z'
-    do e = 1_pInt,mesh_NcpElems                                                          ! loop over cpElems
-      if (iand(myDebug,debug_levelSelective)   /= 0_pInt .and. debug_e /= e) cycle
-      t = mesh_element(2,e)                                                              ! get element type
-      g = FE_geomtype(t)                                                                 ! get geometry type
-      c = FE_celltype(g)                                                                 ! get cell type
-      do i = 1_pInt,FE_Nips(g)                                                           ! loop over IPs of elem
-        if (iand(myDebug,debug_levelSelective) /= 0_pInt .and. debug_i /= i) cycle
-        write(6,'(i8,1x,i2)') e,i
-        do n = 1_pInt,FE_NcellnodesPerCell(c)                                            ! loop over cell nodes in the cell
-          write(6,'(12x,i8,3(1x,f12.8))')  mesh_cell(n,i,e), &
-                                           mesh_cellnode(1:3,mesh_cell(n,i,e))
-        enddo
-      enddo
-    enddo
-    write(6,'(/,a)') 'Input Parser: IP COORDINATES'
-    write(6,'(a8,1x,a5,3(1x,a12))') 'elem','IP','x','y','z'
-    do e = 1_pInt,mesh_NcpElems
-      if (iand(myDebug,debug_levelSelective)   /= 0_pInt .and. debug_e /= e) cycle
-      do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
-        if (iand(myDebug,debug_levelSelective) /= 0_pInt .and. debug_i /= i) cycle
-        write(6,'(i8,1x,i5,3(1x,f12.8))') e, i, mesh_ipCoordinates(:,i,e)
-      enddo
-    enddo
-    write(6,'(/,a,/)') 'Input Parser: IP NEIGHBORHOOD'
-    write(6,'(a8,1x,a10,1x,a10,1x,a3,1x,a13,1x,a13)') 'elem','IP','neighbor','','elemNeighbor','ipNeighbor'
-    do e = 1_pInt,mesh_NcpElems                                                          ! loop over cpElems
-      if (iand(myDebug,debug_levelSelective)   /= 0_pInt .and. debug_e /= e) cycle
-      t = mesh_element(2,e)                                                              ! get element type
-      g = FE_geomtype(t)                                                                 ! get geometry type
-      c = FE_celltype(g)                                                                 ! get cell type
-      do i = 1_pInt,FE_Nips(g)                                                           ! loop over IPs of elem
-        if (iand(myDebug,debug_levelSelective) /= 0_pInt .and. debug_i /= i) cycle
-        do n = 1_pInt,FE_NipNeighbors(c)                                                 ! loop over neighbors of IP
-          write(6,'(i8,1x,i10,1x,i10,1x,a3,1x,i13,1x,i13)') e,i,n,'-->',mesh_ipNeighborhood(1,n,i,e),mesh_ipNeighborhood(2,n,i,e)
-        enddo
-      enddo
-    enddo
-  endif
-!$OMP END CRITICAL (write2out)
-
-end subroutine mesh_tell_statistics
 
 
 !--------------------------------------------------------------------------------------------------
