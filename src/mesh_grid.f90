@@ -270,14 +270,11 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_init, &
    mesh_cellCenterCoordinates
 
-
  private :: &
    mesh_build_cellconnectivity, &
    mesh_build_ipAreas, &
    mesh_build_FEdata, &
    mesh_spectral_getHomogenization, &
-   mesh_spectral_count, &
-   mesh_spectral_count_cpSizes, &
    mesh_spectral_build_nodes, &
    mesh_spectral_build_elements, &
    mesh_spectral_build_ipNeighborhood, &
@@ -302,19 +299,21 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    size3offset
    
    contains
-   procedure :: init   => tMesh_grid_init
+   procedure, pass(self) :: tMesh_grid_init
+   generic, public :: init => tMesh_grid_init
  end type tMesh_grid
  
  type(tMesh_grid), public, protected :: theMesh
  
 contains
 
-subroutine tMesh_grid_init(self)
+subroutine tMesh_grid_init(self,nodes)
  
  implicit none
  class(tMesh_grid) :: self
+ real(pReal), dimension(:,:), intent(in) :: nodes
  
- call self%elem%init(10_pInt)
+ call self%tMesh%init('grid',10_pInt,nodes)
  
 end subroutine tMesh_grid_init
 
@@ -364,7 +363,8 @@ subroutine mesh_init(ip,el)
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- call theMesh%init
+
+ 
  call mesh_build_FEdata                                                                             ! get properties of the different types of elements
  mesh_unitlength = numerics_unitlength                                                              ! set physical extent of a length unit in mesh
 
@@ -389,13 +389,23 @@ subroutine mesh_init(ip,el)
  grid3Offset = int(local_K_offset,pInt)
  size3       = geomSize(3)*real(grid3,pReal)      /real(grid(3),pReal)
  size3Offset = geomSize(3)*real(grid3Offset,pReal)/real(grid(3),pReal)
- if (myDebug) write(6,'(a)') ' Grid partitioned'; flush(6)
- call mesh_spectral_count()
- if (myDebug) write(6,'(a)') ' Counted nodes/elements'; flush(6)
- call mesh_spectral_count_cpSizes
- if (myDebug) write(6,'(a)') ' Built CP statistics'; flush(6)
+ mesh_NcpElems= product(grid(1:2))*grid3
+ mesh_NcpElemsGlobal = product(grid)
+
+ mesh_Nnodes  = product(grid(1:2) + 1_pInt)*(grid3 + 1_pInt)
+
  call mesh_spectral_build_nodes()
+
  if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
+  call theMesh%init(mesh_node)
+ ! For compatibility
+ 
+ mesh_maxNips =         theMesh%elem%nIPs
+ mesh_maxNipNeighbors = theMesh%elem%nIPneighbors
+ mesh_maxNcellnodes =   theMesh%elem%Ncellnodes
+
+ 
+ 
  call mesh_spectral_build_elements(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
  call mesh_build_cellconnectivity
@@ -434,8 +444,6 @@ subroutine mesh_init(ip,el)
  mesh_microstructureAt  = mesh_element(4,:)
  mesh_CPnodeID          = mesh_element(5:4+mesh_NipsPerElem,:)
 !!!!!!!!!!!!!!!!!!!!!!!!
-
-
  
 end subroutine mesh_init
 
@@ -563,10 +571,9 @@ subroutine mesh_build_ipVolumes
  integer(pInt) ::                                e,t,g,c,i,m,f,n
  real(pReal), dimension(FE_maxNcellnodesPerCellface,FE_maxNcellfaces) :: subvolume
 
- if (.not. allocated(mesh_ipVolume)) then
-   allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems))
-   mesh_ipVolume = 0.0_pReal
- endif
+
+ allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
+
 
  !$OMP PARALLEL DO PRIVATE(t,g,c,m,subvolume)
    do e = 1_pInt,mesh_NcpElems                                                                      ! loop over cpElems
@@ -895,43 +902,6 @@ end function mesh_spectral_getHomogenization
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Count overall number of nodes and elements in mesh and stores them in
-!! 'mesh_Nelems', 'mesh_Nnodes' and 'mesh_NcpElems'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_count()
-
- implicit none
-
- mesh_NcpElems= product(grid(1:2))*grid3
- mesh_Nnodes  = product(grid(1:2) + 1_pInt)*(grid3 + 1_pInt)
-
- mesh_NcpElemsGlobal = product(grid)
-
-end subroutine mesh_spectral_count
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Gets maximum count of nodes, IPs, IP neighbors, and subNodes among cpElements.
-!! Sets global values 'mesh_maxNips', 'mesh_maxNipNeighbors',
-!! and 'mesh_maxNcellnodes'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_count_cpSizes
-
- implicit none
- integer(pInt) :: t,g,c
-
- t = 10_pInt
- g = FE_geomtype(t)
- c = FE_celltype(g)
-
- mesh_maxNips =         FE_Nips(g)
- mesh_maxNipNeighbors = FE_NipNeighbors(c)
- mesh_maxNcellnodes =   FE_Ncellnodes(g)
-
-end subroutine mesh_spectral_count_cpSizes
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief Store x,y,z coordinates of all nodes in mesh.
 !! Allocates global arrays 'mesh_node0' and 'mesh_node'
 !--------------------------------------------------------------------------------------------------
@@ -941,7 +911,6 @@ subroutine mesh_spectral_build_nodes()
  integer(pInt) :: n
 
  allocate (mesh_node0 (3,mesh_Nnodes), source = 0.0_pReal)
- allocate (mesh_node  (3,mesh_Nnodes), source = 0.0_pReal)
 
  forall (n = 0_pInt:mesh_Nnodes-1_pInt)
    mesh_node0(1,n+1_pInt) = mesh_unitlength * &
@@ -986,7 +955,6 @@ subroutine mesh_spectral_build_elements(fileUnit)
    headerLength = 0_pInt, &
    maxDataPerLine, &
    homog, &
-   elemType, &
    elemOffset
  integer(pInt),     dimension(:), allocatable :: &
    microstructures, &
@@ -1047,13 +1015,13 @@ subroutine mesh_spectral_build_elements(fileUnit)
    enddo
  enddo
 
- elemType = 10_pInt
+
  elemOffset = product(grid(1:2))*grid3Offset
  e = 0_pInt
  do while (e < mesh_NcpElems)                                                                       ! fill expected number of elements, stop at end of data (or blank line!)
    e = e+1_pInt                                                                                     ! valid element entry
    mesh_element( 1,e) = -1_pInt                                                                     ! DEPRECATED
-   mesh_element( 2,e) = elemType                                                                    ! elem type
+   mesh_element( 2,e) = 10_pInt
    mesh_element( 3,e) = homog                                                                       ! homogenization
    mesh_element( 4,e) = microGlobal(e+elemOffset)                                                   ! microstructure
    mesh_element( 5,e) = e + (e-1_pInt)/grid(1) + &

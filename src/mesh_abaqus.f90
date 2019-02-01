@@ -389,7 +389,7 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_abaqus_build_elements
 
 
- type, public, extends(tMesh) :: tMesh_Abaqus
+ type, public, extends(tMesh) :: tMesh_abaqus
  
  integer(pInt):: &
    mesh_Nelems, &                                                                                   !< total number of elements in mesh (including non-DAMASK elements)
@@ -406,16 +406,22 @@ integer(pInt), dimension(:,:), allocatable, private :: &
  logical:: noPart                                                                         !< for cases where the ABAQUS input file does not use part/assembly information
 
  contains 
-   procedure :: init=>tMesh_abaqus_init
- end type tMesh_Abaqus
+   procedure, pass(self) :: tMesh_abaqus_init
+   generic, public :: init => tMesh_abaqus_init
+ end type tMesh_abaqus
  
- type(tMesh_Abaqus), public, protected :: theMesh
+ type(tMesh_abaqus), public, protected :: theMesh
  
 contains
 
-subroutine tMesh_abaqus_init(self)
+subroutine tMesh_abaqus_init(self,elemType,nodes)
+ 
  implicit none
  class(tMesh_abaqus) :: self
+ real(pReal), dimension(:,:), intent(in) :: nodes
+ integer(pInt), intent(in) :: elemType
+ 
+ call self%tMesh%init('mesh',elemType,nodes)
  
 end subroutine tMesh_abaqus_init
 
@@ -537,7 +543,7 @@ subroutine mesh_init(ip,el)
  mesh_microstructureAt  = mesh_element(4,:)
  mesh_CPnodeID          = mesh_element(5:4+mesh_NipsPerElem,:)
 !!!!!!!!!!!!!!!!!!!!!!!!
-
+ call theMesh%init(mesh_element(2,1),mesh_node0)
 contains
 !--------------------------------------------------------------------------------------------------
 !> @brief check if the input file for Abaqus contains part info
@@ -857,97 +863,6 @@ pure function mesh_cellCenterCoordinates(ip,el)
  mesh_cellCenterCoordinates = mesh_cellCenterCoordinates / real(FE_NcellnodesPerCell(c),pReal)
 
  end function mesh_cellCenterCoordinates
-
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief builds mesh of (distorted) cubes for given coordinates (= center of the cubes)
-!--------------------------------------------------------------------------------------------------
-function mesh_nodesAroundCentres(gDim,Favg,centres) result(nodes)
- use debug, only: &
-   debug_mesh, &
-   debug_level, &
-   debug_levelBasic
- use math, only: &
-   math_mul33x3
-
- implicit none
- real(pReal), intent(in), dimension(:,:,:,:) :: &
-   centres
- real(pReal),             dimension(3,size(centres,2)+1,size(centres,3)+1,size(centres,4)+1) :: &
-   nodes
- real(pReal), intent(in), dimension(3) :: &
-   gDim
- real(pReal), intent(in), dimension(3,3) :: &
-   Favg
- real(pReal),             dimension(3,size(centres,2)+2,size(centres,3)+2,size(centres,4)+2) :: &
-   wrappedCentres
-
- integer(pInt) :: &
-   i,j,k,n
- integer(pInt),           dimension(3), parameter :: &
-   diag = 1_pInt
- integer(pInt),           dimension(3) :: &
-   shift = 0_pInt, &
-   lookup = 0_pInt, &
-   me = 0_pInt, &
-   iRes = 0_pInt
- integer(pInt),           dimension(3,8) :: &
-   neighbor = reshape([ &
-                       0_pInt, 0_pInt, 0_pInt, &
-                       1_pInt, 0_pInt, 0_pInt, &
-                       1_pInt, 1_pInt, 0_pInt, &
-                       0_pInt, 1_pInt, 0_pInt, &
-                       0_pInt, 0_pInt, 1_pInt, &
-                       1_pInt, 0_pInt, 1_pInt, &
-                       1_pInt, 1_pInt, 1_pInt, &
-                       0_pInt, 1_pInt, 1_pInt  ], [3,8])
-
-!--------------------------------------------------------------------------------------------------
-! initializing variables
- iRes =  [size(centres,2),size(centres,3),size(centres,4)]
- nodes = 0.0_pReal
- wrappedCentres = 0.0_pReal
-
-!--------------------------------------------------------------------------------------------------
-! report
- if (iand(debug_level(debug_mesh),debug_levelBasic) /= 0_pInt) then
-   write(6,'(a)')          ' Meshing cubes around centroids'
-   write(6,'(a,3(e12.5))') ' Dimension: ', gDim
-   write(6,'(a,3(i5))')    ' Resolution:', iRes
- endif
-
-!--------------------------------------------------------------------------------------------------
-! building wrappedCentres = centroids + ghosts
- wrappedCentres(1:3,2_pInt:iRes(1)+1_pInt,2_pInt:iRes(2)+1_pInt,2_pInt:iRes(3)+1_pInt) = centres
- do k = 0_pInt,iRes(3)+1_pInt
-   do j = 0_pInt,iRes(2)+1_pInt
-     do i = 0_pInt,iRes(1)+1_pInt
-       if (k==0_pInt .or. k==iRes(3)+1_pInt .or. &                                                  ! z skin
-           j==0_pInt .or. j==iRes(2)+1_pInt .or. &                                                  ! y skin
-           i==0_pInt .or. i==iRes(1)+1_pInt      ) then                                             ! x skin
-         me = [i,j,k]                                                                               ! me on skin
-         shift = sign(abs(iRes+diag-2_pInt*me)/(iRes+diag),iRes+diag-2_pInt*me)
-         lookup = me-diag+shift*iRes
-         wrappedCentres(1:3,i+1_pInt,        j+1_pInt,        k+1_pInt) = &
-                centres(1:3,lookup(1)+1_pInt,lookup(2)+1_pInt,lookup(3)+1_pInt) &
-                - math_mul33x3(Favg, real(shift,pReal)*gDim)
-       endif
- enddo; enddo; enddo
-
-!--------------------------------------------------------------------------------------------------
-! averaging
- do k = 0_pInt,iRes(3); do j = 0_pInt,iRes(2); do i = 0_pInt,iRes(1)
-   do n = 1_pInt,8_pInt
-    nodes(1:3,i+1_pInt,j+1_pInt,k+1_pInt) = &
-    nodes(1:3,i+1_pInt,j+1_pInt,k+1_pInt) + wrappedCentres(1:3,i+1_pInt+neighbor(1,n), &
-                                                               j+1_pInt+neighbor(2,n), &
-                                                               k+1_pInt+neighbor(3,n) )
-   enddo
- enddo; enddo; enddo
- nodes = nodes/8.0_pReal
-
-end function mesh_nodesAroundCentres
 
 
 !--------------------------------------------------------------------------------------------------

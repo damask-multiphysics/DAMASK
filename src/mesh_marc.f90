@@ -417,8 +417,9 @@ type, public, extends(tMesh) :: tMesh_marc
  integer(pInt), dimension(:,:), allocatable :: &
    mesh_mapElemSet                                                                                  !< list of elements in elementSet
 
- contains
-   procedure :: init => tMesh_marc_init
+ contains 
+   procedure, pass(self) :: tMesh_marc_init
+   generic, public :: init => tMesh_marc_init
 end type tMesh_marc
 
  type(tMesh_marc), public, protected :: theMesh
@@ -426,10 +427,15 @@ end type tMesh_marc
  
 contains
 
-subroutine tMesh_marc_init(self)
+subroutine tMesh_marc_init(self,elemType,nodes)
+ 
  implicit none
  class(tMesh_marc) :: self
-
+ real(pReal), dimension(:,:), intent(in) :: nodes
+ integer(pInt), intent(in) :: elemType
+ 
+ call self%tMesh%init('mesh',elemType,nodes)
+ 
 end subroutine tMesh_marc_init
 
 !--------------------------------------------------------------------------------------------------
@@ -553,7 +559,8 @@ subroutine mesh_init(ip,el)
  mesh_microstructureAt  = mesh_element(4,:)
  mesh_CPnodeID          = mesh_element(5:4+mesh_NipsPerElem,:)
 !!!!!!!!!!!!!!!!!!!!!!!!
-
+ call theMesh%init(mesh_element(2,1),mesh_node0)
+ 
 end subroutine mesh_init
 
 

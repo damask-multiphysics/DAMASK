@@ -29,7 +29,7 @@ module mesh_base
      node                                                                                        !< node x,y,z coordinates (deformed)
    integer(pInt), dimension(:,:), allocatable, public :: &    
      cellnodeParent                                                                               !< cellnode's parent element ID, cellnode's intra-element ID 
-   character(pStringLen) :: solver = "undefined"
+   character(pStringLen) :: type = "n/a"
    integer(pInt)         :: &
      Nnodes, &                                                                                   !< total number of nodes in mesh
      Nelems = -1_pInt, &
@@ -43,6 +43,24 @@ module mesh_base
      microstructureAt
    integer(pInt), dimension(:,:), allocatable, public :: &
      connectivity
+   contains
+   procedure, pass(self) :: tMesh_base_init
+   generic, public :: init => tMesh_base_init
  end type tMesh
+
+contains
+subroutine tMesh_base_init(self,meshType,elemType,nodes)
+ 
+ implicit none
+ class(tMesh) :: self
+ character(len=*), intent(in) :: meshType
+ integer(pInt), intent(in) :: elemType
+ real(pReal), dimension(:,:), intent(in) :: nodes
+ 
+ self%type = meshType
+ call self%elem%init(elemType)
+ self%node0 = nodes
+ 
+end subroutine tMesh_base_init
 
 end module mesh_base
