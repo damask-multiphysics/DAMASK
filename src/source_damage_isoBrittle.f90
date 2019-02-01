@@ -246,10 +246,7 @@ subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
    sourceState, &
    material_homog, &
    phase_NstiffnessDegradations, &
-   phase_stiffnessDegradation, &
-   porosity, &
-   porosityMapping, &  
-   STIFFNESS_DEGRADATION_porosity_ID
+   phase_stiffnessDegradation
  use math, only : &
    math_mul33x33, &
    math_mul66x6, &
@@ -279,15 +276,7 @@ subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
  instance = source_damage_isoBrittle_instance(phase)                                                 !< instance of damage_isoBrittle source
  sourceOffset = source_damage_isoBrittle_offset(phase)
 
- stiffness = C
- do mech = 1_pInt, phase_NstiffnessDegradations(phase)
-   select case(phase_stiffnessDegradation(mech,phase))
-     case (STIFFNESS_DEGRADATION_porosity_ID)
-       stiffness = porosity(material_homog(ip,el))%p(porosityMapping(material_homog(ip,el))%p(ip,el))* &
-                   porosity(material_homog(ip,el))%p(porosityMapping(material_homog(ip,el))%p(ip,el))* &
-                   stiffness 
-   end select
- enddo                                                 
+ stiffness = C                                            
  strain = 0.5_pReal*math_Mandel33to6(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
 
  strainenergy = 2.0_pReal*sum(strain*math_mul66x6(stiffness,strain))/ &

@@ -4,12 +4,12 @@
 !> @details List of files needed by MSC.Marc, Abaqus/Explicit, and Abaqus/Standard
 !--------------------------------------------------------------------------------------------------
 #include "IO.f90"
-#ifdef DAMASKHDF5
-#include "HDF5_utilities.f90"
-#endif
 #include "numerics.f90"
 #include "debug.f90"
 #include "config.f90"
+#ifdef DAMASKHDF5
+#include "HDF5_utilities.f90"
+#endif
 #include "math.f90"
 #include "quaternions.f90"
 #include "Lambert.f90"
@@ -24,14 +24,9 @@
 #include "source_damage_isoDuctile.f90"
 #include "source_damage_anisoBrittle.f90"
 #include "source_damage_anisoDuctile.f90"
-#include "source_vacancy_phenoplasticity.f90"
-#include "source_vacancy_irradiation.f90"
-#include "source_vacancy_thermalfluc.f90"
 #include "kinematics_cleavage_opening.f90"
 #include "kinematics_slipplane_opening.f90"
 #include "kinematics_thermal_expansion.f90"
-#include "kinematics_vacancy_strain.f90"
-#include "kinematics_hydrogen_strain.f90"
 #include "plastic_none.f90"
 #include "plastic_isotropic.f90"
 #include "plastic_phenopowerlaw.f90"
@@ -50,12 +45,5 @@
 #include "damage_none.f90"
 #include "damage_local.f90"
 #include "damage_nonlocal.f90"
-#include "vacancyflux_isoconc.f90"
-#include "vacancyflux_isochempot.f90"
-#include "vacancyflux_cahnhilliard.f90"
-#include "porosity_none.f90"
-#include "porosity_phasefield.f90"
-#include "hydrogenflux_isoconc.f90"
-#include "hydrogenflux_cahnhilliard.f90"
 #include "homogenization.f90"
 #include "CPFEM.f90"

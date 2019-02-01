@@ -24,25 +24,25 @@ module math
      0.0_pReal,0.0_pReal,1.0_pReal  &
      ],[3,3])                                                                                       !< 3x3 Identity
 
+ real(pReal), dimension(6), parameter, private :: &
+   nrmMandel = [&
+     1.0_pReal,       1.0_pReal,       1.0_pReal, &
+     sqrt(2.0_pReal), sqrt(2.0_pReal), sqrt(2.0_pReal) ]                                            !< weighting for Mandel notation (forward)
+
+ real(pReal), dimension(6), parameter , private :: &
+   invnrmMandel = [&
+     1.0_pReal,                 1.0_pReal,                 1.0_pReal, &
+     1.0_pReal/sqrt(2.0_pReal), 1.0_pReal/sqrt(2.0_pReal), 1.0_pReal/sqrt(2.0_pReal) ]              !< weighting for Mandel notation (backward)
+
  integer(pInt), dimension (2,6), parameter, private :: &
-   mapMandel = reshape([&
+   mapNye = reshape([&
      1_pInt,1_pInt, &
      2_pInt,2_pInt, &
      3_pInt,3_pInt, &
      1_pInt,2_pInt, &
      2_pInt,3_pInt, &
      1_pInt,3_pInt  &
-     ],[2,6])                                                                                       !< arrangement in Mandel notation
-
- real(pReal), dimension(6), parameter, private :: &
-   nrmMandel = [&
-     1.0_pReal,       1.0_pReal,       1.0_pReal, &
-     sqrt(2.0_pReal), sqrt(2.0_pReal), sqrt(2.0_pReal) ]                                            !< weighting for Mandel notation (forward)
-
- real(pReal), dimension(6), parameter , public :: &
-   invnrmMandel = [&
-     1.0_pReal,                 1.0_pReal,                 1.0_pReal, &
-     1.0_pReal/sqrt(2.0_pReal), 1.0_pReal/sqrt(2.0_pReal), 1.0_pReal/sqrt(2.0_pReal) ]              !< weighting for Mandel notation (backward)
+     ],[2,6])                                                                                       !< arrangement in Nye notation.
 
  integer(pInt), dimension (2,6), parameter, private :: &
    mapVoigt = reshape([&
@@ -53,10 +53,6 @@ module math
      1_pInt,3_pInt, &
      1_pInt,2_pInt  &
      ],[2,6])                                                                                       !< arrangement in Voigt notation
-
- real(pReal), dimension(6), parameter, private :: &
-   nrmVoigt    = 1.0_pReal, &                                                                       !< weighting for Voigt notation (forward)
-   invnrmVoigt = 1.0_pReal                                                                          !< weighting for Voigt notation (backward)
 
  integer(pInt), dimension (2,9), parameter, private :: &
    mapPlain = reshape([&
@@ -70,6 +66,56 @@ module math
      3_pInt,2_pInt, &
      3_pInt,3_pInt  &
      ],[2,9])                                                                                       !< arrangement in Plain notation
+     
+!--------------------------------------------------------------------------------------------------
+! Provide deprecated names for compatibility
+
+! ToDo MD: Our naming scheme was a little bit odd: We use essentially the re-ordering according to Nye
+! (convenient because Abaqus and Marc want to have 12 on position 4)
+! but weight the shear components according to Mandel (convenient for matrix multiplications)
+ 
+ interface math_Plain33to9
+   module procedure math_33to9
+ end interface math_Plain33to9
+ 
+ interface math_Plain9to33
+   module procedure math_9to33
+ end interface math_Plain9to33
+ 
+ interface math_Mandel33to6
+   module procedure math_sym33to6
+ end interface math_Mandel33to6
+ 
+  interface math_Mandel6to33
+   module procedure math_6toSym33
+ end interface math_Mandel6to33
+ 
+  interface math_Plain3333to99
+   module procedure math_3333to99
+ end interface math_Plain3333to99
+ 
+ interface math_Plain99to3333
+   module procedure math_99to3333
+ end interface math_Plain99to3333
+ 
+ interface math_Mandel3333to66
+   module procedure math_sym3333to66
+ end interface math_Mandel3333to66
+ 
+ interface math_Mandel66to3333
+   module procedure math_66toSym3333
+ end interface math_Mandel66to3333
+ 
+ public :: &
+   math_Plain33to9, &
+   math_Plain9to33, &
+   math_Mandel33to6, &
+   math_Mandel6to33, &
+   math_Plain3333to99, &
+   math_Plain99to3333, &
+   math_Mandel3333to66, &
+   math_Mandel66to3333
+!---------------------------------------------------------------------------------------------------
 
  public :: &
    math_init, &
@@ -99,6 +145,7 @@ module math
    math_invert33, &
    math_invSym3333, &
    math_invert, &
+   math_invert2, &
    math_symmetric33, &
    math_symmetric66, &
    math_skew33, &
@@ -108,16 +155,14 @@ module math
    math_equivStress33, &
    math_trace33, &
    math_det33, &
-   math_Plain33to9, &
-   math_Plain9to33, &
-   math_Mandel33to6, &
-   math_Mandel6to33, &
-   math_Plain3333to99, &
-   math_Plain99to3333, &
-   math_Mandel66toPlain66, &
-   math_Plain66toMandel66, &
-   math_Mandel3333to66, &
-   math_Mandel66to3333, &
+   math_33to9, &
+   math_9to33, &
+   math_sym33to6, &
+   math_6toSym33, &
+   math_3333to99, &
+   math_99to3333, &
+   math_sym3333to66, &
+   math_66toSym3333, &
    math_Voigt66to3333, &
    math_qRand, &
    math_qMul, &
@@ -415,7 +460,7 @@ pure function math_identity2nd(dimen)
  real(pReal), dimension(dimen,dimen) :: math_identity2nd
 
  math_identity2nd = 0.0_pReal
- forall (i=1_pInt:dimen) math_identity2nd(i,i) = 1.0_pReal
+ forall(i=1_pInt:dimen) math_identity2nd(i,i) = 1.0_pReal
 
 end function math_identity2nd
 
@@ -429,9 +474,11 @@ pure function math_identity4th(dimen)
  integer(pInt), intent(in) :: dimen                                                                 !< tensor dimension
  integer(pInt) :: i,j,k,l
  real(pReal), dimension(dimen,dimen,dimen,dimen) ::  math_identity4th
+ real(pReal), dimension(dimen,dimen)             ::  identity2nd
 
- forall (i=1_pInt:dimen,j=1_pInt:dimen,k=1_pInt:dimen,l=1_pInt:dimen) math_identity4th(i,j,k,l) = &
-        0.5_pReal*(math_I3(i,k)*math_I3(j,l)+math_I3(i,l)*math_I3(j,k))
+ identity2nd = math_identity2nd(dimen)
+ forall(i=1_pInt:dimen,j=1_pInt:dimen,k=1_pInt:dimen,l=1_pInt:dimen) &
+   math_identity4th(i,j,k,l) = 0.5_pReal*(identity2nd(i,k)*identity2nd(j,l)+identity2nd(i,l)*identity2nd(j,k))
 
 end function math_identity4th
 
@@ -500,7 +547,7 @@ pure function math_tensorproduct(A,B)
  real(pReal), dimension(size(A,1),size(B,1)) ::  math_tensorproduct
  integer(pInt) :: i,j
 
- forall (i=1_pInt:size(A,1),j=1_pInt:size(B,1)) math_tensorproduct(i,j) = A(i)*B(j)
+ forall(i=1_pInt:size(A,1),j=1_pInt:size(B,1)) math_tensorproduct(i,j) = A(i)*B(j)
 
 end function math_tensorproduct
 
@@ -515,7 +562,7 @@ pure function math_tensorproduct33(A,B)
  real(pReal), dimension(3), intent(in) ::  A,B
  integer(pInt) :: i,j
 
- forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_tensorproduct33(i,j) = A(i)*B(j)
+ forall(i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_tensorproduct33(i,j) = A(i)*B(j)
 
 end function math_tensorproduct33
 
@@ -556,7 +603,7 @@ real(pReal) pure function math_mul33xx33(A,B)
  integer(pInt) :: i,j
  real(pReal), dimension(3,3) ::              C
 
- forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) C(i,j) = A(i,j) * B(i,j)
+ forall(i=1_pInt:3_pInt,j=1_pInt:3_pInt) C(i,j) = A(i,j) * B(i,j)
  math_mul33xx33 = sum(C)
 
 end function math_mul33xx33
@@ -573,9 +620,8 @@ pure function math_mul3333xx33(A,B)
  real(pReal), dimension(3,3), intent(in) ::  B
  integer(pInt) :: i,j 
 
- forall(i = 1_pInt:3_pInt,j = 1_pInt:3_pInt) &
-   math_mul3333xx33(i,j) = sum(A(i,j,1:3,1:3)*B(1:3,1:3))
-   
+ forall(i = 1_pInt:3_pInt,j = 1_pInt:3_pInt) math_mul3333xx33(i,j) = sum(A(i,j,1:3,1:3)*B(1:3,1:3))
+
 end function math_mul3333xx33
 
 
@@ -606,8 +652,7 @@ pure function math_mul33x33(A,B)
  real(pReal), dimension(3,3), intent(in) ::  A,B
  integer(pInt) :: i,j
 
- forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) &
-   math_mul33x33(i,j) = A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j)
+ forall(i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_mul33x33(i,j) = A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j)
 
 end function math_mul33x33
 
@@ -622,9 +667,9 @@ pure function math_mul66x66(A,B)
  real(pReal), dimension(6,6), intent(in) ::  A,B
  integer(pInt) :: i,j
 
- forall (i=1_pInt:6_pInt,j=1_pInt:6_pInt) math_mul66x66(i,j) = &
-   A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j) + &
-   A(i,4)*B(4,j) + A(i,5)*B(5,j) + A(i,6)*B(6,j)
+ forall(i=1_pInt:6_pInt,j=1_pInt:6_pInt) &
+   math_mul66x66(i,j) = A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j) &
+                      + A(i,4)*B(4,j) + A(i,5)*B(5,j) + A(i,6)*B(6,j)
 
 end function math_mul66x66
 
@@ -639,10 +684,10 @@ pure function math_mul99x99(A,B)
  real(pReal), dimension(9,9), intent(in) ::  A,B
  integer(pInt)  i,j
 
- forall (i=1_pInt:9_pInt,j=1_pInt:9_pInt) math_mul99x99(i,j) = &
-   A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j) + &
-   A(i,4)*B(4,j) + A(i,5)*B(5,j) + A(i,6)*B(6,j) + &
-   A(i,7)*B(7,j) + A(i,8)*B(8,j) + A(i,9)*B(9,j)
+ forall(i=1_pInt:9_pInt,j=1_pInt:9_pInt) &
+   math_mul99x99(i,j) = A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j) &
+                      + A(i,4)*B(4,j) + A(i,5)*B(5,j) + A(i,6)*B(6,j) &
+                      + A(i,7)*B(7,j) + A(i,8)*B(8,j) + A(i,9)*B(9,j)
 
 end function math_mul99x99
 
@@ -690,9 +735,8 @@ pure function math_mul66x6(A,B)
  real(pReal), dimension(6),   intent(in) ::  B
  integer(pInt) :: i
 
- forall (i=1_pInt:6_pInt) math_mul66x6(i) = &
-   A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3) + &
-   A(i,4)*B(4) + A(i,5)*B(5) + A(i,6)*B(6)
+ forall (i=1_pInt:6_pInt) math_mul66x6(i) = A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3) &
+                                          + A(i,4)*B(4) + A(i,5)*B(5) + A(i,6)*B(6)
 
 end function math_mul66x6
 
@@ -739,8 +783,8 @@ end function math_transpose33
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Cramer inversion of 33 matrix (function)
-!   direct Cramer inversion of matrix A.
-!   returns all zeroes if not possible, i.e. if det close to zero
+!> @details Direct Cramer inversion of matrix A. Returns all zeroes if not possible, i.e. 
+! if determinant is close to zero
 !--------------------------------------------------------------------------------------------------
 pure function math_inv33(A)
  use prec, only: &
@@ -776,9 +820,9 @@ end function math_inv33
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Cramer inversion of 33 matrix (subroutine)
-!   direct Cramer inversion of matrix A.
-!   also returns determinant
-!   returns error if not possible, i.e. if det close to zero
+!> @details Direct Cramer inversion of matrix A. Also returns determinant
+!  Returns an error if not possible, i.e. if determinant is close to zero
+! ToDo: Output arguments should be first
 !--------------------------------------------------------------------------------------------------
 pure subroutine math_invert33(A, InvA, DetA, error)
  use prec, only: &
@@ -835,11 +879,11 @@ function math_invSym3333(A)
   dgetrf, &
   dgetri
 
- temp66_real = math_Mandel3333to66(A)
+ temp66_real = math_sym3333to66(A)
  call dgetrf(6,6,temp66_real,6,ipiv6,ierr)
  call dgetri(6,temp66_real,6,ipiv6,work6,6,ierr)
  if (ierr == 0_pInt) then
-   math_invSym3333 = math_Mandel66to3333(temp66_real)
+   math_invSym3333 = math_66toSym3333(temp66_real)
  else
    call IO_error(400_pInt, ext_msg = 'math_invSym3333')
  endif
@@ -848,7 +892,26 @@ end function math_invSym3333
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief invert quadratic matrix of arbitrary dimension
+! ToDo: replaces math_invert
+!--------------------------------------------------------------------------------------------------
+subroutine math_invert2(InvA, error, A)
+
+ implicit none
+ real(pReal), dimension(:,:), intent(in)  :: A
+ 
+ real(pReal), dimension(size(A,1),size(A,1)), intent(out) :: invA
+ logical, intent(out) :: error
+
+ call math_invert(size(A,1), A, InvA, error)
+ 
+end subroutine math_invert2
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief invert matrix of arbitrary dimension
+! ToDo: Wrong order of arguments and superfluous myDim argument.
+! Use math_invert2 instead
 !--------------------------------------------------------------------------------------------------
 subroutine math_invert(myDim,A, InvA, error)
 
@@ -870,7 +933,7 @@ subroutine math_invert(myDim,A, InvA, error)
  invA = A 
  call dgetrf(myDim,myDim,invA,myDim,ipiv,ierr)
  call dgetri(myDim,InvA,myDim,ipiv,work,myDim,ierr)
- error = merge(.true.,.false., ierr /= 0_pInt)                                                      ! http://fortraninacworld.blogspot.de/2012/12/ternary-operator.html
+ error = merge(.true.,.false., ierr /= 0_pInt)
  
 end subroutine math_invert
 
@@ -953,15 +1016,14 @@ pure function math_equivStrain33(m)
  real(pReal), dimension(3,3), intent(in) :: m
  real(pReal), dimension(3) :: e,s
  real(pReal) :: math_equivStrain33
- real(pReal), parameter :: TWOTHIRD = 2.0_pReal/3.0_pReal
 
  e = [2.0_pReal*m(1,1)-m(2,2)-m(3,3), &
       2.0_pReal*m(2,2)-m(3,3)-m(1,1), &
       2.0_pReal*m(3,3)-m(1,1)-m(2,2)]/3.0_pReal
  s = [m(1,2),m(2,3),m(1,3)]*2.0_pReal
 
- math_equivStrain33 = TWOTHIRD*(1.50_pReal*(sum(e**2.0_pReal)) + &
-                                0.75_pReal*(sum(s**2.0_pReal)))**(0.5_pReal)
+ math_equivStrain33 = 2.0_pReal/3.0_pReal &
+                    * (1.50_pReal*(sum(e**2.0_pReal))+ 0.75_pReal*(sum(s**2.0_pReal)))**(0.5_pReal)
 
 end function math_equivStrain33
 
@@ -1033,173 +1095,188 @@ end function  math_detSym33
 !--------------------------------------------------------------------------------------------------
 !> @brief convert 33 matrix into vector 9
 !--------------------------------------------------------------------------------------------------
-pure function math_Plain33to9(m33)
+pure function math_33to9(m33)
 
  implicit none
- real(pReal), dimension(9) :: math_Plain33to9
- real(pReal), dimension(3,3), intent(in) :: m33
- integer(pInt) :: i
-
- forall (i=1_pInt:9_pInt) math_Plain33to9(i) = m33(mapPlain(1,i),mapPlain(2,i))
-
-end function math_Plain33to9
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief convert Plain 9 back to 33 matrix
-!--------------------------------------------------------------------------------------------------
-pure function math_Plain9to33(v9)
-
- implicit none
- real(pReal), dimension(3,3) :: math_Plain9to33
- real(pReal), dimension(9), intent(in) :: v9
- integer(pInt) :: i
-
- forall (i=1_pInt:9_pInt) math_Plain9to33(mapPlain(1,i),mapPlain(2,i)) = v9(i)
-
-end function math_Plain9to33
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief convert symmetric 33 matrix into Mandel vector 6
-!--------------------------------------------------------------------------------------------------
-pure function math_Mandel33to6(m33)
-
- implicit none
- real(pReal), dimension(6) :: math_Mandel33to6
+ real(pReal), dimension(9)               :: math_33to9
  real(pReal), dimension(3,3), intent(in) :: m33
  
  integer(pInt) :: i
 
- forall (i=1_pInt:6_pInt) math_Mandel33to6(i) = nrmMandel(i)*m33(mapMandel(1,i),mapMandel(2,i))
+ forall(i=1_pInt:9_pInt) math_33to9(i) = m33(mapPlain(1,i),mapPlain(2,i))
 
-end function math_Mandel33to6
+end function math_33to9
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert Mandel 6 back to symmetric 33 matrix
+!> @brief convert 9 vector into 33 matrix
 !--------------------------------------------------------------------------------------------------
-pure function math_Mandel6to33(v6)
+pure function math_9to33(v9)
 
  implicit none
- real(pReal), dimension(6), intent(in) :: v6
- real(pReal), dimension(3,3) :: math_Mandel6to33
+ real(pReal), dimension(3,3)           :: math_9to33
+ real(pReal), dimension(9), intent(in) :: v9
+ 
  integer(pInt) :: i
 
- forall (i=1_pInt:6_pInt)
-  math_Mandel6to33(mapMandel(1,i),mapMandel(2,i)) = invnrmMandel(i)*v6(i)
-  math_Mandel6to33(mapMandel(2,i),mapMandel(1,i)) = invnrmMandel(i)*v6(i)
- end forall
+ forall(i=1_pInt:9_pInt) math_9to33(mapPlain(1,i),mapPlain(2,i)) = v9(i)
 
-end function math_Mandel6to33
+end function math_9to33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 3333 tensor into plain matrix 99
+!> @brief convert symmetric 33 matrix into 6 vector
+!> @details Weighted conversion (default) rearranges according to Nye and weights shear
+! components according to Mandel. Advisable for matrix operations.
+! Unweighted conversion only changes order according to Nye
 !--------------------------------------------------------------------------------------------------
-pure function math_Plain3333to99(m3333)
+pure function math_sym33to6(m33,weighted)
 
  implicit none
+ real(pReal), dimension(6)               :: math_sym33to6
+ real(pReal), dimension(3,3), intent(in) :: m33
+ logical,     optional,       intent(in) :: weighted
+ 
+ real(pReal), dimension(6) :: w
+ integer(pInt) :: i
+ 
+ if(present(weighted)) then
+   w = merge(nrmMandel,1.0_pReal,weighted)
+ else
+   w = nrmMandel
+ endif
+
+ forall(i=1_pInt:6_pInt) math_sym33to6(i) = w(i)*m33(mapNye(1,i),mapNye(2,i))
+
+end function math_sym33to6
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief convert 6 vector into symmetric 33 matrix
+!> @details Weighted conversion (default) rearranges according to Nye and weights shear
+! components according to Mandel. Advisable for matrix operations.
+! Unweighted conversion only changes order according to Nye
+!--------------------------------------------------------------------------------------------------
+pure function math_6toSym33(v6,weighted)
+
+ implicit none
+ real(pReal), dimension(3,3)           :: math_6toSym33
+ real(pReal), dimension(6), intent(in) :: v6
+ logical,     optional,     intent(in) :: weighted
+
+ real(pReal), dimension(6) :: w
+ integer(pInt) :: i
+ 
+ if(present(weighted)) then
+   w = merge(invnrmMandel,1.0_pReal,weighted)
+ else
+   w = invnrmMandel
+ endif
+
+ do i=1_pInt,6_pInt
+   math_6toSym33(mapNye(1,i),mapNye(2,i)) = w(i)*v6(i)
+   math_6toSym33(mapNye(2,i),mapNye(1,i)) = w(i)*v6(i)
+ enddo
+
+end function math_6toSym33
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief convert 3333 matrix into 99 matrix
+!--------------------------------------------------------------------------------------------------
+pure function math_3333to99(m3333)
+
+ implicit none
+ real(pReal), dimension(9,9)                 :: math_3333to99
  real(pReal), dimension(3,3,3,3), intent(in) :: m3333
- real(pReal), dimension(9,9) :: math_Plain3333to99
+
  integer(pInt) :: i,j
 
- forall (i=1_pInt:9_pInt,j=1_pInt:9_pInt) math_Plain3333to99(i,j) = &
-   m3333(mapPlain(1,i),mapPlain(2,i),mapPlain(1,j),mapPlain(2,j))
+ forall(i=1_pInt:9_pInt,j=1_pInt:9_pInt) &
+   math_3333to99(i,j) = m3333(mapPlain(1,i),mapPlain(2,i),mapPlain(1,j),mapPlain(2,j))
 
-end function math_Plain3333to99
+end function math_3333to99
+
 
 !--------------------------------------------------------------------------------------------------
-!> @brief plain matrix 99 into 3333 tensor
+!> @brief convert 99 matrix into 3333 matrix
 !--------------------------------------------------------------------------------------------------
-pure function math_Plain99to3333(m99)
+pure function math_99to3333(m99)
 
  implicit none
+ real(pReal), dimension(3,3,3,3)         :: math_99to3333
  real(pReal), dimension(9,9), intent(in) :: m99
- real(pReal), dimension(3,3,3,3) :: math_Plain99to3333
+
  integer(pInt) :: i,j
 
- forall (i=1_pInt:9_pInt,j=1_pInt:9_pInt) math_Plain99to3333(mapPlain(1,i),mapPlain(2,i),&
-   mapPlain(1,j),mapPlain(2,j)) = m99(i,j)
+ forall(i=1_pInt:9_pInt,j=1_pInt:9_pInt) &
+   math_99to3333(mapPlain(1,i),mapPlain(2,i),mapPlain(1,j),mapPlain(2,j)) = m99(i,j)
 
-end function math_Plain99to3333
+end function math_99to3333
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert Mandel matrix 66 into Plain matrix 66
+!> @brief convert symmetric 3333 matrix into 66 matrix
+!> @details Weighted conversion (default) rearranges according to Nye and weights shear
+! components according to Mandel. Advisable for matrix operations.
+! Unweighted conversion only changes order according to Nye
 !--------------------------------------------------------------------------------------------------
-pure function math_Mandel66toPlain66(m66)
+pure function math_sym3333to66(m3333,weighted)
 
  implicit none
- real(pReal), dimension(6,6), intent(in) :: m66
- real(pReal), dimension(6,6) :: math_Mandel66toPlain66
- integer(pInt) :: i,j
-
- forall (i=1_pInt:6_pInt,j=1_pInt:6_pInt) &
-   math_Mandel66toPlain66(i,j) = invnrmMandel(i) * invnrmMandel(j) * m66(i,j)
-
-end function math_Mandel66toPlain66
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief convert Plain matrix 66 into Mandel matrix 66
-!--------------------------------------------------------------------------------------------------
-pure function math_Plain66toMandel66(m66)
-
- implicit none
- real(pReal), dimension(6,6), intent(in) :: m66
- real(pReal), dimension(6,6) :: math_Plain66toMandel66
- integer(pInt)  :: i,j
-
- forall (i=1_pInt:6_pInt,j=1_pInt:6_pInt) &
-   math_Plain66toMandel66(i,j) = nrmMandel(i) * nrmMandel(j) * m66(i,j)
-
-end function math_Plain66toMandel66
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief convert symmetric 3333 tensor into Mandel matrix 66
-!--------------------------------------------------------------------------------------------------
-pure function math_Mandel3333to66(m3333)
-
- implicit none
-
+ real(pReal), dimension(6,6)                 :: math_sym3333to66
  real(pReal), dimension(3,3,3,3), intent(in) :: m3333
- real(pReal), dimension(6,6) :: math_Mandel3333to66
+ logical,     optional,           intent(in) :: weighted
+
+ real(pReal), dimension(6) :: w
  integer(pInt) :: i,j
+ 
+ if(present(weighted)) then
+   w = merge(nrmMandel,1.0_pReal,weighted)
+ else
+   w = nrmMandel
+ endif
 
- forall (i=1_pInt:6_pInt,j=1_pInt:6_pInt) math_Mandel3333to66(i,j) = &
-   nrmMandel(i)*nrmMandel(j)*m3333(mapMandel(1,i),mapMandel(2,i),mapMandel(1,j),mapMandel(2,j))
+ forall(i=1_pInt:6_pInt,j=1_pInt:6_pInt) &
+   math_sym3333to66(i,j) = w(i)*w(j)*m3333(mapNye(1,i),mapNye(2,i),mapNye(1,j),mapNye(2,j))
 
-end function math_Mandel3333to66
+end function math_sym3333to66
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert Mandel matrix 66 back to symmetric 3333 tensor
+!> @brief convert 66 matrix into symmetric 3333 matrix
+!> @details Weighted conversion (default) rearranges according to Nye and weights shear
+! components according to Mandel. Advisable for matrix operations.
+! Unweighted conversion only changes order according to Nye
 !--------------------------------------------------------------------------------------------------
-pure function math_Mandel66to3333(m66)
+pure function math_66toSym3333(m66,weighted)
 
  implicit none
- real(pReal), dimension(3,3,3,3) :: math_Mandel66to3333
- real(pReal), dimension(6,6), intent(in) :: m66
+ real(pReal), dimension(3,3,3,3)            :: math_66toSym3333
+ real(pReal), dimension(6,6),    intent(in) :: m66
+ logical,     optional,          intent(in) :: weighted
+ 
+ real(pReal), dimension(6) :: w
  integer(pInt) :: i,j
+ 
+ if(present(weighted)) then
+   w = merge(invnrmMandel,1.0_pReal,weighted)
+ else
+   w = invnrmMandel
+ endif
 
- forall (i=1_pInt:6_pInt,j=1_pInt:6_pInt)
-   math_Mandel66to3333(mapMandel(1,i),mapMandel(2,i),mapMandel(1,j),mapMandel(2,j)) = &
-                              invnrmMandel(i)*invnrmMandel(j)*m66(i,j)
-   math_Mandel66to3333(mapMandel(2,i),mapMandel(1,i),mapMandel(1,j),mapMandel(2,j)) = &
-                              invnrmMandel(i)*invnrmMandel(j)*m66(i,j)
-   math_Mandel66to3333(mapMandel(1,i),mapMandel(2,i),mapMandel(2,j),mapMandel(1,j)) = &
-                              invnrmMandel(i)*invnrmMandel(j)*m66(i,j)
-   math_Mandel66to3333(mapMandel(2,i),mapMandel(1,i),mapMandel(2,j),mapMandel(1,j)) = &
-                              invnrmMandel(i)*invnrmMandel(j)*m66(i,j)
- end forall
+ do i=1_pInt,6_pInt; do j=1_pInt, 6_pInt
+   math_66toSym3333(mapNye(1,i),mapNye(2,i),mapNye(1,j),mapNye(2,j)) = w(i)*w(j)*m66(i,j)
+   math_66toSym3333(mapNye(2,i),mapNye(1,i),mapNye(1,j),mapNye(2,j)) = w(i)*w(j)*m66(i,j)
+   math_66toSym3333(mapNye(1,i),mapNye(2,i),mapNye(2,j),mapNye(1,j)) = w(i)*w(j)*m66(i,j)
+   math_66toSym3333(mapNye(2,i),mapNye(1,i),mapNye(2,j),mapNye(1,j)) = w(i)*w(j)*m66(i,j)
+ enddo; enddo
 
-end function math_Mandel66to3333
+end function math_66toSym3333
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert Voigt matrix 66 back to symmetric 3333 tensor
+!> @brief convert 66 Voigt matrix into symmetric 3333 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_Voigt66to3333(m66)
 
@@ -1208,16 +1285,12 @@ pure function math_Voigt66to3333(m66)
  real(pReal), dimension(6,6), intent(in) :: m66
  integer(pInt) :: i,j
 
- forall (i=1_pInt:6_pInt,j=1_pInt:6_pInt)
-   math_Voigt66to3333(mapVoigt(1,i),mapVoigt(2,i),mapVoigt(1,j),mapVoigt(2,j)) =  &
-                                                            invnrmVoigt(i)*invnrmVoigt(j)*m66(i,j)
-   math_Voigt66to3333(mapVoigt(2,i),mapVoigt(1,i),mapVoigt(1,j),mapVoigt(2,j)) = &
-                                                            invnrmVoigt(i)*invnrmVoigt(j)*m66(i,j)
-   math_Voigt66to3333(mapVoigt(1,i),mapVoigt(2,i),mapVoigt(2,j),mapVoigt(1,j)) = &
-                                                            invnrmVoigt(i)*invnrmVoigt(j)*m66(i,j)
-   math_Voigt66to3333(mapVoigt(2,i),mapVoigt(1,i),mapVoigt(2,j),mapVoigt(1,j)) = & 
-                                                            invnrmVoigt(i)*invnrmVoigt(j)*m66(i,j)
- end forall
+ do i=1_pInt,6_pInt; do j=1_pInt, 6_pInt
+   math_Voigt66to3333(mapVoigt(1,i),mapVoigt(2,i),mapVoigt(1,j),mapVoigt(2,j)) = m66(i,j)
+   math_Voigt66to3333(mapVoigt(2,i),mapVoigt(1,i),mapVoigt(1,j),mapVoigt(2,j)) = m66(i,j)
+   math_Voigt66to3333(mapVoigt(1,i),mapVoigt(2,i),mapVoigt(2,j),mapVoigt(1,j)) = m66(i,j)
+   math_Voigt66to3333(mapVoigt(2,i),mapVoigt(1,i),mapVoigt(2,j),mapVoigt(1,j)) = m66(i,j)
+ enddo; enddo
 
 end function math_Voigt66to3333
 
@@ -1625,8 +1698,7 @@ pure function math_qToR(q)
  real(pReal), dimension(3,3) :: math_qToR, T,S
  integer(pInt) :: i, j
 
- forall (i = 1_pInt:3_pInt, j = 1_pInt:3_pInt) &
-   T(i,j) = q(i+1_pInt) * q(j+1_pInt)
+ forall(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt) T(i,j) = q(i+1_pInt) * q(j+1_pInt)
 
  S = reshape( [0.0_pReal,     -q(4),      q(3), &
                     q(4), 0.0_pReal,     -q(2), &
@@ -1925,6 +1997,7 @@ end function math_symmetricEulers
 
 !--------------------------------------------------------------------------------------------------
 !> @brief eigenvalues and eigenvectors of symmetric matrix m
+! ToDo: has wrong oder of arguments
 !--------------------------------------------------------------------------------------------------
 subroutine math_eigenValuesVectorsSym(m,values,vectors,error)
 
@@ -1948,9 +2021,10 @@ end subroutine math_eigenValuesVectorsSym
 !--------------------------------------------------------------------------------------------------
 !> @brief eigenvalues and eigenvectors of symmetric 33 matrix m using an analytical expression
 !> and the general LAPACK powered version for arbritrary sized matrices as fallback
-!> @author Joachim Kopp, Max–Planck–Institut für Kernphysik, Heidelberg (Copyright (C) 2006)
+!> @author Joachim Kopp, Max-Planck-Institut für Kernphysik, Heidelberg (Copyright (C) 2006)
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @details See http://arxiv.org/abs/physics/0610206 (DSYEVH3)
+! ToDo: has wrong oder of arguments
 !--------------------------------------------------------------------------------------------------
 subroutine math_eigenValuesVectorsSym33(m,values,vectors)
  
@@ -2030,7 +2104,7 @@ end function math_eigenvectorBasisSym
 !--------------------------------------------------------------------------------------------------
 !> @brief eigenvector basis of symmetric 33 matrix m
 !--------------------------------------------------------------------------------------------------
-function math_eigenvectorBasisSym33(m)
+pure function math_eigenvectorBasisSym33(m)
 
  implicit none
  real(pReal), dimension(3,3)              :: math_eigenvectorBasisSym33
@@ -2095,7 +2169,7 @@ end function math_eigenvectorBasisSym33
 !--------------------------------------------------------------------------------------------------
 !> @brief logarithm eigenvector basis of symmetric 33 matrix m
 !--------------------------------------------------------------------------------------------------
-function math_eigenvectorBasisSym33_log(m)
+pure function math_eigenvectorBasisSym33_log(m)
 
  implicit none
  real(pReal), dimension(3,3)              :: math_eigenvectorBasisSym33_log
@@ -2151,10 +2225,11 @@ function math_eigenvectorBasisSym33_log(m)
  endif threeSimilarEigenvalues
 
  math_eigenvectorBasisSym33_log = log(sqrt(values(1))) * EB(1:3,1:3,1) &
-                            + log(sqrt(values(2))) * EB(1:3,1:3,2) &
-                            + log(sqrt(values(3))) * EB(1:3,1:3,3)
+                                + log(sqrt(values(2))) * EB(1:3,1:3,2) &
+                                + log(sqrt(values(3))) * EB(1:3,1:3,3)
 
 end function math_eigenvectorBasisSym33_log
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief rotational part from polar decomposition of 33 tensor m
@@ -2600,13 +2675,12 @@ pure function math_rotate_forward3333(tensor,rot_tensor)
  real(pReal), dimension(3,3,3,3), intent(in) :: tensor
  integer(pInt) :: i,j,k,l,m,n,o,p
 
- math_rotate_forward3333= 0.0_pReal
-
- do i = 1_pInt,3_pInt; do j = 1_pInt,3_pInt; do k = 1_pInt,3_pInt; do l = 1_pInt,3_pInt
-   do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt; do o = 1_pInt,3_pInt; do p = 1_pInt,3_pInt
-     math_rotate_forward3333(i,j,k,l) = math_rotate_forward3333(i,j,k,l) &
-                                      + rot_tensor(i,m) * rot_tensor(j,n) &
-                                      * rot_tensor(k,o) * rot_tensor(l,p) * tensor(m,n,o,p)
+ math_rotate_forward3333 = 0.0_pReal
+ do i = 1_pInt,3_pInt;do j = 1_pInt,3_pInt;do k = 1_pInt,3_pInt;do l = 1_pInt,3_pInt
+ do m = 1_pInt,3_pInt;do n = 1_pInt,3_pInt;do o = 1_pInt,3_pInt;do p = 1_pInt,3_pInt
+   math_rotate_forward3333(i,j,k,l) &
+     = math_rotate_forward3333(i,j,k,l) &
+     + rot_tensor(i,m) * rot_tensor(j,n) * rot_tensor(k,o) * rot_tensor(l,p) * tensor(m,n,o,p)
  enddo; enddo; enddo; enddo; enddo; enddo; enddo; enddo
 
 end function math_rotate_forward3333
@@ -2616,7 +2690,7 @@ end function math_rotate_forward3333
 !> @brief limits a scalar value to a certain range (either one or two sided)
 ! Will return NaN if left > right
 !--------------------------------------------------------------------------------------------------
-real(pReal) pure function math_clip(a, left, right)
+real(pReal) pure elemental function math_clip(a, left, right)
  use, intrinsic :: &
    IEEE_arithmetic
 

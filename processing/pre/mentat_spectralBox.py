@@ -49,7 +49,7 @@ def output(cmds,locals,dest):
 #-------------------------------------------------------------------------------------------------
 def init():
   return [
-    "#"+' '.join([scriptID] + sys.argv[1:]),
+    "|"+' '.join([scriptID] + sys.argv[1:]),
     "*draw_manual",              # prevent redrawing in Mentat, should be much faster
     "*new_model yes",
     "*reset",

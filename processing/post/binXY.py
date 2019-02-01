@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -118,10 +118,9 @@ for name in filenames:
       minmax[c] = np.log(minmax[c])                                                                 # change minmax to log, too
 
   delta = minmax[:,1]-minmax[:,0]
-
   (grid,xedges,yedges) = np.histogram2d(table.data[:,0],table.data[:,1],
                                         bins=options.bins,
-                                        range=minmax,
+                                        range=minmax[:2],
                                         weights=None if options.weight is None else table.data[:,2])
 
   if options.normCol:

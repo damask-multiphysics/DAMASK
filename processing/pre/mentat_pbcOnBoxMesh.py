@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
 import sys,os,re,time,tempfile
@@ -93,7 +93,7 @@ def add_servoLinks(mfd_data,active=[True,True,True]):  # directions on which to 
   for i in range(len(mfd_data)):
     mfd_dict[mfd_data[i]['label']] = i
 
-  NodeCoords = np.array(mfd_data[mfd_dict['nodes']]['els'][0::4])[:,1:4]
+  NodeCoords = np.array(mfd_data[mfd_dict['nodes']]['els'][1::4])[:,1:4]
   Nnodes = NodeCoords.shape[0]  
   
   box['min'] = NodeCoords.min(axis=0)                                                               # find the bounding box

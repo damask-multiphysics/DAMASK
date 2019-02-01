@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -21,18 +21,19 @@ scriptID   = ' '.join([scriptName,damask.version])
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Apply a user-specified function to condense all rows for which column 'label' has identical values into a single row.
-Output table will contain as many rows as there are different (unique) values in the grouping column.
+Apply a user-specified function to condense into a single row all those rows for which columns 'label' have identical values.
+Output table will contain as many rows as there are different (unique) values in the grouping column(s).
 Periodic domain averaging of coordinate values is supported.
 
 Examples:
 For grain averaged values, replace all rows of particular 'texture' with a single row containing their average.
-""", version = scriptID)
+{name} --label texture --function np.average data.txt
+""".format(name = scriptName), version = scriptID)
 
 parser.add_option('-l','--label',
                   dest = 'label',
-                  type = 'string', metavar = 'string',
-                  help = 'column label for grouping rows')
+                  action = 'extend', metavar = '<string LIST>',
+                  help = 'column label(s) for grouping rows')
 parser.add_option('-f','--function',
                   dest = 'function',
                   type = 'string', metavar = 'string',
@@ -40,7 +41,7 @@ parser.add_option('-f','--function',
 parser.add_option('-a','--all',
                   dest = 'all',
                   action = 'store_true',
-                  help = 'apply mapping function also to grouping column')
+                  help = 'apply mapping function also to grouping column(s)')
                   
 group = OptionGroup(parser, "periodic averaging", "")
 
@@ -57,6 +58,7 @@ parser.add_option_group(group)
 
 parser.set_defaults(function = 'np.average',
                     all      = False,
+                    label    = [],
                     boundary = [0.0, 1.0])
 
 (options,filenames) = parser.parse_args()
@@ -71,7 +73,7 @@ try:
 except:
   mapFunction = None
 
-if options.label is None:
+if options.label is []:
   parser.error('no grouping column specified.')
 if not hasattr(mapFunction,'__call__'):
   parser.error('function "{}" is not callable.'.format(options.function))
@@ -89,13 +91,20 @@ for name in filenames:
 
 # ------------------------------------------ sanity checks ---------------------------------------  
 
+  remarks = []
+  errors = []
+
   table.head_read()
-  if table.label_dimension(options.label) != 1:
-    damask.util.croak('column {} is not of scalar dimension.'.format(options.label))
-    table.close(dismiss = True)                                                                     # close ASCIItable and remove empty file
+  grpColumns = table.label_index(options.label)[::-1]
+  grpColumns = grpColumns[np.where(grpColumns>=0)]
+
+  if len(grpColumns) == 0:  errors.append('no valid grouping column present.')
+
+  if remarks != []: damask.util.croak(remarks)
+  if errors != []:
+    damask.util.croak(errors)
+    table.close(dismiss=True)
     continue
-  else:
-    grpColumn = table.label_index(options.label)
 
 # ------------------------------------------ assemble info ---------------------------------------  
 
@@ -108,10 +117,9 @@ for name in filenames:
   indexrange = table.label_indexrange(options.periodic) if options.periodic is not None else []
   rows,cols  = table.data.shape
 
-  table.data = table.data[np.lexsort([table.data[:,grpColumn]])]                                    # sort data by grpColumn
-  
-  values,index = np.unique(table.data[:,grpColumn], return_index = True)                            # unique grpColumn values and their positions
-  index = np.append(index,rows)                                                                     # add termination position
+  table.data = table.data[np.lexsort(table.data[:,grpColumns].T)]                                   # sort data by grpColumn(s)
+  values,index = np.unique(table.data[:,grpColumns], axis=0, return_index=True)                     # unique grpColumn values and their positions
+  index = sorted(np.append(index,rows))                                                             # add termination position
   grpTable = np.empty((len(values), cols))                                                          # initialize output
   
   for i in range(len(values)):                                                                      # iterate over groups (unique values in grpColumn)
@@ -119,7 +127,7 @@ for name in filenames:
     grpTable[i,indexrange] = \
       periodicAverage(table.data[index[i]:index[i+1],indexrange],options.boundary)                  # apply periodicAverage mapping function
 
-    if not options.all: grpTable[i,grpColumn] = table.data[index[i],grpColumn]                      # restore grouping column value
+    if not options.all: grpTable[i,grpColumns] = table.data[index[i],grpColumns]                    # restore grouping column value
   
   table.data = grpTable
 

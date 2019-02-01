@@ -132,6 +132,43 @@ class extendableOption(Option):
     else:
       Option.take_action(self, action, dest, opt, value, values, parser)
 
+# Print iterations progress
+# from https://gist.github.com/aubricus/f91fb55dc6ba5557fbab06119420dd6a
+def progressBar(iteration, total, prefix='', bar_length=50):
+  """
+  Call in a loop to create terminal progress bar
+
+  @params:
+      iteration   - Required  : current iteration (Int)
+      total       - Required  : total iterations (Int)
+      prefix      - Optional  : prefix string (Str)
+      bar_length  - Optional  : character length of bar (Int)
+  """
+  fraction = iteration / float(total)
+  if not hasattr(progressBar, "last_fraction"):                                                     # first call to function
+    progressBar.start_time    = time.time()
+    progressBar.last_fraction = -1.0
+    remaining_time = '   n/a'
+  else:
+    if fraction <= progressBar.last_fraction or iteration == 0:                                     # reset: called within a new loop
+      progressBar.start_time    = time.time()
+      progressBar.last_fraction = -1.0
+      remaining_time = '   n/a'
+    else:
+      progressBar.last_fraction = fraction
+      remainder = (total - iteration) * (time.time()-progressBar.start_time)/iteration
+      remaining_time = '{: 3d}:'.format(int( remainder//3600)) + \
+                       '{:02d}:'.format(int((remainder//60)%60)) + \
+                       '{:02d}' .format(int( remainder     %60))
+
+  filled_length = int(round(bar_length * fraction))
+  bar = '█' * filled_length + '░' * (bar_length - filled_length)
+
+  sys.stderr.write('\r{} {} {}'.format(prefix, bar, remaining_time)),
+
+  if iteration == total: sys.stderr.write('\n\n')
+  sys.stderr.flush()
+
 # -----------------------------
 class backgroundMessage(threading.Thread):
   """Reporting with animation to indicate progress"""

@@ -102,8 +102,6 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    calcMode, &
    terminallyIll, &
    symmetricSolver
- use math, only: &
-   invnrmMandel
  use debug, only: &
    debug_info, &
    debug_reset, &
@@ -305,9 +303,9 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
 !     ABAQUS implicit:     11, 22, 33, 12, 13, 23
 !     ABAQUS implicit:     11, 22, 33, 12
 
- forall(i=1:ntens) ddsdde(1:ntens,i) = invnrmMandel(i)*ddsdde_h(1:ntens,i)*invnrmMandel(1:ntens)
- stress(1:ntens) = stress_h(1:ntens)*invnrmMandel(1:ntens)
- if(symmetricSolver) ddsdde(1:ntens,1:ntens) = 0.5_pReal*(ddsdde(1:ntens,1:ntens) + transpose(ddsdde(1:ntens,1:ntens)))
+ ddsdde = ddsdde_h(1:ntens,1:ntens)
+ stress = stress_h(1:ntens)
+ if(symmetricSolver) ddsdde = 0.5_pReal*(ddsdde + transpose(ddsdde))
  if(ntens == 6) then
    stress_h = stress
    stress(5) = stress_h(6)
@@ -322,8 +320,8 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
 
  statev = materialpoint_results(1:min(nstatv,materialpoint_sizeResults),npt,mesh_FEasCP('elem', noel))
 
- if ( terminallyIll ) pnewdt = 0.5_pReal                                                            ! force cutback directly ?
-!$ call omp_set_num_threads(defaultNumThreadsInt)                                                  ! reset number of threads to stored default value
+ if (terminallyIll) pnewdt = 0.5_pReal                                                              ! force cutback directly ?
+!$ call omp_set_num_threads(defaultNumThreadsInt)                                                   ! reset number of threads to stored default value
 
 end subroutine UMAT
 
@@ -331,12 +329,12 @@ end subroutine UMAT
 !--------------------------------------------------------------------------------------------------
 !> @brief calls the exit function of Abaqus/Standard
 !--------------------------------------------------------------------------------------------------
-subroutine quit(mpie_error)
+subroutine quit(DAMASK_error)
  use prec, only: &
    pInt
  
  implicit none
- integer(pInt) :: mpie_error
+ integer(pInt) :: DAMASK_error
 
  flush(6)
  call xit

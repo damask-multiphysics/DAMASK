@@ -158,12 +158,12 @@ Post_AverageDown:
     - master
     - release
 
-#Post_General:
-#  stage: postprocessing
-#  script: PostProcessing/test.py
-#  except:
-#    - master
-#    - release
+Post_General:
+  stage: postprocessing
+  script: PostProcessing/test.py
+  except:
+    - master
+    - release
 
 Post_GeometryReconstruction:
   stage: postprocessing
@@ -343,6 +343,15 @@ Spectral_MPI:
     - master
     - release
 
+SpectralAll_restartMPI:
+  stage: spectral
+  script:
+    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - SpectralAll_restartMPI/test.py
+  except:
+    - master
+    - release
+
 Plasticity_DetectChanges:
   stage: spectral
   script: Plasticity_DetectChanges/test.py
@@ -364,12 +373,12 @@ Phenopowerlaw_singleSlip:
     - master
     - release
 
-#TextureComponents:
-#  stage: spectral
-#  script: TextureComponents/test.py
-#  except:
-#    - master
-#    - release
+TextureComponents:
+  stage: spectral
+  script: TextureComponents/test.py
+  except:
+    - master
+    - release
 
 
 ###################################################################################################
@@ -468,27 +477,24 @@ AbaqusStd:
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
     - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT abaqus
-  except:
-    - master
-    - release
+  only:
+    - development
 
 Marc:
   stage: createDocumentation
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
     - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT marc
-  except:
-    - master
-    - release
+  only:
+    - development
 
 Spectral:
   stage: createDocumentation
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
     - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT spectral
-  except:
-    - master
-    - release
+  only:
+    - development
 
 ##################################################################################################
 backupData:

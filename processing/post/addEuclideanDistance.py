@@ -149,7 +149,6 @@ for name in filenames:
 
   errors  = []
   remarks = []
-  column = {}
   
   if not 3 >= table.label_dimension(options.pos) >= 1:
     errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.pos))

@@ -60,8 +60,6 @@ eulers = np.array(damask.orientation.Orientation(
                          degrees    = options.degrees,
                   ).asEulers(degrees=True))
 
-damask.util.croak('{} {} {}'.format(*eulers))
-
 # --- loop over input files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
