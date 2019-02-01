@@ -1,5 +1,6 @@
 ! ###################################################################
 ! Copyright (c) 2013-2015, Marc De Graef/Carnegie Mellon University
+! Modified      2017-2019, Martin Diehl/Max-Planck-Institut für Eisenforschung GmbH
 ! All rights reserved.
 !
 ! Redistribution and use in source and binary forms, with or without modification, are 
@@ -27,10 +28,14 @@
 ! ###################################################################
 
 module quaternions
- use prec
+ use prec, only: &
+   pReal
 
  implicit none
  public
+ 
+ real(pReal), parameter, public :: epsijk = -1.0_pReal                                              !< parameter for orientation conversion. ToDo: Better place?
+ 
  type, public :: quaternion
    real(pReal) :: w = 0.0_pReal
    real(pReal) :: x = 0.0_pReal
@@ -72,9 +77,6 @@ module quaternions
    procedure, private :: log__
 
    procedure, public  :: homomorphed => quat_homomorphed
-
-   !procedure,private  :: quat_write
-   !generic :: write(formatted) => quat_write
 
  end type
 
@@ -150,7 +152,7 @@ pure subroutine assign_vec__(self,other)
 
  implicit none
  type(quaternion), intent(out)                :: self
- real(pReal),         intent(in), dimension(4)  :: other
+ real(pReal),       intent(in), dimension(4)  :: other
     
  self%w = other(1)
  self%x = other(2)
@@ -288,6 +290,9 @@ end function div_scal__
 !> equality of two quaternions
 !--------------------------------------------------------------------------
 logical elemental function eq__(self,other)
+ use prec, only: &
+   dEq
+
  implicit none
  class(quaternion), intent(in) :: self,other
 
@@ -346,7 +351,7 @@ type(quaternion) elemental function exp__(self)
 
  implicit none
  class(quaternion), intent(in) :: self
- real(pReal)                     :: absImag
+ real(pReal)                   :: absImag
 
  absImag = norm2([self%x, self%y, self%z])
 
