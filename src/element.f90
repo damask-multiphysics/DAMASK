@@ -904,26 +904,18 @@ contains
    
    self%nIPneighbors = size(self%IPneighbor,1)
    
-   write(6,*) 'tElement_init'
+   write(6,'(/,a)')   ' <<<+-  element_init  -+>>>'
    
-   write(6,*)'elemType                 ',self%elemType
-   write(6,*)'geomType                 ',self%geomType
-   write(6,*)'cellType                 ',self%cellType
-   write(6,*)'Nnodes                   ',self%Nnodes
-   write(6,*)'Ncellnodes               ',self%Ncellnodes
-   write(6,*)'NcellnodesPerCell        ',self%NcellnodesPerCell
-   write(6,*)'nIPs                     ',self%nIPs
-   write(6,*)'nIPneighbors             ',self%nIPneighbors
-   write(6,*)'maxNnodeAtIP             ',self%maxNnodeAtIP
-   write(6,*)'Cell                     ',self%Cell
-   write(6,*)'NnodeAtIP                ',self%NnodeAtIP
-   write(6,*)'IPneighbor               ',self%IPneighbor
-   write(6,*)'cellFace                 ',self%cellFace
-   write(6,*)'cellNodeParentNodeWeights',self%cellNodeParentNodeWeights
-   
+   write(6,*)' element type        ',self%elemType
+   write(6,*)'   geom type         ',self%geomType
+   write(6,*)'   cell type         ',self%cellType
+   write(6,*)'   # node            ',self%Nnodes
+   write(6,*)'   # IP              ',self%nIPs
+   write(6,*)'   # cellnode        ',self%Ncellnodes
+   write(6,*)'   # cellnode/cell   ',self%NcellnodesPerCell
+   write(6,*)'   # IP neighbor     ',self%nIPneighbors
+   write(6,*)'   max # node at IP  ',self%maxNnodeAtIP
    
  end subroutine tElement_init
-
-
 
 end module element

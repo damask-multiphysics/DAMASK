@@ -57,10 +57,15 @@ subroutine tMesh_base_init(self,meshType,elemType,nodes)
  integer(pInt), intent(in) :: elemType
  real(pReal), dimension(:,:), intent(in) :: nodes
  
+ write(6,'(/,a)')   ' <<<+-  mesh_base_init  -+>>>'
+ 
+ write(6,*)' mesh type ',meshType
+ write(6,*)' # node    ',size(nodes,2)
+
  self%type = meshType
  call self%elem%init(elemType)
  self%node0 = nodes
- 
+
 end subroutine tMesh_base_init
 
 end module mesh_base
