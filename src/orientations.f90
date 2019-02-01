@@ -1,3 +1,9 @@
+!---------------------------------------------------------------------------------------------------
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief orientation storage
+!> @details: orientation = rotation + symmetry
+!---------------------------------------------------------------------------------------------------
+
 module orientations
  use rotations
  use prec, only: &

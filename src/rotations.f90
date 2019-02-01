@@ -1,5 +1,6 @@
 ! ###################################################################
 ! Copyright (c) 2013-2014, Marc De Graef/Carnegie Mellon University
+! Modified      2017-2019, Martin Diehl/Max-Planck-Institut für Eisenforschung GmbH
 ! All rights reserved.
 !
 ! Redistribution and use in source and binary forms, with or without modification, are 
@@ -26,11 +27,21 @@
 ! USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ! ###################################################################
 
+!---------------------------------------------------------------------------------------------------
+!> @author Marc De Graef, Carnegie Mellon University
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief rotation storage and conversion
+!> @details: rotation is internally stored as quaternion. It cabe inialized from different 
+!> represantations and also returns itself in different representations.
+!---------------------------------------------------------------------------------------------------
+
 module rotations
- use prec
+ use prec, only: &
+   pReal
  use quaternions
 
  implicit none
+ private
  type, public :: rotation
    type(quaternion), private :: q
    contains
@@ -39,138 +50,179 @@ module rotations
      procedure, public :: asAxisAnglePair
      procedure, public :: asRodriguesFrankVector
      procedure, public :: asRotationMatrix
+     !------------------------------------------
      procedure, public :: fromRotationMatrix
+     !------------------------------------------
      procedure, public :: rotVector
      procedure, public :: rotTensor
  end type rotation
+ public :: &
+   asQuaternion, &
+   asEulerAngles, &
+   asAxisAnglePair, &
+   asRotationMatrix, &
+   asRodriguesFrankVector, &
+   asHomochoric, &
+   fromRotationMatrix, &
+   rotVector, &
+   rotTensor
 
 contains
 
+
+!---------------------------------------------------------------------------------------------------
+! Return rotation in different represenations
+!---------------------------------------------------------------------------------------------------
 function asQuaternion(this)
+
+ implicit none
  class(rotation), intent(in) :: this
- real(pReal), dimension(4)     :: asQuaternion
+ real(pReal), dimension(4)   :: asQuaternion
 
  asQuaternion = [this%q%w, this%q%x, this%q%y, this%q%z]
 
 end function asQuaternion
-
-
+!---------------------------------------------------------------------------------------------------
 function asEulerAngles(this)
+  
+ implicit none
  class(rotation), intent(in) :: this
- real(pReal), dimension(3)     :: asEulerAngles
-
+ real(pReal), dimension(3)   :: asEulerAngles
+  
  asEulerAngles = qu2eu(this%q)
 
 end function asEulerAngles
-
-
+!---------------------------------------------------------------------------------------------------
 function asAxisAnglePair(this)
+
+ implicit none
  class(rotation), intent(in) :: this
- real(pReal), dimension(4)     :: asAxisAnglePair
+ real(pReal), dimension(4)   :: asAxisAnglePair
 
  asAxisAnglePair = qu2ax(this%q)
 
 end function asAxisAnglePair
-
-
+!---------------------------------------------------------------------------------------------------
 function asRotationMatrix(this)
+ 
+ implicit none
  class(rotation), intent(in) :: this
- real(pReal), dimension(3,3)        :: asRotationMatrix
+ real(pReal), dimension(3,3) :: asRotationMatrix
 
  asRotationMatrix = qu2om(this%q)
 
 end function asRotationMatrix
-
-
+!---------------------------------------------------------------------------------------------------
 function asRodriguesFrankVector(this)
+
+ implicit none
  class(rotation), intent(in) :: this
- real(pReal), dimension(4)        :: asRodriguesFrankVector
+ real(pReal), dimension(4)   :: asRodriguesFrankVector
 
  asRodriguesFrankVector = qu2ro(this%q)
+ 
 end function asRodriguesFrankVector
-
-
+!---------------------------------------------------------------------------------------------------
 function asHomochoric(this)
+
+ implicit none
  class(rotation), intent(in) :: this
- real(pReal), dimension(3)     :: asHomochoric
+ real(pReal), dimension(3)   :: asHomochoric
 
  asHomochoric = qu2ho(this%q)
 
 end function asHomochoric
-
-
+ 
+!---------------------------------------------------------------------------------------------------
+! Initialize rotation from different representations
+!---------------------------------------------------------------------------------------------------
 subroutine fromRotationMatrix(this,om)
- class(rotation), intent(out) :: this
- real(pReal), dimension(3,3), intent(in)  :: om
+
+ implicit none
+ class(rotation), intent(out)            :: this
+ real(pReal), dimension(3,3), intent(in) :: om
 
  this%q = om2qu(om)
 
 end subroutine
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief rotates a vector passively (default) or actively
-!--------------------------------------------------------------------------
+!> @brief rotate a vector passively (default) or actively
+!> @details: rotation is based on unit quaternion or rotation matrix (fallback)
+!---------------------------------------------------------------------------------------------------
 function rotVector(this,v,active)
-   class(rotation), intent(in)       :: this
-   logical, intent(in), optional     :: active
-   real(pReal),intent(in),dimension(3) :: v
-   real(pReal),dimension(3)            :: rotVector
-   type(quaternion)                  :: q
+ use prec, only: &
+   dEq
+   
+ implicit none
+ real(pReal),                 dimension(3) :: rotVector
+ class(rotation), intent(in)               :: this
+ real(pReal),     intent(in), dimension(3) :: v
+ logical,         intent(in), optional     :: active
+ 
+ type(quaternion)                  :: q
   
-   if (dEq(norm2(v),1.0_pReal,tol=1.0e-15_pReal)) then
-     passive: if (merge(.not. active, .true., present(active))) then
-       q = this%q * (quaternion([0.0_pReal, v(1), v(2), v(3)]) * conjg(this%q) )
-     else passive
-       q = conjg(this%q) * (quaternion([0.0_pReal, v(1), v(2), v(3)]) * this%q )
-     endif passive
-     rotVector = [q%x,q%y,q%z]
-   else
-     passive2: if (merge(.not. active, .true., present(active))) then
-       rotVector = matmul(this%asRotationMatrix(),v)
-     else passive2
-       rotVector = matmul(transpose(this%asRotationMatrix()),v)
-     endif passive2
-   endif
+ if (dEq(norm2(v),1.0_pReal,tol=1.0e-15_pReal)) then
+   passive: if (merge(.not. active, .true., present(active))) then                                  ! ToDo: not save (PGI)
+     q = this%q * (quaternion([0.0_pReal, v(1), v(2), v(3)]) * conjg(this%q) )
+   else passive
+     q = conjg(this%q) * (quaternion([0.0_pReal, v(1), v(2), v(3)]) * this%q )
+   endif passive
+   rotVector = [q%x,q%y,q%z]
+ else
+   passive2: if (merge(.not. active, .true., present(active))) then                                 ! ToDo: not save (PGI)
+     rotVector = matmul(this%asRotationMatrix(),v)
+   else passive2
+     rotVector = matmul(transpose(this%asRotationMatrix()),v)
+   endif passive2
+ endif
 
 end function rotVector
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief rotate a second rank tensor using a rotation matrix, active or passive (single precision)
-!--------------------------------------------------------------------------
+!> @brief rotate a second rank tensor passively (default) or actively
+!> @details: rotation is based on rotation matrix
+!---------------------------------------------------------------------------------------------------
 function rotTensor(this,m,active)
-   class(rotation), intent(in) :: this
-   real(pReal),intent(in),dimension(3,3)       :: m
-   logical, intent(in), optional             :: active
-   real(pReal),dimension(3,3)       :: rotTensor
+  
+ implicit none
+ real(pReal),                 dimension(3,3) :: rotTensor
+ class(rotation), intent(in)                 :: this
+ real(pReal),     intent(in), dimension(3,3) :: m
+ logical,         intent(in), optional       :: active
+  
 
-   passive: if (merge(.not. active, .true., present(active))) then
-     rotTensor = matmul(matmul(this%asRotationMatrix(),m),transpose(this%asRotationMatrix()))
-   else passive
-     rotTensor = matmul(matmul(transpose(this%asRotationMatrix()),m),this%asRotationMatrix())
-   endif passive
+ passive: if (merge(.not. active, .true., present(active))) then
+   rotTensor = matmul(matmul(this%asRotationMatrix(),m),transpose(this%asRotationMatrix()))
+ else passive
+   rotTensor = matmul(matmul(transpose(this%asRotationMatrix()),m),this%asRotationMatrix())
+ endif passive
 
 end function rotTensor
 
 
-!--------------------------------------------------------------------------
-!--------------------------------------------------------------------------
-! here we start with a series of conversion routines between representations
-!--------------------------------------------------------------------------
-!--------------------------------------------------------------------------
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
+! The following routines convert between different representations
+!---------------------------------------------------------------------------------------------------
+
+
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief Euler angles to orientation matrix [Morawiec, page 28]
-!--------------------------------------------------------------------------
+!> @brief Euler angles to orientation matrix
+!---------------------------------------------------------------------------------------------------
 pure function eu2om(eu) result(om)
+ use prec, only: &
+   dEq0
  
  implicit none
- real(pReal), intent(in), dimension(3)   :: eu                                                          !< Euler angles in radians
- real(pReal),             dimension(3,3) :: om                                                          !< output orientation matrix
+ real(pReal), intent(in), dimension(3)   :: eu
+ real(pReal),             dimension(3,3) :: om
+ 
  real(pReal),             dimension(3)   :: c, s      
 
  c = cos(eu)
@@ -191,17 +243,21 @@ pure function eu2om(eu) result(om)
 end function eu2om
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
 !> @brief convert euler to axis angle
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 pure function eu2ax(eu) result(ax)
+ use prec, only: &
+   dEq0, &
+   dEq
  use math, only: &
    PI
 
  implicit none
- real(pReal), intent(in), dimension(3) :: eu                                                            !< Euler angles in radians
- real(pReal),             dimension(4) :: ax 
+ real(pReal), intent(in), dimension(3) :: eu
+ real(pReal),             dimension(4) :: ax
+ 
  real(pReal)                           :: t, delta, tau, alpha, sigma
  
  t     = tan(eu(2)*0.5)
@@ -211,22 +267,24 @@ pure function eu2ax(eu) result(ax)
  
  alpha = merge(PI, 2.0*atan(tau/cos(sigma)), dEq(sigma,PI*0.5_pReal,tol=1.0e-15_pReal))
  
- if (dEq0(alpha)) then                                                                         ! return a default identity axis-angle pair
+ if (dEq0(alpha)) then                                                                              ! return a default identity axis-angle pair
    ax = [ 0.0_pReal, 0.0_pReal, 1.0_pReal, 0.0_pReal ]
  else
-   ax(1:3) = -epsijk/tau * [ t*cos(delta), t*sin(delta), sin(sigma) ]                                 ! passive axis-angle pair so a minus sign in front
+   ax(1:3) = -epsijk/tau * [ t*cos(delta), t*sin(delta), sin(sigma) ]                               ! passive axis-angle pair so a minus sign in front
    ax(4) = alpha
-   if (alpha < 0.0) ax = -ax                                                                          ! ensure alpha is positive
+   if (alpha < 0.0) ax = -ax                                                                        ! ensure alpha is positive
  end if
  
 end function eu2ax
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
 !> @brief Euler angles to Rodrigues vector
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 pure function eu2ro(eu) result(ro)
+ use prec, only: &
+   dEq0
  use, intrinsic :: IEEE_ARITHMETIC, only: &
    IEEE_value, &
    IEEE_positive_inf
@@ -234,10 +292,10 @@ pure function eu2ro(eu) result(ro)
    PI
 
  implicit none
- real(pReal), intent(in), dimension(3) :: eu                                                          !< Euler angles in radians
+ real(pReal), intent(in), dimension(3) :: eu
  real(pReal),             dimension(4) :: ro
  
- ro = eu2ax(eu)                                                                                     ! convert to axis angle representation
+ ro = eu2ax(eu)
  if (ro(4) >= PI) then
    ro(4) = IEEE_value(ro(4),IEEE_positive_inf)
  elseif(dEq0(ro(4))) then
@@ -249,24 +307,23 @@ pure function eu2ro(eu) result(ro)
 end function eu2ro
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief Euler angles to quaternion
-!--------------------------------------------------------------------------
+!> @brief Euler angles to unit quaternion
+!---------------------------------------------------------------------------------------------------
 pure function eu2qu(eu) result(qu)
 
  implicit none
- real(pReal),        intent(in), dimension(3) :: eu
+ real(pReal),      intent(in), dimension(3) :: eu
  type(quaternion)                           :: qu
- real(pReal),                    dimension(3) :: ee
- real(pReal)                                  :: cPhi, sPhi
+ real(pReal),                  dimension(3) :: ee
+ real(pReal)                                :: cPhi, sPhi
 
  ee = 0.5_pReal*eu
  
  cPhi = cos(ee(2))
  sPhi = sin(ee(2))
 
- ! passive quaternion
  qu = quaternion([        cPhi*cos(ee(1)+ee(3)), &
                   -epsijk*sPhi*cos(ee(1)-ee(3)), &
                   -epsijk*sPhi*sin(ee(1)-ee(3)), &
@@ -276,16 +333,18 @@ pure function eu2qu(eu) result(qu)
 end function eu2qu
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief orientation matrix to euler angles
-!--------------------------------------------------------------------------
+!> @brief orientation matrix to Euler angles
+!---------------------------------------------------------------------------------------------------
 pure function om2eu(om) result(eu)
+ use prec, only: &
+   dEq
  use math, only: &
    PI
 
  implicit none
- real(pReal), intent(in), dimension(3,3) :: om                                                 !< orientation matrix
+ real(pReal), intent(in), dimension(3,3) :: om
  real(pReal),             dimension(3)   :: eu
  real(pReal)                             :: zeta
  
@@ -302,17 +361,20 @@ pure function om2eu(om) result(eu)
 end function om2eu
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief Axis angle pair to orientation matrix
-!--------------------------------------------------------------------------
+!> @brief convert axis angle pair to orientation matrix
+!---------------------------------------------------------------------------------------------------
 pure function ax2om(ax) result(om)
+ use prec, only: &
+   pInt
 
  implicit none
  real(pReal), intent(in), dimension(4)   :: ax
- real(pReal),             dimension(3,3) :: om                                                        !< orientation matrix
+ real(pReal),             dimension(3,3) :: om
+ 
  real(pReal)                             :: q, c, s, omc
- integer(pInt)                          :: i
+ integer(pInt)                           :: i
 
  c = cos(ax(4))
  s = sin(ax(4))
@@ -337,18 +399,21 @@ pure function ax2om(ax) result(om)
 end function ax2om
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief Quaternion to Euler angles [Morawiec page 40, with errata !!!! ]
-!--------------------------------------------------------------------------
+!> @brief convert unit quaternion to Euler angles
+!---------------------------------------------------------------------------------------------------
 pure function qu2eu(qu) result(eu)
+ use prec, only: &
+   dEq0
  use math, only: &
    PI
 
  implicit none
- type(quaternion), intent(in)              :: qu       !< quaternion
- real(pReal),                   dimension(3) :: eu
- real(pReal)                                 :: q12, q03, chi, chiInv
+ type(quaternion), intent(in)              :: qu
+ real(pReal),                 dimension(3) :: eu
+ 
+ real(pReal)                               :: q12, q03, chi, chiInv
  
  q03 = qu%w**2+qu%z**2
  q12 = qu%x**2+qu%y**2
@@ -369,15 +434,16 @@ pure function qu2eu(qu) result(eu)
 end function qu2eu
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief Axis angle pair to homochoric
-!--------------------------------------------------------------------------
+!> @brief convert axis angle pair to homochoric
+!---------------------------------------------------------------------------------------------------
 pure function ax2ho(ax) result(ho)
 
- 
- real(pReal), intent(in), dimension(4) :: ax                                                          !< axis angle in degree/radians?
+ implicit none 
+ real(pReal), intent(in), dimension(4) :: ax
  real(pReal),             dimension(3) :: ho
+ 
  real(pReal)                           :: f
  
  f = 0.75 * ( ax(4) - sin(ax(4)) )
@@ -387,16 +453,19 @@ pure function ax2ho(ax) result(ho)
 end function ax2ho
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief Homochoric to axis angle pair
-!--------------------------------------------------------------------------
+!> @brief convert homochoric to axis angle pair
+!---------------------------------------------------------------------------------------------------
 pure function ho2ax(ho) result(ax)
-
+ use prec, only: &
+   pInt, &
+   dEq0
  implicit none 
- real(pReal), intent(in), dimension(3) :: ho                                                          !< homochoric coordinates
+ real(pReal), intent(in), dimension(3) :: ho
  real(pReal),             dimension(4) :: ax
- integer(pInt)                        :: i
+ 
+ integer(pInt)                         :: i
  real(pReal)                           :: hmag_squared, s, hm
  real(pReal), parameter, dimension(16) :: &
    tfit = [ 1.0000000000018852_pReal,      -0.5000000002194847_pReal, & 
@@ -427,11 +496,16 @@ pure function ho2ax(ho) result(ax)
 end function ho2ax
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert orientation matrix to axis angle
-!--------------------------------------------------------------------------
+!> @brief convert orientation matrix to axis angle pair
+!---------------------------------------------------------------------------------------------------
 function om2ax(om) result(ax)
+ use prec, only: &
+   pInt, &
+   dEq0, &
+   cEq, &
+   dNeq0
  use IO, only: &
    IO_error
  use math, only: &
@@ -439,13 +513,13 @@ function om2ax(om) result(ax)
    math_trace33
 
  implicit none
- real(pReal), intent(in)      :: om(3,3)
- real(pReal)                  :: ax(4)
+ real(pReal), intent(in)     :: om(3,3)
+ real(pReal)                 :: ax(4)
  
- real(pReal)                  :: t
- real(pReal), dimension(3)    :: Wr, Wi
- real(pReal), dimension(10)   :: WORK
- real(pReal), dimension(3,3)  :: VR, devNull, o
+ real(pReal)                 :: t
+ real(pReal), dimension(3)   :: Wr, Wi
+ real(pReal), dimension(10)  :: WORK
+ real(pReal), dimension(3,3) :: VR, devNull, o
  integer(pInt)               :: INFO, LWORK, i
  
  external :: dgeev,sgeev
@@ -482,18 +556,22 @@ function om2ax(om) result(ax)
 end function om2ax
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief Rodrigues vector to axis angle pair
-!--------------------------------------------------------------------------
+!> @brief convert Rodrigues vector to axis angle pair
+!---------------------------------------------------------------------------------------------------
 pure function ro2ax(ro) result(ax)
- use, intrinsic :: IEEE_ARITHMETIC
+ use, intrinsic :: IEEE_ARITHMETIC, only: &
+   IEEE_is_finite
+ use prec, only: &
+   dEq0
  use math, only: &
    PI
 
  implicit none 
- real(pReal), intent(in), dimension(4) :: ro                                                          !< homochoric coordinates
+ real(pReal), intent(in), dimension(4) :: ro
  real(pReal),             dimension(4) :: ax
+ 
  real(pReal)                           :: ta, angle
  
  ta = ro(4)
@@ -511,18 +589,23 @@ pure function ro2ax(ro) result(ax)
 end function ro2ax
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert axis angle to Rodrigues
-!--------------------------------------------------------------------------
+!> @brief convert axis angle pair to Rodrigues vector
+!---------------------------------------------------------------------------------------------------
 pure function ax2ro(ax) result(ro)
- use, intrinsic :: IEEE_ARITHMETIC
+ use, intrinsic :: IEEE_ARITHMETIC, only: &
+   IEEE_value, &
+   IEEE_positive_inf
+ use prec, only: &
+   dEq0
  use math, only: &
    PI
 
  implicit none 
- real(pReal), intent(in), dimension(4) :: ax                                                          !< axis angle in degree/radians?
+ real(pReal), intent(in), dimension(4) :: ax
  real(pReal),             dimension(4) :: ro
+ 
  real(pReal), parameter                :: thr = 1.0E-7
  
  if (dEq0(ax(4))) then
@@ -536,16 +619,19 @@ pure function ax2ro(ax) result(ro)
 end function ax2ro
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert axis angle to quaternion
-!--------------------------------------------------------------------------
+!> @brief convert axis angle pair to quaternion
+!---------------------------------------------------------------------------------------------------
 pure function ax2qu(ax) result(qu)
-
+ use prec, only: &
+   dEq0
+   
  implicit none
- real(pReal),        intent(in), dimension(4) :: ax
+ real(pReal),      intent(in), dimension(4) :: ax
  type(quaternion)                           :: qu
- real(pReal)                                  :: c, s
+ 
+ real(pReal)                                :: c, s
 
 
  if (dEq0(ax(4))) then
@@ -559,18 +645,22 @@ pure function ax2qu(ax) result(qu)
 end function ax2qu
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert rodrigues to homochoric
-!--------------------------------------------------------------------------
+!> @brief convert Rodrigues vector to homochoric
+!---------------------------------------------------------------------------------------------------
 pure function ro2ho(ro) result(ho)
- use, intrinsic :: IEEE_ARITHMETIC
+ use, intrinsic :: IEEE_ARITHMETIC, only: &
+   IEEE_is_finite
+ use prec, only: &
+   dEq0
  use math, only: &
    PI
 
  implicit none
  real(pReal),        intent(in), dimension(4) :: ro
  real(pReal),                    dimension(3) :: ho
+ 
  real(pReal)                                  :: f
  
  if (dEq0(norm2(ro(1:3)))) then
@@ -583,16 +673,17 @@ pure function ro2ho(ro) result(ho)
 end function ro2ho
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert a quaternion to a 3x3 matrix
-!--------------------------------------------------------------------------
+!> @brief convert unit quaternion to rotation matrix
+!---------------------------------------------------------------------------------------------------
 pure function qu2om(qu) result(om)
 
  implicit none
  type(quaternion), intent(in)                :: qu
- real(pReal),                   dimension(3,3) :: om
- real(pReal)                                   :: qq
+ real(pReal),                 dimension(3,3) :: om
+ 
+ real(pReal)                                 :: qq
 
  qq = qu%w**2-(qu%x**2 + qu%y**2 + qu%z**2)
 
@@ -613,17 +704,20 @@ pure function qu2om(qu) result(om)
 end function qu2om
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert a 3x3 rotation matrix to a unit quaternion (see Morawiec, page 37)
-!--------------------------------------------------------------------------
+!> @brief convert rotation matrix to a unit quaternion
+!---------------------------------------------------------------------------------------------------
 function om2qu(om) result(qu)
+ use prec, only: &
+   dEq
 
  implicit none
- real(pReal),        intent(in), dimension(3,3) :: om
+ real(pReal),      intent(in), dimension(3,3) :: om
  type(quaternion)                             :: qu
- real(pReal),                    dimension(4)   :: qu_A
- real(pReal),                    dimension(4)   :: s
+ 
+ real(pReal),                  dimension(4)   :: qu_A
+ real(pReal),                  dimension(4)   :: s
 
  s = [+om(1,1) +om(2,2) +om(3,3) +1.0_pReal, &
       +om(1,1) -om(2,2) -om(3,3) +1.0_pReal, &
@@ -647,18 +741,22 @@ function om2qu(om) result(qu)
 end function om2qu
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert quaternion to axis angle
-!--------------------------------------------------------------------------
+!> @brief convert unit quaternion to axis angle pair
+!---------------------------------------------------------------------------------------------------
 pure function qu2ax(qu) result(ax)
+ use prec, only: &
+   dEq0, &
+   dNeq0
  use math, only: &
    PI
 
  implicit none
  type(quaternion), intent(in)              :: qu
- real(pReal),                   dimension(4) :: ax
- real(pReal)                                 :: omega, s
+ real(pReal),                 dimension(4) :: ax
+ 
+ real(pReal)                               :: omega, s
 
  omega = 2.0 * acos(qu%w)
  ! if the angle equals zero, then we return the rotation axis as [001]
@@ -674,15 +772,20 @@ pure function qu2ax(qu) result(ax)
 end function qu2ax
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert quaternion to Rodrigues
-!--------------------------------------------------------------------------
+!> @brief convert unit quaternion to Rodrigues vector
+!---------------------------------------------------------------------------------------------------
 pure function qu2ro(qu) result(ro)
- use, intrinsic :: IEEE_ARITHMETIC
+ use, intrinsic :: IEEE_ARITHMETIC, only: &
+   IEEE_value, &
+   IEEE_positive_inf
+ use prec, only: &
+   dEq0
  
  type(quaternion), intent(in)              :: qu
  real(pReal),                 dimension(4) :: ro
+ 
  real(pReal)                               :: s
  real(pReal), parameter                    :: thr = 1.0e-8_pReal
  
@@ -690,24 +793,27 @@ pure function qu2ro(qu) result(ro)
    ro = [qu%x, qu%y, qu%z, IEEE_value(ro(4),IEEE_positive_inf)]
  else
    s = norm2([qu%x,qu%y,qu%z])
-   ro = merge ( [ 0.0_pReal, 0.0_pReal, epsijk, 0.0_pReal]        , &
+   ro = merge ( [ 0.0_pReal, 0.0_pReal, epsijk, 0.0_pReal], &
                 [ qu%x/s,  qu%y/s,  qu%z/s, tan(acos(qu%w))], &
-                s < thr)
+                s < thr)                                                                            !ToDo: not save (PGI compiler)
  end if
 
 end function qu2ro
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert quaternion to homochoric
-!--------------------------------------------------------------------------
+!> @brief convert unit quaternion to homochoric
+!---------------------------------------------------------------------------------------------------
 pure function qu2ho(qu) result(ho)
+ use prec, only: &
+   dEq0
 
  implicit none
  type(quaternion), intent(in)               :: qu
- real(pReal),                    dimension(3) :: ho
- real(pReal)                                  :: omega, f
+ real(pReal),                  dimension(3) :: ho
+ 
+ real(pReal)                                :: omega, f
 
  omega = 2.0 * acos(qu%w)
  
@@ -722,12 +828,13 @@ pure function qu2ho(qu) result(ho)
 end function qu2ho
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
 !> @brief convert homochoric to cubochoric
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 function ho2cu(ho) result(cu)
- use Lambert, only: LambertBallToCube
+ use Lambert, only: &
+   LambertBallToCube
 
  implicit none
  real(pReal), intent(in), dimension(3) :: ho
@@ -738,12 +845,13 @@ function ho2cu(ho) result(cu)
 end function ho2cu
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
 !> @brief convert cubochoric to homochoric
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 function cu2ho(cu) result(ho)
- use Lambert, only: LambertCubeToBall
+ use Lambert, only: &
+   LambertCubeToBall
 
  implicit none
  real(pReal), intent(in), dimension(3) :: cu
@@ -753,21 +861,15 @@ function cu2ho(cu) result(ho)
 
 end function cu2ho
 
-!--------------------------------------------------------------------------
-!--------------------------------------------------------------------------
-! and here are a bunch of transformation routines that are derived from the others
-!--------------------------------------------------------------------------
-!--------------------------------------------------------------------------
-!--------------------------------------------------------------------------
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief Rodrigues vector to Euler angles
-!--------------------------------------------------------------------------
+!> @brief convert Rodrigues vector to Euler angles
+!---------------------------------------------------------------------------------------------------
 pure function ro2eu(ro) result(eu)
 
  implicit none
- real(pReal), intent(in), dimension(4) :: ro         !< Rodrigues vector
+ real(pReal), intent(in), dimension(4) :: ro
  real(pReal),             dimension(3) :: eu
         
  eu = om2eu(ro2om(ro))
@@ -775,10 +877,10 @@ pure function ro2eu(ro) result(eu)
 end function ro2eu
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert euler to homochoric
-!--------------------------------------------------------------------------
+!> @brief convert Euler angles to homochoric
+!---------------------------------------------------------------------------------------------------
 pure function eu2ho(eu) result(ho)
 
  implicit none
@@ -790,10 +892,10 @@ pure function eu2ho(eu) result(ho)
 end function eu2ho
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert orientation matrix to Rodrigues
-!--------------------------------------------------------------------------
+!> @brief convert rotation matrix to Rodrigues vector
+!---------------------------------------------------------------------------------------------------
 pure function om2ro(om) result(ro)
 
  implicit none
@@ -805,10 +907,10 @@ pure function om2ro(om) result(ro)
 end function om2ro
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert orientation matrix to homochoric
-!--------------------------------------------------------------------------
+!> @brief convert rotation matrix to homochoric
+!---------------------------------------------------------------------------------------------------
 function om2ho(om) result(ho)
 
  implicit none
@@ -820,10 +922,10 @@ function om2ho(om) result(ho)
 end function om2ho 
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert axis angle to euler
-!--------------------------------------------------------------------------
+!> @brief convert axis angle pair to Euler angles
+!---------------------------------------------------------------------------------------------------
 pure function ax2eu(ax) result(eu)
 
  implicit none
@@ -835,10 +937,10 @@ pure function ax2eu(ax) result(eu)
 end function ax2eu
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert rodrigues to orientation matrix
-!--------------------------------------------------------------------------
+!> @brief convert Rodrigues vector to rotation matrix
+!---------------------------------------------------------------------------------------------------
 pure function ro2om(ro) result(om)
 
  implicit none
@@ -850,14 +952,14 @@ pure function ro2om(ro) result(om)
 end function ro2om
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert rodrigues to quaternion
-!--------------------------------------------------------------------------
+!> @brief convert Rodrigues vector to unit quaternion
+!---------------------------------------------------------------------------------------------------
 pure function ro2qu(ro) result(qu)
 
  implicit none
- real(pReal),        intent(in), dimension(4) :: ro
+ real(pReal),      intent(in), dimension(4) :: ro
  type(quaternion)                           :: qu
  
  qu = ax2qu(ro2ax(ro))
@@ -865,10 +967,10 @@ pure function ro2qu(ro) result(qu)
 end function ro2qu
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert homochoric to euler
-!--------------------------------------------------------------------------
+!> @brief convert homochoric to Euler angles
+!---------------------------------------------------------------------------------------------------
 pure function ho2eu(ho) result(eu)
 
  implicit none
@@ -880,10 +982,10 @@ pure function ho2eu(ho) result(eu)
 end function ho2eu
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert homochoric to orientation matrix
-!--------------------------------------------------------------------------
+!> @brief convert homochoric to rotation matrix
+!---------------------------------------------------------------------------------------------------
 pure function ho2om(ho) result(om)
 
  implicit none
@@ -895,10 +997,10 @@ pure function ho2om(ho) result(om)
 end function ho2om
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert homochoric to Rodrigues
-!--------------------------------------------------------------------------
+!> @brief convert homochoric to Rodrigues vector
+!---------------------------------------------------------------------------------------------------
 pure function ho2ro(ho) result(ro)
 
  implicit none
@@ -911,14 +1013,14 @@ pure function ho2ro(ho) result(ro)
 end function ho2ro
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert homochoric to quaternion
-!--------------------------------------------------------------------------
+!> @brief convert homochoric to unit quaternion
+!---------------------------------------------------------------------------------------------------
 pure function ho2qu(ho) result(qu)
 
  implicit none
- real(pReal),        intent(in), dimension(3) :: ho
+ real(pReal),      intent(in), dimension(3) :: ho
  type(quaternion)                           :: qu
 
  qu = ax2qu(ho2ax(ho))
@@ -926,14 +1028,14 @@ pure function ho2qu(ho) result(qu)
 end function ho2qu
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert euler angles to cubochoric
-!--------------------------------------------------------------------------
+!> @brief convert Euler angles to cubochoric
+!---------------------------------------------------------------------------------------------------
 function eu2cu(eu) result(cu)
 
  implicit none
- real(pReal), intent(in), dimension(3) :: eu                                                          !< Bunge-Euler angles in radians
+ real(pReal), intent(in), dimension(3) :: eu
  real(pReal),             dimension(3) :: cu
 
  cu = ho2cu(eu2ho(eu))
@@ -941,14 +1043,14 @@ function eu2cu(eu) result(cu)
 end function eu2cu
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert orientation matrix to cubochoric
-!--------------------------------------------------------------------------
+!> @brief convert rotation matrix to cubochoric
+!---------------------------------------------------------------------------------------------------
 function om2cu(om) result(cu)
 
  implicit none
- real(pReal), intent(in), dimension(3,3) :: om                                                        !< rotation matrix
+ real(pReal), intent(in), dimension(3,3) :: om
  real(pReal),             dimension(3)   :: cu
 
  cu = ho2cu(om2ho(om))
@@ -956,14 +1058,14 @@ function om2cu(om) result(cu)
 end function om2cu
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert axis angle to cubochoric
-!--------------------------------------------------------------------------
+!> @brief convert axis angle pair to cubochoric
+!---------------------------------------------------------------------------------------------------
 function ax2cu(ax) result(cu)
 
  implicit none
- real(pReal), intent(in), dimension(4) :: ax                                                          !< axis angle in degree/radians?
+ real(pReal), intent(in), dimension(4) :: ax
  real(pReal),             dimension(3) :: cu
 
  cu  = ho2cu(ax2ho(ax))
@@ -971,14 +1073,14 @@ function ax2cu(ax) result(cu)
 end function ax2cu
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert Rodrigues to cubochoric
-!--------------------------------------------------------------------------
+!> @brief convert Rodrigues vector to cubochoric
+!---------------------------------------------------------------------------------------------------
 function ro2cu(ro) result(cu)
 
  implicit none
- real(pReal), intent(in), dimension(4) :: ro                                                          !< Rodrigues vector
+ real(pReal), intent(in), dimension(4) :: ro
  real(pReal),             dimension(3) :: cu
 
  cu = ho2cu(ro2ho(ro))
@@ -986,29 +1088,29 @@ function ro2cu(ro) result(cu)
 end function ro2cu
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert quaternion to cubochoric
-!--------------------------------------------------------------------------
+!> @brief convert unit quaternion to cubochoric
+!---------------------------------------------------------------------------------------------------
 function qu2cu(qu) result(cu)
  
  implicit none
- type(quaternion), intent(in)              :: qu                                                    ! unit quaternion
- real(pReal),                   dimension(3) :: cu
+ type(quaternion), intent(in)              :: qu
+ real(pReal),                 dimension(3) :: cu
 
  cu = ho2cu(qu2ho(qu))
 
 end function qu2cu
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert cubochoric to euler angles
-!--------------------------------------------------------------------------
+!> @brief convert cubochoric to Euler angles
+!---------------------------------------------------------------------------------------------------
 function cu2eu(cu) result(eu)
 
  implicit none
- real(pReal), intent(in), dimension(3) :: cu                                                          ! cubochoric?
+ real(pReal), intent(in), dimension(3) :: cu
  real(pReal),             dimension(3) :: eu
 
  eu = ho2eu(cu2ho(cu))
@@ -1016,14 +1118,14 @@ function cu2eu(cu) result(eu)
 end function cu2eu
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert cubochoric to orientation matrix
-!--------------------------------------------------------------------------
+!> @brief convert cubochoric to rotation matrix
+!---------------------------------------------------------------------------------------------------
 function cu2om(cu) result(om)
 
  implicit none
- real(pReal), intent(in), dimension(3)   :: cu                                                        ! cubochoric?
+ real(pReal), intent(in), dimension(3)   :: cu
  real(pReal),             dimension(3,3) :: om
 
  om = ho2om(cu2ho(cu))
@@ -1031,14 +1133,14 @@ function cu2om(cu) result(om)
 end function cu2om
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert cubochoric to axis angle
-!--------------------------------------------------------------------------
+!> @brief convert cubochoric to axis angle pair
+!---------------------------------------------------------------------------------------------------
 function cu2ax(cu) result(ax)
 
  implicit none
- real(pReal), intent(in), dimension(3) :: cu                                                          ! cubochoric?
+ real(pReal), intent(in), dimension(3) :: cu
  real(pReal),             dimension(4) :: ax
 
  ax = ho2ax(cu2ho(cu))
@@ -1046,14 +1148,14 @@ function cu2ax(cu) result(ax)
 end function cu2ax
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert cubochoric to Rodrigues
-!--------------------------------------------------------------------------
+!> @brief convert cubochoric to Rodrigues vector
+!---------------------------------------------------------------------------------------------------
 function cu2ro(cu) result(ro)
 
  implicit none
- real(pReal), intent(in), dimension(3) :: cu                                                          ! cubochoric?
+ real(pReal), intent(in), dimension(3) :: cu
  real(pReal),             dimension(4) :: ro
 
  ro = ho2ro(cu2ho(cu))
@@ -1061,15 +1163,15 @@ function cu2ro(cu) result(ro)
 end function cu2ro
 
 
-!--------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert cubochoric to quaternion
-!--------------------------------------------------------------------------
+!> @brief convert cubochoric to unit quaternion
+!---------------------------------------------------------------------------------------------------
 function cu2qu(cu) result(qu)
 
  implicit none
- real(pReal), intent(in), dimension(3) :: cu                                                          ! cubochoric?
- type(quaternion)                    :: qu                                                          ! cubochoric?
+ real(pReal), intent(in), dimension(3) :: cu
+ type(quaternion)                      :: qu
 
  qu = ho2qu(cu2ho(cu))
 

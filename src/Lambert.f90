@@ -29,10 +29,10 @@
 
 !--------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Mapping homochoric <-> cubochoric 
 !
-!> References:
+!> @details
 !> D. Rosca, A. Morawiec, and M. De Graef. “A new method of constructing a grid 
 !> in the space of 3D rotations and its applications to texture analysis”. 
 !> Modeling and Simulations in Materials Science and Engineering 22, 075013 (2014).
