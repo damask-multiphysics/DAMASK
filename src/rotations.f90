@@ -65,17 +65,9 @@ module rotations
      !------------------------------------------
      procedure, public :: rotVector
      procedure, public :: rotTensor
+     procedure, public :: misorientation
  end type rotation
- public :: &
-   asQuaternion, &
-   asEulerAngles, &
-   asAxisAnglePair, &
-   asRotationMatrix, &
-   asRodriguesFrankVector, &
-   asHomochoric, &
-   fromRotationMatrix, &
-   rotVector, &
-   rotTensor
+
 
 contains
 
@@ -83,76 +75,76 @@ contains
 !---------------------------------------------------------------------------------------------------
 ! Return rotation in different represenations
 !---------------------------------------------------------------------------------------------------
-function asQuaternion(this)
+function asQuaternion(self)
 
  implicit none
- class(rotation), intent(in) :: this
+ class(rotation), intent(in) :: self
  real(pReal), dimension(4)   :: asQuaternion
 
- asQuaternion = [this%q%w, this%q%x, this%q%y, this%q%z]
+ asQuaternion = [self%q%w, self%q%x, self%q%y, self%q%z]
 
 end function asQuaternion
 !---------------------------------------------------------------------------------------------------
-function asEulerAngles(this)
+function asEulerAngles(self)
   
  implicit none
- class(rotation), intent(in) :: this
+ class(rotation), intent(in) :: self
  real(pReal), dimension(3)   :: asEulerAngles
   
- asEulerAngles = qu2eu(this%q)
+ asEulerAngles = qu2eu(self%q)
 
 end function asEulerAngles
 !---------------------------------------------------------------------------------------------------
-function asAxisAnglePair(this)
+function asAxisAnglePair(self)
 
  implicit none
- class(rotation), intent(in) :: this
+ class(rotation), intent(in) :: self
  real(pReal), dimension(4)   :: asAxisAnglePair
 
- asAxisAnglePair = qu2ax(this%q)
+ asAxisAnglePair = qu2ax(self%q)
 
 end function asAxisAnglePair
 !---------------------------------------------------------------------------------------------------
-function asRotationMatrix(this)
+function asRotationMatrix(self)
  
  implicit none
- class(rotation), intent(in) :: this
+ class(rotation), intent(in) :: self
  real(pReal), dimension(3,3) :: asRotationMatrix
 
- asRotationMatrix = qu2om(this%q)
+ asRotationMatrix = qu2om(self%q)
 
 end function asRotationMatrix
 !---------------------------------------------------------------------------------------------------
-function asRodriguesFrankVector(this)
+function asRodriguesFrankVector(self)
 
  implicit none
- class(rotation), intent(in) :: this
+ class(rotation), intent(in) :: self
  real(pReal), dimension(4)   :: asRodriguesFrankVector
 
- asRodriguesFrankVector = qu2ro(this%q)
+ asRodriguesFrankVector = qu2ro(self%q)
  
 end function asRodriguesFrankVector
 !---------------------------------------------------------------------------------------------------
-function asHomochoric(this)
+function asHomochoric(self)
 
  implicit none
- class(rotation), intent(in) :: this
+ class(rotation), intent(in) :: self
  real(pReal), dimension(3)   :: asHomochoric
 
- asHomochoric = qu2ho(this%q)
+ asHomochoric = qu2ho(self%q)
 
 end function asHomochoric
  
 !---------------------------------------------------------------------------------------------------
 ! Initialize rotation from different representations
 !---------------------------------------------------------------------------------------------------
-subroutine fromRotationMatrix(this,om)
+subroutine fromRotationMatrix(self,om)
 
  implicit none
- class(rotation), intent(out)            :: this
+ class(rotation), intent(out)            :: self
  real(pReal), dimension(3,3), intent(in) :: om
 
- this%q = om2qu(om)
+ self%q = om2qu(om)
 
 end subroutine
 
@@ -162,13 +154,13 @@ end subroutine
 !> @brief rotate a vector passively (default) or actively
 !> @details: rotation is based on unit quaternion or rotation matrix (fallback)
 !---------------------------------------------------------------------------------------------------
-function rotVector(this,v,active)
+function rotVector(self,v,active)
  use prec, only: &
    dEq
    
  implicit none
  real(pReal),                 dimension(3) :: rotVector
- class(rotation), intent(in)               :: this
+ class(rotation), intent(in)               :: self
  real(pReal),     intent(in), dimension(3) :: v
  logical,         intent(in), optional     :: active
  
@@ -176,16 +168,16 @@ function rotVector(this,v,active)
   
  if (dEq(norm2(v),1.0_pReal,tol=1.0e-15_pReal)) then
    passive: if (merge(.not. active, .true., present(active))) then                                  ! ToDo: not save (PGI)
-     q = this%q * (quaternion([0.0_pReal, v(1), v(2), v(3)]) * conjg(this%q) )
+     q = self%q * (quaternion([0.0_pReal, v(1), v(2), v(3)]) * conjg(self%q) )
    else passive
-     q = conjg(this%q) * (quaternion([0.0_pReal, v(1), v(2), v(3)]) * this%q )
+     q = conjg(self%q) * (quaternion([0.0_pReal, v(1), v(2), v(3)]) * self%q )
    endif passive
    rotVector = [q%x,q%y,q%z]
  else
    passive2: if (merge(.not. active, .true., present(active))) then                                 ! ToDo: not save (PGI)
-     rotVector = matmul(this%asRotationMatrix(),v)
+     rotVector = matmul(self%asRotationMatrix(),v)
    else passive2
-     rotVector = matmul(transpose(this%asRotationMatrix()),v)
+     rotVector = matmul(transpose(self%asRotationMatrix()),v)
    endif passive2
  endif
 
@@ -197,23 +189,36 @@ end function rotVector
 !> @brief rotate a second rank tensor passively (default) or actively
 !> @details: rotation is based on rotation matrix
 !---------------------------------------------------------------------------------------------------
-function rotTensor(this,m,active)
+function rotTensor(self,m,active)
   
  implicit none
  real(pReal),                 dimension(3,3) :: rotTensor
- class(rotation), intent(in)                 :: this
+ class(rotation), intent(in)                 :: self
  real(pReal),     intent(in), dimension(3,3) :: m
  logical,         intent(in), optional       :: active
   
 
  passive: if (merge(.not. active, .true., present(active))) then
-   rotTensor = matmul(matmul(this%asRotationMatrix(),m),transpose(this%asRotationMatrix()))
+   rotTensor = matmul(matmul(self%asRotationMatrix(),m),transpose(self%asRotationMatrix()))
  else passive
-   rotTensor = matmul(matmul(transpose(this%asRotationMatrix()),m),this%asRotationMatrix())
+   rotTensor = matmul(matmul(transpose(self%asRotationMatrix()),m),self%asRotationMatrix())
  endif passive
 
 end function rotTensor
 
+
+!---------------------------------------------------------------------------------------------------
+!> @brief misorientation
+!---------------------------------------------------------------------------------------------------
+function misorientation(self,other)
+  
+ implicit none
+ type(rotation)              :: misorientation
+ class(rotation), intent(in) :: self, other
+ 
+ misorientation%q = conjg(self%q) * other%q                                                         !ToDo: this is the convention used in math
+
+end function misorientation
 
 
 !---------------------------------------------------------------------------------------------------
@@ -760,7 +765,8 @@ pure function qu2ax(qu) result(ax)
    dEq0, &
    dNeq0
  use math, only: &
-   PI
+   PI, &
+   math_clip
 
  implicit none
  type(quaternion), intent(in)              :: qu
@@ -768,7 +774,7 @@ pure function qu2ax(qu) result(ax)
  
  real(pReal)                               :: omega, s
 
- omega = 2.0 * acos(qu%w)
+ omega = 2.0 * acos(math_clip(qu%w,0.0_pReal,1.0_pReal))
  ! if the angle equals zero, then we return the rotation axis as [001]
  if (dEq0(omega)) then
    ax = [ 0.0, 0.0, 1.0, 0.0 ]
@@ -818,6 +824,8 @@ end function qu2ro
 pure function qu2ho(qu) result(ho)
  use prec, only: &
    dEq0
+ use math, only: &
+   math_clip
 
  implicit none
  type(quaternion), intent(in)               :: qu
@@ -825,7 +833,7 @@ pure function qu2ho(qu) result(ho)
  
  real(pReal)                                :: omega, f
 
- omega = 2.0 * acos(qu%w)
+ omega = 2.0 * acos(math_clip(qu%w,0.0_pReal,1.0_pReal))
  
  if (dEq0(omega)) then
    ho = [ 0.0, 0.0, 0.0 ]

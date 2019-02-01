@@ -240,7 +240,7 @@ type(quaternion) elemental function mul_quat__(self,other)
  implicit none
  class(quaternion), intent(in) :: self, other
 
- mul_quat__%w = self%w*other%w - self%x*other%x -           self%y*other%y - self%z*other%z
+ mul_quat__%w = self%w*other%w - self%x*other%x -      self%y*other%y - self%z*other%z
  mul_quat__%x = self%w*other%x + self%x*other%w + P * (self%y*other%z - self%z*other%y)
  mul_quat__%y = self%w*other%y + self%y*other%w + P * (self%z*other%x - self%x*other%z)
  mul_quat__%z = self%w*other%z + self%z*other%w + P * (self%x*other%y - self%y*other%x)
