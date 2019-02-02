@@ -560,7 +560,7 @@ subroutine mesh_init(ip,el)
  mesh_CPnodeID          = mesh_element(5:4+mesh_NipsPerElem,:)
 !!!!!!!!!!!!!!!!!!!!!!!!
  call theMesh%init(mesh_element(2,1),mesh_node0)
- 
+ call theMesh%setNelems(mesh_NcpElems)
 end subroutine mesh_init
 
 

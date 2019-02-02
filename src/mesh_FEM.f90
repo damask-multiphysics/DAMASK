@@ -276,6 +276,7 @@ subroutine mesh_init()
 !!!!!!!!!!!!!!!!!!!!!!!!
  allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pReal)
  call theMesh%init(dimplex,integrationOrder,mesh_node0)
+ call theMesh%setNelems(mesh_NcpElems)
  
 end subroutine mesh_init
 

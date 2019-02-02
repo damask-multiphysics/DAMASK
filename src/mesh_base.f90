@@ -45,6 +45,7 @@ module mesh_base
      connectivity
    contains
    procedure, pass(self) :: tMesh_base_init
+   procedure :: setNelems =>  tMesh_base_setNelems                                                  ! not needed once we compute the cells from the connectivity
    generic, public :: init => tMesh_base_init
  end type tMesh
 
@@ -67,5 +68,16 @@ subroutine tMesh_base_init(self,meshType,elemType,nodes)
  self%node0 = nodes
 
 end subroutine tMesh_base_init
+
+
+subroutine tMesh_base_setNelems(self,Nelems)
+ 
+  implicit none
+  class(tMesh) :: self
+  integer(pInt), intent(in) :: Nelems
+
+  self%Nelems = Nelems
+
+end subroutine tMesh_base_setNelems
 
 end module mesh_base

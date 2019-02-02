@@ -421,6 +421,7 @@ subroutine tMesh_abaqus_init(self,elemType,nodes)
  integer(pInt), intent(in) :: elemType
  
  call self%tMesh%init('mesh',elemType,nodes)
+  call theMesh%setNelems(mesh_NcpElems)
  
 end subroutine tMesh_abaqus_init
 

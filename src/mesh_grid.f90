@@ -442,7 +442,7 @@ subroutine mesh_init(ip,el)
  mesh_microstructureAt  = mesh_element(4,:)
  mesh_CPnodeID          = mesh_element(5:4+mesh_NipsPerElem,:)
 !!!!!!!!!!!!!!!!!!!!!!!!
- 
+ call theMesh%setNelems(mesh_NcpElems)
 end subroutine mesh_init
 
 !--------------------------------------------------------------------------------------------------
@@ -686,6 +686,8 @@ end function mesh_cellCenterCoordinates
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Parses geometry file
+!> @details important variables have an implicit "save" attribute. Therefore, this function is 
+! supposed to be called only once!
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_spectral_read_grid()
  use IO, only: &
@@ -706,12 +708,16 @@ subroutine mesh_spectral_read_grid()
   real(pReal), dimension(3) :: s = -1_pInt
   integer(pInt) :: h =- 1_pInt
   integer(pInt) ::  &
-    headerLength = -1_pInt, &
-    fileLength, &
+    headerLength = -1_pInt, &                                                                       !< length of header (in lines)
+    fileLength, &                                                                                   !< lenght of the geom file (in characters)
     fileUnit, &
     startPos, endPos, &
     myStat, &
-    l, i, j, e, c
+    l, &                                                                                            !< line counter
+    c, &                                                                                            !< counter for # microstructures in line
+    o, &                                                                                            !< order of "to" packing
+    e, &                                                                                            !< "element", i.e. spectral collocation point 
+    i, j
   logical :: &
     gotGrid = .false., &
     gotSize = .false., &
@@ -807,8 +813,9 @@ subroutine mesh_spectral_read_grid()
         c = IO_intValue(line,chunkPos,1)
         microGlobal(e:e+c-1_pInt) = [(IO_intValue(line,chunkPos,3),i = 1_pInt,IO_intValue(line,chunkPos,1))]
       else if (IO_lc(IO_stringValue(line,chunkPos,2))  == 'to') then
-        c = IO_intValue(line,chunkPos,3) - IO_intValue(line,chunkPos,1) + 1_pInt
-        microGlobal(e:e+c-1_pInt) = [(i, i = IO_intValue(line,chunkPos,1),IO_intValue(line,chunkPos,3))]
+        c = abs(IO_intValue(line,chunkPos,3) - IO_intValue(line,chunkPos,1)) + 1_pInt
+        o = merge(+1_pInt, -1_pInt, IO_intValue(line,chunkPos,3) > IO_intValue(line,chunkPos,1))
+        microGlobal(e:e+c-1_pInt) = [(i, i = IO_intValue(line,chunkPos,1),IO_intValue(line,chunkPos,3),o)]
       else
         c = chunkPos(1)
         do i = 0_pInt, c - 1_pInt
@@ -822,7 +829,6 @@ subroutine mesh_spectral_read_grid()
       enddo
 
     endif
-
     e = e+c
   end do
 
