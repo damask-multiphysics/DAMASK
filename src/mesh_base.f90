@@ -1,3 +1,4 @@
+
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
@@ -66,6 +67,7 @@ subroutine tMesh_base_init(self,meshType,elemType,nodes)
  self%type = meshType
  call self%elem%init(elemType)
  self%node0 = nodes
+ self%nNodes = size(nodes,2)
 
 end subroutine tMesh_base_init
 
