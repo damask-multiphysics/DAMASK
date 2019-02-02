@@ -22,7 +22,6 @@ module mesh
    mesh_maxNsharedElems                                                                             !< max number of CP elements sharing a node
 !!!! BEGIN DEPRECATED !!!!!
  integer(pInt), public, protected :: &
-   mesh_maxNips, &                                                                                  !< max number of IPs in any CP element
    mesh_maxNcellnodes                                                                               !< max number of cell nodes in any CP element
 !!!! BEGIN DEPRECATED !!!!!
 
@@ -393,10 +392,9 @@ subroutine mesh_init(ip,el)
  call theMesh%init(mesh_node)
 
  ! For compatibility
- mesh_maxNips =         theMesh%elem%nIPs
  mesh_maxNipNeighbors = theMesh%elem%nIPneighbors
  mesh_maxNcellnodes =   theMesh%elem%Ncellnodes
-
+call theMesh%setNelems(mesh_NcpElems)
  
  call mesh_spectral_build_elements()
 
@@ -435,7 +433,7 @@ subroutine mesh_init(ip,el)
  mesh_homogenizationAt  = mesh_element(3,:)
  mesh_microstructureAt  = mesh_element(4,:)
 !!!!!!!!!!!!!!!!!!!!!!!!
- call theMesh%setNelems(mesh_NcpElems)
+ 
 end subroutine mesh_init
 
 !--------------------------------------------------------------------------------------------------
@@ -459,7 +457,7 @@ subroutine mesh_build_cellconnectivity
    matchingNodeID, &
    localCellnodeID
 
- allocate(mesh_cell(FE_maxNcellnodesPerCell,mesh_maxNips,mesh_NcpElems), source=0_pInt)
+ allocate(mesh_cell(FE_maxNcellnodesPerCell,theMesh%elem%nIPs,mesh_NcpElems), source=0_pInt)
  allocate(matchingNode2cellnode(mesh_Nnodes),                            source=0_pInt)
  allocate(cellnodeParent(2_pInt,mesh_maxNcellnodes*mesh_NcpElems),       source=0_pInt)
 
@@ -563,7 +561,7 @@ subroutine mesh_build_ipVolumes
  real(pReal), dimension(FE_maxNcellnodesPerCellface,FE_maxNcellfaces) :: subvolume
 
 
- allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
+ allocate(mesh_ipVolume(theMesh%elem%nIPs,mesh_NcpElems),source=0.0_pReal)
 
 
  !$OMP PARALLEL DO PRIVATE(t,g,c,m,subvolume)
@@ -634,7 +632,7 @@ subroutine mesh_build_ipCoordinates
  real(pReal), dimension(3) :: myCoords
 
  if (.not. allocated(mesh_ipCoordinates)) &
-   allocate(mesh_ipCoordinates(3,mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
+   allocate(mesh_ipCoordinates(3,theMesh%elem%nIPs,mesh_NcpElems),source=0.0_pReal)
 
  !$OMP PARALLEL DO PRIVATE(t,g,c,myCoords)
  do e = 1_pInt,mesh_NcpElems                                                                        ! loop over cpElems
@@ -989,7 +987,7 @@ subroutine mesh_spectral_build_ipNeighborhood
  integer(pInt) :: &
   x,y,z, &
   e
- allocate(mesh_ipNeighborhood(3,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems),source=0_pInt)
+ allocate(mesh_ipNeighborhood(3,mesh_maxNipNeighbors,theMesh%elem%nIPs,mesh_NcpElems),source=0_pInt)
 
  e = 0_pInt
  do z = 0_pInt,grid3-1_pInt
@@ -1136,8 +1134,8 @@ subroutine mesh_build_ipAreas
  real(pReal), dimension (3,FE_maxNcellnodesPerCellface) :: nodePos, normals
  real(pReal), dimension(3) :: normal
 
- allocate(mesh_ipArea(mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems), source=0.0_pReal)
- allocate(mesh_ipAreaNormal(3_pInt,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems), source=0.0_pReal)
+ allocate(mesh_ipArea(mesh_maxNipNeighbors,theMesh%elem%nIPs,mesh_NcpElems), source=0.0_pReal)
+ allocate(mesh_ipAreaNormal(3_pInt,mesh_maxNipNeighbors,theMesh%elem%nIPs,mesh_NcpElems), source=0.0_pReal)
 
  !$OMP PARALLEL DO PRIVATE(t,g,c,nodePos,normal,normals)
    do e = 1_pInt,mesh_NcpElems                                                                      ! loop over cpElems
