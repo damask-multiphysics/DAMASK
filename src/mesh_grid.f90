@@ -28,6 +28,8 @@ module mesh
    mesh_maxNcellnodes                                                                               !< max number of cell nodes in any CP element
 !!!! BEGIN DEPRECATED !!!!!
 
+ integer(pInt), dimension(:), allocatable, private :: &
+   microGlobal
  integer(pInt), dimension(:), allocatable, public, protected :: &
    mesh_homogenizationAt, &                                                                         !< homogenization ID of each element
    mesh_microstructureAt                                                                            !< microstructure ID of each element
@@ -278,8 +280,6 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_spectral_build_nodes, &
    mesh_spectral_build_elements, &
    mesh_spectral_build_ipNeighborhood, &
-   mesh_spectral_getGrid, &
-   mesh_spectral_getSize, &
    mesh_build_cellnodes, &
    mesh_build_ipVolumes, &
    mesh_build_ipCoordinates
@@ -354,7 +354,6 @@ subroutine mesh_init(ip,el)
  include 'fftw3-mpi.f03'
  integer(C_INTPTR_T) :: devNull, local_K, local_K_offset
  integer :: ierr, worldsize
- integer(pInt), parameter :: FILEUNIT = 222_pInt
  integer(pInt), intent(in), optional :: el, ip
  integer(pInt) :: j
  logical :: myDebug
@@ -363,7 +362,6 @@ subroutine mesh_init(ip,el)
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
-
  
  call mesh_build_FEdata                                                                             ! get properties of the different types of elements
  mesh_unitlength = numerics_unitlength                                                              ! set physical extent of a length unit in mesh
@@ -371,14 +369,14 @@ subroutine mesh_init(ip,el)
  myDebug = (iand(debug_level(debug_mesh),debug_levelBasic) /= 0_pInt)
 
  call fftw_mpi_init()
- call IO_open_file(FILEUNIT,geometryFile)                                                           ! parse info from geometry file...
- if (myDebug) write(6,'(a)') ' Opened geometry file'; flush(6)
- grid     = mesh_spectral_getGrid(fileUnit)
+ call mesh_spectral_read_grid()
+
+
  call MPI_comm_size(PETSC_COMM_WORLD, worldsize, ierr)
  if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_comm_size')
  if(worldsize>grid(3)) call IO_error(894_pInt, ext_msg='number of processes exceeds grid(3)')
 
- geomSize = mesh_spectral_getSize(fileUnit)
+
  devNull = fftw_mpi_local_size_3d(int(grid(3),C_INTPTR_T), &
                                   int(grid(2),C_INTPTR_T), &
                                   int(grid(1),C_INTPTR_T)/2+1, &
@@ -395,19 +393,20 @@ subroutine mesh_init(ip,el)
  mesh_Nnodes  = product(grid(1:2) + 1_pInt)*(grid3 + 1_pInt)
 
  call mesh_spectral_build_nodes()
-
  if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
-  call theMesh%init(mesh_node)
+
+ call theMesh%init(mesh_node)
+
  ! For compatibility
- 
  mesh_maxNips =         theMesh%elem%nIPs
  mesh_maxNipNeighbors = theMesh%elem%nIPneighbors
  mesh_maxNcellnodes =   theMesh%elem%Ncellnodes
 
  
- 
- call mesh_spectral_build_elements(FILEUNIT)
+ call mesh_spectral_build_elements()
+
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
+
  call mesh_build_cellconnectivity
  if (myDebug) write(6,'(a)') ' Built cell connectivity'; flush(6)
  mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)
@@ -418,7 +417,6 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Built IP volumes'; flush(6)
  call mesh_build_ipAreas
  if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
- close (FILEUNIT)
 
  call mesh_spectral_build_ipNeighborhood
 
@@ -683,17 +681,14 @@ pure function mesh_cellCenterCoordinates(ip,el)
  enddo
  mesh_cellCenterCoordinates = mesh_cellCenterCoordinates / real(FE_NcellnodesPerCell(c),pReal)
 
- end function mesh_cellCenterCoordinates
+end function mesh_cellCenterCoordinates
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Reads grid information from geometry file. If fileUnit is given,
-!! assumes an opened file, otherwise tries to open the one specified in geometryFile
+!> @brief Parses geometry file
 !--------------------------------------------------------------------------------------------------
-function mesh_spectral_getGrid(fileUnit)
+subroutine mesh_spectral_read_grid()
  use IO, only: &
-   IO_checkAndRewind, &
-   IO_open_file, &
    IO_stringPos, &
    IO_lc, &
    IO_stringValue, &
@@ -703,70 +698,158 @@ function mesh_spectral_getGrid(fileUnit)
  use DAMASK_interface, only: &
    geometryFile
 
- implicit none
- integer(pInt), dimension(3)                      :: mesh_spectral_getGrid
- integer(pInt), intent(in), optional              :: fileUnit
- integer(pInt), allocatable, dimension(:)         :: chunkPos
+  implicit none
+  character(len=:),            allocatable :: rawData
+  character(len=65536)                     :: line
+  integer(pInt), allocatable, dimension(:) :: chunkPos
+  integer(pInt), dimension(3) :: g = -1_pInt
+  real(pReal), dimension(3) :: s = -1_pInt
+  integer(pInt) :: h =- 1_pInt
+  integer(pInt) ::  &
+    headerLength = -1_pInt, &
+    fileLength, &
+    fileUnit, &
+    startPos, endPos, &
+    myStat, &
+    l, i, j, e, c
+  logical :: &
+    gotGrid = .false., &
+    gotSize = .false., &
+    gotHomogenization = .false.
 
- integer(pInt)                                    :: headerLength = 0_pInt
- character(len=1024) :: line, &
-                        keyword
- integer(pInt) :: i, j, myFileUnit
- logical :: gotGrid = .false.
+!--------------------------------------------------------------------------------------------------
+! read data as stream
+  inquire(file = trim(geometryFile), size=fileLength)
+  open(newunit=fileUnit, file=trim(geometryFile), access='stream',&
+       status='old', position='rewind', action='read',iostat=myStat)
+  if(myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=trim(geometryFile))
+  allocate(character(len=fileLength)::rawData)
+  read(fileUnit) rawData
+  close(fileUnit)
+  
+!--------------------------------------------------------------------------------------------------
+! get header length
+  endPos = index(rawData,new_line(''))
+  if(endPos <= index(rawData,'head')) then
+    call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_read_grid')
+  else
+    chunkPos = IO_stringPos(rawData(1:endPos))
+    if (chunkPos(1) < 2_pInt) call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_read_grid')
+    headerLength = IO_intValue(rawData(1:endPos),chunkPos,1_pInt)
+    startPos = endPos + 1_pInt
+  endif
 
- mesh_spectral_getGrid = -1_pInt
- if(.not. present(fileUnit)) then
-   myFileUnit = 289_pInt
-   call IO_open_file(myFileUnit,trim(geometryFile))
- else
-   myFileUnit = fileUnit
- endif
+!--------------------------------------------------------------------------------------------------
+! read and interprete header
+  l = 0
+  do while (l < headerLength .and. startPos < len(rawData))
+    endPos = startPos + index(rawData(startPos:),new_line('')) - 1_pInt
+    line = rawData(startPos:endPos)
+    startPos = endPos + 1_pInt
+    l = l + 1_pInt
 
- call IO_checkAndRewind(myFileUnit)
+   ! cycle empty lines
+    chunkPos = IO_stringPos(trim(line))
+    select case ( IO_lc(IO_StringValue(trim(line),chunkPos,1_pInt,.true.)) )
+    
+      case ('grid')
+        if (chunkPos(1) > 6) gotGrid = .true.
+        do j = 2_pInt,6_pInt,2_pInt
+          select case (IO_lc(IO_stringValue(line,chunkPos,j)))
+            case('a')
+              g(1) = IO_intValue(line,chunkPos,j+1_pInt)
+            case('b')
+              g(2) = IO_intValue(line,chunkPos,j+1_pInt)
+            case('c')
+              g(3) = IO_intValue(line,chunkPos,j+1_pInt)
+          end select
+        enddo
+        
+      case ('size')
+        if (chunkPos(1) > 6) gotSize = .true.
+        do j = 2_pInt,6_pInt,2_pInt
+          select case (IO_lc(IO_stringValue(line,chunkPos,j)))
+            case('x')
+              s(1) = IO_floatValue(line,chunkPos,j+1_pInt)
+            case('y')
+              s(2) = IO_floatValue(line,chunkPos,j+1_pInt)
+            case('z')
+              s(3) = IO_floatValue(line,chunkPos,j+1_pInt)
+          end select
+        enddo
+        
+      case ('homogenization')
+        if (chunkPos(1) > 1) gotHomogenization = .true.
+        h = IO_intValue(line,chunkPos,2_pInt)
 
- read(myFileUnit,'(a1024)') line
- chunkPos = IO_stringPos(line)
- keyword = IO_lc(IO_StringValue(line,chunkPos,2_pInt,.true.))
- if (keyword(1:4) == 'head') then
-   headerLength = IO_intValue(line,chunkPos,1_pInt) + 1_pInt
- else
-   call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_getGrid')
- endif
- rewind(myFileUnit)
- do i = 1_pInt, headerLength
-   read(myFileUnit,'(a1024)') line
-   chunkPos = IO_stringPos(line)
-   select case ( IO_lc(IO_StringValue(line,chunkPos,1_pInt,.true.)) )
-     case ('grid')
-       gotGrid = .true.
-       do j = 2_pInt,6_pInt,2_pInt
-         select case (IO_lc(IO_stringValue(line,chunkPos,j)))
-           case('a')
-              mesh_spectral_getGrid(1) = IO_intValue(line,chunkPos,j+1_pInt)
-           case('b')
-              mesh_spectral_getGrid(2) = IO_intValue(line,chunkPos,j+1_pInt)
-           case('c')
-              mesh_spectral_getGrid(3) = IO_intValue(line,chunkPos,j+1_pInt)
-         end select
-       enddo
-   end select
- enddo
+    end select
 
- if(.not. present(fileUnit)) close(myFileUnit)
+  enddo
 
- if (.not. gotGrid) &
-   call IO_error(error_ID = 845_pInt, ext_msg='grid')
- if(any(mesh_spectral_getGrid < 1_pInt)) &
-   call IO_error(error_ID = 843_pInt, ext_msg='mesh_spectral_getGrid')
+!--------------------------------------------------------------------------------------------------
+! global data
+  grid = g
+  geomSize = s
+  allocate(microGlobal(product(grid)), source = -1_pInt)
+     
+!--------------------------------------------------------------------------------------------------
+! read and interprete content
+  e = 1_pInt
+  do while (startPos < len(rawData))
+    endPos = startPos + index(rawData(startPos:),new_line('')) - 1_pInt
+    line = rawData(startPos:endPos)
+    startPos = endPos + 1_pInt
+    l = l + 1_pInt
 
-end function mesh_spectral_getGrid
+    chunkPos = IO_stringPos(trim(line))
+    if (chunkPos(1) == 3) then
+      if (IO_lc(IO_stringValue(line,chunkPos,2))  == 'of') then
+        c = IO_intValue(line,chunkPos,1)
+        microGlobal(e:e+c-1_pInt) = [(IO_intValue(line,chunkPos,3),i = 1_pInt,IO_intValue(line,chunkPos,1))]
+      else if (IO_lc(IO_stringValue(line,chunkPos,2))  == 'to') then
+        c = IO_intValue(line,chunkPos,3) - IO_intValue(line,chunkPos,1) + 1_pInt
+        microGlobal(e:e+c-1_pInt) = [(i, i = IO_intValue(line,chunkPos,1),IO_intValue(line,chunkPos,3))]
+      else
+        c = chunkPos(1)
+        do i = 0_pInt, c - 1_pInt
+          microGlobal(e+i) =  IO_intValue(line,chunkPos,i+1_pInt)
+        enddo
+      endif
+    else
+      c = chunkPos(1)
+      do i = 0_pInt, c - 1_pInt
+        microGlobal(e+i) =  IO_intValue(line,chunkPos,i+1_pInt)
+      enddo
+
+    endif
+
+    e = e+c
+  end do
+
+  if (e-1 /= product(grid)) print*, 'mist', e
+
+! if (.not. gotGrid) &
+!   call IO_error(error_ID = 845_pInt, ext_msg='grid')
+! if(any(mesh_spectral_getGrid < 1_pInt)) &
+!   call IO_error(error_ID = 843_pInt, ext_msg='mesh_spectral_getGrid')
+   
+!    if (.not. gotSize) &
+!   call IO_error(error_ID = 845_pInt, ext_msg='size')
+! if (any(mesh_spectral_getSize<=0.0_pReal)) &
+!   call IO_error(error_ID = 844_pInt, ext_msg='mesh_spectral_getSize')
+   
+!    if (.not. gotHomogenization ) &
+!   call IO_error(error_ID = 845_pInt, ext_msg='homogenization')
+! if (mesh_spectral_getHomogenization<1_pInt) &
+!   call IO_error(error_ID = 842_pInt, ext_msg='mesh_spectral_getHomogenization')
+   
+end subroutine mesh_spectral_read_grid
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Reads size information from geometry file. If fileUnit is given,
-!! assumes an opened file, otherwise tries to open the one specified in geometryFile
+!> @brief Reads homogenization information from geometry file.
 !--------------------------------------------------------------------------------------------------
-function mesh_spectral_getSize(fileUnit)
+integer(pInt) function mesh_spectral_getHomogenization()
  use IO, only: &
    IO_checkAndRewind, &
    IO_open_file, &
@@ -774,87 +857,11 @@ function mesh_spectral_getSize(fileUnit)
    IO_lc, &
    IO_stringValue, &
    IO_intValue, &
-   IO_floatValue, &
    IO_error
  use DAMASK_interface, only: &
    geometryFile
 
  implicit none
- real(pReal), dimension(3)                        :: mesh_spectral_getSize
- integer(pInt), intent(in), optional              :: fileUnit
- integer(pInt), allocatable, dimension(:)         :: chunkPos
- integer(pInt)                                    :: headerLength = 0_pInt
- character(len=1024) :: line, &
-                        keyword
- integer(pInt) :: i, j, myFileUnit
- logical :: gotSize = .false.
-
- mesh_spectral_getSize = -1.0_pReal
- if(.not. present(fileUnit)) then
-   myFileUnit = 289_pInt
-   call IO_open_file(myFileUnit,trim(geometryFile))
- else
-   myFileUnit = fileUnit
- endif
-
- call IO_checkAndRewind(myFileUnit)
-
- read(myFileUnit,'(a1024)') line
- chunkPos = IO_stringPos(line)
- keyword = IO_lc(IO_StringValue(line,chunkPos,2_pInt,.true.))
- if (keyword(1:4) == 'head') then
-   headerLength = IO_intValue(line,chunkPos,1_pInt) + 1_pInt
- else
-   call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_getSize')
- endif
- rewind(myFileUnit)
- do i = 1_pInt, headerLength
-   read(myFileUnit,'(a1024)') line
-   chunkPos = IO_stringPos(line)
-   select case ( IO_lc(IO_StringValue(line,chunkPos,1,.true.)) )
-     case ('size')
-       gotSize = .true.
-       do j = 2_pInt,6_pInt,2_pInt
-         select case (IO_lc(IO_stringValue(line,chunkPos,j)))
-           case('x')
-              mesh_spectral_getSize(1) = IO_floatValue(line,chunkPos,j+1_pInt)
-           case('y')
-              mesh_spectral_getSize(2) = IO_floatValue(line,chunkPos,j+1_pInt)
-           case('z')
-              mesh_spectral_getSize(3) = IO_floatValue(line,chunkPos,j+1_pInt)
-         end select
-       enddo
-   end select
- enddo
-
- if(.not. present(fileUnit)) close(myFileUnit)
-
- if (.not. gotSize) &
-   call IO_error(error_ID = 845_pInt, ext_msg='size')
- if (any(mesh_spectral_getSize<=0.0_pReal)) &
-   call IO_error(error_ID = 844_pInt, ext_msg='mesh_spectral_getSize')
-
-end function mesh_spectral_getSize
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Reads homogenization information from geometry file. If fileUnit is given,
-!! assumes an opened file, otherwise tries to open the one specified in geometryFile
-!--------------------------------------------------------------------------------------------------
-integer(pInt) function mesh_spectral_getHomogenization(fileUnit)
- use IO, only: &
-   IO_checkAndRewind, &
-   IO_open_file, &
-   IO_stringPos, &
-   IO_lc, &
-   IO_stringValue, &
-   IO_intValue, &
-   IO_error
- use DAMASK_interface, only: &
-   geometryFile
-
- implicit none
- integer(pInt), intent(in), optional              :: fileUnit
  integer(pInt), allocatable, dimension(:)         :: chunkPos
  integer(pInt)                                    :: headerLength = 0_pInt
  character(len=1024) :: line, &
@@ -862,13 +869,10 @@ integer(pInt) function mesh_spectral_getHomogenization(fileUnit)
  integer(pInt) :: i, myFileUnit
  logical :: gotHomogenization = .false.
 
- mesh_spectral_getHomogenization = -1_pInt
- if(.not. present(fileUnit)) then
+
    myFileUnit = 289_pInt
    call IO_open_file(myFileUnit,trim(geometryFile))
- else
-   myFileUnit = fileUnit
- endif
+
 
  call IO_checkAndRewind(myFileUnit)
 
@@ -891,7 +895,7 @@ integer(pInt) function mesh_spectral_getHomogenization(fileUnit)
    end select
  enddo
 
- if(.not. present(fileUnit)) close(myFileUnit)
+ close(myFileUnit)
 
  if (.not. gotHomogenization ) &
    call IO_error(error_ID = 845_pInt, ext_msg='homogenization')
@@ -935,85 +939,21 @@ end subroutine mesh_spectral_build_nodes
 !! Allocates global array 'mesh_element'
 !> @todo does the IO_error makes sense?
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_build_elements(fileUnit)
+subroutine mesh_spectral_build_elements()
  use IO, only: &
-   IO_checkAndRewind, &
-   IO_lc, &
-   IO_stringValue, &
-   IO_stringPos, &
-   IO_error, &
-   IO_continuousIntValues, &
-   IO_intValue, &
-   IO_countContinuousIntValues
-
+   IO_error
  implicit none
- integer(pInt), intent(in) :: &
-   fileUnit
- integer(pInt), allocatable, dimension(:)         :: chunkPos
  integer(pInt) :: &
    e, i, &
-   headerLength = 0_pInt, &
-   maxDataPerLine, &
+
    homog, &
    elemOffset
- integer(pInt),     dimension(:), allocatable :: &
-   microstructures, &
-   microGlobal
- integer(pInt),     dimension(1,1) :: &
-   dummySet = 0_pInt
- character(len=65536) :: &
-   line, &
-   keyword
- character(len=64), dimension(1) :: &
-   dummyName = ''
 
- homog = mesh_spectral_getHomogenization(fileUnit)
 
-!--------------------------------------------------------------------------------------------------
-! get header length
- call IO_checkAndRewind(fileUnit)
- read(fileUnit,'(a65536)') line
- chunkPos = IO_stringPos(line)
- keyword = IO_lc(IO_StringValue(line,chunkPos,2_pInt,.true.))
- if (keyword(1:4) == 'head') then
-   headerLength = IO_intValue(line,chunkPos,1_pInt) + 1_pInt
- else
-   call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_build_elements')
- endif
+ homog = mesh_spectral_getHomogenization()
 
-!--------------------------------------------------------------------------------------------------
-! get maximum microstructure index
- call IO_checkAndRewind(fileUnit)
- do i = 1_pInt, headerLength
-   read(fileUnit,'(a65536)') line
- enddo
 
- maxDataPerLine = 0_pInt
- i = 1_pInt
-
- do while (i > 0_pInt)
-   i = IO_countContinuousIntValues(fileUnit)
-   maxDataPerLine = max(maxDataPerLine, i)                                                          ! found a longer line?
- enddo
  allocate(mesh_element    (4_pInt+8_pInt,mesh_NcpElems), source = 0_pInt)
- allocate(microstructures (1_pInt+maxDataPerLine),  source = 1_pInt)                                ! prepare to receive counter and max data size
- allocate(microGlobal     (mesh_NcpElemsGlobal), source = 1_pInt)
-
-!--------------------------------------------------------------------------------------------------
-! read in microstructures
- call IO_checkAndRewind(fileUnit)
- do i=1_pInt,headerLength
-   read(fileUnit,'(a65536)') line
- enddo
-
- e = 0_pInt
- do while (e < mesh_NcpElemsGlobal .and. microstructures(1) > 0_pInt)                               ! fill expected number of elements, stop at end of data (or blank line!)
-   microstructures = IO_continuousIntValues(fileUnit,maxDataPerLine,dummyName,dummySet,0_pInt)      ! get affected elements
-   do i = 1_pInt,microstructures(1_pInt)
-     e = e+1_pInt                                                                                   ! valid element entry
-     microGlobal(e) = microstructures(1_pInt+i)
-   enddo
- enddo
 
 
  elemOffset = product(grid(1:2))*grid3Offset
