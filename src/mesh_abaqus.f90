@@ -878,16 +878,17 @@ subroutine mesh_abaqus_count_nodesAndElements(fileUnit)
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) :: line
+ integer :: myStat
  logical :: inPart
 
  mesh_Nnodes = 0_pInt
  mesh_Nelems = 0_pInt
-
-
+ 
  inPart = .false.
+ myStat = 0
  rewind(fileUnit)
- do
-   read (fileUnit,'(a300)',END=620) line
+ do while(myStat == 0)
+   read (fileUnit,'(a300)',iostat=myStat) line
    chunkPos = IO_stringPos(line)
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
@@ -915,7 +916,7 @@ subroutine mesh_abaqus_count_nodesAndElements(fileUnit)
    endif
  enddo
 
-620 if (mesh_Nnodes < 2_pInt)  call IO_error(error_ID=900_pInt)
+ if (mesh_Nnodes < 2_pInt)  call IO_error(error_ID=900_pInt)
  if (mesh_Nelems == 0_pInt) call IO_error(error_ID=901_pInt)
 
 end subroutine mesh_abaqus_count_nodesAndElements
@@ -937,15 +938,17 @@ subroutine mesh_abaqus_count_elementSets(fileUnit)
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) :: line
+ integer :: myStat
  logical :: inPart
 
  mesh_NelemSets     = 0_pInt
  mesh_maxNelemInSet = mesh_Nelems                                                                   ! have to be conservative, since Abaqus allows for recursive definitons
 
  inPart = .false.
+ myStat = 0
  rewind(fileUnit)
- do
-   read (fileUnit,'(a300)',END=620) line
+ do while(myStat == 0)
+   read (fileUnit,'(a300)',iostat=myStat) line
    chunkPos = IO_stringPos(line)
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
@@ -955,7 +958,6 @@ subroutine mesh_abaqus_count_elementSets(fileUnit)
      mesh_NelemSets = mesh_NelemSets + 1_pInt
  enddo
 
-620 continue
  if (mesh_NelemSets == 0) call IO_error(error_ID=902_pInt)
 
 end subroutine mesh_abaqus_count_elementSets
@@ -978,14 +980,16 @@ subroutine mesh_abaqus_count_materials(fileUnit)
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) :: line
- logical inPart
+ integer :: myStat
+ logical :: inPart
 
  mesh_Nmaterials = 0_pInt
 
  inPart = .false.
+ myStat = 0
  rewind(fileUnit)
- do
-   read (fileUnit,'(a300)',END=620) line
+ do while(myStat == 0)
+   read (fileUnit,'(a300)',iostat=myStat) line
    chunkPos = IO_stringPos(line)
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
@@ -997,7 +1001,7 @@ subroutine mesh_abaqus_count_materials(fileUnit)
      mesh_Nmaterials = mesh_Nmaterials + 1_pInt
  enddo
 
-620 if (mesh_Nmaterials == 0_pInt) call IO_error(error_ID=903_pInt)
+ if (mesh_Nmaterials == 0_pInt) call IO_error(error_ID=903_pInt)
 
 end subroutine mesh_abaqus_count_materials
 
@@ -1021,16 +1025,20 @@ subroutine mesh_abaqus_map_elementSets(fileUnit)
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) :: line
- integer(pInt) :: elemSet = 0_pInt,i
- logical :: inPart = .false.
+ integer :: myStat
+ logical :: inPart
+ integer(pInt) :: elemSet,i
 
  allocate (mesh_nameElemSet(mesh_NelemSets)); mesh_nameElemSet = ''
  allocate (mesh_mapElemSet(1_pInt+mesh_maxNelemInSet,mesh_NelemSets),source=0_pInt)
 
 
+ elemSet = 0_pInt
+ inPart = .false.
+ myStat = 0
  rewind(fileUnit)
- do
-   read (fileUnit,'(a300)',END=640) line
+ do while(myStat == 0)
+   read (fileUnit,'(a300)',iostat=myStat) line
    chunkPos = IO_stringPos(line)
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
@@ -1044,7 +1052,7 @@ subroutine mesh_abaqus_map_elementSets(fileUnit)
    endif
  enddo
 
-640 do i = 1_pInt,elemSet
+ do i = 1_pInt,elemSet
    if (mesh_mapElemSet(1,i) == 0_pInt) call IO_error(error_ID=904_pInt,ext_msg=mesh_nameElemSet(i))
  enddo
 
@@ -1068,19 +1076,21 @@ subroutine mesh_abaqus_map_materials(fileUnit)
  integer(pInt), intent(in) :: fileUnit
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=300) line
-
- integer(pInt) :: i,c = 0_pInt
- logical :: inPart = .false.
+ character(len=300) :: line
+ integer :: myStat
+ logical :: inPart
+ integer(pInt) :: i,c
  character(len=64) :: elemSetName,materialName
 
  allocate (mesh_nameMaterial(mesh_Nmaterials)); mesh_nameMaterial = ''
  allocate (mesh_mapMaterial(mesh_Nmaterials));  mesh_mapMaterial = ''
 
-
+ c = 0_pInt
+ inPart = .false.
+ myStat = 0
  rewind(fileUnit)
- do
-   read (fileUnit,'(a300)',END=620) line
+ do while(myStat == 0)
+   read (fileUnit,'(a300)',iostat=myStat) line
    chunkPos = IO_stringPos(line)
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
@@ -1108,7 +1118,7 @@ subroutine mesh_abaqus_map_materials(fileUnit)
    endif
  enddo
 
-620 if (c==0_pInt) call IO_error(error_ID=905_pInt)
+ if (c==0_pInt) call IO_error(error_ID=905_pInt)
  do i=1_pInt,c
    if (mesh_nameMaterial(i)=='' .or. mesh_mapMaterial(i)=='') call IO_error(error_ID=905_pInt)
  enddo
@@ -1131,17 +1141,18 @@ subroutine mesh_abaqus_count_cpElements(fileUnit)
  integer(pInt), intent(in) :: fileUnit
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=300) line
+ character(len=300) :: line
+ integer :: myStat
+ logical :: materialFound
  integer(pInt) :: i,k
- logical :: materialFound = .false.
  character(len=64) ::materialName,elemSetName
 
  mesh_NcpElems = 0_pInt
-
-
+ materialFound = .false.
+ myStat = 0
  rewind(fileUnit)
- do
-   read (fileUnit,'(a300)',END=620) line
+ do while(myStat == 0)
+   read (fileUnit,'(a300)',iostat=myStat) line
    chunkPos = IO_stringPos(line)
    select case ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) )
      case('*material')
@@ -1163,7 +1174,7 @@ subroutine mesh_abaqus_count_cpElements(fileUnit)
    endselect
  enddo
 
-620 if (mesh_NcpElems == 0_pInt) call IO_error(error_ID=906_pInt)
+ if (mesh_NcpElems == 0_pInt) call IO_error(error_ID=906_pInt)
 
 end subroutine mesh_abaqus_count_cpElements
 
@@ -1186,16 +1197,19 @@ subroutine mesh_abaqus_map_elements(fileUnit)
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) :: line
- integer(pInt) ::i,j,k,cpElem = 0_pInt
- logical :: materialFound = .false.
+ integer :: myStat
+ logical :: materialFound
+ integer(pInt) ::i,j,k,cpElem
  character (len=64) materialName,elemSetName                                                        ! why limited to 64? ABAQUS?
 
  allocate (mesh_mapFEtoCPelem(2,mesh_NcpElems), source = 0_pInt)
 
-
+ cpElem = 0_pInt
+ materialFound = .false.
+ myStat = 0
  rewind(fileUnit)
- do
-   read (fileUnit,'(a300)',END=660) line
+ do while(myStat == 0)
+   read (fileUnit,'(a300)',iostat=myStat) line
    chunkPos = IO_stringPos(line)
    select case ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) )
      case('*material')
@@ -1222,7 +1236,7 @@ subroutine mesh_abaqus_map_elements(fileUnit)
    endselect
  enddo
 
-660 call math_qsort(mesh_mapFEtoCPelem,1_pInt,int(size(mesh_mapFEtoCPelem,2_pInt),pInt))            ! should be mesh_NcpElems
+ call math_qsort(mesh_mapFEtoCPelem,1_pInt,int(size(mesh_mapFEtoCPelem,2_pInt),pInt))               ! should be mesh_NcpElems
 
  if (int(size(mesh_mapFEtoCPelem),pInt) < 2_pInt) call IO_error(error_ID=907_pInt)
 
@@ -1247,16 +1261,19 @@ subroutine mesh_abaqus_map_nodes(fileUnit)
  integer(pInt), intent(in) :: fileUnit
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=300) line
-
- integer(pInt) :: i,c,cpNode = 0_pInt
- logical :: inPart = .false.
+ character(len=300) :: line
+ integer :: myStat
+ logical :: inPart
+ integer(pInt) :: i,c,cpNode
 
  allocate (mesh_mapFEtoCPnode(2_pInt,mesh_Nnodes), source=0_pInt)
-
+ 
+ cpNode = 0_pInt
+ inPart = .false. 
+ myStat = 0
  rewind(fileUnit)
- do
-   read (fileUnit,'(a300)',END=650) line
+ do while(myStat == 0)
+   read (fileUnit,'(a300)',iostat=myStat) line
    chunkPos = IO_stringPos(line)
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
@@ -1283,7 +1300,7 @@ subroutine mesh_abaqus_map_nodes(fileUnit)
    endif
  enddo
 
-650 call math_qsort(mesh_mapFEtoCPnode,1_pInt,int(size(mesh_mapFEtoCPnode,2_pInt),pInt))
+ call math_qsort(mesh_mapFEtoCPnode,1_pInt,int(size(mesh_mapFEtoCPnode,2_pInt),pInt))
 
  if (int(size(mesh_mapFEtoCPnode),pInt) == 0_pInt) call IO_error(error_ID=908_pInt)
 
@@ -1309,16 +1326,18 @@ subroutine mesh_abaqus_build_nodes(fileUnit)
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) :: line
- integer(pInt) :: i,j,m,c
+ integer :: myStat
  logical :: inPart
+ integer(pInt) :: i,j,m,c
 
  allocate ( mesh_node0 (3,mesh_Nnodes), source=0.0_pReal)
  allocate ( mesh_node  (3,mesh_Nnodes), source=0.0_pReal)
 
  inPart = .false.
+ myStat = 0
  rewind(fileUnit)
- do
-   read (fileUnit,'(a300)',END=670) line
+ do while(myStat == 0)
+   read (fileUnit,'(a300)',iostat=myStat) line
    chunkPos = IO_stringPos(line)
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
@@ -1346,7 +1365,7 @@ subroutine mesh_abaqus_build_nodes(fileUnit)
    endif
  enddo
 
-670 if (int(size(mesh_node0,2_pInt),pInt) /= mesh_Nnodes) call IO_error(error_ID=909_pInt)
+ if (int(size(mesh_node0,2_pInt),pInt) /= mesh_Nnodes) call IO_error(error_ID=909_pInt)
  mesh_node = mesh_node0
 
 end subroutine mesh_abaqus_build_nodes
@@ -1372,8 +1391,9 @@ subroutine mesh_abaqus_count_cpSizes(fileUnit)
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) :: line
- integer(pInt) :: i,c,t,g
+ integer :: myStat
  logical :: inPart
+ integer(pInt) :: i,c,t,g
 
  mesh_maxNnodes       = 0_pInt
  mesh_maxNips         = 0_pInt
@@ -1382,9 +1402,10 @@ subroutine mesh_abaqus_count_cpSizes(fileUnit)
 
 
  inPart = .false.
+ myStat = 0
  rewind(fileUnit)
- do
-   read (fileUnit,'(a300)',END=620) line
+ do while(myStat == 0)
+   read (fileUnit,'(a300)',iostat=myStat) line
    chunkPos = IO_stringPos(line)
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
@@ -1406,7 +1427,7 @@ subroutine mesh_abaqus_count_cpSizes(fileUnit)
    endif
  enddo
 
-620 end subroutine mesh_abaqus_count_cpSizes
+end subroutine mesh_abaqus_count_cpSizes
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1428,19 +1449,21 @@ subroutine mesh_abaqus_build_elements(fileUnit)
  integer(pInt), intent(in) :: fileUnit
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
-
+ character(len=300) :: line
+ integer :: myStat
+ logical :: inPart
  integer(pInt) :: i,j,k,c,e,t,homog,micro, nNodesAlreadyRead
  logical inPart,materialFound
  character (len=64) :: materialName,elemSetName
- character(len=300) :: line
 
  allocate(mesh_element (4_pInt+mesh_maxNnodes,mesh_NcpElems), source=0_pInt)
  mesh_elemType = -1_pInt
 
  inPart = .false.
+ myStat = 0
  rewind(fileUnit)
- do
-   read (fileUnit,'(a300)',END=620) line
+ do while(myStat == 0)
+   read (fileUnit,'(a300)',iostat=myStat) line
    chunkPos = IO_stringPos(line)
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
@@ -1487,11 +1510,13 @@ subroutine mesh_abaqus_build_elements(fileUnit)
  enddo
 
 
-620 rewind(fileUnit)                                                                                 ! just in case "*material" definitions apear before "*element"
+ rewind(fileUnit)                                                                                 ! just in case "*material" definitions apear before "*element"
 
  materialFound = .false.
- do
-   read (fileUnit,'(a300)',END=630) line
+ myStat = 0
+ rewind(fileUnit)
+ do while(myStat == 0)
+   read (fileUnit,'(a300)',iostat=myStat) line
    chunkPos = IO_stringPos(line)
    select case ( IO_lc(IO_StringValue(line,chunkPos,1_pInt)))
      case('*material')
@@ -1525,7 +1550,7 @@ subroutine mesh_abaqus_build_elements(fileUnit)
    endselect
  enddo
 
-630 end subroutine mesh_abaqus_build_elements
+end subroutine mesh_abaqus_build_elements
 
 
 
@@ -1543,17 +1568,18 @@ use IO, only: &
  integer(pInt), intent(in) :: fileUnit
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
+ character(len=300) :: line
+ integer :: myStat
+ logical :: inPart
  integer(pInt) chunk, Nchunks
- character(len=300) :: line, damaskOption, v
- character(len=300) :: keyword
+ character(len=300) :: damaskOption, v
+ character(len=*), parameter :: keyword = '**damask'
 
  mesh_periodicSurface = .false.
- keyword = '**damask'
-
-
+ myStat = 0
  rewind(fileUnit)
- do
-   read (fileUnit,610,END=620) line
+ do while(myStat == 0)
+   read (fileUnit,'(a300)',iostat=myStat) line
    chunkPos = IO_stringPos(line)
    Nchunks = chunkPos(1)
    if (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == keyword .and. Nchunks > 1_pInt) then             ! found keyword for damask option and there is at least one more chunk to read
@@ -1570,9 +1596,7 @@ use IO, only: &
    endif
  enddo
 
-610 FORMAT(A300)
-
-620 end subroutine mesh_get_damaskOptions
+end subroutine mesh_get_damaskOptions
 
 
 
