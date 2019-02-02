@@ -426,7 +426,7 @@ end subroutine crystallite_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate stress (P)
 !--------------------------------------------------------------------------------------------------
-function crystallite_stress()
+function crystallite_stress(a)
  use prec, only: &
    tol_math_check, &
    dNeq0
@@ -469,6 +469,7 @@ function crystallite_stress()
 
  implicit none
  logical, dimension(theMesh%elem%nIPs,theMesh%Nelems) :: crystallite_stress
+ real(pReal), intent(in), optional :: a                                                             !ToDo: for some reason this prevents an internal compiler error in GNU. Very strange
  real(pReal) :: &
    formerSubStep
  integer(pInt) :: &
