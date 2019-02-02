@@ -863,11 +863,10 @@ subroutine mesh_marc_get_fileFormat(fileUnit)
  integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) line
 
-610 FORMAT(A300)
 
  rewind(fileUnit)
  do
-   read (fileUnit,610,END=620) line
+   read (fileUnit,'(A300)',END=620) line
    chunkPos = IO_stringPos(line)
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'version') then
      MarcVersion = IO_intValue(line,chunkPos,2_pInt)
@@ -898,11 +897,10 @@ subroutine mesh_marc_get_tableStyles(fileUnit)
  initialcondTableStyle = 0_pInt
  hypoelasticTableStyle = 0_pInt
 
-610 FORMAT(A300)
 
  rewind(fileUnit)
  do
-   read (fileUnit,610,END=620) line
+   read (fileUnit,'(A300)',END=620) line
    chunkPos = IO_stringPos(line)
 
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'table' .and. chunkPos(1_pInt) > 5) then
@@ -931,13 +929,12 @@ subroutine mesh_marc_get_matNumber(fileUnit)
  integer(pInt) :: i, j, data_blocks
  character(len=300) line
 
-610 FORMAT(A300)
 
  rewind(fileUnit)
 
  data_blocks = 1_pInt
  do
-  read (fileUnit,610,END=620) line
+  read (fileUnit,'(A300)',END=620) line
   chunkPos = IO_stringPos(line)
   if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'hypoelastic') then
     read (fileUnit,610,END=620) line
@@ -981,11 +978,10 @@ subroutine mesh_marc_count_nodesAndElements(fileUnit)
  mesh_Nnodes = 0_pInt
  mesh_Nelems = 0_pInt
 
-610 FORMAT(A300)
 
  rewind(fileUnit)
  do
-   read (fileUnit,610,END=620) line
+   read (fileUnit,'(A300)',END=620) line
    chunkPos = IO_stringPos(line)
 
    if ( IO_lc(IO_StringValue(line,chunkPos,1_pInt)) == 'sizing') &
@@ -1021,11 +1017,10 @@ subroutine mesh_marc_count_nodesAndElements(fileUnit)
  mesh_NelemSets     = 0_pInt
  mesh_maxNelemInSet = 0_pInt
 
-610 FORMAT(A300)
 
  rewind(fileUnit)
  do
-   read (fileUnit,610,END=620) line
+   read (fileUnit,'(A300)',END=620) line
    chunkPos = IO_stringPos(line)
 
    if ( IO_lc(IO_StringValue(line,chunkPos,1_pInt)) == 'define' .and. &
@@ -1061,11 +1056,10 @@ subroutine mesh_marc_map_elementSets(fileUnit)
  allocate (mesh_nameElemSet(mesh_NelemSets)); mesh_nameElemSet = ''
  allocate (mesh_mapElemSet(1_pInt+mesh_maxNelemInSet,mesh_NelemSets), source=0_pInt)
 
-610 FORMAT(A300)
 
  rewind(fileUnit)
  do
-   read (fileUnit,610,END=640) line
+   read (fileUnit,'(A300)',END=640) line
    chunkPos = IO_stringPos(line)
    if( (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'define' ) .and. &
        (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'element' ) ) then
@@ -1101,16 +1095,15 @@ subroutine mesh_marc_count_cpElements(fileUnit)
 
  mesh_NcpElems = 0_pInt
 
-610 FORMAT(A300)
 
  rewind(fileUnit)
  if (MarcVersion < 13) then                                                                             ! Marc 2016 or earlier
    do
-     read (fileUnit,610,END=620) line
+     read (fileUnit,'(A300)',END=620) line
      chunkPos = IO_stringPos(line)
      if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'hypoelastic') then
        do i=1_pInt,3_pInt+hypoelasticTableStyle  ! Skip 3 or 4 lines
-         read (fileUnit,610,END=620) line
+         read (fileUnit,'(A300)',END=620) line
        enddo
        mesh_NcpElems = mesh_NcpElems + IO_countContinuousIntValues(fileUnit)                            ! why not simply mesh_NcpElems = IO_countContinuousIntValues(fileUnit)? not fully correct as hypoelastic can have multiple data fields, needs update
        exit
@@ -1118,10 +1111,10 @@ subroutine mesh_marc_count_cpElements(fileUnit)
    enddo
  else                                                                                                   ! Marc2017 and later
    do
-     read (fileUnit,610,END=620) line
+     read (fileUnit,'(A300)',END=620) line
      chunkPos = IO_stringPos(line)
      if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'connectivity') then
-       read (fileUnit,610,END=620) line
+       read (fileUnit,'(A300)',END=620) line
        chunkPos = IO_stringPos(line)
        if (any(Marc_matNumber==IO_intValue(line,chunkPos,6_pInt))) then
          mesh_NcpElems = mesh_NcpElems + IO_countNumericalDataLines(fileUnit)
@@ -1158,12 +1151,11 @@ subroutine mesh_marc_map_elements(fileUnit)
 
  allocate (mesh_mapFEtoCPelem(2,mesh_NcpElems), source = 0_pInt)
 
-610 FORMAT(A300)
 
  contInts = 0_pInt
  rewind(fileUnit)
  do
-   read (fileUnit,610,END=660) line
+   read (fileUnit,'(A300)',END=660) line
    chunkPos = IO_stringPos(line)
    if (MarcVersion < 13) then                                                                             ! Marc 2016 or earlier
      if( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'hypoelastic' ) then
@@ -1176,11 +1168,11 @@ subroutine mesh_marc_map_elements(fileUnit)
      endif  
    else                                                                                                   ! Marc2017 and later
      if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'connectivity') then
-       read (fileUnit,610,END=660) line
+       read (fileUnit,'(A300)',END=660) line
        chunkPos = IO_stringPos(line)
        if(any(Marc_matNumber==IO_intValue(line,chunkPos,6_pInt))) then
          do 
-           read (fileUnit,610,END=660) line
+           read (fileUnit,'(A300)',END=660) line
            chunkPos = IO_stringPos(line)
            tmp = IO_lc(IO_stringValue(line,chunkPos,1_pInt))
            if (verify(trim(tmp),"0123456789")/=0) then                                                          ! found keyword
@@ -1228,18 +1220,17 @@ subroutine mesh_marc_map_nodes(fileUnit)
 
  allocate (mesh_mapFEtoCPnode(2_pInt,mesh_Nnodes),source=0_pInt)
 
-610 FORMAT(A300)
 
  node_count = 0_pInt
 
  rewind(fileUnit)
  do
-   read (fileUnit,610,END=650) line
+   read (fileUnit,'(A300)',END=650) line
    chunkPos = IO_stringPos(line)
    if( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'coordinates' ) then
-     read (fileUnit,610,END=650) line                                                               ! skip crap line
+     read (fileUnit,'(A300)',END=650) line                                                               ! skip crap line
      do i = 1_pInt,mesh_Nnodes
-       read (fileUnit,610,END=650) line
+       read (fileUnit,'(A300)',END=650) line
        mesh_mapFEtoCPnode(1_pInt,i) = IO_fixedIntValue (line,[ 0_pInt,10_pInt],1_pInt)
        mesh_mapFEtoCPnode(2_pInt,i) = i
      enddo
@@ -1276,16 +1267,15 @@ subroutine mesh_marc_build_nodes(fileUnit)
  allocate ( mesh_node0 (3,mesh_Nnodes), source=0.0_pReal)
  allocate ( mesh_node  (3,mesh_Nnodes), source=0.0_pReal)
 
-610 FORMAT(A300)
 
  rewind(fileUnit)
  do
-   read (fileUnit,610,END=670) line
+   read (fileUnit,'(A300)',END=670) line
    chunkPos = IO_stringPos(line)
    if( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'coordinates' ) then
-     read (fileUnit,610,END=670) line                                                               ! skip crap line
+     read (fileUnit,'(A300)',END=670) line                                                               ! skip crap line
      do i=1_pInt,mesh_Nnodes
-       read (fileUnit,610,END=670) line
+       read (fileUnit,'(A300)',END=670) line
        m = mesh_FEasCP('node',IO_fixedIntValue(line,node_ends,1_pInt))
        do j = 1_pInt,3_pInt
          mesh_node0(j,m) = mesh_unitlength * IO_fixedNoEFloatValue(line,node_ends,j+1_pInt)
@@ -1325,15 +1315,15 @@ subroutine mesh_marc_count_cpSizes(fileUnit)
  mesh_maxNipNeighbors = 0_pInt
  mesh_maxNcellnodes   = 0_pInt
 
-610 FORMAT(A300)
+
  rewind(fileUnit)
  do
-   read (fileUnit,610,END=630) line
+   read (fileUnit,'(A300)',END=630) line
    chunkPos = IO_stringPos(line)
    if( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'connectivity' ) then
-     read (fileUnit,610,END=630) line                                                               ! Garbage line
+     read (fileUnit,'(A300)',END=630) line                                                               ! Garbage line
      do i=1_pInt,mesh_Nelems                                                                        ! read all elements
-       read (fileUnit,610,END=630) line
+       read (fileUnit,'(A300)',END=630) line
        chunkPos = IO_stringPos(line)                                                                ! limit to id and type
        e = mesh_FEasCP('elem',IO_intValue(line,chunkPos,1_pInt))
        if (e /= 0_pInt) then
@@ -1381,16 +1371,15 @@ subroutine mesh_marc_build_elements(fileUnit)
  allocate(mesh_element(4_pInt+mesh_maxNnodes,mesh_NcpElems), source=0_pInt)
  mesh_elemType = -1_pInt
 
-610 FORMAT(A300)
 
  rewind(fileUnit)
  do
-   read (fileUnit,610,END=620) line
+   read (fileUnit,'(A300)',END=620) line
    chunkPos = IO_stringPos(line)
    if( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'connectivity' ) then
-     read (fileUnit,610,END=620) line                                                               ! garbage line
+     read (fileUnit,'(A300)',END=620) line                                                               ! garbage line
      do i = 1_pInt,mesh_Nelems
-       read (fileUnit,610,END=620) line
+       read (fileUnit,'(A300)',END=620) line
        chunkPos = IO_stringPos(line)
        e = mesh_FEasCP('elem',IO_intValue(line,chunkPos,1_pInt))
        if (e /= 0_pInt) then                                                                        ! disregard non CP elems
@@ -1406,7 +1395,7 @@ subroutine mesh_marc_build_elements(fileUnit)
          enddo
          nNodesAlreadyRead = chunkPos(1) - 2_pInt
          do while(nNodesAlreadyRead < FE_Nnodes(t))                                                 ! read on if not all nodes in one line
-           read (fileUnit,610,END=620) line
+           read (fileUnit,'(A300)',END=620) line
            chunkPos = IO_stringPos(line)
            do j = 1_pInt,chunkPos(1)
              mesh_element(4_pInt+nNodesAlreadyRead+j,e) &
@@ -1421,23 +1410,23 @@ subroutine mesh_marc_build_elements(fileUnit)
  enddo
 
 620 rewind(fileUnit)                                                                                ! just in case "initial state" appears before "connectivity"
- read (fileUnit,610,END=620) line
+ read (fileUnit,'(A300)',END=620) line
  do
    chunkPos = IO_stringPos(line)
    if( (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'initial') .and. &
        (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'state') ) then
      if (initialcondTableStyle == 2_pInt) read (fileUnit,610,END=620) line                          ! read extra line for new style
-     read (fileUnit,610,END=630) line                                                               ! read line with index of state var
+     read (fileUnit,'(A300)',END=630) line                                                               ! read line with index of state var
      chunkPos = IO_stringPos(line)
      sv = IO_IntValue(line,chunkPos,1_pInt)                                                            ! figure state variable index
      if( (sv == 2_pInt).or.(sv == 3_pInt) ) then                                                    ! only state vars 2 and 3 of interest
-       read (fileUnit,610,END=620) line                                                             ! read line with value of state var
+       read (fileUnit,'(A300)',END=620) line                                                             ! read line with value of state var
        chunkPos = IO_stringPos(line)
        do while (scan(IO_stringValue(line,chunkPos,1_pInt),'+-',back=.true.)>1)                        ! is noEfloat value?
          myVal = nint(IO_fixedNoEFloatValue(line,[0_pInt,20_pInt],1_pInt),pInt)                     ! state var's value
          if (initialcondTableStyle == 2_pInt) then
-           read (fileUnit,610,END=630) line                                                         ! read extra line
-           read (fileUnit,610,END=630) line                                                         ! read extra line
+           read (fileUnit,'(A300)',END=630) line                                                         ! read extra line
+           read (fileUnit,'(A300)',END=630) line                                                         ! read extra line
          endif
          contInts = IO_continuousIntValues&                                                         ! get affected elements
                    (fileUnit,mesh_NcpElems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
@@ -1446,12 +1435,12 @@ subroutine mesh_marc_build_elements(fileUnit)
            mesh_element(1_pInt+sv,e) = myVal
          enddo
          if (initialcondTableStyle == 0_pInt) read (fileUnit,610,END=620) line                      ! ignore IP range for old table style
-         read (fileUnit,610,END=630) line
+         read (fileUnit,'(A300)',END=630) line
          chunkPos = IO_stringPos(line)
        enddo
      endif
    else
-     read (fileUnit,610,END=630) line
+     read (fileUnit,'(A300)',END=630) line
    endif
  enddo
 
@@ -1482,7 +1471,7 @@ use IO, only: &
 
  rewind(fileUnit)
  do
-   read (fileUnit,610,END=620) line
+   read (fileUnit,'(A300)',END=620) line
    chunkPos = IO_stringPos(line)
    Nchunks = chunkPos(1)
    if (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == keyword .and. Nchunks > 1_pInt) then          ! found keyword for damask option and there is at least one more chunk to read
@@ -1499,7 +1488,6 @@ use IO, only: &
    endif
  enddo
 
-610 FORMAT(A300)
 
 620 end subroutine mesh_get_damaskOptions
 
