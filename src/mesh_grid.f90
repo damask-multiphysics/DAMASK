@@ -124,7 +124,6 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_build_cellconnectivity, &
    mesh_build_ipAreas, &
    mesh_build_FEdata, &
-   mesh_spectral_getHomogenization, &
    mesh_spectral_build_nodes, &
    mesh_spectral_build_elements, &
    mesh_spectral_build_ipNeighborhood, &
@@ -243,13 +242,11 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
 
  call theMesh%init(mesh_node)
-
- ! For compatibility
+ call theMesh%setNelems(product(grid(1:2))*grid3)
+ mesh_homogenizationAt = mesh_homogenizationAt(product(grid(1:2))*grid3)                            ! reallocate/shrink in case of MPI
  mesh_maxNipNeighbors = theMesh%elem%nIPneighbors
-call theMesh%setNelems(product(grid(1:2))*grid3)
  
  call mesh_spectral_build_elements()
-
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
  
  
@@ -283,7 +280,6 @@ call theMesh%setNelems(product(grid(1:2))*grid3)
 ! for a homogeneous mesh, all elements have the same number of IPs and and cell nodes.
 ! hence, xxPerElem instead of maxXX
 ! better name
- mesh_homogenizationAt  = mesh_element(3,:)
  mesh_microstructureAt  = mesh_element(4,:)
 !!!!!!!!!!!!!!!!!!!!!!!!
  deallocate(mesh_cell)
@@ -407,6 +403,7 @@ subroutine mesh_spectral_read_grid()
     call IO_error(error_ID = 842_pInt, ext_msg='size (mesh_spectral_read_grid)')
 
   allocate(microGlobal(product(grid)), source = -1_pInt)
+  allocate(mesh_homogenizationAt(product(grid)), source = h)                                        ! too large in case of MPI (shrink later, not very elegant)
      
 !--------------------------------------------------------------------------------------------------
 ! read and interprete content
@@ -419,10 +416,10 @@ subroutine mesh_spectral_read_grid()
     l = l + 1_pInt
     chunkPos = IO_stringPos(trim(line))
     
-    possibleCompression: if (chunkPos(1) /= 3) then
+    noCompression: if (chunkPos(1) /= 3) then
       c = chunkPos(1)
       microGlobal(e:e+c-1_pInt) =  [(IO_intValue(line,chunkPos,i+1_pInt), i=0_pInt, c-1_pInt)]
-    else possibleCompression
+    else noCompression
       compression: if (IO_lc(IO_stringValue(line,chunkPos,2))  == 'of') then
         c = IO_intValue(line,chunkPos,1)
         microGlobal(e:e+c-1_pInt) = [(IO_intValue(line,chunkPos,3),i = 1_pInt,IO_intValue(line,chunkPos,1))]
@@ -434,7 +431,7 @@ subroutine mesh_spectral_read_grid()
         c = chunkPos(1)
         microGlobal(e:e+c-1_pInt) =  [(IO_intValue(line,chunkPos,i+1_pInt), i=0_pInt, c-1_pInt)]
       endif compression
-    endif possibleCompression
+    endif noCompression
 
     e = e+c
   end do
@@ -442,64 +439,6 @@ subroutine mesh_spectral_read_grid()
   if (e-1 /= product(grid)) call IO_error(error_ID = 843_pInt, el=e)
 
 end subroutine mesh_spectral_read_grid
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Reads homogenization information from geometry file.
-!--------------------------------------------------------------------------------------------------
-integer(pInt) function mesh_spectral_getHomogenization()
- use IO, only: &
-   IO_checkAndRewind, &
-   IO_open_file, &
-   IO_stringPos, &
-   IO_lc, &
-   IO_stringValue, &
-   IO_intValue, &
-   IO_error
- use DAMASK_interface, only: &
-   geometryFile
-
- implicit none
- integer(pInt), allocatable, dimension(:)         :: chunkPos
- integer(pInt)                                    :: headerLength = 0_pInt
- character(len=1024) :: line, &
-                        keyword
- integer(pInt) :: i, myFileUnit
- logical :: gotHomogenization = .false.
-
-   myFileUnit = 289_pInt
-   call IO_open_file(myFileUnit,trim(geometryFile))
-
-
- call IO_checkAndRewind(myFileUnit)
-
- read(myFileUnit,'(a1024)') line
- chunkPos = IO_stringPos(line)
- keyword = IO_lc(IO_StringValue(line,chunkPos,2_pInt,.true.))
- if (keyword(1:4) == 'head') then
-   headerLength = IO_intValue(line,chunkPos,1_pInt) + 1_pInt
- else
-   call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_getHomogenization')
- endif
- rewind(myFileUnit)
- do i = 1_pInt, headerLength
-   read(myFileUnit,'(a1024)') line
-   chunkPos = IO_stringPos(line)
-   select case ( IO_lc(IO_StringValue(line,chunkPos,1,.true.)) )
-     case ('homogenization')
-       gotHomogenization = .true.
-       mesh_spectral_getHomogenization = IO_intValue(line,chunkPos,2_pInt)
-   end select
- enddo
-
- close(myFileUnit)
-
- if (.not. gotHomogenization ) &
-   call IO_error(error_ID = 845_pInt, ext_msg='homogenization')
- if (mesh_spectral_getHomogenization<1_pInt) &
-   call IO_error(error_ID = 842_pInt, ext_msg='mesh_spectral_getHomogenization')
-
-end function mesh_spectral_getHomogenization
 
 
 !--------------------------------------------------------------------------------------------------
@@ -542,24 +481,18 @@ subroutine mesh_spectral_build_elements()
  implicit none
  integer(pInt) :: &
    e, &
-
-   homog, &
    elemOffset
-
-
- homog = mesh_spectral_getHomogenization()
 
 
  allocate(mesh_element    (4_pInt+8_pInt,theMesh%nElems), source = 0_pInt)
 
-
  elemOffset = product(grid(1:2))*grid3Offset
  e = 0_pInt
- do while (e < theMesh%nElems)                                                                       ! fill expected number of elements, stop at end of data (or blank line!)
+ do while (e < theMesh%nElems)                                                                      ! fill expected number of elements, stop at end of data
    e = e+1_pInt                                                                                     ! valid element entry
    mesh_element( 1,e) = -1_pInt                                                                     ! DEPRECATED
    mesh_element( 2,e) = 10_pInt
-   mesh_element( 3,e) = homog                                                                       ! homogenization
+   mesh_element( 3,e) = mesh_homogenizationAt(e)
    mesh_element( 4,e) = microGlobal(e+elemOffset)                                                   ! microstructure
    mesh_element( 5,e) = e + (e-1_pInt)/grid(1) + &
                                      ((e-1_pInt)/(grid(1)*grid(2)))*(grid(1)+1_pInt)                ! base node
@@ -587,7 +520,7 @@ subroutine mesh_spectral_build_ipNeighborhood
  integer(pInt) :: &
   x,y,z, &
   e
- allocate(mesh_ipNeighborhood(3,mesh_maxNipNeighbors,theMesh%elem%nIPs,theMesh%nElems),source=0_pInt)
+ allocate(mesh_ipNeighborhood(3,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems),source=0_pInt)
 
  e = 0_pInt
  do z = 0_pInt,grid3-1_pInt
@@ -988,8 +921,8 @@ subroutine mesh_build_ipAreas
  real(pReal), dimension (3,FE_maxNcellnodesPerCellface) :: nodePos, normals
  real(pReal), dimension(3) :: normal
 
- allocate(mesh_ipArea(mesh_maxNipNeighbors,theMesh%elem%nIPs,theMesh%nElems), source=0.0_pReal)
- allocate(mesh_ipAreaNormal(3_pInt,mesh_maxNipNeighbors,theMesh%elem%nIPs,theMesh%nElems), source=0.0_pReal)
+ allocate(mesh_ipArea(theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), source=0.0_pReal)
+ allocate(mesh_ipAreaNormal(3_pInt,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), source=0.0_pReal)
 
  !$OMP PARALLEL DO PRIVATE(t,g,c,nodePos,normal,normals)
    do e = 1_pInt,theMesh%nElems                                                                      ! loop over cpElems
