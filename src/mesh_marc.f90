@@ -515,8 +515,8 @@ subroutine mesh_init(ip,el)
   
  call theMesh%init(mesh_element(2,1),mesh_node0)
  call theMesh%setNelems(mesh_NcpElems)
- call mesh_build_FEdata                                                                             ! get properties of the different types of elements
  
+ call mesh_build_FEdata                                                                             ! get properties of the different types of elements
  call mesh_build_cellconnectivity
  if (myDebug) write(6,'(a)') ' Built cell connectivity'; flush(6)
  mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)
@@ -1126,7 +1126,7 @@ subroutine mesh_marc_build_elements(fileUnit)
 
 620 rewind(fileUnit)                                                                                ! just in case "initial state" appears before "connectivity"
  read (fileUnit,'(A300)',END=620) line
- do
+ do !ToDo: the jumps to 620 in below code might result in a never ending loop
    chunkPos = IO_stringPos(line)
    if( (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'initial') .and. &
        (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'state') ) then
@@ -1206,7 +1206,6 @@ use IO, only: &
 
 620 end subroutine mesh_get_damaskOptions
 
-
 !--------------------------------------------------------------------------------------------------
 !> @brief Split CP elements into cells.
 !> @details Build a mapping between cells and the corresponding cell nodes ('mesh_cell').
@@ -1221,31 +1220,28 @@ subroutine mesh_build_cellconnectivity
    matchingNode2cellnode
  integer(pInt), dimension(:,:), allocatable :: &
    cellnodeParent
- integer(pInt), dimension(mesh_maxNcellnodes) :: &
+ integer(pInt), dimension(theMesh%elem%Ncellnodes) :: &
    localCellnode2globalCellnode
  integer(pInt) :: &
-   e,t,g,c,n,i, &
+   e,n,i, &
    matchingNodeID, &
    localCellnodeID
 
- allocate(mesh_cell(FE_maxNcellnodesPerCell,mesh_maxNips,mesh_NcpElems), source=0_pInt)
- allocate(matchingNode2cellnode(mesh_Nnodes),                            source=0_pInt)
- allocate(cellnodeParent(2_pInt,mesh_maxNcellnodes*mesh_NcpElems),       source=0_pInt)
-
+ allocate(mesh_cell(FE_maxNcellnodesPerCell,theMesh%elem%nIPs,theMesh%nElems), source=0_pInt)
+ allocate(matchingNode2cellnode(theMesh%nNodes),                            source=0_pInt)
+ allocate(cellnodeParent(2_pInt,theMesh%elem%Ncellnodes*theMesh%nElems),       source=0_pInt)
+ 
+ mesh_Ncells = theMesh%nElems*theMesh%elem%nIPs
 !--------------------------------------------------------------------------------------------------
 ! Count cell nodes (including duplicates) and generate cell connectivity list
  mesh_Ncellnodes = 0_pInt
- mesh_Ncells = 0_pInt
- do e = 1_pInt,mesh_NcpElems                                                                        ! loop over cpElems
-   t = mesh_element(2_pInt,e)                                                                       ! get element type
-   g = FE_geomtype(t)                                                                               ! get geometry type
-   c = FE_celltype(g)                                                                               ! get cell type
+
+ do e = 1_pInt,theMesh%nElems
    localCellnode2globalCellnode = 0_pInt
-   mesh_Ncells = mesh_Ncells + FE_Nips(g)
-   do i = 1_pInt,FE_Nips(g)                                                                         ! loop over ips=cells in this element
-     do n = 1_pInt,FE_NcellnodesPerCell(c)                                                          ! loop over cell nodes in this cell
-       localCellnodeID = FE_cell(n,i,g)
-       if (localCellnodeID <= FE_NmatchingNodes(g)) then                                            ! this cell node is a matching node
+   do i = 1_pInt,theMesh%elem%nIPs
+     do n = 1_pInt,theMesh%elem%NcellnodesPerCell
+       localCellnodeID = theMesh%elem%cell(n,i)
+       if (localCellnodeID <= FE_NmatchingNodes(theMesh%elem%geomType)) then                                            ! this cell node is a matching node
          matchingNodeID = mesh_element(4_pInt+localCellnodeID,e)
          if (matchingNode2cellnode(matchingNodeID) == 0_pInt) then                                  ! if this matching node does not yet exist in the glbal cell node list ...
            mesh_Ncellnodes = mesh_Ncellnodes + 1_pInt                                               ! ... count it as cell node ...
@@ -1269,6 +1265,7 @@ subroutine mesh_build_cellconnectivity
 
  allocate(mesh_cellnodeParent(2_pInt,mesh_Ncellnodes))
  allocate(mesh_cellnode(3_pInt,mesh_Ncellnodes))
+ 
  forall(n = 1_pInt:mesh_Ncellnodes)
    mesh_cellnodeParent(1,n) = cellnodeParent(1,n)
    mesh_cellnodeParent(2,n) = cellnodeParent(2,n)
@@ -1290,23 +1287,22 @@ function mesh_build_cellnodes(nodes,Ncellnodes)
  real(pReal), dimension(3,Ncellnodes) :: mesh_build_cellnodes
 
  integer(pInt) :: &
-   e,t,n,m, &
+   e,n,m, &
    localCellnodeID
  real(pReal), dimension(3) :: &
    myCoords
 
  mesh_build_cellnodes = 0.0_pReal
-!$OMP PARALLEL DO PRIVATE(e,localCellnodeID,t,myCoords)
+!$OMP PARALLEL DO PRIVATE(e,localCellnodeID,myCoords)
  do n = 1_pInt,Ncellnodes                                                                           ! loop over cell nodes
    e = mesh_cellnodeParent(1,n)
    localCellnodeID = mesh_cellnodeParent(2,n)
-   t = mesh_element(2,e)                                                                            ! get element type
    myCoords = 0.0_pReal
-   do m = 1_pInt,FE_Nnodes(t)
+   do m = 1_pInt,theMesh%elem%nNodes
      myCoords = myCoords + nodes(1:3,mesh_element(4_pInt+m,e)) &
-                         * FE_cellnodeParentnodeWeights(m,localCellnodeID,t)
+                         * theMesh%elem%cellNodeParentNodeWeights(m,localCellnodeID)
    enddo
-   mesh_build_cellnodes(1:3,n) = myCoords / sum(FE_cellnodeParentnodeWeights(:,localCellnodeID,t))
+   mesh_build_cellnodes(1:3,n) = myCoords / sum(theMesh%elem%cellNodeParentNodeWeights(:,localCellnodeID))
  enddo
 !$OMP END PARALLEL DO
 
