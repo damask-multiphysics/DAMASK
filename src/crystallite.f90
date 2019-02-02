@@ -1745,9 +1745,8 @@ end subroutine integrateStateEuler
 !--------------------------------------------------------------------------------------------------
 subroutine integrateStateAdaptiveEuler()
  use mesh, only: &
-   mesh_element, &
-   mesh_NcpElems, &
-   mesh_maxNips
+   theMesh, &
+   mesh_element
  use material, only: &
    homogenization_Ngrains, &
    plasticState, &
@@ -1771,11 +1770,11 @@ subroutine integrateStateAdaptiveEuler()
    
   ! ToDo: MD: once all constitutives use allocate state, attach residuum arrays to the state in case of adaptive Euler
  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,            &
-                        homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+                        homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
    residuum_plastic
  real(pReal), dimension(constitutive_source_maxSizeDotState,&
                         maxval(phase_Nsources), &
-                        homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+                        homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
    residuum_source
 
 !--------------------------------------------------------------------------------------------------
@@ -1922,8 +1921,7 @@ end subroutine integrateStateRK4
 subroutine integrateStateRKCK45()
  use mesh, only: &
    mesh_element, &
-   mesh_NcpElems, &
-   mesh_maxNips
+   theMesh
  use material, only: &
    homogenization_Ngrains, &
    plasticState, &
@@ -1970,11 +1968,11 @@ subroutine integrateStateRKCK45()
    ! ToDo: MD: once all constitutives use allocate state, attach residuum arrays to the state in case of RKCK45
 
  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,            &
-                        homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+                        homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
    residuum_plastic                                                                         ! relative residuum from evolution in microstructure
  real(pReal), dimension(constitutive_source_maxSizeDotState, &
                         maxval(phase_Nsources), &
-                        homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+                        homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
    residuum_source                                                                   ! relative residuum from evolution in microstructure
 
 
