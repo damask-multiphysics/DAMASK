@@ -73,8 +73,7 @@ subroutine homogenization_init
  use mesh, only: &
    mesh_maxNips, &
    mesh_NcpElems, &
-   mesh_element, &
-   FE_geomtype
+   mesh_element
  use constitutive, only: &
    constitutive_plasticity_maxSizePostResults, &
    constitutive_source_maxSizePostResults

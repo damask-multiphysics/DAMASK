@@ -306,8 +306,7 @@ subroutine material_init()
  use mesh, only: &
    mesh_homogenizationAt, &
    mesh_NipsPerElem, &
-   mesh_NcpElems, &
-   FE_geomtype
+   mesh_NcpElems
 
  implicit none
  integer(pInt), parameter :: FILEUNIT = 210_pInt
@@ -989,8 +988,7 @@ subroutine material_populateGrains
    mesh_homogenizationAt, &
    mesh_microstructureAt, &
    mesh_NcpElems, &
-   mesh_ipVolume, &
-   FE_geomtype
+   mesh_ipVolume
  use config, only: &
    config_homogenization, &
    config_microstructure, &
