@@ -1288,7 +1288,7 @@ subroutine mesh_abaqus_map_nodes(fileUnit)
        backspace(fileUnit)
      enddo
      do i = 1_pInt,c
-       read (fileUnit,610,END=650) line
+       read (fileUnit,'(a300)') line
        chunkPos = IO_stringPos(line)
        cpNode = cpNode + 1_pInt
        mesh_mapFEtoCPnode(1_pInt,cpNode) = IO_intValue(line,chunkPos,1_pInt)
@@ -1352,7 +1352,7 @@ subroutine mesh_abaqus_build_nodes(fileUnit)
        backspace(fileUnit)                                                                            ! rewind to first entry
      enddo
      do i = 1_pInt,c
-       read (fileUnit,'(a300)',END=670) line
+       read (fileUnit,'(a300)') line
        chunkPos = IO_stringPos(line)
        m = mesh_FEasCP('node',IO_intValue(line,chunkPos,1_pInt))
        do j=1_pInt, 3_pInt
@@ -1448,9 +1448,8 @@ subroutine mesh_abaqus_build_elements(fileUnit)
  integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) :: line
  integer :: myStat
- logical :: inPart
+ logical :: inPart, materialFound
  integer(pInt) :: i,j,k,c,e,t,homog,micro, nNodesAlreadyRead
- logical inPart,materialFound
  character (len=64) :: materialName,elemSetName
 
  allocate(mesh_element (4_pInt+mesh_maxNnodes,mesh_NcpElems), source=0_pInt)
@@ -1478,7 +1477,7 @@ subroutine mesh_abaqus_build_elements(fileUnit)
        backspace(fileUnit)
      enddo
      do i = 1_pInt,c
-       read (fileUnit,'(a300)',END=620) line
+       read (fileUnit,'(a300)') line
        chunkPos = IO_stringPos(line)                                                       ! limit to 64 nodes max
        e = mesh_FEasCP('elem',IO_intValue(line,chunkPos,1_pInt))
        if (e /= 0_pInt) then                                                                        ! disregard non CP elems
@@ -1493,7 +1492,7 @@ subroutine mesh_abaqus_build_elements(fileUnit)
          enddo
          nNodesAlreadyRead = chunkPos(1) - 1_pInt
          do while(nNodesAlreadyRead < FE_Nnodes(t))                                                ! read on if not all nodes in one line
-           read (fileUnit,610,END=620) line
+           read (fileUnit,'(a300)') line
            chunkPos = IO_stringPos(line)
            do j = 1_pInt,chunkPos(1)
              mesh_element(4_pInt+nNodesAlreadyRead+j,e) &
@@ -1522,7 +1521,7 @@ subroutine mesh_abaqus_build_elements(fileUnit)
      case('*user')
        if ( IO_lc(IO_StringValue(line,chunkPos,2_pInt)) == 'material' .and. &
             materialFound ) then
-         read (fileUnit,'(a300)',END=630) line                                                           ! read homogenization and microstructure
+         read (fileUnit,'(a300)') line                                                              ! read homogenization and microstructure
          chunkPos = IO_stringPos(line)
          homog = nint(IO_floatValue(line,chunkPos,1_pInt),pInt)
          micro = nint(IO_floatValue(line,chunkPos,2_pInt),pInt)
