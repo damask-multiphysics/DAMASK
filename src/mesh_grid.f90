@@ -27,7 +27,7 @@ module mesh
    mesh_microstructureAt                                                                            !< microstructure ID of each element
 
  integer(pInt), dimension(:,:), allocatable, public, protected :: &
-   mesh_element                                                                                !< entryCount and list of elements containing node
+   mesh_element                                                                                     !< entryCount and list of elements containing node
 
  integer(pInt), dimension(:,:,:,:), allocatable, public, protected :: &
    mesh_ipNeighborhood                                                                              !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
