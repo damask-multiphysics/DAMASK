@@ -59,8 +59,6 @@ subroutine constitutive_init()
    IO_timeStamp
  use config, only: &
    config_phase
- use mesh, only: &
-   FE_geomtype
  use config, only: &
    material_Nphase, &
    material_localFileExt, &
@@ -789,8 +787,7 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
    math_sym33to6, &
    math_mul33x33
  use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
+   theMesh
  use material, only: &
    phasememberAt, &
    phase_plasticityInstance, &
@@ -841,9 +838,9 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
    el                                                                                               !< element
  real(pReal),  intent(in) :: &
    subdt                                                                                            !< timestep
- real(pReal),  intent(in), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+ real(pReal),  intent(in), dimension(homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
    subfracArray                                                                                     !< subfraction of timestep
- real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+ real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
    FeArray, &                                                                                       !< elastic deformation gradient
    FpArray                                                                                          !< plastic deformation gradient
  real(pReal),  intent(in), dimension(3,3) :: &
@@ -1003,8 +1000,7 @@ function constitutive_postResults(S6, Fi, FeArray, ipc, ip, el)
   math_6toSym33, &
   math_mul33x33
  use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
+   theMesh
  use material, only: &
    phasememberAt, &
    phase_plasticityInstance, &
@@ -1060,7 +1056,7 @@ function constitutive_postResults(S6, Fi, FeArray, ipc, ip, el)
    constitutive_postResults
  real(pReal),  intent(in), dimension(3,3) :: &
    Fi                                                                                               !< intermediate deformation gradient
- real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+ real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
    FeArray                                                                                          !< elastic deformation gradient
  real(pReal),  intent(in), dimension(6) :: &
    S6                                                                                               !< 2nd Piola Kirchhoff stress (vector notation)
