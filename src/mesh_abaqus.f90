@@ -540,6 +540,8 @@ subroutine mesh_init(ip,el)
 !!!!!!!!!!!!!!!!!!!!!!!!
  call theMesh%init(mesh_element(2,1),mesh_node0)
 contains
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief check if the input file for Abaqus contains part info
 !--------------------------------------------------------------------------------------------------
@@ -557,10 +559,9 @@ logical function hasNoPart(fileUnit)
 
  hasNoPart = .true.
 
-610 FORMAT(A65536)
  rewind(fileUnit)
  do
-   read(fileUnit,610,END=620) line
+   read(fileUnit,'(a65536)',END=620) line
    chunkPos = IO_stringPos(line)
    if (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) then
      hasNoPart = .false.
@@ -882,12 +883,11 @@ subroutine mesh_abaqus_count_nodesAndElements(fileUnit)
  mesh_Nnodes = 0_pInt
  mesh_Nelems = 0_pInt
 
-610 FORMAT(A300)
 
  inPart = .false.
  rewind(fileUnit)
  do
-   read (fileUnit,610,END=620) line
+   read (fileUnit,'(a300)',END=620) line
    chunkPos = IO_stringPos(line)
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
@@ -942,12 +942,10 @@ subroutine mesh_abaqus_count_elementSets(fileUnit)
  mesh_NelemSets     = 0_pInt
  mesh_maxNelemInSet = mesh_Nelems                                                                   ! have to be conservative, since Abaqus allows for recursive definitons
 
-610 FORMAT(A300)
-
  inPart = .false.
  rewind(fileUnit)
  do
-   read (fileUnit,610,END=620) line
+   read (fileUnit,'(a300)',END=620) line
    chunkPos = IO_stringPos(line)
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
@@ -984,12 +982,10 @@ subroutine mesh_abaqus_count_materials(fileUnit)
 
  mesh_Nmaterials = 0_pInt
 
-610 FORMAT(A300)
-
  inPart = .false.
  rewind(fileUnit)
  do
-   read (fileUnit,610,END=620) line
+   read (fileUnit,'(a300)',END=620) line
    chunkPos = IO_stringPos(line)
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
@@ -1031,12 +1027,10 @@ subroutine mesh_abaqus_map_elementSets(fileUnit)
  allocate (mesh_nameElemSet(mesh_NelemSets)); mesh_nameElemSet = ''
  allocate (mesh_mapElemSet(1_pInt+mesh_maxNelemInSet,mesh_NelemSets),source=0_pInt)
 
-610 FORMAT(A300)
-
 
  rewind(fileUnit)
  do
-   read (fileUnit,610,END=640) line
+   read (fileUnit,'(a300)',END=640) line
    chunkPos = IO_stringPos(line)
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
@@ -1083,11 +1077,10 @@ subroutine mesh_abaqus_map_materials(fileUnit)
  allocate (mesh_nameMaterial(mesh_Nmaterials)); mesh_nameMaterial = ''
  allocate (mesh_mapMaterial(mesh_Nmaterials));  mesh_mapMaterial = ''
 
-610 FORMAT(A300)
 
  rewind(fileUnit)
  do
-   read (fileUnit,610,END=620) line
+   read (fileUnit,'(a300)',END=620) line
    chunkPos = IO_stringPos(line)
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
@@ -1145,11 +1138,10 @@ subroutine mesh_abaqus_count_cpElements(fileUnit)
 
  mesh_NcpElems = 0_pInt
 
-610 FORMAT(A300)
 
  rewind(fileUnit)
  do
-   read (fileUnit,610,END=620) line
+   read (fileUnit,'(a300)',END=620) line
    chunkPos = IO_stringPos(line)
    select case ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) )
      case('*material')
@@ -1200,11 +1192,10 @@ subroutine mesh_abaqus_map_elements(fileUnit)
 
  allocate (mesh_mapFEtoCPelem(2,mesh_NcpElems), source = 0_pInt)
 
-610 FORMAT(A300)
 
  rewind(fileUnit)
  do
-   read (fileUnit,610,END=660) line
+   read (fileUnit,'(a300)',END=660) line
    chunkPos = IO_stringPos(line)
    select case ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) )
      case('*material')
@@ -1263,11 +1254,9 @@ subroutine mesh_abaqus_map_nodes(fileUnit)
 
  allocate (mesh_mapFEtoCPnode(2_pInt,mesh_Nnodes), source=0_pInt)
 
-610 FORMAT(A300)
-
  rewind(fileUnit)
  do
-   read (fileUnit,610,END=650) line
+   read (fileUnit,'(a300)',END=650) line
    chunkPos = IO_stringPos(line)
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
@@ -1326,12 +1315,10 @@ subroutine mesh_abaqus_build_nodes(fileUnit)
  allocate ( mesh_node0 (3,mesh_Nnodes), source=0.0_pReal)
  allocate ( mesh_node  (3,mesh_Nnodes), source=0.0_pReal)
 
-610 FORMAT(A300)
-
  inPart = .false.
  rewind(fileUnit)
  do
-   read (fileUnit,610,END=670) line
+   read (fileUnit,'(a300)',END=670) line
    chunkPos = IO_stringPos(line)
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
@@ -1349,7 +1336,7 @@ subroutine mesh_abaqus_build_nodes(fileUnit)
        backspace(fileUnit)                                                                            ! rewind to first entry
      enddo
      do i = 1_pInt,c
-       read (fileUnit,610,END=670) line
+       read (fileUnit,'(a300)',END=670) line
        chunkPos = IO_stringPos(line)
        m = mesh_FEasCP('node',IO_intValue(line,chunkPos,1_pInt))
        do j=1_pInt, 3_pInt
@@ -1393,12 +1380,11 @@ subroutine mesh_abaqus_count_cpSizes(fileUnit)
  mesh_maxNipNeighbors = 0_pInt
  mesh_maxNcellnodes   = 0_pInt
 
-610 FORMAT(A300)
 
  inPart = .false.
  rewind(fileUnit)
  do
-   read (fileUnit,610,END=620) line
+   read (fileUnit,'(a300)',END=620) line
    chunkPos = IO_stringPos(line)
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
@@ -1451,12 +1437,10 @@ subroutine mesh_abaqus_build_elements(fileUnit)
  allocate(mesh_element (4_pInt+mesh_maxNnodes,mesh_NcpElems), source=0_pInt)
  mesh_elemType = -1_pInt
 
-610 FORMAT(A300)
-
  inPart = .false.
  rewind(fileUnit)
  do
-   read (fileUnit,610,END=620) line
+   read (fileUnit,'(a300)',END=620) line
    chunkPos = IO_stringPos(line)
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '*end' .and. &
@@ -1474,8 +1458,8 @@ subroutine mesh_abaqus_build_elements(fileUnit)
        backspace(fileUnit)
      enddo
      do i = 1_pInt,c
-       read (fileUnit,610,END=620) line
-       chunkPos = IO_stringPos(line)                                                                ! limit to 64 nodes max
+       read (fileUnit,'(a300)',END=620) line
+       chunkPos = IO_stringPos(line)                                                       ! limit to 64 nodes max
        e = mesh_FEasCP('elem',IO_intValue(line,chunkPos,1_pInt))
        if (e /= 0_pInt) then                                                                        ! disregard non CP elems
          mesh_element(1,e) = -1_pInt                                                                ! DEPRECATED
@@ -1507,7 +1491,7 @@ subroutine mesh_abaqus_build_elements(fileUnit)
 
  materialFound = .false.
  do
-   read (fileUnit,610,END=630) line
+   read (fileUnit,'(a300)',END=630) line
    chunkPos = IO_stringPos(line)
    select case ( IO_lc(IO_StringValue(line,chunkPos,1_pInt)))
      case('*material')
@@ -1516,7 +1500,7 @@ subroutine mesh_abaqus_build_elements(fileUnit)
      case('*user')
        if ( IO_lc(IO_StringValue(line,chunkPos,2_pInt)) == 'material' .and. &
             materialFound ) then
-         read (fileUnit,610,END=630) line                                                           ! read homogenization and microstructure
+         read (fileUnit,'(a300)',END=630) line                                                           ! read homogenization and microstructure
          chunkPos = IO_stringPos(line)
          homog = nint(IO_floatValue(line,chunkPos,1_pInt),pInt)
          micro = nint(IO_floatValue(line,chunkPos,2_pInt),pInt)
