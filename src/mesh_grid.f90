@@ -14,11 +14,9 @@ module mesh
  private
  integer(pInt), public, protected :: &
    mesh_NcpElems, &                                                                                 !< total number of CP elements in local mesh
-   mesh_elemType, &                                                                                 !< Element type of the mesh (only support homogeneous meshes)
    mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
    mesh_Ncellnodes, &                                                                               !< total number of cell nodes in mesh (including duplicates)
    mesh_Ncells, &                                                                                   !< total number of cells in mesh
-   mesh_NipsPerElem, &                                                                              !< number of IPs in per element
    mesh_NcellnodesPerElem, &                                                                        !< number of cell nodes per  element
    mesh_maxNipNeighbors, &                                                                          !< max number of IP neighbors in any CP element
    mesh_maxNsharedElems                                                                             !< max number of CP elements sharing a node
@@ -35,10 +33,7 @@ module mesh
    mesh_microstructureAt                                                                            !< microstructure ID of each element
 
  integer(pInt), dimension(:,:), allocatable, public, protected :: &
-   mesh_CPnodeID, &                                                                                 !< nodes forming an element
-   mesh_element, & !DEPRECATED
-   mesh_sharedElem, &                                                                               !< entryCount and list of elements containing node
-   mesh_nodeTwins                                                                                   !< node twins are surface nodes that lie exactly on opposite sides of the mesh (surfaces nodes with equal coordinate values in two dimensions)
+   mesh_element                                                                                !< entryCount and list of elements containing node
 
  integer(pInt), dimension(:,:,:,:), allocatable, public, protected :: &
    mesh_ipNeighborhood                                                                              !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
@@ -435,12 +430,10 @@ subroutine mesh_init(ip,el)
 !!!! COMPATIBILITY HACK !!!!
 ! for a homogeneous mesh, all elements have the same number of IPs and and cell nodes.
 ! hence, xxPerElem instead of maxXX
- mesh_NipsPerElem       = mesh_maxNips
  mesh_NcellnodesPerElem = mesh_maxNcellnodes
 ! better name
  mesh_homogenizationAt  = mesh_element(3,:)
  mesh_microstructureAt  = mesh_element(4,:)
- mesh_CPnodeID          = mesh_element(5:4+mesh_NipsPerElem,:)
 !!!!!!!!!!!!!!!!!!!!!!!!
  call theMesh%setNelems(mesh_NcpElems)
 end subroutine mesh_init

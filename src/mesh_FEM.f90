@@ -27,7 +27,6 @@ use PETScis
    mesh_NcpElems, &                                                                                 !< total number of CP elements in mesh
    mesh_NcpElemsGlobal, &
    mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
-   mesh_NipsPerElem, &                                                                              !< number of IPs in per element
    mesh_maxNipNeighbors
 !!!! BEGIN DEPRECATED !!!!!
  integer(pInt), public, protected :: &
@@ -269,7 +268,6 @@ subroutine mesh_init()
 !!!! COMPATIBILITY HACK !!!!
 ! for a homogeneous mesh, all elements have the same number of IPs and and cell nodes.
 ! hence, xxPerElem instead of maxXX
- mesh_NipsPerElem      = mesh_maxNips
 ! better name
  mesh_homogenizationAt = mesh_element(3,:)
  mesh_microstructureAt = mesh_element(4,:)
