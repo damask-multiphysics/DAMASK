@@ -1329,11 +1329,9 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 ! DAMASK_marc errors
  case (700_pInt)
    msg = 'invalid materialpoint result requested'
- case (701_pInt)
-   msg = 'not supported input file format, use Marc 2016 or earlier'
 
 !-------------------------------------------------------------------------------------------------
-! errors related to spectral solver
+! errors related to the grid solver
  case (809_pInt)
    msg = 'initializing FFTW'
  case (810_pInt)
@@ -1355,13 +1353,9 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
  case (841_pInt)
    msg = 'missing header length info in spectral mesh'
  case (842_pInt)
-   msg = 'homogenization in spectral mesh'
- case (843_pInt)
-   msg = 'grid in spectral mesh'
- case (844_pInt)
-   msg = 'size in spectral mesh'
- case (845_pInt)
    msg = 'incomplete information in spectral mesh header'
+ case (843_pInt)
+   msg = 'microstructure count mismatch'
  case (846_pInt)
    msg = 'rotation for load case rotation ill-defined (R:RT != I)'
  case (847_pInt)
