@@ -570,291 +570,10 @@ logical function hasNoPart(fileUnit)
 end subroutine mesh_init
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief Gives the FE to CP ID mapping by binary search through lookup array
-!! valid questions (what) are 'elem', 'node'
-!--------------------------------------------------------------------------------------------------
-integer(pInt) function mesh_FEasCP(what,myID)
- use IO, only: &
-   IO_lc
-
- implicit none
- character(len=*), intent(in) :: what
- integer(pInt),    intent(in) :: myID
-
- integer(pInt), dimension(:,:), pointer :: lookupMap
- integer(pInt) :: lower,upper,center
-
- mesh_FEasCP = 0_pInt
- select case(IO_lc(what(1:4)))
-   case('elem')
-     lookupMap => mesh_mapFEtoCPelem
-   case('node')
-     lookupMap => mesh_mapFEtoCPnode
-   case default
-     return
- endselect
-
- lower = 1_pInt
- upper = int(size(lookupMap,2_pInt),pInt)
-
- if (lookupMap(1_pInt,lower) == myID) then                                                          ! check at bounds QUESTION is it valid to extend bounds by 1 and just do binary search w/o init check at bounds?
-   mesh_FEasCP = lookupMap(2_pInt,lower)
-   return
- elseif (lookupMap(1_pInt,upper) == myID) then
-   mesh_FEasCP = lookupMap(2_pInt,upper)
-   return
- endif
- binarySearch: do while (upper-lower > 1_pInt)
-   center = (lower+upper)/2_pInt
-   if (lookupMap(1_pInt,center) < myID) then
-     lower = center
-   elseif (lookupMap(1_pInt,center) > myID) then
-     upper = center
-   else
-     mesh_FEasCP = lookupMap(2_pInt,center)
-     exit
-   endif
- enddo binarySearch
-
-end function mesh_FEasCP
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief Split CP elements into cells.
-!> @details Build a mapping between cells and the corresponding cell nodes ('mesh_cell').
-!> Cell nodes that are also matching nodes are unique in the list of cell nodes,
-!> all others (currently) might be stored more than once.
-!> Also allocates the 'mesh_node' array.
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_build_cellconnectivity
-
- implicit none
- integer(pInt), dimension(:), allocatable :: &
-   matchingNode2cellnode
- integer(pInt), dimension(:,:), allocatable :: &
-   cellnodeParent
- integer(pInt), dimension(mesh_maxNcellnodes) :: &
-   localCellnode2globalCellnode
- integer(pInt) :: &
-   e,t,g,c,n,i, &
-   matchingNodeID, &
-   localCellnodeID
-
- allocate(mesh_cell(FE_maxNcellnodesPerCell,mesh_maxNips,mesh_NcpElems), source=0_pInt)
- allocate(matchingNode2cellnode(mesh_Nnodes),                            source=0_pInt)
- allocate(cellnodeParent(2_pInt,mesh_maxNcellnodes*mesh_NcpElems),       source=0_pInt)
-
-!--------------------------------------------------------------------------------------------------
-! Count cell nodes (including duplicates) and generate cell connectivity list
- mesh_Ncellnodes = 0_pInt
- mesh_Ncells = 0_pInt
- do e = 1_pInt,mesh_NcpElems                                                                        ! loop over cpElems
-   t = mesh_element(2_pInt,e)                                                                       ! get element type
-   g = FE_geomtype(t)                                                                               ! get geometry type
-   c = FE_celltype(g)                                                                               ! get cell type
-   localCellnode2globalCellnode = 0_pInt
-   mesh_Ncells = mesh_Ncells + FE_Nips(g)
-   do i = 1_pInt,FE_Nips(g)                                                                         ! loop over ips=cells in this element
-     do n = 1_pInt,FE_NcellnodesPerCell(c)                                                          ! loop over cell nodes in this cell
-       localCellnodeID = FE_cell(n,i,g)
-       if (localCellnodeID <= FE_NmatchingNodes(g)) then                                            ! this cell node is a matching node
-         matchingNodeID = mesh_element(4_pInt+localCellnodeID,e)
-         if (matchingNode2cellnode(matchingNodeID) == 0_pInt) then                                  ! if this matching node does not yet exist in the glbal cell node list ...
-           mesh_Ncellnodes = mesh_Ncellnodes + 1_pInt                                               ! ... count it as cell node ...
-           matchingNode2cellnode(matchingNodeID) = mesh_Ncellnodes                                  ! ... and remember its global ID
-           cellnodeParent(1_pInt,mesh_Ncellnodes) = e                                               ! ... and where it belongs to
-           cellnodeParent(2_pInt,mesh_Ncellnodes) = localCellnodeID
-         endif
-         mesh_cell(n,i,e) = matchingNode2cellnode(matchingNodeID)
-       else                                                                                         ! this cell node is no matching node
-         if (localCellnode2globalCellnode(localCellnodeID) == 0_pInt) then                          ! if this local cell node does not yet exist in the  global cell node list ...
-           mesh_Ncellnodes = mesh_Ncellnodes + 1_pInt                                               ! ... count it as cell node ...
-           localCellnode2globalCellnode(localCellnodeID) = mesh_Ncellnodes                          ! ... and remember its global ID ...
-           cellnodeParent(1_pInt,mesh_Ncellnodes) = e                                               ! ... and it belongs to
-           cellnodeParent(2_pInt,mesh_Ncellnodes) = localCellnodeID
-         endif
-         mesh_cell(n,i,e) = localCellnode2globalCellnode(localCellnodeID)
-       endif
-     enddo
-   enddo
- enddo
-
- allocate(mesh_cellnodeParent(2_pInt,mesh_Ncellnodes))
- allocate(mesh_cellnode(3_pInt,mesh_Ncellnodes))
- forall(n = 1_pInt:mesh_Ncellnodes)
-   mesh_cellnodeParent(1,n) = cellnodeParent(1,n)
-   mesh_cellnodeParent(2,n) = cellnodeParent(2,n)
- endforall
-
-end subroutine mesh_build_cellconnectivity
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief Calculate position of cellnodes from the given position of nodes
-!> Build list of cellnodes' coordinates.
-!> Cellnode coordinates are calculated from a weighted sum of node coordinates.
-!--------------------------------------------------------------------------------------------------
-function mesh_build_cellnodes(nodes,Ncellnodes)
-
- implicit none
- integer(pInt),                         intent(in) :: Ncellnodes                                    !< requested number of cellnodes
- real(pReal), dimension(3,mesh_Nnodes), intent(in) :: nodes
- real(pReal), dimension(3,Ncellnodes) :: mesh_build_cellnodes
-
- integer(pInt) :: &
-   e,t,n,m, &
-   localCellnodeID
- real(pReal), dimension(3) :: &
-   myCoords
-
- mesh_build_cellnodes = 0.0_pReal
-!$OMP PARALLEL DO PRIVATE(e,localCellnodeID,t,myCoords)
- do n = 1_pInt,Ncellnodes                                                                           ! loop over cell nodes
-   e = mesh_cellnodeParent(1,n)
-   localCellnodeID = mesh_cellnodeParent(2,n)
-   t = mesh_element(2,e)                                                                            ! get element type
-   myCoords = 0.0_pReal
-   do m = 1_pInt,FE_Nnodes(t)
-     myCoords = myCoords + nodes(1:3,mesh_element(4_pInt+m,e)) &
-                         * FE_cellnodeParentnodeWeights(m,localCellnodeID,t)
-   enddo
-   mesh_build_cellnodes(1:3,n) = myCoords / sum(FE_cellnodeParentnodeWeights(:,localCellnodeID,t))
- enddo
-!$OMP END PARALLEL DO
-
-end function mesh_build_cellnodes
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Calculates IP volume. Allocates global array 'mesh_ipVolume'
-!> @details The IP volume is calculated differently depending on the cell type.
-!> 2D cells assume an element depth of one in order to calculate the volume.
-!> For the hexahedral cell we subdivide the cell into subvolumes of pyramidal
-!> shape with a cell face as basis and the central ip at the tip. This subvolume is
-!> calculated as an average of four tetrahedals with three corners on the cell face
-!> and one corner at the central ip.
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_build_ipVolumes
- use math, only: &
-   math_volTetrahedron, &
-   math_areaTriangle
-
- implicit none
- integer(pInt) ::                                e,t,g,c,i,m,f,n
- real(pReal), dimension(FE_maxNcellnodesPerCellface,FE_maxNcellfaces) :: subvolume
-
- allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
-
- !$OMP PARALLEL DO PRIVATE(t,g,c,m,subvolume)
-   do e = 1_pInt,mesh_NcpElems                                                                      ! loop over cpElems
-     t = mesh_element(2_pInt,e)                                                                     ! get element type
-     g = FE_geomtype(t)                                                                             ! get geometry type
-     c = FE_celltype(g)                                                                             ! get cell type
-     select case (c)
-
-       case (1_pInt)                                                                                ! 2D 3node
-         forall (i = 1_pInt:FE_Nips(g)) &                                                           ! loop over ips=cells in this element
-           mesh_ipVolume(i,e) = math_areaTriangle(mesh_cellnode(1:3,mesh_cell(1,i,e)), &
-                                                  mesh_cellnode(1:3,mesh_cell(2,i,e)), &
-                                                  mesh_cellnode(1:3,mesh_cell(3,i,e)))
-
-       case (2_pInt)                                                                                ! 2D 4node
-         forall (i = 1_pInt:FE_Nips(g)) &                                                           ! loop over ips=cells in this element
-           mesh_ipVolume(i,e) = math_areaTriangle(mesh_cellnode(1:3,mesh_cell(1,i,e)), &            ! here we assume a planar shape, so division in two triangles suffices
-                                                  mesh_cellnode(1:3,mesh_cell(2,i,e)), &
-                                                  mesh_cellnode(1:3,mesh_cell(3,i,e))) &
-                              + math_areaTriangle(mesh_cellnode(1:3,mesh_cell(3,i,e)), &
-                                                  mesh_cellnode(1:3,mesh_cell(4,i,e)), &
-                                                  mesh_cellnode(1:3,mesh_cell(1,i,e)))
-
-       case (3_pInt)                                                                                ! 3D 4node
-         forall (i = 1_pInt:FE_Nips(g)) &                                                           ! loop over ips=cells in this element
-           mesh_ipVolume(i,e) = math_volTetrahedron(mesh_cellnode(1:3,mesh_cell(1,i,e)), &
-                                                    mesh_cellnode(1:3,mesh_cell(2,i,e)), &
-                                                    mesh_cellnode(1:3,mesh_cell(3,i,e)), &
-                                                    mesh_cellnode(1:3,mesh_cell(4,i,e)))
-
-       case (4_pInt)                                                                                ! 3D 8node
-         m = FE_NcellnodesPerCellface(c)
-         do i = 1_pInt,FE_Nips(g)                                                                   ! loop over ips=cells in this element
-           subvolume = 0.0_pReal
-           forall(f = 1_pInt:FE_NipNeighbors(c), n = 1_pInt:FE_NcellnodesPerCellface(c)) &
-             subvolume(n,f) = math_volTetrahedron(&
-                                mesh_cellnode(1:3,mesh_cell(FE_cellface(      n     ,f,c),i,e)), &
-                                mesh_cellnode(1:3,mesh_cell(FE_cellface(1+mod(n  ,m),f,c),i,e)), &
-                                mesh_cellnode(1:3,mesh_cell(FE_cellface(1+mod(n+1,m),f,c),i,e)), &
-                                mesh_ipCoordinates(1:3,i,e))
-           mesh_ipVolume(i,e) = 0.5_pReal * sum(subvolume)                                         ! each subvolume is based on four tetrahedrons, altough the face consists of only two triangles -> averaging factor two
-         enddo
-
-     end select
-   enddo
- !$OMP END PARALLEL DO
-
-end subroutine mesh_build_ipVolumes
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Calculates IP Coordinates. Allocates global array 'mesh_ipCoordinates'
-! Called by all solvers in mesh_init in order to initialize the ip coordinates.
-! Later on the current ip coordinates are directly prvided by the spectral solver and by Abaqus,
-! so no need to use this subroutine anymore; Marc however only provides nodal displacements,
-! so in this case the ip coordinates are always calculated on the basis of this subroutine.
-! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! FOR THE MOMENT THIS SUBROUTINE ACTUALLY CALCULATES THE CELL CENTER AND NOT THE IP COORDINATES,
-! AS THE IP IS NOT (ALWAYS) LOCATED IN THE CENTER OF THE IP VOLUME.
-! HAS TO BE CHANGED IN A LATER VERSION.
-! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_build_ipCoordinates
-
- implicit none
- integer(pInt) :: e,t,g,c,i,n
- real(pReal), dimension(3) :: myCoords
-
- if (.not. allocated(mesh_ipCoordinates)) &
-   allocate(mesh_ipCoordinates(3,mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
-
- !$OMP PARALLEL DO PRIVATE(t,g,c,myCoords)
- do e = 1_pInt,mesh_NcpElems                                                                        ! loop over cpElems
-   t = mesh_element(2_pInt,e)                                                                       ! get element type
-   g = FE_geomtype(t)                                                                               ! get geometry type
-   c = FE_celltype(g)                                                                               ! get cell type
-   do i = 1_pInt,FE_Nips(g)                                                                         ! loop over ips=cells in this element
-     myCoords = 0.0_pReal
-     do n = 1_pInt,FE_NcellnodesPerCell(c)                                                          ! loop over cell nodes in this cell
-       myCoords = myCoords + mesh_cellnode(1:3,mesh_cell(n,i,e))
-     enddo
-     mesh_ipCoordinates(1:3,i,e) = myCoords / real(FE_NcellnodesPerCell(c),pReal)
-   enddo
- enddo
- !$OMP END PARALLEL DO
-
-end subroutine mesh_build_ipCoordinates
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Calculates cell center coordinates.
-!--------------------------------------------------------------------------------------------------
-pure function mesh_cellCenterCoordinates(ip,el)
-
- implicit none
- integer(pInt), intent(in) :: el, &                                                                  !< element number
-                              ip                                                                     !< integration point number
- real(pReal), dimension(3) :: mesh_cellCenterCoordinates                                             !< x,y,z coordinates of the cell center of the requested IP cell
- integer(pInt) :: t,g,c,n
-
- t = mesh_element(2_pInt,el)                                                                         ! get element type
- g = FE_geomtype(t)                                                                                  ! get geometry type
- c = FE_celltype(g)                                                                                  ! get cell type
- mesh_cellCenterCoordinates = 0.0_pReal
- do n = 1_pInt,FE_NcellnodesPerCell(c)                                                               ! loop over cell nodes in this cell
-   mesh_cellCenterCoordinates = mesh_cellCenterCoordinates + mesh_cellnode(1:3,mesh_cell(n,ip,el))
- enddo
- mesh_cellCenterCoordinates = mesh_cellCenterCoordinates / real(FE_NcellnodesPerCell(c),pReal)
-
- end function mesh_cellCenterCoordinates
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1548,7 +1267,6 @@ subroutine mesh_abaqus_build_elements(fileUnit)
 end subroutine mesh_abaqus_build_elements
 
 
-
 !--------------------------------------------------------------------------------------------------
 !> @brief get any additional damask options from input file, sets mesh_periodicSurface
 !--------------------------------------------------------------------------------------------------
@@ -1592,6 +1310,246 @@ use IO, only: &
  enddo
 
 end subroutine mesh_get_damaskOptions
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Split CP elements into cells.
+!> @details Build a mapping between cells and the corresponding cell nodes ('mesh_cell').
+!> Cell nodes that are also matching nodes are unique in the list of cell nodes,
+!> all others (currently) might be stored more than once.
+!> Also allocates the 'mesh_node' array.
+!--------------------------------------------------------------------------------------------------
+subroutine mesh_build_cellconnectivity
+
+ implicit none
+ integer(pInt), dimension(:), allocatable :: &
+   matchingNode2cellnode
+ integer(pInt), dimension(:,:), allocatable :: &
+   cellnodeParent
+ integer(pInt), dimension(mesh_maxNcellnodes) :: &
+   localCellnode2globalCellnode
+ integer(pInt) :: &
+   e,t,g,c,n,i, &
+   matchingNodeID, &
+   localCellnodeID
+
+ allocate(mesh_cell(FE_maxNcellnodesPerCell,mesh_maxNips,mesh_NcpElems), source=0_pInt)
+ allocate(matchingNode2cellnode(mesh_Nnodes),                            source=0_pInt)
+ allocate(cellnodeParent(2_pInt,mesh_maxNcellnodes*mesh_NcpElems),       source=0_pInt)
+
+!--------------------------------------------------------------------------------------------------
+! Count cell nodes (including duplicates) and generate cell connectivity list
+ mesh_Ncellnodes = 0_pInt
+ mesh_Ncells = 0_pInt
+ do e = 1_pInt,mesh_NcpElems                                                                        ! loop over cpElems
+   t = mesh_element(2_pInt,e)                                                                       ! get element type
+   g = FE_geomtype(t)                                                                               ! get geometry type
+   c = FE_celltype(g)                                                                               ! get cell type
+   localCellnode2globalCellnode = 0_pInt
+   mesh_Ncells = mesh_Ncells + FE_Nips(g)
+   do i = 1_pInt,FE_Nips(g)                                                                         ! loop over ips=cells in this element
+     do n = 1_pInt,FE_NcellnodesPerCell(c)                                                          ! loop over cell nodes in this cell
+       localCellnodeID = FE_cell(n,i,g)
+       if (localCellnodeID <= FE_NmatchingNodes(g)) then                                            ! this cell node is a matching node
+         matchingNodeID = mesh_element(4_pInt+localCellnodeID,e)
+         if (matchingNode2cellnode(matchingNodeID) == 0_pInt) then                                  ! if this matching node does not yet exist in the glbal cell node list ...
+           mesh_Ncellnodes = mesh_Ncellnodes + 1_pInt                                               ! ... count it as cell node ...
+           matchingNode2cellnode(matchingNodeID) = mesh_Ncellnodes                                  ! ... and remember its global ID
+           cellnodeParent(1_pInt,mesh_Ncellnodes) = e                                               ! ... and where it belongs to
+           cellnodeParent(2_pInt,mesh_Ncellnodes) = localCellnodeID
+         endif
+         mesh_cell(n,i,e) = matchingNode2cellnode(matchingNodeID)
+       else                                                                                         ! this cell node is no matching node
+         if (localCellnode2globalCellnode(localCellnodeID) == 0_pInt) then                          ! if this local cell node does not yet exist in the  global cell node list ...
+           mesh_Ncellnodes = mesh_Ncellnodes + 1_pInt                                               ! ... count it as cell node ...
+           localCellnode2globalCellnode(localCellnodeID) = mesh_Ncellnodes                          ! ... and remember its global ID ...
+           cellnodeParent(1_pInt,mesh_Ncellnodes) = e                                               ! ... and it belongs to
+           cellnodeParent(2_pInt,mesh_Ncellnodes) = localCellnodeID
+         endif
+         mesh_cell(n,i,e) = localCellnode2globalCellnode(localCellnodeID)
+       endif
+     enddo
+   enddo
+ enddo
+
+ allocate(mesh_cellnodeParent(2_pInt,mesh_Ncellnodes))
+ allocate(mesh_cellnode(3_pInt,mesh_Ncellnodes))
+ forall(n = 1_pInt:mesh_Ncellnodes)
+   mesh_cellnodeParent(1,n) = cellnodeParent(1,n)
+   mesh_cellnodeParent(2,n) = cellnodeParent(2,n)
+ endforall
+
+end subroutine mesh_build_cellconnectivity
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Calculate position of cellnodes from the given position of nodes
+!> Build list of cellnodes' coordinates.
+!> Cellnode coordinates are calculated from a weighted sum of node coordinates.
+!--------------------------------------------------------------------------------------------------
+function mesh_build_cellnodes(nodes,Ncellnodes)
+
+ implicit none
+ integer(pInt),                         intent(in) :: Ncellnodes                                    !< requested number of cellnodes
+ real(pReal), dimension(3,mesh_Nnodes), intent(in) :: nodes
+ real(pReal), dimension(3,Ncellnodes) :: mesh_build_cellnodes
+
+ integer(pInt) :: &
+   e,t,n,m, &
+   localCellnodeID
+ real(pReal), dimension(3) :: &
+   myCoords
+
+ mesh_build_cellnodes = 0.0_pReal
+!$OMP PARALLEL DO PRIVATE(e,localCellnodeID,t,myCoords)
+ do n = 1_pInt,Ncellnodes                                                                           ! loop over cell nodes
+   e = mesh_cellnodeParent(1,n)
+   localCellnodeID = mesh_cellnodeParent(2,n)
+   t = mesh_element(2,e)                                                                            ! get element type
+   myCoords = 0.0_pReal
+   do m = 1_pInt,FE_Nnodes(t)
+     myCoords = myCoords + nodes(1:3,mesh_element(4_pInt+m,e)) &
+                         * FE_cellnodeParentnodeWeights(m,localCellnodeID,t)
+   enddo
+   mesh_build_cellnodes(1:3,n) = myCoords / sum(FE_cellnodeParentnodeWeights(:,localCellnodeID,t))
+ enddo
+!$OMP END PARALLEL DO
+
+end function mesh_build_cellnodes
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Calculates IP volume. Allocates global array 'mesh_ipVolume'
+!> @details The IP volume is calculated differently depending on the cell type.
+!> 2D cells assume an element depth of one in order to calculate the volume.
+!> For the hexahedral cell we subdivide the cell into subvolumes of pyramidal
+!> shape with a cell face as basis and the central ip at the tip. This subvolume is
+!> calculated as an average of four tetrahedals with three corners on the cell face
+!> and one corner at the central ip.
+!--------------------------------------------------------------------------------------------------
+subroutine mesh_build_ipVolumes
+ use math, only: &
+   math_volTetrahedron, &
+   math_areaTriangle
+
+ implicit none
+ integer(pInt) ::                                e,t,g,c,i,m,f,n
+ real(pReal), dimension(FE_maxNcellnodesPerCellface,FE_maxNcellfaces) :: subvolume
+
+ allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
+
+ !$OMP PARALLEL DO PRIVATE(t,g,c,m,subvolume)
+   do e = 1_pInt,mesh_NcpElems                                                                      ! loop over cpElems
+     t = mesh_element(2_pInt,e)                                                                     ! get element type
+     g = FE_geomtype(t)                                                                             ! get geometry type
+     c = FE_celltype(g)                                                                             ! get cell type
+     select case (c)
+
+       case (1_pInt)                                                                                ! 2D 3node
+         forall (i = 1_pInt:FE_Nips(g)) &                                                           ! loop over ips=cells in this element
+           mesh_ipVolume(i,e) = math_areaTriangle(mesh_cellnode(1:3,mesh_cell(1,i,e)), &
+                                                  mesh_cellnode(1:3,mesh_cell(2,i,e)), &
+                                                  mesh_cellnode(1:3,mesh_cell(3,i,e)))
+
+       case (2_pInt)                                                                                ! 2D 4node
+         forall (i = 1_pInt:FE_Nips(g)) &                                                           ! loop over ips=cells in this element
+           mesh_ipVolume(i,e) = math_areaTriangle(mesh_cellnode(1:3,mesh_cell(1,i,e)), &            ! here we assume a planar shape, so division in two triangles suffices
+                                                  mesh_cellnode(1:3,mesh_cell(2,i,e)), &
+                                                  mesh_cellnode(1:3,mesh_cell(3,i,e))) &
+                              + math_areaTriangle(mesh_cellnode(1:3,mesh_cell(3,i,e)), &
+                                                  mesh_cellnode(1:3,mesh_cell(4,i,e)), &
+                                                  mesh_cellnode(1:3,mesh_cell(1,i,e)))
+
+       case (3_pInt)                                                                                ! 3D 4node
+         forall (i = 1_pInt:FE_Nips(g)) &                                                           ! loop over ips=cells in this element
+           mesh_ipVolume(i,e) = math_volTetrahedron(mesh_cellnode(1:3,mesh_cell(1,i,e)), &
+                                                    mesh_cellnode(1:3,mesh_cell(2,i,e)), &
+                                                    mesh_cellnode(1:3,mesh_cell(3,i,e)), &
+                                                    mesh_cellnode(1:3,mesh_cell(4,i,e)))
+
+       case (4_pInt)                                                                                ! 3D 8node
+         m = FE_NcellnodesPerCellface(c)
+         do i = 1_pInt,FE_Nips(g)                                                                   ! loop over ips=cells in this element
+           subvolume = 0.0_pReal
+           forall(f = 1_pInt:FE_NipNeighbors(c), n = 1_pInt:FE_NcellnodesPerCellface(c)) &
+             subvolume(n,f) = math_volTetrahedron(&
+                                mesh_cellnode(1:3,mesh_cell(FE_cellface(      n     ,f,c),i,e)), &
+                                mesh_cellnode(1:3,mesh_cell(FE_cellface(1+mod(n  ,m),f,c),i,e)), &
+                                mesh_cellnode(1:3,mesh_cell(FE_cellface(1+mod(n+1,m),f,c),i,e)), &
+                                mesh_ipCoordinates(1:3,i,e))
+           mesh_ipVolume(i,e) = 0.5_pReal * sum(subvolume)                                         ! each subvolume is based on four tetrahedrons, altough the face consists of only two triangles -> averaging factor two
+         enddo
+
+     end select
+   enddo
+ !$OMP END PARALLEL DO
+
+end subroutine mesh_build_ipVolumes
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Calculates IP Coordinates. Allocates global array 'mesh_ipCoordinates'
+! Called by all solvers in mesh_init in order to initialize the ip coordinates.
+! Later on the current ip coordinates are directly prvided by the spectral solver and by Abaqus,
+! so no need to use this subroutine anymore; Marc however only provides nodal displacements,
+! so in this case the ip coordinates are always calculated on the basis of this subroutine.
+! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! FOR THE MOMENT THIS SUBROUTINE ACTUALLY CALCULATES THE CELL CENTER AND NOT THE IP COORDINATES,
+! AS THE IP IS NOT (ALWAYS) LOCATED IN THE CENTER OF THE IP VOLUME.
+! HAS TO BE CHANGED IN A LATER VERSION.
+! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!--------------------------------------------------------------------------------------------------
+subroutine mesh_build_ipCoordinates
+
+ implicit none
+ integer(pInt) :: e,t,g,c,i,n
+ real(pReal), dimension(3) :: myCoords
+
+ if (.not. allocated(mesh_ipCoordinates)) &
+   allocate(mesh_ipCoordinates(3,mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
+
+ !$OMP PARALLEL DO PRIVATE(t,g,c,myCoords)
+ do e = 1_pInt,mesh_NcpElems                                                                        ! loop over cpElems
+   t = mesh_element(2_pInt,e)                                                                       ! get element type
+   g = FE_geomtype(t)                                                                               ! get geometry type
+   c = FE_celltype(g)                                                                               ! get cell type
+   do i = 1_pInt,FE_Nips(g)                                                                         ! loop over ips=cells in this element
+     myCoords = 0.0_pReal
+     do n = 1_pInt,FE_NcellnodesPerCell(c)                                                          ! loop over cell nodes in this cell
+       myCoords = myCoords + mesh_cellnode(1:3,mesh_cell(n,i,e))
+     enddo
+     mesh_ipCoordinates(1:3,i,e) = myCoords / real(FE_NcellnodesPerCell(c),pReal)
+   enddo
+ enddo
+ !$OMP END PARALLEL DO
+
+end subroutine mesh_build_ipCoordinates
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Calculates cell center coordinates.
+!--------------------------------------------------------------------------------------------------
+pure function mesh_cellCenterCoordinates(ip,el)
+
+ implicit none
+ integer(pInt), intent(in) :: el, &                                                                  !< element number
+                              ip                                                                     !< integration point number
+ real(pReal), dimension(3) :: mesh_cellCenterCoordinates                                             !< x,y,z coordinates of the cell center of the requested IP cell
+ integer(pInt) :: t,g,c,n
+
+ t = mesh_element(2_pInt,el)                                                                         ! get element type
+ g = FE_geomtype(t)                                                                                  ! get geometry type
+ c = FE_celltype(g)                                                                                  ! get cell type
+ mesh_cellCenterCoordinates = 0.0_pReal
+ do n = 1_pInt,FE_NcellnodesPerCell(c)                                                               ! loop over cell nodes in this cell
+   mesh_cellCenterCoordinates = mesh_cellCenterCoordinates + mesh_cellnode(1:3,mesh_cell(n,ip,el))
+ enddo
+ mesh_cellCenterCoordinates = mesh_cellCenterCoordinates / real(FE_NcellnodesPerCell(c),pReal)
+
+ end function mesh_cellCenterCoordinates
+
+
+
 
 
 
@@ -1968,52 +1926,9 @@ subroutine mesh_build_ipNeighborhood
      enddo
    enddo
  enddo
-
-end subroutine mesh_build_ipNeighborhood
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief mapping of FE element types to internal representation
-!--------------------------------------------------------------------------------------------------
-integer(pInt) function FE_mapElemtype(what)
- use IO, only: IO_lc, IO_error
-
- implicit none
- character(len=*), intent(in) :: what
-
- select case (IO_lc(what))
-    case ( 'cpe4', &
-           'cpe4t')
-      FE_mapElemtype = 3_pInt            ! Arbitrary Quadrilateral Plane-strain
-    case ( 'cpe8', &
-           'cpe8t')
-      FE_mapElemtype = 4_pInt            ! Plane Strain, Eight-node Distorted Quadrilateral
-    case ( 'c3d4', &
-           'c3d4t')
-      FE_mapElemtype = 6_pInt            ! Three-dimensional Four-node Tetrahedron
-    case ( 'c3d6', &
-           'c3d6t')
-      FE_mapElemtype = 9_pInt            ! Three-dimensional Arbitrarily Distorted Pentahedral
-    case ( 'c3d8r', &
-           'c3d8rt')
-      FE_mapElemtype = 10_pInt           ! Three-dimensional Arbitrarily Distorted linear hexahedral with reduced integration
-    case ( 'c3d8', &
-           'c3d8t')
-      FE_mapElemtype = 11_pInt           ! Three-dimensional Arbitrarily Distorted Brick
-    case ( 'c3d20r', &
-           'c3d20rt')
-      FE_mapElemtype = 12_pInt           ! Three-dimensional Arbitrarily Distorted quad hexahedral with reduced integration
-    case ( 'c3d20', &
-           'c3d20t')
-      FE_mapElemtype = 13_pInt           ! Three-dimensional Arbitrarily Distorted quadratic hexahedral
-    case default
-      call IO_error(error_ID=190_pInt,ext_msg=IO_lc(what))
- end select
-
-end function FE_mapElemtype
-
-
-!--------------------------------------------------------------------------------------------------
+ 
+ contains
+ !--------------------------------------------------------------------------------------------------
 !> @brief find face-matching element of same type
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_faceMatch(elem, face ,matchingElem, matchingFace)
@@ -2098,6 +2013,52 @@ checkCandidateFaceTwins: do dir = 1_pInt,3_pInt
 enddo checkCandidate
 
 end subroutine mesh_faceMatch
+
+end subroutine mesh_build_ipNeighborhood
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief mapping of FE element types to internal representation
+!--------------------------------------------------------------------------------------------------
+integer(pInt) function FE_mapElemtype(what)
+ use IO, only: IO_lc, IO_error
+
+ implicit none
+ character(len=*), intent(in) :: what
+
+ select case (IO_lc(what))
+    case ( 'cpe4', &
+           'cpe4t')
+      FE_mapElemtype = 3_pInt            ! Arbitrary Quadrilateral Plane-strain
+    case ( 'cpe8', &
+           'cpe8t')
+      FE_mapElemtype = 4_pInt            ! Plane Strain, Eight-node Distorted Quadrilateral
+    case ( 'c3d4', &
+           'c3d4t')
+      FE_mapElemtype = 6_pInt            ! Three-dimensional Four-node Tetrahedron
+    case ( 'c3d6', &
+           'c3d6t')
+      FE_mapElemtype = 9_pInt            ! Three-dimensional Arbitrarily Distorted Pentahedral
+    case ( 'c3d8r', &
+           'c3d8rt')
+      FE_mapElemtype = 10_pInt           ! Three-dimensional Arbitrarily Distorted linear hexahedral with reduced integration
+    case ( 'c3d8', &
+           'c3d8t')
+      FE_mapElemtype = 11_pInt           ! Three-dimensional Arbitrarily Distorted Brick
+    case ( 'c3d20r', &
+           'c3d20rt')
+      FE_mapElemtype = 12_pInt           ! Three-dimensional Arbitrarily Distorted quad hexahedral with reduced integration
+    case ( 'c3d20', &
+           'c3d20t')
+      FE_mapElemtype = 13_pInt           ! Three-dimensional Arbitrarily Distorted quadratic hexahedral
+    case default
+      call IO_error(error_ID=190_pInt,ext_msg=IO_lc(what))
+ end select
+
+end function FE_mapElemtype
+
+
+
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2816,5 +2777,55 @@ subroutine mesh_build_FEdata
 
 
 end subroutine mesh_build_FEdata
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Gives the FE to CP ID mapping by binary search through lookup array
+!! valid questions (what) are 'elem', 'node'
+!--------------------------------------------------------------------------------------------------
+integer(pInt) function mesh_FEasCP(what,myID)
+ use IO, only: &
+   IO_lc
+
+ implicit none
+ character(len=*), intent(in) :: what
+ integer(pInt),    intent(in) :: myID
+
+ integer(pInt), dimension(:,:), pointer :: lookupMap
+ integer(pInt) :: lower,upper,center
+
+ mesh_FEasCP = 0_pInt
+ select case(IO_lc(what(1:4)))
+   case('elem')
+     lookupMap => mesh_mapFEtoCPelem
+   case('node')
+     lookupMap => mesh_mapFEtoCPnode
+   case default
+     return
+ endselect
+
+ lower = 1_pInt
+ upper = int(size(lookupMap,2_pInt),pInt)
+
+ if (lookupMap(1_pInt,lower) == myID) then                                                          ! check at bounds QUESTION is it valid to extend bounds by 1 and just do binary search w/o init check at bounds?
+   mesh_FEasCP = lookupMap(2_pInt,lower)
+   return
+ elseif (lookupMap(1_pInt,upper) == myID) then
+   mesh_FEasCP = lookupMap(2_pInt,upper)
+   return
+ endif
+ binarySearch: do while (upper-lower > 1_pInt)
+   center = (lower+upper)/2_pInt
+   if (lookupMap(1_pInt,center) < myID) then
+     lower = center
+   elseif (lookupMap(1_pInt,center) > myID) then
+     upper = center
+   else
+     mesh_FEasCP = lookupMap(2_pInt,center)
+     exit
+   endif
+ enddo binarySearch
+
+end function mesh_FEasCP
 
 end module mesh
