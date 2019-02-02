@@ -1130,7 +1130,7 @@ subroutine mesh_marc_build_elements(fileUnit)
    chunkPos = IO_stringPos(line)
    if( (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'initial') .and. &
        (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'state') ) then
-     if (initialcondTableStyle == 2_pInt) read (fileUnit,610,END=620) line                          ! read extra line for new style
+     if (initialcondTableStyle == 2_pInt) read (fileUnit,'(A300)',END=620) line                          ! read extra line for new style
      read (fileUnit,'(A300)',END=630) line                                                               ! read line with index of state var
      chunkPos = IO_stringPos(line)
      sv = IO_IntValue(line,chunkPos,1_pInt)                                                            ! figure state variable index
@@ -1149,7 +1149,7 @@ subroutine mesh_marc_build_elements(fileUnit)
            e = mesh_FEasCP('elem',contInts(1_pInt+i))
            mesh_element(1_pInt+sv,e) = myVal
          enddo
-         if (initialcondTableStyle == 0_pInt) read (fileUnit,610,END=620) line                      ! ignore IP range for old table style
+         if (initialcondTableStyle == 0_pInt) read (fileUnit,'(A300)',END=620) line                      ! ignore IP range for old table style
          read (fileUnit,'(A300)',END=630) line
          chunkPos = IO_stringPos(line)
        enddo
