@@ -18,7 +18,6 @@ module mesh
    mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
    mesh_Ncellnodes, &                                                                               !< total number of cell nodes in mesh (including duplicates)
    mesh_Ncells, &                                                                                   !< total number of cells in mesh
-   mesh_NcellnodesPerElem, &                                                                        !< number of cell nodes per  element
    mesh_maxNipNeighbors, &                                                                          !< max number of IP neighbors in any CP element
    mesh_maxNsharedElems                                                                             !< max number of CP elements sharing a node
 !!!! BEGIN DEPRECATED !!!!!
@@ -419,7 +418,6 @@ subroutine tMesh_abaqus_init(self,elemType,nodes)
  integer(pInt), intent(in) :: elemType
  
  call self%tMesh%init('mesh',elemType,nodes)
-  call theMesh%setNelems(mesh_NcpElems)
  
 end subroutine tMesh_abaqus_init
 
@@ -464,7 +462,6 @@ subroutine mesh_init(ip,el)
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- call mesh_build_FEdata                                                                             ! get properties of the different types of elements
  mesh_unitlength = numerics_unitlength                                                              ! set physical extent of a length unit in mesh
 
  myDebug = (iand(debug_level(debug_mesh),debug_levelBasic) /= 0_pInt)
@@ -496,6 +493,12 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
  call mesh_get_damaskOptions(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Got DAMASK options'; flush(6)
+ close (FILEUNIT)
+  
+ call theMesh%init(mesh_element(2,1),mesh_node0)
+ call theMesh%setNelems(mesh_NcpElems)
+ call mesh_build_FEdata                                                                             ! get properties of the different types of elements
+ 
  call mesh_build_cellconnectivity
  if (myDebug) write(6,'(a)') ' Built cell connectivity'; flush(6)
  mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)
@@ -506,7 +509,6 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Built IP volumes'; flush(6)
  call mesh_build_ipAreas
  if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
- close (FILEUNIT)
  call mesh_build_nodeTwins
  if (myDebug) write(6,'(a)') ' Built node twins'; flush(6)
  call mesh_build_sharedElems
@@ -527,15 +529,12 @@ subroutine mesh_init(ip,el)
  calcMode = .false.                                                                                 ! pretend to have collected what first call is asking (F = I)
  calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                       ! first ip,el needs to be already pingponged to "calc"
 
-!!!! COMPATIBILITY HACK !!!!
-! for a homogeneous mesh, all elements have the same number of IPs and and cell nodes.
-! hence, xxPerElem instead of maxXX
- mesh_NcellnodesPerElem = mesh_maxNcellnodes
+
 ! better name
  mesh_homogenizationAt  = mesh_element(3,:)
  mesh_microstructureAt  = mesh_element(4,:)
-!!!!!!!!!!!!!!!!!!!!!!!!
- call theMesh%init(mesh_element(2,1),mesh_node0)
+
+
 contains
 
 
