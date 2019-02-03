@@ -484,8 +484,7 @@ subroutine mesh_init(ip,el)
 
  allocate(mesh_nameElemSet(mesh_NelemSets)); mesh_nameElemSet = 'n/a'
  allocate(mesh_mapElemSet(1_pInt+mesh_maxNelemInSet,mesh_NelemSets),source=0_pInt)
- call mesh_marc_map_elementSets(mesh_nameElemSet,mesh_mapElemSet,&
-                                mesh_NelemSets,mesh_maxNelemInSet,FILEUNIT)
+ call mesh_marc_map_elementSets(mesh_nameElemSet,mesh_mapElemSet,FILEUNIT)
  if (myDebug) write(6,'(a)') ' Mapped element sets'; flush(6)
  
  mesh_NcpElems =  mesh_marc_count_cpElements(hypoelasticTableStyle,Marc_matNumber,fileFormatVersion,FILEUNIT)
@@ -500,6 +499,7 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Mapped nodes'; flush(6)
  
  call mesh_marc_build_nodes(FILEUNIT)            !ToDo: don't work on global variables
+ mesh_node = mesh_node0
  if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
  
  elemType = mesh_marc_count_cpSizes(FILEUNIT)
@@ -626,7 +626,7 @@ subroutine mesh_marc_get_tableStyles(initialcond, hypoelastic,fileUnit)
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Figures out material number of hypoelastic material and stores it in Marc_matNumber array
+!> @brief Figures out material number of hypoelastic material
 !--------------------------------------------------------------------------------------------------
 function mesh_marc_get_matNumber(fileUnit,tableStyle)
  use IO, only: &
@@ -751,7 +751,7 @@ subroutine mesh_marc_count_nodesAndElements(nNodes, nElems, fileUnit)
 !> @brief map element sets
 !! allocate globals: mesh_nameElemSet, mesh_mapElemSet
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_map_elementSets(nameElemSet,mapElemSet,NelemSets,maxNelemInSet,fileUnit)
+subroutine mesh_marc_map_elementSets(nameElemSet,mapElemSet,fileUnit)
 
  use IO,   only: IO_lc, &
                  IO_stringValue, &
@@ -759,10 +759,10 @@ subroutine mesh_marc_map_elementSets(nameElemSet,mapElemSet,NelemSets,maxNelemIn
                  IO_continuousIntValues
 
  implicit none
- integer(pInt), intent(in) :: fileUnit,NelemSets,maxNelemInSet
- character(len=64), dimension(mesh_NelemSets), intent(out) :: &
+ integer(pInt), intent(in) :: fileUnit,NelemSets
+ character(len=64), dimension(:), intent(out) :: &
    nameElemSet
- integer(pInt), dimension(1_pInt+maxNelemInSet,NelemSets), intent(out) :: &
+ integer(pInt), dimension(:,:), intent(out) :: &
    mapElemSet
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
@@ -779,7 +779,7 @@ subroutine mesh_marc_map_elementSets(nameElemSet,mapElemSet,NelemSets,maxNelemIn
        (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'element' ) ) then
       elemSet = elemSet+1_pInt
       nameElemSet(elemSet)  = trim(IO_stringValue(line,chunkPos,4_pInt))
-      mapElemSet(:,elemSet) = IO_continuousIntValues(fileUnit,maxNelemInSet,nameElemSet,mapElemSet,NelemSets)
+      mapElemSet(:,elemSet) = IO_continuousIntValues(fileUnit,size(mapElemSet,1)-1,nameElemSet,mapElemSet,size(nameElemSet))
    endif
  enddo
 
@@ -860,8 +860,9 @@ subroutine mesh_marc_map_elements(fileUnit)
                        tmp
 
  integer(pInt), dimension (1_pInt+mesh_NcpElems) :: contInts
- integer(pInt) :: i,cpElem = 0_pInt
+ integer(pInt) :: i,cpElem
 
+ cpElem = 0_pInt
  contInts = 0_pInt
  rewind(fileUnit)
  do
@@ -971,8 +972,6 @@ subroutine mesh_marc_build_nodes(fileUnit)
  integer(pInt) :: i,j,m
 
  allocate ( mesh_node0 (3,mesh_Nnodes), source=0.0_pReal)
- allocate ( mesh_node  (3,mesh_Nnodes), source=0.0_pReal)
-
 
  rewind(fileUnit)
  do

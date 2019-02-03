@@ -490,7 +490,7 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Counted CP sizes'; flush(6)
  call mesh_abaqus_build_elements(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
- call mesh_get_damaskOptions(FILEUNIT)
+ call mesh_get_damaskOptions(mesh_periodic_surface,FILEUNIT)
  if (myDebug) write(6,'(a)') ' Got DAMASK options'; flush(6)
  close (FILEUNIT)
   
@@ -1269,7 +1269,7 @@ end subroutine mesh_abaqus_build_elements
 !--------------------------------------------------------------------------------------------------
 !> @brief get any additional damask options from input file, sets mesh_periodicSurface
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_get_damaskOptions(fileUnit)
+subroutine mesh_get_damaskOptions(periodic_surface,fileUnit)
 
 use IO, only: &
   IO_lc, &
@@ -1282,24 +1282,23 @@ use IO, only: &
  integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) :: line
  integer :: myStat
- logical :: inPart
- integer(pInt) chunk, Nchunks
- character(len=300) :: damaskOption, v
- character(len=*), parameter :: keyword = '**damask'
+ integer(pInt) :: chunk, Nchunks
+ character(len=300) ::  v
+ logical, dimension(3) :: periodic_surface
+ 
 
- mesh_periodicSurface = .false.
+ periodic_surface = .false.
  myStat = 0
  rewind(fileUnit)
  do while(myStat == 0)
    read (fileUnit,'(a300)',iostat=myStat) line
    chunkPos = IO_stringPos(line)
    Nchunks = chunkPos(1)
-   if (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == keyword .and. Nchunks > 1_pInt) then             ! found keyword for damask option and there is at least one more chunk to read
-     damaskOption = IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-     select case(damaskOption)
+   if (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '**damask' .and. Nchunks > 1_pInt) then          ! found keyword for damask option and there is at least one more chunk to read
+     select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
        case('periodic')                                                                             ! damask Option that allows to specify periodic fluxes
          do chunk = 3_pInt,Nchunks                                                                  ! loop through chunks (skipping the keyword)
-            v = IO_lc(IO_stringValue(line,chunkPos,chunk))                                             ! chunk matches keyvalues x,y, or z?
+            v = IO_lc(IO_stringValue(line,chunkPos,chunk))                                          ! chunk matches keyvalues x,y, or z?
             mesh_periodicSurface(1) = mesh_periodicSurface(1) .or. v == 'x'
             mesh_periodicSurface(2) = mesh_periodicSurface(2) .or. v == 'y'
             mesh_periodicSurface(3) = mesh_periodicSurface(3) .or. v == 'z'
