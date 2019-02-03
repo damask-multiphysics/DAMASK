@@ -36,14 +36,9 @@ module IO
    IO_getTag, &
    IO_stringPos, &
    IO_stringValue, &
-   IO_fixedStringValue ,&
    IO_floatValue, &
-   IO_fixedNoEFloatValue, &
    IO_intValue, &
-   IO_fixedIntValue, &
    IO_lc, &
-   IO_skipChunks, &
-   IO_extractValue, &
    IO_error, &
    IO_warning, &
    IO_intOut, &
@@ -51,9 +46,13 @@ module IO
 #if defined(Marc4DAMASK) || defined(Abaqus)
  public :: &
 #ifdef Abaqus
+   IO_extractValue, &
    IO_countDataLines, &
 #endif
 #ifdef Marc4DAMASK
+   IO_skipChunks, &
+   IO_fixedNoEFloatValue, &
+   IO_fixedIntValue, &
    IO_countNumericalDataLines, &
 #endif
    IO_open_inputFile, &
@@ -93,7 +92,7 @@ end subroutine IO_init
 !> @details unstable and buggy
 !--------------------------------------------------------------------------------------------------
 recursive function IO_read(fileUnit,reset) result(line)
-
+!ToDo: remove recursion once material.config handling is done fully via config module
  implicit none
  integer(pInt), intent(in)           :: fileUnit                                                    !< file unit
  logical,       intent(in), optional :: reset
@@ -160,6 +159,7 @@ recursive function IO_read(fileUnit,reset) result(line)
  endif
 
 end function IO_read
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief recursively reads a text file.
@@ -284,7 +284,7 @@ end subroutine IO_open_file
 !> @details Like IO_open_file, but error is handled via return value and not via call to IO_error
 !--------------------------------------------------------------------------------------------------
 logical function IO_open_file_stat(fileUnit,path)
-
+!ToDo: DEPRECATED once material.config handling is done fully via config module
  implicit none
  integer(pInt),      intent(in) :: fileUnit                                                         !< file unit
  character(len=*),   intent(in) :: path                                                             !< relative path from working directory
@@ -692,22 +692,6 @@ end function IO_stringValue
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads string value at myChunk from fixed format string
-!--------------------------------------------------------------------------------------------------
-pure function IO_fixedStringValue (string,ends,myChunk)
-
- implicit none
- integer(pInt),                                intent(in) :: myChunk                                !< position number of desired chunk
- integer(pInt),   dimension(:),  intent(in)               :: ends                                   !< positions of end of each tag/chunk in given string
- character(len=ends(myChunk+1)-ends(myChunk))             :: IO_fixedStringValue
- character(len=*),               intent(in)               :: string                                 !< raw input with known ends of each chunk
-
- IO_fixedStringValue = string(ends(myChunk)+1:ends(myChunk+1))
-
-end function IO_fixedStringValue
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief reads float value at myChunk from string
 !--------------------------------------------------------------------------------------------------
 real(pReal) function IO_floatValue (string,chunkPos,myChunk)
@@ -730,6 +714,31 @@ real(pReal) function IO_floatValue (string,chunkPos,myChunk)
  endif  valuePresent
 
 end function IO_floatValue
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief reads integer value at myChunk from string
+!--------------------------------------------------------------------------------------------------
+integer(pInt) function IO_intValue(string,chunkPos,myChunk)
+
+ implicit none
+ character(len=*),                             intent(in) :: string                                 !< raw input with known start and end of each chunk
+ integer(pInt),                                intent(in) :: myChunk                                !< position number of desired chunk
+ integer(pInt),   dimension(:),                intent(in) :: chunkPos                               !< positions of start and end of each tag/chunk in given string
+ character(len=13),              parameter  :: MYNAME = 'IO_intValue: '
+ character(len=12),              parameter  :: VALIDCHARACTERS = '0123456789+-'
+
+ IO_intValue = 0_pInt
+
+ valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1_pInt) then
+   call IO_warning(201,el=myChunk,ext_msg=MYNAME//trim(string))
+ else valuePresent
+   IO_intValue = IO_verifyIntValue(trim(adjustl(string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)))),&
+                                   VALIDCHARACTERS,MYNAME)
+ endif valuePresent
+
+end function IO_intValue
+
 
 #ifdef Marc4DAMASK
 !--------------------------------------------------------------------------------------------------
@@ -785,30 +794,6 @@ end function IO_fixedIntValue
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads integer value at myChunk from string
-!--------------------------------------------------------------------------------------------------
-integer(pInt) function IO_intValue(string,chunkPos,myChunk)
-
- implicit none
- character(len=*),                             intent(in) :: string                                 !< raw input with known start and end of each chunk
- integer(pInt),                                intent(in) :: myChunk                                !< position number of desired chunk
- integer(pInt),   dimension(:),                intent(in) :: chunkPos                               !< positions of start and end of each tag/chunk in given string
- character(len=13),              parameter  :: MYNAME = 'IO_intValue: '
- character(len=12),              parameter  :: VALIDCHARACTERS = '0123456789+-'
-
- IO_intValue = 0_pInt
-
- valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1_pInt) then
-   call IO_warning(201,el=myChunk,ext_msg=MYNAME//trim(string))
- else valuePresent
-   IO_intValue = IO_verifyIntValue(trim(adjustl(string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)))),&
-                                   VALIDCHARACTERS,MYNAME)
- endif valuePresent
-
-end function IO_intValue
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief changes characters in string to lower case
 !--------------------------------------------------------------------------------------------------
 pure function IO_lc(string)
@@ -831,6 +816,7 @@ pure function IO_lc(string)
 end function IO_lc
 
 
+#ifdef Marc4DAMASK
 !--------------------------------------------------------------------------------------------------
 !> @brief reads file to skip (at least) N chunks (may be over multiple lines)
 !--------------------------------------------------------------------------------------------------
@@ -851,8 +837,10 @@ subroutine IO_skipChunks(fileUnit,N)
    remainingChunks = remainingChunks - (size(IO_stringPos(line))-1_pInt)/2_pInt
  enddo
 end subroutine IO_skipChunks
+#endif
 
 
+#ifdef Abaqus
 !--------------------------------------------------------------------------------------------------
 !> @brief extracts string value from key=value pair and check whether key matches
 !--------------------------------------------------------------------------------------------------
@@ -872,247 +860,7 @@ character(len=300) pure function IO_extractValue(pair,key)
  if (myChunk > 0 .and. pair(:myChunk-1) == key) IO_extractValue = pair(myChunk+1:)                  ! extract value if key matches
 
 end function IO_extractValue
-
-
-#ifdef Abaqus
-!--------------------------------------------------------------------------------------------------
-!> @brief count lines containig data up to next *keyword
-!--------------------------------------------------------------------------------------------------
-integer(pInt) function IO_countDataLines(fileUnit)
-
- implicit none
- integer(pInt), intent(in)                :: fileUnit                                               !< file handle
-
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=65536)                     :: line, &
-                                             tmp
-
- IO_countDataLines = 0_pInt
- line = ''
-
- do while (trim(line) /= IO_EOF)
-   line = IO_read(fileUnit)
-   chunkPos = IO_stringPos(line)
-   tmp = IO_lc(IO_stringValue(line,chunkPos,1_pInt))
-   if (tmp(1:1) == '*' .and. tmp(2:2) /= '*') then                                                  ! found keyword
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit
-   else
-     if (tmp(2:2) /= '*') IO_countDataLines = IO_countDataLines + 1_pInt
-   endif
- enddo
- backspace(fileUnit)
-
-end function IO_countDataLines
-#endif
-
-
-#ifdef Marc4DAMASK
-!--------------------------------------------------------------------------------------------------
-!> @brief count lines containig data up to next *keyword
-!--------------------------------------------------------------------------------------------------
-integer(pInt) function IO_countNumericalDataLines(fileUnit)
-
- implicit none
- integer(pInt), intent(in)                :: fileUnit                                               !< file handle
-
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=65536)                     :: line, &
-                                             tmp
-
- IO_countNumericalDataLines = 0_pInt
- line = ''
-
- do while (trim(line) /= IO_EOF)
-   line = IO_read(fileUnit)
-   chunkPos = IO_stringPos(line)
-   tmp = IO_lc(IO_stringValue(line,chunkPos,1_pInt))
-   if (verify(trim(tmp),'0123456789') == 0) then                                                    ! numerical values
-     IO_countNumericalDataLines = IO_countNumericalDataLines + 1_pInt
-   else
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit
-   endif
- enddo
- backspace(fileUnit)
-
-end function IO_countNumericalDataLines
-#endif
-
-
-#if defined(Abaqus) || defined(Marc4DAMASK)
-!--------------------------------------------------------------------------------------------------
-!> @brief count items in consecutive lines depending on lines
-!> @details Marc:      ints concatenated by "c" as last char or range of values a "to" b
-!> Abaqus:    triplet of start,stop,inc
-!--------------------------------------------------------------------------------------------------
-integer(pInt) function IO_countContinuousIntValues(fileUnit)
-
- implicit none
- integer(pInt), intent(in) :: fileUnit
-
-#ifdef Abaqus
- integer(pInt)                            :: l,c
-#endif
- integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=65536)                     :: line
-
- IO_countContinuousIntValues = 0_pInt
- line = ''
-
-#if defined(Marc4DAMASK)
- do while (trim(line) /= IO_EOF)
-   line = IO_read(fileUnit)
-   chunkPos = IO_stringPos(line)
-   if (chunkPos(1) < 1_pInt) then                                                                   ! empty line
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit
-   elseif (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'to' ) then                               ! found range indicator
-     IO_countContinuousIntValues = 1_pInt + abs(  IO_intValue(line,chunkPos,3_pInt) &
-                                                - IO_intValue(line,chunkPos,1_pInt))
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit                                                                                           ! only one single range indicator allowed                              
-   else
-     IO_countContinuousIntValues = IO_countContinuousIntValues+chunkPos(1)-1_pInt                   ! add line's count when assuming 'c'
-     if ( IO_lc(IO_stringValue(line,chunkPos,chunkPos(1))) /= 'c' ) then                            ! line finished, read last value
-       IO_countContinuousIntValues = IO_countContinuousIntValues+1_pInt
-       line = IO_read(fileUnit, .true.)                                                             ! reset IO_read
-       exit                                                                                         ! data ended
-     endif
-   endif
- enddo
-#elif defined(Abaqus)
- c = IO_countDataLines(fileUnit)
- do l = 1_pInt,c
-   backspace(fileUnit)
- enddo
-
- l = 1_pInt
- do while (trim(line) /= IO_EOF .and. l <= c)                                                       ! ToDo: is this correct?
-   l = l + 1_pInt
-   line = IO_read(fileUnit)
-   chunkPos = IO_stringPos(line)
-   IO_countContinuousIntValues = IO_countContinuousIntValues + 1_pInt + &                           ! assuming range generation
-                            (IO_intValue(line,chunkPos,2_pInt)-IO_intValue(line,chunkPos,1_pInt))/&
-                                                     max(1_pInt,IO_intValue(line,chunkPos,3_pInt))
- enddo
-#endif
-
-end function IO_countContinuousIntValues
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return integer list corresponding to items in consecutive lines.
-!! First integer in array is counter
-!> @details Marc:      ints concatenated by "c" as last char, range of a "to" b, or named set
-!! Abaqus:    triplet of start,stop,inc or named set
-!--------------------------------------------------------------------------------------------------
-function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
-
- implicit none
- integer(pInt),                     intent(in) :: maxN
- integer(pInt),     dimension(1+maxN)          :: IO_continuousIntValues
-
- integer(pInt),                     intent(in) :: fileUnit, &
-                                                  lookupMaxN
- integer(pInt),     dimension(:,:), intent(in) :: lookupMap
- character(len=64), dimension(:),   intent(in) :: lookupName
- integer(pInt) :: i,first,last
-#ifdef Abaqus
- integer(pInt) :: j,l,c
-#endif
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=65536) line
- logical rangeGeneration
-
- IO_continuousIntValues = 0_pInt
- rangeGeneration = .false.
-
-#if defined(Marc4DAMASK)
- do
-   read(fileUnit,'(A65536)',end=100) line
-   chunkPos = IO_stringPos(line)
-   if (chunkPos(1) < 1_pInt) then                                                                   ! empty line
-     exit
-   elseif (verify(IO_stringValue(line,chunkPos,1_pInt),'0123456789') > 0) then                      ! a non-int, i.e. set name
-     do i = 1_pInt, lookupMaxN                                                                      ! loop over known set names
-       if (IO_stringValue(line,chunkPos,1_pInt) == lookupName(i)) then                              ! found matching name
-         IO_continuousIntValues = lookupMap(:,i)                                                    ! return resp. entity list
-         exit
-       endif
-     enddo
-     exit
-   else if (chunkPos(1) > 2_pInt .and. IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'to' ) then   ! found range indicator
-     first = IO_intValue(line,chunkPos,1_pInt)
-     last  = IO_intValue(line,chunkPos,3_pInt)
-     do i = first, last, sign(1_pInt,last-first)
-       IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
-       IO_continuousIntValues(1+IO_continuousIntValues(1)) = i
-     enddo
-     exit
-   else
-     do i = 1_pInt,chunkPos(1)-1_pInt                                                               ! interpret up to second to last value
-       IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
-       IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,chunkPos,i)
-     enddo
-     if ( IO_lc(IO_stringValue(line,chunkPos,chunkPos(1))) /= 'c' ) then                            ! line finished, read last value
-       IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
-       IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,chunkPos,chunkPos(1))
-       exit
-     endif
-   endif
- enddo
-#elif defined(Abaqus)
- c = IO_countDataLines(fileUnit)
- do l = 1_pInt,c
-   backspace(fileUnit)
- enddo
-
-!--------------------------------------------------------------------------------------------------
-! check if the element values in the elset are auto generated
- backspace(fileUnit)
- read(fileUnit,'(A65536)',end=100) line
- chunkPos = IO_stringPos(line)
- do i = 1_pInt,chunkPos(1)
-   if (IO_lc(IO_stringValue(line,chunkPos,i)) == 'generate') rangeGeneration = .true.
- enddo
-
- do l = 1_pInt,c
-   read(fileUnit,'(A65536)',end=100) line
-   chunkPos = IO_stringPos(line)
-   if (verify(IO_stringValue(line,chunkPos,1_pInt),'0123456789') > 0) then                          ! a non-int, i.e. set names follow on this line
-     do i = 1_pInt,chunkPos(1)                                                                      ! loop over set names in line
-       do j = 1_pInt,lookupMaxN                                                                     ! look through known set names
-         if (IO_stringValue(line,chunkPos,i) == lookupName(j)) then                                 ! found matching name
-           first = 2_pInt + IO_continuousIntValues(1)                                               ! where to start appending data
-           last  = first + lookupMap(1,j) - 1_pInt                                                  ! up to where to append data
-           IO_continuousIntValues(first:last) = lookupMap(2:1+lookupMap(1,j),j)                     ! add resp. entity list
-           IO_continuousIntValues(1) = IO_continuousIntValues(1) + lookupMap(1,j)                   ! count them
-         endif
-       enddo
-     enddo
-   else if (rangeGeneration) then                                                                   ! range generation
-     do i = IO_intValue(line,chunkPos,1_pInt),&
-            IO_intValue(line,chunkPos,2_pInt),&
-            max(1_pInt,IO_intValue(line,chunkPos,3_pInt))
-       IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
-       IO_continuousIntValues(1+IO_continuousIntValues(1)) = i
-     enddo
-   else                                                                                             ! read individual elem nums
-     do i = 1_pInt,chunkPos(1)
-       IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
-       IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,chunkPos,i)
-     enddo
-   endif
- enddo
-#endif
-
-100 end function IO_continuousIntValues
-#endif
-
+# endif
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns format string for integer values without leading zeros
@@ -1501,6 +1249,246 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
  !$OMP END CRITICAL (write2out)
 
 end subroutine IO_warning
+
+
+#ifdef Abaqus
+!--------------------------------------------------------------------------------------------------
+!> @brief count lines containig data up to next *keyword
+!--------------------------------------------------------------------------------------------------
+integer(pInt) function IO_countDataLines(fileUnit)
+
+ implicit none
+ integer(pInt), intent(in)                :: fileUnit                                               !< file handle
+
+
+ integer(pInt), allocatable, dimension(:) :: chunkPos
+ character(len=65536)                     :: line, &
+                                             tmp
+
+ IO_countDataLines = 0_pInt
+ line = ''
+
+ do while (trim(line) /= IO_EOF)
+   line = IO_read(fileUnit)
+   chunkPos = IO_stringPos(line)
+   tmp = IO_lc(IO_stringValue(line,chunkPos,1_pInt))
+   if (tmp(1:1) == '*' .and. tmp(2:2) /= '*') then                                                  ! found keyword
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit
+   else
+     if (tmp(2:2) /= '*') IO_countDataLines = IO_countDataLines + 1_pInt
+   endif
+ enddo
+ backspace(fileUnit)
+
+end function IO_countDataLines
+#endif
+
+
+#ifdef Marc4DAMASK
+!--------------------------------------------------------------------------------------------------
+!> @brief count lines containig data up to next *keyword
+!--------------------------------------------------------------------------------------------------
+integer(pInt) function IO_countNumericalDataLines(fileUnit)
+
+ implicit none
+ integer(pInt), intent(in)                :: fileUnit                                               !< file handle
+
+
+ integer(pInt), allocatable, dimension(:) :: chunkPos
+ character(len=65536)                     :: line, &
+                                             tmp
+
+ IO_countNumericalDataLines = 0_pInt
+ line = ''
+
+ do while (trim(line) /= IO_EOF)
+   line = IO_read(fileUnit)
+   chunkPos = IO_stringPos(line)
+   tmp = IO_lc(IO_stringValue(line,chunkPos,1_pInt))
+   if (verify(trim(tmp),'0123456789') == 0) then                                                    ! numerical values
+     IO_countNumericalDataLines = IO_countNumericalDataLines + 1_pInt
+   else
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit
+   endif
+ enddo
+ backspace(fileUnit)
+
+end function IO_countNumericalDataLines
+#endif
+
+
+#if defined(Abaqus) || defined(Marc4DAMASK)
+!--------------------------------------------------------------------------------------------------
+!> @brief count items in consecutive lines depending on lines
+!> @details Marc:      ints concatenated by "c" as last char or range of values a "to" b
+!> Abaqus:    triplet of start,stop,inc
+!--------------------------------------------------------------------------------------------------
+integer(pInt) function IO_countContinuousIntValues(fileUnit)
+
+ implicit none
+ integer(pInt), intent(in) :: fileUnit
+
+#ifdef Abaqus
+ integer(pInt)                            :: l,c
+#endif
+ integer(pInt), allocatable, dimension(:) :: chunkPos
+ character(len=65536)                     :: line
+
+ IO_countContinuousIntValues = 0_pInt
+ line = ''
+
+#if defined(Marc4DAMASK)
+ do while (trim(line) /= IO_EOF)
+   line = IO_read(fileUnit)
+   chunkPos = IO_stringPos(line)
+   if (chunkPos(1) < 1_pInt) then                                                                   ! empty line
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit
+   elseif (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'to' ) then                               ! found range indicator
+     IO_countContinuousIntValues = 1_pInt + abs(  IO_intValue(line,chunkPos,3_pInt) &
+                                                - IO_intValue(line,chunkPos,1_pInt))
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit                                                                                           ! only one single range indicator allowed                              
+   else
+     IO_countContinuousIntValues = IO_countContinuousIntValues+chunkPos(1)-1_pInt                   ! add line's count when assuming 'c'
+     if ( IO_lc(IO_stringValue(line,chunkPos,chunkPos(1))) /= 'c' ) then                            ! line finished, read last value
+       IO_countContinuousIntValues = IO_countContinuousIntValues+1_pInt
+       line = IO_read(fileUnit, .true.)                                                             ! reset IO_read
+       exit                                                                                         ! data ended
+     endif
+   endif
+ enddo
+#elif defined(Abaqus)
+ c = IO_countDataLines(fileUnit)
+ do l = 1_pInt,c
+   backspace(fileUnit)
+ enddo
+
+ l = 1_pInt
+ do while (trim(line) /= IO_EOF .and. l <= c)                                                       ! ToDo: is this correct?
+   l = l + 1_pInt
+   line = IO_read(fileUnit)
+   chunkPos = IO_stringPos(line)
+   IO_countContinuousIntValues = IO_countContinuousIntValues + 1_pInt + &                           ! assuming range generation
+                            (IO_intValue(line,chunkPos,2_pInt)-IO_intValue(line,chunkPos,1_pInt))/&
+                                                     max(1_pInt,IO_intValue(line,chunkPos,3_pInt))
+ enddo
+#endif
+
+end function IO_countContinuousIntValues
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief return integer list corresponding to items in consecutive lines.
+!! First integer in array is counter
+!> @details Marc:      ints concatenated by "c" as last char, range of a "to" b, or named set
+!! Abaqus:    triplet of start,stop,inc or named set
+!--------------------------------------------------------------------------------------------------
+function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
+
+ implicit none
+ integer(pInt),                     intent(in) :: maxN
+ integer(pInt),     dimension(1+maxN)          :: IO_continuousIntValues
+
+ integer(pInt),                     intent(in) :: fileUnit, &
+                                                  lookupMaxN
+ integer(pInt),     dimension(:,:), intent(in) :: lookupMap
+ character(len=64), dimension(:),   intent(in) :: lookupName
+ integer(pInt) :: i,first,last
+#ifdef Abaqus
+ integer(pInt) :: j,l,c
+#endif
+
+ integer(pInt), allocatable, dimension(:) :: chunkPos
+ character(len=65536) line
+ logical rangeGeneration
+
+ IO_continuousIntValues = 0_pInt
+ rangeGeneration = .false.
+
+#if defined(Marc4DAMASK)
+ do
+   read(fileUnit,'(A65536)',end=100) line
+   chunkPos = IO_stringPos(line)
+   if (chunkPos(1) < 1_pInt) then                                                                   ! empty line
+     exit
+   elseif (verify(IO_stringValue(line,chunkPos,1_pInt),'0123456789') > 0) then                      ! a non-int, i.e. set name
+     do i = 1_pInt, lookupMaxN                                                                      ! loop over known set names
+       if (IO_stringValue(line,chunkPos,1_pInt) == lookupName(i)) then                              ! found matching name
+         IO_continuousIntValues = lookupMap(:,i)                                                    ! return resp. entity list
+         exit
+       endif
+     enddo
+     exit
+   else if (chunkPos(1) > 2_pInt .and. IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'to' ) then   ! found range indicator
+     first = IO_intValue(line,chunkPos,1_pInt)
+     last  = IO_intValue(line,chunkPos,3_pInt)
+     do i = first, last, sign(1_pInt,last-first)
+       IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
+       IO_continuousIntValues(1+IO_continuousIntValues(1)) = i
+     enddo
+     exit
+   else
+     do i = 1_pInt,chunkPos(1)-1_pInt                                                               ! interpret up to second to last value
+       IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
+       IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,chunkPos,i)
+     enddo
+     if ( IO_lc(IO_stringValue(line,chunkPos,chunkPos(1))) /= 'c' ) then                            ! line finished, read last value
+       IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
+       IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,chunkPos,chunkPos(1))
+       exit
+     endif
+   endif
+ enddo
+#elif defined(Abaqus)
+ c = IO_countDataLines(fileUnit)
+ do l = 1_pInt,c
+   backspace(fileUnit)
+ enddo
+
+!--------------------------------------------------------------------------------------------------
+! check if the element values in the elset are auto generated
+ backspace(fileUnit)
+ read(fileUnit,'(A65536)',end=100) line
+ chunkPos = IO_stringPos(line)
+ do i = 1_pInt,chunkPos(1)
+   if (IO_lc(IO_stringValue(line,chunkPos,i)) == 'generate') rangeGeneration = .true.
+ enddo
+
+ do l = 1_pInt,c
+   read(fileUnit,'(A65536)',end=100) line
+   chunkPos = IO_stringPos(line)
+   if (verify(IO_stringValue(line,chunkPos,1_pInt),'0123456789') > 0) then                          ! a non-int, i.e. set names follow on this line
+     do i = 1_pInt,chunkPos(1)                                                                      ! loop over set names in line
+       do j = 1_pInt,lookupMaxN                                                                     ! look through known set names
+         if (IO_stringValue(line,chunkPos,i) == lookupName(j)) then                                 ! found matching name
+           first = 2_pInt + IO_continuousIntValues(1)                                               ! where to start appending data
+           last  = first + lookupMap(1,j) - 1_pInt                                                  ! up to where to append data
+           IO_continuousIntValues(first:last) = lookupMap(2:1+lookupMap(1,j),j)                     ! add resp. entity list
+           IO_continuousIntValues(1) = IO_continuousIntValues(1) + lookupMap(1,j)                   ! count them
+         endif
+       enddo
+     enddo
+   else if (rangeGeneration) then                                                                   ! range generation
+     do i = IO_intValue(line,chunkPos,1_pInt),&
+            IO_intValue(line,chunkPos,2_pInt),&
+            max(1_pInt,IO_intValue(line,chunkPos,3_pInt))
+       IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
+       IO_continuousIntValues(1+IO_continuousIntValues(1)) = i
+     enddo
+   else                                                                                             ! read individual elem nums
+     do i = 1_pInt,chunkPos(1)
+       IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
+       IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,chunkPos,i)
+     enddo
+   endif
+ enddo
+#endif
+
+100 end function IO_continuousIntValues
+#endif
 
 
 !--------------------------------------------------------------------------------------------------
