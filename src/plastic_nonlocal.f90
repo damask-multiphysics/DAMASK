@@ -234,8 +234,7 @@ use IO,       only: IO_read, &
 use debug,    only: debug_level, &
                     debug_constitutive, &
                     debug_levelBasic
-use mesh,     only: theMesh, &
-                    mesh_maxNipNeighbors
+use mesh,     only: theMesh
 use material, only: phase_plasticity, &
                     homogenization_maxNgrains, &
                     phase_plasticityInstance, &
@@ -829,7 +828,7 @@ allocate(rhoDotThermalAnnihilationOutput(maxTotalNslip,2,homogenization_maxNgrai
 allocate(rhoDotEdgeJogsOutput(maxTotalNslip,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), &
                                                                                    source=0.0_pReal)
 
-allocate(compatibility(2,maxTotalNslip,maxTotalNslip,mesh_maxNipNeighbors,theMesh%elem%nIPs,theMesh%nElems), &
+allocate(compatibility(2,maxTotalNslip,maxTotalNslip,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), &
                                                                                    source=0.0_pReal)
 allocate(peierlsStress(maxTotalNslip,2,maxNinstances),                                source=0.0_pReal)
 allocate(colinearSystem(maxTotalNslip,maxNinstances),                                 source=0_pInt)
