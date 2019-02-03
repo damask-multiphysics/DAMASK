@@ -44,18 +44,22 @@ module IO
    IO_lc, &
    IO_skipChunks, &
    IO_extractValue, &
-   IO_countDataLines, &
-   IO_countNumericalDataLines, &
-   IO_countContinuousIntValues, &
-   IO_continuousIntValues, &
    IO_error, &
    IO_warning, &
    IO_intOut, &
    IO_timeStamp
 #if defined(Marc4DAMASK) || defined(Abaqus)
  public :: &
+#ifdef Abaqus
+   IO_countDataLines, &
+#endif
+#ifdef Marc4DAMASK
+   IO_countNumericalDataLines, &
+#endif
    IO_open_inputFile, &
-   IO_open_logFile
+   IO_open_logFile, &
+   IO_countContinuousIntValues, &
+   IO_continuousIntValues
 #endif
  private :: &
    IO_fixedFloatValue, &
@@ -889,6 +893,7 @@ character(len=300) pure function IO_extractValue(pair,key)
 end function IO_extractValue
 
 
+#ifdef Abaqus
 !--------------------------------------------------------------------------------------------------
 !> @brief count lines containig data up to next *keyword
 !--------------------------------------------------------------------------------------------------
@@ -919,8 +924,10 @@ integer(pInt) function IO_countDataLines(fileUnit)
  backspace(fileUnit)
 
 end function IO_countDataLines
+#endif
 
 
+#ifdef Marc4DAMASK
 !--------------------------------------------------------------------------------------------------
 !> @brief count lines containig data up to next *keyword
 !--------------------------------------------------------------------------------------------------
@@ -951,12 +958,14 @@ integer(pInt) function IO_countNumericalDataLines(fileUnit)
  backspace(fileUnit)
 
 end function IO_countNumericalDataLines
+#endif
 
+
+#if defined(Abaqus) || defined(Marc4DAMASK)
 !--------------------------------------------------------------------------------------------------
 !> @brief count items in consecutive lines depending on lines
 !> @details Marc:      ints concatenated by "c" as last char or range of values a "to" b
 !> Abaqus:    triplet of start,stop,inc
-!> Spectral:  ints concatenated range of a "to" b, multiple entries with a "of" b
 !--------------------------------------------------------------------------------------------------
 integer(pInt) function IO_countContinuousIntValues(fileUnit)
 
@@ -972,7 +981,7 @@ integer(pInt) function IO_countContinuousIntValues(fileUnit)
  IO_countContinuousIntValues = 0_pInt
  line = ''
 
-#ifndef Abaqus
+#if defined(Marc4DAMASK)
  do while (trim(line) /= IO_EOF)
    line = IO_read(fileUnit)
    chunkPos = IO_stringPos(line)
@@ -983,11 +992,7 @@ integer(pInt) function IO_countContinuousIntValues(fileUnit)
      IO_countContinuousIntValues = 1_pInt + abs(  IO_intValue(line,chunkPos,3_pInt) &
                                                 - IO_intValue(line,chunkPos,1_pInt))
      line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit                                                                                           ! only one single range indicator allowed
-   else if (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'of' ) then                              ! found multiple entries indicator
-     IO_countContinuousIntValues = IO_intValue(line,chunkPos,1_pInt)
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit                                                                                           ! only one single multiplier allowed
+     exit                                                                                           ! only one single range indicator allowed                              
    else
      IO_countContinuousIntValues = IO_countContinuousIntValues+chunkPos(1)-1_pInt                   ! add line's count when assuming 'c'
      if ( IO_lc(IO_stringValue(line,chunkPos,chunkPos(1))) /= 'c' ) then                            ! line finished, read last value
@@ -997,14 +1002,14 @@ integer(pInt) function IO_countContinuousIntValues(fileUnit)
      endif
    endif
  enddo
-#else
+#elif defined(Abaqus)
  c = IO_countDataLines(fileUnit)
  do l = 1_pInt,c
-   backspace(fileUnit)                                                                              ! ToDo: substitute by rewind?
+   backspace(fileUnit)
  enddo
 
  l = 1_pInt
- do while (trim(line) /= IO_EOF .and. l <= c)                                                       ! ToDo: is this correct
+ do while (trim(line) /= IO_EOF .and. l <= c)                                                       ! ToDo: is this correct?
    l = l + 1_pInt
    line = IO_read(fileUnit)
    chunkPos = IO_stringPos(line)
@@ -1022,7 +1027,6 @@ end function IO_countContinuousIntValues
 !! First integer in array is counter
 !> @details Marc:      ints concatenated by "c" as last char, range of a "to" b, or named set
 !! Abaqus:    triplet of start,stop,inc or named set
-!! Spectral:  ints concatenated range of a "to" b, multiple entries with a "of" b
 !--------------------------------------------------------------------------------------------------
 function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
 
@@ -1046,7 +1050,7 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
  IO_continuousIntValues = 0_pInt
  rangeGeneration = .false.
 
-#ifndef Abaqus
+#if defined(Marc4DAMASK)
  do
    read(fileUnit,'(A65536)',end=100) line
    chunkPos = IO_stringPos(line)
@@ -1068,10 +1072,6 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
        IO_continuousIntValues(1+IO_continuousIntValues(1)) = i
      enddo
      exit
-   else if (chunkPos(1) > 2_pInt .and. IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'of' ) then   ! found multiple entries indicator
-     IO_continuousIntValues(1) = IO_intValue(line,chunkPos,1_pInt)
-     IO_continuousIntValues(2:IO_continuousIntValues(1)+1) = IO_intValue(line,chunkPos,3_pInt)
-     exit
    else
      do i = 1_pInt,chunkPos(1)-1_pInt                                                               ! interpret up to second to last value
        IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
@@ -1084,7 +1084,7 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
      endif
    endif
  enddo
-#else
+#elif defined(Abaqus)
  c = IO_countDataLines(fileUnit)
  do l = 1_pInt,c
    backspace(fileUnit)
@@ -1130,6 +1130,7 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
 #endif
 
 100 end function IO_continuousIntValues
+#endif
 
 
 !--------------------------------------------------------------------------------------------------
