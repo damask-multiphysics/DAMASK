@@ -13,18 +13,11 @@ module mesh
  implicit none
  private
  integer(pInt), public, protected :: &
-   mesh_NcpElems, &                                                                                 !< total number of CP elements in local mesh
    mesh_elemType, &                                                                                 !< Element type of the mesh (only support homogeneous meshes)
    mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
    mesh_Ncellnodes, &                                                                               !< total number of cell nodes in mesh (including duplicates)
    mesh_Ncells, &                                                                                   !< total number of cells in mesh
-   mesh_maxNipNeighbors, &                                                                          !< max number of IP neighbors in any CP element
    mesh_maxNsharedElems                                                                             !< max number of CP elements sharing a node
-!!!! BEGIN DEPRECATED !!!!!
- integer(pInt), public, protected :: &
-   mesh_maxNips, &                                                                                  !< max number of IPs in any CP element
-   mesh_maxNcellnodes                                                                               !< max number of cell nodes in any CP element
-!!!! BEGIN DEPRECATED !!!!!
 
  integer(pInt), dimension(:), allocatable, public, protected :: &
    mesh_homogenizationAt, &                                                                         !< homogenization ID of each element
@@ -70,16 +63,8 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_cell                                                                                        !< cell connectivity for each element,ip/cell
 
  integer(pInt), dimension(:,:,:), allocatable, private :: &
-   FE_nodesAtIP, &                                                                                  !< map IP index to node indices in a specific type of element
-   FE_ipNeighbor, &                                                                                 !< +x,-x,+y,-y,+z,-z list of intra-element IPs and(negative) neighbor faces per own IP in a specific type of element
-   FE_cell, &                                                                                       !< list of intra-element cell node IDs that constitute the cells in a specific type of element geometry
    FE_cellface                                                                                      !< list of intra-cell cell node IDs that constitute the cell faces of a specific type of cell
 
- real(pReal), dimension(:,:,:), allocatable, private :: &
-   FE_cellnodeParentnodeWeights                                                                     !< list of node weights for the generation of cell nodes
-
- integer(pInt), dimension(:,:,:,:), allocatable, private :: &
-   FE_subNodeOnIPFace
 
 ! These definitions should actually reside in the FE-solver specific part (different for MARC/ABAQUS)
 ! Hence, I suggest to prefix with "FE_"
@@ -88,8 +73,6 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    FE_Nelemtypes = 13_pInt, &
    FE_Ngeomtypes = 10_pInt, &
    FE_Ncelltypes = 4_pInt, &
-   FE_maxNnodes = 20_pInt, &
-   FE_maxNips = 27_pInt, &
    FE_maxNipNeighbors = 6_pInt, &
    FE_maxmaxNnodesAtIP = 8_pInt, &                                                                  !< max number of (equivalent) nodes attached to an IP
    FE_maxNmatchingNodesPerFace = 4_pInt, &
@@ -99,69 +82,8 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    FE_maxNcellfaces = 6_pInt, &
    FE_maxNcellnodesPerCellface = 4_pInt
 
- integer(pInt), dimension(FE_Nelemtypes), parameter, public :: FE_geomtype = &                      !< geometry type of particular element type
- int([ &
-      1, & ! element   6 (2D 3node 1ip)
-      2, & ! element 125 (2D 6node 3ip)
-      3, & ! element  11 (2D 4node 4ip)
-      4, & ! element  27 (2D 8node 9ip)
-      3, & ! element  54 (2D 8node 4ip)
-      5, & ! element 134 (3D 4node 1ip)
-      6, & ! element 157 (3D 5node 4ip)
-      6, & ! element 127 (3D 10node 4ip)
-      7, & ! element 136 (3D 6node 6ip)
-      8, & ! element 117 (3D 8node 1ip)
-      9, & ! element   7 (3D 8node 8ip)
-      9, & ! element  57 (3D 20node 8ip)
-     10  & ! element  21 (3D 20node 27ip)
-  ],pInt)
 
- integer(pInt), dimension(FE_Ngeomtypes), parameter, public  :: FE_celltype = &                     !< cell type that is used by each geometry type
- int([ &
-      1, & ! element   6 (2D 3node 1ip)
-      2, & ! element 125 (2D 6node 3ip)
-      2, & ! element  11 (2D 4node 4ip)
-      2, & ! element  27 (2D 8node 9ip)
-      3, & ! element 134 (3D 4node 1ip)
-      4, & ! element 127 (3D 10node 4ip)
-      4, & ! element 136 (3D 6node 6ip)
-      4, & ! element 117 (3D 8node 1ip)
-      4, & ! element   7 (3D 8node 8ip)
-      4  & ! element  21 (3D 20node 27ip)
-  ],pInt)
-
- integer(pInt), dimension(FE_Ngeomtypes), parameter, public :: FE_dimension = &                     !< dimension of geometry type
- int([ &
-      2, & ! element   6 (2D 3node 1ip)
-      2, & ! element 125 (2D 6node 3ip)
-      2, & ! element  11 (2D 4node 4ip)
-      2, & ! element  27 (2D 8node 9ip)
-      3, & ! element 134 (3D 4node 1ip)
-      3, & ! element 127 (3D 10node 4ip)
-      3, & ! element 136 (3D 6node 6ip)
-      3, & ! element 117 (3D 8node 1ip)
-      3, & ! element   7 (3D 8node 8ip)
-      3  & ! element  21 (3D 20node 27ip)
-  ],pInt)
-
- integer(pInt), dimension(FE_Nelemtypes), parameter, public :: FE_Nnodes = &                        !< number of nodes that constitute a specific type of element
- int([ &
-      3, & ! element   6 (2D 3node 1ip)
-      6, & ! element 125 (2D 6node 3ip)
-      4, & ! element  11 (2D 4node 4ip)
-      8, & ! element  27 (2D 8node 9ip)
-      8, & ! element  54 (2D 8node 4ip)
-      4, & ! element 134 (3D 4node 1ip)
-      5, & ! element 157 (3D 5node 4ip)
-     10, & ! element 127 (3D 10node 4ip)
-      6, & ! element 136 (3D 6node 6ip)
-      8, & ! element 117 (3D 8node 1ip)
-      8, & ! element   7 (3D 8node 8ip)
-     20, & ! element  57 (3D 20node 8ip)
-     20  & ! element  21 (3D 20node 27ip)
-  ],pInt)
-
- integer(pInt), dimension(FE_Ngeomtypes), parameter, public :: FE_Nfaces = &                        !< number of faces of a specific type of element geometry
+ integer(pInt), dimension(FE_Ngeomtypes), parameter, private :: FE_Nfaces = &                        !< number of faces of a specific type of element geometry
  int([ &
       3, & ! element   6 (2D 3node 1ip)
       3, & ! element 125 (2D 6node 3ip)
@@ -269,27 +191,6 @@ integer(pInt), dimension(:,:), allocatable, private :: &
   8,7,6,5   &
   ],pInt),[FE_maxNmatchingNodesPerFace,FE_maxNfaces,FE_Ngeomtypes])
 
- integer(pInt), dimension(FE_Ngeomtypes), parameter, private :: FE_Ncellnodes = &                   !< number of cell nodes in a specific geometry type
- int([ &
-      3, & ! element   6 (2D 3node 1ip)
-      7, & ! element 125 (2D 6node 3ip)
-      9, & ! element  11 (2D 4node 4ip)
-     16, & ! element  27 (2D 8node 9ip)
-      4, & ! element 134 (3D 4node 1ip)
-     15, & ! element 127 (3D 10node 4ip)
-     21, & ! element 136 (3D 6node 6ip)
-      8, & ! element 117 (3D 8node 1ip)
-     27, & ! element   7 (3D 8node 8ip)
-     64  & ! element  21 (3D 20node 27ip)
-  ],pInt)
-
- integer(pInt), dimension(FE_Ncelltypes), parameter, private :: FE_NcellnodesPerCell = &             !< number of cell nodes in a specific cell type
- int([ &
-      3, & ! (2D 3node)
-      4, & ! (2D 4node)
-      4, & ! (3D 4node)
-      8  & ! (3D 8node)
-  ],pInt)
 
  integer(pInt), dimension(FE_Ncelltypes), parameter, private :: FE_NcellnodesPerCellface = &        !< number of cell nodes per cell face in a specific cell type
  int([&
@@ -299,21 +200,7 @@ integer(pInt), dimension(:,:), allocatable, private :: &
       4  & ! (3D 8node)
   ],pInt)
 
- integer(pInt), dimension(FE_Ngeomtypes), parameter, public :: FE_Nips = &                          !< number of IPs in a specific type of element
- int([ &
-      1, & ! element   6 (2D 3node 1ip)
-      3, & ! element 125 (2D 6node 3ip)
-      4, & ! element  11 (2D 4node 4ip)
-      9, & ! element  27 (2D 8node 9ip)
-      1, & ! element 134 (3D 4node 1ip)
-      4, & ! element 127 (3D 10node 4ip)
-      6, & ! element 136 (3D 6node 6ip)
-      1, & ! element 117 (3D 8node 1ip)
-      8, & ! element   7 (3D 8node 8ip)
-     27  & ! element  21 (3D 20node 27ip)
-  ],pInt)
-
- integer(pInt), dimension(FE_Ncelltypes), parameter, public :: FE_NipNeighbors = &                  !< number of ip neighbors / cell faces in a specific cell type
+ integer(pInt), dimension(FE_Ncelltypes), parameter, private :: FE_NipNeighbors = &                  !< number of ip neighbors / cell faces in a specific cell type
  int([&
       3, & ! (2D 3node)
       4, & ! (2D 4node)
@@ -322,23 +209,8 @@ integer(pInt), dimension(:,:), allocatable, private :: &
   ],pInt)
 
 
- integer(pInt), dimension(FE_Ngeomtypes), parameter, private :: FE_maxNnodesAtIP = &                !< maximum number of parent nodes that belong to an IP for a specific type of element
- int([ &
-      3, & ! element   6 (2D 3node 1ip)
-      1, & ! element 125 (2D 6node 3ip)
-      1, & ! element  11 (2D 4node 4ip)
-      2, & ! element  27 (2D 8node 9ip)
-      4, & ! element 134 (3D 4node 1ip)
-      1, & ! element 127 (3D 10node 4ip)
-      1, & ! element 136 (3D 6node 6ip)
-      8, & ! element 117 (3D 8node 1ip)
-      1, & ! element   7 (3D 8node 8ip)
-      4  & ! element  21 (3D 20node 27ip)
-  ],pInt)
-
  integer(pInt), private :: &
    mesh_Nelems, &                                                                                   !< total number of elements in mesh (including non-DAMASK elements)
-   mesh_maxNnodes, &                                                                                !< max number of nodes in any CP element
    mesh_NelemSets
  character(len=64), dimension(:), allocatable, private :: &
    mesh_nameElemSet
@@ -385,7 +257,6 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_marc_map_Elements, &
    mesh_marc_map_nodes, &
    mesh_marc_build_nodes, &
-   mesh_marc_count_cpSizes, &
    mesh_marc_build_elements
 
 type, public, extends(tMesh) :: tMesh_marc
@@ -449,7 +320,8 @@ subroutine mesh_init(ip,el)
  integer(pInt), parameter  :: FILEUNIT = 222_pInt
  integer(pInt) :: j, fileFormatVersion, elemType
  integer(pInt) :: &
-   mesh_maxNelemInSet
+   mesh_maxNelemInSet, &
+   mesh_NcpElems
  logical :: myDebug
 
  write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
@@ -491,14 +363,14 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Counted CP elements'; flush(6)
  
  allocate (mesh_mapFEtoCPelem(2,mesh_NcpElems), source = 0_pInt)
- call mesh_marc_map_elements(hypoelasticTableStyle,mesh_nameElemSet,mesh_mapElemSet,FILEUNIT)                       !ToDo: don't work on global variables
+ call mesh_marc_map_elements(hypoelasticTableStyle,mesh_nameElemSet,mesh_mapElemSet,mesh_NcpElems,FILEUNIT)
  if (myDebug) write(6,'(a)') ' Mapped elements'; flush(6)
  
  allocate (mesh_mapFEtoCPnode(2_pInt,mesh_Nnodes),source=0_pInt)
- call mesh_marc_map_nodes(FILEUNIT)            !ToDo: don't work on global variables
+ call mesh_marc_map_nodes(mesh_Nnodes,FILEUNIT)                                                                  !ToDo: don't work on global variables
  if (myDebug) write(6,'(a)') ' Mapped nodes'; flush(6)
  
- call mesh_marc_build_nodes(FILEUNIT)            !ToDo: don't work on global variables
+ call mesh_marc_build_nodes(FILEUNIT)                                                               !ToDo: don't work on global variables
  mesh_node = mesh_node0
  if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
  
@@ -535,18 +407,18 @@ subroutine mesh_init(ip,el)
  call mesh_build_ipNeighborhood
  if (myDebug) write(6,'(a)') ' Built IP neighborhood'; flush(6)
 
- if (usePingPong .and. (mesh_Nelems /= mesh_NcpElems)) &
+ if (usePingPong .and. (mesh_Nelems /= theMesh%nElems)) &
    call IO_error(600_pInt)                                                                          ! ping-pong must be disabled when having non-DAMASK elements
- if (debug_e < 1 .or. debug_e > mesh_NcpElems) &
+ if (debug_e < 1 .or. debug_e > theMesh%nElems) &
    call IO_error(602_pInt,ext_msg='element')                                                        ! selected element does not exist
- if (debug_i < 1 .or. debug_i > FE_Nips(FE_geomtype(mesh_element(2_pInt,debug_e)))) &
+ if (debug_i < 1 .or. debug_i > theMesh%elem%nIPs) &
    call IO_error(602_pInt,ext_msg='IP')                                                             ! selected element does not have requested IP
 
- FEsolving_execElem = [ 1_pInt,mesh_NcpElems ]                                                      ! parallel loop bounds set to comprise all DAMASK elements
- allocate(FEsolving_execIP(2_pInt,mesh_NcpElems), source=1_pInt)                                    ! parallel loop bounds set to comprise from first IP...
- forall (j = 1_pInt:mesh_NcpElems) FEsolving_execIP(2,j) = FE_Nips(FE_geomtype(mesh_element(2,j)))  ! ...up to own IP count for each element
+ FEsolving_execElem = [ 1_pInt,theMesh%nElems ]                                                      ! parallel loop bounds set to comprise all DAMASK elements
+ allocate(FEsolving_execIP(2_pInt,theMesh%nElems), source=1_pInt)                                    ! parallel loop bounds set to comprise from first IP...
+ FEsolving_execIP(2,:) = theMesh%elem%nIPs
 
- allocate(calcMode(mesh_maxNips,mesh_NcpElems))
+ allocate(calcMode(theMesh%elem%nIPs,theMesh%nElems))
  calcMode = .false.                                                                                 ! pretend to have collected what first call is asking (F = I)
  calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                       ! first ip,el needs to be already pingponged to "calc"
 
@@ -785,7 +657,7 @@ subroutine mesh_marc_map_elementSets(nameElemSet,mapElemSet,fileUnit)
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Count overall number of CP elements in mesh and stores them in 'mesh_NcpElems'
+!> @brief Count overall number of CP elements in mesh
 !--------------------------------------------------------------------------------------------------
 integer(pInt) function mesh_marc_count_cpElements(tableStyle,matNumber,fileFormatVersion,fileUnit)
 
@@ -841,7 +713,7 @@ integer(pInt) function mesh_marc_count_cpElements(tableStyle,matNumber,fileForma
 !--------------------------------------------------------------------------------------------------
 !> @brief Maps elements from FE ID to internal (consecutive) representation.
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,fileUnit)
+subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,nElems,fileUnit)
 
  use math, only: math_qsort
  use IO,   only: IO_lc, &
@@ -851,7 +723,7 @@ subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,fileUnit)
                  IO_continuousIntValues
 
  implicit none
- integer(pInt), intent(in) :: fileUnit,tableStyle
+ integer(pInt), intent(in) :: fileUnit,tableStyle,nElems
  character(len=64), intent(in), dimension(:) :: nameElemSet
  integer(pInt), dimension(:,:), intent(in) :: &
    mapElemSet
@@ -860,7 +732,7 @@ subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,fileUnit)
  character(len=300) :: line, &
                        tmp
 
- integer(pInt), dimension (1_pInt+mesh_NcpElems) :: contInts
+ integer(pInt), dimension (1_pInt+nElems) :: contInts
  integer(pInt) :: i,cpElem
 
  cpElem = 0_pInt
@@ -874,7 +746,7 @@ subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,fileUnit)
        do i=1_pInt,3_pInt+TableStyle                                                                ! skip three (or four if new table style!) lines
          read (fileUnit,'(A300)') line
        enddo
-       contInts = IO_continuousIntValues(fileUnit,mesh_NcpElems,nameElemSet,&
+       contInts = IO_continuousIntValues(fileUnit,nElems,nameElemSet,&
                                               mapElemSet,size(nameElemSet))
        exit
      endif  
@@ -912,7 +784,7 @@ end subroutine mesh_marc_map_elements
 !--------------------------------------------------------------------------------------------------
 !> @brief Maps node from FE ID to internal (consecutive) representation.
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_map_nodes(fileUnit)
+subroutine mesh_marc_map_nodes(nNodes,fileUnit)
 
  use math, only: math_qsort
  use IO,   only: IO_lc, &
@@ -921,12 +793,12 @@ subroutine mesh_marc_map_nodes(fileUnit)
                  IO_fixedIntValue
 
  implicit none
- integer(pInt), intent(in) :: fileUnit
+ integer(pInt), intent(in) :: fileUnit, nNodes
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) line
 
- integer(pInt), dimension (mesh_Nnodes) :: node_count
+ integer(pInt), dimension (nNodes) :: node_count
  integer(pInt) :: i
 
  node_count = 0_pInt
@@ -937,7 +809,7 @@ subroutine mesh_marc_map_nodes(fileUnit)
    chunkPos = IO_stringPos(line)
    if( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'coordinates' ) then
      read (fileUnit,'(A300)') line                                                                  ! skip crap line
-     do i = 1_pInt,mesh_Nnodes
+     do i = 1_pInt,nNodes
        read (fileUnit,'(A300)') line
        mesh_mapFEtoCPnode(1_pInt,i) = IO_fixedIntValue (line,[0_pInt,10_pInt],1_pInt)
        mesh_mapFEtoCPnode(2_pInt,i) = i
@@ -953,7 +825,6 @@ end subroutine mesh_marc_map_nodes
 
 !--------------------------------------------------------------------------------------------------
 !> @brief store x,y,z coordinates of all nodes in mesh.
-!! Allocates global arrays 'mesh_node0' and 'mesh_node'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_build_nodes(fileUnit)
 
@@ -1017,10 +888,6 @@ integer(pInt) function mesh_marc_count_cpSizes(fileUnit)
  character(len=300) :: line
  integer(pInt) :: i,t,g,e,c
 
- mesh_maxNnodes       = 0_pInt
- mesh_maxNips         = 0_pInt
- mesh_maxNipNeighbors = 0_pInt
- mesh_maxNcellnodes   = 0_pInt
  t = -1_pInt
 
  rewind(fileUnit)
@@ -1037,13 +904,7 @@ integer(pInt) function mesh_marc_count_cpSizes(fileUnit)
          if (t == -1_pInt) t = FE_mapElemtype(IO_stringValue(line,chunkPos,2_pInt))
          if (t /= FE_mapElemtype(IO_stringValue(line,chunkPos,2_pInt))) call IO_error(0_pInt)       !ToDo: error message
          mesh_marc_count_cpSizes = t
-         g = FE_geomtype(t)
-         c = FE_celltype(g)
-         mesh_maxNnodes =       max(mesh_maxNnodes,FE_Nnodes(t))
-         mesh_maxNips =         max(mesh_maxNips,FE_Nips(g))
-         mesh_maxNipNeighbors = max(mesh_maxNipNeighbors,FE_NipNeighbors(c))
-         mesh_maxNcellnodes =   max(mesh_maxNcellnodes,FE_Ncellnodes(g))
-         call IO_skipChunks(fileUnit,FE_Nnodes(t)-(chunkPos(1_pInt)-2_pInt))                        ! read on if FE_Nnodes exceeds node count present on current line
+         !call IO_skipChunks(fileUnit,FE_Nnodes(t)-(chunkPos(1_pInt)-2_pInt))                       ! read on if FE_Nnodes exceeds node count present on current line !ToDo: this is dangerous in case of a non-CP element, everything is mixed up
        endif
      enddo
      exit
@@ -1074,10 +935,10 @@ subroutine mesh_marc_build_elements(fileUnit)
  integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) line
 
- integer(pInt), dimension(1_pInt+mesh_NcpElems) :: contInts
+ integer(pInt), dimension(1_pInt+theMesh%nElems) :: contInts
  integer(pInt) :: i,j,t,sv,myVal,e,nNodesAlreadyRead
 
- allocate(mesh_element(4_pInt+mesh_maxNnodes,mesh_NcpElems), source=0_pInt)
+ allocate(mesh_element(4_pInt+theMesh%elem%nNodes,theMesh%nElems), source=0_pInt)
  mesh_elemType = -1_pInt
 
 
@@ -1103,7 +964,7 @@ subroutine mesh_marc_build_elements(fileUnit)
            mesh_element(4_pInt+j,e) = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j+2_pInt))          ! CP ids of nodes
          enddo
          nNodesAlreadyRead = chunkPos(1) - 2_pInt
-         do while(nNodesAlreadyRead < FE_Nnodes(t))                                                 ! read on if not all nodes in one line
+         do while(nNodesAlreadyRead < theMesh%elem%nNodes)                                                 ! read on if not all nodes in one line
            read (fileUnit,'(A300)',END=620) line
            chunkPos = IO_stringPos(line)
            do j = 1_pInt,chunkPos(1)
@@ -1138,7 +999,7 @@ subroutine mesh_marc_build_elements(fileUnit)
            read (fileUnit,'(A300)',END=630) line                                                         ! read extra line
          endif
          contInts = IO_continuousIntValues&                                                         ! get affected elements
-                   (fileUnit,mesh_NcpElems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
+                   (fileUnit,theMesh%nElems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
          do i = 1_pInt,contInts(1)
            e = mesh_FEasCP('elem',contInts(1_pInt+i))
            mesh_element(1_pInt+sv,e) = myVal
@@ -1320,23 +1181,23 @@ subroutine mesh_build_ipVolumes
  integer(pInt) ::                                e,t,g,c,i,m,f,n
  real(pReal), dimension(FE_maxNcellnodesPerCellface,FE_maxNcellfaces) :: subvolume
 
-  allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
+  allocate(mesh_ipVolume(theMesh%elem%nIPs,theMesh%nElems),source=0.0_pReal)
 
  !$OMP PARALLEL DO PRIVATE(t,g,c,m,subvolume)
-   do e = 1_pInt,mesh_NcpElems                                                                      ! loop over cpElems
+   do e = 1_pInt,theMesh%nElems                                                                      ! loop over cpElems
      t = mesh_element(2_pInt,e)                                                                     ! get element type
-     g = FE_geomtype(t)                                                                             ! get geometry type
-     c = FE_celltype(g)                                                                             ! get cell type
+     g = theMesh%elem%geomType
+     c = theMesh%elem%cellType
      select case (c)
 
        case (1_pInt)                                                                                ! 2D 3node
-         forall (i = 1_pInt:FE_Nips(g)) &                                                           ! loop over ips=cells in this element
+         forall (i = 1_pInt:theMesh%elem%nIPs) &                                                           ! loop over ips=cells in this element
            mesh_ipVolume(i,e) = math_areaTriangle(mesh_cellnode(1:3,mesh_cell(1,i,e)), &
                                                   mesh_cellnode(1:3,mesh_cell(2,i,e)), &
                                                   mesh_cellnode(1:3,mesh_cell(3,i,e)))
 
        case (2_pInt)                                                                                ! 2D 4node
-         forall (i = 1_pInt:FE_Nips(g)) &                                                           ! loop over ips=cells in this element
+         forall (i = 1_pInt:theMesh%elem%nIPs) &                                                           ! loop over ips=cells in this element
            mesh_ipVolume(i,e) = math_areaTriangle(mesh_cellnode(1:3,mesh_cell(1,i,e)), &            ! here we assume a planar shape, so division in two triangles suffices
                                                   mesh_cellnode(1:3,mesh_cell(2,i,e)), &
                                                   mesh_cellnode(1:3,mesh_cell(3,i,e))) &
@@ -1345,7 +1206,7 @@ subroutine mesh_build_ipVolumes
                                                   mesh_cellnode(1:3,mesh_cell(1,i,e)))
 
        case (3_pInt)                                                                                ! 3D 4node
-         forall (i = 1_pInt:FE_Nips(g)) &                                                           ! loop over ips=cells in this element
+         forall (i = 1_pInt:theMesh%elem%nIPs) &                                                           ! loop over ips=cells in this element
            mesh_ipVolume(i,e) = math_volTetrahedron(mesh_cellnode(1:3,mesh_cell(1,i,e)), &
                                                     mesh_cellnode(1:3,mesh_cell(2,i,e)), &
                                                     mesh_cellnode(1:3,mesh_cell(3,i,e)), &
@@ -1353,7 +1214,7 @@ subroutine mesh_build_ipVolumes
 
        case (4_pInt)                                                                                ! 3D 8node
          m = FE_NcellnodesPerCellface(c)
-         do i = 1_pInt,FE_Nips(g)                                                                   ! loop over ips=cells in this element
+         do i = 1_pInt,theMesh%elem%nIPs                                                                   ! loop over ips=cells in this element
            subvolume = 0.0_pReal
            forall(f = 1_pInt:FE_NipNeighbors(c), n = 1_pInt:FE_NcellnodesPerCellface(c)) &
              subvolume(n,f) = math_volTetrahedron(&
@@ -1390,19 +1251,19 @@ subroutine mesh_build_ipCoordinates
  real(pReal), dimension(3) :: myCoords
 
  if (.not. allocated(mesh_ipCoordinates)) &
-   allocate(mesh_ipCoordinates(3,mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
+   allocate(mesh_ipCoordinates(3,theMesh%elem%nIPs,theMesh%nElems),source=0.0_pReal)
 
  !$OMP PARALLEL DO PRIVATE(t,g,c,myCoords)
- do e = 1_pInt,mesh_NcpElems                                                                        ! loop over cpElems
+ do e = 1_pInt,theMesh%nElems                                                                        ! loop over cpElems
    t = mesh_element(2_pInt,e)                                                                       ! get element type
-   g = FE_geomtype(t)                                                                               ! get geometry type
-   c = FE_celltype(g)                                                                               ! get cell type
-   do i = 1_pInt,FE_Nips(g)                                                                         ! loop over ips=cells in this element
+   g = theMesh%elem%geomType
+   c = theMesh%elem%cellType
+   do i = 1_pInt,theMesh%elem%nIPs
      myCoords = 0.0_pReal
-     do n = 1_pInt,FE_NcellnodesPerCell(c)                                                          ! loop over cell nodes in this cell
+     do n = 1_pInt,theMesh%elem%nCellnodesPerCell
        myCoords = myCoords + mesh_cellnode(1:3,mesh_cell(n,i,e))
      enddo
-     mesh_ipCoordinates(1:3,i,e) = myCoords / real(FE_NcellnodesPerCell(c),pReal)
+     mesh_ipCoordinates(1:3,i,e) = myCoords / real(theMesh%elem%nCellnodesPerCell,pReal)
    enddo
  enddo
  !$OMP END PARALLEL DO
@@ -1422,13 +1283,13 @@ pure function mesh_cellCenterCoordinates(ip,el)
  integer(pInt) :: t,g,c,n
 
  t = mesh_element(2_pInt,el)                                                                         ! get element type
- g = FE_geomtype(t)                                                                                  ! get geometry type
- c = FE_celltype(g)                                                                                  ! get cell type
+ g = theMesh%elem%geomType
+ c = theMesh%elem%cellType
  mesh_cellCenterCoordinates = 0.0_pReal
- do n = 1_pInt,FE_NcellnodesPerCell(c)                                                               ! loop over cell nodes in this cell
+ do n = 1_pInt,theMesh%elem%nCellnodesPerCell
    mesh_cellCenterCoordinates = mesh_cellCenterCoordinates + mesh_cellnode(1:3,mesh_cell(n,ip,el))
  enddo
- mesh_cellCenterCoordinates = mesh_cellCenterCoordinates / real(FE_NcellnodesPerCell(c),pReal)
+ mesh_cellCenterCoordinates = mesh_cellCenterCoordinates / real(theMesh%elem%nCellnodesPerCell,pReal)
 
  end function mesh_cellCenterCoordinates
 
@@ -1448,18 +1309,18 @@ subroutine mesh_build_ipAreas
  real(pReal), dimension (3,FE_maxNcellnodesPerCellface) :: nodePos, normals
  real(pReal), dimension(3) :: normal
 
- allocate(mesh_ipArea(mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems), source=0.0_pReal)
- allocate(mesh_ipAreaNormal(3_pInt,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems), source=0.0_pReal)
+ allocate(mesh_ipArea(theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), source=0.0_pReal)
+ allocate(mesh_ipAreaNormal(3_pInt,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), source=0.0_pReal)
 
  !$OMP PARALLEL DO PRIVATE(t,g,c,nodePos,normal,normals)
-   do e = 1_pInt,mesh_NcpElems                                                                      ! loop over cpElems
+   do e = 1_pInt,theMesh%nElems                                                                      ! loop over cpElems
      t = mesh_element(2_pInt,e)                                                                     ! get element type
-     g = FE_geomtype(t)                                                                             ! get geometry type
-     c = FE_celltype(g)                                                                             ! get cell type
+     g = theMesh%elem%geomType
+     c = theMesh%elem%cellType
      select case (c)
 
        case (1_pInt,2_pInt)                                                                         ! 2D 3 or 4 node
-         do i = 1_pInt,FE_Nips(g)                                                                   ! loop over ips=cells in this element
+         do i = 1_pInt,theMesh%elem%nIPs
            do f = 1_pInt,FE_NipNeighbors(c)                                                         ! loop over cell faces
              forall(n = 1_pInt:FE_NcellnodesPerCellface(c)) &
                nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(FE_cellface(n,f,c),i,e))
@@ -1472,7 +1333,7 @@ subroutine mesh_build_ipAreas
          enddo
 
        case (3_pInt)                                                                                ! 3D 4node
-         do i = 1_pInt,FE_Nips(g)                                                                   ! loop over ips=cells in this element
+         do i = 1_pInt,theMesh%elem%nIPs
            do f = 1_pInt,FE_NipNeighbors(c)                                                         ! loop over cell faces
              forall(n = 1_pInt:FE_NcellnodesPerCellface(c)) &
                nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(FE_cellface(n,f,c),i,e))
@@ -1489,7 +1350,7 @@ subroutine mesh_build_ipAreas
          ! the sum has to be divided by two; this whole prcedure tries to compensate for
          ! probable non-planar cell surfaces
          m = FE_NcellnodesPerCellface(c)
-         do i = 1_pInt,FE_Nips(g)                                                                   ! loop over ips=cells in this element
+         do i = 1_pInt,theMesh%elem%nIPs
            do f = 1_pInt,FE_NipNeighbors(c)                                                         ! loop over cell faces
              forall(n = 1_pInt:FE_NcellnodesPerCellface(c)) &
                nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(FE_cellface(n,f,c),i,e))
@@ -1600,8 +1461,8 @@ subroutine mesh_build_sharedElems
 
  node_count = 0_pInt
 
- do e = 1_pInt,mesh_NcpElems
-   g = FE_geomtype(mesh_element(2,e))                                                                ! get elemGeomType
+ do e = 1_pInt,theMesh%nElems
+   g = theMesh%elem%geomType
    node_seen = 0_pInt                                                                                ! reset node duplicates
    do n = 1_pInt,FE_NmatchingNodes(g)                                                                ! check each node of element
      node = mesh_element(4+n,e)
@@ -1621,8 +1482,8 @@ subroutine mesh_build_sharedElems
 
  allocate(mesh_sharedElem(1+mesh_maxNsharedElems,mesh_Nnodes),source=0_pInt)
 
- do e = 1_pInt,mesh_NcpElems
-   g = FE_geomtype(mesh_element(2,e))                                                                ! get elemGeomType
+ do e = 1_pInt,theMesh%nElems
+   g = theMesh%elem%geomType
    node_seen = 0_pInt
    do n = 1_pInt,FE_NmatchingNodes(g)
      node = mesh_element(4_pInt+n,e)
@@ -1675,16 +1536,16 @@ subroutine mesh_build_ipNeighborhood
                                  matchingNodes
  logical checkTwins
 
- allocate(mesh_ipNeighborhood(3,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems))
+ allocate(mesh_ipNeighborhood(3,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems))
  mesh_ipNeighborhood = 0_pInt
 
 
- do myElem = 1_pInt,mesh_NcpElems                                                                    ! loop over cpElems
-   myType = FE_geomtype(mesh_element(2,myElem))                                                      ! get elemGeomType
-   do myIP = 1_pInt,FE_Nips(myType)                                                                  ! loop over IPs of elem
+ do myElem = 1_pInt,theMesh%nElems                                                                    ! loop over cpElems
+   myType = theMesh%elem%geomType
+   do myIP = 1_pInt,theMesh%elem%nIPs
 
-     do neighbor = 1_pInt,FE_NipNeighbors(FE_celltype(myType))                                       ! loop over neighbors of IP
-       neighboringIPkey = FE_ipNeighbor(neighbor,myIP,myType)
+     do neighbor = 1_pInt,FE_NipNeighbors(theMesh%elem%cellType)                                       ! loop over neighbors of IP
+       neighboringIPkey = theMesh%elem%IPneighbor(neighbor,myIP)
 
        !*** if the key is positive, the neighbor is inside the element
        !*** that means, we have already found our neighboring IP
@@ -1701,11 +1562,11 @@ subroutine mesh_build_ipNeighborhood
          myFace = -neighboringIPkey
          call mesh_faceMatch(myElem, myFace, matchingElem, matchingFace)                             ! get face and CP elem id of face match
          if (matchingElem > 0_pInt) then                                                             ! found match?
-           neighboringType = FE_geomtype(mesh_element(2,matchingElem))
+           neighboringType = theMesh%elem%geomType
 
            !*** trivial solution if neighbor has only one IP
 
-           if (FE_Nips(neighboringType) == 1_pInt) then
+           if (theMesh%elem%nIPs == 1_pInt) then
              mesh_ipNeighborhood(1,neighbor,myIP,myElem) = matchingElem
              mesh_ipNeighborhood(2,neighbor,myIP,myElem) = 1_pInt
              cycle
@@ -1715,8 +1576,8 @@ subroutine mesh_build_ipNeighborhood
 
            NlinkedNodes = 0_pInt
            linkedNodes = 0_pInt
-           do a = 1_pInt,FE_maxNnodesAtIP(myType)                                                    ! figure my anchor nodes on connecting face
-             anchor = FE_nodesAtIP(a,myIP,myType)
+           do a = 1_pInt,theMesh%elem%maxNnodeAtIP
+             anchor = theMesh%elem%NnodeAtIP(a,myIP)
              if (anchor /= 0_pInt) then                                                              ! valid anchor node
                if (any(FE_face(:,myFace,myType) == anchor)) then                                     ! ip anchor sits on face?
                  NlinkedNodes = NlinkedNodes + 1_pInt
@@ -1733,11 +1594,11 @@ subroutine mesh_build_ipNeighborhood
            !*** and try to find an ip with matching nodes
            !*** also try to match with node twins
 
- checkCandidateIP: do candidateIP = 1_pInt,FE_Nips(neighboringType)
+ checkCandidateIP: do candidateIP = 1_pInt,theMesh%elem%nIPs
              NmatchingNodes = 0_pInt
              matchingNodes = 0_pInt
-             do a = 1_pInt,FE_maxNnodesAtIP(neighboringType)                                         ! check each anchor node of that ip
-               anchor = FE_nodesAtIP(a,candidateIP,neighboringType)
+             do a = 1_pInt,theMesh%elem%maxNnodeAtIP
+               anchor = theMesh%elem%NnodeAtIP(a,candidateIP)
                if (anchor /= 0_pInt) then                                                            ! valid anchor node
                  if (any(FE_face(:,matchingFace,neighboringType) == anchor)) then                    ! sits on matching face?
                    NmatchingNodes = NmatchingNodes + 1_pInt
@@ -1787,15 +1648,15 @@ subroutine mesh_build_ipNeighborhood
      enddo
    enddo
  enddo
- do myElem = 1_pInt,mesh_NcpElems                                                                    ! loop over cpElems
-   myType = FE_geomtype(mesh_element(2,myElem))                                                      ! get elemGeomType
-   do myIP = 1_pInt,FE_Nips(myType)                                                                  ! loop over IPs of elem
-     do neighbor = 1_pInt,FE_NipNeighbors(FE_celltype(myType))                                       ! loop over neighbors of IP
+ do myElem = 1_pInt,theMesh%nElems                                                                    ! loop over cpElems
+   myType = theMesh%elem%geomType
+   do myIP = 1_pInt,theMesh%elem%nIPs
+     do neighbor = 1_pInt,FE_NipNeighbors(theMesh%elem%cellType)                                       ! loop over neighbors of IP
        neighboringElem = mesh_ipNeighborhood(1,neighbor,myIP,myElem)
        neighboringIP   = mesh_ipNeighborhood(2,neighbor,myIP,myElem)
        if (neighboringElem > 0_pInt .and. neighboringIP > 0_pInt) then                               ! if neighbor exists ...
-         neighboringType = FE_geomtype(mesh_element(2,neighboringElem))
-         do pointingToMe = 1_pInt,FE_NipNeighbors(FE_celltype(neighboringType))                      ! find neighboring index that points from my neighbor to myself
+         neighboringType = theMesh%elem%geomType
+         do pointingToMe = 1_pInt,FE_NipNeighbors(theMesh%elem%cellType)                      ! find neighboring index that points from my neighbor to myself
            if (    myElem == mesh_ipNeighborhood(1,pointingToMe,neighboringIP,neighboringElem) &
                .and. myIP == mesh_ipNeighborhood(2,pointingToMe,neighboringIP,neighboringElem)) then ! possible candidate
              if (math_mul3x3(mesh_ipAreaNormal(1:3,neighbor,myIP,myElem),&
@@ -1822,7 +1683,7 @@ integer(pInt), intent(out) ::     matchingElem, &                               
                                   matchingFace                                                      ! matching face ID
 integer(pInt), intent(in) ::      face, &                                                           ! face ID
                                   elem                                                              ! CP elem ID
-integer(pInt), dimension(FE_NmatchingNodesPerFace(face,FE_geomtype(mesh_element(2,elem)))) :: &
+integer(pInt), dimension(FE_NmatchingNodesPerFace(face,theMesh%elem%geomType)) :: &
                                   myFaceNodes                                                       ! global node ids on my face
 integer(pInt)        ::           myType, &
                                   candidateType, &
@@ -1841,7 +1702,7 @@ logical checkTwins
 matchingElem = 0_pInt
 matchingFace = 0_pInt
 minNsharedElems = mesh_maxNsharedElems + 1_pInt                                                     ! init to worst case
-myType = FE_geomtype(mesh_element(2_pInt,elem))                                                     ! figure elemGeomType
+myType =theMesh%elem%geomType
 
 do n = 1_pInt,FE_NmatchingNodesPerFace(face,myType)                                                 ! loop over nodes on face
   myFaceNodes(n) = mesh_element(4_pInt+FE_face(n,face,myType),elem)                                 ! CP id of face node
@@ -1859,7 +1720,7 @@ checkCandidate: do i = 1_pInt,minNsharedElems                                   
   candidateElem = mesh_sharedElem(1_pInt+i,myFaceNodes(lonelyNode))                                 ! present candidate elem
   if (all(element_seen /= candidateElem)) then                                                      ! element seen for the first time?
     element_seen(i) = candidateElem
-    candidateType = FE_geomtype(mesh_element(2_pInt,candidateElem))                                 ! figure elemGeomType of candidate
+    candidateType = theMesh%elem%geomType
 checkCandidateFace: do candidateFace = 1_pInt,FE_maxNipNeighbors                                    ! check each face of candidate
       if (FE_NmatchingNodesPerFace(candidateFace,candidateType) &
           /= FE_NmatchingNodesPerFace(face,myType) &                                                ! incompatible face
@@ -1949,677 +1810,13 @@ end function FE_mapElemtype
 
 !--------------------------------------------------------------------------------------------------
 !> @brief get properties of different types of finite elements
-!> @details assign globals: FE_nodesAtIP, FE_ipNeighbor, FE_cellnodeParentnodeWeights, FE_subNodeOnIPFace
+!> @details assign globals       FE_cellface
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_FEdata
 
  implicit none
  integer(pInt) :: me
- allocate(FE_nodesAtIP(FE_maxmaxNnodesAtIP,FE_maxNips,FE_Ngeomtypes), source=0_pInt)
- allocate(FE_ipNeighbor(FE_maxNipNeighbors,FE_maxNips,FE_Ngeomtypes), source=0_pInt)
- allocate(FE_cell(FE_maxNcellnodesPerCell,FE_maxNips,FE_Ngeomtypes),  source=0_pInt)
- allocate(FE_cellnodeParentnodeWeights(FE_maxNnodes,FE_maxNcellnodes,FE_Nelemtypes), source=0.0_pReal)
  allocate(FE_cellface(FE_maxNcellnodesPerCellface,FE_maxNcellfaces,FE_Ncelltypes),  source=0_pInt)
-
-
- !*** fill FE_nodesAtIP with data ***
-
- me = 0_pInt
-
- me = me + 1_pInt
- FE_nodesAtIP(1:FE_maxNnodesAtIP(me),1:FE_Nips(me),me) = &  ! element   6 (2D 3node 1ip)
-    reshape(int([&
-    1,2,3   &
-    ],pInt),[FE_maxNnodesAtIP(me),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_nodesAtIP(1:FE_maxNnodesAtIP(me),1:FE_Nips(me),me) = &  ! element 125 (2D 6node 3ip)
-    reshape(int([&
-    1,  &
-    2,  &
-    3   &
-    ],pInt),[FE_maxNnodesAtIP(me),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_nodesAtIP(1:FE_maxNnodesAtIP(me),1:FE_Nips(me),me) = &  ! element  11 (2D 4node 4ip)
-    reshape(int([&
-    1,  &
-    2,  &
-    4,  &
-    3   &
-    ],pInt),[FE_maxNnodesAtIP(me),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_nodesAtIP(1:FE_maxNnodesAtIP(me),1:FE_Nips(me),me) = &  ! element  27 (2D 8node 9ip)
-    reshape(int([&
-    1,0,  &
-    1,2,  &
-    2,0,  &
-    1,4,  &
-    0,0,  &
-    2,3,  &
-    4,0,  &
-    3,4,  &
-    3,0   &
-    ],pInt),[FE_maxNnodesAtIP(me),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_nodesAtIP(1:FE_maxNnodesAtIP(me),1:FE_Nips(me),me) = &  ! element 134 (3D 4node 1ip)
-    reshape(int([&
-    1,2,3,4   &
-    ],pInt),[FE_maxNnodesAtIP(me),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_nodesAtIP(1:FE_maxNnodesAtIP(me),1:FE_Nips(me),me) = &  ! element 127 (3D 10node 4ip)
-    reshape(int([&
-    1,  &
-    2,  &
-    3,  &
-    4   &
-    ],pInt),[FE_maxNnodesAtIP(me),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_nodesAtIP(1:FE_maxNnodesAtIP(me),1:FE_Nips(me),me) = &  ! element 136 (3D 6node 6ip)
-    reshape(int([&
-    1,  &
-    2,  &
-    3,  &
-    4,  &
-    5,  &
-    6   &
-    ],pInt),[FE_maxNnodesAtIP(me),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_nodesAtIP(1:FE_maxNnodesAtIP(me),1:FE_Nips(me),me) = &  ! element 117 (3D 8node 1ip)
-    reshape(int([&
-    1,2,3,4,5,6,7,8   &
-    ],pInt),[FE_maxNnodesAtIP(me),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_nodesAtIP(1:FE_maxNnodesAtIP(me),1:FE_Nips(me),me) = &  ! element   7 (3D 8node 8ip)
-    reshape(int([&
-    1,  &
-    2,  &
-    4,  &
-    3,  &
-    5,  &
-    6,  &
-    8,  &
-    7   &
-    ],pInt),[FE_maxNnodesAtIP(me),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_nodesAtIP(1:FE_maxNnodesAtIP(me),1:FE_Nips(me),me) = &  ! element  21 (3D 20node 27ip)
-    reshape(int([&
-    1,0, 0,0,  &
-    1,2, 0,0,  &
-    2,0, 0,0,  &
-    1,4, 0,0,  &
-    1,3, 2,4,  &
-    2,3, 0,0,  &
-    4,0, 0,0,  &
-    3,4, 0,0,  &
-    3,0, 0,0,  &
-    1,5, 0,0,  &
-    1,6, 2,5,  &
-    2,6, 0,0,  &
-    1,8, 4,5,  &
-    0,0, 0,0,  &
-    2,7, 3,6,  &
-    4,8, 0,0,  &
-    3,8, 4,7,  &
-    3,7, 0,0,  &
-    5,0, 0,0,  &
-    5,6, 0,0,  &
-    6,0, 0,0,  &
-    5,8, 0,0,  &
-    5,7, 6,8,  &
-    6,7, 0,0,  &
-    8,0, 0,0,  &
-    7,8, 0,0,  &
-    7,0, 0,0   &
-    ],pInt),[FE_maxNnodesAtIP(me),FE_Nips(me)])
-
-
- ! *** FE_ipNeighbor ***
- ! is a list of the neighborhood of each IP.
- ! It is sorted in (local) +x,-x, +y,-y, +z,-z direction.
- ! Positive integers denote an intra-FE IP identifier.
- ! Negative integers denote the interface behind which the neighboring (extra-FE) IP will be located.
- me = 0_pInt
-
- me = me + 1_pInt
- FE_ipNeighbor(1:FE_NipNeighbors(FE_celltype(me)),1:FE_Nips(me),me) = &  ! element   6 (2D 3node 1ip)
-    reshape(int([&
-    -2,-3,-1   &
-    ],pInt),[FE_NipNeighbors(FE_celltype(me)),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_ipNeighbor(1:FE_NipNeighbors(FE_celltype(me)),1:FE_Nips(me),me) = &  ! element 125 (2D 6node 3ip)
-    reshape(int([&
-     2,-3, 3,-1,  &
-    -2, 1, 3,-1,  &
-     2,-3,-2, 1   &
-    ],pInt),[FE_NipNeighbors(FE_celltype(me)),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_ipNeighbor(1:FE_NipNeighbors(FE_celltype(me)),1:FE_Nips(me),me) = &  ! element  11 (2D 4node 4ip)
-    reshape(int([&
-     2,-4, 3,-1,  &
-    -2, 1, 4,-1,  &
-     4,-4,-3, 1,  &
-    -2, 3,-3, 2   &
-    ],pInt),[FE_NipNeighbors(FE_celltype(me)),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_ipNeighbor(1:FE_NipNeighbors(FE_celltype(me)),1:FE_Nips(me),me) = &  ! element  27 (2D 8node 9ip)
-    reshape(int([&
-     2,-4, 4,-1,  &
-     3, 1, 5,-1,  &
-    -2, 2, 6,-1,  &
-     5,-4, 7, 1,  &
-     6, 4, 8, 2,  &
-    -2, 5, 9, 3,  &
-     8,-4,-3, 4,  &
-     9, 7,-3, 5,  &
-    -2, 8,-3, 6   &
-    ],pInt),[FE_NipNeighbors(FE_celltype(me)),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_ipNeighbor(1:FE_NipNeighbors(FE_celltype(me)),1:FE_Nips(me),me) = &  ! element 134 (3D 4node 1ip)
-    reshape(int([&
-    -1,-2,-3,-4   &
-    ],pInt),[FE_NipNeighbors(FE_celltype(me)),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_ipNeighbor(1:FE_NipNeighbors(FE_celltype(me)),1:FE_Nips(me),me) = &  ! element 127 (3D 10node 4ip)
-    reshape(int([&
-     2,-4, 3,-2, 4,-1,  &
-    -2, 1, 3,-2, 4,-1,  &
-     2,-4,-3, 1, 4,-1,  &
-     2,-4, 3,-2,-3, 1   &
-    ],pInt),[FE_NipNeighbors(FE_celltype(me)),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_ipNeighbor(1:FE_NipNeighbors(FE_celltype(me)),1:FE_Nips(me),me) = &  ! element 136 (3D 6node 6ip)
-    reshape(int([&
-     2,-4, 3,-2, 4,-1,  &
-    -3, 1, 3,-2, 5,-1,  &
-     2,-4,-3, 1, 6,-1,  &
-     5,-4, 6,-2,-5, 1,  &
-    -3, 4, 6,-2,-5, 2,  &
-     5,-4,-3, 4,-5, 3   &
-    ],pInt),[FE_NipNeighbors(FE_celltype(me)),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_ipNeighbor(1:FE_NipNeighbors(FE_celltype(me)),1:FE_Nips(me),me) = &  ! element 117 (3D 8node 1ip)
-    reshape(int([&
-    -3,-5,-4,-2,-6,-1   &
-    ],pInt),[FE_NipNeighbors(FE_celltype(me)),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_ipNeighbor(1:FE_NipNeighbors(FE_celltype(me)),1:FE_Nips(me),me) = &  ! element   7 (3D 8node 8ip)
-    reshape(int([&
-     2,-5, 3,-2, 5,-1,  &
-    -3, 1, 4,-2, 6,-1,  &
-     4,-5,-4, 1, 7,-1,  &
-    -3, 3,-4, 2, 8,-1,  &
-     6,-5, 7,-2,-6, 1,  &
-    -3, 5, 8,-2,-6, 2,  &
-     8,-5,-4, 5,-6, 3,  &
-    -3, 7,-4, 6,-6, 4   &
-    ],pInt),[FE_NipNeighbors(FE_celltype(me)),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_ipNeighbor(1:FE_NipNeighbors(FE_celltype(me)),1:FE_Nips(me),me) = &  ! element  21 (3D 20node 27ip)
-    reshape(int([&
-     2,-5, 4,-2,10,-1,  &
-     3, 1, 5,-2,11,-1,  &
-    -3, 2, 6,-2,12,-1,  &
-     5,-5, 7, 1,13,-1,  &
-     6, 4, 8, 2,14,-1,  &
-    -3, 5, 9, 3,15,-1,  &
-     8,-5,-4, 4,16,-1,  &
-     9, 7,-4, 5,17,-1,  &
-    -3, 8,-4, 6,18,-1,  &
-    11,-5,13,-2,19, 1,  &
-    12,10,14,-2,20, 2,  &
-    -3,11,15,-2,21, 3,  &
-    14,-5,16,10,22, 4,  &
-    15,13,17,11,23, 5,  &
-    -3,14,18,12,24, 6,  &
-    17,-5,-4,13,25, 7,  &
-    18,16,-4,14,26, 8,  &
-    -3,17,-4,15,27, 9,  &
-    20,-5,22,-2,-6,10,  &
-    21,19,23,-2,-6,11,  &
-    -3,20,24,-2,-6,12,  &
-    23,-5,25,19,-6,13,  &
-    24,22,26,20,-6,14,  &
-    -3,23,27,21,-6,15,  &
-    26,-5,-4,22,-6,16,  &
-    27,25,-4,23,-6,17,  &
-    -3,26,-4,24,-6,18   &
-    ],pInt),[FE_NipNeighbors(FE_celltype(me)),FE_Nips(me)])
-
-
- ! *** FE_cell ***
- me = 0_pInt
-
- me = me + 1_pInt
- FE_cell(1:FE_NcellnodesPerCell(FE_celltype(me)),1:FE_Nips(me),me) = &  ! element   6 (2D 3node 1ip)
-    reshape(int([&
-    1,2,3   &
-    ],pInt),[FE_NcellnodesPerCell(FE_celltype(me)),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_cell(1:FE_NcellnodesPerCell(FE_celltype(me)),1:FE_Nips(me),me) = &  ! element   125 (2D 6node 3ip)
-    reshape(int([&
-    1, 4, 7, 6,   &
-    2, 5, 7, 4,   &
-    3, 6, 7, 5    &
-    ],pInt),[FE_NcellnodesPerCell(FE_celltype(me)),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_cell(1:FE_NcellnodesPerCell(FE_celltype(me)),1:FE_Nips(me),me) = &  ! element   11 (2D 4node 4ip)
-    reshape(int([&
-    1, 5, 9, 8,   &
-    5, 2, 6, 9,   &
-    8, 9, 7, 4,   &
-    9, 6, 3, 7    &
-    ],pInt),[FE_NcellnodesPerCell(FE_celltype(me)),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_cell(1:FE_NcellnodesPerCell(FE_celltype(me)),1:FE_Nips(me),me) = &  ! element   27 (2D 8node 9ip)
-    reshape(int([&
-    1, 5,13,12,   &
-    5, 6,14,13,   &
-    6, 2, 7,14,   &
-   12,13,16,11,   &
-   13,14,15,16,   &
-   14, 7, 8,15,   &
-   11,16,10, 4,   &
-   16,15, 9,10,   &
-   15, 8, 3, 9    &
-    ],pInt),[FE_NcellnodesPerCell(FE_celltype(me)),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_cell(1:FE_NcellnodesPerCell(FE_celltype(me)),1:FE_Nips(me),me) = &  ! element   134 (3D 4node 1ip)
-    reshape(int([&
-    1, 2, 3, 4   &
-    ],pInt),[FE_NcellnodesPerCell(FE_celltype(me)),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_cell(1:FE_NcellnodesPerCell(FE_celltype(me)),1:FE_Nips(me),me) = &  ! element   127 (3D 10node 4ip)
-    reshape(int([&
-    1, 5,11, 7, 8,12,15,14,  &
-    5, 2, 6,11,12, 9,13,15,  &
-    7,11, 6, 3,14,15,13,10,  &
-    8,12,15, 4, 4, 9,13,10   &
-    ],pInt),[FE_NcellnodesPerCell(FE_celltype(me)),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_cell(1:FE_NcellnodesPerCell(FE_celltype(me)),1:FE_Nips(me),me) = &  ! element   136 (3D 6node 6ip)
-    reshape(int([&
-    1, 7,16, 9,10,17,21,19,  &
-    7, 2, 8,16,17,11,18,21,  &
-    9,16, 8, 3,19,21,18,12,  &
-   10,17,21,19, 4,13,20,15,  &
-   17,11,18,21,13, 5,14,20,  &
-   19,21,18,12,15,20,14, 6   &
-    ],pInt),[FE_NcellnodesPerCell(FE_celltype(me)),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_cell(1:FE_NcellnodesPerCell(FE_celltype(me)),1:FE_Nips(me),me) = &  ! element   117 (3D 8node 1ip)
-    reshape(int([&
-    1, 2, 3, 4, 5, 6, 7, 8   &
-    ],pInt),[FE_NcellnodesPerCell(FE_celltype(me)),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_cell(1:FE_NcellnodesPerCell(FE_celltype(me)),1:FE_Nips(me),me) = &  ! element   7 (3D 8node 8ip)
-    reshape(int([&
-    1, 9,21,12,13,22,27,25,  &
-    9, 2,10,21,22,14,23,27,  &
-   12,21,11, 4,25,27,24,16,  &
-   21,10, 3,11,27,23,15,24,  &
-   13,22,27,25, 5,17,26,20,  &
-   22,14,23,27,17, 6,18,26,  &
-   25,27,24,16,20,26,19, 8,  &
-   27,23,15,24,26,18, 7,19   &
-    ],pInt),[FE_NcellnodesPerCell(FE_celltype(me)),FE_Nips(me)])
-
- me = me + 1_pInt
- FE_cell(1:FE_NcellnodesPerCell(FE_celltype(me)),1:FE_Nips(me),me) = &  ! element   21 (3D 20node 27ip)
-    reshape(int([&
-    1, 9,33,16,17,37,57,44,  &
-    9,10,34,33,37,38,58,57,  &
-   10, 2,11,34,38,18,39,58,  &
-   16,33,36,15,44,57,60,43,  &
-   33,34,35,36,57,58,59,60,  &
-   34,11,12,35,58,39,40,59,  &
-   15,36,14, 4,43,60,42,20,  &
-   36,35,13,14,60,59,41,42,  &
-   35,12, 3,13,59,40,19,41,  &
-   17,37,57,44,21,45,61,52,  &
-   37,38,58,57,45,46,62,61,  &
-   38,18,39,58,46,22,47,62,  &
-   44,57,60,43,52,61,64,51,  &
-   57,58,59,60,61,62,63,64,  &
-   58,39,40,59,62,47,48,63,  &
-   43,60,42,20,51,64,50,24,  &
-   60,59,41,42,64,63,49,50,  &
-   59,40,19,41,63,48,23,49,  &
-   21,45,61,52, 5,25,53,32,  &
-   45,46,62,61,25,26,54,53,  &
-   46,22,47,62,26, 6,27,54,  &
-   52,61,64,51,32,53,56,31,  &
-   61,62,63,64,53,54,55,56,  &
-   62,47,48,63,54,27,28,55,  &
-   51,64,50,24,31,56,30, 8,  &
-   64,63,49,50,56,55,29,30,  &
-   63,48,23,49,55,28, 7,29   &
-    ],pInt),[FE_NcellnodesPerCell(FE_celltype(me)),FE_Nips(me)])
-
-
- ! *** FE_cellnodeParentnodeWeights ***
- ! center of gravity of the weighted nodes gives the position of the cell node.
- ! fill with 0.
- ! example: face-centered cell node with face nodes 1,2,5,6 to be used in,
- !          e.g., an 8 node element, would be encoded:
- !          1, 1, 0, 0, 1, 1, 0, 0
- me = 0_pInt
-
- me = me + 1_pInt
- FE_cellnodeParentnodeWeights(1:FE_Nnodes(me),1:FE_Ncellnodes(FE_geomtype(me)),me) = &  ! element   6 (2D 3node 1ip)
-    reshape(real([&
-    1, 0, 0,  &
-    0, 1, 0,  &
-    0, 0, 1   &
-    ],pReal),[FE_Nnodes(me),FE_Ncellnodes(FE_geomtype(me))])
-
- me = me + 1_pInt
- FE_cellnodeParentnodeWeights(1:FE_Nnodes(me),1:FE_Ncellnodes(FE_geomtype(me)),me) = &  ! element 125 (2D 6node 3ip)
-    reshape(real([&
-    1, 0, 0, 0, 0, 0,  &
-    0, 1, 0, 0, 0, 0,  &
-    0, 0, 1, 0, 0, 0,  &
-    0, 0, 0, 1, 0, 0,  &
-    0, 0, 0, 0, 1, 0,  &
-    0, 0, 0, 0, 0, 1,  &
-    1, 1, 1, 2, 2, 2   &
-    ],pReal),[FE_Nnodes(me),FE_Ncellnodes(FE_geomtype(me))])
-
- me = me + 1_pInt
- FE_cellnodeParentnodeWeights(1:FE_Nnodes(me),1:FE_Ncellnodes(FE_geomtype(me)),me) = &  ! element  11 (2D 4node 4ip)
-    reshape(real([&
-    1, 0, 0, 0,  &
-    0, 1, 0, 0,  &
-    0, 0, 1, 0,  &
-    0, 0, 0, 1,  &
-    1, 1, 0, 0,  &
-    0, 1, 1, 0,  &
-    0, 0, 1, 1,  &
-    1, 0, 0, 1,  &
-    1, 1, 1, 1   &
-    ],pReal),[FE_Nnodes(me),FE_Ncellnodes(FE_geomtype(me))])
-
- me = me + 1_pInt
- FE_cellnodeParentnodeWeights(1:FE_Nnodes(me),1:FE_Ncellnodes(FE_geomtype(me)),me) = &  ! element  27 (2D 8node 9ip)
-    reshape(real([&
-    1, 0, 0, 0, 0, 0, 0, 0,  &
-    0, 1, 0, 0, 0, 0, 0, 0,  &
-    0, 0, 1, 0, 0, 0, 0, 0,  &
-    0, 0, 0, 1, 0, 0, 0, 0,  &
-    1, 0, 0, 0, 2, 0, 0, 0,  &
-    0, 1, 0, 0, 2, 0, 0, 0,  &
-    0, 1, 0, 0, 0, 2, 0, 0,  &
-    0, 0, 1, 0, 0, 2, 0, 0,  &
-    0, 0, 1, 0, 0, 0, 2, 0,  &
-    0, 0, 0, 1, 0, 0, 2, 0,  &
-    0, 0, 0, 1, 0, 0, 0, 2,  &
-    1, 0, 0, 0, 0, 0, 0, 2,  &
-    4, 1, 1, 1, 8, 2, 2, 8,  &
-    1, 4, 1, 1, 8, 8, 2, 2,  &
-    1, 1, 4, 1, 2, 8, 8, 2,  &
-    1, 1, 1, 4, 2, 2, 8, 8   &
-    ],pReal),[FE_Nnodes(me),FE_Ncellnodes(FE_geomtype(me))])
-
- me = me + 1_pInt
- FE_cellnodeParentnodeWeights(1:FE_Nnodes(me),1:FE_Ncellnodes(FE_geomtype(me)),me) = &  ! element  54 (2D 8node 4ip)
-    reshape(real([&
-    1, 0, 0, 0, 0, 0, 0, 0,  &
-    0, 1, 0, 0, 0, 0, 0, 0,  &
-    0, 0, 1, 0, 0, 0, 0, 0,  &
-    0, 0, 0, 1, 0, 0, 0, 0,  &
-    0, 0, 0, 0, 1, 0, 0, 0,  &
-    0, 0, 0, 0, 0, 1, 0, 0,  &
-    0, 0, 0, 0, 0, 0, 1, 0,  &
-    0, 0, 0, 0, 0, 0, 0, 1,  &
-    1, 1, 1, 1, 2, 2, 2, 2   &
-    ],pReal),[FE_Nnodes(me),FE_Ncellnodes(FE_geomtype(me))])
-
- me = me + 1_pInt
- FE_cellnodeParentnodeWeights(1:FE_Nnodes(me),1:FE_Ncellnodes(FE_geomtype(me)),me) = &  ! element 134 (3D 4node 1ip)
-    reshape(real([&
-    1, 0, 0, 0,  &
-    0, 1, 0, 0,  &
-    0, 0, 1, 0,  &
-    0, 0, 0, 1   &
-    ],pReal),[FE_Nnodes(me),FE_Ncellnodes(FE_geomtype(me))])
-
- me = me + 1_pInt
- FE_cellnodeParentnodeWeights(1:FE_Nnodes(me),1:FE_Ncellnodes(FE_geomtype(me)),me) = &  ! element 157 (3D 5node 4ip)
-    reshape(real([&
-    1, 0, 0, 0, 0,  &
-    0, 1, 0, 0, 0,  &
-    0, 0, 1, 0, 0,  &
-    0, 0, 0, 1, 0,  &
-    1, 1, 0, 0, 0,  &
-    0, 1, 1, 0, 0,  &
-    1, 0, 1, 0, 0,  &
-    1, 0, 0, 1, 0,  &
-    0, 1, 0, 1, 0,  &
-    0, 0, 1, 1, 0,  &
-    1, 1, 1, 0, 0,  &
-    1, 1, 0, 1, 0,  &
-    0, 1, 1, 1, 0,  &
-    1, 0, 1, 1, 0,  &
-    0, 0, 0, 0, 1   &
-    ],pReal),[FE_Nnodes(me),FE_Ncellnodes(FE_geomtype(me))])
-
- me = me + 1_pInt
- FE_cellnodeParentnodeWeights(1:FE_Nnodes(me),1:FE_Ncellnodes(FE_geomtype(me)),me) = &  ! element 127 (3D 10node 4ip)
-    reshape(real([&
-    1, 0, 0, 0, 0, 0, 0, 0, 0, 0,  &
-    0, 1, 0, 0, 0, 0, 0, 0, 0, 0,  &
-    0, 0, 1, 0, 0, 0, 0, 0, 0, 0,  &
-    0, 0, 0, 1, 0, 0, 0, 0, 0, 0,  &
-    0, 0, 0, 0, 1, 0, 0, 0, 0, 0,  &
-    0, 0, 0, 0, 0, 1, 0, 0, 0, 0,  &
-    0, 0, 0, 0, 0, 0, 1, 0, 0, 0,  &
-    0, 0, 0, 0, 0, 0, 0, 1, 0, 0,  &
-    0, 0, 0, 0, 0, 0, 0, 0, 1, 0,  &
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 1,  &
-    1, 1, 1, 0, 2, 2, 2, 0, 0, 0,  &
-    1, 1, 0, 1, 2, 0, 0, 2, 2, 0,  &
-    0, 1, 1, 1, 0, 2, 0, 0, 2, 2,  &
-    1, 0, 1, 1, 0, 0, 2, 2, 0, 2,  &
-    3, 3, 3, 3, 4, 4, 4, 4, 4, 4   &
-    ],pReal),[FE_Nnodes(me),FE_Ncellnodes(FE_geomtype(me))])
-
- me = me + 1_pInt
- FE_cellnodeParentnodeWeights(1:FE_Nnodes(me),1:FE_Ncellnodes(FE_geomtype(me)),me) = &  ! element 136 (3D 6node 6ip)
-    reshape(real([&
-    1, 0, 0, 0, 0, 0,  &
-    0, 1, 0, 0, 0, 0,  &
-    0, 0, 1, 0, 0, 0,  &
-    0, 0, 0, 1, 0, 0,  &
-    0, 0, 0, 0, 1, 0,  &
-    0, 0, 0, 0, 0, 1,  &
-    1, 1, 0, 0, 0, 0,  &
-    0, 1, 1, 0, 0, 0,  &
-    1, 0, 1, 0, 0, 0,  &
-    1, 0, 0, 1, 0, 0,  &
-    0, 1, 0, 0, 1, 0,  &
-    0, 0, 1, 0, 0, 1,  &
-    0, 0, 0, 1, 1, 0,  &
-    0, 0, 0, 0, 1, 1,  &
-    0, 0, 0, 1, 0, 1,  &
-    1, 1, 1, 0, 0, 0,  &
-    1, 1, 0, 1, 1, 0,  &
-    0, 1, 1, 0, 1, 1,  &
-    1, 0, 1, 1, 0, 1,  &
-    0, 0, 0, 1, 1, 1,  &
-    1, 1, 1, 1, 1, 1   &
-    ],pReal),[FE_Nnodes(me),FE_Ncellnodes(FE_geomtype(me))])
-
- me = me + 1_pInt
- FE_cellnodeParentnodeWeights(1:FE_Nnodes(me),1:FE_Ncellnodes(FE_geomtype(me)),me) = &  ! element 117 (3D 8node 1ip)
-    reshape(real([&
-    1, 0, 0, 0, 0, 0, 0, 0,  &
-    0, 1, 0, 0, 0, 0, 0, 0,  &
-    0, 0, 1, 0, 0, 0, 0, 0,  &
-    0, 0, 0, 1, 0, 0, 0, 0,  &
-    0, 0, 0, 0, 1, 0, 0, 0,  &
-    0, 0, 0, 0, 0, 1, 0, 0,  &
-    0, 0, 0, 0, 0, 0, 1, 0,  &
-    0, 0, 0, 0, 0, 0, 0, 1   &
-    ],pReal),[FE_Nnodes(me),FE_Ncellnodes(FE_geomtype(me))])
-
- me = me + 1_pInt
- FE_cellnodeParentnodeWeights(1:FE_Nnodes(me),1:FE_Ncellnodes(FE_geomtype(me)),me) = &  ! element   7 (3D 8node 8ip)
-    reshape(real([&
-    1, 0, 0, 0,  0, 0, 0, 0,  &   !
-    0, 1, 0, 0,  0, 0, 0, 0,  &   !
-    0, 0, 1, 0,  0, 0, 0, 0,  &   !
-    0, 0, 0, 1,  0, 0, 0, 0,  &   !
-    0, 0, 0, 0,  1, 0, 0, 0,  &   !  5
-    0, 0, 0, 0,  0, 1, 0, 0,  &   !
-    0, 0, 0, 0,  0, 0, 1, 0,  &   !
-    0, 0, 0, 0,  0, 0, 0, 1,  &   !
-    1, 1, 0, 0,  0, 0, 0, 0,  &   !
-    0, 1, 1, 0,  0, 0, 0, 0,  &   ! 10
-    0, 0, 1, 1,  0, 0, 0, 0,  &   !
-    1, 0, 0, 1,  0, 0, 0, 0,  &   !
-    1, 0, 0, 0,  1, 0, 0, 0,  &   !
-    0, 1, 0, 0,  0, 1, 0, 0,  &   !
-    0, 0, 1, 0,  0, 0, 1, 0,  &   ! 15
-    0, 0, 0, 1,  0, 0, 0, 1,  &   !
-    0, 0, 0, 0,  1, 1, 0, 0,  &   !
-    0, 0, 0, 0,  0, 1, 1, 0,  &   !
-    0, 0, 0, 0,  0, 0, 1, 1,  &   !
-    0, 0, 0, 0,  1, 0, 0, 1,  &   ! 20
-    1, 1, 1, 1,  0, 0, 0, 0,  &   !
-    1, 1, 0, 0,  1, 1, 0, 0,  &   !
-    0, 1, 1, 0,  0, 1, 1, 0,  &   !
-    0, 0, 1, 1,  0, 0, 1, 1,  &   !
-    1, 0, 0, 1,  1, 0, 0, 1,  &   ! 25
-    0, 0, 0, 0,  1, 1, 1, 1,  &   !
-    1, 1, 1, 1,  1, 1, 1, 1   &   !
-    ],pReal),[FE_Nnodes(me),FE_Ncellnodes(FE_geomtype(me))])
-
- me = me + 1_pInt
- FE_cellnodeParentnodeWeights(1:FE_Nnodes(me),1:FE_Ncellnodes(FE_geomtype(me)),me) = &  ! element  57 (3D 20node 8ip)
-    reshape(real([&
-    1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 1, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 0, 1,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 0, 0,  1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !  5
-    0, 0, 0, 0,  0, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 0, 0,  0, 0, 1, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 0, 0,  0, 0, 0, 1,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 0, 0,  0, 0, 0, 0,  0, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   ! 10
-    0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 1, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 1,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0, &   !
-    0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 1, 0, 0, &   !
-    0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 1, 0, &   ! 15
-    0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 1, &   !
-    0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 1, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 1, 0,  0, 0, 0, 0, &   !
-    0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 1,  0, 0, 0, 0, &   ! 20
-    1, 1, 1, 1,  0, 0, 0, 0,  2, 2, 2, 2,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    1, 1, 0, 0,  1, 1, 0, 0,  2, 0, 0, 0,  2, 0, 0, 0,  2, 2, 0, 0, &   !
-    0, 1, 1, 0,  0, 1, 1, 0,  0, 2, 0, 0,  0, 2, 0, 0,  0, 2, 2, 0, &   !
-    0, 0, 1, 1,  0, 0, 1, 1,  0, 0, 2, 0,  0, 0, 2, 0,  0, 0, 2, 2, &   !
-    1, 0, 0, 1,  1, 0, 0, 1,  0, 0, 0, 2,  0, 0, 0, 2,  2, 0, 0, 2, &   ! 25
-    0, 0, 0, 0,  1, 1, 1, 1,  0, 0, 0, 0,  2, 2, 2, 2,  0, 0, 0, 0, &   !
-    3, 3, 3, 3,  3, 3, 3, 3,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4  &   !
-    ],pReal),[FE_Nnodes(me),FE_Ncellnodes(FE_geomtype(me))])
-
- me = me + 1_pInt
- FE_cellnodeParentnodeWeights(1:FE_Nnodes(me),1:FE_Ncellnodes(FE_geomtype(me)),me) = &  ! element  21 (3D 20node 27ip)
-    reshape(real([&
-    1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 1, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 0, 1,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 0, 0,  1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !  5
-    0, 0, 0, 0,  0, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 0, 0,  0, 0, 1, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 0, 0,  0, 0, 0, 1,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    1, 0, 0, 0,  0, 0, 0, 0,  2, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 1, 0, 0,  0, 0, 0, 0,  2, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   ! 10
-    0, 1, 0, 0,  0, 0, 0, 0,  0, 2, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 1, 0,  0, 0, 0, 0,  0, 2, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 1, 0,  0, 0, 0, 0,  0, 0, 2, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 0, 1,  0, 0, 0, 0,  0, 0, 2, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 0, 1,  0, 0, 0, 0,  0, 0, 0, 2,  0, 0, 0, 0,  0, 0, 0, 0, &   ! 15
-    1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 2,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  2, 0, 0, 0, &   !
-    0, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 2, 0, 0, &   !
-    0, 0, 1, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 2, 0, &   !
-    0, 0, 0, 1,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 2, &   ! 20
-    0, 0, 0, 0,  1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  2, 0, 0, 0, &   !
-    0, 0, 0, 0,  0, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 2, 0, 0, &   !
-    0, 0, 0, 0,  0, 0, 1, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 2, 0, &   !
-    0, 0, 0, 0,  0, 0, 0, 1,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 2, &   !
-    0, 0, 0, 0,  1, 0, 0, 0,  0, 0, 0, 0,  2, 0, 0, 0,  0, 0, 0, 0, &   ! 25
-    0, 0, 0, 0,  0, 1, 0, 0,  0, 0, 0, 0,  2, 0, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 0, 0,  0, 1, 0, 0,  0, 0, 0, 0,  0, 2, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 0, 0,  0, 0, 1, 0,  0, 0, 0, 0,  0, 2, 0, 0,  0, 0, 0, 0, &   !
-    0, 0, 0, 0,  0, 0, 1, 0,  0, 0, 0, 0,  0, 0, 2, 0,  0, 0, 0, 0, &   !
-    0, 0, 0, 0,  0, 0, 0, 1,  0, 0, 0, 0,  0, 0, 2, 0,  0, 0, 0, 0, &   ! 30
-    0, 0, 0, 0,  0, 0, 0, 1,  0, 0, 0, 0,  0, 0, 0, 2,  0, 0, 0, 0, &   !
-    0, 0, 0, 0,  1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 2,  0, 0, 0, 0, &   !
-    4, 1, 1, 1,  0, 0, 0, 0,  8, 2, 2, 8,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    1, 4, 1, 1,  0, 0, 0, 0,  8, 8, 2, 2,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    1, 1, 4, 1,  0, 0, 0, 0,  2, 8, 8, 2,  0, 0, 0, 0,  0, 0, 0, 0, &   ! 35
-    1, 1, 1, 4,  0, 0, 0, 0,  2, 2, 8, 8,  0, 0, 0, 0,  0, 0, 0, 0, &   !
-    4, 1, 0, 0,  1, 1, 0, 0,  8, 0, 0, 0,  2, 0, 0, 0,  8, 2, 0, 0, &   !
-    1, 4, 0, 0,  1, 1, 0, 0,  8, 0, 0, 0,  2, 0, 0, 0,  2, 8, 0, 0, &   !
-    0, 4, 1, 0,  0, 1, 1, 0,  0, 8, 0, 0,  0, 2, 0, 0,  0, 8, 2, 0, &   !
-    0, 1, 4, 0,  0, 1, 1, 0,  0, 8, 0, 0,  0, 2, 0, 0,  0, 2, 8, 0, &   ! 40
-    0, 0, 4, 1,  0, 0, 1, 1,  0, 0, 8, 0,  0, 0, 2, 0,  0, 0, 8, 2, &   !
-    0, 0, 1, 4,  0, 0, 1, 1,  0, 0, 8, 0,  0, 0, 2, 0,  0, 0, 2, 8, &   !
-    1, 0, 0, 4,  1, 0, 0, 1,  0, 0, 0, 8,  0, 0, 0, 2,  2, 0, 0, 8, &   !
-    4, 0, 0, 1,  1, 0, 0, 1,  0, 0, 0, 8,  0, 0, 0, 2,  8, 0, 0, 2, &   !
-    1, 1, 0, 0,  4, 1, 0, 0,  2, 0, 0, 0,  8, 0, 0, 0,  8, 2, 0, 0, &   ! 45
-    1, 1, 0, 0,  1, 4, 0, 0,  2, 0, 0, 0,  8, 0, 0, 0,  2, 8, 0, 0, &   !
-    0, 1, 1, 0,  0, 4, 1, 0,  0, 2, 0, 0,  0, 8, 0, 0,  0, 8, 2, 0, &   !
-    0, 1, 1, 0,  0, 1, 4, 0,  0, 2, 0, 0,  0, 8, 0, 0,  0, 2, 8, 0, &   !
-    0, 0, 1, 1,  0, 0, 4, 1,  0, 0, 2, 0,  0, 0, 8, 0,  0, 0, 8, 2, &   !
-    0, 0, 1, 1,  0, 0, 1, 4,  0, 0, 2, 0,  0, 0, 8, 0,  0, 0, 2, 8, &   ! 50
-    1, 0, 0, 1,  1, 0, 0, 4,  0, 0, 0, 2,  0, 0, 0, 8,  2, 0, 0, 8, &   !
-    1, 0, 0, 1,  4, 0, 0, 1,  0, 0, 0, 2,  0, 0, 0, 8,  8, 0, 0, 2, &   !
-    0, 0, 0, 0,  4, 1, 1, 1,  0, 0, 0, 0,  8, 2, 2, 8,  0, 0, 0, 0, &   !
-    0, 0, 0, 0,  1, 4, 1, 1,  0, 0, 0, 0,  8, 8, 2, 2,  0, 0, 0, 0, &   !
-    0, 0, 0, 0,  1, 1, 4, 1,  0, 0, 0, 0,  2, 8, 8, 2,  0, 0, 0, 0, &   ! 55
-    0, 0, 0, 0,  1, 1, 1, 4,  0, 0, 0, 0,  2, 2, 8, 8,  0, 0, 0, 0, &   !
-   24, 8, 4, 8,  8, 4, 3, 4, 32,12,12,32, 12, 4, 4,12, 32,12, 4,12, &   !
-    8,24, 8, 4,  4, 8, 4, 3, 32,32,12,12, 12,12, 4, 4, 12,32,12, 4, &   !
-    4, 8,24, 8,  3, 4, 8, 4, 12,32,32,12,  4,12,12, 4,  4,12,32,12, &   !
-    8, 4, 8,24,  4, 3, 4, 8, 12,12,32,32,  4, 4,12,12, 12, 4,12,32, &   ! 60
-    8, 4, 3, 4, 24, 8, 4, 8, 12, 4, 4,12, 32,12,12,32, 32,12, 4,12, &   !
-    4, 8, 4, 3,  8,24, 8, 4, 12,12, 4, 4, 32,32,12,12, 12,32,12, 4, &   !
-    3, 4, 8, 4,  4, 8,24, 8,  4,12,12, 4, 12,32,32,12,  4,12,32,12, &   !
-    4, 3, 4, 8,  8, 4, 8,24,  4, 4,12,12, 12,12,32,32, 12, 4,12,32  &   !
-    ],pReal),[FE_Nnodes(me),FE_Ncellnodes(FE_geomtype(me))])
-
-
 
  ! *** FE_cellface ***
  me = 0_pInt
