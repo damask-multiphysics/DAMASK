@@ -62,7 +62,6 @@ module IO
    IO_continuousIntValues
 #endif
  private :: &
-   IO_fixedFloatValue, &
    IO_verifyFloatValue, &
    IO_verifyIntValue
 
@@ -731,25 +730,6 @@ real(pReal) function IO_floatValue (string,chunkPos,myChunk)
  endif  valuePresent
 
 end function IO_floatValue
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief reads float value at myChunk from fixed format string
-!--------------------------------------------------------------------------------------------------
-real(pReal) function IO_fixedFloatValue (string,ends,myChunk)
-
- implicit none
- character(len=*),               intent(in) :: string                                               !< raw input with known ends of each chunk
- integer(pInt),                                intent(in) :: myChunk                                !< position number of desired chunk
- integer(pInt),   dimension(:),  intent(in) :: ends                                                 !< positions of end of each tag/chunk in given string
- character(len=20),              parameter  :: MYNAME = 'IO_fixedFloatValue: '
- character(len=17),              parameter  :: VALIDCHARACTERS = '0123456789eEdD.+-'
-
- IO_fixedFloatValue = &
-                  IO_verifyFloatValue(trim(adjustl(string(ends(myChunk)+1_pInt:ends(myChunk+1_pInt)))),&
-                                          VALIDCHARACTERS,MYNAME)
-
-end function IO_fixedFloatValue
 
 
 !--------------------------------------------------------------------------------------------------
