@@ -490,7 +490,7 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Counted CP sizes'; flush(6)
  call mesh_abaqus_build_elements(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
- call mesh_get_damaskOptions(mesh_periodic_surface,FILEUNIT)
+ call mesh_get_damaskOptions(mesh_periodicSurface,FILEUNIT)
  if (myDebug) write(6,'(a)') ' Got DAMASK options'; flush(6)
  close (FILEUNIT)
   
