@@ -731,7 +731,7 @@ real(pReal) function IO_floatValue (string,chunkPos,myChunk)
 
 end function IO_floatValue
 
-
+#ifdef Marc4DAMASK
 !--------------------------------------------------------------------------------------------------
 !> @brief reads float x.y+z value at myChunk from format string
 !--------------------------------------------------------------------------------------------------
@@ -766,6 +766,25 @@ end function IO_fixedNoEFloatValue
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief reads integer value at myChunk from fixed format string
+!--------------------------------------------------------------------------------------------------
+integer(pInt) function IO_fixedIntValue(string,ends,myChunk)
+
+ implicit none
+ character(len=*),               intent(in) :: string                                               !< raw input with known ends of each chunk
+ integer(pInt),                                intent(in) :: myChunk                                !< position number of desired chunk
+ integer(pInt),   dimension(:),  intent(in) :: ends                                                 !< positions of end of each tag/chunk in given string
+ character(len=20),              parameter  :: MYNAME = 'IO_fixedIntValue: '
+ character(len=12),              parameter  :: VALIDCHARACTERS = '0123456789+-'
+
+ IO_fixedIntValue = IO_verifyIntValue(trim(adjustl(string(ends(myChunk)+1_pInt:ends(myChunk+1_pInt)))),&
+                                      VALIDCHARACTERS,MYNAME)
+
+end function IO_fixedIntValue
+#endif
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief reads integer value at myChunk from string
 !--------------------------------------------------------------------------------------------------
 integer(pInt) function IO_intValue(string,chunkPos,myChunk)
@@ -787,24 +806,6 @@ integer(pInt) function IO_intValue(string,chunkPos,myChunk)
  endif valuePresent
 
 end function IO_intValue
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief reads integer value at myChunk from fixed format string
-!--------------------------------------------------------------------------------------------------
-integer(pInt) function IO_fixedIntValue(string,ends,myChunk)
-
- implicit none
- character(len=*),               intent(in) :: string                                               !< raw input with known ends of each chunk
- integer(pInt),                                intent(in) :: myChunk                                !< position number of desired chunk
- integer(pInt),   dimension(:),  intent(in) :: ends                                                 !< positions of end of each tag/chunk in given string
- character(len=20),              parameter  :: MYNAME = 'IO_fixedIntValue: '
- character(len=12),              parameter  :: VALIDCHARACTERS = '0123456789+-'
-
- IO_fixedIntValue = IO_verifyIntValue(trim(adjustl(string(ends(myChunk)+1_pInt:ends(myChunk+1_pInt)))),&
-                                      VALIDCHARACTERS,MYNAME)
-
-end function IO_fixedIntValue
 
 
 !--------------------------------------------------------------------------------------------------
