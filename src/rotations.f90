@@ -810,7 +810,7 @@ pure function qu2ro(qu) result(ro)
  else
    s = norm2([qu%x,qu%y,qu%z])
    ro = merge ( [ 0.0_pReal, 0.0_pReal, P, 0.0_pReal], &
-                [ qu%x/s,  qu%y/s,  qu%z/s, tan(acos(math_clip(qu%w,-1.0_pReal,1.0_pReal))], &
+                [ qu%x/s,  qu%y/s,  qu%z/s, tan(acos(math_clip(qu%w,-1.0_pReal,1.0_pReal)))], &
                 s < thr)                                                                            !ToDo: not save (PGI compiler)
  end if
 
