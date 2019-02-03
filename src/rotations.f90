@@ -353,8 +353,6 @@ end function eu2qu
 !> @brief orientation matrix to Euler angles
 !---------------------------------------------------------------------------------------------------
 pure function om2eu(om) result(eu)
- use prec, only: &
-   dEq
  use math, only: &
    PI
 
@@ -363,7 +361,7 @@ pure function om2eu(om) result(eu)
  real(pReal),             dimension(3)   :: eu
  real(pReal)                             :: zeta
  
- if (dEq(abs(om(3,3)),1.0_pReal,1.0e-15_pReal)) then
+ if (abs(om(3,3))>1.0_pReal) then
    eu = [ atan2( om(1,2),om(1,1)), 0.5*PI*(1-om(3,3)),0.0_pReal ]
  else 
    zeta = 1.0_pReal/sqrt(1.0_pReal-om(3,3)**2.0_pReal)
@@ -774,7 +772,7 @@ pure function qu2ax(qu) result(ax)
  
  real(pReal)                               :: omega, s
 
- omega = 2.0 * acos(math_clip(qu%w,0.0_pReal,1.0_pReal))
+ omega = 2.0 * acos(math_clip(qu%w,-1.0_pReal,1.0_pReal))
  ! if the angle equals zero, then we return the rotation axis as [001]
  if (dEq0(omega)) then
    ax = [ 0.0, 0.0, 1.0, 0.0 ]
@@ -798,6 +796,8 @@ pure function qu2ro(qu) result(ro)
    IEEE_positive_inf
  use prec, only: &
    dEq0
+ use math, only: &
+   math_clip
  
  type(quaternion), intent(in)              :: qu
  real(pReal),                 dimension(4) :: ro
@@ -810,7 +810,7 @@ pure function qu2ro(qu) result(ro)
  else
    s = norm2([qu%x,qu%y,qu%z])
    ro = merge ( [ 0.0_pReal, 0.0_pReal, P, 0.0_pReal], &
-                [ qu%x/s,  qu%y/s,  qu%z/s, tan(acos(qu%w))], &
+                [ qu%x/s,  qu%y/s,  qu%z/s, tan(acos(math_clip(qu%w,-1.0_pReal,1.0_pReal))], &
                 s < thr)                                                                            !ToDo: not save (PGI compiler)
  end if
 
@@ -833,7 +833,7 @@ pure function qu2ho(qu) result(ho)
  
  real(pReal)                                :: omega, f
 
- omega = 2.0 * acos(math_clip(qu%w,0.0_pReal,1.0_pReal))
+ omega = 2.0 * acos(math_clip(qu%w,-1.0_pReal,1.0_pReal))
  
  if (dEq0(omega)) then
    ho = [ 0.0, 0.0, 0.0 ]
