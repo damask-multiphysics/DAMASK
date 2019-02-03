@@ -367,7 +367,6 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_build_cellconnectivity, &
    mesh_build_ipAreas, &
    FE_mapElemtype, &
-   mesh_faceMatch, &
    mesh_build_FEdata, &
    mesh_build_nodeTwins, &
    mesh_build_sharedElems, &
