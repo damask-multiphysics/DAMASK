@@ -757,7 +757,7 @@ subroutine mesh_marc_map_elementSets(nameElemSet,mapElemSet,fileUnit)
                  IO_continuousIntValues
 
  implicit none
- integer(pInt), intent(in) :: fileUnit,NelemSets
+ integer(pInt), intent(in) :: fileUnit
  character(len=64), dimension(:), intent(out) :: &
    nameElemSet
  integer(pInt), dimension(:,:), intent(out) :: &
