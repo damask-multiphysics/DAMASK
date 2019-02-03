@@ -61,7 +61,6 @@ module mesh
  logical, dimension(3), public, protected :: mesh_periodicSurface                                   !< flag indicating periodic outer surfaces (used for fluxes)
 
  integer(pInt), private :: &
-   mesh_maxNelemInSet, &
    mesh_Nmaterials
 
 integer(pInt), dimension(:,:), allocatable, private :: &
@@ -342,9 +341,8 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_maxNnodes, &                                                                                !< max number of nodes in any CP element
    mesh_NelemSets
  character(len=64), dimension(:), allocatable, private :: &
-   mesh_nameElemSet, &                                                                              !< names of elementSet
-   mesh_nameMaterial, &                                                                             !< names of material in solid section
-   mesh_mapMaterial                                                                                 !< name of elementSet for material
+   mesh_nameElemSet
+   
  integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_mapElemSet                                                                                  !< list of elements in elementSet
  integer(pInt), dimension(:,:), allocatable, target, private :: &
@@ -450,6 +448,8 @@ subroutine mesh_init(ip,el)
   
  integer(pInt), parameter  :: FILEUNIT = 222_pInt
  integer(pInt) :: j, fileFormatVersion, elemType
+ integer(pInt) :: &
+   mesh_maxNelemInSet
  logical :: myDebug
 
  write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
@@ -491,7 +491,7 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Counted CP elements'; flush(6)
  
  allocate (mesh_mapFEtoCPelem(2,mesh_NcpElems), source = 0_pInt)
- call mesh_marc_map_elements(FILEUNIT)            !ToDo: don't work on global variables
+ call mesh_marc_map_elements(hypoelasticTableStyle,mesh_nameElemSet,mesh_mapElemSet,FILEUNIT)                       !ToDo: don't work on global variables
  if (myDebug) write(6,'(a)') ' Mapped elements'; flush(6)
  
  allocate (mesh_mapFEtoCPnode(2_pInt,mesh_Nnodes),source=0_pInt)
@@ -510,7 +510,7 @@ subroutine mesh_init(ip,el)
  
  call mesh_marc_build_elements(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
- call mesh_get_damaskOptions(FILEUNIT)
+ call mesh_get_damaskOptions(mesh_periodicSurface,FILEUNIT)
  if (myDebug) write(6,'(a)') ' Got DAMASK options'; flush(6)
  close (FILEUNIT)
   
@@ -674,8 +674,7 @@ function mesh_marc_get_matNumber(fileUnit,tableStyle)
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Count overall number of nodes and elements in mesh and stores the numbers in
-!! 'mesh_Nelems' and 'mesh_Nnodes'
+!> @brief Count overall number of nodes and elements
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_count_nodesAndElements(nNodes, nElems, fileUnit)
  use IO, only: &
@@ -749,7 +748,6 @@ subroutine mesh_marc_count_nodesAndElements(nNodes, nElems, fileUnit)
 
 !--------------------------------------------------------------------------------------------------
 !> @brief map element sets
-!! allocate globals: mesh_nameElemSet, mesh_mapElemSet
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_map_elementSets(nameElemSet,mapElemSet,fileUnit)
 
@@ -843,7 +841,7 @@ integer(pInt) function mesh_marc_count_cpElements(tableStyle,matNumber,fileForma
 !--------------------------------------------------------------------------------------------------
 !> @brief Maps elements from FE ID to internal (consecutive) representation.
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_map_elements(fileUnit)
+subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,fileUnit)
 
  use math, only: math_qsort
  use IO,   only: IO_lc, &
@@ -853,7 +851,10 @@ subroutine mesh_marc_map_elements(fileUnit)
                  IO_continuousIntValues
 
  implicit none
- integer(pInt), intent(in) :: fileUnit
+ integer(pInt), intent(in) :: fileUnit,tableStyle
+ character(len=64), intent(in), dimension(:) :: nameElemSet
+ integer(pInt), dimension(:,:), intent(in) :: &
+   mapElemSet
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) :: line, &
@@ -870,11 +871,11 @@ subroutine mesh_marc_map_elements(fileUnit)
    chunkPos = IO_stringPos(line)
    if (MarcVersion < 13) then                                                                       ! Marc 2016 or earlier
      if( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'hypoelastic' ) then
-       do i=1_pInt,3_pInt+hypoelasticTableStyle                                                     ! skip three (or four if new table style!) lines
+       do i=1_pInt,3_pInt+TableStyle                                                                ! skip three (or four if new table style!) lines
          read (fileUnit,'(A300)') line
        enddo
-       contInts = IO_continuousIntValues(fileUnit,mesh_NcpElems,mesh_nameElemSet,&
-                                              mesh_mapElemSet,mesh_NelemSets)
+       contInts = IO_continuousIntValues(fileUnit,mesh_NcpElems,nameElemSet,&
+                                              mapElemSet,size(nameElemSet))
        exit
      endif  
    else                                                                                             ! Marc2017 and later
@@ -1158,7 +1159,7 @@ subroutine mesh_marc_build_elements(fileUnit)
 !--------------------------------------------------------------------------------------------------
 !> @brief get any additional damask options from input file, sets mesh_periodicSurface
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_get_damaskOptions(fileUnit)
+subroutine mesh_get_damaskOptions(periodic_surface,fileUnit)
 
 use IO, only: &
   IO_lc, &
@@ -1168,23 +1169,23 @@ use IO, only: &
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
-
  integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt) chunk, Nchunks
- character(len=300) :: line, damaskOption, v
- character(len=300) :: keyword
+ character(len=300) :: line
+ integer :: myStat
+ integer(pInt) :: chunk, Nchunks
+ character(len=300) ::  v
+ logical, dimension(3) :: periodic_surface
+ 
 
- mesh_periodicSurface = .false.
- keyword = '$damask'
-
+ periodic_surface = .false.
+ myStat = 0
  rewind(fileUnit)
- do
-   read (fileUnit,'(A300)',END=620) line
+ do while(myStat == 0)
+   read (fileUnit,'(a300)',iostat=myStat) line
    chunkPos = IO_stringPos(line)
    Nchunks = chunkPos(1)
-   if (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == keyword .and. Nchunks > 1_pInt) then          ! found keyword for damask option and there is at least one more chunk to read
-     damaskOption = IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-     select case(damaskOption)
+   if (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == '$damask' .and. Nchunks > 1_pInt) then        ! found keyword for damask option and there is at least one more chunk to read
+     select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
        case('periodic')                                                                             ! damask Option that allows to specify periodic fluxes
          do chunk = 3_pInt,Nchunks                                                                  ! loop through chunks (skipping the keyword)
             v = IO_lc(IO_stringValue(line,chunkPos,chunk))                                          ! chunk matches keyvalues x,y, or z?
@@ -1196,8 +1197,7 @@ use IO, only: &
    endif
  enddo
 
-
-620 end subroutine mesh_get_damaskOptions
+end subroutine mesh_get_damaskOptions
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Split CP elements into cells.
