@@ -53,8 +53,6 @@ module mesh
 
  logical, dimension(3), public, protected :: mesh_periodicSurface                                   !< flag indicating periodic outer surfaces (used for fluxes)
 
- integer(pInt), private :: &
-   mesh_Nmaterials
 
 integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_cellnodeParent                                                                              !< cellnode's parent element ID, cellnode's intra-element ID
