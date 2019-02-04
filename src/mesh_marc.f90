@@ -253,7 +253,6 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    mesh_marc_count_nodesAndElements, &
    mesh_marc_count_elementSets, &
    mesh_marc_map_elementSets, &
-   mesh_marc_count_cpElements, &
    mesh_marc_map_Elements, &
    mesh_marc_map_nodes, &
    mesh_marc_build_nodes, &
@@ -359,7 +358,7 @@ subroutine mesh_init(ip,el)
  call mesh_marc_map_elementSets(mesh_nameElemSet,mesh_mapElemSet,FILEUNIT)
  if (myDebug) write(6,'(a)') ' Mapped element sets'; flush(6)
  
- mesh_NcpElems =  mesh_marc_count_cpElements(hypoelasticTableStyle,Marc_matNumber,fileFormatVersion,FILEUNIT)
+ mesh_NcpElems =  mesh_nElems
  if (myDebug) write(6,'(a)') ' Counted CP elements'; flush(6)
  
  allocate (mesh_mapFEtoCPelem(2,mesh_NcpElems), source = 0_pInt)
@@ -657,60 +656,6 @@ subroutine mesh_marc_map_elementSets(nameElemSet,mapElemSet,fileUnit)
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Count overall number of CP elements in mesh
-!--------------------------------------------------------------------------------------------------
-integer(pInt) function mesh_marc_count_cpElements(tableStyle,matNumber,fileFormatVersion,fileUnit)
-
- use IO,   only: IO_lc, &
-                 IO_stringValue, &
-                 IO_stringPos, &
-                 IO_countContinuousIntValues, &
-                 IO_error, &
-                 IO_intValue, &
-                 IO_countNumericalDataLines
-
- implicit none
- integer(pInt), intent(in) :: fileUnit, tableStyle,fileFormatVersion
- integer(pInt), dimension(:), intent(in) :: matNumber
-
- integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt) :: i
- character(len=300):: line
-
- mesh_marc_count_cpElements = 0_pInt
-
-
- rewind(fileUnit)
- if (fileFormatVersion < 13) then                                                                   ! Marc 2016 or earlier
-   do
-     read (fileUnit,'(A300)',END=620) line
-     chunkPos = IO_stringPos(line)
-     if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'hypoelastic') then
-       do i=1_pInt,3_pInt+tableStyle  ! Skip 3 or 4 lines
-         read (fileUnit,'(A300)') line
-       enddo
-       mesh_marc_count_cpElements = mesh_marc_count_cpElements + IO_countContinuousIntValues(fileUnit)
-       exit
-     endif
-   enddo
- else                                                                                               ! Marc2017 and later
-   do
-     read (fileUnit,'(A300)',END=620) line
-     chunkPos = IO_stringPos(line)
-     if ( IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'connectivity') then
-       read (fileUnit,'(A300)') line
-       chunkPos = IO_stringPos(line)
-       if (any(matNumber==IO_intValue(line,chunkPos,6_pInt))) then
-         mesh_marc_count_cpElements = mesh_marc_count_cpElements + IO_countNumericalDataLines(fileUnit)
-       endif
-     endif
-   enddo
- end if
-
-620 end function mesh_marc_count_cpElements
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief Maps elements from FE ID to internal (consecutive) representation.
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,nElems,fileUnit)
@@ -880,10 +825,12 @@ integer(pInt) function mesh_marc_count_cpSizes(fileUnit)
                  IO_stringPos, &
                  IO_intValue, &
                  IO_skipChunks
+ use element
 
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
+ type(tElement) :: tempEl
  integer(pInt), allocatable, dimension(:) :: chunkPos
  character(len=300) :: line
  integer(pInt) :: i,t,g,e,c
@@ -899,13 +846,14 @@ integer(pInt) function mesh_marc_count_cpSizes(fileUnit)
      do i=1_pInt,mesh_Nelems                                                                        ! read all elements
        read (fileUnit,'(A300)') line
        chunkPos = IO_stringPos(line)                                                                ! limit to id and type
-       e = mesh_FEasCP('elem',IO_intValue(line,chunkPos,1_pInt))
-       if (e /= 0_pInt) then
-         if (t == -1_pInt) t = FE_mapElemtype(IO_stringValue(line,chunkPos,2_pInt))
-         if (t /= FE_mapElemtype(IO_stringValue(line,chunkPos,2_pInt))) call IO_error(0_pInt)       !ToDo: error message
+       if (t == -1_pInt) then
+         t = FE_mapElemtype(IO_stringValue(line,chunkPos,2_pInt))
+         call tempEl%init(t)
          mesh_marc_count_cpSizes = t
-         !call IO_skipChunks(fileUnit,FE_Nnodes(t)-(chunkPos(1_pInt)-2_pInt))                       ! read on if FE_Nnodes exceeds node count present on current line !ToDo: this is dangerous in case of a non-CP element, everything is mixed up
+       else
+         if (t /= FE_mapElemtype(IO_stringValue(line,chunkPos,2_pInt))) call IO_error(0_pInt)       !ToDo: error message
        endif
+       call IO_skipChunks(fileUnit,tempEl%nNodes-(chunkPos(1_pInt)-2_pInt))
      enddo
      exit
    endif
