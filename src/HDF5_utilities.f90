@@ -19,6 +19,7 @@ module HDF5_utilities
 
 !--------------------------------------------------------------------------------------------------
 !> @brief reads pInt or pReal data of defined shape from file                                       ! ToDo: order of arguments wrong
+!> @details for parallel IO, all dimension except for the last need to match
 !--------------------------------------------------------------------------------------------------
  interface HDF5_read
    module procedure HDF5_read_pReal1
@@ -41,6 +42,7 @@ module HDF5_utilities
 
 !--------------------------------------------------------------------------------------------------
 !> @brief writes pInt or pReal data of defined shape to file                                        ! ToDo: order of arguments wrong
+!> @details for parallel IO, all dimension except for the last need to match
 !--------------------------------------------------------------------------------------------------
  interface HDF5_write
    module procedure HDF5_write_pReal1
@@ -1059,8 +1061,9 @@ subroutine HDF5_read_pInt7(loc_id,dataset,datasetName,parallel)
 
 end subroutine HDF5_read_pInt7
 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for writing dataset of type pReal with 1 dimensions
+!> @brief subroutine for writing dataset of type pReal with 1 dimension
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_pReal1(loc_id,dataset,datasetName,parallel)
 
@@ -1436,11 +1439,8 @@ subroutine HDF5_write_pReal7(loc_id,dataset,datasetName,parallel)
 
 end subroutine HDF5_write_pReal7
 
-
-
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for writing dataset of type pInt with 1 dimensions
+!> @brief subroutine for writing dataset of type pInt with 1 dimension
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_pInt1(loc_id,dataset,datasetName,parallel)
 
@@ -1988,19 +1988,26 @@ if (parallel) then
 end subroutine initialize_write
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief
+!--------------------------------------------------------------------------------------------------
+subroutine finalize_write(plist_id, dset_id, filespace_id, memspace_id)
+
+ implicit none
+ integer(HID_T), intent(in) :: dset_id, filespace_id, memspace_id, plist_id
+ integer(HDF5_ERR_TYPE) :: hdferr
+
+!--------------------------------------------------------------------------------------------------
+!close types, dataspaces
+ call h5pclose_f(plist_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='finalize_write: plist_id')
+ call h5dclose_f(dset_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='finalize_write: h5dclose_f')
+ call h5sclose_f(filespace_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='finalize_write: h5sclose_f/filespace_id')
+ call h5sclose_f(memspace_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='finalize_write: h5sclose_f/memspace_id')
+
+end subroutine finalize_write
+
 end module HDF5_Utilities
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
