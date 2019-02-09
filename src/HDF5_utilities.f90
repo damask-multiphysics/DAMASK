@@ -449,9 +449,6 @@ end subroutine HDF5_setLink
 !> @brief subroutine for reading dataset of type pReal with 1 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pReal1(loc_id,dataset,datasetName,parallel)
- use numerics, only: &
-   worldrank, &
-   worldsize
 
  implicit none
  real(pReal),      intent(inout), dimension(:) ::    dataset
@@ -459,9 +456,7 @@ subroutine HDF5_read_pReal1(loc_id,dataset,datasetName,parallel)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
 
- integer(pInt), dimension(worldsize) :: &
-   readSize                                                                                         !< contribution of all processes
- integer :: ierr
+
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
@@ -469,65 +464,28 @@ subroutine HDF5_read_pReal1(loc_id,dataset,datasetName,parallel)
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
 
-!-------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
  localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)) == 0)) return                                               ! ToDo: Correct? Seems to result in a deadlock for MPI if my processor has nothing to read
+ if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for transfer properties
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+ if (present(parallel)) then
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,parallel)
+ else
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,.false.)
+ endif
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for data access properties
- call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr)
-!--------------------------------------------------------------------------------------------------
- readSize = 0_pInt
- readSize(worldrank+1) = int(localShape(ubound(localShape,1)),pInt)
-#ifdef PETSc
- if (present(parallel)) then; if (parallel) then
-   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
-   if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pReal1: MPI_allreduce')
- endif; endif
-#endif
- myStart                   = int(0,HSIZE_T)
- myStart(ubound(myStart))  = int(sum(readSize(1:worldrank)),HSIZE_T)
- globalShape = [localShape(1:ubound(localShape,1)-1),int(sum(readSize),HSIZE_T)]
-
-
-!--------------------------------------------------------------------------------------------------
-! create dataspace in memory (local shape)
- call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
-!--------------------------------------------------------------------------------------------------
-! set I/O mode for read operations to collective
- call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5pset_all_coll_metadata_ops_f')
-!--------------------------------------------------------------------------------------------------
-! open the dataset in the file
- call h5dopen_f(loc_id,datasetName,dset_id,hdferr, dapl_id = aplist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5dopen_f')
-
-!--------------------------------------------------------------------------------------------------
-! get the space_id of dataset in the file
- call h5dget_space_f(dset_id, filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5dget_space_f')
-
-!--------------------------------------------------------------------------------------------------
-! select a hyperslab (the portion of the current process) in the file
- call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, localShape, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5sselect_hyperslab_f')
-
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5dread_f')
 
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !close types, dataspaces
  call h5pclose_f(plist_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: plist_id')
@@ -545,9 +503,6 @@ end subroutine HDF5_read_pReal1
 !> @brief subroutine for reading dataset of type pReal with 2 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pReal2(loc_id,dataset,datasetName,parallel)
- use numerics, only: &
-   worldrank, &
-   worldsize
 
  implicit none
  real(pReal),      intent(inout), dimension(:,:) ::    dataset
@@ -555,9 +510,7 @@ subroutine HDF5_read_pReal2(loc_id,dataset,datasetName,parallel)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
 
- integer(pInt), dimension(worldsize) :: &
-   readSize                                                                                         !< contribution of all processes
- integer :: ierr
+
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
@@ -565,59 +518,22 @@ subroutine HDF5_read_pReal2(loc_id,dataset,datasetName,parallel)
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
 
-!-------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
  localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)) == 0)) return                                               ! ToDo: Correct? Seems to result in a deadlock for MPI if my processor has nothing to read
+ if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for transfer properties
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+ if (present(parallel)) then
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,parallel)
+ else
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,.false.)
+ endif
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for data access properties
- call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr)
-!--------------------------------------------------------------------------------------------------
- readSize = 0_pInt
- readSize(worldrank+1) = int(localShape(ubound(localShape,1)),pInt)
-#ifdef PETSc
- if (present(parallel)) then; if (parallel) then
-   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
-   if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pReal1: MPI_allreduce')
- endif; endif
-#endif
- myStart                   = int(0,HSIZE_T)
- myStart(ubound(myStart))  = int(sum(readSize(1:worldrank)),HSIZE_T)
- globalShape = [localShape(1:ubound(localShape,1)-1),int(sum(readSize),HSIZE_T)]
-
-
-!--------------------------------------------------------------------------------------------------
-! create dataspace in memory (local shape)
- call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
-!--------------------------------------------------------------------------------------------------
-! set I/O mode for read operations to collective
- call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal2: h5pset_all_coll_metadata_ops_f')
-!--------------------------------------------------------------------------------------------------
-! open the dataset in the file
- call h5dopen_f(loc_id,datasetName,dset_id,hdferr, dapl_id = aplist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal2: h5dopen_f')
-
-!--------------------------------------------------------------------------------------------------
-! get the space_id of dataset in the file
- call h5dget_space_f(dset_id, filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal2: h5dget_space_f')
-
-!--------------------------------------------------------------------------------------------------
-! select a hyperslab (the portion of the current process) in the file
- call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, int(localShape,HSIZE_T), hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal2: h5sselect_hyperslab_f')
-
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
@@ -641,9 +557,6 @@ end subroutine HDF5_read_pReal2
 !> @brief subroutine for reading dataset of type pReal with 3 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pReal3(loc_id,dataset,datasetName,parallel)
- use numerics, only: &
-   worldrank, &
-   worldsize
 
  implicit none
  real(pReal),      intent(inout), dimension(:,:,:) ::    dataset
@@ -651,9 +564,7 @@ subroutine HDF5_read_pReal3(loc_id,dataset,datasetName,parallel)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
 
- integer(pInt), dimension(worldsize) :: &
-   readSize                                                                                         !< contribution of all processes
- integer :: ierr
+
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
@@ -661,59 +572,22 @@ subroutine HDF5_read_pReal3(loc_id,dataset,datasetName,parallel)
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
 
-!-------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
  localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)) == 0)) return                                               ! ToDo: Correct? Seems to result in a deadlock for MPI if my processor has nothing to read
+ if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for transfer properties
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+ if (present(parallel)) then
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,parallel)
+ else
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,.false.)
+ endif
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for data access properties
- call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr)
-!--------------------------------------------------------------------------------------------------
- readSize = 0_pInt
- readSize(worldrank+1) = int(localShape(ubound(localShape,1)),pInt)
-#ifdef PETSc
- if (present(parallel)) then; if (parallel) then
-   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
-   if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pReal1: MPI_allreduce')
- endif; endif
-#endif
- myStart                   = int(0,HSIZE_T)
- myStart(ubound(myStart))  = int(sum(readSize(1:worldrank)),HSIZE_T)
- globalShape = [localShape(1:ubound(localShape,1)-1),int(sum(readSize),HSIZE_T)]
-
-
-!--------------------------------------------------------------------------------------------------
-! create dataspace in memory (local shape)
- call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
-!--------------------------------------------------------------------------------------------------
-! set I/O mode for read operations to collective
- call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal3: h5pset_all_coll_metadata_ops_f')
-!--------------------------------------------------------------------------------------------------
-! open the dataset in the file
- call h5dopen_f(loc_id,datasetName,dset_id,hdferr, dapl_id = aplist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal3: h5dopen_f')
-
-!--------------------------------------------------------------------------------------------------
-! get the space_id of dataset in the file
- call h5dget_space_f(dset_id, filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal3: h5dget_space_f')
-
-!--------------------------------------------------------------------------------------------------
-! select a hyperslab (the portion of the current process) in the file
- call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, int(localShape,HSIZE_T), hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal3: h5sselect_hyperslab_f')
-
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
@@ -737,9 +611,6 @@ end subroutine HDF5_read_pReal3
 !> @brief subroutine for reading dataset of type pReal with 4 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pReal4(loc_id,dataset,datasetName,parallel)
- use numerics, only: &
-   worldrank, &
-   worldsize
 
  implicit none
  real(pReal),      intent(inout), dimension(:,:,:,:) ::    dataset
@@ -747,9 +618,7 @@ subroutine HDF5_read_pReal4(loc_id,dataset,datasetName,parallel)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
 
- integer(pInt), dimension(worldsize) :: &
-   readSize                                                                                         !< contribution of all processes
- integer :: ierr
+
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
@@ -757,59 +626,22 @@ subroutine HDF5_read_pReal4(loc_id,dataset,datasetName,parallel)
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
 
-!-------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
  localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)) == 0)) return                                               ! ToDo: Correct? Seems to result in a deadlock for MPI if my processor has nothing to read
+ if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for transfer properties
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+ if (present(parallel)) then
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,parallel)
+ else
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,.false.)
+ endif
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for data access properties
- call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr)
-!--------------------------------------------------------------------------------------------------
- readSize = 0_pInt
- readSize(worldrank+1) = int(localShape(ubound(localShape,1)),pInt)
-#ifdef PETSc
- if (present(parallel)) then; if (parallel) then
-   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
-   if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pReal1: MPI_allreduce')
- endif; endif
-#endif
- myStart                   = int(0,HSIZE_T)
- myStart(ubound(myStart))  = int(sum(readSize(1:worldrank)),HSIZE_T)
- globalShape = [localShape(1:ubound(localShape,1)-1),int(sum(readSize),HSIZE_T)]
-
-
-!--------------------------------------------------------------------------------------------------
-! create dataspace in memory (local shape)
- call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
-!--------------------------------------------------------------------------------------------------
-! set I/O mode for read operations to collective
- call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal4: h5pset_all_coll_metadata_ops_f')
-!--------------------------------------------------------------------------------------------------
-! open the dataset in the file
- call h5dopen_f(loc_id,datasetName,dset_id,hdferr, dapl_id = aplist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal4: h5dopen_f')
-
-!--------------------------------------------------------------------------------------------------
-! get the space_id of dataset in the file
- call h5dget_space_f(dset_id, filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal4: h5dget_space_f')
-
-!--------------------------------------------------------------------------------------------------
-! select a hyperslab (the portion of the current process) in the file
- call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, int(localShape,HSIZE_T), hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal4: h5sselect_hyperslab_f')
-
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
@@ -833,9 +665,6 @@ end subroutine HDF5_read_pReal4
 !> @brief subroutine for reading dataset of type pReal with 5 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pReal5(loc_id,dataset,datasetName,parallel)
- use numerics, only: &
-   worldrank, &
-   worldsize
 
  implicit none
  real(pReal),      intent(inout), dimension(:,:,:,:,:) ::    dataset
@@ -843,9 +672,7 @@ subroutine HDF5_read_pReal5(loc_id,dataset,datasetName,parallel)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
 
- integer(pInt), dimension(worldsize) :: &
-   readSize                                                                                         !< contribution of all processes
- integer :: ierr
+
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
@@ -853,59 +680,22 @@ subroutine HDF5_read_pReal5(loc_id,dataset,datasetName,parallel)
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
 
-!-------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
  localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)) == 0)) return                                               ! ToDo: Correct? Seems to result in a deadlock for MPI if my processor has nothing to read
+ if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for transfer properties
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+ if (present(parallel)) then
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,parallel)
+ else
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,.false.)
+ endif
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for data access properties
- call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr)
-!--------------------------------------------------------------------------------------------------
- readSize = 0_pInt
- readSize(worldrank+1) = int(localShape(ubound(localShape,1)),pInt)
-#ifdef PETSc
- if (present(parallel)) then; if (parallel) then
-   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
-   if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pReal1: MPI_allreduce')
- endif; endif
-#endif
- myStart                   = int(0,HSIZE_T)
- myStart(ubound(myStart))  = int(sum(readSize(1:worldrank)),HSIZE_T)
- globalShape = [localShape(1:ubound(localShape,1)-1),int(sum(readSize),HSIZE_T)]
-
-
-!--------------------------------------------------------------------------------------------------
-! create dataspace in memory (local shape)
- call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
-!--------------------------------------------------------------------------------------------------
-! set I/O mode for read operations to collective
- call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal5: h5pset_all_coll_metadata_ops_f')
-!--------------------------------------------------------------------------------------------------
-! open the dataset in the file
- call h5dopen_f(loc_id,datasetName,dset_id,hdferr, dapl_id = aplist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal5: h5dopen_f')
-
-!--------------------------------------------------------------------------------------------------
-! get the space_id of dataset in the file
- call h5dget_space_f(dset_id, filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal5: h5dget_space_f')
-
-!--------------------------------------------------------------------------------------------------
-! select a hyperslab (the portion of the current process) in the file
- call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, int(localShape,HSIZE_T), hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal5: h5sselect_hyperslab_f')
-
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
@@ -929,9 +719,6 @@ end subroutine HDF5_read_pReal5
 !> @brief subroutine for reading dataset of type pReal with 6 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pReal6(loc_id,dataset,datasetName,parallel)
- use numerics, only: &
-   worldrank, &
-   worldsize
 
  implicit none
  real(pReal),      intent(inout), dimension(:,:,:,:,:,:) ::    dataset
@@ -939,9 +726,7 @@ subroutine HDF5_read_pReal6(loc_id,dataset,datasetName,parallel)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
 
- integer(pInt), dimension(worldsize) :: &
-   readSize                                                                                         !< contribution of all processes
- integer :: ierr
+
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
@@ -949,59 +734,22 @@ subroutine HDF5_read_pReal6(loc_id,dataset,datasetName,parallel)
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
 
-!-------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
  localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)) == 0)) return                                               ! ToDo: Correct? Seems to result in a deadlock for MPI if my processor has nothing to read
+ if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for transfer properties
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+ if (present(parallel)) then
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,parallel)
+ else
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,.false.)
+ endif
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for data access properties
- call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr)
-!--------------------------------------------------------------------------------------------------
- readSize = 0_pInt
- readSize(worldrank+1) = int(localShape(ubound(localShape,1)),pInt)
-#ifdef PETSc
- if (present(parallel)) then; if (parallel) then
-   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
-   if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pReal1: MPI_allreduce')
- endif; endif
-#endif
- myStart                   = int(0,HSIZE_T)
- myStart(ubound(myStart))  = int(sum(readSize(1:worldrank)),HSIZE_T)
- globalShape = [localShape(1:ubound(localShape,1)-1),int(sum(readSize),HSIZE_T)]
-
-
-!--------------------------------------------------------------------------------------------------
-! create dataspace in memory (local shape)
- call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
-!--------------------------------------------------------------------------------------------------
-! set I/O mode for read operations to collective
- call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal6: h5pset_all_coll_metadata_ops_f')
-!--------------------------------------------------------------------------------------------------
-! open the dataset in the file
- call h5dopen_f(loc_id,datasetName,dset_id,hdferr, dapl_id = aplist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal6: h5dopen_f')
-
-!--------------------------------------------------------------------------------------------------
-! get the space_id of dataset in the file
- call h5dget_space_f(dset_id, filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal6: h5dget_space_f')
-
-!--------------------------------------------------------------------------------------------------
-! select a hyperslab (the portion of the current process) in the file
- call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, int(localShape,HSIZE_T), hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal6: h5sselect_hyperslab_f')
-
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
@@ -1025,9 +773,6 @@ end subroutine HDF5_read_pReal6
 !> @brief subroutine for reading dataset of type pReal with 7 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pReal7(loc_id,dataset,datasetName,parallel)
- use numerics, only: &
-   worldrank, &
-   worldsize
 
  implicit none
  real(pReal),      intent(inout), dimension(:,:,:,:,:,:,:) ::    dataset
@@ -1035,9 +780,7 @@ subroutine HDF5_read_pReal7(loc_id,dataset,datasetName,parallel)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
 
- integer(pInt), dimension(worldsize) :: &
-   readSize                                                                                         !< contribution of all processes
- integer :: ierr
+
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
@@ -1045,59 +788,22 @@ subroutine HDF5_read_pReal7(loc_id,dataset,datasetName,parallel)
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
 
-!-------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
  localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)) == 0)) return                                               ! ToDo: Correct? Seems to result in a deadlock for MPI if my processor has nothing to read
+ if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for transfer properties
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+ if (present(parallel)) then
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,parallel)
+ else
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,.false.)
+ endif
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for data access properties
- call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr)
-!--------------------------------------------------------------------------------------------------
- readSize = 0_pInt
- readSize(worldrank+1) = int(localShape(ubound(localShape,1)),pInt)
-#ifdef PETSc
- if (present(parallel)) then; if (parallel) then
-   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
-   if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pReal1: MPI_allreduce')
- endif; endif
-#endif
- myStart                   = int(0,HSIZE_T)
- myStart(ubound(myStart))  = int(sum(readSize(1:worldrank)),HSIZE_T)
- globalShape = [localShape(1:ubound(localShape,1)-1),int(sum(readSize),HSIZE_T)]
-
-
-!--------------------------------------------------------------------------------------------------
-! create dataspace in memory (local shape)
- call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
-!--------------------------------------------------------------------------------------------------
-! set I/O mode for read operations to collective
- call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal7: h5pset_all_coll_metadata_ops_f')
-!--------------------------------------------------------------------------------------------------
-! open the dataset in the file
- call h5dopen_f(loc_id,datasetName,dset_id,hdferr, dapl_id = aplist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal7: h5dopen_f')
-
-!--------------------------------------------------------------------------------------------------
-! get the space_id of dataset in the file
- call h5dget_space_f(dset_id, filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal7: h5dget_space_f')
-
-!--------------------------------------------------------------------------------------------------
-! select a hyperslab (the portion of the current process) in the file
- call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, int(localShape,HSIZE_T), hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal7: h5sselect_hyperslab_f')
-
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
@@ -1121,9 +827,6 @@ end subroutine HDF5_read_pReal7
 !> @brief subroutine for reading dataset of type pInt with 1 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pInt1(loc_id,dataset,datasetName,parallel)
- use numerics, only: &
-   worldrank, &
-   worldsize
 
  implicit none
  integer(pInt),      intent(inout), dimension(:) ::    dataset
@@ -1131,9 +834,7 @@ subroutine HDF5_read_pInt1(loc_id,dataset,datasetName,parallel)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
 
- integer(pInt), dimension(worldsize) :: &
-   readSize                                                                                         !< contribution of all processes
- integer :: ierr
+
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
@@ -1141,59 +842,22 @@ subroutine HDF5_read_pInt1(loc_id,dataset,datasetName,parallel)
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
 
-!-------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
  localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)) == 0)) return                                               ! ToDo: Correct? Seems to result in a deadlock for MPI if my processor has nothing to read
+ if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for transfer properties
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+ if (present(parallel)) then
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,parallel)
+ else
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,.false.)
+ endif
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for data access properties
- call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr)
-!--------------------------------------------------------------------------------------------------
- readSize = 0_pInt
- readSize(worldrank+1) = int(localShape(ubound(localShape,1)),pInt)
-#ifdef PETSc
- if (present(parallel)) then; if (parallel) then
-   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
-   if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pReal1: MPI_allreduce')
- endif; endif
-#endif
- myStart                   = int(0,HSIZE_T)
- myStart(ubound(myStart))  = int(sum(readSize(1:worldrank)),HSIZE_T)
- globalShape = [localShape(1:ubound(localShape,1)-1),int(sum(readSize),HSIZE_T)]
-
-!--------------------------------------------------------------------------------------------------
-! create dataspace in memory (local shape)
- call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
-!--------------------------------------------------------------------------------------------------
-! set I/O mode for read operations to collective
- call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt1: h5pset_all_coll_metadata_ops_f')
-
-!--------------------------------------------------------------------------------------------------
-! open the dataset in the file
- call h5dopen_f(loc_id,datasetName,dset_id,hdferr,dapl_id = aplist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt1: h5dopen_f')
-
-!--------------------------------------------------------------------------------------------------
-! get the space_id of dataset in the file
- call h5dget_space_f(dset_id, filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt1: h5dget_space_f')
-
-!--------------------------------------------------------------------------------------------------
-! select a hyperslab (the portion of the current process) in the file
- call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, int(localShape,HSIZE_T), hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt1: h5sselect_hyperslab_f')
-
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr, &
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
@@ -1217,9 +881,6 @@ end subroutine HDF5_read_pInt1
 !> @brief subroutine for reading dataset of type pInt with 2 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pInt2(loc_id,dataset,datasetName,parallel)
- use numerics, only: &
-   worldrank, &
-   worldsize
 
  implicit none
  integer(pInt),      intent(inout), dimension(:,:) ::    dataset
@@ -1227,9 +888,7 @@ subroutine HDF5_read_pInt2(loc_id,dataset,datasetName,parallel)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
 
- integer(pInt), dimension(worldsize) :: &
-   readSize                                                                                         !< contribution of all processes
- integer :: ierr
+
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
@@ -1237,59 +896,22 @@ subroutine HDF5_read_pInt2(loc_id,dataset,datasetName,parallel)
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
 
-!-------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
  localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)) == 0)) return                                               ! ToDo: Correct? Seems to result in a deadlock for MPI if my processor has nothing to read
+ if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for transfer properties
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+ if (present(parallel)) then
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,parallel)
+ else
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,.false.)
+ endif
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for data access properties
- call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr)
-!--------------------------------------------------------------------------------------------------
- readSize = 0_pInt
- readSize(worldrank+1) = int(localShape(ubound(localShape,1)),pInt)
-#ifdef PETSc
- if (present(parallel)) then; if (parallel) then
-   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
-   if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pReal1: MPI_allreduce')
- endif; endif
-#endif
- myStart                   = int(0,HSIZE_T)
- myStart(ubound(myStart))  = int(sum(readSize(1:worldrank)),HSIZE_T)
- globalShape = [localShape(1:ubound(localShape,1)-1),int(sum(readSize),HSIZE_T)]
-
-!--------------------------------------------------------------------------------------------------
-! create dataspace in memory (local shape)
- call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
-!--------------------------------------------------------------------------------------------------
-! set I/O mode for read operations to collective
- call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt2: h5pset_all_coll_metadata_ops_f')
-
-!--------------------------------------------------------------------------------------------------
-! open the dataset in the file
- call h5dopen_f(loc_id,datasetName,dset_id,hdferr,dapl_id = aplist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt2: h5dopen_f')
-
-!--------------------------------------------------------------------------------------------------
-! get the space_id of dataset in the file
- call h5dget_space_f(dset_id, filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt2: h5dget_space_f')
-
-!--------------------------------------------------------------------------------------------------
-! select a hyperslab (the portion of the current process) in the file
- call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, int(localShape,HSIZE_T), hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt2: h5sselect_hyperslab_f')
-
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr, &
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
@@ -1313,9 +935,6 @@ end subroutine HDF5_read_pInt2
 !> @brief subroutine for reading dataset of type pInt with 3 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pInt3(loc_id,dataset,datasetName,parallel)
- use numerics, only: &
-   worldrank, &
-   worldsize
 
  implicit none
  integer(pInt),      intent(inout), dimension(:,:,:) ::    dataset
@@ -1323,9 +942,7 @@ subroutine HDF5_read_pInt3(loc_id,dataset,datasetName,parallel)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
 
- integer(pInt), dimension(worldsize) :: &
-   readSize                                                                                         !< contribution of all processes
- integer :: ierr
+
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
@@ -1333,59 +950,22 @@ subroutine HDF5_read_pInt3(loc_id,dataset,datasetName,parallel)
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
 
-!-------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
  localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)) == 0)) return                                               ! ToDo: Correct? Seems to result in a deadlock for MPI if my processor has nothing to read
+ if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for transfer properties
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+ if (present(parallel)) then
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,parallel)
+ else
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,.false.)
+ endif
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for data access properties
- call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr)
-!--------------------------------------------------------------------------------------------------
- readSize = 0_pInt
- readSize(worldrank+1) = int(localShape(ubound(localShape,1)),pInt)
-#ifdef PETSc
- if (present(parallel)) then; if (parallel) then
-   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
-   if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pReal1: MPI_allreduce')
- endif; endif
-#endif
- myStart                   = int(0,HSIZE_T)
- myStart(ubound(myStart))  = int(sum(readSize(1:worldrank)),HSIZE_T)
- globalShape = [localShape(1:ubound(localShape,1)-1),int(sum(readSize),HSIZE_T)]
-
-!--------------------------------------------------------------------------------------------------
-! create dataspace in memory (local shape)
- call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
-!--------------------------------------------------------------------------------------------------
-! set I/O mode for read operations to collective
- call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt3: h5pset_all_coll_metadata_ops_f')
-
-!--------------------------------------------------------------------------------------------------
-! open the dataset in the file
- call h5dopen_f(loc_id,datasetName,dset_id,hdferr,dapl_id = aplist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt3: h5dopen_f')
-
-!--------------------------------------------------------------------------------------------------
-! get the space_id of dataset in the file
- call h5dget_space_f(dset_id, filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt3: h5dget_space_f')
-
-!--------------------------------------------------------------------------------------------------
-! select a hyperslab (the portion of the current process) in the file
- call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, int(localShape,HSIZE_T), hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt3: h5sselect_hyperslab_f')
-
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr, &
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
@@ -1409,9 +989,6 @@ end subroutine HDF5_read_pInt3
 !> @brief subroutine for reading dataset of type pInt with 4 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pInt4(loc_id,dataset,datasetName,parallel)
- use numerics, only: &
-   worldrank, &
-   worldsize
 
  implicit none
  integer(pInt),      intent(inout), dimension(:,:,:,:) ::    dataset
@@ -1419,9 +996,7 @@ subroutine HDF5_read_pInt4(loc_id,dataset,datasetName,parallel)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
 
- integer(pInt), dimension(worldsize) :: &
-   readSize                                                                                         !< contribution of all processes
- integer :: ierr
+
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
@@ -1429,59 +1004,22 @@ subroutine HDF5_read_pInt4(loc_id,dataset,datasetName,parallel)
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
 
-!-------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
  localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)) == 0)) return                                               ! ToDo: Correct? Seems to result in a deadlock for MPI if my processor has nothing to read
+ if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for transfer properties
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+ if (present(parallel)) then
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,parallel)
+ else
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,.false.)
+ endif
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for data access properties
- call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr)
-!--------------------------------------------------------------------------------------------------
- readSize = 0_pInt
- readSize(worldrank+1) = int(localShape(ubound(localShape,1)),pInt)
-#ifdef PETSc
- if (present(parallel)) then; if (parallel) then
-   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
-   if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pReal1: MPI_allreduce')
- endif; endif
-#endif
- myStart                   = int(0,HSIZE_T)
- myStart(ubound(myStart))  = int(sum(readSize(1:worldrank)),HSIZE_T)
- globalShape = [localShape(1:ubound(localShape,1)-1),int(sum(readSize),HSIZE_T)]
-
-!--------------------------------------------------------------------------------------------------
-! create dataspace in memory (local shape)
- call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
-!--------------------------------------------------------------------------------------------------
-! set I/O mode for read operations to collective
- call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt4: h5pset_all_coll_metadata_ops_f')
-
-!--------------------------------------------------------------------------------------------------
-! open the dataset in the file
- call h5dopen_f(loc_id,datasetName,dset_id,hdferr,dapl_id = aplist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt4: h5dopen_f')
-
-!--------------------------------------------------------------------------------------------------
-! get the space_id of dataset in the file
- call h5dget_space_f(dset_id, filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt4: h5dget_space_f')
-
-!--------------------------------------------------------------------------------------------------
-! select a hyperslab (the portion of the current process) in the file
- call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, int(localShape,HSIZE_T), hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt4: h5sselect_hyperslab_f')
-
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr, &
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
@@ -1505,9 +1043,6 @@ end subroutine HDF5_read_pInt4
 !> @brief subroutine for reading dataset of type pInt with 5 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pInt5(loc_id,dataset,datasetName,parallel)
- use numerics, only: &
-   worldrank, &
-   worldsize
 
  implicit none
  integer(pInt),      intent(inout), dimension(:,:,:,:,:) ::    dataset
@@ -1515,9 +1050,7 @@ subroutine HDF5_read_pInt5(loc_id,dataset,datasetName,parallel)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
 
- integer(pInt), dimension(worldsize) :: &
-   readSize                                                                                         !< contribution of all processes
- integer :: ierr
+
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
@@ -1525,59 +1058,22 @@ subroutine HDF5_read_pInt5(loc_id,dataset,datasetName,parallel)
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
 
-!-------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
  localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)) == 0)) return                                               ! ToDo: Correct? Seems to result in a deadlock for MPI if my processor has nothing to read
+ if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for transfer properties
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+ if (present(parallel)) then
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,parallel)
+ else
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,.false.)
+ endif
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for data access properties
- call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr)
-!--------------------------------------------------------------------------------------------------
- readSize = 0_pInt
- readSize(worldrank+1) = int(localShape(ubound(localShape,1)),pInt)
-#ifdef PETSc
- if (present(parallel)) then; if (parallel) then
-   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
-   if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pReal1: MPI_allreduce')
- endif; endif
-#endif
- myStart                   = int(0,HSIZE_T)
- myStart(ubound(myStart))  = int(sum(readSize(1:worldrank)),HSIZE_T)
- globalShape = [localShape(1:ubound(localShape,1)-1),int(sum(readSize),HSIZE_T)]
-
-!--------------------------------------------------------------------------------------------------
-! create dataspace in memory (local shape)
- call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
-!--------------------------------------------------------------------------------------------------
-! set I/O mode for read operations to collective
- call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt5: h5pset_all_coll_metadata_ops_f')
-
-!--------------------------------------------------------------------------------------------------
-! open the dataset in the file
- call h5dopen_f(loc_id,datasetName,dset_id,hdferr,dapl_id = aplist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt5: h5dopen_f')
-
-!--------------------------------------------------------------------------------------------------
-! get the space_id of dataset in the file
- call h5dget_space_f(dset_id, filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt5: h5dget_space_f')
-
-!--------------------------------------------------------------------------------------------------
-! select a hyperslab (the portion of the current process) in the file
- call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, int(localShape,HSIZE_T), hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt5: h5sselect_hyperslab_f')
-
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr, &
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
@@ -1601,9 +1097,6 @@ end subroutine HDF5_read_pInt5
 !> @brief subroutine for reading dataset of type pInt with 6 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pInt6(loc_id,dataset,datasetName,parallel)
- use numerics, only: &
-   worldrank, &
-   worldsize
 
  implicit none
  integer(pInt),      intent(inout), dimension(:,:,:,:,:,:) ::    dataset
@@ -1611,9 +1104,7 @@ subroutine HDF5_read_pInt6(loc_id,dataset,datasetName,parallel)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
 
- integer(pInt), dimension(worldsize) :: &
-   readSize                                                                                         !< contribution of all processes
- integer :: ierr
+
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
@@ -1621,59 +1112,22 @@ subroutine HDF5_read_pInt6(loc_id,dataset,datasetName,parallel)
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
 
-!-------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
  localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)) == 0)) return                                               ! ToDo: Correct? Seems to result in a deadlock for MPI if my processor has nothing to read
+ if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for transfer properties
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+ if (present(parallel)) then
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,parallel)
+ else
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,.false.)
+ endif
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for data access properties
- call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr)
-!--------------------------------------------------------------------------------------------------
- readSize = 0_pInt
- readSize(worldrank+1) = int(localShape(ubound(localShape,1)),pInt)
-#ifdef PETSc
- if (present(parallel)) then; if (parallel) then
-   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
-   if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pReal1: MPI_allreduce')
- endif; endif
-#endif
- myStart                   = int(0,HSIZE_T)
- myStart(ubound(myStart))  = int(sum(readSize(1:worldrank)),HSIZE_T)
- globalShape = [localShape(1:ubound(localShape,1)-1),int(sum(readSize),HSIZE_T)]
-
-!--------------------------------------------------------------------------------------------------
-! create dataspace in memory (local shape)
- call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
-!--------------------------------------------------------------------------------------------------
-! set I/O mode for read operations to collective
- call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt6: h5pset_all_coll_metadata_ops_f')
-
-!--------------------------------------------------------------------------------------------------
-! open the dataset in the file
- call h5dopen_f(loc_id,datasetName,dset_id,hdferr,dapl_id = aplist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt6: h5dopen_f')
-
-!--------------------------------------------------------------------------------------------------
-! get the space_id of dataset in the file
- call h5dget_space_f(dset_id, filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt6: h5dget_space_f')
-
-!--------------------------------------------------------------------------------------------------
-! select a hyperslab (the portion of the current process) in the file
- call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, int(localShape,HSIZE_T), hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt6: h5sselect_hyperslab_f')
-
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr, &
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
@@ -1697,9 +1151,6 @@ end subroutine HDF5_read_pInt6
 !> @brief subroutine for reading dataset of type pInt with 7 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pInt7(loc_id,dataset,datasetName,parallel)
- use numerics, only: &
-   worldrank, &
-   worldsize
 
  implicit none
  integer(pInt),      intent(inout), dimension(:,:,:,:,:,:,:) ::    dataset
@@ -1707,9 +1158,7 @@ subroutine HDF5_read_pInt7(loc_id,dataset,datasetName,parallel)
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
 
- integer(pInt), dimension(worldsize) :: &
-   readSize                                                                                         !< contribution of all processes
- integer :: ierr
+
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
@@ -1717,59 +1166,22 @@ subroutine HDF5_read_pInt7(loc_id,dataset,datasetName,parallel)
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
 
-!-------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
  localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)) == 0)) return                                               ! ToDo: Correct? Seems to result in a deadlock for MPI if my processor has nothing to read
+ if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for transfer properties
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+ if (present(parallel)) then
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,parallel)
+ else
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, &
+                        loc_id,localShape,datasetName,.false.)
+ endif
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for data access properties
- call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr)
-!--------------------------------------------------------------------------------------------------
- readSize = 0_pInt
- readSize(worldrank+1) = int(localShape(ubound(localShape,1)),pInt)
-#ifdef PETSc
- if (present(parallel)) then; if (parallel) then
-   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
-   if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pReal1: MPI_allreduce')
- endif; endif
-#endif
- myStart                   = int(0,HSIZE_T)
- myStart(ubound(myStart))  = int(sum(readSize(1:worldrank)),HSIZE_T)
- globalShape = [localShape(1:ubound(localShape,1)-1),int(sum(readSize),HSIZE_T)]
-
-!--------------------------------------------------------------------------------------------------
-! create dataspace in memory (local shape)
- call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
-                         int(localShape,HSIZE_T))
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt{}: h5screate_simple_f/memspace_id')
-!--------------------------------------------------------------------------------------------------
-! set I/O mode for read operations to collective
- call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt7: h5pset_all_coll_metadata_ops_f')
-
-!--------------------------------------------------------------------------------------------------
-! open the dataset in the file
- call h5dopen_f(loc_id,datasetName,dset_id,hdferr,dapl_id = aplist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt7: h5dopen_f')
-
-!--------------------------------------------------------------------------------------------------
-! get the space_id of dataset in the file
- call h5dget_space_f(dset_id, filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt7: h5dget_space_f')
-
-!--------------------------------------------------------------------------------------------------
-! select a hyperslab (the portion of the current process) in the file
- call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, int(localShape,HSIZE_T), hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt7: h5sselect_hyperslab_f')
-
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! read
  call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr, &
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
@@ -3049,6 +2461,82 @@ subroutine HDF5_write_pInt7(loc_id,dataset,datasetName,parallel)
 
 end subroutine HDF5_write_pInt7
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief subroutine for reading dataset of type pReal with 1 dimensions
+!--------------------------------------------------------------------------------------------------
+subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                           myStart, globalShape, &
+                           loc_id,localShape,datasetName,parallel)
+ use numerics, only: &
+   worldrank, &
+   worldsize
+
+ implicit none
+ integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
+ character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
+ logical, intent(in), optional :: parallel
+
+ integer(pInt), dimension(worldsize) :: &
+   readSize                                                                                         !< contribution of all processes
+ integer :: ierr
+ integer(HDF5_ERR_TYPE) :: hdferr
+ integer(HID_T), intent(out)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
+ integer(HSIZE_T), intent(in), dimension(:) :: &
+   localShape   
+ integer(HSIZE_T), intent(out), dimension(size(localShape,1)):: &
+   myStart, &
+   globalShape                                                                                      !< shape of the dataset (all processes)
+
+!-------------------------------------------------------------------------------------------------
+! creating a property list for transfer properties
+ call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+
+!-------------------------------------------------------------------------------------------------
+! creating a property list for data access properties
+ call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr)
+!--------------------------------------------------------------------------------------------------
+ readSize = 0_pInt
+ readSize(worldrank+1) = int(localShape(ubound(localShape,1)),pInt)
+#ifdef PETSc
+ if (parallel) then
+   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5pset_dxpl_mpio_f')
+   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pReal1: MPI_allreduce')
+ endif
+#endif
+ myStart                   = int(0,HSIZE_T)
+ myStart(ubound(myStart))  = int(sum(readSize(1:worldrank)),HSIZE_T)
+ globalShape = [localShape(1:ubound(localShape,1)-1),int(sum(readSize),HSIZE_T)]
+
+
+!--------------------------------------------------------------------------------------------------
+! create dataspace in memory (local shape)
+ call h5screate_simple_f(size(localShape), int(localShape,HSIZE_T), memspace_id, hdferr, &
+                         int(localShape,HSIZE_T))
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
+!--------------------------------------------------------------------------------------------------
+! set I/O mode for read operations to collective
+ call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5pset_all_coll_metadata_ops_f')
+!--------------------------------------------------------------------------------------------------
+! open the dataset in the file
+ call h5dopen_f(loc_id,datasetName,dset_id,hdferr, dapl_id = aplist_id)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5dopen_f')
+
+!--------------------------------------------------------------------------------------------------
+! get the space_id of dataset in the file
+ call h5dget_space_f(dset_id, filespace_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5dget_space_f')
+
+!--------------------------------------------------------------------------------------------------
+! select a hyperslab (the portion of the current process) in the file
+ call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, localShape, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5sselect_hyperslab_f')
+
+
+end subroutine initialize_read
 
 end module HDF5_Utilities
 
