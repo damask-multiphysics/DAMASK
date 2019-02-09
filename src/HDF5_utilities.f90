@@ -447,8 +447,9 @@ subroutine HDF5_setLink(loc_id,target_name,link_name)
 
 end subroutine HDF5_setLink
 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for reading dataset of type pReal with 1 dimension
+!> @brief read dataset of type pReal with 1 dimension
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pReal1(loc_id,dataset,datasetName,parallel)
 
@@ -480,20 +481,16 @@ subroutine HDF5_read_pReal1(loc_id,dataset,datasetName,parallel)
                         myStart, globalShape, loc_id,localShape,datasetName,.false.)
  endif
 
-!---------------------------------------------------------------------------------------------------
-! read
  call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,globalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal2: h5dread_f')
 
-!---------------------------------------------------------------------------------------------------
-! finalize HDF5 data structures
-  call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
+ call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
    
 end subroutine HDF5_read_pReal1
 
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for reading dataset of type pReal with 2 dimensions
+!> @brief read dataset of type pReal with 2 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pReal2(loc_id,dataset,datasetName,parallel)
 
@@ -525,21 +522,16 @@ subroutine HDF5_read_pReal2(loc_id,dataset,datasetName,parallel)
                         myStart, globalShape, loc_id,localShape,datasetName,.false.)
  endif
 
-!---------------------------------------------------------------------------------------------------
-! read
  call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,globalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5dread_f')
 
-!---------------------------------------------------------------------------------------------------
-! finalize HDF5 data structures
-  call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
+ call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_pReal2
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for reading dataset of type pReal with 2 dimensions
+!> @brief read dataset of type pReal with 2 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pReal3(loc_id,dataset,datasetName,parallel)
 
@@ -570,22 +562,17 @@ subroutine HDF5_read_pReal3(loc_id,dataset,datasetName,parallel)
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
                         myStart, globalShape, loc_id,localShape,datasetName,.false.)
  endif
-
-!---------------------------------------------------------------------------------------------------
-! read
+ 
  call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,globalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal3: h5dread_f')
 
-!---------------------------------------------------------------------------------------------------
-! finalize HDF5 data structures
-  call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
+ call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_pReal3
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for reading dataset of type pReal with 4 dimensions
+!> @brief read dataset of type pReal with 4 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pReal4(loc_id,dataset,datasetName,parallel)
 
@@ -617,21 +604,16 @@ subroutine HDF5_read_pReal4(loc_id,dataset,datasetName,parallel)
                         myStart, globalShape, loc_id,localShape,datasetName,.false.)
  endif
 
-!---------------------------------------------------------------------------------------------------
-! read
  call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,globalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal4: h5dread_f')
 
-!---------------------------------------------------------------------------------------------------
-! finalize HDF5 data structures
-  call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
+ call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_pReal4
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for reading dataset of type pReal with 5 dimensions
+!> @brief read dataset of type pReal with 5 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pReal5(loc_id,dataset,datasetName,parallel)
 
@@ -663,21 +645,16 @@ subroutine HDF5_read_pReal5(loc_id,dataset,datasetName,parallel)
                         myStart, globalShape, loc_id,localShape,datasetName,.false.)
  endif
 
-!---------------------------------------------------------------------------------------------------
-! read
  call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,globalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal5: h5dread_f')
 
-!---------------------------------------------------------------------------------------------------
-! finalize HDF5 data structures
-  call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
+ call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_pReal5
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for reading dataset of type pReal with 6 dimensions
+!> @brief read dataset of type pReal with 6 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pReal6(loc_id,dataset,datasetName,parallel)
 
@@ -709,21 +686,16 @@ subroutine HDF5_read_pReal6(loc_id,dataset,datasetName,parallel)
                         myStart, globalShape, loc_id,localShape,datasetName,.false.)
  endif
 
-!---------------------------------------------------------------------------------------------------
-! read
  call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,globalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal6: h5dread_f')
 
-!---------------------------------------------------------------------------------------------------
-! finalize HDF5 data structures
-  call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
+ call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_pReal6
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for reading dataset of type pReal with 7 dimensions
+!> @brief read dataset of type pReal with 7 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pReal7(loc_id,dataset,datasetName,parallel)
 
@@ -755,21 +727,17 @@ subroutine HDF5_read_pReal7(loc_id,dataset,datasetName,parallel)
                         myStart, globalShape, loc_id,localShape,datasetName,.false.)
  endif
 
-!---------------------------------------------------------------------------------------------------
-! read
  call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,globalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal7: h5dread_f')
 
-!---------------------------------------------------------------------------------------------------
-! finalize HDF5 data structures
-  call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
+ call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_pReal7
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for reading dataset of type pInt with 1 dimension
+!> @brief read dataset of type pInt with 1 dimension
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pInt1(loc_id,dataset,datasetName,parallel)
 
@@ -801,17 +769,16 @@ subroutine HDF5_read_pInt1(loc_id,dataset,datasetName,parallel)
                         myStart, globalShape, loc_id,localShape,datasetName,.false.)
  endif
 
-!---------------------------------------------------------------------------------------------------
-! read
  call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,globalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt1: h5dread_f')
 
+ call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
+  
 end subroutine HDF5_read_pInt1
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for reading dataset of type pInt with 2 dimensions
+!> @brief read dataset of type pInt with 2 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pInt2(loc_id,dataset,datasetName,parallel)
 
@@ -843,17 +810,16 @@ subroutine HDF5_read_pInt2(loc_id,dataset,datasetName,parallel)
                         myStart, globalShape, loc_id,localShape,datasetName,.false.)
  endif
 
-!---------------------------------------------------------------------------------------------------
-! read
  call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,globalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt2: h5dread_f')
+ 
+ call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_pInt2
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for reading dataset of type pInt with 3 dimensions
+!> @brief read dataset of type pInt with 3 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pInt3(loc_id,dataset,datasetName,parallel)
 
@@ -885,17 +851,16 @@ subroutine HDF5_read_pInt3(loc_id,dataset,datasetName,parallel)
                         myStart, globalShape, loc_id,localShape,datasetName,.false.)
  endif
 
-!---------------------------------------------------------------------------------------------------
-! read
  call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,globalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt3: h5dread_f')
+  
+ call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_pInt3
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for reading dataset of type pInt with 4 dimensions
+!> @brief read dataset of type pInt withh 4 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pInt4(loc_id,dataset,datasetName,parallel)
 
@@ -927,17 +892,16 @@ subroutine HDF5_read_pInt4(loc_id,dataset,datasetName,parallel)
                         myStart, globalShape, loc_id,localShape,datasetName,.false.)
  endif
 
-!---------------------------------------------------------------------------------------------------
-! read
  call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,globalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt4: h5dread_f')
+  
+ call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_pInt4
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for reading dataset of type pInt with 5 dimensions
+!> @brief read dataset of type pInt with 5 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pInt5(loc_id,dataset,datasetName,parallel)
 
@@ -969,17 +933,16 @@ subroutine HDF5_read_pInt5(loc_id,dataset,datasetName,parallel)
                         myStart, globalShape, loc_id,localShape,datasetName,.false.)
  endif
 
-!---------------------------------------------------------------------------------------------------
-! read
  call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,globalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt5: h5dread_f')
+  
+ call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_pInt5
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for reading dataset of type pInt with 6 dimensions
+!> @brief read dataset of type pInt with 6 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pInt6(loc_id,dataset,datasetName,parallel)
 
@@ -1011,17 +974,16 @@ subroutine HDF5_read_pInt6(loc_id,dataset,datasetName,parallel)
                         myStart, globalShape, loc_id,localShape,datasetName,.false.)
  endif
 
-!---------------------------------------------------------------------------------------------------
-! read
  call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,globalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt6: h5dread_f')
+  
+ call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_pInt6
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for reading dataset of type pInt with 7 dimensions
+!> @brief read dataset of type pInt with 7 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_pInt7(loc_id,dataset,datasetName,parallel)
 
@@ -1053,17 +1015,17 @@ subroutine HDF5_read_pInt7(loc_id,dataset,datasetName,parallel)
                         myStart, globalShape, loc_id,localShape,datasetName,.false.)
  endif
 
-!---------------------------------------------------------------------------------------------------
-! read
  call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,globalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt7: h5dread_f')
+  
+ call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_pInt7
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for writing dataset of type pReal with 1 dimension
+!> @brief write dataset of type pReal with 1 dimension
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_pReal1(loc_id,dataset,datasetName,parallel)
 
@@ -1088,36 +1050,22 @@ subroutine HDF5_write_pReal1(loc_id,dataset,datasetName,parallel)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
+                         myStart, globalShape,loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
+                         myStart, globalShape,loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
  endif
 
-!--------------------------------------------------------------------------------------------------
-! write
  call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal1: h5dread_f')
 
-!--------------------------------------------------------------------------------------------------
-!close types, dataspaces
- call h5pclose_f(plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal1: plist_id')
- call h5dclose_f(dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal1: h5dclose_f')
- call h5sclose_f(filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt1: h5sclose_f/filespace_id')
- call h5sclose_f(memspace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt1: h5sclose_f/memspace_id')
+ call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
 end subroutine HDF5_write_pReal1
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for writing dataset of type pReal with 2 dimensions
+!> @brief write dataset of type pReal with 2 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_pReal2(loc_id,dataset,datasetName,parallel)
 
@@ -1142,36 +1090,22 @@ subroutine HDF5_write_pReal2(loc_id,dataset,datasetName,parallel)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
  endif
 
-!--------------------------------------------------------------------------------------------------
-! write
  call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal2: h5dread_f')
 
-!--------------------------------------------------------------------------------------------------
-!close types, dataspaces
- call h5pclose_f(plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal2: plist_id')
- call h5dclose_f(dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal2: h5dclose_f')
- call h5sclose_f(filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt2: h5sclose_f/filespace_id')
- call h5sclose_f(memspace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt2: h5sclose_f/memspace_id')
+ call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
 end subroutine HDF5_write_pReal2
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for writing dataset of type pReal with 3 dimensions
+!> @brief write dataset of type pReal with 3 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_pReal3(loc_id,dataset,datasetName,parallel)
 
@@ -1196,36 +1130,22 @@ subroutine HDF5_write_pReal3(loc_id,dataset,datasetName,parallel)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
  endif
 
-!--------------------------------------------------------------------------------------------------
-! write
  call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal3: h5dread_f')
 
-!--------------------------------------------------------------------------------------------------
-!close types, dataspaces
- call h5pclose_f(plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal3: plist_id')
- call h5dclose_f(dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal3: h5dclose_f')
- call h5sclose_f(filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt3: h5sclose_f/filespace_id')
- call h5sclose_f(memspace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt3: h5sclose_f/memspace_id')
+ call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
 end subroutine HDF5_write_pReal3
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for writing dataset of type pReal with 4 dimensions
+!> @brief write dataset of type pReal with 4 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_pReal4(loc_id,dataset,datasetName,parallel)
 
@@ -1250,36 +1170,23 @@ subroutine HDF5_write_pReal4(loc_id,dataset,datasetName,parallel)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
  endif
 
-!--------------------------------------------------------------------------------------------------
-! write
  call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal4: h5dread_f')
 
-!--------------------------------------------------------------------------------------------------
-!close types, dataspaces
- call h5pclose_f(plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal4: plist_id')
- call h5dclose_f(dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal4: h5dclose_f')
- call h5sclose_f(filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt4: h5sclose_f/filespace_id')
- call h5sclose_f(memspace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt4: h5sclose_f/memspace_id')
+ call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
 end subroutine HDF5_write_pReal4
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for writing dataset of type pReal with 5 dimensions
+!> @brief write dataset of type pReal with 5 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_pReal5(loc_id,dataset,datasetName,parallel)
 
@@ -1304,36 +1211,22 @@ subroutine HDF5_write_pReal5(loc_id,dataset,datasetName,parallel)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
  endif
 
-!--------------------------------------------------------------------------------------------------
-! write
  call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal5: h5dread_f')
 
-!--------------------------------------------------------------------------------------------------
-!close types, dataspaces
- call h5pclose_f(plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal5: plist_id')
- call h5dclose_f(dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal5: h5dclose_f')
- call h5sclose_f(filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt5: h5sclose_f/filespace_id')
- call h5sclose_f(memspace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt5: h5sclose_f/memspace_id')
+ call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
 end subroutine HDF5_write_pReal5
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for writing dataset of type pReal with 6 dimensions
+!> @brief write dataset of type pReal with 6 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_pReal6(loc_id,dataset,datasetName,parallel)
 
@@ -1358,36 +1251,22 @@ subroutine HDF5_write_pReal6(loc_id,dataset,datasetName,parallel)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
  endif
 
-!--------------------------------------------------------------------------------------------------
-! write
  call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal6: h5dread_f')
 
-!--------------------------------------------------------------------------------------------------
-!close types, dataspaces
- call h5pclose_f(plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal6: plist_id')
- call h5dclose_f(dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal6: h5dclose_f')
- call h5sclose_f(filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt6: h5sclose_f/filespace_id')
- call h5sclose_f(memspace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt6: h5sclose_f/memspace_id')
+ call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
 end subroutine HDF5_write_pReal6
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for writing dataset of type pReal with 7 dimensions
+!> @brief write dataset of type pReal with 7 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_pReal7(loc_id,dataset,datasetName,parallel)
 
@@ -1412,35 +1291,23 @@ subroutine HDF5_write_pReal7(loc_id,dataset,datasetName,parallel)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
  endif
 
-!--------------------------------------------------------------------------------------------------
-! write
  call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal7: h5dread_f')
 
-!--------------------------------------------------------------------------------------------------
-!close types, dataspaces
- call h5pclose_f(plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal7: plist_id')
- call h5dclose_f(dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal7: h5dclose_f')
- call h5sclose_f(filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt7: h5sclose_f/filespace_id')
- call h5sclose_f(memspace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt7: h5sclose_f/memspace_id')
+ call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
 end subroutine HDF5_write_pReal7
 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for writing dataset of type pInt with 1 dimension
+!> @brief write dataset of type pInt with 1 dimension
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_pInt1(loc_id,dataset,datasetName,parallel)
 
@@ -1465,36 +1332,22 @@ subroutine HDF5_write_pInt1(loc_id,dataset,datasetName,parallel)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
  endif
 
-!--------------------------------------------------------------------------------------------------
-! write
  call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt1: h5dread_f')
 
-!--------------------------------------------------------------------------------------------------
-!close types, dataspaces
- call h5pclose_f(plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt1: plist_id')
- call h5dclose_f(dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt1: h5dclose_f')
- call h5sclose_f(filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt1: h5sclose_f/filespace_id')
- call h5sclose_f(memspace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt1: h5sclose_f/memspace_id')
+ call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
 end subroutine HDF5_write_pInt1
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for writing dataset of type pInt with 2 dimensions
+!> @brief write dataset of type pInt with 2 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_pInt2(loc_id,dataset,datasetName,parallel)
 
@@ -1519,36 +1372,22 @@ subroutine HDF5_write_pInt2(loc_id,dataset,datasetName,parallel)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
  endif
 
-!--------------------------------------------------------------------------------------------------
-! write
  call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt2: h5dread_f')
 
-!--------------------------------------------------------------------------------------------------
-!close types, dataspaces
- call h5pclose_f(plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt2: plist_id')
- call h5dclose_f(dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt2: h5dclose_f')
- call h5sclose_f(filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt2: h5sclose_f/filespace_id')
- call h5sclose_f(memspace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt2: h5sclose_f/memspace_id')
+ call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
 end subroutine HDF5_write_pInt2
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for writing dataset of type pInt with 3 dimensions
+!> @brief write dataset of type pInt with 3 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_pInt3(loc_id,dataset,datasetName,parallel)
 
@@ -1573,36 +1412,22 @@ subroutine HDF5_write_pInt3(loc_id,dataset,datasetName,parallel)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
  endif
 
-!--------------------------------------------------------------------------------------------------
-! write
  call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt3: h5dread_f')
 
-!--------------------------------------------------------------------------------------------------
-!close types, dataspaces
- call h5pclose_f(plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt3: plist_id')
- call h5dclose_f(dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt3: h5dclose_f')
- call h5sclose_f(filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt3: h5sclose_f/filespace_id')
- call h5sclose_f(memspace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt3: h5sclose_f/memspace_id')
+ call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
 end subroutine HDF5_write_pInt3
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for writing dataset of type pInt with 4 dimensions
+!> @brief write dataset of type pInt with 4 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_pInt4(loc_id,dataset,datasetName,parallel)
 
@@ -1627,36 +1452,22 @@ subroutine HDF5_write_pInt4(loc_id,dataset,datasetName,parallel)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
  endif
 
-!--------------------------------------------------------------------------------------------------
-! write
  call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt4: h5dread_f')
 
-!--------------------------------------------------------------------------------------------------
-!close types, dataspaces
- call h5pclose_f(plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt4: plist_id')
- call h5dclose_f(dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt4: h5dclose_f')
- call h5sclose_f(filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt4: h5sclose_f/filespace_id')
- call h5sclose_f(memspace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt4: h5sclose_f/memspace_id')
+ call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
 end subroutine HDF5_write_pInt4
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for writing dataset of type pInt with 5 dimensions
+!> @brief write dataset of type pInt with 5 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_pInt5(loc_id,dataset,datasetName,parallel)
 
@@ -1681,36 +1492,22 @@ subroutine HDF5_write_pInt5(loc_id,dataset,datasetName,parallel)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
  endif
 
-!--------------------------------------------------------------------------------------------------
-! write
  call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt5: h5dread_f')
 
-!--------------------------------------------------------------------------------------------------
-!close types, dataspaces
- call h5pclose_f(plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt5: plist_id')
- call h5dclose_f(dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt5: h5dclose_f')
- call h5sclose_f(filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt5: h5sclose_f/filespace_id')
- call h5sclose_f(memspace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt5: h5sclose_f/memspace_id')
+ call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
 end subroutine HDF5_write_pInt5
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for writing dataset of type pInt with 6 dimensions
+!> @brief write dataset of type pInt with 6 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_pInt6(loc_id,dataset,datasetName,parallel)
 
@@ -1735,36 +1532,22 @@ subroutine HDF5_write_pInt6(loc_id,dataset,datasetName,parallel)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
  endif
 
-!--------------------------------------------------------------------------------------------------
-! write
  call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt6: h5dread_f')
 
-!--------------------------------------------------------------------------------------------------
-!close types, dataspaces
- call h5pclose_f(plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt6: plist_id')
- call h5dclose_f(dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt6: h5dclose_f')
- call h5sclose_f(filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt6: h5sclose_f/filespace_id')
- call h5sclose_f(memspace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt6: h5sclose_f/memspace_id')
+ call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
 end subroutine HDF5_write_pInt6
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief subroutine for writing dataset of type pInt with 7 dimensions
+!> @brief write dataset of type pInt with 7 dimensions
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_pInt7(loc_id,dataset,datasetName,parallel)
 
@@ -1789,36 +1572,23 @@ subroutine HDF5_write_pInt7(loc_id,dataset,datasetName,parallel)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, &
-                         loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
  endif
 
-!--------------------------------------------------------------------------------------------------
-! write
  call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt7: h5dread_f')
 
-!--------------------------------------------------------------------------------------------------
-!close types, dataspaces
- call h5pclose_f(plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt7: plist_id')
- call h5dclose_f(dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt7: h5dclose_f')
- call h5sclose_f(filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt7: h5sclose_f/filespace_id')
- call h5sclose_f(memspace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt7: h5sclose_f/memspace_id')
+ call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
 end subroutine HDF5_write_pInt7
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief
+!> @brief initialize HDF5 handles, determines global shape and start for parallel read
 !--------------------------------------------------------------------------------------------------
 subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
                            myStart, globalShape, &
@@ -1844,57 +1614,53 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
    globalShape                                                                                      !< shape of the dataset (all processes)
 
 !-------------------------------------------------------------------------------------------------
-! creating a property list for transfer properties
+! creating a property list for transfer properties (is collective for MPI)
  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
 
-!-------------------------------------------------------------------------------------------------
-! creating a property list for data access properties
- call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr)
 !--------------------------------------------------------------------------------------------------
  readSize = 0_pInt
  readSize(worldrank+1) = int(localShape(ubound(localShape,1)),pInt)
 #ifdef PETSc
  if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5pset_dxpl_mpio_f')
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_read: h5pset_dxpl_mpio_f')
    call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
-   if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_read_pReal1: MPI_allreduce')
+   if (ierr /= 0) call IO_error(894_pInt,ext_msg='initialize_read: MPI_allreduce')
  endif
 #endif
  myStart                   = int(0,HSIZE_T)
  myStart(ubound(myStart))  = int(sum(readSize(1:worldrank)),HSIZE_T)
  globalShape = [localShape(1:ubound(localShape,1)-1),int(sum(readSize),HSIZE_T)]
 
-
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
  call h5screate_simple_f(size(localShape), localShape, memspace_id, hdferr, localShape)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal{}: h5screate_simple_f/memspace_id')
-!--------------------------------------------------------------------------------------------------
-! set I/O mode for read operations to collective
- call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5pset_all_coll_metadata_ops_f')
-!--------------------------------------------------------------------------------------------------
-! open the dataset in the file
- call h5dopen_f(loc_id,datasetName,dset_id,hdferr, dapl_id = aplist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5dopen_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_read: h5screate_simple_f/memspace_id')
 
 !--------------------------------------------------------------------------------------------------
-! get the space_id of dataset in the file
+! creating a property list for IO and set it to collective
+ call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr) 
+  if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_read: h5pcreate_f')
+ call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_read: h5pset_all_coll_metadata_ops_f')
+
+!--------------------------------------------------------------------------------------------------
+! open the dataset in the file and get the space ID
+ call h5dopen_f(loc_id,datasetName,dset_id,hdferr, dapl_id = aplist_id)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_read: h5dopen_f')
  call h5dget_space_f(dset_id, filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5dget_space_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_read: h5dget_space_f')
 
 !--------------------------------------------------------------------------------------------------
 ! select a hyperslab (the portion of the current process) in the file
  call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, localShape, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5sselect_hyperslab_f')
-
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_read: h5sselect_hyperslab_f')
 
 end subroutine initialize_read
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief
+!> @brief closes HDF5 handles
 !--------------------------------------------------------------------------------------------------
 subroutine finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -1902,21 +1668,20 @@ subroutine finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T), intent(in)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
 
-!---------------------------------------------------------------------------------------------------
-!close types, dataspaces
  call h5pclose_f(plist_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: plist_id')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='finalize_read: plist_id')
  call h5dclose_f(dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5dclose_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='finalize_read: h5dclose_f')
  call h5sclose_f(filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal1: h5sclose_f/filespace_id')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='finalize_read: h5sclose_f/filespace_id')
  call h5sclose_f(memspace_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal1: h5sclose_f/memspace_id')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='finalize_read: h5sclose_f/memspace_id')
 
 end subroutine finalize_read
 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief
+!> @brief initialize HDF5 handles, determines global shape and start for parallel write
 !--------------------------------------------------------------------------------------------------
 subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
                            myStart, globalShape, &
@@ -1938,7 +1703,7 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
    globalShape                                                                                      !< shape of the dataset (all processes)
  integer(pInt), dimension(worldsize) :: &
    outputSize                                                                                       !< contribution of all processes
-integer(HSIZE_T), intent(in) :: datatype
+ integer(HID_T), intent(in) :: datatype
  integer :: ierr
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
@@ -1954,9 +1719,9 @@ integer(HSIZE_T), intent(in) :: datatype
 #ifdef PETSc
 if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal1: h5pset_dxpl_mpio_f')
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_write: h5pset_dxpl_mpio_f')
    call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
-   if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_write_pReal1: MPI_allreduce')
+   if (ierr /= 0) call IO_error(894_pInt,ext_msg='initialize_write: MPI_allreduce')
  endif
 #endif
 
@@ -1966,30 +1731,27 @@ if (parallel) then
 
 
 !--------------------------------------------------------------------------------------------------
-! create dataspace in memory (local shape)
+! create dataspace in memory (local shape) and in file (global shape)
  call h5screate_simple_f(size(localShape), localShape, memspace_id, hdferr, localShape)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal1: h5dopen_f')
-
-!--------------------------------------------------------------------------------------------------
-! create dataspace in file (global shape)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_write: h5dopen_f')
  call h5screate_simple_f(size(globalShape), globalShape, filespace_id, hdferr, globalShape)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal1: h5dget_space_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_write: h5dget_space_f')
 
 !--------------------------------------------------------------------------------------------------
 ! create dataset
  call h5dcreate_f(loc_id, trim(datasetName), datatype, filespace_id, dset_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal1: h5dcreate_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_write: h5dcreate_f')
+ 
 !--------------------------------------------------------------------------------------------------
 ! select a hyperslab (the portion of the current process) in the file
  call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, localShape, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal1: h5sselect_hyperslab_f')
-
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_write: h5sselect_hyperslab_f')
 
 end subroutine initialize_write
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief
+!> @brief closes HDF5 handles
 !--------------------------------------------------------------------------------------------------
 subroutine finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
@@ -1997,8 +1759,6 @@ subroutine finalize_write(plist_id, dset_id, filespace_id, memspace_id)
  integer(HID_T), intent(in) :: dset_id, filespace_id, memspace_id, plist_id
  integer(HDF5_ERR_TYPE) :: hdferr
 
-!--------------------------------------------------------------------------------------------------
-!close types, dataspaces
  call h5pclose_f(plist_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='finalize_write: plist_id')
  call h5dclose_f(dset_id, hdferr)
