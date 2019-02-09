@@ -1291,10 +1291,10 @@ subroutine HDF5_write_pReal7(loc_id,dataset,datasetName,parallel)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
+                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
  endif
 
  call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
@@ -1598,24 +1598,25 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
    worldsize
 
  implicit none
- integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
- logical, intent(in), optional :: parallel
-
+ integer(HID_T),    intent(in) :: loc_id                                                             !< file or group handle
+ character(len=*),  intent(in) :: datasetName                                                        !< name of the dataset in the file
+ logical,           intent(in) :: parallel
+ integer(HSIZE_T),  intent(in),   dimension(:) :: &
+   localShape   
+ integer(HSIZE_T),  intent(out), dimension(size(localShape,1)):: &
+   myStart, &
+   globalShape                                                                                      !< shape of the dataset (all processes)
+ integer(HID_T),    intent(out) :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
+    
  integer(pInt), dimension(worldsize) :: &
    readSize                                                                                         !< contribution of all processes
  integer :: ierr
  integer(HDF5_ERR_TYPE) :: hdferr
- integer(HID_T), intent(out)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
- integer(HSIZE_T), intent(in), dimension(:) :: &
-   localShape   
- integer(HSIZE_T), intent(out), dimension(size(localShape,1)):: &
-   myStart, &
-   globalShape                                                                                      !< shape of the dataset (all processes)
-
+ 
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for transfer properties (is collective for MPI)
  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_read: h5pcreate_f')
 
 !--------------------------------------------------------------------------------------------------
  readSize = 0_pInt
@@ -1665,8 +1666,8 @@ end subroutine initialize_read
 subroutine finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
  implicit none
- integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T), intent(in)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
+ integer(HDF5_ERR_TYPE) :: hdferr
 
  call h5pclose_f(plist_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='finalize_read: plist_id')
@@ -1691,44 +1692,43 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
    worldsize
 
  implicit none
- integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
- logical, intent(in), optional :: parallel
-
-
- integer(HSIZE_T), intent(in), dimension(:) :: &
+ integer(HID_T),    intent(in) :: loc_id                                                             !< file or group handle
+ character(len=*),  intent(in) :: datasetName                                                        !< name of the dataset in the file
+ logical,           intent(in)           :: parallel
+ integer(HID_T),    intent(in)  :: datatype
+ integer(HSIZE_T),  intent(in),   dimension(:) :: &
    localShape   
- integer(HSIZE_T), intent(out), dimension(size(localShape,1)):: &
+ integer(HSIZE_T),  intent(out), dimension(size(localShape,1)):: &
    myStart, &
    globalShape                                                                                      !< shape of the dataset (all processes)
+ integer(HID_T),    intent(out) :: dset_id, filespace_id, memspace_id, plist_id
+    
  integer(pInt), dimension(worldsize) :: &
-   outputSize                                                                                       !< contribution of all processes
- integer(HID_T), intent(in) :: datatype
+   writeSize                                                                                        !< contribution of all processes
  integer :: ierr
  integer(HDF5_ERR_TYPE) :: hdferr
- integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
-
 
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for transfer properties
  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_write: h5pcreate_f')
 
 !--------------------------------------------------------------------------------------------------
- outputSize(worldrank+1) = int(localShape(ubound(localShape,1)),pInt)
+ writeSize              = 0_pInt
+ writeSize(worldrank+1) = int(localShape(ubound(localShape,1)),pInt)
 
 #ifdef PETSc
 if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_write: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+   call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='initialize_write: MPI_allreduce')
  endif
 #endif
 
  myStart                   = int(0,HSIZE_T)
- myStart(ubound(myStart))  = int(sum(outputSize(1:worldrank)),HSIZE_T)
- globalShape = [localShape(1:ubound(localShape,1)-1),int(sum(outputSize),HSIZE_T)]
-
+ myStart(ubound(myStart))  = int(sum(writeSize(1:worldrank)),HSIZE_T)
+ globalShape = [localShape(1:ubound(localShape,1)-1),int(sum(writeSize),HSIZE_T)]
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape) and in file (global shape)
