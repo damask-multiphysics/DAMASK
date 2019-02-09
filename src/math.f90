@@ -2720,7 +2720,7 @@ real(pReal) pure function norm2(v)
  implicit none
  real(pReal), intent(in), dimension(3) :: v
  
- norm2 = sqrt(sum(a**2))
+ norm2 = sqrt(sum(v**2))
 
 end function norm2
 #endif
