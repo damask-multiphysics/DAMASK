@@ -12,9 +12,9 @@
 module DAMASK_interface
  use prec, only: &
    pInt
-
  implicit none
  private
+ logical, public, protected :: SIGUSR1,SIGUSR2
  integer(pInt),       public, protected :: &
    interface_restartInc = 0_pInt                                                                    !< Increment at which calculation starts
  character(len=1024), public, protected :: &
@@ -42,6 +42,8 @@ contains
 subroutine DAMASK_interface_init()
  use, intrinsic :: &
    iso_fortran_env
+ use :: &
+   iso_c_binding
 #include <petsc/finclude/petscsys.h>
 #if defined(__GFORTRAN__) &&  __GNUC__ < 5
 ===================================================================================================
@@ -81,6 +83,8 @@ subroutine DAMASK_interface_init()
 
  use PETScSys
  use system_routines, only: &
+   signalusr1_C, &
+   signalusr2_C, &
    getHostName, &
    getCWD
 
@@ -228,6 +232,12 @@ subroutine DAMASK_interface_init()
  write(6,'(a,a)')      ' Solver job name:        ', trim(getSolverJobName())
  if (interface_restartInc > 0_pInt) &
    write(6,'(a,i6.6)') ' Restart from increment: ', interface_restartInc
+
+ call signalusr1_c(c_funloc(setSIGUSR1))
+ call signalusr2_c(c_funloc(setSIGUSR2))
+ SIGUSR1 = .false.
+ SIGUSR2 = .false.
+
 
 end subroutine DAMASK_interface_init
 
@@ -412,6 +422,35 @@ character(len=1024) function makeRelativePath(a,b)
 
 end function makeRelativePath
 
+!--------------------------------------------------------------------------------------------------
+!> @brief sets global variable SIGUSR1 to .true. if program receives SIGUSR1
+!--------------------------------------------------------------------------------------------------
+subroutine setSIGUSR1(signal) bind(C)
+ use :: iso_c_binding
+   
+ implicit none
+ integer(C_INT), value :: signal
+ SIGUSR1 = .true.
+ 
+ write(6,*) 'received signal ',signal, 'set SIGUSR1'
+ 
+end subroutine setSIGUSR1
+ 
+ 
+!--------------------------------------------------------------------------------------------------
+!> @brief sets global variable SIGUSR2 to .true. if program receives SIGUSR2
+!--------------------------------------------------------------------------------------------------
+subroutine setSIGUSR2(signal) bind(C)
+ use :: iso_c_binding
+
+ implicit none
+ integer(C_INT), value :: signal
+ SIGUSR2 = .true.
+
+ write(6,*) 'received signal ',signal, 'set SIGUSR2'
+  
+end subroutine setSIGUSR2
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief taken from IO, check IO_stringValue for documentation 
@@ -469,7 +508,6 @@ pure function IIO_stringPos(string)
  do while (verify(string(right+1:),SEP)>0)
    left  = right + verify(string(right+1:),SEP)
    right = left + scan(string(left:),SEP) - 2
-   if ( string(left:left) == '#' ) exit
    IIO_stringPos = [IIO_stringPos,int(left, pInt), int(right, pInt)]
    IIO_stringPos(1) = IIO_stringPos(1)+1_pInt
  enddo
