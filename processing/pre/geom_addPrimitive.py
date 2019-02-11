@@ -43,7 +43,7 @@ parser.add_option('-f', '--fill',       dest='fill', type='int', metavar = 'int'
                   help='grain index to fill primitive. "0" selects maximum microstructure index + 1 [%default]')
 parser.add_option('-q', '--quaternion', dest='quaternion', type='float', nargs = 4, metavar=' '.join(['float']*4),
                   help = 'rotation of primitive as quaternion')
-parser.add_option('-a', '--angleaxis',  dest='angleaxis', nargs = 4, metavar=' '.join(['float']*4),
+parser.add_option('-a', '--angleaxis',  dest='angleaxis', nargs = 4, metavar=' '.join(['float']*4), type=float,
                   help = 'angle,x,y,z clockwise rotation of primitive about axis by angle')
 parser.add_option(     '--degrees',     dest='degrees', action='store_true',
                   help = 'angle is given in degrees [%default]')
@@ -63,14 +63,11 @@ parser.set_defaults(center = (.0,.0,.0),
 if options.dimension is None:
   parser.error('no dimension specified.')   
 if options.angleaxis is not None:
-  options.angleaxis = list(map(float,options.angleaxis))
-  rotation = damask.Quaternion.fromAngleAxis(np.radians(options.angleaxis[0]) if options.degrees else options.angleaxis[0],
-                                             options.angleaxis[1:4])
+  rotation = damask.Rotation.fromAngleAxis(np.array(options.angleaxis),options.degrees)
 elif options.quaternion is not None:
-  options.quaternion = list(map(float,options.quaternion))
-  rotation = damask.Quaternion(quat=options.quaternion)
+  rotation = damask.Rotation.fromQuaternion(np.array(options.quaternion))
 else:
-  rotation = damask.Quaternion()
+  rotation = damask.Rotation()
 
 options.center = np.array(options.center)
 options.dimension = np.array(options.dimension)

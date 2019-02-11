@@ -235,7 +235,6 @@ class Rotation:
                resulting in new coordinates "b" when expressed in system "B".
     b = Q * a
     b = np.dot(Q.asMatrix(),a)
-    ToDo: Denfine how to 3x3 and 3x3x3x3 matrices
     """
 
     __slots__ = ['quaternion']
@@ -351,8 +350,37 @@ class Rotation:
         raise ValueError('Rodriques rotation angle not positive.\n'.format(ro[0]))
         
       return cls(ro2qu(ro))
-      
 
+
+    def __mul__(self, other):
+      """
+      Multiplication
+      
+      Rotation: Details needed (active/passive), more cases (3,3), (3,3,3,3) need to be considered
+      """
+      if isinstance(other, Rotation):
+        return self.__class__((self.quaternion * other.quaternion).asArray())
+      elif isinstance(other, np.ndarray):
+        if other.shape == (3,):
+          ( x, y, z) = self.quaternion.p
+          (Vx,Vy,Vz) = other[0:3]
+          A = self.quaternion.q*self.quaternion.q - np.dot(self.quaternion.p,self.quaternion.p)
+          B = 2.0 * (x*Vx + y*Vy + z*Vz)
+          C = 2.0 * P*self.quaternion.q
+
+          return np.array([
+            A*Vx + B*x + C*(y*Vz - z*Vy),
+            A*Vy + B*y + C*(z*Vx - x*Vz),
+            A*Vz + B*z + C*(x*Vy - y*Vx),
+            ])
+        elif other.shape == (3,3,):
+          raise NotImplementedError
+        elif other.shape == (3,3,3,3):
+          raise NotImplementedError
+        else:
+          return NotImplemented
+      else:
+        return NotImplemented
 
 # ******************************************************************************************
 class Quaternion:
