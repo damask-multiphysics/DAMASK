@@ -10,6 +10,350 @@ from . import Lambert
 
 P = -1
 
+####################################################################################################
+class Quaternion2:
+    u"""
+    Quaternion with basic operations
+    
+    q is the real part, p = (x, y, z) are the imaginary parts.
+    Defintion of multiplication depends on variable P, P ∉ {-1,1}.
+    """
+
+    def __init__(self,
+                 q    = 0.0,
+                 p    = np.zeros(3,dtype=float)):
+      """Initializes to identity unless specified"""
+      self.q = q
+      self.p = np.array(p)
+
+
+    def __copy__(self):
+      """Copy"""
+      return self.__class__(q=self.q,
+                            p=self.p.copy())
+
+    copy = __copy__
+
+
+    def __iter__(self):
+      """Components"""
+      return iter(self.asList())
+
+    def asArray(self):
+      """As numpy array"""
+      return np.array((self.q,self.p[0],self.p[1],self.p[2]))
+ 
+    def asList(self):
+      return [self.q]+list(self.p)
+
+
+    def __repr__(self):
+      """Readable string"""
+      return 'Quaternion(real={q:+.6f}, imag=<{p[0]:+.6f}, {p[1]:+.6f}, {p[2]:+.6f}>)'.format(q=self.q,p=self.p)
+      
+
+    def __add__(self, other):
+      """Addition"""
+      if isinstance(other, Quaternion2):
+        return self.__class__(q=self.q + other.q,
+                              p=self.p + other.p)
+      else:
+        return NotImplemented
+
+    def __iadd__(self, other):
+      """In-place addition"""
+      if isinstance(other, Quaternion2):
+        self.q += other.q
+        self.p += other.p
+        return self
+      else:
+        return NotImplemented
+      
+    def __pos__(self):                                                                      
+      """Unary positive operator"""                                                                       
+      return self
+      
+      
+    def __sub__(self, other):
+      """Subtraction"""
+      if isinstance(other, Quaternion2):
+        return self.__class__(q=self.q - other.q,
+                              p=self.p - other.p)
+      else:
+        return NotImplemented
+
+    def __isub__(self, other):
+      """In-place subtraction"""
+      if isinstance(other, Quaternion2):
+        self.q -= other.q
+        self.p -= other.p
+        return self
+      else:
+        return NotImplemented
+        
+    def __neg__(self):                                                                      
+      """Unary positive operator"""  
+      self.q *= -1.0
+      self.p *= -1.0                                                                     
+      return self
+      
+      
+    def __mul__(self, other):
+      """Multiplication with quaternion or scalar"""
+      if isinstance(other, Quaternion2):
+        return self.__class__(q=self.q*other.q - np.dot(self.p,other.p),
+                              p=self.q*other.p + other.q*self.p + P * np.cross(self.p,other.p))
+      elif isinstance(other, (int, float)):
+        return self.__class__(q=self.q*other,
+                              p=self.p*other)
+      else:
+        return NotImplemented
+
+    def __imul__(self, other):
+      """In-place multiplication with quaternion or scalar"""
+      if isinstance(other, Quaternion2):
+        self.q = self.q*other.q - np.dot(self.p,other.p)
+        self.p = self.q*other.p + other.q*self.p + P * np.cross(self.p,other.p)
+        return self
+      elif isinstance(other, (int, float)):
+        self *= other
+        return self
+      else:
+        return NotImplemented
+      
+
+    def __truediv__(self, other):
+      """Divsion with quaternion or scalar"""
+      if isinstance(other, Quaternion2):
+        s = other.conjugate()/abs(other)**2.
+        return self.__class__(q=self.q * s,
+                              p=self.p * s)
+      elif isinstance(other, (int, float)):
+        self.q /= other
+        self.p /= other
+        return self
+      else:
+        return NotImplemented
+
+    def __itruediv__(self, other):
+      """In-place divsion with quaternion or scalar"""
+      if isinstance(other, Quaternion2):
+        s = other.conjugate()/abs(other)**2.
+        self *= s
+        return self
+      elif isinstance(other, (int, float)):
+        self.q /= other
+        return self
+      else:
+        return NotImplemented
+
+
+    def __pow__(self, exponent):
+      """Power"""
+      if isinstance(exponent, (int, float)):
+        omega = np.acos(self.q)
+        return self.__class__(q=         np.cos(exponent*omega),
+                              p=self.p * np.sin(exponent*omega)/np.sin(omega))
+      else:
+        return NotImplemented
+
+    def __ipow__(self, exponent):
+      """In-place power"""
+      if isinstance(exponent, (int, float)):
+        omega = np.acos(self.q)
+        self.q  = np.cos(exponent*omega)
+        self.p *= np.sin(exponent*omega)/np.sin(omega)
+      else:
+        return NotImplemented
+      
+
+    def __abs__(self):
+      """Norm"""
+      return math.sqrt(self.q ** 2 + np.dot(self.p,self.p))
+
+    magnitude = __abs__
+
+
+    def __eq__(self,other):
+      """Equal (sufficiently close) to each other"""
+      return np.isclose(( self-other).magnitude(),0.0) \
+          or np.isclose((-self-other).magnitude(),0.0)
+
+    def __ne__(self,other):
+      """Not equal (sufficiently close) to each other"""
+      return not self.__eq__(other)
+
+
+    def normalize(self):
+      d = self.magnitude()
+      if d > 0.0:
+          self.q /= d
+          self.p /= d
+      return self
+      
+    def normalized(self):
+      return self.copy().normalize()
+
+
+    def conjugate(self):
+      self.p = -self.p
+      return self
+      
+    def conjugated(self):
+      return self.copy().conjugate()
+
+
+    def homomorph(self):
+      if self.q < 0.0:
+        self.q = -self.q
+        self.p = -self.p
+      return self
+      
+    def homomorphed(self):
+      return self.copy().homomorph()
+      
+
+
+####################################################################################################
+class Rotation:
+    u"""
+    Orientation stored as unit quaternion.
+    
+    All methods and naming conventions based on Rowenhorst_etal2015
+    Convention 1: coordinate frames are right-handed
+    Convention 2: a rotation angle ω is taken to be positive for a counterclockwise rotation
+                  when viewing from the end point of the rotation axis towards the origin
+    Convention 3: rotations will be interpreted in the passive sense
+    Convention 4: Euler angle triplets are implemented using the Bunge convention,
+                  with the angular ranges as [0, 2π],[0, π],[0, 2π]
+    Convention 5: the rotation angle ω is limited to the interval [0, π]
+    Convention 6: P = -1 (as default)
+    
+    q is the real part, p = (x, y, z) are the imaginary parts.
+
+    Vector "a" (defined in coordinate system "A") is passively rotated
+               resulting in new coordinates "b" when expressed in system "B".
+    b = Q * a
+    b = np.dot(Q.asMatrix(),a)
+    ToDo: Denfine how to 3x3 and 3x3x3x3 matrices
+    """
+
+    __slots__ = ['quaternion']
+    
+    def __init__(self,quaternion = np.array([1.0,0.0,0.0,0.0])):
+      """Initializes to identity unless specified"""
+      self.quaternion = Quaternion2(q=quaternion[0],p=quaternion[1:4])
+      self.quaternion.homomorph() # ToDo: Needed?
+
+    def __repr__(self):
+      """Value in selected representation"""
+      return '\n'.join([
+            'Quaternion: {}'.format(self.quaternion),
+            'Matrix:\n{}'.format( '\n'.join(['\t'.join(list(map(str,self.asMatrix()[i,:]))) for i in range(3)]) ),
+            'Bunge Eulers / deg: {}'.format('\t'.join(list(map(str,self.asEulers(degrees=True)))) ),
+              ])
+
+
+    def asQuaternion(self):
+      return self.quaternion.asArray()
+      
+    def asEulers(self,
+                 degrees = False):
+      return np.degrees(qu2eu(self.quaternion.asArray())) if degrees else qu2eu(self.quaternion.asArray())
+    
+    def asAngleAxis(self,
+                    degrees = False):
+                      
+      ax = qu2ax(self.quaternion.asArray())
+      if degrees: ax[0] = np.degrees(ax[0])
+      
+      return ax
+      
+    def asMatrix(self):
+      return qu2om(self.quaternion.asArray())
+
+    def asRodrigues(self):
+      return qu2ro(self.quaternion.asArray())
+  
+    def asHomochoric(self):
+     return qu2ho(self.quaternion.asArray())
+         
+    def asCubochoric(self):
+      return qu2cu(self.quaternion.asArray())
+      
+      
+  
+    @classmethod
+    def fromQuaternion(cls,
+                      quaternion,
+                      P = -1):
+
+      qu = quaternion
+      if P > 0: qu[1:3] *= -1                                                                       # convert from P=1 to P=-1
+      if qu[0] < 0.0:
+        raise ValueError('Quaternion has negative first component.\n{}'.format(qu[0]))
+      if not np.isclose(np.linalg.norm(qu), 1.0):
+        raise ValueError('Quaternion is not of unit length.\n{} {} {} {}'.format(*qu))
+
+      return cls(qu)
+      
+    @classmethod
+    def fromEulers(cls,
+                   eulers,
+                   degrees = False):
+                     
+      eu = np.radians(eulers) if degrees else eulers
+      if np.any(eu < 0.0) or np.any(eu > 2.0*np.pi) or eu[1] > np.pi:
+        raise ValueError('Euler angles outside of [0..2π],[0..π],[0..2π].\n{} {} {}.'.format(*eu))
+        
+      return cls(eu2qu(eu))
+      
+    @classmethod
+    def fromAngleAxis(cls,
+                      angleAxis,
+                      degrees = False,
+                      P = -1):
+                        
+      ax = angleAxis
+      if P > 0: ax[1:3] *= -1                                                                       # convert from P=1 to P=-1
+      if degrees: ax[0] = np.degrees(ax[0])
+      if ax[0] < 0.0 or ax[0] > np.pi:
+        raise ValueError('Axis angle rotation angle outside of [0..π].\n'.format(ax[0]))
+      if not np.isclose(np.linalg.norm(ax[1:3]), 1.0):
+        raise ValueError('Axis angle rotation axis is not of unit length.\n{} {} {}'.format(*ax[1:3]))
+      
+      return cls(ax2qu(ax))
+      
+    @classmethod
+    def fromMatrix(cls,
+                   matrix):
+      
+      om = matrix 
+      if not np.isclose(np.linalg.det(om),1.0):
+        raise ValueError('matrix is not a proper rotation.\n{}'.format(om))
+      if    not np.isclose(np.dot(om[0],om[1]), 0.0) \
+         or not np.isclose(np.dot(om[1],om[2]), 0.0) \
+         or not np.isclose(np.dot(om[2],om[0]), 0.0):
+        raise ValueError('matrix is not orthogonal.\n{}'.format(om))
+
+      return cls(om2qu(om))
+      
+    @classmethod
+    def fromRodrigues(cls,
+                      rodrigues,
+                      P = -1):
+        
+      ro = rodrigues
+      if P > 0: ro[1:3] *= -1                                                                       # convert from P=1 to P=-1
+      if not np.isclose(np.linalg.norm(ro[1:3]), 1.0):
+        raise ValueError('Rodrigues rotation axis is not of unit length.\n{} {} {}'.format(*ro[1:3]))
+      if ro[0] < 0.0:
+        raise ValueError('Rodriques rotation angle not positive.\n'.format(ro[0]))
+        
+      return cls(ro2qu(ro))
+      
+
+
 # ******************************************************************************************
 class Quaternion:
     u"""
@@ -1382,6 +1726,7 @@ def om2qu(om):
   if om[1,0] < om[0,1]: qu[3] *= -1.0
   if any(om2ax(om)[0:3]*qu[1:4] < 0.0): print(om2ax(om),qu) # something is wrong here
   return qu
+
 
 def qu2ax(qu):
   """Quaternion to axis angle"""
