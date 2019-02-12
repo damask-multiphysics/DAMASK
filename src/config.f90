@@ -1,4 +1,4 @@
-!--------------------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Reads in the material configuration from file
 !> @details Reads the material configuration file, where solverJobName.materialConfig takes
@@ -220,7 +220,7 @@ subroutine parseFile(sectionNames,part,line, &
  partPosition = [partPosition, i]                                                                   ! needed when actually storing content
 
  do i = 1_pInt, size(partPosition) -1_pInt
-   sectionNames(i) = trim(adjustl(fileContent(partPosition(i))))
+   sectionNames(i) = trim(adjustl(IO_getTag(fileContent(partPosition(i)),'[',']')))
    do j = partPosition(i) + 1_pInt,  partPosition(i+1) -1_pInt
      call part(i)%add(trim(adjustl(fileContent(j))))
    enddo
@@ -318,7 +318,7 @@ subroutine show(this)
  do while (associated(item%next))
    write(6,'(a)') ' '//trim(item%string%val)
    item => item%next
- end do
+ enddo
 
 end subroutine show
 
@@ -391,7 +391,7 @@ logical function keyExists(this,key)
  do while (associated(item%next) .and. .not. keyExists)
    keyExists = trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)
    item => item%next
- end do
+ enddo
 
 end function keyExists
 
@@ -417,7 +417,7 @@ integer(pInt) function countKeys(this,key)
    if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) &
      countKeys = countKeys + 1_pInt
    item => item%next
- end do
+ enddo
 
 end function countKeys
 
@@ -451,7 +451,7 @@ real(pReal) function getFloat(this,key,defaultVal)
      getFloat = IO_FloatValue(item%string%val,item%string%pos,2)
    endif
    item => item%next
- end do
+ enddo
 
  if (.not. found) call IO_error(140_pInt,ext_msg=key)
 
@@ -487,7 +487,7 @@ integer(pInt) function getInt(this,key,defaultVal)
      getInt = IO_IntValue(item%string%val,item%string%pos,2)
    endif
    item => item%next
- end do
+ enddo
 
  if (.not. found) call IO_error(140_pInt,ext_msg=key)
 
@@ -538,7 +538,7 @@ character(len=65536) function getString(this,key,defaultVal,raw)
      endif
    endif
    item => item%next
- end do
+ enddo
 
  if (.not. found) call IO_error(140_pInt,ext_msg=key)
 
@@ -550,7 +550,7 @@ end function getString
 !> @details for cumulative keys, "()", values from all occurrences are return. Otherwise only all
 !! values from the last occurrence. If key is not found exits with error unless default is given.
 !--------------------------------------------------------------------------------------------------
-function getFloats(this,key,defaultVal,requiredShape)
+function getFloats(this,key,defaultVal,requiredSize)
  use IO, only: &
    IO_error, &
    IO_stringValue, &
@@ -561,7 +561,7 @@ function getFloats(this,key,defaultVal,requiredShape)
  class(tPartitionedStringList), target, intent(in)   :: this
  character(len=*),              intent(in)           :: key
  real(pReal),   dimension(:),   intent(in), optional :: defaultVal
- integer(pInt), dimension(:),   intent(in), optional :: requiredShape
+ integer(pInt),                 intent(in), optional :: requiredSize
  type(tPartitionedStringList),  pointer              :: item
  integer(pInt)                                       :: i
  logical                                             :: found, &
@@ -583,10 +583,13 @@ function getFloats(this,key,defaultVal,requiredShape)
      enddo
    endif
    item => item%next
- end do
+ enddo
 
  if (.not. found) then
    if (present(defaultVal)) then; getFloats = defaultVal; else; call IO_error(140_pInt,ext_msg=key); endif
+ endif
+ if (present(requiredSize)) then
+   if(requiredSize /= size(getFloats)) call IO_error(146,ext_msg=key)
  endif
 
 end function getFloats
@@ -597,7 +600,7 @@ end function getFloats
 !> @details for cumulative keys, "()", values from all occurrences are return. Otherwise only all
 !! values from the last occurrence. If key is not found exits with error unless default is given.
 !--------------------------------------------------------------------------------------------------
-function getInts(this,key,defaultVal,requiredShape)
+function getInts(this,key,defaultVal,requiredSize)
  use IO, only: &
    IO_error, &
    IO_stringValue, &
@@ -607,8 +610,8 @@ function getInts(this,key,defaultVal,requiredShape)
  integer(pInt), dimension(:), allocatable            :: getInts
  class(tPartitionedStringList), target, intent(in)   :: this
  character(len=*),              intent(in)           :: key
- integer(pInt), dimension(:),   intent(in), optional :: defaultVal, &
-                                                        requiredShape
+ integer(pInt), dimension(:),   intent(in), optional :: defaultVal
+ integer(pInt),                 intent(in), optional :: requiredSize
  type(tPartitionedStringList),  pointer              :: item
  integer(pInt)                                       :: i
  logical                                             :: found, &
@@ -630,10 +633,13 @@ function getInts(this,key,defaultVal,requiredShape)
      enddo
    endif
    item => item%next
- end do
+ enddo
 
  if (.not. found) then
    if (present(defaultVal)) then; getInts = defaultVal; else; call IO_error(140_pInt,ext_msg=key); endif
+ endif
+ if (present(requiredSize)) then
+   if(requiredSize /= size(getInts)) call IO_error(146,ext_msg=key)
  endif
 
 end function getInts
@@ -645,7 +651,7 @@ end function getInts
 !! values from the last occurrence. If key is not found exits with error unless default is given.
 !! If raw is true, the the complete string is returned, otherwise the individual chunks are returned
 !--------------------------------------------------------------------------------------------------
-function getStrings(this,key,defaultVal,requiredShape,raw)
+function getStrings(this,key,defaultVal,raw)
  use IO, only: &
    IO_error, &
    IO_StringValue
@@ -655,7 +661,6 @@ function getStrings(this,key,defaultVal,requiredShape,raw)
  class(tPartitionedStringList), target, intent(in)        :: this
  character(len=*),                   intent(in)           :: key
  character(len=65536),dimension(:),  intent(in), optional :: defaultVal
- integer(pInt),       dimension(:),  intent(in), optional :: requiredShape
  logical,                            intent(in), optional :: raw
  type(tPartitionedStringList), pointer                    :: item
  character(len=65536)                                     :: str
@@ -704,7 +709,7 @@ function getStrings(this,key,defaultVal,requiredShape,raw)
      endif notAllocated
    endif
    item => item%next
- end do
+ enddo
 
  if (.not. found) then
    if (present(defaultVal)) then; getStrings = defaultVal; else; call IO_error(140_pInt,ext_msg=key); endif

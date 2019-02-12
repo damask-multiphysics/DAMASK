@@ -78,7 +78,6 @@ contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all necessary fields and fills them with data, potentially from restart info
-!> @todo use sourced allocation, e.g. allocate(Fdot,source = F_lastInc)
 !--------------------------------------------------------------------------------------------------
 subroutine Polarisation_init
 #if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
@@ -88,6 +87,7 @@ subroutine Polarisation_init
 #endif
  use IO, only: &
    IO_intOut, &
+   IO_error, &
    IO_read_realFile, &
    IO_timeStamp
  use debug, only: &
@@ -191,7 +191,11 @@ subroutine Polarisation_init
    call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(F_aimDot))
    read (777,rec=1) F_aimDot; close (777)
    F_aim         = reshape(sum(sum(sum(F,dim=4),dim=3),dim=2) * wgt, [3,3])                         ! average of F
+   call MPI_Allreduce(MPI_IN_PLACE,F_aim,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
+   if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='F_aim')
    F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
+   call MPI_Allreduce(MPI_IN_PLACE,F_aim_lastInc,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
+   if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='F_aim_lastInc')
  elseif (restartInc == 0_pInt) then restart
    F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                          ! initialize to identity
    F = reshape(F_lastInc,[9,grid(1),grid(2),grid3])

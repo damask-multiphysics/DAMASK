@@ -7,11 +7,11 @@ all: spectral FEM processing
 
 .PHONY: spectral
 spectral: build/spectral
-	@(cd build/spectral;make --no-print-directory -ws all install;)
+	@(cd build/spectral;make -j4 --no-print-directory -ws all install;)
 
 .PHONY: FEM
 FEM: build/FEM
-	@(cd build/FEM; make --no-print-directory -ws all install;)
+	@(cd build/FEM; make -j4 --no-print-directory -ws all install;)
 
 .PHONY: build/spectral
 build/spectral:

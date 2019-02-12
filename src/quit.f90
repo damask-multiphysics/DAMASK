@@ -23,6 +23,8 @@ subroutine quit(stop_id)
  integer(pInt) :: error = 0_pInt
  PetscErrorCode :: ierr = 0
 
+ call h5open_f(hdferr)
+ if (hdferr /= 0) write(6,'(a,i5)') ' Error in h5open_f',hdferr                                     ! prevents error if not opened yet
  call h5close_f(hdferr)
  if (hdferr /= 0) write(6,'(a,i5)') ' Error in h5close_f',hdferr
 
