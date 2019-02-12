@@ -45,7 +45,7 @@ class Quaternion2:
 
     def __repr__(self):
       """Readable string"""
-      return 'Quaternion(real={q:+.6f}, imag=<{p[0]:+.6f}, {p[1]:+.6f}, {p[2]:+.6f}>)'.format(q=self.q,p=self.p)
+      return 'Quaternion: (real={q:+.6f}, imag=<{p[0]:+.6f}, {p[1]:+.6f}, {p[2]:+.6f}>)'.format(q=self.q,p=self.p)
       
 
     def __add__(self, other):
@@ -243,7 +243,7 @@ class Rotation:
     def __repr__(self):
       """Value in selected representation"""
       return '\n'.join([
-            'Quaternion: {}'.format(self.quaternion),
+            '{}'.format(self.quaternion),
             'Matrix:\n{}'.format( '\n'.join(['\t'.join(list(map(str,self.asMatrix()[i,:]))) for i in range(3)]) ),
             'Bunge Eulers / deg: {}'.format('\t'.join(list(map(str,self.asEulers(degrees=True)))) ),
               ])
@@ -370,7 +370,7 @@ class Rotation:
             A*Vz + B*z + C*(x*Vy - y*Vx),
             ])
         elif other.shape == (3,3,):
-          raise NotImplementedError
+           return np.dot(self.asMatrix(),np.dot(other,self.asMatrix().T))
         elif other.shape == (3,3,3,3):
           raise NotImplementedError
         else:
