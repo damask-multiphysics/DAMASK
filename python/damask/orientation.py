@@ -236,7 +236,12 @@ class Rotation:
     __slots__ = ['quaternion']
     
     def __init__(self,quaternion = np.array([1.0,0.0,0.0,0.0])):
-      """Initializes to identity unless specified"""
+      """
+      Initializes to identity unless specified
+      
+      If a quaternion is given, it needs to comply with the convection. Use .fromQuaternion
+      to check the input.
+      """
       self.quaternion = Quaternion2(q=quaternion[0],p=quaternion[1:4])
       self.quaternion.homomorph() # ToDo: Needed?
 
@@ -247,7 +252,9 @@ class Rotation:
             'Matrix:\n{}'.format( '\n'.join(['\t'.join(list(map(str,self.asMatrix()[i,:]))) for i in range(3)]) ),
             'Bunge Eulers / deg: {}'.format('\t'.join(list(map(str,self.asEulers(degrees=True)))) ),
               ])
-
+              
+    ################################################################################################
+    # convert to different orientation representations (numpy arrays)
 
     def asQuaternion(self):
       return self.quaternion.asArray()
@@ -276,14 +283,16 @@ class Rotation:
     def asCubochoric(self):
       return qu2cu(self.quaternion.asArray())
       
-      
-  
+
+    ################################################################################################
+    # static constructors. The input data needs to follow the convention, options allow to
+    # relax these convections
     @classmethod
     def fromQuaternion(cls,
-                      quaternion,
-                      P = -1):
+                       quaternion,
+                       P = -1):
 
-      qu = quaternion
+      qu = quaternion if isinstance(quaternion, np.ndarray) else np.array(quaternion)
       if P > 0: qu[1:4] *= -1                                                                       # convert from P=1 to P=-1
       if qu[0] < 0.0:
         raise ValueError('Quaternion has negative first component.\n{}'.format(qu[0]))
@@ -296,8 +305,9 @@ class Rotation:
     def fromEulers(cls,
                    eulers,
                    degrees = False):
-                     
-      eu = np.radians(eulers) if degrees else eulers
+
+      eu = eulers if isinstance(eulers, np.ndarray) else np.array(eulers)
+      eu = np.radians(eu) if degrees else eu
       if np.any(eu < 0.0) or np.any(eu > 2.0*np.pi) or eu[1] > np.pi:
         raise ValueError('Euler angles outside of [0..2π],[0..π],[0..2π].\n{} {} {}.'.format(*eu))
         
@@ -309,8 +319,8 @@ class Rotation:
                       degrees = False,
                       normalise = False,
                       P = -1):
-                        
-      ax = angleAxis
+      
+      ax = angleAxis if isinstance(angleAxis, np.ndarray) else np.array(angleAxis)
       if P > 0: ax[1:4] *= -1                                                                       # convert from P=1 to P=-1
       if degrees:   ax[0] = np.degrees(ax[0])
       if normalise: ax[1:4] /=np.linalg.norm(ax[1:4])
@@ -323,9 +333,13 @@ class Rotation:
       
     @classmethod
     def fromMatrix(cls,
-                   matrix):
+                   matrix,
+                   containsStretch = False):                                 #ToDo: better name?
       
-      om = matrix 
+      om = matrix if isinstance(matrix, np.ndarray) else np.array(matrix)
+      if containsStretch:
+        (U,S,Vh) = np.linalg.svd(om)                                                                # singular value decomposition
+        om = np.dot(U,Vh)     
       if not np.isclose(np.linalg.det(om),1.0):
         raise ValueError('matrix is not a proper rotation.\n{}'.format(om))
       if    not np.isclose(np.dot(om[0],om[1]), 0.0) \
@@ -341,7 +355,7 @@ class Rotation:
                       normalise = False,
                       P = -1):
         
-      ro = rodrigues
+      ro = rodrigues if isinstance(rodrigues, np.ndarray) else np.array(rodrigues) 
       if P > 0: ro[1:4] *= -1                                                                       # convert from P=1 to P=-1
       if normalise: ro[1:4] /=np.linalg.norm(ro[1:4])
       if not np.isclose(np.linalg.norm(ro[1:4]), 1.0):
@@ -356,7 +370,7 @@ class Rotation:
       """
       Multiplication
       
-      Rotation: Details needed (active/passive), more cases (3,3), (3,3,3,3) need to be considered
+      Rotation: Details needed (active/passive), more rotation of (3,3,3,3) should be considered
       """
       if isinstance(other, Rotation):                                                               # rotate a rotation
         return self.__class__((self.quaternion * other.quaternion).asArray())

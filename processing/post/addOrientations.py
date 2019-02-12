@@ -79,8 +79,8 @@ parser.add_option('-z',
                   help = 'label of lab z vector (expressed in crystal coords)')
 
 parser.set_defaults(output = [],
-                    labrotation     = (0.,1.,1.,1.),                                                # no rotation about 1,1,1
-                    crystalrotation = (0.,1.,1.,1.),                                                # no rotation about 1,1,1
+                    labrotation     = (0.,1.,0.,0.),                                                # no rotation about 1,0,0
+                    crystalrotation = (0.,1.,0.,0.),                                                # no rotation about 1,0,0
                     degrees = False,
                    )
 
@@ -108,8 +108,8 @@ if np.sum(input) != 1: parser.error('needs exactly one input format.')
                          (options.quaternion,4,'quaternion'),
                         ][np.where(input)[0][0]]                                                    # select input label that was requested
 
-r = damask.Rotation.fromAngleAxis(np.array(options.crystalrotation),options.degrees)                # crystal frame rotation
-R = damask.Rotation.fromAngleAxis(np.array(options.labrotation),options.degrees)                    #     lab frame rotation
+r = damask.Rotation.fromAngleAxis(options.crystalrotation,options.degrees)                          # crystal frame rotation
+R = damask.Rotation.fromAngleAxis(options.labrotation,options.degrees)                              #     lab frame rotation
 
 # --- loop over input files ------------------------------------------------------------------------
 
@@ -153,13 +153,13 @@ for name in filenames:
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     if   inputtype == 'eulers':
-      o = damask.Rotation.fromEulers(np.array(list(map(float,table.data[column:column+3]))),options.degrees)
+      o = damask.Rotation.fromEulers(list(map(float,table.data[column:column+3])),options.degrees)
       
     elif inputtype == 'rodrigues':
-      o = damask.Rotation.fromRodrigues(np.array(list(map(float,table.data[column:column+3]))))
+      o = damask.Rotation.fromRodrigues(list(map(float,table.data[column:column+3])))
       
     elif inputtype == 'matrix':
-      o = damask.Rotation.fromMatrix(np.array(list(map(float,table.data[column:column+9]))).reshape(3,3))
+      o = damask.Rotation.fromMatrix(list(map(float,table.data[column:column+9])).reshape(3,3))
 
     elif inputtype == 'frame':
       M = np.array(list(map(float,table.data[column[0]:column[0]+3] + \
@@ -168,7 +168,7 @@ for name in filenames:
       o = damask.Rotation.fromMatrix(M/np.linalg.norm(M,axis=0))
       
     elif inputtype == 'quaternion':
-      o = damask.Rotation.fromQuaternion(np.array(list(map(float,table.data[column:column+4]))))
+      o = damask.Rotation.fromQuaternion(list(map(float,table.data[column:column+4])))
 
     o= r*o*R                                                                                        # apply additional lab and crystal frame rotations
 

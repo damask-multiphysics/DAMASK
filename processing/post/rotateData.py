@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
+import os,sys
 import numpy as np
 from optparse import OptionParser
 import damask
@@ -29,9 +29,9 @@ parser.add_option('-r', '--rotation',
 parser.add_option('--degrees',
                   dest = 'degrees',
                   action = 'store_true',
-                  help = 'angles are given in degrees [%default]')
+                  help = 'angle is given in degrees [%default]')
 
-parser.set_defaults(rotation = (0.,1.,1.,1.),                                                       # no rotation about 1,1,1
+parser.set_defaults(rotation = (0.,1.,0.,0.),                                                       # no rotation about 1,0,0
                     degrees = False,
                    )
                     
@@ -40,7 +40,7 @@ parser.set_defaults(rotation = (0.,1.,1.,1.),                                   
 if options.data is None:
   parser.error('no data column specified.')
 
-r = damask.Rotation.fromAngleAxis(options.rotation,degrees)
+r = damask.Rotation.fromAngleAxis(options.rotation,options.degrees,normalise=True)
 
 # --- loop over input files -------------------------------------------------------------------------
 
