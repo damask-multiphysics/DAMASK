@@ -1,7 +1,9 @@
+# -*- coding: UTF-8 no BOM -*-
+
 ####################################################################################################
-# Code below available according to below conditions on https://github.com/MarDiehl/3Drotations
+# Code below available according to the followin conditions on https://github.com/MarDiehl/3Drotations
 ####################################################################################################
-# Copyright (c) 2017-2019, Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+# Copyright (c) 2017-2019, Martin Diehl/Max-Planck-Institut für Eisenforschung GmbH
 # Copyright (c) 2013-2014, Marc De Graef/Carnegie Mellon University
 # All rights reserved.
 #
@@ -28,6 +30,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE 
 # USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ####################################################################################################
+
 import numpy as np
 
 sc   = np.pi**(1./6.)/6.**(1./6.)
@@ -104,7 +107,7 @@ def BallToCube(ball):
       # inverse M_1
       cube = np.array([ Tinv[0], Tinv[1],  (-1.0 if xyz3[2] < 0.0 else 1.0) * rs / np.sqrt(6.0/np.pi) ]) /sc
 
-      # reverst the coordinates back to the regular order according to the original pyramid number
+      # reverse the coordinates back to the regular order according to the original pyramid number
       cube = cube[p]
       
     return cube

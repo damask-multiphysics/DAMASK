@@ -1,9 +1,5 @@
 # -*- coding: UTF-8 no BOM -*-
 
-###################################################
-# NOTE: everything here needs to be a np array #
-###################################################
-
 import math,os
 import numpy as np
 from . import Lambert
@@ -1470,9 +1466,9 @@ class Orientation:
     return Orientation(matrix=np.dot(rot,self.asMatrix()),symmetry=targetSymmetry)
 
 ####################################################################################################
-# Code below available according to below conditions on https://github.com/MarDiehl/3Drotations
+# Code below available according to the followin conditions on https://github.com/MarDiehl/3Drotations
 ####################################################################################################
-# Copyright (c) 2017-2019, Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+# Copyright (c) 2017-2019, Martin Diehl/Max-Planck-Institut für Eisenforschung GmbH
 # Copyright (c) 2013-2014, Marc De Graef/Carnegie Mellon University
 # All rights reserved.
 #
