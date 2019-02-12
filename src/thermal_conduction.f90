@@ -70,7 +70,7 @@ subroutine thermal_conduction_init
    config_homogenization
 
  implicit none
- integer(pInt) :: maxNinstance,mySize=0_pInt,section,instance,o,i
+ integer(pInt) :: maxNinstance,section,instance,i
  integer(pInt) :: sizeState
  integer(pInt) :: NofMyHomog   
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
@@ -101,21 +101,10 @@ subroutine thermal_conduction_init
              thermal_conduction_Noutput(instance) = thermal_conduction_Noutput(instance) + 1_pInt
              thermal_conduction_outputID(thermal_conduction_Noutput(instance),instance) = temperature_ID
              thermal_conduction_output(thermal_conduction_Noutput(instance),instance) = outputs(i)
+             thermal_conduction_sizePostResult(thermal_conduction_Noutput(instance),instance) = 1_pInt
      end select
    enddo
 
-!--------------------------------------------------------------------------------------------------
-!  Determine size of postResults array
-   outputsLoop: do o = 1_pInt,thermal_conduction_Noutput(instance)
-     select case(thermal_conduction_outputID(o,instance))
-      case(temperature_ID)
-         mySize = 1_pInt
-     end select
- 
-     if (mySize > 0_pInt) then  ! any meaningful output found
-       thermal_conduction_sizePostResult(o,instance) = mySize
-     endif
-   enddo outputsLoop
 
 ! allocate state arrays
    sizeState = 0_pInt
@@ -224,7 +213,6 @@ function thermal_conduction_getConductivity33(ip,el)
    lattice_thermalConductivity33
  use material, only: &
    homogenization_Ngrains, &
-   mappingHomogenization, &
    material_phase
  use mesh, only: &
    mesh_element
@@ -238,10 +226,8 @@ function thermal_conduction_getConductivity33(ip,el)
  real(pReal), dimension(3,3) :: &
    thermal_conduction_getConductivity33
  integer(pInt) :: &
-   homog, &
    grain
    
- homog  = mappingHomogenization(2,ip,el)
   
  thermal_conduction_getConductivity33 = 0.0_pReal
  do grain = 1, homogenization_Ngrains(mesh_element(3,el))
@@ -263,12 +249,9 @@ function thermal_conduction_getSpecificHeat(ip,el)
    lattice_specificHeat
  use material, only: &
    homogenization_Ngrains, &
-   mappingHomogenization, &
    material_phase
  use mesh, only: &
    mesh_element
- use crystallite, only: &
-   crystallite_push33ToRef
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -277,11 +260,10 @@ function thermal_conduction_getSpecificHeat(ip,el)
  real(pReal) :: &
    thermal_conduction_getSpecificHeat
  integer(pInt) :: &
-   homog, grain
+   grain
   
  thermal_conduction_getSpecificHeat = 0.0_pReal
  
- homog  = mappingHomogenization(2,ip,el)
   
  do grain = 1, homogenization_Ngrains(mesh_element(3,el))
    thermal_conduction_getSpecificHeat = thermal_conduction_getSpecificHeat + &
@@ -301,12 +283,9 @@ function thermal_conduction_getMassDensity(ip,el)
    lattice_massDensity
  use material, only: &
    homogenization_Ngrains, &
-   mappingHomogenization, &
    material_phase
  use mesh, only: &
    mesh_element
- use crystallite, only: &
-   crystallite_push33ToRef
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -315,11 +294,10 @@ function thermal_conduction_getMassDensity(ip,el)
  real(pReal) :: &
    thermal_conduction_getMassDensity
  integer(pInt) :: &
-   homog, grain
+   grain
   
  thermal_conduction_getMassDensity = 0.0_pReal
  
- homog  = mappingHomogenization(2,ip,el)
   
  do grain = 1, homogenization_Ngrains(mesh_element(3,el))
    thermal_conduction_getMassDensity = thermal_conduction_getMassDensity &

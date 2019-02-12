@@ -69,7 +69,7 @@ subroutine thermal_adiabatic_init
    config_homogenization
 
  implicit none
- integer(pInt) :: maxNinstance,mySize=0_pInt,section,instance,o,i
+ integer(pInt) :: maxNinstance,section,instance,i
  integer(pInt) :: sizeState
  integer(pInt) :: NofMyHomog   
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
@@ -100,36 +100,24 @@ subroutine thermal_adiabatic_init
              thermal_adiabatic_Noutput(instance) = thermal_adiabatic_Noutput(instance) + 1_pInt
              thermal_adiabatic_outputID(thermal_adiabatic_Noutput(instance),instance) = temperature_ID
              thermal_adiabatic_output(thermal_adiabatic_Noutput(instance),instance) = outputs(i)
+             thermal_adiabatic_sizePostResult(thermal_adiabatic_Noutput(instance),instance) = 1_pInt
      end select
    enddo
 
-!--------------------------------------------------------------------------------------------------
-!  Determine size of postResults array
-     outputsLoop: do o = 1_pInt,thermal_adiabatic_Noutput(instance)
-       select case(thermal_adiabatic_outputID(o,instance))
-         case(temperature_ID)
-           mySize = 1_pInt
-       end select
- 
-       if (mySize > 0_pInt) then  ! any meaningful output found
-          thermal_adiabatic_sizePostResult(o,instance) = mySize
-       endif
-     enddo outputsLoop
-
 ! allocate state arrays
-     sizeState = 1_pInt
-     thermalState(section)%sizeState = sizeState
-     thermalState(section)%sizePostResults = sum(thermal_adiabatic_sizePostResult(:,instance))
-     allocate(thermalState(section)%state0   (sizeState,NofMyHomog), source=thermal_initialT(section))
-     allocate(thermalState(section)%subState0(sizeState,NofMyHomog), source=thermal_initialT(section))
-     allocate(thermalState(section)%state    (sizeState,NofMyHomog), source=thermal_initialT(section))
+   sizeState = 1_pInt
+   thermalState(section)%sizeState = sizeState
+   thermalState(section)%sizePostResults = sum(thermal_adiabatic_sizePostResult(:,instance))
+   allocate(thermalState(section)%state0   (sizeState,NofMyHomog), source=thermal_initialT(section))
+   allocate(thermalState(section)%subState0(sizeState,NofMyHomog), source=thermal_initialT(section))
+   allocate(thermalState(section)%state    (sizeState,NofMyHomog), source=thermal_initialT(section))
 
-     nullify(thermalMapping(section)%p)
-     thermalMapping(section)%p => mappingHomogenization(1,:,:)
-     deallocate(temperature(section)%p)
-     temperature(section)%p => thermalState(section)%state(1,:)
-     deallocate(temperatureRate(section)%p)
-     allocate  (temperatureRate(section)%p(NofMyHomog), source=0.0_pReal)
+   nullify(thermalMapping(section)%p)
+   thermalMapping(section)%p => mappingHomogenization(1,:,:)
+   deallocate(temperature(section)%p)
+   temperature(section)%p => thermalState(section)%state(1,:)
+   deallocate(temperatureRate(section)%p)
+   allocate  (temperatureRate(section)%p(NofMyHomog), source=0.0_pReal)
      
  enddo initializeInstances
  
@@ -186,8 +174,6 @@ end function thermal_adiabatic_updateState
 !> @brief returns heat generation rate
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_adiabatic_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
- use math, only: &
-   math_Mandel6to33
  use material, only: &
    homogenization_Ngrains, &
    mappingHomogenization, &
@@ -219,14 +205,12 @@ subroutine thermal_adiabatic_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
  integer(pInt) :: &
    phase, &
    homog, &
-   offset, &
    instance, &
    grain, &
    source, &
    constituent
    
  homog  = mappingHomogenization(2,ip,el)
- offset = mappingHomogenization(1,ip,el)
  instance = thermal_typeInstance(homog)
   
  Tdot = 0.0_pReal
@@ -268,12 +252,9 @@ function thermal_adiabatic_getSpecificHeat(ip,el)
    lattice_specificHeat
  use material, only: &
    homogenization_Ngrains, &
-   mappingHomogenization, &
    material_phase
  use mesh, only: &
    mesh_element
- use crystallite, only: &
-   crystallite_push33ToRef
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -282,11 +263,10 @@ function thermal_adiabatic_getSpecificHeat(ip,el)
  real(pReal) :: &
    thermal_adiabatic_getSpecificHeat
  integer(pInt) :: &
-   homog, grain
+   grain
   
  thermal_adiabatic_getSpecificHeat = 0.0_pReal
  
- homog  = mappingHomogenization(2,ip,el)
   
  do grain = 1, homogenization_Ngrains(mesh_element(3,el))
    thermal_adiabatic_getSpecificHeat = thermal_adiabatic_getSpecificHeat + &
@@ -311,9 +291,7 @@ function thermal_adiabatic_getMassDensity(ip,el)
    material_phase
  use mesh, only: &
    mesh_element
- use crystallite, only: &
-   crystallite_push33ToRef
-
+   
  implicit none
  integer(pInt), intent(in) :: &
    ip, &                                                                                            !< integration point number
@@ -321,11 +299,10 @@ function thermal_adiabatic_getMassDensity(ip,el)
  real(pReal) :: &
    thermal_adiabatic_getMassDensity
  integer(pInt) :: &
-   homog, grain
+   grain
   
  thermal_adiabatic_getMassDensity = 0.0_pReal
- 
- homog  = mappingHomogenization(2,ip,el)
+
   
  do grain = 1, homogenization_Ngrains(mesh_element(3,el))
    thermal_adiabatic_getMassDensity = thermal_adiabatic_getMassDensity + &
@@ -346,7 +323,7 @@ function thermal_adiabatic_postResults(homog,instance,of) result(postResults)
    temperature
 
  implicit none
- integer(pInt),              intent(in) :: &
+ integer(pInt), intent(in) :: &
    homog, &
    instance, &
    of
