@@ -284,7 +284,7 @@ class Rotation:
                       P = -1):
 
       qu = quaternion
-      if P > 0: qu[1:3] *= -1                                                                       # convert from P=1 to P=-1
+      if P > 0: qu[1:4] *= -1                                                                       # convert from P=1 to P=-1
       if qu[0] < 0.0:
         raise ValueError('Quaternion has negative first component.\n{}'.format(qu[0]))
       if not np.isclose(np.linalg.norm(qu), 1.0):
@@ -307,15 +307,17 @@ class Rotation:
     def fromAngleAxis(cls,
                       angleAxis,
                       degrees = False,
+                      normalise = False,
                       P = -1):
                         
       ax = angleAxis
-      if P > 0: ax[1:3] *= -1                                                                       # convert from P=1 to P=-1
-      if degrees: ax[0] = np.degrees(ax[0])
+      if P > 0: ax[1:4] *= -1                                                                       # convert from P=1 to P=-1
+      if degrees:   ax[0] = np.degrees(ax[0])
+      if normalise: ax[1:4] /=np.linalg.norm(ax[1:4])
       if ax[0] < 0.0 or ax[0] > np.pi:
         raise ValueError('Axis angle rotation angle outside of [0..π].\n'.format(ax[0]))
-      if not np.isclose(np.linalg.norm(ax[1:3]), 1.0):
-        raise ValueError('Axis angle rotation axis is not of unit length.\n{} {} {}'.format(*ax[1:3]))
+      if not np.isclose(np.linalg.norm(ax[1:4]), 1.0):
+        raise ValueError('Axis angle rotation axis is not of unit length.\n{} {} {}'.format(*ax[1:4]))
       
       return cls(ax2qu(ax))
       
@@ -336,12 +338,14 @@ class Rotation:
     @classmethod
     def fromRodrigues(cls,
                       rodrigues,
+                      normalise = False,
                       P = -1):
         
       ro = rodrigues
-      if P > 0: ro[1:3] *= -1                                                                       # convert from P=1 to P=-1
-      if not np.isclose(np.linalg.norm(ro[1:3]), 1.0):
-        raise ValueError('Rodrigues rotation axis is not of unit length.\n{} {} {}'.format(*ro[1:3]))
+      if P > 0: ro[1:4] *= -1                                                                       # convert from P=1 to P=-1
+      if normalise: ro[1:4] /=np.linalg.norm(ro[1:4])
+      if not np.isclose(np.linalg.norm(ro[1:4]), 1.0):
+        raise ValueError('Rodrigues rotation axis is not of unit length.\n{} {} {}'.format(*ro[1:4]))
       if ro[0] < 0.0:
         raise ValueError('Rodriques rotation angle not positive.\n'.format(ro[0]))
         
@@ -354,10 +358,10 @@ class Rotation:
       
       Rotation: Details needed (active/passive), more cases (3,3), (3,3,3,3) need to be considered
       """
-      if isinstance(other, Rotation):
+      if isinstance(other, Rotation):                                                               # rotate a rotation
         return self.__class__((self.quaternion * other.quaternion).asArray())
       elif isinstance(other, np.ndarray):
-        if other.shape == (3,):
+        if other.shape == (3,):                                                                     # rotate a single (3)-vector
           ( x, y, z) = self.quaternion.p
           (Vx,Vy,Vz) = other[0:3]
           A = self.quaternion.q*self.quaternion.q - np.dot(self.quaternion.p,self.quaternion.p)
@@ -369,14 +373,37 @@ class Rotation:
             A*Vy + B*y + C*(z*Vx - x*Vz),
             A*Vz + B*z + C*(x*Vy - y*Vx),
             ])
-        elif other.shape == (3,3,):
+        elif other.shape == (3,3,):                                                                 # rotate a single (3x3)-matrix
            return np.dot(self.asMatrix(),np.dot(other,self.asMatrix().T))
         elif other.shape == (3,3,3,3):
           raise NotImplementedError
         else:
           return NotImplemented
+      elif isinstance(other, tuple):                                                                # used to rotate a meshgrid-tuple
+          ( x, y, z) = self.quaternion.p
+          (Vx,Vy,Vz) = other[0:3]
+          A = self.quaternion.q*self.quaternion.q - np.dot(self.quaternion.p,self.quaternion.p)
+          B = 2.0 * (x*Vx + y*Vy + z*Vz)
+          C = 2.0 * P*self.quaternion.q
+
+          return np.array([
+            A*Vx + B*x + C*(y*Vz - z*Vy),
+            A*Vy + B*y + C*(z*Vx - x*Vz),
+            A*Vz + B*z + C*(x*Vy - y*Vx),
+            ])
       else:
         return NotImplemented
+        
+    
+    def inverse(self):
+      """Inverse rotation/backward rotation"""
+      self.quaternion.conjugate()
+      return self
+      
+    def inversed(self):
+      """In-place inverse rotation/backward rotation"""
+      return self.__class__(self.quaternion.conjugated().asArray())
+
 
 # ******************************************************************************************
 class Quaternion:

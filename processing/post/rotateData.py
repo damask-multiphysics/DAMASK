@@ -40,9 +40,7 @@ parser.set_defaults(rotation = (0.,1.,1.,1.),                                   
 if options.data is None:
   parser.error('no data column specified.')
 
-toRadians = math.pi/180.0 if options.degrees else 1.0                                               # rescale degrees to radians
-q = damask.Quaternion().fromAngleAxis(toRadians*options.rotation[0],options.rotation[1:])
-R = q.asMatrix()
+r = damask.Rotation.fromAngleAxis(options.rotation,degrees)
 
 # --- loop over input files -------------------------------------------------------------------------
 
@@ -90,12 +88,11 @@ for name in filenames:
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     for v in active['vector']:
       column = table.label_index(v)
-      table.data[column:column+3] = q * np.array(list(map(float,table.data[column:column+3])))
+      table.data[column:column+3] = r * np.array(list(map(float,table.data[column:column+3])))
     for t in active['tensor']:
       column = table.label_index(t)
-      table.data[column:column+9] = \
-        np.dot(R,np.dot(np.array(list(map(float,table.data[column:column+9]))).reshape((3,3)),
-                        R.transpose())).reshape((9))
+      table.data[column:column+9] = (r * (np.array(list(map(float,table.data[column:column+9]))))).reshape((3,3))
+      
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output finalization -----------------------------------  

@@ -63,7 +63,7 @@ parser.set_defaults(center = (.0,.0,.0),
 if options.dimension is None:
   parser.error('no dimension specified.')   
 if options.angleaxis is not None:
-  rotation = damask.Rotation.fromAngleAxis(np.array(options.angleaxis),options.degrees)
+  rotation = damask.Rotation.fromAngleAxis(np.array(options.angleaxis),options.degrees,normalise=True)
 elif options.quaternion is not None:
   rotation = damask.Rotation.fromQuaternion(np.array(options.quaternion))
 else:
@@ -156,8 +156,7 @@ for name in filenames:
   X -= options.center[0] - 0.5
   Y -= options.center[1] - 0.5
   Z -= options.center[2] - 0.5
-  # and then by applying the quaternion
-  # this should be rotation.conjugate() * (X,Y,Z), but it is this way for backwards compatibility with the older version of this script
+  # and then by applying the rotation
   (X, Y, Z) = rotation * (X, Y, Z)
   # and finally by scaling (we don't worry about options.dimension being negative, np.abs occurs on the microstructure = np.where... line)
   X /= options.dimension[0] * 0.5
