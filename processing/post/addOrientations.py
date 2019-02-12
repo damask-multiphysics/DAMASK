@@ -21,19 +21,19 @@ Additional (globally fixed) rotations of the lab frame and/or crystal frame can 
 
 """, version = scriptID)
 
-outputChoices = {
-                  'quaternion': ['quat',4],
-                  'rodrigues':  ['rodr',3],
+representations = {
+                  'quaternion': ['quat',4], #ToDo: Use here Rowenhorst names (qu/ro/om/ax?)
+                  'rodrigues':  ['rodr',4],
                   'eulers':     ['eulr',3],
                   'matrix':     ['mtrx',9],
                   'angleaxis':  ['aaxs',4],
-                }
+                  }
 
 parser.add_option('-o',
                   '--output',
                   dest = 'output',
                   action = 'extend', metavar = '<string LIST>',
-                  help = 'output orientation formats {{{}}}'.format(', '.join(outputChoices)))
+                  help = 'output orientation formats {{{}}}'.format(', '.join(representations)))
 parser.add_option('-d',
                   '--degrees',
                   dest = 'degrees',
@@ -87,8 +87,8 @@ parser.set_defaults(output = [],
 (options, filenames) = parser.parse_args()
 
 options.output = list(map(lambda x: x.lower(), options.output))
-if options.output == [] or (not set(options.output).issubset(set(outputChoices))):
-  parser.error('output must be chosen from {}.'.format(', '.join(outputChoices)))
+if options.output == [] or (not set(options.output).issubset(set(representations))):
+  parser.error('output must be chosen from {}.'.format(', '.join(representations)))
 
 input = [options.eulers     is not None,
          options.rodrigues  is not None,
@@ -101,11 +101,11 @@ input = [options.eulers     is not None,
 
 if np.sum(input) != 1: parser.error('needs exactly one input format.')
 
-(label,dim,inputtype) = [(options.eulers,3,'eulers'),
-                         (options.rodrigues,3,'rodrigues'),
+(label,dim,inputtype) = [(options.eulers,representations['eulers'][1],'eulers'),
+                         (options.rodrigues,representations['rodrigues'][1],'rodrigues'),
                          ([options.x,options.y,options.z],[3,3,3],'frame'),
-                         (options.matrix,9,'matrix'),
-                         (options.quaternion,4,'quaternion'),
+                         (options.matrix,representations['matrix'][1],'matrix'),
+                         (options.quaternion,representations['quaternion'][1],'quaternion'),
                         ][np.where(input)[0][0]]                                                    # select input label that was requested
 
 r = damask.Rotation.fromAngleAxis(options.crystalrotation,options.degrees)                          # crystal frame rotation
@@ -143,9 +143,9 @@ for name in filenames:
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
   for output in options.output:
-    if output in outputChoices:
-      table.labels_append(['{}_{}({})'.format(i+1,outputChoices[output][0],label) \
-                           for i in range(outputChoices[output][1])])
+    if output in representations:
+      table.labels_append(['{}_{}({})'.format(i+1,representations[output][0],label) \
+                           for i in range(representations[output][1])])
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
@@ -153,13 +153,16 @@ for name in filenames:
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     if   inputtype == 'eulers':
-      o = damask.Rotation.fromEulers(list(map(float,table.data[column:column+3])),options.degrees)
+      l = representations['eulers'][1]
+      o = damask.Rotation.fromEulers(list(map(float,table.data[column:column+l])),options.degrees)
       
     elif inputtype == 'rodrigues':
-      o = damask.Rotation.fromRodrigues(list(map(float,table.data[column:column+3])))
+      l = representations['rodrigues'][1]
+      o = damask.Rotation.fromRodrigues(list(map(float,table.data[column:column+l])))
       
     elif inputtype == 'matrix':
-      o = damask.Rotation.fromMatrix(list(map(float,table.data[column:column+9])).reshape(3,3))
+      l = representations['matrix'][1]
+      o = damask.Rotation.fromMatrix(list(map(float,table.data[column:column+l])))
 
     elif inputtype == 'frame':
       M = np.array(list(map(float,table.data[column[0]:column[0]+3] + \
@@ -168,7 +171,8 @@ for name in filenames:
       o = damask.Rotation.fromMatrix(M/np.linalg.norm(M,axis=0))
       
     elif inputtype == 'quaternion':
-      o = damask.Rotation.fromQuaternion(list(map(float,table.data[column:column+4])))
+      l = representations['quaternion'][1]
+      o = damask.Rotation.fromQuaternion(list(map(float,table.data[column:column+l])))
 
     o= r*o*R                                                                                        # apply additional lab and crystal frame rotations
 
@@ -177,7 +181,7 @@ for name in filenames:
       elif output == 'rodrigues':  table.data_append(o.asRodrigues())
       elif output == 'eulers':     table.data_append(o.asEulers(degrees=options.degrees))
       elif output == 'matrix':     table.data_append(o.asMatrix())
-      elif output == 'angleaxis':  table.data_append(o.asAngleAxis(degrees=options.degrees,flat=True))
+      elif output == 'angleaxis':  table.data_append(o.asAngleAxis(degrees=options.degrees))
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output finalization -----------------------------------  

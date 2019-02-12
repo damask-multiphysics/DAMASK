@@ -336,7 +336,7 @@ class Rotation:
                    matrix,
                    containsStretch = False):                                 #ToDo: better name?
       
-      om = matrix if isinstance(matrix, np.ndarray) else np.array(matrix)
+      om = matrix if isinstance(matrix, np.ndarray) else np.array(matrix).reshape((3,3))            # ToDo: Reshape here or require explicit?
       if containsStretch:
         (U,S,Vh) = np.linalg.svd(om)                                                                # singular value decomposition
         om = np.dot(U,Vh)     
@@ -356,12 +356,12 @@ class Rotation:
                       P = -1):
         
       ro = rodrigues if isinstance(rodrigues, np.ndarray) else np.array(rodrigues) 
-      if P > 0: ro[1:4] *= -1                                                                       # convert from P=1 to P=-1
-      if normalise: ro[1:4] /=np.linalg.norm(ro[1:4])
-      if not np.isclose(np.linalg.norm(ro[1:4]), 1.0):
-        raise ValueError('Rodrigues rotation axis is not of unit length.\n{} {} {}'.format(*ro[1:4]))
-      if ro[0] < 0.0:
-        raise ValueError('Rodriques rotation angle not positive.\n'.format(ro[0]))
+      if P > 0: ro[0:3] *= -1                                                                       # convert from P=1 to P=-1
+      if normalise: ro[0:3] /=np.linalg.norm(ro[0:3])
+      if not np.isclose(np.linalg.norm(ro[0:3]), 1.0):
+        raise ValueError('Rodrigues rotation axis is not of unit length.\n{} {} {}'.format(*ro[0:3]))
+      if ro[3] < 0.0:
+        raise ValueError('Rodriques rotation angle not positive.\n'.format(ro[3]))
         
       return cls(ro2qu(ro))
 
