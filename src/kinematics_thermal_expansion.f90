@@ -10,7 +10,11 @@ module kinematics_thermal_expansion
 
  implicit none
  private
-
+ 
+ !type, private :: tParameters
+ !  real(pReal), allocatable, dimension(:) :: &
+ !end type tParameters
+ 
  public :: &
    kinematics_thermal_expansion_init, &
    kinematics_thermal_expansion_initialStrain, &
@@ -43,49 +47,43 @@ subroutine kinematics_thermal_expansion_init()
    config_phase
 
  implicit none
- integer(pInt) maxNinstance
+ integer(pInt) :: &
+   Ninstance, &
+   p
  
  write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_thermal_expansion_LABEL//' init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- maxNinstance = int(count(phase_kinematics == KINEMATICS_thermal_expansion_ID),pInt)
- if (maxNinstance == 0_pInt) return
+ Ninstance = int(count(phase_kinematics == KINEMATICS_thermal_expansion_ID),pInt)
+ if (Ninstance == 0_pInt) return
  
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
-   write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
+   write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
-! ToDo: this subroutine should read in lattice_thermal_expansion. No need to make it a global array
+ do p = 1_pInt, size(phase_kinematics)
+   if (all(phase_kinematics(:,p) /= KINEMATICS_thermal_expansion_ID)) cycle
+ enddo
 
 end subroutine kinematics_thermal_expansion_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief  report initial thermal strain based on current temperature deviation from reference
 !--------------------------------------------------------------------------------------------------
-pure function kinematics_thermal_expansion_initialStrain(ipc, ip, el)
+pure function kinematics_thermal_expansion_initialStrain(homog,phase,offset)
  use material, only: &
-   material_phase, &
-   material_homog, &
-   temperature, &
-   thermalMapping
+   temperature
  use lattice, only: &
    lattice_thermalExpansion33, &
    lattice_referenceTemperature
  
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- real(pReal), dimension(3,3) :: &
-   kinematics_thermal_expansion_initialStrain                                                       !< initial thermal strain (should be small strain, though)
- integer(pInt) :: &
    phase, &
    homog, offset
-   
- phase = material_phase(ipc,ip,el)
- homog = material_homog(ip,el)
- offset = thermalMapping(homog)%p(ip,el)
+ real(pReal), dimension(3,3) :: &
+   kinematics_thermal_expansion_initialStrain                                                       !< initial thermal strain (should be small strain, though)
+
  
  kinematics_thermal_expansion_initialStrain = &
    (temperature(homog)%p(offset) - lattice_referenceTemperature(phase))**1 / 1. * &

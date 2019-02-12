@@ -649,6 +649,9 @@ pure function constitutive_initialFi(ipc, ip, el)
    math_inv33, &
    math_mul33x33
  use material, only: &
+   material_phase, &
+   material_homog, &
+   thermalMapping, &
    phase_kinematics, &
    phase_Nkinematics, &
    material_phase, &
@@ -665,14 +668,20 @@ pure function constitutive_initialFi(ipc, ip, el)
    constitutive_initialFi                                                                           !< composite initial intermediate deformation gradient
  integer(pInt) :: &
    k                                                                                                !< counter in kinematics loop
+ integer(pInt) :: &
+   phase, &
+   homog, offset
 
  constitutive_initialFi = math_I3
+ phase = material_phase(ipc,ip,el)
 
- KinematicsLoop: do k = 1_pInt, phase_Nkinematics(material_phase(ipc,ip,el))                        !< Warning: small initial strain assumption
-   kinematicsType: select case (phase_kinematics(k,material_phase(ipc,ip,el)))
+ KinematicsLoop: do k = 1_pInt, phase_Nkinematics(phase)                                            !< Warning: small initial strain assumption
+   kinematicsType: select case (phase_kinematics(k,phase))
      case (KINEMATICS_thermal_expansion_ID) kinematicsType
+       homog = material_homog(ip,el)
+       offset = thermalMapping(homog)%p(ip,el)
        constitutive_initialFi = &
-         constitutive_initialFi + kinematics_thermal_expansion_initialStrain(ipc, ip, el)
+         constitutive_initialFi + kinematics_thermal_expansion_initialStrain(homog,phase,offset)
    end select kinematicsType
  enddo KinematicsLoop
 
