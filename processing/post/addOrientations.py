@@ -109,7 +109,7 @@ if np.sum(input) != 1: parser.error('needs exactly one input format.')
                         ][np.where(input)[0][0]]                                                    # select input label that was requested
 
 crystalrotation = np.array(options.crystalrotation[1:4] + (options.crystalrotation[0],))            # Compatibility hack
-labrotation     = np.array(options.labrotation[1:4],    + (options.labrotation[0],))                # Compatibility hack
+labrotation     = np.array(options.labrotation[1:4]     + (options.labrotation[0],))                # Compatibility hack
 r = damask.Rotation.fromAngleAxis(crystalrotation,options.degrees)                                  # crystal frame rotation
 R = damask.Rotation.fromAngleAxis(labrotation,options.degrees)                                      #     lab frame rotation
 
