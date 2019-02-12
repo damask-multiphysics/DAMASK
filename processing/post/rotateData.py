@@ -40,7 +40,8 @@ parser.set_defaults(rotation = (0.,1.,0.,0.),                                   
 if options.data is None:
   parser.error('no data column specified.')
 
-r = damask.Rotation.fromAngleAxis(options.rotation,options.degrees,normalise=True)
+rotation = np.array(options.rotation[1:4]+(options.rotation[0],))                                   # Compatibility hack
+r = damask.Rotation.fromAngleAxis(rotation,options.degrees,normalise=True)
 
 # --- loop over input files -------------------------------------------------------------------------
 

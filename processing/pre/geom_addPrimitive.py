@@ -63,7 +63,8 @@ parser.set_defaults(center = (.0,.0,.0),
 if options.dimension is None:
   parser.error('no dimension specified.')   
 if options.angleaxis is not None:
-  rotation = damask.Rotation.fromAngleAxis(options.angleaxis,options.degrees,normalise=True)
+  ax = np.array(options.angleaxis[1:4] + (options.angleaxis[0],))   # Compatibility hack
+  rotation = damask.Rotation.fromAngleAxis(ax,options.degrees,normalise=True)
 elif options.quaternion is not None:
   rotation = damask.Rotation.fromQuaternion(options.quaternion)
 else:

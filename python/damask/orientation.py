@@ -267,7 +267,7 @@ class Rotation:
                     degrees = False):
                       
       ax = qu2ax(self.quaternion.asArray())
-      if degrees: ax[0] = np.degrees(ax[0])
+      if degrees: ax[3] = np.degrees(ax[3])
       
       return ax
       
@@ -321,13 +321,13 @@ class Rotation:
                       P = -1):
       
       ax = angleAxis if isinstance(angleAxis, np.ndarray) else np.array(angleAxis)
-      if P > 0: ax[1:4] *= -1                                                                       # convert from P=1 to P=-1
-      if degrees:   ax[0] = np.radians(ax[0])
-      if normalise: ax[1:4] /=np.linalg.norm(ax[1:4])
-      if ax[0] < 0.0 or ax[0] > np.pi:
-        raise ValueError('Axis angle rotation angle outside of [0..π].\n'.format(ax[0]))
-      if not np.isclose(np.linalg.norm(ax[1:4]), 1.0):
-        raise ValueError('Axis angle rotation axis is not of unit length.\n{} {} {}'.format(*ax[1:4]))
+      if P > 0: ax[0:3] *= -1                                                                       # convert from P=1 to P=-1
+      if degrees:   ax[3] = np.radians(ax[3])
+      if normalise: ax[0:3] /=np.linalg.norm(ax[0:3])
+      if ax[3] < 0.0 or ax[3] > np.pi:
+        raise ValueError('Axis angle rotation angle outside of [0..π].\n'.format(ax[3]))
+      if not np.isclose(np.linalg.norm(ax[0:3]), 1.0):
+        raise ValueError('Axis angle rotation axis is not of unit length.\n{} {} {}'.format(*ax[0:3]))
       
       return cls(ax2qu(ax))
       
