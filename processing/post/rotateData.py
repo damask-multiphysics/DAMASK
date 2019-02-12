@@ -91,7 +91,7 @@ for name in filenames:
       table.data[column:column+3] = r * np.array(list(map(float,table.data[column:column+3])))
     for t in active['tensor']:
       column = table.label_index(t)
-      table.data[column:column+9] = (r * (np.array(list(map(float,table.data[column:column+9]))))).reshape((3,3))
+      table.data[column:column+9] = (r * np.array(list(map(float,table.data[column:column+9]))).reshape((3,3))).reshape(9)
       
     outputAlive = table.data_write()                                                                # output processed line
 

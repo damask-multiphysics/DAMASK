@@ -322,7 +322,7 @@ class Rotation:
       
       ax = angleAxis if isinstance(angleAxis, np.ndarray) else np.array(angleAxis)
       if P > 0: ax[1:4] *= -1                                                                       # convert from P=1 to P=-1
-      if degrees:   ax[0] = np.degrees(ax[0])
+      if degrees:   ax[0] = np.radians(ax[0])
       if normalise: ax[1:4] /=np.linalg.norm(ax[1:4])
       if ax[0] < 0.0 or ax[0] > np.pi:
         raise ValueError('Axis angle rotation angle outside of [0..π].\n'.format(ax[0]))

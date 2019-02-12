@@ -212,10 +212,10 @@ for name in filenames:
 
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    o = damask.Orientation(quaternion = np.array(list(map(float,table.data[column:column+4]))))
+    o = damask.Rotation(list(map(float,table.data[column:column+4])))
 
-    table.data_append(  np.abs(  np.sum(slip_direction * (o.quaternion * force) ,axis=1) \
-                               * np.sum(slip_normal    * (o.quaternion * normal),axis=1)))
+    table.data_append(  np.abs(  np.sum(slip_direction * (o * force) ,axis=1) \
+                               * np.sum(slip_normal    * (o * normal),axis=1)))
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output finalization -----------------------------------  
