@@ -113,10 +113,10 @@ subroutine kinematics_slipplane_opening_init()
    tempInt = config_phase(p)%getInts('ncleavage')     
    kinematics_slipplane_opening_Nslip(1:size(tempInt),instance) = tempInt
 
-   tempFloat = config_phase(p)%getFloats('anisoductile_criticalplasticstrain',requiredShape=shape(tempInt))
+   tempFloat = config_phase(p)%getFloats('anisoductile_criticalplasticstrain',requiredSize=size(tempInt))
    kinematics_slipplane_opening_critPlasticStrain(1:size(tempInt),instance) = tempFloat
 
-   tempFloat = config_phase(p)%getFloats('anisoductile_criticalload',requiredShape=shape(tempInt))
+   tempFloat = config_phase(p)%getFloats('anisoductile_criticalload',requiredSize=size(tempInt))
    kinematics_slipplane_opening_critLoad(1:size(tempInt),instance) = tempFloat
 
      kinematics_slipplane_opening_Nslip(1:lattice_maxNslipFamily,instance) = &
@@ -136,9 +136,11 @@ end subroutine kinematics_slipplane_opening_init
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient  
 !--------------------------------------------------------------------------------------------------
-subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, Tstar_v, ipc, ip, el)
+subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, ip, el)
  use prec, only: &
    tol_math_check
+ use math, only: &
+   math_mul33xx33
  use lattice, only: &
    lattice_maxNslipFamily, &
    lattice_NslipSystem, &
@@ -151,9 +153,6 @@ subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, Tstar_v,
    damage, &
    damageMapping
  use math, only: &
-   math_Plain3333to99, &
-   math_symmetric33, &
-   math_Mandel33to6, &
    math_tensorproduct33
  
  implicit none
@@ -161,16 +160,14 @@ subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, Tstar_v,
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal),   intent(in),  dimension(6) :: &
-   Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
+ real(pReal),   intent(in),  dimension(3,3) :: &
+   S
  real(pReal),   intent(out), dimension(3,3) :: &
    Ld                                                                                               !< damage velocity gradient
  real(pReal),   intent(out), dimension(3,3,3,3) :: &
    dLd_dTstar                                                                                       !< derivative of Ld with respect to Tstar (4th-order tensor)
  real(pReal),   dimension(3,3) :: &
    projection_d, projection_t, projection_n                                                         !< projection modes 3x3 tensor
- real(pReal),   dimension(6) :: &
-   projection_d_v, projection_t_v, projection_n_v                                                   !< projection modes 3x3 vector
  integer(pInt) :: &
    instance, phase, &
    homog, damageOffset, &
@@ -196,13 +193,10 @@ subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, Tstar_v,
      projection_n = math_tensorproduct33(lattice_sn(1:3,index_myFamily+i,phase),&
                                        lattice_sn(1:3,index_myFamily+i,phase))
 
-     projection_d_v(1:6) = math_Mandel33to6(math_symmetric33(projection_d(1:3,1:3)))
-     projection_t_v(1:6) = math_Mandel33to6(math_symmetric33(projection_t(1:3,1:3)))
-     projection_n_v(1:6) = math_Mandel33to6(math_symmetric33(projection_n(1:3,1:3)))
    
-     traction_d    = dot_product(Tstar_v,projection_d_v(1:6))
-     traction_t    = dot_product(Tstar_v,projection_t_v(1:6))
-     traction_n    = dot_product(Tstar_v,projection_n_v(1:6))
+     traction_d    = math_mul33xx33(S,projection_d)
+     traction_t    = math_mul33xx33(S,projection_t)
+     traction_n    = math_mul33xx33(S,projection_n)
      
      traction_crit = kinematics_slipplane_opening_critLoad(f,instance)* &
                      damage(homog)%p(damageOffset)                                                        ! degrading critical load carrying capacity by damage 

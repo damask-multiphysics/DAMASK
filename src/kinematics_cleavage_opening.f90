@@ -113,10 +113,10 @@ subroutine kinematics_cleavage_opening_init()
    tempInt = config_phase(p)%getInts('ncleavage')     
    kinematics_cleavage_opening_Ncleavage(1:size(tempInt),instance) = tempInt
 
-   tempFloat = config_phase(p)%getFloats('anisobrittle_criticaldisplacement',requiredShape=shape(tempInt))
+   tempFloat = config_phase(p)%getFloats('anisobrittle_criticaldisplacement',requiredSize=size(tempInt))
    kinematics_cleavage_opening_critDisp(1:size(tempInt),instance) = tempFloat
 
-   tempFloat = config_phase(p)%getFloats('anisobrittle_criticalload',requiredShape=shape(tempInt))
+   tempFloat = config_phase(p)%getFloats('anisobrittle_criticalload',requiredSize=size(tempInt))
    kinematics_cleavage_opening_critLoad(1:size(tempInt),instance) = tempFloat
 
    kinematics_cleavage_opening_Ncleavage(1:lattice_maxNcleavageFamily,instance) = &
@@ -138,9 +138,11 @@ end subroutine kinematics_cleavage_opening_init
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient  
 !--------------------------------------------------------------------------------------------------
-subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, Tstar_v, ipc, ip, el)
+subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, ip, el)
  use prec, only: &
    tol_math_check
+ use math, only: &
+   math_mul33xx33
  use material, only: &
    material_phase, &
    material_homog, &
@@ -148,7 +150,6 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, Tstar_v, 
    damageMapping
  use lattice, only: &
    lattice_Scleavage, &
-   lattice_Scleavage_v, &
    lattice_maxNcleavageFamily, &
    lattice_NcleavageSystem
  
@@ -157,8 +158,8 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, Tstar_v, 
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal),   intent(in),  dimension(6) :: &
-   Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
+ real(pReal),   intent(in),  dimension(3,3) :: &
+   S
  real(pReal),   intent(out), dimension(3,3) :: &
    Ld                                                                                               !< damage velocity gradient
  real(pReal),   intent(out), dimension(3,3,3,3) :: &
@@ -181,9 +182,9 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, Tstar_v, 
  do f = 1_pInt,lattice_maxNcleavageFamily
    index_myFamily = sum(lattice_NcleavageSystem(1:f-1_pInt,phase))                                   ! at which index starts my family
    do i = 1_pInt,kinematics_cleavage_opening_Ncleavage(f,instance)                                            ! process each (active) cleavage system in family
-     traction_d    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,1,index_myFamily+i,phase))
-     traction_t    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,2,index_myFamily+i,phase))
-     traction_n    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,3,index_myFamily+i,phase))
+     traction_d    = math_mul33xx33(S,lattice_Scleavage(1:3,1:3,1,index_myFamily+i,phase))
+     traction_t    = math_mul33xx33(S,lattice_Scleavage(1:3,1:3,2,index_myFamily+i,phase))
+     traction_n    = math_mul33xx33(S,lattice_Scleavage(1:3,1:3,3,index_myFamily+i,phase))
      traction_crit = kinematics_cleavage_opening_critLoad(f,instance)* &
                      damage(homog)%p(damageOffset)*damage(homog)%p(damageOffset)
      udotd = &

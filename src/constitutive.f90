@@ -611,9 +611,9 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, S6, Fi, ipc, ip, e
  KinematicsLoop: do k = 1_pInt, phase_Nkinematics(material_phase(ipc,ip,el))
    kinematicsType: select case (phase_kinematics(k,material_phase(ipc,ip,el)))
      case (KINEMATICS_cleavage_opening_ID) kinematicsType
-       call kinematics_cleavage_opening_LiAndItsTangent(my_Li, my_dLi_dS, S6, ipc, ip, el)
+       call kinematics_cleavage_opening_LiAndItsTangent(my_Li, my_dLi_dS, math_6toSym33(S6), ipc, ip, el)
      case (KINEMATICS_slipplane_opening_ID) kinematicsType
-       call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dS, S6, ipc, ip, el)
+       call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dS, math_6toSym33(S6), ipc, ip, el)
      case (KINEMATICS_thermal_expansion_ID) kinematicsType
        call kinematics_thermal_expansion_LiAndItsTangent(my_Li, my_dLi_dS, ipc, ip, el)
      case default kinematicsType
@@ -901,7 +901,7 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
    sourceType: select case (phase_source(s,material_phase(ipc,ip,el)))
 
      case (SOURCE_damage_anisoBrittle_ID) sourceType
-       call source_damage_anisoBrittle_dotState (S6, ipc, ip, el) !< correct stress?
+       call source_damage_anisoBrittle_dotState (math_6toSym33(S6), ipc, ip, el) !< correct stress?
 
      case (SOURCE_damage_isoDuctile_ID) sourceType
        call source_damage_isoDuctile_dotState   (         ipc, ip, el)

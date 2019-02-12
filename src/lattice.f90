@@ -31,8 +31,7 @@ module lattice
    lattice_Scleavage                                                                                !< Schmid matrices for cleavage systems
 
  real(pReal), allocatable, dimension(:,:,:,:), protected, public :: &
-   lattice_Sslip_v, &                                                                               !< Mandel notation of lattice_Sslip
-   lattice_Scleavage_v                                                                              !< Mandel notation of lattice_Scleavege
+   lattice_Sslip_v                                                                              !< Mandel notation of lattice_Sslip
 
  real(pReal), allocatable, dimension(:,:,:), protected, public :: &
    lattice_sn, &                                                                                    !< normal direction of slip system
@@ -776,7 +775,6 @@ subroutine lattice_init
  allocate(lattice_interactionSlipSlip(lattice_maxNslip,lattice_maxNslip,Nphases),source=0_pInt)     ! other:me
 
  allocate(lattice_Scleavage(3,3,3,lattice_maxNslip,Nphases),source=0.0_pReal)
- allocate(lattice_Scleavage_v(6,3,lattice_maxNslip,Nphases),source=0.0_pReal)
  allocate(lattice_NcleavageSystem(lattice_maxNcleavageFamily,Nphases),source=0_pInt)
 
  allocate(CoverA(Nphases),source=0.0_pReal)
@@ -1057,13 +1055,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
    do j = 1_pInt,1_pInt+2_pInt*lattice_NnonSchmid(myPhase)
      lattice_Sslip_v(1:6,j,i,myPhase) = &
        math_sym33to6(math_symmetric33(lattice_Sslip(1:3,1:3,j,i,myPhase)))
-   enddo
- enddo
-
- do i = 1_pInt,myNcleavage                                                                          ! store slip system vectors and Schmid matrix for my structure
-   do j = 1_pInt,3_pInt
-     lattice_Scleavage_v(1:6,j,i,myPhase) = &
-       math_sym33to6(math_symmetric33(lattice_Scleavage(1:3,1:3,j,i,myPhase)))
    enddo
  enddo
 

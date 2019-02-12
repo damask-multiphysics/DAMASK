@@ -309,7 +309,9 @@ end subroutine source_damage_anisoBrittle_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_anisoBrittle_dotState(Tstar_v, ipc, ip, el)
+subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
+ use math, only: &
+   math_mul33xx33
  use material, only: &
    phaseAt, phasememberAt, &
    sourceState, &
@@ -317,7 +319,7 @@ subroutine source_damage_anisoBrittle_dotState(Tstar_v, ipc, ip, el)
    damage, &
    damageMapping
  use lattice, only: &
-   lattice_Scleavage_v, &
+   lattice_Scleavage, &
    lattice_maxNcleavageFamily, &
    lattice_NcleavageSystem
 
@@ -326,8 +328,8 @@ subroutine source_damage_anisoBrittle_dotState(Tstar_v, ipc, ip, el)
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- real(pReal),  intent(in), dimension(6) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
+ real(pReal),  intent(in), dimension(3,3) :: &
+   S
  integer(pInt) :: &
    phase, &
    constituent, &
@@ -350,9 +352,9 @@ subroutine source_damage_anisoBrittle_dotState(Tstar_v, ipc, ip, el)
  do f = 1_pInt,lattice_maxNcleavageFamily
    index_myFamily = sum(lattice_NcleavageSystem(1:f-1_pInt,phase))                                    ! at which index starts my family
    do i = 1_pInt,source_damage_anisoBrittle_Ncleavage(f,instance)                                     ! process each (active) cleavage system in family
-     traction_d    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,1,index_myFamily+i,phase))
-     traction_t    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,2,index_myFamily+i,phase))
-     traction_n    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,3,index_myFamily+i,phase))
+     traction_d    = math_mul33xx33(S,lattice_Scleavage(1:3,1:3,1,index_myFamily+i,phase))
+     traction_t    = math_mul33xx33(S,lattice_Scleavage(1:3,1:3,2,index_myFamily+i,phase))
+     traction_n    = math_mul33xx33(S,lattice_Scleavage(1:3,1:3,3,index_myFamily+i,phase))
      
      traction_crit = source_damage_anisoBrittle_critLoad(f,instance)* &
                      damage(homog)%p(damageOffset)*damage(homog)%p(damageOffset)
