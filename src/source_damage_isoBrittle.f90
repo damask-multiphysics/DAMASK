@@ -39,6 +39,8 @@ module source_damage_isoBrittle
      critStrainEnergy, &
      N, &
      aTol
+   integer(kind(undefined_ID)), allocatable, dimension(:) :: &
+     outputID
  end type tParameters
 
  type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
@@ -95,23 +97,26 @@ subroutine source_damage_isoBrittle_init(fileUnit)
    config_phase, &
    material_Nphase, &
    MATERIAL_partPhase
- use numerics,only: &
-   numerics_integrator
 
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: Ninstance,mySize=0_pInt,phase,instance,source,sourceOffset,o
- integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
- integer(pInt) :: NofMyPhase,p   
- character(len=pStringLen) :: &
-   extmsg = ''
+ integer(pInt) :: NofMyPhase,p,i   
  character(len=65536) :: &
    tag  = '', &
    line = ''
+ character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
+ integer(kind(undefined_ID)) :: &
+   outputID
 
- write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_damage_isoBrittle_label//' init  -+>>>'
+ character(len=pStringLen) :: &
+   extmsg = ''
+ character(len=65536), dimension(:), allocatable :: &
+   outputs
+ 
+ write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_DAMAGE_ISOBRITTLE_LABEL//' init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
@@ -156,6 +161,24 @@ subroutine source_damage_isoBrittle_init(fileUnit)
    if (prm%N                  <= 0.0_pReal) extmsg = trim(extmsg)//' isobrittle_n'
    if (prm%critStrainEnergy   <= 0.0_pReal) extmsg = trim(extmsg)//' isobrittle_criticalstrainenergy'
    
+!--------------------------------------------------------------------------------------------------
+!  exit if any parameter is out of range
+   if (extmsg /= '') &
+     call IO_error(211_pInt,ext_msg=trim(extmsg)//'('//SOURCE_DAMAGE_ISOBRITTLE_LABEL//')')
+
+!--------------------------------------------------------------------------------------------------
+!  output pararameters
+   outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
+   allocate(prm%outputID(0))
+   do i=1_pInt, size(outputs)
+     outputID = undefined_ID
+     select case(outputs(i))
+       case ('isobrittle_drivingforce')
+       
+     end select
+
+   enddo
+
    end associate
    
  enddo

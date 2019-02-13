@@ -57,6 +57,8 @@ module source_damage_anisoDuctile
      totalNslip
    integer(pInt), dimension(:), allocatable :: &
      Nslip
+   integer(kind(undefined_ID)), allocatable, dimension(:) :: &
+     outputID
  end type tParameters
 
  type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
@@ -113,8 +115,6 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
    config_phase, &
    material_Nphase, &
    MATERIAL_partPhase
- use numerics,only: &
-   numerics_integrator
  use lattice, only: &
    lattice_maxNslipFamily, &
    lattice_NslipSystem
@@ -124,17 +124,22 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
 
  integer(pInt), allocatable, dimension(:) :: chunkPos
  integer(pInt) :: Ninstance,mySize=0_pInt,phase,instance,source,sourceOffset,o
- integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
- integer(pInt) :: NofMyPhase,p   
- integer(pInt) :: Nchunks_SlipFamilies = 0_pInt, j   
- character(len=pStringLen) :: &
-   extmsg = ''
+ integer(pInt) :: NofMyPhase,p ,i
+ integer(pInt) :: Nchunks_SlipFamilies = 0_pInt, j
  character(len=65536) :: &
    tag  = '', &
    line = ''
  integer(pInt),          dimension(0), parameter :: emptyIntArray    = [integer(pInt)::]
+ character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
+ integer(kind(undefined_ID)) :: &
+   outputID
 
- write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_damage_anisoDuctile_LABEL//' init  -+>>>'
+ character(len=pStringLen) :: &
+   extmsg = ''
+ character(len=65536), dimension(:), allocatable :: &
+   outputs
+
+ write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_DAMAGE_ANISODUCTILE_LABEL//' init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
@@ -184,6 +189,24 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
    
    prm%Nslip  = config%getInts('nslip',defaultVal=emptyIntArray)
    
+!--------------------------------------------------------------------------------------------------
+!  exit if any parameter is out of range
+   if (extmsg /= '') &
+     call IO_error(211_pInt,ext_msg=trim(extmsg)//'('//SOURCE_DAMAGE_ANISODUCTILE_LABEL//')')
+
+!--------------------------------------------------------------------------------------------------
+!  output pararameters
+   outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
+   allocate(prm%outputID(0))
+   do i=1_pInt, size(outputs)
+     outputID = undefined_ID
+     select case(outputs(i))
+       case ('anisoductile_drivingforce')
+
+     end select
+
+   enddo
+
    end associate
    
  enddo
