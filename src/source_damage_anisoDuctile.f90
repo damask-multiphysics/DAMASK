@@ -34,9 +34,6 @@ module source_damage_anisoDuctile
  real(pReal),                         dimension(:,:),         allocatable,         private :: &
    source_damage_anisoDuctile_critPlasticStrain
 
- real(pReal),                         dimension(:),           allocatable,         private :: &
-   source_damage_anisoDuctile_sdot_0
-
  real(pReal),                         dimension(:,:),         allocatable,         private :: &
    source_damage_anisoDuctile_critLoad
    
@@ -52,7 +49,6 @@ module source_damage_anisoDuctile
  type, private :: tParameters                                                                       !< container type for internal constitutive parameters
    real(pReal) :: &
      aTol, &
-     sdot_0, &
      N
    real(pReal), dimension(:), allocatable :: &
      critPlasticStrain, &
@@ -169,7 +165,6 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
  allocate(source_damage_anisoDuctile_critPlasticStrain(lattice_maxNslipFamily,Ninstance),source=0.0_pReal) 
  allocate(source_damage_anisoDuctile_Nslip(lattice_maxNslipFamily,Ninstance),        source=0_pInt)
  allocate(source_damage_anisoDuctile_totalNslip(Ninstance),                          source=0_pInt) 
- allocate(source_damage_anisoDuctile_sdot_0(Ninstance),                              source=0.0_pReal) 
 
  allocate(param(Ninstance))
  
@@ -181,13 +176,11 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
    prm%aTol   = config%getFloat('anisoductile_atol',defaultVal = 1.0e-3_pReal)
 
    prm%N      = config%getFloat('anisoductile_ratesensitivity')
-   prm%sdot_0 = config%getFloat('anisoductile_sdot0')
    
    ! sanity checks
    if (prm%aTol                 < 0.0_pReal) extmsg = trim(extmsg)//' anisoductile_atol'
    
    if (prm%N                   <= 0.0_pReal) extmsg = trim(extmsg)//' anisoductile_ratesensitivity'
-   if (prm%sdot_0              <= 0.0_pReal) extmsg = trim(extmsg)//' anisoductile_sdot0'
    
    prm%Nslip  = config%getInts('nslip',defaultVal=emptyIntArray)
    
@@ -231,9 +224,6 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
          do j = 1_pInt, Nchunks_SlipFamilies
            source_damage_anisoDuctile_Nslip(j,instance) = IO_intValue(line,chunkPos,1_pInt+j)
          enddo
-
-       case ('anisoductile_sdot0')
-         source_damage_anisoDuctile_sdot_0(instance) = IO_floatValue(line,chunkPos,2_pInt)
          
        case ('anisoductile_criticalplasticstrain')
          do j = 1_pInt, Nchunks_SlipFamilies
