@@ -26,8 +26,6 @@ module source_damage_isoBrittle
    source_damage_isoBrittle_Noutput                                                                   !< number of outputs per instance of this damage 
 
  real(pReal),                         dimension(:),     allocatable,         private :: &
-   source_damage_isoBrittle_aTol, &
-   source_damage_isoBrittle_N, &
    source_damage_isoBrittle_critStrainEnergy
 
  enum, bind(c) 
@@ -68,6 +66,8 @@ subroutine source_damage_isoBrittle_init(fileUnit)
    compiler_version, &
    compiler_options
 #endif
+ use prec, only: &
+   pStringLen
  use debug, only: &
    debug_level,&
    debug_constitutive,&
@@ -107,6 +107,8 @@ subroutine source_damage_isoBrittle_init(fileUnit)
  integer(pInt) :: Ninstance,mySize=0_pInt,phase,instance,source,sourceOffset,o
  integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
  integer(pInt) :: NofMyPhase,p   
+ character(len=pStringLen) :: &
+   extmsg = ''
  character(len=65536) :: &
    tag  = '', &
    line = ''
@@ -139,11 +141,27 @@ subroutine source_damage_isoBrittle_init(fileUnit)
  allocate(source_damage_isoBrittle_Noutput(Ninstance),                             source=0_pInt)
 
  allocate(source_damage_isoBrittle_critStrainEnergy(Ninstance),                    source=0.0_pReal) 
- allocate(source_damage_isoBrittle_N(Ninstance),                                   source=1.0_pReal) 
- allocate(source_damage_isoBrittle_aTol(Ninstance),                                source=0.0_pReal) 
 
+ allocate(param(Ninstance))
+ 
  do p=1, size(config_phase)
-   if (all(phase_source(:,p) /= SOURCE_damage_isoBrittle_ID)) cycle
+   if (all(phase_source(:,p) /= SOURCE_DAMAGE_ISOBRITTLE_ID)) cycle
+   associate(prm => param(source_damage_isoBrittle_instance(p)), &
+             config => config_phase(p))
+             
+   prm%aTol             = config%getFloat('isobrittle_atol',defaultVal = 1.0e-3_pReal)
+   
+   prm%N                = config%getFloat('isobrittle_n')
+   prm%critStrainEnergy = config%getFloat('isobrittle_criticalstrainenergy')
+   
+   ! sanity checks
+   if (prm%aTol                < 0.0_pReal) extmsg = trim(extmsg)//' isobrittle_atol'
+   
+   if (prm%N                  <= 0.0_pReal) extmsg = trim(extmsg)//' isobrittle_n'
+   if (prm%critStrainEnergy   <= 0.0_pReal) extmsg = trim(extmsg)//' isobrittle_criticalstrainenergy'
+   
+   end associate
+   
  enddo
 
  rewind(fileUnit)
@@ -180,28 +198,10 @@ subroutine source_damage_isoBrittle_init(fileUnit)
        case ('isobrittle_criticalstrainenergy')
          source_damage_isoBrittle_critStrainEnergy(instance) = IO_floatValue(line,chunkPos,2_pInt)
 
-       case ('isobrittle_n')
-         source_damage_isoBrittle_N(instance) = IO_floatValue(line,chunkPos,2_pInt)
-
-       case ('isobrittle_atol')
-         source_damage_isoBrittle_aTol(instance) = IO_floatValue(line,chunkPos,2_pInt)
-
      end select
    endif; endif
  enddo parsingFile
 
-
-!--------------------------------------------------------------------------------------------------
-!  sanity checks
- sanityChecks: do phase = 1_pInt, material_Nphase 
-   myPhase: if (any(phase_source(:,phase) == SOURCE_damage_isoBrittle_ID)) then
-     instance = source_damage_isoBrittle_instance(phase)
-     if (source_damage_isoBrittle_aTol(instance) < 0.0_pReal) &
-       source_damage_isoBrittle_aTol(instance) = 1.0e-3_pReal                                              ! default absolute tolerance 1e-3
-     if (source_damage_isoBrittle_critStrainEnergy(instance) <= 0.0_pReal) &
-       call IO_error(211_pInt,el=instance,ext_msg='criticalStrainEnergy ('//SOURCE_damage_isoBrittle_LABEL//')')
-   endif myPhase
- enddo sanityChecks
 
  initializeInstances: do phase = 1_pInt, material_Nphase
    if (any(phase_source(:,phase) == SOURCE_damage_isoBrittle_ID)) then
@@ -231,7 +231,7 @@ subroutine source_damage_isoBrittle_init(fileUnit)
      sourceState(phase)%p(sourceOffset)%sizeDeltaState = sizeDeltaState
      sourceState(phase)%p(sourceOffset)%sizePostResults = source_damage_isoBrittle_sizePostResults(instance)
      allocate(sourceState(phase)%p(sourceOffset)%aTolState           (sizeState),                &
-              source=source_damage_isoBrittle_aTol(instance))
+              source=param(instance)%aTol)
      allocate(sourceState(phase)%p(sourceOffset)%state0              (sizeState,NofMyPhase),     source=.0_pReal)
      allocate(sourceState(phase)%p(sourceOffset)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
      allocate(sourceState(phase)%p(sourceOffset)%subState0           (sizeState,NofMyPhase),     source=0.0_pReal)
@@ -330,10 +330,10 @@ subroutine source_damage_isoBrittle_getRateAndItsTangent(localphiDot, dLocalphiD
  instance = source_damage_isoBrittle_instance(phase)
  sourceOffset = source_damage_isoBrittle_offset(phase)
  
- localphiDot = (1.0_pReal - phi)**(source_damage_isoBrittle_N(instance) - 1.0_pReal) - &
+ localphiDot = (1.0_pReal - phi)**(param(instance)%N - 1.0_pReal) - &
                phi*sourceState(phase)%p(sourceOffset)%state(1,constituent)
- dLocalphiDot_dPhi = - (source_damage_isoBrittle_N(instance) - 1.0_pReal)* &
-                       (1.0_pReal - phi)**max(0.0_pReal,source_damage_isoBrittle_N(instance) - 2.0_pReal) &
+ dLocalphiDot_dPhi = - (param(instance)%N - 1.0_pReal)* &
+                       (1.0_pReal - phi)**max(0.0_pReal,param(instance)%N - 2.0_pReal) &
                      - sourceState(phase)%p(sourceOffset)%state(1,constituent)
  
 end subroutine source_damage_isoBrittle_getRateAndItsTangent

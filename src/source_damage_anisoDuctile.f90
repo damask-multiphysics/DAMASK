@@ -31,15 +31,11 @@ module source_damage_anisoDuctile
  integer(pInt),                       dimension(:,:),         allocatable,         private :: &
    source_damage_anisoDuctile_Nslip                                                                         !< number of slip systems per family
    
- real(pReal),                         dimension(:),           allocatable,         private :: &
-   source_damage_anisoDuctile_aTol
-
  real(pReal),                         dimension(:,:),         allocatable,         private :: &
    source_damage_anisoDuctile_critPlasticStrain
 
  real(pReal),                         dimension(:),           allocatable,         private :: &
-   source_damage_anisoDuctile_sdot_0, &
-   source_damage_anisoDuctile_N
+   source_damage_anisoDuctile_sdot_0
 
  real(pReal),                         dimension(:,:),         allocatable,         private :: &
    source_damage_anisoDuctile_critLoad
@@ -89,6 +85,8 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
    compiler_version, &
    compiler_options
 #endif
+ use prec, only: &
+   pStringLen
  use debug, only: &
    debug_level,&
    debug_constitutive,&
@@ -132,9 +130,12 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
  integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
  integer(pInt) :: NofMyPhase,p   
  integer(pInt) :: Nchunks_SlipFamilies = 0_pInt, j   
+ character(len=pStringLen) :: &
+   extmsg = ''
  character(len=65536) :: &
    tag  = '', &
    line = ''
+ integer(pInt),          dimension(0), parameter :: emptyIntArray    = [integer(pInt)::]
 
  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_damage_anisoDuctile_LABEL//' init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -166,13 +167,31 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
  allocate(source_damage_anisoDuctile_critLoad(lattice_maxNslipFamily,Ninstance), source=0.0_pReal) 
  allocate(source_damage_anisoDuctile_critPlasticStrain(lattice_maxNslipFamily,Ninstance),source=0.0_pReal) 
  allocate(source_damage_anisoDuctile_Nslip(lattice_maxNslipFamily,Ninstance),        source=0_pInt)
- allocate(source_damage_anisoDuctile_totalNslip(Ninstance),                          source=0_pInt)
- allocate(source_damage_anisoDuctile_N(Ninstance),                                   source=0.0_pReal) 
+ allocate(source_damage_anisoDuctile_totalNslip(Ninstance),                          source=0_pInt) 
  allocate(source_damage_anisoDuctile_sdot_0(Ninstance),                              source=0.0_pReal) 
- allocate(source_damage_anisoDuctile_aTol(Ninstance),                                source=0.0_pReal) 
 
+ allocate(param(Ninstance))
+ 
  do p=1, size(config_phase)
-   if (all(phase_source(:,p) /= SOURCE_damage_anisoDuctile_ID)) cycle
+   if (all(phase_source(:,p) /= SOURCE_DAMAGE_ANISODUCTILE_ID)) cycle
+   associate(prm => param(source_damage_anisoDuctile_instance(p)), &
+             config => config_phase(p))
+             
+   prm%aTol   = config%getFloat('anisoductile_atol',defaultVal = 1.0e-3_pReal)
+
+   prm%N      = config%getFloat('anisoductile_ratesensitivity')
+   prm%sdot_0 = config%getFloat('anisoductile_sdot0')
+   
+   ! sanity checks
+   if (prm%aTol                 < 0.0_pReal) extmsg = trim(extmsg)//' anisoductile_atol'
+   
+   if (prm%N                   <= 0.0_pReal) extmsg = trim(extmsg)//' anisoductile_ratesensitivity'
+   if (prm%sdot_0              <= 0.0_pReal) extmsg = trim(extmsg)//' anisoductile_sdot0'
+   
+   prm%Nslip  = config%getInts('nslip',defaultVal=emptyIntArray)
+   
+   end associate
+   
  enddo
 
  rewind(fileUnit)
@@ -205,9 +224,6 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
              source_damage_anisoDuctile_output(source_damage_anisoDuctile_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,chunkPos,2_pInt))
           end select
-
-       case ('anisoductile_atol')
-         source_damage_anisoDuctile_aTol(instance) = IO_floatValue(line,chunkPos,2_pInt)
          
        case ('nslip')  !
          Nchunks_SlipFamilies = chunkPos(1) - 1_pInt
@@ -222,9 +238,6 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
          do j = 1_pInt, Nchunks_SlipFamilies
            source_damage_anisoDuctile_critPlasticStrain(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
          enddo
-         
-       case ('anisoductile_ratesensitivity')
-         source_damage_anisoDuctile_N(instance) = IO_floatValue(line,chunkPos,2_pInt)
 
        case ('anisoductile_criticalload')
          do j = 1_pInt, Nchunks_SlipFamilies
@@ -244,14 +257,10 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
        min(lattice_NslipSystem(1:lattice_maxNslipFamily,phase),&                                    ! limit active cleavage systems per family to min of available and requested
            source_damage_anisoDuctile_Nslip(1:lattice_maxNslipFamily,instance))
          source_damage_anisoDuctile_totalNslip(instance) = sum(source_damage_anisoDuctile_Nslip(:,instance))
-     if (source_damage_anisoDuctile_aTol(instance) < 0.0_pReal) &
-       source_damage_anisoDuctile_aTol(instance) = 1.0e-3_pReal                                     ! default absolute tolerance 1e-3
-     if (source_damage_anisoDuctile_sdot_0(instance) <= 0.0_pReal) &
-       call IO_error(211_pInt,el=instance,ext_msg='sdot_0 ('//SOURCE_damage_anisoDuctile_LABEL//')')
+
      if (any(source_damage_anisoDuctile_critPlasticStrain(:,instance) < 0.0_pReal)) &
        call IO_error(211_pInt,el=instance,ext_msg='criticaPlasticStrain ('//SOURCE_damage_anisoDuctile_LABEL//')')
-     if (source_damage_anisoDuctile_N(instance) <= 0.0_pReal) &
-       call IO_error(211_pInt,el=instance,ext_msg='rate_sensitivity ('//SOURCE_damage_anisoDuctile_LABEL//')')
+
    endif myPhase
  enddo sanityChecks
   
@@ -286,7 +295,7 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
      sourceState(phase)%p(sourceOffset)%sizeDeltaState = sizeDeltaState
      sourceState(phase)%p(sourceOffset)%sizePostResults = source_damage_anisoDuctile_sizePostResults(instance)
      allocate(sourceState(phase)%p(sourceOffset)%aTolState           (sizeState),                &
-              source=source_damage_anisoDuctile_aTol(instance))
+              source=param(instance)%aTol)
      allocate(sourceState(phase)%p(sourceOffset)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
      allocate(sourceState(phase)%p(sourceOffset)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
      allocate(sourceState(phase)%p(sourceOffset)%subState0           (sizeState,NofMyPhase),     source=0.0_pReal)
@@ -349,7 +358,7 @@ subroutine source_damage_anisoDuctile_dotState(ipc, ip, el)
      sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = &
        sourceState(phase)%p(sourceOffset)%dotState(1,constituent) + &
        plasticState(phase)%slipRate(index,constituent)/ &
-       ((damage(homog)%p(damageOffset))**source_damage_anisoDuctile_N(instance))/ & 
+       ((damage(homog)%p(damageOffset))**param(instance)%N)/ & 
        source_damage_anisoDuctile_critPlasticStrain(f,instance) 
      
      index = index + 1_pInt

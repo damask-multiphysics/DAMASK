@@ -32,10 +32,7 @@ module source_damage_anisoBrittle
    source_damage_anisoBrittle_Ncleavage                                                                         !< number of cleavage systems per family
    
  real(pReal),                         dimension(:),           allocatable,         private :: &
-   source_damage_anisoBrittle_aTol, &
-   source_damage_anisoBrittle_sdot_0, &
-   source_damage_anisoBrittle_N
-
+   source_damage_anisoBrittle_sdot_0
  real(pReal),                         dimension(:,:),         allocatable,         private :: &
    source_damage_anisoBrittle_critDisp, &
    source_damage_anisoBrittle_critLoad
@@ -85,6 +82,8 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
    compiler_version, &
    compiler_options
 #endif
+ use prec, only: &
+   pStringLen
  use debug, only: &
    debug_level,&
    debug_constitutive,&
@@ -127,10 +126,13 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
  integer(pInt) :: Ninstance,mySize=0_pInt,phase,instance,source,sourceOffset,o
  integer(pInt) :: sizeState, sizeDotState, sizeDeltaState
  integer(pInt) :: NofMyPhase,p   
- integer(pInt) :: Nchunks_CleavageFamilies = 0_pInt, j   
+ integer(pInt) :: Nchunks_CleavageFamilies = 0_pInt, j
+ character(len=pStringLen) :: &
+   extmsg = ''
  character(len=65536) :: &
    tag  = '', &
    line = ''
+ integer(pInt),          dimension(0), parameter :: emptyIntArray    = [integer(pInt)::]
 
  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_damage_anisoBrittle_LABEL//' init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -163,12 +165,30 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
  allocate(source_damage_anisoBrittle_critLoad(lattice_maxNcleavageFamily,Ninstance),  source=0.0_pReal) 
  allocate(source_damage_anisoBrittle_Ncleavage(lattice_maxNcleavageFamily,Ninstance), source=0_pInt)
  allocate(source_damage_anisoBrittle_totalNcleavage(Ninstance),                       source=0_pInt)
- allocate(source_damage_anisoBrittle_aTol(Ninstance),                                 source=0.0_pReal) 
  allocate(source_damage_anisoBrittle_sdot_0(Ninstance),                               source=0.0_pReal) 
- allocate(source_damage_anisoBrittle_N(Ninstance),                                    source=0.0_pReal) 
 
+ allocate(param(Ninstance))
+ 
  do p=1, size(config_phase)
-   if (all(phase_source(:,p) /= SOURCE_damage_anisoBrittle_ID)) cycle
+   if (all(phase_source(:,p) /= SOURCE_DAMAGE_ANISOBRITTLE_ID)) cycle
+   associate(prm => param(source_damage_anisoBrittle_instance(p)), &
+             config => config_phase(p))
+             
+   prm%aTol      = config%getFloat('anisobrittle_atol',defaultVal = 1.0e-3_pReal)
+
+   prm%N         = config%getFloat('anisobrittle_ratesensitivity')
+   prm%sdot_0    = config%getFloat('anisobrittle_sdot0')
+   
+   ! sanity checks
+   if (prm%aTol      < 0.0_pReal) extmsg = trim(extmsg)//' anisobrittle_atol'
+   
+   if (prm%N        <= 0.0_pReal) extmsg = trim(extmsg)//' anisobrittle_ratesensitivity'
+   if (prm%sdot_0   <= 0.0_pReal) extmsg = trim(extmsg)//' anisobrittle_sdot0'
+   
+   prm%Ncleavage = config%getInts('ncleavage',defaultVal=emptyIntArray)
+   
+   end associate
+   
  enddo
 
  rewind(fileUnit)
@@ -201,15 +221,9 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
              source_damage_anisoBrittle_output(source_damage_anisoBrittle_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,chunkPos,2_pInt))
           end select
-
-       case ('anisobrittle_atol')
-         source_damage_anisoBrittle_aTol(instance) = IO_floatValue(line,chunkPos,2_pInt)
          
        case ('anisobrittle_sdot0')
          source_damage_anisoBrittle_sdot_0(instance) = IO_floatValue(line,chunkPos,2_pInt)
-         
-       case ('anisobrittle_ratesensitivity')
-         source_damage_anisoBrittle_N(instance) = IO_floatValue(line,chunkPos,2_pInt)
          
        case ('ncleavage')  !
          Nchunks_CleavageFamilies = chunkPos(1) - 1_pInt
@@ -240,16 +254,14 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
        min(lattice_NcleavageSystem(1:lattice_maxNcleavageFamily,phase),&                            ! limit active cleavage systems per family to min of available and requested
            source_damage_anisoBrittle_Ncleavage(1:lattice_maxNcleavageFamily,instance))
      source_damage_anisoBrittle_totalNcleavage(instance)  = sum(source_damage_anisoBrittle_Ncleavage(:,instance)) ! how many cleavage systems altogether
-     if (source_damage_anisoBrittle_aTol(instance) < 0.0_pReal) &
-       source_damage_anisoBrittle_aTol(instance) = 1.0e-3_pReal                                     ! default absolute tolerance 1e-3
-     if (source_damage_anisoBrittle_sdot_0(instance) <= 0.0_pReal) &
-       call IO_error(211_pInt,el=instance,ext_msg='sdot_0 ('//SOURCE_damage_anisoBrittle_LABEL//')')
+
+
      if (any(source_damage_anisoBrittle_critDisp(1:Nchunks_CleavageFamilies,instance) < 0.0_pReal)) &
        call IO_error(211_pInt,el=instance,ext_msg='critical_displacement ('//SOURCE_damage_anisoBrittle_LABEL//')')
      if (any(source_damage_anisoBrittle_critLoad(1:Nchunks_CleavageFamilies,instance) < 0.0_pReal)) &
        call IO_error(211_pInt,el=instance,ext_msg='critical_load ('//SOURCE_damage_anisoBrittle_LABEL//')')
-     if (source_damage_anisoBrittle_N(instance) <= 0.0_pReal) &
-       call IO_error(211_pInt,el=instance,ext_msg='rate_sensitivity ('//SOURCE_damage_anisoBrittle_LABEL//')')
+ 
+       
    endif myPhase
  enddo sanityChecks
  
@@ -284,7 +296,7 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
      sourceState(phase)%p(sourceOffset)%sizeDeltaState = sizeDeltaState
      sourceState(phase)%p(sourceOffset)%sizePostResults = source_damage_anisoBrittle_sizePostResults(instance)
      allocate(sourceState(phase)%p(sourceOffset)%aTolState           (sizeState),                &
-              source=source_damage_anisoBrittle_aTol(instance))
+              source=param(instance)%aTol)
      allocate(sourceState(phase)%p(sourceOffset)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
      allocate(sourceState(phase)%p(sourceOffset)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
      allocate(sourceState(phase)%p(sourceOffset)%subState0           (sizeState,NofMyPhase),     source=0.0_pReal)
@@ -350,8 +362,8 @@ subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
  
  sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = 0.0_pReal
  do f = 1_pInt,lattice_maxNcleavageFamily
-   index_myFamily = sum(lattice_NcleavageSystem(1:f-1_pInt,phase))                                    ! at which index starts my family
-   do i = 1_pInt,source_damage_anisoBrittle_Ncleavage(f,instance)                                     ! process each (active) cleavage system in family
+   index_myFamily = sum(lattice_NcleavageSystem(1:f-1_pInt,phase))                                  ! at which index starts my family
+   do i = 1_pInt,source_damage_anisoBrittle_Ncleavage(f,instance)                                   ! process each (active) cleavage system in family
      traction_d    = math_mul33xx33(S,lattice_Scleavage(1:3,1:3,1,index_myFamily+i,phase))
      traction_t    = math_mul33xx33(S,lattice_Scleavage(1:3,1:3,2,index_myFamily+i,phase))
      traction_n    = math_mul33xx33(S,lattice_Scleavage(1:3,1:3,3,index_myFamily+i,phase))
@@ -361,9 +373,9 @@ subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
      sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = &
        sourceState(phase)%p(sourceOffset)%dotState(1,constituent) + &
        source_damage_anisoBrittle_sdot_0(instance)* &
-       ((max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**source_damage_anisoBrittle_N(instance) + &
-        (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**source_damage_anisoBrittle_N(instance) + &
-        (max(0.0_pReal, abs(traction_n) - traction_crit)/traction_crit)**source_damage_anisoBrittle_N(instance))/ &
+       ((max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**param(instance)%N + &
+        (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**param(instance)%N + &
+        (max(0.0_pReal, abs(traction_n) - traction_crit)/traction_crit)**param(instance)%N)/ &
        source_damage_anisoBrittle_critDisp(f,instance)
 
    enddo
