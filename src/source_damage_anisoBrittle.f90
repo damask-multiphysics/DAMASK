@@ -31,8 +31,6 @@ module source_damage_anisoBrittle
  integer(pInt),                       dimension(:,:),         allocatable,         private :: &
    source_damage_anisoBrittle_Ncleavage                                                                         !< number of cleavage systems per family
    
- real(pReal),                         dimension(:),           allocatable,         private :: &
-   source_damage_anisoBrittle_sdot_0
  real(pReal),                         dimension(:,:),         allocatable,         private :: &
    source_damage_anisoBrittle_critDisp, &
    source_damage_anisoBrittle_critLoad
@@ -166,7 +164,6 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
  allocate(source_damage_anisoBrittle_critLoad(lattice_maxNcleavageFamily,Ninstance),  source=0.0_pReal) 
  allocate(source_damage_anisoBrittle_Ncleavage(lattice_maxNcleavageFamily,Ninstance), source=0_pInt)
  allocate(source_damage_anisoBrittle_totalNcleavage(Ninstance),                       source=0_pInt)
- allocate(source_damage_anisoBrittle_sdot_0(Ninstance),                               source=0.0_pReal) 
 
  allocate(param(Ninstance))
  
@@ -222,9 +219,6 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
              source_damage_anisoBrittle_output(source_damage_anisoBrittle_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,chunkPos,2_pInt))
           end select
-         
-       case ('anisobrittle_sdot0')
-         source_damage_anisoBrittle_sdot_0(instance) = IO_floatValue(line,chunkPos,2_pInt)
          
        case ('ncleavage')  !
          Nchunks_CleavageFamilies = chunkPos(1) - 1_pInt
@@ -350,7 +344,7 @@ subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
                      damage(homog)%p(damageOffset)*damage(homog)%p(damageOffset)
      sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = &
        sourceState(phase)%p(sourceOffset)%dotState(1,constituent) + &
-       source_damage_anisoBrittle_sdot_0(instance)* &
+       param(instance)%sdot_0* &
        ((max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**param(instance)%N + &
         (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**param(instance)%N + &
         (max(0.0_pReal, abs(traction_n) - traction_crit)/traction_crit)**param(instance)%N)/ &
