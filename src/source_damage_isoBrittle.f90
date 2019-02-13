@@ -25,9 +25,6 @@ module source_damage_isoBrittle
  integer(pInt),                       dimension(:),           allocatable, target, public :: &
    source_damage_isoBrittle_Noutput                                                                   !< number of outputs per instance of this damage 
 
- real(pReal),                         dimension(:),     allocatable,         private :: &
-   source_damage_isoBrittle_critStrainEnergy
-
  enum, bind(c) 
    enumerator :: undefined_ID, &
                  damage_drivingforce_ID
@@ -141,8 +138,6 @@ subroutine source_damage_isoBrittle_init(fileUnit)
  allocate(source_damage_isoBrittle_outputID(maxval(phase_Noutput),Ninstance),      source=undefined_ID)
  allocate(source_damage_isoBrittle_Noutput(Ninstance),                             source=0_pInt)
 
- allocate(source_damage_isoBrittle_critStrainEnergy(Ninstance),                    source=0.0_pReal) 
-
  allocate(param(Ninstance))
  
  do p=1, size(config_phase)
@@ -195,9 +190,6 @@ subroutine source_damage_isoBrittle_init(fileUnit)
              source_damage_isoBrittle_output(source_damage_isoBrittle_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,chunkPos,2_pInt))
           end select
-
-       case ('isobrittle_criticalstrainenergy')
-         source_damage_isoBrittle_critStrainEnergy(instance) = IO_floatValue(line,chunkPos,2_pInt)
 
      end select
    endif; endif
@@ -275,7 +267,7 @@ subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
  strain = 0.5_pReal*math_Mandel33to6(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
 
  strainenergy = 2.0_pReal*sum(strain*math_mul66x6(stiffness,strain))/ &
-                source_damage_isoBrittle_critStrainEnergy(instance) 
+                param(instances)%critStrainEnergy
  if (strainenergy > sourceState(phase)%p(sourceOffset)%subState0(1,constituent)) then
    sourceState(phase)%p(sourceOffset)%deltaState(1,constituent) = &
      strainenergy - sourceState(phase)%p(sourceOffset)%state(1,constituent)

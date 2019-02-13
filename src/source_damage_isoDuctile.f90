@@ -25,8 +25,6 @@ module source_damage_isoDuctile
  integer(pInt),                       dimension(:),           allocatable, target, public :: &
    source_damage_isoDuctile_Noutput                                                                   !< number of outputs per instance of this damage 
 
- real(pReal),                         dimension(:),     allocatable,         private :: &
-   source_damage_isoDuctile_critPlasticStrain
 
  enum, bind(c) 
    enumerator :: undefined_ID, &
@@ -142,8 +140,6 @@ subroutine source_damage_isoDuctile_init(fileUnit)
  allocate(source_damage_isoDuctile_outputID(maxval(phase_Noutput),Ninstance),      source=undefined_ID)
  allocate(source_damage_isoDuctile_Noutput(Ninstance),                             source=0_pInt)
 
- allocate(source_damage_isoDuctile_critPlasticStrain(Ninstance),                     source=0.0_pReal) 
-
  allocate(param(Ninstance))
  
  do p=1, size(config_phase)
@@ -196,9 +192,6 @@ subroutine source_damage_isoDuctile_init(fileUnit)
              source_damage_isoDuctile_output(source_damage_isoDuctile_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,chunkPos,2_pInt))
           end select
-
-       case ('isoductile_criticalplasticstrain')
-         source_damage_isoDuctile_critPlasticStrain(instance) = IO_floatValue(line,chunkPos,2_pInt)
 
      end select
    endif; endif
@@ -262,7 +255,7 @@ subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
  sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = &
    sum(plasticState(phase)%slipRate(:,constituent))/ &
    ((damage(homog)%p(damageOffset))**param(instance)%N)/ & 
-   source_damage_isoDuctile_critPlasticStrain(instance) 
+   param(instance)%critPlasticStrain 
 
 end subroutine source_damage_isoDuctile_dotState
  
