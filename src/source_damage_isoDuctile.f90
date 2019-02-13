@@ -228,9 +228,8 @@ subroutine source_damage_isoDuctile_getRateAndItsTangent(localphiDot, dLocalphiD
 
  sourceOffset = source_damage_isoDuctile_offset(phase)
  
- localphiDot = 1.0_pReal - &
-               sourceState(phase)%p(sourceOffset)%state(1,constituent)* &
-               phi
+ localphiDot = 1.0_pReal &
+             - sourceState(phase)%p(sourceOffset)%state(1,constituent) * phi
  
  dLocalphiDot_dPhi = -sourceState(phase)%p(sourceOffset)%state(1,constituent)
  
