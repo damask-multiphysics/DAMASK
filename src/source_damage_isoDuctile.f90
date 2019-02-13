@@ -12,7 +12,6 @@ module source_damage_isoDuctile
  implicit none
  private
  integer(pInt),                       dimension(:),           allocatable,         public, protected :: &
-   source_damage_isoDuctile_sizePostResults, &                                                        !< cumulative size of post results
    source_damage_isoDuctile_offset, &                                                                 !< which source is my current damage mechanism?
    source_damage_isoDuctile_instance                                                                  !< instance of damage source mechanism
 
@@ -21,19 +20,12 @@ module source_damage_isoDuctile
 
  character(len=64),                   dimension(:,:),         allocatable, target, public :: &
    source_damage_isoDuctile_output                                                                    !< name of each post result output
-   
- integer(pInt),                       dimension(:),           allocatable, target, public :: &
-   source_damage_isoDuctile_Noutput                                                                   !< number of outputs per instance of this damage 
 
 
  enum, bind(c) 
    enumerator :: undefined_ID, &
                  damage_drivingforce_ID
  end enum                                                 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11 ToDo
- 
- integer(kind(undefined_ID)),         dimension(:,:),         allocatable,          private :: & 
-   source_damage_isoDuctile_outputID                                                                  !< ID of each post result output
-
 
  type, private :: tParameters                                                                       !< container type for internal constitutive parameters
    real(pReal) :: &
@@ -60,7 +52,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_isoDuctile_init(fileUnit)
+subroutine source_damage_isoDuctile_init
 #if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
  use, intrinsic :: iso_fortran_env, only: &
    compiler_version, &
@@ -73,14 +65,6 @@ subroutine source_damage_isoDuctile_init(fileUnit)
    debug_constitutive,&
    debug_levelBasic
  use IO, only: &
-   IO_read, &
-   IO_lc, &
-   IO_getTag, &
-   IO_isBlank, &
-   IO_stringPos, &
-   IO_stringValue, &
-   IO_floatValue, &
-   IO_intValue, &
    IO_warning, &
    IO_error, &
    IO_timeStamp, &
@@ -100,14 +84,9 @@ subroutine source_damage_isoDuctile_init(fileUnit)
    MATERIAL_partPhase
 
  implicit none
- integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt) :: Ninstance,mySize=0_pInt,phase,instance,source,sourceOffset,o
+ integer(pInt) :: Ninstance,phase,instance,source,sourceOffset,o
  integer(pInt) :: NofMyPhase,p,i
- character(len=65536) :: &
-   tag  = '', &
-   line = ''
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
  integer(kind(undefined_ID)) :: &
    outputID
@@ -137,12 +116,9 @@ subroutine source_damage_isoDuctile_init(fileUnit)
    enddo    
  enddo
    
- allocate(source_damage_isoDuctile_sizePostResults(Ninstance),                     source=0_pInt)
  allocate(source_damage_isoDuctile_sizePostResult(maxval(phase_Noutput),Ninstance),source=0_pInt)
  allocate(source_damage_isoDuctile_output(maxval(phase_Noutput),Ninstance))
           source_damage_isoDuctile_output = ''
- allocate(source_damage_isoDuctile_outputID(maxval(phase_Noutput),Ninstance),      source=undefined_ID)
- allocate(source_damage_isoDuctile_Noutput(Ninstance),                             source=0_pInt)
 
  allocate(param(Ninstance))
  
@@ -174,77 +150,30 @@ subroutine source_damage_isoDuctile_init(fileUnit)
    do i=1_pInt, size(outputs)
      outputID = undefined_ID
      select case(outputs(i))
+     
        case ('isoductile_drivingforce')
-       
+         source_damage_isoDuctile_sizePostResult(i,source_damage_isoDuctile_instance(p)) = 1_pInt
+         source_damage_isoDuctile_output(i,source_damage_isoDuctile_instance(p)) = outputs(i)
+         prm%outputID = [prm%outputID, damage_drivingforce_ID]
+
      end select
 
    enddo
 
    end associate
    
- enddo
+   phase = p
+   NofMyPhase=count(material_phase==phase)
+   instance = source_damage_isoDuctile_instance(phase)
+   sourceOffset = source_damage_isoDuctile_offset(phase)
 
- rewind(fileUnit)
- phase = 0_pInt
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= MATERIAL_partPhase)         ! wind forward to <phase>
-   line = IO_read(fileUnit)
- enddo
- 
- parsingFile: do while (trim(line) /= IO_EOF)                                                       ! read through sections of phase part
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit                                                                                           
-   endif   
-   if (IO_getTag(line,'[',']') /= '') then                                                          ! next phase section
-     phase = phase + 1_pInt                                                                         ! advance phase section counter
-     cycle                                                                                          ! skip to next line
-   endif
-   if (phase > 0_pInt ) then; if (any(phase_source(:,phase) == SOURCE_damage_isoDuctile_ID)) then   ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
-     instance = source_damage_isoDuctile_instance(phase)                                            ! which instance of my damage is present phase
-     chunkPos = IO_stringPos(line)
-     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
-     select case(tag)
-       case ('(output)')
-         select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
-           case ('isoductile_drivingforce')
-             source_damage_isoDuctile_Noutput(instance) = source_damage_isoDuctile_Noutput(instance) + 1_pInt
-             source_damage_isoDuctile_outputID(source_damage_isoDuctile_Noutput(instance),instance) = damage_drivingforce_ID
-             source_damage_isoDuctile_output(source_damage_isoDuctile_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-          end select
-
-     end select
-   endif; endif
- enddo parsingFile
-
- initializeInstances: do phase = 1_pInt, material_Nphase
-   if (any(phase_source(:,phase) == SOURCE_damage_isoDuctile_ID)) then
-     NofMyPhase=count(material_phase==phase)
-     instance = source_damage_isoDuctile_instance(phase)
-     sourceOffset = source_damage_isoDuctile_offset(phase)
-!--------------------------------------------------------------------------------------------------
-!  Determine size of postResults array
-     outputsLoop: do o = 1_pInt,source_damage_isoDuctile_Noutput(instance)
-       select case(source_damage_isoDuctile_outputID(o,instance))
-         case(damage_drivingforce_ID)
-           mySize = 1_pInt
-       end select
- 
-       if (mySize > 0_pInt) then  ! any meaningful output found
-          source_damage_isoDuctile_sizePostResult(o,instance) = mySize
-          source_damage_isoDuctile_sizePostResults(instance)  = source_damage_isoDuctile_sizePostResults(instance) + mySize
-       endif
-     enddo outputsLoop
-
-     call material_allocateSourceState(phase,sourceOffset,NofMyPhase,1_pInt)
-     sourceState(phase)%p(sourceOffset)%sizePostResults = source_damage_isoDuctile_sizePostResults(instance)
-     sourceState(phase)%p(sourceOffset)%aTolState=param(instance)%aTol
+   call material_allocateSourceState(phase,sourceOffset,NofMyPhase,1_pInt)
+   sourceState(phase)%p(sourceOffset)%sizePostResults = sum(source_damage_isoDuctile_sizePostResult(:,instance))
+   sourceState(phase)%p(sourceOffset)%aTolState=param(instance)%aTol
               
-   endif
  
- enddo initializeInstances
+ enddo
+ 
 end subroutine source_damage_isoDuctile_init
 
 !--------------------------------------------------------------------------------------------------
@@ -321,8 +250,8 @@ function source_damage_isoDuctile_postResults(phase, constituent)
  integer(pInt), intent(in) :: &
    phase, &
    constituent
- real(pReal), dimension(source_damage_isoDuctile_sizePostResults( &
-                          source_damage_isoDuctile_instance(phase))) :: &
+ real(pReal), dimension(sum(source_damage_isoDuctile_sizePostResult(:, &
+                          source_damage_isoDuctile_instance(phase)))) :: &
    source_damage_isoDuctile_postResults
 
  integer(pInt) :: &
@@ -332,10 +261,9 @@ function source_damage_isoDuctile_postResults(phase, constituent)
  sourceOffset = source_damage_isoDuctile_offset(phase)
 
  c = 0_pInt
- source_damage_isoDuctile_postResults = 0.0_pReal
 
- do o = 1_pInt,source_damage_isoDuctile_Noutput(instance)
-    select case(source_damage_isoDuctile_outputID(o,instance))
+ do o = 1_pInt,size(param(instance)%outputID)
+    select case(param(instance)%outputID(o))
       case (damage_drivingforce_ID)
         source_damage_isoDuctile_postResults(c+1_pInt) = sourceState(phase)%p(sourceOffset)%state(1,constituent)
         c = c + 1

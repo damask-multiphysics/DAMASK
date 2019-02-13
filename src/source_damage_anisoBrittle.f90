@@ -12,7 +12,6 @@ module source_damage_anisoBrittle
  implicit none
  private
  integer(pInt),                       dimension(:),           allocatable,         public, protected :: &
-   source_damage_anisoBrittle_sizePostResults, &                                                                !< cumulative size of post results
    source_damage_anisoBrittle_offset, &                                                                         !< which source is my current source mechanism?
    source_damage_anisoBrittle_instance                                                                          !< instance of source mechanism
 
@@ -21,12 +20,6 @@ module source_damage_anisoBrittle
 
  character(len=64),                   dimension(:,:),         allocatable, target, public  :: &
    source_damage_anisoBrittle_output                                                                            !< name of each post result output
-   
- integer(pInt),                       dimension(:),           allocatable, target, public  :: &
-   source_damage_anisoBrittle_Noutput                                                                           !< number of outputs per instance of this source 
-
- integer(pInt),                       dimension(:),           allocatable,         private :: &
-   source_damage_anisoBrittle_totalNcleavage                                                                    !< total number of cleavage systems
    
  integer(pInt),                       dimension(:,:),         allocatable,         private :: &
    source_damage_anisoBrittle_Ncleavage                                                                         !< number of cleavage systems per family
@@ -39,9 +32,6 @@ module source_damage_anisoBrittle
    enumerator :: undefined_ID, &
                  damage_drivingforce_ID
  end enum                                                
- 
- integer(kind(undefined_ID)),         dimension(:,:),         allocatable,          private :: & 
-   source_damage_anisoBrittle_outputID                                                                  !< ID of each post result output
 
 
  type, private :: tParameters                                                                       !< container type for internal constitutive parameters
@@ -157,18 +147,14 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
        source_damage_anisoBrittle_offset(phase) = source
    enddo    
  enddo
-   
- allocate(source_damage_anisoBrittle_sizePostResults(Ninstance),                      source=0_pInt)
+ 
  allocate(source_damage_anisoBrittle_sizePostResult(maxval(phase_Noutput),Ninstance), source=0_pInt)
  allocate(source_damage_anisoBrittle_output(maxval(phase_Noutput),Ninstance))
           source_damage_anisoBrittle_output = ''
- allocate(source_damage_anisoBrittle_outputID(maxval(phase_Noutput),Ninstance),       source=undefined_ID)
- allocate(source_damage_anisoBrittle_Noutput(Ninstance),                              source=0_pInt)
 
  allocate(source_damage_anisoBrittle_critDisp(lattice_maxNcleavageFamily,Ninstance),  source=0.0_pReal) 
  allocate(source_damage_anisoBrittle_critLoad(lattice_maxNcleavageFamily,Ninstance),  source=0.0_pReal) 
  allocate(source_damage_anisoBrittle_Ncleavage(lattice_maxNcleavageFamily,Ninstance), source=0_pInt)
- allocate(source_damage_anisoBrittle_totalNcleavage(Ninstance),                       source=0_pInt)
 
  allocate(param(Ninstance))
  
@@ -202,7 +188,11 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
    do i=1_pInt, size(outputs)
      outputID = undefined_ID
      select case(outputs(i))
+     
        case ('anisobrittle_drivingforce')
+         source_damage_anisoBrittle_sizePostResult(i,source_damage_anisoBrittle_instance(p)) = 1_pInt
+         source_damage_anisoBrittle_output(i,source_damage_anisoBrittle_instance(p)) = outputs(i)
+         prm%outputID = [prm%outputID, damage_drivingforce_ID]
 
      end select
 
@@ -210,6 +200,16 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
 
    end associate
    
+   phase = p
+   NofMyPhase=count(material_phase==phase)
+   instance = source_damage_anisoBrittle_instance(phase)
+   sourceOffset = source_damage_anisoBrittle_offset(phase)
+
+
+   call material_allocateSourceState(phase,sourceOffset,NofMyPhase,1_pInt)
+   sourceState(phase)%p(sourceOffset)%sizePostResults = sum(source_damage_anisoBrittle_sizePostResult(:,instance))
+   sourceState(phase)%p(sourceOffset)%aTolState=param(instance)%aTol
+
  enddo
 
  rewind(fileUnit)
@@ -234,15 +234,7 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
      chunkPos = IO_stringPos(line)
      tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
      select case(tag)
-       case ('(output)')
-         select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
-           case ('anisobrittle_drivingforce')
-             source_damage_anisoBrittle_Noutput(instance) = source_damage_anisoBrittle_Noutput(instance) + 1_pInt
-             source_damage_anisoBrittle_outputID(source_damage_anisoBrittle_Noutput(instance),instance) = damage_drivingforce_ID
-             source_damage_anisoBrittle_output(source_damage_anisoBrittle_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-          end select
-         
+
        case ('ncleavage')  !
          Nchunks_CleavageFamilies = chunkPos(1) - 1_pInt
          do j = 1_pInt, Nchunks_CleavageFamilies
@@ -268,11 +260,6 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
  sanityChecks: do phase = 1_pInt, material_Nphase  
    myPhase: if (any(phase_source(:,phase) == SOURCE_damage_anisoBrittle_ID)) then
      instance = source_damage_anisoBrittle_instance(phase)
-     source_damage_anisoBrittle_Ncleavage(1:lattice_maxNcleavageFamily,instance) = &
-       min(lattice_NcleavageSystem(1:lattice_maxNcleavageFamily,phase),&                            ! limit active cleavage systems per family to min of available and requested
-           source_damage_anisoBrittle_Ncleavage(1:lattice_maxNcleavageFamily,instance))
-     source_damage_anisoBrittle_totalNcleavage(instance)  = sum(source_damage_anisoBrittle_Ncleavage(:,instance)) ! how many cleavage systems altogether
-
 
      if (any(source_damage_anisoBrittle_critDisp(1:Nchunks_CleavageFamilies,instance) < 0.0_pReal)) &
        call IO_error(211_pInt,el=instance,ext_msg='critical_displacement ('//SOURCE_damage_anisoBrittle_LABEL//')')
@@ -283,34 +270,6 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
    endif myPhase
  enddo sanityChecks
  
- initializeInstances: do phase = 1_pInt, material_Nphase
-   if (any(phase_source(:,phase) == SOURCE_damage_anisoBrittle_ID)) then
-     NofMyPhase=count(material_phase==phase)
-     instance = source_damage_anisoBrittle_instance(phase)
-     sourceOffset = source_damage_anisoBrittle_offset(phase)
-
-!--------------------------------------------------------------------------------------------------
-!  Determine size of postResults array
-     outputsLoop: do o = 1_pInt,source_damage_anisoBrittle_Noutput(instance)
-       select case(source_damage_anisoBrittle_outputID(o,instance))
-         case(damage_drivingforce_ID)
-           mySize = 1_pInt
-       end select
- 
-       if (mySize > 0_pInt) then  ! any meaningful output found
-          source_damage_anisoBrittle_sizePostResult(o,instance) = mySize
-          source_damage_anisoBrittle_sizePostResults(instance)  = source_damage_anisoBrittle_sizePostResults(instance) + mySize
-       endif
-     enddo outputsLoop
-
-     call material_allocateSourceState(phase,sourceOffset,NofMyPhase,1_pInt)
-     sourceState(phase)%p(sourceOffset)%sizePostResults = source_damage_anisoBrittle_sizePostResults(instance)
-     sourceState(phase)%p(sourceOffset)%aTolState=param(instance)%aTol
-
-
-   endif
- 
- enddo initializeInstances
 end subroutine source_damage_anisoBrittle_init
 
 !--------------------------------------------------------------------------------------------------
@@ -417,8 +376,8 @@ function source_damage_anisoBrittle_postResults(phase, constituent)
  integer(pInt), intent(in) :: &
    phase, &
    constituent
- real(pReal), dimension(source_damage_anisoBrittle_sizePostResults( &
-                          source_damage_anisoBrittle_instance(phase))) :: &
+ real(pReal), dimension(sum(source_damage_anisoBrittle_sizePostResult(:, &
+                          source_damage_anisoBrittle_instance(phase)))) :: &
    source_damage_anisoBrittle_postResults
 
  integer(pInt) :: &
@@ -428,10 +387,9 @@ function source_damage_anisoBrittle_postResults(phase, constituent)
  sourceOffset = source_damage_anisoBrittle_offset(phase)
 
  c = 0_pInt
- source_damage_anisoBrittle_postResults = 0.0_pReal
 
- do o = 1_pInt,source_damage_anisoBrittle_Noutput(instance)
-    select case(source_damage_anisoBrittle_outputID(o,instance))
+ do o = 1_pInt,size(param(instance)%outputID)
+    select case(param(instance)%outputID(o))
       case (damage_drivingforce_ID)
         source_damage_anisoBrittle_postResults(c+1_pInt) = &
           sourceState(phase)%p(sourceOffset)%state(1,constituent)
