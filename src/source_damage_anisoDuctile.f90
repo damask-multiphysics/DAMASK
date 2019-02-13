@@ -93,6 +93,8 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
    IO_error, &
    IO_timeStamp, &
    IO_EOF
+    use math, only: &
+   math_expand
  use material, only: &
    material_allocateSourceState, &
    phase_source, &
@@ -175,6 +177,13 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
    if (prm%N                   <= 0.0_pReal) extmsg = trim(extmsg)//' anisoductile_ratesensitivity'
    
    prm%Nslip  = config%getInts('nslip',defaultVal=emptyIntArray)
+   
+   prm%critPlasticStrain = config%getFloats('anisoductile_criticalplasticstrain',requiredSize=size(prm%Nslip))
+   prm%critLoad          = config%getFloats('anisoductile_criticalload',         requiredSize=size(prm%Nslip))
+
+     ! expand: family => system
+     prm%critPlasticStrain   = math_expand(prm%critPlasticStrain,  prm%Nslip)
+     prm%critLoad            = math_expand(prm%critLoad,           prm%Nslip)
    
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range

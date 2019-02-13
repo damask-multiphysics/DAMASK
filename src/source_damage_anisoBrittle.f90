@@ -91,6 +91,8 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
    IO_error, &
    IO_timeStamp, &
    IO_EOF
+    use math, only: &
+   math_expand
  use material, only: &
    material_allocateSourceState, &
    phase_source, &
@@ -175,7 +177,14 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
    if (prm%sdot_0   <= 0.0_pReal) extmsg = trim(extmsg)//' anisobrittle_sdot0'
    
    prm%Ncleavage = config%getInts('ncleavage',defaultVal=emptyIntArray)
-   
+
+   prm%critDisp = config%getFloats('anisobrittle_criticaldisplacement',requiredSize=size(prm%Ncleavage))
+   prm%critLoad = config%getFloats('anisobrittle_criticalload',        requiredSize=size(prm%Ncleavage))
+
+     ! expand: family => system
+     prm%critDisp  = math_expand(prm%critDisp, prm%Ncleavage)
+     prm%critLoad  = math_expand(prm%critLoad, prm%Ncleavage)
+     
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
    if (extmsg /= '') &
