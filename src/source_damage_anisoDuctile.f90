@@ -105,6 +105,7 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
    IO_timeStamp, &
    IO_EOF
  use material, only: &
+   material_allocateSourceState, &
    phase_source, &
    phase_Nsources, &
    phase_Noutput, &
@@ -285,32 +286,9 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
        endif
      enddo outputsLoop
 
-!--------------------------------------------------------------------------------------------------
-! Determine size of state array
-     sizeDotState              = 1_pInt
-     sizeDeltaState            = 0_pInt
-     sizeState                 = 1_pInt
-     sourceState(phase)%p(sourceOffset)%sizeState      = sizeState
-     sourceState(phase)%p(sourceOffset)%sizeDotState   = sizeDotState
-     sourceState(phase)%p(sourceOffset)%sizeDeltaState = sizeDeltaState
+     call material_allocateSourceState(phase,sourceOffset,NofMyPhase,1_pInt)
      sourceState(phase)%p(sourceOffset)%sizePostResults = source_damage_anisoDuctile_sizePostResults(instance)
-     allocate(sourceState(phase)%p(sourceOffset)%aTolState           (sizeState),                &
-              source=param(instance)%aTol)
-     allocate(sourceState(phase)%p(sourceOffset)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
-     allocate(sourceState(phase)%p(sourceOffset)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
-     allocate(sourceState(phase)%p(sourceOffset)%subState0           (sizeState,NofMyPhase),     source=0.0_pReal)
-     allocate(sourceState(phase)%p(sourceOffset)%state               (sizeState,NofMyPhase),     source=0.0_pReal)
-
-     allocate(sourceState(phase)%p(sourceOffset)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     allocate(sourceState(phase)%p(sourceOffset)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
-     if (any(numerics_integrator == 1_pInt)) then
-       allocate(sourceState(phase)%p(sourceOffset)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
-       allocate(sourceState(phase)%p(sourceOffset)%previousDotState2 (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     endif
-     if (any(numerics_integrator == 4_pInt)) &
-       allocate(sourceState(phase)%p(sourceOffset)%RK4dotState       (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     if (any(numerics_integrator == 5_pInt)) &
-       allocate(sourceState(phase)%p(sourceOffset)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)
+     sourceState(phase)%p(sourceOffset)%aTolState=param(instance)%aTol
 
    endif
  
