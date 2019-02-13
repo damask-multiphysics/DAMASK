@@ -164,7 +164,7 @@ subroutine source_damage_isoBrittle_init
   instance = source_damage_isoBrittle_instance(phase)
   sourceOffset = source_damage_isoBrittle_offset(phase)
      
-  call material_allocateSourceState(phase,sourceOffset,NofMyPhase,1_pInt)
+  call material_allocateSourceState(phase,sourceOffset,NofMyPhase,1_pInt,1_pInt,1_pInt)
   sourceState(phase)%p(sourceOffset)%sizePostResults = sum(source_damage_isoBrittle_sizePostResult(:,instance))
   sourceState(phase)%p(sourceOffset)%aTolState=param(instance)%aTol
  

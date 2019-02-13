@@ -83,7 +83,7 @@ subroutine source_damage_isoDuctile_init
 
  implicit none
 
- integer(pInt) :: Ninstance,phase,instance,source,sourceOffset,o
+ integer(pInt) :: Ninstance,phase,instance,source,sourceOffset
  integer(pInt) :: NofMyPhase,p,i
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
  integer(kind(undefined_ID)) :: &
@@ -164,7 +164,7 @@ subroutine source_damage_isoDuctile_init
    instance = source_damage_isoDuctile_instance(phase)
    sourceOffset = source_damage_isoDuctile_offset(phase)
 
-   call material_allocateSourceState(phase,sourceOffset,NofMyPhase,1_pInt)
+   call material_allocateSourceState(phase,sourceOffset,NofMyPhase,1_pInt,1_pInt,0_pInt)
    sourceState(phase)%p(sourceOffset)%sizePostResults = sum(source_damage_isoDuctile_sizePostResult(:,instance))
    sourceState(phase)%p(sourceOffset)%aTolState=param(instance)%aTol
               
