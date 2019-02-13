@@ -25,12 +25,6 @@ module source_damage_anisoDuctile
  integer(pInt),                       dimension(:,:),         allocatable,         private :: &
    source_damage_anisoDuctile_Nslip                                                                         !< number of slip systems per family
    
- real(pReal),                         dimension(:,:),         allocatable,         private :: &
-   source_damage_anisoDuctile_critPlasticStrain
-
- real(pReal),                         dimension(:,:),         allocatable,         private :: &
-   source_damage_anisoDuctile_critLoad
-   
  enum, bind(c) 
    enumerator :: undefined_ID, &
                  damage_drivingforce_ID
@@ -42,8 +36,7 @@ module source_damage_anisoDuctile
      aTol, &
      N
    real(pReal), dimension(:), allocatable :: &
-     critPlasticStrain, &
-     critLoad
+     critPlasticStrain
    integer(pInt) :: &
      totalNslip
    integer(pInt), dimension(:), allocatable :: &
@@ -68,7 +61,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_anisoDuctile_init(fileUnit)
+subroutine source_damage_anisoDuctile_init
 #if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
  use, intrinsic :: iso_fortran_env, only: &
    compiler_version, &
@@ -81,14 +74,6 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
    debug_constitutive,&
    debug_levelBasic
  use IO, only: &
-   IO_read, &
-   IO_lc, &
-   IO_getTag, &
-   IO_isBlank, &
-   IO_stringPos, &
-   IO_stringValue, &
-   IO_floatValue, &
-   IO_intValue, &
    IO_warning, &
    IO_error, &
    IO_timeStamp, &
@@ -109,19 +94,13 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
    material_Nphase, &
    MATERIAL_partPhase
  use lattice, only: &
-   lattice_maxNslipFamily, &
-   lattice_NslipSystem
-
+   lattice_maxNslipFamily
+   
  implicit none
- integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt) :: Ninstance,mySize=0_pInt,phase,instance,source,sourceOffset,o
+ integer(pInt) :: Ninstance,phase,instance,source,sourceOffset
  integer(pInt) :: NofMyPhase,p ,i
- integer(pInt) :: Nchunks_SlipFamilies = 0_pInt, j
- character(len=65536) :: &
-   tag  = '', &
-   line = ''
+
  integer(pInt),          dimension(0), parameter :: emptyIntArray    = [integer(pInt)::]
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
  integer(kind(undefined_ID)) :: &
@@ -156,8 +135,6 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
  allocate(source_damage_anisoDuctile_output(maxval(phase_Noutput),Ninstance))
           source_damage_anisoDuctile_output = ''
 
- allocate(source_damage_anisoDuctile_critLoad(lattice_maxNslipFamily,Ninstance), source=0.0_pReal) 
- allocate(source_damage_anisoDuctile_critPlasticStrain(lattice_maxNslipFamily,Ninstance),source=0.0_pReal) 
  allocate(source_damage_anisoDuctile_Nslip(lattice_maxNslipFamily,Ninstance),        source=0_pInt)
 
  allocate(param(Ninstance))
@@ -179,11 +156,11 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
    prm%Nslip  = config%getInts('nslip',defaultVal=emptyIntArray)
    
    prm%critPlasticStrain = config%getFloats('anisoductile_criticalplasticstrain',requiredSize=size(prm%Nslip))
-   prm%critLoad          = config%getFloats('anisoductile_criticalload',         requiredSize=size(prm%Nslip))
 
      ! expand: family => system
      prm%critPlasticStrain   = math_expand(prm%critPlasticStrain,  prm%Nslip)
-     prm%critLoad            = math_expand(prm%critLoad,           prm%Nslip)
+     
+          if (any(prm%critPlasticStrain < 0.0_pReal))     extmsg = trim(extmsg)//' anisoductile_criticalplasticstrain'
    
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
@@ -219,62 +196,9 @@ subroutine source_damage_anisoDuctile_init(fileUnit)
    sourceState(phase)%p(sourceOffset)%sizePostResults = sum(source_damage_anisoDuctile_sizePostResult(:,instance))
    sourceState(phase)%p(sourceOffset)%aTolState=param(instance)%aTol
    
+   source_damage_anisoDuctile_Nslip(1:size(param(instance)%Nslip),instance) = param(instance)%Nslip
+   
  enddo
-
- rewind(fileUnit)
- phase = 0_pInt
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= MATERIAL_partPhase)         ! wind forward to <phase>
-   line = IO_read(fileUnit)
- enddo
- 
- parsingFile: do while (trim(line) /= IO_EOF)                                                       ! read through sections of phase part
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit                                                                                           
-   endif   
-   if (IO_getTag(line,'[',']') /= '') then                                                          ! next phase section
-     phase = phase + 1_pInt                                                                         ! advance phase section counter
-     cycle                                                                                          ! skip to next line
-   endif
-   if (phase > 0_pInt ) then; if (any(phase_source(:,phase) == SOURCE_damage_anisoDuctile_ID)) then         ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
-     instance = source_damage_anisoDuctile_instance(phase)                                                         ! which instance of my damage is present phase
-     chunkPos = IO_stringPos(line)
-     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
-     select case(tag)
-         
-       case ('nslip')  !
-         Nchunks_SlipFamilies = chunkPos(1) - 1_pInt
-         do j = 1_pInt, Nchunks_SlipFamilies
-           source_damage_anisoDuctile_Nslip(j,instance) = IO_intValue(line,chunkPos,1_pInt+j)
-         enddo
-         
-       case ('anisoductile_criticalplasticstrain')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           source_damage_anisoDuctile_critPlasticStrain(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
-         enddo
-
-       case ('anisoductile_criticalload')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           source_damage_anisoDuctile_critLoad(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
-         enddo
-         
-     end select
-   endif; endif
- enddo parsingFile
-
-!--------------------------------------------------------------------------------------------------
-!  sanity checks
- sanityChecks: do phase = 1_pInt, size(phase_source)   
-   myPhase: if (any(phase_source(:,phase) == SOURCE_damage_anisoDuctile_ID)) then
-     instance = source_damage_anisoDuctile_instance(phase)
-
-     if (any(source_damage_anisoDuctile_critPlasticStrain(:,instance) < 0.0_pReal)) &
-       call IO_error(211_pInt,el=instance,ext_msg='criticaPlasticStrain ('//SOURCE_damage_anisoDuctile_LABEL//')')
-
-   endif myPhase
- enddo sanityChecks
   
 end subroutine source_damage_anisoDuctile_init
 
@@ -319,8 +243,7 @@ subroutine source_damage_anisoDuctile_dotState(ipc, ip, el)
      sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = &
        sourceState(phase)%p(sourceOffset)%dotState(1,constituent) + &
        plasticState(phase)%slipRate(index,constituent)/ &
-       ((damage(homog)%p(damageOffset))**param(instance)%N)/ & 
-       source_damage_anisoDuctile_critPlasticStrain(f,instance) 
+       ((damage(homog)%p(damageOffset))**param(instance)%N)/param(instance)%critPlasticStrain(index) 
      
      index = index + 1_pInt
    enddo

@@ -23,10 +23,6 @@ module source_damage_anisoBrittle
    
  integer(pInt),                       dimension(:,:),         allocatable,         private :: &
    source_damage_anisoBrittle_Ncleavage                                                                         !< number of cleavage systems per family
-   
- real(pReal),                         dimension(:,:),         allocatable,         private :: &
-   source_damage_anisoBrittle_critDisp, &
-   source_damage_anisoBrittle_critLoad
 
  enum, bind(c) 
    enumerator :: undefined_ID, &
@@ -66,7 +62,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_anisoBrittle_init(fileUnit)
+subroutine source_damage_anisoBrittle_init
 #if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
  use, intrinsic :: iso_fortran_env, only: &
    compiler_version, &
@@ -79,14 +75,6 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
    debug_constitutive,&
    debug_levelBasic
  use IO, only: &
-   IO_read, &
-   IO_lc, &
-   IO_getTag, &
-   IO_isBlank, &
-   IO_stringPos, &
-   IO_stringValue, &
-   IO_floatValue, &
-   IO_intValue, &
    IO_warning, &
    IO_error, &
    IO_timeStamp, &
@@ -107,19 +95,12 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
    material_Nphase, &
    MATERIAL_partPhase
  use lattice, only: &
-   lattice_maxNcleavageFamily, &
-   lattice_NcleavageSystem
+   lattice_maxNcleavageFamily
 
  implicit none
- integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt) :: Ninstance,mySize=0_pInt,phase,instance,source,sourceOffset,o
+ integer(pInt) :: Ninstance,phase,instance,source,sourceOffset
  integer(pInt) :: NofMyPhase,p   ,i
- integer(pInt) :: Nchunks_CleavageFamilies = 0_pInt, j
- character(len=65536) :: &
-   tag  = '', &
-   line = ''
  integer(pInt),          dimension(0), parameter :: emptyIntArray    = [integer(pInt)::]
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
  integer(kind(undefined_ID)) :: &
@@ -154,8 +135,6 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
  allocate(source_damage_anisoBrittle_output(maxval(phase_Noutput),Ninstance))
           source_damage_anisoBrittle_output = ''
 
- allocate(source_damage_anisoBrittle_critDisp(lattice_maxNcleavageFamily,Ninstance),  source=0.0_pReal) 
- allocate(source_damage_anisoBrittle_critLoad(lattice_maxNcleavageFamily,Ninstance),  source=0.0_pReal) 
  allocate(source_damage_anisoBrittle_Ncleavage(lattice_maxNcleavageFamily,Ninstance), source=0_pInt)
 
  allocate(param(Ninstance))
@@ -185,6 +164,8 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
      prm%critDisp  = math_expand(prm%critDisp, prm%Ncleavage)
      prm%critLoad  = math_expand(prm%critLoad, prm%Ncleavage)
      
+     if (any(prm%critLoad < 0.0_pReal))     extmsg = trim(extmsg)//' anisobrittle_criticalload'
+    if (any(prm%critDisp < 0.0_pReal))     extmsg = trim(extmsg)//' anisobrittle_criticaldisplacement'  
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
    if (extmsg /= '') &
@@ -219,65 +200,10 @@ subroutine source_damage_anisoBrittle_init(fileUnit)
    sourceState(phase)%p(sourceOffset)%sizePostResults = sum(source_damage_anisoBrittle_sizePostResult(:,instance))
    sourceState(phase)%p(sourceOffset)%aTolState=param(instance)%aTol
 
+
+   source_damage_anisoBrittle_Ncleavage(1:size(param(instance)%Ncleavage),instance) = param(instance)%Ncleavage
  enddo
 
- rewind(fileUnit)
- phase = 0_pInt
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= MATERIAL_partPhase)         ! wind forward to <phase>
-   line = IO_read(fileUnit)
- enddo
- 
- parsingFile: do while (trim(line) /= IO_EOF)                                                       ! read through sections of phase part
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit                                                                                           
-   endif   
-   if (IO_getTag(line,'[',']') /= '') then                                                          ! next phase section
-     phase = phase + 1_pInt                                                                         ! advance phase section counter
-     cycle                                                                                          ! skip to next line
-   endif
-   if (phase > 0_pInt ) then; if (any(phase_source(:,phase) == SOURCE_damage_anisoBrittle_ID)) then ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
-     instance = source_damage_anisoBrittle_instance(phase)                                          ! which instance of my damage is present phase
-     chunkPos = IO_stringPos(line)
-     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
-     select case(tag)
-
-       case ('ncleavage')  !
-         Nchunks_CleavageFamilies = chunkPos(1) - 1_pInt
-         do j = 1_pInt, Nchunks_CleavageFamilies
-           source_damage_anisoBrittle_Ncleavage(j,instance) = IO_intValue(line,chunkPos,1_pInt+j)
-         enddo
-
-       case ('anisobrittle_criticaldisplacement')
-         do j = 1_pInt, Nchunks_CleavageFamilies
-           source_damage_anisoBrittle_critDisp(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
-         enddo
-
-       case ('anisobrittle_criticalload')
-         do j = 1_pInt, Nchunks_CleavageFamilies
-           source_damage_anisoBrittle_critLoad(j,instance) = IO_floatValue(line,chunkPos,1_pInt+j)
-         enddo
-
-     end select
-   endif; endif
- enddo parsingFile
-
-!--------------------------------------------------------------------------------------------------
-!  sanity checks
- sanityChecks: do phase = 1_pInt, material_Nphase  
-   myPhase: if (any(phase_source(:,phase) == SOURCE_damage_anisoBrittle_ID)) then
-     instance = source_damage_anisoBrittle_instance(phase)
-
-     if (any(source_damage_anisoBrittle_critDisp(1:Nchunks_CleavageFamilies,instance) < 0.0_pReal)) &
-       call IO_error(211_pInt,el=instance,ext_msg='critical_displacement ('//SOURCE_damage_anisoBrittle_LABEL//')')
-     if (any(source_damage_anisoBrittle_critLoad(1:Nchunks_CleavageFamilies,instance) < 0.0_pReal)) &
-       call IO_error(211_pInt,el=instance,ext_msg='critical_load ('//SOURCE_damage_anisoBrittle_LABEL//')')
- 
-       
-   endif myPhase
- enddo sanityChecks
  
 end subroutine source_damage_anisoBrittle_init
 
@@ -312,7 +238,7 @@ subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
    sourceOffset, &
    damageOffset, &
    homog, &
-   f, i, index_myFamily
+   f, i, index_myFamily, index
  real(pReal) :: &
    traction_d, traction_t, traction_n, traction_crit
 
@@ -324,6 +250,8 @@ subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
  damageOffset = damageMapping(homog)%p(ip,el)
  
  sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = 0.0_pReal
+ 
+ index = 1_pInt
  do f = 1_pInt,lattice_maxNcleavageFamily
    index_myFamily = sum(lattice_NcleavageSystem(1:f-1_pInt,phase))                                  ! at which index starts my family
    do i = 1_pInt,source_damage_anisoBrittle_Ncleavage(f,instance)                                   ! process each (active) cleavage system in family
@@ -331,7 +259,7 @@ subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
      traction_t    = math_mul33xx33(S,lattice_Scleavage(1:3,1:3,2,index_myFamily+i,phase))
      traction_n    = math_mul33xx33(S,lattice_Scleavage(1:3,1:3,3,index_myFamily+i,phase))
      
-     traction_crit = source_damage_anisoBrittle_critLoad(f,instance)* &
+     traction_crit = param(instance)%critLoad(index)* &
                      damage(homog)%p(damageOffset)*damage(homog)%p(damageOffset)
      sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = &
        sourceState(phase)%p(sourceOffset)%dotState(1,constituent) + &
@@ -339,8 +267,9 @@ subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
        ((max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**param(instance)%N + &
         (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**param(instance)%N + &
         (max(0.0_pReal, abs(traction_n) - traction_crit)/traction_crit)**param(instance)%N)/ &
-       source_damage_anisoBrittle_critDisp(f,instance)
+       param(instance)%critDisp(index)
 
+   index = index + 1_pInt
    enddo
  enddo
 
