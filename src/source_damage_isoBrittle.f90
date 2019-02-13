@@ -235,10 +235,9 @@ subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
    phase_NstiffnessDegradations, &
    phase_stiffnessDegradation
  use math, only : &
+   math_sym33to6, &
    math_mul33x33, &
    math_mul66x6, &
-   math_Mandel33to6, &
-   math_transpose33, &
    math_I3
 
  implicit none
@@ -254,7 +253,6 @@ subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
    phase, constituent, instance, sourceOffset, mech
  real(pReal) :: &
    strain(6), &
-   stiffness(6,6), &
    strainenergy
 
  phase = phaseAt(ipc,ip,el)                                                            !< phase ID at ipc,ip,el
@@ -263,11 +261,11 @@ subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
  instance = source_damage_isoBrittle_instance(phase)                                                 !< instance of damage_isoBrittle source
  sourceOffset = source_damage_isoBrittle_offset(phase)
 
- stiffness = C                                            
- strain = 0.5_pReal*math_Mandel33to6(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
+                                   
+ strain = 0.5_pReal*math_sym33to6(math_mul33x33(transpose(Fe),Fe)-math_I3)
 
- strainenergy = 2.0_pReal*sum(strain*math_mul66x6(stiffness,strain))/ &
-                param(instances)%critStrainEnergy
+ strainenergy = 2.0_pReal*sum(strain*math_mul66x6(C,strain))/ &
+                param(instance)%critStrainEnergy
  if (strainenergy > sourceState(phase)%p(sourceOffset)%subState0(1,constituent)) then
    sourceState(phase)%p(sourceOffset)%deltaState(1,constituent) = &
      strainenergy - sourceState(phase)%p(sourceOffset)%state(1,constituent)
