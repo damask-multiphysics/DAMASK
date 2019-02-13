@@ -65,10 +65,7 @@ subroutine source_damage_isoBrittle_init
    debug_constitutive,&
    debug_levelBasic
  use IO, only: &
-   IO_warning, &
-   IO_error, &
-   IO_timeStamp, &
-   IO_EOF
+   IO_error
  use material, only: &
    material_allocateSourceState, &
    phase_source, &
@@ -85,7 +82,7 @@ subroutine source_damage_isoBrittle_init
 
  implicit none
 
- integer(pInt) :: Ninstance,phase,instance,source,sourceOffset,o
+ integer(pInt) :: Ninstance,phase,instance,source,sourceOffset
  integer(pInt) :: NofMyPhase,p,i   
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
  integer(kind(undefined_ID)) :: &
@@ -97,7 +94,6 @@ subroutine source_damage_isoBrittle_init
    outputs
  
  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_DAMAGE_ISOBRITTLE_LABEL//' init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
  Ninstance = int(count(phase_source == SOURCE_damage_isoBrittle_ID),pInt)
@@ -182,10 +178,7 @@ end subroutine source_damage_isoBrittle_init
 subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
  use material, only: &
    phaseAt, phasememberAt, &
-   sourceState, &
-   material_homog, &
-   phase_NstiffnessDegradations, &
-   phase_stiffnessDegradation
+   sourceState
  use math, only : &
    math_sym33to6, &
    math_mul33x33, &
@@ -202,7 +195,7 @@ subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
  real(pReal),  intent(in), dimension(6,6) :: &
    C
  integer(pInt) :: &
-   phase, constituent, instance, sourceOffset, mech
+   phase, constituent, instance, sourceOffset
  real(pReal) :: &
    strain(6), &
    strainenergy
@@ -216,8 +209,8 @@ subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
                                    
  strain = 0.5_pReal*math_sym33to6(math_mul33x33(transpose(Fe),Fe)-math_I3)
 
- strainenergy = 2.0_pReal*sum(strain*math_mul66x6(C,strain))/ &
-                param(instance)%critStrainEnergy
+ strainenergy = 2.0_pReal*sum(strain*math_mul66x6(C,strain))/param(instance)%critStrainEnergy
+ 
  if (strainenergy > sourceState(phase)%p(sourceOffset)%subState0(1,constituent)) then
    sourceState(phase)%p(sourceOffset)%deltaState(1,constituent) = &
      strainenergy - sourceState(phase)%p(sourceOffset)%state(1,constituent)

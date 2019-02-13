@@ -74,10 +74,7 @@ subroutine source_damage_anisoDuctile_init
    debug_constitutive,&
    debug_levelBasic
  use IO, only: &
-   IO_warning, &
-   IO_error, &
-   IO_timeStamp, &
-   IO_EOF
+   IO_error
     use math, only: &
    math_expand
  use material, only: &
@@ -112,7 +109,6 @@ subroutine source_damage_anisoDuctile_init
    outputs
 
  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_DAMAGE_ANISODUCTILE_LABEL//' init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
  Ninstance = int(count(phase_source == SOURCE_damage_anisoDuctile_ID),pInt)

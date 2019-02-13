@@ -66,9 +66,7 @@ subroutine source_damage_isoDuctile_init
    debug_levelBasic
  use IO, only: &
    IO_warning, &
-   IO_error, &
-   IO_timeStamp, &
-   IO_EOF
+   IO_error
  use material, only: &
    material_allocateSourceState, &
    phase_source, &
@@ -97,7 +95,6 @@ subroutine source_damage_isoDuctile_init
    outputs
 
  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_DAMAGE_ISODUCTILE_LABEL//' init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
  Ninstance = int(count(phase_source == SOURCE_damage_isoDuctile_ID),pInt)
