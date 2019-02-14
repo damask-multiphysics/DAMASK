@@ -431,7 +431,7 @@ J2_plasticBehavior:
 Abaqus_compile2017:
   stage: compileAbaqus
   script:
-    - module load $IntelCompiler16_4 $Abaqus
+    - module load $IntelAbaqus $Abaqus
     - Abaqus_compileIfort/test.py -a 2017
   except:
     - master
