@@ -79,9 +79,9 @@ variables:
   IntelMarc:                       "$IntelCompiler17_8"
   IntelAbaqus:                     "$IntelCompiler16_4"
   # ++++++++++++ Documentation +++++++++++++++++++++++++++++++++++++++++
-  Doxygen1_8_13:                   "Documentation/Doxygen/1.8.13"
+  Doxygen1_8_15:                   "Documentation/Doxygen/1.8.15"
   # ------------ Defaults ----------------------------------------------
-  Doxygen:                         "$Doxygen1_8_13"
+  Doxygen:                         "$Doxygen1_8_15"
 
 
 ###################################################################################################
