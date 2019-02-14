@@ -7,9 +7,9 @@ stages:
   - compilePETScGNU
   - prepareSpectral
   - spectral
-  - compileMarc2018_1
+  - compileMarc
   - marc
-  - compileAbaqus2019
+  - compileAbaqus
   - example
   - performance
   - createPackage
@@ -381,9 +381,9 @@ TextureComponents:
 
 ###################################################################################################
 Marc_compileIfort2018_1:
-  stage: compileMarc2018_1
+  stage: compileMarc
   script:
-    - module load $IntelCompiler17_0 $MSC2018_1
+    - module load $IntelMarc $MSC
     - Marc_compileIfort/test.py -m 2018.1
   except:
     - master
@@ -429,9 +429,9 @@ J2_plasticBehavior:
 
 ###################################################################################################
 Abaqus_compile2017:
-  stage: compileAbaqus2017
+  stage: compileAbaqus
   script:
-    - module load $IntelCompiler16_4 $Abaqus2017
+    - module load $IntelCompiler16_4 $Abaqus
     - Abaqus_compileIfort/test.py -a 2017
   except:
     - master
