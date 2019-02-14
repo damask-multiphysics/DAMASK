@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -21,7 +21,7 @@ Add data of selected column(s) from (first) row of linked ASCIItable that shares
 parser.add_option('--link',
                   dest = 'link', nargs = 2,
                   type = 'string', metavar = 'string string',
-                  help = 'column labels containing linked values')
+                  help = 'column labels of table and linked table containing linking values')
 parser.add_option('-l','--label',
                   dest = 'label',
                   action = 'extend', metavar = '<string LIST>',
@@ -105,7 +105,7 @@ for name in filenames:
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     try:
-      table.data_append(data[np.argwhere(np.all((map(float,table.data[myLink:myLink+myLinkDim]) - index)==0,axis=1))[0]])  # add data of first matching line
+      table.data_append(data[np.argwhere(np.all((list(map(float,table.data[myLink:myLink+myLinkDim])) - index)==0,axis=1))[0]])  # add data of first matching line
     except IndexError:
       table.data_append(np.nan*np.ones_like(data[0]))                                               # or add NaNs
     outputAlive = table.data_write()                                                                # output processed line
