@@ -43,8 +43,8 @@ module plastic_nonlocal
  integer(pInt), dimension(:), allocatable, public, protected :: &
    plastic_nonlocal_sizeDotState, &                                                            !< number of dotStates = number of basic state variables
    plastic_nonlocal_sizeDependentState, &                                                      !< number of dependent state variables
-   plastic_nonlocal_sizeState, &                                                               !< total number of state variables
-   plastic_nonlocal_sizePostResults                                                            !< cumulative size of post results
+   plastic_nonlocal_sizeState                                                              !< total number of state variables
+
 
  integer(pInt), dimension(:,:), allocatable, target, public :: &
    plastic_nonlocal_sizePostResult                                                             !< size of each post result output
@@ -204,8 +204,7 @@ module plastic_nonlocal
  plastic_nonlocal_postResults
  
  private :: &
- plastic_nonlocal_kinetics, &
- plastic_nonlocal_dislocationstress
+ plastic_nonlocal_kinetics
  
 
 contains
@@ -298,7 +297,6 @@ integer(pInt)          ::                   phase, &
 allocate(plastic_nonlocal_sizeDotState(maxNinstances),                          source=0_pInt)
 allocate(plastic_nonlocal_sizeDependentState(maxNinstances),                    source=0_pInt)
 allocate(plastic_nonlocal_sizeState(maxNinstances),                             source=0_pInt)
-allocate(plastic_nonlocal_sizePostResults(maxNinstances),                       source=0_pInt)
 allocate(plastic_nonlocal_sizePostResult(maxval(phase_Noutput), maxNinstances), source=0_pInt)
 allocate(plastic_nonlocal_Noutput(maxNinstances),                               source=0_pInt)
 allocate(plastic_nonlocal_output(maxval(phase_Noutput), maxNinstances))
@@ -924,12 +922,11 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                
    
        if (mySize > 0_pInt) then                                                                       ! any meaningful output found                               
          plastic_nonlocal_sizePostResult(o,instance) = mySize
-         plastic_nonlocal_sizePostResults(instance)  = plastic_nonlocal_sizePostResults(instance) + mySize
        endif
      enddo outputsLoop
                 
 
-     plasticState(phase)%sizePostResults = plastic_nonlocal_sizePostResults(instance)
+     plasticState(phase)%sizePostResults = sum(plastic_nonlocal_sizePostResult(:,instance))
      plasticState(phase)%nonlocal = .true.
      call material_allocatePlasticState(phase,NofMyPhase,sizeState,sizeDotState,sizeDeltaState, &
                                         totalNslip(instance),0_pInt,0_pInt)
@@ -2785,353 +2782,6 @@ compatibility(1:2,1:ns,1:ns,1:Nneighbors,i,e) = my_compatibility
 
 end subroutine plastic_nonlocal_updateCompatibility
 
-!*********************************************************************
-!* calculates quantities characterizing the microstructure           *
-!*********************************************************************
-function plastic_nonlocal_dislocationstress(Fe, ip, el)
-use prec, only: &
-  dEq0
-use math,     only: math_mul33x33, &
-                    math_mul33x3, &
-                    math_inv33, &
-                    math_transpose33, &
-                    pi
-use mesh,     only: mesh_NcpElems, &
-                    mesh_maxNips, &
-                    mesh_element, &
-                    mesh_node0, &
-                    mesh_cellCenterCoordinates, &
-                    mesh_ipVolume, &
-                    mesh_periodicSurface, &
-                    FE_Nips, &
-                    FE_geomtype
-use material, only: homogenization_maxNgrains, &
-                    material_phase, &
-                    plasticState, &
-                    phaseAt, phasememberAt,&
-                    phase_localPlasticity, &
-                    phase_plasticityInstance
-use lattice, only:  lattice_mu, &
-                    lattice_nu
-
-implicit none
-
-!*** input variables
-integer(pInt), intent(in) ::    ip, &                                                               !< current integration point
-                                el                                                                  !< current element
-real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-                                Fe                                                                  !< elastic deformation gradient
-
-!*** output variables
-real(pReal), dimension(3,3) ::  plastic_nonlocal_dislocationstress
-
-!*** local variables
-integer(pInt)                   neighbor_el, &                                                      !< element number of neighbor material point
-                                neighbor_ip, &                                                      !< integration point of neighbor material point
-                                instance, &                                                         !< my instance of this plasticity
-                                neighbor_instance, &                                                !< instance of this plasticity of neighbor material point
-                                ph, &
-                                neighbor_phase, &
-                                ns, &                                                               !< total number of active slip systems at my material point
-                                neighbor_ns, &                                                      !< total number of active slip systems at neighbor material point
-                                c, &                                                                !< index of dilsocation character (edge, screw)
-                                s, &                                                                !< slip system index
-                                o,&                                                                 !< offset shortcut
-                                no,&                                                                !< neighbour offset shortcut
-                                p,&                                                                 !< phase shortcut
-                                np,&                                                                !< neighbour phase shortcut
-                                t, &                                                                !< index of dilsocation type (e+, e-, s+, s-, used e+, used e-, used s+, used s-)
-                                dir, &
-                                deltaX, deltaY, deltaZ, &
-                                side, &
-                                j
-integer(pInt), dimension(2,3) :: periodicImages
-real(pReal)                     x, y, z, &                                                          !< coordinates of connection vector in neighbor lattice frame
-                                xsquare, ysquare, zsquare, &                                        !< squares of respective coordinates
-                                distance, &                                                         !< length of connection vector
-                                segmentLength, &                                                    !< segment length of dislocations
-                                lambda, &
-                                R, Rsquare, Rcube, &
-                                denominator, &
-                                flipSign, &
-                                neighbor_ipVolumeSideLength
-real(pReal), dimension(3) ::    connection, &                                                       !< connection vector between me and my neighbor in the deformed configuration
-                                connection_neighborLattice, &                                       !< connection vector between me and my neighbor in the lattice configuration of my neighbor
-                                connection_neighborSlip, &                                          !< connection vector between me and my neighbor in the slip system frame of my neighbor
-                                maxCoord, minCoord, &
-                                meshSize, &
-                                coords, &                                                           !< x,y,z coordinates of cell center of ip volume
-                                neighbor_coords                                                     !< x,y,z coordinates of cell center of neighbor ip volume
-real(pReal), dimension(3,3) ::  sigma, &                                                            !< dislocation stress for one slip system in neighbor material point's slip system frame
-                                Tdislo_neighborLattice, &                                           !< dislocation stress as 2nd Piola-Kirchhoff stress at neighbor material point
-                                invFe, &                                                            !< inverse of my elastic deformation gradient
-                                neighbor_invFe, &
-                                neighborLattice2myLattice                                           !< mapping from neighbor MPs lattice configuration to my lattice configuration
-real(pReal), dimension(2,2,maxval(totalNslip)) :: &
-                                neighbor_rhoExcess                                                  !< excess density at neighbor material point (edge/screw,mobile/dead,slipsystem)
-real(pReal), dimension(2,maxval(totalNslip)) :: &
-                                rhoExcessDead
-real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),8) :: &
-                                rhoSgl                                                              ! single dislocation density (edge+, edge-, screw+, screw-, used edge+, used edge-, used screw+, used screw-)
-
-ph = material_phase(1_pInt,ip,el)
-instance = phase_plasticityInstance(ph)
-ns = totalNslip(instance)
-p = phaseAt(1,ip,el)
-o = phasememberAt(1,ip,el)
-
-!*** get basic states
-
-forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
-  rhoSgl(s,t) = max(plasticState(p)%state(iRhoU(s,t,instance),o), 0.0_pReal)                              ! ensure positive single mobile densities
-  rhoSgl(s,t+4_pInt) = plasticState(p)%state(iRhoB(s,t,instance),o)
-endforall
-
-
-
-!*** calculate the dislocation stress of the neighboring excess dislocation densities
-!*** zero for material points of local plasticity
-
-plastic_nonlocal_dislocationstress = 0.0_pReal
-
-if (.not. phase_localPlasticity(ph)) then
-  invFe = math_inv33(Fe(1:3,1:3,1_pInt,ip,el))
-
-  !* in case of periodic surfaces we have to find out how many periodic images in each direction we need
-  
-  do dir = 1_pInt,3_pInt
-    maxCoord(dir) = maxval(mesh_node0(dir,:))
-    minCoord(dir) = minval(mesh_node0(dir,:))
-  enddo
-  meshSize = maxCoord - minCoord
-  coords = mesh_cellCenterCoordinates(ip,el)
-  periodicImages = 0_pInt
-  do dir = 1_pInt,3_pInt
-    if (mesh_periodicSurface(dir)) then
-      periodicImages(1,dir) =   floor((coords(dir) - cutoffRadius(instance) - minCoord(dir)) / meshSize(dir), pInt)
-      periodicImages(2,dir) = ceiling((coords(dir) + cutoffRadius(instance) - maxCoord(dir)) / meshSize(dir), pInt)
-    endif
-  enddo
-
-      
-  !* loop through all material points (also through their periodic images if present), 
-  !* but only consider nonlocal neighbors within a certain cutoff radius R
-  
-  do neighbor_el = 1_pInt,mesh_NcpElems
-    ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el)))
-      neighbor_phase = material_phase(1_pInt,neighbor_ip,neighbor_el)
-      np = phaseAt(1,neighbor_ip,neighbor_el)
-      no = phasememberAt(1,neighbor_ip,neighbor_el)
-
-      if (phase_localPlasticity(neighbor_phase)) cycle
-      neighbor_instance = phase_plasticityInstance(neighbor_phase)
-      neighbor_ns = totalNslip(neighbor_instance)
-      neighbor_invFe = math_inv33(Fe(1:3,1:3,1,neighbor_ip,neighbor_el))
-      neighbor_ipVolumeSideLength = mesh_ipVolume(neighbor_ip,neighbor_el) ** (1.0_pReal/3.0_pReal) ! reference volume used here
-      
-      forall (s = 1_pInt:neighbor_ns, c = 1_pInt:2_pInt)
-        neighbor_rhoExcess(c,1,s) = plasticState(np)%state(iRhoU(s,2*c-1,neighbor_instance),no) &      ! positive mobiles
-                                  - plasticState(np)%state(iRhoU(s,2*c,neighbor_instance),no)          ! negative mobiles
-        neighbor_rhoExcess(c,2,s) = abs(plasticState(np)%state(iRhoB(s,2*c-1,neighbor_instance),no)) & ! positive deads
-                                  - abs(plasticState(np)%state(iRhoB(s,2*c,neighbor_instance),no))     ! negative deads
-
-      endforall
-      Tdislo_neighborLattice = 0.0_pReal
-      do deltaX = periodicImages(1,1),periodicImages(2,1)
-        do deltaY = periodicImages(1,2),periodicImages(2,2)
-          do deltaZ = periodicImages(1,3),periodicImages(2,3)
-            
-            
-            !* regular case
-            
-            if (neighbor_el /= el .or. neighbor_ip /= ip &
-                .or. deltaX /= 0_pInt .or. deltaY /= 0_pInt .or. deltaZ /= 0_pInt) then
-            
-              neighbor_coords = mesh_cellCenterCoordinates(neighbor_ip,neighbor_el) &
-                                 + [real(deltaX,pReal), real(deltaY,pReal), real(deltaZ,pReal)] * meshSize
-              connection = neighbor_coords - coords
-              distance = sqrt(sum(connection * connection))
-              if (distance > cutoffRadius(instance)) cycle
-                
-
-              !* the segment length is the minimum of the third root of the control volume and the ip distance
-              !* this ensures, that the central MP never sits on a neighbor dislocation segment
-              
-              connection_neighborLattice = math_mul33x3(neighbor_invFe, connection)
-              segmentLength = min(neighbor_ipVolumeSideLength, distance)
-      
-
-              !* loop through all slip systems of the neighbor material point
-              !* and add up the stress contributions from egde and screw excess on these slip systems (if significant)
-      
-              do s = 1_pInt,neighbor_ns
-                if (all(abs(neighbor_rhoExcess(:,:,s)) < significantRho(instance))) cycle           ! not significant
-                
-                
-                !* map the connection vector from the lattice into the slip system frame
-                
-                connection_neighborSlip = math_mul33x3(lattice2slip(1:3,1:3,s,neighbor_instance), &
-                                                       connection_neighborLattice)
-                
-                
-                !* edge contribution to stress
-                sigma = 0.0_pReal
-                
-                x = connection_neighborSlip(1)
-                y = connection_neighborSlip(2)
-                z = connection_neighborSlip(3)
-                xsquare = x * x
-                ysquare = y * y
-                zsquare = z * z
-
-                do j = 1_pInt,2_pInt
-                  if (abs(neighbor_rhoExcess(1,j,s)) < significantRho(instance)) then
-                    cycle 
-                  elseif (j > 1_pInt) then
-                    x = connection_neighborSlip(1) &
-                      + sign(0.5_pReal * segmentLength, &
-                              plasticState(np)%state(iRhoB(s,1,neighbor_instance),no) &
-                              - plasticState(np)%state(iRhoB(s,2,neighbor_instance),no))
-
-                    xsquare = x * x
-                  endif
-                   
-                  flipSign = sign(1.0_pReal, -y)
-                  do side = 1_pInt,-1_pInt,-2_pInt
-                    lambda = real(side,pReal) * 0.5_pReal * segmentLength - y
-                    R = sqrt(xsquare + zsquare + lambda * lambda)
-                    Rsquare = R * R
-                    Rcube = Rsquare * R 
-                    denominator = R * (R + flipSign * lambda)
-                    if (dEq0(denominator)) exit ipLoop
-                      
-                    sigma(1,1) = sigma(1,1) - real(side,pReal) &
-                                            * flipSign * z / denominator &
-                                            * (1.0_pReal + xsquare / Rsquare + xsquare / denominator) &
-                                            * neighbor_rhoExcess(1,j,s)
-                    sigma(2,2) = sigma(2,2) - real(side,pReal) &
-                                            * (flipSign * 2.0_pReal * lattice_nu(ph) * z / denominator + z * lambda / Rcube) &
-                                            * neighbor_rhoExcess(1,j,s)
-                    sigma(3,3) = sigma(3,3) + real(side,pReal) &
-                                            * flipSign * z / denominator &
-                                            * (1.0_pReal - zsquare / Rsquare - zsquare / denominator) &
-                                            * neighbor_rhoExcess(1,j,s)
-                    sigma(1,2) = sigma(1,2) + real(side,pReal) &
-                                            * x * z / Rcube * neighbor_rhoExcess(1,j,s)
-                    sigma(1,3) = sigma(1,3) + real(side,pReal) &
-                                            * flipSign * x / denominator &
-                                            * (1.0_pReal - zsquare / Rsquare - zsquare / denominator) &
-                                            * neighbor_rhoExcess(1,j,s)
-                    sigma(2,3) = sigma(2,3) - real(side,pReal) &
-                                            * (lattice_nu(ph) / R - zsquare / Rcube) * neighbor_rhoExcess(1,j,s)
-                  enddo
-                enddo 
-                
-                !* screw contribution to stress
-                
-                x = connection_neighborSlip(1)   ! have to restore this value, because position might have been adapted for edge deads before
-                do j = 1_pInt,2_pInt
-                  if (abs(neighbor_rhoExcess(2,j,s)) < significantRho(instance)) then
-                    cycle 
-                  elseif (j > 1_pInt) then
-                    y = connection_neighborSlip(2) &
-                      + sign(0.5_pReal * segmentLength, &
-                             plasticState(np)%state(iRhoB(s,3,neighbor_instance),no) &
-                             - plasticState(np)%state(iRhoB(s,4,neighbor_instance),no))
-                    ysquare = y * y
-                  endif
-
-                  flipSign = sign(1.0_pReal, x)
-                  do side = 1_pInt,-1_pInt,-2_pInt
-                    lambda = x + real(side,pReal) * 0.5_pReal * segmentLength
-                    R = sqrt(ysquare + zsquare + lambda * lambda)
-                    Rsquare = R * R
-                    Rcube = Rsquare * R 
-                    denominator = R * (R + flipSign * lambda)
-                    if (dEq0(denominator)) exit ipLoop
-                    
-                    sigma(1,2) = sigma(1,2) - real(side,pReal) * flipSign * z &
-                                                               * (1.0_pReal - lattice_nu(ph)) / denominator &
-                                                               * neighbor_rhoExcess(2,j,s)
-                    sigma(1,3) = sigma(1,3) + real(side,pReal) * flipSign * y &
-                                                               * (1.0_pReal - lattice_nu(ph)) / denominator &
-                                                               * neighbor_rhoExcess(2,j,s)
-                  enddo
-                enddo
-               
-                if (all(abs(sigma) < 1.0e-10_pReal)) cycle ! SIGMA IS NOT A REAL STRESS, THATS WHY WE NEED A REALLY SMALL VALUE HERE
-
-                !* copy symmetric parts
-                
-                sigma(2,1) = sigma(1,2)
-                sigma(3,1) = sigma(1,3)
-                sigma(3,2) = sigma(2,3)
-
-                
-                !* scale stresses and map them into the neighbor material point's lattice configuration
-                
-                sigma = sigma * lattice_mu(neighbor_phase) * burgers(s,neighbor_instance) &
-                              / (4.0_pReal * pi * (1.0_pReal - lattice_nu(neighbor_phase))) &
-                              * mesh_ipVolume(neighbor_ip,neighbor_el) / segmentLength      ! reference volume is used here (according to the segment length calculation)
-                Tdislo_neighborLattice = Tdislo_neighborLattice &
-                      + math_mul33x33(math_transpose33(lattice2slip(1:3,1:3,s,neighbor_instance)), &
-                        math_mul33x33(sigma, lattice2slip(1:3,1:3,s,neighbor_instance)))
-                                            
-              enddo ! slip system loop
-
-
-            !* special case of central ip volume
-            !* only consider dead dislocations
-            !* we assume that they all sit at a distance equal to half the third root of V
-            !* in direction of the according slip direction
-            
-            else
-              
-              forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
-
-                rhoExcessDead(c,s) = plasticState(p)%state(iRhoB(s,2*c-1,instance),o) &             ! positive deads (here we use symmetry: if this has negative sign it is 
-                                                                                                    !treated as negative density at positive position instead of positive 
-                                                                                                    !density at negative position)
-                                   + plasticState(p)%state(iRhoB(s,2*c,instance),o)                 ! negative deads (here we use symmetry: if this has negative sign it is 
-                                                                                                    !treated as positive density at positive position instead of negative 
-                                                                                                    !density at negative position)
-              do s = 1_pInt,ns
-                if (all(abs(rhoExcessDead(:,s)) < significantRho(instance))) cycle                  ! not significant
-                sigma = 0.0_pReal                                                                   ! all components except for sigma13 are zero
-                sigma(1,3) = - (rhoExcessDead(1,s) + rhoExcessDead(2,s) * (1.0_pReal - lattice_nu(ph))) &
-                           * neighbor_ipVolumeSideLength * lattice_mu(ph) * burgers(s,instance) &
-                           / (sqrt(2.0_pReal) * pi * (1.0_pReal - lattice_nu(ph)))
-                sigma(3,1) = sigma(1,3)
-                
-                Tdislo_neighborLattice = Tdislo_neighborLattice &
-                                      + math_mul33x33(math_transpose33(lattice2slip(1:3,1:3,s,instance)), &
-                                                      math_mul33x33(sigma, lattice2slip(1:3,1:3,s,instance)))
-                                            
-              enddo ! slip system loop
-
-            endif
-
-          enddo ! deltaZ loop
-        enddo ! deltaY loop
-      enddo ! deltaX loop
-
-
-      !* map the stress from the neighbor MP's lattice configuration into the deformed configuration 
-      !* and back into my lattice configuration
-
-      neighborLattice2myLattice = math_mul33x33(invFe, Fe(1:3,1:3,1,neighbor_ip,neighbor_el))
-      plastic_nonlocal_dislocationstress = plastic_nonlocal_dislocationstress &
-                                              + math_mul33x33(neighborLattice2myLattice, &
-                                                math_mul33x33(Tdislo_neighborLattice, &
-                                                math_transpose33(neighborLattice2myLattice)))
-                        
-    enddo ipLoop
-  enddo ! element loop
-    
-endif
-
-end function plastic_nonlocal_dislocationstress
-
  
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
@@ -3170,8 +2820,7 @@ function plastic_nonlocal_postResults(Tstar_v,Fe,ip,el)
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
  
- real(pReal),   dimension(plastic_nonlocal_sizePostResults(&
-                                         phase_plasticityInstance(material_phase(1_pInt,ip,el)))) :: &
+ real(pReal),   dimension(sum(plastic_nonlocal_sizePostResult(:,phase_plasticityInstance(material_phase(1_pInt,ip,el))))) :: &
    plastic_nonlocal_postResults
  
  integer(pInt) :: &
