@@ -502,10 +502,10 @@ Processing:
     - cd $DAMASKROOT/processing/post
     - $DAMASKROOT/PRIVATE/documenting/scriptHelpToWiki.py
       addAPS34IDEstrainCoords.py
-      addCauchy.py addCumulative.py addCurl.py
-      addDerivative.py addDeterminant.py addDeviator.py addDivergence.py
-      addEhkl.py
-      addGradient.py
+      addCauchy.py addCalculation.py addCompatibilityMismatch.py addCumulative.py addCurl.py
+      addDerivative.py addDeterminant.py addDeviator.py addDisplacement.py addDivergence.py
+      addEhkl.py addEuclideanDistance.py
+      addGaussian.py addGradient.py addGrainID.py
       addIndexed.py
       addInfo.py
       addLinked.py
