@@ -435,11 +435,11 @@ J2_plasticBehavior:
     - release
 
 ###################################################################################################
-Abaqus_compile2017:
+Abaqus_compile:
   stage: compileAbaqus
   script:
     - module load $IntelAbaqus $Abaqus
-    - Abaqus_compileIfort/test.py -a 2017
+    - Abaqus_compileIfort/test.py
   except:
     - master
     - release

@@ -2,7 +2,7 @@
 
 from .solver import Solver
 import damask
-import subprocess,re
+import subprocess
 
 class Abaqus(Solver):
 
