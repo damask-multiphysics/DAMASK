@@ -512,7 +512,13 @@ Processing:
       addMises.py
       addNorm.py
       addPK2.py
-      addSpectralDecomposition.py addStrainTensors.py > post.html
+      addSpectralDecomposition.py addStrainTensors.py
+      addTable.py
+      filterTable.py
+      perceptualUniformColorMap.py
+      reLabel.py
+      scaleData.py shiftData.py sortTable.py
+      viewTable.py > post.html
   except:
     - master
     - release
