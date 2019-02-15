@@ -21,7 +21,7 @@ class Abaqus(Solver):
     except OSError:                                                                                 # link to abqXXX not existing
       cmd='abaqus'
       process = subprocess.Popen(['abaqus','information=release'],stdout = subprocess.PIPE,stderr = subprocess.PIPE)
-      detectedVersion = process.stdout.readlines()[1].split()[1]
+      detectedVersion = process.stdout.readlines()[1].split()[1].decode('utf-8')
       if self.version != detectedVersion:
         raise Exception('found Abaqus version {}, but requested {}'.format(detectedVersion,self.version))
     return '{} -job {} -user {}/src/DAMASK_abaqus interactive'.format(cmd,model,env.rootDir())
