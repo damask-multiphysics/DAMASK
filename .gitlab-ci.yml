@@ -51,7 +51,7 @@ variables:
   # Names of module files to load
   # ===============================================================================================
   # ++++++++++++ Compiler ++++++++++++++++++++++++++++++++++++++++++++++
-  IntelCompiler16_4:               "Compiler/Intel/16.4 Libraries/IMKL/2016-4"
+  IntelCompiler16_4:               "Compiler/Intel/16.4 Libraries/IMKL/2016"
   IntelCompiler17_8:               "Compiler/Intel/17.8 Libraries/IMKL/2017"
   IntelCompiler18_4:               "Compiler/Intel/18.4 Libraries/IMKL/2018"
   GNUCompiler8_2:                  "Compiler/GNU/8.2"
