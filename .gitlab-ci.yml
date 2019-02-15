@@ -496,6 +496,27 @@ Spectral:
   only:
     - development
 
+Processing:
+  stage: createDocumentation
+  script:
+    - cd $DAMASKROOT/processing/post
+    - $DAMASKROOT/PRIVATE/documenting/scriptHelpToWiki.py
+      addAPS34IDEstrainCoords.py
+      addCauchy.py addCumulative.py addCurl.py
+      addDerivative.py addDeterminant.py addDeviator.py addDivergence.py
+      addEhkl.py
+      addGradient.py
+      addIndexed.py
+      addInfo.py
+      addLinked.py
+      addMises.py
+      addNorm.py
+      addPK2.py
+      addSpectralDecomposition.py addStrainTensors.py > post.html
+  except:
+    - master
+    - release
+
 ##################################################################################################
 backupData:
   stage: saveDocumentation

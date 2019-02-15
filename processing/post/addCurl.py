@@ -49,7 +49,7 @@ def curlFFT(geomdim,field):
 
   curl_fourier = np.einsum(einsums[n],e,k_s,field_fourier)*TWOPIIMG
 
-  return np.fft.irfftn(curl_fourier,s=shapeFFT,axes=(0,1,2)).reshape([N,n])
+  return np.fft.irfftn(curl_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,n])
 
 
 # --------------------------------------------------------------------
