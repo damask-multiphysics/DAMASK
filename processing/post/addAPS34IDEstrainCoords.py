@@ -19,8 +19,8 @@ Transform X,Y,Z,F APS BeamLine 34 coordinates to x,y,z APS strain coordinates.
 
 """, version = scriptID)
 
-parser.add_option('-f','--frame',dest='frame', nargs=3, metavar='string string string',
-                                 help='APS X,Y,Z coords')
+parser.add_option('-f','--frame',dest='frame', metavar='string',
+                                 help='label of APS X,Y,Z coords')
 parser.add_option('--depth',     dest='depth',          metavar='string',
                                  help='depth')
 
