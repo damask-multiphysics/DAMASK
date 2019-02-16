@@ -505,25 +505,8 @@ Processing:
   stage: createDocumentation
   script:
     - cd $DAMASKROOT/processing/post
-    - $DAMASKROOT/PRIVATE/documenting/scriptHelpToWiki.py
-      addAPS34IDEstrainCoords.py
-      addCauchy.py addCalculation.py addCompatibilityMismatch.py addCumulative.py addCurl.py
-      addDerivative.py addDeterminant.py addDeviator.py addDisplacement.py addDivergence.py
-      addEhkl.py addEuclideanDistance.py
-      addGaussian.py addGradient.py addGrainID.py
-      addIndexed.py
-      addInfo.py
-      addLinked.py
-      addMises.py
-      addNorm.py
-      addPK2.py
-      addSpectralDecomposition.py addStrainTensors.py
-      addTable.py
-      filterTable.py
-      perceptualUniformColorMap.py
-      reLabel.py
-      scaleData.py shiftData.py sortTable.py
-      viewTable.py > post.html
+    - rm marc_to_vtk.py vtk2ang.py
+    - $DAMASKROOT/PRIVATE/documenting/scriptHelpToWiki.py *
   except:
     - master
     - release
