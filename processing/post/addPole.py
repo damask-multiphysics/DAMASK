@@ -35,7 +35,6 @@ parser.add_option('-o',
 
 parser.set_defaults(pole = (1.0,0.0,0.0),
                     quaternion = 'orientation',
-                    polar   = False,
                    )
 
 (options, filenames) = parser.parse_args()

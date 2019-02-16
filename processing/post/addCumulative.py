@@ -22,12 +22,9 @@ parser.add_option('-l','--label',
                   action = 'extend', metavar = '<string LIST>',
                   help = 'columns to cumulate')
 
-parser.set_defaults(label = [],
-                   )
-                    
 (options,filenames) = parser.parse_args()
 
-if len(options.label) == 0:
+if options.label is None:
   parser.error('no data column(s) specified.')
 
 # --- loop over input files -------------------------------------------------------------------------

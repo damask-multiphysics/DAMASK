@@ -56,15 +56,14 @@ parser.add_option('-f','--defgrad',
                   metavar = '<string LIST>',
                   help = 'heading(s) of columns containing deformation tensor values [%default]')
 
-parser.set_defaults(right       = False,
-                    left        = False,
-                    logarithmic = False,
-                    biot        = False,
-                    green       = False,
+parser.set_defaults(
                     defgrad     = ['f'],
                    )
 
 (options,filenames) = parser.parse_args()
+
+if len(options.defgrad) > 1:
+  options.defgrad = options.defgrad[1:]
 
 stretches = []
 strains = []

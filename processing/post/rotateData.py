@@ -29,7 +29,7 @@ parser.add_option('-r', '--rotation',
 parser.add_option('--degrees',
                   dest = 'degrees',
                   action = 'store_true',
-                  help = 'angles are given in degrees [%default]')
+                  help = 'angles are given in degrees')
 
 parser.set_defaults(rotation = (0.,1.,1.,1.),                                                       # no rotation about 1,1,1
                     degrees = False,

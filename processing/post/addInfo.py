@@ -23,10 +23,11 @@ parser.add_option('-i',
                   dest = 'info', action = 'extend', metavar = '<string LIST>',
                   help    = 'items to add')
 
-parser.set_defaults(info = [],
-                   )
 
 (options,filenames) = parser.parse_args()
+
+if options.info is None:
+  parser.error('no info specified.')
 
 # --- loop over input files ------------------------------------------------------------------------
 

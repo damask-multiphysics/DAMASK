@@ -24,6 +24,10 @@ parser.add_option('-a', '--add','--table',
 
 (options,filenames) = parser.parse_args()
 
+if options.table is None:
+  parser.error('no table specified.')
+
+
 # --- loop over input files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]

@@ -34,12 +34,12 @@ parser.add_option('-o','--order',
                   dest = 'order',
                   type = int,
                   metavar = 'int',
-                  help = 'order of the filter')
+                  help = 'order of the filter [%default]')
 parser.add_option('--sigma',
                   dest = 'sigma',
                   type = float,
                   metavar = 'float',
-                  help = 'standard deviation')
+                  help = 'standard deviation [%default]')
 parser.add_option('--periodic',
                   dest = 'periodic',
                   action = 'store_true',
@@ -50,7 +50,6 @@ parser.add_option('--periodic',
 parser.set_defaults(pos = 'pos',
                     order = 0,
                     sigma = 1,
-                    periodic = False,
                    )
 
 (options,filenames) = parser.parse_args()

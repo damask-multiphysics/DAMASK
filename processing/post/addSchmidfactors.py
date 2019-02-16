@@ -115,7 +115,7 @@ parser.add_option('-l',
                   help = 'type of lattice structure [%default] {}'.format(latticeChoices))
 parser.add_option('--covera',
                   dest = 'CoverA', type = 'float', metavar = 'float',
-                  help = 'C over A ratio for hexagonal systems')
+                  help = 'C over A ratio for hexagonal systems [%default]')
 parser.add_option('-f',
                   '--force',
                   dest = 'force',

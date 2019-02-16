@@ -27,10 +27,10 @@ parser.add_option('-p','--packing',
                   help = 'dimension of packed group [%default]')
 parser.add_option('-g','--grid',
                   dest = 'resolution', type = 'int', nargs = 3, metavar = 'int int int',
-                  help = 'resolution in x,y,z [autodetect]')
+                  help = 'grid in x,y,z (optional)')
 parser.add_option('-s','--size',
                   dest = 'dimension', type = 'float', nargs = 3, metavar = 'int int int',
-                  help = 'dimension in x,y,z [autodetect]')
+                  help = 'size in x,y,z (optional)')
 parser.set_defaults(pos  = 'pos',
                     packing = (2,2,2),
                     grid    = (0,0,0),

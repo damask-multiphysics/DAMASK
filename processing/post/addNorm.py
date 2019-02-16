@@ -9,6 +9,7 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 # definition of element-wise p-norms for matrices
+# ToDo: better use numpy.linalg.norm
 
 def norm(which,object):
 
@@ -18,6 +19,8 @@ def norm(which,object):
     return math.sqrt(sum([x*x for x in object]))
   elif which == 'Max':                                                                              # p = inf
     return max(map(abs, object))
+  else:
+    return -1
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -43,6 +46,8 @@ parser.set_defaults(norm = 'frobenius',
 
 (options,filenames) = parser.parse_args()
 
+if options.norm.lower() not in normChoices:
+  parser.error('invalid norm ({}) specified.'.format(options.norm))
 if options.label is None:
   parser.error('no data column specified.')
 
@@ -74,7 +79,7 @@ for name in filenames:
     else:
       dims.append(dim)
       columns.append(table.label_index(what))
-      table.labels_append('norm{}({})'.format(options.norm.capitalize(),what))                    # extend ASCII header with new labels
+      table.labels_append('norm{}({})'.format(options.norm.capitalize(),what))                      # extend ASCII header with new labels
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:

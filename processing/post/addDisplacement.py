@@ -111,7 +111,6 @@ parser.add_option('--nodal',
 
 parser.set_defaults(defgrad = 'f',
                     pos     = 'pos',
-                    nodal   = False,
                    )
 
 (options,filenames) = parser.parse_args()
