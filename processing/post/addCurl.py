@@ -56,7 +56,7 @@ def curlFFT(geomdim,field):
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog option(s) [ASCIItable(s)]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Add column(s) containing curl of requested column(s).
 Operates on periodic ordered three-dimensional data sets
 of vector and tensor fields.

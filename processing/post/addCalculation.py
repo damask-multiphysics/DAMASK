@@ -18,7 +18,7 @@ def listify(x):
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Add or alter column(s) with derived values according to user-defined arithmetic operation between column(s).
 Column labels are tagged by '#label#' in formulas. Use ';' for ',' in functions.
 Numpy is available as 'np'.

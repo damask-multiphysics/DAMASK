@@ -23,7 +23,7 @@ def deviator(m,spherical = False):                                              
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(2)]', description = """
 Add column(s) containing deviator of requested tensor column(s).
 
 """, version = scriptID)

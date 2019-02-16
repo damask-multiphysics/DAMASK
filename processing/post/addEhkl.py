@@ -30,7 +30,7 @@ def E_hkl(stiffness,vec):   # stiffness = (c11,c12,c44)
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Add column(s) containing directional stiffness based on given cubic stiffness values C11, C12, and C44 in consecutive columns.
 
 """, version = scriptID)
