@@ -43,6 +43,11 @@ contains
 !> @brief reports and sets working directory
 !--------------------------------------------------------------------------------------------------
 subroutine DAMASK_interface_init
+#if __INTEL_COMPILER >= 1800
+ use, intrinsic :: iso_fortran_env, only: &
+   compiler_version, &
+   compiler_options
+#endif
  use ifport, only: &
    CHDIR
 
@@ -143,6 +148,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
    debug_info, &
    debug_reset
  use mesh, only: &
+   theMesh, &
    mesh_FEasCP, &
    mesh_element, &
    mesh_node0, &
@@ -150,8 +156,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
    mesh_Ncellnodes, &
    mesh_cellnode, &
    mesh_build_cellnodes, &
-   mesh_build_ipCoordinates, &
-   FE_Nnodes
+   mesh_build_ipCoordinates
  use CPFEM, only: &
    CPFEM_general, &
    CPFEM_init_done, &
@@ -323,7 +328,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
          computationMode = ior(computationMode,CPFEM_BACKUPJACOBIAN)                                ! collect and backup Jacobian after convergence
          lastIncConverged = .false.                                                                 ! reset flag
        endif
-       do node = 1,FE_Nnodes(mesh_element(2,cp_en))
+       do node = 1,theMesh%elem%nNodes
          CPnodeID = mesh_element(4_pInt+node,cp_en)
          mesh_node(1:ndeg,CPnodeID) = mesh_node0(1:ndeg,CPnodeID) + numerics_unitlength * dispt(1:ndeg,node)
        enddo
