@@ -53,17 +53,26 @@ subroutine DAMASK_interface_init
  character(len=1024) :: wd
 
  call date_and_time(values = dateAndTime)
- write(6,'(/,a)') ' <<<+-  DAMASK_Marc  -+>>>'
- write(6,'(/,a)') ' Roters et al., Computational Materials Science, 2018'
- write(6,'(/,a)')              ' Version: '//DAMASKVERSION
- write(6,'(a,2(i2.2,a),i4.4)') ' Date:    ',dateAndTime(3),'/',&
-                                            dateAndTime(2),'/',&
-                                            dateAndTime(1)
- write(6,'(a,2(i2.2,a),i2.2)') ' Time:    ',dateAndTime(5),':',&
-                                            dateAndTime(6),':',&
-                                            dateAndTime(7)
- write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
-#include "compilation_info.f90"
+ write(6,'(/,a)') ' <<<+-  DAMASK_abaqus  -+>>>'
+ write(6,'(/,a)') ' Roters et al., Computational Materials Science 158, 2018, 420-478'
+ write(6,'(a,/)') ' https://doi.org/10.1016/j.commatsci.2018.04.030'
+
+ write(6,'(a,/)')              ' Version: '//DAMASKVERSION
+
+! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
+#if __INTEL_COMPILER >= 1800
+ write(6,*) 'Compiled with: ', compiler_version()
+ write(6,*) 'Compiler options: ', compiler_options()
+#else
+ write(6,'(a,i4.4,a,i8.8)') ' Compiled with Intel fortran version :', __INTEL_COMPILER,&
+                                                    ', build date :', __INTEL_COMPILER_BUILD_DATE
+#endif
+
+ write(6,*) 'Compiled on ', __DATE__,' at ',__TIME__
+
+ write(6,'(a,2(i2.2,a),i4.4)') ' Date: ',dateAndTime(3),'/',dateAndTime(2),'/', dateAndTime(1)
+ write(6,'(a,2(i2.2,a),i2.2)') ' Time: ',dateAndTime(5),':', dateAndTime(6),':', dateAndTime(7)
+
  inquire(5, name=wd)                                                                                ! determine inputputfile
  wd = wd(1:scan(wd,'/',back=.true.))
  ierr = CHDIR(wd)

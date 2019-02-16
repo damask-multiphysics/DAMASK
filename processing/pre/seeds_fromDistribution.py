@@ -1,10 +1,11 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
 import threading,time,os,sys,random
 import numpy as np
 from optparse import OptionParser
-from cStringIO import StringIO
+from io import StringIO
+import binascii
 import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
@@ -96,7 +97,7 @@ class myThread (threading.Thread):
       perturbedGeomVFile = StringIO()
       perturbedSeedsVFile.reset()
       perturbedGeomVFile.write(damask.util.execute('geom_fromVoronoiTessellation '+
-                     ' -g '+' '.join(map(str, options.grid)),streamIn=perturbedSeedsVFile)[0])
+                     ' -g '+' '.join(list(map(str, options.grid))),streamIn=perturbedSeedsVFile)[0])
       perturbedGeomVFile.reset()
 
 #--- evaluate current seeds file ----------------------------------------------------------------------
@@ -214,7 +215,7 @@ options = parser.parse_args()[0]
 damask.util.report(scriptName,options.seedFile)
 
 if options.randomSeed is None:
-  options.randomSeed = int(os.urandom(4).encode('hex'), 16)
+  options.randomSeed = int(binascii.hexlify(os.urandom(4)),16)
 damask.util.croak(options.randomSeed)
 delta = (options.scale/options.grid[0],options.scale/options.grid[1],options.scale/options.grid[2])
 baseFile=os.path.splitext(os.path.basename(options.seedFile))[0]
@@ -240,17 +241,17 @@ if os.path.isfile(os.path.splitext(options.seedFile)[0]+'.seeds'):
     for line in initialSeedFile: bestSeedsVFile.write(line)
 else:
   bestSeedsVFile.write(damask.util.execute('seeds_fromRandom'+\
-                                ' -g '+' '.join(map(str, options.grid))+\
+                                ' -g '+' '.join(list(map(str, options.grid)))+\
                                 ' -r {:d}'.format(options.randomSeed)+\
                                 ' -N '+str(nMicrostructures))[0])
 bestSeedsUpdate = time.time()
 
 # ----------- tessellate initial seed file to get and evaluate geom file
-bestSeedsVFile.reset()
+bestSeedsVFile.seek(0)
 initialGeomVFile = StringIO()
 initialGeomVFile.write(damask.util.execute('geom_fromVoronoiTessellation '+
-                               ' -g '+' '.join(map(str, options.grid)),bestSeedsVFile)[0])
-initialGeomVFile.reset()
+                               ' -g '+' '.join(list(map(str, options.grid))),bestSeedsVFile)[0])
+initialGeomVFile.seek(0)
 initialGeomTable = damask.ASCIItable(initialGeomVFile,None,labeled=False,readonly=True)
 initialGeomTable.head_read()
 info,devNull =  initialGeomTable.head_getGeom()
