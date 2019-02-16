@@ -14,7 +14,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Average each data block of size 'packing' into single values thus reducing the former grid to grid/packing.
 
 """, version = scriptID)

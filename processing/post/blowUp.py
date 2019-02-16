@@ -13,7 +13,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Blows up each value to a surrounding data block of size 'packing' thus increasing the former resolution
 to resolution*packing.
 

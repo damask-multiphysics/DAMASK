@@ -15,7 +15,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption,
-                      usage='%prog options [file[s]]',
+                      usage='%prog options [ASCIItable(s)]',
                       description = """Add scalar and RGB tuples from ASCIItable to existing VTK point cloud (.vtp).""",
                       version = scriptID)
 
@@ -46,8 +46,6 @@ parser.add_option('-c', '--color',   dest='color', action='extend',
 parser.set_defaults(data = [],
                     tensor = [],
                     color = [],
-                    inplace = False,
-                    render = False,
 )
 
 (options, filenames) = parser.parse_args()
@@ -151,14 +149,12 @@ for name in filenames:
 # ------------------------------------------ output result ---------------------------------------
 
   Polydata.Modified()
-  if vtk.VTK_MAJOR_VERSION <= 5: Polydata.Update()
 
   writer = vtk.vtkXMLPolyDataWriter()
   writer.SetDataModeToBinary()
   writer.SetCompressorTypeToZLib()
   writer.SetFileName(os.path.splitext(options.vtk)[0]+('.vtp' if options.inplace else '_added.vtp'))
-  if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(Polydata)
-  else:                          writer.SetInputData(Polydata)
+  writer.SetInputData(Polydata)
   writer.Write()
 
 # ------------------------------------------ render result ---------------------------------------

@@ -24,7 +24,7 @@ def Mises(what,tensor):
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Add vonMises equivalent values for symmetric part of requested strains and/or stresses.
 
 """, version = scriptID)

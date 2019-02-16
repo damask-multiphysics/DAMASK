@@ -38,7 +38,7 @@ def check_matrix(M):
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Add quaternion and/or Bunge Euler angle representation of crystal lattice orientation.
 Orientation is given by quaternion, Euler angles, rotation matrix, or crystal frame coordinates
 (i.e. component vectors of rotation matrix).

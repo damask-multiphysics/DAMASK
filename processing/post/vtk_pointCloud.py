@@ -78,7 +78,6 @@ for name in filenames:
   Polydata.SetPoints(Points)
   Polydata.SetVerts(Vertices)
   Polydata.Modified()
-  if vtk.VTK_MAJOR_VERSION <= 5: Polydata.Update()
  
 # ------------------------------------------ output result ---------------------------------------  
 
@@ -94,8 +93,8 @@ for name in filenames:
     writer.SetHeader('# powered by '+scriptID)
     writer.WriteToOutputStringOn()
   
-  if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(Polydata)
-  else:                          writer.SetInputData(Polydata)
+  
+  writer.SetInputData(Polydata)
 
   writer.Write()
 
