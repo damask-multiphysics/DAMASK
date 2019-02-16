@@ -45,20 +45,19 @@ module IO
    IO_timeStamp
 #if defined(Marc4DAMASK) || defined(Abaqus)
  public :: &
-#ifdef Abaqus
-   IO_extractValue, &
-   IO_countDataLines, &
-#endif
-#ifdef Marc4DAMASK
-   IO_skipChunks, &
-   IO_fixedNoEFloatValue, &
-   IO_fixedIntValue, &
-   IO_countNumericalDataLines, &
-#endif
    IO_open_inputFile, &
    IO_open_logFile, &
    IO_countContinuousIntValues, &
-   IO_continuousIntValues
+   IO_continuousIntValues, &
+#if defined(Abaqus)
+   IO_extractValue, &
+   IO_countDataLines
+#elif defined(Marc4DAMASK)
+   IO_skipChunks, &
+   IO_fixedNoEFloatValue, &
+   IO_fixedIntValue, &
+   IO_countNumericalDataLines
+#endif
 #endif
  private :: &
    IO_verifyFloatValue, &
@@ -356,7 +355,7 @@ subroutine IO_open_inputFile(fileUnit,modelName)
 
  integer(pInt)                  :: myStat
  character(len=1024)            :: path
-#ifdef Abaqus
+#if defined(Abaqus)
  integer(pInt)                  :: fileType
 
  fileType = 1_pInt                                                                                  ! assume .pes
@@ -427,8 +426,7 @@ recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
 200 createSuccess =.false.
 
 end function abaqus_assembleInputFile
-#endif
-#ifdef Marc4DAMASK
+#elif defined(Marc4DAMASK)
    path = trim(modelName)//inputFileExtension
    open(fileUnit,status='old',iostat=myStat,file=path)
    if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
