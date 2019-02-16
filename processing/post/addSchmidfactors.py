@@ -103,7 +103,7 @@ slipSystems = {
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Add columns listing Schmid factors (and optional trace vector of selected system) for given Euler angles.
 
 """, version = scriptID)

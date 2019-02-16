@@ -26,7 +26,7 @@ def norm(which,object):
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Add column(s) containing norm of requested column(s) being either vectors or tensors.
 
 """, version = scriptID)
