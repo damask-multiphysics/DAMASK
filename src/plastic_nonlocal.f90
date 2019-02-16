@@ -26,8 +26,6 @@ module plastic_nonlocal
  character(len=64), dimension(:,:), allocatable, target, public :: &
    plastic_nonlocal_output                                                                     !< name of each post result output
  
- integer(pInt), dimension(:), allocatable, target, public :: &
-   plastic_nonlocal_Noutput                                                                    !< number of outputs per instance of this plasticity 
  
  integer(pInt), dimension(:,:), allocatable, private :: &
    iGamma, &                                                                                        !< state indices for accumulated shear
@@ -352,7 +350,6 @@ allocate(plastic_nonlocal_sizeDotState(maxNinstances),                          
 allocate(plastic_nonlocal_sizeDependentState(maxNinstances),                    source=0_pInt)
 allocate(plastic_nonlocal_sizeState(maxNinstances),                             source=0_pInt)
 allocate(plastic_nonlocal_sizePostResult(maxval(phase_Noutput), maxNinstances), source=0_pInt)
-allocate(plastic_nonlocal_Noutput(maxNinstances),                               source=0_pInt)
 allocate(plastic_nonlocal_output(maxval(phase_Noutput), maxNinstances))
          plastic_nonlocal_output = ''
 allocate(plastic_nonlocal_outputID(maxval(phase_Noutput), maxNinstances),       source=undefined_ID)
@@ -724,7 +721,9 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                
                 'accumulatedshear      ' ]  &                                                      !< list of "basic" microstructural state variables that are independent from other state variables
                                         &),pInt) * ns
    sizeDependentState        = int(size(&
-                    ['rhoForest       '] &                                                         !< list of microstructural state variables that depend on other state variables
+                    ['rhoForest       ', & 
+                      'tauThreshold    ', & 
+                      'tauBack         ' ]&                                                          !< list of microstructural state variables that depend on other state variables
                               &),pInt) * ns
    sizeState                 = sizeDotState + sizeDependentState &
                              + int(size(&
@@ -891,6 +890,7 @@ param(instance)%shortRangeStressCorrection = .false.
 param(instance)%probabilisticMultiplication = .false.
 
    prm%Nslip = config_phase(p)%getInts('nslip',defaultVal=emptyInt)
+     prm%totalNslip = sum(prm%Nslip)
      prm%Schmid          = lattice_SchmidMatrix_slip(prm%Nslip,structure(1:3),&
                                                      config%getFloat('c/a',defaultVal=0.0_pReal))
      if(structure=='bcc') then
@@ -1743,12 +1743,10 @@ instance = phase_plasticityInstance(ph)
 associate(prm => param(instance))
 ns = prm%totalNslip
 
-
 !*** shortcut to state variables 
 
 
 forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
-
   rhoSgl(s,t) = max(plasticState(ph)%state(iRhoU(s,t,instance),of), 0.0_pReal)                         ! ensure positive single mobile densities
   rhoSgl(s,t+4_pInt) = plasticState(ph)%state(iRhoB(s,t,instance),of)
 endforall
@@ -2970,8 +2968,8 @@ forall (s = 1_pInt:ns) &
                                       lattice_sn(1:3,slipSystemLattice(s,instance),ph))
 
 
-outputsLoop: do o = 1_pInt,plastic_nonlocal_Noutput(instance)
-  select case(plastic_nonlocal_outputID(o,instance))
+outputsLoop: do o = 1_pInt,size(param(instance)%outputID)
+  select case(param(instance)%outputID(o))
       
     case (rho_sgl_edge_pos_mobile_ID)
       plastic_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,1)
