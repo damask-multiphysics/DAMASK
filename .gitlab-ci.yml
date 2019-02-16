@@ -506,7 +506,7 @@ Processing:
   script:
     - cd $DAMASKROOT/processing/post
     - rm marc_to_vtk.py vtk2ang.py
-    - $DAMASKROOT/PRIVATE/documenting/scriptHelpToWiki.py *
+    - $DAMASKROOT/PRIVATE/documenting/scriptHelpToWiki.py --debug \*.py
   except:
     - master
     - release
