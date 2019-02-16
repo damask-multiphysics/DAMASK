@@ -169,11 +169,6 @@ end subroutine tMesh_grid_init
 !! Order and routines strongly depend on type of solver
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_init(ip,el)
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
 
 #include <petsc/finclude/petscsys.h>
  use PETScsys
@@ -206,9 +201,6 @@ subroutine mesh_init(ip,el)
  logical :: myDebug
 
  write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
-
 
  mesh_unitlength = numerics_unitlength                                                              ! set physical extent of a length unit in mesh
 

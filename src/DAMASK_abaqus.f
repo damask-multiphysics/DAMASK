@@ -30,6 +30,11 @@ contains
 !> @brief reports and sets working directory
 !--------------------------------------------------------------------------------------------------
 subroutine DAMASK_interface_init
+#if __INTEL_COMPILER >= 1800
+ use, intrinsic :: iso_fortran_env, only: &
+   compiler_version, &
+   compiler_options
+#endif
  use ifport, only: &
    CHDIR
  

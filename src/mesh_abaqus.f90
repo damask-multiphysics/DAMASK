@@ -6,7 +6,6 @@
 !> @brief Sets up the mesh for the solvers MSC.Marc, Abaqus and the spectral solver
 !--------------------------------------------------------------------------------------------------
 module mesh
- use, intrinsic :: iso_c_binding
  use prec, only: pReal, pInt
  use mesh_base
 
@@ -425,11 +424,6 @@ end subroutine tMesh_abaqus_init
 !! Order and routines strongly depend on type of solver
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_init(ip,el)
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use DAMASK_interface
  use IO, only: &
    IO_open_InputFile, &
@@ -458,8 +452,6 @@ subroutine mesh_init(ip,el)
  logical :: myDebug
 
  write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
  mesh_unitlength = numerics_unitlength                                                              ! set physical extent of a length unit in mesh
 
