@@ -11,32 +11,6 @@ module plastic_nonlocal
  
  implicit none
  private
- character(len=22), dimension(11), parameter, private :: &
-   BASICSTATES = ['rhoSglEdgePosMobile   ', &
-                  'rhoSglEdgeNegMobile   ', &
-                  'rhoSglScrewPosMobile  ', &
-                  'rhoSglScrewNegMobile  ', &
-                  'rhoSglEdgePosImmobile ', &
-                  'rhoSglEdgeNegImmobile ', &
-                  'rhoSglScrewPosImmobile', &
-                  'rhoSglScrewNegImmobile', &
-                  'rhoDipEdge            ', &
-                  'rhoDipScrew           ', &
-                  'accumulatedshear      ' ]                                                        !< list of "basic" microstructural state variables that are independent from other state variables
-   
- character(len=16), dimension(3), parameter, private :: &
-   DEPENDENTSTATES = ['rhoForest       ', & 
-                      'tauThreshold    ', & 
-                      'tauBack         ' ]                                                          !< list of microstructural state variables that depend on other state variables
-   
- character(len=20), dimension(6), parameter, private :: &
- OTHERSTATES = ['velocityEdgePos     ', & 
-                'velocityEdgeNeg     ', & 
-                'velocityScrewPos    ', &
-                'velocityScrewNeg    ', &
-                'maxDipoleHeightEdge ', &
-                'maxDipoleHeightScrew'  ]                                                           !< list of other dependent state variables that are not updated by microstructure
- 
  real(pReal), parameter, private :: &
    KB = 1.38e-23_pReal                                                                              !< Physical parameter, Boltzmann constant in J/Kelvin
 
@@ -293,7 +267,8 @@ subroutine plastic_nonlocal_init(fileUnit)
 use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 use math,     only: math_Voigt66to3333, & 
                     math_mul3x3, &
-                    math_transpose33
+                    math_transpose33, &
+                    math_expand
 use IO,       only: IO_read, &
                     IO_lc, &
                     IO_getTag, &
@@ -357,7 +332,9 @@ integer(pInt)          ::                   phase, &
  integer(pInt) :: sizeState, sizeDotState,sizeDependentState, sizeDeltaState
  integer(kind(undefined_ID))                 :: &
    outputID                                                                                     !< ID of each post result output
-
+ character(len=512) :: &
+   extmsg    = '', &
+   structure
  character(len=65536), dimension(:), allocatable :: outputs
 
  integer(pInt) :: NofMyPhase 
@@ -737,11 +714,32 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                
      
      ns = totalNslip(instance)
 
-     sizeDotState              = int(size(BASICSTATES),pInt) * ns
-     sizeDependentState        = int(size(DEPENDENTSTATES),pInt) * ns
-     sizeState                 = sizeDotState + sizeDependentState &
-                               + int(size(OTHERSTATES),pInt) * ns
-     sizeDeltaState            = sizeDotState
+   sizeDotState              = int(size(&
+                 ['rhoSglEdgePosMobile   ', &
+                'rhoSglEdgeNegMobile   ', &
+                'rhoSglScrewPosMobile  ', &
+                'rhoSglScrewNegMobile  ', &
+                'rhoSglEdgePosImmobile ', &
+                'rhoSglEdgeNegImmobile ', &
+                'rhoSglScrewPosImmobile', &
+                'rhoSglScrewNegImmobile', &
+                'rhoDipEdge            ', &
+                'rhoDipScrew           ', &
+                'accumulatedshear      ' ]  &                                                      !< list of "basic" microstructural state variables that are independent from other state variables
+                                        &),pInt) * ns
+   sizeDependentState        = int(size(&
+                    ['rhoForest       '] &                                                         !< list of microstructural state variables that depend on other state variables
+                              &),pInt) * ns
+   sizeState                 = sizeDotState + sizeDependentState &
+                             + int(size(&
+               ['velocityEdgePos     ', & 
+              'velocityEdgeNeg     ', & 
+              'velocityScrewPos    ', &
+              'velocityScrewNeg    ', &
+              'maxDipoleHeightEdge ', &
+              'maxDipoleHeightScrew'  ]  &                                                         !< list of other dependent state variables that are not updated by microstructure
+                             &),pInt) * ns
+   sizeDeltaState            = sizeDotState
 
      !*** determine indices to state array
 
@@ -889,7 +887,100 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                
    associate(prm => param(instance), &
              config => config_phase(p))
              
+   prm%mu = lattice_mu(p)
+   prm%nu = lattice_nu(p)
+   structure      = config_phase(p)%getString('lattice_structure')
 
+param(instance)%shortRangeStressCorrection = .false.
+param(instance)%probabilisticMultiplication = .false.
+
+   prm%Nslip = config_phase(p)%getInts('nslip',defaultVal=emptyInt)
+     prm%Schmid          = lattice_SchmidMatrix_slip(prm%Nslip,structure(1:3),&
+                                                     config%getFloat('c/a',defaultVal=0.0_pReal))
+     if(structure=='bcc') then
+       prm%nonSchmidCoeff     = config%getFloats('nonschmid_coefficients',&
+                                                 defaultVal = emptyRealArray)
+       prm%nonSchmid_pos      = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1_pInt)
+       prm%nonSchmid_neg      = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1_pInt)
+     else
+       prm%nonSchmid_pos      = prm%Schmid
+       prm%nonSchmid_neg      = prm%Schmid
+     endif
+     prm%interactionSlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
+                                                             config%getFloats('interaction_slipslip'), &
+                                                             structure(1:3))
+
+
+
+   prm%rhoSglEdgePos0 = config_phase(p)%getFloats('rhosgledgepos0')
+   prm%rhoSglEdgeNeg0 = config_phase(p)%getFloats('rhosgledgeneg0')
+   prm%rhoSglScrewPos0 = config_phase(p)%getFloats('rhosglscrewpos0')
+   prm%rhoSglScrewNeg0 = config_phase(p)%getFloats('rhosglscrewneg0')
+
+   prm%rhoDipEdge0 = config_phase(p)%getFloats('rhodipedge0')
+   prm%rhoDipScrew0 = config_phase(p)%getFloats('rhodipscrew0')
+   prm%lambda0 = config_phase(p)%getFloats('lambda0')
+   
+   if(size(prm%lambda0)/= size(prm%Nslip)) call IO_error(211_pInt,ext_msg='lambda0')
+   prm%lambda0 = math_expand(prm%lambda0,prm%Nslip)
+   
+ 
+   prm%burgers = config_phase(p)%getFloats('burgers')
+   
+   if (size(prm%burgers) /= size(prm%Nslip)) call IO_error(150_pInt,ext_msg='burgers')
+   prm%burgers = math_expand(prm%burgers,prm%Nslip)
+   
+  
+   minDipoleHeightPerSlipFamily(:,1_pInt,instance) = config_phase(p)%getFloats('minimumdipoleheightedge')!,'ddipminedge')
+   minDipoleHeightPerSlipFamily(:,2_pInt,instance) = config_phase(p)%getFloats('minimumdipoleheightscrew')!,'ddipminscrew')
+   peierlsStressPerSlipFamily(:,1_pInt,instance) = config_phase(p)%getFloat('peierlsstressedge')!,'peierlsstress_edge')
+   peierlsStressPerSlipFamily(:,2_pInt,instance) = config_phase(p)%getFloat('peierlsstressscrew')!,'peierlsstress_screw')
+ 
+   prm%atomicVolume = config_phase(p)%getFloat('atomicvolume')
+   prm%cutoffRadius  = config_phase(p)%getFloat('r')!,cutoffradius')
+   prm%Dsd0  = config_phase(p)%getFloat('selfdiffusionprefactor') !,'dsd0')
+   prm%selfDiffusionEnergy = config_phase(p)%getFloat('selfdiffusionenergy') !,'qsd')
+
+   prm%aTolRho  = config_phase(p)%getFloat('atol_rho') !,'atol_density','absolutetolerancedensity','absolutetolerance_density')
+   prm%aTolShear  = config_phase(p)%getFloat('atol_shear') !,'atol_plasticshear','atol_accumulatedshear','absolutetoleranceshear','absolutetolerance_shear')
+   
+ 
+   prm%significantRho  = config_phase(p)%getFloat('significantrho')!,'significant_rho','significantdensity','significant_density')
+   prm%significantN   = config_phase(p)%getFloat('significantn', 0.0_pReal)!,'significant_n','significantdislocations','significant_dislcations')
+   
+
+ 
+   prm%linetensionEffect = config_phase(p)%getFloat('linetension')!,'linetensioneffect','linetension_effect')
+   prm%edgeJogFactor = config_phase(p)%getFloat('edgejog')!,'edgejogs','edgejogeffect','edgejog_effect')
+   prm%doublekinkwidth             = config_phase(p)%getFloat('doublekinkwidth')
+
+   prm%solidSolutionEnergy         = config_phase(p)%getFloat('solidsolutionenergy')
+   prm%solidSolutionSize           = config_phase(p)%getFloat('solidsolutionsize')
+   prm%solidSolutionConcentration  = config_phase(p)%getFloat('solidsolutionconcentration')
+   
+   
+   prm%p                      = config_phase(p)%getFloat('p')
+   prm%q                      = config_phase(p)%getFloat('q')
+   
+   
+   prm%viscosity                   = config_phase(p)%getFloat('viscosity')!,'glideviscosity')
+   prm%fattack                     = config_phase(p)%getFloat('attackfrequency')!,'fattack')
+
+   prm%rhoSglScatter               = config_phase(p)%getFloat('rhosglscatter')
+   prm%rhoSglRandom                = config_phase(p)%getFloat('rhosglrandom',0.0_pReal)
+   
+   if (config_phase(p)%keyExists('rhosglrandom')) & 
+     prm%rhoSglRandomBinning       = config_phase(p)%getFloat('rhosglrandombinning',0.0_pReal) !ToDo: useful default?
+   
+   
+   prm%surfaceTransmissivity       = config_phase(p)%getFloat('surfacetransmissivity')
+   prm%grainboundaryTransmissivity = config_phase(p)%getFloat('grainboundarytransmissivity')
+   prm%CFLfactor                   = config_phase(p)%getFloat('cflfactor')
+   
+   prm%fEdgeMultiplication         = config_phase(p)%getFloat('edgemultiplication')!,'edgemultiplicationfactor','fedgemultiplication')
+   prm%shortRangeStressCorrection = config_phase(p)%getInt('shortrangestresscorrection' ) > 0_pInt
+   prm%probabilisticMultiplication = config_phase(p)%keyExists('/probabilisticmultiplication/' )!,'randomsources','randommultiplication','discretesources')
+   
    outputs = config_phase(p)%getStrings('(output)',defaultVal=emptyStringArray)
    allocate(prm%outputID(0))
    do i=1_pInt, size(outputs)
@@ -2389,7 +2480,7 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
    
  
     !* FLUX FROM ME TO MY NEIGHBOR
-    !* This is not considered, if my opposite neighbor has a different constitutive law than nonlocal (still considered for nonlocal law with lcal properties). 
+    !* This is not considered, if my opposite neighbor has a different constitutive law than nonlocal (still considered for nonlocal law with local properties). 
     !* Then, we assume, that the opposite(!) neighbor sends an equal amount of dislocations to me.
     !* So the net flux in the direction of my neighbor is equal to zero:
     !*    leaving flux to neighbor == entering flux from opposite neighbor
@@ -2423,9 +2514,9 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
       endif
       
       normal_me2neighbor_defConf = math_det33(Favg) &
-                                 * math_mul33x3(math_inv33(math_transpose33(Favg)), & 
+                                 * math_mul33x3(math_inv33(transpose(Favg)), & 
                                                            mesh_ipAreaNormal(1:3,n,ip,el))          ! calculate the normal of the interface in (average) deformed configuration (pointing from me to my neighbor!!!)
-      normal_me2neighbor = math_mul33x3(math_transpose33(my_Fe), normal_me2neighbor_defConf) &
+      normal_me2neighbor = math_mul33x3(transpose(my_Fe), normal_me2neighbor_defConf) &
                          / math_det33(my_Fe)                                                        ! interface normal in my lattice configuration
       area = mesh_ipArea(n,ip,el) * norm2(normal_me2neighbor)
       normal_me2neighbor = normal_me2neighbor / norm2(normal_me2neighbor)                           ! normalize the surface normal to unit length    
