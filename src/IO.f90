@@ -27,7 +27,6 @@ module IO
    IO_open_file_stat, &
    IO_open_jobFile_stat, &
    IO_open_file, &
-   IO_open_jobFile, &
    IO_write_jobFile, &
    IO_write_jobRealFile, &
    IO_read_realFile, &
@@ -289,30 +288,6 @@ logical function IO_open_file_stat(fileUnit,path)
  IO_open_file_stat = (myStat == 0_pInt)
 
 end function IO_open_file_stat
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief   opens existing file for reading to given unit. File is named after solver job name
-!!          plus given extension and located in current working directory
-!> @details like IO_open_jobFile_stat, but error is handled via call to IO_error and not via return
-!!          value
-!--------------------------------------------------------------------------------------------------
-subroutine IO_open_jobFile(fileUnit,ext)
- use DAMASK_interface, only: &
-   getSolverJobName
-
- implicit none
- integer(pInt),      intent(in) :: fileUnit                                                         !< file unit
- character(len=*),   intent(in) :: ext                                                              !< extension of file
-
- integer(pInt)                  :: myStat
- character(len=1024)            :: path
-
- path = trim(getSolverJobName())//'.'//ext
- open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
- if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
-
-end subroutine IO_open_jobFile
 
 
 !--------------------------------------------------------------------------------------------------
