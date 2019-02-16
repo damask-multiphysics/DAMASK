@@ -264,10 +264,8 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_init(fileUnit)
-use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 use math,     only: math_Voigt66to3333, & 
                     math_mul3x3, &
-                    math_transpose33, &
                     math_expand
 use IO,       only: IO_read, &
                     IO_lc, &
@@ -340,8 +338,6 @@ integer(pInt)          ::                   phase, &
  integer(pInt) :: NofMyPhase 
  
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_label//' init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
  maxNinstances = int(count(phase_plasticity == PLASTICITY_NONLOCAL_ID),pInt)
  if (maxNinstances == 0) return                                              ! we don't have to do anything if there's no instance for this constitutive law
@@ -848,7 +844,7 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                
        !*** rotation matrix from lattice configuration to slip system
    
        lattice2slip(1:3,1:3,s1,instance) &
-           = math_transpose33( reshape([ lattice_sd(1:3, slipSystemLattice(s1,instance), phase), &
+           = transpose( reshape([ lattice_sd(1:3, slipSystemLattice(s1,instance), phase), &
                                         -lattice_st(1:3, slipSystemLattice(s1,instance), phase), &
                                          lattice_sn(1:3, slipSystemLattice(s1,instance), phase)], [3,3]))
      enddo
@@ -1231,8 +1227,7 @@ use math, only: &
   pi, &
   math_mul33x3, &
   math_mul3x3, &
-  math_inv33, &
-  math_transpose33
+  math_inv33
 use debug, only: &
   debug_level, &
   debug_constitutive, &
@@ -1422,7 +1417,7 @@ if (.not. phase_localPlasticity(ph) .and. shortRangeStressCorrection(instance)) 
           connection_latticeConf(1:3,n) = &
             math_mul33x3(invFe, mesh_ipCoordinates(1:3,neighbor_ip,neighbor_el) &
                                 - mesh_ipCoordinates(1:3,ip,el))
-          normal_latticeConf = math_mul33x3(math_transpose33(invFp), mesh_ipAreaNormal(1:3,n,ip,el))
+          normal_latticeConf = math_mul33x3(transpose(invFp), mesh_ipAreaNormal(1:3,n,ip,el))
           if (math_mul3x3(normal_latticeConf,connection_latticeConf(1:3,n)) < 0.0_pReal) then       ! neighboring connection points in opposite direction to face normal: must be periodic image
             connection_latticeConf(1:3,n) = normal_latticeConf * mesh_ipVolume(ip,el) &
                                                                / mesh_ipArea(n,ip,el)               ! instead take the surface normal scaled with the diameter of the cell
@@ -1745,7 +1740,8 @@ Lp = 0.0_pReal
 dLp_dTstar3333 = 0.0_pReal
 
 instance = phase_plasticityInstance(ph)
-ns = totalNslip(instance)
+associate(prm => param(instance))
+ns = prm%totalNslip
 
 
 !*** shortcut to state variables 
@@ -1864,7 +1860,7 @@ dLp_dTstar99 = math_3333to99(dLp_dTstar3333)
     write(6,'(a,/,3(12x,3(f12.7,1x),/))') '<< CONST >> Lp',transpose(Lp)
   endif
 #endif
-
+end associate
 end subroutine plastic_nonlocal_LpAndItsTangent
 
 
@@ -2077,7 +2073,6 @@ use math,     only: math_mul6x6, &
                     math_mul33x33, &
                     math_inv33, &
                     math_det33, &
-                    math_transpose33, &  
                     pi
 use mesh,     only: theMesh, &
                     mesh_element, &
