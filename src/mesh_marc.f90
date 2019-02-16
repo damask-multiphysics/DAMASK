@@ -926,17 +926,17 @@ subroutine mesh_marc_build_elements(fileUnit)
  enddo
 
 620 rewind(fileUnit)                                                                                ! just in case "initial state" appears before "connectivity"
- read (fileUnit,'(A300)',END=620) line
- do !ToDo: the jumps to 620 in below code might result in a never ending loop
+ read (fileUnit,'(A300)',END=630) line
+ do
    chunkPos = IO_stringPos(line)
    if( (IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'initial') .and. &
        (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'state') ) then
-     if (initialcondTableStyle == 2_pInt) read (fileUnit,'(A300)',END=620) line                          ! read extra line for new style
+     if (initialcondTableStyle == 2_pInt) read (fileUnit,'(A300)',END=630) line                          ! read extra line for new style
      read (fileUnit,'(A300)',END=630) line                                                               ! read line with index of state var
      chunkPos = IO_stringPos(line)
      sv = IO_IntValue(line,chunkPos,1_pInt)                                                            ! figure state variable index
      if( (sv == 2_pInt).or.(sv == 3_pInt) ) then                                                    ! only state vars 2 and 3 of interest
-       read (fileUnit,'(A300)',END=620) line                                                             ! read line with value of state var
+       read (fileUnit,'(A300)',END=630) line                                                             ! read line with value of state var
        chunkPos = IO_stringPos(line)
        do while (scan(IO_stringValue(line,chunkPos,1_pInt),'+-',back=.true.)>1)                        ! is noEfloat value?
          myVal = nint(IO_fixedNoEFloatValue(line,[0_pInt,20_pInt],1_pInt),pInt)                     ! state var's value
@@ -950,7 +950,7 @@ subroutine mesh_marc_build_elements(fileUnit)
            e = mesh_FEasCP('elem',contInts(1_pInt+i))
            mesh_element(1_pInt+sv,e) = myVal
          enddo
-         if (initialcondTableStyle == 0_pInt) read (fileUnit,'(A300)',END=620) line                      ! ignore IP range for old table style
+         if (initialcondTableStyle == 0_pInt) read (fileUnit,'(A300)',END=630) line                      ! ignore IP range for old table style
          read (fileUnit,'(A300)',END=630) line
          chunkPos = IO_stringPos(line)
        enddo
