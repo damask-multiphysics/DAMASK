@@ -68,20 +68,14 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief only outputs revision number
+!> @brief does nothing.
+! ToDo: needed?
 !--------------------------------------------------------------------------------------------------
 subroutine IO_init
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
 
  implicit none
 
  write(6,'(/,a)')   ' <<<+-  IO init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
 end subroutine IO_init
 
@@ -816,52 +810,6 @@ pure function IO_lc(string)
 end function IO_lc
 
 
-#ifdef Marc4DAMASK
-!--------------------------------------------------------------------------------------------------
-!> @brief reads file to skip (at least) N chunks (may be over multiple lines)
-!--------------------------------------------------------------------------------------------------
-subroutine IO_skipChunks(fileUnit,N)
-
- implicit none
- integer(pInt), intent(in)                :: fileUnit, &                                            !< file handle
-                                             N                                                      !< minimum number of chunks to skip
-
- integer(pInt)                            :: remainingChunks
- character(len=65536)                     :: line
-
- line = ''
- remainingChunks = N
-
- do while (trim(line) /= IO_EOF .and. remainingChunks > 0)
-   line = IO_read(fileUnit)
-   remainingChunks = remainingChunks - (size(IO_stringPos(line))-1_pInt)/2_pInt
- enddo
-end subroutine IO_skipChunks
-#endif
-
-
-#ifdef Abaqus
-!--------------------------------------------------------------------------------------------------
-!> @brief extracts string value from key=value pair and check whether key matches
-!--------------------------------------------------------------------------------------------------
-character(len=300) pure function IO_extractValue(pair,key)
-
- implicit none
- character(len=*), intent(in) :: pair, &                                                            !< key=value pair
-                                 key                                                                !< key to be expected
-
- character(len=*), parameter  :: SEP = achar(61)                                                    ! '='
-
- integer                      :: myChunk                                                            !< position number of desired chunk
-
- IO_extractValue = ''
-
- myChunk = scan(pair,SEP)
- if (myChunk > 0 .and. pair(:myChunk-1) == key) IO_extractValue = pair(myChunk+1:)                  ! extract value if key matches
-
-end function IO_extractValue
-# endif
-
 !--------------------------------------------------------------------------------------------------
 !> @brief returns format string for integer values without leading zeros
 !--------------------------------------------------------------------------------------------------
@@ -1251,7 +1199,30 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
 end subroutine IO_warning
 
 
+#if defined(Abaqus) || defined(Marc4DAMASK)
+
 #ifdef Abaqus
+!--------------------------------------------------------------------------------------------------
+!> @brief extracts string value from key=value pair and check whether key matches
+!--------------------------------------------------------------------------------------------------
+character(len=300) pure function IO_extractValue(pair,key)
+
+ implicit none
+ character(len=*), intent(in) :: pair, &                                                            !< key=value pair
+                                 key                                                                !< key to be expected
+
+ character(len=*), parameter  :: SEP = achar(61)                                                    ! '='
+
+ integer                      :: myChunk                                                            !< position number of desired chunk
+
+ IO_extractValue = ''
+
+ myChunk = scan(pair,SEP)
+ if (myChunk > 0 .and. pair(:myChunk-1) == key) IO_extractValue = pair(myChunk+1:)                  ! extract value if key matches
+
+end function IO_extractValue
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief count lines containig data up to next *keyword
 !--------------------------------------------------------------------------------------------------
@@ -1316,10 +1287,31 @@ integer(pInt) function IO_countNumericalDataLines(fileUnit)
  backspace(fileUnit)
 
 end function IO_countNumericalDataLines
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief reads file to skip (at least) N chunks (may be over multiple lines)
+!--------------------------------------------------------------------------------------------------
+subroutine IO_skipChunks(fileUnit,N)
+
+ implicit none
+ integer(pInt), intent(in)                :: fileUnit, &                                            !< file handle
+                                             N                                                      !< minimum number of chunks to skip
+
+ integer(pInt)                            :: remainingChunks
+ character(len=65536)                     :: line
+
+ line = ''
+ remainingChunks = N
+
+ do while (trim(line) /= IO_EOF .and. remainingChunks > 0)
+   line = IO_read(fileUnit)
+   remainingChunks = remainingChunks - (size(IO_stringPos(line))-1_pInt)/2_pInt
+ enddo
+end subroutine IO_skipChunks
 #endif
 
 
-#if defined(Abaqus) || defined(Marc4DAMASK)
 !--------------------------------------------------------------------------------------------------
 !> @brief count items in consecutive lines depending on lines
 !> @details Marc:      ints concatenated by "c" as last char or range of values a "to" b
@@ -1489,7 +1481,6 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
 
 100 end function IO_continuousIntValues
 #endif
-
 
 !--------------------------------------------------------------------------------------------------
 ! internal helper functions
