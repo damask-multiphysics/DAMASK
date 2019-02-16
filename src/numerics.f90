@@ -177,13 +177,8 @@ subroutine numerics_init
 #include <petsc/finclude/petscsys.h>
    use petscsys
 #endif
-#if !defined(Marc4DAMASK)
-!$ use OMP_LIB, only: omp_set_num_threads                                                           ! Standard conforming module
+!$ use OMP_LIB, only: omp_set_num_threads
  implicit none
-#else  
- implicit none
-!$ include "omp_lib.h"                                                                              ! MSC.Marc includes this file on !its own, avoid conflict with the OMP_LIB module
-#endif
  integer(pInt), parameter ::                 FILEUNIT = 300_pInt
 !$ integer ::                                gotDAMASK_NUM_THREADS = 1
  integer :: i, ierr                                                                                 ! no pInt

@@ -2,7 +2,7 @@
 
 from .solver import Solver
 import damask
-import subprocess,re
+import subprocess
 
 class Abaqus(Solver):
 
@@ -15,14 +15,13 @@ class Abaqus(Solver):
 
   def return_run_command(self,model):
     env=damask.Environment()
-    shortVersion = re.sub('[\.,-]', '',self.version)
     try:
-      cmd='abq'+shortVersion
-      subprocess.check_output(['abq'+shortVersion,'information=release'])
+      cmd='abq'+self.version
+      subprocess.check_output([cmd,'information=release'])
     except OSError:                                                                                 # link to abqXXX not existing
       cmd='abaqus'
       process = subprocess.Popen(['abaqus','information=release'],stdout = subprocess.PIPE,stderr = subprocess.PIPE)
-      detectedVersion = process.stdout.readlines()[1].split()[1]
+      detectedVersion = process.stdout.readlines()[1].split()[1].decode('utf-8')
       if self.version != detectedVersion:
-        raise Exception('found Abaqus version %s, but requested %s'%(detectedVersion,self.version))
-    return '%s -job %s -user %s/src/DAMASK_abaqus interactive'%(cmd,model,env.rootDir())
+        raise Exception('found Abaqus version {}, but requested {}'.format(detectedVersion,self.version))
+    return '{} -job {} -user {}/src/DAMASK_abaqus interactive'.format(cmd,model,env.rootDir())

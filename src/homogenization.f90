@@ -71,11 +71,8 @@ subroutine homogenization_init
    debug_e, &
    debug_g
  use mesh, only: &
-   mesh_maxNips, &
-   mesh_NcpElems, &
-   mesh_element, &
-   FE_Nips, &
-   FE_geomtype
+   theMesh, &
+   mesh_element
  use constitutive, only: &
    constitutive_plasticity_maxSizePostResults, &
    constitutive_source_maxSizePostResults
@@ -244,20 +241,20 @@ subroutine homogenization_init
 
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global variables
- allocate(materialpoint_dPdF(3,3,3,3,mesh_maxNips,mesh_NcpElems),       source=0.0_pReal)
- allocate(materialpoint_F0(3,3,mesh_maxNips,mesh_NcpElems),             source=0.0_pReal)
- materialpoint_F0 = spread(spread(math_I3,3,mesh_maxNips),4,mesh_NcpElems)                          ! initialize to identity
- allocate(materialpoint_F(3,3,mesh_maxNips,mesh_NcpElems),              source=0.0_pReal)
+ allocate(materialpoint_dPdF(3,3,3,3,theMesh%elem%nIPs,theMesh%nElems),       source=0.0_pReal)
+ allocate(materialpoint_F0(3,3,theMesh%elem%nIPs,theMesh%nElems),             source=0.0_pReal)
+ materialpoint_F0 = spread(spread(math_I3,3,theMesh%elem%nIPs),4,theMesh%nElems)                          ! initialize to identity
+ allocate(materialpoint_F(3,3,theMesh%elem%nIPs,theMesh%nElems),              source=0.0_pReal)
  materialpoint_F = materialpoint_F0                                                                 ! initialize to identity
- allocate(materialpoint_subF0(3,3,mesh_maxNips,mesh_NcpElems),          source=0.0_pReal)
- allocate(materialpoint_subF(3,3,mesh_maxNips,mesh_NcpElems),           source=0.0_pReal)
- allocate(materialpoint_P(3,3,mesh_maxNips,mesh_NcpElems),              source=0.0_pReal)
- allocate(materialpoint_subFrac(mesh_maxNips,mesh_NcpElems),            source=0.0_pReal)
- allocate(materialpoint_subStep(mesh_maxNips,mesh_NcpElems),            source=0.0_pReal)
- allocate(materialpoint_subdt(mesh_maxNips,mesh_NcpElems),              source=0.0_pReal)
- allocate(materialpoint_requested(mesh_maxNips,mesh_NcpElems),          source=.false.)
- allocate(materialpoint_converged(mesh_maxNips,mesh_NcpElems),          source=.true.)
- allocate(materialpoint_doneAndHappy(2,mesh_maxNips,mesh_NcpElems),     source=.true.)
+ allocate(materialpoint_subF0(3,3,theMesh%elem%nIPs,theMesh%nElems),          source=0.0_pReal)
+ allocate(materialpoint_subF(3,3,theMesh%elem%nIPs,theMesh%nElems),           source=0.0_pReal)
+ allocate(materialpoint_P(3,3,theMesh%elem%nIPs,theMesh%nElems),              source=0.0_pReal)
+ allocate(materialpoint_subFrac(theMesh%elem%nIPs,theMesh%nElems),            source=0.0_pReal)
+ allocate(materialpoint_subStep(theMesh%elem%nIPs,theMesh%nElems),            source=0.0_pReal)
+ allocate(materialpoint_subdt(theMesh%elem%nIPs,theMesh%nElems),              source=0.0_pReal)
+ allocate(materialpoint_requested(theMesh%elem%nIPs,theMesh%nElems),          source=.false.)
+ allocate(materialpoint_converged(theMesh%elem%nIPs,theMesh%nElems),          source=.true.)
+ allocate(materialpoint_doneAndHappy(2,theMesh%elem%nIPs,theMesh%nElems),     source=.true.)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global state and postresutls variables
@@ -277,7 +274,7 @@ subroutine homogenization_init
                            + homogenization_maxNgrains * (1 + crystallite_maxSizePostResults &      ! crystallite size & crystallite results
                                                         + 1 + constitutive_plasticity_maxSizePostResults &     ! constitutive size & constitutive results
                                                             + constitutive_source_maxSizePostResults)
- allocate(materialpoint_results(materialpoint_sizeResults,mesh_maxNips,mesh_NcpElems))
+ allocate(materialpoint_results(materialpoint_sizeResults,theMesh%elem%nIPs,theMesh%nElems))
 
  write(6,'(/,a)')   ' <<<+-  homogenization init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -346,7 +343,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    crystallite_Lp, &
    crystallite_Li0, &
    crystallite_Li, &
-   crystallite_dPdF, &
    crystallite_Tstar0_v, &
    crystallite_Tstar_v, &
    crystallite_partionedF0, &
@@ -600,7 +596,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
        IpLooping2: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
          if (      materialpoint_requested(i,e) .and. &                                             ! process requested but...
              .not. materialpoint_doneAndHappy(1,i,e)) then                                          ! ...not yet done material points
-           call partitionDeformation(i,e)                                            ! partition deformation onto constituents
+           call partitionDeformation(i,e)                                                           ! partition deformation onto constituents
            crystallite_dt(1:myNgrains,i,e) = materialpoint_subdt(i,e)                               ! propagate materialpoint dt to grains
            crystallite_requested(1:myNgrains,i,e) = .true.                                          ! request calculation for constituents
          else
@@ -614,7 +610,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 ! crystallite integration
 ! based on crystallite_partionedF0,.._partionedF
 ! incrementing by crystallite_dt
-     materialpoint_converged = crystallite_stress() !ToDo: MD not sure if that is the best logic
+    
+    materialpoint_converged = crystallite_stress() !ToDo: MD not sure if that is the best logic
 
 !--------------------------------------------------------------------------------------------------
 ! state update
