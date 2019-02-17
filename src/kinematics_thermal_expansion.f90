@@ -24,10 +24,10 @@ module kinematics_thermal_expansion
  integer(pInt),                       dimension(:),           allocatable, target, public  :: &
    kinematics_thermal_expansion_Noutput                                                                           !< number of outputs per instance of this damage 
 
-! enum, bind(c)                                                                                                   ! ToDo kinematics need state machinery to deal with sizePostResult
-!   enumerator :: undefined_ID, &                                                                                 ! possible remedy is to decouple having state vars from having output
-!                 thermalexpansionrate_ID                                                                         ! which means to separate user-defined types tState + tOutput...
-! end enum
+ enum, bind(c)                                                                                                   ! ToDo kinematics need state machinery to deal with sizePostResult
+   enumerator :: undefined_ID, &                                                                                 ! possible remedy is to decouple having state vars from having output
+                 thermalexpansionrate_ID                                                                         ! which means to separate user-defined types tState + tOutput...
+ end enum
  public :: &
    kinematics_thermal_expansion_init, &
    kinematics_thermal_expansion_initialStrain, &
