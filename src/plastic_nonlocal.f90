@@ -915,7 +915,7 @@ param(instance)%probabilisticMultiplication = .false.
    
  
    prm%significantRho  = config_phase(p)%getFloat('significantrho')!,'significant_rho','significantdensity','significant_density')
-   prm%significantN   = config_phase(p)%getFloat('significantn', 0.0_pReal)!,'significant_n','significantdislocations','significant_dislcations')
+   prm%significantN    = config_phase(p)%getFloat('significantn', 0.0_pReal)!,'significant_n','significantdislocations','significant_dislcations')
    
 
  
@@ -1035,7 +1035,7 @@ param(instance)%probabilisticMultiplication = .false.
 
       if (outputID /= undefined_ID) then
         plastic_nonlocal_output(i,instance) = outputs(i)
-        plastic_nonlocal_sizePostResult(i,instance) = totalNslip(instance)
+        plastic_nonlocal_sizePostResult(i,instance) = prm%totalNslip
         prm%outputID = [prm%outputID , outputID]
       endif
 
@@ -1645,7 +1645,8 @@ end subroutine plastic_nonlocal_kinetics
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, Mp, Temperature, ip, el)
+subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
+                                            Mp, Temperature, ip, el)
 
 use math,     only: math_3333to99, &
                     math_mul6x6, &
@@ -1704,10 +1705,7 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt
 ph = phaseAt(1_pInt,ip,el)
 of = phasememberAt(1_pInt,ip,el)
 
-!*** initialize local variables
 
-Lp = 0.0_pReal
-dLp_dMp = 0.0_pReal
 
 instance = phase_plasticityInstance(ph)
 associate(prm => param(instance))
@@ -1787,6 +1785,9 @@ forall (s = 1_pInt:ns, t = 5_pInt:8_pInt, rhoSgl(s,t) * v(s,t-4_pInt) < 0.0_pRea
 !*** Calculation of Lp and its tangent
 
 gdotTotal = sum(rhoSgl(1:ns,1:4) * v, 2) * prm%burgers(1:ns)
+
+Lp = 0.0_pReal
+dLp_dMp = 0.0_pReal
 
 do s = 1_pInt,ns
 

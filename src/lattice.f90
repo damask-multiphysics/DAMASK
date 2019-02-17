@@ -42,16 +42,16 @@ module lattice
 
 !--------------------------------------------------------------------------------------------------
 ! face centered cubic
- integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, public :: &
+ integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, private :: &
    LATTICE_FCC_NSLIPSYSTEM = int([12, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],pInt)                     !< # of slip systems per family for fcc
 
- integer(pInt), dimension(1), parameter, public :: &
+ integer(pInt), dimension(1), parameter, private :: &
    LATTICE_FCC_NTWINSYSTEM = int([12],pInt)                                                         !< # of twin systems per family for fcc
 
- integer(pInt), dimension(1), parameter, public :: &
+ integer(pInt), dimension(1), parameter, private :: &
    LATTICE_FCC_NTRANSSYSTEM = int([12],pInt)                                                        !< # of transformation systems per family for fcc
 
- integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
+ integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, private :: &
    LATTICE_FCC_NCLEAVAGESYSTEM = int([3, 4, 0],pInt)                                                !< # of cleavage systems per family for fcc
 
  integer(pInt), parameter, private  :: &
@@ -84,7 +84,7 @@ module lattice
       0, 1,-1,     0, 1, 1  &
      ],pReal),shape(LATTICE_FCC_SYSTEMSLIP))                                                        !< Slip system <110>{111} directions. Sorted according to Eisenlohr & Hantcherli
 
- character(len=*), dimension(2), parameter, public :: LATTICE_FCC_SLIPFAMILY_NAME = &
+ character(len=*), dimension(2), parameter, private :: LATTICE_FCC_SLIPFAMILY_NAME = &
    ['<0 1 -1>{1 1 1}', &
     '<0 1 -1>{0 1 1}']
 
@@ -104,11 +104,11 @@ module lattice
      -1, 1, 2,    -1, 1,-1  &
      ],pReal),shape(LATTICE_FCC_SYSTEMTWIN))                                                        !< Twin system <112>{111} directions. Sorted according to Eisenlohr & Hantcherli
 
- character(len=*), dimension(1), parameter, public :: LATTICE_FCC_TWINFAMILY_NAME = &
+ character(len=*), dimension(1), parameter, private :: LATTICE_FCC_TWINFAMILY_NAME = &
    ['<-2 1 1>{1 1 1}']
 
 
- integer(pInt), dimension(2_pInt,LATTICE_FCC_NTWIN), parameter, public :: &
+ integer(pInt), dimension(2_pInt,LATTICE_FCC_NTWIN), parameter, private :: &
    LATTICE_FCC_TWINNUCLEATIONSLIPPAIR = reshape(int( [&
      2,3, &
      1,3, &
@@ -125,7 +125,7 @@ module lattice
      ],pInt),shape(LATTICE_FCC_TWINNUCLEATIONSLIPPAIR))
 
 ! ToDo: should be in the interaction function
- integer(pInt), dimension(LATTICE_FCC_NSLIP,LATTICE_FCC_NSLIP), parameter, public :: &
+ integer(pInt), dimension(LATTICE_FCC_NSLIP,LATTICE_FCC_NSLIP), parameter, private :: &
    LATTICE_FCC_INTERACTIONSLIPSLIP = reshape(int( [&
       1, 2, 2, 4, 6, 5, 3, 5, 5, 4, 5, 6,  9,10, 9,10,11,12, &  ! ---> slip
       2, 1, 2, 6, 4, 5, 5, 4, 6, 5, 3, 5,  9,10,11,12, 9,10, &  ! |
@@ -174,13 +174,13 @@ module lattice
 
 !--------------------------------------------------------------------------------------------------
 ! body centered cubic
- integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, public :: &
+ integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, private :: &
    LATTICE_BCC_NSLIPSYSTEM = int([ 12, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], pInt)                  !< # of slip systems per family for bcc
 
- integer(pInt), dimension(1), parameter, public :: &
+ integer(pInt), dimension(1), parameter, private :: &
    LATTICE_BCC_NTWINSYSTEM = int([12], pInt)                                                        !< # of twin systems per family for bcc
 
- integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
+ integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, private :: &
    LATTICE_bcc_NcleavageSystem = int([3, 6, 0],pInt)                                                !< # of cleavage systems per family for bcc
 
  integer(pInt), parameter, private  :: &
@@ -220,7 +220,7 @@ module lattice
       1, 1, 1,     1, 1,-2  &
      ],pReal),shape(LATTICE_BCC_SYSTEMSLIP))
 
- character(len=*), dimension(2), parameter, public :: LATTICE_BCC_SLIPFAMILY_NAME = &
+ character(len=*), dimension(2), parameter, private :: LATTICE_BCC_SLIPFAMILY_NAME = &
    ['<1 -1 1>{0 1 1}', &
     '<1 -1 1>{2 1 1}']
 
@@ -241,12 +241,12 @@ module lattice
       1, 1, 1,     1, 1,-2  &
      ],pReal),shape(LATTICE_BCC_SYSTEMTWIN))
 
- character(len=*), dimension(1), parameter, public :: LATTICE_BCC_TWINFAMILY_NAME = &
+ character(len=*), dimension(1), parameter, private :: LATTICE_BCC_TWINFAMILY_NAME = &
    ['<1 1 1>{2 1 1}']
 
 
 
- integer(pInt), dimension(LATTICE_BCC_NSLIP,LATTICE_BCC_NSLIP), parameter, public :: &
+ integer(pInt), dimension(LATTICE_BCC_NSLIP,LATTICE_BCC_NSLIP), parameter, private :: &
    LATTICE_bcc_interactionSlipSlip = reshape(int( [&
      1,2,6,6,5,4,4,3,4,3,5,4, 6,6,4,3,3,4,6,6,4,3,6,6, &  ! ---> slip
      2,1,6,6,4,3,5,4,5,4,4,3, 6,6,3,4,4,3,6,6,3,4,6,6, &  ! |
@@ -297,13 +297,13 @@ module lattice
 
 !--------------------------------------------------------------------------------------------------
 ! hexagonal
- integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, public :: &
+ integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, private :: &
    LATTICE_HEX_NSLIPSYSTEM = int([ 3, 3, 3, 6, 12, 6, 0, 0, 0, 0, 0, 0, 0],pInt)                    !< # of slip systems per family for hex
 
- integer(pInt), dimension(4), parameter, public :: &
+ integer(pInt), dimension(4), parameter, private :: &
    LATTICE_HEX_NTWINSYSTEM = int([ 6, 6, 6, 6],pInt)                                                !< # of slip systems per family for hex
 
- integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
+ integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, private :: &
    LATTICE_hex_NcleavageSystem = int([3, 0, 0],pInt)                                                !< # of cleavage systems per family for hex
 
  integer(pInt), parameter, private  :: &
@@ -355,7 +355,7 @@ module lattice
       1,  1, -2,  3,    -1, -1,  2,  2  &
      ],pReal),shape(LATTICE_HEX_SYSTEMSLIP))                                                 !< slip systems for hex sorted by A. Alankar & P. Eisenlohr
 
- character(len=*), dimension(6), parameter, public :: LATTICE_HEX_SLIPFAMILY_NAME = &
+ character(len=*), dimension(6), parameter, private :: LATTICE_HEX_SLIPFAMILY_NAME = &
    ['<1 1 . 1>{0 0 . 1}  ', &
     '<1 1 . 1>{1 0 . 0}  ', &
     '<1 0 . 0>{1 1 . 0}  ', &
@@ -395,14 +395,14 @@ module lattice
       1,  1, -2, -3,     1,  1, -2,  2  &
      ],pReal),shape(LATTICE_HEX_SYSTEMTWIN))                                                !< twin systems for hex, order follows Prof. Tom Bieler's scheme; but numbering in data was restarted from 1
 
- character(len=*), dimension(4), parameter, public :: LATTICE_HEX_TWINFAMILY_NAME = &
+ character(len=*), dimension(4), parameter, private :: LATTICE_HEX_TWINFAMILY_NAME = &
    ['<-1 0 . 1>{1 0 . 2} ', &
     '<1 1 . 6>{-1 -1 . 1}', &
     '<1 0 . -2>{1 0 . 1} ', &
     '<1 1 . -3>{1 1 . 2} ']
 
 
- integer(pInt), dimension(LATTICE_HEX_NSLIP,LATTICE_HEX_NSLIP), parameter, public :: &
+ integer(pInt), dimension(LATTICE_HEX_NSLIP,LATTICE_HEX_NSLIP), parameter, private :: &
    LATTICE_hex_interactionSlipSlip = reshape(int( [&
       1, 2, 2,   3, 3, 3,   7, 7, 7,  13,13,13,13,13,13,  21,21,21,21,21,21,21,21,21,21,21,21,  31,31,31,31,31,31, &  ! ---> slip
       2, 1, 2,   3, 3, 3,   7, 7, 7,  13,13,13,13,13,13,  21,21,21,21,21,21,21,21,21,21,21,21,  31,31,31,31,31,31, &  ! |
@@ -456,7 +456,7 @@ module lattice
 
 !--------------------------------------------------------------------------------------------------
 ! body centered tetragonal
- integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, public :: &
+ integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, private :: &
    LATTICE_bct_NslipSystem = int([2, 2, 2, 4, 2, 4, 2, 2, 4, 8, 4, 8, 8 ],pInt)                     !< # of slip systems per family for bct (Sn) Bieler J. Electr Mater 2009
 
  integer(pInt), parameter, private  :: &
@@ -532,7 +532,7 @@ module lattice
       1, 1, 1,      1,-2, 1  &
       ],pReal),[ 3_pInt + 3_pInt,LATTICE_bct_Nslip])                                                 !< slip systems for bct sorted by Bieler
 
- character(len=*), dimension(13), parameter, public :: LATTICE_BCT_SLIPFAMILY_NAME = &
+ character(len=*), dimension(13), parameter, private :: LATTICE_BCT_SLIPFAMILY_NAME = &
    ['{1 0 0)<0 0 1] ', &
     '{1 1 0)<0 0 1] ', &
     '{1 0 0)<0 1 0] ', &
@@ -547,7 +547,7 @@ module lattice
     '{2 1 1)<0 1 -1]', &
     '{2 1 1)<-1 1 1]']
 
- integer(pInt), dimension(LATTICE_bct_Nslip,LATTICE_bct_Nslip), parameter, public :: &
+ integer(pInt), dimension(LATTICE_bct_Nslip,LATTICE_bct_Nslip), parameter, private :: &
    LATTICE_bct_interactionSlipSlip = reshape(int( [&
      1,  2,   3,  3,   7,  7,  13, 13, 13, 13,  21, 21,  31, 31, 31, 31,  43, 43,  57, 57,  73, 73, 73, 73,  91, 91, 91, 91, 91, 91, 91, 91,  111, 111, 111, 111, 133,133,133,133,133,133,133,133, 157,157,157,157,157,157,157,157, &
      2,  1,   3,  3,   7,  7,  13, 13, 13, 13,  21, 21,  31, 31, 31, 31,  43, 43,  57, 57,  73, 73, 73, 73,  91, 91, 91, 91, 91, 91, 91, 91,  111, 111, 111, 111, 133,133,133,133,133,133,133,133, 157,157,157,157,157,157,157,157, &
@@ -618,7 +618,7 @@ module lattice
 
 !--------------------------------------------------------------------------------------------------
 ! isotropic
- integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
+ integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, private :: &
    LATTICE_iso_NcleavageSystem = int([3, 0, 0],pInt)                                                !< # of cleavage systems per family for iso
 
  integer(pInt), parameter, private  :: &
@@ -635,7 +635,7 @@ module lattice
 
 !--------------------------------------------------------------------------------------------------
 ! orthorhombic
- integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
+ integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, private :: &
    LATTICE_ort_NcleavageSystem = int([1, 1, 1],pInt)                                                !< # of cleavage systems per family for ortho
 
  integer(pInt), parameter, private  :: &
@@ -653,7 +653,6 @@ module lattice
  integer(pInt), parameter, public :: &
    LATTICE_maxNslip        = max(LATTICE_FCC_NSLIP,LATTICE_BCC_NSLIP,LATTICE_HEX_NSLIP, &
                                  LATTICE_bct_Nslip), &                                              !< max # of slip systems over lattice structures
-   LATTICE_maxNnonSchmid   =     LATTICE_bcc_NnonSchmid, &                                          !< max # of non-Schmid contributions over lattice structures
    LATTICE_maxNcleavage    = max(LATTICE_fcc_Ncleavage,LATTICE_bcc_Ncleavage, &
                                  LATTICE_hex_Ncleavage, &
                                  LATTICE_iso_Ncleavage,LATTICE_ort_Ncleavage), &                    !< max # of cleavage systems over lattice structures
