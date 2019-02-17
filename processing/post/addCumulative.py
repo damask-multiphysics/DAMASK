@@ -13,7 +13,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Add cumulative (sum of first to current row) values for given label(s).
 """, version = scriptID)
 
@@ -22,12 +22,9 @@ parser.add_option('-l','--label',
                   action = 'extend', metavar = '<string LIST>',
                   help = 'columns to cumulate')
 
-parser.set_defaults(label = [],
-                   )
-                    
 (options,filenames) = parser.parse_args()
 
-if len(options.label) == 0:
+if options.label is None:
   parser.error('no data column(s) specified.')
 
 # --- loop over input files -------------------------------------------------------------------------

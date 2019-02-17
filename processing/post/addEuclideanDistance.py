@@ -83,7 +83,7 @@ neighborhoods = {
                                       ])
                 }
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Add column(s) containing Euclidean distance to grain structural features: boundaries, triple lines, and quadruple points.
 
 """, version = scriptID)

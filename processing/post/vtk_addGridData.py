@@ -17,7 +17,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 msg = "Add scalars, vectors, and/or an RGB tuple from"
 msg += "an ASCIItable to existing VTK grid (.vtr/.vtk/.vtu)."
 parser = OptionParser(option_class=damask.extendableOption,
-                      usage='%prog options [file[s]]',
+                      usage='%prog options [ASCIItable(s)]',
                       description = msg,
                       version = scriptID)
 
@@ -172,8 +172,7 @@ for name in filenames:
 
   writer.SetDataModeToBinary()
   writer.SetCompressorTypeToZLib()
-  if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(rGrid)
-  else:                          writer.SetInputData(rGrid)
+  writer.SetInputData(rGrid)
   writer.Write()
 
 # ------------------------------------------ render result ---------------------------------------
