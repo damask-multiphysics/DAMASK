@@ -524,11 +524,10 @@ backupData:
     - cd $TESTROOT/performance                                                                      # location of new runtime results
     - git commit -am"${CI_PIPELINE_ID}_${CI_COMMIT_SHA}"
     - mkdir $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}
-    - cp $TESTROOT/performance/time.txt $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
     - mv $TESTROOT/performance/time.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
-    - cp $TESTROOT/performance/memory.txt $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
     - mv $TESTROOT/performance/memory.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
     - mv $DAMASKROOT/PRIVATE/documenting/DAMASK_* $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - mv $DAMASKROOT/processing $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
   only:
     - development
 
