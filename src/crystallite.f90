@@ -286,7 +286,7 @@ subroutine crystallite_init
         crystallite_outputID(o,c) = grainrotation_ID
       case ('eulerangles') outputName
         crystallite_outputID(o,c) = eulerangles_ID
-      case ('defgrad','f') outputName
+      case ('defgrad','f') outputName                                                               ! ToDo: no alias (f only)
         crystallite_outputID(o,c) = defgrad_ID
       case ('fe') outputName
         crystallite_outputID(o,c) = fe_ID
@@ -298,15 +298,15 @@ subroutine crystallite_init
         crystallite_outputID(o,c) = lp_ID
       case ('li') outputName
         crystallite_outputID(o,c) = li_ID
-      case ('p','firstpiola','1stpiola') outputName
+      case ('p','firstpiola','1stpiola') outputName                                                 ! ToDo: no alias (p only)
         crystallite_outputID(o,c) = p_ID
-      case ('s','tstar','secondpiola','2ndpiola') outputName
+      case ('s','tstar','secondpiola','2ndpiola') outputName                                        ! ToDo: no alias (s only)
         crystallite_outputID(o,c) = s_ID
       case ('elasmatrix') outputName
         crystallite_outputID(o,c) = elasmatrix_ID
-      case ('neighboringip') outputName
+      case ('neighboringip') outputName                                                             ! ToDo: this is not a result, it is static. Should be written out by mesh
         crystallite_outputID(o,c) = neighboringip_ID
-      case ('neighboringelement') outputName
+      case ('neighboringelement') outputName                                                        ! ToDo: this is not a result, it is static. Should be written out by mesh
         crystallite_outputID(o,c) = neighboringelement_ID
       case default outputName
         call IO_error(105_pInt,ext_msg=trim(str(o))//' (Crystallite)')
@@ -426,7 +426,7 @@ end subroutine crystallite_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate stress (P)
 !--------------------------------------------------------------------------------------------------
-function crystallite_stress(a)
+function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
  use prec, only: &
    tol_math_check, &
    dNeq0
@@ -462,14 +462,11 @@ function crystallite_stress(a)
    sourceState, &
    phase_Nsources, &
    phaseAt, phasememberAt
- use constitutive, only:  &
-   constitutive_SandItsTangents, &
-   constitutive_LpAndItsTangents, &
-   constitutive_LiAndItsTangents
 
  implicit none
  logical, dimension(theMesh%elem%nIPs,theMesh%Nelems) :: crystallite_stress
- real(pReal), intent(in), optional :: a                                                             !ToDo: for some reason this prevents an internal compiler error in GNU. Very strange
+ real(pReal), intent(in), optional :: &
+   dummyArgumentToPreventInternalCompilerErrorWithGCC
  real(pReal) :: &
    formerSubStep
  integer(pInt) :: &
@@ -793,7 +790,7 @@ subroutine crystallite_stressTangent()
        endif
 
        call constitutive_LpAndItsTangents(devNull,dLpdS,dLpdFi, &
-                                          crystallite_Tstar_v(1:6,c,i,e), &
+                                          math_6toSym33(crystallite_Tstar_v(1:6,c,i,e)), &
                                           crystallite_Fi(1:3,1:3,c,i,e),c,i,e)                      ! call constitutive law to calculate Lp tangent in lattice configuration
        dLpdS = math_mul3333xx3333(dLpdFi,dFidS) + dLpdS
 
@@ -1078,7 +1075,7 @@ function crystallite_postResults(ipc, ip, el)
  c = c + 1_pInt
  if (size(crystallite_postResults)-c > 0_pInt) &
    crystallite_postResults(c+1:size(crystallite_postResults)) = &
-      constitutive_postResults(crystallite_Tstar_v(1:6,ipc,ip,el), crystallite_Fi(1:3,1:3,ipc,ip,el), &
+      constitutive_postResults(math_6toSym33(crystallite_Tstar_v(1:6,ipc,ip,el)), crystallite_Fi(1:3,1:3,ipc,ip,el), &
                                crystallite_Fe, ipc, ip, el)
 
 end function crystallite_postResults
@@ -1289,7 +1286,7 @@ logical function integrateStress(&
 
      !* calculate plastic velocity gradient and its tangent from constitutive law
      call constitutive_LpAndItsTangents(Lp_constitutive, dLp_dS, dLp_dFi, &
-                                        math_sym33to6(S), Fi_new, ipc, ip, el)
+                                        S, Fi_new, ipc, ip, el)
 
 #ifdef DEBUG
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
