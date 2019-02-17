@@ -85,8 +85,8 @@ module plastic_nonlocal
    lambda0PerSlipFamily, &                                                                          !< mean free path prefactor for each family and instance
    lambda0, &                                                                                       !< mean free path prefactor for each slip system and instance
    burgersPerSlipFamily, &                                                                          !< absolute length of burgers vector [m] for each family and instance
-   burgers, &                                                                                       !< absolute length of burgers vector [m] for each slip system and instance
-   interactionSlipSlip                                                                              !< coefficients for slip-slip interaction for each interaction type and instance
+   burgers                                                                                      !< absolute length of burgers vector [m] for each slip system and instance
+
  
  real(pReal), dimension(:,:,:), allocatable, private :: &
    minDipoleHeightPerSlipFamily, &                                                                  !< minimum stable edge/screw dipole height for each family and instance
@@ -94,8 +94,7 @@ module plastic_nonlocal
    peierlsStressPerSlipFamily, &                                                                    !< Peierls stress (edge and screw) 
    peierlsStress, &                                                                                 !< Peierls stress (edge and screw) 
    forestProjectionEdge, &                                                                          !< matrix of forest projections of edge dislocations for each instance
-   forestProjectionScrew, &                                                                         !< matrix of forest projections of screw dislocations for each instance
-   interactionMatrixSlipSlip                                                                        !< interaction matrix of the different slip systems for each instance
+   forestProjectionScrew                                                                          !< matrix of forest projections of screw dislocations for each instance
  
  real(pReal), dimension(:,:,:,:), allocatable, private :: &
    lattice2slip, &                                                                                  !< orthogonal transformation matrix from lattice coordinate system to slip coordinate system (passive rotation !!!)
@@ -259,6 +258,7 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_init(fileUnit)
+use prec, only: dEq
 use math,     only: math_Voigt66to3333, & 
                     math_mul3x3, &
                     math_expand
@@ -388,7 +388,6 @@ allocate(rhoDipEdge0(lattice_maxNslipFamily,maxNinstances),                    s
 allocate(rhoDipScrew0(lattice_maxNslipFamily,maxNinstances),                   source=-1.0_pReal)
 allocate(burgersPerSlipFamily(lattice_maxNslipFamily,maxNinstances),           source=0.0_pReal)
 allocate(lambda0PerSlipFamily(lattice_maxNslipFamily,maxNinstances),           source=0.0_pReal)
-allocate(interactionSlipSlip(lattice_maxNinteraction,maxNinstances),           source=0.0_pReal)
 allocate(minDipoleHeightPerSlipFamily(lattice_maxNslipFamily,2,maxNinstances), source=-1.0_pReal)
 allocate(peierlsStressPerSlipFamily(lattice_maxNslipFamily,2,maxNinstances),   source=0.0_pReal)
 
@@ -408,10 +407,8 @@ allocate(peierlsStressPerSlipFamily(lattice_maxNslipFamily,2,maxNinstances),   s
    endif
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next phase
      phase = phase + 1_pInt                                                                         ! advance phase section counter
-     if (phase_plasticity(phase) == PLASTICITY_NONLOCAL_ID) then
+     if (phase_plasticity(phase) == PLASTICITY_NONLOCAL_ID) &
        Nchunks_SlipFamilies = count(lattice_NslipSystem(:,phase) > 0_pInt)
-       Nchunks_SlipSlip     = maxval(lattice_InteractionSlipSlip(:,:,phase))
-     endif
      cycle
    endif
    if (phase > 0_pInt ) then; if (phase_plasticity(phase) == PLASTICITY_NONLOCAL_ID) then           ! one of my phases. do not short-circuit here (.and. with next if statement). It's not safe in Fortran
@@ -482,12 +479,6 @@ allocate(peierlsStressPerSlipFamily(lattice_maxNslipFamily,2,maxNinstances),   s
          significantRho(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case('significantn','significant_n','significantdislocations','significant_dislcations')
          significantN(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case ('interaction_slipslip')
-          if (chunkPos(1) < 1_pInt + Nchunks_SlipSlip) &
-            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_NONLOCAL_LABEL//')')
-         do it = 1_pInt,Nchunks_SlipSlip
-           interactionSlipSlip(it,instance) = IO_floatValue(line,chunkPos,1_pInt+it)
-         enddo
        case('linetension','linetensioneffect','linetension_effect')
          linetensionEffect(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case('edgejog','edgejogs','edgejogeffect','edgejog_effect')
@@ -571,8 +562,6 @@ allocate(peierlsStressPerSlipFamily(lattice_maxNslipFamily,2,maxNinstances),   s
           call IO_error(211_pInt,ext_msg='peierlsStressScrew ('//PLASTICITY_NONLOCAL_label//')')
       endif
     enddo
-    if (any(interactionSlipSlip(1:maxval(lattice_interactionSlipSlip(:,:,phase)),instance) < 0.0_pReal)) &
-      call IO_error(211_pInt,ext_msg='interaction_SlipSlip ('//PLASTICITY_NONLOCAL_label//')')
     if (linetensionEffect(instance) < 0.0_pReal .or. linetensionEffect(instance) > 1.0_pReal) &
       call IO_error(211_pInt,ext_msg='linetension ('//PLASTICITY_NONLOCAL_label//')')
     if (edgeJogFactor(instance) < 0.0_pReal .or. edgeJogFactor(instance) > 1.0_pReal) &
@@ -651,7 +640,6 @@ allocate(lambda0(maxTotalNslip,maxNinstances),                                  
 allocate(minDipoleHeight(maxTotalNslip,2,maxNinstances),                              source=-1.0_pReal)
 allocate(forestProjectionEdge(maxTotalNslip,maxTotalNslip,maxNinstances),             source=0.0_pReal)
 allocate(forestProjectionScrew(maxTotalNslip,maxTotalNslip,maxNinstances),            source=0.0_pReal)
-allocate(interactionMatrixSlipSlip(maxTotalNslip,maxTotalNslip,maxNinstances),        source=0.0_pReal)
 allocate(lattice2slip(1:3, 1:3, maxTotalNslip,maxNinstances),                         source=0.0_pReal)
 allocate(sourceProbability(maxTotalNslip,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), &
                                                                                    source=2.0_pReal)
@@ -809,21 +797,13 @@ allocate(colinearSystem(maxTotalNslip,maxNinstances),                           
              = abs(math_mul3x3(lattice_sn(1:3,slipSystemLattice(s1,instance),phase), &
                                lattice_sd(1:3,slipSystemLattice(s2,instance),phase)))                   ! forest projection of screw dislocations is the projection of b onto the slip normal of the respective splip plane
      
-         !*** calculation of interaction matrices
-   
-         interactionMatrixSlipSlip(s1,s2,instance) &
-             = interactionSlipSlip(lattice_interactionSlipSlip(slipSystemLattice(s1,instance), &
-                                                               slipSystemLattice(s2,instance), &
-                                                               phase), instance)
          
          !*** colinear slip system (only makes sense for fcc like it is defined here)
          
-         if (lattice_interactionSlipSlip(slipSystemLattice(s1,instance), &
-                                         slipSystemLattice(s2,instance), &
-                                         phase) == 3_pInt) then
+         if ((all(dEq(lattice_sd(1:3,slipSystemLattice(s1,instance),phase), &
+   lattice_sd(1:3,slipSystemLattice(s2,instance),phase))) .or. all(dEq(lattice_sd(1:3,slipSystemLattice(s1,instance),phase), &
+         -1.0_pReal*  lattice_sd(1:3,slipSystemLattice(s2,instance),phase))))  .and. s1 /= s2) &
            colinearSystem(s1,instance) = s2
-         endif
-     
        enddo
    
        !*** rotation matrix from lattice configuration to slip system
@@ -1331,7 +1311,7 @@ forall (s = 1_pInt:ns) &
 !*** (see Kubin,Devincre,Hoc; 2008; Modeling dislocation storage rates and mean free paths in face-centered cubic crystals)
 
 myInteractionMatrix = 0.0_pReal
-myInteractionMatrix(1:ns,1:ns) = interactionMatrixSlipSlip(1:ns,1:ns,instance)
+myInteractionMatrix(1:ns,1:ns) = prm%interactionSlipSlip(1:ns,1:ns)
 if (lattice_structure(ph) ==  LATTICE_bcc_ID .or. lattice_structure(ph) == LATTICE_fcc_ID) then     ! only fcc and bcc
   do s = 1_pInt,ns 
     myRhoForest = max(rhoForest(s),significantRho(instance))
