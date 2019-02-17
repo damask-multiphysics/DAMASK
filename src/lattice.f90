@@ -27,11 +27,9 @@ module lattice
    lattice_interactionSlipSlip                                                                      !< Slip--slip interaction type
 
  real(pReal), allocatable, dimension(:,:,:,:,:), protected, public :: &
-   lattice_Sslip, &                                                                                 !< Schmid and non-Schmid matrices
    lattice_Scleavage                                                                                !< Schmid matrices for cleavage systems
 
  real(pReal), allocatable, dimension(:,:,:,:), protected, public :: &
-   lattice_Sslip_v, &                                                                               !< Mandel notation of lattice_Sslip
    lattice_Scleavage_v                                                                              !< Mandel notation of lattice_Scleavege
 
  real(pReal), allocatable, dimension(:,:,:), protected, public :: &
@@ -39,8 +37,6 @@ module lattice
    lattice_st, &                                                                                    !< sd x sn
    lattice_sd                                                                                       !< slip direction of slip system
 
- integer(pInt), allocatable, dimension(:), protected, public :: &
-   lattice_NnonSchmid                                                                               !< total # of non-Schmid contributions for each structure
 ! END DEPRECATED
 
 
@@ -726,14 +722,8 @@ contains
 !> @brief Module initialization
 !--------------------------------------------------------------------------------------------------
 subroutine lattice_init
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use IO, only: &
-   IO_error, &
-   IO_timeStamp
+   IO_error
  use config, only: &
    config_phase
 
@@ -748,8 +738,6 @@ subroutine lattice_init
 
 
  write(6,'(/,a)') ' <<<+-  lattice init  -+>>>'
- write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
  Nphases = size(config_phase)
 
@@ -769,9 +757,6 @@ subroutine lattice_init
  allocate(lattice_mu(Nphases),       source=0.0_pReal)
  allocate(lattice_nu(Nphases),       source=0.0_pReal)
 
- allocate(lattice_NnonSchmid(Nphases), source=0_pInt)
- allocate(lattice_Sslip(3,3,1+2*lattice_maxNnonSchmid,lattice_maxNslip,Nphases),source=0.0_pReal)
- allocate(lattice_Sslip_v(6,1+2*lattice_maxNnonSchmid,lattice_maxNslip,Nphases),source=0.0_pReal)
  allocate(lattice_NslipSystem(lattice_maxNslipFamily,Nphases),source=0_pInt)
  allocate(lattice_interactionSlipSlip(lattice_maxNslip,lattice_maxNslip,Nphases),source=0_pInt)     ! other:me
 
@@ -863,34 +848,22 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
  use prec, only: &
   tol_math_check
  use math, only: &
-   math_crossproduct, &
-   math_tensorproduct33, &
    math_mul33x33, &
-   math_mul33x3, &
-   math_trace33, &
    math_symmetric33, &
    math_sym33to6, &
    math_sym3333to66, &
    math_Voigt66to3333, &
-   math_axisAngleToR, &
-   INRAD, &
-   MATH_I3
+   math_crossproduct
  use IO, only: &
-   IO_error, &
-   IO_warning
+   IO_error
 
  implicit none
  integer(pInt), intent(in) :: myPhase
  real(pReal), intent(in) :: &
    CoverA
 
- real(pReal), dimension(3) :: &
-   sdU, snU, &
-   np,  nn
  real(pReal), dimension(3,lattice_maxNslip) :: &
    sd,  sn
- real(pReal), dimension(3,3,2,lattice_maxNnonSchmid,lattice_maxNslip) :: &
-   sns
  integer(pInt) :: &
   j, i,  &
   myNslip, myNcleavage
@@ -951,34 +924,11 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
      myNcleavage = lattice_bcc_Ncleavage
      lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase)          = lattice_bcc_NslipSystem
      lattice_NcleavageSystem(1:lattice_maxNcleavageFamily,myPhase)  = lattice_bcc_NcleavageSystem
-     lattice_NnonSchmid(myPhase)                                    = lattice_bcc_NnonSchmid
      lattice_interactionSlipSlip(1:myNslip,1:myNslip,myPhase)       = lattice_bcc_interactionSlipSlip
 
      lattice_Scleavage(1:3,1:3,1:3,1:myNcleavage,myPhase) = &
      lattice_SchmidMatrix_cleavage(lattice_bcc_ncleavagesystem,'bcc',covera)
 
-     do i = 1_pInt,myNslip                                                                          ! assign slip system vectors
-       sd(1:3,i) = lattice_bcc_systemSlip(1:3,i)
-       sn(1:3,i) = lattice_bcc_systemSlip(4:6,i)
-       sdU = sd(1:3,i) / norm2(sd(1:3,i))
-       snU = sn(1:3,i) / norm2(sn(1:3,i))
-       ! "np" and "nn" according to Gröger_etal2008, Acta Materialia 56 (2008) 5412–5425, table 1 (corresponds to their "n1" for positive and negative slip direction respectively)
-       np = math_mul33x3(math_axisAngleToR(sdU,60.0_pReal*INRAD), snU)
-       nn = math_mul33x3(math_axisAngleToR(-sdU,60.0_pReal*INRAD), snU)
-         ! Schmid matrices with non-Schmid contributions according to Koester_etal2012, Acta Materialia 60 (2012) 3894–3901, eq. (17) ("n1" is replaced by either "np" or "nn" according to either positive or negative slip direction)
-       sns(1:3,1:3,1,1,i) = math_tensorproduct33(sdU, np)
-       sns(1:3,1:3,2,1,i) = math_tensorproduct33(-sdU, nn)
-       sns(1:3,1:3,1,2,i) = math_tensorproduct33(math_crossproduct(snU, sdU), snU)
-       sns(1:3,1:3,2,2,i) = math_tensorproduct33(math_crossproduct(snU, -sdU), snU)
-       sns(1:3,1:3,1,3,i) = math_tensorproduct33(math_crossproduct(np, sdU), np)
-       sns(1:3,1:3,2,3,i) = math_tensorproduct33(math_crossproduct(nn, -sdU), nn)
-       sns(1:3,1:3,1,4,i) = math_tensorproduct33(snU, snU)
-       sns(1:3,1:3,2,4,i) = math_tensorproduct33(snU, snU)
-       sns(1:3,1:3,1,5,i) = math_tensorproduct33(math_crossproduct(snU, sdU), math_crossproduct(snU, sdU))
-       sns(1:3,1:3,2,5,i) = math_tensorproduct33(math_crossproduct(snU, -sdU), math_crossproduct(snU, -sdU))
-       sns(1:3,1:3,1,6,i) = math_tensorproduct33(sdU, sdU)
-       sns(1:3,1:3,2,6,i) = math_tensorproduct33(-sdU, -sdU)
-     enddo
 
 !--------------------------------------------------------------------------------------------------
 ! hex (including conversion from miller-bravais (a1=a2=a3=c) to miller (a, b, c) indices)
@@ -1014,8 +964,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
        sd(3,i) = lattice_bct_systemSlip(3,i)*CoverA
        sn(1:2,i) = lattice_bct_systemSlip(4:5,i)
        sn(3,i) =  lattice_bct_systemSlip(6,i)/CoverA
-       sdU = sd(1:3,i) / norm2(sd(1:3,i))
-       snU = sn(1:3,i) / norm2(sn(1:3,i))
      enddo
 
 !--------------------------------------------------------------------------------------------------
@@ -1046,18 +994,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
  do i = 1_pInt,myNslip                                                                              ! store slip system vectors and Schmid matrix for my structure
    lattice_sd(1:3,i,myPhase) = sd(1:3,i)/norm2(sd(1:3,i))                                           ! make unit vector
    lattice_sn(1:3,i,myPhase) = sn(1:3,i)/norm2(sn(1:3,i))                                           ! make unit vector
-   lattice_st(1:3,i,myPhase) = math_crossproduct(lattice_sd(1:3,i,myPhase), &
-                                                  lattice_sn(1:3,i,myPhase))
-   lattice_Sslip(1:3,1:3,1,i,myPhase) = math_tensorproduct33(lattice_sd(1:3,i,myPhase), &
-                                                           lattice_sn(1:3,i,myPhase))               ! calculate Schmid matrix d \otimes n
-   do j = 1_pInt,lattice_NnonSchmid(myPhase)
-     lattice_Sslip(1:3,1:3,2*j  ,i,myPhase) = sns(1:3,1:3,1,j,i)
-     lattice_Sslip(1:3,1:3,2*j+1,i,myPhase) = sns(1:3,1:3,2,j,i)
-   enddo
-   do j = 1_pInt,1_pInt+2_pInt*lattice_NnonSchmid(myPhase)
-     lattice_Sslip_v(1:6,j,i,myPhase) = &
-       math_sym33to6(math_symmetric33(lattice_Sslip(1:3,1:3,j,i,myPhase)))
-   enddo
+   lattice_st(1:3,i,myPhase) = math_crossproduct(lattice_sd(1:3,i,myPhase),lattice_sn(1:3,i,myPhase))
  enddo
 
  do i = 1_pInt,myNcleavage                                                                          ! store slip system vectors and Schmid matrix for my structure
@@ -1462,8 +1399,8 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_target, &
    INRAD, &
    MATH_I3, &
    math_axisAngleToR, &
-   math_Mandel3333to66, &
-   math_Mandel66to3333, &
+   math_sym3333to66, &
+   math_66toSym3333, &
    math_rotate_forward3333, &
    math_mul33x33, &
    math_tensorproduct33, &
@@ -1514,11 +1451,11 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_target, &
    if (abs(C_target_unrotated66(i,i))<tol_math_check) &
    call IO_error(135_pInt,el=i,ext_msg='matrix diagonal "el"ement in transformation')
  enddo
- C_target_unrotated = math_Mandel66to3333(C_target_unrotated66)
+ C_target_unrotated = math_66toSym3333(C_target_unrotated66)
  call buildTransformationSystem(Q,S,Ntrans,CoverA_trans,a_fcc,a_bcc)
 
  do i = 1, sum(Ntrans)
-   lattice_C66_trans(1:6,1:6,i) = math_Mandel3333to66(math_rotate_forward3333(C_target_unrotated,Q(1:3,1:3,i)))
+   lattice_C66_trans(1:6,1:6,i) = math_sym3333to66(math_rotate_forward3333(C_target_unrotated,Q(1:3,1:3,i)))
  enddo
 end function lattice_C66_trans
 

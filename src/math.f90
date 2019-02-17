@@ -98,23 +98,13 @@ module math
    module procedure math_99to3333
  end interface math_Plain99to3333
  
- interface math_Mandel3333to66
-   module procedure math_sym3333to66
- end interface math_Mandel3333to66
- 
- interface math_Mandel66to3333
-   module procedure math_66toSym3333
- end interface math_Mandel66to3333
- 
  public :: &
    math_Plain33to9, &
    math_Plain9to33, &
    math_Mandel33to6, &
    math_Mandel6to33, &
    math_Plain3333to99, &
-   math_Plain99to3333, &
-   math_Mandel3333to66, &
-   math_Mandel66to3333
+   math_Plain99to3333
 !---------------------------------------------------------------------------------------------------
 
  public :: &
