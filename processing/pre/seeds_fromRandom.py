@@ -28,7 +28,7 @@ def kdtree_search(cloud, queryPoints):
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog [options]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options', description = """
 Distribute given number of points randomly within (a fraction of) the three-dimensional cube [0.0,0.0,0.0]--[1.0,1.0,1.0].
 Reports positions with random crystal orientations in seeds file format to STDOUT.
 
