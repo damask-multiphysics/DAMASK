@@ -22,7 +22,7 @@ module kinematics_slipplane_opening
      sdot0, &
      n
    real(pReal),   dimension(:),   allocatable :: &
-     critDip, &
+     critDisp, &
      critPlasticStrain
  end type
 

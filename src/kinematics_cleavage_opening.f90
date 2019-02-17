@@ -22,7 +22,7 @@ module kinematics_cleavage_opening
      sdot0, &
      n
    real(pReal),   dimension(:),   allocatable :: &
-     critDip, &
+     critDisp, &
      critLoad
  end type
 
