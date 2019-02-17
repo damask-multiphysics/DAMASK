@@ -882,7 +882,7 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
      call plastic_disloucla_dotState    (Mp,temperature(ho)%p(tme),instance,of)
 
    case (PLASTICITY_NONLOCAL_ID) plasticityType
-     call plastic_nonlocal_dotState     (math_sym33to6(Mp),FeArray,FpArray,temperature(ho)%p(tme), &
+     call plastic_nonlocal_dotState     (Mp,FeArray,FpArray,temperature(ho)%p(tme), &
                                          subdt,subfracArray,ip,el)
  end select plasticityType
 
@@ -965,7 +965,7 @@ subroutine constitutive_collectDeltaState(S, Fe, Fi, ipc, ip, el)
      call plastic_kinehardening_deltaState(Mp,instance,of)
 
    case (PLASTICITY_NONLOCAL_ID) plasticityType
-     call plastic_nonlocal_deltaState(math_sym33to6(Mp),ip,el)
+     call plastic_nonlocal_deltaState(Mp,ip,el)
 
  end select plasticityType
 
