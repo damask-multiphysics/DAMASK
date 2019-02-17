@@ -108,7 +108,7 @@ module lattice
    ['<-2 1 1>{1 1 1}']
 
 
- integer(pInt), dimension(2_pInt,LATTICE_FCC_NTWIN), parameter, private :: &
+ integer(pInt), dimension(2_pInt,LATTICE_FCC_NTWIN), parameter, public :: &
    LATTICE_FCC_TWINNUCLEATIONSLIPPAIR = reshape(int( [&
      2,3, &
      1,3, &
@@ -928,6 +928,10 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
      lattice_Scleavage(1:3,1:3,1:3,1:myNcleavage,myPhase) = &
      lattice_SchmidMatrix_cleavage(lattice_bcc_ncleavagesystem,'bcc',covera)
 
+     do i = 1_pInt,myNslip
+       sd(1:3,i) = lattice_bcc_systemSlip(1:3,i)
+       sn(1:3,i) = lattice_bcc_systemSlip(4:6,i)
+     enddo
 
 !--------------------------------------------------------------------------------------------------
 ! hex (including conversion from miller-bravais (a1=a2=a3=c) to miller (a, b, c) indices)
