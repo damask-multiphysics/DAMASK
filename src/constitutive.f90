@@ -176,8 +176,6 @@ subroutine constitutive_init()
  call config_deallocate('material.config/phase')
 
  write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
  mainProcess: if (worldrank == 0) then
 !--------------------------------------------------------------------------------------------------
@@ -525,7 +523,8 @@ end subroutine constitutive_LpAndItsTangents
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 ! ToDo: MD: S is Mi?
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, S6, Fi, ipc, ip, el)
+subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
+                                         S, Fi, ipc, ip, el)
  use prec, only: &
    pReal
  use math, only: &
@@ -560,8 +559,8 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, S6, Fi, ipc, ip, e
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- real(pReal),   intent(in),  dimension(6) :: &
-   S6                                                                                               !< 2nd Piola-Kirchhoff stress (vector notation)
+ real(pReal),   intent(in),  dimension(3,3) :: &
+   S                                                                                                !< 2nd Piola-Kirchhoff stress
  real(pReal),   intent(in),  dimension(3,3) :: &
    Fi                                                                                               !< intermediate deformation gradient
  real(pReal),   intent(out), dimension(3,3) :: &
@@ -590,7 +589,7 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, S6, Fi, ipc, ip, e
    case (PLASTICITY_isotropic_ID) plasticityType
      of = phasememberAt(ipc,ip,el)
      instance = phase_plasticityInstance(material_phase(ipc,ip,el))
-     call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, math_6toSym33(S6),instance,of)
+     call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, S ,instance,of)
    case default plasticityType
      my_Li = 0.0_pReal
      my_dLi_dS = 0.0_pReal
@@ -602,9 +601,9 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, S6, Fi, ipc, ip, e
  KinematicsLoop: do k = 1_pInt, phase_Nkinematics(material_phase(ipc,ip,el))
    kinematicsType: select case (phase_kinematics(k,material_phase(ipc,ip,el)))
      case (KINEMATICS_cleavage_opening_ID) kinematicsType
-       call kinematics_cleavage_opening_LiAndItsTangent(my_Li, my_dLi_dS, math_6toSym33(S6), ipc, ip, el)
+       call kinematics_cleavage_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, ipc, ip, el)
      case (KINEMATICS_slipplane_opening_ID) kinematicsType
-       call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dS, math_6toSym33(S6), ipc, ip, el)
+       call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, ipc, ip, el)
      case (KINEMATICS_thermal_expansion_ID) kinematicsType
        call kinematics_thermal_expansion_LiAndItsTangent(my_Li, my_dLi_dS, ipc, ip, el)
      case default kinematicsType
@@ -703,7 +702,8 @@ end subroutine constitutive_SandItsTangents
 !> @brief returns the 2nd Piola-Kirchhoff stress tensor and its tangent with respect to
 !> the elastic and intermeidate deformation gradients using Hookes law
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, Fe, Fi, ipc, ip, el)
+subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
+                                              Fe, Fi, ipc, ip, el)
  use prec, only: &
    pReal
  use math, only : &
@@ -767,7 +767,7 @@ end subroutine constitutive_hooke_SandItsTangents
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfracArray,ipc, ip, el)
+subroutine constitutive_collectDotState(S, FeArray, Fi, FpArray, subdt, subfracArray,ipc, ip, el)
  use prec, only: &
    pReal, &
    pLongInt
@@ -839,20 +839,20 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
    FpArray                                                                                          !< plastic deformation gradient
  real(pReal),  intent(in), dimension(3,3) :: &
    Fi                                                                                               !< intermediate deformation gradient
- real(pReal),  intent(in), dimension(6) :: &
-   S6                                                                                               !< 2nd Piola Kirchhoff stress (vector notation)
+ real(pReal),  intent(in), dimension(3,3) :: &
+   S                                                                                                !< 2nd Piola Kirchhoff stress (vector notation)
  real(pReal),              dimension(3,3) :: &
    Mp
  integer(pInt) :: &
    ho, &                                                                                            !< homogenization
    tme, &                                                                                           !< thermal member position
-   s, &                                                                                             !< counter in source loop
+   i, &                                                                                             !< counter in source loop
    instance, of
 
  ho = material_homogenizationAt(el)
  tme = thermalMapping(ho)%p(ip,el)
 
- Mp  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),math_6toSym33(S6))
+ Mp  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),S)
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
 
@@ -886,21 +886,21 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
                                          subdt,subfracArray,ip,el)
  end select plasticityType
 
- SourceLoop: do s = 1_pInt, phase_Nsources(material_phase(ipc,ip,el))
+ SourceLoop: do i = 1_pInt, phase_Nsources(material_phase(ipc,ip,el))
 
-   sourceType: select case (phase_source(s,material_phase(ipc,ip,el)))
+   sourceType: select case (phase_source(i,material_phase(ipc,ip,el)))
 
      case (SOURCE_damage_anisoBrittle_ID) sourceType
-       call source_damage_anisoBrittle_dotState (math_6toSym33(S6), ipc, ip, el) !< correct stress?
+       call source_damage_anisoBrittle_dotState (S, ipc, ip, el) !< correct stress?
 
      case (SOURCE_damage_isoDuctile_ID) sourceType
-       call source_damage_isoDuctile_dotState   (         ipc, ip, el)
+       call source_damage_isoDuctile_dotState   (   ipc, ip, el)
 
      case (SOURCE_damage_anisoDuctile_ID) sourceType
-       call source_damage_anisoDuctile_dotState (         ipc, ip, el)
+       call source_damage_anisoDuctile_dotState (   ipc, ip, el)
 
      case (SOURCE_thermal_externalheat_ID) sourceType
-       call source_thermal_externalheat_dotState(         ipc, ip, el)
+       call source_thermal_externalheat_dotState(   ipc, ip, el)
 
    end select sourceType
 

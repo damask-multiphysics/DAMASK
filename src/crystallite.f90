@@ -761,7 +761,7 @@ subroutine crystallite_stressTangent()
                                         crystallite_Fe(1:3,1:3,c,i,e), &
                                         crystallite_Fi(1:3,1:3,c,i,e),c,i,e)                        ! call constitutive law to calculate elastic stress tangent
        call constitutive_LiAndItsTangents(devNull,dLidS,dLidFi, &
-                                          crystallite_Tstar_v(1:6,c,i,e), &
+                                          math_6toSym33(crystallite_Tstar_v(1:6,c,i,e)), &
                                           crystallite_Fi(1:3,1:3,c,i,e), &
                                           c,i,e)                                                    ! call constitutive law to calculate Li tangent in lattice configuration
 
@@ -1387,7 +1387,7 @@ logical function integrateStress(&
 
    !* calculate intermediate velocity gradient and its tangent from constitutive law
    call constitutive_LiAndItsTangents(Li_constitutive, dLi_dS, dLi_dFi, &
-                                      math_sym33to6(S), Fi_new, ipc, ip, el)
+                                      S, Fi_new, ipc, ip, el)
 
 #ifdef DEBUG
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
@@ -2268,6 +2268,8 @@ end subroutine update_state
 subroutine update_dotState(timeFraction)
  use, intrinsic :: &
    IEEE_arithmetic
+ use math, only: &
+   math_6toSym33 !ToDo: Temporarly needed until T_star_v is called S and stored as matrix
  use material, only: &
    plasticState, &
    sourceState, &
@@ -2300,7 +2302,7 @@ subroutine update_dotState(timeFraction)
      do g = 1,homogenization_Ngrains(mesh_element(3,e))
          !$OMP FLUSH(nonlocalStop)
         if ((crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) .and. .not. nonlocalStop) then
-           call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
+           call constitutive_collectDotState(math_6toSym33(crystallite_Tstar_v(1:6,g,i,e)), &
                                              crystallite_Fe, &
                                              crystallite_Fi(1:3,1:3,g,i,e), &
                                              crystallite_Fp, &
