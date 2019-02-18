@@ -25,7 +25,7 @@ def operator(stretch,strain,eigenvalues):
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Add column(s) containing given strains based on given stretches of requested deformation gradient column(s).
 
 """, version = scriptID)
@@ -56,15 +56,14 @@ parser.add_option('-f','--defgrad',
                   metavar = '<string LIST>',
                   help = 'heading(s) of columns containing deformation tensor values [%default]')
 
-parser.set_defaults(right       = False,
-                    left        = False,
-                    logarithmic = False,
-                    biot        = False,
-                    green       = False,
+parser.set_defaults(
                     defgrad     = ['f'],
                    )
 
 (options,filenames) = parser.parse_args()
+
+if len(options.defgrad) > 1:
+  options.defgrad = options.defgrad[1:]
 
 stretches = []
 strains = []

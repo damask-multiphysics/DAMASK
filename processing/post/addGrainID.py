@@ -28,9 +28,9 @@ parser.add_option('-d',
                   help = 'disorientation threshold in degrees [%default]')
 parser.add_option('-s',
                   '--symmetry',
-                  dest = 'symmetry',
+                  dest = 'symmetry', type = 'choice', choices = damask.Symmetry.lattices[1:],
                   metavar = 'string',
-                  help = 'crystal symmetry [%default]')
+                  help = 'crystal symmetry [%default] {{{}}} '.format(', '.join(damask.Symmetry.lattices[1:])))
 parser.add_option('-o',
                   '--orientation',
                   dest = 'quaternion',
@@ -49,7 +49,7 @@ parser.add_option('--quiet',
 parser.set_defaults(disorientation = 5,
                     verbose = True,
                     quaternion = 'orientation',
-                    symmetry = 'cubic',
+                    symmetry = damask.Symmetry.lattices[-1],
                     pos      = 'pos',
                    )
 

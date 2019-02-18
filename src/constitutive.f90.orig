@@ -1111,9 +1111,14 @@ function constitutive_postResults(S, Fi, FeArray, ipc, ip, el)
 
  SourceLoop: do i = 1_pInt, phase_Nsources(material_phase(ipc,ip,el))
    startPos = endPos + 1_pInt
+<<<<<<< HEAD
    endPos = endPos + sourceState(material_phase(ipc,ip,el))%p(i)%sizePostResults
-   of = phasememberAt(ipc,ip,el)
    sourceType: select case (phase_source(i,material_phase(ipc,ip,el)))
+=======
+   endPos = endPos + sourceState(material_phase(ipc,ip,el))%p(s)%sizePostResults
+   of = phasememberAt(ipc,ip,el)
+   sourceType: select case (phase_source(s,material_phase(ipc,ip,el)))
+>>>>>>> development
      case (SOURCE_damage_isoBrittle_ID) sourceType
        constitutive_postResults(startPos:endPos) = source_damage_isoBrittle_postResults(material_phase(ipc,ip,el),of)
      case (SOURCE_damage_isoDuctile_ID) sourceType

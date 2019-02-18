@@ -38,7 +38,7 @@ def check_matrix(M):
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Add quaternion and/or Bunge Euler angle representation of crystal lattice orientation.
 Orientation is given by quaternion, Euler angles, rotation matrix, or crystal frame coordinates
 (i.e. component vectors of rotation matrix).
@@ -68,12 +68,12 @@ parser.add_option('-R',
                   '--labrotation',
                   dest='labrotation',
                   type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
-                  help = 'angle and axis of additional lab frame rotation')
+                  help = 'angle and axis of additional lab frame rotation [%default]')
 parser.add_option('-r',
                   '--crystalrotation',
                   dest='crystalrotation',
                   type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
-                  help = 'angle and axis of additional crystal frame rotation')
+                  help = 'angle and axis of additional crystal frame rotation [%default]')
 parser.add_option('--eulers',
                   dest = 'eulers',
                   metavar = 'string',
@@ -106,7 +106,6 @@ parser.add_option('-z',
 parser.set_defaults(output = [],
                     labrotation     = (0.,1.,1.,1.),                                                # no rotation about 1,1,1
                     crystalrotation = (0.,1.,1.,1.),                                                # no rotation about 1,1,1
-                    degrees = False,
                    )
 
 (options, filenames) = parser.parse_args()

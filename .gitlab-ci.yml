@@ -482,24 +482,40 @@ AbaqusStd:
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
     - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT abaqus
-  only:
-    - development
+  except:
+    - master
+    - release
 
 Marc:
   stage: createDocumentation
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
     - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT marc
-  only:
-    - development
+  except:
+    - master
+    - release
 
 Spectral:
   stage: createDocumentation
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
     - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT spectral
-  only:
-    - development
+  except:
+    - master
+    - release
+
+Processing:
+  stage: createDocumentation
+  script:
+    - cd $DAMASKROOT/processing/pre
+    - rm 3DRVEfrom2Dang.py abq_addUserOutput.py marc_addUserOutput.py
+    - $DAMASKROOT/PRIVATE/documenting/scriptHelpToWiki.py --debug *.py
+    - cd $DAMASKROOT/processing/post
+    - rm marc_to_vtk.py vtk2ang.py
+    - $DAMASKROOT/PRIVATE/documenting/scriptHelpToWiki.py --debug *.py
+  except:
+    - master
+    - release
 
 ##################################################################################################
 backupData:
@@ -508,11 +524,10 @@ backupData:
     - cd $TESTROOT/performance                                                                      # location of new runtime results
     - git commit -am"${CI_PIPELINE_ID}_${CI_COMMIT_SHA}"
     - mkdir $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}
-    - cp $TESTROOT/performance/time.txt $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
     - mv $TESTROOT/performance/time.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
-    - cp $TESTROOT/performance/memory.txt $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
     - mv $TESTROOT/performance/memory.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
     - mv $DAMASKROOT/PRIVATE/documenting/DAMASK_* $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - mv $DAMASKROOT/processing $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
   only:
     - development
 

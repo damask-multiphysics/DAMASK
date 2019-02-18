@@ -26,6 +26,13 @@ module lattice
  real(pReal), allocatable, dimension(:,:,:,:,:), protected, public :: &
    lattice_Scleavage                                                                                !< Schmid matrices for cleavage systems
 
+ real(pReal), allocatable, dimension(:,:,:,:), protected, public :: &
+<<<<<<< HEAD
+   lattice_Scleavage_v                                                                              !< Mandel notation of lattice_Scleavege
+=======
+   lattice_Sslip_v                                                                              !< Mandel notation of lattice_Sslip
+>>>>>>> development
+
  real(pReal), allocatable, dimension(:,:,:), protected, public :: &
    lattice_sn, &                                                                                    !< normal direction of slip system
    lattice_st, &                                                                                    !< sd x sn
@@ -653,6 +660,8 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
   tol_math_check
  use math, only: &
    math_mul33x33, &
+   math_symmetric33, &
+   math_sym33to6, &
    math_sym3333to66, &
    math_Voigt66to3333, &
    math_crossproduct

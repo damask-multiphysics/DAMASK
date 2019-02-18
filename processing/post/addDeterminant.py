@@ -20,7 +20,7 @@ def determinant(m):
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Add column(s) containing determinant of requested tensor column(s).
 
 """, version = scriptID)

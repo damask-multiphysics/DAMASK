@@ -34,7 +34,7 @@ def derivative(coordinates,what):
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Add column(s) containing numerical derivative of requested column(s) with respect to given coordinates.
 
 """, version = scriptID)

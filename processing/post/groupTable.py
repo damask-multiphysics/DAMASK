@@ -20,7 +20,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Apply a user-specified function to condense into a single row all those rows for which columns 'label' have identical values.
 Output table will contain as many rows as there are different (unique) values in the grouping column(s).
 Periodic domain averaging of coordinate values is supported.

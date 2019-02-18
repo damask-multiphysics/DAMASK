@@ -49,14 +49,14 @@ def curlFFT(geomdim,field):
 
   curl_fourier = np.einsum(einsums[n],e,k_s,field_fourier)*TWOPIIMG
 
-  return np.fft.irfftn(curl_fourier,s=shapeFFT,axes=(0,1,2)).reshape([N,n])
+  return np.fft.irfftn(curl_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,n])
 
 
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog option(s) [ASCIItable(s)]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Add column(s) containing curl of requested column(s).
 Operates on periodic ordered three-dimensional data sets
 of vector and tensor fields.
