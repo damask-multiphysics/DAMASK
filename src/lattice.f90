@@ -30,7 +30,6 @@ module lattice
    lattice_sn, &                                                                                    !< normal direction of slip system
    lattice_st, &                                                                                    !< sd x sn
    lattice_sd                                                                                       !< slip direction of slip system
-
 ! END DEPRECATED
 
 
@@ -273,7 +272,7 @@ module lattice
      -2,  1,  1,  3,     2, -1, -1,  2, &
       1, -2,  1,  3,    -1,  2, -1,  2, &
       1,  1, -2,  3,    -1, -1,  2,  2  &
-     ],pReal),shape(LATTICE_HEX_SYSTEMSLIP))                                                 !< slip systems for hex sorted by A. Alankar & P. Eisenlohr
+     ],pReal),shape(LATTICE_HEX_SYSTEMSLIP))                                                        !< slip systems for hex sorted by A. Alankar & P. Eisenlohr
 
  character(len=*), dimension(6), parameter, private :: LATTICE_HEX_SLIPFAMILY_NAME = &
    ['<1 1 . 1>{0 0 . 1}  ', &
@@ -313,7 +312,7 @@ module lattice
      -2,  1,  1, -3,    -2,  1,  1,  2, &
       1, -2,  1, -3,     1, -2,  1,  2, &
       1,  1, -2, -3,     1,  1, -2,  2  &
-     ],pReal),shape(LATTICE_HEX_SYSTEMTWIN))                                                !< twin systems for hex, order follows Prof. Tom Bieler's scheme; but numbering in data was restarted from 1
+     ],pReal),shape(LATTICE_HEX_SYSTEMTWIN))                                                        !< twin systems for hex, order follows Prof. Tom Bieler's scheme
 
  character(len=*), dimension(4), parameter, private :: LATTICE_HEX_TWINFAMILY_NAME = &
    ['<-1 0 . 1>{1 0 . 2} ', &
@@ -406,7 +405,7 @@ module lattice
       1,-1, 1,     -2,-1, 1, &
      -1, 1, 1,     -1,-2, 1, &
       1, 1, 1,      1,-2, 1  &
-      ],pReal),[ 3_pInt + 3_pInt,LATTICE_bct_Nslip])                                                 !< slip systems for bct sorted by Bieler
+      ],pReal),[ 3_pInt + 3_pInt,LATTICE_bct_Nslip])                                                !< slip systems for bct sorted by Bieler
 
  character(len=*), dimension(13), parameter, private :: LATTICE_BCT_SLIPFAMILY_NAME = &
    ['{1 0 0)<0 0 1] ', &
@@ -495,6 +494,7 @@ module lattice
                  LATTICE_bct_ID, &
                  LATTICE_ort_ID
  end enum
+
  integer(kind(LATTICE_undefined_ID)),        dimension(:),       allocatable, public, protected :: &
    lattice_structure, trans_lattice_structure
 
