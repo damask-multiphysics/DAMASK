@@ -25,10 +25,6 @@ parser.add_option(      '--vtk',
                   dest = 'vtk',
                   type = 'string', metavar = 'string',
                   help = 'VTK file name')
-parser.add_option(      '--inplace',
-                  dest = 'inplace',
-                  action = 'store_true',
-                  help = 'modify VTK file in-place')
 parser.add_option('-r', '--render',
                   dest = 'render',
                   action = 'store_true',
@@ -49,7 +45,6 @@ parser.add_option('-c', '--color',
 parser.set_defaults(data = [],
                     tensor = [],
                     color = [],
-                    inplace = False,
                     render = False,
 )
 
@@ -158,16 +153,14 @@ for name in filenames:
       elif mode == 'point': rGrid.GetPointData().AddArray(VTKarray[me])
 
   rGrid.Modified()
-  if vtk.VTK_MAJOR_VERSION <= 5: rGrid.Update()
 
 # ------------------------------------------ output result ---------------------------------------
 
   writer = vtk.vtkXMLRectilinearGridWriter()
   writer.SetDataModeToBinary()
   writer.SetCompressorTypeToZLib()
-  writer.SetFileName(os.path.splitext(options.vtk)[0]+('.vtr' if options.inplace else '_added.vtr'))
-  if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(rGrid)
-  else:                          writer.SetInputData(rGrid)
+  writer.SetFileName(options.vtk)
+  writer.SetInputData(rGrid)
   writer.Write()
 
 # ------------------------------------------ render result ---------------------------------------

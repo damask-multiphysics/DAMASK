@@ -23,10 +23,6 @@ parser.add_option(      '--vtk',
                   dest = 'vtk',
                   type = 'string', metavar = 'string',
                   help = 'VTK file name')
-parser.add_option(      '--inplace',
-                  dest = 'inplace',
-                  action = 'store_true',
-                  help = 'modify VTK file in-place')
 parser.add_option('-r', '--render',
                   dest = 'render',
                   action = 'store_true',
@@ -153,7 +149,7 @@ for name in filenames:
   writer = vtk.vtkXMLPolyDataWriter()
   writer.SetDataModeToBinary()
   writer.SetCompressorTypeToZLib()
-  writer.SetFileName(os.path.splitext(options.vtk)[0]+('.vtp' if options.inplace else '_added.vtp'))
+  writer.SetFileName(options.vtk)
   writer.SetInputData(Polydata)
   writer.Write()
 
