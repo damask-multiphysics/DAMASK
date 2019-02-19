@@ -203,6 +203,43 @@ module plastic_nonlocal
      outputID                                                                                       !< ID of each post result output
  end type tParameters
  
+  type, private :: tNonlocalState
+
+   real(pReal), pointer,     dimension(:,:) :: &
+     rho, &                                                                                         ! < all dislocations
+       rhoSgl, &
+         rhoSglMobile, &                       ! iRhoU                               
+           rhoSglEdgeMobile, &
+             rhoSglEdgeMobilePos, &
+             rhoSglEdgeMobileNeg, &
+           rhoSglScrewMobile, &
+             rhoSglScrewMobilePos, &
+             rhoSglScrewMobileNeg, &
+         rhoSglImmobile, &                     ! iRhoB
+           rhoSglEdgeImmobile, &
+             rhoSglEdgeImmobilePos, &
+             rhoSglEdgeImmobileNeg, &
+           rhoSglScrewImmobile, &
+             rhoSglScrewImmobilePos, &
+             rhoSglScrewImmobileNeg, &
+       rhoSglPos, &
+         rhoSglMobilePos, &
+         rhoSglImmobilePos, &
+       rhoSglNeg, &
+         rhoSglMobileNeg, &
+         rhoSglImmobileNeg, &
+       rhoDip, &                               ! iRhoD
+         rhoDipEdge, &
+         rhoDipScrew, &
+       rhoSglScrew, &
+       rhoSglEdge, &
+     accumulatedshear
+ end type tNonlocalState
+  type(tNonlocalState), allocatable, dimension(:), private :: &
+   deltaState, &
+   dotState, &
+   state
+
   type(tParameters), dimension(:), allocatable, target, private :: param                                     !< containers of constitutive parameters (len Ninstance)
 
 
@@ -310,6 +347,9 @@ integer(pInt)          ::                   phase, &
 
 !*** memory allocation for global variables
 allocate(param(maxNinstances))
+allocate(state(maxNinstances))
+allocate(dotState(maxNinstances))
+allocate(deltaState(maxNinstances))
 
 allocate(plastic_nonlocal_sizePostResult(maxval(phase_Noutput), maxNinstances), source=0_pInt)
 allocate(plastic_nonlocal_output(maxval(phase_Noutput), maxNinstances))
@@ -721,6 +761,9 @@ allocate(colinearSystem(maxTotalNslip,maxNinstances),                           
    if (phase_plasticity(p) /= PLASTICITY_NONLOCAL_ID) cycle
    instance = phase_plasticityInstance(p)
    associate(prm => param(instance), &
+             dot => dotState(instance), &
+             stt => state(instance), &
+             del => deltaState(instance), &
              config => config_phase(p))
              
    prm%mu = lattice_mu(p)
@@ -925,12 +968,91 @@ param(instance)%probabilisticMultiplication = .false.
       endif
 
    enddo
-  end associate
+
   
        plasticState(p)%sizePostResults = sum(plastic_nonlocal_sizePostResult(:,instance))
+          stt%rho => plasticState(p)%state                              (0_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
+   dot%rho => plasticState(p)%dotState                           (0_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
+   del%rho => plasticState(p)%deltaState                         (0_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
+   plasticState(p)%aTolState(1:10_pInt*prm%totalNslip) = prm%aTolRho
+   
+   stt%rhoSglEdge  => plasticState(p)%state      (0_pInt*prm%totalNslip+1_pInt:06_pInt*prm%totalNslip:2*prm%totalNslip,:)
+   stt%rhoSglScrew => plasticState(p)%state         (2_pInt*prm%totalNslip+1_pInt:08_pInt*prm%totalNslip:2*prm%totalNslip,:)
+   
+     stt%rhoSgl => plasticState(p)%state                         (0_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
+     dot%rhoSgl => plasticState(p)%dotState                      (0_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
+     del%rhoSgl => plasticState(p)%deltaState                    (0_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
+     
+       stt%rhoSglMobile => plasticState(p)%state                 (0_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
+       dot%rhoSglMobile => plasticState(p)%dotState              (0_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
+       del%rhoSglMobile => plasticState(p)%deltaState            (0_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
        
- enddo
+         stt%rhoSglEdgeMobile => plasticState(p)%state           (0_pInt*prm%totalNslip+1_pInt: 2_pInt*prm%totalNslip,:)
+         dot%rhoSglEdgeMobile => plasticState(p)%dotState        (0_pInt*prm%totalNslip+1_pInt: 2_pInt*prm%totalNslip,:)
+         del%rhoSglEdgeMobile => plasticState(p)%deltaState      (0_pInt*prm%totalNslip+1_pInt: 2_pInt*prm%totalNslip,:)
+         
+           stt%rhoSglEdgeMobilePos => plasticState(p)%state      (0_pInt*prm%totalNslip+1_pInt: 1_pInt*prm%totalNslip,:)
+           dot%rhoSglEdgeMobilePos => plasticState(p)%dotState   (0_pInt*prm%totalNslip+1_pInt: 1_pInt*prm%totalNslip,:)
+           del%rhoSglEdgeMobilePos => plasticState(p)%deltaState (0_pInt*prm%totalNslip+1_pInt: 1_pInt*prm%totalNslip,:)
+           
+           stt%rhoSglEdgeMobileNeg => plasticState(p)%state      (1_pInt*prm%totalNslip+1_pInt: 2_pInt*prm%totalNslip,:)
+           dot%rhoSglEdgeMobileNeg => plasticState(p)%dotState   (1_pInt*prm%totalNslip+1_pInt: 2_pInt*prm%totalNslip,:)
+           del%rhoSglEdgeMobileNeg => plasticState(p)%deltaState (1_pInt*prm%totalNslip+1_pInt: 2_pInt*prm%totalNslip,:)
+           
+         stt%rhoSglScrewMobile => plasticState(p)%state          (2_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
+         dot%rhoSglScrewMobile => plasticState(p)%dotState       (2_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
+         del%rhoSglScrewMobile => plasticState(p)%deltaState     (2_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
+         
+           stt%rhoSglScrewMobilePos => plasticState(p)%state     (2_pInt*prm%totalNslip+1_pInt: 3_pInt*prm%totalNslip,:)
+           dot%rhoSglScrewMobilePos => plasticState(p)%dotState  (2_pInt*prm%totalNslip+1_pInt: 3_pInt*prm%totalNslip,:)
+           del%rhoSglScrewMobilePos => plasticState(p)%deltaState  (2_pInt*prm%totalNslip+1_pInt: 3_pInt*prm%totalNslip,:)
 
+           stt%rhoSglScrewMobileNeg => plasticState(p)%state     (3_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
+           dot%rhoSglScrewMobileNeg => plasticState(p)%dotState  (3_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
+           del%rhoSglScrewMobileNeg => plasticState(p)%deltaState  (3_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
+           
+       stt%rhoSglImmobile => plasticState(p)%state               (4_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
+       dot%rhoSglImmobile => plasticState(p)%dotState            (4_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
+       del%rhoSglImmobile => plasticState(p)%deltaState            (4_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
+             
+         stt%rhoSglEdgeImmobile => plasticState(p)%state         (4_pInt*prm%totalNslip+1_pInt: 6_pInt*prm%totalNslip,:)
+         dot%rhoSglEdgeImmobile => plasticState(p)%dotState      (4_pInt*prm%totalNslip+1_pInt: 6_pInt*prm%totalNslip,:)
+         del%rhoSglEdgeImmobile => plasticState(p)%deltaState      (4_pInt*prm%totalNslip+1_pInt: 6_pInt*prm%totalNslip,:)
+         
+           stt%rhoSglEdgeImmobilePos => plasticState(p)%state    (4_pInt*prm%totalNslip+1_pInt: 5_pInt*prm%totalNslip,:)
+           dot%rhoSglEdgeImmobilePos => plasticState(p)%dotState (4_pInt*prm%totalNslip+1_pInt: 5_pInt*prm%totalNslip,:)
+           del%rhoSglEdgeImmobilePos => plasticState(p)%deltaState (4_pInt*prm%totalNslip+1_pInt: 5_pInt*prm%totalNslip,:)
+           
+           stt%rhoSglEdgeImmobileNeg => plasticState(p)%state    (5_pInt*prm%totalNslip+1_pInt: 6_pInt*prm%totalNslip,:)
+           dot%rhoSglEdgeImmobileNeg => plasticState(p)%dotState (5_pInt*prm%totalNslip+1_pInt: 6_pInt*prm%totalNslip,:)
+           del%rhoSglEdgeImmobileNeg => plasticState(p)%deltaState (5_pInt*prm%totalNslip+1_pInt: 6_pInt*prm%totalNslip,:)
+           
+         stt%rhoSglScrewImmobile => plasticState(p)%state        (6_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
+         dot%rhoSglScrewImmobile => plasticState(p)%dotState     (6_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
+         del%rhoSglScrewImmobile => plasticState(p)%deltaState     (6_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
+                  
+           stt%rhoSglScrewImmobilePos => plasticState(p)%state   (6_pInt*prm%totalNslip+1_pInt: 7_pInt*prm%totalNslip,:)
+           dot%rhoSglScrewImmobilePos => plasticState(p)%dotState(6_pInt*prm%totalNslip+1_pInt: 7_pInt*prm%totalNslip,:)
+           del%rhoSglScrewImmobilePos => plasticState(p)%deltaState(6_pInt*prm%totalNslip+1_pInt: 7_pInt*prm%totalNslip,:)
+           
+           stt%rhoSglScrewImmobileNeg => plasticState(p)%state   (7_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
+           dot%rhoSglScrewImmobileNeg => plasticState(p)%dotState(7_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
+           del%rhoSglScrewImmobileNeg => plasticState(p)%deltaState(7_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
+   
+     stt%rhoDip => plasticState(p)%state                         (8_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
+     dot%rhoDip => plasticState(p)%dotState                      (8_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
+     del%rhoDip => plasticState(p)%deltaState                      (8_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
+     
+       stt%rhoDipEdge => plasticState(p)%state                   (8_pInt*prm%totalNslip+1_pInt: 9_pInt*prm%totalNslip,:)
+       dot%rhoDipEdge => plasticState(p)%dotState                (8_pInt*prm%totalNslip+1_pInt: 9_pInt*prm%totalNslip,:)
+       del%rhoDipEdge => plasticState(p)%deltaState              (8_pInt*prm%totalNslip+1_pInt: 9_pInt*prm%totalNslip,:)
+       
+       stt%rhoDipScrew => plasticState(p)%state                  (9_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
+       dot%rhoDipScrew => plasticState(p)%dotState               (9_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
+       del%rhoDipScrew => plasticState(p)%deltaState               (9_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
+plasticState(p)%aTolState(iGamma(1:ns,instance))  = prm%aTolShear
+  end associate
+   enddo
 end subroutine plastic_nonlocal_init
 
 !--------------------------------------------------------------------------------------------------
