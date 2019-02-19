@@ -86,7 +86,7 @@ for name in filenames:
   yy = np.tile(np.repeat(y,info['grid'][0]                ),info['grid'][2])
   zz =         np.repeat(z,info['grid'][0]*info['grid'][1])
 
-  table.data = np.squeeze(np.dstack((xx,yy,zz,microstructure)))
+  table.data = np.squeeze(np.dstack((xx,yy,zz,microstructure)),axis=0)
   table.data_writeArray()
 
 # ------------------------------------------ finalize output ---------------------------------------
