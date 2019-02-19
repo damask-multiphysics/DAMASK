@@ -2,9 +2,9 @@
 
 for seeds in "$@"
 do
-  vtk_pointcloud $seeds
+  vtk_pointCloud $seeds
 
-  vtk_addPointcloudData $seeds \
+  vtk_addPointCloudData $seeds \
     --data microstructure,weight \
     --inplace \
     --vtk ${seeds%.*}.vtp \
