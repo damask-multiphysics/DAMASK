@@ -64,10 +64,8 @@ module plastic_nonlocal
    minDipoleHeightPerSlipFamily, &                                                                  !< minimum stable edge/screw dipole height for each family and instance
    minDipoleHeight, &                                                                               !< minimum stable edge/screw dipole height for each slip system and instance
    peierlsStressPerSlipFamily, &                                                                    !< Peierls stress (edge and screw) 
-   peierlsStress, &                                                                                 !< Peierls stress (edge and screw) 
-   forestProjectionEdge, &                                                                          !< matrix of forest projections of edge dislocations for each instance
-   forestProjectionScrew                                                                          !< matrix of forest projections of screw dislocations for each instance
- 
+   peierlsStress                                                                                 !< Peierls stress (edge and screw) 
+
  real(pReal), dimension(:,:,:,:), allocatable, private :: &
    rhoDotEdgeJogsOutput, &
    sourceProbability
@@ -172,8 +170,8 @@ module plastic_nonlocal
    
    real(pReal), dimension(:,:), allocatable     :: &
    interactionSlipSlip ,&                                                                              !< coefficients for slip-slip interaction for each interaction type and instance
-   forestProjectionEdge, &                                                                          !< matrix of forest projections of edge dislocations for each instance
-   forestProjectionScrew                                                                          !< matrix of forest projections of screw dislocations for each instance
+   forestProjection_Edge, &                                                                          !< matrix of forest projections of edge dislocations for each instance
+   forestProjection_Screw                                                                          !< matrix of forest projections of screw dislocations for each instance
      real(pReal), dimension(:), allocatable, private :: &
    nonSchmidCoeff
    integer(pInt) :: totalNslip
@@ -531,8 +529,6 @@ allocate(iTauB(maxTotalNslip,maxNinstances),   source=0_pInt)
 
 allocate(lambda0(maxTotalNslip,maxNinstances),                                        source=0.0_pReal)
 allocate(minDipoleHeight(maxTotalNslip,2,maxNinstances),                              source=-1.0_pReal)
-allocate(forestProjectionEdge(maxTotalNslip,maxTotalNslip,maxNinstances),             source=0.0_pReal)
-allocate(forestProjectionScrew(maxTotalNslip,maxTotalNslip,maxNinstances),            source=0.0_pReal)
 allocate(sourceProbability(maxTotalNslip,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), &
                                                                                    source=2.0_pReal)
 
@@ -680,18 +676,7 @@ allocate(colinearSystem(maxTotalNslip,maxNinstances),                           
        peierlsStress(s1,1:2,instance) = peierlsStressPerSlipFamily(f,1:2,instance)
    
        do s2 = 1_pInt,ns
-         
-         !*** calculation of forest projections for edge and screw dislocations. s2 acts as forest for s1
-   
-         forestProjectionEdge(s1,s2,instance) &
-             = abs(math_mul3x3(lattice_sn(1:3,slipSystemLattice(s1,instance),phase), &
-                               lattice_st(1:3,slipSystemLattice(s2,instance),phase)))                   ! forest projection of edge dislocations is the projection of (t = b x n) onto the slip normal of the respective slip plane
-         
-         forestProjectionScrew(s1,s2,instance) &
-             = abs(math_mul3x3(lattice_sn(1:3,slipSystemLattice(s1,instance),phase), &
-                               lattice_sd(1:3,slipSystemLattice(s2,instance),phase)))                   ! forest projection of screw dislocations is the projection of b onto the slip normal of the respective splip plane
-     
-         
+
          !*** colinear slip system (only makes sense for fcc like it is defined here)
          
          if ((all(dEq(lattice_sd(1:3,slipSystemLattice(s1,instance),phase), &
@@ -769,8 +754,10 @@ param(instance)%probabilisticMultiplication = .false.
    
 
    prm%burgers = math_expand(prm%burgers,prm%Nslip)
-   
-  
+        prm%forestProjection_edge     = lattice_forestProjection_edge (prm%Nslip,config%getString('lattice_structure'),&
+                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
+          prm%forestProjection_screw     = lattice_forestProjection_screw (prm%Nslip,config%getString('lattice_structure'),&
+                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
    minDipoleHeightPerSlipFamily(:,1_pInt,instance) = config_phase(p)%getFloats('minimumdipoleheightedge')!,'ddipminedge')
    minDipoleHeightPerSlipFamily(:,2_pInt,instance) = config_phase(p)%getFloats('minimumdipoleheightscrew')!,'ddipminscrew')
    peierlsStressPerSlipFamily(:,1_pInt,instance) = config_phase(p)%getFloat('peierlsstressedge')!,'peierlsstress_edge')
@@ -1293,9 +1280,9 @@ where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < prm%significantN &
 
 forall (s = 1_pInt:ns) &
   rhoForest(s) = dot_product((sum(abs(rhoSgl(1:ns,[1,2,5,6])),2) + rhoDip(1:ns,1)), &
-                              forestProjectionEdge(s,1:ns,instance)) & 
+                              prm%forestProjection_Edge(s,1:ns)) & 
                + dot_product((sum(abs(rhoSgl(1:ns,[3,4,7,8])),2) + rhoDip(1:ns,2)), &
-                              forestProjectionScrew(s,1:ns,instance))
+                              prm%forestProjection_Screw(s,1:ns))
 
 
 !*** calculate the threshold shear stress for dislocation slip 

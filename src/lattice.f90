@@ -498,6 +498,31 @@ module lattice
  integer(kind(LATTICE_undefined_ID)),        dimension(:),       allocatable, public, protected :: &
    lattice_structure, trans_lattice_structure
 
+ 
+ interface lattice_forestProjection ! DEPRECATED, use lattice_forestProjection_edge
+   module procedure slipProjection_transverse
+ end interface lattice_forestProjection
+ 
+ interface lattice_forestProjection_edge
+   module procedure slipProjection_transverse
+ end interface lattice_forestProjection_edge
+ 
+ interface lattice_forestProjection_screw
+   module procedure slipProjection_direction
+ end interface lattice_forestProjection_screw
+ 
+ interface lattice_slipProjection_modeI
+   module procedure slipProjection_normal
+ end interface lattice_slipProjection_modeI
+ 
+  interface lattice_slipProjection_modeII
+   module procedure slipProjection_direction
+ end interface lattice_slipProjection_modeII
+ 
+  interface lattice_slipProjection_modeIII
+   module procedure slipProjection_transverse
+ end interface lattice_slipProjection_modeIII
+
 
  public :: &
   lattice_init, &
@@ -517,10 +542,16 @@ module lattice
   lattice_interaction_SlipTwin, &
   lattice_interaction_SlipTrans, &
   lattice_interaction_TwinSlip, &
-  lattice_forestProjection, &
   lattice_characteristicShear_Twin, &
   lattice_C66_twin, &
-  lattice_C66_trans
+  lattice_C66_trans, &
+  lattice_forestProjection, &
+  lattice_forestProjection_edge, &
+  lattice_forestProjection_screw, &
+  lattice_slipProjection_modeI, &
+  lattice_slipProjection_modeII, &
+  lattice_slipProjection_modeIII
+
 
 contains
 
@@ -2181,9 +2212,11 @@ end function lattice_SchmidMatrix_cleavage
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Forest projection (for edge dislocations)
+!> @brief Projection of the transverse direction onto the slip plane
+!> @details: This projection is used to calculate forest hardening for edge dislocations and for 
+! mode III failure (ToDo: MD I am not 100% sure about mode III)
 !--------------------------------------------------------------------------------------------------
-function lattice_forestProjection(Nslip,structure,cOverA) result(projection)
+function slipProjection_transverse(Nslip,structure,cOverA) result(projection)
  use math, only: &
    math_mul3x3
  use IO, only: &
@@ -2231,7 +2264,118 @@ function lattice_forestProjection(Nslip,structure,cOverA) result(projection)
    projection(i,j) = abs(math_mul3x3(coordinateSystem(1:3,2,i),coordinateSystem(1:3,3,j)))
  enddo; enddo
 
-end function lattice_forestProjection
+end function slipProjection_transverse
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Projection of the slip direction onto the slip plane
+!> @details: This projection is used to calculate forest hardening for screw dislocations and for 
+! mode II failure (ToDo: MD I am not 100% sure about mode II)
+!--------------------------------------------------------------------------------------------------
+function slipProjection_direction(Nslip,structure,cOverA) result(projection)
+ use math, only: &
+   math_mul3x3
+ use IO, only: &
+   IO_error
+
+ implicit none
+ integer(pInt),    dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
+ character(len=*),                          intent(in) :: structure                                 !< lattice structure
+ real(pReal),                               intent(in) :: cOverA                                    !< c/a ratio
+ real(pReal),     dimension(sum(Nslip),sum(Nslip))     :: projection
+
+ real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
+ real(pReal),     dimension(:,:), allocatable          :: slipSystems
+ integer(pInt),   dimension(:), allocatable            :: NslipMax
+ integer(pInt) :: i, j
+
+ if (len_trim(structure) /= 3_pInt) &
+   call IO_error(137_pInt,ext_msg='lattice_forestProjection: '//trim(structure))
+
+ select case(structure(1:3))
+   case('fcc')
+     NslipMax    = LATTICE_FCC_NSLIPSYSTEM
+     slipSystems = LATTICE_FCC_SYSTEMSLIP
+   case('bcc')
+     NslipMax    = LATTICE_BCC_NSLIPSYSTEM
+     slipSystems = LATTICE_BCC_SYSTEMSLIP
+   case('hex')
+     NslipMax    = LATTICE_HEX_NSLIPSYSTEM
+     slipSystems = LATTICE_HEX_SYSTEMSLIP
+   case('bct')
+     NslipMax    = LATTICE_BCT_NSLIPSYSTEM
+     slipSystems = LATTICE_BCT_SYSTEMSLIP
+   case default
+     call IO_error(137_pInt,ext_msg='lattice_forestProjection: '//trim(structure))
+ end select
+
+ if (any(NslipMax(1:size(Nslip)) - Nslip < 0_pInt)) &
+   call IO_error(145_pInt,ext_msg='Nslip '//trim(structure))
+ if (any(Nslip < 0_pInt)) &
+   call IO_error(144_pInt,ext_msg='Nslip '//trim(structure))
+
+ coordinateSystem = buildCoordinateSystem(Nslip,NslipMax,slipSystems,structure,cOverA)
+
+ do i=1_pInt, sum(Nslip); do j=1_pInt, sum(Nslip)
+   projection(i,j) = abs(math_mul3x3(coordinateSystem(1:3,2,i),coordinateSystem(1:3,1,j)))
+ enddo; enddo
+
+end function slipProjection_direction
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Projection of the slip plane onto itself
+!> @details: This projection is used for mode I failure
+!--------------------------------------------------------------------------------------------------
+function slipProjection_normal(Nslip,structure,cOverA) result(projection)
+ use math, only: &
+   math_mul3x3
+ use IO, only: &
+   IO_error
+
+ implicit none
+ integer(pInt),    dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
+ character(len=*),                          intent(in) :: structure                                 !< lattice structure
+ real(pReal),                               intent(in) :: cOverA                                    !< c/a ratio
+ real(pReal),     dimension(sum(Nslip),sum(Nslip))     :: projection
+
+ real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
+ real(pReal),     dimension(:,:), allocatable          :: slipSystems
+ integer(pInt),   dimension(:), allocatable            :: NslipMax
+ integer(pInt) :: i, j
+
+ if (len_trim(structure) /= 3_pInt) &
+   call IO_error(137_pInt,ext_msg='lattice_forestProjection: '//trim(structure))
+
+ select case(structure(1:3))
+   case('fcc')
+     NslipMax    = LATTICE_FCC_NSLIPSYSTEM
+     slipSystems = LATTICE_FCC_SYSTEMSLIP
+   case('bcc')
+     NslipMax    = LATTICE_BCC_NSLIPSYSTEM
+     slipSystems = LATTICE_BCC_SYSTEMSLIP
+   case('hex')
+     NslipMax    = LATTICE_HEX_NSLIPSYSTEM
+     slipSystems = LATTICE_HEX_SYSTEMSLIP
+   case('bct')
+     NslipMax    = LATTICE_BCT_NSLIPSYSTEM
+     slipSystems = LATTICE_BCT_SYSTEMSLIP
+   case default
+     call IO_error(137_pInt,ext_msg='lattice_forestProjection: '//trim(structure))
+ end select
+
+ if (any(NslipMax(1:size(Nslip)) - Nslip < 0_pInt)) &
+   call IO_error(145_pInt,ext_msg='Nslip '//trim(structure))
+ if (any(Nslip < 0_pInt)) &
+   call IO_error(144_pInt,ext_msg='Nslip '//trim(structure))
+
+ coordinateSystem = buildCoordinateSystem(Nslip,NslipMax,slipSystems,structure,cOverA)
+
+ do i=1_pInt, sum(Nslip); do j=1_pInt, sum(Nslip)
+   projection(i,j) = abs(math_mul3x3(coordinateSystem(1:3,2,i),coordinateSystem(1:3,2,j)))
+ enddo; enddo
+
+end function slipProjection_normal
 
 
 !--------------------------------------------------------------------------------------------------
