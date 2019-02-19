@@ -44,7 +44,6 @@ module plastic_nonlocal
  
  real(pReal), dimension(:), allocatable, private :: &
    atomicVolume, &                                                                                  !< atomic volume
-   Dsd0, &                                                                                          !< prefactor for self-diffusion coefficient
    rhoSglScatter, &                                                                                 !< standard deviation of scatter in initial dislocation density
    rhoSglRandom, &
    rhoSglRandomBinning
@@ -79,11 +78,6 @@ module plastic_nonlocal
  
  real(pReal), dimension(:,:,:,:,:,:), allocatable, private :: &
    compatibility                                                                                    !< slip system compatibility between me and my neighbors
- 
- 
- logical, dimension(:), allocatable, private :: &
-   shortRangeStressCorrection, &                                                                    !< flag indicating the use of the short range stress correction by a excess density gradient term
-   probabilisticMultiplication
  
  enum, bind(c) 
    enumerator :: undefined_ID, &
@@ -350,12 +344,9 @@ allocate(slipFamily(lattice_maxNslip,maxNinstances),        source=0_pInt)
 allocate(slipSystemLattice(lattice_maxNslip,maxNinstances), source=0_pInt)
 allocate(totalNslip(maxNinstances),                         source=0_pInt)
 allocate(atomicVolume(maxNinstances),                       source=0.0_pReal)
-allocate(Dsd0(maxNinstances),                               source=-1.0_pReal)
 allocate(rhoSglScatter(maxNinstances),                      source=0.0_pReal)
 allocate(rhoSglRandom(maxNinstances),                       source=0.0_pReal)
 allocate(rhoSglRandomBinning(maxNinstances),                source=1.0_pReal)
-allocate(shortRangeStressCorrection(maxNinstances),         source=.false.)
-allocate(probabilisticMultiplication(maxNinstances),        source=.false.)
 
 allocate(rhoSglEdgePos0(lattice_maxNslipFamily,maxNinstances),                 source=-1.0_pReal)
 allocate(rhoSglEdgeNeg0(lattice_maxNslipFamily,maxNinstances),                 source=-1.0_pReal)
@@ -427,36 +418,14 @@ allocate(peierlsStressPerSlipFamily(lattice_maxNslipFamily,2,maxNinstances),   s
          do f = 1_pInt, Nchunks_SlipFamilies
            lambda0PerSlipFamily(f,instance) = IO_floatValue(line,chunkPos,1_pInt+f)
          enddo
-       case('minimumdipoleheightedge','ddipminedge')
-         do f = 1_pInt, Nchunks_SlipFamilies
-           minDipoleHeightPerSlipFamily(f,1_pInt,instance) = IO_floatValue(line,chunkPos,1_pInt+f)
-         enddo
-       case('minimumdipoleheightscrew','ddipminscrew')
-         do f = 1_pInt, Nchunks_SlipFamilies
-           minDipoleHeightPerSlipFamily(f,2_pInt,instance) = IO_floatValue(line,chunkPos,1_pInt+f)
-         enddo
        case('atomicvolume')
          atomicVolume(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case('selfdiffusionprefactor','dsd0')
-         Dsd0(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case('peierlsstressedge','peierlsstress_edge')
-         do f = 1_pInt, Nchunks_SlipFamilies
-           peierlsStressPerSlipFamily(f,1_pInt,instance) = IO_floatValue(line,chunkPos,1_pInt+f)
-         enddo
-       case('peierlsstressscrew','peierlsstress_screw')
-         do f = 1_pInt, Nchunks_SlipFamilies
-           peierlsStressPerSlipFamily(f,2_pInt,instance) = IO_floatValue(line,chunkPos,1_pInt+f)
-         enddo
        case('rhosglscatter')
          rhoSglScatter(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case('rhosglrandom')
          rhoSglRandom(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case('rhosglrandombinning')
          rhoSglRandomBinning(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case('shortrangestresscorrection')
-         shortRangeStressCorrection(instance) = IO_floatValue(line,chunkPos,2_pInt) > 0.0_pReal
-       case('probabilisticmultiplication','randomsources','randommultiplication','discretesources')
-         probabilisticMultiplication(instance) = IO_floatValue(line,chunkPos,2_pInt) > 0.0_pReal
      end select
    endif; endif
  enddo parsingFile
@@ -482,20 +451,11 @@ allocate(peierlsStressPerSlipFamily(lattice_maxNslipFamily,2,maxNinstances),   s
           call IO_error(211_pInt,ext_msg='rhoDipScrew0 ('//PLASTICITY_NONLOCAL_label//')')
         if (lambda0PerSlipFamily(f,instance) <= 0.0_pReal) &
           call IO_error(211_pInt,ext_msg='lambda0 ('//PLASTICITY_NONLOCAL_label//')')
-        if (minDipoleHeightPerSlipFamily(f,1,instance) < 0.0_pReal) &
-          call IO_error(211_pInt,ext_msg='minimumDipoleHeightEdge ('//PLASTICITY_NONLOCAL_label//')')
-        if (minDipoleHeightPerSlipFamily(f,2,instance) < 0.0_pReal) &
-          call IO_error(211_pInt,ext_msg='minimumDipoleHeightScrew ('//PLASTICITY_NONLOCAL_label//')')
-        if (peierlsStressPerSlipFamily(f,1,instance) <= 0.0_pReal) &
-          call IO_error(211_pInt,ext_msg='peierlsStressEdge ('//PLASTICITY_NONLOCAL_label//')')
-        if (peierlsStressPerSlipFamily(f,2,instance) <= 0.0_pReal) &
-          call IO_error(211_pInt,ext_msg='peierlsStressScrew ('//PLASTICITY_NONLOCAL_label//')')
+
       endif
     enddo
     if (atomicVolume(instance) <= 0.0_pReal) &
       call IO_error(211_pInt,ext_msg='atomicVolume ('//PLASTICITY_NONLOCAL_label//')')
-    if (Dsd0(instance) < 0.0_pReal) &
-      call IO_error(211_pInt,ext_msg='selfDiffusionPrefactor ('//PLASTICITY_NONLOCAL_label//')')
     if (rhoSglScatter(instance) < 0.0_pReal) &
       call IO_error(211_pInt,ext_msg='rhoSglScatter ('//PLASTICITY_NONLOCAL_label//')')
     if (rhoSglRandom(instance) < 0.0_pReal) &
@@ -830,7 +790,17 @@ extmsg = trim(extmsg)//' surfaceTransmissivity'
    if (prm%grainboundaryTransmissivity  > 1.0_pReal) extmsg = trim(extmsg)//' grainboundaryTransmissivity' 
    if (prm%fEdgeMultiplication  <  0.0_pReal .or. prm%fEdgeMultiplication  > 1.0_pReal) &
 extmsg = trim(extmsg)//' surfaceTransmissivity' 
+  if (    prm%Dsd0         < 0.0_pReal)          extmsg = trim(extmsg)//' Dsd0'
 
+
+!        if (minDipoleHeightPerSlipFamily(f,1,instance) < 0.0_pReal) &
+!          call IO_error(211_pInt,ext_msg='minimumDipoleHeightEdge ('//PLASTICITY_NONLOCAL_label//')')
+!        if (minDipoleHeightPerSlipFamily(f,2,instance) < 0.0_pReal) &
+!          call IO_error(211_pInt,ext_msg='minimumDipoleHeightScrew ('//PLASTICITY_NONLOCAL_label//')')
+!        if (peierlsStressPerSlipFamily(f,1,instance) <= 0.0_pReal) &
+!          call IO_error(211_pInt,ext_msg='peierlsStressEdge ('//PLASTICITY_NONLOCAL_label//')')
+!        if (peierlsStressPerSlipFamily(f,2,instance) <= 0.0_pReal) &
+!          call IO_error(211_pInt,ext_msg='peierlsStressScrew ('//PLASTICITY_NONLOCAL_label//')')
 
    outputs = config_phase(p)%getStrings('(output)',defaultVal=emptyStringArray)
    allocate(prm%outputID(0))
@@ -1007,6 +977,7 @@ extmsg = trim(extmsg)//' surfaceTransmissivity'
 plasticState(p)%aTolState(iGamma(1:ns,instance))  = prm%aTolShear
   end associate
    enddo
+
 end subroutine plastic_nonlocal_init
 
 !--------------------------------------------------------------------------------------------------
@@ -1149,6 +1120,7 @@ associate (prm => param(instance))
 
 end associate
 end subroutine plastic_nonlocal_aTolState
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates quantities characterizing the microstructure
@@ -1733,31 +1705,14 @@ Lp = 0.0_pReal
 dLp_dMp = 0.0_pReal
 
 do s = 1_pInt,ns
-
   Lp = Lp + gdotTotal(s) * prm%Schmid(1:3,1:3,s)
-  ! Schmid contributions to tangent
   forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt,k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
     dLp_dMp(i,j,k,l) = dLp_dMp(i,j,k,l) &
         + prm%Schmid(i,j,s) * prm%Schmid(k,l,s) &
-        * sum(rhoSgl(s,1:4) * dv_dtau(s,1:4)) * prm%burgers(s)
-
-
-  ! non Schmid contributions to tangent
-  if (tau(s) > 0.0_pReal) then
-    forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt,k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
-      dLp_dMp(i,j,k,l) = dLp_dMp(i,j,k,l) &
-          + prm%Schmid(i,j,s) &
-          * ( prm%nonSchmid_pos(k,l,s) * rhoSgl(s,3) * dv_dtauNS(s,3) & 
-            - prm%nonSchmid_neg(k,l,s) * rhoSgl(s,4) * dv_dtauNS(s,4) ) &
-          * prm%burgers(s)
-  else
-    forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt,k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
-      dLp_dMp(i,j,k,l) = dLp_dMp(i,j,k,l) &
-          + prm%Schmid(i,j,s) &
-          * ( prm%nonSchmid_neg(k,l,s) * rhoSgl(s,3) * dv_dtauNS(s,3) & 
-            - prm%nonSchmid_pos(k,l,s) * rhoSgl(s,4) * dv_dtauNS(s,4) ) &
-          * prm%burgers(s)
-  endif
+        * sum(rhoSgl(s,1:4) * dv_dtau(s,1:4)) * prm%burgers(s) &
+        + prm%Schmid(i,j,s) &
+        * ( prm%nonSchmid_pos(k,l,s) * rhoSgl(s,3) * dv_dtauNS(s,3) & 
+          - prm%nonSchmid_neg(k,l,s) * rhoSgl(s,4) * dv_dtauNS(s,4))  * prm%burgers(s)
 enddo
 
 
@@ -1945,6 +1900,7 @@ forall (s = 1:ns, c = 1_pInt:2_pInt) &
  end associate
 
 end subroutine plastic_nonlocal_deltaState
+
 
 !---------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
@@ -2188,7 +2144,7 @@ if (lattice_structure(ph) == LATTICE_bcc_ID) then                               
   endforall
 
 else                                                                                                ! ALL OTHER STRUCTURES
-  if (probabilisticMultiplication(instance)) then
+  if (prm%probabilisticMultiplication) then
     meshlength = mesh_ipVolume(ip,el)**0.333_pReal
     where(sum(rhoSgl(1:ns,1:4),2) > 0.0_pReal)
       nSources = (sum(rhoSgl(1:ns,1:2),2) * prm%fEdgeMultiplication + sum(rhoSgl(1:ns,3:4),2)) &
