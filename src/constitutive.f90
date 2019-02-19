@@ -424,6 +424,8 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
    PLASTICITY_DISLOTWIN_ID, &
    PLASTICITY_DISLOUCLA_ID, &
    PLASTICITY_NONLOCAL_ID
+ use mesh, only: &
+   mesh_ipVolume
  use plastic_isotropic, only: &
    plastic_isotropic_LpAndItsTangent
  use plastic_phenopowerlaw, only: &
@@ -488,7 +490,7 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
 
    case (PLASTICITY_NONLOCAL_ID) plasticityType
      call plastic_nonlocal_LpAndItsTangent        (Lp,dLp_dMp,Mp, &
-                                                   temperature(ho)%p(tme),ip,el)
+                                                   temperature(ho)%p(tme),mesh_ipVolume(ip,el),ip,el)
 
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
      of = phasememberAt(ipc,ip,el)

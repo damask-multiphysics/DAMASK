@@ -46,7 +46,6 @@ module plastic_nonlocal
    atomicVolume, &                                                                                  !< atomic volume
    Dsd0, &                                                                                          !< prefactor for self-diffusion coefficient
    rhoSglScatter, &                                                                                 !< standard deviation of scatter in initial dislocation density
-   fEdgeMultiplication, &                                                                           !< factor that determines how much edge dislocations contribute to multiplication (0...1)
    rhoSglRandom, &
    rhoSglRandomBinning
  
@@ -357,7 +356,6 @@ allocate(Dsd0(maxNinstances),                               source=-1.0_pReal)
 allocate(rhoSglScatter(maxNinstances),                      source=0.0_pReal)
 allocate(rhoSglRandom(maxNinstances),                       source=0.0_pReal)
 allocate(rhoSglRandomBinning(maxNinstances),                source=1.0_pReal)
-allocate(fEdgeMultiplication(maxNinstances),                source=0.0_pReal)
 allocate(shortRangeStressCorrection(maxNinstances),         source=.false.)
 allocate(probabilisticMultiplication(maxNinstances),        source=.false.)
 
@@ -457,8 +455,6 @@ allocate(peierlsStressPerSlipFamily(lattice_maxNslipFamily,2,maxNinstances),   s
          rhoSglRandom(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case('rhosglrandombinning')
          rhoSglRandomBinning(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case('fedgemultiplication','edgemultiplicationfactor','edgemultiplication')
-         fEdgeMultiplication(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case('shortrangestresscorrection')
          shortRangeStressCorrection(instance) = IO_floatValue(line,chunkPos,2_pInt) > 0.0_pReal
        case('probabilisticmultiplication','randomsources','randommultiplication','discretesources')
@@ -508,8 +504,7 @@ allocate(peierlsStressPerSlipFamily(lattice_maxNslipFamily,2,maxNinstances),   s
       call IO_error(211_pInt,ext_msg='rhoSglRandom ('//PLASTICITY_NONLOCAL_label//')')
     if (rhoSglRandomBinning(instance) <= 0.0_pReal) &
       call IO_error(211_pInt,ext_msg='rhoSglRandomBinning ('//PLASTICITY_NONLOCAL_label//')')
-    if (fEdgeMultiplication(instance) < 0.0_pReal .or. fEdgeMultiplication(instance) > 1.0_pReal) &
-      call IO_error(211_pInt,ext_msg='edgemultiplicationfactor ('//PLASTICITY_NONLOCAL_label//')')
+
     
     
     !*** determine total number of active slip systems
@@ -846,6 +841,9 @@ param(instance)%probabilisticMultiplication = .false.
    if (prm%surfaceTransmissivity  <  0.0_pReal .or. prm%surfaceTransmissivity  > 1.0_pReal) &
 extmsg = trim(extmsg)//' surfaceTransmissivity' 
    if (prm%grainboundaryTransmissivity  > 1.0_pReal) extmsg = trim(extmsg)//' grainboundaryTransmissivity' 
+   if (prm%fEdgeMultiplication  <  0.0_pReal .or. prm%fEdgeMultiplication  > 1.0_pReal) &
+extmsg = trim(extmsg)//' surfaceTransmissivity' 
+
 
    outputs = config_phase(p)%getStrings('(output)',defaultVal=emptyStringArray)
    allocate(prm%outputID(0))
@@ -1614,30 +1612,21 @@ end subroutine plastic_nonlocal_kinetics
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
-                                            Mp, Temperature, ip, el)
+                                            Mp, Temperature, volume, ip, el)
 
-use math,     only: math_3333to99, &
-                    math_mul6x6, &
-                    math_mul33xx33, &
-                    math_6toSym33
-use debug,    only: debug_level, &
-                    debug_constitutive, &
-                    debug_levelExtensive, &
-                    debug_levelSelective, &
-                    debug_i, &
-                    debug_e
+use math,     only: math_mul33xx33
 use material, only: material_phase, &
                     plasticState, &
                     phaseAt, phasememberAt,&
                     phase_plasticityInstance
-use mesh,     only: mesh_ipVolume
 
 implicit none
 
 !*** input variables
 integer(pInt), intent(in) ::                ip, &                                                   !< current integration point
                                             el                                                      !< current element number
-real(pReal), intent(in) ::                  Temperature                                             !< temperature
+real(pReal), intent(in) ::                  Temperature, &                                             !< temperature
+volume !< volume of the materialpoint
 real(pReal), dimension(3,3), intent(in) ::  Mp
 
 
@@ -1685,7 +1674,7 @@ forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
   rhoSgl(s,t) = max(plasticState(ph)%state(iRhoU(s,t,instance),of), 0.0_pReal)                         ! ensure positive single mobile densities
   rhoSgl(s,t+4_pInt) = plasticState(ph)%state(iRhoB(s,t,instance),of)
 endforall
-where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < prm%significantN &
+where (abs(rhoSgl) * volume ** 0.667_pReal < prm%significantN &
   .or. abs(rhoSgl) < prm%significantRho) &
   rhoSgl = 0.0_pReal
 
@@ -2215,7 +2204,7 @@ else                                                                            
   if (probabilisticMultiplication(instance)) then
     meshlength = mesh_ipVolume(ip,el)**0.333_pReal
     where(sum(rhoSgl(1:ns,1:4),2) > 0.0_pReal)
-      nSources = (sum(rhoSgl(1:ns,1:2),2) * fEdgeMultiplication(instance) + sum(rhoSgl(1:ns,3:4),2)) &
+      nSources = (sum(rhoSgl(1:ns,1:2),2) * prm%fEdgeMultiplication + sum(rhoSgl(1:ns,3:4),2)) &
                / sum(rhoSgl(1:ns,1:4),2) * meshlength / lambda0(1:ns,instance)*sqrt(rhoForest(1:ns))
     elsewhere
       nSources = meshlength / lambda0(1:ns,instance) * sqrt(rhoForest(1:ns))
@@ -2233,7 +2222,7 @@ else                                                                            
       else
         sourceProbability(s,1_pInt,ip,el) = 2.0_pReal
         rhoDotMultiplication(s,1:4) = &
-          (sum(abs(gdot(s,1:2))) * fEdgeMultiplication(instance) + sum(abs(gdot(s,3:4)))) &
+          (sum(abs(gdot(s,1:2))) * prm%fEdgeMultiplication + sum(abs(gdot(s,3:4)))) &
           /prm%burgers(s) * sqrt(rhoForest(s)) / lambda0(s,instance)
       endif
     enddo
@@ -2245,7 +2234,7 @@ else                                                                            
 #endif
   else
     rhoDotMultiplication(1:ns,1:4) = spread( &
-        (sum(abs(gdot(1:ns,1:2)),2) * fEdgeMultiplication(instance) + sum(abs(gdot(1:ns,3:4)),2)) &
+        (sum(abs(gdot(1:ns,1:2)),2) * prm%fEdgeMultiplication + sum(abs(gdot(1:ns,3:4)),2)) &
       * sqrt(rhoForest(1:ns)) / lambda0(1:ns,instance) / prm%burgers(1:ns), 2, 4)
   endif
 endif
