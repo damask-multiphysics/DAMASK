@@ -1108,7 +1108,7 @@ function constitutive_postResults(S, Fi, FeArray, ipc, ip, el)
 
    case (PLASTICITY_NONLOCAL_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
-       plastic_nonlocal_postResults (Mp,FeArray,ip,el)
+       plastic_nonlocal_postResults (Mp,ip,el)
  end select plasticityType
 
  SourceLoop: do i = 1_pInt, phase_Nsources(material_phase(ipc,ip,el))
