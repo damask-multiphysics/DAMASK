@@ -43,7 +43,6 @@ module plastic_nonlocal
    colinearSystem                                                                                   !< colinear system to the active slip system (only valid for fcc!)
  
  real(pReal), dimension(:), allocatable, private :: &
-   atomicVolume, &                                                                                  !< atomic volume
    rhoSglScatter, &                                                                                 !< standard deviation of scatter in initial dislocation density
    rhoSglRandom, &
    rhoSglRandomBinning
@@ -57,13 +56,6 @@ module plastic_nonlocal
    rhoDipScrew0, &                                                                                  !< initial screw dipole dislocation density per slip system for each family and instance
    lambda0PerSlipFamily, &                                                                          !< mean free path prefactor for each family and instance
    lambda0                                                                                       !< mean free path prefactor for each slip system and instance
-
- 
- real(pReal), dimension(:,:,:), allocatable, private :: &
-   minDipoleHeightPerSlipFamily, &                                                                  !< minimum stable edge/screw dipole height for each family and instance
-   minDipoleHeight, &                                                                               !< minimum stable edge/screw dipole height for each slip system and instance
-   peierlsStressPerSlipFamily, &                                                                    !< Peierls stress (edge and screw) 
-   peierlsStress                                                                                 !< Peierls stress (edge and screw) 
 
  real(pReal), dimension(:,:,:,:), allocatable, private :: &
    rhoDotEdgeJogsOutput, &
@@ -152,7 +144,10 @@ module plastic_nonlocal
    nu
    
    real(pReal), dimension(:), allocatable     :: &
-   
+      minDipoleHeight_edge, & !< minimum stable edge dipole height
+      minDipoleHeight_screw, & !< minimum stable screw dipole height
+      peierlsstress_edge, &
+      peierlsstress_screw, &
    rhoSglEdgePos0, &                                                                                !< initial edge_pos dislocation density per slip system for each family and instance
    rhoSglEdgeNeg0, &                                                                                !< initial edge_neg dislocation density per slip system for each family and instance
    rhoSglScrewPos0, &                                                                               !< initial screw_pos dislocation density per slip system for each family and instance
@@ -163,6 +158,8 @@ module plastic_nonlocal
    burgers                                                                                       !< absolute length of burgers vector [m] for each slip system and instance
    
    real(pReal), dimension(:,:), allocatable     :: &
+    minDipoleHeight, & ! edge and screw
+    peierlsstress, & ! edge and screw
    interactionSlipSlip ,&                                                                              !< coefficients for slip-slip interaction for each interaction type and instance
    forestProjection_Edge, &                                                                          !< matrix of forest projections of edge dislocations for each instance
    forestProjection_Screw                                                                          !< matrix of forest projections of screw dislocations for each instance
@@ -343,7 +340,6 @@ allocate(Nslip(lattice_maxNslipFamily,maxNinstances),       source=0_pInt)
 allocate(slipFamily(lattice_maxNslip,maxNinstances),        source=0_pInt)
 allocate(slipSystemLattice(lattice_maxNslip,maxNinstances), source=0_pInt)
 allocate(totalNslip(maxNinstances),                         source=0_pInt)
-allocate(atomicVolume(maxNinstances),                       source=0.0_pReal)
 allocate(rhoSglScatter(maxNinstances),                      source=0.0_pReal)
 allocate(rhoSglRandom(maxNinstances),                       source=0.0_pReal)
 allocate(rhoSglRandomBinning(maxNinstances),                source=1.0_pReal)
@@ -355,8 +351,6 @@ allocate(rhoSglScrewNeg0(lattice_maxNslipFamily,maxNinstances),                s
 allocate(rhoDipEdge0(lattice_maxNslipFamily,maxNinstances),                    source=-1.0_pReal)
 allocate(rhoDipScrew0(lattice_maxNslipFamily,maxNinstances),                   source=-1.0_pReal)
 allocate(lambda0PerSlipFamily(lattice_maxNslipFamily,maxNinstances),           source=0.0_pReal)
-allocate(minDipoleHeightPerSlipFamily(lattice_maxNslipFamily,2,maxNinstances), source=-1.0_pReal)
-allocate(peierlsStressPerSlipFamily(lattice_maxNslipFamily,2,maxNinstances),   source=0.0_pReal)
 
 
  rewind(fileUnit)
@@ -418,8 +412,6 @@ allocate(peierlsStressPerSlipFamily(lattice_maxNslipFamily,2,maxNinstances),   s
          do f = 1_pInt, Nchunks_SlipFamilies
            lambda0PerSlipFamily(f,instance) = IO_floatValue(line,chunkPos,1_pInt+f)
          enddo
-       case('atomicvolume')
-         atomicVolume(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case('rhosglscatter')
          rhoSglScatter(instance) = IO_floatValue(line,chunkPos,2_pInt)
        case('rhosglrandom')
@@ -454,8 +446,6 @@ allocate(peierlsStressPerSlipFamily(lattice_maxNslipFamily,2,maxNinstances),   s
 
       endif
     enddo
-    if (atomicVolume(instance) <= 0.0_pReal) &
-      call IO_error(211_pInt,ext_msg='atomicVolume ('//PLASTICITY_NONLOCAL_label//')')
     if (rhoSglScatter(instance) < 0.0_pReal) &
       call IO_error(211_pInt,ext_msg='rhoSglScatter ('//PLASTICITY_NONLOCAL_label//')')
     if (rhoSglRandom(instance) < 0.0_pReal) &
@@ -483,7 +473,6 @@ allocate(iTauF(maxTotalNslip,maxNinstances),   source=0_pInt)
 allocate(iTauB(maxTotalNslip,maxNinstances),   source=0_pInt)
 
 allocate(lambda0(maxTotalNslip,maxNinstances),                                        source=0.0_pReal)
-allocate(minDipoleHeight(maxTotalNslip,2,maxNinstances),                              source=-1.0_pReal)
 allocate(sourceProbability(maxTotalNslip,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), &
                                                                                    source=2.0_pReal)
 
@@ -502,7 +491,6 @@ allocate(rhoDotEdgeJogsOutput(maxTotalNslip,homogenization_maxNgrains,theMesh%el
 
 allocate(compatibility(2,maxTotalNslip,maxTotalNslip,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), &
                                                                                    source=0.0_pReal)
-allocate(peierlsStress(maxTotalNslip,2,maxNinstances),                                source=0.0_pReal)
 allocate(colinearSystem(maxTotalNslip,maxNinstances),                                 source=0_pInt)
                                             
  initializeInstances: do phase = 1_pInt, size(phase_plasticity)
@@ -627,8 +615,6 @@ allocate(colinearSystem(maxTotalNslip,maxNinstances),                           
        !*** burgers vector, mean free path prefactor and minimum dipole distance for each slip system
      
        lambda0(s1,instance) = lambda0PerSlipFamily(f,instance)
-       minDipoleHeight(s1,1:2,instance) = minDipoleHeightPerSlipFamily(f,1:2,instance)
-       peierlsStress(s1,1:2,instance) = peierlsStressPerSlipFamily(f,1:2,instance)
    
        do s2 = 1_pInt,ns
 
@@ -713,10 +699,12 @@ param(instance)%probabilisticMultiplication = .false.
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
           prm%forestProjection_screw     = lattice_forestProjection_screw (prm%Nslip,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
-   minDipoleHeightPerSlipFamily(:,1_pInt,instance) = config_phase(p)%getFloats('minimumdipoleheightedge')!,'ddipminedge')
-   minDipoleHeightPerSlipFamily(:,2_pInt,instance) = config_phase(p)%getFloats('minimumdipoleheightscrew')!,'ddipminscrew')
-   peierlsStressPerSlipFamily(:,1_pInt,instance) = config_phase(p)%getFloat('peierlsstressedge')!,'peierlsstress_edge')
-   peierlsStressPerSlipFamily(:,2_pInt,instance) = config_phase(p)%getFloat('peierlsstressscrew')!,'peierlsstress_screw')
+
+   prm%minDipoleHeight_edge = config_phase(p)%getFloats('minimumdipoleheightedge')!,'ddipminedge')
+   prm%minDipoleHeight_screw = config_phase(p)%getFloats('minimumdipoleheightscrew')!,'ddipminscrew')
+   
+   prm%peierlsstress_edge = config_phase(p)%getFloats('peierlsstressedge')!,'peierlsstress_edge')
+   prm%peierlsstress_screw = config_phase(p)%getFloats('peierlsstressscrew')!,'peierlsstress_screw')
  
    prm%atomicVolume = config_phase(p)%getFloat('atomicvolume')
    prm%Dsd0  = config_phase(p)%getFloat('selfdiffusionprefactor') !,'dsd0')
@@ -743,6 +731,18 @@ param(instance)%probabilisticMultiplication = .false.
    prm%p                      = config_phase(p)%getFloat('p')
    prm%q                      = config_phase(p)%getFloat('q')
    
+   
+   prm%minDipoleHeight_edge = math_expand(prm%minDipoleHeight_edge,prm%Nslip)
+   prm%minDipoleHeight_screw =  math_expand(prm%minDipoleHeight_screw,prm%Nslip)
+   allocate(prm%minDipoleHeight(prm%totalNslip,2))
+   prm%minDipoleHeight(:,1) = prm%minDipoleHeight_edge
+   prm%minDipoleHeight(:,2) = prm%minDipoleHeight_screw
+      
+   prm%peierlsstress_edge = math_expand(prm%peierlsstress_edge,prm%Nslip)
+   prm%peierlsstress_screw = math_expand(prm%peierlsstress_screw,prm%Nslip)
+   allocate(prm%peierlsstress(prm%totalNslip,2))
+   prm%peierlsstress(:,1) = prm%peierlsstress_edge
+   prm%peierlsstress(:,2) = prm%peierlsstress_screw
    
    prm%viscosity                   = config_phase(p)%getFloat('viscosity')!,'glideviscosity')
    prm%fattack                     = config_phase(p)%getFloat('attackfrequency')!,'fattack')
@@ -787,7 +787,8 @@ extmsg = trim(extmsg)//' surfaceTransmissivity'
 extmsg = trim(extmsg)//' surfaceTransmissivity' 
   if (    prm%Dsd0         < 0.0_pReal)          extmsg = trim(extmsg)//' Dsd0'
 
-
+   ! if (atomicVolume(instance) <= 0.0_pReal) &
+   !   call IO_error(211_pInt,ext_msg='atomicVolume ('//PLASTICITY_NONLOCAL_label//')')
 !        if (minDipoleHeightPerSlipFamily(f,1,instance) < 0.0_pReal) &
 !          call IO_error(211_pInt,ext_msg='minimumDipoleHeightEdge ('//PLASTICITY_NONLOCAL_label//')')
 !        if (minDipoleHeightPerSlipFamily(f,2,instance) < 0.0_pReal) &
@@ -1485,7 +1486,7 @@ if (Temperature > 0.0_pReal) then
       jumpWidth_P = prm%burgers(s)
       activationLength_P = prm%doublekinkwidth *prm%burgers(s)
       activationVolume_P = activationLength_P * jumpWidth_P * prm%burgers(s)
-      criticalStress_P = peierlsStress(s,c,instance)
+      criticalStress_P = prm%peierlsStress(s,c)
       activationEnergy_P = criticalStress_P * activationVolume_P
       tauRel_P = min(1.0_pReal, tauEff / criticalStress_P)                                          ! ensure that the activation probability cannot become greater than one
       tPeierls = 1.0_pReal / prm%fattack &
@@ -1834,7 +1835,7 @@ do s = 1_pInt,prm%totalNslip
   tau(s) = math_mul33xx33(Mp, prm%Schmid(1:3,1:3,s)) + tauBack(s)
   if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
 enddo
-dLower = minDipoleHeight(1:ns,1:2,instance)
+dLower = prm%minDipoleHeight(1:ns,1:2)
 dUpper(1:ns,1) = prm%mu *  prm%burgers &
                / (8.0_pReal * PI * (1.0_pReal - prm%nu) * abs(tau))
 dUpper(1:ns,2) = prm%mu *  prm%burgers / (4.0_pReal * PI * abs(tau))
@@ -2108,7 +2109,7 @@ do s = 1_pInt,ns   ! loop over slip systems
   if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
 enddo
 
-dLower = minDipoleHeight(1:ns,1:2,instance)
+dLower = prm%minDipoleHeight(1:ns,1:2)
 dUpper(1:ns,1) = prm%mu * prm%burgers(1:ns) &
                / (8.0_pReal * pi * (1.0_pReal - prm%nu) * abs(tau))
 dUpper(1:ns,2) = prm%mu * prm%burgers(1:ns) &
@@ -2138,6 +2139,13 @@ if (lattice_structure(ph) == LATTICE_bcc_ID) then                               
 
 else                                                                                                ! ALL OTHER STRUCTURES
   if (prm%probabilisticMultiplication) then
+  !#################################################################################################
+  !#################################################################################################
+  ! ToDo: MD: to me, this whole procedure looks extremly time step and integrator dependent
+  ! Just using FPI instead of Euler gives you a higher chance of multiplication if I understand it correctly
+  ! I suggest to remove
+  !#################################################################################################
+  !#################################################################################################
     meshlength = mesh_ipVolume(ip,el)**0.333_pReal
     where(sum(rhoSgl(1:ns,1:4),2) > 0.0_pReal)
       nSources = (sum(rhoSgl(1:ns,1:2),2) * prm%fEdgeMultiplication + sum(rhoSgl(1:ns,3:4),2)) &
@@ -2733,7 +2741,7 @@ do s = 1_pInt,ns
   if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
 enddo
 
-dLower = minDipoleHeight(1:ns,1:2,instance)
+dLower = prm%minDipoleHeight(1:ns,1:2)
 dUpper(1:ns,1) = prm%mu * prm%burgers(1:ns) &
                / (8.0_pReal * pi * (1.0_pReal - prm%nu) * abs(tau))
 dUpper(1:ns,2) = prm%mu * prm%burgers(1:ns) &
