@@ -2228,7 +2228,7 @@ function lattice_slip_normal(Nslip,structure,cOverA) result(n)
  real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
  
  coordinateSystem = coordinateSystem_slip(Nslip,structure,cOverA)
- n = coordinateSystem(1:3,1,1:sum(Nslip))
+ n = coordinateSystem(1:3,2,1:sum(Nslip))
 
 end function lattice_slip_normal
 
@@ -2248,7 +2248,7 @@ function lattice_slip_direction(Nslip,structure,cOverA) result(d)
  real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
  
  coordinateSystem = coordinateSystem_slip(Nslip,structure,cOverA)
- d = coordinateSystem(1:3,2,1:sum(Nslip))
+ d = coordinateSystem(1:3,1,1:sum(Nslip))
 
 end function lattice_slip_direction
 
