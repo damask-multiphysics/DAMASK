@@ -550,7 +550,10 @@ module lattice
   lattice_forestProjection_screw, &
   lattice_slipProjection_modeI, &
   lattice_slipProjection_modeII, &
-  lattice_slipProjection_modeIII
+  lattice_slipProjection_modeIII, &
+  lattice_slip_normal, &
+  lattice_slip_direction, &
+  lattice_slip_transverse
 
 
 contains

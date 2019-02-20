@@ -138,11 +138,6 @@ subroutine constitutive_init()
  nonlocalConstitutionPresent = .false.
 
 !--------------------------------------------------------------------------------------------------
-! open material.config
- if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
-   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
-
-!--------------------------------------------------------------------------------------------------
 ! parse plasticities from config file
  if (any(phase_plasticity == PLASTICITY_NONE_ID))          call plastic_none_init
  if (any(phase_plasticity == PLASTICITY_ISOTROPIC_ID))     call plastic_isotropic_init
@@ -150,12 +145,16 @@ subroutine constitutive_init()
  if (any(phase_plasticity == PLASTICITY_KINEHARDENING_ID)) call plastic_kinehardening_init
  if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call plastic_dislotwin_init
  if (any(phase_plasticity == PLASTICITY_DISLOUCLA_ID))     call plastic_disloucla_init
- if (any(phase_plasticity == PLASTICITY_NONLOCAL_ID))      call plastic_nonlocal_init(FILEUNIT)
-
+ if (any(phase_plasticity == PLASTICITY_NONLOCAL_ID))      call plastic_nonlocal_init
+ 
+ 
+!--------------------------------------------------------------------------------------------------
+! open material.config
+ if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
+   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
 
 !--------------------------------------------------------------------------------------------------
 ! parse source mechanisms from config file
- call IO_checkAndRewind(FILEUNIT)
  if (any(phase_source == SOURCE_thermal_dissipation_ID))     call source_thermal_dissipation_init(FILEUNIT)
  if (any(phase_source == SOURCE_thermal_externalheat_ID))    call source_thermal_externalheat_init(FILEUNIT)
  if (any(phase_source == SOURCE_damage_isoBrittle_ID))       call source_damage_isoBrittle_init

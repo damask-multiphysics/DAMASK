@@ -41,15 +41,7 @@ module plastic_nonlocal
    slipFamily, &                                                                                    !< lookup table relating active slip system to slip family for each instance
    slipSystemLattice, &                                                                             !< lookup table relating active slip system index to lattice slip system index for each instance
    colinearSystem                                                                                   !< colinear system to the active slip system (only valid for fcc!)
- 
- real(pReal), dimension(:), allocatable, private :: &
-   rhoSglScatter, &                                                                                 !< standard deviation of scatter in initial dislocation density
-   rhoSglRandom, &
-   rhoSglRandomBinning
- 
- real(pReal), dimension(:,:), allocatable, private :: &
-   lambda0PerSlipFamily, &                                                                          !< mean free path prefactor
-   lambda0                                                                                          !< mean free path prefactor
+
  
  real(pReal), dimension(:,:,:,:,:,:), allocatable, private :: &
    compatibility                                                                                    !< slip system compatibility between me and my neighbors
@@ -141,6 +133,9 @@ module plastic_nonlocal
    burgers                                                                                       !< absolute length of burgers vector [m] for each slip system and instance
    
    real(pReal), dimension(:,:), allocatable     :: &
+    slip_normal, &
+    slip_direction, &
+    slip_transverse, &
     minDipoleHeight, & ! edge and screw
     peierlsstress, & ! edge and screw
    interactionSlipSlip ,&                                                                              !< coefficients for slip-slip interaction for each interaction type and instance
@@ -244,28 +239,18 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_init(fileUnit)
+subroutine plastic_nonlocal_init
 use prec, only: dEq
 use math,     only: math_Voigt66to3333, & 
                     math_mul3x3, &
                     math_expand
-use IO,       only: IO_read, &
-                    IO_lc, &
-                    IO_getTag, &
-                    IO_isBlank, &
-                    IO_stringPos, &
-                    IO_stringValue, &
-                    IO_floatValue, &
-                    IO_intValue, &
-                    IO_warning, &
-                    IO_error, &
-                    IO_EOF
+use IO,       only: IO_error
+
 use debug,    only: debug_level, &
                     debug_constitutive, &
                     debug_levelBasic
 use mesh,     only: theMesh
 use material, only: phase_plasticity, &
-                    homogenization_maxNgrains, &
                     phase_plasticityInstance, &
                     phase_Noutput, &
                     PLASTICITY_NONLOCAL_label, &
@@ -279,30 +264,24 @@ use lattice
 
 
 implicit none
-integer(pInt), intent(in) ::                fileUnit
 
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
   integer(pInt), dimension(0), parameter :: emptyInt = [integer(pInt)::]
     real(pReal), dimension(0), parameter :: emptyRealArray = [real(pReal)::]
 !*** local variables
-integer(pInt), allocatable, dimension(:) :: chunkPos
-integer(pInt)          ::                   phase, &
+integer(pInt)          ::                   ns, phase, &
                                             maxNinstances, &
                                             maxTotalNslip, p, i, &
                                             f, &                ! index of my slip family
                                             instance, &                ! index of my instance of this plasticity
                                             l, &
-                                            ns, &               ! short notation for total number of active slip systems for the current instance
                                             o, &                ! index of my output
                                             s, &                ! index of my slip system
                                             s1, &               ! index of my slip system
                                             s2, &               ! index of my slip system
                                             t, &                ! index of dislocation type
-                                            c, &                ! index of dislocation character
-                                            Nchunks_SlipFamilies
- character(len=65536) :: &
-   tag  = '', &
-   line = ''
+                                            c                ! index of dislocation character
+
 
  integer(pInt) :: sizeState, sizeDotState,sizeDependentState, sizeDeltaState
  integer(kind(undefined_ID))                 :: &
@@ -337,80 +316,16 @@ allocate(Nslip(lattice_maxNslipFamily,maxNinstances),       source=0_pInt)
 allocate(slipFamily(lattice_maxNslip,maxNinstances),        source=0_pInt)
 allocate(slipSystemLattice(lattice_maxNslip,maxNinstances), source=0_pInt)
 allocate(totalNslip(maxNinstances),                         source=0_pInt)
-allocate(rhoSglScatter(maxNinstances),                      source=0.0_pReal)
-allocate(rhoSglRandom(maxNinstances),                       source=0.0_pReal)
-allocate(rhoSglRandomBinning(maxNinstances),                source=1.0_pReal)
-
-allocate(lambda0PerSlipFamily(lattice_maxNslipFamily,maxNinstances),           source=0.0_pReal)
 
 
- rewind(fileUnit)
- phase = 0_pInt
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= MATERIAL_partPhase)         ! wind forward to <phase>
-   line = IO_read(fileUnit)
- enddo
-  
- parsingFile: do while (trim(line) /= IO_EOF)                                                       ! read through phases of phase part
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '')  then                                                         ! stop at next part 
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit
-   endif
-   if (IO_getTag(line,'[',']') /= '') then                                                          ! next phase
-     phase = phase + 1_pInt                                                                         ! advance phase section counter
-     if (phase_plasticity(phase) == PLASTICITY_NONLOCAL_ID) &
-       Nchunks_SlipFamilies = count(lattice_NslipSystem(:,phase) > 0_pInt)
-     cycle
-   endif
-   if (phase > 0_pInt ) then; if (phase_plasticity(phase) == PLASTICITY_NONLOCAL_ID) then           ! one of my phases. do not short-circuit here (.and. with next if statement). It's not safe in Fortran
-     instance = phase_plasticityInstance(phase)                                                     ! which instance of my plasticity is present phase
-     chunkPos = IO_stringPos(line)
-     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                             ! extract key
-     select case(tag)
-       case ('nslip')
-         if (chunkPos(1) < 1_pInt + Nchunks_SlipFamilies) &
-           call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_NONLOCAL_LABEL//')')
-         Nchunks_SlipFamilies = chunkPos(1) - 1_pInt
-         do f = 1_pInt, Nchunks_SlipFamilies
-           Nslip(f,instance) = IO_intValue(line,chunkPos,1_pInt+f)
-         enddo
-       case ('lambda0')
-         do f = 1_pInt, Nchunks_SlipFamilies
-           lambda0PerSlipFamily(f,instance) = IO_floatValue(line,chunkPos,1_pInt+f)
-         enddo
-       case('rhosglscatter')
-         rhoSglScatter(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case('rhosglrandom')
-         rhoSglRandom(instance) = IO_floatValue(line,chunkPos,2_pInt)
-       case('rhosglrandombinning')
-         rhoSglRandomBinning(instance) = IO_floatValue(line,chunkPos,2_pInt)
-     end select
-   endif; endif
- enddo parsingFile
-
- sanityChecks: do phase = 1_pInt, size(phase_plasticity)
-   myPhase: if (phase_plasticity(phase) == PLASTICITY_NONLOCAL_ID) then
-    instance = phase_plasticityInstance(phase) 
-    if (sum(Nslip(:,instance)) <= 0_pInt) &
-      call IO_error(211_pInt,ext_msg='Nslip ('//PLASTICITY_NONLOCAL_label//')')
-    do f = 1_pInt,lattice_maxNslipFamily
-      if (Nslip(f,instance) > 0_pInt) then
-        if (lambda0PerSlipFamily(f,instance) <= 0.0_pReal) &
-          call IO_error(211_pInt,ext_msg='lambda0 ('//PLASTICITY_NONLOCAL_label//')')
-      endif
-    enddo
-    if (rhoSglScatter(instance) < 0.0_pReal) &
-      call IO_error(211_pInt,ext_msg='rhoSglScatter ('//PLASTICITY_NONLOCAL_label//')')
-    if (rhoSglRandom(instance) < 0.0_pReal) &
-      call IO_error(211_pInt,ext_msg='rhoSglRandom ('//PLASTICITY_NONLOCAL_label//')')
-    if (rhoSglRandomBinning(instance) <= 0.0_pReal) &
-      call IO_error(211_pInt,ext_msg='rhoSglRandomBinning ('//PLASTICITY_NONLOCAL_label//')')
-
-    totalNslip(instance) = sum(Nslip(1:lattice_maxNslipFamily,instance))
-  endif myPhase 
-enddo sanityChecks
-
+  do p=1_pInt, size(config_phase)
+   if (phase_plasticity(p) /= PLASTICITY_NONLOCAL_ID) cycle
+   instance = phase_plasticityInstance(p)
+   param(instance)%Nslip = config_phase(p)%getInts('nslip',defaultVal=emptyInt)
+   Nslip(1:size(param(instance)%Nslip),instance) = param(instance)%Nslip
+   totalNslip(instance) = sum(Nslip(1:lattice_maxNslipFamily,instance))
+   enddo
+ 
 
 !*** allocation of variables whose size depends on the total number of active slip systems
 
@@ -425,8 +340,6 @@ allocate(iGamma(maxTotalNslip,maxNinstances),  source=0_pInt)
 allocate(iRhoF(maxTotalNslip,maxNinstances),   source=0_pInt)
 allocate(iTauF(maxTotalNslip,maxNinstances),   source=0_pInt)
 allocate(iTauB(maxTotalNslip,maxNinstances),   source=0_pInt)
-
-allocate(lambda0(maxTotalNslip,maxNinstances),                                        source=0.0_pReal)
 
 
 allocate(compatibility(2,maxTotalNslip,maxTotalNslip,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), &
@@ -551,10 +464,6 @@ allocate(colinearSystem(maxTotalNslip,maxNinstances),                           
 
      do s1 = 1_pInt,ns 
        f = slipFamily(s1,instance)
-       
-       !*** burgers vector, mean free path prefactor and minimum dipole distance for each slip system
-     
-       lambda0(s1,instance) = lambda0PerSlipFamily(f,instance)
    
        do s2 = 1_pInt,ns
 
@@ -588,7 +497,7 @@ allocate(colinearSystem(maxTotalNslip,maxNinstances),                           
 
 param(instance)%shortRangeStressCorrection = .false.
 
-   prm%Nslip = config_phase(p)%getInts('nslip',defaultVal=emptyInt)
+   
      prm%totalNslip = sum(prm%Nslip)
      prm%Schmid          = lattice_SchmidMatrix_slip(prm%Nslip,structure(1:3),&
                                                      config%getFloat('c/a',defaultVal=0.0_pReal))
@@ -661,6 +570,13 @@ param(instance)%shortRangeStressCorrection = .false.
    prm%q                      = config_phase(p)%getFloat('q')
    
    
+    prm%slip_direction  = lattice_slip_direction(prm%Nslip,config%getString('lattice_structure'),&
+                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
+    prm%slip_transverse = lattice_slip_transverse(prm%Nslip,config%getString('lattice_structure'),&
+                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
+   
+       prm%slip_normal = lattice_slip_normal(prm%Nslip,config%getString('lattice_structure'),&
+                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
    prm%minDipoleHeight_edge = math_expand(prm%minDipoleHeight_edge,prm%Nslip)
    prm%minDipoleHeight_screw =  math_expand(prm%minDipoleHeight_screw,prm%Nslip)
    allocate(prm%minDipoleHeight(prm%totalNslip,2))
@@ -726,7 +642,12 @@ extmsg = trim(extmsg)//' surfaceTransmissivity'
 !        if (peierlsStressPerSlipFamily(f,2,instance) <= 0.0_pReal) &
 !          call IO_error(211_pInt,ext_msg='peierlsStressScrew ('//PLASTICITY_NONLOCAL_label//')')
 
-
+!    do f = 1_pInt,lattice_maxNslipFamily
+!      if (Nslip(f,instance) > 0_pInt) then
+!        if (lambda0PerSlipFamily(f,instance) <= 0.0_pReal) &
+!          call IO_error(211_pInt,ext_msg='lambda0 ('//PLASTICITY_NONLOCAL_label//')')
+!      endif
+!    enddo
 !        if (rhoSglEdgePos0(f,instance) < 0.0_pReal) &
 !          call IO_error(211_pInt,ext_msg='rhoSglEdgePos0 ('//PLASTICITY_NONLOCAL_label//')')
 !        if (rhoSglEdgeNeg0(f,instance) < 0.0_pReal) &
@@ -739,6 +660,14 @@ extmsg = trim(extmsg)//' surfaceTransmissivity'
 !          call IO_error(211_pInt,ext_msg='rhoDipEdge0 ('//PLASTICITY_NONLOCAL_label//')')
 !        if (rhoDipScrew0(f,instance) < 0.0_pReal) &
 !          call IO_error(211_pInt,ext_msg='rhoDipScrew0 ('//PLASTICITY_NONLOCAL_label//')')
+!            if (rhoSglScatter(instance) < 0.0_pReal) &
+!      call IO_error(211_pInt,ext_msg='rhoSglScatter ('//PLASTICITY_NONLOCAL_label//')')
+!    if (rhoSglRandom(instance) < 0.0_pReal) &
+!      call IO_error(211_pInt,ext_msg='rhoSglRandom ('//PLASTICITY_NONLOCAL_label//')')
+!    if (rhoSglRandomBinning(instance) <= 0.0_pReal) &
+!      call IO_error(211_pInt,ext_msg='rhoSglRandomBinning ('//PLASTICITY_NONLOCAL_label//')')
+        
+        
           
    outputs = config_phase(p)%getStrings('(output)',defaultVal=emptyStringArray)
    allocate(prm%outputID(0))
@@ -1052,11 +981,9 @@ use material, only: &
   phaseAt, phasememberAt, &
   phase_plasticityInstance
 use lattice, only: &
-  lattice_sd, &
-  lattice_st, &
-  lattice_structure, &
   LATTICE_bcc_ID, &
-  LATTICE_fcc_ID
+  LATTICE_fcc_ID, &
+  lattice_structure
 
 implicit none
 
@@ -1072,13 +999,10 @@ real(pReal), dimension(3,3), intent(in) :: &
    np, &                                                                                            !< neighbor phase
    no                                                                                               !< nieghbor offset
 
-integer(pInt)                   neighbor_el, &                ! element number of neighboring material point
+integer(pInt)                   ns, neighbor_el, &                ! element number of neighboring material point
                                 neighbor_ip, &                ! integration point of neighboring material point
                                 instance, &                      ! my instance of this plasticity
                                 neighbor_instance, &             ! instance of this plasticity of neighboring material point
-                                neighbor_phase, &
-                                ns, &                         ! total number of active slip systems at my material point
-                                neighbor_ns, &                ! total number of active slip systems at neighboring material point
                                 c, &                          ! index of dilsocation character (edge, screw)
                                 s, &                          ! slip system index
                                 t, &                          ! index of dilsocation type (e+, e-, s+, s-, used e+, used e-, used s+, used s-)
@@ -1243,8 +1167,8 @@ if (.not. phase_localPlasticity(ph) .and. prm%shortRangeStressCorrection) then
   !* 1. interpolation of the excess density in the neighorhood
   !* 2. interpolation of the dead dislocation density in the central volume
   
-  m(1:3,1:ns,1) =  lattice_sd(1:3,slipSystemLattice(1:ns,instance),ph)
-  m(1:3,1:ns,2) = -lattice_st(1:3,slipSystemLattice(1:ns,instance),ph)
+  m(1:3,1:ns,1) =  prm%slip_direction
+  m(1:3,1:ns,2) = -prm%slip_transverse
 
   do s = 1_pInt,ns
     
@@ -1656,8 +1580,7 @@ integer(pInt) ::instance, &               ! current instance of this plasticity
                                             ns, &                     ! short notation for the total number of active slip systems
                                             c, &                      ! character of dislocation
                                             t, &                      ! type of dislocation
-                                            s, &                      ! index of my current slip system
-                                            sLattice                  ! index of my current slip system according to lattice order
+                                            s                      ! index of my current slip system
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),10) :: &
                                             deltaRho, &                     ! density increment
                                             deltaRhoRemobilization, &       ! density increment by remobilization
@@ -1841,9 +1764,7 @@ use material, only: homogenization_maxNgrains, &
                     phaseAt, phasememberAt, &
                     phase_plasticity ,&
                     PLASTICITY_NONLOCAL_ID
-use lattice,  only: lattice_sd, &
-                    lattice_st ,&
-                    lattice_structure, &
+use lattice,  only: lattice_structure, &
                     LATTICE_bcc_ID, & 
                     LATTICE_fcc_ID
 
@@ -1894,7 +1815,6 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt
                                             rhoSgl, &                                               !< current single dislocation densities (positive/negative screw and edge without dipoles)
                                             rhoSglOriginal, &
                                             neighbor_rhoSgl, &                                      !< current single dislocation densities of neighboring ip (positive/negative screw and edge without dipoles)
-                                            rhoSgl0, &                                              !< single dislocation densities at start of cryst inc (positive/negative screw and edge without dipoles)
                                             my_rhoSgl                                               !< single dislocation densities of central ip (positive/negative screw and edge without dipoles)
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),4) :: &
                                             v, &                                                    !< current dislocation glide velocity
@@ -1906,8 +1826,8 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt
                                             tauThreshold, &                                         !< threshold shear stress
                                             tau, &                                                  !< current resolved shear stress
                                             tauBack, &                                              !< current back stress from pileups on same slip system
-                                            vClimb, &                                               !< climb velocity of edge dipoles
-                                            nSources
+                                            vClimb                                              !< climb velocity of edge dipoles
+                                            
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),2) :: &
                                             rhoDip, &                                               !< current dipole dislocation densities (screw and edge dipoles)
                                             rhoDipOriginal, & 
@@ -1927,9 +1847,8 @@ real(pReal), dimension(3) ::                normal_neighbor2me, &               
 real(pReal)                                 area, &                                                 !< area of the current interface
                                             transmissivity, &                                       !< overall transmissivity of dislocation flux to neighboring material point
                                             lineLength, &                                           !< dislocation line length leaving the current interface
-                                            selfDiffusion, &                                        !< self diffusion
-                                            rnd, & 
-                                            meshlength
+                                            selfDiffusion                                       !< self diffusion
+
 logical                                     considerEnteringFlux, &
                                             considerLeavingFlux
                                             
@@ -2033,17 +1952,17 @@ rhoDotMultiplication = 0.0_pReal
 if (lattice_structure(ph) == LATTICE_bcc_ID) then                                                 ! BCC
   forall (s = 1:ns, sum(abs(v(s,1:4))) > 0.0_pReal)
     rhoDotMultiplication(s,1:2) = sum(abs(gdot(s,3:4))) / prm%burgers(s) &                        ! assuming double-cross-slip of screws to be decisive for multiplication
-                                * sqrt(rhoForest(s)) / lambda0(s,instance) ! &                         ! mean free path
+                                * sqrt(rhoForest(s)) / prm%lambda0(s) ! &                         ! mean free path
                                 ! * 2.0_pReal * sum(abs(v(s,3:4))) / sum(abs(v(s,1:4)))             ! ratio of screw to overall velocity determines edge generation
     rhoDotMultiplication(s,3:4) = sum(abs(gdot(s,3:4))) /prm%burgers(s) &                        ! assuming double-cross-slip of screws to be decisive for multiplication
-                                * sqrt(rhoForest(s)) / lambda0(s,instance) ! &                         ! mean free path
+                                * sqrt(rhoForest(s)) / prm%lambda0(s) ! &                         ! mean free path
                                 ! * 2.0_pReal * sum(abs(v(s,1:2))) / sum(abs(v(s,1:4)))             ! ratio of edge to overall velocity determines screw generation
   endforall
 
 else                                                                                                ! ALL OTHER STRUCTURES
   rhoDotMultiplication(1:ns,1:4) = spread( &
         (sum(abs(gdot(1:ns,1:2)),2) * prm%fEdgeMultiplication + sum(abs(gdot(1:ns,3:4)),2)) &
-      * sqrt(rhoForest(1:ns)) / lambda0(1:ns,instance) / prm%burgers(1:ns), 2, 4)
+      * sqrt(rhoForest(1:ns)) / prm%lambda0 / prm%burgers(1:ns), 2, 4)
 endif
 
 
@@ -2079,10 +1998,10 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
   !*** be aware of the definition of lattice_st = lattice_sd x lattice_sn !!!
   !*** opposite sign to our p vector in the (s,p,n) triplet !!!
   
-  m(1:3,1:ns,1) =  lattice_sd(1:3, slipSystemLattice(1:ns,instance), ph)
-  m(1:3,1:ns,2) = -lattice_sd(1:3, slipSystemLattice(1:ns,instance), ph)
-  m(1:3,1:ns,3) = -lattice_st(1:3, slipSystemLattice(1:ns,instance), ph)
-  m(1:3,1:ns,4) =  lattice_st(1:3, slipSystemLattice(1:ns,instance), ph)
+  m(1:3,1:ns,1) =  prm%slip_direction
+  m(1:3,1:ns,2) = -prm%slip_direction
+  m(1:3,1:ns,3) = -prm%slip_transverse
+  m(1:3,1:ns,4) =  prm%slip_transverse
   
   my_Fe = Fe(1:3,1:3,1_pInt,ip,el)
   my_F = math_mul33x33(my_Fe, Fp(1:3,1:3,1_pInt,ip,el))
@@ -2293,7 +2212,6 @@ rhoDot = rhoDotFlux &
        + rhoDotThermalAnnihilation 
 
 results(instance)%rhoDotFlux(1:ns,1:8,o) = rhoDotFlux(1:ns,1:8)
-
 results(instance)%rhoDotMultiplication(1:ns,1:2,o) = rhoDotMultiplication(1:ns,[1,3])
 results(instance)%rhoDotSingle2DipoleGlide(1:ns,1:2,o) = rhoDotSingle2DipoleGlide(1:ns,9:10)
 results(instance)%rhoDotAthermalAnnihilation(1:ns,1:2,o) = rhoDotAthermalAnnihilation(1:ns,9:10)
@@ -2368,9 +2286,7 @@ use material, only:   material_phase, &
                       homogenization_maxNgrains
 use mesh, only:       mesh_ipNeighborhood, &
                       theMesh
-use lattice, only:    lattice_sn, &
-                      lattice_sd, &
-                      lattice_qDisorientation
+use lattice, only:    lattice_qDisorientation
 
 implicit none
 
@@ -2397,11 +2313,8 @@ real(pReal), dimension(4) ::                    absoluteMisorientation          
 real(pReal), dimension(2,totalNslip(phase_plasticityInstance(material_phase(1,i,e))),&
                          totalNslip(phase_plasticityInstance(material_phase(1,i,e))),&
                          theMesh%elem%nIPneighbors) :: &  
-                                                my_compatibility                                    ! my_compatibility for current element and ip
-real(pReal), dimension(3,totalNslip(phase_plasticityInstance(material_phase(1,i,e)))) :: &  
-                                                slipNormal, &
-                                                slipDirection
-real(pReal)                                     my_compatibilitySum, &
+                                                my_compatibility                                    ! my_compatibility for current element and ip  
+real(pReal) ::                                    my_compatibilitySum, &
                                                 thresholdValue, &
                                                 nThresholdValues
 logical, dimension(totalNslip(phase_plasticityInstance(material_phase(1,i,e)))) :: & 
@@ -2413,8 +2326,6 @@ ph = material_phase(1,i,e)
 textureID = material_texture(1,i,e)
 instance = phase_plasticityInstance(ph)
 ns = totalNslip(instance)
-slipNormal(1:3,1:ns) = lattice_sn(1:3, slipSystemLattice(1:ns,instance), ph)
-slipDirection(1:3,1:ns) = lattice_sd(1:3, slipSystemLattice(1:ns,instance), ph)
 associate(prm => param(instance))
 
 !*** start out fully compatible
@@ -2480,10 +2391,14 @@ neighbors: do n = 1_pInt,Nneighbors
                                                      orientation(1:4,1,neighbor_i,neighbor_e))      ! no symmetry
     mySlipSystems: do s1 = 1_pInt,ns
       neighborSlipSystems: do s2 = 1_pInt,ns
-        my_compatibility(1,s2,s1,n) =  math_mul3x3(slipNormal(1:3,s1), math_qRot(absoluteMisorientation, slipNormal(1:3,s2))) &
-                                * abs(math_mul3x3(slipDirection(1:3,s1), math_qRot(absoluteMisorientation, slipDirection(1:3,s2))))
-        my_compatibility(2,s2,s1,n) = abs(math_mul3x3(slipNormal(1:3,s1), math_qRot(absoluteMisorientation, slipNormal(1:3,s2)))) &
-                                * abs(math_mul3x3(slipDirection(1:3,s1), math_qRot(absoluteMisorientation, slipDirection(1:3,s2))))
+        my_compatibility(1,s2,s1,n) =  math_mul3x3(prm%slip_normal(1:3,s1), &
+        math_qRot(absoluteMisorientation, prm%slip_normal(1:3,s2))) &
+                                * abs(math_mul3x3(prm%slip_direction(1:3,s1), &
+                                math_qRot(absoluteMisorientation, prm%slip_direction(1:3,s2))))
+        my_compatibility(2,s2,s1,n) = abs(math_mul3x3(prm%slip_normal(1:3,s1), &
+        math_qRot(absoluteMisorientation, prm%slip_normal(1:3,s2)))) &
+                                * abs(math_mul3x3(prm%slip_direction(1:3,s1), &
+                                math_qRot(absoluteMisorientation, prm%slip_direction(1:3,s2))))
       enddo neighborSlipSystems
       
       my_compatibilitySum = 0.0_pReal
@@ -2522,8 +2437,6 @@ function plastic_nonlocal_postResults(Mp,ip,el) result(postResults)
    math_mul33x3, &
    math_mul33xx33, &
    pi
- use mesh, only: &
-   theMesh
  use material, only: &
    material_phase, &
    phaseAt, phasememberAt, &
