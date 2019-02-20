@@ -698,7 +698,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
  real(pReal), dimension(3,lattice_maxNslip) :: &
    sd,  sn
  integer(pInt) :: &
-  j, i,  &
+  i,  &
   myNslip, myNcleavage
 
  lattice_C66(1:6,1:6,myPhase) = lattice_symmetrizeC66(lattice_structure(myPhase),&
@@ -2212,6 +2212,64 @@ end function lattice_SchmidMatrix_cleavage
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Normal direction of slip systems (n)
+!--------------------------------------------------------------------------------------------------
+function lattice_slip_normal(Nslip,structure,cOverA) result(n)
+
+ implicit none
+ integer(pInt),    dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
+ character(len=*),                          intent(in) :: structure                                 !< lattice structure
+ real(pReal),                               intent(in) :: cOverA                                    !< c/a ratio
+ real(pReal),     dimension(3,sum(Nslip))              :: n
+
+ real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
+ 
+ coordinateSystem = coordinateSystem_slip(Nslip,structure,cOverA)
+ n = coordinateSystem(1:3,1,1:sum(Nslip))
+
+end function lattice_slip_normal
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Slip direction of slip systems (|| b)
+!> @details: t = b x n
+!--------------------------------------------------------------------------------------------------
+function lattice_slip_direction(Nslip,structure,cOverA) result(d)
+
+ implicit none
+ integer(pInt),    dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
+ character(len=*),                          intent(in) :: structure                                 !< lattice structure
+ real(pReal),                               intent(in) :: cOverA                                    !< c/a ratio
+ real(pReal),     dimension(3,sum(Nslip))              :: d
+
+ real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
+ 
+ coordinateSystem = coordinateSystem_slip(Nslip,structure,cOverA)
+ d = coordinateSystem(1:3,2,1:sum(Nslip))
+
+end function lattice_slip_direction
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Transverse direction of slip systems (||t, t = b x n)
+!--------------------------------------------------------------------------------------------------
+function lattice_slip_transverse(Nslip,structure,cOverA) result(t)
+
+ implicit none
+ integer(pInt),    dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
+ character(len=*),                          intent(in) :: structure                                 !< lattice structure
+ real(pReal),                               intent(in) :: cOverA                                    !< c/a ratio
+ real(pReal),     dimension(3,sum(Nslip))              :: t
+
+ real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
+ 
+ coordinateSystem = coordinateSystem_slip(Nslip,structure,cOverA)
+ t = coordinateSystem(1:3,3,1:sum(Nslip))
+
+end function lattice_slip_transverse
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Projection of the transverse direction onto the slip plane
 !> @details: This projection is used to calculate forest hardening for edge dislocations and for 
 ! mode III failure (ToDo: MD I am not 100% sure about mode III)
@@ -2219,8 +2277,6 @@ end function lattice_SchmidMatrix_cleavage
 function slipProjection_transverse(Nslip,structure,cOverA) result(projection)
  use math, only: &
    math_mul3x3
- use IO, only: &
-   IO_error
 
  implicit none
  integer(pInt),    dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
@@ -2229,36 +2285,9 @@ function slipProjection_transverse(Nslip,structure,cOverA) result(projection)
  real(pReal),     dimension(sum(Nslip),sum(Nslip))     :: projection
 
  real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
- real(pReal),     dimension(:,:), allocatable          :: slipSystems
- integer(pInt),   dimension(:), allocatable            :: NslipMax
  integer(pInt) :: i, j
-
- if (len_trim(structure) /= 3_pInt) &
-   call IO_error(137_pInt,ext_msg='lattice_forestProjection: '//trim(structure))
-
- select case(structure(1:3))
-   case('fcc')
-     NslipMax    = LATTICE_FCC_NSLIPSYSTEM
-     slipSystems = LATTICE_FCC_SYSTEMSLIP
-   case('bcc')
-     NslipMax    = LATTICE_BCC_NSLIPSYSTEM
-     slipSystems = LATTICE_BCC_SYSTEMSLIP
-   case('hex')
-     NslipMax    = LATTICE_HEX_NSLIPSYSTEM
-     slipSystems = LATTICE_HEX_SYSTEMSLIP
-   case('bct')
-     NslipMax    = LATTICE_BCT_NSLIPSYSTEM
-     slipSystems = LATTICE_BCT_SYSTEMSLIP
-   case default
-     call IO_error(137_pInt,ext_msg='lattice_forestProjection: '//trim(structure))
- end select
-
- if (any(NslipMax(1:size(Nslip)) - Nslip < 0_pInt)) &
-   call IO_error(145_pInt,ext_msg='Nslip '//trim(structure))
- if (any(Nslip < 0_pInt)) &
-   call IO_error(144_pInt,ext_msg='Nslip '//trim(structure))
-
- coordinateSystem = buildCoordinateSystem(Nslip,NslipMax,slipSystems,structure,cOverA)
+ 
+ coordinateSystem = coordinateSystem_slip(Nslip,structure,cOverA)
 
  do i=1_pInt, sum(Nslip); do j=1_pInt, sum(Nslip)
    projection(i,j) = abs(math_mul3x3(coordinateSystem(1:3,2,i),coordinateSystem(1:3,3,j)))
@@ -2275,8 +2304,6 @@ end function slipProjection_transverse
 function slipProjection_direction(Nslip,structure,cOverA) result(projection)
  use math, only: &
    math_mul3x3
- use IO, only: &
-   IO_error
 
  implicit none
  integer(pInt),    dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
@@ -2285,36 +2312,9 @@ function slipProjection_direction(Nslip,structure,cOverA) result(projection)
  real(pReal),     dimension(sum(Nslip),sum(Nslip))     :: projection
 
  real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
- real(pReal),     dimension(:,:), allocatable          :: slipSystems
- integer(pInt),   dimension(:), allocatable            :: NslipMax
  integer(pInt) :: i, j
-
- if (len_trim(structure) /= 3_pInt) &
-   call IO_error(137_pInt,ext_msg='lattice_forestProjection: '//trim(structure))
-
- select case(structure(1:3))
-   case('fcc')
-     NslipMax    = LATTICE_FCC_NSLIPSYSTEM
-     slipSystems = LATTICE_FCC_SYSTEMSLIP
-   case('bcc')
-     NslipMax    = LATTICE_BCC_NSLIPSYSTEM
-     slipSystems = LATTICE_BCC_SYSTEMSLIP
-   case('hex')
-     NslipMax    = LATTICE_HEX_NSLIPSYSTEM
-     slipSystems = LATTICE_HEX_SYSTEMSLIP
-   case('bct')
-     NslipMax    = LATTICE_BCT_NSLIPSYSTEM
-     slipSystems = LATTICE_BCT_SYSTEMSLIP
-   case default
-     call IO_error(137_pInt,ext_msg='lattice_forestProjection: '//trim(structure))
- end select
-
- if (any(NslipMax(1:size(Nslip)) - Nslip < 0_pInt)) &
-   call IO_error(145_pInt,ext_msg='Nslip '//trim(structure))
- if (any(Nslip < 0_pInt)) &
-   call IO_error(144_pInt,ext_msg='Nslip '//trim(structure))
-
- coordinateSystem = buildCoordinateSystem(Nslip,NslipMax,slipSystems,structure,cOverA)
+ 
+ coordinateSystem = coordinateSystem_slip(Nslip,structure,cOverA)
 
  do i=1_pInt, sum(Nslip); do j=1_pInt, sum(Nslip)
    projection(i,j) = abs(math_mul3x3(coordinateSystem(1:3,2,i),coordinateSystem(1:3,1,j)))
@@ -2330,8 +2330,6 @@ end function slipProjection_direction
 function slipProjection_normal(Nslip,structure,cOverA) result(projection)
  use math, only: &
    math_mul3x3
- use IO, only: &
-   IO_error
 
  implicit none
  integer(pInt),    dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
@@ -2340,12 +2338,37 @@ function slipProjection_normal(Nslip,structure,cOverA) result(projection)
  real(pReal),     dimension(sum(Nslip),sum(Nslip))     :: projection
 
  real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
- real(pReal),     dimension(:,:), allocatable          :: slipSystems
- integer(pInt),   dimension(:), allocatable            :: NslipMax
  integer(pInt) :: i, j
 
+ coordinateSystem = coordinateSystem_slip(Nslip,structure,cOverA)
+
+ do i=1_pInt, sum(Nslip); do j=1_pInt, sum(Nslip)
+   projection(i,j) = abs(math_mul3x3(coordinateSystem(1:3,2,i),coordinateSystem(1:3,2,j)))
+ enddo; enddo
+
+end function slipProjection_normal
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief build a local coordinate system on slip systems
+!> @details Order: Direction, plane (normal), and common perpendicular
+!--------------------------------------------------------------------------------------------------
+function coordinateSystem_slip(Nslip,structure,cOverA) result(coordinateSystem)
+ use math, only: &
+   math_mul3x3
+ use IO, only: &
+   IO_error
+
+ implicit none
+ integer(pInt),    dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
+ character(len=*),                          intent(in) :: structure                                 !< lattice structure
+ real(pReal),                               intent(in) :: cOverA                                    !< c/a ratio
+ real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
+ real(pReal),     dimension(:,:), allocatable          :: slipSystems
+ integer(pInt),   dimension(:), allocatable            :: NslipMax
+
  if (len_trim(structure) /= 3_pInt) &
-   call IO_error(137_pInt,ext_msg='lattice_forestProjection: '//trim(structure))
+   call IO_error(137_pInt,ext_msg='coordinateSystem_slip: '//trim(structure))
 
  select case(structure(1:3))
    case('fcc')
@@ -2361,7 +2384,7 @@ function slipProjection_normal(Nslip,structure,cOverA) result(projection)
      NslipMax    = LATTICE_BCT_NSLIPSYSTEM
      slipSystems = LATTICE_BCT_SYSTEMSLIP
    case default
-     call IO_error(137_pInt,ext_msg='lattice_forestProjection: '//trim(structure))
+     call IO_error(137_pInt,ext_msg='coordinateSystem_slip: '//trim(structure))
  end select
 
  if (any(NslipMax(1:size(Nslip)) - Nslip < 0_pInt)) &
@@ -2371,11 +2394,7 @@ function slipProjection_normal(Nslip,structure,cOverA) result(projection)
 
  coordinateSystem = buildCoordinateSystem(Nslip,NslipMax,slipSystems,structure,cOverA)
 
- do i=1_pInt, sum(Nslip); do j=1_pInt, sum(Nslip)
-   projection(i,j) = abs(math_mul3x3(coordinateSystem(1:3,2,i),coordinateSystem(1:3,2,j)))
- enddo; enddo
-
-end function slipProjection_normal
+end function coordinateSystem_slip
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2417,7 +2436,7 @@ end function buildInteraction
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief build a local coordinate system in a slip, twin, trans, cleavage system
+!> @brief build a local coordinate system on slip, twin, trans, cleavage systems
 !> @details Order: Direction, plane (normal), and common perpendicular
 !--------------------------------------------------------------------------------------------------
 function buildCoordinateSystem(active,complete,system,structure,cOverA)
