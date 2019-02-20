@@ -37,7 +37,7 @@ module plastic_nonlocal
    totalNslip                                                                                       !< total number of active slip systems for each instance
  
  integer(pInt), dimension(:,:), allocatable, private :: &
-   Nslip, &                                                                                         !< number of active slip systems for each family and instance
+   Nslip, &                                                                                         !< number of active slip systems
    slipFamily, &                                                                                    !< lookup table relating active slip system to slip family for each instance
    slipSystemLattice, &                                                                             !< lookup table relating active slip system index to lattice slip system index for each instance
    colinearSystem                                                                                   !< colinear system to the active slip system (only valid for fcc!)
@@ -48,25 +48,17 @@ module plastic_nonlocal
    rhoSglRandomBinning
  
  real(pReal), dimension(:,:), allocatable, private :: &
-   rhoSglEdgePos0, &                                                                                !< initial edge_pos dislocation density per slip system for each family and instance
-   rhoSglEdgeNeg0, &                                                                                !< initial edge_neg dislocation density per slip system for each family and instance
-   rhoSglScrewPos0, &                                                                               !< initial screw_pos dislocation density per slip system for each family and instance
-   rhoSglScrewNeg0, &                                                                               !< initial screw_neg dislocation density per slip system for each family and instance
-   rhoDipEdge0, &                                                                                   !< initial edge dipole dislocation density per slip system for each family and instance
-   rhoDipScrew0, &                                                                                  !< initial screw dipole dislocation density per slip system for each family and instance
-   lambda0PerSlipFamily, &                                                                          !< mean free path prefactor for each family and instance
-   lambda0                                                                                       !< mean free path prefactor for each slip system and instance
+   rhoSglEdgePos0, &                                                                                !< initial edge_pos dislocation density 
+   rhoSglEdgeNeg0, &                                                                                !< initial edge_neg dislocation density
+   rhoSglScrewPos0, &                                                                               !< initial screw_pos dislocation density
+   rhoSglScrewNeg0, &                                                                               !< initial screw_neg dislocation density
+   rhoDipEdge0, &                                                                                   !< initial edge dipole dislocation density
+   rhoDipScrew0, &                                                                                  !< initial screw dipole dislocation density
+   lambda0PerSlipFamily, &                                                                          !< mean free path prefactor
+   lambda0                                                                                          !< mean free path prefactor
 
  real(pReal), dimension(:,:,:,:), allocatable, private :: &
-   rhoDotEdgeJogsOutput, &
    sourceProbability
- 
- real(pReal), dimension(:,:,:,:,:), allocatable, private :: &
-   rhoDotFluxOutput, & 
-   rhoDotMultiplicationOutput, &
-   rhoDotSingle2DipoleGlideOutput, &
-   rhoDotAthermalAnnihilationOutput, &
-   rhoDotThermalAnnihilationOutput                                                                              !< combined projection of Schmid and non-Schmid contributions to the resolved shear stress (only for screws)
  
  real(pReal), dimension(:,:,:,:,:,:), allocatable, private :: &
    compatibility                                                                                    !< slip system compatibility between me and my neighbors
@@ -182,7 +174,20 @@ module plastic_nonlocal
    
    integer(kind(undefined_ID)),         dimension(:),   allocatable          :: &
      outputID                                                                                       !< ID of each post result output
+     
  end type tParameters
+ 
+  type, private :: tOutput                                                                       !< container type for storage of output results
+  real(pReal), dimension(:,:), allocatable, private :: &
+   rhoDotEdgeJogs
+ real(pReal), dimension(:,:,:), allocatable, private :: &
+   rhoDotFlux, & 
+   rhoDotMultiplication, &
+   rhoDotSingle2DipoleGlide, &
+   rhoDotAthermalAnnihilation, &
+   rhoDotThermalAnnihilation
+  end type
+  
  
   type, private :: tNonlocalState
 
@@ -216,13 +221,15 @@ module plastic_nonlocal
        rhoSglEdge, &
      accumulatedshear
  end type tNonlocalState
+ 
   type(tNonlocalState), allocatable, dimension(:), private :: &
    deltaState, &
    dotState, &
    state
 
-  type(tParameters), dimension(:), allocatable, target, private :: param                                     !< containers of constitutive parameters (len Ninstance)
+  type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
 
+  type(tOutput), dimension(:), allocatable, private :: results
 
  integer(kind(undefined_ID)), dimension(:,:),   allocatable, private :: & 
    plastic_nonlocal_outputID                                                              !< ID of each post result output
@@ -331,6 +338,7 @@ allocate(param(maxNinstances))
 allocate(state(maxNinstances))
 allocate(dotState(maxNinstances))
 allocate(deltaState(maxNinstances))
+allocate(results(maxNinstances)) 
 
 allocate(plastic_nonlocal_sizePostResult(maxval(phase_Noutput), maxNinstances), source=0_pInt)
 allocate(plastic_nonlocal_output(maxval(phase_Noutput), maxNinstances))
@@ -475,19 +483,6 @@ allocate(iTauB(maxTotalNslip,maxNinstances),   source=0_pInt)
 allocate(lambda0(maxTotalNslip,maxNinstances),                                        source=0.0_pReal)
 allocate(sourceProbability(maxTotalNslip,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), &
                                                                                    source=2.0_pReal)
-
-allocate(rhoDotFluxOutput(maxTotalNslip,8,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), &
-                                                                                   source=0.0_pReal)
-allocate(rhoDotMultiplicationOutput(maxTotalNslip,2,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), &
-                                                                                   source=0.0_pReal)
-allocate(rhoDotSingle2DipoleGlideOutput(maxTotalNslip,2,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), &
-                                                                                   source=0.0_pReal)
-allocate(rhoDotAthermalAnnihilationOutput(maxTotalNslip,2,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), &
-                                                                                   source=0.0_pReal)
-allocate(rhoDotThermalAnnihilationOutput(maxTotalNslip,2,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), &
-                                                                                   source=0.0_pReal)
-allocate(rhoDotEdgeJogsOutput(maxTotalNslip,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), &
-                                                                                   source=0.0_pReal)
 
 allocate(compatibility(2,maxTotalNslip,maxTotalNslip,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), &
                                                                                    source=0.0_pReal)
@@ -651,7 +646,7 @@ allocate(colinearSystem(maxTotalNslip,maxNinstances),                           
              stt => state(instance), &
              del => deltaState(instance), &
              config => config_phase(p))
-             
+             NofMyPhase=count(material_phase==p)
    prm%mu = lattice_mu(p)
    prm%nu = lattice_nu(p)
    structure      = config_phase(p)%getString('lattice_structure')
@@ -971,7 +966,17 @@ extmsg = trim(extmsg)//' surfaceTransmissivity'
        dot%rhoDipScrew => plasticState(p)%dotState               (9_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
        del%rhoDipScrew => plasticState(p)%deltaState               (9_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
 plasticState(p)%aTolState(iGamma(1:ns,instance))  = prm%aTolShear
+
+  allocate(results(instance)%rhoDotFlux(prm%totalNslip,8,NofMyPhase))
+  allocate(results(instance)%rhoDotMultiplication(prm%totalNslip,2,NofMyPhase))
+  allocate(results(instance)%rhoDotSingle2DipoleGlide(prm%totalNslip,2,NofMyPhase))
+  allocate(results(instance)%rhoDotAthermalAnnihilation(prm%totalNslip,2,NofMyPhase))
+  allocate(results(instance)%rhoDotThermalAnnihilation(prm%totalNslip,2,NofMyPhase))
+  allocate(results(instance)%rhoDotEdgeJogs(prm%totalNslip,NofMyPhase))
   end associate
+  
+
+  
    enddo
 
 end subroutine plastic_nonlocal_init
@@ -1421,7 +1426,7 @@ use material, only: material_phase, &
 
 implicit none
 
-!*** input variables
+
 integer(pInt), intent(in) ::                ip, &                       !< current integration point
                                             el, &                       !< current element number
                                             c                           !< dislocation character (1:edge, 2:screw)
@@ -1431,13 +1436,11 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt
                                             tauNS, &                    !< resolved external shear stress (including non Schmid effects)
                                             tauThreshold                !< threshold shear stress
 
-!*** output variables
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el)))), &
                             intent(out) ::  v, &                        !< velocity
                                             dv_dtau, &                  !< velocity derivative with respect to resolved shear stress (without non Schmid contributions)
                                             dv_dtauNS                   !< velocity derivative with respect to resolved shear stress (including non Schmid contributions)
 
-!*** local variables
 integer(pInt)    ::                         instance, &                    !< current instance of this plasticity
                                             ns, &                       !< short notation for the total number of active slip systems
                                             s                           !< index of my current slip system
@@ -1577,7 +1580,7 @@ use material, only: material_phase, &
 
 implicit none
 
-!*** input variables
+
 integer(pInt), intent(in) ::                ip, &                                                   !< current integration point
                                             el                                                      !< current element number
 real(pReal), intent(in) ::                  Temperature, &                                             !< temperature
@@ -1585,11 +1588,10 @@ volume !< volume of the materialpoint
 real(pReal), dimension(3,3), intent(in) ::  Mp
 
 
-!*** output variables
 real(pReal), dimension(3,3), intent(out) :: Lp                                                      !< plastic velocity gradient
 real(pReal), dimension(3,3,3,3), intent(out) :: dLp_dMp                                             !< derivative of Lp with respect to Tstar (9x9 matrix)
 
-!*** local variables
+
 integer(pInt)                               instance, &                                             !< current instance of this plasticity
                                             ns, &                                                   !< short notation for the total number of active slip systems
                                             i, &
@@ -2429,12 +2431,13 @@ rhoDot = rhoDotFlux &
        + rhoDotAthermalAnnihilation &
        + rhoDotThermalAnnihilation 
 
-rhoDotFluxOutput(1:ns,1:8,1_pInt,ip,el) = rhoDotFlux(1:ns,1:8)
-rhoDotMultiplicationOutput(1:ns,1:2,1_pInt,ip,el) = rhoDotMultiplication(1:ns,[1,3])
-rhoDotSingle2DipoleGlideOutput(1:ns,1:2,1_pInt,ip,el) = rhoDotSingle2DipoleGlide(1:ns,9:10)
-rhoDotAthermalAnnihilationOutput(1:ns,1:2,1_pInt,ip,el) = rhoDotAthermalAnnihilation(1:ns,9:10)
-rhoDotThermalAnnihilationOutput(1:ns,1:2,1_pInt,ip,el) = rhoDotThermalAnnihilation(1:ns,9:10)
-rhoDotEdgeJogsOutput(1:ns,1_pInt,ip,el) = 2.0_pReal * rhoDotThermalAnnihilation(1:ns,1)
+results(instance)%rhoDotFlux(1:ns,1:8,o) = rhoDotFlux(1:ns,1:8)
+
+results(instance)%rhoDotMultiplication(1:ns,1:2,o) = rhoDotMultiplication(1:ns,[1,3])
+results(instance)%rhoDotSingle2DipoleGlide(1:ns,1:2,o) = rhoDotSingle2DipoleGlide(1:ns,9:10)
+results(instance)%rhoDotAthermalAnnihilation(1:ns,1:2,o) = rhoDotAthermalAnnihilation(1:ns,9:10)
+results(instance)%rhoDotThermalAnnihilation(1:ns,1:2,o) = rhoDotThermalAnnihilation(1:ns,9:10)
+results(instance)%rhoDotEdgeJogs(1:ns,o) = 2.0_pReal * rhoDotThermalAnnihilation(1:ns,1)
 
 
 #ifdef DEBUG
@@ -2839,55 +2842,55 @@ outputsLoop: do o = 1_pInt,size(param(instance)%outputID)
       cs = cs + ns
     
     case (rho_dot_gen_ID)  ! Obsolete
-      postResults(cs+1_pInt:cs+ns) = rhoDotMultiplicationOutput(1:ns,1,1_pInt,ip,el) &
-                                   + rhoDotMultiplicationOutput(1:ns,2,1_pInt,ip,el)
+      postResults(cs+1_pInt:cs+ns) = results(instance)%rhoDotMultiplication(1:ns,1,of) &
+                                   + results(instance)%rhoDotMultiplication(1:ns,2,of)
       cs = cs + ns
 
     case (rho_dot_gen_edge_ID)
-      postResults(cs+1_pInt:cs+ns) = rhoDotMultiplicationOutput(1:ns,1,1_pInt,ip,el)
+      postResults(cs+1_pInt:cs+ns) = results(instance)%rhoDotMultiplication(1:ns,1,of)
       cs = cs + ns
 
     case (rho_dot_gen_screw_ID)
-      postResults(cs+1_pInt:cs+ns) = rhoDotMultiplicationOutput(1:ns,2,1_pInt,ip,el)
+      postResults(cs+1_pInt:cs+ns) = results(instance)%rhoDotMultiplication(1:ns,2,of)
       cs = cs + ns
     
     case (rho_dot_sgl2dip_edge_ID)
-      postResults(cs+1_pInt:cs+ns) = rhoDotSingle2DipoleGlideOutput(1:ns,1,1_pInt,ip,el)
+      postResults(cs+1_pInt:cs+ns) = results(instance)%rhoDotSingle2DipoleGlide(1:ns,1,of)
       cs = cs + ns
     
     case (rho_dot_sgl2dip_screw_ID)
-      postResults(cs+1_pInt:cs+ns) = rhoDotSingle2DipoleGlideOutput(1:ns,2,1_pInt,ip,el)
+      postResults(cs+1_pInt:cs+ns) = results(instance)%rhoDotSingle2DipoleGlide(1:ns,2,of)
       cs = cs + ns
     
     case (rho_dot_ann_ath_ID)
-      postResults(cs+1_pInt:cs+ns) = rhoDotAthermalAnnihilationOutput(1:ns,1,1_pInt,ip,el) & 
-                                   + rhoDotAthermalAnnihilationOutput(1:ns,2,1_pInt,ip,el)
+      postResults(cs+1_pInt:cs+ns) = results(instance)%rhoDotAthermalAnnihilation(1:ns,1,of) & 
+                                   + results(instance)%rhoDotAthermalAnnihilation(1:ns,2,of)
       cs = cs + ns
 
     case (rho_dot_ann_the_edge_ID) 
-      postResults(cs+1_pInt:cs+ns) = rhoDotThermalAnnihilationOutput(1:ns,1,1_pInt,ip,el) 
+      postResults(cs+1_pInt:cs+ns) = results(instance)%rhoDotThermalAnnihilation(1:ns,1,of) 
       cs = cs + ns
 
     case (rho_dot_ann_the_screw_ID) 
-      postResults(cs+1_pInt:cs+ns) = rhoDotThermalAnnihilationOutput(1:ns,2,1_pInt,ip,el)
+      postResults(cs+1_pInt:cs+ns) = results(instance)%rhoDotThermalAnnihilation(1:ns,2,of)
       cs = cs + ns
 
     case (rho_dot_edgejogs_ID) 
-      postResults(cs+1_pInt:cs+ns) = rhoDotEdgeJogsOutput(1:ns,1_pInt,ip,el)
+      postResults(cs+1_pInt:cs+ns) = results(instance)%rhoDotEdgeJogs(1:ns,of)
       cs = cs + ns
 
     case (rho_dot_flux_mobile_ID)
-      postResults(cs+1_pInt:cs+ns) = sum(rhoDotFluxOutput(1:ns,1:4,1_pInt,ip,el),2)
+      postResults(cs+1_pInt:cs+ns) = sum(results(instance)%rhoDotFlux(1:ns,1:4,of),2)
       cs = cs + ns
     
     case (rho_dot_flux_edge_ID)
-      postResults(cs+1_pInt:cs+ns) = sum(rhoDotFluxOutput(1:ns,1:2,1_pInt,ip,el),2) &
-                          + sum(rhoDotFluxOutput(1:ns,5:6,1_pInt,ip,el)*sign(1.0_pReal,rhoSgl(1:ns,5:6)),2)
+      postResults(cs+1_pInt:cs+ns) = sum(results(instance)%rhoDotFlux(1:ns,1:2,of),2) &
+                          + sum(results(instance)%rhoDotFlux(1:ns,5:6,of)*sign(1.0_pReal,rhoSgl(1:ns,5:6)),2)
       cs = cs + ns
       
     case (rho_dot_flux_screw_ID)
-      postResults(cs+1_pInt:cs+ns) = sum(rhoDotFluxOutput(1:ns,3:4,1_pInt,ip,el),2) &
-                          + sum(rhoDotFluxOutput(1:ns,7:8,1_pInt,ip,el)*sign(1.0_pReal,rhoSgl(1:ns,7:8)),2)
+      postResults(cs+1_pInt:cs+ns) = sum(results(instance)%rhoDotFlux(1:ns,3:4,of),2) &
+                          + sum(results(instance)%rhoDotFlux(1:ns,7:8,of)*sign(1.0_pReal,rhoSgl(1:ns,7:8)),2)
       cs = cs + ns
             
     case (velocity_edge_pos_ID)
