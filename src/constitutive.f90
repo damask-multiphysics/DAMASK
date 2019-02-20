@@ -358,7 +358,7 @@ subroutine constitutive_microstructure(orientations, Fe, Fp, ipc, ip, el)
    PLASTICITY_disloucla_ID, &
    PLASTICITY_nonlocal_ID
  use plastic_nonlocal, only: &
-   plastic_nonlocal_microstructure
+   plastic_nonlocal_dependentState
  use plastic_dislotwin, only: &
    plastic_dislotwin_dependentState
  use plastic_disloUCLA, only: &

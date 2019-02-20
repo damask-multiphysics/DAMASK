@@ -238,7 +238,7 @@ module plastic_nonlocal
  plastic_nonlocal_init, &
  plastic_nonlocal_stateInit, &
  plastic_nonlocal_aTolState, &
- plastic_nonlocal_microstructure, &
+ plastic_nonlocal_dependentState, &
  plastic_nonlocal_LpAndItsTangent, &
  plastic_nonlocal_dotState, &
  plastic_nonlocal_deltaState, &
@@ -1126,7 +1126,7 @@ end subroutine plastic_nonlocal_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates quantities characterizing the microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_microstructure(Fe, Fp, ip, el)
+subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
 use prec, only: &
   dEq0
 use IO, only: &
@@ -1284,6 +1284,13 @@ forall (s = 1_pInt:ns) &
 
 tauBack = 0.0_pReal
 
+  !#################################################################################################
+  !#################################################################################################
+  ! ToDo: MD: this is most likely only correct for F_i = I
+  !#################################################################################################
+  !#################################################################################################
+
+
 if (.not. phase_localPlasticity(ph) .and. prm%shortRangeStressCorrection) then
   invFe = math_inv33(Fe)
   invFp = math_inv33(Fp)
@@ -1406,7 +1413,7 @@ plasticState(ph)%state(iTauB(1:ns,instance),of) = tauBack
   endif
 #endif
  end associate
-end subroutine plastic_nonlocal_microstructure
+end subroutine plastic_nonlocal_dependentState
 
 
 !--------------------------------------------------------------------------------------------------
