@@ -70,6 +70,10 @@ module math
 !--------------------------------------------------------------------------------------------------
 ! Provide deprecated names for compatibility
 
+ interface math_cross
+   module procedure math_crossproduct
+ end interface math_cross
+
 ! ToDo MD: Our naming scheme was a little bit odd: We use essentially the re-ordering according to Nye
 ! (convenient because Abaqus and Marc want to have 12 on position 4)
 ! but weight the shear components according to Mandel (convenient for matrix multiplications)
@@ -119,6 +123,7 @@ module math
    math_identity4th, &
    math_civita, &
    math_delta, &
+   math_cross, &
    math_crossproduct, &
    math_tensorproduct33, &
    math_mul3x3, &
