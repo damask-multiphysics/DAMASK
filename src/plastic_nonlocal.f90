@@ -50,9 +50,6 @@ module plastic_nonlocal
  real(pReal), dimension(:,:), allocatable, private :: &
    lambda0PerSlipFamily, &                                                                          !< mean free path prefactor
    lambda0                                                                                          !< mean free path prefactor
-
- real(pReal), dimension(:,:,:,:), allocatable, private :: &
-   sourceProbability
  
  real(pReal), dimension(:,:,:,:,:,:), allocatable, private :: &
    compatibility                                                                                    !< slip system compatibility between me and my neighbors
@@ -430,8 +427,7 @@ allocate(iTauF(maxTotalNslip,maxNinstances),   source=0_pInt)
 allocate(iTauB(maxTotalNslip,maxNinstances),   source=0_pInt)
 
 allocate(lambda0(maxTotalNslip,maxNinstances),                                        source=0.0_pReal)
-allocate(sourceProbability(maxTotalNslip,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), &
-                                                                                   source=2.0_pReal)
+
 
 allocate(compatibility(2,maxTotalNslip,maxTotalNslip,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), &
                                                                                    source=0.0_pReal)
@@ -591,7 +587,6 @@ allocate(colinearSystem(maxTotalNslip,maxNinstances),                           
    structure      = config_phase(p)%getString('lattice_structure')
 
 param(instance)%shortRangeStressCorrection = .false.
-param(instance)%probabilisticMultiplication = .false.
 
    prm%Nslip = config_phase(p)%getInts('nslip',defaultVal=emptyInt)
      prm%totalNslip = sum(prm%Nslip)
@@ -694,7 +689,6 @@ param(instance)%probabilisticMultiplication = .false.
    
    prm%fEdgeMultiplication         = config_phase(p)%getFloat('edgemultiplication')!,'edgemultiplicationfactor','fedgemultiplication')
    prm%shortRangeStressCorrection = config_phase(p)%getInt('shortrangestresscorrection' ) > 0_pInt
-   prm%probabilisticMultiplication = config_phase(p)%keyExists('/probabilisticmultiplication/' )!,'randomsources','randommultiplication','discretesources')
    
    ! sanity checks
    if (    any(prm%burgers           <= 0.0_pReal))          extmsg = trim(extmsg)//' burgers'
@@ -2035,7 +2029,6 @@ dUpper = max(dUpper,dLower)
 
 !****************************************************************************
 !*** calculate dislocation multiplication
-
 rhoDotMultiplication = 0.0_pReal
 if (lattice_structure(ph) == LATTICE_bcc_ID) then                                                 ! BCC
   forall (s = 1:ns, sum(abs(v(s,1:4))) > 0.0_pReal)
@@ -2048,49 +2041,9 @@ if (lattice_structure(ph) == LATTICE_bcc_ID) then                               
   endforall
 
 else                                                                                                ! ALL OTHER STRUCTURES
-  if (prm%probabilisticMultiplication) then
-  !#################################################################################################
-  !#################################################################################################
-  ! ToDo: MD: to me, this whole procedure looks extremly time step and integrator dependent
-  ! Just using FPI instead of Euler gives you a higher chance of multiplication if I understand it correctly
-  ! I suggest to remove
-  !#################################################################################################
-  !#################################################################################################
-    meshlength = mesh_ipVolume(ip,el)**0.333_pReal
-    where(sum(rhoSgl(1:ns,1:4),2) > 0.0_pReal)
-      nSources = (sum(rhoSgl(1:ns,1:2),2) * prm%fEdgeMultiplication + sum(rhoSgl(1:ns,3:4),2)) &
-               / sum(rhoSgl(1:ns,1:4),2) * meshlength / lambda0(1:ns,instance)*sqrt(rhoForest(1:ns))
-    elsewhere
-      nSources = meshlength / lambda0(1:ns,instance) * sqrt(rhoForest(1:ns))
-    endwhere
-    do s = 1_pInt,ns
-      if (nSources(s) < 1.0_pReal) then
-        if (sourceProbability(s,1_pInt,ip,el) > 1.0_pReal) then
-          call random_number(rnd)
-          sourceProbability(s,1_pInt,ip,el) = rnd
-          !$OMP FLUSH(sourceProbability)
-        endif
-        if (sourceProbability(s,1_pInt,ip,el) > 1.0_pReal - nSources(s)) then
-          rhoDotMultiplication(s,1:4) = sum(rhoSglOriginal(s,1:4) * abs(v(s,1:4))) / meshlength
-        endif
-      else
-        sourceProbability(s,1_pInt,ip,el) = 2.0_pReal
-        rhoDotMultiplication(s,1:4) = &
-          (sum(abs(gdot(s,1:2))) * prm%fEdgeMultiplication + sum(abs(gdot(s,3:4)))) &
-          /prm%burgers(s) * sqrt(rhoForest(s)) / lambda0(s,instance)
-      endif
-    enddo
-#ifdef DEBUG
-    if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
-        .and. ((debug_e == el .and. debug_i == ip)&
-             .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt )) &
-      write(6,'(a,/,4(12x,12(f12.5,1x),/,/))') '<< CONST >> sources', nSources
-#endif
-  else
-    rhoDotMultiplication(1:ns,1:4) = spread( &
+  rhoDotMultiplication(1:ns,1:4) = spread( &
         (sum(abs(gdot(1:ns,1:2)),2) * prm%fEdgeMultiplication + sum(abs(gdot(1:ns,3:4)),2)) &
       * sqrt(rhoForest(1:ns)) / lambda0(1:ns,instance) / prm%burgers(1:ns), 2, 4)
-  endif
 endif
 
 
