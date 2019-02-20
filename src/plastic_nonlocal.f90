@@ -48,12 +48,6 @@ module plastic_nonlocal
    rhoSglRandomBinning
  
  real(pReal), dimension(:,:), allocatable, private :: &
-   rhoSglEdgePos0, &                                                                                !< initial edge_pos dislocation density 
-   rhoSglEdgeNeg0, &                                                                                !< initial edge_neg dislocation density
-   rhoSglScrewPos0, &                                                                               !< initial screw_pos dislocation density
-   rhoSglScrewNeg0, &                                                                               !< initial screw_neg dislocation density
-   rhoDipEdge0, &                                                                                   !< initial edge dipole dislocation density
-   rhoDipScrew0, &                                                                                  !< initial screw dipole dislocation density
    lambda0PerSlipFamily, &                                                                          !< mean free path prefactor
    lambda0                                                                                          !< mean free path prefactor
 
@@ -236,8 +230,6 @@ module plastic_nonlocal
  
  public :: &
  plastic_nonlocal_init, &
- plastic_nonlocal_stateInit, &
- plastic_nonlocal_aTolState, &
  plastic_nonlocal_dependentState, &
  plastic_nonlocal_LpAndItsTangent, &
  plastic_nonlocal_dotState, &
@@ -352,12 +344,6 @@ allocate(rhoSglScatter(maxNinstances),                      source=0.0_pReal)
 allocate(rhoSglRandom(maxNinstances),                       source=0.0_pReal)
 allocate(rhoSglRandomBinning(maxNinstances),                source=1.0_pReal)
 
-allocate(rhoSglEdgePos0(lattice_maxNslipFamily,maxNinstances),                 source=-1.0_pReal)
-allocate(rhoSglEdgeNeg0(lattice_maxNslipFamily,maxNinstances),                 source=-1.0_pReal)
-allocate(rhoSglScrewPos0(lattice_maxNslipFamily,maxNinstances),                source=-1.0_pReal)
-allocate(rhoSglScrewNeg0(lattice_maxNslipFamily,maxNinstances),                source=-1.0_pReal)
-allocate(rhoDipEdge0(lattice_maxNslipFamily,maxNinstances),                    source=-1.0_pReal)
-allocate(rhoDipScrew0(lattice_maxNslipFamily,maxNinstances),                   source=-1.0_pReal)
 allocate(lambda0PerSlipFamily(lattice_maxNslipFamily,maxNinstances),           source=0.0_pReal)
 
 
@@ -392,30 +378,6 @@ allocate(lambda0PerSlipFamily(lattice_maxNslipFamily,maxNinstances),           s
          do f = 1_pInt, Nchunks_SlipFamilies
            Nslip(f,instance) = IO_intValue(line,chunkPos,1_pInt+f)
          enddo
-       case ('rhosgledgepos0')
-         do f = 1_pInt, Nchunks_SlipFamilies
-           rhoSglEdgePos0(f,instance) = IO_floatValue(line,chunkPos,1_pInt+f)
-         enddo
-       case ('rhosgledgeneg0')
-         do f = 1_pInt, Nchunks_SlipFamilies
-           rhoSglEdgeNeg0(f,instance) = IO_floatValue(line,chunkPos,1_pInt+f)
-         enddo
-       case ('rhosglscrewpos0')
-         do f = 1_pInt, Nchunks_SlipFamilies
-           rhoSglScrewPos0(f,instance) = IO_floatValue(line,chunkPos,1_pInt+f)
-         enddo
-       case ('rhosglscrewneg0')
-         do f = 1_pInt, Nchunks_SlipFamilies
-           rhoSglScrewNeg0(f,instance) = IO_floatValue(line,chunkPos,1_pInt+f)
-         enddo
-       case ('rhodipedge0')
-         do f = 1_pInt, Nchunks_SlipFamilies
-           rhoDipEdge0(f,instance) = IO_floatValue(line,chunkPos,1_pInt+f)
-         enddo
-       case ('rhodipscrew0')
-         do f = 1_pInt, Nchunks_SlipFamilies
-           rhoDipScrew0(f,instance) = IO_floatValue(line,chunkPos,1_pInt+f)
-         enddo
        case ('lambda0')
          do f = 1_pInt, Nchunks_SlipFamilies
            lambda0PerSlipFamily(f,instance) = IO_floatValue(line,chunkPos,1_pInt+f)
@@ -437,21 +399,8 @@ allocate(lambda0PerSlipFamily(lattice_maxNslipFamily,maxNinstances),           s
       call IO_error(211_pInt,ext_msg='Nslip ('//PLASTICITY_NONLOCAL_label//')')
     do f = 1_pInt,lattice_maxNslipFamily
       if (Nslip(f,instance) > 0_pInt) then
-        if (rhoSglEdgePos0(f,instance) < 0.0_pReal) &
-          call IO_error(211_pInt,ext_msg='rhoSglEdgePos0 ('//PLASTICITY_NONLOCAL_label//')')
-        if (rhoSglEdgeNeg0(f,instance) < 0.0_pReal) &
-          call IO_error(211_pInt,ext_msg='rhoSglEdgeNeg0 ('//PLASTICITY_NONLOCAL_label//')')
-        if (rhoSglScrewPos0(f,instance) < 0.0_pReal) &
-          call IO_error(211_pInt,ext_msg='rhoSglScrewPos0 ('//PLASTICITY_NONLOCAL_label//')')
-        if (rhoSglScrewNeg0(f,instance) < 0.0_pReal) &
-          call IO_error(211_pInt,ext_msg='rhoSglScrewNeg0 ('//PLASTICITY_NONLOCAL_label//')')
-        if (rhoDipEdge0(f,instance) < 0.0_pReal) &
-          call IO_error(211_pInt,ext_msg='rhoDipEdge0 ('//PLASTICITY_NONLOCAL_label//')')
-        if (rhoDipScrew0(f,instance) < 0.0_pReal) &
-          call IO_error(211_pInt,ext_msg='rhoDipScrew0 ('//PLASTICITY_NONLOCAL_label//')')
         if (lambda0PerSlipFamily(f,instance) <= 0.0_pReal) &
           call IO_error(211_pInt,ext_msg='lambda0 ('//PLASTICITY_NONLOCAL_label//')')
-
       endif
     enddo
     if (rhoSglScatter(instance) < 0.0_pReal) &
@@ -622,17 +571,7 @@ allocate(colinearSystem(maxTotalNslip,maxNinstances),                           
        enddo
 
      enddo
-   
      
-     !*** combined projection of Schmid and non-Schmid contributions to the resolved shear stress (only for screws)
-     !* four types t: 
-     !*   1) positive screw at positive resolved stress
-     !*   2) positive screw at negative resolved stress
-     !*   3) negative screw at positive resolved stress
-     !*   4) negative screw at negative resolved stress
-     
-
-     call plastic_nonlocal_aTolState(phase,instance)
    endif myPhase2
    
  enddo initializeInstances
@@ -793,6 +732,20 @@ extmsg = trim(extmsg)//' surfaceTransmissivity'
 !        if (peierlsStressPerSlipFamily(f,2,instance) <= 0.0_pReal) &
 !          call IO_error(211_pInt,ext_msg='peierlsStressScrew ('//PLASTICITY_NONLOCAL_label//')')
 
+
+!        if (rhoSglEdgePos0(f,instance) < 0.0_pReal) &
+!          call IO_error(211_pInt,ext_msg='rhoSglEdgePos0 ('//PLASTICITY_NONLOCAL_label//')')
+!        if (rhoSglEdgeNeg0(f,instance) < 0.0_pReal) &
+!          call IO_error(211_pInt,ext_msg='rhoSglEdgeNeg0 ('//PLASTICITY_NONLOCAL_label//')')
+!        if (rhoSglScrewPos0(f,instance) < 0.0_pReal) &
+!          call IO_error(211_pInt,ext_msg='rhoSglScrewPos0 ('//PLASTICITY_NONLOCAL_label//')')
+!        if (rhoSglScrewNeg0(f,instance) < 0.0_pReal) &
+!          call IO_error(211_pInt,ext_msg='rhoSglScrewNeg0 ('//PLASTICITY_NONLOCAL_label//')')
+!        if (rhoDipEdge0(f,instance) < 0.0_pReal) &
+!          call IO_error(211_pInt,ext_msg='rhoDipEdge0 ('//PLASTICITY_NONLOCAL_label//')')
+!        if (rhoDipScrew0(f,instance) < 0.0_pReal) &
+!          call IO_error(211_pInt,ext_msg='rhoDipScrew0 ('//PLASTICITY_NONLOCAL_label//')')
+          
    outputs = config_phase(p)%getStrings('(output)',defaultVal=emptyStringArray)
    allocate(prm%outputID(0))
    do i=1_pInt, size(outputs)
@@ -976,151 +929,99 @@ plasticState(p)%aTolState(iGamma(1:ns,instance))  = prm%aTolShear
   end associate
   
 
-  
+  if (NofMyPhase > 0_pInt) call stateInit(p,NofMyPhase)
+  plasticState(p)%state0 = plasticState(p)%state
    enddo
+   
+   contains
+
+subroutine stateInit(phase,NofMyPhase)
+ use math, only: &
+   math_sampleGaussVar
+ use mesh, only: &
+   theMesh, &
+   mesh_ipVolume
+ use material, only: &
+   material_phase, &
+   phase_plasticityInstance, &
+   phasememberAt
+    implicit none
+    
+ integer(pInt),intent(in) ::&
+   phase, &
+   NofMyPhase
+ integer(pInt) :: &
+   e, &
+   i, &
+   f, &
+   from, &
+   upto, &
+   s, &
+   instance, &
+   phasemember
+ real(pReal), dimension(2) :: &
+   noise, &
+   rnd   
+ real(pReal) :: &
+   meanDensity, &
+   totalVolume, &
+   densityBinning, &
+   minimumIpVolume
+ real(pReal), dimension(NofMyPhase) :: &
+   volume
+
+
+ instance = phase_plasticityInstance(phase)
+ associate(prm => param(instance), stt => state(instance))
+
+ ! randomly distribute dislocation segments on random slip system and of random type in the volume 
+ if (prm%rhoSglRandom > 0.0_pReal) then
+
+  ! get the total volume of the instance
+  do e = 1_pInt,theMesh%nElems
+    do i = 1_pInt,theMesh%elem%nIPs
+      if (material_phase(1,i,e) == phase) volume(phasememberAt(1,i,e)) = mesh_ipVolume(i,e)
+    enddo
+  enddo
+  totalVolume = sum(volume)
+  minimumIPVolume = minval(volume)
+  densityBinning = prm%rhoSglRandomBinning / minimumIpVolume ** (2.0_pReal / 3.0_pReal)
+
+  ! subsequently fill random ips with dislocation segments until we reach the desired overall density
+  meanDensity = 0.0_pReal
+  do while(meanDensity < prm%rhoSglRandom)
+    call random_number(rnd)
+    phasemember = nint(rnd(1)*real(NofMyPhase,pReal) + 0.5_pReal,pInt)
+    s           = nint(rnd(2)*real(prm%totalNslip,pReal)*4.0_pReal + 0.5_pReal,pInt)
+    meanDensity = meanDensity + densityBinning * volume(phasemember) / totalVolume
+    stt%rhoSglMobile(s,phasemember) = densityBinning
+  enddo
+ ! homogeneous distribution of density with some noise
+ else
+   do e = 1_pInt, NofMyPhase
+     do f = 1_pInt,size(prm%Nslip,1)
+       from = 1_pInt + sum(prm%Nslip(1:f-1_pInt))
+       upto = sum(prm%Nslip(1:f))
+       do s = from,upto
+         noise = [math_sampleGaussVar(0.0_pReal, prm%rhoSglScatter), &
+                  math_sampleGaussVar(0.0_pReal, prm%rhoSglScatter)]
+         stt%rhoSglEdgeMobilePos(s,e)  = prm%rhoSglEdgePos0(f)  + noise(1)
+         stt%rhoSglEdgeMobileNeg(s,e)  = prm%rhoSglEdgeNeg0(f)  + noise(1)
+         stt%rhoSglScrewMobilePos(s,e) = prm%rhoSglScrewPos0(f) + noise(2)
+         stt%rhoSglScrewMobileNeg(s,e) = prm%rhoSglScrewNeg0(f) + noise(2)
+       enddo
+       stt%rhoDipEdge(from:upto,e)     = prm%rhoDipEdge0(f)
+       stt%rhoDipScrew(from:upto,e)    = prm%rhoDipScrew0(f)
+     enddo
+   enddo
+  endif
+  
+  end associate
+
+end subroutine stateInit
 
 end subroutine plastic_nonlocal_init
 
-!--------------------------------------------------------------------------------------------------
-!> @brief sets the initial microstructural state for a given instance of this plasticity
-!--------------------------------------------------------------------------------------------------
-
-subroutine plastic_nonlocal_stateInit()
-use IO,       only: IO_error
-use lattice,  only: lattice_maxNslipFamily
-use math,     only: math_sampleGaussVar
-use mesh,     only: mesh_ipVolume, &
-                    theMesh
-use material, only: material_phase, &
-                    phase_plasticityInstance, &
-                    plasticState, &
-                    phaseAt, phasememberAt, &
-                    phase_plasticity ,&
-                    PLASTICITY_NONLOCAL_ID
-implicit none
-
-integer(pInt)        ::       e, &
-                              i, &
-                              ns, &                           ! short notation for total number of active slip systems 
-                              f, &                            ! index of lattice family
-                              from, &
-                              upto, &
-                              s, &                            ! index of slip system
-                              t, &
-                              j, &
-                              instance, &
-                              maxNinstances
-real(pReal), dimension(2) ::  noise
-real(pReal), dimension(4) ::  rnd   
-real(pReal)                   meanDensity, &
-                              totalVolume, &
-                              densityBinning, &
-                              minimumIpVolume
-
-maxNinstances = int(count(phase_plasticity == PLASTICITY_NONLOCAL_ID),pInt)
-
-do instance = 1_pInt,maxNinstances
-  ns = totalNslip(instance)
-
-  ! randomly distribute dislocation segments on random slip system and of random type in the volume 
-  if (rhoSglRandom(instance) > 0.0_pReal) then
-
-    ! get the total volume of the instance
-
-    minimumIpVolume = huge(1.0_pReal)
-    totalVolume = 0.0_pReal
-    do e = 1_pInt,theMesh%nElems
-      do i = 1_pInt,theMesh%elem%nIPs
-        if (PLASTICITY_NONLOCAL_ID == phase_plasticity(material_phase(1,i,e)) &
-            .and. instance == phase_plasticityInstance(material_phase(1,i,e))) then
-          totalVolume = totalVolume + mesh_ipVolume(i,e)
-          minimumIpVolume = min(minimumIpVolume, mesh_ipVolume(i,e))
-        endif
-      enddo
-    enddo
-    densityBinning = rhoSglRandomBinning(instance) / minimumIpVolume ** (2.0_pReal / 3.0_pReal)
-
-    ! subsequently fill random ips with dislocation segments until we reach the desired overall density
-
-    meanDensity = 0.0_pReal
-    do while(meanDensity < rhoSglRandom(instance))
-      call random_number(rnd)
-      e = nint(rnd(1)*real(theMesh%nElems,pReal)+0.5_pReal,pInt)
-      i = nint(rnd(2)*real(theMesh%elem%nIPs,pReal)+0.5_pReal,pInt)
-      if (PLASTICITY_NONLOCAL_ID == phase_plasticity(material_phase(1,i,e)) &
-          .and. instance == phase_plasticityInstance(material_phase(1,i,e))) then
-        s = nint(rnd(3)*real(ns,pReal)+0.5_pReal,pInt)
-        t = nint(rnd(4)*4.0_pReal+0.5_pReal,pInt)
-        meanDensity = meanDensity + densityBinning * mesh_ipVolume(i,e) / totalVolume
-        plasticState(phaseAt(1,i,e))%state0(iRhoU(s,t,instance),phaseAt(1,i,e)) = &
-        plasticState(phaseAt(1,i,e))%state0(iRhoU(s,t,instance),phaseAt(1,i,e)) &
-        + densityBinning
-      endif
-    enddo
-  ! homogeneous distribution of density with some noise
-  else
-    do e = 1_pInt,theMesh%nElems
-      do i = 1_pInt,theMesh%elem%nIPs
-        if (PLASTICITY_NONLOCAL_ID == phase_plasticity(material_phase(1,i,e)) &
-            .and. instance == phase_plasticityInstance(material_phase(1,i,e))) then
-          do f = 1_pInt,lattice_maxNslipFamily
-            from = 1_pInt + sum(Nslip(1:f-1_pInt,instance))
-            upto = sum(Nslip(1:f,instance))
-            do s = from,upto
-              do j = 1_pInt,2_pInt
-                noise(j) = math_sampleGaussVar(0.0_pReal, rhoSglScatter(instance))
-              enddo
-              plasticState(phaseAt(1,i,e))%state0(iRhoU(s,1,instance),phasememberAt(1,i,e)) = &
-                       rhoSglEdgePos0(f,instance) + noise(1)
-              plasticState(phaseAt(1,i,e))%state0(iRhoU(s,2,instance),phasememberAt(1,i,e)) = &
-                       rhoSglEdgeNeg0(f,instance) + noise(1)
-              plasticState(phaseAt(1,i,e))%state0(iRhoU(s,3,instance),phasememberAt(1,i,e)) = &
-                       rhoSglScrewPos0(f,instance) + noise(2)
-              plasticState(phaseAt(1,i,e))%state0(iRhoU(s,4,instance),phasememberAt(1,i,e)) = &
-                       rhoSglScrewNeg0(f,instance) + noise(2)
-            enddo
-            plasticState(phaseAt(1,i,e))%state0(iRhoD(from:upto,1,instance),phasememberAt(1,i,e)) = &
-              rhoDipEdge0(f,instance)
-            plasticState(phaseAt(1,i,e))%state0(iRhoD(from:upto,2,instance),phasememberAt(1,i,e)) = &
-              rhoDipScrew0(f,instance)
-          enddo
-        endif
-      enddo
-    enddo
-  endif
-enddo
-
-end subroutine plastic_nonlocal_stateInit
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief sets the relevant state values for a given instance of this plasticity
-!--------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_aTolState(ph,instance)
- use material, only: &
-   plasticState
-
- implicit none
- integer(pInt), intent(in) :: & 
-   instance, &                                                              !< number specifying the instance of the plasticity
-   ph
- integer(pInt) :: &
-   ns, &
-   t, c
-
-associate (prm => param(instance))
- ns = totalNslip(instance)
- forall (t = 1_pInt:4_pInt)
-   plasticState(ph)%aTolState(iRhoU(1:ns,t,instance)) = prm%aTolRho
-   plasticState(ph)%aTolState(iRhoB(1:ns,t,instance)) = prm%aTolRho
- end forall
- forall (c = 1_pInt:2_pInt) &
-   plasticState(ph)%aTolState(iRhoD(1:ns,c,instance)) = prm%aTolRho
- 
- plasticState(ph)%aTolState(iGamma(1:ns,instance))  = prm%aTolShear
-
-end associate
-end subroutine plastic_nonlocal_aTolState
 
 
 !--------------------------------------------------------------------------------------------------

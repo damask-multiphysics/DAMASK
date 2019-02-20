@@ -150,10 +150,8 @@ subroutine constitutive_init()
  if (any(phase_plasticity == PLASTICITY_KINEHARDENING_ID)) call plastic_kinehardening_init
  if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call plastic_dislotwin_init
  if (any(phase_plasticity == PLASTICITY_DISLOUCLA_ID))     call plastic_disloucla_init
- if (any(phase_plasticity == PLASTICITY_NONLOCAL_ID)) then
-  call plastic_nonlocal_init(FILEUNIT)
-  call plastic_nonlocal_stateInit()
- endif
+ if (any(phase_plasticity == PLASTICITY_NONLOCAL_ID))      call plastic_nonlocal_init(FILEUNIT)
+
 
 !--------------------------------------------------------------------------------------------------
 ! parse source mechanisms from config file
@@ -392,7 +390,7 @@ subroutine constitutive_microstructure(orientations, Fe, Fp, ipc, ip, el)
      instance = phase_plasticityInstance(material_phase(ipc,ip,el))
      call plastic_disloUCLA_dependentState(instance,of)
    case (PLASTICITY_NONLOCAL_ID) plasticityType
-     call plastic_nonlocal_microstructure (Fe,Fp,ip,el)
+     call plastic_nonlocal_dependentState (Fe,Fp,ip,el)
  end select plasticityType
 
 end subroutine constitutive_microstructure
