@@ -779,18 +779,27 @@ ns = param(instance)%totalNslip
        stt%rhoDipScrew => plasticState(p)%state                  (9_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
        dot%rhoDipScrew => plasticState(p)%dotState               (9_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
        del%rhoDipScrew => plasticState(p)%deltaState               (9_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
-plasticState(p)%aTolState(iGamma(1:ns,instance))  = prm%aTolShear
+    
+    s1 = 10_pInt*prm%totalNslip + 1_pInt
+    s2 = s1 + prm%totalNslip - 1_pInt
+
+    stt%accumulatedshear => plasticState(p)%state                         (s1:s2,:)
+    dot%accumulatedshear => plasticState(p)%dotState                      (s1:s2,:)
+    del%accumulatedshear => plasticState(p)%deltaState                    (s1:s2,:)
+    plasticState(p)%aTolState(s1:s2)  = prm%aTolShear
+    plasticState(p)%slipRate => plasticState(p)%dotState(s1:s2,1:NofMyPhase)
+    plasticState(p)%accumulatedSlip => plasticState(p)%state   (s1:s2,1:NofMyPhase)
 
 
    allocate(dst%tau_Threshold(prm%totalNslip,NofMyPhase),source=0.0_pReal)
    allocate(dst%tau_Back(prm%totalNslip,NofMyPhase),source=0.0_pReal)
    
-  allocate(res%rhoDotFlux(prm%totalNslip,8,NofMyPhase))
-  allocate(res%rhoDotMultiplication(prm%totalNslip,2,NofMyPhase))
-  allocate(res%rhoDotSingle2DipoleGlide(prm%totalNslip,2,NofMyPhase))
-  allocate(res%rhoDotAthermalAnnihilation(prm%totalNslip,2,NofMyPhase))
-  allocate(res%rhoDotThermalAnnihilation(prm%totalNslip,2,NofMyPhase))
-  allocate(res%rhoDotEdgeJogs(prm%totalNslip,NofMyPhase))
+  allocate(res%rhoDotFlux(prm%totalNslip,8,NofMyPhase),source=0.0_pReal)
+  allocate(res%rhoDotMultiplication(prm%totalNslip,2,NofMyPhase),source=0.0_pReal)
+  allocate(res%rhoDotSingle2DipoleGlide(prm%totalNslip,2,NofMyPhase),source=0.0_pReal)
+  allocate(res%rhoDotAthermalAnnihilation(prm%totalNslip,2,NofMyPhase),source=0.0_pReal)
+  allocate(res%rhoDotThermalAnnihilation(prm%totalNslip,2,NofMyPhase),source=0.0_pReal)
+  allocate(res%rhoDotEdgeJogs(prm%totalNslip,NofMyPhase),source=0.0_pReal)
   end associate
   
 
