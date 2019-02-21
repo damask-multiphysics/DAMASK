@@ -242,8 +242,11 @@ class Rotation:
       If a quaternion is given, it needs to comply with the convection. Use .fromQuaternion
       to check the input.
       """
-      self.quaternion = Quaternion2(q=quaternion[0],p=quaternion[1:4])
-      self.quaternion.homomorph() # ToDo: Needed?
+      if isinstance(quaternion,Quaternion2):
+        self.quaternion = quaternion.copy()
+      else:
+        self.quaternion = Quaternion2(q=quaternion[0],p=quaternion[1:4])
+        self.quaternion.homomorph() # ToDo: Needed?
 
     def __repr__(self):
       """Value in selected representation"""
@@ -253,6 +256,7 @@ class Rotation:
             'Bunge Eulers / deg: {}'.format('\t'.join(list(map(str,self.asEulers(degrees=True)))) ),
               ])
               
+
     ################################################################################################
     # convert to different orientation representations (numpy arrays)
 
@@ -261,7 +265,11 @@ class Rotation:
       
     def asEulers(self,
                  degrees = False):
-      return np.degrees(qu2eu(self.quaternion.asArray())) if degrees else qu2eu(self.quaternion.asArray())
+
+      eu = qu2eu(self.quaternion.asArray())
+      if degrees: eu = np.degrees(eu)
+
+      return eu
     
     def asAngleAxis(self,
                     degrees = False):
@@ -370,7 +378,7 @@ class Rotation:
       """
       Multiplication
       
-      Rotation: Details needed (active/passive), more rotation of (3,3,3,3) should be considered
+      Rotation: Details needed (active/passive), rotation of (3,3,3,3)-matrix should be considered
       """
       if isinstance(other, Rotation):                                                               # rotate a rotation
         return self.__class__((self.quaternion * other.quaternion).asArray())
@@ -416,7 +424,12 @@ class Rotation:
       
     def inversed(self):
       """In-place inverse rotation/backward rotation"""
-      return self.__class__(self.quaternion.conjugated().asArray())
+      return self.__class__(self.quaternion.conjugated())
+
+
+    def misorientation(self,other):
+      """Misorientation"""
+      return self.__class__(other.quaternion*self.quaternion.conjugated())
 
 
 # ******************************************************************************************
@@ -810,11 +823,15 @@ class Quaternion:
 
 # ******************************************************************************************
 class Symmetry:
+  """
+  Symmetry operations for lattice systems
+  
+  https://en.wikipedia.org/wiki/Crystal_system
+  """
 
   lattices = [None,'orthorhombic','tetragonal','hexagonal','cubic',]
 
   def __init__(self, symmetry = None):
-    """Lattice with given symmetry, defaults to None"""
     if isinstance(symmetry, str) and symmetry.lower() in Symmetry.lattices:
       self.lattice = symmetry.lower()
     else:
@@ -927,25 +944,29 @@ class Symmetry:
 
   def inFZ(self,R):
     """Check whether given Rodrigues vector falls into fundamental zone of own symmetry."""
-    if isinstance(R, Quaternion): R = R.asRodrigues()                                               # translate accidentally passed quaternion
 # fundamental zone in Rodrigues space is point symmetric around origin
-    R = abs(R)                                                                                      
+   
+    if R.shape[0]==4: # transition old (length not stored separately) to new
+      Rabs = abs(R[0:3]*R[3])
+    else:
+      Rabs = abs(R)
+
     if self.lattice == 'cubic':
-      return     math.sqrt(2.0)-1.0 >= R[0] \
-             and math.sqrt(2.0)-1.0 >= R[1] \
-             and math.sqrt(2.0)-1.0 >= R[2] \
-             and 1.0 >= R[0] + R[1] + R[2]
+      return     math.sqrt(2.0)-1.0 >= Rabs[0] \
+             and math.sqrt(2.0)-1.0 >= Rabs[1] \
+             and math.sqrt(2.0)-1.0 >= Rabs[2] \
+             and 1.0 >= Rabs[0] + Rabs[1] + Rabs[2]
     elif self.lattice == 'hexagonal':
-      return     1.0 >= R[0] and 1.0 >= R[1] and 1.0 >= R[2] \
-             and 2.0 >= math.sqrt(3)*R[0] + R[1] \
-             and 2.0 >= math.sqrt(3)*R[1] + R[0] \
-             and 2.0 >= math.sqrt(3) + R[2]
+      return     1.0 >= Rabs[0] and 1.0 >= Rabs[1] and 1.0 >= Rabs[2] \
+             and 2.0 >= math.sqrt(3)*Rabs[0] + Rabs[1] \
+             and 2.0 >= math.sqrt(3)*Rabs[1] + Rabs[0] \
+             and 2.0 >= math.sqrt(3) + Rabs[2]
     elif self.lattice == 'tetragonal':
-      return     1.0 >= R[0] and 1.0 >= R[1] \
-             and math.sqrt(2.0) >= R[0] + R[1] \
-             and math.sqrt(2.0) >= R[2] + 1.0
+      return     1.0 >= Rabs[0] and 1.0 >= Rabs[1] \
+             and math.sqrt(2.0) >= Rabs[0] + Rabs[1] \
+             and math.sqrt(2.0) >= Rabs[2] + 1.0
     elif self.lattice == 'orthorhombic':
-      return     1.0 >= R[0] and 1.0 >= R[1] and 1.0 >= R[2]
+      return     1.0 >= Rabs[0] and 1.0 >= Rabs[1] and 1.0 >= Rabs[2]
     else:
       return True
 
@@ -1067,6 +1088,373 @@ class Symmetry:
 # suggested reading: http://web.mit.edu/2.998/www/QuaternionReport1.pdf
 
 
+# ******************************************************************************************
+class Lattice:
+  """
+  Lattice system
+  
+  Currently, this contains only a mapping from Bravais lattice to symmetry
+  and orientation relationships. It could include twin and slip systems.
+  https://en.wikipedia.org/wiki/Bravais_lattice
+  """
+
+  lattices = {
+              'triclinic':{'symmetry':None},
+              'bct':{'symmetry':'tetragonal'},
+              'hex':{'symmetry':'hexagonal'},
+              'fcc':{'symmetry':'cubic','c/a':1.0},
+              'bcc':{'symmetry':'cubic','c/a':1.0},
+             }
+
+
+  def __init__(self, lattice):
+    self.lattice  = lattice
+    self.symmetry = Symmetry(self.lattices[lattice]['symmetry'])
+    
+    
+  def __repr__(self):
+    """Report basic lattice information"""
+    return 'Bravais lattice {} ({} symmetry)'.format(self.lattice,self.symmetry)
+    
+    
+  # Kurdjomov--Sachs orientation relationship for fcc <-> bcc transformation
+  # from S. Morito et al./Journal of Alloys and Compounds 5775 (2013) S587-S592
+  # also see K. Kitahara et al./Acta Materialia 54 (2006) 1279-1288
+  KS = {'mapping':{'fcc':0,'bcc':1},
+      'planes': np.array([
+      [[  1,  1,  1],[  0,  1,  1]],
+      [[  1,  1,  1],[  0,  1,  1]],
+      [[  1,  1,  1],[  0,  1,  1]],
+      [[  1,  1,  1],[  0,  1,  1]],
+      [[  1,  1,  1],[  0,  1,  1]],
+      [[  1,  1,  1],[  0,  1,  1]],
+      [[  1, -1,  1],[  0,  1,  1]],
+      [[  1, -1,  1],[  0,  1,  1]],
+      [[  1, -1,  1],[  0,  1,  1]],
+      [[  1, -1,  1],[  0,  1,  1]],
+      [[  1, -1,  1],[  0,  1,  1]],
+      [[  1, -1,  1],[  0,  1,  1]],
+      [[ -1,  1,  1],[  0,  1,  1]],
+      [[ -1,  1,  1],[  0,  1,  1]],
+      [[ -1,  1,  1],[  0,  1,  1]],
+      [[ -1,  1,  1],[  0,  1,  1]],
+      [[ -1,  1,  1],[  0,  1,  1]],
+      [[ -1,  1,  1],[  0,  1,  1]],
+      [[  1,  1, -1],[  0,  1,  1]],
+      [[  1,  1, -1],[  0,  1,  1]],
+      [[  1,  1, -1],[  0,  1,  1]],
+      [[  1,  1, -1],[  0,  1,  1]],
+      [[  1,  1, -1],[  0,  1,  1]],
+      [[  1,  1, -1],[  0,  1,  1]]],dtype='float'),
+      'directions': np.array([     
+      [[ -1,  0,  1],[ -1, -1,  1]],
+      [[ -1,  0,  1],[ -1,  1, -1]],
+      [[  0,  1, -1],[ -1, -1,  1]],
+      [[  0,  1, -1],[ -1,  1, -1]],
+      [[  1, -1,  0],[ -1, -1,  1]],
+      [[  1, -1,  0],[ -1,  1, -1]],
+      [[  1,  0, -1],[ -1, -1,  1]],
+      [[  1,  0, -1],[ -1,  1, -1]],
+      [[ -1, -1,  0],[ -1, -1,  1]],
+      [[ -1, -1,  0],[ -1,  1, -1]],
+      [[  0,  1,  1],[ -1, -1,  1]],
+      [[  0,  1,  1],[ -1,  1, -1]],
+      [[  0, -1,  1],[ -1, -1,  1]],
+      [[  0, -1,  1],[ -1,  1, -1]],
+      [[ -1,  0, -1],[ -1, -1,  1]],
+      [[ -1,  0, -1],[ -1,  1, -1]],
+      [[  1,  1,  0],[ -1, -1,  1]],
+      [[  1,  1,  0],[ -1,  1, -1]],
+      [[ -1,  1,  0],[ -1, -1,  1]],
+      [[ -1,  1,  0],[ -1,  1, -1]],
+      [[  0, -1, -1],[ -1, -1,  1]],
+      [[  0, -1, -1],[ -1,  1, -1]],
+      [[  1,  0,  1],[ -1, -1,  1]],
+      [[  1,  0,  1],[ -1,  1, -1]]],dtype='float')}
+      
+  # Greninger--Troiano orientation relationship for fcc <-> bcc transformation
+  # from Y. He et al./Journal of Applied Crystallography (2006). 39, 72-81
+  GT = {'mapping':{'fcc':0,'bcc':1},
+      'planes': np.array([
+                              [[  1,  1,  1],[  1,  0,  1]],
+                              [[  1,  1,  1],[  1,  1,  0]],
+                              [[  1,  1,  1],[  0,  1,  1]],
+                              [[ -1, -1,  1],[ -1,  0,  1]],
+                              [[ -1, -1,  1],[ -1, -1,  0]],
+                              [[ -1, -1,  1],[  0, -1,  1]],
+                              [[ -1,  1,  1],[ -1,  0,  1]],
+                              [[ -1,  1,  1],[ -1,  1,  0]],
+                              [[ -1,  1,  1],[  0,  1,  1]],
+                              [[  1, -1,  1],[  1,  0,  1]],
+                              [[  1, -1,  1],[  1, -1,  0]],
+                              [[  1, -1,  1],[  0, -1,  1]],
+                              [[  1,  1,  1],[  1,  1,  0]],
+                              [[  1,  1,  1],[  0,  1,  1]],
+                              [[  1,  1,  1],[  1,  0,  1]],
+                              [[ -1, -1,  1],[ -1, -1,  0]],
+                              [[ -1, -1,  1],[  0, -1,  1]],
+                              [[ -1, -1,  1],[ -1,  0,  1]],
+                              [[ -1,  1,  1],[ -1,  1,  0]],
+                              [[ -1,  1,  1],[  0,  1,  1]],
+                              [[ -1,  1,  1],[ -1,  0,  1]],
+                              [[  1, -1,  1],[  1, -1,  0]],
+                              [[  1, -1,  1],[  0, -1,  1]],
+                              [[  1, -1,  1],[  1,  0,  1]]],dtype='float'),
+      'directions': np.array([
+                              [[ -5,-12, 17],[-17, -7, 17]],
+                              [[ 17, -5,-12],[ 17,-17, -7]],
+                              [[-12, 17, -5],[ -7, 17,-17]],
+                              [[  5, 12, 17],[ 17,  7, 17]],
+                              [[-17,  5,-12],[-17, 17, -7]],
+                              [[ 12,-17, -5],[  7,-17,-17]],
+                              [[ -5, 12,-17],[-17,  7,-17]],
+                              [[ 17,  5, 12],[ 17, 17,  7]],
+                              [[-12,-17,  5],[ -7,-17, 17]],
+                              [[  5,-12,-17],[ 17, -7,-17]],
+                              [[-17, -5, 12],[-17,-17,  7]],
+                              [[ 12, 17,  5],[  7, 17, 17]],
+                              [[ -5, 17,-12],[-17, 17, -7]],
+                              [[-12, -5, 17],[ -7,-17, 17]],
+                              [[ 17,-12, -5],[ 17, -7,-17]],
+                              [[  5,-17,-12],[ 17,-17, -7]],
+                              [[ 12,  5, 17],[  7, 17, 17]],
+                              [[-17, 12, -5],[-17,  7,-17]],
+                              [[ -5,-17, 12],[-17,-17,  7]],
+                              [[-12,  5,-17],[ -7, 17,-17]],
+                              [[ 17, 12,  5],[ 17,  7, 17]],
+                              [[  5, 17, 12],[ 17, 17,  7]],
+                              [[ 12, -5,-17],[  7,-17,-17]],
+                              [[-17,-12,  5],[-17,  7, 17]]],dtype='float')}
+ 
+  # Greninger--Troiano' orientation relationship for fcc <-> bcc transformation
+  # from Y. He et al./Journal of Applied Crystallography (2006). 39, 72-81
+  GTdash = {'mapping':{'fcc':0,'bcc':1},
+      'planes': np.array([
+                              [[  7, 17, 17],[ 12,  5, 17]],
+                              [[ 17,  7, 17],[ 17, 12,  5]],
+                              [[ 17, 17,  7],[  5, 17, 12]],
+                              [[ -7,-17, 17],[-12, -5, 17]],
+                              [[-17, -7, 17],[-17,-12,  5]],
+                              [[-17,-17,  7],[ -5,-17, 12]],
+                              [[  7,-17,-17],[ 12, -5,-17]],
+                              [[ 17, -7,-17],[ 17,-12, -5]],
+                              [[ 17,-17, -7],[  5,-17,-12]],
+                              [[ -7, 17,-17],[-12,  5,-17]],
+                              [[-17,  7,-17],[-17, 12, -5]],
+                              [[-17, 17, -7],[ -5, 17,-12]],
+                              [[  7, 17, 17],[ 12, 17,  5]],
+                              [[ 17,  7, 17],[  5, 12, 17]],
+                              [[ 17, 17,  7],[ 17,  5, 12]],
+                              [[ -7,-17, 17],[-12,-17,  5]],
+                              [[-17, -7, 17],[ -5,-12, 17]],
+                              [[-17,-17,  7],[-17, -5, 12]],
+                              [[  7,-17,-17],[ 12,-17, -5]],
+                              [[ 17, -7,-17],[ 5, -12,-17]],
+                              [[ 17,-17,  7],[ 17, -5,-12]],
+                              [[ -7, 17,-17],[-12, 17, -5]],
+                              [[-17,  7,-17],[ -5, 12,-17]],
+                              [[-17, 17, -7],[-17,  5,-12]]],dtype='float'),
+      'directions': np.array([
+                              [[  0,  1, -1],[  1,  1, -1]],
+                              [[ -1,  0,  1],[ -1,  1,  1]],
+                              [[  1, -1,  0],[  1, -1,  1]],
+                              [[  0, -1, -1],[ -1, -1, -1]],
+                              [[  1,  0,  1],[  1, -1,  1]],
+                              [[  1, -1,  0],[  1, -1, -1]],
+                              [[  0,  1, -1],[ -1,  1, -1]],
+                              [[  1,  0,  1],[  1,  1,  1]],
+                              [[ -1, -1,  0],[ -1, -1,  1]],
+                              [[  0, -1, -1],[  1, -1, -1]],
+                              [[ -1,  0,  1],[ -1, -1,  1]],
+                              [[ -1, -1,  0],[ -1, -1, -1]],
+                              [[  0, -1,  1],[  1, -1,  1]],
+                              [[  1,  0, -1],[  1,  1, -1]],
+                              [[ -1,  1,  0],[ -1,  1,  1]],
+                              [[  0,  1,  1],[ -1,  1,  1]],
+                              [[ -1,  0, -1],[ -1, -1, -1]],
+                              [[ -1,  1,  0],[ -1,  1, -1]],
+                              [[  0, -1,  1],[ -1, -1,  1]],
+                              [[ -1,  0, -1],[ -1,  1, -1]],
+                              [[  1,  1,  0],[  1,  1,  1]],
+                              [[  0,  1,  1],[  1,  1,  1]],
+                              [[  1,  0, -1],[  1, -1, -1]],
+                              [[  1,  1,  0],[  1,  1, -1]]],dtype='float')}
+    
+  # Nishiyama--Wassermann orientation relationship for fcc <-> bcc transformation
+  # from H. Kitahara et al./Materials Characterization 54 (2005) 378-386
+  NW = {'mapping':{'fcc':0,'bcc':1},
+      'planes': np.array([
+                              [[  1,  1,  1],[  0,  1,  1]],
+                              [[  1,  1,  1],[  0,  1,  1]],
+                              [[  1,  1,  1],[  0,  1,  1]],
+                              [[ -1,  1,  1],[  0,  1,  1]],
+                              [[ -1,  1,  1],[  0,  1,  1]],
+                              [[ -1,  1,  1],[  0,  1,  1]],
+                              [[  1, -1,  1],[  0,  1,  1]],
+                              [[  1, -1,  1],[  0,  1,  1]],
+                              [[  1, -1,  1],[  0,  1,  1]],
+                              [[ -1, -1,  1],[  0,  1,  1]],
+                              [[ -1, -1,  1],[  0,  1,  1]],
+                              [[ -1, -1,  1],[  0,  1,  1]]],dtype='float'),
+      'directions': np.array([
+                              [[  2, -1, -1],[  0, -1,  1]],
+                              [[ -1,  2, -1],[  0, -1,  1]],
+                              [[ -1, -1,  2],[  0, -1,  1]],
+                              [[ -2, -1, -1],[  0, -1,  1]],
+                              [[  1,  2, -1],[  0, -1,  1]],
+                              [[  1, -1,  2],[  0, -1,  1]],
+                              [[  2,  1, -1],[  0, -1,  1]],
+                              [[ -1, -2, -1],[  0, -1,  1]],
+                              [[ -1,  1,  2],[  0, -1,  1]],
+                              [[ -1,  2,  1],[  0, -1,  1]],
+                              [[ -1,  2,  1],[  0, -1,  1]],
+                              [[ -1, -1, -2],[  0, -1,  1]]],dtype='float')}
+               
+  # Pitsch orientation relationship for fcc <-> bcc transformation              
+  # from Y. He et al./Acta Materialia 53 (2005) 1179-1190               
+  Pitsch = {'mapping':{'fcc':0,'bcc':1},
+      'planes': np.array([
+                              [[  0,  1,  0],[ -1,  0,  1]],
+                              [[  0,  0,  1],[  1, -1,  0]],
+                              [[  1,  0,  0],[  0,  1, -1]],
+                              [[  1,  0,  0],[  0, -1, -1]],
+                              [[  0,  1,  0],[ -1,  0, -1]],
+                              [[  0,  0,  1],[ -1, -1,  0]],
+                              [[  0,  1,  0],[ -1,  0, -1]],
+                              [[  0,  0,  1],[ -1, -1,  0]],
+                              [[  1,  0,  0],[  0, -1, -1]],
+                              [[  1,  0,  0],[  0, -1,  1]],
+                              [[  0,  1,  0],[  1,  0, -1]],
+                              [[  0,  0,  1],[ -1,  1,  0]]],dtype='float'),
+      'directions': np.array([
+                              [[  1,  0,  1],[  1, -1,  1]],
+                              [[  1,  1,  0],[  1,  1, -1]],
+                              [[  0,  1,  1],[ -1,  1,  1]],
+                              [[  0,  1, -1],[ -1,  1, -1]],
+                              [[ -1,  0,  1],[ -1, -1,  1]],
+                              [[  1, -1,  0],[  1, -1, -1]],
+                              [[  1,  0, -1],[  1, -1, -1]],
+                              [[ -1,  1,  0],[ -1,  1, -1]],
+                              [[  0, -1,  1],[ -1, -1,  1]],
+                              [[  0,  1,  1],[ -1,  1,  1]],
+                              [[  1,  0,  1],[  1, -1,  1]],
+                              [[  1,  1,  0],[  1,  1, -1]]],dtype='float')}
+                              
+  # Bain orientation relationship for fcc <-> bcc transformation                        
+  # from Y. He et al./Journal of Applied Crystallography (2006). 39, 72-81
+  Bain = {'mapping':{'fcc':0,'bcc':1},
+      'planes': np.array([
+                              [[  1,  0,  0],[  1,  0,  0]],
+                              [[  0,  1,  0],[  0,  1,  0]],
+                              [[  0,  0,  1],[  0,  0,  1]]],dtype='float'),
+      'directions': np.array([
+                              [[  0,  1,  0],[  0,  1,  1]],
+                              [[  0,  0,  1],[  1,  0,  1]],
+                              [[  1,  0,  0],[  1,  1,  0]]],dtype='float')}
+  
+  def relationOperations(self,model):
+    
+    models={'KS':self.KS, 'GT':self.GT, "GT'":self.GTdash, 
+            'NW':self.NW, 'Pitsch': self.Pitsch, 'Bain':self.Bain}
+
+    relationship = models[model]
+
+    r = {'lattice':Lattice((set(relationship['mapping'])-{self.lattice}).pop()),
+         'rotations':[] }
+
+    myPlane_id    = relationship['mapping'][self.lattice]
+    otherPlane_id = (myPlane_id+1)%2
+    myDir_id      = myPlane_id +2
+    otherDir_id   = otherPlane_id +2
+    for miller in np.hstack((relationship['planes'],relationship['directions'])):
+      myPlane    = miller[myPlane_id]/    np.linalg.norm(miller[myPlane_id])
+      myDir      = miller[myDir_id]/      np.linalg.norm(miller[myDir_id])
+      otherPlane = miller[otherPlane_id]/ np.linalg.norm(miller[otherPlane_id])
+      otherDir   = miller[otherDir_id]/   np.linalg.norm(miller[otherDir_id])
+      
+      myMatrix     = np.array([myDir,np.cross(myPlane,myDir),myPlane]).T
+      otherMatrix  = np.array([otherDir,np.cross(otherPlane,otherDir),otherPlane]).T
+      r['rotations'].append(Rotation.fromMatrix(np.dot(otherMatrix,myMatrix.T)))
+    return r
+
+
+
+class Orientation2:
+  """
+  Crystallographic orientation
+  
+  A crystallographic orientation contains a rotation and a lattice
+  """
+
+  __slots__ = ['rotation','lattice']
+  
+  def __repr__(self):
+    """Report lattice type and orientation"""
+    return self.lattice.__repr__()+'\n'+self.rotation.__repr__()
+
+  def __init__(self, rotation, lattice):
+  
+    if isinstance(lattice, Lattice):
+      self.lattice = lattice
+    else:
+      self.lattice = Lattice(lattice)      # assume string
+      
+    if isinstance(rotation, Rotation):
+      self.rotation = rotation
+    else:
+      self.rotation = Rotation(rotation)   # assume quaternion
+      
+  def disorientation(self,
+                     other,
+                     SST = True):
+    """
+    Disorientation between myself and given other orientation.
+
+    Rotation axis falls into SST if SST == True.
+    (Currently requires same symmetry for both orientations.
+     Look into A. Heinz and P. Neumann 1991 for cases with differing sym.)
+    """
+    #if self.lattice.symmetry != other.lattice.symmetry:
+    #  raise NotImplementedError('disorientation between different symmetry classes not supported yet.')
+
+    mis = other.rotation*self.rotation.inversed()
+    mySymEqs    =  self.equivalentOrientations() if SST else self.equivalentOrientations()[:1]       # take all or only first sym operation
+    otherSymEqs = other.equivalentOrientations()
+    
+    for i,sA in enumerate(mySymEqs):
+      for j,sB in enumerate(otherSymEqs):
+        theQ = sB.rotation*mis*sA.rotation.inversed()
+        for k in range(2):
+          theQ.inversed()
+          breaker = self.lattice.symmetry.inFZ(theQ.asRodriques()) #and (not SST or other.symmetry.inDisorientationSST(theQ))
+          if breaker: break
+        if breaker: break
+      if breaker: break
+
+# disorientation, own sym, other sym, self-->other: True, self<--other: False
+    return theQ
+
+  def inFZ(self):
+    return self.lattice.symmetry.inFZ(self.rotation.asRodrigues())
+  
+  def equivalentOrientations(self):
+    """List of orientations which are symmetrically equivalent"""
+    q = self.lattice.symmetry.symmetryQuats()
+    q2 = [Quaternion2(q=a.asList()[0],p=a.asList()[1:4]) for a in q] # convert Quaternion to Quaternion2
+    x = [self.__class__(q3*self.rotation.quaternion,self.lattice) for q3 in q2]
+    return x
+    
+  def relatedOrientations(self,model):
+    """List of orientations related by the given orientation relationship"""
+    r = self.lattice.relationOperations(model)
+    return [self.__class__(self.rotation*o,r['lattice']) for o in r['rotations']]
+    
+  def reduced(self):
+    """Transform orientation to fall into fundamental zone according to symmetry"""
+    for me in self.equivalentOrientations():
+      if self.lattice.symmetry.inFZ(me.rotation.asRodrigues()): break
+
+    return self.__class__(me.rotation,self.lattice)
 
 # ******************************************************************************************
 class Orientation:
@@ -1173,7 +1561,8 @@ class Orientation:
     (Currently requires same symmetry for both orientations.
      Look into A. Heinz and P. Neumann 1991 for cases with differing sym.)
     """
-    if self.symmetry != other.symmetry: raise TypeError('disorientation between different symmetry classes not supported yet.')
+    if self.symmetry != other.symmetry:
+      raise NotImplementedError('disorientation between different symmetry classes not supported yet.')
 
     misQ = other.quaternion*self.quaternion.conjugated()
     mySymQs    =  self.symmetry.symmetryQuats() if SST else self.symmetry.symmetryQuats()[:1]       # take all or only first sym operation
@@ -1265,14 +1654,6 @@ class Orientation:
     """
     if relationModel not in ['KS','GT','GTdash','NW','Pitsch','Bain']:  return None
     if int(direction) == 0:  return None
-
-    # KS from S. Morito et al./Journal of Alloys and Compounds 5775 (2013) S587-S592
-    # for KS rotation matrices also check K. Kitahara et al./Acta Materialia 54 (2006) 1279-1288
-    # GT from Y. He et al./Journal of Applied Crystallography (2006). 39, 72-81
-    # GT' from Y. He et al./Journal of Applied Crystallography (2006). 39, 72-81
-    # NW from H. Kitahara et al./Materials Characterization 54 (2005) 378-386
-    # Pitsch from Y. He et al./Acta Materialia 53 (2005) 1179-1190
-    # Bain from Y. He et al./Journal of Applied Crystallography (2006). 39, 72-81
 
     variant  = int(abs(direction))-1
     (me,other)  = (0,1) if direction > 0 else (1,0)
@@ -1789,7 +2170,7 @@ def om2qu(om):
   if om[2,1] < om[1,2]: qu[1] *= -1.0
   if om[0,2] < om[2,0]: qu[2] *= -1.0
   if om[1,0] < om[0,1]: qu[3] *= -1.0
-  if any(om2ax(om)[0:3]*qu[1:4] < 0.0): print(om2ax(om),qu) # something is wrong here
+  if any(om2ax(om)[0:3]*qu[1:4] < 0.0): print('sign problem',om2ax(om),qu) # something is wrong here
   return qu
 
 
