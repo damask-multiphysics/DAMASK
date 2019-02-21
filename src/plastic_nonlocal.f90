@@ -23,9 +23,7 @@ module plastic_nonlocal
  
  integer(pInt), dimension(:,:), allocatable, private :: &
    iGamma, &                                                                                        !< state indices for accumulated shear
-   iRhoF, &                                                                                         !< state indices for forest density
-   iTauF, &                                                                                         !< state indices for critical resolved shear stress
-   iTauB                                                                                            !< state indices for backstress
+   iRhoF                                                                                            !< state indices for forest density
  integer(pInt), dimension(:,:,:), allocatable, private :: &
    iRhoU, &                                                                                         !< state indices for unblocked density
    iRhoB, &                                                                                         !< state indices for blocked density
@@ -162,6 +160,13 @@ module plastic_nonlocal
      outputID                                                                                       !< ID of each post result output
      
  end type tParameters
+  
+   type, private :: tNonlocalMicrostructure
+   real(pReal), allocatable,     dimension(:,:) :: &
+    tau_Threshold, & 
+    tau_Back 
+
+ end type tNonlocalMicrostructure
  
   type, private :: tOutput                                                                       !< container type for storage of output results
   real(pReal), dimension(:,:), allocatable, private :: &
@@ -216,7 +221,7 @@ module plastic_nonlocal
   type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
 
   type(tOutput), dimension(:), allocatable, private :: results
-
+  type(tNonlocalMicrostructure), dimension(:), allocatable, private :: microstructure
  integer(kind(undefined_ID)), dimension(:,:),   allocatable, private :: & 
    plastic_nonlocal_outputID                                                              !< ID of each post result output
  
@@ -303,6 +308,7 @@ subroutine plastic_nonlocal_init
   allocate(state(maxNinstances))
   allocate(dotState(maxNinstances))
   allocate(deltaState(maxNinstances))
+    allocate(microstructure(maxNinstances))
   allocate(results(maxNinstances)) 
 
   allocate(plastic_nonlocal_sizePostResult(maxval(phase_Noutput), maxNinstances), source=0_pInt)
@@ -601,8 +607,7 @@ extmsg = trim(extmsg)//' fEdgeMultiplication'
                                     'rhoDipEdge            ','rhoDipScrew           ', &
                                     'accumulatedshear      ' ]),pInt) * prm%totalNslip              !< "basic" microstructural state variables that are independent from other state variables
                                     
-    sizeDependentState = int(size([ 'rhoForest   ', 'tauThreshold', & 
-                                    'tauBack     ' ]),pInt) * prm%totalNslip                        !< microstructural state variables that depend on other state variables
+    sizeDependentState = int(size([ 'rhoForest   ']),pInt) * prm%totalNslip                         !< microstructural state variables that depend on other state variables
 
     sizeState          = sizeDotState + sizeDependentState &
                        + int(size([ 'velocityEdgePos     ','velocityEdgeNeg     ', & 
@@ -631,8 +636,6 @@ extmsg = trim(extmsg)//' fEdgeMultiplication'
   allocate(iD(maxTotalNslip,2,maxNinstances),    source=0_pInt)
   allocate(iGamma(maxTotalNslip,maxNinstances),  source=0_pInt)
   allocate(iRhoF(maxTotalNslip,maxNinstances),   source=0_pInt)
-  allocate(iTauF(maxTotalNslip,maxNinstances),   source=0_pInt)
-  allocate(iTauB(maxTotalNslip,maxNinstances),   source=0_pInt)
 ! END DEPRECATED------------------------------------------------------------------------------------
 
 allocate(compatibility(2,maxTotalNslip,maxTotalNslip,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), &
@@ -674,14 +677,6 @@ ns = param(instance)%totalNslip
      do s = 1_pInt,ns
        l = l + 1_pInt
        iRhoF(s,instance) = l
-     enddo
-     do s = 1_pInt,ns
-       l = l + 1_pInt
-       iTauF(s,instance) = l
-     enddo
-     do s = 1_pInt,ns
-       l = l + 1_pInt
-       iTauB(s,instance) = l
      enddo
      do t = 1_pInt,4_pInt
        do s = 1_pInt,ns
@@ -744,6 +739,7 @@ ns = param(instance)%totalNslip
               stt => state(phase_plasticityInstance(p)), &
               del => deltaState(phase_plasticityInstance(p)), &
               res => results(phase_plasticityInstance(p)), &
+              dst => microstructure(phase_plasticityInstance(p)), &
               config => config_phase(p))
    NofMyPhase=count(material_phase==p)
 
@@ -830,6 +826,10 @@ ns = param(instance)%totalNslip
        del%rhoDipScrew => plasticState(p)%deltaState               (9_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
 plasticState(p)%aTolState(iGamma(1:ns,instance))  = prm%aTolShear
 
+
+   allocate(dst%tau_Threshold(prm%totalNslip,NofMyPhase),source=0.0_pReal)
+   allocate(dst%tau_Back(prm%totalNslip,NofMyPhase),source=0.0_pReal)
+   
   allocate(res%rhoDotFlux(prm%totalNslip,8,NofMyPhase))
   allocate(res%rhoDotMultiplication(prm%totalNslip,2,NofMyPhase))
   allocate(res%rhoDotSingle2DipoleGlide(prm%totalNslip,2,NofMyPhase))
@@ -1006,9 +1006,7 @@ real(pReal), dimension(2) ::    rhoExcessGradient, &
 real(pReal), dimension(3) ::    rhoExcessDifferences, &
                                 normal_latticeConf
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el)))) :: &
-                                rhoForest, &                  ! forest dislocation density
-                                tauBack, &                    ! back stress from pileup on same slip system
-                                tauThreshold                  ! threshold shear stress
+                                rhoForest                 ! forest dislocation density
 real(pReal), dimension(3,3) ::  invFe, &                      ! inverse of elastic deformation gradient
                                 invFp, &                      ! inverse of plastic deformation gradient
                                 connections, &
@@ -1033,7 +1031,7 @@ real(pReal), dimension(3,totalNslip(phase_plasticityInstance(material_phase(1_pI
 ph = phaseAt(1,ip,el)
 of = phasememberAt(1,ip,el)
 instance = phase_plasticityInstance(ph)
-associate(prm => param(instance))
+associate(prm => param(instance),dst => microstructure(instance))
 
 ns = prm%totalNslip
 
@@ -1081,14 +1079,14 @@ if (lattice_structure(ph) ==  LATTICE_bcc_ID .or. lattice_structure(ph) == LATTI
   enddo
 endif
 forall (s = 1_pInt:ns) &
-  tauThreshold(s) = prm%mu * prm%burgers(s) &
+  dst%tau_threshold(s,of) = prm%mu * prm%burgers(s) &
                   * sqrt(dot_product((sum(abs(rhoSgl),2) + sum(abs(rhoDip),2)), myInteractionMatrix(s,1:ns)))
 
 
 !*** calculate the dislocation stress of the neighboring excess dislocation densities
 !*** zero for material points of local plasticity
 
-tauBack = 0.0_pReal
+  dst%tau_back(:,of) = 0.0_pReal
 
   !#################################################################################################
   !#################################################################################################
@@ -1195,7 +1193,7 @@ if (.not. phase_localPlasticity(ph) .and. prm%shortRangeStressCorrection) then
     
     !* gives the local stress correction when multiplied with a factor
 
-    tauBack(s) = - prm%mu * prm%burgers(s) / (2.0_pReal * pi) &
+    dst%tau_back(s,of) = - prm%mu * prm%burgers(s) / (2.0_pReal * pi) &
                * (rhoExcessGradient_over_rho(1) / (1.0_pReal - prm%nu) &
                   + rhoExcessGradient_over_rho(2))
 
@@ -1205,8 +1203,6 @@ endif
 
 !*** set dependent states
 plasticState(ph)%state(iRhoF(1:ns,instance),of) = rhoForest
-plasticState(ph)%state(iTauF(1:ns,instance),of) = tauThreshold
-plasticState(ph)%state(iTauB(1:ns,instance),of) = tauBack
 
 #ifdef DEBUG
   if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
@@ -1214,8 +1210,8 @@ plasticState(ph)%state(iTauB(1:ns,instance),of) = tauBack
              .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
     write(6,'(/,a,i8,1x,i2,1x,i1,/)') '<< CONST >> nonlocal_microstructure at el ip ',el,ip
     write(6,'(a,/,12x,12(e10.3,1x))') '<< CONST >> rhoForest', rhoForest
-    write(6,'(a,/,12x,12(f10.5,1x))') '<< CONST >> tauThreshold / MPa', tauThreshold*1e-6
-    write(6,'(a,/,12x,12(f10.5,1x),/)') '<< CONST >> tauBack / MPa', tauBack*1e-6
+    write(6,'(a,/,12x,12(f10.5,1x))') '<< CONST >> tauThreshold / MPa', dst%tau_threshold(:,of)*1e-6
+    write(6,'(a,/,12x,12(f10.5,1x),/)') '<< CONST >> tauBack / MPa', dst%tau_back(:,of)*1e-6
   endif
 #endif
  end associate
@@ -1424,9 +1420,8 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt
                                             dv_dtauNS                                               !< velocity derivative with respect to the shear stress
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el)))) :: &
                                             tau, &                                                  !< resolved shear stress including backstress terms
-                                            gdotTotal, &                                            !< shear rate
-                                            tauBack, &                                              !< back stress from dislocation gradients on same slip system
-                                            tauThreshold                                            !< threshold shear stress
+                                            gdotTotal                                            !< shear rate
+
 !*** shortcut for mapping
 ph = phaseAt(1_pInt,ip,el)
 of = phasememberAt(1_pInt,ip,el)
@@ -1434,7 +1429,7 @@ of = phasememberAt(1_pInt,ip,el)
 
 
 instance = phase_plasticityInstance(ph)
-associate(prm => param(instance))
+associate(prm => param(instance),dst=>microstructure(instance))
 ns = prm%totalNslip
 
 !*** shortcut to state variables 
@@ -1447,9 +1442,6 @@ endforall
 where (abs(rhoSgl) * volume ** 0.667_pReal < prm%significantN &
   .or. abs(rhoSgl) < prm%significantRho) &
   rhoSgl = 0.0_pReal
-
-tauBack = plasticState(ph)%state(iTauB(1:ns,instance),of)
-tauThreshold = plasticState(ph)%state(iTauF(1:ns,instance),of)
 
 
 !*** get resolved shear stress
@@ -1468,15 +1460,15 @@ do s = 1_pInt,ns
   endif
 enddo
 forall (t = 1_pInt:4_pInt) &
-  tauNS(1:ns,t) = tauNS(1:ns,t) + tauBack                                                           ! add backstress
-tau = tau + tauBack                                                                                 ! add backstress
+  tauNS(1:ns,t) = tauNS(1:ns,t) + dst%tau_back(:,of)
+tau = tau + dst%tau_back(:,of)
 
 
 !*** get dislocation velocity and its tangent and store the velocity in the state array
 
 ! edges 
 call plastic_nonlocal_kinetics(v(1:ns,1), dv_dtau(1:ns,1), dv_dtauNS(1:ns,1), &
-                                    tau(1:ns), tauNS(1:ns,1), tauThreshold(1:ns), &
+                                    tau(1:ns), tauNS(1:ns,1), dst%tau_Threshold(1:ns,of), &
                                     1_pInt, Temperature, ip, el)
 v(1:ns,2) = v(1:ns,1)
 dv_dtau(1:ns,2) = dv_dtau(1:ns,1)
@@ -1492,7 +1484,7 @@ if (size(prm%nonSchmidCoeff) == 0_pInt) then                                    
 else                                                                                                ! take non-Schmid contributions into account
   do t = 3_pInt,4_pInt
     call plastic_nonlocal_kinetics(v(1:ns,t), dv_dtau(1:ns,t), dv_dtauNS(1:ns,t), &
-                                        tau(1:ns), tauNS(1:ns,t), tauThreshold(1:ns), &
+                                        tau(1:ns), tauNS(1:ns,t), dst%tau_Threshold(1:ns,of), &
                                         2_pInt , Temperature, ip, el)
   enddo
 endif
@@ -1577,8 +1569,7 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,e
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),4) :: &
                                             v                             ! dislocation glide velocity
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el)))) :: &
-                                            tau, &                        ! current resolved shear stress
-                                            tauBack                       ! current back stress from pileups on same slip system
+                                            tau                       ! current resolved shear stress
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),2) :: &
                                             rhoDip, &                     ! current dipole dislocation densities (screw and edge dipoles)
                                             dLower, &                     ! minimum stable dipole distance for edges and screws
@@ -1596,7 +1587,7 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,e
  ph = phaseAt(1,ip,el)
  of = phasememberAt(1,ip,el)
  instance = phase_plasticityInstance(ph)
- associate(prm => param(instance))
+ associate(prm => param(instance),dst => microstructure(instance))
  ns = totalNslip(instance)
 
 
@@ -1611,7 +1602,6 @@ forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
   rhoDip(s,c) = max(plasticState(ph)%state(iRhoD(s,c,instance),of), 0.0_pReal)                              ! ensure positive dipole densities
   dUpperOld(s,c) = plasticState(ph)%state(iD(s,c,instance),of)
 endforall
-  tauBack = plasticState(ph)%state(iTauB(1:ns,instance),of)
 
 where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < prm%significantN &
   .or. abs(rhoSgl) < prm%significantRho) &
@@ -1646,7 +1636,7 @@ enddo
 !*** calculate limits for stable dipole height
 
 do s = 1_pInt,prm%totalNslip
-  tau(s) = math_mul33xx33(Mp, prm%Schmid(1:3,1:3,s)) + tauBack(s)
+  tau(s) = math_mul33xx33(Mp, prm%Schmid(1:3,1:3,s)) +dst%tau_back(s,of)
   if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
 enddo
 dLower = prm%minDipoleHeight(1:ns,1:2)
@@ -1810,9 +1800,7 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt
                                             gdot                                                    !< shear rates
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el)))) :: &
                                             rhoForest, &                                            !< forest dislocation density
-                                            tauThreshold, &                                         !< threshold shear stress
                                             tau, &                                                  !< current resolved shear stress
-                                            tauBack, &                                              !< current back stress from pileups on same slip system
                                             vClimb                                              !< climb velocity of edge dipoles
                                             
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),2) :: &
@@ -1854,7 +1842,7 @@ logical                                     considerEnteringFlux, &
 
 ph = material_phase(1_pInt,ip,el)
 instance = phase_plasticityInstance(ph)
-associate(prm => param(instance))
+associate(prm => param(instance),dst => microstructure(instance))
 ns = totalNslip(instance)
 
 tau = 0.0_pReal
@@ -1873,8 +1861,6 @@ forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
   rhoDip(s,c) =     max(plasticState(p)%state(iRhoD(s,c,instance),o), 0.0_pReal)                      ! ensure positive dipole densities
 endforall
 rhoForest =              plasticState(p)%state(iRhoF(1:ns,instance),o)
-tauThreshold =           plasticState(p)%state(iTauF(1:ns,instance),o)
-tauBack =                plasticState(p)%state(iTauB(1:ns,instance),o)
 
 rhoSglOriginal = rhoSgl
 rhoDipOriginal = rhoDip
@@ -1915,7 +1901,7 @@ forall (t = 1_pInt:4_pInt) &
 !*** calculate limits for stable dipole height
 
 do s = 1_pInt,ns   ! loop over slip systems
-  tau(s) = math_mul33xx33(Mp, prm%Schmid(1:3,1:3,s)) + tauBack(s)
+  tau(s) = math_mul33xx33(Mp, prm%Schmid(1:3,1:3,s)) + dst%tau_back(s,o)
   if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
 enddo
 
@@ -2458,9 +2444,7 @@ function plastic_nonlocal_postResults(Mp,ip,el) result(postResults)
    v                                                                                                !< velocities
  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el)))) :: &
    rhoForest, &                                                                                     !< forest dislocation density
-   tauThreshold, &                                                                                  !< threshold shear stress
-   tau, &                                                                                           !< current resolved shear stress
-   tauBack                                                                                          !< back stress from pileups on same slip system
+   tau                                                                                           !< current resolved shear stress
  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),2) :: &
    rhoDip, &                                                                                        !< current dipole dislocation densities (screw and edge dipoles)
    rhoDotDip, &                                                                                     !< evolution rate of dipole dislocation densities (screw and edge dipoles)
@@ -2474,7 +2458,7 @@ ns = totalNslip(instance)
 
 cs = 0_pInt
 
-associate(prm => param(instance))
+associate(prm => param(instance),dst => microstructure(instance))
 !* short hand notations for state variables
 
 forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
@@ -2489,8 +2473,6 @@ forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
   rhoDotDip(s,c) = plasticState(ph)%dotState(iRhoD(s,c,instance),of)
 endforall
 rhoForest    = plasticState(ph)%State(iRhoF(1:ns,instance),of)
-tauThreshold = plasticState(ph)%State(iTauF(1:ns,instance),of)
-tauBack      = plasticState(ph)%State(iTauB(1:ns,instance),of)
 
 !* Calculate shear rate
 
@@ -2501,7 +2483,7 @@ forall (t = 1_pInt:4_pInt) &
 !* calculate limits for stable dipole height
 
 do s = 1_pInt,ns
-  tau(s) = math_mul33xx33(Mp, prm%Schmid(1:3,1:3,s)) + tauBack(s)
+  tau(s) = math_mul33xx33(Mp, prm%Schmid(1:3,1:3,s)) + dst%tau_back(s,of)
   if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
 enddo
 
@@ -2576,7 +2558,7 @@ outputsLoop: do o = 1_pInt,size(param(instance)%outputID)
       cs = cs + ns
       
     case (resolvedstress_back_ID)
-      postResults(cs+1_pInt:cs+ns) = tauBack
+      postResults(cs+1_pInt:cs+ns) =  dst%tau_back(:,of)
       cs = cs + ns
       
     case (resolvedstress_external_ID)
@@ -2586,7 +2568,7 @@ outputsLoop: do o = 1_pInt,size(param(instance)%outputID)
       cs = cs + ns
       
     case (resistance_ID)
-      postResults(cs+1_pInt:cs+ns) = tauThreshold
+      postResults(cs+1_pInt:cs+ns) = dst%tau_Threshold(:,of)
       cs = cs + ns
       
     case (rho_dot_sgl_ID)
