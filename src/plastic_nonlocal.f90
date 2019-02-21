@@ -20,7 +20,6 @@ module plastic_nonlocal
  character(len=64), dimension(:,:), allocatable, target, public :: &
    plastic_nonlocal_output                                                                     !< name of each post result output
  
- 
  integer(pInt), dimension(:,:), allocatable, private :: &
    iGamma, &                                                                                        !< state indices for accumulated shear
    iRhoF                                                                                            !< state indices for forest density
@@ -325,6 +324,7 @@ subroutine plastic_nonlocal_init
               stt => state(phase_plasticityInstance(p)), &
               del => deltaState(phase_plasticityInstance(p)), &
               res => results(phase_plasticityInstance(p)), &
+              dst => microstructure(phase_plasticityInstance(p)), &
               config => config_phase(p))
 
     prm%aTolRho    = config%getFloat('atol_rho',   defaultVal=0.0_pReal)
@@ -597,10 +597,12 @@ extmsg = trim(extmsg)//' fEdgeMultiplication'
                                     'velocityScrewPos    ','velocityScrewNeg    ', &
                                     'maxDipoleHeightEdge ','maxDipoleHeightScrew' ]),pInt) * prm%totalNslip !< other dependent state variables that are not updated by microstructure
     sizeDeltaState            = sizeDotState
+    
     call material_allocatePlasticState(p,NofMyPhase,sizeState,sizeDotState,sizeDeltaState, &
                                        prm%totalNslip,0_pInt,0_pInt)    
     plasticState(p)%nonlocal = .true.
     plasticState(p)%offsetDeltaState = 0_pInt                                                             ! ToDo: state structure does not follow convention
+    plasticState(p)%sizePostResults = sum(plastic_nonlocal_sizePostResult(:,phase_plasticityInstance(p)))
     
     Nslip(1:size(prm%Nslip),phase_plasticityInstance(p)) = prm%Nslip                                      ! ToDo: DEPRECATED
     totalNslip(phase_plasticityInstance(p)) =  sum(Nslip(1:size(prm%Nslip),phase_plasticityInstance(p)))  ! ToDo: DEPRECATED
@@ -674,12 +676,6 @@ ns = param(instance)%totalNslip
      if (iD(ns,2,instance) /= plasticState(phase)%sizeState) &  ! check if last index is equal to size of state
        call IO_error(0_pInt, ext_msg = 'state indices not properly set ('//PLASTICITY_NONLOCAL_label//')')
      
-
-     plasticState(phase)%slipRate => &
-       plasticState(phase)%dotState(iGamma(1,instance):iGamma(ns,instance),1:NofMyPhase)
-     plasticState(phase)%accumulatedSlip => &
-       plasticState(phase)%state   (iGamma(1,instance):iGamma(ns,instance),1:NofMyPhase)
-       
      
    endif myPhase2
    
@@ -698,9 +694,8 @@ ns = param(instance)%totalNslip
               config => config_phase(p))
    NofMyPhase=count(material_phase==p)
 
-  
-       plasticState(p)%sizePostResults = sum(plastic_nonlocal_sizePostResult(:,instance))
-          stt%rho => plasticState(p)%state                              (0_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
+
+   stt%rho => plasticState(p)%state                              (0_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
    dot%rho => plasticState(p)%dotState                           (0_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
    del%rho => plasticState(p)%deltaState                         (0_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
    plasticState(p)%aTolState(1:10_pInt*prm%totalNslip) = prm%aTolRho
@@ -1184,29 +1179,28 @@ end subroutine plastic_nonlocal_dependentState
 !> @brief calculates kinetics 
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, &
-                                          tauThreshold, c, Temperature, ip, el)
+                                     tauThreshold, c, Temperature, instance, of)
+
 use material, only: material_phase, &
                     phase_plasticityInstance
 
 implicit none
 
 
-integer(pInt), intent(in) ::                ip, &                       !< current integration point
-                                            el, &                       !< current element number
-                                            c                           !< dislocation character (1:edge, 2:screw)
+integer(pInt), intent(in) ::                c, &                           !< dislocation character (1:edge, 2:screw)
+                                            instance, of
 real(pReal), intent(in) ::                  Temperature                 !< temperature
-real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el)))), &
+real(pReal), dimension(param(instance)%totalNslip), &
              intent(in) ::                  tau, &                      !< resolved external shear stress (without non Schmid effects)
                                             tauNS, &                    !< resolved external shear stress (including non Schmid effects)
                                             tauThreshold                !< threshold shear stress
 
-real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el)))), &
+real(pReal), dimension(param(instance)%totalNslip), &
                             intent(out) ::  v, &                        !< velocity
                                             dv_dtau, &                  !< velocity derivative with respect to resolved shear stress (without non Schmid contributions)
                                             dv_dtauNS                   !< velocity derivative with respect to resolved shear stress (including non Schmid contributions)
 
-integer(pInt)    ::                         instance, &                    !< current instance of this plasticity
-                                            ns, &                       !< short notation for the total number of active slip systems
+integer(pInt)    ::                         ns, &                       !< short notation for the total number of active slip systems
                                             s                           !< index of my current slip system
 real(pReal)                                 tauRel_P, & 
                                             tauRel_S, &
@@ -1230,11 +1224,8 @@ real(pReal)                                 tauRel_P, &
                                             criticalStress_S, &         !< maximum obstacle strength
                                             mobility                    !< dislocation mobility
 
-
-instance = phase_plasticityInstance(material_phase(1_pInt,ip,el))
-ns = totalNslip(instance)
-
 associate(prm => param(instance))
+ns = prm%totalNslip
 v = 0.0_pReal
 dv_dtau = 0.0_pReal
 dv_dtauNS = 0.0_pReal
@@ -1418,7 +1409,7 @@ tau = tau + dst%tau_back(:,of)
 ! edges 
 call plastic_nonlocal_kinetics(v(1:ns,1), dv_dtau(1:ns,1), dv_dtauNS(1:ns,1), &
                                     tau(1:ns), tauNS(1:ns,1), dst%tau_Threshold(1:ns,of), &
-                                    1_pInt, Temperature, ip, el)
+                                      1_pInt, Temperature, instance, of)
 v(1:ns,2) = v(1:ns,1)
 dv_dtau(1:ns,2) = dv_dtau(1:ns,1)
 dv_dtauNS(1:ns,2) = dv_dtauNS(1:ns,1)
@@ -1434,7 +1425,7 @@ else                                                                            
   do t = 3_pInt,4_pInt
     call plastic_nonlocal_kinetics(v(1:ns,t), dv_dtau(1:ns,t), dv_dtauNS(1:ns,t), &
                                         tau(1:ns), tauNS(1:ns,t), dst%tau_Threshold(1:ns,of), &
-                                        2_pInt , Temperature, ip, el)
+                                          2_pInt , Temperature, instance, of)
   enddo
 endif
 
@@ -1795,7 +1786,7 @@ endif
 
 ph = material_phase(1_pInt,ip,el)
 instance = phase_plasticityInstance(ph)
-associate(prm => param(instance),dst => microstructure(instance))
+associate(prm => param(instance),dst => microstructure(instance),dot => dotState(instance))
 ns = totalNslip(instance)
 
 tau = 0.0_pReal
