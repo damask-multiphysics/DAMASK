@@ -999,7 +999,7 @@ subroutine material_allocateSourceState(phase,of,NofMyPhase,&
  if (numerics_integrator == 5_pInt) &
    allocate(sourceState(phase)%p(of)%RKCK45dotState  (6,sizeDotState,NofMyPhase),  source=0.0_pReal)
 
- allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
+ allocate(sourceState(phase)%p(of)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
 
 end subroutine material_allocateSourceState
 
