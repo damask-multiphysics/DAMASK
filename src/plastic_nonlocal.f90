@@ -21,7 +21,6 @@ module plastic_nonlocal
    plastic_nonlocal_output                                                                     !< name of each post result output
  
  integer(pInt), dimension(:,:), allocatable, private :: &
-   iGamma, &                                                                                        !< state indices for accumulated shear
    iRhoF                                                                                            !< state indices for forest density
  integer(pInt), dimension(:,:,:), allocatable, private :: &
    iRhoU, &                                                                                         !< state indices for unblocked density
@@ -602,89 +601,7 @@ extmsg = trim(extmsg)//' fEdgeMultiplication'
     Nslip(1:size(prm%Nslip),phase_plasticityInstance(p)) = prm%Nslip                                      ! ToDo: DEPRECATED
     totalNslip(phase_plasticityInstance(p)) =  sum(Nslip(1:size(prm%Nslip),phase_plasticityInstance(p)))  ! ToDo: DEPRECATED
     
-    end associate
-
-  enddo
- 
-! BEGIN DEPRECATED----------------------------------------------------------------------------------
-  allocate(iRhoU(maxval(totalNslip),4,maxNinstances), source=0_pInt)
-  allocate(iRhoB(maxval(totalNslip),4,maxNinstances), source=0_pInt)
-  allocate(iRhoD(maxval(totalNslip),2,maxNinstances), source=0_pInt)
-  allocate(iV(maxval(totalNslip),4,maxNinstances),    source=0_pInt)
-  allocate(iD(maxval(totalNslip),2,maxNinstances),    source=0_pInt)
-  allocate(iGamma(maxval(totalNslip),maxNinstances),  source=0_pInt)
-  allocate(iRhoF(maxval(totalNslip),maxNinstances),   source=0_pInt)
-! END DEPRECATED------------------------------------------------------------------------------------
-
-allocate(compatibility(2,maxval(totalNslip),maxval(totalNslip),theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), &
-                                                                                   source=0.0_pReal)
-                                            
- initializeInstances: do p = 1_pInt, size(phase_plasticity)
-   NofMyPhase=count(material_phase==p)
-   myPhase2: if (phase_plasticity(p) == PLASTICITY_NONLOCAL_ID) then
-
-     !*** determine indices to state array
-
-     l = 0_pInt
-     do t = 1_pInt,4_pInt
-       do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
-         l = l + 1_pInt
-         iRhoU(s,t,phase_plasticityInstance(p)) = l
-       enddo
-     enddo
-     do t = 1_pInt,4_pInt
-       do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
-         l = l + 1_pInt
-         iRhoB(s,t,phase_plasticityInstance(p)) = l
-       enddo
-     enddo
-     do c = 1_pInt,2_pInt
-       do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
-         l = l + 1_pInt
-         iRhoD(s,c,phase_plasticityInstance(p)) = l
-       enddo
-     enddo
-     do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
-       l = l + 1_pInt
-       iGamma(s,phase_plasticityInstance(p)) = l
-     enddo
-     do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
-       l = l + 1_pInt
-       iRhoF(s,phase_plasticityInstance(p)) = l
-     enddo
-     do t = 1_pInt,4_pInt
-       do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
-         l = l + 1_pInt
-         iV(s,t,phase_plasticityInstance(p)) = l
-       enddo
-     enddo
-     do c = 1_pInt,2_pInt
-       do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
-         l = l + 1_pInt
-         iD(s,c,phase_plasticityInstance(p)) = l
-       enddo
-     enddo
-     if (iD(param(phase_plasticityInstance(p))%totalNslip,2,phase_plasticityInstance(p)) /= plasticState(p)%sizeState) &  ! check if last index is equal to size of state
-       call IO_error(0_pInt, ext_msg = 'state indices not properly set ('//PLASTICITY_NONLOCAL_label//')')
-     
-     
-   endif myPhase2
-   
- enddo initializeInstances
- 
- 
-  do p=1_pInt, size(config_phase)
-   if (phase_plasticity(p) /= PLASTICITY_NONLOCAL_ID) cycle
-            associate(prm => param(phase_plasticityInstance(p)), &
-              dot => dotState(phase_plasticityInstance(p)), &
-              stt => state(phase_plasticityInstance(p)), &
-              del => deltaState(phase_plasticityInstance(p)), &
-              res => results(phase_plasticityInstance(p)), &
-              dst => microstructure(phase_plasticityInstance(p)), &
-              config => config_phase(p))
-   NofMyPhase=count(material_phase==p)
-
-
+    ! ToDo: Not really sure if this large number of mostly overlapping pointers is useful
    stt%rho => plasticState(p)%state                              (0_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
    dot%rho => plasticState(p)%dotState                           (0_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
    del%rho => plasticState(p)%deltaState                         (0_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
@@ -787,7 +704,71 @@ allocate(compatibility(2,maxval(totalNslip),maxval(totalNslip),theMesh%elem%nIPn
 
   if (NofMyPhase > 0_pInt) call stateInit(p,NofMyPhase)
   plasticState(p)%state0 = plasticState(p)%state
-   enddo
+
+  enddo
+ 
+! BEGIN DEPRECATED----------------------------------------------------------------------------------
+  allocate(iRhoU(maxval(totalNslip),4,maxNinstances), source=0_pInt)
+  allocate(iRhoB(maxval(totalNslip),4,maxNinstances), source=0_pInt)
+  allocate(iRhoD(maxval(totalNslip),2,maxNinstances), source=0_pInt)
+  allocate(iV(maxval(totalNslip),4,maxNinstances),    source=0_pInt)
+  allocate(iD(maxval(totalNslip),2,maxNinstances),    source=0_pInt)
+  allocate(iRhoF(maxval(totalNslip),maxNinstances),   source=0_pInt)
+! END DEPRECATED------------------------------------------------------------------------------------
+
+allocate(compatibility(2,maxval(totalNslip),maxval(totalNslip),theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), &
+                                                                                   source=0.0_pReal)
+                                            
+ initializeInstances: do p = 1_pInt, size(phase_plasticity)
+   NofMyPhase=count(material_phase==p)
+   myPhase2: if (phase_plasticity(p) == PLASTICITY_NONLOCAL_ID) then
+
+     !*** determine indices to state array
+
+     l = 0_pInt
+     do t = 1_pInt,4_pInt
+       do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
+         l = l + 1_pInt
+         iRhoU(s,t,phase_plasticityInstance(p)) = l
+       enddo
+     enddo
+     do t = 1_pInt,4_pInt
+       do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
+         l = l + 1_pInt
+         iRhoB(s,t,phase_plasticityInstance(p)) = l
+       enddo
+     enddo
+     do c = 1_pInt,2_pInt
+       do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
+         l = l + 1_pInt
+         iRhoD(s,c,phase_plasticityInstance(p)) = l
+       enddo
+     enddo
+     l = l + param(phase_plasticityInstance(p))%totalNslip
+     do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
+       l = l + 1_pInt
+       iRhoF(s,phase_plasticityInstance(p)) = l
+     enddo
+     do t = 1_pInt,4_pInt
+       do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
+         l = l + 1_pInt
+         iV(s,t,phase_plasticityInstance(p)) = l
+       enddo
+     enddo
+     do c = 1_pInt,2_pInt
+       do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
+         l = l + 1_pInt
+         iD(s,c,phase_plasticityInstance(p)) = l
+       enddo
+     enddo
+     if (iD(param(phase_plasticityInstance(p))%totalNslip,2,phase_plasticityInstance(p)) /= plasticState(p)%sizeState) &  ! check if last index is equal to size of state
+       call IO_error(0_pInt, ext_msg = 'state indices not properly set ('//PLASTICITY_NONLOCAL_label//')')
+     
+     
+   endif myPhase2
+   
+ enddo initializeInstances
+
    
    contains
 
