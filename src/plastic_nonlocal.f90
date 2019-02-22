@@ -272,13 +272,9 @@ subroutine plastic_nonlocal_init
   real(pReal),            dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
 
   integer(pInt) :: &
-    ns, phase, &
     maxNinstances, &
-    maxTotalNslip, p, i, &
-    f, &                ! index of my slip family
-    instance, &                ! index of my instance of this plasticity
+    p, i, &
     l, &
-    o, &                ! index of my output
     s, &                ! index of my slip system
     s1, &               ! index of my slip system
     s2, &               ! index of my slip system
@@ -612,68 +608,64 @@ extmsg = trim(extmsg)//' fEdgeMultiplication'
   enddo
  
 ! BEGIN DEPRECATED----------------------------------------------------------------------------------
-  maxTotalNslip = maxval(totalNslip)
-  allocate(iRhoU(maxTotalNslip,4,maxNinstances), source=0_pInt)
-  allocate(iRhoB(maxTotalNslip,4,maxNinstances), source=0_pInt)
-  allocate(iRhoD(maxTotalNslip,2,maxNinstances), source=0_pInt)
-  allocate(iV(maxTotalNslip,4,maxNinstances),    source=0_pInt)
-  allocate(iD(maxTotalNslip,2,maxNinstances),    source=0_pInt)
-  allocate(iGamma(maxTotalNslip,maxNinstances),  source=0_pInt)
-  allocate(iRhoF(maxTotalNslip,maxNinstances),   source=0_pInt)
+  allocate(iRhoU(maxval(totalNslip),4,maxNinstances), source=0_pInt)
+  allocate(iRhoB(maxval(totalNslip),4,maxNinstances), source=0_pInt)
+  allocate(iRhoD(maxval(totalNslip),2,maxNinstances), source=0_pInt)
+  allocate(iV(maxval(totalNslip),4,maxNinstances),    source=0_pInt)
+  allocate(iD(maxval(totalNslip),2,maxNinstances),    source=0_pInt)
+  allocate(iGamma(maxval(totalNslip),maxNinstances),  source=0_pInt)
+  allocate(iRhoF(maxval(totalNslip),maxNinstances),   source=0_pInt)
 ! END DEPRECATED------------------------------------------------------------------------------------
 
-allocate(compatibility(2,maxTotalNslip,maxTotalNslip,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), &
+allocate(compatibility(2,maxval(totalNslip),maxval(totalNslip),theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), &
                                                                                    source=0.0_pReal)
                                             
- initializeInstances: do phase = 1_pInt, size(phase_plasticity)
-   NofMyPhase=count(material_phase==phase)
-   myPhase2: if (phase_plasticity(phase) == PLASTICITY_NONLOCAL_ID) then
-     instance = phase_plasticityInstance(phase)
-ns = param(instance)%totalNslip
-
+ initializeInstances: do p = 1_pInt, size(phase_plasticity)
+   NofMyPhase=count(material_phase==p)
+   myPhase2: if (phase_plasticity(p) == PLASTICITY_NONLOCAL_ID) then
 
      !*** determine indices to state array
 
      l = 0_pInt
      do t = 1_pInt,4_pInt
-       do s = 1_pInt,ns
+       do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
          l = l + 1_pInt
-         iRhoU(s,t,instance) = l
+         iRhoU(s,t,phase_plasticityInstance(p)) = l
        enddo
      enddo
      do t = 1_pInt,4_pInt
-       do s = 1_pInt,ns
+       do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
          l = l + 1_pInt
-         iRhoB(s,t,instance) = l
+         iRhoB(s,t,phase_plasticityInstance(p)) = l
        enddo
      enddo
      do c = 1_pInt,2_pInt
-       do s = 1_pInt,ns
+       do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
          l = l + 1_pInt
-         iRhoD(s,c,instance) = l
+         iRhoD(s,c,phase_plasticityInstance(p)) = l
        enddo
      enddo
-     do s = 1_pInt,ns
+     do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
        l = l + 1_pInt
-       iGamma(s,instance) = l
+       iGamma(s,phase_plasticityInstance(p)) = l
      enddo
-     do s = 1_pInt,ns
+     do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
        l = l + 1_pInt
-       iRhoF(s,instance) = l
+       iRhoF(s,phase_plasticityInstance(p)) = l
      enddo
      do t = 1_pInt,4_pInt
-       do s = 1_pInt,ns
+       do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
          l = l + 1_pInt
-         iV(s,t,instance) = l
+         iV(s,t,phase_plasticityInstance(p)) = l
        enddo
      enddo
      do c = 1_pInt,2_pInt
-       do s = 1_pInt,ns
+       do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
          l = l + 1_pInt
-         iD(s,c,instance) = l
+         iD(s,c,phase_plasticityInstance(p)) = l
        enddo
      enddo
-     if (iD(ns,2,instance) /= plasticState(phase)%sizeState) &  ! check if last index is equal to size of state
+     if (iD(param(phase_plasticityInstance(p))%totalNslip,2,phase_plasticityInstance(p)) /= plasticState(p)%sizeState) &  ! check if last index is equal to size of state
        call IO_error(0_pInt, ext_msg = 'state indices not properly set ('//PLASTICITY_NONLOCAL_label//')')
      
      
@@ -684,7 +676,6 @@ ns = param(instance)%totalNslip
  
   do p=1_pInt, size(config_phase)
    if (phase_plasticity(p) /= PLASTICITY_NONLOCAL_ID) cycle
-   instance = phase_plasticityInstance(p)
             associate(prm => param(phase_plasticityInstance(p)), &
               dot => dotState(phase_plasticityInstance(p)), &
               stt => state(phase_plasticityInstance(p)), &
@@ -1694,8 +1685,6 @@ integer(pInt), intent(in) ::                ip, &                               
 real(pReal), intent(in) ::                  Temperature, &                                          !< temperature
                                             timestep                                                !< substepped crystallite time increment
 real(pReal), dimension(3,3), intent(in) ::              Mp                                        !< MandelStress
-real(pReal), dimension(homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), intent(in) :: &
-                                            subfrac                                                 !< fraction of timestep at the beginning of the substepped crystallite time increment 
 real(pReal), dimension(3,3,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), intent(in) :: &
                                             Fe, &                                                   !< elastic deformation gradient
                                             Fp                                                      !< plastic deformation gradient
