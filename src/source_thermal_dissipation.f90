@@ -12,7 +12,6 @@ module source_thermal_dissipation
  implicit none
  private
  integer(pInt),                       dimension(:),           allocatable,         public, protected :: &
-   source_thermal_dissipation_sizePostResults, &                                                        !< cumulative size of post results
    source_thermal_dissipation_offset, &                                                                 !< which source is my current thermal dissipation mechanism?
    source_thermal_dissipation_instance                                                                  !< instance of thermal dissipation source mechanism
 
@@ -21,9 +20,6 @@ module source_thermal_dissipation
 
  character(len=64),                   dimension(:,:),         allocatable, target, public :: &
    source_thermal_dissipation_output                                                                    !< name of each post result output
-   
- integer(pInt),                       dimension(:),           allocatable, target, public :: &
-   source_thermal_dissipation_Noutput                                                                   !< number of outputs per instance of this source 
 
  real(pReal),                         dimension(:),           allocatable,        private :: &
    source_thermal_dissipation_coldworkCoeff
@@ -89,11 +85,9 @@ subroutine source_thermal_dissipation_init
    enddo    
  enddo
    
- allocate(source_thermal_dissipation_sizePostResults(Ninstance),                     source=0_pInt)
  allocate(source_thermal_dissipation_sizePostResult(maxval(phase_Noutput),Ninstance),source=0_pInt)
  allocate(source_thermal_dissipation_output  (maxval(phase_Noutput),Ninstance))
           source_thermal_dissipation_output = ''
- allocate(source_thermal_dissipation_Noutput(Ninstance),                             source=0_pInt)
 
  allocate(source_thermal_dissipation_coldworkCoeff(Ninstance),                       source=0.0_pReal) 
 
@@ -115,14 +109,12 @@ end subroutine source_thermal_dissipation_init
 !> @brief returns local vacancy generation rate 
 !--------------------------------------------------------------------------------------------------
 subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDOT_dT, Tstar, Lp, phase)
- use math, only: &
-   math_Mandel6to33
 
  implicit none
  integer(pInt), intent(in) :: &
    phase
  real(pReal),  intent(in), dimension(3,3) :: &
-   Tstar                                                                                         !< 2nd Piola Kirchhoff stress tensor (Mandel)
+   Tstar
  real(pReal),  intent(in), dimension(3,3) :: &
    Lp
  real(pReal),  intent(out) :: &
