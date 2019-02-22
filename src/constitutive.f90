@@ -38,11 +38,6 @@ contains
 !> @brief allocates arrays pointing to array of the various constitutive modules
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_init()
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use prec, only: &
    pReal
  use debug, only: &
@@ -55,8 +50,7 @@ subroutine constitutive_init()
    IO_open_file, &
    IO_checkAndRewind, &
    IO_open_jobFile_stat, &
-   IO_write_jobFile, &
-   IO_timeStamp
+   IO_write_jobFile
  use config, only: &
    config_phase
  use config, only: &
@@ -158,7 +152,7 @@ subroutine constitutive_init()
 !--------------------------------------------------------------------------------------------------
 ! parse source mechanisms from config file
  call IO_checkAndRewind(FILEUNIT)
- if (any(phase_source == SOURCE_thermal_dissipation_ID))     call source_thermal_dissipation_init(FILEUNIT)
+ if (any(phase_source == SOURCE_thermal_dissipation_ID))     call source_thermal_dissipation_init
  if (any(phase_source == SOURCE_thermal_externalheat_ID))    call source_thermal_externalheat_init(FILEUNIT)
  if (any(phase_source == SOURCE_damage_isoBrittle_ID))       call source_damage_isoBrittle_init
  if (any(phase_source == SOURCE_damage_isoDuctile_ID))       call source_damage_isoDuctile_init
@@ -176,8 +170,6 @@ subroutine constitutive_init()
  call config_deallocate('material.config/phase')
 
  write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
  mainProcess: if (worldrank == 0) then
 !--------------------------------------------------------------------------------------------------

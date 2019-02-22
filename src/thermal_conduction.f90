@@ -44,14 +44,8 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_conduction_init
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use IO, only: &
-   IO_error, &
-   IO_timeStamp
+   IO_error
  use material, only: &
    thermal_type, &
    thermal_typeInstance, &
@@ -77,8 +71,6 @@ subroutine thermal_conduction_init
  character(len=65536), dimension(:), allocatable :: outputs
 
  write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_CONDUCTION_label//' init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
  
  maxNinstance = int(count(thermal_type == THERMAL_conduction_ID),pInt)
  if (maxNinstance == 0_pInt) return
@@ -130,7 +122,7 @@ end subroutine thermal_conduction_init
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
  use math, only: &
-   math_Mandel6to33
+   math_6toSym33
  use material, only: &
    homogenization_Ngrains, &
    mappingHomogenization, &
@@ -181,9 +173,9 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
      select case(phase_source(source,phase))                                                   
        case (SOURCE_thermal_dissipation_ID)
         call source_thermal_dissipation_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
-                                                             crystallite_Tstar_v(1:6,grain,ip,el), &
+                                                             math_6toSym33(crystallite_Tstar_v(1:6,grain,ip,el)), &
                                                              crystallite_Lp(1:3,1:3,grain,ip,el), &
-                                                             phase, constituent)
+                                                             phase)
 
        case (SOURCE_thermal_externalheat_ID)
         call source_thermal_externalheat_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
