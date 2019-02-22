@@ -275,9 +275,8 @@ subroutine plastic_nonlocal_init
     maxNinstances, &
     p, i, &
     l, &
+    s1, s2, &
     s, &                ! index of my slip system
-    s1, &               ! index of my slip system
-    s2, &               ! index of my slip system
     t, &                ! index of dislocation type
     c                ! index of dislocation character
 
@@ -766,15 +765,12 @@ allocate(compatibility(2,maxval(totalNslip),maxval(totalNslip),theMesh%elem%nIPn
        dot%rhoDipScrew => plasticState(p)%dotState               (9_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
        del%rhoDipScrew => plasticState(p)%deltaState               (9_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
     
-    s1 = 10_pInt*prm%totalNslip + 1_pInt
-    s2 = s1 + prm%totalNslip - 1_pInt
-
-    stt%accumulatedshear => plasticState(p)%state                         (s1:s2,:)
-    dot%accumulatedshear => plasticState(p)%dotState                      (s1:s2,:)
-    del%accumulatedshear => plasticState(p)%deltaState                    (s1:s2,:)
-    plasticState(p)%aTolState(s1:s2)  = prm%aTolShear
-    plasticState(p)%slipRate => plasticState(p)%dotState(s1:s2,1:NofMyPhase)
-    plasticState(p)%accumulatedSlip => plasticState(p)%state   (s1:s2,1:NofMyPhase)
+    stt%accumulatedshear => plasticState(p)%state       (10_pInt*prm%totalNslip + 1_pInt:11_pInt*prm%totalNslip ,1:NofMyPhase)
+    dot%accumulatedshear => plasticState(p)%dotState   (10_pInt*prm%totalNslip + 1_pInt:11_pInt*prm%totalNslip ,1:NofMyPhase)
+    del%accumulatedshear => plasticState(p)%deltaState  (10_pInt*prm%totalNslip + 1_pInt:11_pInt*prm%totalNslip ,1:NofMyPhase)
+    plasticState(p)%aTolState(10_pInt*prm%totalNslip + 1_pInt:11_pInt*prm%totalNslip )  = prm%aTolShear
+    plasticState(p)%slipRate => plasticState(p)%dotState(10_pInt*prm%totalNslip + 1_pInt:11_pInt*prm%totalNslip ,1:NofMyPhase)
+    plasticState(p)%accumulatedSlip => plasticState(p)%state (10_pInt*prm%totalNslip + 1_pInt:11_pInt*prm%totalNslip ,1:NofMyPhase)
 
 
    allocate(dst%tau_Threshold(prm%totalNslip,NofMyPhase),source=0.0_pReal)
@@ -1172,12 +1168,7 @@ end subroutine plastic_nonlocal_dependentState
 subroutine plastic_nonlocal_kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, &
                                      tauThreshold, c, Temperature, instance, of)
 
-use material, only: material_phase, &
-                    phase_plasticityInstance
-
 implicit none
-
-
 integer(pInt), intent(in) ::                c, &                           !< dislocation character (1:edge, 2:screw)
                                             instance, of
 real(pReal), intent(in) ::                  Temperature                 !< temperature
@@ -2156,7 +2147,7 @@ else
   forall (s = 1:ns, c = 1_pInt:2_pInt) &
     plasticState(p)%dotState(iRhoD(s,c,instance),o) = rhoDot(s,c+8_pInt)
   forall (s = 1:ns) &
-    plasticState(p)%dotState(iGamma(s,instance),o) = sum(gdot(s,1:4))
+    dot%accumulatedshear(s,o) = sum(gdot(s,1:4))
 endif
  end associate
 end subroutine plastic_nonlocal_dotState
@@ -2380,7 +2371,7 @@ ns = totalNslip(instance)
 
 cs = 0_pInt
 
-associate(prm => param(instance),dst => microstructure(instance))
+associate(prm => param(instance),dst => microstructure(instance),stt=>state(instance))
 !* short hand notations for state variables
 
 forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
@@ -2583,7 +2574,7 @@ outputsLoop: do o = 1_pInt,size(param(instance)%outputID)
       cs = cs + ns
 
     case(accumulatedshear_ID)
-      postResults(cs+1_pInt:cs+ns) = plasticState(ph)%state(iGamma(1:ns,instance),of)
+      postResults(cs+1_pInt:cs+ns) = stt%accumulatedshear(:,of)
       cs = cs + ns
     
   end select
