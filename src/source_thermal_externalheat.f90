@@ -57,11 +57,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine source_thermal_externalheat_init(fileUnit)
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use debug, only: &
    debug_level,&
    debug_constitutive,&
@@ -77,9 +72,9 @@ subroutine source_thermal_externalheat_init(fileUnit)
    IO_intValue, &
    IO_warning, &
    IO_error, &
-   IO_timeStamp, &
    IO_EOF
  use material, only: &
+   material_allocateSourceState, &
    phase_source, &
    phase_Nsources, &
    phase_Noutput, &
@@ -91,8 +86,6 @@ subroutine source_thermal_externalheat_init(fileUnit)
    config_phase, &
    material_Nphase, &
    MATERIAL_partPhase
- use numerics,only: &
-   numerics_integrator
 
  implicit none
  integer(pInt), intent(in) :: fileUnit
@@ -107,8 +100,7 @@ subroutine source_thermal_externalheat_init(fileUnit)
  real(pReal), allocatable, dimension(:,:) :: temp_time, temp_rate  
 
  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_thermal_externalheat_label//' init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
+
  
  maxNinstance = int(count(phase_source == SOURCE_thermal_externalheat_ID),pInt)
  if (maxNinstance == 0_pInt) return
@@ -196,34 +188,13 @@ subroutine source_thermal_externalheat_init(fileUnit)
      source_thermal_externalheat_rate(instance,1:source_thermal_externalheat_nIntervals(instance)+1_pInt) = &
                             temp_rate(instance,1:source_thermal_externalheat_nIntervals(instance)+1_pInt)
 
-     sizeDotState              =   1_pInt
-     sizeDeltaState            =   0_pInt
-     sizeState                 =   1_pInt
-     sourceState(phase)%p(sourceOffset)%sizeState =       sizeState
-     sourceState(phase)%p(sourceOffset)%sizeDotState =    sizeDotState
-     sourceState(phase)%p(sourceOffset)%sizeDeltaState =  sizeDeltaState
-     sourceState(phase)%p(sourceOffset)%sizePostResults = source_thermal_externalheat_sizePostResults(instance)
-     allocate(sourceState(phase)%p(sourceOffset)%aTolState           (sizeState),                source=0.00001_pReal)
-     allocate(sourceState(phase)%p(sourceOffset)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
-     allocate(sourceState(phase)%p(sourceOffset)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
-     allocate(sourceState(phase)%p(sourceOffset)%subState0           (sizeState,NofMyPhase),     source=0.0_pReal)
-     allocate(sourceState(phase)%p(sourceOffset)%state               (sizeState,NofMyPhase),     source=0.0_pReal)
-
-     allocate(sourceState(phase)%p(sourceOffset)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     allocate(sourceState(phase)%p(sourceOffset)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
-     if (any(numerics_integrator == 1_pInt)) then
-       allocate(sourceState(phase)%p(sourceOffset)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
-       allocate(sourceState(phase)%p(sourceOffset)%previousDotState2 (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     endif
-     if (any(numerics_integrator == 4_pInt)) &
-       allocate(sourceState(phase)%p(sourceOffset)%RK4dotState       (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     if (any(numerics_integrator == 5_pInt)) &
-       allocate(sourceState(phase)%p(sourceOffset)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)      
-
+     call material_allocateSourceState(phase,sourceOffset,NofMyPhase,1_pInt,1_pInt,0_pInt)
+    
    endif
  
  enddo initializeInstances
 end subroutine source_thermal_externalheat_init
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief rate of change of state
