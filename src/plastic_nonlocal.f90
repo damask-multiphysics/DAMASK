@@ -1646,7 +1646,7 @@ end subroutine plastic_nonlocal_deltaState
 !> @brief calculates the rate of change of microstructure
 !---------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
-                                     timestep,subfrac, ip,el)
+                                     timestep,ip,el)
 use, intrinsic :: &
   IEEE_arithmetic
 use prec,     only: dNeq0, &

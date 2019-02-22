@@ -882,7 +882,7 @@ subroutine constitutive_collectDotState(S, FeArray, Fi, FpArray, subdt, subfracA
 
    case (PLASTICITY_NONLOCAL_ID) plasticityType
      call plastic_nonlocal_dotState     (Mp,FeArray,FpArray,temperature(ho)%p(tme), &
-                                         subdt,subfracArray,ip,el)
+                                         subdt,ip,el)
  end select plasticityType
 
  SourceLoop: do i = 1_pInt, phase_Nsources(material_phase(ipc,ip,el))
