@@ -248,7 +248,7 @@ subroutine crystallite_init
  allocate(crystallite_sizePostResult(maxval(crystallite_Noutput), &
                                      size(config_crystallite)), source=0_pInt)
 
- select case(numerics_integrator(1))
+ select case(numerics_integrator)
    case(1_pInt)
      integrateState => integrateStateFPI
    case(2_pInt)

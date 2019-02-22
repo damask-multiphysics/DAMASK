@@ -43,8 +43,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_adiabatic_init
- use IO, only: &
-   IO_error
  use material, only: &
    thermal_type, &
    thermal_typeInstance, &
