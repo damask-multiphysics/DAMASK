@@ -944,6 +944,7 @@ class Symmetry:
 
   def inFZ(self,R):
     """Check whether given Rodrigues vector falls into fundamental zone of own symmetry."""
+    if isinstance(R, Quaternion): R = R.asRodrigues()                                               # translate accidentally passed quaternion
 # fundamental zone in Rodrigues space is point symmetric around origin
    
     if R.shape[0]==4: # transition old (length not stored separately) to new
