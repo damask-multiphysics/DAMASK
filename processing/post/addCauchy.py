@@ -13,8 +13,8 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Add column(s) containing Cauchy stress based on given column(s) of deformation gradient and first Piola--Kirchhoff stress.
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
+Add column containing Cauchy stress based on deformation gradient and first Piola--Kirchhoff stress.
 
 """, version = scriptID)
 

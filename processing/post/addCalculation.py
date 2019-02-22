@@ -18,7 +18,7 @@ def listify(x):
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Add or alter column(s) with derived values according to user-defined arithmetic operation between column(s).
 Column labels are tagged by '#label#' in formulas. Use ';' for ',' in functions.
 Numpy is available as 'np'.
@@ -41,10 +41,7 @@ parser.add_option('-f','--formula',
 
 parser.add_option('-c','--condition',
                   dest   = 'condition', metavar='string',
-                  help   = 'condition to alter existing column data')
-
-parser.set_defaults(condition = None,
-                   )
+                  help   = 'condition to alter existing column data (optional)')
 
 (options,filenames) = parser.parse_args()
 
@@ -80,7 +77,7 @@ for name in filenames:
     condition = options.condition                                                                   # copy per file, since might be altered inline
     breaker = False
   
-    for position,(all,marker,column) in enumerate(set(re.findall(r'#(([s]#)?(.+?))#',condition))):              # find three groups
+    for position,(all,marker,column) in enumerate(set(re.findall(r'#(([s]#)?(.+?))#',condition))):  # find three groups
       idx = table.label_index(column)
       dim = table.label_dimension(column)
       if idx < 0 and column not in specials:
@@ -89,15 +86,15 @@ for name in filenames:
       else:
         if column in specials:
           replacement = 'specials["{}"]'.format(column)
-        elif dim == 1:                                                                                # scalar input
+        elif dim == 1:                                                                              # scalar input
           replacement = '{}(table.data[{}])'.format({  '':'float',
-                                                        's#':'str'}[marker],idx)                      # take float or string value of data column
-        elif dim > 1:                                                                                 # multidimensional input (vector, tensor, etc.)
-          replacement = 'np.array(table.data[{}:{}],dtype=float)'.format(idx,idx+dim)                 # use (flat) array representation
+                                                        's#':'str'}[marker],idx)                    # take float or string value of data column
+        elif dim > 1:                                                                               # multidimensional input (vector, tensor, etc.)
+          replacement = 'np.array(table.data[{}:{}],dtype=float)'.format(idx,idx+dim)               # use (flat) array representation
        
         condition = condition.replace('#'+all+'#',replacement)
     
-    if breaker: continue                                                                              # found mistake in condition evaluation --> next file
+    if breaker: continue                                                                            # found mistake in condition evaluation --> next file
 
 # ------------------------------------------ build formulas ----------------------------------------
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -12,7 +12,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Append data of ASCIItable(s).
 
 """, version = scriptID)
@@ -23,6 +23,10 @@ parser.add_option('-a', '--add','--table',
                   help = 'tables to add')
 
 (options,filenames) = parser.parse_args()
+
+if options.table is None:
+  parser.error('no table specified.')
+
 
 # --- loop over input files -------------------------------------------------------------------------
 

@@ -13,7 +13,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options file[s]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Add info lines to ASCIItable header.
 
 """, version = scriptID)
@@ -23,10 +23,11 @@ parser.add_option('-i',
                   dest = 'info', action = 'extend', metavar = '<string LIST>',
                   help    = 'items to add')
 
-parser.set_defaults(info = [],
-                   )
 
 (options,filenames) = parser.parse_args()
+
+if options.info is None:
+  parser.error('no info specified.')
 
 # --- loop over input files ------------------------------------------------------------------------
 

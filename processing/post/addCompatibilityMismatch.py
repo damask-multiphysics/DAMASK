@@ -209,7 +209,7 @@ def shapeMismatch(size,F,nodes,centres):
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options file[s]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Add column(s) containing the shape and volume mismatch resulting from given deformation gradient.
 Operates on periodic three-dimensional x,y,z-ordered data sets.
 

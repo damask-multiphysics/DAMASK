@@ -56,12 +56,9 @@ subroutine constitutive_init()
    IO_checkAndRewind, &
    IO_open_jobFile_stat, &
    IO_write_jobFile, &
-   IO_write_jobIntFile, &
    IO_timeStamp
  use config, only: &
    config_phase
- use mesh, only: &
-   FE_geomtype
  use config, only: &
    material_Nphase, &
    material_localFileExt, &
@@ -163,16 +160,16 @@ subroutine constitutive_init()
  call IO_checkAndRewind(FILEUNIT)
  if (any(phase_source == SOURCE_thermal_dissipation_ID))     call source_thermal_dissipation_init(FILEUNIT)
  if (any(phase_source == SOURCE_thermal_externalheat_ID))    call source_thermal_externalheat_init(FILEUNIT)
- if (any(phase_source == SOURCE_damage_isoBrittle_ID))       call source_damage_isoBrittle_init(FILEUNIT)
- if (any(phase_source == SOURCE_damage_isoDuctile_ID))       call source_damage_isoDuctile_init(FILEUNIT)
- if (any(phase_source == SOURCE_damage_anisoBrittle_ID))     call source_damage_anisoBrittle_init(FILEUNIT)
- if (any(phase_source == SOURCE_damage_anisoDuctile_ID))     call source_damage_anisoDuctile_init(FILEUNIT)
-
+ if (any(phase_source == SOURCE_damage_isoBrittle_ID))       call source_damage_isoBrittle_init
+ if (any(phase_source == SOURCE_damage_isoDuctile_ID))       call source_damage_isoDuctile_init
+ if (any(phase_source == SOURCE_damage_anisoBrittle_ID))     call source_damage_anisoBrittle_init
+ if (any(phase_source == SOURCE_damage_anisoDuctile_ID))     call source_damage_anisoDuctile_init
+ 
 !--------------------------------------------------------------------------------------------------
 ! parse kinematic mechanisms from config file
  call IO_checkAndRewind(FILEUNIT)
- if (any(phase_kinematics == KINEMATICS_cleavage_opening_ID))  call kinematics_cleavage_opening_init(FILEUNIT)
- if (any(phase_kinematics == KINEMATICS_slipplane_opening_ID)) call kinematics_slipplane_opening_init(FILEUNIT)
+ if (any(phase_kinematics == KINEMATICS_cleavage_opening_ID))  call kinematics_cleavage_opening_init
+ if (any(phase_kinematics == KINEMATICS_slipplane_opening_ID)) call kinematics_slipplane_opening_init
  if (any(phase_kinematics == KINEMATICS_thermal_expansion_ID)) call kinematics_thermal_expansion_init(FILEUNIT)
  close(FILEUNIT)
 
@@ -609,9 +606,9 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, S6, Fi, ipc, ip, e
  KinematicsLoop: do k = 1_pInt, phase_Nkinematics(material_phase(ipc,ip,el))
    kinematicsType: select case (phase_kinematics(k,material_phase(ipc,ip,el)))
      case (KINEMATICS_cleavage_opening_ID) kinematicsType
-       call kinematics_cleavage_opening_LiAndItsTangent(my_Li, my_dLi_dS, S6, ipc, ip, el)
+       call kinematics_cleavage_opening_LiAndItsTangent(my_Li, my_dLi_dS, math_6toSym33(S6), ipc, ip, el)
      case (KINEMATICS_slipplane_opening_ID) kinematicsType
-       call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dS, S6, ipc, ip, el)
+       call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dS, math_6toSym33(S6), ipc, ip, el)
      case (KINEMATICS_thermal_expansion_ID) kinematicsType
        call kinematics_thermal_expansion_LiAndItsTangent(my_Li, my_dLi_dS, ipc, ip, el)
      case default kinematicsType
@@ -788,8 +785,7 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
    math_sym33to6, &
    math_mul33x33
  use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
+   theMesh
  use material, only: &
    phasememberAt, &
    phase_plasticityInstance, &
@@ -840,9 +836,9 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
    el                                                                                               !< element
  real(pReal),  intent(in) :: &
    subdt                                                                                            !< timestep
- real(pReal),  intent(in), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+ real(pReal),  intent(in), dimension(homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
    subfracArray                                                                                     !< subfraction of timestep
- real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+ real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
    FeArray, &                                                                                       !< elastic deformation gradient
    FpArray                                                                                          !< plastic deformation gradient
  real(pReal),  intent(in), dimension(3,3) :: &
@@ -899,7 +895,7 @@ subroutine constitutive_collectDotState(S6, FeArray, Fi, FpArray, subdt, subfrac
    sourceType: select case (phase_source(s,material_phase(ipc,ip,el)))
 
      case (SOURCE_damage_anisoBrittle_ID) sourceType
-       call source_damage_anisoBrittle_dotState (S6, ipc, ip, el) !< correct stress?
+       call source_damage_anisoBrittle_dotState (math_6toSym33(S6), ipc, ip, el) !< correct stress?
 
      case (SOURCE_damage_isoDuctile_ID) sourceType
        call source_damage_isoDuctile_dotState   (         ipc, ip, el)
@@ -1002,8 +998,7 @@ function constitutive_postResults(S6, Fi, FeArray, ipc, ip, el)
   math_6toSym33, &
   math_mul33x33
  use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
+   theMesh
  use material, only: &
    phasememberAt, &
    phase_plasticityInstance, &
@@ -1059,7 +1054,7 @@ function constitutive_postResults(S6, Fi, FeArray, ipc, ip, el)
    constitutive_postResults
  real(pReal),  intent(in), dimension(3,3) :: &
    Fi                                                                                               !< intermediate deformation gradient
- real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+ real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
    FeArray                                                                                          !< elastic deformation gradient
  real(pReal),  intent(in), dimension(6) :: &
    S6                                                                                               !< 2nd Piola Kirchhoff stress (vector notation)
@@ -1121,16 +1116,18 @@ function constitutive_postResults(S6, Fi, FeArray, ipc, ip, el)
  SourceLoop: do s = 1_pInt, phase_Nsources(material_phase(ipc,ip,el))
    startPos = endPos + 1_pInt
    endPos = endPos + sourceState(material_phase(ipc,ip,el))%p(s)%sizePostResults
+   of = phasememberAt(ipc,ip,el)
    sourceType: select case (phase_source(s,material_phase(ipc,ip,el)))
      case (SOURCE_damage_isoBrittle_ID) sourceType
-       constitutive_postResults(startPos:endPos) = source_damage_isoBrittle_postResults(ipc, ip, el)
+       constitutive_postResults(startPos:endPos) = source_damage_isoBrittle_postResults(material_phase(ipc,ip,el),of)
      case (SOURCE_damage_isoDuctile_ID) sourceType
-       constitutive_postResults(startPos:endPos) = source_damage_isoDuctile_postResults(ipc, ip, el)
+       constitutive_postResults(startPos:endPos) = source_damage_isoDuctile_postResults(material_phase(ipc,ip,el),of)
      case (SOURCE_damage_anisoBrittle_ID) sourceType
-       constitutive_postResults(startPos:endPos) = source_damage_anisoBrittle_postResults(ipc, ip, el)
+       constitutive_postResults(startPos:endPos) = source_damage_anisoBrittle_postResults(material_phase(ipc,ip,el),of)
      case (SOURCE_damage_anisoDuctile_ID) sourceType
-       constitutive_postResults(startPos:endPos) = source_damage_anisoDuctile_postResults(ipc, ip, el)
+       constitutive_postResults(startPos:endPos) = source_damage_anisoDuctile_postResults(material_phase(ipc,ip,el),of)
    end select sourceType
+
  enddo SourceLoop
 
 end function constitutive_postResults

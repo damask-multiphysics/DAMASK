@@ -162,7 +162,6 @@ subroutine utilities_init()
 
  character(len=1024)                :: petsc_optionsPhysics
  integer(pInt)                      :: dimPlex
- integer(pInt)                      :: headerID = 205_pInt
  PetscInt,    allocatable           :: nEntities(:), nOutputCells(:), nOutputNodes(:)
  PetscInt                           :: dim
  PetscErrorCode                     :: ierr
@@ -213,13 +212,6 @@ subroutine utilities_init()
  nOutputCells(worldrank+1) = count(material_homog > 0_pInt)
  call MPI_Allreduce(MPI_IN_PLACE,nOutputNodes,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)
  call MPI_Allreduce(MPI_IN_PLACE,nOutputCells,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)
- if (worldrank == 0_pInt) then
-   open(unit=headerID, file=trim(getSolverJobName())//'.header', &
-        form='FORMATTED', status='REPLACE')
-   write(headerID, '(a,i0)') 'dimension : ',   dimPlex                                             
-   write(headerID, '(a,i0)') 'number of nodes : ', sum(nOutputNodes)
-   write(headerID, '(a,i0)') 'number of cells : ', sum(nOutputCells)
- endif 
 
 end subroutine utilities_init
 
@@ -503,7 +495,6 @@ subroutine utilities_indexActiveSet(field,section,x_local,f_local,localIS,global
    CHKERRQ(ierr)
    call ISDestroy(dummyIS,ierr); CHKERRQ(ierr)
  endif                      
- deallocate(localIndices)
  
 end subroutine utilities_indexActiveSet
 

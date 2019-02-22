@@ -14,7 +14,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Average each data block of size 'packing' into single values thus reducing the former grid to grid/packing.
 
 """, version = scriptID)
@@ -34,16 +34,14 @@ parser.add_option('--shift',
 parser.add_option('-g', '--grid',
                   dest = 'grid',
                   type = 'int', nargs = 3, metavar = 'int int int',
-                  help = 'grid in x,y,z [autodetect]')
+                  help = 'grid in x,y,z (optional)')
 parser.add_option('-s', '--size',
                   dest = 'size',
                   type = 'float', nargs = 3, metavar = 'float float float',
-                  help = 'size in x,y,z [autodetect]')
+                  help = 'size in x,y,z (optional)')
 parser.set_defaults(pos     = 'pos',
                     packing = (2,2,2),
                     shift   = (0,0,0),
-                    grid    = (0,0,0),
-                    size    = (0.0,0.0,0.0),
                    )
 
 (options,filenames) = parser.parse_args()
@@ -92,7 +90,7 @@ for name in filenames:
 
   table.data_readArray()
 
-  if (any(options.grid) == 0 or any(options.size) == 0.0):
+  if (options.grid is None or options.size is None):
     grid,size = damask.util.coordGridAndSize(table.data[:,table.label_indexrange(options.pos)])
   else:
     grid   = np.array(options.grid,'i')

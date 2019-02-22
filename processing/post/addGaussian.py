@@ -15,7 +15,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog option(s) [ASCIItable(s)]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog option [ASCIItable(s)]', description = """
 Add column(s) containing Gaussian filtered values of requested column(s).
 Operates on periodic and non-periodic ordered three-dimensional data sets.
 For details see scipy.ndimage documentation.
@@ -34,12 +34,12 @@ parser.add_option('-o','--order',
                   dest = 'order',
                   type = int,
                   metavar = 'int',
-                  help = 'order of the filter')
+                  help = 'order of the filter [%default]')
 parser.add_option('--sigma',
                   dest = 'sigma',
                   type = float,
                   metavar = 'float',
-                  help = 'standard deviation')
+                  help = 'standard deviation [%default]')
 parser.add_option('--periodic',
                   dest = 'periodic',
                   action = 'store_true',
@@ -50,7 +50,6 @@ parser.add_option('--periodic',
 parser.set_defaults(pos = 'pos',
                     order = 0,
                     sigma = 1,
-                    periodic = False,
                    )
 
 (options,filenames) = parser.parse_args()

@@ -17,8 +17,6 @@ module crystallite
  use FEsolving, only:  &
    FEsolving_execElem, &
    FEsolving_execIP
- use mesh, only: &
-   mesh_element
  use material, only: &
    homogenization_Ngrains
 
@@ -157,10 +155,8 @@ subroutine crystallite_init
    math_inv33, &
    math_mul33x33
  use mesh, only: &
-   mesh_element, &
-   mesh_NcpElems, &
-   mesh_maxNips, &
-   mesh_maxNipNeighbors
+   theMesh, &
+   mesh_element
  use IO, only: &
    IO_timeStamp, &
    IO_stringValue, &
@@ -198,8 +194,8 @@ subroutine crystallite_init
 #include "compilation_info.f90"
 
  cMax = homogenization_maxNgrains
- iMax = mesh_maxNips
- eMax = mesh_NcpElems
+ iMax = theMesh%elem%nIPs
+ eMax = theMesh%nElems
 
 ! ---------------------------------------------------------------------------
 ! ToDo (when working on homogenization): should be 3x3 tensor called S
@@ -330,7 +326,7 @@ subroutine crystallite_init
        case(elasmatrix_ID)
          mySize = 36_pInt
        case(neighboringip_ID,neighboringelement_ID)
-         mySize = mesh_maxNipNeighbors
+         mySize = theMesh%elem%nIPneighbors
        case default
          mySize = 0_pInt
      end select
@@ -411,7 +407,7 @@ subroutine crystallite_init
    write(6,'(a42,1x,i10)') '    # of elements:                       ', eMax
    write(6,'(a42,1x,i10)') 'max # of integration points/element:     ', iMax
    write(6,'(a42,1x,i10)') 'max # of constituents/integration point: ', cMax
-   write(6,'(a42,1x,i10)') 'max # of neigbours/integration point:    ', mesh_maxNipNeighbors
+   write(6,'(a42,1x,i10)') 'max # of neigbours/integration point:    ', theMesh%elem%nIPneighbors
    write(6,'(a42,1x,i10)') '    # of nonlocal constituents:          ',count(.not. crystallite_localPlasticity)
    flush(6)
  endif
@@ -426,7 +422,7 @@ end subroutine crystallite_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate stress (P)
 !--------------------------------------------------------------------------------------------------
-function crystallite_stress()
+function crystallite_stress(a)
  use prec, only: &
    tol_math_check, &
    dNeq0
@@ -454,10 +450,8 @@ function crystallite_stress()
    math_6toSym33, &
    math_sym33to6
  use mesh, only: &
-   mesh_NcpElems, &
-   mesh_element, &
-   mesh_maxNips, &
-   FE_geomtype
+   theMesh, &
+   mesh_element
  use material, only: &
    homogenization_Ngrains, &
    plasticState, &
@@ -470,7 +464,8 @@ function crystallite_stress()
    constitutive_LiAndItsTangents
 
  implicit none
- logical, dimension(mesh_maxNips,mesh_NcpElems) :: crystallite_stress
+ logical, dimension(theMesh%elem%nIPs,theMesh%Nelems) :: crystallite_stress
+ real(pReal), intent(in), optional :: a                                                             !ToDo: for some reason this prevents an internal compiler error in GNU. Very strange
  real(pReal) :: &
    formerSubStep
  integer(pInt) :: &
@@ -537,7 +532,7 @@ function crystallite_stress()
    endIP   = startIP
  else singleRun
    startIP = 1_pInt
-   endIP = mesh_maxNips
+   endIP = theMesh%elem%nIPs
  endif singleRun
 
  NiterationCrystallite = 0_pInt
@@ -723,8 +718,7 @@ subroutine crystallite_stressTangent()
    math_invert2, &
    math_det33
  use mesh, only: &
-   mesh_element, &
-   FE_geomtype
+   mesh_element
  use material, only: &
    homogenization_Ngrains
  use constitutive, only:  &
@@ -923,7 +917,7 @@ function crystallite_push33ToRef(ipc,ip,el, tensor33)
   math_inv33, &
   math_EulerToR
  use material, only: &
-  material_EulerAngles
+  material_EulerAngles                                                                              ! ToDo: Why stored? We also have crystallite_orientation0
 
  implicit none
  real(pReal), dimension(3,3) :: crystallite_push33ToRef
@@ -954,13 +948,10 @@ function crystallite_postResults(ipc, ip, el)
    inDeg, &
    math_6toSym33
  use mesh, only: &
+   theMesh, &
    mesh_element, &
    mesh_ipVolume, &
-   mesh_maxNipNeighbors, &
-   mesh_ipNeighborhood, &
-   FE_NipNeighbors, &
-   FE_geomtype, &
-   FE_celltype
+   mesh_ipNeighborhood
  use material, only: &
    plasticState, &
    sourceState, &
@@ -1064,14 +1055,14 @@ function crystallite_postResults(ipc, ip, el)
        mySize = 36_pInt
        crystallite_postResults(c+1:c+mySize) = reshape(constitutive_homogenizedC(ipc,ip,el),[mySize])
      case(neighboringelement_ID)
-       mySize = mesh_maxNipNeighbors
+       mySize = theMesh%elem%nIPneighbors
        crystallite_postResults(c+1:c+mySize) = 0.0_pReal
-       forall (n = 1_pInt:FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,el))))) &
+       forall (n = 1_pInt:mySize) &
          crystallite_postResults(c+n) = real(mesh_ipNeighborhood(1,n,ip,el),pReal)
      case(neighboringip_ID)
-       mySize = mesh_maxNipNeighbors
+       mySize = theMesh%elem%nIPneighbors
        crystallite_postResults(c+1:c+mySize) = 0.0_pReal
-       forall (n = 1_pInt:FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,el))))) &
+       forall (n = 1_pInt:mySize) &
          crystallite_postResults(c+n) = real(mesh_ipNeighborhood(2,n,ip,el),pReal)
    end select
    c = c + mySize
@@ -1748,9 +1739,8 @@ end subroutine integrateStateEuler
 !--------------------------------------------------------------------------------------------------
 subroutine integrateStateAdaptiveEuler()
  use mesh, only: &
-   mesh_element, &
-   mesh_NcpElems, &
-   mesh_maxNips
+   theMesh, &
+   mesh_element
  use material, only: &
    homogenization_Ngrains, &
    plasticState, &
@@ -1774,11 +1764,11 @@ subroutine integrateStateAdaptiveEuler()
    
   ! ToDo: MD: once all constitutives use allocate state, attach residuum arrays to the state in case of adaptive Euler
  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,            &
-                        homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+                        homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
    residuum_plastic
  real(pReal), dimension(constitutive_source_maxSizeDotState,&
                         maxval(phase_Nsources), &
-                        homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+                        homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
    residuum_source
 
 !--------------------------------------------------------------------------------------------------
@@ -1925,8 +1915,7 @@ end subroutine integrateStateRK4
 subroutine integrateStateRKCK45()
  use mesh, only: &
    mesh_element, &
-   mesh_NcpElems, &
-   mesh_maxNips
+   theMesh
  use material, only: &
    homogenization_Ngrains, &
    plasticState, &
@@ -1973,11 +1962,11 @@ subroutine integrateStateRKCK45()
    ! ToDo: MD: once all constitutives use allocate state, attach residuum arrays to the state in case of RKCK45
 
  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,            &
-                        homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+                        homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
    residuum_plastic                                                                         ! relative residuum from evolution in microstructure
  real(pReal), dimension(constitutive_source_maxSizeDotState, &
                         maxval(phase_Nsources), &
-                        homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+                        homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
    residuum_source                                                                   ! relative residuum from evolution in microstructure
 
 
@@ -2122,7 +2111,8 @@ end subroutine nonlocalConvergenceCheck
 !> @details: For explicitEuler, RK4 and RKCK45, adaptive Euler and FPI have their on criteria
 !--------------------------------------------------------------------------------------------------
 subroutine setConvergenceFlag()
-
+ use mesh, only: &
+   mesh_element
  implicit none
  integer(pInt) :: &
    e, &                                                                                             !< element index in element loop
@@ -2162,7 +2152,8 @@ end subroutine setConvergenceFlag
 !> @brief Standard forwarding of state as state = state0 + dotState * (delta t)
 !--------------------------------------------------------------------------------------------------
 subroutine update_stress(timeFraction)
-
+ use mesh, only: &
+   mesh_element
  implicit none
  real(pReal), intent(in) :: &
    timeFraction
@@ -2194,6 +2185,8 @@ end subroutine update_stress
 !> @brief tbd
 !--------------------------------------------------------------------------------------------------
 subroutine update_dependentState()
+ use mesh, only: &
+   mesh_element
  use constitutive, only: &
    constitutive_dependentState => constitutive_microstructure
 
@@ -2225,6 +2218,8 @@ subroutine update_state(timeFraction)
    sourceState, &
    phase_Nsources, &
    phaseAt, phasememberAt
+ use mesh, only: &
+   mesh_element
 
  implicit none
  real(pReal), intent(in) :: &
@@ -2274,6 +2269,8 @@ subroutine update_dotState(timeFraction)
    sourceState, &
    phaseAt, phasememberAt, &
    phase_Nsources
+ use mesh, only: &
+   mesh_element
  use constitutive, only: &
    constitutive_collectDotState
 
@@ -2327,6 +2324,8 @@ subroutine update_deltaState
    IEEE_arithmetic
  use prec, only: &
    dNeq0
+ use mesh, only: &
+   mesh_element
  use material, only: &
    plasticState, &
    sourceState, &
@@ -2422,6 +2421,8 @@ logical function stateJump(ipc,ip,el)
    sourceState, &
    phase_Nsources, &
    phaseAt, phasememberAt
+ use mesh, only: &
+   mesh_element
  use constitutive, only: &
    constitutive_collectDeltaState
  use math, only: &
