@@ -13,7 +13,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Produces a binned grid of two columns from an ASCIItable, i.e. a two-dimensional probability density map.
 
 """, version = scriptID)
@@ -37,15 +37,15 @@ parser.add_option('-t','--type',
 parser.add_option('-x','--xrange',
                   dest = 'xrange',
                   type = 'float', nargs = 2, metavar = 'float float',
-                  help = 'min max value in x direction [autodetect]')
+                  help = 'min max limits in x direction (optional)')
 parser.add_option('-y','--yrange',
                   dest = 'yrange',
                   type = 'float', nargs = 2, metavar = 'float float',
-                  help = 'min max value in y direction [autodetect]')
+                  help = 'min max limits in y direction (optional)')
 parser.add_option('-z','--zrange',
                   dest = 'zrange',
                   type = 'float', nargs = 2, metavar = 'float float',
-                  help = 'min max value in z direction [autodetect]')
+                  help = 'min max limits in z direction (optional)')
 parser.add_option('-i','--invert',
                   dest = 'invert',
                   action = 'store_true',
@@ -64,9 +64,6 @@ parser.set_defaults(bins = (10,10),
                     xrange = (0.0,0.0),
                     yrange = (0.0,0.0),
                     zrange = (0.0,0.0),
-                    invert = False,
-                    normRow = False,
-                    normCol = False,
                    )
 
 (options,filenames) = parser.parse_args()

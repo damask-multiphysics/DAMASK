@@ -95,8 +95,6 @@ subroutine CPFEM_init
  use prec, only: &
    pInt, pReal, pLongInt
  use IO, only: &
-   IO_read_realFile,&
-   IO_read_intFile, &
    IO_timeStamp, &
    IO_error
  use numerics, only: &

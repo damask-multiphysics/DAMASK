@@ -495,7 +495,6 @@ subroutine utilities_indexActiveSet(field,section,x_local,f_local,localIS,global
    CHKERRQ(ierr)
    call ISDestroy(dummyIS,ierr); CHKERRQ(ierr)
  endif                      
- deallocate(localIndices)
  
 end subroutine utilities_indexActiveSet
 

@@ -30,7 +30,7 @@ def sortingList(labels,whitelistitems):
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Filter rows according to condition and columns by either white or black listing.
 
 Examples:

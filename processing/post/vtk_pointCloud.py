@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,vtk
@@ -13,7 +13,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Produce a VTK point cloud dataset based on coordinates given in an ASCIItable.
 
 """, version = scriptID)
@@ -78,7 +78,6 @@ for name in filenames:
   Polydata.SetPoints(Points)
   Polydata.SetVerts(Vertices)
   Polydata.Modified()
-  if vtk.VTK_MAJOR_VERSION <= 5: Polydata.Update()
  
 # ------------------------------------------ output result ---------------------------------------  
 
@@ -94,8 +93,8 @@ for name in filenames:
     writer.SetHeader('# powered by '+scriptID)
     writer.WriteToOutputStringOn()
   
-  if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(Polydata)
-  else:                          writer.SetInputData(Polydata)
+  
+  writer.SetInputData(Polydata)
 
   writer.Write()
 

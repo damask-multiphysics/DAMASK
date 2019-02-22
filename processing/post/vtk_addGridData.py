@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
 import os,vtk
@@ -17,7 +17,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 msg = "Add scalars, vectors, and/or an RGB tuple from"
 msg += "an ASCIItable to existing VTK grid (.vtr/.vtk/.vtu)."
 parser = OptionParser(option_class=damask.extendableOption,
-                      usage='%prog options [file[s]]',
+                      usage='%prog options [ASCIItable(s)]',
                       description = msg,
                       version = scriptID)
 
@@ -25,10 +25,6 @@ parser.add_option(      '--vtk',
                   dest = 'vtk',
                   type = 'string', metavar = 'string',
                   help = 'VTK file name')
-parser.add_option(      '--inplace',
-                  dest = 'inplace',
-                  action = 'store_true',
-                  help = 'modify VTK file in-place')
 parser.add_option('-r', '--render',
                   dest = 'render',
                   action = 'store_true',
@@ -49,7 +45,6 @@ parser.add_option('-c', '--color',
 parser.set_defaults(data = [],
                     tensor = [],
                     color = [],
-                    inplace = False,
                     render = False,
 )
 
@@ -64,23 +59,22 @@ if os.path.splitext(options.vtk)[1] == '.vtr':
   reader.Update()
   rGrid = reader.GetOutput()
   writer = vtk.vtkXMLRectilinearGridWriter()
-  writer.SetFileName(os.path.splitext(options.vtk)[0]+('.vtr' if options.inplace else '_added.vtr'))
 elif os.path.splitext(options.vtk)[1] == '.vtk':
   reader = vtk.vtkGenericDataObjectReader()
   reader.SetFileName(options.vtk)
   reader.Update()
   rGrid = reader.GetRectilinearGridOutput()
   writer = vtk.vtkXMLRectilinearGridWriter()
-  writer.SetFileName(os.path.splitext(options.vtk)[0]+('.vtr' if options.inplace else '_added.vtr'))
 elif os.path.splitext(options.vtk)[1] == '.vtu':
   reader = vtk.vtkXMLUnstructuredGridReader()
   reader.SetFileName(options.vtk)
   reader.Update()
   rGrid = reader.GetOutput()
   writer = vtk.vtkXMLUnstructuredGridWriter()
-  writer.SetFileName(os.path.splitext(options.vtk)[0]+('.vtu' if options.inplace else '_added.vtu'))
 else:
   parser.error('Unsupported VTK file type extension.')
+
+writer.SetFileName(options.vtk)
 
 Npoints = rGrid.GetNumberOfPoints()
 Ncells  = rGrid.GetNumberOfCells()
@@ -172,8 +166,7 @@ for name in filenames:
 
   writer.SetDataModeToBinary()
   writer.SetCompressorTypeToZLib()
-  if vtk.VTK_MAJOR_VERSION <= 5: writer.SetInput(rGrid)
-  else:                          writer.SetInputData(rGrid)
+  writer.SetInputData(rGrid)
   writer.Write()
 
 # ------------------------------------------ render result ---------------------------------------

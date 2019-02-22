@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math
@@ -49,7 +49,7 @@ parser.set_defaults(d = 1,
 
 (options, filenames) = parser.parse_args()
 
-options.immutable = map(int,options.immutable)
+options.immutable = list(map(int,options.immutable))
 
 getInterfaceEnergy = lambda A,B: np.float32((A*B != 0)*(A != B)*1.0)                               # 1.0 if A & B are distinct & nonzero, 0.0 otherwise
 struc = ndimage.generate_binary_structure(3,1)                                                     # 3D von Neumann neighborhood
@@ -70,9 +70,9 @@ for name in filenames:
   table.head_read()
   info,extra_header = table.head_getGeom()
   
-  damask.util.croak(['grid     a b c:  {}'.format(' x '.join(map(str,info['grid']))),
-                     'size     x y z:  {}'.format(' x '.join(map(str,info['size']))),
-                     'origin   x y z:  {}'.format(' : '.join(map(str,info['origin']))),
+  damask.util.croak(['grid     a b c:  {}'.format(' x '.join(list(map(str,info['grid'])))),
+                     'size     x y z:  {}'.format(' x '.join(list(map(str,info['size'])))),
+                     'origin   x y z:  {}'.format(' : '.join(list(map(str,info['origin'])))),
                      'homogenization:  {}'.format(info['homogenization']),
                      'microstructures: {}'.format(info['microstructures']),
                     ])
@@ -102,9 +102,9 @@ for name in filenames:
     gauss = np.exp(-(X*X + Y*Y + Z*Z)/(2.0*options.d*options.d),dtype=np.float32) \
             /np.power(2.0*np.pi*options.d*options.d,(3.0 - np.count_nonzero(info['grid'] == 1))/2.,dtype=np.float32)
           
-    gauss[:,:,:grid[2]/2:-1] = gauss[:,:,1:(grid[2]+1)/2]     # trying to cope with uneven (odd) grid size
-    gauss[:,:grid[1]/2:-1,:] = gauss[:,1:(grid[1]+1)/2,:]
-    gauss[:grid[0]/2:-1,:,:] = gauss[1:(grid[0]+1)/2,:,:]
+    gauss[:,:,:grid[2]//2:-1] = gauss[:,:,1:(grid[2]+1)//2]     # trying to cope with uneven (odd) grid size
+    gauss[:,:grid[1]//2:-1,:] = gauss[:,1:(grid[1]+1)//2,:]
+    gauss[:grid[0]//2:-1,:,:] = gauss[1:(grid[0]+1)//2,:,:]
     gauss = np.fft.rfftn(gauss).astype(np.complex64)
 
   for smoothIter in range(options.N):
@@ -119,9 +119,9 @@ for name in filenames:
                                                           microstructure,i,axis=0), j,axis=1), k,axis=2)))
 
     # periodically extend interfacial energy array by half a grid size in positive and negative directions
-    periodic_interfaceEnergy = np.tile(interfaceEnergy,(3,3,3))[grid[0]/2:-grid[0]/2,
-                                                                grid[1]/2:-grid[1]/2,
-                                                                grid[2]/2:-grid[2]/2]
+    periodic_interfaceEnergy = np.tile(interfaceEnergy,(3,3,3))[grid[0]//2:-grid[0]//2,
+                                                                grid[1]//2:-grid[1]//2,
+                                                                grid[2]//2:-grid[2]//2]
 
     # transform bulk volume (i.e. where interfacial energy remained zero), store index of closest boundary voxel
     index = ndimage.morphology.distance_transform_edt(periodic_interfaceEnergy == 0.,                                            
@@ -148,15 +148,15 @@ for name in filenames:
                          ndimage.morphology.binary_dilation(interfaceEnergy > 0.,
                                                             structure = struc,
                                                             iterations = int(round(options.d*2.))-1),# fat boundary
-                         periodic_bulkEnergy[grid[0]/2:-grid[0]/2,                                 # retain filled energy on fat boundary...
-                                             grid[1]/2:-grid[1]/2,
-                                             grid[2]/2:-grid[2]/2],                                # ...and zero everywhere else
+                         periodic_bulkEnergy[grid[0]//2:-grid[0]//2,                                 # retain filled energy on fat boundary...
+                                             grid[1]//2:-grid[1]//2,
+                                             grid[2]//2:-grid[2]//2],                                # ...and zero everywhere else
                          0.)).astype(np.complex64) *
                          gauss).astype(np.float32)
 
-      periodic_diffusedEnergy = np.tile(diffusedEnergy,(3,3,3))[grid[0]/2:-grid[0]/2,
-                                                                grid[1]/2:-grid[1]/2,
-                                                                grid[2]/2:-grid[2]/2]              # periodically extend the smoothed bulk energy
+      periodic_diffusedEnergy = np.tile(diffusedEnergy,(3,3,3))[grid[0]//2:-grid[0]//2,
+                                                                grid[1]//2:-grid[1]//2,
+                                                                grid[2]//2:-grid[2]//2]              # periodically extend the smoothed bulk energy
 
 
     # transform voxels close to interface region
@@ -164,15 +164,15 @@ for name in filenames:
                                                       return_distances = False,
                                                       return_indices = True)                       # want index of closest bulk grain
 
-    periodic_microstructure = np.tile(microstructure,(3,3,3))[grid[0]/2:-grid[0]/2,
-                                                              grid[1]/2:-grid[1]/2,
-                                                              grid[2]/2:-grid[2]/2]                # periodically extend the microstructure
+    periodic_microstructure = np.tile(microstructure,(3,3,3))[grid[0]//2:-grid[0]//2,
+                                                              grid[1]//2:-grid[1]//2,
+                                                              grid[2]//2:-grid[2]//2]                # periodically extend the microstructure
 
     microstructure = periodic_microstructure[index[0],
                                              index[1],
-                                             index[2]].reshape(2*grid)[grid[0]/2:-grid[0]/2,
-                                                                       grid[1]/2:-grid[1]/2,
-                                                                       grid[2]/2:-grid[2]/2]       # extent grains into interface region
+                                             index[2]].reshape(2*grid)[grid[0]//2:-grid[0]//2,
+                                                                       grid[1]//2:-grid[1]//2,
+                                                                       grid[2]//2:-grid[2]//2]       # extent grains into interface region
 
     # replace immutable microstructures with closest mutable ones
     index = ndimage.morphology.distance_transform_edt(np.in1d(microstructure,options.immutable).reshape(grid),
@@ -236,3 +236,4 @@ for name in filenames:
 # --- output finalization --------------------------------------------------------------------------
 
   table.close()     
+  

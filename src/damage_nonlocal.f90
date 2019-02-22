@@ -186,6 +186,7 @@ subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip,
    homogenization_Ngrains, &
    mappingHomogenization, &
    phaseAt, &
+   phasememberAt, &
    phase_source, &
    phase_Nsources, &
    SOURCE_damage_isoBrittle_ID, &
@@ -210,7 +211,8 @@ subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip,
  integer(pInt) :: &
    phase, &
    grain, &
-   source
+   source, &
+   constituent
  real(pReal) :: &
    phiDot, dPhiDot_dPhi, localphiDot, dLocalphiDot_dPhi  
 
@@ -218,19 +220,20 @@ subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip,
  dPhiDot_dPhi = 0.0_pReal
  do grain = 1, homogenization_Ngrains(mappingHomogenization(2,ip,el))
    phase = phaseAt(grain,ip,el)
+   constituent = phasememberAt(grain,ip,el)
    do source = 1_pInt, phase_Nsources(phase)
      select case(phase_source(source,phase))                                                   
        case (SOURCE_damage_isoBrittle_ID)
-        call source_damage_isobrittle_getRateAndItsTangent  (localphiDot, dLocalphiDot_dPhi, phi, grain, ip,  el)
+        call source_damage_isobrittle_getRateAndItsTangent  (localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
 
        case (SOURCE_damage_isoDuctile_ID)
-        call source_damage_isoductile_getRateAndItsTangent  (localphiDot, dLocalphiDot_dPhi, phi, grain, ip,  el)
+        call source_damage_isoductile_getRateAndItsTangent  (localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
 
        case (SOURCE_damage_anisoBrittle_ID)
-        call source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, grain, ip,  el)
+        call source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
 
        case (SOURCE_damage_anisoDuctile_ID)
-        call source_damage_anisoductile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, grain, ip,  el)
+        call source_damage_anisoductile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
 
        case default
         localphiDot = 0.0_pReal

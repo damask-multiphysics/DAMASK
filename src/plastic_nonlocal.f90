@@ -234,9 +234,7 @@ use IO,       only: IO_read, &
 use debug,    only: debug_level, &
                     debug_constitutive, &
                     debug_levelBasic
-use mesh,     only: mesh_NcpElems, &
-                    mesh_maxNips, &
-                    mesh_maxNipNeighbors
+use mesh,     only: theMesh
 use material, only: phase_plasticity, &
                     homogenization_maxNgrains, &
                     phase_plasticityInstance, &
@@ -814,23 +812,23 @@ allocate(forestProjectionEdge(maxTotalNslip,maxTotalNslip,maxNinstances),       
 allocate(forestProjectionScrew(maxTotalNslip,maxTotalNslip,maxNinstances),            source=0.0_pReal)
 allocate(interactionMatrixSlipSlip(maxTotalNslip,maxTotalNslip,maxNinstances),        source=0.0_pReal)
 allocate(lattice2slip(1:3, 1:3, maxTotalNslip,maxNinstances),                         source=0.0_pReal)
-allocate(sourceProbability(maxTotalNslip,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), &
+allocate(sourceProbability(maxTotalNslip,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), &
                                                                                    source=2.0_pReal)
 
-allocate(rhoDotFluxOutput(maxTotalNslip,8,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), &
+allocate(rhoDotFluxOutput(maxTotalNslip,8,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), &
                                                                                    source=0.0_pReal)
-allocate(rhoDotMultiplicationOutput(maxTotalNslip,2,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), &
+allocate(rhoDotMultiplicationOutput(maxTotalNslip,2,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), &
                                                                                    source=0.0_pReal)
-allocate(rhoDotSingle2DipoleGlideOutput(maxTotalNslip,2,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), &
+allocate(rhoDotSingle2DipoleGlideOutput(maxTotalNslip,2,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), &
                                                                                    source=0.0_pReal)
-allocate(rhoDotAthermalAnnihilationOutput(maxTotalNslip,2,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), &
+allocate(rhoDotAthermalAnnihilationOutput(maxTotalNslip,2,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), &
                                                                                    source=0.0_pReal)
-allocate(rhoDotThermalAnnihilationOutput(maxTotalNslip,2,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), &
+allocate(rhoDotThermalAnnihilationOutput(maxTotalNslip,2,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), &
                                                                                    source=0.0_pReal)
-allocate(rhoDotEdgeJogsOutput(maxTotalNslip,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), &
+allocate(rhoDotEdgeJogsOutput(maxTotalNslip,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), &
                                                                                    source=0.0_pReal)
 
-allocate(compatibility(2,maxTotalNslip,maxTotalNslip,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems), &
+allocate(compatibility(2,maxTotalNslip,maxTotalNslip,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), &
                                                                                    source=0.0_pReal)
 allocate(peierlsStress(maxTotalNslip,2,maxNinstances),                                source=0.0_pReal)
 allocate(colinearSystem(maxTotalNslip,maxNinstances),                                 source=0_pInt)
@@ -1026,10 +1024,8 @@ use IO,       only: IO_error
 use lattice,  only: lattice_maxNslipFamily
 use math,     only: math_sampleGaussVar
 use mesh,     only: mesh_ipVolume, &
-                    mesh_NcpElems, &
-                    mesh_element, &
-                    FE_Nips, &
-                    FE_geomtype
+                    theMesh, &
+                    mesh_element
 use material, only: material_phase, &
                     phase_plasticityInstance, &
                     plasticState, &
@@ -1068,8 +1064,8 @@ do instance = 1_pInt,maxNinstances
 
     minimumIpVolume = huge(1.0_pReal)
     totalVolume = 0.0_pReal
-    do e = 1_pInt,mesh_NcpElems
-      do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
+    do e = 1_pInt,theMesh%nElems
+      do i = 1_pInt,theMesh%elem%nIPs
         if (PLASTICITY_NONLOCAL_ID == phase_plasticity(material_phase(1,i,e)) &
             .and. instance == phase_plasticityInstance(material_phase(1,i,e))) then
           totalVolume = totalVolume + mesh_ipVolume(i,e)
@@ -1084,8 +1080,8 @@ do instance = 1_pInt,maxNinstances
     meanDensity = 0.0_pReal
     do while(meanDensity < rhoSglRandom(instance))
       call random_number(rnd)
-      e = nint(rnd(1)*real(mesh_NcpElems,pReal)+0.5_pReal,pInt)
-      i = nint(rnd(2)*real(FE_Nips(FE_geomtype(mesh_element(2,e))),pReal)+0.5_pReal,pInt)
+      e = nint(rnd(1)*real(theMesh%nElems,pReal)+0.5_pReal,pInt)
+      i = nint(rnd(2)*real(theMesh%elem%nIPs,pReal)+0.5_pReal,pInt)
       if (PLASTICITY_NONLOCAL_ID == phase_plasticity(material_phase(1,i,e)) &
           .and. instance == phase_plasticityInstance(material_phase(1,i,e))) then
         s = nint(rnd(3)*real(ns,pReal)+0.5_pReal,pInt)
@@ -1098,8 +1094,8 @@ do instance = 1_pInt,maxNinstances
     enddo
   ! homogeneous distribution of density with some noise
   else
-    do e = 1_pInt,mesh_NcpElems
-      do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
+    do e = 1_pInt,theMesh%nElems
+      do i = 1_pInt,theMesh%elem%nIPs
         if (PLASTICITY_NONLOCAL_ID == phase_plasticity(material_phase(1,i,e)) &
             .and. instance == phase_plasticityInstance(material_phase(1,i,e))) then
           do f = 1_pInt,lattice_maxNslipFamily
@@ -1181,16 +1177,13 @@ use debug, only: &
   debug_i, &
   debug_e
 use mesh, only: &
+  theMesh, &
   mesh_element, &
   mesh_ipNeighborhood, &
   mesh_ipCoordinates, &
   mesh_ipVolume, &
   mesh_ipAreaNormal, &
-  mesh_ipArea, &
-  FE_NipNeighbors, &
-  mesh_maxNipNeighbors, &
-  FE_geomtype, &
-  FE_celltype
+  mesh_ipArea
 use material, only: &
   material_phase, &
   phase_localPlasticity, &
@@ -1250,7 +1243,7 @@ real(pReal), dimension(3,3) ::  invFe, &                      ! inverse of elast
                                 invFp, &                      ! inverse of plastic deformation gradient
                                 connections, &
                                 invConnections
-real(pReal), dimension(3,mesh_maxNipNeighbors) :: &
+real(pReal), dimension(3,theMesh%elem%nIPneighbors) :: &
                                 connection_latticeConf
 real(pReal), dimension(2,totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el)))) :: &
                                 rhoExcess
@@ -1261,7 +1254,7 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))), &
                        totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el)))) :: &
                                 myInteractionMatrix           ! corrected slip interaction matrix
-real(pReal), dimension(2,maxval(totalNslip),mesh_maxNipNeighbors) :: &
+real(pReal), dimension(2,maxval(totalNslip),theMesh%elem%nIPneighbors) :: &
                                 neighbor_rhoExcess, &      ! excess density at neighboring material point
                                 neighbor_rhoTotal          ! total density at neighboring material point
 real(pReal), dimension(3,totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),2) :: &
@@ -1336,7 +1329,7 @@ if (.not. phase_localPlasticity(ph) .and. shortRangeStressCorrection(instance)) 
   
   nRealNeighbors = 0_pInt
   neighbor_rhoTotal = 0.0_pReal
-  do n = 1_pInt,FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,el))))
+  do n = 1_pInt,theMesh%elem%nIPneighbors
     neighbor_el = mesh_ipNeighborhood(1,n,ip,el)
     neighbor_ip = mesh_ipNeighborhood(2,n,ip,el)
     np = phaseAt(1,neighbor_ip,neighbor_el)
@@ -2022,16 +2015,12 @@ use math,     only: math_mul6x6, &
                     math_det33, &
                     math_transpose33, &  
                     pi
-use mesh,     only: mesh_NcpElems, &
-                    mesh_maxNips, &
+use mesh,     only: theMesh, &
                     mesh_element, &
                     mesh_ipNeighborhood, &
                     mesh_ipVolume, &
                     mesh_ipArea, &
-                    mesh_ipAreaNormal, &
-                    FE_NipNeighbors, &
-                    FE_geomtype, &
-                    FE_celltype
+                    mesh_ipAreaNormal
 use material, only: homogenization_maxNgrains, &
                     material_phase, &
                     phase_plasticityInstance, &
@@ -2057,9 +2046,9 @@ integer(pInt), intent(in) ::                ip, &                               
 real(pReal), intent(in) ::                  Temperature, &                                          !< temperature
                                             timestep                                                !< substepped crystallite time increment
 real(pReal), dimension(6), intent(in) ::    Tstar_v                                                 !< current 2nd Piola-Kirchhoff stress in Mandel notation
-real(pReal), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+real(pReal), dimension(homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), intent(in) :: &
                                             subfrac                                                 !< fraction of timestep at the beginning of the substepped crystallite time increment 
-real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+real(pReal), dimension(3,3,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), intent(in) :: &
                                             Fe, &                                                   !< elastic deformation gradient
                                             Fp                                                      !< plastic deformation gradient
 
@@ -2338,8 +2327,8 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
   my_Fe = Fe(1:3,1:3,1_pInt,ip,el)
   my_F = math_mul33x33(my_Fe, Fp(1:3,1:3,1_pInt,ip,el))
   
-  do n = 1_pInt,FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,el))))                       ! loop through my neighbors
-!       write(6,*) 'c'
+  do n = 1_pInt,theMesh%elem%nIPneighbors
+
     neighbor_el = mesh_ipNeighborhood(1,n,ip,el)
     neighbor_ip = mesh_ipNeighborhood(2,n,ip,el)
     neighbor_n  = mesh_ipNeighborhood(3,n,ip,el)
@@ -2638,11 +2627,7 @@ use material, only:   material_phase, &
                       homogenization_maxNgrains
 use mesh, only:       mesh_element, &
                       mesh_ipNeighborhood, &
-                      mesh_maxNips, &
-                      mesh_NcpElems, &
-                      FE_NipNeighbors, &
-                      FE_geomtype, &
-                      FE_celltype
+                      theMesh
 use lattice, only:    lattice_sn, &
                       lattice_sd, &
                       lattice_qDisorientation
@@ -2652,7 +2637,7 @@ implicit none
 !* input variables
 integer(pInt), intent(in) ::                    i, &                                                ! ip index
                                                 e                                                   ! element index
-real(pReal), dimension(4,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+real(pReal), dimension(4,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), intent(in) :: &
                                                 orientation                                         ! crystal orientation in quaternions
                                             
 !* local variables
@@ -2671,7 +2656,7 @@ integer(pInt)                                   Nneighbors, &                   
 real(pReal), dimension(4) ::                    absoluteMisorientation                              ! absolute misorientation (without symmetry) between me and my neighbor
 real(pReal), dimension(2,totalNslip(phase_plasticityInstance(material_phase(1,i,e))),&
                          totalNslip(phase_plasticityInstance(material_phase(1,i,e))),&
-                         FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,e))))) :: &  
+                         theMesh%elem%nIPneighbors) :: &  
                                                 my_compatibility                                    ! my_compatibility for current element and ip
 real(pReal), dimension(3,totalNslip(phase_plasticityInstance(material_phase(1,i,e)))) :: &  
                                                 slipNormal, &
@@ -2683,7 +2668,7 @@ logical, dimension(totalNslip(phase_plasticityInstance(material_phase(1,i,e)))) 
                                                 belowThreshold
 
 
-Nneighbors = FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,e))))
+Nneighbors = theMesh%elem%nIPneighbors
 ph = material_phase(1,i,e)
 textureID = material_texture(1,i,e)
 instance = phase_plasticityInstance(ph)
@@ -2796,15 +2781,12 @@ use math,     only: math_mul33x33, &
                     math_inv33, &
                     math_transpose33, &
                     pi
-use mesh,     only: mesh_NcpElems, &
-                    mesh_maxNips, &
+use mesh,     only: theMesh, &
                     mesh_element, &
                     mesh_node0, &
                     mesh_cellCenterCoordinates, &
                     mesh_ipVolume, &
-                    mesh_periodicSurface, &
-                    FE_Nips, &
-                    FE_geomtype
+                    mesh_periodicSurface
 use material, only: homogenization_maxNgrains, &
                     material_phase, &
                     plasticState, &
@@ -2819,7 +2801,7 @@ implicit none
 !*** input variables
 integer(pInt), intent(in) ::    ip, &                                                               !< current integration point
                                 el                                                                  !< current element
-real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+real(pReal), dimension(3,3,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), intent(in) :: &
                                 Fe                                                                  !< elastic deformation gradient
 
 !*** output variables
@@ -2917,8 +2899,8 @@ if (.not. phase_localPlasticity(ph)) then
   !* loop through all material points (also through their periodic images if present), 
   !* but only consider nonlocal neighbors within a certain cutoff radius R
   
-  do neighbor_el = 1_pInt,mesh_NcpElems
-    ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el)))
+  do neighbor_el = 1_pInt,theMesh%nElems
+    ipLoop: do neighbor_ip = 1_pInt,theMesh%elem%nIPs
       neighbor_phase = material_phase(1_pInt,neighbor_ip,neighbor_el)
       np = phaseAt(1,neighbor_ip,neighbor_el)
       no = phasememberAt(1,neighbor_ip,neighbor_el)
@@ -3145,8 +3127,7 @@ function plastic_nonlocal_postResults(Tstar_v,Fe,ip,el)
    math_mul33x33, &
    pi
  use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
+   theMesh
  use material, only: &
    homogenization_maxNgrains, &
    material_phase, &
@@ -3164,7 +3145,7 @@ function plastic_nonlocal_postResults(Tstar_v,Fe,ip,el)
  implicit none
  real(pReal),   dimension(6),  intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
- real(pReal),   dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+ real(pReal),   dimension(3,3,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), intent(in) :: &
    Fe                                                                                               !< elastic deformation gradient
  integer(pInt),                intent(in) :: &
    ip, &                                                                                            !< integration point

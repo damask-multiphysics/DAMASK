@@ -9,11 +9,11 @@ module FEM_Zoo
  private
  integer(pInt), parameter, public:: &
    maxOrder = 5                                                                            !< current max interpolation set at cubic (intended to be arbitrary)
- real(pReal),   dimension(2,3),       private, protected :: &
+ real(pReal),   dimension(2,3),       private, parameter :: &
    triangle    = reshape([-1.0_pReal, -1.0_pReal, &
                            1.0_pReal, -1.0_pReal, &
                           -1.0_pReal,  1.0_pReal], shape=[2,3])
- real(pReal),   dimension(3,4),       private, protected :: &
+ real(pReal),   dimension(3,4),       private, parameter :: &
    tetrahedron = reshape([-1.0_pReal, -1.0_pReal, -1.0_pReal, &
                            1.0_pReal, -1.0_pReal, -1.0_pReal, &
                           -1.0_pReal,  1.0_pReal, -1.0_pReal, &
