@@ -59,7 +59,7 @@ add_dependencies(FEsolving DEBUG)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:FEsolving>)
 
 add_library(MATH OBJECT "math.f90")
-add_dependencies(MATH DEBUG)
+add_dependencies(MATH NUMERICS)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:MATH>)
 
 add_library(QUATERNIONS OBJECT "quaternions.f90")
@@ -93,7 +93,7 @@ elseif (PROJECT_NAME STREQUAL "DAMASK_FEM")
 endif()
 
 add_library(MATERIAL OBJECT "material.f90")
-add_dependencies(MATERIAL MESH DAMASK_CONFIG)
+add_dependencies(MATERIAL MESH DAMASK_CONFIG ROTATIONS)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:MATERIAL>)
 
 add_library(LATTICE OBJECT "lattice.f90")
