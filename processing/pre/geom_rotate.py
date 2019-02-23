@@ -52,13 +52,14 @@ parser.set_defaults(degrees = False,
 if sum(x is not None for x in [options.rotation,options.eulers,options.matrix,options.quaternion]) != 1:
   parser.error('not exactly one rotation specified...')
 
-eulers = np.array(damask.orientation.Orientation(
-                         quaternion = np.array(options.quaternion)  if options.quaternion else None,
-                         angleAxis  = np.array(options.rotation)    if options.rotation else None,
-                         matrix     = np.array(options.matrix)      if options.matrix else None,
-                         Eulers     = np.array(options.eulers)      if options.eulers else None,
-                         degrees    = options.degrees,
-                  ).asEulers(degrees=True))
+if options.quaternion is not None:
+  eulers = damask.Rotation.fromQuaternion(np.array(options.quaternion)).asEulers(degrees=True)
+if options.rotation is not None:
+  eulers = damask.Rotation.fromAxisAngle(np.array(options.rotation,degrees=True)).asEulers(degrees=True)
+if options.matrix is not None:
+  eulers = damask.Rotation.fromMatrix(np.array(options.Matrix)).asEulers(degrees=True)
+if options.eulers is not None:
+  eulers = damask.Rotation.fromEulers(np.array(options.eulers),degrees=True).asEulers(degrees=True)
 
 # --- loop over input files -------------------------------------------------------------------------
 
