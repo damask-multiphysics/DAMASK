@@ -973,7 +973,7 @@ class Symmetry:
       return True
 
 
-  def inDisorientationSST(self,R):
+  def inDisorientationSST(self,rodrigues):
     """
     Check whether given Rodrigues vector (of misorientation) falls into standard stereographic triangle of own symmetry.
 
@@ -981,7 +981,13 @@ class Symmetry:
     Representation of Orientation and Disorientation Data for Cubic, Hexagonal, Tetragonal and Orthorhombic Crystals
     Acta Cryst. (1991). A47, 780-789
     """
-    if isinstance(R, Quaternion): R = R.asRodrigues()       # translate accidentially passed quaternion
+    if isinstance(rodrigues, Quaternion):
+      R = rodrigues.asRodrigues()                                                                   # translate accidentially passed quaternion
+    else:
+      R = rodrigues
+    
+    if R.shape[0]==4: # transition old (length not stored separately) to new
+      R = (R[0:3]*R[3])
 
     epsilon = 0.0
     if self.lattice == 'cubic':
@@ -1428,7 +1434,8 @@ class Orientation2:
         theQ = sB.rotation*mis*sA.rotation.inversed()
         for k in range(2):
           theQ.inversed()
-          breaker = self.lattice.symmetry.inFZ(theQ.asRodriques()) #and (not SST or other.symmetry.inDisorientationSST(theQ))
+          breaker = self.lattice.symmetry.inFZ(theQ.asRodrigues()) \
+                    and (not SST or other.lattice.symmetry.inDisorientationSST(theQ.asRodrigues()))
           if breaker: break
         if breaker: break
       if breaker: break
@@ -1466,8 +1473,6 @@ class Orientation:
   def __init__(self,
                quaternion = Quaternion.fromIdentity(),
                Rodrigues  = None,
-               angleAxis  = None,
-               matrix     = None,
                Eulers     = None,
                random     = False,                                                                  # integer to have a fixed seed or True for real random
                symmetry   = None,
@@ -1480,10 +1485,6 @@ class Orientation:
         self.quaternion = Quaternion.fromRandom(randomSeed=random)
     elif isinstance(Eulers, np.ndarray) and Eulers.shape == (3,):                                   # based on given Euler angles
       self.quaternion = Quaternion.fromEulers(Eulers,degrees=degrees)
-    elif isinstance(matrix, np.ndarray) :                                                           # based on given rotation matrix
-      self.quaternion = Quaternion.fromMatrix(matrix)
-    elif isinstance(angleAxis, np.ndarray) and angleAxis.shape == (4,):                             # based on given angle and rotation axis
-      self.quaternion = Quaternion.fromAngleAxis(angleAxis[0],angleAxis[1:4],degrees=degrees)
     elif isinstance(Rodrigues, np.ndarray) and Rodrigues.shape == (3,):                             # based on given Rodrigues vector
       self.quaternion = Quaternion.fromRodrigues(Rodrigues)
     elif isinstance(quaternion, Quaternion):                                                        # based on given quaternion
@@ -1524,7 +1525,6 @@ class Orientation:
 
   def inFZ(self):
     return self.symmetry.inFZ(self.quaternion.asRodrigues())
-  infz = property(inFZ)
 
   def equivalentQuaternions(self,
                             who = []):
