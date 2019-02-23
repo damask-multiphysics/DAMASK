@@ -109,8 +109,8 @@ if np.sum(input) != 1: parser.error('needs exactly one input format.')
 
 crystalrotation = np.array(options.crystalrotation[1:4] + (options.crystalrotation[0],))            # Compatibility hack
 labrotation     = np.array(options.labrotation[1:4]     + (options.labrotation[0],))                # Compatibility hack
-r = damask.Rotation.fromAngleAxis(crystalrotation,options.degrees)                                  # crystal frame rotation
-R = damask.Rotation.fromAngleAxis(labrotation,options.degrees)                                      #     lab frame rotation
+r = damask.Rotation.fromAxisAngle(crystalrotation,options.degrees)                                  # crystal frame rotation
+R = damask.Rotation.fromAxisAngle(labrotation,options.degrees)                                      #     lab frame rotation
 
 
 # --- loop over input files ------------------------------------------------------------------------
@@ -183,7 +183,7 @@ for name in filenames:
       elif output == 'rodrigues':  table.data_append(o.asRodrigues())
       elif output == 'eulers':     table.data_append(o.asEulers(degrees=options.degrees))
       elif output == 'matrix':     table.data_append(o.asMatrix())
-      elif output == 'angleaxis':  table.data_append(o.asAngleAxis(degrees=options.degrees))
+      elif output == 'angleaxis':  table.data_append(o.asAxisAngle(degrees=options.degrees))
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output finalization -----------------------------------  

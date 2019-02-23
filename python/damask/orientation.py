@@ -261,32 +261,34 @@ class Rotation:
     # convert to different orientation representations (numpy arrays)
 
     def asQuaternion(self):
+      """Unit quaternion: (q, [p_1, p_2, p_3])"""
       return self.quaternion.asArray()
       
     def asEulers(self,
                  degrees = False):
-
+      """Bunge-Euler angles: (φ_1, ϕ, φ_2)"""
       eu = qu2eu(self.quaternion.asArray())
       if degrees: eu = np.degrees(eu)
-
       return eu
     
-    def asAngleAxis(self,
+    def asAxisAngle(self,
                     degrees = False):
-                      
+      """Axis-angle pair: ([n_1, n_2, n_3], ω)"""
       ax = qu2ax(self.quaternion.asArray())
       if degrees: ax[3] = np.degrees(ax[3])
-      
       return ax
       
     def asMatrix(self):
+      """Rotation matrix"""
       return qu2om(self.quaternion.asArray())
 
     def asRodrigues(self):
+      """Rodrigues-Frank vector: ([n_1, n_2, n_3], tan(ω/2))"""
       return qu2ro(self.quaternion.asArray())
   
     def asHomochoric(self):
-     return qu2ho(self.quaternion.asArray())
+      """Homochoric vector: (h_1, h_2, h_3)"""
+      return qu2ho(self.quaternion.asArray())
          
     def asCubochoric(self):
       return qu2cu(self.quaternion.asArray())
@@ -322,7 +324,7 @@ class Rotation:
       return cls(eu2qu(eu))
       
     @classmethod
-    def fromAngleAxis(cls,
+    def fromAxisAngle(cls,
                       angleAxis,
                       degrees = False,
                       normalise = False,
@@ -372,6 +374,27 @@ class Rotation:
         raise ValueError('Rodriques rotation angle not positive.\n'.format(ro[3]))
         
       return cls(ro2qu(ro))
+      
+    @classmethod
+    def fromHomochoric(cls,
+                      homochoric,
+                      P = -1):
+        
+      ho = homochoric if isinstance(homochoric, np.ndarray) else np.array(homochoric) 
+      if P > 0: ho *= -1                                                                            # convert from P=1 to P=-1
+
+      return cls(ho2qu(ho))
+      
+    @classmethod
+    def fromCubochoric(cls,
+                      cubochoric,
+                      P = -1):
+      
+      cu = cubochoric if isinstance(cubochoric, np.ndarray) else np.array(cubochoric)   
+      ho = cu2ho(cu)
+      if P > 0: ho *= -1                                                                            # convert from P=1 to P=-1
+        
+      return cls(ho2qu(ho))
 
 
     def __mul__(self, other):
@@ -671,28 +694,6 @@ class Quaternion:
 
     def asRodrigues(self):
       return np.inf*np.ones(3) if np.isclose(self.q,0.0) else self.p/self.q
-
-    def asEulers(self,
-                 degrees = False):
-      """Orientation as Bunge-Euler angles."""
-      # Rowenhorst_etal2015 MSMSE: value of P is selected as -1
-      P   = -1.0
-      q03 = self.q**2 + self.p[2]**2
-      q12 = self.p[0]**2 + self.p[1]**2
-      chi = np.sqrt(q03*q12)
-      
-      if np.isclose(chi,0.0) and np.isclose(q12,0.0):
-        eulers = np.array([math.atan2(-2*P*self.q*self.p[2],self.q**2-self.p[2]**2),0,0])
-      elif np.isclose(chi,0.0) and np.isclose(q03,0.0):
-        eulers = np.array([math.atan2( 2  *self.p[0]*self.p[1],self.p[0]**2-self.p[1]**2),np.pi,0])
-      else:
-        eulers = np.array([math.atan2((self.p[0]*self.p[2]-P*self.q*self.p[1])/chi,(-P*self.q*self.p[0]-self.p[1]*self.p[2])/chi),
-                           math.atan2(2*chi,q03-q12),
-                           math.atan2((P*self.q*self.p[1]+self.p[0]*self.p[2])/chi,( self.p[1]*self.p[2]-P*self.q*self.p[0])/chi),
-                          ])
-
-      eulers %= 2.0*math.pi                                          # enforce positive angles
-      return np.degrees(eulers) if degrees else eulers
 
 
 #    # Static constructors
@@ -1506,17 +1507,7 @@ class Orientation:
               'Symmetry: {}'.format(self.symmetry),
               'Quaternion: {}'.format(self.quaternion),
               'Matrix:\n{}'.format( '\n'.join(['\t'.join(list(map(str,self.asMatrix()[i,:]))) for i in range(3)]) ),
-              'Bunge Eulers / deg: {}'.format('\t'.join(list(map(str,self.asEulers(degrees=True)))) ),
               ])
-
-  def asQuaternion(self):
-    return self.quaternion.asList()
-
-  def asEulers(self,
-               degrees = False,
-              ):
-    return self.quaternion.asEulers(degrees)
-  eulers = property(asEulers)
 
   def asRodrigues(self):
     return self.quaternion.asRodrigues()
@@ -1526,7 +1517,6 @@ class Orientation:
                   degrees = False,
                   flat = False):
     return self.quaternion.asAngleAxis(degrees,flat)
-  angleAxis = property(asAngleAxis)
 
   def asMatrix(self):
     return self.quaternion.asMatrix()
@@ -1643,251 +1633,6 @@ class Orientation:
                        symmetry = reference.symmetry.lattice)
 
 
-  def related(self,
-              relationModel,
-              direction,
-              targetSymmetry = 'cubic'):
-    """
-    Orientation relationship
-
-    positive number: fcc --> bcc
-    negative number: bcc --> fcc
-    """
-    if relationModel not in ['KS','GT','GTdash','NW','Pitsch','Bain']:  return None
-    if int(direction) == 0:  return None
-
-    variant  = int(abs(direction))-1
-    (me,other)  = (0,1) if direction > 0 else (1,0)
-
-    planes = {'KS': \
-                    np.array([[[  1,  1,  1],[  0,  1,  1]],
-                              [[  1,  1,  1],[  0,  1,  1]],
-                              [[  1,  1,  1],[  0,  1,  1]],
-                              [[  1,  1,  1],[  0,  1,  1]],
-                              [[  1,  1,  1],[  0,  1,  1]],
-                              [[  1,  1,  1],[  0,  1,  1]],
-                              [[  1, -1,  1],[  0,  1,  1]],
-                              [[  1, -1,  1],[  0,  1,  1]],
-                              [[  1, -1,  1],[  0,  1,  1]],
-                              [[  1, -1,  1],[  0,  1,  1]],
-                              [[  1, -1,  1],[  0,  1,  1]],
-                              [[  1, -1,  1],[  0,  1,  1]],
-                              [[ -1,  1,  1],[  0,  1,  1]],
-                              [[ -1,  1,  1],[  0,  1,  1]],
-                              [[ -1,  1,  1],[  0,  1,  1]],
-                              [[ -1,  1,  1],[  0,  1,  1]],
-                              [[ -1,  1,  1],[  0,  1,  1]],
-                              [[ -1,  1,  1],[  0,  1,  1]],
-                              [[  1,  1, -1],[  0,  1,  1]],
-                              [[  1,  1, -1],[  0,  1,  1]],
-                              [[  1,  1, -1],[  0,  1,  1]],
-                              [[  1,  1, -1],[  0,  1,  1]],
-                              [[  1,  1, -1],[  0,  1,  1]],
-                              [[  1,  1, -1],[  0,  1,  1]]]),
-              'GT': \
-                    np.array([[[  1,  1,  1],[  1,  0,  1]],
-                              [[  1,  1,  1],[  1,  1,  0]],
-                              [[  1,  1,  1],[  0,  1,  1]],
-                              [[ -1, -1,  1],[ -1,  0,  1]],
-                              [[ -1, -1,  1],[ -1, -1,  0]],
-                              [[ -1, -1,  1],[  0, -1,  1]],
-                              [[ -1,  1,  1],[ -1,  0,  1]],
-                              [[ -1,  1,  1],[ -1,  1,  0]],
-                              [[ -1,  1,  1],[  0,  1,  1]],
-                              [[  1, -1,  1],[  1,  0,  1]],
-                              [[  1, -1,  1],[  1, -1,  0]],
-                              [[  1, -1,  1],[  0, -1,  1]],
-                              [[  1,  1,  1],[  1,  1,  0]],
-                              [[  1,  1,  1],[  0,  1,  1]],
-                              [[  1,  1,  1],[  1,  0,  1]],
-                              [[ -1, -1,  1],[ -1, -1,  0]],
-                              [[ -1, -1,  1],[  0, -1,  1]],
-                              [[ -1, -1,  1],[ -1,  0,  1]],
-                              [[ -1,  1,  1],[ -1,  1,  0]],
-                              [[ -1,  1,  1],[  0,  1,  1]],
-                              [[ -1,  1,  1],[ -1,  0,  1]],
-                              [[  1, -1,  1],[  1, -1,  0]],
-                              [[  1, -1,  1],[  0, -1,  1]],
-                              [[  1, -1,  1],[  1,  0,  1]]]),
-              'GTdash': \
-                    np.array([[[  7, 17, 17],[ 12,  5, 17]],
-                              [[ 17,  7, 17],[ 17, 12,  5]],
-                              [[ 17, 17,  7],[  5, 17, 12]],
-                              [[ -7,-17, 17],[-12, -5, 17]],
-                              [[-17, -7, 17],[-17,-12,  5]],
-                              [[-17,-17,  7],[ -5,-17, 12]],
-                              [[  7,-17,-17],[ 12, -5,-17]],
-                              [[ 17, -7,-17],[ 17,-12, -5]],
-                              [[ 17,-17, -7],[  5,-17,-12]],
-                              [[ -7, 17,-17],[-12,  5,-17]],
-                              [[-17,  7,-17],[-17, 12, -5]],
-                              [[-17, 17, -7],[ -5, 17,-12]],
-                              [[  7, 17, 17],[ 12, 17,  5]],
-                              [[ 17,  7, 17],[  5, 12, 17]],
-                              [[ 17, 17,  7],[ 17,  5, 12]],
-                              [[ -7,-17, 17],[-12,-17,  5]],
-                              [[-17, -7, 17],[ -5,-12, 17]],
-                              [[-17,-17,  7],[-17, -5, 12]],
-                              [[  7,-17,-17],[ 12,-17, -5]],
-                              [[ 17, -7,-17],[ 5, -12,-17]],
-                              [[ 17,-17,  7],[ 17, -5,-12]],
-                              [[ -7, 17,-17],[-12, 17, -5]],
-                              [[-17,  7,-17],[ -5, 12,-17]],
-                              [[-17, 17, -7],[-17,  5,-12]]]),
-              'NW': \
-                    np.array([[[  1,  1,  1],[  0,  1,  1]],
-                              [[  1,  1,  1],[  0,  1,  1]],
-                              [[  1,  1,  1],[  0,  1,  1]],
-                              [[ -1,  1,  1],[  0,  1,  1]],
-                              [[ -1,  1,  1],[  0,  1,  1]],
-                              [[ -1,  1,  1],[  0,  1,  1]],
-                              [[  1, -1,  1],[  0,  1,  1]],
-                              [[  1, -1,  1],[  0,  1,  1]],
-                              [[  1, -1,  1],[  0,  1,  1]],
-                              [[ -1, -1,  1],[  0,  1,  1]],
-                              [[ -1, -1,  1],[  0,  1,  1]],
-                              [[ -1, -1,  1],[  0,  1,  1]]]),
-              'Pitsch': \
-                    np.array([[[  0,  1,  0],[ -1,  0,  1]],
-                              [[  0,  0,  1],[  1, -1,  0]],
-                              [[  1,  0,  0],[  0,  1, -1]],
-                              [[  1,  0,  0],[  0, -1, -1]],
-                              [[  0,  1,  0],[ -1,  0, -1]],
-                              [[  0,  0,  1],[ -1, -1,  0]],
-                              [[  0,  1,  0],[ -1,  0, -1]],
-                              [[  0,  0,  1],[ -1, -1,  0]],
-                              [[  1,  0,  0],[  0, -1, -1]],
-                              [[  1,  0,  0],[  0, -1,  1]],
-                              [[  0,  1,  0],[  1,  0, -1]],
-                              [[  0,  0,  1],[ -1,  1,  0]]]),
-              'Bain': \
-                    np.array([[[  1,  0,  0],[  1,  0,  0]],
-                              [[  0,  1,  0],[  0,  1,  0]],
-                              [[  0,  0,  1],[  0,  0,  1]]]),
-              }
-
-    normals = {'KS': \
-                    np.array([[[ -1,  0,  1],[ -1, -1,  1]],
-                              [[ -1,  0,  1],[ -1,  1, -1]],
-                              [[  0,  1, -1],[ -1, -1,  1]],
-                              [[  0,  1, -1],[ -1,  1, -1]],
-                              [[  1, -1,  0],[ -1, -1,  1]],
-                              [[  1, -1,  0],[ -1,  1, -1]],
-                              [[  1,  0, -1],[ -1, -1,  1]],
-                              [[  1,  0, -1],[ -1,  1, -1]],
-                              [[ -1, -1,  0],[ -1, -1,  1]],
-                              [[ -1, -1,  0],[ -1,  1, -1]],
-                              [[  0,  1,  1],[ -1, -1,  1]],
-                              [[  0,  1,  1],[ -1,  1, -1]],
-                              [[  0, -1,  1],[ -1, -1,  1]],
-                              [[  0, -1,  1],[ -1,  1, -1]],
-                              [[ -1,  0, -1],[ -1, -1,  1]],
-                              [[ -1,  0, -1],[ -1,  1, -1]],
-                              [[  1,  1,  0],[ -1, -1,  1]],
-                              [[  1,  1,  0],[ -1,  1, -1]],
-                              [[ -1,  1,  0],[ -1, -1,  1]],
-                              [[ -1,  1,  0],[ -1,  1, -1]],
-                              [[  0, -1, -1],[ -1, -1,  1]],
-                              [[  0, -1, -1],[ -1,  1, -1]],
-                              [[  1,  0,  1],[ -1, -1,  1]],
-                              [[  1,  0,  1],[ -1,  1, -1]]]),
-              'GT': \
-                    np.array([[[ -5,-12, 17],[-17, -7, 17]],
-                              [[ 17, -5,-12],[ 17,-17, -7]],
-                              [[-12, 17, -5],[ -7, 17,-17]],
-                              [[  5, 12, 17],[ 17,  7, 17]],
-                              [[-17,  5,-12],[-17, 17, -7]],
-                              [[ 12,-17, -5],[  7,-17,-17]],
-                              [[ -5, 12,-17],[-17,  7,-17]],
-                              [[ 17,  5, 12],[ 17, 17,  7]],
-                              [[-12,-17,  5],[ -7,-17, 17]],
-                              [[  5,-12,-17],[ 17, -7,-17]],
-                              [[-17, -5, 12],[-17,-17,  7]],
-                              [[ 12, 17,  5],[  7, 17, 17]],
-                              [[ -5, 17,-12],[-17, 17, -7]],
-                              [[-12, -5, 17],[ -7,-17, 17]],
-                              [[ 17,-12, -5],[ 17, -7,-17]],
-                              [[  5,-17,-12],[ 17,-17, -7]],
-                              [[ 12,  5, 17],[  7, 17, 17]],
-                              [[-17, 12, -5],[-17,  7,-17]],
-                              [[ -5,-17, 12],[-17,-17,  7]],
-                              [[-12,  5,-17],[ -7, 17,-17]],
-                              [[ 17, 12,  5],[ 17,  7, 17]],
-                              [[  5, 17, 12],[ 17, 17,  7]],
-                              [[ 12, -5,-17],[  7,-17,-17]],
-                              [[-17,-12,  5],[-17,  7, 17]]]),
-              'GTdash': \
-                    np.array([[[  0,  1, -1],[  1,  1, -1]],
-                              [[ -1,  0,  1],[ -1,  1,  1]],
-                              [[  1, -1,  0],[  1, -1,  1]],
-                              [[  0, -1, -1],[ -1, -1, -1]],
-                              [[  1,  0,  1],[  1, -1,  1]],
-                              [[  1, -1,  0],[  1, -1, -1]],
-                              [[  0,  1, -1],[ -1,  1, -1]],
-                              [[  1,  0,  1],[  1,  1,  1]],
-                              [[ -1, -1,  0],[ -1, -1,  1]],
-                              [[  0, -1, -1],[  1, -1, -1]],
-                              [[ -1,  0,  1],[ -1, -1,  1]],
-                              [[ -1, -1,  0],[ -1, -1, -1]],
-                              [[  0, -1,  1],[  1, -1,  1]],
-                              [[  1,  0, -1],[  1,  1, -1]],
-                              [[ -1,  1,  0],[ -1,  1,  1]],
-                              [[  0,  1,  1],[ -1,  1,  1]],
-                              [[ -1,  0, -1],[ -1, -1, -1]],
-                              [[ -1,  1,  0],[ -1,  1, -1]],
-                              [[  0, -1,  1],[ -1, -1,  1]],
-                              [[ -1,  0, -1],[ -1,  1, -1]],
-                              [[  1,  1,  0],[  1,  1,  1]],
-                              [[  0,  1,  1],[  1,  1,  1]],
-                              [[  1,  0, -1],[  1, -1, -1]],
-                              [[  1,  1,  0],[  1,  1, -1]]]),
-              'NW': \
-                    np.array([[[  2, -1, -1],[  0, -1,  1]],
-                              [[ -1,  2, -1],[  0, -1,  1]],
-                              [[ -1, -1,  2],[  0, -1,  1]],
-                              [[ -2, -1, -1],[  0, -1,  1]],
-                              [[  1,  2, -1],[  0, -1,  1]],
-                              [[  1, -1,  2],[  0, -1,  1]],
-                              [[  2,  1, -1],[  0, -1,  1]],
-                              [[ -1, -2, -1],[  0, -1,  1]],
-                              [[ -1,  1,  2],[  0, -1,  1]],
-                              [[ -1,  2,  1],[  0, -1,  1]],
-                              [[ -1,  2,  1],[  0, -1,  1]],
-                              [[ -1, -1, -2],[  0, -1,  1]]]),
-              'Pitsch': \
-                    np.array([[[  1,  0,  1],[  1, -1,  1]],
-                              [[  1,  1,  0],[  1,  1, -1]],
-                              [[  0,  1,  1],[ -1,  1,  1]],
-                              [[  0,  1, -1],[ -1,  1, -1]],
-                              [[ -1,  0,  1],[ -1, -1,  1]],
-                              [[  1, -1,  0],[  1, -1, -1]],
-                              [[  1,  0, -1],[  1, -1, -1]],
-                              [[ -1,  1,  0],[ -1,  1, -1]],
-                              [[  0, -1,  1],[ -1, -1,  1]],
-                              [[  0,  1,  1],[ -1,  1,  1]],
-                              [[  1,  0,  1],[  1, -1,  1]],
-                              [[  1,  1,  0],[  1,  1, -1]]]),
-              'Bain': \
-                    np.array([[[  0,  1,  0],[  0,  1,  1]],
-                              [[  0,  0,  1],[  1,  0,  1]],
-                              [[  1,  0,  0],[  1,  1,  0]]]),
-              }
-    myPlane   = [float(i) for i in planes[relationModel][variant,me]]                               # map(float, planes[...]) does not work in python 3
-    myPlane  /= np.linalg.norm(myPlane)
-    myNormal  = [float(i) for i in normals[relationModel][variant,me]]                              # map(float, planes[...]) does not work in python 3
-    myNormal /= np.linalg.norm(myNormal)
-    myMatrix  = np.array([myNormal,np.cross(myPlane,myNormal),myPlane]).T
-
-    otherPlane   = [float(i) for i in planes[relationModel][variant,other]]                         # map(float, planes[...]) does not work in python 3
-    otherPlane  /= np.linalg.norm(otherPlane)
-    otherNormal  = [float(i) for i in normals[relationModel][variant,other]]                        # map(float, planes[...]) does not work in python 3
-    otherNormal /= np.linalg.norm(otherNormal)
-    otherMatrix  = np.array([otherNormal,np.cross(otherPlane,otherNormal),otherPlane]).T
-
-    rot=np.dot(otherMatrix,myMatrix.T)
-
-    return Orientation(matrix=np.dot(rot,self.asMatrix()),symmetry=targetSymmetry)
-
 ####################################################################################################
 # Code below available according to the followin conditions on https://github.com/MarDiehl/3Drotations
 ####################################################################################################
@@ -1920,10 +1665,10 @@ class Orientation:
 ####################################################################################################
 
 def isone(a):
-  return np.isclose(a,1.0,atol=1.0e-15,rtol=0.0)
+  return np.isclose(a,1.0,atol=1.0e-7,rtol=0.0)
   
 def iszero(a):
-  return np.isclose(a,0.0,atol=1.0e-300,rtol=0.0)
+  return np.isclose(a,0.0,atol=1.0e-12,rtol=0.0)
   
   
 def eu2om(eu):
@@ -2063,8 +1808,7 @@ def ho2ax(ho):
     for i in range(2,16):
       hm *= hmag_squared
       s  += tfit[i] * hm
-    ax = np.append(ho/np.sqrt(hmag_squared),2.0*np.arccos(s))                                       # ToDo: Check sanity check in reference implementation 
-
+    ax = np.append(ho/np.sqrt(hmag_squared),2.0*np.arccos(np.clip(s,-1.0,1.0)))
   return ax
 
 
@@ -2155,32 +1899,16 @@ def qu2om(qu):
   return om if P > 0.0 else om.T
 
 
-def om2qu(om):
-  """Orientation matrix to quaternion"""
-  s = [+om[0,0] +om[1,1] +om[2,2] +1.0, 
-       +om[0,0] -om[1,1] -om[2,2] +1.0,
-       -om[0,0] +om[1,1] -om[2,2] +1.0, 
-       -om[0,0] -om[1,1] +om[2,2] +1.0]
-  s = np.maximum(np.zeros(4),s)
-  qu = np.sqrt(s)*0.5*np.array([1.0,P,P,P])
-  # verify the signs (q0 always positive)
-  #ToDo: Here I donot understand the original shortcut from paper to implementation
-
-  qu /= np.linalg.norm(qu)
-  if any(isone(abs(qu))): qu[np.where(np.logical_not(isone(qu)))] = 0.0
-  if om[2,1] < om[1,2]: qu[1] *= -1.0
-  if om[0,2] < om[2,0]: qu[2] *= -1.0
-  if om[1,0] < om[0,1]: qu[3] *= -1.0
-  if any(om2ax(om)[0:3]*qu[1:4] < 0.0): print('sign problem',om2ax(om),qu) # something is wrong here
-  return qu
-
-
 def qu2ax(qu):
-  """Quaternion to axis angle"""
-  omega = 2.0 * np.arccos(qu[0])
-  if iszero(omega):                                                                                 #  return axis as [001]  if the angle is zero
+  """
+  Quaternion to axis angle
+  
+  Modified version of the original formulation, should be numerically more stable
+  """
+  if isone(abs(qu[0])):                                                                             # set axis to [001] if the angle is 0/360
     ax = [ 0.0, 0.0, 1.0, 0.0 ]
   elif not iszero(qu[0]):
+    omega = 2.0 * np.arccos(qu[0])
     s = np.sign(qu[0])/np.sqrt(qu[1]**2+qu[2]**2+qu[3]**2)
     ax = [ qu[1]*s, qu[2]*s, qu[3]*s, omega ]
   else:
@@ -2196,14 +1924,14 @@ def qu2ro(qu):
   else:
     s = np.linalg.norm([qu[1],qu[2],qu[3]])
     ro = [0.0,0.0,P,0.0] if iszero(s) else \
-         [ qu[1]/s,  qu[2]/s,  qu[3]/s, np.tan(np.arccos(qu[0]))]
+         [ qu[1]/s,  qu[2]/s,  qu[3]/s, np.tan(np.arccos(np.clip(qu[0],-1.0,1.0)))]                # avoid numerical difficulties
  
   return np.array(ro)
 
 
 def qu2ho(qu):
   """Quaternion to homochoric"""
-  omega = 2.0 * np.arccos(qu[0])
+  omega = 2.0 * np.arccos(np.clip(qu[0],-1.0,1.0))                                                  # avoid numerical difficulties
   
   if iszero(omega):
     ho = np.array([ 0.0, 0.0, 0.0 ])
@@ -2288,7 +2016,16 @@ def eu2cu(eu):
 def om2cu(om):
   """Orientation matrix to cubochoric"""
   return ho2cu(om2ho(om))
+  
 
+def om2qu(om):
+  """
+  Orientation matrix to quaternion
+  
+  The original formulation (direct conversion) had numerical issues
+  """
+  return ax2qu(om2ax(om))
+  
 
 def ax2cu(ax):
   """Axis angle to cubochoric"""
