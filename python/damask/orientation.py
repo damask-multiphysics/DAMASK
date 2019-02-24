@@ -301,12 +301,16 @@ class Rotation:
     @classmethod
     def fromQuaternion(cls,
                        quaternion,
+                       acceptHomomorph = False,
                        P = -1):
 
       qu = quaternion if isinstance(quaternion, np.ndarray) else np.array(quaternion)
       if P > 0: qu[1:4] *= -1                                                                       # convert from P=1 to P=-1
       if qu[0] < 0.0:
-        raise ValueError('Quaternion has negative first component.\n{}'.format(qu[0]))
+        if acceptHomomorph:
+          qu *= -1.
+        else:
+          raise ValueError('Quaternion has negative first component.\n{}'.format(qu[0]))
       if not np.isclose(np.linalg.norm(qu), 1.0):
         raise ValueError('Quaternion is not of unit length.\n{} {} {} {}'.format(*qu))
 

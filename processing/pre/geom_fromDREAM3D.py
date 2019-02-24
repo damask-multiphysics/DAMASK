@@ -95,7 +95,7 @@ for name in filenames:
     except:
       errors.append('Pointwise orientation data ({}) not found'.format(dataset))
       
-    texture = [damask.Rotation.fromQuaternion(q,P=+1) for q in quats]
+    texture = [damask.Rotation.fromQuaternion(q,True,P=+1) for q in quats]
 
     dataset = os.path.join(group_pointwise,options.phase)
     try:
@@ -118,7 +118,7 @@ for name in filenames:
     
     dataset = os.path.join(group_average,options.quaternion)
     try:
-      texture = [damask.Rotation.fromQuaternion(q,P=+1) for q in inFile[dataset][...][1:]]          # skip first entry (unindexed)
+      texture = [damask.Rotation.fromQuaternion(q,True,P=+1) for q in inFile[dataset][...][1:]]     # skip first entry (unindexed)
     except:
       errors.append('Average orientation data ({}) not found'.format(dataset))
       
