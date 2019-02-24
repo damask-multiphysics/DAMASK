@@ -39,7 +39,7 @@ parser.add_option('-q', '--quaternion',
 parser.add_option('--axes',
                   dest = 'axes',
                   type = 'string', nargs = 3, metavar = ' '.join(['string']*3),
-                  help = 'orientation coordinate frame in terms of position coordinate frame [same]')
+                  help = 'orientation coordinate frame in terms of position coordinate frame [+x +y +z]')
 
 parser.add_option('--homogenization',
                   dest = 'homogenization',
@@ -51,8 +51,7 @@ parser.add_option('--crystallite',
                   help = 'crystallite index to be used [%default]')
 
 
-parser.set_defaults(symmetry       = [damask.Symmetry.lattices[-1]],
-                    homogenization = 1,
+parser.set_defaults(homogenization = 1,
                     crystallite    = 1,
                     pos            = 'pos',
                    )
@@ -100,7 +99,7 @@ for name in filenames:
   if options.phase and table.label_dimension(options.phase) != 1:
     errors.append('phase column "{}" is not scalar.'.format(options.phase))
   
-  if errors  != []:
+  if errors != []:
     damask.util.croak(errors)
     table.close(dismiss = True)
     continue
