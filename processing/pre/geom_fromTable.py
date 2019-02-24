@@ -52,11 +52,8 @@ parser.add_option('--crystallite',
 
 
 parser.set_defaults(symmetry       = [damask.Symmetry.lattices[-1]],
-                    tolerance      = 0.0,
-                    degrees        = False,
                     homogenization = 1,
                     crystallite    = 1,
-                    verbose        = False,
                     pos            = 'pos',
                    )
 

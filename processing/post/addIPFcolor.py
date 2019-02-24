@@ -41,6 +41,10 @@ parser.set_defaults(pole = (0.0,0.0,1.0),
 
 (options, filenames) = parser.parse_args()
 
+# damask.Orientation requires Bravais lattice, but we are only interested in symmetry
+symmetry2lattice={'cubic':'bcc','hexagonal':'hex','tetragonal':'bct'}
+lattice = symmetry2lattice[options.symmetry]
+
 pole = np.array(options.pole)
 pole /= np.linalg.norm(pole)
 
@@ -78,8 +82,8 @@ for name in filenames:
 
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    o = damask.Orientation(quaternion = np.array(list(map(float,table.data[column:column+4]))),
-                           symmetry   = options.symmetry).reduced()
+    o = damask.Orientation(np.array(list(map(float,table.data[column:column+4]))),
+                           lattice   = lattice).reduced()
 
     table.data_append(o.IPFcolor(pole))
     outputAlive = table.data_write()                                                                # output processed line

@@ -31,7 +31,7 @@ parser.add_option('--degrees',
                   action = 'store_true',
                   help = 'angles are given in degrees')
 
-parser.set_defaults(rotation = (0.,1.,0.,0.),                                                       # no rotation about 1,0,0
+parser.set_defaults(rotation = (0.,1.,1.,1.),                                                       # no rotation about 1,1,1
                     degrees = False,
                    )
                     

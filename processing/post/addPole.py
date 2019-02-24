@@ -75,9 +75,9 @@ for name in filenames:
 # ------------------------------------------ process data ------------------------------------------
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    o = damask.Orientation(quaternion = np.array(list(map(float,table.data[column:column+4]))))
+    o = damask.Rotation(np.array(list(map(float,table.data[column:column+4]))))
 
-    rotatedPole = o.quaternion*pole                                                                 # rotate pole according to crystal orientation
+    rotatedPole = o*pole                                                                 # rotate pole according to crystal orientation
     (x,y) = rotatedPole[0:2]/(1.+abs(pole[2]))                                                      # stereographic projection
 
     table.data_append([np.sqrt(x*x+y*y),np.arctan2(y,x)] if options.polar else [x,y])               # cartesian coordinates
