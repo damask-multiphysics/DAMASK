@@ -499,7 +499,7 @@ class Symmetry:
     otherOrder = Symmetry.lattices.index(other.lattice)
     return (myOrder > otherOrder) - (myOrder < otherOrder)
 
-  def symmetryQuats(self,who = []):
+  def symmetryOperations(self):
     """List of symmetry operations as quaternions."""
     if self.lattice == 'cubic':
       symQuats =  [
@@ -566,7 +566,7 @@ class Symmetry:
                     [ 1.0,0.0,0.0,0.0 ],
                   ]
 
-    return np.array(symQuats)
+    return [Rotation(q) for q in symQuats]
     
 
   def inFZ(self,R):
@@ -1074,7 +1074,8 @@ class Orientation:
   
   def equivalentOrientations(self):
     """List of orientations which are symmetrically equivalent"""
-    return [self.__class__(q*self.rotation.quaternion,self.lattice) for q in self.lattice.symmetry.symmetryQuats()]
+    return [self.__class__(q*self.rotation,self.lattice) \
+                                  for q in self.lattice.symmetry.symmetryOperations()]
     
   def relatedOrientations(self,model):
     """List of orientations related by the given orientation relationship"""
