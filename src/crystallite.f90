@@ -1278,7 +1278,7 @@ logical function integrateStress(&
 
      !* calculate plastic velocity gradient and its tangent from constitutive law
      call constitutive_LpAndItsTangents(Lp_constitutive, dLp_dS, dLp_dFi, &
-                                        math_sym33to6(S), Fi_new, ipc, ip, el)
+                                        S, Fi_new, ipc, ip, el)
 
 #ifdef DEBUG
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
