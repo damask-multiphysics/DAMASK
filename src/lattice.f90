@@ -23,38 +23,28 @@ module lattice
    lattice_NslipSystem, &                                                                           !< total # of slip systems in each family
    lattice_NcleavageSystem                                                                          !< total # of transformation systems in each family
 
- integer(pInt), allocatable, dimension(:,:,:), protected, public :: &
-   lattice_interactionSlipSlip                                                                      !< Slip--slip interaction type
-
  real(pReal), allocatable, dimension(:,:,:,:,:), protected, public :: &
-   lattice_Sslip, &                                                                                 !< Schmid and non-Schmid matrices
    lattice_Scleavage                                                                                !< Schmid matrices for cleavage systems
-
- real(pReal), allocatable, dimension(:,:,:,:), protected, public :: &
-   lattice_Sslip_v                                                                              !< Mandel notation of lattice_Sslip
 
  real(pReal), allocatable, dimension(:,:,:), protected, public :: &
    lattice_sn, &                                                                                    !< normal direction of slip system
    lattice_st, &                                                                                    !< sd x sn
    lattice_sd                                                                                       !< slip direction of slip system
-
- integer(pInt), allocatable, dimension(:), protected, public :: &
-   lattice_NnonSchmid                                                                               !< total # of non-Schmid contributions for each structure
 ! END DEPRECATED
 
 
 !--------------------------------------------------------------------------------------------------
 ! face centered cubic
- integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, public :: &
+ integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, private :: &
    LATTICE_FCC_NSLIPSYSTEM = int([12, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],pInt)                     !< # of slip systems per family for fcc
 
- integer(pInt), dimension(1), parameter, public :: &
+ integer(pInt), dimension(1), parameter, private :: &
    LATTICE_FCC_NTWINSYSTEM = int([12],pInt)                                                         !< # of twin systems per family for fcc
 
- integer(pInt), dimension(1), parameter, public :: &
+ integer(pInt), dimension(1), parameter, private :: &
    LATTICE_FCC_NTRANSSYSTEM = int([12],pInt)                                                        !< # of transformation systems per family for fcc
 
- integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
+ integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, private :: &
    LATTICE_FCC_NCLEAVAGESYSTEM = int([3, 4, 0],pInt)                                                !< # of cleavage systems per family for fcc
 
  integer(pInt), parameter, private  :: &
@@ -87,12 +77,12 @@ module lattice
       0, 1,-1,     0, 1, 1  &
      ],pReal),shape(LATTICE_FCC_SYSTEMSLIP))                                                        !< Slip system <110>{111} directions. Sorted according to Eisenlohr & Hantcherli
 
- character(len=*), dimension(2), parameter, public :: LATTICE_FCC_SLIPFAMILY_NAME = &
+ character(len=*), dimension(2), parameter, private :: LATTICE_FCC_SLIPFAMILY_NAME = &
    ['<0 1 -1>{1 1 1}', &
     '<0 1 -1>{0 1 1}']
 
  real(pReal), dimension(3+3,LATTICE_FCC_NTWIN), parameter, private :: &
-   LATTICE_fcc_systemTwin = reshape(real( [&
+   LATTICE_FCC_SYSTEMTWIN = reshape(real( [&
      -2, 1, 1,     1, 1, 1, &
       1,-2, 1,     1, 1, 1, &
       1, 1,-2,     1, 1, 1, &
@@ -107,7 +97,7 @@ module lattice
      -1, 1, 2,    -1, 1,-1  &
      ],pReal),shape(LATTICE_FCC_SYSTEMTWIN))                                                        !< Twin system <112>{111} directions. Sorted according to Eisenlohr & Hantcherli
 
- character(len=*), dimension(1), parameter, public :: LATTICE_FCC_TWINFAMILY_NAME = &
+ character(len=*), dimension(1), parameter, private :: LATTICE_FCC_TWINFAMILY_NAME = &
    ['<-2 1 1>{1 1 1}']
 
 
@@ -127,42 +117,6 @@ module lattice
      10,11 &
      ],pInt),shape(LATTICE_FCC_TWINNUCLEATIONSLIPPAIR))
 
-! ToDo: should be in the interaction function
- integer(pInt), dimension(LATTICE_FCC_NSLIP,LATTICE_FCC_NSLIP), parameter, public :: &
-   LATTICE_FCC_INTERACTIONSLIPSLIP = reshape(int( [&
-      1, 2, 2, 4, 6, 5, 3, 5, 5, 4, 5, 6,  9,10, 9,10,11,12, &  ! ---> slip
-      2, 1, 2, 6, 4, 5, 5, 4, 6, 5, 3, 5,  9,10,11,12, 9,10, &  ! |
-      2, 2, 1, 5, 5, 3, 5, 6, 4, 6, 5, 4, 11,12, 9,10, 9,10, &  ! |
-      4, 6, 5, 1, 2, 2, 4, 5, 6, 3, 5, 5,  9,10,10, 9,12,11, &  ! v slip
-      6, 4, 5, 2, 1, 2, 5, 3, 5, 5, 4, 6,  9,10,12,11,10, 9, &
-      5, 5, 3, 2, 2, 1, 6, 5, 4, 5, 6, 4, 11,12,10, 9,10, 9, &
-      3, 5, 5, 4, 5, 6, 1, 2, 2, 4, 6, 5, 10, 9,10, 9,11,12, &
-      5, 4, 6, 5, 3, 5, 2, 1, 2, 6, 4, 5, 10, 9,12,11, 9,10, &
-      5, 6, 4, 6, 5, 4, 2, 2, 1, 5, 5, 3, 12,11,10, 9, 9,10, &
-      4, 5, 6, 3, 5, 5, 4, 6, 5, 1, 2, 2, 10, 9, 9,10,12,11, &
-      5, 3, 5, 5, 4, 6, 6, 4, 5, 2, 1, 2, 10, 9,11,12,10, 9, &
-      6, 5, 4, 5, 6, 4, 5, 5, 3, 2, 2, 1, 12,11, 9,10,10, 9, &
-
-      9, 9,11, 9, 9,11,10,10,12,10,10,12,  1, 7, 8, 8, 8, 8, &
-     10,10,12,10,10,12, 9, 9,11, 9, 9,11,  7, 1, 8, 8, 8, 8, &
-      9,11, 9,10,12,10,10,12,10, 9,11, 9,  8, 8, 1, 7, 8, 8, &
-     10,12,10, 9,11, 9, 9,11, 9,10,12,10,  8, 8, 7, 1, 8, 8, &
-     11, 9, 9,12,10,10,11, 9, 9,12,10,10,  8, 8, 8, 8, 1, 7, &
-     12,10,10,11, 9, 9,12,10,10,11, 9, 9,  8, 8, 8, 8, 7, 1  &
-     ],pInt),shape(LATTICE_FCC_INTERACTIONSLIPSLIP),order=[2,1])                                    !< Slip--slip interaction types for fcc
-                                                                                                    !< 1: self interaction
-                                                                                                    !< 2: coplanar interaction
-                                                                                                    !< 3: collinear interaction
-                                                                                                    !< 4: Hirth locks
-                                                                                                    !< 5: glissile junctions
-                                                                                                    !< 6: Lomer locks
-                                                                                                    !< 7: crossing (similar to Hirth locks in <110>{111} for two {110} planes)
-                                                                                                    !< 8: similar to Lomer locks in <110>{111} for two {110} planes
-                                                                                                    !< 9: similar to Lomer locks in <110>{111} btw one {110} and one {111} plane
-                                                                                                    !<10: similar to glissile junctions in <110>{111} btw one {110} and one {111} plane
-                                                                                                    !<11: crossing btw one {110} and one {111} plane
-                                                                                                    !<12: collinear btw one {110} and one {111} plane
-
  real(pReal), dimension(3+3,LATTICE_fcc_Ncleavage), parameter, private :: &
    LATTICE_fcc_systemCleavage = reshape(real([&
     ! Cleavage direction     Plane normal
@@ -177,19 +131,18 @@ module lattice
 
 !--------------------------------------------------------------------------------------------------
 ! body centered cubic
- integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, public :: &
+ integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, private :: &
    LATTICE_BCC_NSLIPSYSTEM = int([ 12, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], pInt)                  !< # of slip systems per family for bcc
 
- integer(pInt), dimension(1), parameter, public :: &
+ integer(pInt), dimension(1), parameter, private :: &
    LATTICE_BCC_NTWINSYSTEM = int([12], pInt)                                                        !< # of twin systems per family for bcc
 
- integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
+ integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, private :: &
    LATTICE_bcc_NcleavageSystem = int([3, 6, 0],pInt)                                                !< # of cleavage systems per family for bcc
 
  integer(pInt), parameter, private  :: &
    LATTICE_BCC_NSLIP      = sum(LATTICE_BCC_NSLIPSYSTEM), &                                         !< total # of slip systems for bcc
    LATTICE_BCC_NTWIN      = sum(LATTICE_BCC_NTWINSYSTEM), &                                         !< total # of twin systems for bcc
-   LATTICE_bcc_NnonSchmid = 6_pInt, &                                                               !< total # of non-Schmid contributions for bcc (A. Koester, A. Ma, A. Hartmaier 2012)
    LATTICE_bcc_Ncleavage  = sum(lattice_bcc_NcleavageSystem)                                        !< total # of cleavage systems for bcc
 
  real(pReal), dimension(3+3,LATTICE_BCC_NSLIP), parameter, private :: &
@@ -223,7 +176,7 @@ module lattice
       1, 1, 1,     1, 1,-2  &
      ],pReal),shape(LATTICE_BCC_SYSTEMSLIP))
 
- character(len=*), dimension(2), parameter, public :: LATTICE_BCC_SLIPFAMILY_NAME = &
+ character(len=*), dimension(2), parameter, private :: LATTICE_BCC_SLIPFAMILY_NAME = &
    ['<1 -1 1>{0 1 1}', &
     '<1 -1 1>{2 1 1}']
 
@@ -244,45 +197,8 @@ module lattice
       1, 1, 1,     1, 1,-2  &
      ],pReal),shape(LATTICE_BCC_SYSTEMTWIN))
 
- character(len=*), dimension(1), parameter, public :: LATTICE_BCC_TWINFAMILY_NAME = &
+ character(len=*), dimension(1), parameter, private :: LATTICE_BCC_TWINFAMILY_NAME = &
    ['<1 1 1>{2 1 1}']
-
-
-
- integer(pInt), dimension(LATTICE_BCC_NSLIP,LATTICE_BCC_NSLIP), parameter, public :: &
-   LATTICE_bcc_interactionSlipSlip = reshape(int( [&
-     1,2,6,6,5,4,4,3,4,3,5,4, 6,6,4,3,3,4,6,6,4,3,6,6, &  ! ---> slip
-     2,1,6,6,4,3,5,4,5,4,4,3, 6,6,3,4,4,3,6,6,3,4,6,6, &  ! |
-     6,6,1,2,4,5,3,4,4,5,3,4, 4,3,6,6,6,6,3,4,6,6,4,3, &  ! |
-     6,6,2,1,3,4,4,5,3,4,4,5, 3,4,6,6,6,6,4,3,6,6,3,4, &  ! v slip
-     5,4,4,3,1,2,6,6,3,4,5,4, 3,6,4,6,6,4,6,3,4,6,3,6, &
-     4,3,5,4,2,1,6,6,4,5,4,3, 4,6,3,6,6,3,6,4,3,6,4,6, &
-     4,5,3,4,6,6,1,2,5,4,3,4, 6,3,6,4,4,6,3,6,6,4,6,3, &
-     3,4,4,5,6,6,2,1,4,3,4,5, 6,4,6,3,3,6,4,6,6,3,6,4, &
-     4,5,4,3,3,4,5,4,1,2,6,6, 3,6,6,4,4,6,6,3,6,4,3,6, &
-     3,4,5,4,4,5,4,3,2,1,6,6, 4,6,6,3,3,6,6,4,6,3,4,6, &
-     5,4,3,4,5,4,3,4,6,6,1,2, 6,3,4,6,6,4,3,6,4,6,6,3, &
-     4,3,4,5,4,3,4,5,6,6,2,1, 6,4,3,6,6,3,4,6,3,6,6,4, &
-     !
-     6,6,4,3,3,4,6,6,3,4,6,6, 1,5,6,6,5,6,6,3,5,6,3,6, &
-     6,6,3,4,6,6,3,4,6,6,3,4, 5,1,6,6,6,5,3,6,6,5,6,3, &
-     4,3,6,6,4,3,6,6,6,6,4,3, 6,6,1,5,6,3,5,6,3,6,5,6, &
-     3,4,6,6,6,6,4,3,4,3,6,6, 6,6,5,1,3,6,6,5,6,3,6,5, &
-     3,4,6,6,6,6,4,3,4,3,6,6, 5,6,6,3,1,6,5,6,5,3,6,6, &
-     4,3,6,6,4,3,6,6,6,6,4,3, 6,5,3,6,6,1,6,5,3,5,6,6, &
-     6,6,3,4,6,6,3,4,6,6,3,4, 6,3,5,6,5,6,1,6,6,6,5,3, &
-     6,6,4,3,3,4,6,6,3,4,6,6, 3,6,6,5,6,5,6,1,6,6,3,5, &
-     4,3,6,6,4,3,6,6,6,6,4,3, 5,6,3,6,5,3,6,6,1,6,6,5, &
-     3,4,6,6,6,6,4,3,4,3,6,6, 6,5,6,3,3,5,6,6,6,1,5,6, &
-     6,6,4,3,3,4,6,6,3,4,6,6, 3,6,5,6,6,6,5,3,6,5,1,6, &
-     6,6,3,4,6,6,3,4,6,6,3,4, 6,3,6,5,6,6,3,5,5,6,6,1  &
-     ],pInt),shape(LATTICE_BCC_INTERACTIONSLIPSLIP),order=[2,1])                                    !< Slip--slip interaction types for bcc from Queyreau et al. Int J Plast 25 (2009) 361–377
-                                                                                                    !< 1: self interaction
-                                                                                                    !< 2: coplanar interaction
-                                                                                                    !< 3: collinear interaction
-                                                                                                    !< 4: mixed-asymmetrical junction
-                                                                                                    !< 5: mixed-symmetrical junction
-                                                                                                    !< 6: edge junction
 
  real(pReal), dimension(3+3,LATTICE_bcc_Ncleavage), parameter, private :: &
    LATTICE_bcc_systemCleavage = reshape(real([&
@@ -300,13 +216,13 @@ module lattice
 
 !--------------------------------------------------------------------------------------------------
 ! hexagonal
- integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, public :: &
+ integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, private :: &
    LATTICE_HEX_NSLIPSYSTEM = int([ 3, 3, 3, 6, 12, 6, 0, 0, 0, 0, 0, 0, 0],pInt)                    !< # of slip systems per family for hex
 
- integer(pInt), dimension(4), parameter, public :: &
+ integer(pInt), dimension(4), parameter, private :: &
    LATTICE_HEX_NTWINSYSTEM = int([ 6, 6, 6, 6],pInt)                                                !< # of slip systems per family for hex
 
- integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
+ integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, private :: &
    LATTICE_hex_NcleavageSystem = int([3, 0, 0],pInt)                                                !< # of cleavage systems per family for hex
 
  integer(pInt), parameter, private  :: &
@@ -356,9 +272,9 @@ module lattice
      -2,  1,  1,  3,     2, -1, -1,  2, &
       1, -2,  1,  3,    -1,  2, -1,  2, &
       1,  1, -2,  3,    -1, -1,  2,  2  &
-     ],pReal),shape(LATTICE_HEX_SYSTEMSLIP))                                                 !< slip systems for hex sorted by A. Alankar & P. Eisenlohr
+     ],pReal),shape(LATTICE_HEX_SYSTEMSLIP))                                                        !< slip systems for hex sorted by A. Alankar & P. Eisenlohr
 
- character(len=*), dimension(6), parameter, public :: LATTICE_HEX_SLIPFAMILY_NAME = &
+ character(len=*), dimension(6), parameter, private :: LATTICE_HEX_SLIPFAMILY_NAME = &
    ['<1 1 . 1>{0 0 . 1}  ', &
     '<1 1 . 1>{1 0 . 0}  ', &
     '<1 0 . 0>{1 1 . 0}  ', &
@@ -396,57 +312,13 @@ module lattice
      -2,  1,  1, -3,    -2,  1,  1,  2, &
       1, -2,  1, -3,     1, -2,  1,  2, &
       1,  1, -2, -3,     1,  1, -2,  2  &
-     ],pReal),shape(LATTICE_HEX_SYSTEMTWIN))                                                !< twin systems for hex, order follows Prof. Tom Bieler's scheme; but numbering in data was restarted from 1
+     ],pReal),shape(LATTICE_HEX_SYSTEMTWIN))                                                        !< twin systems for hex, order follows Prof. Tom Bieler's scheme
 
- character(len=*), dimension(4), parameter, public :: LATTICE_HEX_TWINFAMILY_NAME = &
+ character(len=*), dimension(4), parameter, private :: LATTICE_HEX_TWINFAMILY_NAME = &
    ['<-1 0 . 1>{1 0 . 2} ', &
     '<1 1 . 6>{-1 -1 . 1}', &
     '<1 0 . -2>{1 0 . 1} ', &
     '<1 1 . -3>{1 1 . 2} ']
-
-
- integer(pInt), dimension(LATTICE_HEX_NSLIP,LATTICE_HEX_NSLIP), parameter, public :: &
-   LATTICE_hex_interactionSlipSlip = reshape(int( [&
-      1, 2, 2,   3, 3, 3,   7, 7, 7,  13,13,13,13,13,13,  21,21,21,21,21,21,21,21,21,21,21,21,  31,31,31,31,31,31, &  ! ---> slip
-      2, 1, 2,   3, 3, 3,   7, 7, 7,  13,13,13,13,13,13,  21,21,21,21,21,21,21,21,21,21,21,21,  31,31,31,31,31,31, &  ! |
-      2, 2, 1,   3, 3, 3,   7, 7, 7,  13,13,13,13,13,13,  21,21,21,21,21,21,21,21,21,21,21,21,  31,31,31,31,31,31, &  ! |
-    !                                                                                                                   v slip
-      6, 6, 6,   4, 5, 5,   8, 8, 8,  14,14,14,14,14,14,  22,22,22,22,22,22,22,22,22,22,22,22,  32,32,32,32,32,32, &
-      6, 6, 6,   5, 4, 5,   8, 8, 8,  14,14,14,14,14,14,  22,22,22,22,22,22,22,22,22,22,22,22,  32,32,32,32,32,32, &
-      6, 6, 6,   5, 5, 4,   8, 8, 8,  14,14,14,14,14,14,  22,22,22,22,22,22,22,22,22,22,22,22,  32,32,32,32,32,32, &
-    !
-     12,12,12,  11,11,11,   9,10,10,  15,15,15,15,15,15,  23,23,23,23,23,23,23,23,23,23,23,23,  33,33,33,33,33,33, &
-     12,12,12,  11,11,11,  10, 9,10,  15,15,15,15,15,15,  23,23,23,23,23,23,23,23,23,23,23,23,  33,33,33,33,33,33, &
-     12,12,12,  11,11,11,  10,10, 9,  15,15,15,15,15,15,  23,23,23,23,23,23,23,23,23,23,23,23,  33,33,33,33,33,33, &
-    !
-     20,20,20,  19,19,19,  18,18,18,  16,17,17,17,17,17,  24,24,24,24,24,24,24,24,24,24,24,24,  34,34,34,34,34,34, &
-     20,20,20,  19,19,19,  18,18,18,  17,16,17,17,17,17,  24,24,24,24,24,24,24,24,24,24,24,24,  34,34,34,34,34,34, &
-     20,20,20,  19,19,19,  18,18,18,  17,17,16,17,17,17,  24,24,24,24,24,24,24,24,24,24,24,24,  34,34,34,34,34,34, &
-     20,20,20,  19,19,19,  18,18,18,  17,17,17,16,17,17,  24,24,24,24,24,24,24,24,24,24,24,24,  34,34,34,34,34,34, &
-     20,20,20,  19,19,19,  18,18,18,  17,17,17,17,16,17,  24,24,24,24,24,24,24,24,24,24,24,24,  34,34,34,34,34,34, &
-     20,20,20,  19,19,19,  18,18,18,  17,17,17,17,17,16,  24,24,24,24,24,24,24,24,24,24,24,24,  34,34,34,34,34,34, &
-    !
-     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  25,26,26,26,26,26,26,26,26,26,26,26,  35,35,35,35,35,35, &
-     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,25,26,26,26,26,26,26,26,26,26,26,  35,35,35,35,35,35, &
-     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,25,26,26,26,26,26,26,26,26,26,  35,35,35,35,35,35, &
-     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,25,26,26,26,26,26,26,26,26,  35,35,35,35,35,35, &
-     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,25,26,26,26,26,26,26,26,  35,35,35,35,35,35, &
-     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,26,25,26,26,26,26,26,26,  35,35,35,35,35,35, &
-     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,26,26,25,26,26,26,26,26,  35,35,35,35,35,35, &
-     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,26,26,26,25,26,26,26,26,  35,35,35,35,35,35, &
-     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,26,26,26,26,25,26,26,26,  35,35,35,35,35,35, &
-     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,26,26,26,26,26,25,26,26,  35,35,35,35,35,35, &
-     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,26,26,26,26,26,26,25,26,  35,35,35,35,35,35, &
-     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,26,26,26,26,26,26,26,25,  35,35,35,35,35,35, &
-    !
-     42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  36,37,37,37,37,37, &
-     42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,36,37,37,37,37, &
-     42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,36,37,37,37, &
-     42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,37,36,37,37, &
-     42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,37,37,36,37, &
-     42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,37,37,37,36  &
-    ],pInt),shape(LATTICE_HEX_INTERACTIONSLIPSLIP),order=[2,1])                                     !< Slip--slip interaction types for hex (onion peel naming scheme)
-
 
  real(pReal), dimension(4+4,LATTICE_hex_Ncleavage), parameter, private :: &
    LATTICE_hex_systemCleavage = reshape(real([&
@@ -459,7 +331,7 @@ module lattice
 
 !--------------------------------------------------------------------------------------------------
 ! body centered tetragonal
- integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, public :: &
+ integer(pInt), dimension(LATTICE_maxNslipFamily), parameter, private :: &
    LATTICE_bct_NslipSystem = int([2, 2, 2, 4, 2, 4, 2, 2, 4, 8, 4, 8, 8 ],pInt)                     !< # of slip systems per family for bct (Sn) Bieler J. Electr Mater 2009
 
  integer(pInt), parameter, private  :: &
@@ -533,9 +405,9 @@ module lattice
       1,-1, 1,     -2,-1, 1, &
      -1, 1, 1,     -1,-2, 1, &
       1, 1, 1,      1,-2, 1  &
-      ],pReal),[ 3_pInt + 3_pInt,LATTICE_bct_Nslip])                                                 !< slip systems for bct sorted by Bieler
+      ],pReal),[ 3_pInt + 3_pInt,LATTICE_bct_Nslip])                                                !< slip systems for bct sorted by Bieler
 
- character(len=*), dimension(13), parameter, public :: LATTICE_BCT_SLIPFAMILY_NAME = &
+ character(len=*), dimension(13), parameter, private :: LATTICE_BCT_SLIPFAMILY_NAME = &
    ['{1 0 0)<0 0 1] ', &
     '{1 1 0)<0 0 1] ', &
     '{1 0 0)<0 1 0] ', &
@@ -550,78 +422,10 @@ module lattice
     '{2 1 1)<0 1 -1]', &
     '{2 1 1)<-1 1 1]']
 
- integer(pInt), dimension(LATTICE_bct_Nslip,LATTICE_bct_Nslip), parameter, public :: &
-   LATTICE_bct_interactionSlipSlip = reshape(int( [&
-     1,  2,   3,  3,   7,  7,  13, 13, 13, 13,  21, 21,  31, 31, 31, 31,  43, 43,  57, 57,  73, 73, 73, 73,  91, 91, 91, 91, 91, 91, 91, 91,  111, 111, 111, 111, 133,133,133,133,133,133,133,133, 157,157,157,157,157,157,157,157, &
-     2,  1,   3,  3,   7,  7,  13, 13, 13, 13,  21, 21,  31, 31, 31, 31,  43, 43,  57, 57,  73, 73, 73, 73,  91, 91, 91, 91, 91, 91, 91, 91,  111, 111, 111, 111, 133,133,133,133,133,133,133,133, 157,157,157,157,157,157,157,157, &
-    !
-     6,  6,   4,  5,   8,  8,  14, 14, 14, 14,  22, 22,  32, 32, 32, 32,  44, 44,  58, 58,  74, 74, 74, 74,  92, 92, 92, 92, 92, 92, 92, 92,  112, 112, 112, 112, 134,134,134,134,134,134,134,134, 158,158,158,158,158,158,158,158, &
-     6,  6,   5,  4,   8,  8,  14, 14, 14, 14,  22, 22,  32, 32, 32, 32,  44, 44,  58, 58,  74, 74, 74, 74,  92, 92, 92, 92, 92, 92, 92, 92,  112, 112, 112, 112, 134,134,134,134,134,134,134,134, 158,158,158,158,158,158,158,158, &
-    !
-    12, 12,  11, 11,   9, 10,  15, 15, 15, 15,  23, 23,  33, 33, 33, 33,  45, 45,  59, 59,  75, 75, 75, 75,  93, 93, 93, 93, 93, 93, 93, 93,  113, 113, 113, 113, 135,135,135,135,135,135,135,135, 159,159,159,159,159,159,159,159, &
-    12, 12,  11, 11,  10,  9,  15, 15, 15, 15,  23, 23,  33, 33, 33, 33,  45, 45,  59, 59,  75, 75, 75, 75,  93, 93, 93, 93, 93, 93, 93, 93,  113, 113, 113, 113, 135,135,135,135,135,135,135,135, 159,159,159,159,159,159,159,159, &
-    !
-    20, 20,  19, 19,  18, 18,  16, 17, 17, 17,  24, 24,  34, 34, 34, 34,  46, 46,  60, 60,  76, 76, 76, 76,  94, 94, 94, 94, 94, 94, 94, 94,  114, 114, 114, 114, 136,136,136,136,136,136,136,136, 160,160,160,160,160,160,160,160, &
-    20, 20,  19, 19,  18, 18,  17, 16, 17, 17,  24, 24,  34, 34, 34, 34,  46, 46,  60, 60,  76, 76, 76, 76,  94, 94, 94, 94, 94, 94, 94, 94,  114, 114, 114, 114, 136,136,136,136,136,136,136,136, 160,160,160,160,160,160,160,160, &
-    20, 20,  19, 19,  18, 18,  17, 17, 16, 17,  24, 24,  34, 34, 34, 34,  46, 46,  60, 60,  76, 76, 76, 76,  94, 94, 94, 94, 94, 94, 94, 94,  114, 114, 114, 114, 136,136,136,136,136,136,136,136, 160,160,160,160,160,160,160,160, &
-    20, 20,  19, 19,  18, 18,  17, 17, 17, 16,  24, 24,  34, 34, 34, 34,  46, 46,  60, 60,  76, 76, 76, 76,  94, 94, 94, 94, 94, 94, 94, 94,  114, 114, 114, 114, 136,136,136,136,136,136,136,136, 160,160,160,160,160,160,160,160, &
-    !
-    30, 30,  29, 29,  28, 28,  27, 27, 27, 27,  25, 26,  35, 35, 35, 35,  47, 47,  61, 61,  77, 77, 77, 77,  95, 95, 95, 95, 95, 95, 95, 95,  115, 115, 115, 115, 137,137,137,137,137,137,137,137, 161,161,161,161,161,161,161,161, &
-    30, 30,  29, 29,  28, 28,  27, 27, 27, 27,  26, 25,  35, 35, 35, 35,  47, 47,  61, 61,  77, 77, 77, 77,  95, 95, 95, 95, 95, 95, 95, 95,  115, 115, 115, 115, 137,137,137,137,137,137,137,137, 161,161,161,161,161,161,161,161, &
-    !
-    42, 42,  41, 41,  40, 40,  39, 39, 39, 39,  38, 38,  36, 37, 37, 37,  48, 48,  62, 62,  78, 78, 78, 78,  96, 96, 96, 96, 96, 96, 96, 96,  116, 116, 116, 116, 138,138,138,138,138,138,138,138, 162,162,162,162,162,162,162,162, &
-    42, 42,  41, 41,  40, 40,  39, 39, 39, 39,  38, 38,  37, 36, 37, 37,  48, 48,  62, 62,  78, 78, 78, 78,  96, 96, 96, 96, 96, 96, 96, 96,  116, 116, 116, 116, 138,138,138,138,138,138,138,138, 162,162,162,162,162,162,162,162, &
-    42, 42,  41, 41,  40, 40,  39, 39, 39, 39,  38, 38,  37, 37, 36, 37,  48, 48,  62, 62,  78, 78, 78, 78,  96, 96, 96, 96, 96, 96, 96, 96,  116, 116, 116, 116, 138,138,138,138,138,138,138,138, 162,162,162,162,162,162,162,162, &
-    42, 42,  41, 41,  40, 40,  39, 39, 39, 39,  38, 38,  37, 37, 37, 36,  48, 48,  62, 62,  78, 78, 78, 78,  96, 96, 96, 96, 96, 96, 96, 96,  116, 116, 116, 116, 138,138,138,138,138,138,138,138, 162,162,162,162,162,162,162,162, &
-    !
-    56, 56,  55, 55,  54, 54,  53, 53, 53, 53,  52, 52,  51, 51, 51, 51,  49, 50,  63, 63,  79, 79, 79, 79,  97, 97, 97, 97, 97, 97, 97, 97,  117, 117, 117, 117, 139,139,139,139,139,139,139,139, 163,163,163,163,163,163,163,163, &
-    56, 56,  55, 55,  54, 54,  53, 53, 53, 53,  52, 52,  51, 51, 51, 51,  50, 49,  63, 63,  79, 79, 79, 79,  97, 97, 97, 97, 97, 97, 97, 97,  117, 117, 117, 117, 139,139,139,139,139,139,139,139, 163,163,163,163,163,163,163,163, &
-    !
-    72, 72,  71, 71,  70, 70,  69, 69, 69, 69,  68, 68,  67, 67, 67, 67,  66, 66,  64, 65,  80, 80, 80, 80,  98, 98, 98, 98, 98, 98, 98, 98,  118, 118, 118, 118, 140,140,140,140,140,140,140,140, 164,164,164,164,164,164,164,164, &
-    72, 72,  71, 71,  70, 70,  69, 69, 69, 69,  68, 68,  67, 67, 67, 67,  66, 66,  65, 64,  80, 80, 80, 80,  98, 98, 98, 98, 98, 98, 98, 98,  118, 118, 118, 118, 140,140,140,140,140,140,140,140, 164,164,164,164,164,164,164,164, &
-    !
-    90, 90,  89, 89,  88, 88,  87, 87, 87, 87,  86, 86,  85, 85, 85, 85,  84, 84,  83, 83,  81, 82, 82, 82,  99, 99, 99, 99, 99, 99, 99, 99,  119, 119, 119, 119, 141,141,141,141,141,141,141,141, 165,165,165,165,165,165,165,165, &
-    90, 90,  89, 89,  88, 88,  87, 87, 87, 87,  86, 86,  85, 85, 85, 85,  84, 84,  83, 83,  82, 81, 82, 82,  99, 99, 99, 99, 99, 99, 99, 99,  119, 119, 119, 119, 141,141,141,141,141,141,141,141, 165,165,165,165,165,165,165,165, &
-    90, 90,  89, 89,  88, 88,  87, 87, 87, 87,  86, 86,  85, 85, 85, 85,  84, 84,  83, 83,  82, 82, 81, 82,  99, 99, 99, 99, 99, 99, 99, 99,  119, 119, 119, 119, 141,141,141,141,141,141,141,141, 165,165,165,165,165,165,165,165, &
-    90, 90,  89, 89,  88, 88,  87, 87, 87, 87,  86, 86,  85, 85, 85, 85,  84, 84,  83, 83,  82, 82, 82, 81,  99, 99, 99, 99, 99, 99, 99, 99,  119, 119, 119, 119, 141,141,141,141,141,141,141,141, 165,165,165,165,165,165,165,165, &
-    !
-   110,110, 109,109, 108,108, 107,107,107,107, 106,106, 105,105,105,105, 104,104, 103,103, 102,102,102,102, 100,101,101,101,101,101,101,101,  120, 120, 120, 120, 142,142,142,142,142,142,142,142, 166,166,166,166,166,166,166,166, &
-   110,110, 109,109, 108,108, 107,107,107,107, 106,106, 105,105,105,105, 104,104, 103,103, 102,102,102,102, 101,100,101,101,101,101,101,101,  120, 120, 120, 120, 142,142,142,142,142,142,142,142, 166,166,166,166,166,166,166,166, &
-   110,110, 109,109, 108,108, 107,107,107,107, 106,106, 105,105,105,105, 104,104, 103,103, 102,102,102,102, 101,101,100,101,101,101,101,101,  120, 120, 120, 120, 142,142,142,142,142,142,142,142, 166,166,166,166,166,166,166,166, &
-   110,110, 109,109, 108,108, 107,107,107,107, 106,106, 105,105,105,105, 104,104, 103,103, 102,102,102,102, 101,101,101,100,101,101,101,101,  120, 120, 120, 120, 142,142,142,142,142,142,142,142, 166,166,166,166,166,166,166,166, &
-   110,110, 109,109, 108,108, 107,107,107,107, 106,106, 105,105,105,105, 104,104, 103,103, 102,102,102,102, 101,101,101,101,100,101,101,101,  120, 120, 120, 120, 142,142,142,142,142,142,142,142, 166,166,166,166,166,166,166,166, &
-   110,110, 109,109, 108,108, 107,107,107,107, 106,106, 105,105,105,105, 104,104, 103,103, 102,102,102,102, 101,101,101,101,101,100,101,101,  120, 120, 120, 120, 142,142,142,142,142,142,142,142, 166,166,166,166,166,166,166,166, &
-   110,110, 109,109, 108,108, 107,107,107,107, 106,106, 105,105,105,105, 104,104, 103,103, 102,102,102,102, 101,101,101,101,101,101,100,101,  120, 120, 120, 120, 142,142,142,142,142,142,142,142, 166,166,166,166,166,166,166,166, &
-   110,110, 109,109, 108,108, 107,107,107,107, 106,106, 105,105,105,105, 104,104, 103,103, 102,102,102,102, 101,101,101,101,101,101,101,100,  120, 120, 120, 120, 142,142,142,142,142,142,142,142, 166,166,166,166,166,166,166,166, &
-    !
-   132,132, 131,131, 130,130, 129,129,129,129, 128,128, 127,127,127,127, 126,126, 125,125, 124,124,124,124, 123,123,123,123,123,123,123,123,  121, 122, 122, 122, 143,143,143,143,143,143,143,143, 167,167,167,167,167,167,167,167, &
-   132,132, 131,131, 130,130, 129,129,129,129, 128,128, 127,127,127,127, 126,126, 125,125, 124,124,124,124, 123,123,123,123,123,123,123,123,  121, 121, 122, 122, 143,143,143,143,143,143,143,143, 167,167,167,167,167,167,167,167, &
-   132,132, 131,131, 130,130, 129,129,129,129, 128,128, 127,127,127,127, 126,126, 125,125, 124,124,124,124, 123,123,123,123,123,123,123,123,  121, 122, 121, 122, 143,143,143,143,143,143,143,143, 167,167,167,167,167,167,167,167, &
-   132,132, 131,131, 130,130, 129,129,129,129, 128,128, 127,127,127,127, 126,126, 125,125, 124,124,124,124, 123,123,123,123,123,123,123,123,  121, 122, 122, 121, 143,143,143,143,143,143,143,143, 167,167,167,167,167,167,167,167, &
-    !
-   156,156, 155,155, 154,154, 153,153,153,153, 152,152, 151,151,151,151, 150,150, 149,149, 148,148,148,148, 147,147,147,147,147,147,147,147,  146, 146, 146, 146, 144,145,145,145,145,145,145,145, 168,168,168,168,168,168,168,168, &
-   156,156, 155,155, 154,154, 153,153,153,153, 152,152, 151,151,151,151, 150,150, 149,149, 148,148,148,148, 147,147,147,147,147,147,147,147,  146, 146, 146, 146, 145,144,145,145,145,145,145,145, 168,168,168,168,168,168,168,168, &
-   156,156, 155,155, 154,154, 153,153,153,153, 152,152, 151,151,151,151, 150,150, 149,149, 148,148,148,148, 147,147,147,147,147,147,147,147,  146, 146, 146, 146, 145,145,144,145,145,145,145,145, 168,168,168,168,168,168,168,168, &
-   156,156, 155,155, 154,154, 153,153,153,153, 152,152, 151,151,151,151, 150,150, 149,149, 148,148,148,148, 147,147,147,147,147,147,147,147,  146, 146, 146, 146, 145,145,145,144,145,145,145,145, 168,168,168,168,168,168,168,168, &
-   156,156, 155,155, 154,154, 153,153,153,153, 152,152, 151,151,151,151, 150,150, 149,149, 148,148,148,148, 147,147,147,147,147,147,147,147,  146, 146, 146, 146, 145,145,145,145,144,145,145,145, 168,168,168,168,168,168,168,168, &
-   156,156, 155,155, 154,154, 153,153,153,153, 152,152, 151,151,151,151, 150,150, 149,149, 148,148,148,148, 147,147,147,147,147,147,147,147,  146, 146, 146, 146, 145,145,145,145,145,144,145,145, 168,168,168,168,168,168,168,168, &
-   156,156, 155,155, 154,154, 153,153,153,153, 152,152, 151,151,151,151, 150,150, 149,149, 148,148,148,148, 147,147,147,147,147,147,147,147,  146, 146, 146, 146, 145,145,145,145,145,145,144,145, 168,168,168,168,168,168,168,168, &
-   156,156, 155,155, 154,154, 153,153,153,153, 152,152, 151,151,151,151, 150,150, 149,149, 148,148,148,148, 147,147,147,147,147,147,147,147,  146, 146, 146, 146, 145,145,145,145,145,145,145,144, 168,168,168,168,168,168,168,168, &
-    !
-   182,182, 181,181, 180,180, 179,179,179,179, 178,178, 177,177,177,177, 176,176, 175,175, 174,174,174,174, 173,173,173,173,173,173,173,173,  172, 172, 172, 172, 171,171,171,171,171,171,171,171, 169,170,170,170,170,170,170,170, &
-   182,182, 181,181, 180,180, 179,179,179,179, 178,178, 177,177,177,177, 176,176, 175,175, 174,174,174,174, 173,173,173,173,173,173,173,173,  172, 172, 172, 172, 171,171,171,171,171,171,171,171, 170,169,170,170,170,170,170,170, &
-   182,182, 181,181, 180,180, 179,179,179,179, 178,178, 177,177,177,177, 176,176, 175,175, 174,174,174,174, 173,173,173,173,173,173,173,173,  172, 172, 172, 172, 171,171,171,171,171,171,171,171, 170,170,169,170,170,170,170,170, &
-   182,182, 181,181, 180,180, 179,179,179,179, 178,178, 177,177,177,177, 176,176, 175,175, 174,174,174,174, 173,173,173,173,173,173,173,173,  172, 172, 172, 172, 171,171,171,171,171,171,171,171, 170,170,170,169,170,170,170,170, &
-   182,182, 181,181, 180,180, 179,179,179,179, 178,178, 177,177,177,177, 176,176, 175,175, 174,174,174,174, 173,173,173,173,173,173,173,173,  172, 172, 172, 172, 171,171,171,171,171,171,171,171, 170,170,170,170,169,170,170,170, &
-   182,182, 181,181, 180,180, 179,179,179,179, 178,178, 177,177,177,177, 176,176, 175,175, 174,174,174,174, 173,173,173,173,173,173,173,173,  172, 172, 172, 172, 171,171,171,171,171,171,171,171, 169,170,170,170,170,169,170,170, &
-   182,182, 181,181, 180,180, 179,179,179,179, 178,178, 177,177,177,177, 176,176, 175,175, 174,174,174,174, 173,173,173,173,173,173,173,173,  172, 172, 172, 172, 171,171,171,171,171,171,171,171, 169,170,170,170,170,170,169,170, &
-   182,182, 181,181, 180,180, 179,179,179,179, 178,178, 177,177,177,177, 176,176, 175,175, 174,174,174,174, 173,173,173,173,173,173,173,173,  172, 172, 172, 172, 171,171,171,171,171,171,171,171, 169,170,170,170,170,170,170,169  &
- ],pInt),[lattice_bct_Nslip,lattice_bct_Nslip],order=[2,1])
-
 
 !--------------------------------------------------------------------------------------------------
 ! isotropic
- integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
+ integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, private :: &
    LATTICE_iso_NcleavageSystem = int([3, 0, 0],pInt)                                                !< # of cleavage systems per family for iso
 
  integer(pInt), parameter, private  :: &
@@ -638,7 +442,7 @@ module lattice
 
 !--------------------------------------------------------------------------------------------------
 ! orthorhombic
- integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, public :: &
+ integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, private :: &
    LATTICE_ort_NcleavageSystem = int([1, 1, 1],pInt)                                                !< # of cleavage systems per family for ortho
 
  integer(pInt), parameter, private  :: &
@@ -656,11 +460,9 @@ module lattice
  integer(pInt), parameter, public :: &
    LATTICE_maxNslip        = max(LATTICE_FCC_NSLIP,LATTICE_BCC_NSLIP,LATTICE_HEX_NSLIP, &
                                  LATTICE_bct_Nslip), &                                              !< max # of slip systems over lattice structures
-   LATTICE_maxNnonSchmid   =     LATTICE_bcc_NnonSchmid, &                                          !< max # of non-Schmid contributions over lattice structures
    LATTICE_maxNcleavage    = max(LATTICE_fcc_Ncleavage,LATTICE_bcc_Ncleavage, &
                                  LATTICE_hex_Ncleavage, &
-                                 LATTICE_iso_Ncleavage,LATTICE_ort_Ncleavage), &                    !< max # of cleavage systems over lattice structures
-   LATTICE_maxNinteraction = 182_pInt
+                                 LATTICE_iso_Ncleavage,LATTICE_ort_Ncleavage)                    !< max # of cleavage systems over lattice structures
 !END DEPRECATED
 
  real(pReal),                          dimension(:,:,:),     allocatable, public, protected :: &
@@ -692,8 +494,34 @@ module lattice
                  LATTICE_bct_ID, &
                  LATTICE_ort_ID
  end enum
+
  integer(kind(LATTICE_undefined_ID)),        dimension(:),       allocatable, public, protected :: &
    lattice_structure, trans_lattice_structure
+
+ 
+ interface lattice_forestProjection ! DEPRECATED, use lattice_forestProjection_edge
+   module procedure slipProjection_transverse
+ end interface lattice_forestProjection
+ 
+ interface lattice_forestProjection_edge
+   module procedure slipProjection_transverse
+ end interface lattice_forestProjection_edge
+ 
+ interface lattice_forestProjection_screw
+   module procedure slipProjection_direction
+ end interface lattice_forestProjection_screw
+ 
+ interface lattice_slipProjection_modeI
+   module procedure slipProjection_normal
+ end interface lattice_slipProjection_modeI
+ 
+  interface lattice_slipProjection_modeII
+   module procedure slipProjection_direction
+ end interface lattice_slipProjection_modeII
+ 
+  interface lattice_slipProjection_modeIII
+   module procedure slipProjection_transverse
+ end interface lattice_slipProjection_modeIII
 
 
  public :: &
@@ -714,10 +542,19 @@ module lattice
   lattice_interaction_SlipTwin, &
   lattice_interaction_SlipTrans, &
   lattice_interaction_TwinSlip, &
-  lattice_forestProjection, &
   lattice_characteristicShear_Twin, &
   lattice_C66_twin, &
-  lattice_C66_trans
+  lattice_C66_trans, &
+  lattice_forestProjection, &
+  lattice_forestProjection_edge, &
+  lattice_forestProjection_screw, &
+  lattice_slipProjection_modeI, &
+  lattice_slipProjection_modeII, &
+  lattice_slipProjection_modeIII, &
+  lattice_slip_normal, &
+  lattice_slip_direction, &
+  lattice_slip_transverse
+
 
 contains
 
@@ -725,14 +562,8 @@ contains
 !> @brief Module initialization
 !--------------------------------------------------------------------------------------------------
 subroutine lattice_init
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use IO, only: &
-   IO_error, &
-   IO_timeStamp
+   IO_error
  use config, only: &
    config_phase
 
@@ -747,8 +578,6 @@ subroutine lattice_init
 
 
  write(6,'(/,a)') ' <<<+-  lattice init  -+>>>'
- write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
  Nphases = size(config_phase)
 
@@ -768,11 +597,7 @@ subroutine lattice_init
  allocate(lattice_mu(Nphases),       source=0.0_pReal)
  allocate(lattice_nu(Nphases),       source=0.0_pReal)
 
- allocate(lattice_NnonSchmid(Nphases), source=0_pInt)
- allocate(lattice_Sslip(3,3,1+2*lattice_maxNnonSchmid,lattice_maxNslip,Nphases),source=0.0_pReal)
- allocate(lattice_Sslip_v(6,1+2*lattice_maxNnonSchmid,lattice_maxNslip,Nphases),source=0.0_pReal)
  allocate(lattice_NslipSystem(lattice_maxNslipFamily,Nphases),source=0_pInt)
- allocate(lattice_interactionSlipSlip(lattice_maxNslip,lattice_maxNslip,Nphases),source=0_pInt)     ! other:me
 
  allocate(lattice_Scleavage(3,3,3,lattice_maxNslip,Nphases),source=0.0_pReal)
  allocate(lattice_NcleavageSystem(lattice_maxNcleavageFamily,Nphases),source=0_pInt)
@@ -861,36 +686,22 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
  use prec, only: &
   tol_math_check
  use math, only: &
-   math_crossproduct, &
-   math_tensorproduct33, &
    math_mul33x33, &
-   math_mul33x3, &
-   math_trace33, &
-   math_symmetric33, &
-   math_sym33to6, &
    math_sym3333to66, &
    math_Voigt66to3333, &
-   math_axisAngleToR, &
-   INRAD, &
-   MATH_I3
+   math_crossproduct
  use IO, only: &
-   IO_error, &
-   IO_warning
+   IO_error
 
  implicit none
  integer(pInt), intent(in) :: myPhase
  real(pReal), intent(in) :: &
    CoverA
 
- real(pReal), dimension(3) :: &
-   sdU, snU, &
-   np,  nn
  real(pReal), dimension(3,lattice_maxNslip) :: &
    sd,  sn
- real(pReal), dimension(3,3,2,lattice_maxNnonSchmid,lattice_maxNslip) :: &
-   sns
  integer(pInt) :: &
-  j, i,  &
+  i,  &
   myNslip, myNcleavage
 
  lattice_C66(1:6,1:6,myPhase) = lattice_symmetrizeC66(lattice_structure(myPhase),&
@@ -931,7 +742,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
      myNcleavage = lattice_fcc_Ncleavage
      lattice_NslipSystem    (1:lattice_maxNslipFamily,myPhase)      = lattice_fcc_NslipSystem
      lattice_NcleavageSystem(1:lattice_maxNcleavageFamily,myPhase)  = lattice_fcc_NcleavageSystem
-     lattice_interactionSlipSlip(1:myNslip,1:myNslip,myPhase)       = lattice_fcc_interactionSlipSlip
 
      lattice_Scleavage(1:3,1:3,1:3,1:myNcleavage,myPhase) = &
      lattice_SchmidMatrix_cleavage(lattice_fcc_ncleavageSystem,'fcc',covera)
@@ -949,33 +759,13 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
      myNcleavage = lattice_bcc_Ncleavage
      lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase)          = lattice_bcc_NslipSystem
      lattice_NcleavageSystem(1:lattice_maxNcleavageFamily,myPhase)  = lattice_bcc_NcleavageSystem
-     lattice_NnonSchmid(myPhase)                                    = lattice_bcc_NnonSchmid
-     lattice_interactionSlipSlip(1:myNslip,1:myNslip,myPhase)       = lattice_bcc_interactionSlipSlip
 
      lattice_Scleavage(1:3,1:3,1:3,1:myNcleavage,myPhase) = &
      lattice_SchmidMatrix_cleavage(lattice_bcc_ncleavagesystem,'bcc',covera)
 
-     do i = 1_pInt,myNslip                                                                          ! assign slip system vectors
+     do i = 1_pInt,myNslip
        sd(1:3,i) = lattice_bcc_systemSlip(1:3,i)
        sn(1:3,i) = lattice_bcc_systemSlip(4:6,i)
-       sdU = sd(1:3,i) / norm2(sd(1:3,i))
-       snU = sn(1:3,i) / norm2(sn(1:3,i))
-       ! "np" and "nn" according to Gröger_etal2008, Acta Materialia 56 (2008) 5412–5425, table 1 (corresponds to their "n1" for positive and negative slip direction respectively)
-       np = math_mul33x3(math_axisAngleToR(sdU,60.0_pReal*INRAD), snU)
-       nn = math_mul33x3(math_axisAngleToR(-sdU,60.0_pReal*INRAD), snU)
-         ! Schmid matrices with non-Schmid contributions according to Koester_etal2012, Acta Materialia 60 (2012) 3894–3901, eq. (17) ("n1" is replaced by either "np" or "nn" according to either positive or negative slip direction)
-       sns(1:3,1:3,1,1,i) = math_tensorproduct33(sdU, np)
-       sns(1:3,1:3,2,1,i) = math_tensorproduct33(-sdU, nn)
-       sns(1:3,1:3,1,2,i) = math_tensorproduct33(math_crossproduct(snU, sdU), snU)
-       sns(1:3,1:3,2,2,i) = math_tensorproduct33(math_crossproduct(snU, -sdU), snU)
-       sns(1:3,1:3,1,3,i) = math_tensorproduct33(math_crossproduct(np, sdU), np)
-       sns(1:3,1:3,2,3,i) = math_tensorproduct33(math_crossproduct(nn, -sdU), nn)
-       sns(1:3,1:3,1,4,i) = math_tensorproduct33(snU, snU)
-       sns(1:3,1:3,2,4,i) = math_tensorproduct33(snU, snU)
-       sns(1:3,1:3,1,5,i) = math_tensorproduct33(math_crossproduct(snU, sdU), math_crossproduct(snU, sdU))
-       sns(1:3,1:3,2,5,i) = math_tensorproduct33(math_crossproduct(snU, -sdU), math_crossproduct(snU, -sdU))
-       sns(1:3,1:3,1,6,i) = math_tensorproduct33(sdU, sdU)
-       sns(1:3,1:3,2,6,i) = math_tensorproduct33(-sdU, -sdU)
      enddo
 
 !--------------------------------------------------------------------------------------------------
@@ -985,7 +775,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
      myNcleavage = lattice_hex_Ncleavage
      lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase)         = LATTICE_HEX_NSLIPSystem
      lattice_NcleavageSystem(1:lattice_maxNcleavageFamily,myPhase) = lattice_hex_NcleavageSystem
-     lattice_interactionSlipSlip(1:myNslip,1:myNslip,myPhase)      = lattice_hex_interactionSlipSlip
 
      lattice_Scleavage(1:3,1:3,1:3,1:myNcleavage,myPhase) = &
      lattice_SchmidMatrix_cleavage(lattice_hex_ncleavagesystem,'hex',covera)
@@ -1005,15 +794,12 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
    case (LATTICE_bct_ID)
      myNslip = lattice_bct_Nslip
      lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase)          = lattice_bct_NslipSystem
-     lattice_interactionSlipSlip(1:myNslip,1:myNslip,myPhase)       = lattice_bct_interactionSlipSlip
 
      do i = 1_pInt,myNslip                                                                          ! assign slip system vectors
        sd(1:2,i) = lattice_bct_systemSlip(1:2,i)
        sd(3,i) = lattice_bct_systemSlip(3,i)*CoverA
        sn(1:2,i) = lattice_bct_systemSlip(4:5,i)
        sn(3,i) =  lattice_bct_systemSlip(6,i)/CoverA
-       sdU = sd(1:3,i) / norm2(sd(1:3,i))
-       snU = sn(1:3,i) / norm2(sn(1:3,i))
      enddo
 
 !--------------------------------------------------------------------------------------------------
@@ -1044,18 +830,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
  do i = 1_pInt,myNslip                                                                              ! store slip system vectors and Schmid matrix for my structure
    lattice_sd(1:3,i,myPhase) = sd(1:3,i)/norm2(sd(1:3,i))                                           ! make unit vector
    lattice_sn(1:3,i,myPhase) = sn(1:3,i)/norm2(sn(1:3,i))                                           ! make unit vector
-   lattice_st(1:3,i,myPhase) = math_crossproduct(lattice_sd(1:3,i,myPhase), &
-                                                  lattice_sn(1:3,i,myPhase))
-   lattice_Sslip(1:3,1:3,1,i,myPhase) = math_tensorproduct33(lattice_sd(1:3,i,myPhase), &
-                                                           lattice_sn(1:3,i,myPhase))               ! calculate Schmid matrix d \otimes n
-   do j = 1_pInt,lattice_NnonSchmid(myPhase)
-     lattice_Sslip(1:3,1:3,2*j  ,i,myPhase) = sns(1:3,1:3,1,j,i)
-     lattice_Sslip(1:3,1:3,2*j+1,i,myPhase) = sns(1:3,1:3,2,j,i)
-   enddo
-   do j = 1_pInt,1_pInt+2_pInt*lattice_NnonSchmid(myPhase)
-     lattice_Sslip_v(1:6,j,i,myPhase) = &
-       math_sym33to6(math_symmetric33(lattice_Sslip(1:3,1:3,j,i,myPhase)))
-   enddo
+   lattice_st(1:3,i,myPhase) = math_crossproduct(lattice_sd(1:3,i,myPhase),lattice_sn(1:3,i,myPhase))
  enddo
 
 end subroutine lattice_initializeStructure
@@ -1453,8 +1228,8 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_target, &
    INRAD, &
    MATH_I3, &
    math_axisAngleToR, &
-   math_Mandel3333to66, &
-   math_Mandel66to3333, &
+   math_sym3333to66, &
+   math_66toSym3333, &
    math_rotate_forward3333, &
    math_mul33x33, &
    math_tensorproduct33, &
@@ -1505,11 +1280,11 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_target, &
    if (abs(C_target_unrotated66(i,i))<tol_math_check) &
    call IO_error(135_pInt,el=i,ext_msg='matrix diagonal "el"ement in transformation')
  enddo
- C_target_unrotated = math_Mandel66to3333(C_target_unrotated66)
+ C_target_unrotated = math_66toSym3333(C_target_unrotated66)
  call buildTransformationSystem(Q,S,Ntrans,CoverA_trans,a_fcc,a_bcc)
 
  do i = 1, sum(Ntrans)
-   lattice_C66_trans(1:6,1:6,i) = math_Mandel3333to66(math_rotate_forward3333(C_target_unrotated,Q(1:3,1:3,i)))
+   lattice_C66_trans(1:6,1:6,i) = math_sym3333to66(math_rotate_forward3333(C_target_unrotated,Q(1:3,1:3,i)))
  enddo
 end function lattice_C66_trans
 
@@ -1583,22 +1358,203 @@ function lattice_interaction_SlipSlip(Nslip,interactionValues,structure) result(
 
  integer(pInt),   dimension(:),                   allocatable :: NslipMax
  integer(pInt),   dimension(:,:),                 allocatable :: interactionTypes
+ 
+ integer(pInt), dimension(LATTICE_FCC_NSLIP,LATTICE_FCC_NSLIP), parameter :: &
+   FCC_INTERACTIONSLIPSLIP = reshape(int( [&
+      1, 2, 2, 4, 6, 5, 3, 5, 5, 4, 5, 6,  9,10, 9,10,11,12, &  ! ---> slip
+      2, 1, 2, 6, 4, 5, 5, 4, 6, 5, 3, 5,  9,10,11,12, 9,10, &  ! |
+      2, 2, 1, 5, 5, 3, 5, 6, 4, 6, 5, 4, 11,12, 9,10, 9,10, &  ! |
+      4, 6, 5, 1, 2, 2, 4, 5, 6, 3, 5, 5,  9,10,10, 9,12,11, &  ! v slip
+      6, 4, 5, 2, 1, 2, 5, 3, 5, 5, 4, 6,  9,10,12,11,10, 9, &
+      5, 5, 3, 2, 2, 1, 6, 5, 4, 5, 6, 4, 11,12,10, 9,10, 9, &
+      3, 5, 5, 4, 5, 6, 1, 2, 2, 4, 6, 5, 10, 9,10, 9,11,12, &
+      5, 4, 6, 5, 3, 5, 2, 1, 2, 6, 4, 5, 10, 9,12,11, 9,10, &
+      5, 6, 4, 6, 5, 4, 2, 2, 1, 5, 5, 3, 12,11,10, 9, 9,10, &
+      4, 5, 6, 3, 5, 5, 4, 6, 5, 1, 2, 2, 10, 9, 9,10,12,11, &
+      5, 3, 5, 5, 4, 6, 6, 4, 5, 2, 1, 2, 10, 9,11,12,10, 9, &
+      6, 5, 4, 5, 6, 4, 5, 5, 3, 2, 2, 1, 12,11, 9,10,10, 9, &
+
+      9, 9,11, 9, 9,11,10,10,12,10,10,12,  1, 7, 8, 8, 8, 8, &
+     10,10,12,10,10,12, 9, 9,11, 9, 9,11,  7, 1, 8, 8, 8, 8, &
+      9,11, 9,10,12,10,10,12,10, 9,11, 9,  8, 8, 1, 7, 8, 8, &
+     10,12,10, 9,11, 9, 9,11, 9,10,12,10,  8, 8, 7, 1, 8, 8, &
+     11, 9, 9,12,10,10,11, 9, 9,12,10,10,  8, 8, 8, 8, 1, 7, &
+     12,10,10,11, 9, 9,12,10,10,11, 9, 9,  8, 8, 8, 8, 7, 1  &
+     ],pInt),shape(FCC_INTERACTIONSLIPSLIP),order=[2,1])                                            !< Slip--slip interaction types for fcc
+                                                                                                    !< 1: self interaction
+                                                                                                    !< 2: coplanar interaction
+                                                                                                    !< 3: collinear interaction
+                                                                                                    !< 4: Hirth locks
+                                                                                                    !< 5: glissile junctions
+                                                                                                    !< 6: Lomer locks
+                                                                                                    !< 7: crossing (similar to Hirth locks in <110>{111} for two {110} planes)
+                                                                                                    !< 8: similar to Lomer locks in <110>{111} for two {110} planes
+                                                                                                    !< 9: similar to Lomer locks in <110>{111} btw one {110} and one {111} plane
+                                                                                                    !<10: similar to glissile junctions in <110>{111} btw one {110} and one {111} plane
+                                                                                                    !<11: crossing btw one {110} and one {111} plane
+                                                                                                    !<12: collinear btw one {110} and one {111} plane
+
+ integer(pInt), dimension(LATTICE_BCC_NSLIP,LATTICE_BCC_NSLIP), parameter :: &
+   BCC_INTERACTIONSLIPSLIP = reshape(int( [&
+     1,2,6,6,5,4,4,3,4,3,5,4, 6,6,4,3,3,4,6,6,4,3,6,6, &  ! ---> slip
+     2,1,6,6,4,3,5,4,5,4,4,3, 6,6,3,4,4,3,6,6,3,4,6,6, &  ! |
+     6,6,1,2,4,5,3,4,4,5,3,4, 4,3,6,6,6,6,3,4,6,6,4,3, &  ! |
+     6,6,2,1,3,4,4,5,3,4,4,5, 3,4,6,6,6,6,4,3,6,6,3,4, &  ! v slip
+     5,4,4,3,1,2,6,6,3,4,5,4, 3,6,4,6,6,4,6,3,4,6,3,6, &
+     4,3,5,4,2,1,6,6,4,5,4,3, 4,6,3,6,6,3,6,4,3,6,4,6, &
+     4,5,3,4,6,6,1,2,5,4,3,4, 6,3,6,4,4,6,3,6,6,4,6,3, &
+     3,4,4,5,6,6,2,1,4,3,4,5, 6,4,6,3,3,6,4,6,6,3,6,4, &
+     4,5,4,3,3,4,5,4,1,2,6,6, 3,6,6,4,4,6,6,3,6,4,3,6, &
+     3,4,5,4,4,5,4,3,2,1,6,6, 4,6,6,3,3,6,6,4,6,3,4,6, &
+     5,4,3,4,5,4,3,4,6,6,1,2, 6,3,4,6,6,4,3,6,4,6,6,3, &
+     4,3,4,5,4,3,4,5,6,6,2,1, 6,4,3,6,6,3,4,6,3,6,6,4, &
+     !
+     6,6,4,3,3,4,6,6,3,4,6,6, 1,5,6,6,5,6,6,3,5,6,3,6, &
+     6,6,3,4,6,6,3,4,6,6,3,4, 5,1,6,6,6,5,3,6,6,5,6,3, &
+     4,3,6,6,4,3,6,6,6,6,4,3, 6,6,1,5,6,3,5,6,3,6,5,6, &
+     3,4,6,6,6,6,4,3,4,3,6,6, 6,6,5,1,3,6,6,5,6,3,6,5, &
+     3,4,6,6,6,6,4,3,4,3,6,6, 5,6,6,3,1,6,5,6,5,3,6,6, &
+     4,3,6,6,4,3,6,6,6,6,4,3, 6,5,3,6,6,1,6,5,3,5,6,6, &
+     6,6,3,4,6,6,3,4,6,6,3,4, 6,3,5,6,5,6,1,6,6,6,5,3, &
+     6,6,4,3,3,4,6,6,3,4,6,6, 3,6,6,5,6,5,6,1,6,6,3,5, &
+     4,3,6,6,4,3,6,6,6,6,4,3, 5,6,3,6,5,3,6,6,1,6,6,5, &
+     3,4,6,6,6,6,4,3,4,3,6,6, 6,5,6,3,3,5,6,6,6,1,5,6, &
+     6,6,4,3,3,4,6,6,3,4,6,6, 3,6,5,6,6,6,5,3,6,5,1,6, &
+     6,6,3,4,6,6,3,4,6,6,3,4, 6,3,6,5,6,6,3,5,5,6,6,1  &
+     ],pInt),shape(BCC_INTERACTIONSLIPSLIP),order=[2,1])                                            !< Slip--slip interaction types for bcc from Queyreau et al. Int J Plast 25 (2009) 361–377
+                                                                                                    !< 1: self interaction
+                                                                                                    !< 2: coplanar interaction
+                                                                                                    !< 3: collinear interaction
+                                                                                                    !< 4: mixed-asymmetrical junction
+                                                                                                    !< 5: mixed-symmetrical junction
+                                                                                                    !< 6: edge junction
+
+ integer(pInt), dimension(LATTICE_HEX_NSLIP,LATTICE_HEX_NSLIP), parameter :: &
+   HEX_INTERACTIONSLIPSLIP = reshape(int( [&
+      1, 2, 2,   3, 3, 3,   7, 7, 7,  13,13,13,13,13,13,  21,21,21,21,21,21,21,21,21,21,21,21,  31,31,31,31,31,31, &  ! ---> slip
+      2, 1, 2,   3, 3, 3,   7, 7, 7,  13,13,13,13,13,13,  21,21,21,21,21,21,21,21,21,21,21,21,  31,31,31,31,31,31, &  ! |
+      2, 2, 1,   3, 3, 3,   7, 7, 7,  13,13,13,13,13,13,  21,21,21,21,21,21,21,21,21,21,21,21,  31,31,31,31,31,31, &  ! |
+    !                                                                                                                   v slip
+      6, 6, 6,   4, 5, 5,   8, 8, 8,  14,14,14,14,14,14,  22,22,22,22,22,22,22,22,22,22,22,22,  32,32,32,32,32,32, &
+      6, 6, 6,   5, 4, 5,   8, 8, 8,  14,14,14,14,14,14,  22,22,22,22,22,22,22,22,22,22,22,22,  32,32,32,32,32,32, &
+      6, 6, 6,   5, 5, 4,   8, 8, 8,  14,14,14,14,14,14,  22,22,22,22,22,22,22,22,22,22,22,22,  32,32,32,32,32,32, &
+    !
+     12,12,12,  11,11,11,   9,10,10,  15,15,15,15,15,15,  23,23,23,23,23,23,23,23,23,23,23,23,  33,33,33,33,33,33, &
+     12,12,12,  11,11,11,  10, 9,10,  15,15,15,15,15,15,  23,23,23,23,23,23,23,23,23,23,23,23,  33,33,33,33,33,33, &
+     12,12,12,  11,11,11,  10,10, 9,  15,15,15,15,15,15,  23,23,23,23,23,23,23,23,23,23,23,23,  33,33,33,33,33,33, &
+    !
+     20,20,20,  19,19,19,  18,18,18,  16,17,17,17,17,17,  24,24,24,24,24,24,24,24,24,24,24,24,  34,34,34,34,34,34, &
+     20,20,20,  19,19,19,  18,18,18,  17,16,17,17,17,17,  24,24,24,24,24,24,24,24,24,24,24,24,  34,34,34,34,34,34, &
+     20,20,20,  19,19,19,  18,18,18,  17,17,16,17,17,17,  24,24,24,24,24,24,24,24,24,24,24,24,  34,34,34,34,34,34, &
+     20,20,20,  19,19,19,  18,18,18,  17,17,17,16,17,17,  24,24,24,24,24,24,24,24,24,24,24,24,  34,34,34,34,34,34, &
+     20,20,20,  19,19,19,  18,18,18,  17,17,17,17,16,17,  24,24,24,24,24,24,24,24,24,24,24,24,  34,34,34,34,34,34, &
+     20,20,20,  19,19,19,  18,18,18,  17,17,17,17,17,16,  24,24,24,24,24,24,24,24,24,24,24,24,  34,34,34,34,34,34, &
+    !
+     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  25,26,26,26,26,26,26,26,26,26,26,26,  35,35,35,35,35,35, &
+     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,25,26,26,26,26,26,26,26,26,26,26,  35,35,35,35,35,35, &
+     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,25,26,26,26,26,26,26,26,26,26,  35,35,35,35,35,35, &
+     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,25,26,26,26,26,26,26,26,26,  35,35,35,35,35,35, &
+     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,25,26,26,26,26,26,26,26,  35,35,35,35,35,35, &
+     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,26,25,26,26,26,26,26,26,  35,35,35,35,35,35, &
+     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,26,26,25,26,26,26,26,26,  35,35,35,35,35,35, &
+     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,26,26,26,25,26,26,26,26,  35,35,35,35,35,35, &
+     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,26,26,26,26,25,26,26,26,  35,35,35,35,35,35, &
+     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,26,26,26,26,26,25,26,26,  35,35,35,35,35,35, &
+     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,26,26,26,26,26,26,25,26,  35,35,35,35,35,35, &
+     30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,26,26,26,26,26,26,26,25,  35,35,35,35,35,35, &
+    !
+     42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  36,37,37,37,37,37, &
+     42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,36,37,37,37,37, &
+     42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,36,37,37,37, &
+     42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,37,36,37,37, &
+     42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,37,37,36,37, &
+     42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,37,37,37,36  &
+    ],pInt),shape(HEX_INTERACTIONSLIPSLIP),order=[2,1])                                             !< Slip--slip interaction types for hex (onion peel naming scheme)
+    
+ integer(pInt), dimension(LATTICE_BCT_NSLIP,LATTICE_BCT_NSLIP), parameter :: &
+   BCT_INTERACTIONSLIPSLIP = reshape(int( [&
+     1,  2,   3,  3,   7,  7,  13, 13, 13, 13,  21, 21,  31, 31, 31, 31,  43, 43,  57, 57,  73, 73, 73, 73,  91, 91, 91, 91, 91, 91, 91, 91,  111, 111, 111, 111, 133,133,133,133,133,133,133,133, 157,157,157,157,157,157,157,157, &
+     2,  1,   3,  3,   7,  7,  13, 13, 13, 13,  21, 21,  31, 31, 31, 31,  43, 43,  57, 57,  73, 73, 73, 73,  91, 91, 91, 91, 91, 91, 91, 91,  111, 111, 111, 111, 133,133,133,133,133,133,133,133, 157,157,157,157,157,157,157,157, &
+    !
+     6,  6,   4,  5,   8,  8,  14, 14, 14, 14,  22, 22,  32, 32, 32, 32,  44, 44,  58, 58,  74, 74, 74, 74,  92, 92, 92, 92, 92, 92, 92, 92,  112, 112, 112, 112, 134,134,134,134,134,134,134,134, 158,158,158,158,158,158,158,158, &
+     6,  6,   5,  4,   8,  8,  14, 14, 14, 14,  22, 22,  32, 32, 32, 32,  44, 44,  58, 58,  74, 74, 74, 74,  92, 92, 92, 92, 92, 92, 92, 92,  112, 112, 112, 112, 134,134,134,134,134,134,134,134, 158,158,158,158,158,158,158,158, &
+    !
+    12, 12,  11, 11,   9, 10,  15, 15, 15, 15,  23, 23,  33, 33, 33, 33,  45, 45,  59, 59,  75, 75, 75, 75,  93, 93, 93, 93, 93, 93, 93, 93,  113, 113, 113, 113, 135,135,135,135,135,135,135,135, 159,159,159,159,159,159,159,159, &
+    12, 12,  11, 11,  10,  9,  15, 15, 15, 15,  23, 23,  33, 33, 33, 33,  45, 45,  59, 59,  75, 75, 75, 75,  93, 93, 93, 93, 93, 93, 93, 93,  113, 113, 113, 113, 135,135,135,135,135,135,135,135, 159,159,159,159,159,159,159,159, &
+    !
+    20, 20,  19, 19,  18, 18,  16, 17, 17, 17,  24, 24,  34, 34, 34, 34,  46, 46,  60, 60,  76, 76, 76, 76,  94, 94, 94, 94, 94, 94, 94, 94,  114, 114, 114, 114, 136,136,136,136,136,136,136,136, 160,160,160,160,160,160,160,160, &
+    20, 20,  19, 19,  18, 18,  17, 16, 17, 17,  24, 24,  34, 34, 34, 34,  46, 46,  60, 60,  76, 76, 76, 76,  94, 94, 94, 94, 94, 94, 94, 94,  114, 114, 114, 114, 136,136,136,136,136,136,136,136, 160,160,160,160,160,160,160,160, &
+    20, 20,  19, 19,  18, 18,  17, 17, 16, 17,  24, 24,  34, 34, 34, 34,  46, 46,  60, 60,  76, 76, 76, 76,  94, 94, 94, 94, 94, 94, 94, 94,  114, 114, 114, 114, 136,136,136,136,136,136,136,136, 160,160,160,160,160,160,160,160, &
+    20, 20,  19, 19,  18, 18,  17, 17, 17, 16,  24, 24,  34, 34, 34, 34,  46, 46,  60, 60,  76, 76, 76, 76,  94, 94, 94, 94, 94, 94, 94, 94,  114, 114, 114, 114, 136,136,136,136,136,136,136,136, 160,160,160,160,160,160,160,160, &
+    !
+    30, 30,  29, 29,  28, 28,  27, 27, 27, 27,  25, 26,  35, 35, 35, 35,  47, 47,  61, 61,  77, 77, 77, 77,  95, 95, 95, 95, 95, 95, 95, 95,  115, 115, 115, 115, 137,137,137,137,137,137,137,137, 161,161,161,161,161,161,161,161, &
+    30, 30,  29, 29,  28, 28,  27, 27, 27, 27,  26, 25,  35, 35, 35, 35,  47, 47,  61, 61,  77, 77, 77, 77,  95, 95, 95, 95, 95, 95, 95, 95,  115, 115, 115, 115, 137,137,137,137,137,137,137,137, 161,161,161,161,161,161,161,161, &
+    !
+    42, 42,  41, 41,  40, 40,  39, 39, 39, 39,  38, 38,  36, 37, 37, 37,  48, 48,  62, 62,  78, 78, 78, 78,  96, 96, 96, 96, 96, 96, 96, 96,  116, 116, 116, 116, 138,138,138,138,138,138,138,138, 162,162,162,162,162,162,162,162, &
+    42, 42,  41, 41,  40, 40,  39, 39, 39, 39,  38, 38,  37, 36, 37, 37,  48, 48,  62, 62,  78, 78, 78, 78,  96, 96, 96, 96, 96, 96, 96, 96,  116, 116, 116, 116, 138,138,138,138,138,138,138,138, 162,162,162,162,162,162,162,162, &
+    42, 42,  41, 41,  40, 40,  39, 39, 39, 39,  38, 38,  37, 37, 36, 37,  48, 48,  62, 62,  78, 78, 78, 78,  96, 96, 96, 96, 96, 96, 96, 96,  116, 116, 116, 116, 138,138,138,138,138,138,138,138, 162,162,162,162,162,162,162,162, &
+    42, 42,  41, 41,  40, 40,  39, 39, 39, 39,  38, 38,  37, 37, 37, 36,  48, 48,  62, 62,  78, 78, 78, 78,  96, 96, 96, 96, 96, 96, 96, 96,  116, 116, 116, 116, 138,138,138,138,138,138,138,138, 162,162,162,162,162,162,162,162, &
+    !
+    56, 56,  55, 55,  54, 54,  53, 53, 53, 53,  52, 52,  51, 51, 51, 51,  49, 50,  63, 63,  79, 79, 79, 79,  97, 97, 97, 97, 97, 97, 97, 97,  117, 117, 117, 117, 139,139,139,139,139,139,139,139, 163,163,163,163,163,163,163,163, &
+    56, 56,  55, 55,  54, 54,  53, 53, 53, 53,  52, 52,  51, 51, 51, 51,  50, 49,  63, 63,  79, 79, 79, 79,  97, 97, 97, 97, 97, 97, 97, 97,  117, 117, 117, 117, 139,139,139,139,139,139,139,139, 163,163,163,163,163,163,163,163, &
+    !
+    72, 72,  71, 71,  70, 70,  69, 69, 69, 69,  68, 68,  67, 67, 67, 67,  66, 66,  64, 65,  80, 80, 80, 80,  98, 98, 98, 98, 98, 98, 98, 98,  118, 118, 118, 118, 140,140,140,140,140,140,140,140, 164,164,164,164,164,164,164,164, &
+    72, 72,  71, 71,  70, 70,  69, 69, 69, 69,  68, 68,  67, 67, 67, 67,  66, 66,  65, 64,  80, 80, 80, 80,  98, 98, 98, 98, 98, 98, 98, 98,  118, 118, 118, 118, 140,140,140,140,140,140,140,140, 164,164,164,164,164,164,164,164, &
+    !
+    90, 90,  89, 89,  88, 88,  87, 87, 87, 87,  86, 86,  85, 85, 85, 85,  84, 84,  83, 83,  81, 82, 82, 82,  99, 99, 99, 99, 99, 99, 99, 99,  119, 119, 119, 119, 141,141,141,141,141,141,141,141, 165,165,165,165,165,165,165,165, &
+    90, 90,  89, 89,  88, 88,  87, 87, 87, 87,  86, 86,  85, 85, 85, 85,  84, 84,  83, 83,  82, 81, 82, 82,  99, 99, 99, 99, 99, 99, 99, 99,  119, 119, 119, 119, 141,141,141,141,141,141,141,141, 165,165,165,165,165,165,165,165, &
+    90, 90,  89, 89,  88, 88,  87, 87, 87, 87,  86, 86,  85, 85, 85, 85,  84, 84,  83, 83,  82, 82, 81, 82,  99, 99, 99, 99, 99, 99, 99, 99,  119, 119, 119, 119, 141,141,141,141,141,141,141,141, 165,165,165,165,165,165,165,165, &
+    90, 90,  89, 89,  88, 88,  87, 87, 87, 87,  86, 86,  85, 85, 85, 85,  84, 84,  83, 83,  82, 82, 82, 81,  99, 99, 99, 99, 99, 99, 99, 99,  119, 119, 119, 119, 141,141,141,141,141,141,141,141, 165,165,165,165,165,165,165,165, &
+    !
+   110,110, 109,109, 108,108, 107,107,107,107, 106,106, 105,105,105,105, 104,104, 103,103, 102,102,102,102, 100,101,101,101,101,101,101,101,  120, 120, 120, 120, 142,142,142,142,142,142,142,142, 166,166,166,166,166,166,166,166, &
+   110,110, 109,109, 108,108, 107,107,107,107, 106,106, 105,105,105,105, 104,104, 103,103, 102,102,102,102, 101,100,101,101,101,101,101,101,  120, 120, 120, 120, 142,142,142,142,142,142,142,142, 166,166,166,166,166,166,166,166, &
+   110,110, 109,109, 108,108, 107,107,107,107, 106,106, 105,105,105,105, 104,104, 103,103, 102,102,102,102, 101,101,100,101,101,101,101,101,  120, 120, 120, 120, 142,142,142,142,142,142,142,142, 166,166,166,166,166,166,166,166, &
+   110,110, 109,109, 108,108, 107,107,107,107, 106,106, 105,105,105,105, 104,104, 103,103, 102,102,102,102, 101,101,101,100,101,101,101,101,  120, 120, 120, 120, 142,142,142,142,142,142,142,142, 166,166,166,166,166,166,166,166, &
+   110,110, 109,109, 108,108, 107,107,107,107, 106,106, 105,105,105,105, 104,104, 103,103, 102,102,102,102, 101,101,101,101,100,101,101,101,  120, 120, 120, 120, 142,142,142,142,142,142,142,142, 166,166,166,166,166,166,166,166, &
+   110,110, 109,109, 108,108, 107,107,107,107, 106,106, 105,105,105,105, 104,104, 103,103, 102,102,102,102, 101,101,101,101,101,100,101,101,  120, 120, 120, 120, 142,142,142,142,142,142,142,142, 166,166,166,166,166,166,166,166, &
+   110,110, 109,109, 108,108, 107,107,107,107, 106,106, 105,105,105,105, 104,104, 103,103, 102,102,102,102, 101,101,101,101,101,101,100,101,  120, 120, 120, 120, 142,142,142,142,142,142,142,142, 166,166,166,166,166,166,166,166, &
+   110,110, 109,109, 108,108, 107,107,107,107, 106,106, 105,105,105,105, 104,104, 103,103, 102,102,102,102, 101,101,101,101,101,101,101,100,  120, 120, 120, 120, 142,142,142,142,142,142,142,142, 166,166,166,166,166,166,166,166, &
+    !
+   132,132, 131,131, 130,130, 129,129,129,129, 128,128, 127,127,127,127, 126,126, 125,125, 124,124,124,124, 123,123,123,123,123,123,123,123,  121, 122, 122, 122, 143,143,143,143,143,143,143,143, 167,167,167,167,167,167,167,167, &
+   132,132, 131,131, 130,130, 129,129,129,129, 128,128, 127,127,127,127, 126,126, 125,125, 124,124,124,124, 123,123,123,123,123,123,123,123,  121, 121, 122, 122, 143,143,143,143,143,143,143,143, 167,167,167,167,167,167,167,167, &
+   132,132, 131,131, 130,130, 129,129,129,129, 128,128, 127,127,127,127, 126,126, 125,125, 124,124,124,124, 123,123,123,123,123,123,123,123,  121, 122, 121, 122, 143,143,143,143,143,143,143,143, 167,167,167,167,167,167,167,167, &
+   132,132, 131,131, 130,130, 129,129,129,129, 128,128, 127,127,127,127, 126,126, 125,125, 124,124,124,124, 123,123,123,123,123,123,123,123,  121, 122, 122, 121, 143,143,143,143,143,143,143,143, 167,167,167,167,167,167,167,167, &
+    !
+   156,156, 155,155, 154,154, 153,153,153,153, 152,152, 151,151,151,151, 150,150, 149,149, 148,148,148,148, 147,147,147,147,147,147,147,147,  146, 146, 146, 146, 144,145,145,145,145,145,145,145, 168,168,168,168,168,168,168,168, &
+   156,156, 155,155, 154,154, 153,153,153,153, 152,152, 151,151,151,151, 150,150, 149,149, 148,148,148,148, 147,147,147,147,147,147,147,147,  146, 146, 146, 146, 145,144,145,145,145,145,145,145, 168,168,168,168,168,168,168,168, &
+   156,156, 155,155, 154,154, 153,153,153,153, 152,152, 151,151,151,151, 150,150, 149,149, 148,148,148,148, 147,147,147,147,147,147,147,147,  146, 146, 146, 146, 145,145,144,145,145,145,145,145, 168,168,168,168,168,168,168,168, &
+   156,156, 155,155, 154,154, 153,153,153,153, 152,152, 151,151,151,151, 150,150, 149,149, 148,148,148,148, 147,147,147,147,147,147,147,147,  146, 146, 146, 146, 145,145,145,144,145,145,145,145, 168,168,168,168,168,168,168,168, &
+   156,156, 155,155, 154,154, 153,153,153,153, 152,152, 151,151,151,151, 150,150, 149,149, 148,148,148,148, 147,147,147,147,147,147,147,147,  146, 146, 146, 146, 145,145,145,145,144,145,145,145, 168,168,168,168,168,168,168,168, &
+   156,156, 155,155, 154,154, 153,153,153,153, 152,152, 151,151,151,151, 150,150, 149,149, 148,148,148,148, 147,147,147,147,147,147,147,147,  146, 146, 146, 146, 145,145,145,145,145,144,145,145, 168,168,168,168,168,168,168,168, &
+   156,156, 155,155, 154,154, 153,153,153,153, 152,152, 151,151,151,151, 150,150, 149,149, 148,148,148,148, 147,147,147,147,147,147,147,147,  146, 146, 146, 146, 145,145,145,145,145,145,144,145, 168,168,168,168,168,168,168,168, &
+   156,156, 155,155, 154,154, 153,153,153,153, 152,152, 151,151,151,151, 150,150, 149,149, 148,148,148,148, 147,147,147,147,147,147,147,147,  146, 146, 146, 146, 145,145,145,145,145,145,145,144, 168,168,168,168,168,168,168,168, &
+    !
+   182,182, 181,181, 180,180, 179,179,179,179, 178,178, 177,177,177,177, 176,176, 175,175, 174,174,174,174, 173,173,173,173,173,173,173,173,  172, 172, 172, 172, 171,171,171,171,171,171,171,171, 169,170,170,170,170,170,170,170, &
+   182,182, 181,181, 180,180, 179,179,179,179, 178,178, 177,177,177,177, 176,176, 175,175, 174,174,174,174, 173,173,173,173,173,173,173,173,  172, 172, 172, 172, 171,171,171,171,171,171,171,171, 170,169,170,170,170,170,170,170, &
+   182,182, 181,181, 180,180, 179,179,179,179, 178,178, 177,177,177,177, 176,176, 175,175, 174,174,174,174, 173,173,173,173,173,173,173,173,  172, 172, 172, 172, 171,171,171,171,171,171,171,171, 170,170,169,170,170,170,170,170, &
+   182,182, 181,181, 180,180, 179,179,179,179, 178,178, 177,177,177,177, 176,176, 175,175, 174,174,174,174, 173,173,173,173,173,173,173,173,  172, 172, 172, 172, 171,171,171,171,171,171,171,171, 170,170,170,169,170,170,170,170, &
+   182,182, 181,181, 180,180, 179,179,179,179, 178,178, 177,177,177,177, 176,176, 175,175, 174,174,174,174, 173,173,173,173,173,173,173,173,  172, 172, 172, 172, 171,171,171,171,171,171,171,171, 170,170,170,170,169,170,170,170, &
+   182,182, 181,181, 180,180, 179,179,179,179, 178,178, 177,177,177,177, 176,176, 175,175, 174,174,174,174, 173,173,173,173,173,173,173,173,  172, 172, 172, 172, 171,171,171,171,171,171,171,171, 169,170,170,170,170,169,170,170, &
+   182,182, 181,181, 180,180, 179,179,179,179, 178,178, 177,177,177,177, 176,176, 175,175, 174,174,174,174, 173,173,173,173,173,173,173,173,  172, 172, 172, 172, 171,171,171,171,171,171,171,171, 169,170,170,170,170,170,169,170, &
+   182,182, 181,181, 180,180, 179,179,179,179, 178,178, 177,177,177,177, 176,176, 175,175, 174,174,174,174, 173,173,173,173,173,173,173,173,  172, 172, 172, 172, 171,171,171,171,171,171,171,171, 169,170,170,170,170,170,170,169  &
+ ],pInt),shape(BCT_INTERACTIONSLIPSLIP),order=[2,1])
+
 
  if (len_trim(structure) /= 3_pInt) &
    call IO_error(137_pInt,ext_msg='lattice_interaction_SlipSlip: '//trim(structure))
 
  select case(structure(1:3))
    case('fcc')
-     interactionTypes = LATTICE_FCC_INTERACTIONSLIPSLIP
+     interactionTypes = FCC_INTERACTIONSLIPSLIP
      NslipMax         = LATTICE_FCC_NSLIPSYSTEM
    case('bcc')
-     interactionTypes = LATTICE_BCC_INTERACTIONSLIPSLIP
+     interactionTypes = BCC_INTERACTIONSLIPSLIP
      NslipMax         = LATTICE_BCC_NSLIPSYSTEM
    case('hex')
-     interactionTypes = LATTICE_HEX_INTERACTIONSLIPSLIP
+     interactionTypes = HEX_INTERACTIONSLIPSLIP
      NslipMax         = LATTICE_HEX_NSLIPSYSTEM
    case('bct')
-     interactionTypes = LATTICE_BCT_INTERACTIONSLIPSLIP
+     interactionTypes = BCT_INTERACTIONSLIPSLIP
      NslipMax         = LATTICE_BCT_NSLIPSYSTEM
    case default
      call IO_error(137_pInt,ext_msg='lattice_interaction_SlipSlip: '//trim(structure))
@@ -2259,9 +2215,148 @@ end function lattice_SchmidMatrix_cleavage
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Forest projection (for edge dislocations)
+!> @brief Normal direction of slip systems (n)
 !--------------------------------------------------------------------------------------------------
-function lattice_forestProjection(Nslip,structure,cOverA) result(projection)
+function lattice_slip_normal(Nslip,structure,cOverA) result(n)
+
+ implicit none
+ integer(pInt),    dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
+ character(len=*),                          intent(in) :: structure                                 !< lattice structure
+ real(pReal),                               intent(in) :: cOverA                                    !< c/a ratio
+ real(pReal),     dimension(3,sum(Nslip))              :: n
+
+ real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
+ 
+ coordinateSystem = coordinateSystem_slip(Nslip,structure,cOverA)
+ n = coordinateSystem(1:3,2,1:sum(Nslip))
+
+end function lattice_slip_normal
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Slip direction of slip systems (|| b)
+!> @details: t = b x n
+!--------------------------------------------------------------------------------------------------
+function lattice_slip_direction(Nslip,structure,cOverA) result(d)
+
+ implicit none
+ integer(pInt),    dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
+ character(len=*),                          intent(in) :: structure                                 !< lattice structure
+ real(pReal),                               intent(in) :: cOverA                                    !< c/a ratio
+ real(pReal),     dimension(3,sum(Nslip))              :: d
+
+ real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
+ 
+ coordinateSystem = coordinateSystem_slip(Nslip,structure,cOverA)
+ d = coordinateSystem(1:3,1,1:sum(Nslip))
+
+end function lattice_slip_direction
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Transverse direction of slip systems (||t, t = b x n)
+!--------------------------------------------------------------------------------------------------
+function lattice_slip_transverse(Nslip,structure,cOverA) result(t)
+
+ implicit none
+ integer(pInt),    dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
+ character(len=*),                          intent(in) :: structure                                 !< lattice structure
+ real(pReal),                               intent(in) :: cOverA                                    !< c/a ratio
+ real(pReal),     dimension(3,sum(Nslip))              :: t
+
+ real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
+ 
+ coordinateSystem = coordinateSystem_slip(Nslip,structure,cOverA)
+ t = coordinateSystem(1:3,3,1:sum(Nslip))
+
+end function lattice_slip_transverse
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Projection of the transverse direction onto the slip plane
+!> @details: This projection is used to calculate forest hardening for edge dislocations and for 
+! mode III failure (ToDo: MD I am not 100% sure about mode III)
+!--------------------------------------------------------------------------------------------------
+function slipProjection_transverse(Nslip,structure,cOverA) result(projection)
+ use math, only: &
+   math_mul3x3
+
+ implicit none
+ integer(pInt),    dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
+ character(len=*),                          intent(in) :: structure                                 !< lattice structure
+ real(pReal),                               intent(in) :: cOverA                                    !< c/a ratio
+ real(pReal),     dimension(sum(Nslip),sum(Nslip))     :: projection
+
+ real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
+ integer(pInt) :: i, j
+ 
+ coordinateSystem = coordinateSystem_slip(Nslip,structure,cOverA)
+
+ do i=1_pInt, sum(Nslip); do j=1_pInt, sum(Nslip)
+   projection(i,j) = abs(math_mul3x3(coordinateSystem(1:3,2,i),coordinateSystem(1:3,3,j)))
+ enddo; enddo
+
+end function slipProjection_transverse
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Projection of the slip direction onto the slip plane
+!> @details: This projection is used to calculate forest hardening for screw dislocations and for 
+! mode II failure (ToDo: MD I am not 100% sure about mode II)
+!--------------------------------------------------------------------------------------------------
+function slipProjection_direction(Nslip,structure,cOverA) result(projection)
+ use math, only: &
+   math_mul3x3
+
+ implicit none
+ integer(pInt),    dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
+ character(len=*),                          intent(in) :: structure                                 !< lattice structure
+ real(pReal),                               intent(in) :: cOverA                                    !< c/a ratio
+ real(pReal),     dimension(sum(Nslip),sum(Nslip))     :: projection
+
+ real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
+ integer(pInt) :: i, j
+ 
+ coordinateSystem = coordinateSystem_slip(Nslip,structure,cOverA)
+
+ do i=1_pInt, sum(Nslip); do j=1_pInt, sum(Nslip)
+   projection(i,j) = abs(math_mul3x3(coordinateSystem(1:3,2,i),coordinateSystem(1:3,1,j)))
+ enddo; enddo
+
+end function slipProjection_direction
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Projection of the slip plane onto itself
+!> @details: This projection is used for mode I failure
+!--------------------------------------------------------------------------------------------------
+function slipProjection_normal(Nslip,structure,cOverA) result(projection)
+ use math, only: &
+   math_mul3x3
+
+ implicit none
+ integer(pInt),    dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
+ character(len=*),                          intent(in) :: structure                                 !< lattice structure
+ real(pReal),                               intent(in) :: cOverA                                    !< c/a ratio
+ real(pReal),     dimension(sum(Nslip),sum(Nslip))     :: projection
+
+ real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
+ integer(pInt) :: i, j
+
+ coordinateSystem = coordinateSystem_slip(Nslip,structure,cOverA)
+
+ do i=1_pInt, sum(Nslip); do j=1_pInt, sum(Nslip)
+   projection(i,j) = abs(math_mul3x3(coordinateSystem(1:3,2,i),coordinateSystem(1:3,2,j)))
+ enddo; enddo
+
+end function slipProjection_normal
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief build a local coordinate system on slip systems
+!> @details Order: Direction, plane (normal), and common perpendicular
+!--------------------------------------------------------------------------------------------------
+function coordinateSystem_slip(Nslip,structure,cOverA) result(coordinateSystem)
  use math, only: &
    math_mul3x3
  use IO, only: &
@@ -2271,15 +2366,12 @@ function lattice_forestProjection(Nslip,structure,cOverA) result(projection)
  integer(pInt),    dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
  character(len=*),                          intent(in) :: structure                                 !< lattice structure
  real(pReal),                               intent(in) :: cOverA                                    !< c/a ratio
- real(pReal),     dimension(sum(Nslip),sum(Nslip))     :: projection
-
  real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
  real(pReal),     dimension(:,:), allocatable          :: slipSystems
  integer(pInt),   dimension(:), allocatable            :: NslipMax
- integer(pInt) :: i, j
 
  if (len_trim(structure) /= 3_pInt) &
-   call IO_error(137_pInt,ext_msg='lattice_forestProjection: '//trim(structure))
+   call IO_error(137_pInt,ext_msg='coordinateSystem_slip: '//trim(structure))
 
  select case(structure(1:3))
    case('fcc')
@@ -2295,7 +2387,7 @@ function lattice_forestProjection(Nslip,structure,cOverA) result(projection)
      NslipMax    = LATTICE_BCT_NSLIPSYSTEM
      slipSystems = LATTICE_BCT_SYSTEMSLIP
    case default
-     call IO_error(137_pInt,ext_msg='lattice_forestProjection: '//trim(structure))
+     call IO_error(137_pInt,ext_msg='coordinateSystem_slip: '//trim(structure))
  end select
 
  if (any(NslipMax(1:size(Nslip)) - Nslip < 0_pInt)) &
@@ -2305,11 +2397,7 @@ function lattice_forestProjection(Nslip,structure,cOverA) result(projection)
 
  coordinateSystem = buildCoordinateSystem(Nslip,NslipMax,slipSystems,structure,cOverA)
 
- do i=1_pInt, sum(Nslip); do j=1_pInt, sum(Nslip)
-   projection(i,j) = abs(math_mul3x3(coordinateSystem(1:3,2,i),coordinateSystem(1:3,3,j)))
- enddo; enddo
-
-end function lattice_forestProjection
+end function coordinateSystem_slip
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2351,7 +2439,7 @@ end function buildInteraction
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief build a local coordinate system in a slip, twin, trans, cleavage system
+!> @brief build a local coordinate system on slip, twin, trans, cleavage systems
 !> @details Order: Direction, plane (normal), and common perpendicular
 !--------------------------------------------------------------------------------------------------
 function buildCoordinateSystem(active,complete,system,structure,cOverA)

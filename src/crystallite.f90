@@ -20,7 +20,6 @@ module crystallite
  use material, only: &
    homogenization_Ngrains
 
-
  implicit none
 
  private
@@ -284,7 +283,7 @@ subroutine crystallite_init
         crystallite_outputID(o,c) = orientation_ID
       case ('grainrotation') outputName
         crystallite_outputID(o,c) = grainrotation_ID
-      case ('defgrad','f') outputName
+      case ('defgrad','f') outputName                                                               ! ToDo: no alias (f only)
         crystallite_outputID(o,c) = defgrad_ID
       case ('fe') outputName
         crystallite_outputID(o,c) = fe_ID
@@ -298,13 +297,13 @@ subroutine crystallite_init
         crystallite_outputID(o,c) = li_ID
       case ('p','firstpiola','1stpiola') outputName
         crystallite_outputID(o,c) = p_ID
-      case ('s','tstar','secondpiola','2ndpiola') outputName
+      case ('s','tstar','secondpiola','2ndpiola') outputName                                        ! ToDo: no alias (s only)
         crystallite_outputID(o,c) = s_ID
       case ('elasmatrix') outputName
         crystallite_outputID(o,c) = elasmatrix_ID
-      case ('neighboringip') outputName
+      case ('neighboringip') outputName                                                             ! ToDo: this is not a result, it is static. Should be written out by mesh
         crystallite_outputID(o,c) = neighboringip_ID
-      case ('neighboringelement') outputName
+      case ('neighboringelement') outputName                                                        ! ToDo: this is not a result, it is static. Should be written out by mesh
         crystallite_outputID(o,c) = neighboringelement_ID
       case default outputName
         call IO_error(105_pInt,ext_msg=trim(str(o))//' (Crystallite)')
@@ -385,7 +384,7 @@ subroutine crystallite_init
 
  call crystallite_orientations()
  crystallite_orientation0 = crystallite_orientation                                                 ! store initial orientations for calculation of grain rotations
- 
+
  !$OMP PARALLEL DO
  do e = FEsolving_execElem(1),FEsolving_execElem(2)
    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
@@ -421,7 +420,7 @@ end subroutine crystallite_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate stress (P)
 !--------------------------------------------------------------------------------------------------
-function crystallite_stress(a)
+function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
  use prec, only: &
    tol_math_check, &
    dNeq0
@@ -457,14 +456,11 @@ function crystallite_stress(a)
    sourceState, &
    phase_Nsources, &
    phaseAt, phasememberAt
- use constitutive, only:  &
-   constitutive_SandItsTangents, &
-   constitutive_LpAndItsTangents, &
-   constitutive_LiAndItsTangents
 
  implicit none
  logical, dimension(theMesh%elem%nIPs,theMesh%Nelems) :: crystallite_stress
- real(pReal), intent(in), optional :: a                                                             !ToDo: for some reason this prevents an internal compiler error in GNU. Very strange
+ real(pReal), intent(in), optional :: &
+   dummyArgumentToPreventInternalCompilerErrorWithGCC
  real(pReal) :: &
    formerSubStep
  integer(pInt) :: &
@@ -759,7 +755,7 @@ subroutine crystallite_stressTangent()
                                         crystallite_Fe(1:3,1:3,c,i,e), &
                                         crystallite_Fi(1:3,1:3,c,i,e),c,i,e)                        ! call constitutive law to calculate elastic stress tangent
        call constitutive_LiAndItsTangents(devNull,dLidS,dLidFi, &
-                                          crystallite_Tstar_v(1:6,c,i,e), &
+                                          math_6toSym33(crystallite_Tstar_v(1:6,c,i,e)), &
                                           crystallite_Fi(1:3,1:3,c,i,e), &
                                           c,i,e)                                                    ! call constitutive law to calculate Li tangent in lattice configuration
 
@@ -788,7 +784,7 @@ subroutine crystallite_stressTangent()
        endif
 
        call constitutive_LpAndItsTangents(devNull,dLpdS,dLpdFi, &
-                                          crystallite_Tstar_v(1:6,c,i,e), &
+                                          math_6toSym33(crystallite_Tstar_v(1:6,c,i,e)), &
                                           crystallite_Fi(1:3,1:3,c,i,e),c,i,e)                      ! call constitutive law to calculate Lp tangent in lattice configuration
        dLpdS = math_mul3333xx3333(dLpdFi,dFidS) + dLpdS
 
@@ -898,7 +894,7 @@ subroutine crystallite_orientations
 !$OMP PARALLEL DO
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-       if (plasticState(material_phase(1,i,e))%nonLocal) &                                          ! if nonlocal model
+       if (plasticState(material_phase(1,i,e))%nonLocal) &                                                     ! if nonlocal model
          call plastic_nonlocal_updateCompatibility(crystallite_orientation,i,e)
    enddo; enddo
 !$OMP END PARALLEL DO
@@ -1071,7 +1067,7 @@ function crystallite_postResults(ipc, ip, el)
  c = c + 1_pInt
  if (size(crystallite_postResults)-c > 0_pInt) &
    crystallite_postResults(c+1:size(crystallite_postResults)) = &
-      constitutive_postResults(crystallite_Tstar_v(1:6,ipc,ip,el), crystallite_Fi(1:3,1:3,ipc,ip,el), &
+      constitutive_postResults(math_6toSym33(crystallite_Tstar_v(1:6,ipc,ip,el)), crystallite_Fi(1:3,1:3,ipc,ip,el), &
                                crystallite_Fe, ipc, ip, el)
 
 end function crystallite_postResults
@@ -1383,7 +1379,7 @@ logical function integrateStress(&
 
    !* calculate intermediate velocity gradient and its tangent from constitutive law
    call constitutive_LiAndItsTangents(Li_constitutive, dLi_dS, dLi_dFi, &
-                                      math_sym33to6(S), Fi_new, ipc, ip, el)
+                                      S, Fi_new, ipc, ip, el)
 
 #ifdef DEBUG
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
@@ -2263,6 +2259,8 @@ end subroutine update_state
 subroutine update_dotState(timeFraction)
  use, intrinsic :: &
    IEEE_arithmetic
+ use math, only: &
+   math_6toSym33 !ToDo: Temporarly needed until T_star_v is called S and stored as matrix
  use material, only: &
    plasticState, &
    sourceState, &
@@ -2295,7 +2293,7 @@ subroutine update_dotState(timeFraction)
      do g = 1,homogenization_Ngrains(mesh_element(3,e))
          !$OMP FLUSH(nonlocalStop)
         if ((crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) .and. .not. nonlocalStop) then
-           call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
+           call constitutive_collectDotState(math_6toSym33(crystallite_Tstar_v(1:6,g,i,e)), &
                                              crystallite_Fe, &
                                              crystallite_Fi(1:3,1:3,g,i,e), &
                                              crystallite_Fp, &
