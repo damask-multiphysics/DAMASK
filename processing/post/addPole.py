@@ -13,7 +13,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Add coordinates of stereographic projection of given direction (pole) in crystal frame.
 
 """, version = scriptID)
@@ -35,7 +35,6 @@ parser.add_option('-o',
 
 parser.set_defaults(pole = (1.0,0.0,0.0),
                     quaternion = 'orientation',
-                    polar   = False,
                    )
 
 (options, filenames) = parser.parse_args()
@@ -76,9 +75,9 @@ for name in filenames:
 # ------------------------------------------ process data ------------------------------------------
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    o = damask.Orientation(quaternion = np.array(list(map(float,table.data[column:column+4]))))
+    o = damask.Rotation(np.array(list(map(float,table.data[column:column+4]))))
 
-    rotatedPole = o.quaternion*pole                                                                 # rotate pole according to crystal orientation
+    rotatedPole = o*pole                                                                 # rotate pole according to crystal orientation
     (x,y) = rotatedPole[0:2]/(1.+abs(pole[2]))                                                      # stereographic projection
 
     table.data_append([np.sqrt(x*x+y*y),np.arctan2(y,x)] if options.polar else [x,y])               # cartesian coordinates

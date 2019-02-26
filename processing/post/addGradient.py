@@ -45,14 +45,14 @@ def gradFFT(geomdim,field):
   k_s = np.concatenate((ki[:,:,:,None],kj[:,:,:,None],kk[:,:,:,None]),axis = 3).astype('c16')                           
   grad_fourier = np.einsum(einsums[n],field_fourier,k_s)*TWOPIIMG
 
-  return np.fft.irfftn(grad_fourier,s=shapeFFT,axes=(0,1,2)).reshape([N,3*n])
+  return np.fft.irfftn(grad_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,3*n])
 
 
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog option(s) [ASCIItable(s)]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog option [ASCIItable(s)]', description = """
 Add column(s) containing gradient of requested column(s).
 Operates on periodic ordered three-dimensional data sets
 of vector and scalar fields.

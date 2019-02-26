@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys
@@ -48,11 +48,11 @@ for name in filenames:
   table.head_read()
   info,extra_header = table.head_getGeom()
   
-  damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
-                     'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
-                     'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
-                     'homogenization:  %i'%info['homogenization'],
-                     'microstructures: %i'%info['microstructures'],
+  damask.util.croak(['grid     a b c:  {}'.format(' x '.join(list(map(str,info['grid'])))),
+                     'size     x y z:  {}'.format(' x '.join(list(map(str,info['size'])))),
+                     'origin   x y z:  {}'.format(' : '.join(list(map(str,info['origin'])))),
+                     'homogenization:  {}'.format(info['homogenization']),
+                     'microstructures: {}'.format(info['microstructures']),
                     ])
 
   errors = []
@@ -86,7 +86,7 @@ for name in filenames:
   yy = np.tile(np.repeat(y,info['grid'][0]                ),info['grid'][2])
   zz =         np.repeat(z,info['grid'][0]*info['grid'][1])
 
-  table.data = np.squeeze(np.dstack((xx,yy,zz,microstructure)))
+  table.data = np.squeeze(np.dstack((xx,yy,zz,microstructure)),axis=0)
   table.data_writeArray()
 
 # ------------------------------------------ finalize output ---------------------------------------

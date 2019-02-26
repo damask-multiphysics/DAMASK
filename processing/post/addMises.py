@@ -24,7 +24,7 @@ def Mises(what,tensor):
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Add vonMises equivalent values for symmetric part of requested strains and/or stresses.
 
 """, version = scriptID)
@@ -41,10 +41,9 @@ parser.add_option('-s','--stress',
 parser.set_defaults(strain = [],
                     stress = [],
                    )
-
 (options,filenames) = parser.parse_args()
 
-if len(options.stress+options.strain) == 0:
+if options.stress is [] and options.strain is []:
   parser.error('no data column specified...')
 
 # --- loop over input files -------------------------------------------------------------------------

@@ -7,9 +7,9 @@ stages:
   - compilePETScGNU
   - prepareSpectral
   - spectral
-  - compileMarc2018_1
+  - compileMarc
   - marc
-  - compileAbaqus2017
+  - compileAbaqus
   - example
   - performance
   - createPackage
@@ -51,39 +51,37 @@ variables:
   # Names of module files to load
   # ===============================================================================================
   # ++++++++++++ Compiler ++++++++++++++++++++++++++++++++++++++++++++++
-  IntelCompiler16_0:               "Compiler/Intel/16.0 Libraries/IMKL/2016"
-  IntelCompiler16_4:               "Compiler/Intel/16.4 Libraries/IMKL/2016-4"
-  IntelCompiler17_0:               "Compiler/Intel/17.0 Libraries/IMKL/2017"
-  IntelCompiler18_1:               "Compiler/Intel/18.1 Libraries/IMKL/2018"
-  GNUCompiler7_3:                  "Compiler/GNU/7.3"
+  IntelCompiler16_4:               "Compiler/Intel/16.4 Libraries/IMKL/2016"
+  IntelCompiler17_8:               "Compiler/Intel/17.8 Libraries/IMKL/2017"
+  IntelCompiler18_4:               "Compiler/Intel/18.4 Libraries/IMKL/2018"
+  GNUCompiler8_2:                  "Compiler/GNU/8.2"
   # ------------ Defaults ----------------------------------------------
-  IntelCompiler:                   "$IntelCompiler18_1"
-  GNUCompiler:                     "$GNUCompiler7_3"
+  IntelCompiler:                   "$IntelCompiler18_4"
+  GNUCompiler:                     "$GNUCompiler8_2"
   # ++++++++++++ MPI +++++++++++++++++++++++++++++++++++++++++++++++++++
-  MPICH3_2Intel18_1:               "MPI/Intel/18.1/MPICH/3.2.1"
-  MPICH3_2GNU7_3:                  "MPI/GNU/7.3/MPICH/3.2.1"
+  IMPI2018Intel18_4:               "MPI/Intel/18.4/IntelMPI/2018"
+  MPICH3_3GNU8_2:                  "MPI/GNU/8.2/MPICH/3.3"
   # ------------ Defaults ----------------------------------------------
-  MPICH_Intel:                     "$MPICH3_2Intel18_1"
-  MPICH_GNU:                       "$MPICH3_2GNU7_3"
+  MPICH_Intel:                     "$IMPI2018Intel18_4"
+  MPICH_GNU:                       "$MPICH3_3GNU8_2"
   # ++++++++++++ PETSc +++++++++++++++++++++++++++++++++++++++++++++++++
-  PETSc3_10_0MPICH3_2Intel18_1:    "Libraries/PETSc/3.10.0/Intel-18.1-MPICH-3.2.1"
-  PETSc3_10_0MPICH3_2GNU7_3:       "Libraries/PETSc/3.10.0/GNU-7.3-MPICH-3.2.1"
+  PETSc3_10_3IMPI2018Intel18_4:    "Libraries/PETSc/3.10.3/Intel-18.4-IntelMPI-2018"
+  PETSc3_10_3MPICH3_3GNU8_2:       "Libraries/PETSc/3.10.3/GNU-8.2-MPICH-3.3"
   # ------------ Defaults ----------------------------------------------
-  PETSc_MPICH_Intel:               "$PETSc3_10_0MPICH3_2Intel18_1"
-  PETSc_MPICH_GNU:                 "$PETSc3_10_0MPICH3_2GNU7_3"
+  PETSc_MPICH_Intel:               "$PETSc3_10_3IMPI2018Intel18_4"
+  PETSc_MPICH_GNU:                 "$PETSc3_10_3MPICH3_3GNU8_2"
   # ++++++++++++ FEM +++++++++++++++++++++++++++++++++++++++++++++++++++
-  Abaqus2017:                      "FEM/Abaqus/2017"
+  Abaqus2019:                      "FEM/Abaqus/2019"
   MSC2018_1:                       "FEM/MSC/2018.1"
-  MSC2017:                         "FEM/MSC/2017"
   # ------------ Defaults ----------------------------------------------
-  Abaqus:                          "$Abaqus2017"
+  Abaqus:                          "$Abaqus2019"
   MSC:                             "$MSC2018_1"
-  IntelMarc:                       "$IntelCompiler17_0"
+  IntelMarc:                       "$IntelCompiler17_8"
   IntelAbaqus:                     "$IntelCompiler16_4"
   # ++++++++++++ Documentation +++++++++++++++++++++++++++++++++++++++++
-  Doxygen1_8_13:                   "Documentation/Doxygen/1.8.13"
+  Doxygen1_8_15:                   "Documentation/Doxygen/1.8.15"
   # ------------ Defaults ----------------------------------------------
-  Doxygen:                         "$Doxygen1_8_13"
+  Doxygen:                         "$Doxygen1_8_15"
 
 
 ###################################################################################################
@@ -158,6 +156,13 @@ Post_AverageDown:
     - master
     - release
 
+Post_ASCIItable:
+  stage: postprocessing
+  script: ASCIItable/test.py
+  except:
+    - master
+    - release
+
 Post_General:
   stage: postprocessing
   script: PostProcessing/test.py
@@ -202,7 +207,9 @@ Post_ParaviewRelated:
 
 Post_OrientationConversion:
   stage: postprocessing
-  script: OrientationConversion/test.py
+  script:
+    - OrientationConversion/test.py
+    - OrientationConversion/test2.py
   except:
     - master
     - release
@@ -383,9 +390,9 @@ TextureComponents:
 
 ###################################################################################################
 Marc_compileIfort2018_1:
-  stage: compileMarc2018_1
+  stage: compileMarc
   script:
-    - module load $IntelCompiler17_0 $MSC2018_1
+    - module load $IntelMarc $MSC
     - Marc_compileIfort/test.py -m 2018.1
   except:
     - master
@@ -430,11 +437,11 @@ J2_plasticBehavior:
     - release
 
 ###################################################################################################
-Abaqus_compile2017:
-  stage: compileAbaqus2017
+Abaqus_compile:
+  stage: compileAbaqus
   script:
-    - module load $IntelCompiler16_4 $Abaqus2017
-    - Abaqus_compileIfort/test.py -a 2017
+    - module load $IntelAbaqus $Abaqus
+    - Abaqus_compileIfort/test.py
   except:
     - master
     - release
@@ -477,24 +484,40 @@ AbaqusStd:
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
     - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT abaqus
-  only:
-    - development
+  except:
+    - master
+    - release
 
 Marc:
   stage: createDocumentation
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
     - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT marc
-  only:
-    - development
+  except:
+    - master
+    - release
 
 Spectral:
   stage: createDocumentation
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
     - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT spectral
-  only:
-    - development
+  except:
+    - master
+    - release
+
+Processing:
+  stage: createDocumentation
+  script:
+    - cd $DAMASKROOT/processing/pre
+    - rm abq_addUserOutput.py marc_addUserOutput.py
+    - $DAMASKROOT/PRIVATE/documenting/scriptHelpToWiki.py --debug *.py
+    - cd $DAMASKROOT/processing/post
+    - rm marc_to_vtk.py vtk2ang.py
+    - $DAMASKROOT/PRIVATE/documenting/scriptHelpToWiki.py --debug *.py
+  except:
+    - master
+    - release
 
 ##################################################################################################
 backupData:
@@ -503,11 +526,10 @@ backupData:
     - cd $TESTROOT/performance                                                                      # location of new runtime results
     - git commit -am"${CI_PIPELINE_ID}_${CI_COMMIT_SHA}"
     - mkdir $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}
-    - cp $TESTROOT/performance/time.txt $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
     - mv $TESTROOT/performance/time.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
-    - cp $TESTROOT/performance/memory.txt $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
     - mv $TESTROOT/performance/memory.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
     - mv $DAMASKROOT/PRIVATE/documenting/DAMASK_* $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - mv $DAMASKROOT/processing $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
   only:
     - development
 

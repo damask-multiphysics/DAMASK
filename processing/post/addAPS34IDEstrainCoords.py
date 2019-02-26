@@ -14,20 +14,15 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Transform X,Y,Z,F APS BeamLine 34 coordinates to x,y,z APS strain coordinates.
 
 """, version = scriptID)
 
-parser.add_option('-f',
-                  '--frame',
-                  dest='frame',
-                  metavar='string',
-                  help='APS X,Y,Z coords')
-parser.add_option('--depth',
-                  dest='depth',
-                  metavar='string',
-                  help='depth')
+parser.add_option('-f','--frame',dest='frame', metavar='string',
+                                 help='label of APS X,Y,Z coords')
+parser.add_option('--depth',     dest='depth',          metavar='string',
+                                 help='depth')
 
 (options,filenames) = parser.parse_args()
 

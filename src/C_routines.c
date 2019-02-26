@@ -6,8 +6,10 @@
 #include <sys/stat.h>
 #include <stdio.h>
 #include <string.h>
+#include <signal.h>
 
 /* http://stackoverflow.com/questions/30279228/is-there-an-alternative-to-getcwd-in-fortran-2003-2008 */
+
 
 int isdirectory_c(const char *dir){
   struct stat statbuf;
@@ -43,4 +45,12 @@ void gethostname_c(char hostname[], int *stat){
 
 int chdir_c(const char *dir){
   return chdir(dir);
+}
+
+void signalusr1_c(void (*handler)(int)){
+  signal(SIGUSR1, handler);
+}
+
+void signalusr2_c(void (*handler)(int)){
+  signal(SIGUSR2, handler);
 }

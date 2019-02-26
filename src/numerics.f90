@@ -23,12 +23,10 @@ module numerics
    pert_method                =  1_pInt, &                                                          !< method used in perturbation technique for tangent
    randomSeed                 =  0_pInt, &                                                          !< fixed seeding for pseudo-random number generator, Default 0: use random seed
    worldrank                  =  0_pInt, &                                                          !< MPI worldrank (/=0 for MPI simulations only)
-   worldsize                  =  0_pInt                                                             !< MPI worldsize (/=0 for MPI simulations only)
+   worldsize                  =  0_pInt, &                                                          !< MPI worldsize (/=0 for MPI simulations only)
+   numerics_integrator        =  1_pInt                                                             !< method used for state integration Default 1: fix-point iteration
  integer(4), protected, public :: &
    DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
- !< ToDo: numerics_integrator is an array for historical reasons, only element 1 is used!
- integer(pInt), dimension(2), protected, public :: &
-   numerics_integrator        =  1_pInt                                                             !< method used for state integration (central & perturbed state), Default 1: fix-point iteration for both states
  real(pReal), protected, public :: &
    relevantStrain             =  1.0e-7_pReal, &                                                    !< strain increment considered significant (used by crystallite to determine whether strain inc is considered significant)
    defgradTolerance           =  1.0e-7_pReal, &                                                    !< deviation of deformation gradient that is still allowed (used by CPFEM to determine outdated ffn1)
@@ -177,13 +175,8 @@ subroutine numerics_init
 #include <petsc/finclude/petscsys.h>
    use petscsys
 #endif
-#if !defined(Marc4DAMASK)
-!$ use OMP_LIB, only: omp_set_num_threads                                                           ! Standard conforming module
+!$ use OMP_LIB, only: omp_set_num_threads
  implicit none
-#else  
- implicit none
-!$ include "omp_lib.h"                                                                              ! MSC.Marc includes this file on !its own, avoid conflict with the OMP_LIB module
-#endif
  integer(pInt), parameter ::                 FILEUNIT = 300_pInt
 !$ integer ::                                gotDAMASK_NUM_THREADS = 1
  integer :: i, ierr                                                                                 ! no pInt
@@ -471,7 +464,7 @@ subroutine numerics_init
  write(6,'(a24,1x,es8.1)')  ' rTol_crystalliteState:  ',rTol_crystalliteState
  write(6,'(a24,1x,es8.1)')  ' rTol_crystalliteStress: ',rTol_crystalliteStress
  write(6,'(a24,1x,es8.1)')  ' aTol_crystalliteStress: ',aTol_crystalliteStress
- write(6,'(a24,2(1x,i8))')  ' integrator:             ',numerics_integrator
+ write(6,'(a24,1x,i8)')     ' integrator:             ',numerics_integrator
  write(6,'(a24,1x,L8)')     ' use ping pong scheme:   ',usepingpong
  write(6,'(a24,1x,es8.1,/)')' unitlength:             ',numerics_unitlength
 
@@ -594,7 +587,7 @@ subroutine numerics_init
  if (rTol_crystalliteState <= 0.0_pReal)   call IO_error(301_pInt,ext_msg='rTol_crystalliteState')
  if (rTol_crystalliteStress <= 0.0_pReal)  call IO_error(301_pInt,ext_msg='rTol_crystalliteStress')
  if (aTol_crystalliteStress <= 0.0_pReal)  call IO_error(301_pInt,ext_msg='aTol_crystalliteStress')
- if (any(numerics_integrator <= 0_pInt) .or. any(numerics_integrator >= 6_pInt)) &
+ if (numerics_integrator <= 0_pInt .or. numerics_integrator >= 6_pInt) &
                                            call IO_error(301_pInt,ext_msg='integrator')
  if (numerics_unitlength <= 0.0_pReal)     call IO_error(301_pInt,ext_msg='unitlength')
  if (absTol_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='absTol_RGC')

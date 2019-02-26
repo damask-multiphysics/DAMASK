@@ -12,7 +12,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(usage='%prog [options] [file[s]]', description = """
+parser = OptionParser(usage='%prog options [ASCIItable(s)]', description = """
 Show components of given ASCIItable(s).
 
 """, version = scriptID)

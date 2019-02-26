@@ -70,6 +70,10 @@ module math
 !--------------------------------------------------------------------------------------------------
 ! Provide deprecated names for compatibility
 
+ interface math_cross
+   module procedure math_crossproduct
+ end interface math_cross
+
 ! ToDo MD: Our naming scheme was a little bit odd: We use essentially the re-ordering according to Nye
 ! (convenient because Abaqus and Marc want to have 12 on position 4)
 ! but weight the shear components according to Mandel (convenient for matrix multiplications)
@@ -98,26 +102,19 @@ module math
    module procedure math_99to3333
  end interface math_Plain99to3333
  
- interface math_Mandel3333to66
-   module procedure math_sym3333to66
- end interface math_Mandel3333to66
- 
- interface math_Mandel66to3333
-   module procedure math_66toSym3333
- end interface math_Mandel66to3333
- 
  public :: &
    math_Plain33to9, &
    math_Plain9to33, &
    math_Mandel33to6, &
    math_Mandel6to33, &
    math_Plain3333to99, &
-   math_Plain99to3333, &
-   math_Mandel3333to66, &
-   math_Mandel66to3333
+   math_Plain99to3333
 !---------------------------------------------------------------------------------------------------
 
  public :: &
+#if defined(__PGI)
+   norm2, &
+#endif
    math_init, &
    math_qsort, &
    math_expand, &
@@ -126,6 +123,7 @@ module math
    math_identity4th, &
    math_civita, &
    math_delta, &
+   math_cross, &
    math_crossproduct, &
    math_tensorproduct33, &
    math_mul3x3, &
@@ -351,20 +349,38 @@ end subroutine math_check
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Quicksort algorithm for two-dimensional integer arrays
-! Sorting is done with respect to array(1,:)
-! and keeps array(2:N,:) linked to it.
+! Sorting is done with respect to array(sort,:) and keeps array(/=sort,:) linked to it.
+! default: sort=1
 !--------------------------------------------------------------------------------------------------
-recursive subroutine math_qsort(a, istart, iend)
+recursive subroutine math_qsort(a, istart, iend, sortDim)
 
  implicit none
  integer(pInt), dimension(:,:), intent(inout) :: a
- integer(pInt), intent(in) :: istart,iend
- integer(pInt) :: ipivot
-
- if (istart < iend) then
-   ipivot = qsort_partition(a,istart, iend)
-   call math_qsort(a, istart, ipivot-1_pInt)
-   call math_qsort(a, ipivot+1_pInt, iend)
+ integer(pInt), intent(in),optional :: istart,iend, sortDim
+ integer(pInt) :: ipivot,s,e,d
+ 
+ if(present(istart)) then
+   s = istart
+ else
+   s = lbound(a,2)
+ endif
+ 
+ if(present(iend)) then
+   e = iend
+ else
+   e = ubound(a,2)
+ endif
+ 
+  if(present(sortDim)) then
+   d = sortDim
+ else
+   d = 1
+ endif
+  
+ if (s < e) then
+   ipivot = qsort_partition(a,s, e, d)
+   call math_qsort(a, s, ipivot-1_pInt, d)
+   call math_qsort(a, ipivot+1_pInt, e, d)
  endif
 
 !--------------------------------------------------------------------------------------------------
@@ -373,37 +389,34 @@ recursive subroutine math_qsort(a, istart, iend)
  !-------------------------------------------------------------------------------------------------
  !> @brief Partitioning required for quicksort
  !-------------------------------------------------------------------------------------------------
- integer(pInt) function qsort_partition(a, istart, iend)
+ integer(pInt) function qsort_partition(a, istart, iend, sort)
  
    implicit none
    integer(pInt), dimension(:,:), intent(inout) :: a
-   integer(pInt), intent(in) :: istart,iend
-   integer(pInt) :: i,j,k,tmp
+   integer(pInt),                 intent(in)    :: istart,iend,sort
+   integer(pInt), dimension(size(a,1))          :: tmp
+   integer(pInt) :: i,j
   
    do
-  ! find the first element on the right side less than or equal to the pivot point
+     ! find the first element on the right side less than or equal to the pivot point
      do j = iend, istart, -1_pInt
-       if (a(1,j) <= a(1,istart)) exit
+       if (a(sort,j) <= a(sort,istart)) exit
      enddo
-  ! find the first element on the left side greater than the pivot point
+     ! find the first element on the left side greater than the pivot point
      do i = istart, iend
-       if (a(1,i) > a(1,istart)) exit
+       if (a(sort,i) > a(sort,istart)) exit
      enddo
-     if (i < j) then ! if the indexes do not cross, exchange values
-       do k = 1_pInt, int(size(a,1_pInt), pInt)
-         tmp = a(k,i)
-         a(k,i) = a(k,j)
-         a(k,j) = tmp
-       enddo
-     else           ! if they do cross, exchange left value with pivot and return with the partition index
-       do k = 1_pInt, int(size(a,1_pInt), pInt)
-         tmp = a(k,istart)
-         a(k,istart) = a(k,j)
-         a(k,j) = tmp
-       enddo
+     cross: if (i >= j) then ! if the indices cross, exchange left value with pivot and return with the partition index
+       tmp         = a(:,istart)
+       a(:,istart) = a(:,j)
+       a(:,j)      = tmp
        qsort_partition = j
        return
-     endif
+     else cross ! if they do not cross, exchange values
+       tmp    = a(:,i)
+       a(:,i) = a(:,j)
+       a(:,j) = tmp
+     endif cross
    enddo
  
  end function qsort_partition
@@ -1869,7 +1882,6 @@ function math_sampleGaussOri(center,FWHM)
    math_sampleGaussOri = math_RtoEuler(math_mul33x33(R,math_EulerToR(center)))
  endif
 
-
 end function math_sampleGaussOri
 
 
@@ -1942,11 +1954,11 @@ real(pReal) function math_sampleGaussVar(meanvalue, stddev, width)
    tol_math_check
 
  implicit none
- real(pReal), intent(in) ::            meanvalue, &      ! meanvalue of gauss distribution
-                                       stddev            ! standard deviation of gauss distribution
- real(pReal), intent(in), optional ::  width             ! width of considered values as multiples of standard deviation
- real(pReal), dimension(2) ::          rnd               ! random numbers
- real(pReal) ::                        scatter, &        ! normalized scatter around meanvalue
+ real(pReal), intent(in) ::            meanvalue, &                                                 ! meanvalue of gauss distribution
+                                       stddev                                                       ! standard deviation of gauss distribution
+ real(pReal), intent(in), optional ::  width                                                        ! width of considered values as multiples of standard deviation
+ real(pReal), dimension(2) ::          rnd                                                          ! random numbers
+ real(pReal) ::                        scatter, &                                                   ! normalized scatter around meanvalue
                                        myWidth
 
  if (abs(stddev) < tol_math_check) then
@@ -2706,5 +2718,20 @@ real(pReal) pure elemental function math_clip(a, left, right)
    math_clip = merge (IEEE_value(1.0_pReal,IEEE_quiet_NaN),math_clip, left>right)
 
 end function math_clip
+
+
+#if defined(__PGI)
+!--------------------------------------------------------------------------------------------------
+!> @brief substitute for the norm2 intrinsic which is not available in PGI 18.10
+!--------------------------------------------------------------------------------------------------
+real(pReal) pure function norm2(v)
+ 
+ implicit none
+ real(pReal), intent(in), dimension(3) :: v
+ 
+ norm2 = sqrt(sum(v**2))
+
+end function norm2
+#endif
 
 end module math

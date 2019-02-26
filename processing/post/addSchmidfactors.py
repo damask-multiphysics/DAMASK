@@ -103,7 +103,7 @@ slipSystems = {
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Add columns listing Schmid factors (and optional trace vector of selected system) for given Euler angles.
 
 """, version = scriptID)
@@ -115,7 +115,7 @@ parser.add_option('-l',
                   help = 'type of lattice structure [%default] {}'.format(latticeChoices))
 parser.add_option('--covera',
                   dest = 'CoverA', type = 'float', metavar = 'float',
-                  help = 'C over A ratio for hexagonal systems')
+                  help = 'C over A ratio for hexagonal systems [%default]')
 parser.add_option('-f',
                   '--force',
                   dest = 'force',
@@ -212,10 +212,10 @@ for name in filenames:
 
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    o = damask.Orientation(quaternion = np.array(list(map(float,table.data[column:column+4]))))
+    o = damask.Rotation(list(map(float,table.data[column:column+4])))
 
-    table.data_append(  np.abs(  np.sum(slip_direction * (o.quaternion * force) ,axis=1) \
-                               * np.sum(slip_normal    * (o.quaternion * normal),axis=1)))
+    table.data_append(  np.abs(  np.sum(slip_direction * (o * force) ,axis=1) \
+                               * np.sum(slip_normal    * (o * normal),axis=1)))
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output finalization -----------------------------------  

@@ -12,9 +12,9 @@
 module DAMASK_interface
  use prec, only: &
    pInt
-
  implicit none
  private
+ logical, public, protected :: SIGUSR1,SIGUSR2
  integer(pInt),       public, protected :: &
    interface_restartInc = 0_pInt                                                                    !< Increment at which calculation starts
  character(len=1024), public, protected :: &
@@ -42,6 +42,8 @@ contains
 subroutine DAMASK_interface_init()
  use, intrinsic :: &
    iso_fortran_env
+ use :: &
+   iso_c_binding
 #include <petsc/finclude/petscsys.h>
 #if defined(__GFORTRAN__) &&  __GNUC__ < 5
 ===================================================================================================
@@ -81,6 +83,8 @@ subroutine DAMASK_interface_init()
 
  use PETScSys
  use system_routines, only: &
+   signalusr1_C, &
+   signalusr2_C, &
    getHostName, &
    getCWD
 
@@ -139,16 +143,27 @@ subroutine DAMASK_interface_init()
 
  call date_and_time(values = dateAndTime)
  write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
- write(6,'(a,/)') ' Roters et al., Computational Materials Science, 2018'
- write(6,'(/,a)')              ' Version: '//DAMASKVERSION
- write(6,'(a,2(i2.2,a),i4.4)') ' Date:    ',dateAndTime(3),'/',&
-                                            dateAndTime(2),'/',&
-                                            dateAndTime(1) 
- write(6,'(a,2(i2.2,a),i2.2)') ' Time:    ',dateAndTime(5),':',&
-                                            dateAndTime(6),':',&
-                                            dateAndTime(7)  
- write(6,'(/,a,i4.1)') ' MPI processes: ',worldsize
-#include "compilation_info.f90"
+ write(6,'(/,a)') ' Roters et al., Computational Materials Science 158, 2018, 420-478'
+ write(6,'(a,/)') ' https://doi.org/10.1016/j.commatsci.2018.04.030'
+
+ write(6,'(a,/)')              ' Version: '//DAMASKVERSION
+
+! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
+#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
+ write(6,*) 'Compiled with: ', compiler_version()
+ write(6,*) 'Compiler options: ', compiler_options()
+#elif defined(__INTEL_COMPILER)
+ write(6,'(a,i4.4,a,i8.8)') ' Compiled with Intel fortran version :', __INTEL_COMPILER,&
+                                                    ', build date :', __INTEL_COMPILER_BUILD_DATE
+#elif defined(__PGI)
+ write(6,'(a,i4.4,a,i8.8)') ' Compiled with PGI fortran version :', __PGIC__,&
+                                                               '.', __PGIC_MINOR__
+#endif
+
+ write(6,*) 'Compiled on ', __DATE__,' at ',__TIME__
+
+ write(6,'(a,2(i2.2,a),i4.4)') ' Date: ',dateAndTime(3),'/',dateAndTime(2),'/', dateAndTime(1)
+ write(6,'(a,2(i2.2,a),i2.2)') ' Time: ',dateAndTime(5),':', dateAndTime(6),':', dateAndTime(7)
  
  call get_command(commandLine)
  chunkPos = IIO_stringPos(commandLine)
@@ -215,9 +230,11 @@ subroutine DAMASK_interface_init()
 
  call get_environment_variable('USER',userName)
  ! ToDo: https://stackoverflow.com/questions/8953424/how-to-get-the-username-in-c-c-in-linux
- write(6,'(a,a)')      ' Host name:              ', trim(getHostName())
- write(6,'(a,a)')      ' User name:              ', trim(userName)
- write(6,'(a,a)')      ' Command line call:      ', trim(commandLine)
+ write(6,'(/,a,i4.1)') ' MPI processes: ',worldsize
+ write(6,'(a,a)')      ' Host name: ', trim(getHostName())
+ write(6,'(a,a)')      ' User name: ', trim(userName)
+
+ write(6,'(/a,a)')     ' Command line call:      ', trim(commandLine)
  if (len(trim(workingDirArg)) > 0) &
    write(6,'(a,a)')    ' Working dir argument:   ', trim(workingDirArg)
  write(6,'(a,a)')      ' Geometry argument:      ', trim(geometryArg)
@@ -228,6 +245,12 @@ subroutine DAMASK_interface_init()
  write(6,'(a,a)')      ' Solver job name:        ', trim(getSolverJobName())
  if (interface_restartInc > 0_pInt) &
    write(6,'(a,i6.6)') ' Restart from increment: ', interface_restartInc
+
+ call signalusr1_c(c_funloc(setSIGUSR1))
+ call signalusr2_c(c_funloc(setSIGUSR2))
+ SIGUSR1 = .false.
+ SIGUSR2 = .false.
+
 
 end subroutine DAMASK_interface_init
 
@@ -412,6 +435,35 @@ character(len=1024) function makeRelativePath(a,b)
 
 end function makeRelativePath
 
+!--------------------------------------------------------------------------------------------------
+!> @brief sets global variable SIGUSR1 to .true. if program receives SIGUSR1
+!--------------------------------------------------------------------------------------------------
+subroutine setSIGUSR1(signal) bind(C)
+ use :: iso_c_binding
+   
+ implicit none
+ integer(C_INT), value :: signal
+ SIGUSR1 = .true.
+ 
+ write(6,*) 'received signal ',signal, 'set SIGUSR1'
+ 
+end subroutine setSIGUSR1
+ 
+ 
+!--------------------------------------------------------------------------------------------------
+!> @brief sets global variable SIGUSR2 to .true. if program receives SIGUSR2
+!--------------------------------------------------------------------------------------------------
+subroutine setSIGUSR2(signal) bind(C)
+ use :: iso_c_binding
+
+ implicit none
+ integer(C_INT), value :: signal
+ SIGUSR2 = .true.
+
+ write(6,*) 'received signal ',signal, 'set SIGUSR2'
+  
+end subroutine setSIGUSR2
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief taken from IO, check IO_stringValue for documentation 
@@ -469,7 +521,6 @@ pure function IIO_stringPos(string)
  do while (verify(string(right+1:),SEP)>0)
    left  = right + verify(string(right+1:),SEP)
    right = left + scan(string(left:),SEP) - 2
-   if ( string(left:left) == '#' ) exit
    IIO_stringPos = [IIO_stringPos,int(left, pInt), int(right, pInt)]
    IIO_stringPos(1) = IIO_stringPos(1)+1_pInt
  enddo

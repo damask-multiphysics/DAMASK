@@ -77,18 +77,6 @@ class Texture(Section):
                                         )
                         )
 
-    if multiKey == 'fiber':
-      self.add_multiKey(multiKey,'alpha1 %g\talpha2 %g\tbeta1 %g\tbeta2 %g\tscatter %g\tfraction %g'%(
-                                        properties['eulers'][0],
-                                        properties['eulers'][1],
-                                        properties['eulers'][2],
-                                        properties['eulers'][3],
-                                        scatter,
-                                        fraction,
-                                        )
-                        )
-
- 
  
 class Material():
   """Reads, manipulates and writes material.config files"""
@@ -97,10 +85,10 @@ class Material():
     """Generates ordered list of parts"""
     self.parts = [
              'homogenization',
-             'microstructure',
              'crystallite',
              'phase',
              'texture',
+             'microstructure',
             ]
     self.data = {\
               'homogenization': {'__order__': []},
@@ -117,15 +105,12 @@ class Material():
     for part in self.parts:
       if self.verbose: print('processing <{}>'.format(part))
       me += ['',
-             '#-----------------------------#',
+             '#'*100,
              '<{}>'.format(part),
-             '#-----------------------------#',
+             '#'*100,
             ]
       for section in self.data[part]['__order__']:
-        me += ['',
-               '[{}] {}'.format(section,'#'*max(0,27-len(section))),
-               '',
-              ]
+        me += ['[{}] {}'.format(section,'#'+'-'*max(0,96-len(section)))]
         for key in self.data[part][section]['__order__']:
           if key.startswith('(') and key.endswith(')'):                       # multiple (key)
             me += ['{}\t{}'.format(key,' '.join(values)) for values in self.data[part][section][key]]

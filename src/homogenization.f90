@@ -71,11 +71,8 @@ subroutine homogenization_init
    debug_e, &
    debug_g
  use mesh, only: &
-   mesh_maxNips, &
-   mesh_NcpElems, &
-   mesh_element, &
-   FE_Nips, &
-   FE_geomtype
+   theMesh, &
+   mesh_element
  use constitutive, only: &
    constitutive_plasticity_maxSizePostResults, &
    constitutive_source_maxSizePostResults
@@ -111,30 +108,18 @@ subroutine homogenization_init
  logical :: valid
 
 
-!--------------------------------------------------------------------------------------------------
-! open material.config
- if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
-   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
-
-!--------------------------------------------------------------------------------------------------
-! parse homogenization from config file 
  if (any(homogenization_type == HOMOGENIZATION_NONE_ID))      call homogenization_none_init
  if (any(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)) call homogenization_isostrain_init
  if (any(homogenization_type == HOMOGENIZATION_RGC_ID))       call homogenization_RGC_init
 
-!--------------------------------------------------------------------------------------------------
-! parse thermal from config file
- call IO_checkAndRewind(FILEUNIT)
- if (any(thermal_type == THERMAL_isothermal_ID)) &
-   call thermal_isothermal_init()
- if (any(thermal_type == THERMAL_adiabatic_ID)) &
-   call thermal_adiabatic_init(FILEUNIT)
- if (any(thermal_type == THERMAL_conduction_ID)) &
-   call thermal_conduction_init(FILEUNIT)
+ if (any(thermal_type == THERMAL_isothermal_ID)) call thermal_isothermal_init
+ if (any(thermal_type == THERMAL_adiabatic_ID))  call thermal_adiabatic_init
+ if (any(thermal_type == THERMAL_conduction_ID)) call thermal_conduction_init
 
 !--------------------------------------------------------------------------------------------------
-! parse damage from config file
- call IO_checkAndRewind(FILEUNIT)
+! open material.config
+ if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
+   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
  if (any(damage_type == DAMAGE_none_ID)) &
    call damage_none_init()
  if (any(damage_type == DAMAGE_local_ID)) &
@@ -244,20 +229,20 @@ subroutine homogenization_init
 
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global variables
- allocate(materialpoint_dPdF(3,3,3,3,mesh_maxNips,mesh_NcpElems),       source=0.0_pReal)
- allocate(materialpoint_F0(3,3,mesh_maxNips,mesh_NcpElems),             source=0.0_pReal)
- materialpoint_F0 = spread(spread(math_I3,3,mesh_maxNips),4,mesh_NcpElems)                          ! initialize to identity
- allocate(materialpoint_F(3,3,mesh_maxNips,mesh_NcpElems),              source=0.0_pReal)
+ allocate(materialpoint_dPdF(3,3,3,3,theMesh%elem%nIPs,theMesh%nElems),       source=0.0_pReal)
+ allocate(materialpoint_F0(3,3,theMesh%elem%nIPs,theMesh%nElems),             source=0.0_pReal)
+ materialpoint_F0 = spread(spread(math_I3,3,theMesh%elem%nIPs),4,theMesh%nElems)                          ! initialize to identity
+ allocate(materialpoint_F(3,3,theMesh%elem%nIPs,theMesh%nElems),              source=0.0_pReal)
  materialpoint_F = materialpoint_F0                                                                 ! initialize to identity
- allocate(materialpoint_subF0(3,3,mesh_maxNips,mesh_NcpElems),          source=0.0_pReal)
- allocate(materialpoint_subF(3,3,mesh_maxNips,mesh_NcpElems),           source=0.0_pReal)
- allocate(materialpoint_P(3,3,mesh_maxNips,mesh_NcpElems),              source=0.0_pReal)
- allocate(materialpoint_subFrac(mesh_maxNips,mesh_NcpElems),            source=0.0_pReal)
- allocate(materialpoint_subStep(mesh_maxNips,mesh_NcpElems),            source=0.0_pReal)
- allocate(materialpoint_subdt(mesh_maxNips,mesh_NcpElems),              source=0.0_pReal)
- allocate(materialpoint_requested(mesh_maxNips,mesh_NcpElems),          source=.false.)
- allocate(materialpoint_converged(mesh_maxNips,mesh_NcpElems),          source=.true.)
- allocate(materialpoint_doneAndHappy(2,mesh_maxNips,mesh_NcpElems),     source=.true.)
+ allocate(materialpoint_subF0(3,3,theMesh%elem%nIPs,theMesh%nElems),          source=0.0_pReal)
+ allocate(materialpoint_subF(3,3,theMesh%elem%nIPs,theMesh%nElems),           source=0.0_pReal)
+ allocate(materialpoint_P(3,3,theMesh%elem%nIPs,theMesh%nElems),              source=0.0_pReal)
+ allocate(materialpoint_subFrac(theMesh%elem%nIPs,theMesh%nElems),            source=0.0_pReal)
+ allocate(materialpoint_subStep(theMesh%elem%nIPs,theMesh%nElems),            source=0.0_pReal)
+ allocate(materialpoint_subdt(theMesh%elem%nIPs,theMesh%nElems),              source=0.0_pReal)
+ allocate(materialpoint_requested(theMesh%elem%nIPs,theMesh%nElems),          source=.false.)
+ allocate(materialpoint_converged(theMesh%elem%nIPs,theMesh%nElems),          source=.true.)
+ allocate(materialpoint_doneAndHappy(2,theMesh%elem%nIPs,theMesh%nElems),     source=.true.)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global state and postresutls variables
@@ -277,7 +262,7 @@ subroutine homogenization_init
                            + homogenization_maxNgrains * (1 + crystallite_maxSizePostResults &      ! crystallite size & crystallite results
                                                         + 1 + constitutive_plasticity_maxSizePostResults &     ! constitutive size & constitutive results
                                                             + constitutive_source_maxSizePostResults)
- allocate(materialpoint_results(materialpoint_sizeResults,mesh_maxNips,mesh_NcpElems))
+ allocate(materialpoint_results(materialpoint_sizeResults,theMesh%elem%nIPs,theMesh%nElems))
 
  write(6,'(/,a)')   ' <<<+-  homogenization init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -346,7 +331,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    crystallite_Lp, &
    crystallite_Li0, &
    crystallite_Li, &
-   crystallite_dPdF, &
    crystallite_Tstar0_v, &
    crystallite_Tstar_v, &
    crystallite_partionedF0, &
@@ -600,7 +584,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
        IpLooping2: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
          if (      materialpoint_requested(i,e) .and. &                                             ! process requested but...
              .not. materialpoint_doneAndHappy(1,i,e)) then                                          ! ...not yet done material points
-           call partitionDeformation(i,e)                                            ! partition deformation onto constituents
+           call partitionDeformation(i,e)                                                           ! partition deformation onto constituents
            crystallite_dt(1:myNgrains,i,e) = materialpoint_subdt(i,e)                               ! propagate materialpoint dt to grains
            crystallite_requested(1:myNgrains,i,e) = .true.                                          ! request calculation for constituents
          else
@@ -614,7 +598,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 ! crystallite integration
 ! based on crystallite_partionedF0,.._partionedF
 ! incrementing by crystallite_dt
-     materialpoint_converged = crystallite_stress() !ToDo: MD not sure if that is the best logic
+    
+    materialpoint_converged = crystallite_stress() !ToDo: MD not sure if that is the best logic
 
 !--------------------------------------------------------------------------------------------------
 ! state update
@@ -898,6 +883,8 @@ function postResults(ip,el)
  use mesh, only: &
    mesh_element
  use material, only: &
+   thermalMapping, &
+   thermal_typeInstance, &
    material_homogenizationAt, &
    homogenization_typeInstance,&
    mappingHomogenization, &
@@ -937,7 +924,7 @@ function postResults(ip,el)
    postResults
  integer(pInt) :: &
    startPos, endPos ,&
-   of, instance
+   of, instance, homog
 
 
  postResults = 0.0_pReal
@@ -957,10 +944,14 @@ function postResults(ip,el)
  chosenThermal: select case (thermal_type(mesh_element(3,el)))
 
    case (THERMAL_adiabatic_ID) chosenThermal
-     postResults(startPos:endPos) = thermal_adiabatic_postResults(ip, el)
+     homog = mappingHomogenization(2,ip,el)
+     postResults(startPos:endPos) = &
+       thermal_adiabatic_postResults(homog,thermal_typeInstance(homog),thermalMapping(homog)%p(ip,el))
    case (THERMAL_conduction_ID) chosenThermal
-     postResults(startPos:endPos) =  thermal_conduction_postResults(ip, el)
-     
+     homog = mappingHomogenization(2,ip,el)
+     postResults(startPos:endPos) = &
+       thermal_conduction_postResults(homog,thermal_typeInstance(homog),thermalMapping(homog)%p(ip,el))
+
  end select chosenThermal
 
  startPos = endPos + 1_pInt
