@@ -489,19 +489,19 @@ function crystallite_stress()
  if (iand(debug_level(debug_crystallite),debug_levelSelective) /= 0_pInt &
      .and. FEsolving_execElem(1) <= debug_e &
      .and.                          debug_e <= FEsolving_execElem(2)) then
-     write(6,'(/,a,i8,1x,i2,1x,i3)')      '<< CRYST >> boundary values at el ip ipc ', &
+     write(6,'(/,a,i8,1x,i2,1x,i3)')    '<< CRYST stress >> boundary and initial values at el ip ipc ', &
        debug_e,debug_i, debug_g
-   write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> F  ', &
+   write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST stress >> F  ', &
                                          transpose(crystallite_partionedF(1:3,1:3,debug_g,debug_i,debug_e))
-   write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> F0 ', &
+   write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST stress >> F0 ', &
                                          transpose(crystallite_partionedF0(1:3,1:3,debug_g,debug_i,debug_e))
-   write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Fp0', &
+   write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST stress >> Fp0', &
                                          transpose(crystallite_partionedFp0(1:3,1:3,debug_g,debug_i,debug_e))
-   write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Fi0', &
+   write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST stress >> Fi0', &
                                          transpose(crystallite_partionedFi0(1:3,1:3,debug_g,debug_i,debug_e))
-   write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Lp0', &
+   write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST stress >> Lp0', &
                                          transpose(crystallite_partionedLp0(1:3,1:3,debug_g,debug_i,debug_e))
-   write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Li0', &
+   write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST stress >> Li0', &
                                          transpose(crystallite_partionedLi0(1:3,1:3,debug_g,debug_i,debug_e))
  endif
 #endif
@@ -546,9 +546,11 @@ function crystallite_stress()
 
  NiterationCrystallite = 0_pInt
  cutbackLooping: do while (any(crystallite_todo(:,startIP:endIP,FEsolving_execELem(1):FEsolving_execElem(2))))
+   NiterationCrystallite = NiterationCrystallite + 1_pInt
+
 #ifdef DEBUG
    if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) &
-     write(6,'(a,i6)') '<< CRYST >> crystallite iteration ',NiterationCrystallite
+     write(6,'(a,i6)') '<< CRYST stress >> crystallite iteration ',NiterationCrystallite
 #endif
    !$OMP PARALLEL DO PRIVATE(formerSubStep)
    elementLooping3: do e = FEsolving_execElem(1),FEsolving_execElem(2)
@@ -581,7 +583,7 @@ function crystallite_stress()
              if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
                  .and. ((e == debug_e .and. i == debug_i .and. c == debug_g) &
                         .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) &
-               write(6,'(a,f12.8,a,f12.8,a,i8,1x,i2,1x,i3,/)') '<< CRYST >> winding forward from ', &
+               write(6,'(a,f12.8,a,f12.8,a,i8,1x,i2,1x,i3,/)') '<< CRYST stress >> winding forward from ', &
                  crystallite_subFrac(c,i,e)-formerSubStep,' to current crystallite_subfrac ', &
                  crystallite_subFrac(c,i,e),' in crystallite_stress at el ip ipc ',e,i,c
 #endif
@@ -612,12 +614,10 @@ function crystallite_stress()
               .and. ((e == debug_e .and. i == debug_i .and. c == debug_g) &
                      .or. .not. iand(debug_level(debug_crystallite),debug_levelSelective) /= 0_pInt)) then
              if (crystallite_todo(c,i,e)) then
-               write(6,'(a,f12.8,a,i8,1x,i2,1x,i3,/)') '<< CRYST >> cutback step in crystallite_stress &
-                                                      &with new crystallite_subStep: ',&
+               write(6,'(a,f12.8,a,i8,1x,i2,1x,i3,/)') '<< CRYST stress >> cutback with new crystallite_subStep: ',&
                                                      crystallite_subStep(c,i,e),' at el ip ipc ',e,i,c
              else
-               write(6,'(a,i8,1x,i2,1x,i3,/)') '<< CRYST >> reached minimum step size &
-                                             &in crystallite_stress at el ip ipc ',e,i,c
+               write(6,'(a,i8,1x,i2,1x,i3,/)') '<< CRYST stress >> reached minimum step size at el ip ipc ',e,i,c
              endif
            endif
 #endif
@@ -643,11 +643,11 @@ function crystallite_stress()
 
 #ifdef DEBUG
    if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
-     write(6,'(/,a,f8.5,a,f8.5,/)') '<< CRYST >> ',minval(crystallite_subStep),' ≤ subStep ≤ ',maxval(crystallite_subStep)
-     write(6,'(/,a,f8.5,a,f8.5,/)') '<< CRYST >> ',minval(crystallite_subFrac),' ≤ subFrac ≤ ',maxval(crystallite_subFrac)
+     write(6,'(/,a,f8.5,a,f8.5,/)') '<< CRYST stress >> ',minval(crystallite_subStep),' ≤ subStep ≤ ',maxval(crystallite_subStep)
+     write(6,'(/,a,f8.5,a,f8.5,/)') '<< CRYST stress >> ',minval(crystallite_subFrac),' ≤ subFrac ≤ ',maxval(crystallite_subFrac)
      flush(6)
      if (iand(debug_level(debug_crystallite),debug_levelSelective) /= 0_pInt) then
-       write(6,'(/,a,f8.5,1x,a,1x,f8.5,1x,a)') '<< CRYST >> subFrac + subStep = ',&
+       write(6,'(/,a,f8.5,1x,a,1x,f8.5,1x,a)') '<< CRYST stress >> subFrac + subStep = ',&
           crystallite_subFrac(debug_g,debug_i,debug_e),'+',crystallite_subStep(debug_g,debug_i,debug_e),'@selective'
        flush(6)
      endif
@@ -659,7 +659,6 @@ function crystallite_stress()
    where(.not. crystallite_converged .and. crystallite_subStep > subStepMinCryst) &                 ! do not try non-converged but fully cutbacked any further
      crystallite_todo = .true.                                                                      ! TODO: again unroll this into proper elementloop to avoid N^2 for single point evaluation
 
-   NiterationCrystallite = NiterationCrystallite + 1_pInt
 
  enddo cutbackLooping
 
@@ -677,22 +676,22 @@ function crystallite_stress()
      do c = 1,homogenization_Ngrains(mesh_element(3,e))
        if (.not. crystallite_converged(c,i,e)) then
          if(iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
-           write(6,'(a,i8,1x,i2,1x,i3,/)') '<< CRYST >> no convergence at el ip ipc ', &
+           write(6,'(a,i8,1x,i2,1x,i3,/)') '<< CRYST stress >> no convergence at el ip ipc ', &
              e,i,c
        endif
        if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
            .and. ((e == debug_e .and. i == debug_i .and. c == debug_g) &
                   .or. .not. iand(debug_level(debug_crystallite),debug_levelSelective) /= 0_pInt)) then
-         write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> central solution of cryst_StressAndTangent at el ip ipc ',e,i,c
-         write(6,'(/,a,/,3(12x,3(f12.4,1x)/))') '<< CRYST >> P / MPa', &
+         write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST stress >> solution at el ip ipc ',e,i,c
+         write(6,'(/,a,/,3(12x,3(f12.4,1x)/))') '<< CRYST stress >> P / MPa', &
                                           transpose(crystallite_P(1:3,1:3,c,i,e))*1.0e-6_pReal
-         write(6,'(a,/,3(12x,3(f14.9,1x)/))')   '<< CRYST >> Fp', &
+         write(6,'(a,/,3(12x,3(f14.9,1x)/))')   '<< CRYST stress >> Fp', &
                                           transpose(crystallite_Fp(1:3,1:3,c,i,e))
-         write(6,'(a,/,3(12x,3(f14.9,1x)/))')   '<< CRYST >> Fi', &
+         write(6,'(a,/,3(12x,3(f14.9,1x)/))')   '<< CRYST stress >> Fi', &
                                           transpose(crystallite_Fi(1:3,1:3,c,i,e))
-         write(6,'(a,/,3(12x,3(f14.9,1x)/),/)') '<< CRYST >> Lp', &
+         write(6,'(a,/,3(12x,3(f14.9,1x)/),/)') '<< CRYST stress >> Lp', &
                                           transpose(crystallite_Lp(1:3,1:3,c,i,e))
-         write(6,'(a,/,3(12x,3(f14.9,1x)/),/)') '<< CRYST >> Li', &
+         write(6,'(a,/,3(12x,3(f14.9,1x)/),/)') '<< CRYST stress >> Li', &
                                           transpose(crystallite_Li(1:3,1:3,c,i,e))
          flush(6)
        endif
@@ -1207,7 +1206,7 @@ logical function integrateStress(&
  if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
      .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
             .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) &
- write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> integrateStress at el ip ipc ',el,ip,ipc
+ write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST integrateStress >> at el ip ipc ',el,ip,ipc
 #endif
 
  if (present(timeFraction)) then
@@ -1229,7 +1228,7 @@ logical function integrateStress(&
  failedInversionFp: if (all(dEq0(invFp_current))) then
 #ifdef DEBUG
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
-     write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on inversion of current Fp at el ip ipc ',&
+     write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST integrateStress >> failed on inversion of current Fp at el ip ipc ',&
                                     el,ip,ipc
    if (iand(debug_level(debug_crystallite), debug_levelExtensive) > 0_pInt) &
      write(6,'(/,a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> current Fp ',transpose(crystallite_subFp0(1:3,1:3,ipc,ip,el))
@@ -1242,10 +1241,10 @@ logical function integrateStress(&
  failedInversionFi: if (all(dEq0(invFi_current))) then
 #ifdef DEBUG
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
-     write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on inversion of current Fi at el ip ipc ',&
+     write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST integrateStress >> failed on inversion of current Fi at el ip ipc ',&
                                     el,ip,ipc
    if (iand(debug_level(debug_crystallite), debug_levelExtensive) > 0_pInt) &
-     write(6,'(/,a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> current Fi ',transpose(crystallite_subFi0(1:3,1:3,ipc,ip,el))
+     write(6,'(/,a,/,3(12x,3(f12.7,1x)/))') '<< CRYST integrateStress >> current Fi ',transpose(crystallite_subFi0(1:3,1:3,ipc,ip,el))
 #endif
    return
  endif failedInversionFi
@@ -1261,7 +1260,7 @@ logical function integrateStress(&
    LiLoopLimit: if (NiterationStressLi > nStress) then
 #ifdef DEBUG
      if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
-       write(6,'(a,i3,a,i8,1x,i2,1x,i3,/)') '<< CRYST >> integrateStress reached Li loop limit',nStress, &
+       write(6,'(a,i3,a,i8,1x,i2,1x,i3,/)') '<< CRYST integrateStress >> reached Li loop limit',nStress, &
                                             ' at el ip ipc ', el,ip,ipc
 #endif
      return
@@ -1283,7 +1282,7 @@ logical function integrateStress(&
      LpLoopLimit: if (NiterationStressLp > nStress) then
 #ifdef DEBUG
      if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
-         write(6,'(a,i3,a,i8,1x,i2,1x,i3,/)') '<< CRYST >> integrateStress reached Lp loop limit',nStress, &
+         write(6,'(a,i3,a,i8,1x,i2,1x,i3,/)') '<< CRYST integrateStress >> reached Lp loop limit',nStress, &
                                               ' at el ip ipc ', el,ip,ipc
 #endif
        return
@@ -1304,12 +1303,12 @@ logical function integrateStress(&
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
          .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
                 .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-       write(6,'(a,i3,/)')                   '<< CRYST >> stress iteration ', NiterationStressLp
-       write(6,'(a,/,3(12x,3(e20.10,1x)/))') '<< CRYST >> Lpguess', transpose(Lpguess)
-       write(6,'(a,/,3(12x,3(e20.10,1x)/))') '<< CRYST >> Fi', transpose(Fi_new)
-       write(6,'(a,/,3(12x,3(e20.10,1x)/))') '<< CRYST >> Fe', transpose(Fe)
-       write(6,'(a,/,3(12x,3(e20.10,1x)/))') '<< CRYST >> S', transpose(S)
-       write(6,'(a,/,3(12x,3(e20.10,1x)/))') '<< CRYST >> Lp_constitutive', transpose(Lp_constitutive)
+       write(6,'(a,i3,/)')                   '<< CRYST integrateStress >> iteration ', NiterationStressLp
+       write(6,'(a,/,3(12x,3(e20.10,1x)/))') '<< CRYST integrateStress >> Lpguess', transpose(Lpguess)
+       write(6,'(a,/,3(12x,3(e20.10,1x)/))') '<< CRYST integrateStress >> Lp_constitutive', transpose(Lp_constitutive)
+       write(6,'(a,/,3(12x,3(e20.10,1x)/))') '<< CRYST integrateStress >> Fi', transpose(Fi_new)
+       write(6,'(a,/,3(12x,3(e20.10,1x)/))') '<< CRYST integrateStress >> Fe', transpose(Fe)
+       write(6,'(a,/,3(12x,3(e20.10,1x)/))') '<< CRYST integrateStress >> S', transpose(S)
      endif
 #endif
 
@@ -1321,7 +1320,7 @@ logical function integrateStress(&
      if (any(IEEE_is_NaN(residuumLp))) then
 #ifdef DEBUG
        if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
-         write(6,'(a,i8,1x,i2,1x,i3,a,i3,a)') '<< CRYST >> integrateStress encountered NaN for Lp-residuum at el ip ipc ', &
+         write(6,'(a,i8,1x,i2,1x,i3,a,i3,a)') '<< CRYST integrateStress >> encountered NaN for Lp-residuum at el ip ipc ', &
                                               el,ip,ipc, &
                                               ' ; iteration ', NiterationStressLp,&
                                               ' >> returning..!'
@@ -1341,7 +1340,7 @@ logical function integrateStress(&
        if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
            .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
                   .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-         write(6,'(a,1x,f7.4)') '<< CRYST >> linear search for Lpguess with step', steplengthLp
+         write(6,'(a,1x,f7.4)') '<< CRYST integrateStress >> linear search for Lpguess with step', steplengthLp
        endif
 #endif
        cycle LpLoop
@@ -1359,10 +1358,10 @@ logical function integrateStress(&
        if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
            .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
                   .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-         write(6,'(a,/,9(12x,9(e12.4,1x)/))') '<< CRYST >> dLp_dS', math_3333to99(dLp_dS)
-         write(6,'(a,1x,e20.10)')             '<< CRYST >> dLp_dS norm', norm2(math_3333to99(dLp_dS))
-         write(6,'(a,/,9(12x,9(e12.4,1x)/))') '<< CRYST >> dRLp_dLp', dRLp_dLp - math_identity2nd(9_pInt)
-         write(6,'(a,1x,e20.10)')             '<< CRYST >> dRLp_dLp norm', norm2(dRLp_dLp - math_identity2nd(9_pInt))
+         write(6,'(a,/,9(12x,9(e12.4,1x)/))') '<< CRYST integrateStress >> dLp_dS', math_3333to99(dLp_dS)
+         write(6,'(a,1x,e20.10)')             '<< CRYST integrateStress >> dLp_dS norm', norm2(math_3333to99(dLp_dS))
+         write(6,'(a,/,9(12x,9(e12.4,1x)/))') '<< CRYST integrateStress >> dRLp_dLp', dRLp_dLp - math_identity2nd(9_pInt)
+         write(6,'(a,1x,e20.10)')             '<< CRYST integrateStress >> dRLp_dLp norm', norm2(dRLp_dLp - math_identity2nd(9_pInt))
        endif
 #endif
        dRLp_dLp2 = dRLp_dLp                                                                         ! will be overwritten in first call to LAPACK routine
@@ -1371,20 +1370,20 @@ logical function integrateStress(&
        if (ierr /= 0_pInt) then
 #ifdef DEBUG
          if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-          write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on dR/dLp inversion at el ip ipc ', &
+          write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST integrateStress >> failed on dR/dLp inversion at el ip ipc ', &
                                         el,ip,ipc
            if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
                .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g)&
                       .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
              write(6,*)
-             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dR_dLp',transpose(dRLp_dLp)
-             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dFe_dLp',transpose(math_3333to99(dFe_dLp))
-             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dS_dFe_constitutive',transpose(math_3333to99(dS_dFe))
-             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dLp_dS_constitutive',transpose(math_3333to99(dLp_dS))
-             write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> A',transpose(A)
-             write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> B',transpose(B)
-             write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Lp_constitutive',transpose(Lp_constitutive)
-             write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Lpguess',transpose(Lpguess)
+             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST integrateStress >> dR_dLp',transpose(dRLp_dLp)
+             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST integrateStress >> dFe_dLp',transpose(math_3333to99(dFe_dLp))
+             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST integrateStress >> dS_dFe_constitutive',transpose(math_3333to99(dS_dFe))
+             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST integrateStress >> dLp_dS_constitutive',transpose(math_3333to99(dLp_dS))
+             write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST integrateStress >> A',transpose(A)
+             write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST integrateStress >> B',transpose(B)
+             write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST integrateStress >> Lp_constitutive',transpose(Lp_constitutive)
+             write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST integrateStress >> Lpguess',transpose(Lpguess)
            endif
          endif
 #endif
@@ -1406,8 +1405,8 @@ logical function integrateStress(&
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
          .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
                 .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-       write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Li_constitutive', transpose(Li_constitutive)
-       write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Liguess', transpose(Liguess)
+       write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST integrateStress >> Li_constitutive', transpose(Li_constitutive)
+       write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST integrateStress >> Liguess', transpose(Liguess)
      endif
 #endif
 
@@ -1418,7 +1417,7 @@ logical function integrateStress(&
    if (any(IEEE_is_NaN(residuumLi))) then                                                           ! NaN in residuum...
 #ifdef DEBUG
        if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
-         write(6,'(a,i8,1x,i2,1x,i3,a,i3,a)') '<< CRYST >> integrateStress encountered NaN for Li-residuum at el ip ipc ', &
+         write(6,'(a,i8,1x,i2,1x,i3,a,i3,a)') '<< CRYST integrateStress >> encountered NaN for Li-residuum at el ip ipc ', &
                                               el,ip,ipc, &
                                               ' ; iteration ', NiterationStressLi,&
                                               ' >> returning..!'
@@ -1456,18 +1455,18 @@ logical function integrateStress(&
      if (ierr /= 0_pInt) then
 #ifdef DEBUG
        if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-         write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on dR/dLi inversion at el ip ipc ', &
+         write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST integrateStress >> failed on dR/dLi inversion at el ip ipc ', &
                                        el,ip,ipc
          if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
              .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g)&
                     .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
            write(6,*)
-           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dR_dLi',transpose(dRLi_dLi)
-           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dFe_dLi',transpose(math_3333to99(dFe_dLi))
-           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dS_dFi_constitutive',transpose(math_3333to99(dS_dFi))
-           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dLi_dS_constitutive',transpose(math_3333to99(dLi_dS))
-           write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Li_constitutive',transpose(Li_constitutive)
-           write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Liguess',transpose(Liguess)
+           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST integrateStress >> dR_dLi',transpose(dRLi_dLi)
+           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST integrateStress >> dFe_dLi',transpose(math_3333to99(dFe_dLi))
+           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST integrateStress >> dS_dFi_constitutive',transpose(math_3333to99(dS_dFi))
+           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST integrateStress >> dLi_dS_constitutive',transpose(math_3333to99(dLi_dS))
+           write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST integrateStress >> Li_constitutive',transpose(Li_constitutive)
+           write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST integrateStress >> Liguess',transpose(Liguess)
          endif
        endif
 #endif
@@ -1488,12 +1487,12 @@ logical function integrateStress(&
  failedInversionInvFp: if (all(dEq0(Fp_new))) then
 #ifdef DEBUG
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-    write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on invFp_new inversion at el ip ipc ', &
+    write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST integrateStress >> failed on invFp_new inversion at el ip ipc ', &
                                   el,ip,ipc
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
          .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
                 .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) &
-       write(6,'(/,a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> invFp_new',transpose(invFp_new)
+       write(6,'(/,a,/,3(12x,3(f12.7,1x)/))') '<< CRYST integrateStress >> invFp_new',transpose(invFp_new)
    endif
 #endif
    return
@@ -1518,13 +1517,14 @@ logical function integrateStress(&
  if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt &
      .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
              .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> P / MPa',transpose(crystallite_P(1:3,1:3,ipc,ip,el))*1.0e-6_pReal
-   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Cauchy / MPa', &
+   write(6,'(a,/)')                     '<< CRYST integrateStress >> successful integration'
+   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST integrateStress >> P / MPa',transpose(crystallite_P(1:3,1:3,ipc,ip,el))*1.0e-6_pReal
+   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST integrateStress >> Cauchy / MPa', &
               math_mul33x33(crystallite_P(1:3,1:3,ipc,ip,el), transpose(Fg_new)) * 1.0e-6_pReal / math_det33(Fg_new)
-   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fe Lp Fe^-1', &
+   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST integrateStress >> Fe Lp Fe^-1', &
               transpose(math_mul33x33(Fe_new, math_mul33x33(crystallite_Lp(1:3,1:3,ipc,ip,el), math_inv33(Fe_new))))
-   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fp',transpose(crystallite_Fp(1:3,1:3,ipc,ip,el))
-   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fi',transpose(crystallite_Fi(1:3,1:3,ipc,ip,el))
+   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST integrateStress >> Fp',transpose(crystallite_Fp(1:3,1:3,ipc,ip,el))
+   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST integrateStress >> Fi',transpose(crystallite_Fi(1:3,1:3,ipc,ip,el))
  endif
 #endif
 
@@ -1538,6 +1538,16 @@ end function integrateStress
 subroutine integrateStateFPI()
  use, intrinsic :: &
    IEEE_arithmetic
+#ifdef DEBUG
+ use debug, only:        debug_level, &
+                         debug_e, &
+                         debug_i, &
+                         debug_g, &
+                         debug_crystallite, &
+                         debug_levelBasic, &
+                         debug_levelExtensive, &
+                         debug_levelSelective
+#endif
  use numerics, only: &
    nState, &
    rTol_crystalliteState
@@ -1593,6 +1603,9 @@ subroutine integrateStateFPI()
  crystalliteLooping: do while (.not. doneWithIntegration .and. NiterationState < nState)
    NiterationState = NiterationState + 1_pInt
 
+   if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
+     write(6,'(a,i6)') '<< CRYST stateFPI >> state iteration ',NiterationState
+
    ! store previousDotState and previousDotState2
    !$OMP PARALLEL DO PRIVATE(p,c)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
@@ -1628,10 +1641,10 @@ subroutine integrateStateFPI()
    !$OMP&           plasticStateResiduum,sourceStateResiduum, &
    !$OMP&           plasticStatedamper,sourceStateDamper, &
    !$OMP&           tempPlasticState,tempSourceState,converged,p,c)
-       do e = FEsolving_execElem(1),FEsolving_execElem(2)
+   do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do g = 1,homogenization_Ngrains(mesh_element(3,e))
-if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
+       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
 
          p = phaseAt(g,i,e)
          c = phasememberAt(g,i,e)
@@ -1735,7 +1748,12 @@ if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
            sourceState(p)%p(mySource)%state(1:mySizeSourceDotState,c) = &
              tempSourceState(1:mySizeSourceDotState,mySource)
          enddo
-        endif
+         if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
+             .and. ((e == debug_e .and. i == debug_i .and. g == debug_g)&
+                    .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) &
+           write(6,'(a,l1,1x,i8,1x,i2,1x,i3)') '<< CRYST stateFPI >> converged at el ip ipc ', converged, &
+                                              e,i,g
+       endif
      enddo; enddo; enddo
    !$OMP ENDDO
    ! --- STATE JUMP ---
