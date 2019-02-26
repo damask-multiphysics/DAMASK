@@ -38,11 +38,6 @@ contains
 !> @brief allocates arrays pointing to array of the various constitutive modules
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_init()
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use prec, only: &
    pReal
  use debug, only: &
@@ -53,12 +48,8 @@ subroutine constitutive_init()
  use IO, only: &
    IO_error, &
    IO_open_file, &
-   IO_checkAndRewind, &
    IO_open_jobFile_stat, &
-   IO_write_jobFile, &
-   IO_timeStamp
- use config, only: &
-   config_phase
+   IO_write_jobFile
  use config, only: &
    material_Nphase, &
    material_localFileExt, &
@@ -138,7 +129,7 @@ subroutine constitutive_init()
  nonlocalConstitutionPresent = .false.
 
 !--------------------------------------------------------------------------------------------------
-! parse plasticities from config file
+! initialized plasticity
  if (any(phase_plasticity == PLASTICITY_NONE_ID))          call plastic_none_init
  if (any(phase_plasticity == PLASTICITY_ISOTROPIC_ID))     call plastic_isotropic_init
  if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call plastic_phenopowerlaw_init
@@ -146,29 +137,21 @@ subroutine constitutive_init()
  if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call plastic_dislotwin_init
  if (any(phase_plasticity == PLASTICITY_DISLOUCLA_ID))     call plastic_disloucla_init
  if (any(phase_plasticity == PLASTICITY_NONLOCAL_ID))      call plastic_nonlocal_init
- 
- 
-!--------------------------------------------------------------------------------------------------
-! open material.config
- if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
-   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
 
 !--------------------------------------------------------------------------------------------------
-! parse source mechanisms from config file
- if (any(phase_source == SOURCE_thermal_dissipation_ID))     call source_thermal_dissipation_init(FILEUNIT)
- if (any(phase_source == SOURCE_thermal_externalheat_ID))    call source_thermal_externalheat_init(FILEUNIT)
+! initialize source mechanisms
+ if (any(phase_source == SOURCE_thermal_dissipation_ID))     call source_thermal_dissipation_init
+ if (any(phase_source == SOURCE_thermal_externalheat_ID))    call source_thermal_externalheat_init
  if (any(phase_source == SOURCE_damage_isoBrittle_ID))       call source_damage_isoBrittle_init
  if (any(phase_source == SOURCE_damage_isoDuctile_ID))       call source_damage_isoDuctile_init
  if (any(phase_source == SOURCE_damage_anisoBrittle_ID))     call source_damage_anisoBrittle_init
  if (any(phase_source == SOURCE_damage_anisoDuctile_ID))     call source_damage_anisoDuctile_init
  
 !--------------------------------------------------------------------------------------------------
-! parse kinematic mechanisms from config file
- call IO_checkAndRewind(FILEUNIT)
+! initialize kinematic mechanisms
  if (any(phase_kinematics == KINEMATICS_cleavage_opening_ID))  call kinematics_cleavage_opening_init
  if (any(phase_kinematics == KINEMATICS_slipplane_opening_ID)) call kinematics_slipplane_opening_init
- if (any(phase_kinematics == KINEMATICS_thermal_expansion_ID)) call kinematics_thermal_expansion_init(FILEUNIT)
- close(FILEUNIT)
+ if (any(phase_kinematics == KINEMATICS_thermal_expansion_ID)) call kinematics_thermal_expansion_init
 
  call config_deallocate('material.config/phase')
 
@@ -481,7 +464,7 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
      of = phasememberAt(ipc,ip,el)
      instance = phase_plasticityInstance(material_phase(ipc,ip,el))
-     call plastic_kinehardening_LpAndItsTangent   (Lp,dLp_dMp,Mp,instance,of)
+     call plastic_kinehardening_LpAndItsTangent   (Lp,dLp_dMp, Mp,instance,of)
 
    case (PLASTICITY_NONLOCAL_ID) plasticityType
      call plastic_nonlocal_LpAndItsTangent        (Lp,dLp_dMp,Mp, &
@@ -528,8 +511,7 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
    math_I3, &
    math_inv33, &
    math_det33, &
-   math_mul33x33, &
-   math_6toSym33
+   math_mul33x33
  use material, only: &
    phasememberAt, &
    phase_plasticity, &
@@ -632,10 +614,11 @@ pure function constitutive_initialFi(ipc, ip, el)
  use prec, only: &
    pReal
  use math, only: &
-   math_I3, &
-   math_inv33, &
-   math_mul33x33
+   math_I3
  use material, only: &
+   material_phase, &
+   material_homog, &
+   thermalMapping, &
    phase_kinematics, &
    phase_Nkinematics, &
    material_phase, &
@@ -652,14 +635,20 @@ pure function constitutive_initialFi(ipc, ip, el)
    constitutive_initialFi                                                                           !< composite initial intermediate deformation gradient
  integer(pInt) :: &
    k                                                                                                !< counter in kinematics loop
+ integer(pInt) :: &
+   phase, &
+   homog, offset
 
  constitutive_initialFi = math_I3
+ phase = material_phase(ipc,ip,el)
 
- KinematicsLoop: do k = 1_pInt, phase_Nkinematics(material_phase(ipc,ip,el))                        !< Warning: small initial strain assumption
-   kinematicsType: select case (phase_kinematics(k,material_phase(ipc,ip,el)))
+ KinematicsLoop: do k = 1_pInt, phase_Nkinematics(phase)                                            !< Warning: small initial strain assumption
+   kinematicsType: select case (phase_kinematics(k,phase))
      case (KINEMATICS_thermal_expansion_ID) kinematicsType
+       homog = material_homog(ip,el)
+       offset = thermalMapping(homog)%p(ip,el)
        constitutive_initialFi = &
-         constitutive_initialFi + kinematics_thermal_expansion_initialStrain(ipc, ip, el)
+         constitutive_initialFi + kinematics_thermal_expansion_initialStrain(homog,phase,offset)
    end select kinematicsType
  enddo KinematicsLoop
 
@@ -764,7 +753,7 @@ end subroutine constitutive_hooke_SandItsTangents
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_collectDotState(S, FeArray, Fi, FpArray, subdt, subfracArray,ipc, ip, el)
+subroutine constitutive_collectDotState(S, FeArray, Fi, FpArray, subdt, ipc, ip, el)
  use prec, only: &
    pReal, &
    pLongInt
@@ -774,8 +763,6 @@ subroutine constitutive_collectDotState(S, FeArray, Fi, FpArray, subdt, subfracA
    debug_levelBasic
  use math, only: &
    math_mul33x33, &
-   math_6toSym33, &
-   math_sym33to6, &
    math_mul33x33
  use mesh, only: &
    theMesh
@@ -829,8 +816,6 @@ subroutine constitutive_collectDotState(S, FeArray, Fi, FpArray, subdt, subfracA
    el                                                                                               !< element
  real(pReal),  intent(in) :: &
    subdt                                                                                            !< timestep
- real(pReal),  intent(in), dimension(homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
-   subfracArray                                                                                     !< subfraction of timestep
  real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
    FeArray, &                                                                                       !< elastic deformation gradient
    FpArray                                                                                          !< plastic deformation gradient
@@ -891,13 +876,13 @@ subroutine constitutive_collectDotState(S, FeArray, Fi, FpArray, subdt, subfracA
        call source_damage_anisoBrittle_dotState (S, ipc, ip, el) !< correct stress?
 
      case (SOURCE_damage_isoDuctile_ID) sourceType
-       call source_damage_isoDuctile_dotState   (   ipc, ip, el)
+       call source_damage_isoDuctile_dotState   (         ipc, ip, el)
 
      case (SOURCE_damage_anisoDuctile_ID) sourceType
-       call source_damage_anisoDuctile_dotState (   ipc, ip, el)
+       call source_damage_anisoDuctile_dotState (         ipc, ip, el)
 
      case (SOURCE_thermal_externalheat_ID) sourceType
-       call source_thermal_externalheat_dotState(   ipc, ip, el)
+       call source_thermal_externalheat_dotState(         ipc, ip, el)
 
    end select sourceType
 
@@ -918,7 +903,6 @@ subroutine constitutive_collectDeltaState(S, Fe, Fi, ipc, ip, el)
    debug_constitutive, &
    debug_levelBasic
  use math, only: &
-   math_sym33to6, &
    math_mul33x33
  use material, only: &
    phasememberAt, &
@@ -984,14 +968,11 @@ end subroutine constitutive_collectDeltaState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns array of constitutive results
 !--------------------------------------------------------------------------------------------------
-function constitutive_postResults(S, Fi, FeArray, ipc, ip, el)
+function constitutive_postResults(S, Fi, ipc, ip, el)
  use prec, only: &
    pReal
  use math, only: &
-  math_6toSym33, &
   math_mul33x33
- use mesh, only: &
-   theMesh
  use material, only: &
    phasememberAt, &
    phase_plasticityInstance, &
@@ -1004,7 +985,6 @@ function constitutive_postResults(S, Fi, FeArray, ipc, ip, el)
    material_homogenizationAt, &
    temperature, &
    thermalMapping, &
-   homogenization_maxNgrains, &
    PLASTICITY_NONE_ID, &
    PLASTICITY_ISOTROPIC_ID, &
    PLASTICITY_PHENOPOWERLAW_ID, &
@@ -1047,8 +1027,6 @@ function constitutive_postResults(S, Fi, FeArray, ipc, ip, el)
    constitutive_postResults
  real(pReal),  intent(in), dimension(3,3) :: &
    Fi                                                                                               !< intermediate deformation gradient
- real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
-   FeArray                                                                                          !< elastic deformation gradient
  real(pReal),  intent(in), dimension(3,3) :: &
    S                                                                                                !< 2nd Piola Kirchhoff stress
  real(pReal), dimension(3,3) :: &

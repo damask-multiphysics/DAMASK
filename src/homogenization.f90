@@ -108,30 +108,18 @@ subroutine homogenization_init
  logical :: valid
 
 
-!--------------------------------------------------------------------------------------------------
-! open material.config
- if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
-   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
-
-!--------------------------------------------------------------------------------------------------
-! parse homogenization from config file 
  if (any(homogenization_type == HOMOGENIZATION_NONE_ID))      call homogenization_none_init
  if (any(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)) call homogenization_isostrain_init
  if (any(homogenization_type == HOMOGENIZATION_RGC_ID))       call homogenization_RGC_init
 
-!--------------------------------------------------------------------------------------------------
-! parse thermal from config file
- call IO_checkAndRewind(FILEUNIT)
- if (any(thermal_type == THERMAL_isothermal_ID)) &
-   call thermal_isothermal_init()
- if (any(thermal_type == THERMAL_adiabatic_ID)) &
-   call thermal_adiabatic_init(FILEUNIT)
- if (any(thermal_type == THERMAL_conduction_ID)) &
-   call thermal_conduction_init(FILEUNIT)
+ if (any(thermal_type == THERMAL_isothermal_ID)) call thermal_isothermal_init
+ if (any(thermal_type == THERMAL_adiabatic_ID))  call thermal_adiabatic_init
+ if (any(thermal_type == THERMAL_conduction_ID)) call thermal_conduction_init
 
 !--------------------------------------------------------------------------------------------------
-! parse damage from config file
- call IO_checkAndRewind(FILEUNIT)
+! open material.config
+ if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
+   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
  if (any(damage_type == DAMAGE_none_ID)) &
    call damage_none_init()
  if (any(damage_type == DAMAGE_local_ID)) &
@@ -895,6 +883,8 @@ function postResults(ip,el)
  use mesh, only: &
    mesh_element
  use material, only: &
+   thermalMapping, &
+   thermal_typeInstance, &
    material_homogenizationAt, &
    homogenization_typeInstance,&
    mappingHomogenization, &
@@ -934,7 +924,7 @@ function postResults(ip,el)
    postResults
  integer(pInt) :: &
    startPos, endPos ,&
-   of, instance
+   of, instance, homog
 
 
  postResults = 0.0_pReal
@@ -954,10 +944,14 @@ function postResults(ip,el)
  chosenThermal: select case (thermal_type(mesh_element(3,el)))
 
    case (THERMAL_adiabatic_ID) chosenThermal
-     postResults(startPos:endPos) = thermal_adiabatic_postResults(ip, el)
+     homog = mappingHomogenization(2,ip,el)
+     postResults(startPos:endPos) = &
+       thermal_adiabatic_postResults(homog,thermal_typeInstance(homog),thermalMapping(homog)%p(ip,el))
    case (THERMAL_conduction_ID) chosenThermal
-     postResults(startPos:endPos) =  thermal_conduction_postResults(ip, el)
-     
+     homog = mappingHomogenization(2,ip,el)
+     postResults(startPos:endPos) = &
+       thermal_conduction_postResults(homog,thermal_typeInstance(homog),thermalMapping(homog)%p(ip,el))
+
  end select chosenThermal
 
  startPos = endPos + 1_pInt

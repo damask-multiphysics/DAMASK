@@ -26,14 +26,14 @@ subroutine thermal_isothermal_init()
    pInt 
  use IO, only: &
    IO_timeStamp
+ use config, only: &
+   material_Nhomogenization
  use material
- use config
  
  implicit none
  integer(pInt) :: &
    homog, &
-   NofMyHomog, &
-   sizeState
+   NofMyHomog
 
  write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_isothermal_label//' init  -+>>>'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -41,21 +41,19 @@ subroutine thermal_isothermal_init()
 
  initializeInstances: do homog = 1_pInt, material_Nhomogenization
    
-   myhomog: if (thermal_type(homog) == THERMAL_isothermal_ID) then
-     NofMyHomog = count(material_homog == homog)
-     sizeState = 0_pInt
-     thermalState(homog)%sizeState = sizeState
-     thermalState(homog)%sizePostResults = sizeState
-     allocate(thermalState(homog)%state0   (sizeState,NofMyHomog), source=0.0_pReal)
-     allocate(thermalState(homog)%subState0(sizeState,NofMyHomog), source=0.0_pReal)
-     allocate(thermalState(homog)%state    (sizeState,NofMyHomog), source=0.0_pReal)
+   if (thermal_type(homog) /= THERMAL_isothermal_ID) cycle
+   NofMyHomog = count(material_homog == homog)
+   thermalState(homog)%sizeState = 0_pInt
+   thermalState(homog)%sizePostResults = 0_pInt
+   allocate(thermalState(homog)%state0   (0_pInt,NofMyHomog), source=0.0_pReal)
+   allocate(thermalState(homog)%subState0(0_pInt,NofMyHomog), source=0.0_pReal)
+   allocate(thermalState(homog)%state    (0_pInt,NofMyHomog), source=0.0_pReal)
      
-     deallocate(temperature    (homog)%p)
-     allocate  (temperature    (homog)%p(1), source=thermal_initialT(homog))
-     deallocate(temperatureRate(homog)%p)
-     allocate  (temperatureRate(homog)%p(1), source=0.0_pReal)
+   deallocate(temperature    (homog)%p)
+   allocate  (temperature    (homog)%p(1), source=thermal_initialT(homog))
+   deallocate(temperatureRate(homog)%p)
+   allocate  (temperatureRate(homog)%p(1), source=0.0_pReal)
 
-   endif myhomog
  enddo initializeInstances
 
 

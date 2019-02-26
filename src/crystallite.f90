@@ -247,7 +247,7 @@ subroutine crystallite_init
  allocate(crystallite_sizePostResult(maxval(crystallite_Noutput), &
                                      size(config_crystallite)), source=0_pInt)
 
- select case(numerics_integrator(1))
+ select case(numerics_integrator)
    case(1_pInt)
      integrateState => integrateStateFPI
    case(2_pInt)
@@ -1068,7 +1068,7 @@ function crystallite_postResults(ipc, ip, el)
  if (size(crystallite_postResults)-c > 0_pInt) &
    crystallite_postResults(c+1:size(crystallite_postResults)) = &
       constitutive_postResults(math_6toSym33(crystallite_Tstar_v(1:6,ipc,ip,el)), crystallite_Fi(1:3,1:3,ipc,ip,el), &
-                               crystallite_Fe, ipc, ip, el)
+                               ipc, ip, el)
 
 end function crystallite_postResults
 
@@ -2297,7 +2297,7 @@ subroutine update_dotState(timeFraction)
                                              crystallite_Fe, &
                                              crystallite_Fi(1:3,1:3,g,i,e), &
                                              crystallite_Fp, &
-                                             crystallite_subdt(g,i,e)*timeFraction, crystallite_subFrac, g,i,e)
+                                             crystallite_subdt(g,i,e)*timeFraction, g,i,e)
            p = phaseAt(g,i,e); c = phasememberAt(g,i,e)
            NaN = any(IEEE_is_NaN(plasticState(p)%dotState(:,c)))
            do s = 1_pInt, phase_Nsources(p)
