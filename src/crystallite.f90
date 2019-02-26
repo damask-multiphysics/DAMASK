@@ -583,9 +583,11 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
            crystallite_invFp(1:3,1:3,c,i,e) = math_inv33(crystallite_Fp    (1:3,1:3,c,i,e))
            crystallite_Fi   (1:3,1:3,c,i,e) =            crystallite_subFi0(1:3,1:3,c,i,e)
            crystallite_invFi(1:3,1:3,c,i,e) = math_inv33(crystallite_Fi    (1:3,1:3,c,i,e))
-           crystallite_Lp   (1:3,1:3,c,i,e) =            crystallite_subLp0(1:3,1:3,c,i,e)
-           crystallite_Li   (1:3,1:3,c,i,e) =            crystallite_subLi0(1:3,1:3,c,i,e)
            crystallite_Tstar_v(1:6,c,i,e)   = math_sym33to6(crystallite_subS0(1:3,1:3,c,i,e))
+           if (crystallite_subStep(c,i,e) < 1.0_pReal) then                                         ! actual (not initial) cutback
+             crystallite_Lp (1:3,1:3,c,i,e) =            crystallite_subLp0(1:3,1:3,c,i,e)
+             crystallite_Li (1:3,1:3,c,i,e) =            crystallite_subLi0(1:3,1:3,c,i,e)
+           endif
            plasticState    (phaseAt(c,i,e))%state(    :,phasememberAt(c,i,e)) &
              = plasticState(phaseAt(c,i,e))%subState0(:,phasememberAt(c,i,e))
            do s = 1_pInt, phase_Nsources(phaseAt(c,i,e))
@@ -1224,7 +1226,8 @@ logical function integrateStress(&
      write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST integrateStress >> failed on inversion of current Fi at el ip ipc ',&
                                     el,ip,ipc
    if (iand(debug_level(debug_crystallite), debug_levelExtensive) > 0_pInt) &
-     write(6,'(/,a,/,3(12x,3(f12.7,1x)/))') '<< CRYST integrateStress >> current Fi ',transpose(crystallite_subFi0(1:3,1:3,ipc,ip,el))
+     write(6,'(/,a,/,3(12x,3(f12.7,1x)/))') '<< CRYST integrateStress >> current Fi ', &
+                                            transpose(crystallite_subFi0(1:3,1:3,ipc,ip,el))
 #endif
    return
  endif failedInversionFi
@@ -1339,8 +1342,8 @@ logical function integrateStress(&
                   .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
          write(6,'(a,/,9(12x,9(e12.4,1x)/))') '<< CRYST integrateStress >> dLp_dS', math_3333to99(dLp_dS)
          write(6,'(a,1x,e20.10)')             '<< CRYST integrateStress >> dLp_dS norm', norm2(math_3333to99(dLp_dS))
-         write(6,'(a,/,9(12x,9(e12.4,1x)/))') '<< CRYST integrateStress >> dRLp_dLp', dRLp_dLp - math_identity2nd(9_pInt)
-         write(6,'(a,1x,e20.10)')             '<< CRYST integrateStress >> dRLp_dLp norm', norm2(dRLp_dLp - math_identity2nd(9_pInt))
+         write(6,'(a,/,9(12x,9(e12.4,1x)/))') '<< CRYST integrateStress >> dRLp_dLp', dRLp_dLp-math_identity2nd(9_pInt)
+         write(6,'(a,1x,e20.10)')             '<< CRYST integrateStress >> dRLp_dLp norm', norm2(dRLp_dLp-math_identity2nd(9_pInt))
        endif
 #endif
        dRLp_dLp2 = dRLp_dLp                                                                         ! will be overwritten in first call to LAPACK routine
@@ -1357,8 +1360,8 @@ logical function integrateStress(&
              write(6,*)
              write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST integrateStress >> dR_dLp',transpose(dRLp_dLp)
              write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST integrateStress >> dFe_dLp',transpose(math_3333to99(dFe_dLp))
-             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST integrateStress >> dS_dFe_constitutive',transpose(math_3333to99(dS_dFe))
-             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST integrateStress >> dLp_dS_constitutive',transpose(math_3333to99(dLp_dS))
+             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST integrateStress >> dS_dFe (cnst)',transpose(math_3333to99(dS_dFe))
+             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST integrateStress >> dLp_dS (cnst)',transpose(math_3333to99(dLp_dS))
              write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST integrateStress >> A',transpose(A)
              write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST integrateStress >> B',transpose(B)
              write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST integrateStress >> Lp_constitutive',transpose(Lp_constitutive)
@@ -1442,8 +1445,8 @@ logical function integrateStress(&
            write(6,*)
            write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST integrateStress >> dR_dLi',transpose(dRLi_dLi)
            write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST integrateStress >> dFe_dLi',transpose(math_3333to99(dFe_dLi))
-           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST integrateStress >> dS_dFi_constitutive',transpose(math_3333to99(dS_dFi))
-           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST integrateStress >> dLi_dS_constitutive',transpose(math_3333to99(dLi_dS))
+           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST integrateStress >> dS_dFi (cnst)',transpose(math_3333to99(dS_dFi))
+           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST integrateStress >> dLi_dS (cnst)',transpose(math_3333to99(dLi_dS))
            write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST integrateStress >> Li_constitutive',transpose(Li_constitutive)
            write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST integrateStress >> Liguess',transpose(Liguess)
          endif
@@ -1497,7 +1500,8 @@ logical function integrateStress(&
      .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
              .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
    write(6,'(a,/)')                     '<< CRYST integrateStress >> successful integration'
-   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST integrateStress >> P / MPa',transpose(crystallite_P(1:3,1:3,ipc,ip,el))*1.0e-6_pReal
+   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST integrateStress >> P / MPa', &
+              transpose(crystallite_P(1:3,1:3,ipc,ip,el))*1.0e-6_pReal
    write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST integrateStress >> Cauchy / MPa', &
               math_mul33x33(crystallite_P(1:3,1:3,ipc,ip,el), transpose(Fg_new)) * 1.0e-6_pReal / math_det33(Fg_new)
    write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST integrateStress >> Fe Lp Fe^-1', &
@@ -1568,8 +1572,10 @@ subroutine integrateStateFPI()
  crystalliteLooping: do while (.not. doneWithIntegration .and. NiterationState < nState)
    NiterationState = NiterationState + 1_pInt
 
+#ifdef DEBUG
    if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
      write(6,'(a,i6)') '<< CRYST stateFPI >> state iteration ',NiterationState
+#endif
 
    ! store previousDotState and previousDotState2
    
@@ -1793,15 +1799,15 @@ subroutine integrateStateAdaptiveEuler()
          
          residuum_plastic(1:sizeDotState,g,i,e) = plasticState(p)%dotstate(1:sizeDotState,c) &
                                                 * (- 0.5_pReal * crystallite_subdt(g,i,e))
-         plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%state(1:sizeDotState,c) &
-                                                 + plasticState(p)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e) !ToDo: state, partitioned state?
+         plasticState(p)%state(1:sizeDotState,c) = &
+         plasticState(p)%state(1:sizeDotState,c) + plasticState(p)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e) !ToDo: state, partitioned state?
          do s = 1_pInt, phase_Nsources(p)
            sizeDotState = sourceState(p)%p(s)%sizeDotState
            
            residuum_source(1:sizeDotState,s,g,i,e) = sourceState(p)%p(s)%dotstate(1:sizeDotState,c) &
                                                    * (- 0.5_pReal * crystallite_subdt(g,i,e))
-           sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%state(1:sizeDotState,c) &
-                                                       + sourceState(p)%p(s)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e) !ToDo: state, partitioned state?
+           sourceState(p)%p(s)%state(1:sizeDotState,c) = &
+           sourceState(p)%p(s)%state(1:sizeDotState,c) + sourceState(p)%p(s)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e) !ToDo: state, partitioned state?
          enddo
        endif
      enddo; enddo; enddo
@@ -1824,19 +1830,19 @@ subroutine integrateStateAdaptiveEuler()
                                                 + 0.5_pReal * plasticState(p)%dotState(:,c) * crystallite_subdt(g,i,e)
               
          crystallite_converged(g,i,e) = converged(residuum_plastic(1:sizeDotState,g,i,e), &
-                                             plasticState(p)%state(1:sizeDotState,c), &
-                                             plasticState(p)%aTolState(1:sizeDotState))
+                                                  plasticState(p)%state(1:sizeDotState,c), &
+                                                  plasticState(p)%aTolState(1:sizeDotState))
 
          do s = 1_pInt, phase_Nsources(p)
            sizeDotState = sourceState(p)%p(s)%sizeDotState
            
-           residuum_source(1:sizeDotState,s,g,i,e) = residuum_source(1:sizeDotState,s,g,i,e) &
-                                                   + 0.5_pReal * sourceState(p)%p(s)%dotState(:,c) * crystallite_subdt(g,i,e)
+           residuum_source(1:sizeDotState,s,g,i,e) = &
+           residuum_source(1:sizeDotState,s,g,i,e) + 0.5_pReal * sourceState(p)%p(s)%dotState(:,c) * crystallite_subdt(g,i,e)
 
-           crystallite_converged(g,i,e) = crystallite_converged(g,i,e) .and.&
-                  converged(residuum_source(1:sizeDotState,s,g,i,e), &
-                            sourceState(p)%p(s)%state(1:sizeDotState,c), &
-                            sourceState(p)%p(s)%aTolState(1:sizeDotState))
+           crystallite_converged(g,i,e) = &
+           crystallite_converged(g,i,e) .and. converged(residuum_source(1:sizeDotState,s,g,i,e), &
+                                                        sourceState(p)%p(s)%state(1:sizeDotState,c), &
+                                                        sourceState(p)%p(s)%aTolState(1:sizeDotState))
           enddo
           
        endif
@@ -1938,11 +1944,11 @@ subroutine integrateStateRKCK45()
  implicit none
  real(pReal), dimension(5,5), parameter :: &
    A = reshape([&
-     .2_pReal,  .075_pReal,  .3_pReal, -11.0_pReal/54.0_pReal,    1631.0_pReal/55296.0_pReal, &
-     .0_pReal,  .225_pReal, -.9_pReal,   2.5_pReal,                  175.0_pReal/512.0_pReal, &
-     .0_pReal,   .0_pReal,  1.2_pReal, -70.0_pReal/27.0_pReal,     575.0_pReal/13824.0_pReal, &
-     .0_pReal,   .0_pReal,   .0_pReal,  35.0_pReal/27.0_pReal,  44275.0_pReal/110592.0_pReal, &
-     .0_pReal,   .0_pReal,   .0_pReal,    .0_pReal,                 253.0_pReal/4096.0_pReal], &
+     .2_pReal, .075_pReal,   .3_pReal, -11.0_pReal/54.0_pReal,  1631.0_pReal/55296.0_pReal, &
+     .0_pReal, .225_pReal,  -.9_pReal,   2.5_pReal,              175.0_pReal/512.0_pReal, &
+     .0_pReal,   .0_pReal,  1.2_pReal, -70.0_pReal/27.0_pReal,   575.0_pReal/13824.0_pReal, &
+     .0_pReal,   .0_pReal,   .0_pReal,  35.0_pReal/27.0_pReal, 44275.0_pReal/110592.0_pReal, &
+     .0_pReal,   .0_pReal,   .0_pReal,    .0_pReal,              253.0_pReal/4096.0_pReal], &
      [5,5], order=[2,1])                                                                            !< coefficients in Butcher tableau (used for preliminary integration in stages 2 to 6)
 
  real(pReal), dimension(6), parameter :: &
@@ -1950,8 +1956,8 @@ subroutine integrateStateRKCK45()
      [37.0_pReal/378.0_pReal, .0_pReal, 250.0_pReal/621.0_pReal, &
      125.0_pReal/594.0_pReal, .0_pReal, 512.0_pReal/1771.0_pReal], &                                !< coefficients in Butcher tableau (used for final integration and error estimate)
    DB = B - &
-     [2825.0_pReal/27648.0_pReal, .0_pReal,                   18575.0_pReal/48384.0_pReal,&
-     13525.0_pReal/55296.0_pReal, 277.0_pReal/14336.0_pReal,  0.25_pReal]                           !< coefficients in Butcher tableau (used for final integration and error estimate)
+     [2825.0_pReal/27648.0_pReal,    .0_pReal,                18575.0_pReal/48384.0_pReal,&
+     13525.0_pReal/55296.0_pReal, 277.0_pReal/14336.0_pReal,      0.25_pReal]                       !< coefficients in Butcher tableau (used for final integration and error estimate)
 
  real(pReal), dimension(5), parameter :: &
    C = [0.2_pReal, 0.3_pReal, 0.6_pReal, 1.0_pReal, 0.875_pReal]                                    !< coefficients in Butcher tableau (fractions of original time step in stages 2 to 6)
@@ -2081,10 +2087,10 @@ subroutine integrateStateRKCK45()
          do s = 1_pInt, phase_Nsources(p)
            sizeDotState = sourceState(p)%p(s)%sizeDotState
          
-                  crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and.&
-                  converged(residuum_source(1:sizeDotState,s,g,i,e), &
-                            sourceState(p)%p(s)%state(1:sizeDotState,cc), &
-                            sourceState(p)%p(s)%aTolState(1:sizeDotState))
+                  crystallite_todo(g,i,e) = &
+                  crystallite_todo(g,i,e) .and. converged(residuum_source(1:sizeDotState,s,g,i,e), &
+                                                          sourceState(p)%p(s)%state(1:sizeDotState,cc), &
+                                                          sourceState(p)%p(s)%aTolState(1:sizeDotState))
          enddo
      endif
    enddo; enddo; enddo
@@ -2368,9 +2374,9 @@ subroutine update_deltaState
          !$OMP FLUSH(nonlocalStop)
          if ((crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) .and. .not. nonlocalStop) then
         call constitutive_collectDeltaState(math_6toSym33(crystallite_Tstar_v(1:6,g,i,e)), &
-                                     crystallite_Fe(1:3,1:3,g,i,e), &
-                                     crystallite_Fi(1:3,1:3,g,i,e), &
-                                     g,i,e)
+                                                          crystallite_Fe(1:3,1:3,g,i,e), &
+                                                          crystallite_Fi(1:3,1:3,g,i,e), &
+                                                          g,i,e)
          p = phaseAt(g,i,e); c = phasememberAt(g,i,e)
          myOffset = plasticState(p)%offsetDeltaState
          mySize   = plasticState(p)%sizeDeltaState
@@ -2379,17 +2385,15 @@ subroutine update_deltaState
          if (.not. NaN) then
          
            plasticState(p)%state(myOffset + 1_pInt: myOffset + mySize,c) = &
-           plasticState(p)%state(myOffset + 1_pInt: myOffset + mySize,c) + &
-           plasticState(p)%deltaState(1:mySize,c)
+           plasticState(p)%state(myOffset + 1_pInt: myOffset + mySize,c) + plasticState(p)%deltaState(1:mySize,c)
            do s = 1_pInt, phase_Nsources(p)
              myOffset = sourceState(p)%p(s)%offsetDeltaState
              mySize   = sourceState(p)%p(s)%sizeDeltaState
              NaN = NaN .or. any(IEEE_is_NaN(sourceState(p)%p(s)%deltaState(1:mySize,c)))
              
              if (.not. NaN) then
-               sourceState(p)%p(s)%state(myOffset + 1_pInt:myOffset +mySize,c) = &
-               sourceState(p)%p(s)%state(myOffset + 1_pInt:myOffset +mySize,c) + &
-                  sourceState(p)%p(s)%deltaState(1:mySize,c)
+               sourceState(p)%p(s)%state(myOffset + 1_pInt:myOffset + mySize,c) = &
+               sourceState(p)%p(s)%state(myOffset + 1_pInt:myOffset + mySize,c) + sourceState(p)%p(s)%deltaState(1:mySize,c)
              endif
           enddo
         endif
@@ -2455,9 +2459,9 @@ logical function stateJump(ipc,ip,el)
  p = phaseAt(ipc,ip,el)
 
  call constitutive_collectDeltaState(math_6toSym33(crystallite_Tstar_v(1:6,ipc,ip,el)), &
-                                     crystallite_Fe(1:3,1:3,ipc,ip,el), &
-                                     crystallite_Fi(1:3,1:3,ipc,ip,el), &
-                                     ipc,ip,el)
+                                                   crystallite_Fe(1:3,1:3,ipc,ip,el), &
+                                                   crystallite_Fi(1:3,1:3,ipc,ip,el), &
+                                                   ipc,ip,el)
 
  myOffset = plasticState(p)%offsetDeltaState
  mySize   = plasticState(p)%sizeDeltaState
@@ -2478,8 +2482,7 @@ logical function stateJump(ipc,ip,el)
      return
    endif
    sourceState(p)%p(mySource)%state(myOffset + 1_pInt: myOffset + mySize,c) = &
-   sourceState(p)%p(mySource)%state(myOffset + 1_pInt: myOffset + mySize,c) + &
-     sourceState(p)%p(mySource)%deltaState(1:mySize,c)
+   sourceState(p)%p(mySource)%state(myOffset + 1_pInt: myOffset + mySize,c) + sourceState(p)%p(mySource)%deltaState(1:mySize,c)
  enddo
 
 #ifdef DEBUG
