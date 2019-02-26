@@ -70,6 +70,10 @@ module math
 !--------------------------------------------------------------------------------------------------
 ! Provide deprecated names for compatibility
 
+ interface math_cross
+   module procedure math_crossproduct
+ end interface math_cross
+
 ! ToDo MD: Our naming scheme was a little bit odd: We use essentially the re-ordering according to Nye
 ! (convenient because Abaqus and Marc want to have 12 on position 4)
 ! but weight the shear components according to Mandel (convenient for matrix multiplications)
@@ -98,23 +102,13 @@ module math
    module procedure math_99to3333
  end interface math_Plain99to3333
  
- interface math_Mandel3333to66
-   module procedure math_sym3333to66
- end interface math_Mandel3333to66
- 
- interface math_Mandel66to3333
-   module procedure math_66toSym3333
- end interface math_Mandel66to3333
- 
  public :: &
    math_Plain33to9, &
    math_Plain9to33, &
    math_Mandel33to6, &
    math_Mandel6to33, &
    math_Plain3333to99, &
-   math_Plain99to3333, &
-   math_Mandel3333to66, &
-   math_Mandel66to3333
+   math_Plain99to3333
 !---------------------------------------------------------------------------------------------------
 
  public :: &
@@ -129,6 +123,7 @@ module math
    math_identity4th, &
    math_civita, &
    math_delta, &
+   math_cross, &
    math_crossproduct, &
    math_tensorproduct33, &
    math_mul3x3, &
@@ -1887,7 +1882,6 @@ function math_sampleGaussOri(center,FWHM)
    math_sampleGaussOri = math_RtoEuler(math_mul33x33(R,math_EulerToR(center)))
  endif
 
-
 end function math_sampleGaussOri
 
 
@@ -1960,11 +1954,11 @@ real(pReal) function math_sampleGaussVar(meanvalue, stddev, width)
    tol_math_check
 
  implicit none
- real(pReal), intent(in) ::            meanvalue, &      ! meanvalue of gauss distribution
-                                       stddev            ! standard deviation of gauss distribution
- real(pReal), intent(in), optional ::  width             ! width of considered values as multiples of standard deviation
- real(pReal), dimension(2) ::          rnd               ! random numbers
- real(pReal) ::                        scatter, &        ! normalized scatter around meanvalue
+ real(pReal), intent(in) ::            meanvalue, &                                                 ! meanvalue of gauss distribution
+                                       stddev                                                       ! standard deviation of gauss distribution
+ real(pReal), intent(in), optional ::  width                                                        ! width of considered values as multiples of standard deviation
+ real(pReal), dimension(2) ::          rnd                                                          ! random numbers
+ real(pReal) ::                        scatter, &                                                   ! normalized scatter around meanvalue
                                        myWidth
 
  if (abs(stddev) < tol_math_check) then

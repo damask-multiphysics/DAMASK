@@ -11,6 +11,9 @@
 #include "HDF5_utilities.f90"
 #endif
 #include "math.f90"
+#include "quaternions.f90"
+#include "Lambert.f90"
+#include "rotations.f90"
 #include "FEsolving.f90"
 #include "element.f90"
 #include "mesh_base.f90"

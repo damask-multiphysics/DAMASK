@@ -18,8 +18,8 @@ do
   < $geom \
   | \
   vtk_addRectilinearGridData \
+    --vtk ${geom%.*}.vtk \
     --data microstructure \
-    --inplace \
-    --vtk ${geom%.*}.vtk
+
   rm ${geom%.*}.vtk
 done

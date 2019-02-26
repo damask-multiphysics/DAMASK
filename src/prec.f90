@@ -29,8 +29,8 @@ module prec
  real(pReal), parameter, public :: tol_math_check = 1.0e-8_pReal                                    !< tolerance for internal math self-checks (rotation)
 
  integer(pInt), allocatable, dimension(:) :: realloc_lhs_test
- 
- type, public :: group_float                                                                       !< variable length datatype used for storage of state
+
+ type, public :: group_float                                                                        !< variable length datatype used for storage of state
    real(pReal), dimension(:), pointer :: p
  end type group_float
 

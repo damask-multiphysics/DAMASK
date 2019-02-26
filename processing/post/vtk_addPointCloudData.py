@@ -49,16 +49,19 @@ parser.set_defaults(data = [],
 if not options.vtk:                 parser.error('no VTK file specified.')
 if not os.path.exists(options.vtk): parser.error('VTK file does not exist.')
 
-if os.path.splitext(options.vtk)[1] == '.vtp':
+vtk_file,vtk_ext = os.path.splitext(options.vtk)
+
+if vtk_ext == '.vtp':
   reader = vtk.vtkXMLPolyDataReader()
   reader.SetFileName(options.vtk)
   reader.Update()
   Polydata = reader.GetOutput()
-elif os.path.splitext(options.vtk)[1] == '.vtk':
+elif vtk_ext == '.vtk':
   reader = vtk.vtkGenericDataObjectReader()
   reader.SetFileName(options.vtk)
   reader.Update()
   Polydata = reader.GetPolyDataOutput()
+  vtk_ext = '.vtp'
 else:
   parser.error('unsupported VTK file type extension.')
 
@@ -149,7 +152,7 @@ for name in filenames:
   writer = vtk.vtkXMLPolyDataWriter()
   writer.SetDataModeToBinary()
   writer.SetCompressorTypeToZLib()
-  writer.SetFileName(options.vtk)
+  writer.SetFileName(vtk_file+vtk_ext)
   writer.SetInputData(Polydata)
   writer.Write()
 

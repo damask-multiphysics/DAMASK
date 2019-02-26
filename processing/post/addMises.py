@@ -38,9 +38,12 @@ parser.add_option('-s','--stress',
                   action = 'extend', metavar = '<string LIST>',
                   help = 'heading(s) of columns containing stress tensors')
 
+parser.set_defaults(strain = [],
+                    stress = [],
+                   )
 (options,filenames) = parser.parse_args()
 
-if options.stress is None and options.strain is None:
+if options.stress is [] and options.strain is []:
   parser.error('no data column specified...')
 
 # --- loop over input files -------------------------------------------------------------------------
