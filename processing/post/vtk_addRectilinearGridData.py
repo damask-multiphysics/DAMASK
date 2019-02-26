@@ -53,16 +53,18 @@ parser.set_defaults(data = [],
 if not options.vtk:                 parser.error('no VTK file specified.')
 if not os.path.exists(options.vtk): parser.error('VTK file does not exist.')
 
-if os.path.splitext(options.vtk)[1] == '.vtr':
+vtk_file,vtk_ext = os.path.splitext(options.vtk)
+if vtk_ext == '.vtr':
   reader = vtk.vtkXMLRectilinearGridReader()
   reader.SetFileName(options.vtk)
   reader.Update()
   rGrid = reader.GetOutput()
-elif os.path.splitext(options.vtk)[1] == '.vtk':
+elif vtk_ext == '.vtk':
   reader = vtk.vtkGenericDataObjectReader()
   reader.SetFileName(options.vtk)
   reader.Update()
   rGrid = reader.GetRectilinearGridOutput()
+  vtk_ext = '.vtr'
 else:
   parser.error('unsupported VTK file type extension.')
 
@@ -159,7 +161,7 @@ for name in filenames:
   writer = vtk.vtkXMLRectilinearGridWriter()
   writer.SetDataModeToBinary()
   writer.SetCompressorTypeToZLib()
-  writer.SetFileName(options.vtk)
+  writer.SetFileName(vtk_file+vtk_ext)
   writer.SetInputData(rGrid)
   writer.Write()
 
