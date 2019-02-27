@@ -851,7 +851,7 @@ index = {}
 groups = []
 groupCount = 0
 memberCount = 0
-damask.util.progressBar(iteration=1,total=1,prefix='1/3: connecting elements')
+if options.verbose: damask.util.progressBar(iteration=1,total=1,prefix='1/3: connecting elements')
 
 if options.nodalScalar:
   Npoints = stat['NumberOfNodes']
@@ -888,7 +888,7 @@ if options.nodalScalar:
                                                myNodeCoordinates)                                   # incrementally update average location
     groups[index[grp]].append([myElemID,myNodeID,myIpID,myGrainID,0])                               # append a new list defining each group member
     memberCount += 1
-  damask.util.progressBar(iteration=1,total=1,prefix='2/3: scanning nodes     ')
+  if options.verbose: damask.util.progressBar(iteration=1,total=1,prefix='2/3: scanning nodes     ')
 
 else:
   Nelems = stat['NumberOfElements']
@@ -934,7 +934,7 @@ else:
                                                    myIpCoordinates[n])                              # incrementally update average location
         groups[index[grp]].append([myElemID,myNodeID,myIpID,myGrainID,n])                           # append a new list defining each group member
         memberCount += 1
-  damask.util.progressBar(iteration=1,total=1,prefix='2/3: scanning elements  ')
+  if options.verbose: damask.util.progressBar(iteration=1,total=1,prefix='2/3: scanning elements  ')
 
 
 # ---------------------------   sort groups   --------------------------------
@@ -1122,11 +1122,11 @@ for incCount,position in enumerate(locations):     # walk through locations
       headerWritten = True
 
     file.write('\t'.join(list(map(str,[p.increment] + \
-                                 {True:[p.time],False:[]}[options.time] + \
+                                 ([p.time] if options.time else []) + \
                                  group[0] + \
                                  mappedResult)
                         )) + '\n')
-damask.util.progressBar(iteration=1,total=1,prefix='3/3: processing points  ')
+if options.verbose: damask.util.progressBar(iteration=1,total=1,prefix='3/3: processing points  ')
 
 if fileOpen:
   file.close()
