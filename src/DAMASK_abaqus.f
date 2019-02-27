@@ -8,6 +8,9 @@
 !> @details put the included file abaqus_v6.env in either your home or model directory, 
 !> it is a minimum Abaqus environment file  containing all changes necessary to use the 
 !> DAMASK subroutine (see Abaqus documentation for more information on the use of abaqus_v6.env)
+!> @details  Abaqus subroutines used:
+!> @details   - UMAT
+!> @details   - DFLUX
 !--------------------------------------------------------------------------------------------------
 #define Abaqus
 
@@ -339,6 +342,33 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
 
 end subroutine UMAT
 
+!--------------------------------------------------------------------------------------------------
+!> @brief calculate internal heat generated due to inelastic energy dissipation
+!--------------------------------------------------------------------------------------------------
+SUBROUTINE DFLUX(FLUX,SOL,KSTEP,KINC,TIME,NOEL,NPT,COORDS,&
+           JLTYP,TEMP,PRESS,SNAME)
+ use prec, only: &
+   pReal, &
+   pInt
+ use thermal_conduction, only: &
+   thermal_conduction_getSourceAndItsTangent
+ use mesh, only: &
+   mesh_FEasCP
+
+ implicit none
+ character(len=1024) :: sname
+ real(pReal), dimension(2), intent(out) :: flux
+ real(pReal), intent(in) :: sol
+ Integer(pInt), intent(in) :: Kstep, Kinc, Noel, Npt
+ real(pReal), dimension(3), intent(in) :: coords
+ real(pReal), intent(in) :: time
+ real(pReal) :: Jltyp
+ real(pReal), intent(in) :: temp
+ real(pReal), intent(in) :: Press
+
+ jltyp = 1
+ call thermal_conduction_getSourceAndItsTangent(flux(1), flux(2), sol, npt,mesh_FEasCP('elem',noel))
+end subroutine DFLUX
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calls the exit function of Abaqus/Standard

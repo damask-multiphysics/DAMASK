@@ -16,6 +16,7 @@
 !> @details  Marc subroutines used:
 !> @details   - hypela2
 !> @details   - plotv
+!> @details   - flux
 !> @details   - quit
 !> @details  Marc common blocks included:
 !> @details   - concom: lovl, inc
