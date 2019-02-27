@@ -166,7 +166,7 @@ def progressBar(iteration, total, prefix='', bar_length=50):
 
   sys.stderr.write('\r{} {} {}'.format(prefix, bar, remaining_time)),
 
-  if iteration == total: sys.stderr.write('\n\n')
+  if iteration == total: sys.stderr.write('\n')
   sys.stderr.flush()
 
 # -----------------------------
