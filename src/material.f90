@@ -981,7 +981,7 @@ subroutine material_allocateSourceState(phase,of,NofMyPhase,&
  sourceState(phase)%p(of)%sizeState        = sizeState
  sourceState(phase)%p(of)%sizeDotState     = sizeDotState
  sourceState(phase)%p(of)%sizeDeltaState   = sizeDeltaState
- plasticState(phase)%offsetDeltaState = sizeState-sizeDeltaState                                    ! deltaState occupies latter part of state by definition
+ sourceState(phase)%p(of)%offsetDeltaState = sizeState-sizeDeltaState                               ! deltaState occupies latter part of state by definition
 
  allocate(sourceState(phase)%p(of)%aTolState           (sizeState),                source=0.0_pReal)
  allocate(sourceState(phase)%p(of)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
