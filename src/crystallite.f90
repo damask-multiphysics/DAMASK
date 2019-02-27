@@ -602,8 +602,8 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
               .and. ((e == debug_e .and. i == debug_i .and. c == debug_g) &
                      .or. .not. iand(debug_level(debug_crystallite),debug_levelSelective) /= 0_pInt)) then
              if (crystallite_todo(c,i,e)) then
-               write(6,'(a,f12.8,a,i8,1x,i2,1x,i3,/)') '<< CRYST stress >> cutback with new crystallite_subStep: ',&
-                                                     crystallite_subStep(c,i,e),' at el ip ipc ',e,i,c
+               write(6,'(a,f12.8,a,i8,1x,i2,1x,i3,/)') '<< CRYST stress >> cutback with new crystallite_subStep: ', &
+                                                       crystallite_subStep(c,i,e),' at el ip ipc ',e,i,c
              else
                write(6,'(a,i8,1x,i2,1x,i3,/)') '<< CRYST stress >> reached minimum step size at el ip ipc ',e,i,c
              endif
@@ -631,8 +631,10 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
 
 #ifdef DEBUG
    if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
-     write(6,'(/,a,f8.5,a,f8.5,/)') '<< CRYST stress >> ',minval(crystallite_subStep),' ≤ subStep ≤ ',maxval(crystallite_subStep)
-     write(6,'(/,a,f8.5,a,f8.5,/)') '<< CRYST stress >> ',minval(crystallite_subFrac),' ≤ subFrac ≤ ',maxval(crystallite_subFrac)
+     write(6,'(/,a,f8.5,a,f8.5,/)') '<< CRYST stress >> ',minval(crystallite_subStep), &
+                                          ' ≤ subStep ≤ ',maxval(crystallite_subStep)
+     write(6,'(/,a,f8.5,a,f8.5,/)') '<< CRYST stress >> ',minval(crystallite_subFrac), &
+                                          ' ≤ subFrac ≤ ',maxval(crystallite_subFrac)
      flush(6)
      if (iand(debug_level(debug_crystallite),debug_levelSelective) /= 0_pInt) then
        write(6,'(/,a,f8.5,1x,a,1x,f8.5,1x,a)') '<< CRYST stress >> subFrac + subStep = ',&
