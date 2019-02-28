@@ -38,6 +38,10 @@ parser.add_option('--float',
                   dest = 'real',
                   action = 'store_true',
                   help = 'use float input')
+parser.add_option('--blank',
+                  dest = 'blank',
+                  action = 'store_true',
+                  help = 'blank out (optional) input canvas content')
 
 parser.set_defaults(grid = ['0','0','0'],
                     offset = (0,0,0),
@@ -48,7 +52,8 @@ parser.set_defaults(grid = ['0','0','0'],
 (options, filenames) = parser.parse_args()
 
 datatype = 'f' if options.real else 'i'
-
+options.grid = ['1','1','1'] if options.blank and options.grid == ['0','0','0'] else options.grid
+options.fill = 1 if options.blank and options.fill == 0 else options.fill
 
 # --- loop over input files -------------------------------------------------------------------------
 
@@ -61,23 +66,33 @@ for name in filenames:
   except: continue
   damask.util.report(scriptName,name)
 
+  if options.blank:
+    extra_header = []
+    info = {}
+    info['grid']   = np.zeros(3,dtype=int)
+    info['size']   = np.zeros(3,dtype=float)
+    info['origin'] = np.zeros(3,dtype=float)
+    info['microstructures'] = 0
+    info['homogenization'] = 1
+  else:
+
 # --- interpret header ----------------------------------------------------------------------------
 
-  table.head_read()
-  info,extra_header = table.head_getGeom()
-  damask.util.report_geom(info)
+    table.head_read()
+    info,extra_header = table.head_getGeom()
+    damask.util.report_geom(info)
 
-  errors = []
-  if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
-  if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
-  if errors != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
+    errors = []
+    if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
+    if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
+    if errors != []:
+      damask.util.croak(errors)
+      table.close(dismiss = True)
+      continue
 
 # --- read data ------------------------------------------------------------------------------------
 
-  microstructure = table.microstructure_read(info['grid'],datatype).reshape(info['grid'],order='F')          # read microstructure
+    microstructure = table.microstructure_read(info['grid'],datatype).reshape(info['grid'],order='F')          # read microstructure
 
 # --- do work ------------------------------------------------------------------------------------
  
@@ -93,28 +108,28 @@ for name in filenames:
 
   microstructure_cropped = np.zeros(newInfo['grid'],datatype)
   microstructure_cropped.fill(options.fill if options.real or options.fill > 0 else microstructure.max()+1)
-  xindex = list(set(range(options.offset[0],options.offset[0]+newInfo['grid'][0])) & \
-                                                               set(range(info['grid'][0])))
-  yindex = list(set(range(options.offset[1],options.offset[1]+newInfo['grid'][1])) & \
-                                                               set(range(info['grid'][1])))
-  zindex = list(set(range(options.offset[2],options.offset[2]+newInfo['grid'][2])) & \
-                                                               set(range(info['grid'][2])))
-  translate_x = [i - options.offset[0] for i in xindex]
-  translate_y = [i - options.offset[1] for i in yindex]
-  translate_z = [i - options.offset[2] for i in zindex]
-  if 0 in map(len,[xindex,yindex,zindex,translate_x,translate_y,translate_z]):
-    damask.util.croak('invaldid grid-offset combination.')
-    table.close(dismiss = True)
-    continue
-  microstructure_cropped[min(translate_x):(max(translate_x)+1),\
-                         min(translate_y):(max(translate_y)+1),\
-                         min(translate_z):(max(translate_z)+1)] \
-        = microstructure[min(xindex):(max(xindex)+1),\
-                         min(yindex):(max(yindex)+1),\
-                         min(zindex):(max(zindex)+1)]
+  
+  if not options.blank:
+    xindex = np.arange(max(options.offset[0],0),min(options.offset[0]+newInfo['grid'][0],info['grid'][0]))
+    yindex = np.arange(max(options.offset[1],0),min(options.offset[1]+newInfo['grid'][1],info['grid'][1]))
+    zindex = np.arange(max(options.offset[2],0),min(options.offset[2]+newInfo['grid'][2],info['grid'][2]))
+    translate_x = [i - options.offset[0] for i in xindex]
+    translate_y = [i - options.offset[1] for i in yindex]
+    translate_z = [i - options.offset[2] for i in zindex]
+    if 0 in map(len,[xindex,yindex,zindex,translate_x,translate_y,translate_z]):
+      damask.util.croak('invaldid combination of grid and offset.')
+      table.close(dismiss = True)
+      continue
+    microstructure_cropped[min(translate_x):max(translate_x)+1,
+                           min(translate_y):max(translate_y)+1,
+                           min(translate_z):max(translate_z)+1] \
+          = microstructure[min(xindex):max(xindex)+1,
+                           min(yindex):max(yindex)+1,
+                           min(zindex):max(zindex)+1]
 
-  newInfo['size']   = info['size']/info['grid']*newInfo['grid']
-  newInfo['origin'] = info['origin']+info['size']/info['grid']*options.offset
+  newInfo['size']   = info['size']/info['grid']*newInfo['grid'] if np.all(info['grid'] > 0) else newInfo['grid']
+  newInfo['origin'] = info['origin']+(info['size']/info['grid'] if np.all(info['grid'] > 0) \
+                              else newInfo['size']/newInfo['grid'])*options.offset
   newInfo['microstructures'] = microstructure_cropped.max()
 
 # --- report ---------------------------------------------------------------------------------------
