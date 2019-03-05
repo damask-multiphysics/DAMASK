@@ -22,13 +22,13 @@ from grain data (individual grains are segmented). Requires orientation data as 
 
 parser.add_option('-b','--basegroup',
                   dest = 'basegroup', metavar = 'string',
-                  help = 'name of the group in "DataContainers" that contains all the data')
+                  help = 'name of the group in "DataContainers" containing the pointwise (and, if applicable grain average) data')
 parser.add_option('-p','--pointwise',
                   dest = 'pointwise', metavar = 'string',
-                  help = 'name of the group in "DataContainers/<basegroup>" that contains pointwise data [%default]')
+                  help = 'name of the group in "DataContainers/<basegroup>" containing pointwise data [%default]')
 parser.add_option('-a','--average',
                   dest = 'average', metavar = 'string',
-                  help = 'name of the group in "DataContainers</basegroup>" that contains grain average data. '\
+                  help = 'name of the group in "DataContainers</basegroup>" containing grain average data. '\
                        + 'Leave empty for pointwise data')
 parser.add_option('--phase',
                   dest = 'phase',
@@ -88,20 +88,19 @@ for name in filenames:
   if options.average is None:
     label = 'point'
     N_microstructure = np.product(info['grid'])
-    
+
     dataset = os.path.join(group_pointwise,options.quaternion)
     try:
-      quats = np.reshape(inFile[dataset][...],(N_microstructure,3))
+      quats   = np.reshape(inFile[dataset][...],(N_microstructure,4))
+      texture = [damask.Rotation.fromQuaternion(q,True,P=+1) for q in quats]
     except:
-      errors.append('Pointwise orientation data ({}) not found'.format(dataset))
+      errors.append('Pointwise orientation (quaternion) data ({}) not readable'.format(dataset))
       
-    texture = [damask.Rotation.fromQuaternion(q,True,P=+1) for q in quats]
-
     dataset = os.path.join(group_pointwise,options.phase)
     try:
       phase = np.reshape(inFile[dataset][...],(N_microstructure))
     except:
-      errors.append('Pointwise phase data ({}) not found'.format(dataset))
+      errors.append('Pointwise phase data ({}) not readable'.format(dataset))
 
     
   else:
@@ -112,7 +111,7 @@ for name in filenames:
       microstructure = np.reshape(inFile[dataset][...],(np.product(info['grid'])))
       N_microstructure = np.max(microstructure)
     except:
-      errors.append('Link between pointwise and grain average data ({}) not found'.format(dataset))
+      errors.append('Link between pointwise and grain average data ({}) not readable'.format(dataset))
 
     group_average = os.path.join(rootDir,options.basegroup,options.average)
     
@@ -120,13 +119,13 @@ for name in filenames:
     try:
       texture = [damask.Rotation.fromQuaternion(q,True,P=+1) for q in inFile[dataset][...][1:]]     # skip first entry (unindexed)
     except:
-      errors.append('Average orientation data ({}) not found'.format(dataset))
+      errors.append('Average orientation data ({}) not readable'.format(dataset))
       
     dataset = os.path.join(group_average,options.phase)
     try:
       phase = [i[0] for i in inFile[dataset][...]][1:]                                              # skip first entry (unindexed)
     except:
-      errors.append('Average phase data ({}) not found'.format(dataset))
+      errors.append('Average phase data ({}) not readable'.format(dataset))
 
   if errors != []:
     damask.util.croak(errors)
