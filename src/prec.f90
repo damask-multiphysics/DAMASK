@@ -79,6 +79,8 @@ module prec
     integer(pInt), pointer, dimension(:,:) :: p                                  
   end type 
 
+  real(pReal), private, parameter :: DBL_EPSILON = 2.220446049250313E-16_pReal                      !< minimum positive number such that 1.0 + DBL_EPSILON /= 1.0. 
+  real(pReal), private, parameter :: DBL_MIN     = 2.2250738585072014E-308_pReal                    !< smallest normalized floating point number
 
   public :: &
     prec_init, &
@@ -126,12 +128,19 @@ end subroutine prec_init
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dEq(a,b,tol)
 
- implicit none
- real(pReal), intent(in)           :: a,b
- real(pReal), intent(in), optional :: tol
- real(pReal), parameter            :: eps = 2.220446049250313E-16                                   ! DBL_EPSILON in C
+  implicit none
+  real(pReal), intent(in)           :: a,b
+  real(pReal), intent(in), optional :: tol
+  real(pReal)                       :: eps
+  
+  if (present(tol)) then
+    eps = tol
+  else
+    eps = DBL_EPSILON * maxval(abs([a,b]))
+  endif
 
- dEq = merge(.True.,.False.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+  dEq = merge(.True.,.False.,abs(a-b) < eps)
+
 end function dEq
 
 
@@ -143,12 +152,19 @@ end function dEq
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dNeq(a,b,tol)
 
- implicit none
- real(pReal), intent(in)           :: a,b
- real(pReal), intent(in), optional :: tol
- real(pReal), parameter            :: eps = 2.220446049250313E-16                                   ! DBL_EPSILON in C
+  implicit none
+  real(pReal), intent(in)           :: a,b
+  real(pReal), intent(in), optional :: tol
+  real(pReal)                       :: eps
+  
+  if (present(tol)) then
+    eps = tol
+  else
+    eps = DBL_EPSILON * maxval(abs([a,b]))
+  endif
 
- dNeq = merge(.False.,.True.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+  dNeq = merge(.False.,.True.,abs(a-b) <= eps)
+
 end function dNeq
 
 
@@ -160,12 +176,19 @@ end function dNeq
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dEq0(a,tol)
 
- implicit none
- real(pReal), intent(in)           :: a
- real(pReal), intent(in), optional :: tol
- real(pReal), parameter            :: eps = 2.2250738585072014E-308                                 ! smallest non-denormalized number
+  implicit none
+  real(pReal), intent(in)           :: a
+  real(pReal), intent(in), optional :: tol
+  real(pReal)                       :: eps
+  
+  if (present(tol)) then
+    eps = tol
+  else
+    eps = DBL_MIN * 10.0_pReal
+  endif
 
- dEq0 = merge(.True.,.False.,abs(a) <= merge(tol,eps,present(tol)))
+  dEq0 = merge(.True.,.False.,abs(a) < eps)
+
 end function dEq0
 
 
@@ -177,12 +200,19 @@ end function dEq0
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dNeq0(a,tol)
 
- implicit none
- real(pReal), intent(in)           :: a
- real(pReal), intent(in), optional :: tol
- real(pReal), parameter            :: eps = 2.2250738585072014E-308                                 ! smallest non-denormalized number
+  implicit none
+  real(pReal), intent(in)           :: a
+  real(pReal), intent(in), optional :: tol
+  real(pReal)                       :: eps
+  
+  if (present(tol)) then
+    eps = tol
+  else
+    eps = DBL_MIN * 10.0_pReal
+  endif
 
- dNeq0 = merge(.False.,.True.,abs(a) <= merge(tol,eps,present(tol)))
+  dNeq0 = merge(.False.,.True.,abs(a) <= eps)
+
 end function dNeq0
 
 
@@ -195,12 +225,19 @@ end function dNeq0
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function cEq(a,b,tol)
 
- implicit none
- complex(pReal), intent(in)           :: a,b
- real(pReal),    intent(in), optional :: tol
- real(pReal),    parameter            :: eps = 2.220446049250313E-16                                ! DBL_EPSILON in C
+  implicit none
+  complex(pReal), intent(in)           :: a,b
+  real(pReal),    intent(in), optional :: tol
+  real(pReal)                          :: eps
+  
+  if (present(tol)) then
+    eps = tol
+  else
+    eps = DBL_EPSILON * maxval(abs([a,b]))
+  endif
 
- cEq = merge(.True.,.False.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+  cEq = merge(.True.,.False.,abs(a-b) < eps)
+
 end function cEq
 
 
@@ -213,12 +250,19 @@ end function cEq
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function cNeq(a,b,tol)
 
- implicit none
- complex(pReal), intent(in)           :: a,b
- real(pReal),    intent(in), optional :: tol
- real(pReal),    parameter            :: eps = 2.220446049250313E-16                                ! DBL_EPSILON in C
+  implicit none
+  complex(pReal), intent(in)           :: a,b
+  real(pReal),    intent(in), optional :: tol
+  real(pReal)                          :: eps
+  
+  if (present(tol)) then
+    eps = tol
+  else
+    eps = DBL_EPSILON * maxval(abs([a,b]))
+  endif
 
- cNeq = merge(.False.,.True.,abs(a-b) <= merge(tol,eps,present(tol))*maxval(abs([a,b])))
+  cNeq = merge(.False.,.True.,abs(a-b) <= eps)
+
 end function cNeq
 
 end module prec
