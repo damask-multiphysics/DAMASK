@@ -8,8 +8,7 @@
 module debug
  use prec, only: &
    pInt, &
-   pReal, &
-   pLongInt
+   pReal
 
  implicit none
  private
