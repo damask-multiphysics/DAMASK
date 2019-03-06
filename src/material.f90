@@ -15,7 +15,6 @@ module material
    tPlasticState, &
    tSourceState, &
    tHomogMapping, &
-   tPhaseMapping, &
    group_float, &
    group_int
 

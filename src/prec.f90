@@ -7,94 +7,89 @@
 !> @brief    setting precision for real and int type
 !--------------------------------------------------------------------------------------------------
 module prec
-! ToDo:    use, intrinsic :: iso_fortran_env, only : I8 => int64, WP => real64 
- implicit none
- private 
-#if (FLOAT==8)
- integer,     parameter, public :: pReal = 8                                                        !< floating point double precision (was selected_real_kind(15,300), number with 15 significant digits, up to 1e+-300)
-#else
- NO SUITABLE PRECISION FOR REAL SELECTED, STOPPING COMPILATION
-#endif
-
-#if (INT==4)
- integer,     parameter, public :: pInt  = 4                                                        !< integer representation 32 bit (was selected_int_kind(9), number with at least up to +- 1e9)
-#elif (INT==8)
- integer,     parameter, public :: pInt  = 8                                                        !< integer representation 64 bit (was selected_int_kind(12), number with at least up to +- 1e12)
-#else
- NO SUITABLE PRECISION FOR INTEGER SELECTED, STOPPING COMPILATION
-#endif
-
- integer,     parameter, public :: pStringLen = 256                                                 !< default string lenth
- integer,     parameter, public :: pLongInt  = 8                                                    !< integer representation 64 bit (was selected_int_kind(12), number with at least up to +- 1e12)
- real(pReal), parameter, public :: tol_math_check = 1.0e-8_pReal                                    !< tolerance for internal math self-checks (rotation)
-
- integer(pInt), allocatable, dimension(:) :: realloc_lhs_test
-
- type, public :: group_float                                                                        !< variable length datatype used for storage of state
-   real(pReal), dimension(:), pointer :: p
- end type group_float
-
- type, public :: group_int
-   integer(pInt), dimension(:), pointer :: p
- end type group_int
-
-!http://stackoverflow.com/questions/3948210/can-i-have-a-pointer-to-an-item-in-an-allocatable-array
- type, public :: tState
-   integer(pInt) :: &
-     sizeState        = 0_pInt, &                                                                   !< size of state
-     sizeDotState     = 0_pInt, &                                                                   !< size of dot state, i.e. state(1:sizeDot) follows time evolution by dotState rates
-     offsetDeltaState = 0_pInt, &                                                                   !< index offset of delta state
-     sizeDeltaState   = 0_pInt, &                                                                   !< size of delta state, i.e. state(offset+1:offset+sizeDelta) follows time evolution by deltaState increments
-     sizePostResults  = 0_pInt                                                                      !< size of output data
-   real(pReal), pointer,     dimension(:), contiguous :: &
-     atolState
-   real(pReal), pointer,     dimension(:,:), contiguous :: &                                        ! a pointer is needed here because we might point to state/doState. However, they will never point to something, but are rather allocated and, hence, contiguous 
-     state0, &
-     state, &                                                                                       !< state
-     dotState, &                                                                                    !< rate of state change
-     deltaState                                                                                     !< increment of state change
-   real(pReal), allocatable, dimension(:,:) :: &
-     partionedState0, &
-     subState0, &
-     previousDotState, &                                                                            !< state rate of previous xxxx
-     previousDotState2, &                                                                           !< state rate two xxxx ago
-     RK4dotState
-   real(pReal), allocatable, dimension(:,:,:) :: &
-     RKCK45dotState
- end type
-
- type, extends(tState), public :: tPlasticState
-   integer(pInt) :: &
-     nSlip = 0_pInt , &
-     nTwin = 0_pInt, &
-     nTrans = 0_pInt
-   logical :: & 
-     nonlocal = .false.
-   real(pReal), pointer,     dimension(:,:) :: &
-     slipRate, &                                                                                    !< slip rate
-     accumulatedSlip                                                                                !< accumulated plastic slip
- end type
-
- type, public :: tSourceState
-   type(tState), dimension(:), allocatable :: p                                                     !< tState for each active source mechanism in a phase
- end type
+  use, intrinsic :: IEEE_arithmetic, only:&
+    IEEE_selected_real_kind
  
- type, public :: tHomogMapping
-   integer(pInt), pointer, dimension(:,:) :: p                                  
- end type 
+  implicit none
+  private 
+  ! https://software.intel.com/en-us/blogs/2017/03/27/doctor-fortran-in-it-takes-all-kinds
 
- type, public :: tPhaseMapping
-   integer(pInt), pointer, dimension(:,:,:) :: p
- end type 
+  integer,     parameter, public :: pReal      = IEEE_selected_real_kind(15,307)                    !< number with 15 significant digits, up to 1e+-300 (typically 64 bit)
+#if (INT==4)
+  integer,     parameter, public :: pInt       = selected_int_kind(9)                               !< number with at least up to +-1e9 (typically 32 bit)
+#elif (INT==8)
+  integer,     parameter, public :: pInt       = selected_int_kind(18)                              !< number with at least up to +-1e18 (typically 64 bit)
+#else
+  NO SUITABLE PRECISION FOR INTEGER SELECTED, STOPPING COMPILATION
+#endif
+  integer,     parameter, public :: pLongInt   = selected_int_kind(18)                              !< number with at least up to +-1e18 (typically 64 bit)
+  integer,     parameter, public :: pStringLen = 256                                                !< default string length
 
- public :: &
-   prec_init, &
-   dEq, &
-   dEq0, &
-   cEq, &
-   dNeq, &
-   dNeq0, &
-   cNeq
+  real(pReal), parameter, public :: tol_math_check = 1.0e-8_pReal                                   !< tolerance for internal math self-checks (rotation)
+
+
+  type, public :: group_float                                                                       !< variable length datatype used for storage of state
+    real(pReal), dimension(:), pointer :: p
+  end type group_float
+
+  type, public :: group_int
+    integer(pInt), dimension(:), pointer :: p
+  end type group_int
+
+  ! http://stackoverflow.com/questions/3948210/can-i-have-a-pointer-to-an-item-in-an-allocatable-array
+  type, public :: tState
+    integer(pInt) :: &
+      sizeState        = 0_pInt, &                                                                  !< size of state
+      sizeDotState     = 0_pInt, &                                                                  !< size of dot state, i.e. state(1:sizeDot) follows time evolution by dotState rates
+      offsetDeltaState = 0_pInt, &                                                                  !< index offset of delta state
+      sizeDeltaState   = 0_pInt, &                                                                  !< size of delta state, i.e. state(offset+1:offset+sizeDelta) follows time evolution by deltaState increments
+      sizePostResults  = 0_pInt                                                                     !< size of output data
+    real(pReal), pointer,     dimension(:), contiguous :: &
+      atolState
+    real(pReal), pointer,     dimension(:,:), contiguous :: &                                       ! a pointer is needed here because we might point to state/doState. However, they will never point to something, but are rather allocated and, hence, contiguous 
+      state0, &
+      state, &                                                                                      !< state
+      dotState, &                                                                                   !< rate of state change
+      deltaState                                                                                    !< increment of state change
+    real(pReal), allocatable, dimension(:,:) :: &
+      partionedState0, &
+      subState0, &
+      previousDotState, &                                                                           !< state rate of previous xxxx
+      previousDotState2, &                                                                          !< state rate two xxxx ago
+      RK4dotState
+    real(pReal), allocatable, dimension(:,:,:) :: &
+      RKCK45dotState
+  end type
+
+  type, extends(tState), public :: tPlasticState
+    integer(pInt) :: &
+      nSlip = 0_pInt , &
+      nTwin = 0_pInt, &
+      nTrans = 0_pInt
+    logical :: & 
+      nonlocal = .false.
+    real(pReal), pointer,     dimension(:,:) :: &
+      slipRate, &                                                                                   !< slip rate
+      accumulatedSlip                                                                               !< accumulated plastic slip
+  end type
+
+  type, public :: tSourceState
+    type(tState), dimension(:), allocatable :: p                                                    !< tState for each active source mechanism in a phase
+  end type
+  
+  type, public :: tHomogMapping
+    integer(pInt), pointer, dimension(:,:) :: p                                  
+  end type 
+
+
+  public :: &
+    prec_init, &
+    dEq, &
+    dEq0, &
+    cEq, &
+    dNeq, &
+    dNeq0, &
+    cNeq
  
 contains
 
@@ -103,24 +98,24 @@ contains
 !> @brief reporting precision
 !--------------------------------------------------------------------------------------------------
 subroutine prec_init
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
 
- implicit none
- external :: &
-   quit
+  implicit none
+  integer(pInt), allocatable, dimension(:) :: realloc_lhs_test
 
- write(6,'(/,a)') ' <<<+-  prec init  -+>>>'
-#include "compilation_info.f90"
- write(6,'(a,i3)')    ' Bytes for pReal:    ',pReal
- write(6,'(a,i3)')    ' Bytes for pInt:     ',pInt
- write(6,'(a,i3)')    ' Bytes for pLongInt: ',pLongInt
+  external :: &
+    quit
 
- realloc_lhs_test = [1_pInt,2_pInt]
- if (realloc_lhs_test(2)/=2_pInt) call quit(9000)
+  write(6,'(/,a)') ' <<<+-  prec init  -+>>>'
+
+  write(6,'(a,i3)')    ' Size of integer in bit: ',bit_size(0_pInt)
+  write(6,'(a,i19)')   '   Maximum value:        ',huge(0_pInt)
+  write(6,'(/,a,i3)')  ' Size of float in bit:   ',storage_size(0.0_pReal)
+  write(6,'(a,e10.3)') '   Maximum value:        ',huge(0.0_pReal)
+  write(6,'(a,e10.3)') '   Minimum value:        ',tiny(0.0_pReal)
+  write(6,'(a,i3)')    '   Decimal precision:    ',precision(0.0_pReal)
+
+  realloc_lhs_test = [1_pInt,2_pInt]
+  if (realloc_lhs_test(2)/=2_pInt) call quit(9000)
  
 end subroutine prec_init
 
