@@ -89,26 +89,27 @@ module HDF5_utilities
 contains
 
 subroutine HDF5_utilities_init
- use, intrinsic :: &
-   iso_fortran_env  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 
- implicit none
- integer(HDF5_ERR_TYPE) :: hdferr
- integer(SIZE_T)        :: typeSize
+  implicit none
+  integer(HDF5_ERR_TYPE) :: hdferr
+  integer(SIZE_T)        :: typeSize
 
- write(6,'(/,a)') ' <<<+-  HDF5_Utilities init  -+>>>'
-#include "compilation_info.f90"
+  write(6,'(/,a)') ' <<<+-  HDF5_Utilities init  -+>>>'
 
 !--------------------------------------------------------------------------------------------------
 !initialize HDF5 library and check if integer and float type size match
- call h5open_f(hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5open_f')
- call h5tget_size_f(H5T_NATIVE_INTEGER,typeSize, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5tget_size_f (int)')
- if (int(pInt,SIZE_T)/=typeSize) call IO_error(0_pInt,ext_msg='pInt does not match H5T_NATIVE_INTEGER')
- call h5tget_size_f(H5T_NATIVE_DOUBLE,typeSize, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_Utilities_init: h5tget_size_f (double)')
- if (int(pReal,SIZE_T)/=typeSize) call IO_error(0_pInt,ext_msg='pReal does not match H5T_NATIVE_DOUBLE')
+  call h5open_f(hdferr)
+  if (hdferr < 0) call IO_error(1,ext_msg='HDF5_Utilities_init: h5open_f')
+
+  call h5tget_size_f(H5T_NATIVE_INTEGER,typeSize, hdferr)
+  if (hdferr < 0) call IO_error(1,ext_msg='HDF5_Utilities_init: h5tget_size_f (int)')
+  if (int(bit_size(0),SIZE_T)/=typeSize*8) &
+    call IO_error(0_pInt,ext_msg='Default integer size does not match H5T_NATIVE_INTEGER')
+
+  call h5tget_size_f(H5T_NATIVE_DOUBLE,typeSize, hdferr)
+  if (hdferr < 0) call IO_error(1,ext_msg='HDF5_Utilities_init: h5tget_size_f (double)')
+  if (int(storage_size(0.0_pReal),SIZE_T)/=typeSize*8) &
+    call IO_error(0,ext_msg='pReal does not match H5T_NATIVE_DOUBLE')
 
 end subroutine HDF5_utilities_init
 
