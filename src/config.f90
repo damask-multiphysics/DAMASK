@@ -17,7 +17,7 @@ module config
    integer(pInt), dimension(:), allocatable :: pos
  end type tPartitionedString
  
- type, public :: tPartitionedStringList
+ type, private :: tPartitionedStringList
    type(tPartitionedString)               :: string
    type(tPartitionedStringList),  pointer :: next => null()
    contains
