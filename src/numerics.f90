@@ -70,22 +70,12 @@ module numerics
    err_thermal_tolAbs         =  1.0e-2_pReal, &                                                    !< absolute tolerance for thermal equilibrium
    err_thermal_tolRel         =  1.0e-6_pReal, &                                                    !< relative tolerance for thermal equilibrium
    err_damage_tolAbs          =  1.0e-2_pReal, &                                                    !< absolute tolerance for damage evolution
-   err_damage_tolRel          =  1.0e-6_pReal, &                                                    !< relative tolerance for damage evolution
-   err_vacancyflux_tolAbs     =  1.0e-8_pReal, &                                                    !< absolute tolerance for vacancy transport
-   err_vacancyflux_tolRel     =  1.0e-6_pReal, &                                                    !< relative tolerance for vacancy transport
-   err_porosity_tolAbs        =  1.0e-2_pReal, &                                                    !< absolute tolerance for porosity evolution
-   err_porosity_tolRel        =  1.0e-6_pReal, &                                                    !< relative tolerance for porosity evolution
-   err_hydrogenflux_tolAbs    =  1.0e-8_pReal, &                                                    !< absolute tolerance for hydrogen transport
-   err_hydrogenflux_tolRel    =  1.0e-6_pReal, &                                                    !< relative tolerance for hydrogen transport
-   vacancyBoundPenalty        =  1.0e+4_pReal, &                                                    !< penalty to enforce 0 < Cv < 1
-   hydrogenBoundPenalty       =  1.0e+4_pReal                                                       !< penalty to enforce 0 < Ch < 1
+   err_damage_tolRel          =  1.0e-6_pReal                                                       !< relative tolerance for damage evolution
  integer(pInt), protected, public :: &
    itmax                      =  250_pInt, &                                                        !< maximum number of iterations
    itmin                      =  1_pInt, &                                                          !< minimum number of iterations
    stagItMax                  =  10_pInt, &                                                         !< max number of field level staggered iterations
-   maxCutBack                 =  3_pInt, &                                                          !< max number of cut backs
-   vacancyPolyOrder           =  10_pInt, &                                                         !< order of polynomial approximation of entropic contribution to vacancy chemical potential
-   hydrogenPolyOrder          =  10_pInt                                                            !< order of polynomial approximation of entropic contribution to hydrogen chemical potential
+   maxCutBack                 =  3_pInt                                                             !< max number of cut backs
 
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters:
@@ -153,11 +143,6 @@ contains
 ! a sanity check
 !--------------------------------------------------------------------------------------------------
 subroutine numerics_init
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use IO, only: &
    IO_read, &
    IO_error, &
@@ -191,8 +176,6 @@ subroutine numerics_init
  call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,ierr);CHKERRQ(ierr)
 #endif
  write(6,'(/,a)') ' <<<+-  numerics init  -+>>>'
- write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
  
 !$ call GET_ENVIRONMENT_VARIABLE(NAME='DAMASK_NUM_THREADS',VALUE=DAMASK_NumThreadsString,STATUS=gotDAMASK_NUM_THREADS)   ! get environment variable DAMASK_NUM_THREADS...
 !$ if(gotDAMASK_NUM_THREADS /= 0) then                                                              ! could not get number of threads, set it to 1
@@ -327,22 +310,6 @@ subroutine numerics_init
          err_damage_tolabs = IO_floatValue(line,chunkPos,2_pInt)
        case ('err_damage_tolrel')
          err_damage_tolrel = IO_floatValue(line,chunkPos,2_pInt)
-       case ('err_vacancyflux_tolabs')
-         err_vacancyflux_tolabs = IO_floatValue(line,chunkPos,2_pInt)
-       case ('err_vacancyflux_tolrel')
-         err_vacancyflux_tolrel = IO_floatValue(line,chunkPos,2_pInt)
-       case ('err_porosity_tolabs')
-         err_porosity_tolabs = IO_floatValue(line,chunkPos,2_pInt)
-       case ('err_porosity_tolrel')
-         err_porosity_tolrel = IO_floatValue(line,chunkPos,2_pInt)
-       case ('err_hydrogenflux_tolabs')
-         err_hydrogenflux_tolabs = IO_floatValue(line,chunkPos,2_pInt)
-       case ('err_hydrogenflux_tolrel')
-         err_hydrogenflux_tolrel = IO_floatValue(line,chunkPos,2_pInt)
-       case ('vacancyboundpenalty')
-         vacancyBoundPenalty = IO_floatValue(line,chunkPos,2_pInt)
-       case ('hydrogenboundpenalty')
-         hydrogenBoundPenalty = IO_floatValue(line,chunkPos,2_pInt)
        case ('itmax')
          itmax = IO_intValue(line,chunkPos,2_pInt)
        case ('itmin')
@@ -351,10 +318,6 @@ subroutine numerics_init
          maxCutBack = IO_intValue(line,chunkPos,2_pInt)
        case ('maxstaggerediter')
          stagItMax = IO_intValue(line,chunkPos,2_pInt)
-       case ('vacancypolyorder')
-         vacancyPolyOrder = IO_intValue(line,chunkPos,2_pInt)
-       case ('hydrogenpolyorder')
-         hydrogenPolyOrder = IO_intValue(line,chunkPos,2_pInt)
 
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters
@@ -509,22 +472,12 @@ subroutine numerics_init
  write(6,'(a24,1x,i8)')      ' itmin:                  ',itmin
  write(6,'(a24,1x,i8)')      ' maxCutBack:             ',maxCutBack
  write(6,'(a24,1x,i8)')      ' maxStaggeredIter:       ',stagItMax
- write(6,'(a24,1x,i8)')      ' vacancyPolyOrder:       ',vacancyPolyOrder
- write(6,'(a24,1x,i8)')      ' hydrogenPolyOrder:      ',hydrogenPolyOrder
  write(6,'(a24,1x,es8.1)')   ' err_struct_tolAbs:      ',err_struct_tolAbs
  write(6,'(a24,1x,es8.1)')   ' err_struct_tolRel:      ',err_struct_tolRel
  write(6,'(a24,1x,es8.1)')   ' err_thermal_tolabs:     ',err_thermal_tolabs
  write(6,'(a24,1x,es8.1)')   ' err_thermal_tolrel:     ',err_thermal_tolrel
  write(6,'(a24,1x,es8.1)')   ' err_damage_tolabs:      ',err_damage_tolabs
  write(6,'(a24,1x,es8.1)')   ' err_damage_tolrel:      ',err_damage_tolrel
- write(6,'(a24,1x,es8.1)')   ' err_vacancyflux_tolabs: ',err_vacancyflux_tolabs
- write(6,'(a24,1x,es8.1)')   ' err_vacancyflux_tolrel: ',err_vacancyflux_tolrel
- write(6,'(a24,1x,es8.1)')   ' err_porosity_tolabs:    ',err_porosity_tolabs
- write(6,'(a24,1x,es8.1)')   ' err_porosity_tolrel:    ',err_porosity_tolrel
- write(6,'(a24,1x,es8.1)')   ' err_hydrogenflux_tolabs:',err_hydrogenflux_tolabs
- write(6,'(a24,1x,es8.1)')   ' err_hydrogenflux_tolrel:',err_hydrogenflux_tolrel
- write(6,'(a24,1x,es8.1)')   ' vacancyBoundPenalty:    ',vacancyBoundPenalty
- write(6,'(a24,1x,es8.1)')   ' hydrogenBoundPenalty:   ',hydrogenBoundPenalty
 
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters
@@ -608,19 +561,12 @@ subroutine numerics_init
  if (itmin > itmax .or. itmin < 1_pInt)    call IO_error(301_pInt,ext_msg='itmin')
  if (maxCutBack < 0_pInt)                  call IO_error(301_pInt,ext_msg='maxCutBack')
  if (stagItMax < 0_pInt)                   call IO_error(301_pInt,ext_msg='maxStaggeredIter')
- if (vacancyPolyOrder < 0_pInt)            call IO_error(301_pInt,ext_msg='vacancyPolyOrder')
  if (err_struct_tolRel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_struct_tolRel')
  if (err_struct_tolAbs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_struct_tolAbs')
  if (err_thermal_tolabs <= 0.0_pReal)      call IO_error(301_pInt,ext_msg='err_thermal_tolabs')
  if (err_thermal_tolrel <= 0.0_pReal)      call IO_error(301_pInt,ext_msg='err_thermal_tolrel')
  if (err_damage_tolabs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_damage_tolabs')
  if (err_damage_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_damage_tolrel')
- if (err_vacancyflux_tolabs <= 0.0_pReal)  call IO_error(301_pInt,ext_msg='err_vacancyflux_tolabs')
- if (err_vacancyflux_tolrel <= 0.0_pReal)  call IO_error(301_pInt,ext_msg='err_vacancyflux_tolrel')
- if (err_porosity_tolabs <= 0.0_pReal)     call IO_error(301_pInt,ext_msg='err_porosity_tolabs')
- if (err_porosity_tolrel <= 0.0_pReal)     call IO_error(301_pInt,ext_msg='err_porosity_tolrel')
- if (err_hydrogenflux_tolabs <= 0.0_pReal) call IO_error(301_pInt,ext_msg='err_hydrogenflux_tolabs')
- if (err_hydrogenflux_tolrel <= 0.0_pReal) call IO_error(301_pInt,ext_msg='err_hydrogenflux_tolrel')
 #ifdef Spectral
  if (divergence_correction < 0_pInt .or. &
      divergence_correction > 2_pInt)       call IO_error(301_pInt,ext_msg='divergence_correction')

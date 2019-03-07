@@ -102,14 +102,6 @@ module spectral_utilities
    real(pReal) :: timeincOld
  end type tSolutionParams
 
- type, public :: phaseFieldDataBin                                                                  !< set of parameters defining a phase field
-   real(pReal)       :: diffusion      = 0.0_pReal, &                                               !< thermal conductivity
-                        mobility       = 0.0_pReal, &                                               !< thermal mobility
-                        phaseField0    = 0.0_pReal                                                  !< homogeneous damage field starting condition
-   logical           :: active         = .false.
-   character(len=64) :: label      = ''
- end type phaseFieldDataBin
-
  enum, bind(c)
    enumerator :: DERIVATIVE_CONTINUOUS_ID, &
                  DERIVATIVE_CENTRAL_DIFF_ID, &
