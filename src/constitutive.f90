@@ -755,8 +755,7 @@ end subroutine constitutive_hooke_SandItsTangents
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_collectDotState(S, FeArray, Fi, FpArray, subdt, ipc, ip, el)
  use prec, only: &
-   pReal, &
-   pLongInt
+   pReal
  use debug, only: &
    debug_level, &
    debug_constitutive, &
@@ -896,8 +895,7 @@ end subroutine constitutive_collectDotState
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_collectDeltaState(S, Fe, Fi, ipc, ip, el)
  use prec, only: &
-   pReal, &
-   pLongInt
+   pReal
  use debug, only: &
    debug_level, &
    debug_constitutive, &

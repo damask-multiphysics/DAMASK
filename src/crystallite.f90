@@ -1088,8 +1088,7 @@ logical function integrateStress(&
       )
  use, intrinsic :: &
    IEEE_arithmetic
- use prec, only:         pLongInt, &
-                         tol_math_check, &
+ use prec, only:         tol_math_check, &
                          dEq0
  use numerics, only:     nStress, &
                          aTol_crystalliteStress, &

@@ -93,7 +93,7 @@ subroutine CPFEM_init
    compiler_options
 #endif
  use prec, only: &
-   pInt, pReal, pLongInt
+   pInt, pReal
  use IO, only: &
    IO_timeStamp, &
    IO_error
