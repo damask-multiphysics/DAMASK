@@ -150,15 +150,9 @@ contains
 !> Initializes FFTW.
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_init()
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use IO, only: &
    IO_error, &
    IO_warning, &
-   IO_timeStamp, &
    IO_open_file
  use numerics, only: &
    spectral_derivative, &
@@ -203,8 +197,6 @@ subroutine utilities_init()
  write(6,'(/,a)') ' <<<+-  spectral_utilities init  -+>>>'
  write(6,'(/,a)') ' Eisenlohr et al., International Journal of Plasticity, 46:37–53, 2013'
  write(6,'(a,/)') ' https://doi.org/10.1016/j.ijplas.2012.09.012'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters
@@ -1033,31 +1025,31 @@ end function utilities_calculateRate
 !> ensures that the average matches the aim
 !--------------------------------------------------------------------------------------------------
 function utilities_forwardField(timeinc,field_lastInc,rate,aim)
- use mesh, only: &
-   grid3, &
-   grid
+  use mesh, only: &
+    grid3, &
+    grid
 
- implicit none
- real(pReal), intent(in) :: &
-   timeinc                                                                                          !< timeinc of current step
- real(pReal), intent(in),           dimension(3,3,grid(1),grid(2),grid3) :: &
-   field_lastInc, &                                                                                 !< initial field
-   rate                                                                                             !< rate by which to forward
- real(pReal), intent(in), optional, dimension(3,3) :: &
-   aim                                                                                              !< average field value aim
- real(pReal),                       dimension(3,3,grid(1),grid(2),grid3) :: &
-   utilities_forwardField
- real(pReal),                       dimension(3,3)                       :: fieldDiff               !< <a + adot*t> - aim
- PetscErrorCode :: ierr
+  implicit none
+  real(pReal), intent(in) :: &
+    timeinc                                                                                         !< timeinc of current step
+  real(pReal), intent(in),           dimension(3,3,grid(1),grid(2),grid3) :: &
+    field_lastInc, &                                                                                !< initial field
+    rate                                                                                            !< rate by which to forward
+  real(pReal), intent(in), optional, dimension(3,3) :: &
+    aim                                                                                             !< average field value aim
+  real(pReal),                       dimension(3,3,grid(1),grid(2),grid3) :: &
+    utilities_forwardField
+  real(pReal),                       dimension(3,3)                       :: fieldDiff              !< <a + adot*t> - aim
+  PetscErrorCode :: ierr
 
- utilities_forwardField = field_lastInc + rate*timeinc
- if (present(aim)) then                                                                             !< correct to match average
-   fieldDiff = sum(sum(sum(utilities_forwardField,dim=5),dim=4),dim=3)*wgt
-   call MPI_Allreduce(MPI_IN_PLACE,fieldDiff,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-   fieldDiff = fieldDiff - aim
-   utilities_forwardField = utilities_forwardField - &
-                    spread(spread(spread(fieldDiff,3,grid(1)),4,grid(2)),5,grid3)
- endif
+  utilities_forwardField = field_lastInc + rate*timeinc
+  if (present(aim)) then                                                                            !< correct to match average
+    fieldDiff = sum(sum(sum(utilities_forwardField,dim=5),dim=4),dim=3)*wgt
+    call MPI_Allreduce(MPI_IN_PLACE,fieldDiff,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
+    fieldDiff = fieldDiff - aim
+    utilities_forwardField = utilities_forwardField - &
+                     spread(spread(spread(fieldDiff,3,grid(1)),4,grid(2)),5,grid3)
+  endif
 
 end function utilities_forwardField
 
@@ -1068,51 +1060,50 @@ end function utilities_forwardField
 ! standard approach
 !--------------------------------------------------------------------------------------------------
 pure function utilities_getFreqDerivative(k_s)
- use math, only: &
-   PI
- use mesh, only: &
-   geomSize, &
-   grid
+  use math, only: &
+    PI
+  use mesh, only: &
+    geomSize, &
+    grid
 
- implicit none
- integer(pInt), intent(in),  dimension(3) :: k_s                                                    !< indices of frequency
- complex(pReal),             dimension(3) :: utilities_getFreqDerivative
+  implicit none
+  integer(pInt), intent(in),  dimension(3) :: k_s                                                   !< indices of frequency
+  complex(pReal),             dimension(3) :: utilities_getFreqDerivative
 
- select case (spectral_derivative_ID)
-   case (DERIVATIVE_CONTINUOUS_ID)                                                                    
-     utilities_getFreqDerivative = cmplx(0.0_pReal, 2.0_pReal*PI*real(k_s,pReal)/geomSize,pReal)
+  select case (spectral_derivative_ID)
+    case (DERIVATIVE_CONTINUOUS_ID)                                                                    
+      utilities_getFreqDerivative = cmplx(0.0_pReal, 2.0_pReal*PI*real(k_s,pReal)/geomSize,pReal)
 
-   case (DERIVATIVE_CENTRAL_DIFF_ID)                                                                    
-     utilities_getFreqDerivative = cmplx(0.0_pReal, sin(2.0_pReal*PI*real(k_s,pReal)/real(grid,pReal)), pReal)/ &
-                                   cmplx(2.0_pReal*geomSize/real(grid,pReal), 0.0_pReal, pReal) 
-   
-   case (DERIVATIVE_FWBW_DIFF_ID)                                                                     
-     utilities_getFreqDerivative(1) = &
-                              cmplx(cos(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)) - 1.0_pReal, &
-                                    sin(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)), pReal)* &
-                              cmplx(cos(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)) + 1.0_pReal, &
-                                    sin(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)), pReal)* &
-                              cmplx(cos(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)) + 1.0_pReal, &
-                                    sin(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)), pReal)/ &
-                              cmplx(4.0_pReal*geomSize(1)/real(grid(1),pReal), 0.0_pReal, pReal)      
-     utilities_getFreqDerivative(2) = &
-                              cmplx(cos(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)) + 1.0_pReal, &
-                                    sin(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)), pReal)* &
-                              cmplx(cos(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)) - 1.0_pReal, &
-                                    sin(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)), pReal)* &
-                              cmplx(cos(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)) + 1.0_pReal, &
-                                    sin(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)), pReal)/ &
-                              cmplx(4.0_pReal*geomSize(2)/real(grid(2),pReal), 0.0_pReal, pReal)      
-     utilities_getFreqDerivative(3) = &
-                              cmplx(cos(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)) + 1.0_pReal, &
-                                    sin(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)), pReal)* &
-                              cmplx(cos(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)) + 1.0_pReal, &
-                                    sin(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)), pReal)* &
-                              cmplx(cos(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)) - 1.0_pReal, &
-                                    sin(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)), pReal)/ &
-                              cmplx(4.0_pReal*geomSize(3)/real(grid(3),pReal), 0.0_pReal, pReal)      
-
- end select
+    case (DERIVATIVE_CENTRAL_DIFF_ID)                                                                    
+      utilities_getFreqDerivative = cmplx(0.0_pReal, sin(2.0_pReal*PI*real(k_s,pReal)/real(grid,pReal)), pReal)/ &
+                                    cmplx(2.0_pReal*geomSize/real(grid,pReal), 0.0_pReal, pReal) 
+    
+    case (DERIVATIVE_FWBW_DIFF_ID)                                                                     
+      utilities_getFreqDerivative(1) = &
+                               cmplx(cos(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)) - 1.0_pReal, &
+                                     sin(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)), pReal)* &
+                               cmplx(cos(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)) + 1.0_pReal, &
+                                     sin(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)), pReal)* &
+                               cmplx(cos(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)) + 1.0_pReal, &
+                                     sin(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)), pReal)/ &
+                               cmplx(4.0_pReal*geomSize(1)/real(grid(1),pReal), 0.0_pReal, pReal)      
+      utilities_getFreqDerivative(2) = &
+                               cmplx(cos(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)) + 1.0_pReal, &
+                                     sin(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)), pReal)* &
+                               cmplx(cos(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)) - 1.0_pReal, &
+                                     sin(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)), pReal)* &
+                               cmplx(cos(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)) + 1.0_pReal, &
+                                     sin(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)), pReal)/ &
+                               cmplx(4.0_pReal*geomSize(2)/real(grid(2),pReal), 0.0_pReal, pReal)      
+      utilities_getFreqDerivative(3) = &
+                               cmplx(cos(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)) + 1.0_pReal, &
+                                     sin(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)), pReal)* &
+                               cmplx(cos(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)) + 1.0_pReal, &
+                                     sin(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)), pReal)* &
+                               cmplx(cos(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)) - 1.0_pReal, &
+                                     sin(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)), pReal)/ &
+                               cmplx(4.0_pReal*geomSize(3)/real(grid(3),pReal), 0.0_pReal, pReal)      
+  end select
 
 end function utilities_getFreqDerivative
 
@@ -1123,59 +1114,60 @@ end function utilities_getFreqDerivative
 ! convolution
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_updateIPcoords(F)
- use prec, only: &
-   cNeq
- use IO, only: &
-   IO_error
- use math, only: &
-   math_mul33x3
- use mesh, only: &
-   grid, &
-   grid3, &
-   grid3Offset, &
-   geomSize, &
-   mesh_ipCoordinates
- implicit none
-
- real(pReal),   dimension(3,3,grid(1),grid(2),grid3), intent(in) :: F
- integer(pInt) :: i, j, k, m, ierr
- real(pReal),   dimension(3) :: step, offset_coords
- real(pReal),   dimension(3,3) :: Favg
-
-!--------------------------------------------------------------------------------------------------
-! integration in Fourier space
- tensorField_real = 0.0_pReal
- tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = F
- call utilities_FFTtensorForward()
- call utilities_fourierTensorDivergence()
-
- do k = 1_pInt, grid3; do j = 1_pInt, grid(2); do i = 1_pInt, grid1Red
-   if (any(cNeq(xi1st(1:3,i,j,k),cmplx(0.0_pReal,0.0_pReal)))) &
-     vectorField_fourier(1:3,i,j,k) = vectorField_fourier(1:3,i,j,k)/ &
-                                      sum(conjg(-xi1st(1:3,i,j,k))*xi1st(1:3,i,j,k))
- enddo; enddo; enddo
- call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
-
-!--------------------------------------------------------------------------------------------------
-! average F
- if (grid3Offset == 0_pInt) Favg = real(tensorField_fourier(1:3,1:3,1,1,1),pReal)*wgt
- call MPI_Bcast(Favg,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
- if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='update_IPcoords')
-
-!--------------------------------------------------------------------------------------------------
-! add average to fluctuation and put (0,0,0) on (0,0,0)
- step = geomSize/real(grid, pReal)
- if (grid3Offset == 0_pInt) offset_coords = vectorField_real(1:3,1,1,1)
- call MPI_Bcast(offset_coords,3,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
- if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='update_IPcoords')
- offset_coords = math_mul33x3(Favg,step/2.0_pReal) - offset_coords
- m = 1_pInt
- do k = 1_pInt,grid3; do j = 1_pInt,grid(2); do i = 1_pInt,grid(1)
-   mesh_ipCoordinates(1:3,1,m) = vectorField_real(1:3,i,j,k) &
-                               + offset_coords &
-                               + math_mul33x3(Favg,step*real([i,j,k+grid3Offset]-1_pInt,pReal))
-   m = m+1_pInt
- enddo; enddo; enddo
+  use prec, only: &
+    cNeq
+  use IO, only: &
+    IO_error
+  use math, only: &
+    math_mul33x3
+  use mesh, only: &
+    grid, &
+    grid3, &
+    grid3Offset, &
+    geomSize, &
+    mesh_ipCoordinates
+  implicit none
+ 
+  real(pReal),   dimension(3,3,grid(1),grid(2),grid3), intent(in) :: F
+  integer(pInt) :: i, j, k, m, ierr
+  real(pReal),   dimension(3) :: step, offset_coords
+  real(pReal),   dimension(3,3) :: Favg
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! integration in Fourier space
+  tensorField_real = 0.0_pReal
+  tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = F
+  call utilities_FFTtensorForward()
+  call utilities_fourierTensorDivergence()
+ 
+  do k = 1_pInt, grid3; do j = 1_pInt, grid(2); do i = 1_pInt, grid1Red
+    if (any(cNeq(xi1st(1:3,i,j,k),cmplx(0.0_pReal,0.0_pReal)))) &
+      vectorField_fourier(1:3,i,j,k) = vectorField_fourier(1:3,i,j,k)/ &
+                                       sum(conjg(-xi1st(1:3,i,j,k))*xi1st(1:3,i,j,k))
+  enddo; enddo; enddo
+  call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
+  vectorField_real = vectorField_real * wgt
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! average F
+  if (grid3Offset == 0_pInt) Favg = real(tensorField_fourier(1:3,1:3,1,1,1),pReal)*wgt
+  call MPI_Bcast(Favg,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+  if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='update_IPcoords')
+ 
+ !--------------------------------------------------------------------------------------------------
+ ! add average to fluctuation and put (0,0,0) on (0,0,0)
+  step = geomSize/real(grid, pReal)
+  if (grid3Offset == 0_pInt) offset_coords = vectorField_real(1:3,1,1,1)
+  call MPI_Bcast(offset_coords,3,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+  if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='update_IPcoords')
+  offset_coords = math_mul33x3(Favg,step/2.0_pReal) - offset_coords
+  m = 1_pInt
+  do k = 1_pInt,grid3; do j = 1_pInt,grid(2); do i = 1_pInt,grid(1)
+    mesh_ipCoordinates(1:3,1,m) = vectorField_real(1:3,i,j,k) &
+                                + offset_coords &
+                                + math_mul33x3(Favg,step*real([i,j,k+grid3Offset]-1_pInt,pReal))
+    m = m+1_pInt
+  enddo; enddo; enddo
 
 end subroutine utilities_updateIPcoords
 
