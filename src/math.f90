@@ -83,7 +83,6 @@ module math
  end interface math_mul3x3
  public :: &
    math_mul3x3, &
-   math_mul6x6, &
    math_tensorproduct33, &
    math_tensorproduct, &
    math_crossproduct
