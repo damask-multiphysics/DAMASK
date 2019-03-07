@@ -42,7 +42,7 @@ module homogenization_RGC
      of_debug = 0_pInt
    integer(kind(undefined_ID)),         dimension(:),   allocatable   :: &
      outputID
- end type
+ end type tParameters
 
  type, private :: tRGCstate
    real(pReal), pointer,     dimension(:) :: &
@@ -92,11 +92,6 @@ contains
 !> @brief allocates all necessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_RGC_init()
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use debug, only: &
 #ifdef DEBUG
    debug_i, &
@@ -109,8 +104,7 @@ subroutine homogenization_RGC_init()
    math_EulerToR, &
    INRAD
  use IO, only: &
-   IO_error, &
-   IO_timeStamp
+   IO_error
  use material, only: &
 #ifdef DEBUG
    material_homogenizationAt, &
@@ -147,8 +141,6 @@ subroutine homogenization_RGC_init()
  write(6,'(a)')     ' https://doi.org/10.1007/s12289-009-0619-1'
  write(6,'(/,a)')   ' Tjahjanto et al., Modelling and Simulation in Materials Science and Engineering, 18:015006, 2010'
  write(6,'(a)')     ' https://doi.org/10.1088/0965-0393/18/1/015006'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
  Ninstance = int(count(homogenization_type == HOMOGENIZATION_RGC_ID),pInt)
  if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0_pInt) &
