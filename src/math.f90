@@ -108,8 +108,6 @@ module math
    math_mul3333xx33, &
    math_mul3333xx3333, &
    math_mul33x33, &
-   math_mul66x66, &
-   math_mul99x99, &
    math_mul33x3, &
    math_mul33x3_complex, &
    math_mul66x6 , &
