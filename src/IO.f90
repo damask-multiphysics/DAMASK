@@ -23,7 +23,6 @@ module IO
    IO_init, &
    IO_read, &
    IO_recursiveRead, &
-   IO_checkAndRewind, &
    IO_open_file_stat, &
    IO_open_jobFile_stat, &
    IO_open_file, &
@@ -230,24 +229,6 @@ recursive function IO_recursiveRead(fileName,cnt) result(fileContent)
   enddo
 
 end function IO_recursiveRead
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief checks if unit is opened for reading, if true rewinds. Otherwise stops with
-!!        error message
-!--------------------------------------------------------------------------------------------------
-subroutine IO_checkAndRewind(fileUnit)
-
- implicit none
- integer(pInt), intent(in) :: fileUnit                                                              !< file unit
- logical                   :: fileOpened
- character(len=15)         :: fileRead
-
- inquire(unit=fileUnit, opened=fileOpened, read=fileRead)
- if (.not. fileOpened .or. trim(fileRead)/='YES') call IO_error(102_pInt)
- rewind(fileUnit)
-
-end subroutine IO_checkAndRewind
 
 
 !--------------------------------------------------------------------------------------------------
