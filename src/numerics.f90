@@ -377,8 +377,8 @@ subroutine numerics_init
        case ('bbarstabilisation')
          BBarStabilisation = IO_intValue(line,chunkPos,2_pInt) > 0_pInt
 #else
-      case ('integrationorder','structorder','thermalorder', 'damageorder','vacancyfluxorder', &
-            'porosityorder','hydrogenfluxorder','bbarstabilisation')
+      case ('integrationorder','structorder','thermalorder', 'damageorder', &
+            'bbarstabilisation')
          call IO_warning(40_pInt,ext_msg=tag)
 #endif
        case default                                                                                ! found unknown keyword

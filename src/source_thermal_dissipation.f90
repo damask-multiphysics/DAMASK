@@ -106,7 +106,7 @@ end subroutine source_thermal_dissipation_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns local vacancy generation rate 
+!> @brief returns dissipation rate
 !--------------------------------------------------------------------------------------------------
 subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDOT_dT, Tstar, Lp, phase)
 
