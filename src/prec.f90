@@ -9,9 +9,9 @@
 module prec
   use, intrinsic :: IEEE_arithmetic, only:&
     IEEE_selected_real_kind
- 
+
   implicit none
-  private 
+  private
   ! https://software.intel.com/en-us/blogs/2017/03/27/doctor-fortran-in-it-takes-all-kinds
 
   integer,     parameter, public :: pReal      = IEEE_selected_real_kind(15,307)                    !< number with 15 significant digits, up to 1e+-307 (typically 64 bit)
@@ -31,20 +31,20 @@ module prec
   end type group_float
 
   type, public :: group_int
-    integer(pInt), dimension(:), pointer :: p
+    integer, dimension(:), pointer :: p
   end type group_int
 
   ! http://stackoverflow.com/questions/3948210/can-i-have-a-pointer-to-an-item-in-an-allocatable-array
   type, public :: tState
-    integer(pInt) :: &
-      sizeState        = 0_pInt, &                                                                  !< size of state
-      sizeDotState     = 0_pInt, &                                                                  !< size of dot state, i.e. state(1:sizeDot) follows time evolution by dotState rates
-      offsetDeltaState = 0_pInt, &                                                                  !< index offset of delta state
-      sizeDeltaState   = 0_pInt, &                                                                  !< size of delta state, i.e. state(offset+1:offset+sizeDelta) follows time evolution by deltaState increments
-      sizePostResults  = 0_pInt                                                                     !< size of output data
+    integer :: &
+      sizeState        = 0, &                                                                       !< size of state
+      sizeDotState     = 0, &                                                                       !< size of dot state, i.e. state(1:sizeDot) follows time evolution by dotState rates
+      offsetDeltaState = 0, &                                                                       !< index offset of delta state
+      sizeDeltaState   = 0, &                                                                       !< size of delta state, i.e. state(offset+1:offset+sizeDelta) follows time evolution by deltaState increments
+      sizePostResults  = 0                                                                          !< size of output data
     real(pReal), pointer,     dimension(:), contiguous :: &
       atolState
-    real(pReal), pointer,     dimension(:,:), contiguous :: &                                       ! a pointer is needed here because we might point to state/doState. However, they will never point to something, but are rather allocated and, hence, contiguous 
+    real(pReal), pointer,     dimension(:,:), contiguous :: &                                       ! a pointer is needed here because we might point to state/doState. However, they will never point to something, but are rather allocated and, hence, contiguous
       state0, &
       state, &                                                                                      !< state
       dotState, &                                                                                   !< rate of state change
@@ -60,11 +60,11 @@ module prec
   end type
 
   type, extends(tState), public :: tPlasticState
-    integer(pInt) :: &
-      nSlip = 0_pInt , &
-      nTwin = 0_pInt, &
-      nTrans = 0_pInt
-    logical :: & 
+    integer :: &
+      nSlip  = 0, &
+      nTwin  = 0, &
+      nTrans = 0
+    logical :: &
       nonlocal = .false.
     real(pReal), pointer,     dimension(:,:) :: &
       slipRate, &                                                                                   !< slip rate
@@ -74,12 +74,12 @@ module prec
   type, public :: tSourceState
     type(tState), dimension(:), allocatable :: p                                                    !< tState for each active source mechanism in a phase
   end type
-  
-  type, public :: tHomogMapping
-    integer(pInt), pointer, dimension(:,:) :: p                                  
-  end type 
 
-  real(pReal), private, parameter :: PREAL_EPSILON = epsilon(0.0_pReal)                             !< minimum positive number such that 1.0 + EPSILON /= 1.0. 
+  type, public :: tHomogMapping
+    integer, pointer, dimension(:,:) :: p
+  end type
+
+  real(pReal), private, parameter :: PREAL_EPSILON = epsilon(0.0_pReal)                             !< minimum positive number such that 1.0 + EPSILON /= 1.0.
   real(pReal), private, parameter :: PREAL_MIN     = tiny(0.0_pReal)                                !< smallest normalized floating point number
 
   public :: &
@@ -90,7 +90,7 @@ module prec
     dNeq, &
     dNeq0, &
     cNeq
- 
+
 contains
 
 
@@ -100,23 +100,23 @@ contains
 subroutine prec_init
 
   implicit none
-  integer(pInt), allocatable, dimension(:) :: realloc_lhs_test
+  integer, allocatable, dimension(:) :: realloc_lhs_test
 
   external :: &
     quit
 
   write(6,'(/,a)') ' <<<+-  prec init  -+>>>'
 
-  write(6,'(a,i3)')    ' Size of integer in bit: ',bit_size(0_pInt)
-  write(6,'(a,i19)')   '   Maximum value:        ',huge(0_pInt)
+  write(6,'(a,i3)')    ' Size of integer in bit: ',bit_size(0)
+  write(6,'(a,i19)')   '   Maximum value:        ',huge(0)
   write(6,'(/,a,i3)')  ' Size of float in bit:   ',storage_size(0.0_pReal)
   write(6,'(a,e10.3)') '   Maximum value:        ',huge(0.0_pReal)
   write(6,'(a,e10.3)') '   Minimum value:        ',tiny(0.0_pReal)
   write(6,'(a,i3)')    '   Decimal precision:    ',precision(0.0_pReal)
 
-  realloc_lhs_test = [1_pInt,2_pInt]
-  if (realloc_lhs_test(2)/=2_pInt) call quit(9000)
- 
+  realloc_lhs_test = [1,2]
+  if (realloc_lhs_test(2)/=2) call quit(9000)
+
 end subroutine prec_init
 
 
@@ -132,7 +132,7 @@ logical elemental pure function dEq(a,b,tol)
   real(pReal), intent(in)           :: a,b
   real(pReal), intent(in), optional :: tol
   real(pReal)                       :: eps
-  
+
   if (present(tol)) then
     eps = tol
   else
@@ -156,7 +156,7 @@ logical elemental pure function dNeq(a,b,tol)
   real(pReal), intent(in)           :: a,b
   real(pReal), intent(in), optional :: tol
   real(pReal)                       :: eps
-  
+
   if (present(tol)) then
     eps = tol
   else
@@ -180,7 +180,7 @@ logical elemental pure function dEq0(a,tol)
   real(pReal), intent(in)           :: a
   real(pReal), intent(in), optional :: tol
   real(pReal)                       :: eps
-  
+
   if (present(tol)) then
     eps = tol
   else
@@ -204,7 +204,7 @@ logical elemental pure function dNeq0(a,tol)
   real(pReal), intent(in)           :: a
   real(pReal), intent(in), optional :: tol
   real(pReal)                       :: eps
-  
+
   if (present(tol)) then
     eps = tol
   else
@@ -229,7 +229,7 @@ logical elemental pure function cEq(a,b,tol)
   complex(pReal), intent(in)           :: a,b
   real(pReal),    intent(in), optional :: tol
   real(pReal)                          :: eps
-  
+
   if (present(tol)) then
     eps = tol
   else
@@ -254,7 +254,7 @@ logical elemental pure function cNeq(a,b,tol)
   complex(pReal), intent(in)           :: a,b
   real(pReal),    intent(in), optional :: tol
   real(pReal)                          :: eps
-  
+
   if (present(tol)) then
     eps = tol
   else

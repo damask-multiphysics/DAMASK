@@ -4,7 +4,6 @@
 !--------------------------------------------------------------------------------------------------
 module element
  use prec, only: &
-   pInt, &
    pReal
 
  implicit none
@@ -14,7 +13,7 @@ module element
 !> Properties of a single element (the element used in the mesh)
 !---------------------------------------------------------------------------------------------------
  type, public :: tElement
-   integer(pInt) :: &
+   integer :: &
      elemType, &
      geomType, &                                                                                    ! geometry type (same for same dimension and same number of integration points)
      cellType, &
@@ -24,7 +23,7 @@ module element
      nIPs, &
      nIPneighbors, &                                                                                   ! ToDo: MD: Do all IPs in one element type have the same number of neighbors?
      maxNnodeAtIP
-   integer(pInt), dimension(:,:), allocatable :: &
+   integer, dimension(:,:), allocatable :: &
      Cell, &                                                                                        ! intra-element (cell) nodes that constitute a cell
      NnodeAtIP, &
      IPneighbor, &
@@ -39,11 +38,11 @@ module element
      procedure :: init => tElement_init
  end type
 
- integer(pInt), parameter, private :: &
-   NELEMTYPE = 13_pInt
+ integer, parameter, private :: &
+   NELEMTYPE = 13
 
- integer(pInt), dimension(NelemType), parameter, private :: NNODE = &
- int([ &
+ integer, dimension(NelemType), parameter, private :: NNODE = &
+ [ &
       3, & ! 2D 3node 1ip
       6, & ! 2D 6node 3ip
       4, & ! 2D 4node 4ip
@@ -58,10 +57,10 @@ module element
       8, & ! 3D 8node 8ip
      20, & ! 3D 20node 8ip
      20  & ! 3D 20node 27ip
-  ],pInt)                                                                                           !< number of nodes that constitute a specific type of element
+  ]                                                                                           !< number of nodes that constitute a specific type of element
 
- integer(pInt), dimension(NelemType), parameter, public :: GEOMTYPE = &
- int([ &
+ integer, dimension(NelemType), parameter, public :: GEOMTYPE = &
+ [ &
       1, & ! 2D 3node 1ip
       2, & ! 2D 6node 3ip
       3, & ! 2D 4node 4ip
@@ -76,11 +75,11 @@ module element
       9, & ! 3D 8node 8ip
       9, & ! 3D 20node 8ip
      10  & ! 3D 20node 27ip
-  ],pInt)                                                                                           !< geometry type of particular element type
+  ]                                                                                           !< geometry type of particular element type
 
- !integer(pInt), dimension(maxval(geomType)), parameter, private :: NCELLNODE = &                   ! Intel 16.0 complains
- integer(pInt), dimension(10), parameter, private :: NCELLNODE = &
- int([ &
+ !integer, dimension(maxval(geomType)), parameter, private :: NCELLNODE = &                   ! Intel 16.0 complains
+ integer, dimension(10), parameter, private :: NCELLNODE = &
+ [ &
       3, &
       7, &
       9, &
@@ -91,11 +90,11 @@ module element
       8, &
      27, &
      64  &
-  ],pInt)                                                                                           !< number of cell nodes in a specific geometry type
+  ]                                                                                           !< number of cell nodes in a specific geometry type
 
- !integer(pInt), dimension(maxval(geomType)), parameter, private :: NIP = &                         ! Intel 16.0 complains
- integer(pInt), dimension(10), parameter, private :: NIP = &
- int([ &
+ !integer, dimension(maxval(geomType)), parameter, private :: NIP = &                         ! Intel 16.0 complains
+ integer, dimension(10), parameter, private :: NIP = &
+ [ &
       1, & 
       3, & 
       4, & 
@@ -106,11 +105,11 @@ module element
       1, & 
       8, & 
      27  & 
-  ],pInt)                                                                                           !< number of IPs in a specific geometry type
+  ]                                                                                           !< number of IPs in a specific geometry type
 
- !integer(pInt), dimension(maxval(geomType)), parameter, private  :: CELLTYPE = &                   ! Intel 16.0 complains
- integer(pInt), dimension(10), parameter, private  :: CELLTYPE = &                                  !< cell type that is used by each geometry type
- int([ &
+ !integer, dimension(maxval(geomType)), parameter, private  :: CELLTYPE = &                   ! Intel 16.0 complains
+ integer, dimension(10), parameter, private  :: CELLTYPE = &                                  !< cell type that is used by each geometry type
+ [ &
       1, & ! 2D 3node
       2, & ! 2D 4node
       2, & ! 2D 4node
@@ -121,29 +120,29 @@ module element
       4, & ! 3D 8node
       4, & ! 3D 8node
       4  & ! 3D 8node
-  ],pInt)
+  ]
  
- !integer(pInt), dimension(maxval(cellType)), parameter, private :: nIPNeighbor = &                 ! causes problem with Intel 16.0
- integer(pInt), dimension(4), parameter, private :: NIPNEIGHBOR = &                                 !< number of ip neighbors / cell faces in a specific cell type
- int([&
+ !integer, dimension(maxval(cellType)), parameter, private :: nIPNeighbor = &                 ! causes problem with Intel 16.0
+ integer, dimension(4), parameter, private :: NIPNEIGHBOR = &                                 !< number of ip neighbors / cell faces in a specific cell type
+ [&
       3, & ! 2D 3node
       4, & ! 2D 4node
       4, & ! 3D 4node
       6  & ! 3D 8node
-  ],pInt)
+  ]
 
- !integer(pInt), dimension(maxval(cellType)), parameter, private :: NCELLNODESPERCELLFACE = &            
- integer(pInt), dimension(4), parameter, private :: NCELLNODEPERCELLFACE = &                        !< number of cell nodes in a specific cell type
- int([ &
+ !integer, dimension(maxval(cellType)), parameter, private :: NCELLNODESPERCELLFACE = &            
+ integer, dimension(4), parameter, private :: NCELLNODEPERCELLFACE = &                        !< number of cell nodes in a specific cell type
+ [ &
       2, & ! 2D 3node
       2, & ! 2D 4node
       3, & ! 3D 4node
       4  & ! 3D 8node
-  ],pInt)
+  ]
 
- !integer(pInt), dimension(maxval(geomType)), parameter, private :: maxNodeAtIP = &                 ! causes problem with Intel 16.0
- integer(pInt), dimension(10), parameter, private :: maxNnodeAtIP = &                               !< maximum number of parent nodes that belong to an IP for a specific type of element
- int([ &
+ !integer, dimension(maxval(geomType)), parameter, private :: maxNodeAtIP = &                 ! causes problem with Intel 16.0
+ integer, dimension(10), parameter, private :: maxNnodeAtIP = &                               !< maximum number of parent nodes that belong to an IP for a specific type of element
+ [ &
       3, &
       1, &
       1, &
@@ -154,40 +153,40 @@ module element
       8, &
       1, &
       4  &
-  ],pInt)
+  ]
 
 
- !integer(pInt), dimension(maxval(CELLTYPE)), parameter, private  :: NCELLNODEPERCELL = &           ! Intel 16.0 complains
- integer(pInt), dimension(4), parameter, private :: NCELLNODEPERCELL = &                            !< number of cell nodes in a specific cell type
- int([ &
+ !integer, dimension(maxval(CELLTYPE)), parameter, private  :: NCELLNODEPERCELL = &           ! Intel 16.0 complains
+ integer, dimension(4), parameter, private :: NCELLNODEPERCELL = &                            !< number of cell nodes in a specific cell type
+ [ &
       3, & ! 2D 3node
       4, & ! 2D 4node
       4, & ! 3D 4node
       8  & ! 3D 8node
-  ],pInt)
+  ]
 
- integer(pInt), dimension(maxNnodeAtIP(1),nIP(1)), parameter, private :: NnodeAtIP1 = &
-    reshape(int([&
+ integer, dimension(maxNnodeAtIP(1),nIP(1)), parameter, private :: NnodeAtIP1 = &
+    reshape([&
     1,2,3   &
-    ],pInt),[maxNnodeAtIP(1),nIP(1)])
+    ],[maxNnodeAtIP(1),nIP(1)])
 
- integer(pInt), dimension(maxNnodeAtIP(2),nIP(2)), parameter, private :: NnodeAtIP2 = &
-    reshape(int([&
+ integer, dimension(maxNnodeAtIP(2),nIP(2)), parameter, private :: NnodeAtIP2 = &
+    reshape([&
     1,  &
     2,  &
     3   &
-    ],pInt),[maxNnodeAtIP(2),nIP(2)])
+    ],[maxNnodeAtIP(2),nIP(2)])
 
- integer(pInt), dimension(maxNnodeAtIP(3),nIP(3)), parameter, private :: NnodeAtIP3 = &
-    reshape(int([&
+ integer, dimension(maxNnodeAtIP(3),nIP(3)), parameter, private :: NnodeAtIP3 = &
+    reshape([&
     1,  &
     2,  &
     4,  &
     3   &
-    ],pInt),[maxNnodeAtIP(3),nIP(3)])
+    ],[maxNnodeAtIP(3),nIP(3)])
 
- integer(pInt), dimension(maxNnodeAtIP(4),nIP(4)), parameter, private :: NnodeAtIP4 = &
-    reshape(int([&
+ integer, dimension(maxNnodeAtIP(4),nIP(4)), parameter, private :: NnodeAtIP4 = &
+    reshape([&
     1,0,  &
     1,2,  &
     2,0,  &
@@ -197,38 +196,38 @@ module element
     4,0,  &
     3,4,  &
     3,0   &
-    ],pInt),[maxNnodeAtIP(4),nIP(4)])
+    ],[maxNnodeAtIP(4),nIP(4)])
 
- integer(pInt), dimension(maxNnodeAtIP(5),nIP(5)), parameter, private :: NnodeAtIP5 = &
-    reshape(int([&
+ integer, dimension(maxNnodeAtIP(5),nIP(5)), parameter, private :: NnodeAtIP5 = &
+    reshape([&
     1,2,3,4   &
-    ],pInt),[maxNnodeAtIP(5),nIP(5)])
+    ],[maxNnodeAtIP(5),nIP(5)])
 
- integer(pInt), dimension(maxNnodeAtIP(6),nIP(6)), parameter, private :: NnodeAtIP6 = &
-    reshape(int([&
+ integer, dimension(maxNnodeAtIP(6),nIP(6)), parameter, private :: NnodeAtIP6 = &
+    reshape([&
     1,  &
     2,  &
     3,  &
     4   &
-    ],pInt),[maxNnodeAtIP(6),nIP(6)])
+    ],[maxNnodeAtIP(6),nIP(6)])
 
- integer(pInt), dimension(maxNnodeAtIP(7),nIP(7)), parameter, private :: NnodeAtIP7 = &
-    reshape(int([&
+ integer, dimension(maxNnodeAtIP(7),nIP(7)), parameter, private :: NnodeAtIP7 = &
+    reshape([&
     1,  &
     2,  &
     3,  &
     4,  &
     5,  &
     6   &
-    ],pInt),[maxNnodeAtIP(7),nIP(7)])
+    ],[maxNnodeAtIP(7),nIP(7)])
 
- integer(pInt), dimension(maxNnodeAtIP(8),nIP(8)), parameter, private :: NnodeAtIP8 = &
-    reshape(int([&
+ integer, dimension(maxNnodeAtIP(8),nIP(8)), parameter, private :: NnodeAtIP8 = &
+    reshape([&
     1,2,3,4,5,6,7,8   &
-    ],pInt),[maxNnodeAtIP(8),nIP(8)])
+    ],[maxNnodeAtIP(8),nIP(8)])
 
- integer(pInt), dimension(maxNnodeAtIP(9),nIP(9)), parameter, private :: NnodeAtIP9 = &
-    reshape(int([&
+ integer, dimension(maxNnodeAtIP(9),nIP(9)), parameter, private :: NnodeAtIP9 = &
+    reshape([&
     1,  &
     2,  &
     4,  &
@@ -237,10 +236,10 @@ module element
     6,  &
     8,  &
     7   &
-    ],pInt),[maxNnodeAtIP(9),nIP(9)])
+    ],[maxNnodeAtIP(9),nIP(9)])
 
- integer(pInt), dimension(maxNnodeAtIP(10),nIP(10)), parameter, private :: NnodeAtIP10 = &
-    reshape(int([&
+ integer, dimension(maxNnodeAtIP(10),nIP(10)), parameter, private :: NnodeAtIP10 = &
+    reshape([&
     1,0, 0,0,  &
     1,2, 0,0,  &
     2,0, 0,0,  &
@@ -268,7 +267,7 @@ module element
     8,0, 0,0,  &
     7,8, 0,0,  &
     7,0, 0,0   &
-    ],pInt),[maxNnodeAtIP(10),nIP(10)])
+    ],[maxNnodeAtIP(10),nIP(10)])
 
  ! *** FE_ipNeighbor ***
  ! is a list of the neighborhood of each IP.
@@ -277,28 +276,28 @@ module element
  ! Negative integers denote the interface behind which the neighboring (extra-FE) IP will be located.
 
 
- integer(pInt), dimension(nIPneighbor(cellType(1)),nIP(1)), parameter, private :: IPneighbor1 = &
-    reshape(int([&
+ integer, dimension(nIPneighbor(cellType(1)),nIP(1)), parameter, private :: IPneighbor1 = &
+    reshape([&
     -2,-3,-1   &
-    ],pInt),[nIPneighbor(cellType(1)),nIP(1)])
+    ],[nIPneighbor(cellType(1)),nIP(1)])
 
- integer(pInt), dimension(nIPneighbor(cellType(2)),nIP(2)), parameter, private :: IPneighbor2 = &
-     reshape(int([&
+ integer, dimension(nIPneighbor(cellType(2)),nIP(2)), parameter, private :: IPneighbor2 = &
+     reshape([&
       2,-3, 3,-1,  &
      -2, 1, 3,-1,  &
       2,-3,-2, 1   &
-    ],pInt),[nIPneighbor(cellType(2)),nIP(2)])
+    ],[nIPneighbor(cellType(2)),nIP(2)])
  
- integer(pInt), dimension(nIPneighbor(cellType(3)),nIP(3)), parameter, private :: IPneighbor3 = &
-     reshape(int([&
+ integer, dimension(nIPneighbor(cellType(3)),nIP(3)), parameter, private :: IPneighbor3 = &
+     reshape([&
       2,-4, 3,-1,  &
      -2, 1, 4,-1,  &
       4,-4,-3, 1,  &
      -2, 3,-3, 2   &
-    ],pInt),[nIPneighbor(cellType(3)),nIP(3)])
+    ],[nIPneighbor(cellType(3)),nIP(3)])
  
- integer(pInt), dimension(nIPneighbor(cellType(4)),nIP(4)), parameter, private :: IPneighbor4 = &
-     reshape(int([&
+ integer, dimension(nIPneighbor(cellType(4)),nIP(4)), parameter, private :: IPneighbor4 = &
+     reshape([&
       2,-4, 4,-1,  &
       3, 1, 5,-1,  &
      -2, 2, 6,-1,  &
@@ -308,38 +307,38 @@ module element
       8,-4,-3, 4,  &
       9, 7,-3, 5,  &
      -2, 8,-3, 6   &
-    ],pInt),[nIPneighbor(cellType(4)),nIP(4)])
+    ],[nIPneighbor(cellType(4)),nIP(4)])
  
- integer(pInt), dimension(nIPneighbor(cellType(5)),nIP(5)), parameter, private :: IPneighbor5 = &
-     reshape(int([&
+ integer, dimension(nIPneighbor(cellType(5)),nIP(5)), parameter, private :: IPneighbor5 = &
+     reshape([&
      -1,-2,-3,-4   &
-    ],pInt),[nIPneighbor(cellType(5)),nIP(5)])
+    ],[nIPneighbor(cellType(5)),nIP(5)])
  
- integer(pInt), dimension(nIPneighbor(cellType(6)),nIP(6)), parameter, private :: IPneighbor6 = &
-     reshape(int([&
+ integer, dimension(nIPneighbor(cellType(6)),nIP(6)), parameter, private :: IPneighbor6 = &
+     reshape([&
       2,-4, 3,-2, 4,-1,  &
      -2, 1, 3,-2, 4,-1,  &
       2,-4,-3, 1, 4,-1,  &
       2,-4, 3,-2,-3, 1   &
-    ],pInt),[nIPneighbor(cellType(6)),nIP(6)])
+    ],[nIPneighbor(cellType(6)),nIP(6)])
  
- integer(pInt), dimension(nIPneighbor(cellType(7)),nIP(7)), parameter, private :: IPneighbor7 = &
-     reshape(int([&
+ integer, dimension(nIPneighbor(cellType(7)),nIP(7)), parameter, private :: IPneighbor7 = &
+     reshape([&
       2,-4, 3,-2, 4,-1,  &
      -3, 1, 3,-2, 5,-1,  &
       2,-4,-3, 1, 6,-1,  &
       5,-4, 6,-2,-5, 1,  &
      -3, 4, 6,-2,-5, 2,  &
       5,-4,-3, 4,-5, 3   &
-    ],pInt),[nIPneighbor(cellType(7)),nIP(7)])
+    ],[nIPneighbor(cellType(7)),nIP(7)])
  
- integer(pInt), dimension(nIPneighbor(cellType(8)),nIP(8)), parameter, private :: IPneighbor8 = &
-     reshape(int([&
+ integer, dimension(nIPneighbor(cellType(8)),nIP(8)), parameter, private :: IPneighbor8 = &
+     reshape([&
      -3,-5,-4,-2,-6,-1   &
-    ],pInt),[nIPneighbor(cellType(8)),nIP(8)])
+    ],[nIPneighbor(cellType(8)),nIP(8)])
  
- integer(pInt), dimension(nIPneighbor(cellType(9)),nIP(9)), parameter, private :: IPneighbor9 = &
-     reshape(int([&
+ integer, dimension(nIPneighbor(cellType(9)),nIP(9)), parameter, private :: IPneighbor9 = &
+     reshape([&
       2,-5, 3,-2, 5,-1,  &
      -3, 1, 4,-2, 6,-1,  &
       4,-5,-4, 1, 7,-1,  &
@@ -348,10 +347,10 @@ module element
      -3, 5, 8,-2,-6, 2,  &
       8,-5,-4, 5,-6, 3,  &
      -3, 7,-4, 6,-6, 4   &
-    ],pInt),[nIPneighbor(cellType(9)),nIP(9)])
+    ],[nIPneighbor(cellType(9)),nIP(9)])
  
- integer(pInt), dimension(nIPneighbor(cellType(10)),nIP(10)), parameter, private :: IPneighbor10 = &
-     reshape(int([&
+ integer, dimension(nIPneighbor(cellType(10)),nIP(10)), parameter, private :: IPneighbor10 = &
+     reshape([&
       2,-5, 4,-2,10,-1,  &
       3, 1, 5,-2,11,-1,  &
      -3, 2, 6,-2,12,-1,  &
@@ -379,7 +378,7 @@ module element
      26,-5,-4,22,-6,16,  &
      27,25,-4,23,-6,17,  &
      -3,26,-4,24,-6,18   &
-    ],pInt),[nIPneighbor(cellType(10)),nIP(10)])
+    ],[nIPneighbor(cellType(10)),nIP(10)])
 
 
  real(pReal), dimension(nNode(1),NcellNode(geomType(1))), parameter :: cellNodeParentNodeWeights1 = &
@@ -660,28 +659,28 @@ module element
     ],pReal),[nNode(13),NcellNode(geomType(13))])  ! 3D 20node 27ip
 
 
- integer(pInt), dimension(NCELLNODEPERCELL(CELLTYPE(1)),NIP(1)), parameter :: CELL1 = &
-    reshape(int([&
+ integer, dimension(NCELLNODEPERCELL(CELLTYPE(1)),NIP(1)), parameter :: CELL1 = &
+    reshape([&
     1,2,3   &
-    ],pInt),[NCELLNODEPERCELL(CELLTYPE(1)),NIP(1)])
+    ],[NCELLNODEPERCELL(CELLTYPE(1)),NIP(1)])
 
- integer(pInt), dimension(NCELLNODEPERCELL(CELLTYPE(2)),NIP(2)), parameter :: CELL2 = &
-    reshape(int([&
+ integer, dimension(NCELLNODEPERCELL(CELLTYPE(2)),NIP(2)), parameter :: CELL2 = &
+    reshape([&
     1, 4, 7, 6,   &
     2, 5, 7, 4,   &
     3, 6, 7, 5    &
-    ],pInt),[NCELLNODEPERCELL(CELLTYPE(2)),NIP(2)])
+    ],[NCELLNODEPERCELL(CELLTYPE(2)),NIP(2)])
 
- integer(pInt), dimension(NCELLNODEPERCELL(CELLTYPE(3)),NIP(3)), parameter :: CELL3 = &
-    reshape(int([&
+ integer, dimension(NCELLNODEPERCELL(CELLTYPE(3)),NIP(3)), parameter :: CELL3 = &
+    reshape([&
     1, 5, 9, 8,   &
     5, 2, 6, 9,   &
     8, 9, 7, 4,   &
     9, 6, 3, 7    &
-    ],pInt),[NCELLNODEPERCELL(CELLTYPE(3)),NIP(3)])
+    ],[NCELLNODEPERCELL(CELLTYPE(3)),NIP(3)])
 
- integer(pInt), dimension(NCELLNODEPERCELL(CELLTYPE(4)),NIP(4)), parameter :: CELL4 = &
-    reshape(int([&
+ integer, dimension(NCELLNODEPERCELL(CELLTYPE(4)),NIP(4)), parameter :: CELL4 = &
+    reshape([&
     1, 5,13,12,   &
     5, 6,14,13,   &
     6, 2, 7,14,   &
@@ -691,38 +690,38 @@ module element
    11,16,10, 4,   &
    16,15, 9,10,   &
    15, 8, 3, 9    &
-    ],pInt),[NCELLNODEPERCELL(CELLTYPE(4)),NIP(4)])
+    ],[NCELLNODEPERCELL(CELLTYPE(4)),NIP(4)])
 
- integer(pInt), dimension(NCELLNODEPERCELL(CELLTYPE(5)),NIP(5)), parameter :: CELL5 = &
-    reshape(int([&
+ integer, dimension(NCELLNODEPERCELL(CELLTYPE(5)),NIP(5)), parameter :: CELL5 = &
+    reshape([&
     1, 2, 3, 4   &
-    ],pInt),[NCELLNODEPERCELL(CELLTYPE(5)),NIP(5)])
+    ],[NCELLNODEPERCELL(CELLTYPE(5)),NIP(5)])
 
- integer(pInt), dimension(NCELLNODEPERCELL(CELLTYPE(6)),NIP(6)), parameter :: CELL6 = &
-    reshape(int([&
+ integer, dimension(NCELLNODEPERCELL(CELLTYPE(6)),NIP(6)), parameter :: CELL6 = &
+    reshape([&
     1, 5,11, 7, 8,12,15,14,  &
     5, 2, 6,11,12, 9,13,15,  &
     7,11, 6, 3,14,15,13,10,  &
     8,12,15, 4, 4, 9,13,10   &
-    ],pInt),[NCELLNODEPERCELL(CELLTYPE(6)),NIP(6)])
+    ],[NCELLNODEPERCELL(CELLTYPE(6)),NIP(6)])
 
- integer(pInt), dimension(NCELLNODEPERCELL(CELLTYPE(7)),NIP(7)), parameter :: CELL7 = &
-    reshape(int([&
+ integer, dimension(NCELLNODEPERCELL(CELLTYPE(7)),NIP(7)), parameter :: CELL7 = &
+    reshape([&
     1, 7,16, 9,10,17,21,19,  &
     7, 2, 8,16,17,11,18,21,  &
     9,16, 8, 3,19,21,18,12,  &
    10,17,21,19, 4,13,20,15,  &
    17,11,18,21,13, 5,14,20,  &
    19,21,18,12,15,20,14, 6   &
-    ],pInt),[NCELLNODEPERCELL(CELLTYPE(7)),NIP(7)])
+    ],[NCELLNODEPERCELL(CELLTYPE(7)),NIP(7)])
 
- integer(pInt), dimension(NCELLNODEPERCELL(CELLTYPE(8)),NIP(8)), parameter :: CELL8 = &
-    reshape(int([&
+ integer, dimension(NCELLNODEPERCELL(CELLTYPE(8)),NIP(8)), parameter :: CELL8 = &
+    reshape([&
     1, 2, 3, 4, 5, 6, 7, 8   &
-    ],pInt),[NCELLNODEPERCELL(CELLTYPE(8)),NIP(8)])
+    ],[NCELLNODEPERCELL(CELLTYPE(8)),NIP(8)])
 
- integer(pInt), dimension(NCELLNODEPERCELL(CELLTYPE(9)),NIP(9)), parameter :: CELL9 = &
-    reshape(int([&
+ integer, dimension(NCELLNODEPERCELL(CELLTYPE(9)),NIP(9)), parameter :: CELL9 = &
+    reshape([&
     1, 9,21,12,13,22,27,25,  &
     9, 2,10,21,22,14,23,27,  &
    12,21,11, 4,25,27,24,16,  &
@@ -731,10 +730,10 @@ module element
    22,14,23,27,17, 6,18,26,  &
    25,27,24,16,20,26,19, 8,  &
    27,23,15,24,26,18, 7,19   &
-    ],pInt),[NCELLNODEPERCELL(CELLTYPE(9)),NIP(9)])
+    ],[NCELLNODEPERCELL(CELLTYPE(9)),NIP(9)])
 
- integer(pInt), dimension(NCELLNODEPERCELL(CELLTYPE(10)),NIP(10)), parameter :: CELL10 = &
-    reshape(int([&
+ integer, dimension(NCELLNODEPERCELL(CELLTYPE(10)),NIP(10)), parameter :: CELL10 = &
+    reshape([&
     1, 9,33,16,17,37,57,44,  &
     9,10,34,33,37,38,58,57,  &
    10, 2,11,34,38,18,39,58,  &
@@ -762,41 +761,41 @@ module element
    51,64,50,24,31,56,30, 8,  &
    64,63,49,50,56,55,29,30,  &
    63,48,23,49,55,28, 7,29   &
-    ],pInt),[NCELLNODEPERCELL(CELLTYPE(10)),NIP(10)])
+    ],[NCELLNODEPERCELL(CELLTYPE(10)),NIP(10)])
 
 
-  integer(pInt), dimension(NCELLNODEPERCELLFACE(1),NIPNEIGHBOR(1)), parameter :: CELLFACE1 = &
-    reshape(int([&
+  integer, dimension(NCELLNODEPERCELLFACE(1),NIPNEIGHBOR(1)), parameter :: CELLFACE1 = &
+    reshape([&
     2,3,  &
     3,1,  &
     1,2   &
-    ],pInt),[NCELLNODEPERCELLFACE(1),NIPNEIGHBOR(1)])                   ! 2D 3node, VTK_TRIANGLE (5)
+    ],[NCELLNODEPERCELLFACE(1),NIPNEIGHBOR(1)])                   ! 2D 3node, VTK_TRIANGLE (5)
 
- integer(pInt), dimension(NCELLNODEPERCELLFACE(2),NIPNEIGHBOR(2)), parameter :: CELLFACE2 = &
-    reshape(int([&
+ integer, dimension(NCELLNODEPERCELLFACE(2),NIPNEIGHBOR(2)), parameter :: CELLFACE2 = &
+    reshape([&
     2,3,  &
     4,1,  &
     3,4,  &
     1,2   &
-    ],pInt),[NCELLNODEPERCELLFACE(2),NIPNEIGHBOR(2)])              ! 2D 4node, VTK_QUAD (9)
+    ],[NCELLNODEPERCELLFACE(2),NIPNEIGHBOR(2)])              ! 2D 4node, VTK_QUAD (9)
 
- integer(pInt), dimension(NCELLNODEPERCELLFACE(3),NIPNEIGHBOR(3)), parameter :: CELLFACE3 = &
-    reshape(int([&
+ integer, dimension(NCELLNODEPERCELLFACE(3),NIPNEIGHBOR(3)), parameter :: CELLFACE3 = &
+    reshape([&
     1,3,2,  &
     1,2,4,  &
     2,3,4,  &
     1,4,3   &
-    ],pInt),[NCELLNODEPERCELLFACE(3),NIPNEIGHBOR(3)])                     ! 3D 4node, VTK_TETRA (10)
+    ],[NCELLNODEPERCELLFACE(3),NIPNEIGHBOR(3)])                     ! 3D 4node, VTK_TETRA (10)
 
- integer(pInt), dimension(NCELLNODEPERCELLFACE(4),NIPNEIGHBOR(4)), parameter :: CELLFACE4 = &
-    reshape(int([&
+ integer, dimension(NCELLNODEPERCELLFACE(4),NIPNEIGHBOR(4)), parameter :: CELLFACE4 = &
+    reshape([&
     2,3,7,6,  &
     4,1,5,8,  &
     3,4,8,7,  &
     1,2,6,5,  &
     5,6,7,8,  &
     1,4,3,2   &
-    ],pInt),[NCELLNODEPERCELLFACE(4),NIPNEIGHBOR(4)])              ! 3D 8node, VTK_HEXAHEDRON (12)
+    ],[NCELLNODEPERCELLFACE(4),NIPNEIGHBOR(4)])              ! 3D 8node, VTK_HEXAHEDRON (12)
 
 
 contains
@@ -804,37 +803,37 @@ contains
  subroutine tElement_init(self,elemType)
    implicit none
    class(tElement) :: self
-   integer(pInt), intent(in) :: elemType
+   integer, intent(in) :: elemType
    self%elemType = elemType
 
    self%Nnodes     = Nnode    (self%elemType)
    self%geomType   = geomType (self%elemType)
    select case (self%elemType)
-     case(1_pInt)
+     case(1)
        self%cellNodeParentNodeWeights  = cellNodeParentNodeWeights1
-     case(2_pInt)
+     case(2)
        self%cellNodeParentNodeWeights  = cellNodeParentNodeWeights2
-     case(3_pInt)
+     case(3)
        self%cellNodeParentNodeWeights  = cellNodeParentNodeWeights3
-     case(4_pInt)
+     case(4)
        self%cellNodeParentNodeWeights  = cellNodeParentNodeWeights4
-     case(5_pInt)
+     case(5)
        self%cellNodeParentNodeWeights  = cellNodeParentNodeWeights5
-     case(6_pInt)
+     case(6)
        self%cellNodeParentNodeWeights  = cellNodeParentNodeWeights6
-     case(7_pInt)
+     case(7)
        self%cellNodeParentNodeWeights  = cellNodeParentNodeWeights7
-     case(8_pInt)
+     case(8)
        self%cellNodeParentNodeWeights  = cellNodeParentNodeWeights8
-     case(9_pInt)
+     case(9)
        self%cellNodeParentNodeWeights  = cellNodeParentNodeWeights9
-     case(10_pInt)
+     case(10)
        self%cellNodeParentNodeWeights  = cellNodeParentNodeWeights10
-     case(11_pInt)
+     case(11)
        self%cellNodeParentNodeWeights  = cellNodeParentNodeWeights11
-     case(12_pInt)
+     case(12)
        self%cellNodeParentNodeWeights  = cellNodeParentNodeWeights12
-     case(13_pInt)
+     case(13)
        self%cellNodeParentNodeWeights  = cellNodeParentNodeWeights13
      case default
        print*, 'Mist'
@@ -848,43 +847,43 @@ contains
 
 
    select case (self%geomType)
-     case(1_pInt)
+     case(1)
        self%NnodeAtIP   = NnodeAtIP1
        self%IPneighbor  = IPneighbor1
        self%cell        = CELL1
-     case(2_pInt)
+     case(2)
        self%NnodeAtIP   = NnodeAtIP2
        self%IPneighbor  = IPneighbor2
        self%cell        = CELL2
-     case(3_pInt)
+     case(3)
        self%NnodeAtIP   = NnodeAtIP3
        self%IPneighbor  = IPneighbor3
        self%cell        = CELL3
-     case(4_pInt)
+     case(4)
        self%NnodeAtIP   = NnodeAtIP4
        self%IPneighbor  = IPneighbor4
        self%cell        = CELL4
-     case(5_pInt)
+     case(5)
        self%NnodeAtIP   = NnodeAtIP5
        self%IPneighbor  = IPneighbor5
        self%cell        = CELL5
-     case(6_pInt)
+     case(6)
        self%NnodeAtIP   = NnodeAtIP6
        self%IPneighbor  = IPneighbor6
        self%cell        = CELL6
-     case(7_pInt)
+     case(7)
        self%NnodeAtIP   = NnodeAtIP7
        self%IPneighbor  = IPneighbor7
        self%cell        = CELL7
-     case(8_pInt)
+     case(8)
        self%NnodeAtIP   = NnodeAtIP8
        self%IPneighbor  = IPneighbor8
        self%cell        = CELL8
-     case(9_pInt)
+     case(9)
        self%NnodeAtIP   = NnodeAtIP9
        self%IPneighbor  = IPneighbor9
        self%cell        = CELL9
-     case(10_pInt)
+     case(10)
        self%NnodeAtIP   = NnodeAtIP10
        self%IPneighbor  = IPneighbor10
        self%cell        = CELL10
@@ -892,13 +891,13 @@ contains
    self%NcellNodesPerCell = NCELLNODEPERCELL(self%cellType)
  
   select case(self%cellType)
-    case(1_pInt)
+    case(1)
       self%cellFace = CELLFACE1
-    case(2_pInt)
+    case(2)
       self%cellFace = CELLFACE2
-    case(3_pInt)
+    case(3)
       self%cellFace = CELLFACE3
-    case(4_pInt)
+    case(4)
       self%cellFace = CELLFACE4
    end select
    
