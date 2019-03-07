@@ -182,8 +182,6 @@ add_definitions (-DDAMASKVERSION="${DAMASK_V}")
 
 # definition of other macros
 add_definitions (-DPETSc)
-add_definitions (-DFLOAT=8)
-add_definitions (-DINT=4)
 
 set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} ${PETSC_INCLUDES}")
 
@@ -303,8 +301,6 @@ if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
 #  precision settings
   set (PRECISION_FLAGS "${PRECISION_FLAGS} -real-size 64")
   # set precision for standard real to 32 | 64 | 128 (= 4 | 8 | 16 bytes, type pReal is always 8 bytes)
-  set (PRECISION_FLAGS "${PRECISION_FLAGS} -integer-size 32")
-  # set precision for standard int to 16 | 32 | 64 (= 2 | 4 | 8 bytes, type pInt is always 4 bytes)
 
 
 ###################################################################################################
@@ -439,12 +435,8 @@ elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
 #  precision settings
   set (PRECISION_FLAGS "${PRECISION_FLAGS} -fdefault-real-8")
   # set precision to 8 bytes for standard real (=8 for pReal). Will set size of double to 16 bytes as long as -fdefault-double-8 is not set
-
   set (PRECISION_FLAGS "${PRECISION_FLAGS} -fdefault-double-8")
   # set precision to 8 bytes for double real, would be 16 bytes if -fdefault-real-8 is used
-
-  # Additional options
-  # -fdefault-integer-8: Use it to set precision to 8 bytes for integer, don't use it for the standard case of pInt=4 (there is no -fdefault-integer-4)
 
 
 ###################################################################################################
