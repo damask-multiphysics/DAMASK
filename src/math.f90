@@ -188,25 +188,16 @@ contains
 !> @brief initialization of random seed generator
 !--------------------------------------------------------------------------------------------------
 subroutine math_init
-
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
- use numerics, only: randomSeed
- use IO,       only: IO_timeStamp
+ use numerics, only: &
+   randomSeed
 
  implicit none
  integer(pInt) :: i
  real(pReal), dimension(4) ::   randTest
-! the following variables are system dependend and shound NOT be pInt
- integer :: randSize                                                                                ! gfortran requires a variable length to compile
- integer, dimension(:), allocatable :: randInit                                                     ! if recalculations of former randomness (with given seed) is necessary
-                                                                                                    ! comment the first random_seed call out, set randSize to 1, and use ifort
+ integer :: randSize
+ integer, dimension(:), allocatable :: randInit
+ 
  write(6,'(/,a)')   ' <<<+-  math init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
  call random_seed(size=randSize)
  if (allocated(randInit)) deallocate(randInit)
