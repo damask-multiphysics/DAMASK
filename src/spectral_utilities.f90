@@ -720,8 +720,8 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
  use IO, only: &
    IO_error
  use math, only: &
-   math_Plain3333to99, &
-   math_plain99to3333, &
+   math_3333to99, &
+   math_99to3333, &
    math_rotate_forward3333, &
    math_rotate_forward33, &
    math_invert
@@ -748,7 +748,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
    allocate (c_reduced(size_reduced,size_reduced), source =0.0_pReal)
    allocate (s_reduced(size_reduced,size_reduced), source =0.0_pReal)
    allocate (sTimesC(size_reduced,size_reduced),   source =0.0_pReal)
-   temp99_Real = math_Plain3333to99(math_rotate_forward3333(C,rot_BC))
+   temp99_Real = math_3333to99(math_rotate_forward3333(C,rot_BC))
 
    if(debugGeneral) then
      write(6,'(/,a)') ' ... updating masked compliance ............................................'
@@ -808,7 +808,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
      ' Masked Compliance (load) * GPa =', transpose(temp99_Real)*1.0e9_pReal
    flush(6)
  endif
- utilities_maskedCompliance = math_Plain99to3333(temp99_Real)
+ utilities_maskedCompliance = math_99to3333(temp99_Real)
 
 end function utilities_maskedCompliance
 

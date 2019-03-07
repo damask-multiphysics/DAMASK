@@ -246,7 +246,7 @@ program DAMASK_spectral
          enddo
          newLoadCase%deformation%maskLogical = transpose(reshape(temp_maskVector,[ 3,3]))           ! logical mask in 3x3 notation
          newLoadCase%deformation%maskFloat   = merge(ones,zeros,newLoadCase%deformation%maskLogical)! float (1.0/0.0) mask in 3x3 notation
-         newLoadCase%deformation%values = math_plain9to33(temp_valueVector)                         ! values in 3x3 notation
+         newLoadCase%deformation%values      = math_9to33(temp_valueVector)                         ! values in 3x3 notation
        case('p','pk1','piolakirchhoff','stress', 's')
          temp_valueVector = 0.0_pReal
          do j = 1_pInt, 9_pInt
@@ -255,7 +255,7 @@ program DAMASK_spectral
          enddo
          newLoadCase%stress%maskLogical = transpose(reshape(temp_maskVector,[ 3,3]))
          newLoadCase%stress%maskFloat   = merge(ones,zeros,newLoadCase%stress%maskLogical)
-         newLoadCase%stress%values      = math_plain9to33(temp_valueVector)
+         newLoadCase%stress%values      = math_9to33(temp_valueVector)
        case('t','time','delta')                                                                     ! increment time
          newLoadCase%time = IO_floatValue(line,chunkPos,i+1_pInt)
        case('n','incs','increments','steps')                                                        ! number of increments
@@ -291,7 +291,7 @@ program DAMASK_spectral
          do j = 1_pInt, 9_pInt
            temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)
          enddo
-         newLoadCase%rotation = math_plain9to33(temp_valueVector)
+         newLoadCase%rotation = math_9to33(temp_valueVector)
      end select
    enddo readIn
 
