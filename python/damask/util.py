@@ -1,5 +1,5 @@
 # -*- coding: UTF-8 no BOM -*-
-import sys,time,random,threading,os,subprocess,shlex
+import sys,time,os,subprocess,shlex
 import numpy as np
 from optparse import Option
 
