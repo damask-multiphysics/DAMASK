@@ -14,7 +14,7 @@ module prec
   private 
   ! https://software.intel.com/en-us/blogs/2017/03/27/doctor-fortran-in-it-takes-all-kinds
 
-  integer,     parameter, public :: pReal      = IEEE_selected_real_kind(15,307)                    !< number with 15 significant digits, up to 1e+-300 (typically 64 bit)
+  integer,     parameter, public :: pReal      = IEEE_selected_real_kind(15,307)                    !< number with 15 significant digits, up to 1e+-307 (typically 64 bit)
 #if(INT==8)
   integer,     parameter, public :: pInt       = selected_int_kind(18)                              !< number with at least up to +-1e18 (typically 64 bit)
 #else
