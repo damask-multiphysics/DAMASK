@@ -79,8 +79,8 @@ module prec
     integer(pInt), pointer, dimension(:,:) :: p                                  
   end type 
 
-  real(pReal), private, parameter :: DBL_EPSILON = 2.220446049250313E-16_pReal                      !< minimum positive number such that 1.0 + DBL_EPSILON /= 1.0. 
-  real(pReal), private, parameter :: DBL_MIN     = 2.2250738585072014E-308_pReal                    !< smallest normalized floating point number
+  real(pReal), private, parameter :: PREAL_EPSILON = epsilon(0.0_pReal)                             !< minimum positive number such that 1.0 + EPSILON /= 1.0. 
+  real(pReal), private, parameter :: PREAL_MIN     = tiny(0.0_pReal)                                !< smallest normalized floating point number
 
   public :: &
     prec_init, &
@@ -136,7 +136,7 @@ logical elemental pure function dEq(a,b,tol)
   if (present(tol)) then
     eps = tol
   else
-    eps = DBL_EPSILON * maxval(abs([a,b]))
+    eps = PREAL_EPSILON * maxval(abs([a,b]))
   endif
 
   dEq = merge(.True.,.False.,abs(a-b) < eps)
@@ -160,7 +160,7 @@ logical elemental pure function dNeq(a,b,tol)
   if (present(tol)) then
     eps = tol
   else
-    eps = DBL_EPSILON * maxval(abs([a,b]))
+    eps = PREAL_EPSILON * maxval(abs([a,b]))
   endif
 
   dNeq = merge(.False.,.True.,abs(a-b) <= eps)
@@ -184,7 +184,7 @@ logical elemental pure function dEq0(a,tol)
   if (present(tol)) then
     eps = tol
   else
-    eps = DBL_MIN * 10.0_pReal
+    eps = PREAL_MIN * 10.0_pReal
   endif
 
   dEq0 = merge(.True.,.False.,abs(a) < eps)
@@ -208,7 +208,7 @@ logical elemental pure function dNeq0(a,tol)
   if (present(tol)) then
     eps = tol
   else
-    eps = DBL_MIN * 10.0_pReal
+    eps = PREAL_MIN * 10.0_pReal
   endif
 
   dNeq0 = merge(.False.,.True.,abs(a) <= eps)
@@ -233,7 +233,7 @@ logical elemental pure function cEq(a,b,tol)
   if (present(tol)) then
     eps = tol
   else
-    eps = DBL_EPSILON * maxval(abs([a,b]))
+    eps = PREAL_EPSILON * maxval(abs([a,b]))
   endif
 
   cEq = merge(.True.,.False.,abs(a-b) < eps)
@@ -258,7 +258,7 @@ logical elemental pure function cNeq(a,b,tol)
   if (present(tol)) then
     eps = tol
   else
-    eps = DBL_EPSILON * maxval(abs([a,b]))
+    eps = PREAL_EPSILON * maxval(abs([a,b]))
   endif
 
   cNeq = merge(.False.,.True.,abs(a-b) <= eps)
