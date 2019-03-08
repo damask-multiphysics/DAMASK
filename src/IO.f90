@@ -415,26 +415,22 @@ end subroutine IO_write_jobFile
 !> @brief opens binary file containing array of pReal numbers to given unit for writing. File is
 !!        named after solver job name plus given extension and located in current working directory
 !--------------------------------------------------------------------------------------------------
-subroutine IO_write_jobRealFile(fileUnit,ext,recMultiplier)
+subroutine IO_write_jobRealFile(fileUnit,ext)
  use DAMASK_interface, only: &
    getSolverJobName
 
  implicit none
  integer(pInt),      intent(in)           :: fileUnit                                               !< file unit
  character(len=*),   intent(in)           :: ext                                                    !< extension of file
- integer(pInt),      intent(in), optional :: recMultiplier                                          !< record length (multiple of pReal Numbers, if not given set to one)
 
  integer(pInt)                            :: myStat
  character(len=1024)                      :: path
 
  path = trim(getSolverJobName())//'.'//ext
- if (present(recMultiplier)) then
-   open(fileUnit,status='replace',form='unformatted',access='direct', &
-                                                   recl=pReal*recMultiplier,iostat=myStat,file=path)
- else
+
    open(fileUnit,status='replace',form='unformatted',access='direct', &
                                                    recl=pReal,iostat=myStat,file=path)
- endif
+
 
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 
@@ -445,25 +441,21 @@ end subroutine IO_write_jobRealFile
 !> @brief opens binary file containing array of pReal numbers to given unit for reading. File is
 !!        located in current working directory
 !--------------------------------------------------------------------------------------------------
-subroutine IO_read_realFile(fileUnit,ext,modelName,recMultiplier)
+subroutine IO_read_realFile(fileUnit,ext,modelName)
 
  implicit none
  integer(pInt),      intent(in)           :: fileUnit                                               !< file unit
  character(len=*),   intent(in)           :: ext, &                                                 !< extension of file
                                              modelName                                              !< model name, in case of restart not solver job name
- integer(pInt),      intent(in), optional :: recMultiplier                                          !< record length (multiple of pReal Numbers, if not given set to one)
 
  integer(pInt)                            :: myStat
  character(len=1024)                      :: path
 
  path = trim(modelName)//'.'//ext
- if (present(recMultiplier)) then
-   open(fileUnit,status='old',form='unformatted',access='direct', &
-                 recl=pReal*recMultiplier,iostat=myStat,file=path)
- else
+
    open(fileUnit,status='old',form='unformatted',access='direct', &
                  recl=pReal,iostat=myStat,file=path)
- endif
+
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 
 end subroutine IO_read_realFile
@@ -473,25 +465,21 @@ end subroutine IO_read_realFile
 !> @brief opens binary file containing array of pInt numbers to given unit for reading. File is
 !!        located in current working directory
 !--------------------------------------------------------------------------------------------------
-subroutine IO_read_intFile(fileUnit,ext,modelName,recMultiplier)
+subroutine IO_read_intFile(fileUnit,ext,modelName)
 
  implicit none
  integer(pInt),      intent(in)           :: fileUnit                                               !< file unit
  character(len=*),   intent(in)           :: ext, &                                                 !< extension of file
                                              modelName                                              !< model name, in case of restart not solver job name
- integer(pInt),      intent(in), optional :: recMultiplier                                          !< record length (multiple of pReal Numbers, if not given set to one)
 
  integer(pInt)                            :: myStat
  character(len=1024)                      :: path
 
  path = trim(modelName)//'.'//ext
- if (present(recMultiplier)) then
-   open(fileUnit,status='old',form='unformatted',access='direct', &
-                 recl=pInt*recMultiplier,iostat=myStat,file=path)
- else
+
    open(fileUnit,status='old',form='unformatted',access='direct', &
                  recl=pInt,iostat=myStat,file=path)
- endif
+
  if (myStat /= 0) call IO_error(100_pInt,ext_msg=path)
 
 end subroutine IO_read_intFile
