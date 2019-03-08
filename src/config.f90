@@ -75,11 +75,6 @@ module config
    material_Nmicrostructure, &                                                                      !< number of microstructures
    material_Ncrystallite                                                                            !< number of crystallite settings
 
-! ToDo: make private, no one needs to know that
- character(len=*), parameter, public  :: &
-   MATERIAL_configFile         = 'material.config', &                                               !< generic name for material configuration file
-   MATERIAL_localFileExt       = 'materialConfig'                                                   !< extension of solver job name depending material configuration file
-
  public :: &
    config_init, &
    config_deallocate
@@ -90,11 +85,6 @@ contains
 !> @brief reads material.config and stores its content per part
 !--------------------------------------------------------------------------------------------------
 subroutine config_init()
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use prec, only: &
    pStringLen
  use DAMASK_interface, only: &
@@ -103,9 +93,7 @@ subroutine config_init()
    IO_error, &
    IO_lc, &
    IO_recursiveRead, &
-   IO_getTag, &
-   IO_timeStamp, &
-   IO_EOF
+   IO_getTag
  use debug, only: &
    debug_level, &
    debug_material, &
@@ -121,14 +109,12 @@ subroutine config_init()
  logical :: fileExists
 
  write(6,'(/,a)') ' <<<+-  config init  -+>>>'
- write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
  myDebug = debug_level(debug_material)
 
- inquire(file=trim(getSolverJobName())//'.'//material_localFileExt,exist=fileExists)
+ inquire(file=trim(getSolverJobName())//'.materialConfig',exist=fileExists)
  if(fileExists) then
-   fileContent = IO_recursiveRead(trim(getSolverJobName())//'.'//material_localFileExt)
+   fileContent = IO_recursiveRead(trim(getSolverJobName())//'.materialConfig')
  else
    inquire(file='material.config',exist=fileExists)
    if(.not. fileExists) call IO_error(100_pInt,ext_msg='material.config')
@@ -163,16 +149,17 @@ subroutine config_init()
    end select
 
  enddo
-
+ 
  material_Nhomogenization = size(config_homogenization)
- if (material_Nhomogenization < 1_pInt) call IO_error(160_pInt,ext_msg=material_partHomogenization)
  material_Nmicrostructure = size(config_microstructure)
+ material_Ncrystallite    = size(config_crystallite)
+ material_Nphase          = size(config_phase)
+ 
+ if (material_Nhomogenization < 1_pInt) call IO_error(160_pInt,ext_msg=material_partHomogenization)
  if (material_Nmicrostructure < 1_pInt) call IO_error(160_pInt,ext_msg=material_partMicrostructure)
- material_Ncrystallite = size(config_crystallite)
- if (material_Ncrystallite < 1_pInt) call IO_error(160_pInt,ext_msg=material_partCrystallite)
- material_Nphase = size(config_phase)
- if (material_Nphase < 1_pInt) call IO_error(160_pInt,ext_msg=material_partPhase)
- if (size(config_texture) < 1_pInt) call IO_error(160_pInt,ext_msg=material_partTexture)
+ if (material_Ncrystallite < 1_pInt)    call IO_error(160_pInt,ext_msg=material_partCrystallite)
+ if (material_Nphase < 1_pInt)          call IO_error(160_pInt,ext_msg=material_partPhase)
+ if (size(config_texture) < 1_pInt)     call IO_error(160_pInt,ext_msg=material_partTexture)
 
 end subroutine config_init
 

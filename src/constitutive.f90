@@ -50,9 +50,7 @@ subroutine constitutive_init()
    IO_write_jobFile
  use config, only: &
    material_Nphase, &
-   material_localFileExt, &
    phase_name, &
-   material_configFile, &
    config_deallocate
  use material, only: &
    material_phase, &
