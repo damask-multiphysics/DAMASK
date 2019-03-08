@@ -22,11 +22,11 @@ Additional (globally fixed) rotations of the lab frame and/or crystal frame can 
 """, version = scriptID)
 
 representations = {
-                  'quaternion': ['quat',4], #ToDo: Use here Rowenhorst names (qu/ro/om/ax?)
-                  'rodrigues':  ['rodr',4],
-                  'eulers':     ['eulr',3],
-                  'matrix':     ['mtrx',9],
-                  'angleaxis':  ['aaxs',4],
+                  'quaternion': ['qu',4],
+                  'rodrigues':  ['ro',4],
+                  'eulers':     ['eu',3],
+                  'matrix':     ['om',9],
+                  'angleaxis':  ['ax',4],
                   }
 
 parser.add_option('-o',
