@@ -461,48 +461,7 @@ subroutine HDF5_read_pReal1(loc_id,dataset,datasetName,parallel)
  logical, intent(in), optional :: parallel
 
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
-   myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
- integer(HDF5_ERR_TYPE) :: hdferr
-
-!---------------------------------------------------------------------------------------------------
-! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
-
-!---------------------------------------------------------------------------------------------------
-! initialize HDF5 data structures
- if (present(parallel)) then
-   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,parallel)
- else
-   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,.false.)
- endif
-
- call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,globalShape, hdferr,&
-                file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal2: h5dread_f')
-
- call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
-   
-end subroutine HDF5_read_pReal1
-
-!--------------------------------------------------------------------------------------------------
-!> @brief read dataset of type pReal with 2 dimensions
-!--------------------------------------------------------------------------------------------------
-subroutine HDF5_read_pReal2(loc_id,dataset,datasetName,parallel)
-
- implicit none
- real(pReal),      intent(inout), dimension(:,:) :: dataset
- integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
- character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
- logical, intent(in), optional :: parallel
-
- integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &                                             ! ToDo: Fortran 2018 size(shape(A)) = rank(A)
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -528,6 +487,47 @@ subroutine HDF5_read_pReal2(loc_id,dataset,datasetName,parallel)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5dread_f')
 
  call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
+   
+end subroutine HDF5_read_pReal1
+
+!--------------------------------------------------------------------------------------------------
+!> @brief read dataset of type pReal with 2 dimensions
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_read_pReal2(loc_id,dataset,datasetName,parallel)
+
+ implicit none
+ real(pReal),      intent(inout), dimension(:,:) :: dataset
+ integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
+ character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
+ logical, intent(in), optional :: parallel
+
+ integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
+   myStart, &
+   localShape, &                                                                                    !< shape of the dataset (this process)
+   globalShape                                                                                      !< shape of the dataset (all processes)
+ integer(HDF5_ERR_TYPE) :: hdferr
+
+!---------------------------------------------------------------------------------------------------
+! determine shape of dataset
+ localShape = int(shape(dataset),HSIZE_T)
+ if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+
+!---------------------------------------------------------------------------------------------------
+! initialize HDF5 data structures
+ if (present(parallel)) then
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, loc_id,localShape,datasetName,parallel)
+ else
+   call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
+                        myStart, globalShape, loc_id,localShape,datasetName,.false.)
+ endif
+
+ call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,globalShape, hdferr,&
+                file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal2: h5dread_f')
+
+ call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_pReal2
 
@@ -543,7 +543,7 @@ subroutine HDF5_read_pReal3(loc_id,dataset,datasetName,parallel)
  logical, intent(in), optional :: parallel
 
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -584,7 +584,7 @@ subroutine HDF5_read_pReal4(loc_id,dataset,datasetName,parallel)
  logical, intent(in), optional :: parallel
 
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -625,7 +625,7 @@ subroutine HDF5_read_pReal5(loc_id,dataset,datasetName,parallel)
  logical, intent(in), optional :: parallel
 
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -666,7 +666,7 @@ subroutine HDF5_read_pReal6(loc_id,dataset,datasetName,parallel)
  logical, intent(in), optional :: parallel
 
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -707,7 +707,7 @@ subroutine HDF5_read_pReal7(loc_id,dataset,datasetName,parallel)
  logical, intent(in), optional :: parallel
 
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -749,7 +749,7 @@ subroutine HDF5_read_pInt1(loc_id,dataset,datasetName,parallel)
  logical, intent(in), optional :: parallel
 
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -790,7 +790,7 @@ subroutine HDF5_read_pInt2(loc_id,dataset,datasetName,parallel)
  logical, intent(in), optional :: parallel
 
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -831,7 +831,7 @@ subroutine HDF5_read_pInt3(loc_id,dataset,datasetName,parallel)
  logical, intent(in), optional :: parallel
 
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -872,7 +872,7 @@ subroutine HDF5_read_pInt4(loc_id,dataset,datasetName,parallel)
  logical, intent(in), optional :: parallel
 
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -913,7 +913,7 @@ subroutine HDF5_read_pInt5(loc_id,dataset,datasetName,parallel)
  logical, intent(in), optional :: parallel
 
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -954,7 +954,7 @@ subroutine HDF5_read_pInt6(loc_id,dataset,datasetName,parallel)
  logical, intent(in), optional :: parallel
 
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -995,7 +995,7 @@ subroutine HDF5_read_pInt7(loc_id,dataset,datasetName,parallel)
  logical, intent(in), optional :: parallel
 
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -1039,7 +1039,7 @@ subroutine HDF5_write_pReal1(loc_id,dataset,datasetName,parallel)
 
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -1079,7 +1079,7 @@ subroutine HDF5_write_pReal2(loc_id,dataset,datasetName,parallel)
 
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -1119,7 +1119,7 @@ subroutine HDF5_write_pReal3(loc_id,dataset,datasetName,parallel)
 
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -1159,7 +1159,7 @@ subroutine HDF5_write_pReal4(loc_id,dataset,datasetName,parallel)
 
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -1200,7 +1200,7 @@ subroutine HDF5_write_pReal5(loc_id,dataset,datasetName,parallel)
 
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -1240,7 +1240,7 @@ subroutine HDF5_write_pReal6(loc_id,dataset,datasetName,parallel)
 
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -1280,7 +1280,7 @@ subroutine HDF5_write_pReal7(loc_id,dataset,datasetName,parallel)
 
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -1321,7 +1321,7 @@ subroutine HDF5_write_pInt1(loc_id,dataset,datasetName,parallel)
 
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -1361,7 +1361,7 @@ subroutine HDF5_write_pInt2(loc_id,dataset,datasetName,parallel)
 
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -1401,7 +1401,7 @@ subroutine HDF5_write_pInt3(loc_id,dataset,datasetName,parallel)
 
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -1441,7 +1441,7 @@ subroutine HDF5_write_pInt4(loc_id,dataset,datasetName,parallel)
 
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -1481,7 +1481,7 @@ subroutine HDF5_write_pInt5(loc_id,dataset,datasetName,parallel)
 
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -1521,7 +1521,7 @@ subroutine HDF5_write_pInt6(loc_id,dataset,datasetName,parallel)
 
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)
@@ -1561,7 +1561,7 @@ subroutine HDF5_write_pInt7(loc_id,dataset,datasetName,parallel)
 
  integer(HDF5_ERR_TYPE) :: hdferr
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
- integer(HSIZE_T), dimension(rank(dataset)) :: &
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
    localShape, &                                                                                    !< shape of the dataset (this process)
    globalShape                                                                                      !< shape of the dataset (all processes)

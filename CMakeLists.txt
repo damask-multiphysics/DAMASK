@@ -205,7 +205,7 @@ if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
 
   # -assume std_mod_proc_name (included in -standard-semantics) causes problems if other modules
   # (PETSc, HDF5) are not compiled with this option (https://software.intel.com/en-us/forums/intel-fortran-compiler-for-linux-and-mac-os-x/topic/62172)
-  set (STANDARD_CHECK "-stand f08 -standard-semantics -assume nostd_mod_proc_name")
+  set (STANDARD_CHECK "-stand f15 -standard-semantics -assume nostd_mod_proc_name")
   set (LINKER_FLAGS   "${LINKER_FLAGS} -shared-intel")
   # Link against shared Intel libraries instead of static ones
 
