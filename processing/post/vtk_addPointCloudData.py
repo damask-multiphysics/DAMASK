@@ -61,7 +61,6 @@ elif vtk_ext == '.vtk':
   reader.SetFileName(options.vtk)
   reader.Update()
   Polydata = reader.GetPolyDataOutput()
-  vtk_ext = '.vtp'
 else:
   parser.error('unsupported VTK file type extension.')
 
@@ -152,7 +151,7 @@ for name in filenames:
   writer = vtk.vtkXMLPolyDataWriter()
   writer.SetDataModeToBinary()
   writer.SetCompressorTypeToZLib()
-  writer.SetFileName(vtk_file+vtk_ext)
+  writer.SetFileName(vtk_file+'.'+writer.GetDefaultFileExtension())
   writer.SetInputData(Polydata)
   writer.Write()
 

@@ -64,7 +64,6 @@ elif vtk_ext == '.vtk':
   reader.SetFileName(options.vtk)
   reader.Update()
   rGrid = reader.GetRectilinearGridOutput()
-  vtk_ext = '.vtr'
 else:
   parser.error('unsupported VTK file type extension.')
 
@@ -161,7 +160,7 @@ for name in filenames:
   writer = vtk.vtkXMLRectilinearGridWriter()
   writer.SetDataModeToBinary()
   writer.SetCompressorTypeToZLib()
-  writer.SetFileName(vtk_file+vtk_ext)
+  writer.SetFileName(vtk_file+'.'+writer.GetDefaultFileExtension())
   writer.SetInputData(rGrid)
   writer.Write()
 
