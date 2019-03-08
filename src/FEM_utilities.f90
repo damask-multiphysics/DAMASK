@@ -127,14 +127,6 @@ contains
 !> @brief allocates all neccessary fields, sets debug flags
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_init()
- use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
- use DAMASK_interface, only: &
-  getSolverJobName
- use IO, only: &
-   IO_error, &
-   IO_warning, &
-   IO_timeStamp, &
-   IO_open_file
  use numerics, only: &                        
    structOrder, &
    integrationOrder, &
@@ -167,8 +159,6 @@ subroutine utilities_init()
  PetscErrorCode                     :: ierr
 
  write(6,'(/,a)')   ' <<<+-  DAMASK_FEM_utilities init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
  
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters
@@ -287,6 +277,7 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
 
 end subroutine utilities_constitutiveResponse
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief Create index sets of boundary dofs (in local and global numbering)
 !--------------------------------------------------------------------------------------------------
@@ -376,6 +367,7 @@ subroutine utilities_indexBoundaryDofs(dm_local,nFaceSets,numFields,local2global
  deallocate(localIndices)
  
 end subroutine utilities_indexBoundaryDofs
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Project BC values to local vector

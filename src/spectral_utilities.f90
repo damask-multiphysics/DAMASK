@@ -152,8 +152,7 @@ contains
 subroutine utilities_init()
  use IO, only: &
    IO_error, &
-   IO_warning, &
-   IO_open_file
+   IO_warning
  use numerics, only: &
    spectral_derivative, &
    fftw_planner_flag, &

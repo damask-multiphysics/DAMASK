@@ -175,7 +175,6 @@ subroutine mesh_init(ip,el)
 
  use DAMASK_interface
  use IO, only: &
-   IO_open_file, &
    IO_error
  use debug, only: &
    debug_e, &
