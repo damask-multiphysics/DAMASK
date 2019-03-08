@@ -119,8 +119,6 @@ end subroutine thermal_conduction_init
 !> @brief returns heat generation rate
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
- use math, only: &
-   math_6toSym33
  use material, only: &
    homogenization_Ngrains, &
    mappingHomogenization, &
@@ -136,7 +134,7 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
  use source_thermal_externalheat, only: &
    source_thermal_externalheat_getRateAndItsTangent
  use crystallite, only: &
-   crystallite_Tstar_v, &
+   crystallite_S, &
    crystallite_Lp  
 
  implicit none
@@ -171,7 +169,7 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
      select case(phase_source(source,phase))                                                   
        case (SOURCE_thermal_dissipation_ID)
         call source_thermal_dissipation_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
-                                                             math_6toSym33(crystallite_Tstar_v(1:6,grain,ip,el)), &
+                                                             crystallite_S(1:3,1:3,grain,ip,el), &
                                                              crystallite_Lp(1:3,1:3,grain,ip,el), &
                                                              phase)
 

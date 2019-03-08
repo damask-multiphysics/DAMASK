@@ -142,7 +142,7 @@ subroutine CPFEM_init
    crystallite_Lp0, &
    crystallite_Fi0, &
    crystallite_Li0, &
-   crystallite_Tstar0_v
+   crystallite_S0
 
  implicit none
  integer :: k,l,m,ph,homog
@@ -300,8 +300,8 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
    crystallite_Li0, &
    crystallite_Li, &
    crystallite_dPdF, &
-   crystallite_Tstar0_v, &
-   crystallite_Tstar_v
+   crystallite_S0, &
+   crystallite_S
  use homogenization, only: &  
    materialpoint_F, &
    materialpoint_F0, &
@@ -363,12 +363,12 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
 
  !*** age results and write restart data if requested
  if (iand(mode, CPFEM_AGERESULTS) /= 0_pInt) then
-   crystallite_F0  = crystallite_partionedF                                                    ! crystallite deformation (_subF is perturbed...)
-   crystallite_Fp0 = crystallite_Fp                                                            ! crystallite plastic deformation
-   crystallite_Lp0 = crystallite_Lp                                                            ! crystallite plastic velocity
-   crystallite_Fi0 = crystallite_Fi                                                            ! crystallite intermediate deformation
-   crystallite_Li0 = crystallite_Li                                                            ! crystallite intermediate velocity
-   crystallite_Tstar0_v = crystallite_Tstar_v                                                  ! crystallite 2nd Piola Kirchhoff stress
+   crystallite_F0  = crystallite_partionedF                                                         ! crystallite deformation (_subF is perturbed...)
+   crystallite_Fp0 = crystallite_Fp                                                                 ! crystallite plastic deformation
+   crystallite_Lp0 = crystallite_Lp                                                                 ! crystallite plastic velocity
+   crystallite_Fi0 = crystallite_Fi                                                                 ! crystallite intermediate deformation
+   crystallite_Li0 = crystallite_Li                                                                 ! crystallite intermediate velocity
+   crystallite_S0  = crystallite_S                                                                  ! crystallite 2nd Piola Kirchhoff stress
 
    forall ( i = 1:size(plasticState    )) plasticState(i)%state0     = plasticState(i)%state   ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
    do i = 1, size(sourceState)

@@ -114,7 +114,7 @@ subroutine CPFEM_init
    crystallite_Lp0, &
    crystallite_Fi0, &
    crystallite_Li0, &
-   crystallite_Tstar0_v
+   crystallite_S0
  use hdf5
  use HDF5_utilities, only: &
    HDF5_openFile, &
@@ -150,7 +150,7 @@ subroutine CPFEM_init
    call HDF5_read(fileHandle,crystallite_Fi0,     'convergedFi')
    call HDF5_read(fileHandle,crystallite_Lp0,     'convergedLp')
    call HDF5_read(fileHandle,crystallite_Li0,     'convergedLi')
-   call HDF5_read(fileHandle,crystallite_Tstar0_v,'convergedTstar')
+   call HDF5_read(fileHandle,crystallite_S0,      'convergedS')
    
    groupPlasticID = HDF5_openGroup(fileHandle,'PlasticPhases')
    do ph = 1_pInt,size(phase_plasticity)
@@ -213,9 +213,8 @@ subroutine CPFEM_age()
    crystallite_Lp, &
    crystallite_Li0, &
    crystallite_Li, &
-   crystallite_dPdF, &
-   crystallite_Tstar0_v, &
-   crystallite_Tstar_v
+   crystallite_S0, &
+   crystallite_S
  use HDF5_utilities, only: &
    HDF5_openFile, &
    HDF5_closeFile, &
@@ -239,7 +238,7 @@ subroutine CPFEM_age()
  crystallite_Lp0 = crystallite_Lp
  crystallite_Fi0 = crystallite_Fi
  crystallite_Li0 = crystallite_Li
- crystallite_Tstar0_v = crystallite_Tstar_v
+ crystallite_S0 = crystallite_S
  
  forall (i = 1:size(plasticState)) plasticState(i)%state0 = plasticState(i)%state            ! copy state in this lengthy way because: A component cannot be an array if the encompassing structure is an array
  
@@ -267,7 +266,7 @@ subroutine CPFEM_age()
    call HDF5_write(fileHandle,crystallite_Fi0,     'convergedFi')
    call HDF5_write(fileHandle,crystallite_Lp0,     'convergedLp')
    call HDF5_write(fileHandle,crystallite_Li0,     'convergedLi')
-   call HDF5_write(fileHandle,crystallite_Tstar0_v,'convergedTstar')
+   call HDF5_write(fileHandle,crystallite_S0,      'convergedS')
    
    groupPlastic = HDF5_addGroup(fileHandle,'PlasticPhases')
    do ph = 1_pInt,size(phase_plasticity)

@@ -315,15 +315,15 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    crystallite_Lp, &
    crystallite_Li0, &
    crystallite_Li, &
-   crystallite_Tstar0_v, &
-   crystallite_Tstar_v, &
+   crystallite_S0, &
+   crystallite_S, &
    crystallite_partionedF0, &
    crystallite_partionedF, &
    crystallite_partionedFp0, &
    crystallite_partionedLp0, &
    crystallite_partionedFi0, &
    crystallite_partionedLi0, &
-   crystallite_partionedTstar0_v, &
+   crystallite_partionedS0, &
    crystallite_dt, &
    crystallite_requested, &
    crystallite_stress, &
@@ -380,8 +380,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
      crystallite_partionedLp0(1:3,1:3,g,i,e) = crystallite_Lp0(1:3,1:3,g,i,e)                       ! ...plastic velocity grads
      crystallite_partionedFi0(1:3,1:3,g,i,e) = crystallite_Fi0(1:3,1:3,g,i,e)                       ! ...intermediate def grads
      crystallite_partionedLi0(1:3,1:3,g,i,e) = crystallite_Li0(1:3,1:3,g,i,e)                       ! ...intermediate velocity grads
-     crystallite_partionedF0(1:3,1:3,g,i,e) = crystallite_F0(1:3,1:3,g,i,e)                         ! ...def grads
-     crystallite_partionedTstar0_v(1:6,g,i,e) = crystallite_Tstar0_v(1:6,g,i,e)                     ! ...2nd PK stress
+     crystallite_partionedF0(1:3,1:3,g,i,e)  = crystallite_F0(1:3,1:3,g,i,e)                        ! ...def grads
+     crystallite_partionedS0(1:3,1:3,g,i,e)  = crystallite_S0(1:3,1:3,g,i,e)                        ! ...2nd PK stress
 
    enddo; enddo
    forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e))
@@ -449,8 +449,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
            crystallite_partionedLi0(1:3,1:3,1:myNgrains,i,e) = &
              crystallite_Li(1:3,1:3,1:myNgrains,i,e)                                                ! ...intermediate velocity grads
 
-           crystallite_partionedTstar0_v(1:6,1:myNgrains,i,e) = &
-             crystallite_Tstar_v(1:6,1:myNgrains,i,e)                                               ! ...2nd PK stress
+           crystallite_partionedS0(1:3,1:3,1:myNgrains,i,e) = &
+             crystallite_S(1:3,1:3,1:myNgrains,i,e)                                                 ! ...2nd PK stress
 
            do g = 1,myNgrains
              plasticState    (phaseAt(g,i,e))%partionedState0(:,phasememberAt(g,i,e)) = &
@@ -512,8 +512,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
              crystallite_partionedFi0(1:3,1:3,1:myNgrains,i,e)                                      ! ...intermediate def grads
            crystallite_Li(1:3,1:3,1:myNgrains,i,e) = &
              crystallite_partionedLi0(1:3,1:3,1:myNgrains,i,e)                                      ! ...intermediate velocity grads
-           crystallite_Tstar_v(1:6,1:myNgrains,i,e) = &
-              crystallite_partionedTstar0_v(1:6,1:myNgrains,i,e)                                    ! ...2nd PK stress
+           crystallite_S(1:3,1:3,1:myNgrains,i,e) = &
+              crystallite_partionedS0(1:3,1:3,1:myNgrains,i,e)                                      ! ...2nd PK stress
            do g = 1, myNgrains
              plasticState    (phaseAt(g,i,e))%state(          :,phasememberAt(g,i,e)) = &
              plasticState    (phaseAt(g,i,e))%partionedState0(:,phasememberAt(g,i,e))
