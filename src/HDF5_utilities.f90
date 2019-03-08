@@ -117,7 +117,7 @@ end subroutine HDF5_utilities_init
 !--------------------------------------------------------------------------------------------------
 !> @brief open and initializes HDF5 output file
 !--------------------------------------------------------------------------------------------------
-integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
+integer(HID_T) function HDF5_openFile(fileName,mode,parallel) ! ToDo: simply "open" is enough
 
  implicit none
  character(len=*), intent(in)           :: fileName
@@ -146,7 +146,7 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
 
  if    (m == 'w') then
    call h5fcreate_f(fileName,H5F_ACC_TRUNC_F,HDF5_openFile,hdferr,access_prp = plist_id)
-   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fcreate_f')
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fcreate_f (w)')
  elseif(m == 'a') then
    call h5fopen_f(fileName,H5F_ACC_RDWR_F,HDF5_openFile,hdferr,access_prp = plist_id)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f (a)')
@@ -154,7 +154,7 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
    call h5fopen_f(fileName,H5F_ACC_RDONLY_F,HDF5_openFile,hdferr,access_prp = plist_id)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f (r)')
  else
-   call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f unknown access mode')
+   call IO_error(1_pInt,ext_msg='HDF5_openFile: h5fopen_f unknown access mode: '//trim(m))
  endif
 
  call h5pclose_f(plist_id, hdferr)
