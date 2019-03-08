@@ -132,7 +132,6 @@ subroutine mesh_init()
    IO_stringPos, &
    IO_intValue, &
    IO_EOF, &
-   IO_read, &
    IO_isBlank
  use debug, only: &
    debug_e, &

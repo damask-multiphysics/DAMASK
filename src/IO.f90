@@ -24,7 +24,6 @@ module IO
    IO_read, &
    IO_recursiveRead, &
    IO_open_file_stat, &
-   IO_open_jobFile_stat, &
    IO_open_file, &
    IO_write_jobFile, &
    IO_write_jobRealFile, &
@@ -270,30 +269,6 @@ logical function IO_open_file_stat(fileUnit,path)
 
 end function IO_open_file_stat
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief   opens existing file for reading to given unit. File is named after solver job name
-!!          plus given extension and located in current working directory
-!> @details Like IO_open_jobFile, but error is handled via return value and not via call to
-!!          IO_error
-!--------------------------------------------------------------------------------------------------
-logical function IO_open_jobFile_stat(fileUnit,ext)
- use DAMASK_interface, only: &
-   getSolverJobName
-
- implicit none
- integer(pInt),      intent(in) :: fileUnit                                                         !< file unit
- character(len=*),   intent(in) :: ext                                                              !< extension of file
-
- integer(pInt)                  :: myStat
- character(len=1024)            :: path
-
- path = trim(getSolverJobName())//'.'//ext
- open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
- if (myStat /= 0_pInt) close(fileUnit)
- IO_open_jobFile_stat = (myStat == 0_pInt)
-
-end function IO_open_JobFile_stat
 
 
 #if defined(Marc4DAMASK) || defined(Abaqus)
@@ -1198,7 +1173,6 @@ integer(pInt) function IO_countDataLines(fileUnit)
    chunkPos = IO_stringPos(line)
    tmp = IO_lc(IO_stringValue(line,chunkPos,1_pInt))
    if (tmp(1:1) == '*' .and. tmp(2:2) /= '*') then                                                  ! found keyword
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
      exit
    else
      if (tmp(2:2) /= '*') IO_countDataLines = IO_countDataLines + 1_pInt
@@ -1234,7 +1208,6 @@ integer(pInt) function IO_countNumericalDataLines(fileUnit)
    if (verify(trim(tmp),'0123456789') == 0) then                                                    ! numerical values
      IO_countNumericalDataLines = IO_countNumericalDataLines + 1_pInt
    else
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
      exit
    endif
  enddo
@@ -1290,18 +1263,15 @@ integer(pInt) function IO_countContinuousIntValues(fileUnit)
    line = IO_read(fileUnit)
    chunkPos = IO_stringPos(line)
    if (chunkPos(1) < 1_pInt) then                                                                   ! empty line
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
      exit
    elseif (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'to' ) then                               ! found range indicator
      IO_countContinuousIntValues = 1_pInt + abs(  IO_intValue(line,chunkPos,3_pInt) &
                                                 - IO_intValue(line,chunkPos,1_pInt))
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
      exit                                                                                           ! only one single range indicator allowed                              
    else
      IO_countContinuousIntValues = IO_countContinuousIntValues+chunkPos(1)-1_pInt                   ! add line's count when assuming 'c'
      if ( IO_lc(IO_stringValue(line,chunkPos,chunkPos(1))) /= 'c' ) then                            ! line finished, read last value
        IO_countContinuousIntValues = IO_countContinuousIntValues+1_pInt
-       line = IO_read(fileUnit, .true.)                                                             ! reset IO_read
        exit                                                                                         ! data ended
      endif
    endif
