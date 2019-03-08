@@ -47,8 +47,6 @@ subroutine constitutive_init()
    worldrank
  use IO, only: &
    IO_error, &
-   IO_open_file, &
-   IO_open_jobFile_stat, &
    IO_write_jobFile
  use config, only: &
    material_Nphase, &
