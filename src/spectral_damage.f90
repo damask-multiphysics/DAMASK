@@ -57,15 +57,8 @@ contains
 !> @brief allocates all neccessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
 subroutine spectral_damage_init()
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use IO, only: &
-   IO_intOut, &
-   IO_read_realFile, &
-   IO_timeStamp
+   IO_intOut
  use spectral_utilities, only: &
    wgt
  use mesh, only: &
@@ -87,8 +80,6 @@ subroutine spectral_damage_init()
  write(6,'(/,a)') ' <<<+-  spectral_damage init  -+>>>'
  write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, volume in press, '
  write(6,'(a,/)') ' chapter Spectral Solvers for Crystal Plasticity and Multi-Physics Simulations. Springer, 2018 '
- write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
  
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc

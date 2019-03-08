@@ -25,10 +25,8 @@ module IO
    IO_recursiveRead, &
    IO_open_file_stat, &
    IO_open_file, &
+   IO_open_jobFile_binary, &
    IO_write_jobFile, &
-   IO_write_jobRealFile, &
-   IO_read_realFile, &
-   IO_read_intFile, &
    IO_isBlank, &
    IO_getTag, &
    IO_stringPos, &
@@ -229,7 +227,6 @@ recursive function IO_recursiveRead(fileName,cnt) result(fileContent)
 
 end function IO_recursiveRead
 
-
 !--------------------------------------------------------------------------------------------------
 !> @brief   opens existing file for reading to given unit. Path to file is relative to working
 !!          directory
@@ -248,6 +245,61 @@ subroutine IO_open_file(fileUnit,path)
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 
 end subroutine IO_open_file
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief opens an existing file for reading or a new file for writing. Name is the job name
+!> @details replaces an existing file when writing
+!--------------------------------------------------------------------------------------------------
+integer function IO_open_jobFile_binary(extension,mode)
+  use DAMASK_interface, only: &
+    getSolverJobName
+
+  implicit none
+  character(len=*), intent(in)           :: extension
+  character,        intent(in), optional :: mode
+ 
+  if (present(mode)) then
+    IO_open_jobFile_binary = IO_open_binary(trim(getSolverJobName())//'.'//trim(extension),mode)
+  else
+    IO_open_jobFile_binary = IO_open_binary(trim(getSolverJobName())//'.'//trim(extension))
+  endif
+
+end function IO_open_jobFile_binary
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief opens an existing file for reading or a new file for writing.
+!> @details replaces an existing file when writing
+!--------------------------------------------------------------------------------------------------
+integer function IO_open_binary(fileName,mode)
+
+  implicit none
+  character(len=*), intent(in)           :: fileName
+  character,        intent(in), optional :: mode
+ 
+  character :: m
+  integer   :: ierr 
+
+  if (present(mode)) then
+    m = mode
+  else
+    m = 'r'
+  endif
+
+ if    (m == 'w') then
+   open(newunit=IO_open_binary, file=trim(fileName),&
+        status='replace',access='stream',action='write',iostat=ierr)
+   if (ierr /= 0) call IO_error(100,ext_msg='could not open file (w): '//trim(fileName))
+ elseif(m == 'r') then
+   open(newunit=IO_open_binary, file=trim(fileName),&
+        status='old',    access='stream',action='read', iostat=ierr)
+   if (ierr /= 0) call IO_error(100,ext_msg='could not open file (r): '//trim(fileName))
+ else
+   call IO_error(100,ext_msg='unknown access mode: '//m)
+ endif
+
+end function IO_open_binary
 
 
 !--------------------------------------------------------------------------------------------------
@@ -277,7 +329,6 @@ end function IO_open_file_stat
 !--------------------------------------------------------------------------------------------------
 subroutine IO_open_inputFile(fileUnit,modelName)
  use DAMASK_interface, only: &
-   getSolverJobName, &
    inputFileExtension
 
  implicit none
@@ -409,80 +460,6 @@ subroutine IO_write_jobFile(fileUnit,ext)
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 
 end subroutine IO_write_jobFile
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief opens binary file containing array of pReal numbers to given unit for writing. File is
-!!        named after solver job name plus given extension and located in current working directory
-!--------------------------------------------------------------------------------------------------
-subroutine IO_write_jobRealFile(fileUnit,ext)
- use DAMASK_interface, only: &
-   getSolverJobName
-
- implicit none
- integer(pInt),      intent(in)           :: fileUnit                                               !< file unit
- character(len=*),   intent(in)           :: ext                                                    !< extension of file
-
- integer(pInt)                            :: myStat
- character(len=1024)                      :: path
-
- path = trim(getSolverJobName())//'.'//ext
-
-   open(fileUnit,status='replace',form='unformatted',access='direct', &
-                                                   recl=pReal,iostat=myStat,file=path)
-
-
- if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
-
-end subroutine IO_write_jobRealFile
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief opens binary file containing array of pReal numbers to given unit for reading. File is
-!!        located in current working directory
-!--------------------------------------------------------------------------------------------------
-subroutine IO_read_realFile(fileUnit,ext,modelName)
-
- implicit none
- integer(pInt),      intent(in)           :: fileUnit                                               !< file unit
- character(len=*),   intent(in)           :: ext, &                                                 !< extension of file
-                                             modelName                                              !< model name, in case of restart not solver job name
-
- integer(pInt)                            :: myStat
- character(len=1024)                      :: path
-
- path = trim(modelName)//'.'//ext
-
-   open(fileUnit,status='old',form='unformatted',access='direct', &
-                 recl=pReal,iostat=myStat,file=path)
-
- if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
-
-end subroutine IO_read_realFile
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief opens binary file containing array of pInt numbers to given unit for reading. File is
-!!        located in current working directory
-!--------------------------------------------------------------------------------------------------
-subroutine IO_read_intFile(fileUnit,ext,modelName)
-
- implicit none
- integer(pInt),      intent(in)           :: fileUnit                                               !< file unit
- character(len=*),   intent(in)           :: ext, &                                                 !< extension of file
-                                             modelName                                              !< model name, in case of restart not solver job name
-
- integer(pInt)                            :: myStat
- character(len=1024)                      :: path
-
- path = trim(modelName)//'.'//ext
-
-   open(fileUnit,status='old',form='unformatted',access='direct', &
-                 recl=pInt,iostat=myStat,file=path)
-
- if (myStat /= 0) call IO_error(100_pInt,ext_msg=path)
-
-end subroutine IO_read_intFile
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1401,27 +1378,27 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
 !> @brief returns verified integer value in given string
 !--------------------------------------------------------------------------------------------------
 integer(pInt) function IO_verifyIntValue (string,validChars,myName)
-
- implicit none
- character(len=*), intent(in) :: string, &                                                            !< string for conversion to int value. Must not contain spaces!
-                                 validChars, &                                                        !< valid characters in string
-                                 myName                                                               !< name of caller function (for debugging)
- integer(pInt)                :: readStatus, invalidWhere
-
- IO_verifyIntValue = 0_pInt
-
- invalidWhere = verify(string,validChars)
- if (invalidWhere == 0_pInt) then
-   read(UNIT=string,iostat=readStatus,FMT=*) IO_verifyIntValue                                        ! no offending chars found
-   if (readStatus /= 0_pInt) &                                                                        ! error during string to integer conversion
-     call IO_warning(203_pInt,ext_msg=myName//'"'//string//'"')
- else
-   call IO_warning(202_pInt,ext_msg=myName//'"'//string//'"')                                         ! complain about offending characters
-   read(UNIT=string(1_pInt:invalidWhere-1_pInt),iostat=readStatus,FMT=*) IO_verifyIntValue            ! interpret remaining string
-   if (readStatus /= 0_pInt) &                                                                        ! error during string to integer conversion
-     call IO_warning(203_pInt,ext_msg=myName//'"'//string(1_pInt:invalidWhere-1_pInt)//'"')
- endif
-
+ 
+  implicit none
+  character(len=*), intent(in) :: string, &                                                         !< string for conversion to int value. Must not contain spaces!
+                                  validChars, &                                                     !< valid characters in string
+                                  myName                                                            !< name of caller function (for debugging)
+  integer                      :: readStatus, invalidWhere
+ 
+  IO_verifyIntValue = 0
+ 
+  invalidWhere = verify(string,validChars)
+  if (invalidWhere == 0) then
+    read(UNIT=string,iostat=readStatus,FMT=*) IO_verifyIntValue                                     ! no offending chars found
+    if (readStatus /= 0) &                                                                          ! error during string to integer conversion
+      call IO_warning(203,ext_msg=myName//'"'//string//'"')
+  else
+    call IO_warning(202,ext_msg=myName//'"'//string//'"')                                           ! complain about offending characters
+    read(UNIT=string(1:invalidWhere-1),iostat=readStatus,FMT=*) IO_verifyIntValue                   ! interpret remaining string
+    if (readStatus /= 0) &                                                                          ! error during string to integer conversion
+      call IO_warning(203,ext_msg=myName//'"'//string(1:invalidWhere-1)//'"')
+  endif
+ 
 end function IO_verifyIntValue
 
 
@@ -1429,28 +1406,28 @@ end function IO_verifyIntValue
 !> @brief returns verified float value in given string
 !--------------------------------------------------------------------------------------------------
 real(pReal) function IO_verifyFloatValue (string,validChars,myName)
-
- implicit none
- character(len=*), intent(in) :: string, &                                                            !< string for conversion to int value. Must not contain spaces!
-                                 validChars, &                                                        !< valid characters in string
-                                 myName                                                               !< name of caller function (for debugging)
-
- integer(pInt)                :: readStatus, invalidWhere
-
- IO_verifyFloatValue = 0.0_pReal
-
- invalidWhere = verify(string,validChars)
- if (invalidWhere == 0_pInt) then
-   read(UNIT=string,iostat=readStatus,FMT=*) IO_verifyFloatValue                                      ! no offending chars found
-   if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
-     call IO_warning(203_pInt,ext_msg=myName//'"'//string//'"')
- else
-   call IO_warning(202_pInt,ext_msg=myName//'"'//string//'"')                                         ! complain about offending characters
-   read(UNIT=string(1_pInt:invalidWhere-1_pInt),iostat=readStatus,FMT=*) IO_verifyFloatValue          ! interpret remaining string
-   if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
-     call IO_warning(203_pInt,ext_msg=myName//'"'//string(1_pInt:invalidWhere-1_pInt)//'"')
- endif
-
+ 
+  implicit none
+  character(len=*), intent(in) :: string, &                                                         !< string for conversion to int value. Must not contain spaces!
+                                  validChars, &                                                     !< valid characters in string
+                                  myName                                                            !< name of caller function (for debugging)
+ 
+  integer                      :: readStatus, invalidWhere
+ 
+  IO_verifyFloatValue = 0.0_pReal
+ 
+  invalidWhere = verify(string,validChars)
+  if (invalidWhere == 0) then
+    read(UNIT=string,iostat=readStatus,FMT=*) IO_verifyFloatValue                                   ! no offending chars found
+    if (readStatus /= 0) &                                                                          ! error during string to float conversion
+      call IO_warning(203,ext_msg=myName//'"'//string//'"')
+  else
+    call IO_warning(202,ext_msg=myName//'"'//string//'"')                                           ! complain about offending characters
+    read(UNIT=string(1:invalidWhere-1),iostat=readStatus,FMT=*) IO_verifyFloatValue                 ! interpret remaining string
+    if (readStatus /= 0) &                                                                          ! error during string to float conversion
+      call IO_warning(203,ext_msg=myName//'"'//string(1:invalidWhere-1)//'"')
+  endif
+ 
 end function IO_verifyFloatValue
 
 end module IO

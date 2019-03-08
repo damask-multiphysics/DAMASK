@@ -362,61 +362,63 @@ end subroutine utilities_init
 !> Also writes out the current reference stiffness for restart.
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_updateGamma(C,saveReference)
- use IO, only: &
-  IO_write_jobRealFile
- use numerics, only: &
-   memory_efficient, &
-   worldrank
- use mesh, only: &
-   grid3Offset, &
-   grid3,&
-   grid
- use math, only: &
-   math_det33, &
-   math_invert
-
- implicit none
- real(pReal), intent(in), dimension(3,3,3,3) :: C                                                   !< input stiffness to store as reference stiffness
- logical    , intent(in)                     :: saveReference                                       !< save reference stiffness to file for restart
- complex(pReal),              dimension(3,3) :: temp33_complex, xiDyad_cmplx
- real(pReal),                 dimension(6,6) :: matA, matInvA
- integer(pInt) :: &
-   i, j, k, &
-   l, m, n, o
- logical :: err
-
- C_ref = C
- if (saveReference) then
-   if (worldrank == 0_pInt) then
-     write(6,'(/,a)') ' writing reference stiffness to file'
-     flush(6)
-     call IO_write_jobRealFile(777,'C_ref',size(C_ref))
-     write (777,rec=1) C_ref; close(777)
-   endif
- endif
-
- if(.not. memory_efficient) then
-   gamma_hat =  cmplx(0.0_pReal,0.0_pReal,pReal)                                                     ! for the singular point and any non invertible A
-   do k = grid3Offset+1_pInt, grid3Offset+grid3; do j = 1_pInt, grid(2); do i = 1_pInt, grid1Red
-     if (any([i,j,k] /= 1_pInt)) then                                                                ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
-       forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-         xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k-grid3Offset))*xi1st(m,i,j,k-grid3Offset)
-       forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-         temp33_complex(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal)*xiDyad_cmplx)
-       matA(1:3,1:3) = real(temp33_complex); matA(4:6,4:6) = real(temp33_complex)
-       matA(1:3,4:6) = aimag(temp33_complex); matA(4:6,1:3) = -aimag(temp33_complex)
-       if (abs(math_det33(matA(1:3,1:3))) > 1e-16) then
-         call math_invert(6_pInt, matA, matInvA, err)
-         temp33_complex = cmplx(matInvA(1:3,1:3),matInvA(1:3,4:6),pReal)
-         forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-           gamma_hat(l,m,n,o,i,j,k-grid3Offset) =  temp33_complex(l,n)* &
+  use IO, only: &
+    IO_open_jobFile_binary
+  use numerics, only: &
+    memory_efficient, &
+    worldrank
+  use mesh, only: &
+    grid3Offset, &
+    grid3,&
+    grid
+  use math, only: &
+    math_det33, &
+    math_invert2
+ 
+  implicit none
+  real(pReal), intent(in), dimension(3,3,3,3) :: C                                                  !< input stiffness to store as reference stiffness
+  logical    , intent(in)                     :: saveReference                                      !< save reference stiffness to file for restart
+  complex(pReal),              dimension(3,3) :: temp33_complex, xiDyad_cmplx
+  real(pReal),                 dimension(6,6) :: A, A_inv
+  integer :: &
+    i, j, k, &
+    l, m, n, o, &
+    fileUnit
+  logical :: err
+ 
+  C_ref = C
+  if (saveReference) then
+    if (worldrank == 0_pInt) then
+      write(6,'(/,a)') ' writing reference stiffness to file'
+      flush(6)
+      fileUnit = IO_open_jobFile_binary('C_ref','w')
+      write(fileUnit) C_ref; close(fileUnit)
+    endif
+  endif
+ 
+  if(.not. memory_efficient) then
+    gamma_hat =  cmplx(0.0_pReal,0.0_pReal,pReal)                                                     ! for the singular point and any non invertible A
+    do k = grid3Offset+1, grid3Offset+grid3; do j = 1, grid(2); do i = 1, grid1Red
+      if (any([i,j,k] /= 1)) then                                                                ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
+        forall(l = 1:3, m = 1:3) &
+          xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k-grid3Offset))*xi1st(m,i,j,k-grid3Offset)
+        forall(l = 1:3, m = 1:3) &
+          temp33_complex(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal)*xiDyad_cmplx)
+        A(1:3,1:3) = real(temp33_complex);  A(4:6,4:6) =   real(temp33_complex)
+        A(1:3,4:6) = aimag(temp33_complex); A(4:6,1:3) = -aimag(temp33_complex)
+        if (abs(math_det33(A(1:3,1:3))) > 1e-16) then
+          call math_invert2(A_inv, err, A)
+          temp33_complex = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pReal)
+          forall(l=1:3, m=1:3, n=1:3, o=1:3) &
+            gamma_hat(l,m,n,o,i,j,k-grid3Offset) = temp33_complex(l,n)* &
                                                    conjg(-xi1st(o,i,j,k-grid3Offset))*xi1st(m,i,j,k-grid3Offset)
-       endif
-     endif
-   enddo; enddo; enddo
- endif
-
+        endif
+      endif
+    enddo; enddo; enddo
+  endif
+ 
 end subroutine utilities_updateGamma
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forward FFT of data in field_real to field_fourier

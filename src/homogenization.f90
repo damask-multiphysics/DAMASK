@@ -57,11 +57,6 @@ contains
 !> @brief module initialization
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_init
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use math, only: &
    math_I3
  use debug, only: &
@@ -79,8 +74,6 @@ subroutine homogenization_init
  use crystallite, only: &
    crystallite_maxSizePostResults
  use config, only: &
-  material_configFile, &
-  material_localFileExt, &
   config_deallocate, &
   config_homogenization, &
   homogenization_name
@@ -116,16 +109,9 @@ subroutine homogenization_init
  if (any(thermal_type == THERMAL_adiabatic_ID))  call thermal_adiabatic_init
  if (any(thermal_type == THERMAL_conduction_ID)) call thermal_conduction_init
 
-!--------------------------------------------------------------------------------------------------
-! open material.config
- if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
-   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
- if (any(damage_type == DAMAGE_none_ID)) &
-   call damage_none_init()
- if (any(damage_type == DAMAGE_local_ID)) &
-   call damage_local_init(FILEUNIT)
- if (any(damage_type == DAMAGE_nonlocal_ID)) &
-   call damage_nonlocal_init(FILEUNIT)
+ if (any(damage_type == DAMAGE_none_ID))      call damage_none_init
+ if (any(damage_type == DAMAGE_local_ID))     call damage_local_init
+ if (any(damage_type == DAMAGE_nonlocal_ID))  call damage_nonlocal_init
 
 !--------------------------------------------------------------------------------------------------
 ! write description file for homogenization output
@@ -265,8 +251,6 @@ subroutine homogenization_init
  allocate(materialpoint_results(materialpoint_sizeResults,theMesh%elem%nIPs,theMesh%nElems))
 
  write(6,'(/,a)')   ' <<<+-  homogenization init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
  if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt) then
 #ifdef TODO

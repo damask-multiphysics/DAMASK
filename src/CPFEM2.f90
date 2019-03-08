@@ -87,11 +87,6 @@ end subroutine CPFEM_initAll
 !> @brief allocate the arrays defined in module CPFEM and initialize them
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_init
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use prec, only: &
    pInt, pReal
  use IO, only: &
@@ -136,8 +131,6 @@ subroutine CPFEM_init
  integer(HID_T) :: fileHandle, groupPlasticID, groupHomogID
 
  write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
  flush(6)
 
  ! *** restore the last converged values of each essential variable from the binary file
@@ -223,9 +216,6 @@ subroutine CPFEM_age()
    crystallite_dPdF, &
    crystallite_Tstar0_v, &
    crystallite_Tstar_v
- use IO, only: &
-   IO_write_jobRealFile, &
-   IO_warning
  use HDF5_utilities, only: &
    HDF5_openFile, &
    HDF5_closeFile, &
