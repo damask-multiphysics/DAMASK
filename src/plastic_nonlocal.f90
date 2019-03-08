@@ -1378,7 +1378,7 @@ dv_dtau(1:ns,2) = dv_dtau(1:ns,1)
 dv_dtauNS(1:ns,2) = dv_dtauNS(1:ns,1)
 
 !screws
-if (size(prm%nonSchmidCoeff) == 0_pInt) then                                                 ! no non-Schmid contributions
+if (size(prm%nonSchmidCoeff) == 0_pInt) then                                                        ! no non-Schmid contributions
   forall(t = 3_pInt:4_pInt)
     v(1:ns,t) = v(1:ns,1)
     dv_dtau(1:ns,t) = dv_dtau(1:ns,1)
@@ -1548,13 +1548,13 @@ dUpper(1:ns,1) = prm%mu *  prm%burgers &
 dUpper(1:ns,2) = prm%mu *  prm%burgers / (4.0_pReal * PI * abs(tau))
 
 
-forall (c = 1_pInt:2_pInt)
+do c = 1, 2
   where(dNeq0(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+abs(rhoSgl(1:ns,2*c+3))&
                                      +abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)))) &
     dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
                        + abs(rhoSgl(1:ns,2*c+3)) + abs(rhoSgl(1:ns,2*c+4)) + rhoDip(1:ns,c)), &
                        dUpper(1:ns,c))
-end forall
+enddo
 dUpper = max(dUpper,dLower)
 deltaDUpper = dUpper - dUpperOld
 
@@ -1804,13 +1804,13 @@ dUpper(1:ns,1) = prm%mu * prm%burgers(1:ns) &
                / (8.0_pReal * pi * (1.0_pReal - prm%nu) * abs(tau))
 dUpper(1:ns,2) = prm%mu * prm%burgers(1:ns) &
                / (4.0_pReal * pi * abs(tau))
-forall (c = 1_pInt:2_pInt)
+do c = 1, 2
   where(dNeq0(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+abs(rhoSgl(1:ns,2*c+3))&
                                      +abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)))) &
     dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
                        + abs(rhoSgl(1:ns,2*c+3)) + abs(rhoSgl(1:ns,2*c+4)) + rhoDip(1:ns,c)), &
                        dUpper(1:ns,c))
-end forall
+enddo
 dUpper = max(dUpper,dLower)
 
 !****************************************************************************
@@ -2385,13 +2385,13 @@ dUpper(1:ns,1) = prm%mu * prm%burgers(1:ns) &
                / (8.0_pReal * pi * (1.0_pReal - prm%nu) * abs(tau))
 dUpper(1:ns,2) = prm%mu * prm%burgers(1:ns) &
                / (4.0_pReal * pi * abs(tau))
-forall (c = 1_pInt:2_pInt)
+do c = 1, 2
   where(dNeq0(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+abs(rhoSgl(1:ns,2*c+3))&
                                      +abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)))) &
     dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
                        + abs(rhoSgl(1:ns,2*c+3)) + abs(rhoSgl(1:ns,2*c+4)) + rhoDip(1:ns,c)), &
                        dUpper(1:ns,c))
-end forall
+enddo
 dUpper = max(dUpper,dLower)
 
 
