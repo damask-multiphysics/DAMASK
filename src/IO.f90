@@ -21,9 +21,8 @@ module IO
                 '────────────'
  public :: &
    IO_init, &
-   IO_read, &
+   IO_read_ASCII, &
    IO_recursiveRead, &
-   IO_open_file_stat, &
    IO_open_file, &
    IO_open_jobFile_binary, &
    IO_write_jobFile, &
@@ -66,87 +65,95 @@ contains
 ! ToDo: needed?
 !--------------------------------------------------------------------------------------------------
 subroutine IO_init
-
- implicit none
-
- write(6,'(/,a)')   ' <<<+-  IO init  -+>>>'
-
+ 
+  implicit none
+ 
+  write(6,'(/,a)')   ' <<<+-  IO init  -+>>>'
+ 
 end subroutine IO_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief recursively reads a line from a text file.
-!!        Recursion is triggered by "{path/to/inputfile}" in a line
-!> @details unstable and buggy
+!> @brief reads a line from a text file.
 !--------------------------------------------------------------------------------------------------
-recursive function IO_read(fileUnit,reset) result(line)
-!ToDo: remove recursion once material.config handling is done fully via config module
- implicit none
- integer(pInt), intent(in)           :: fileUnit                                                    !< file unit
- logical,       intent(in), optional :: reset
-
- integer(pInt), dimension(10) :: unitOn = 0_pInt                                                    ! save the stack of recursive file units
- integer(pInt)                :: stack = 1_pInt                                                     ! current stack position
- character(len=8192), dimension(10) :: pathOn = ''
- character(len=512)           :: path,input
- integer(pInt)                :: myStat
- character(len=65536)         :: line
-
- character(len=*), parameter  :: SEP = achar(47)//achar(92)                                         ! forward and backward slash ("/", "\")
-
-!--------------------------------------------------------------------------------------------------
-! reset case
- if(present(reset)) then; if (reset) then                                                           ! do not short circuit here
-   do while (stack > 1_pInt)                                                                        ! can go back to former file
-     close(unitOn(stack))
-     stack = stack-1_pInt
-   enddo
-   return
- endif; endif
+function IO_read(fileUnit) result(line)
+  use prec, only: &
+    pStringLen
+ 
+  implicit none
+  integer, intent(in) :: fileUnit                                                                   !< file unit
+ 
+  character(len=pStringLen) :: line
+ 
+ 
+  read(fileUnit,'(a256)',END=100) line
+ 
+100 end function IO_read
 
 
 !--------------------------------------------------------------------------------------------------
-! read from file
- unitOn(1) = fileUnit
+!> @brief reads an entire ASCII file into an array
+!--------------------------------------------------------------------------------------------------
+function IO_read_ASCII(fileName) result(fileContent)
+  use prec, only: &
+    pStringLen
+  implicit none
+  character(len=*),          intent(in)                :: fileName
 
- read(unitOn(stack),'(a65536)',END=100) line
-
- input = IO_getTag(line,'{','}')
+  character(len=pStringLen), dimension(:), allocatable :: fileContent                                      !< file content, separated per lines
+  character(len=pStringLen)                            :: line
+  character(len=:),                        allocatable :: rawData
+  integer ::  &
+    fileLength, &
+    fileUnit, &
+    startPos, endPos, &
+    myTotalLines, &                                                                                 !< # lines read from file
+    l, &
+    myStat
+  logical :: warned
+  
+!--------------------------------------------------------------------------------------------------
+! read data as stream
+  inquire(file = fileName, size=fileLength)
+  open(newunit=fileUnit, file=fileName, access='stream',&
+       status='old', position='rewind', action='read',iostat=myStat)
+  if(myStat /= 0) call IO_error(100,ext_msg=trim(fileName))
+  allocate(character(len=fileLength)::rawData)
+  read(fileUnit) rawData
+  close(fileUnit)
 
 !--------------------------------------------------------------------------------------------------
-! normal case
- if (input == '') return                                                                            ! regular line
+! count lines to allocate string array
+  myTotalLines = 1
+  do l=1, len(rawData)
+    if (rawData(l:l) == new_line('')) myTotalLines = myTotalLines+1
+  enddo
+  allocate(fileContent(myTotalLines))
 
 !--------------------------------------------------------------------------------------------------
-! recursion case
- if (stack >= 10_pInt) call IO_error(104_pInt,ext_msg=input)                                        ! recursion limit reached
+! split raw data at end of line
+  warned = .false.
+  startPos = 1
+  l = 1
+  do while (l <= myTotalLines)
+    endPos = merge(startPos + scan(rawData(startPos:),new_line('')) - 2,len(rawData),l /= myTotalLines)
+    if (endPos - startPos > pStringLen-1) then
+      line = rawData(startPos:startPos+pStringLen-1)
+      if (.not. warned) then
+        call IO_warning(207,ext_msg=trim(fileName),el=l)
+        warned = .true.
+      endif
+    else
+      line = rawData(startPos:endpos)
+    endif
+    startPos = endPos + 2                                                                           ! jump to next line start
 
- inquire(UNIT=unitOn(stack),NAME=path)                                                              ! path of current file
- stack = stack+1_pInt
- if(scan(input,SEP) == 1) then                                                                      ! absolut path given (UNIX only)
-   pathOn(stack) = input
- else
-   pathOn(stack) = path(1:scan(path,SEP,.true.))//input                                             ! glue include to current file's dir
- endif
+    fileContent(l) = line
+    l = l + 1
 
- open(newunit=unitOn(stack),iostat=myStat,file=pathOn(stack),action='read',status='old',position='rewind')                         ! open included file
- if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=pathOn(stack))
+  enddo
 
- line = IO_read(fileUnit)
-
- return
-
-!--------------------------------------------------------------------------------------------------
-! end of file case
-100 if (stack > 1_pInt) then                                                                        ! can go back to former file
-   close(unitOn(stack))
-   stack = stack-1_pInt
-   line = IO_read(fileUnit)
- else                                                                                               ! top-most file reached
-   line = IO_EOF
- endif
-
-end function IO_read
+end function IO_read_ASCII
 
 
 !--------------------------------------------------------------------------------------------------
@@ -227,23 +234,22 @@ recursive function IO_recursiveRead(fileName,cnt) result(fileContent)
 
 end function IO_recursiveRead
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief   opens existing file for reading to given unit. Path to file is relative to working
 !!          directory
-!> @details like IO_open_file_stat, but error is handled via call to IO_error and not via return
-!!          value
 !--------------------------------------------------------------------------------------------------
 subroutine IO_open_file(fileUnit,path)
-
- implicit none
- integer(pInt),      intent(in) :: fileUnit                                                         !< file unit
- character(len=*),   intent(in) :: path                                                             !< relative path from working directory
-
- integer(pInt)                  :: myStat
-
- open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
- if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
-
+ 
+  implicit none
+  integer,            intent(in) :: fileUnit                                                        !< file unit
+  character(len=*),   intent(in) :: path                                                            !< relative path from working directory
+ 
+  integer                        :: myStat
+ 
+  open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
+  if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
+ 
 end subroutine IO_open_file
 
 
@@ -300,27 +306,6 @@ integer function IO_open_binary(fileName,mode)
  endif
 
 end function IO_open_binary
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief   opens existing file for reading to given unit. Path to file is relative to working
-!!          directory
-!> @details Like IO_open_file, but error is handled via return value and not via call to IO_error
-!--------------------------------------------------------------------------------------------------
-logical function IO_open_file_stat(fileUnit,path)
-!ToDo: DEPRECATED once material.config handling is done fully via config module
- implicit none
- integer(pInt),      intent(in) :: fileUnit                                                         !< file unit
- character(len=*),   intent(in) :: path                                                             !< relative path from working directory
-
- integer(pInt)                  :: myStat
-
- open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
- if (myStat /= 0_pInt) close(fileUnit)
- IO_open_file_stat = (myStat == 0_pInt)
-
-end function IO_open_file_stat
-
 
 
 #if defined(Marc4DAMASK) || defined(Abaqus)

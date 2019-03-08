@@ -10,8 +10,6 @@ module numerics
 
  implicit none
  private
- character(len=64), parameter, private :: &
-   numerics_CONFIGFILE        = 'numerics.config'                                                   !< name of configuration file
 
  integer(pInt), protected, public :: &
    iJacoStiffness             =  1_pInt, &                                                          !< frequency of stiffness update
@@ -143,32 +141,32 @@ contains
 ! a sanity check
 !--------------------------------------------------------------------------------------------------
 subroutine numerics_init
+ use prec, only: &
+   pStringLen
  use IO, only: &
-   IO_read, &
+   IO_read_ASCII, &
    IO_error, &
-   IO_open_file_stat, &
    IO_isBlank, &
    IO_stringPos, &
    IO_stringValue, &
    IO_lc, &
    IO_floatValue, &
    IO_intValue, &
-   IO_warning, &
-   IO_timeStamp, &
-   IO_EOF
+   IO_warning
 #ifdef PETSc
 #include <petsc/finclude/petscsys.h>
    use petscsys
 #endif
 !$ use OMP_LIB, only: omp_set_num_threads
  implicit none
- integer(pInt), parameter ::                 FILEUNIT = 300_pInt
 !$ integer ::                                gotDAMASK_NUM_THREADS = 1
- integer :: i, ierr                                                                                 ! no pInt
+ integer :: i,j, ierr                                                                                 ! no pInt
  integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=65536) :: &
+ character(len=pStringLen), dimension(:), allocatable :: fileContent
+ character(len=pStringLen) :: &
    tag ,&
    line
+ logical :: fexist
 !$ character(len=6) DAMASK_NumThreadsString                                                         ! environment variable DAMASK_NUM_THREADS
 
 #ifdef PETSc
@@ -186,18 +184,18 @@ subroutine numerics_init
 !$   if (DAMASK_NumThreadsInt < 1_4) DAMASK_NumThreadsInt = 1_4                                     ! in case of string conversion fails, set it to one
 !$ endif
 !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                   ! set number of threads for parallel execution
-
-!--------------------------------------------------------------------------------------------------
-! try to open the config file
- fileExists: if(IO_open_file_stat(FILEUNIT,numerics_configFile)) then 
+ 
+ inquire(file='numerics.config', exist=fexist)
+ 
+ fileExists: if (fexist) then
    write(6,'(a,/)') ' using values from config file'
    flush(6)
-    
+   fileContent = IO_read_ASCII('numerics.config') 
+   do j=1, size(fileContent)
+   
 !--------------------------------------------------------------------------------------------------
 ! read variables from config file and overwrite default parameters if keyword is present
-   line = ''
-   do while (trim(line) /= IO_EOF)                                                                  ! read thru sections of phase part
-     line = IO_read(FILEUNIT)
+     line = fileContent(j)
      do i=1,len(line)
        if(line(i:i) == '=') line(i:i) = ' '                                                         ! also allow keyword = value version
      enddo
@@ -385,7 +383,6 @@ subroutine numerics_init
          call IO_error(300_pInt,ext_msg=tag)
      end select
    enddo
-   close(FILEUNIT)
 
  else fileExists
    write(6,'(a,/)') ' using standard values'
