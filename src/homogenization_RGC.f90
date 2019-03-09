@@ -137,13 +137,15 @@ subroutine homogenization_RGC_init()
    outputs
  
  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_RGC_label//' init  -+>>>'
- write(6,'(/,a)')   ' Tjahjanto et al., International Journal of Material Forming, 2(1):939–942, 2009'
+
+ write(6,'(/,a)')   ' Tjahjanto et al., International Journal of Material Forming 2(1):939–942, 2009'
  write(6,'(a)')     ' https://doi.org/10.1007/s12289-009-0619-1'
- write(6,'(/,a)')   ' Tjahjanto et al., Modelling and Simulation in Materials Science and Engineering, 18:015006, 2010'
+
+ write(6,'(/,a)')   ' Tjahjanto et al., Modelling and Simulation in Materials Science and Engineering 18:015006, 2010'
  write(6,'(a)')     ' https://doi.org/10.1088/0965-0393/18/1/015006'
 
- Ninstance = int(count(homogenization_type == HOMOGENIZATION_RGC_ID),pInt)
- if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0_pInt) &
+ Ninstance = count(homogenization_type == HOMOGENIZATION_RGC_ID)
+ if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0) &
    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
  allocate(param(Ninstance))

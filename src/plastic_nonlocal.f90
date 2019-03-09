@@ -290,8 +290,14 @@ subroutine plastic_nonlocal_init
  
   write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_label//' init  -+>>>'
 
- maxNinstances = int(count(phase_plasticity == PLASTICITY_NONLOCAL_ID),pInt)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
+  write(6,'(/,a)')   ' Reuber et al., Acta Materialia 71:333–348, 2014'
+  write(6,'(a)')     ' https://doi.org/10.1016/j.actamat.2014.03.012'
+
+  write(6,'(/,a)')   ' Kords, Dissertation RWTH Aachen, 2014'
+  write(6,'(a)')     ' http://publications.rwth-aachen.de/record/229993'
+
+ maxNinstances = count(phase_plasticity == PLASTICITY_NONLOCAL_ID)
+  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
     write(6,'(a16,1x,i5,/)') '# instances:',maxNinstances
 
 

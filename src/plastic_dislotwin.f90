@@ -230,11 +230,14 @@ subroutine plastic_dislotwin_init
    outputs
 
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_DISLOTWIN_label//' init  -+>>>'
- write(6,'(/,a)')   ' A. Ma and F. Roters, Acta Materialia, 52(12):3603–3612, 2004'
+
+ write(6,'(/,a)')   ' Ma and Roters, Acta Materialia 52(12):3603–3612, 2004'
  write(6,'(a)')     ' https://doi.org/10.1016/j.actamat.2004.04.012'
- write(6,'(/,a)')   ' F.Roters et al., Computational Materials Science, 39:91–95, 2007'
+
+ write(6,'(/,a)')   ' Roters et al., Computational Materials Science 39:91–95, 2007'
  write(6,'(a)')     ' https://doi.org/10.1016/j.commatsci.2006.04.014'
- write(6,'(/,a)')   ' Wong et al., Acta Materialia, 118:140–151, 2016'
+
+ write(6,'(/,a)')   ' Wong et al., Acta Materialia 118:140–151, 2016'
  write(6,'(a,/)')   ' https://doi.org/10.1016/j.actamat.2016.07.032'
 
  Ninstance = count(phase_plasticity == PLASTICITY_DISLOTWIN_ID)

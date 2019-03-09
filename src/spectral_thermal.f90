@@ -76,8 +76,9 @@ subroutine spectral_thermal_init
   PetscErrorCode :: ierr
 
   write(6,'(/,a)') ' <<<+-  spectral_thermal init  -+>>>'
-  write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, volume in press,'
-  write(6,'(/,a)') ' chapter Spectral Solvers for Crystal Plasticity and Multi-Physics Simulations. Springer, 2018'
+
+  write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, 2019'
+  write(6,'(a)')   ' https://doi.org/10.1007/978-981-10-6855-3_80'
  
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc

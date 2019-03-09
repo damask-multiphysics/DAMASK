@@ -158,8 +158,9 @@ subroutine plastic_disloUCLA_init()
    outputs
 
  write(6,'(/,a)')   ' <<<+-  plastic_'//PLASTICITY_DISLOUCLA_label//' init  -+>>>'
- write(6,'(/,a)')   ' Cereceda et al., International Journal of Plasticity 78, 2016, 242-256'
- write(6,'(/,a)')   ' http://dx.doi.org/10.1016/j.ijplas.2015.09.002'
+
+ write(6,'(/,a)')   ' Cereceda et al., International Journal of Plasticity 78:242–256, 2016'
+ write(6,'(a)')     ' https://dx.doi.org/10.1016/j.ijplas.2015.09.002'
 
  Ninstance = int(count(phase_plasticity == PLASTICITY_DISLOUCLA_ID),pInt)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &

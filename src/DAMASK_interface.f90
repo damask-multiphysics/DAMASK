@@ -152,7 +152,7 @@ subroutine DAMASK_interface_init()
 
   write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
 
-  write(6,'(/,a)') ' Roters et al., Computational Materials Science 158:420–478, 2018.'
+  write(6,'(/,a)') ' Roters et al., Computational Materials Science 158:420–478, 2018'
   write(6,'(a)')   ' https://doi.org/10.1016/j.commatsci.2018.04.030'
 
   write(6,'(/,a)') ' Version: '//DAMASKVERSION

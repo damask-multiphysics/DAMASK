@@ -125,8 +125,9 @@ subroutine plastic_isotropic_init
    outputs
 
  write(6,'(/,a)')   ' <<<+-  plastic_'//PLASTICITY_ISOTROPIC_label//' init  -+>>>'
- write(6,'(/,a)')   ' Maiti and Eisenlohr, Scripta Materialia, 145:37-40, 2018'
- write(6,'(/,a)')   ' https://doi.org/10.1016/j.scriptamat.2017.09.047'
+
+ write(6,'(/,a)')   ' Maiti and Eisenlohr, Scripta Materialia 145:37–40, 2018'
+ write(6,'(a)')     ' https://doi.org/10.1016/j.scriptamat.2017.09.047'
 
  Ninstance = count(phase_plasticity == PLASTICITY_ISOTROPIC_ID)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
