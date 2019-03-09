@@ -115,6 +115,10 @@ function IO_read_ASCII(fileName) result(fileContent)
 !--------------------------------------------------------------------------------------------------
 ! read data as stream
   inquire(file = fileName, size=fileLength)
+  if (fileLength == 0) then
+    allocate(fileContent(0))
+    return
+  endif
   open(newunit=fileUnit, file=fileName, access='stream',&
        status='old', position='rewind', action='read',iostat=myStat)
   if(myStat /= 0) call IO_error(100,ext_msg=trim(fileName))
@@ -186,6 +190,10 @@ recursive function IO_recursiveRead(fileName,cnt) result(fileContent)
 !--------------------------------------------------------------------------------------------------
 ! read data as stream
   inquire(file = fileName, size=fileLength)
+  if (fileLength == 0) then
+    allocate(fileContent(0))
+    return
+  endif
   open(newunit=fileUnit, file=fileName, access='stream',&
        status='old', position='rewind', action='read',iostat=myStat)
   if(myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=trim(fileName))
