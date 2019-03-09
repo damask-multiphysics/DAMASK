@@ -37,8 +37,8 @@ module lattice
  integer(pInt), dimension(1), parameter, private :: &
    LATTICE_FCC_NTRANSSYSTEM = int([12],pInt)                                                        !< # of transformation systems per family for fcc
 
- integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, private :: &
-   LATTICE_FCC_NCLEAVAGESYSTEM = int([3, 4, 0],pInt)                                                !< # of cleavage systems per family for fcc
+ integer(pInt), dimension(2), parameter, private :: &
+   LATTICE_FCC_NCLEAVAGESYSTEM = int([3, 4 ],pInt)                                                  !< # of cleavage systems per family for fcc
 
  integer(pInt), parameter, private  :: &
    LATTICE_FCC_NSLIP      = sum(LATTICE_FCC_NSLIPSYSTEM), &                                         !< total # of slip systems for fcc
@@ -111,7 +111,7 @@ module lattice
      ],pInt),shape(LATTICE_FCC_TWINNUCLEATIONSLIPPAIR))
 
  real(pReal), dimension(3+3,LATTICE_fcc_Ncleavage), parameter, private :: &
-   LATTICE_fcc_systemCleavage = reshape(real([&
+   LATTICE_FCC_SYSTEMCLEAVAGE = reshape(real([&
     ! Cleavage direction     Plane normal
       0, 1, 0,     1, 0, 0, &
       0, 0, 1,     0, 1, 0, &
@@ -130,16 +130,16 @@ module lattice
  integer(pInt), dimension(1), parameter, private :: &
    LATTICE_BCC_NTWINSYSTEM = int([12], pInt)                                                        !< # of twin systems per family for bcc
 
- integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, private :: &
-   LATTICE_bcc_NcleavageSystem = int([3, 6, 0],pInt)                                                !< # of cleavage systems per family for bcc
+ integer(pInt), dimension(2), parameter, private :: &
+   LATTICE_BCC_NCLEAVAGESYSTEM = int([3, 6],pInt)                                                   !< # of cleavage systems per family for bcc
 
  integer(pInt), parameter, private  :: &
    LATTICE_BCC_NSLIP      = sum(LATTICE_BCC_NSLIPSYSTEM), &                                         !< total # of slip systems for bcc
    LATTICE_BCC_NTWIN      = sum(LATTICE_BCC_NTWINSYSTEM), &                                         !< total # of twin systems for bcc
-   LATTICE_bcc_Ncleavage  = sum(lattice_bcc_NcleavageSystem)                                        !< total # of cleavage systems for bcc
+   LATTICE_BCC_NCLEAVAGE  = sum(LATTICE_BCC_NCLEAVAGESYSTEM)                                        !< total # of cleavage systems for bcc
 
  real(pReal), dimension(3+3,LATTICE_BCC_NSLIP), parameter, private :: &
-   LATTICE_bcc_systemSlip = reshape(real([&
+   LATTICE_BCC_SYSTEMSLIP = reshape(real([&
     ! Slip direction     Plane normal
     ! Slip system <111>{110}
       1,-1, 1,     0, 1, 1, &
@@ -174,7 +174,7 @@ module lattice
     '<1 -1 1>{2 1 1}']
 
  real(pReal), dimension(3+3,LATTICE_BCC_NTWIN), parameter, private :: &
-   LATTICE_bcc_systemTwin = reshape(real([&
+   LATTICE_BCC_SYSTEMTWIN = reshape(real([&
     ! Twin system <111>{112}
      -1, 1, 1,     2, 1, 1, &
       1, 1, 1,    -2, 1, 1, &
@@ -194,7 +194,7 @@ module lattice
    ['<1 1 1>{2 1 1}']
 
  real(pReal), dimension(3+3,LATTICE_bcc_Ncleavage), parameter, private :: &
-   LATTICE_bcc_systemCleavage = reshape(real([&
+   LATTICE_BCC_SYSTEMCLEAVAGE = reshape(real([&
     ! Cleavage direction     Plane normal
       0, 1, 0,     1, 0, 0, &
       0, 0, 1,     0, 1, 0, &
@@ -215,16 +215,16 @@ module lattice
  integer(pInt), dimension(4), parameter, private :: &
    LATTICE_HEX_NTWINSYSTEM = int([ 6, 6, 6, 6],pInt)                                                !< # of slip systems per family for hex
 
- integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, private :: &
-   LATTICE_hex_NcleavageSystem = int([3, 0, 0],pInt)                                                !< # of cleavage systems per family for hex
+ integer(pInt), dimension(1), parameter, private :: &
+   LATTICE_HEX_NCLEAVAGESYSTEM = int([3],pInt)                                                      !< # of cleavage systems per family for hex
 
  integer(pInt), parameter, private  :: &
    LATTICE_HEX_NSLIP      = sum(LATTICE_HEX_NSLIPSystem), &                                         !< total # of slip systems for hex
    LATTICE_HEX_NTWIN      = sum(LATTICE_HEX_NTWINSYSTEM), &                                         !< total # of twin systems for hex
-   LATTICE_hex_Ncleavage  = sum(lattice_hex_NcleavageSystem)                                        !< total # of cleavage systems for hex
+   LATTICE_HEX_NCLEAVAGE  = sum(LATTICE_HEX_NCLEAVAGESYSTEM)                                        !< total # of cleavage systems for hex
 
  real(pReal), dimension(4+4,LATTICE_HEX_NSLIP), parameter, private :: &
-   LATTICE_hex_systemSlip = reshape(real([&
+   LATTICE_HEX_SYSTEMSLIP = reshape(real([&
     ! Slip direction     Plane normal
     ! Basal systems <11.0>{00.1} (independent of c/a-ratio, Bravais notation (4 coordinate base))
       2, -1, -1,  0,     0,  0,  0,  1, &
@@ -275,8 +275,8 @@ module lattice
     '<1 1 . 3>{-1 0 . 1} ', &
     '<1 1 . 3>{-1 -1 . 2}']
 
- real(pReal), dimension(4+4,LATTICE_hex_Ntwin), parameter, private :: &
-   LATTICE_hex_systemTwin =  reshape(real([&
+ real(pReal), dimension(4+4,LATTICE_HEX_NTWIN), parameter, private :: &
+   LATTICE_HEX_SYSTEMTWIN =  reshape(real([&
     ! Compression or Tension =f(twinning shear=f(c/a)) for each metal ! (according to Yoo 1981)
       1, -1,  0,  1,    -1,  1,  0,  2, & ! <-10.1>{10.2} shear = (3-(c/a)^2)/(sqrt(3) c/a)
      -1,  0,  1,  1,     1,  0, -1,  2, &
@@ -313,8 +313,8 @@ module lattice
     '<1 0 . -2>{1 0 . 1} ', &
     '<1 1 . -3>{1 1 . 2} ']
 
- real(pReal), dimension(4+4,LATTICE_hex_Ncleavage), parameter, private :: &
-   LATTICE_hex_systemCleavage = reshape(real([&
+ real(pReal), dimension(4+4,LATTICE_HEX_NCLEAVAGE), parameter, private :: &
+   LATTICE_HEX_SYSTEMCLEAVAGE = reshape(real([&
     ! Cleavage direction     Plane normal
       2,-1,-1, 0,     0, 0, 0, 1, &
       0, 0, 0, 1,     2,-1,-1, 0, &
@@ -325,13 +325,13 @@ module lattice
 !--------------------------------------------------------------------------------------------------
 ! body centered tetragonal
  integer(pInt), dimension(13), parameter, private :: &
-   LATTICE_bct_NslipSystem = int([2, 2, 2, 4, 2, 4, 2, 2, 4, 8, 4, 8, 8 ],pInt)                     !< # of slip systems per family for bct (Sn) Bieler J. Electr Mater 2009
+   LATTICE_BCT_NSLIPSYSTEM = int([2, 2, 2, 4, 2, 4, 2, 2, 4, 8, 4, 8, 8 ],pInt)                     !< # of slip systems per family for bct (Sn) Bieler J. Electr Mater 2009
 
  integer(pInt), parameter, private  :: &
-   LATTICE_bct_Nslip      = sum(lattice_bct_NslipSystem)                                            !< total # of slip systems for bct
+   LATTICE_BCT_NSLIP       = sum(LATTICE_BCT_NSLIPSYSTEM)                                           !< total # of slip systems for bct
 
- real(pReal), dimension(3+3,LATTICE_bct_Nslip), parameter, private :: &
-   LATTICE_bct_systemSlip = reshape(real([&
+ real(pReal), dimension(3+3,LATTICE_BCT_NSLIP), parameter, private :: &
+   LATTICE_BCT_SYSTEMSLIP = reshape(real([&
     ! Slip direction     Plane normal
     ! Slip family 1 {100)<001] (Bravais notation {hkl)<uvw] for bct c/a = 0.5456)
       0, 0, 1,      1, 0, 0, &
@@ -398,7 +398,7 @@ module lattice
       1,-1, 1,     -2,-1, 1, &
      -1, 1, 1,     -1,-2, 1, &
       1, 1, 1,      1,-2, 1  &
-      ],pReal),[ 3_pInt + 3_pInt,LATTICE_bct_Nslip])                                                !< slip systems for bct sorted by Bieler
+      ],pReal),[ 3_pInt + 3_pInt,LATTICE_BCT_NSLIP])                                                !< slip systems for bct sorted by Bieler
 
  character(len=*), dimension(13), parameter, private :: LATTICE_BCT_SLIPFAMILY_NAME = &
    ['{1 0 0)<0 0 1] ', &
@@ -418,8 +418,8 @@ module lattice
 
 !--------------------------------------------------------------------------------------------------
 ! isotropic
- integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, private :: &
-   LATTICE_iso_NcleavageSystem = int([3, 0, 0],pInt)                                                !< # of cleavage systems per family for iso
+ integer(pInt), dimension(1), parameter, private :: &
+   LATTICE_iso_NcleavageSystem = int([3],pInt)                                                      !< # of cleavage systems per family for iso
 
  integer(pInt), parameter, private  :: &
    LATTICE_iso_Ncleavage  = sum(lattice_iso_NcleavageSystem)                                        !< total # of cleavage systems for iso
@@ -435,7 +435,7 @@ module lattice
 
 !--------------------------------------------------------------------------------------------------
 ! orthorhombic
- integer(pInt), dimension(LATTICE_maxNcleavageFamily), parameter, private :: &
+ integer(pInt), dimension(3), parameter, private :: &
    LATTICE_ort_NcleavageSystem = int([1, 1, 1],pInt)                                                !< # of cleavage systems per family for ortho
 
  integer(pInt), parameter, private  :: &
@@ -701,47 +701,38 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
  myNcleavage   = 0_pInt
 
  select case(lattice_structure(myPhase))
-!--------------------------------------------------------------------------------------------------
-! fcc
+
    case (LATTICE_fcc_ID)
      myNcleavage = lattice_fcc_Ncleavage
-     lattice_NcleavageSystem(1:lattice_maxNcleavageFamily,myPhase)  = lattice_fcc_NcleavageSystem
+     lattice_NcleavageSystem(1:2,myPhase)  = lattice_fcc_NcleavageSystem
 
      lattice_Scleavage(1:3,1:3,1:3,1:myNcleavage,myPhase) = &
      lattice_SchmidMatrix_cleavage(lattice_fcc_ncleavageSystem,'fcc',covera)
 
-!--------------------------------------------------------------------------------------------------
-! bcc
    case (LATTICE_bcc_ID)
      myNcleavage = lattice_bcc_Ncleavage
-     lattice_NcleavageSystem(1:lattice_maxNcleavageFamily,myPhase)  = lattice_bcc_NcleavageSystem
+     lattice_NcleavageSystem(1:2,myPhase)  = lattice_bcc_NcleavageSystem
 
      lattice_Scleavage(1:3,1:3,1:3,1:myNcleavage,myPhase) = &
      lattice_SchmidMatrix_cleavage(lattice_bcc_ncleavagesystem,'bcc',covera)
      
-!--------------------------------------------------------------------------------------------------
-! hex (including conversion from miller-bravais (a1=a2=a3=c) to miller (a, b, c) indices)
    case (LATTICE_hex_ID)
      myNcleavage = lattice_hex_Ncleavage
-     lattice_NcleavageSystem(1:lattice_maxNcleavageFamily,myPhase) = lattice_hex_NcleavageSystem
+     lattice_NcleavageSystem(1:1,myPhase) = lattice_hex_NcleavageSystem
 
      lattice_Scleavage(1:3,1:3,1:3,1:myNcleavage,myPhase) = &
      lattice_SchmidMatrix_cleavage(lattice_hex_ncleavagesystem,'hex',covera)
 
-!--------------------------------------------------------------------------------------------------
-! orthorhombic (no crystal plasticity)
    case (LATTICE_ort_ID)
      myNcleavage   = lattice_ort_Ncleavage
-     lattice_NcleavageSystem(1:lattice_maxNcleavageFamily,myPhase)  = lattice_ort_NcleavageSystem
+     lattice_NcleavageSystem(1:3,myPhase)  = lattice_ort_NcleavageSystem
 
      lattice_Scleavage(1:3,1:3,1:3,1:myNcleavage,myPhase) = &
      lattice_SchmidMatrix_cleavage(lattice_ort_NcleavageSystem,'ort',covera)
 
-!--------------------------------------------------------------------------------------------------
-! isotropic (no crystal plasticity)
    case (LATTICE_iso_ID)
      myNcleavage   = lattice_iso_Ncleavage
-     lattice_NcleavageSystem(1:lattice_maxNcleavageFamily,myPhase)  = lattice_iso_NcleavageSystem
+     lattice_NcleavageSystem(1:1,myPhase)  = lattice_iso_NcleavageSystem
 
      lattice_Scleavage(1:3,1:3,1:3,1:myNcleavage,myPhase) = &
      lattice_SchmidMatrix_cleavage(lattice_iso_NcleavageSystem,'iso',covera)
