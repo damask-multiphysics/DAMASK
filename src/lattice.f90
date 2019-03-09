@@ -511,19 +511,6 @@ module lattice
    module procedure slipProjection_direction
  end interface lattice_forestProjection_screw
  
- interface lattice_slipProjection_modeI
-   module procedure slipProjection_normal
- end interface lattice_slipProjection_modeI
- 
-  interface lattice_slipProjection_modeII
-   module procedure slipProjection_direction
- end interface lattice_slipProjection_modeII
- 
-  interface lattice_slipProjection_modeIII
-   module procedure slipProjection_transverse
- end interface lattice_slipProjection_modeIII
-
-
  public :: &
   lattice_init, &
   lattice_qDisorientation, &
@@ -548,9 +535,6 @@ module lattice
   lattice_forestProjection, &
   lattice_forestProjection_edge, &
   lattice_forestProjection_screw, &
-  lattice_slipProjection_modeI, &
-  lattice_slipProjection_modeII, &
-  lattice_slipProjection_modeIII, &
   lattice_slip_normal, &
   lattice_slip_direction, &
   lattice_slip_transverse
@@ -689,7 +673,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
    math_mul33x33, &
    math_sym3333to66, &
    math_Voigt66to3333, &
-   math_crossproduct
+   math_cross
  use IO, only: &
    IO_error
 
@@ -830,7 +814,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
  do i = 1_pInt,myNslip                                                                              ! store slip system vectors and Schmid matrix for my structure
    lattice_sd(1:3,i,myPhase) = sd(1:3,i)/norm2(sd(1:3,i))                                           ! make unit vector
    lattice_sn(1:3,i,myPhase) = sn(1:3,i)/norm2(sn(1:3,i))                                           ! make unit vector
-   lattice_st(1:3,i,myPhase) = math_crossproduct(lattice_sd(1:3,i,myPhase),lattice_sn(1:3,i,myPhase))
+   lattice_st(1:3,i,myPhase) = math_cross(lattice_sd(1:3,i,myPhase),lattice_sn(1:3,i,myPhase))
  enddo
 
 end subroutine lattice_initializeStructure
@@ -1172,7 +1156,7 @@ function lattice_C66_twin(Ntwin,C66,structure,CoverA)
  use IO, only: &
    IO_error
  use math, only: &
-   INRAD, &
+   PI, &
    math_axisAngleToR, &
    math_sym3333to66, &
    math_66toSym3333, &
@@ -1208,7 +1192,7 @@ function lattice_C66_twin(Ntwin,C66,structure,CoverA)
  end select
 
  do i = 1, sum(Ntwin)
-   R = math_axisAngleToR(coordinateSystem(1:3,2,i), 180.0_pReal * INRAD)                            ! ToDo: Why always 180 deg?
+   R = math_axisAngleToR(coordinateSystem(1:3,2,i), PI)                                             ! ToDo: Why always 180 deg?
    lattice_C66_twin(1:6,1:6,i) = math_sym3333to66(math_rotate_forward3333(math_66toSym3333(C66),R))
  enddo
 end function lattice_C66_twin
@@ -1231,9 +1215,7 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_target, &
    math_sym3333to66, &
    math_66toSym3333, &
    math_rotate_forward3333, &
-   math_mul33x33, &
-   math_tensorproduct33, &
-  math_crossproduct
+   math_mul33x33
 
  implicit none
  integer(pInt),    dimension(:),  intent(in) :: Ntrans                                              !< number of active twin systems per family
@@ -1299,8 +1281,8 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
    IO_error
  use math, only: &
    INRAD, &
-   math_tensorproduct33, &
-   math_crossproduct, &
+   math_outer, &
+   math_cross, &
    math_mul33x3, &
    math_axisAngleToR
  implicit none
@@ -1326,18 +1308,18 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
    normal    = coordinateSystem(1:3,2,i)
    np = math_mul33x3(math_axisAngleToR(direction,60.0_pReal*INRAD), normal)
    if (size(nonSchmidCoefficients)>0) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
-     + nonSchmidCoefficients(1) * math_tensorproduct33(direction, np)
+     + nonSchmidCoefficients(1) * math_outer(direction, np)
    if (size(nonSchmidCoefficients)>1) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
-     + nonSchmidCoefficients(2) * math_tensorproduct33(math_crossproduct(normal, direction), normal)
+     + nonSchmidCoefficients(2) * math_outer(math_cross(normal, direction), normal)
    if (size(nonSchmidCoefficients)>2) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
-     + nonSchmidCoefficients(3) * math_tensorproduct33(math_crossproduct(np, direction), np)
+     + nonSchmidCoefficients(3) * math_outer(math_cross(np, direction), np)
    if (size(nonSchmidCoefficients)>3) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
-     + nonSchmidCoefficients(4) * math_tensorproduct33(normal, normal)
+     + nonSchmidCoefficients(4) * math_outer(normal, normal)
    if (size(nonSchmidCoefficients)>4) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
-     + nonSchmidCoefficients(5) * math_tensorproduct33(math_crossproduct(normal, direction), &
-                                                       math_crossproduct(normal, direction))
+     + nonSchmidCoefficients(5) * math_outer(math_cross(normal, direction), &
+                                             math_cross(normal, direction))
    if (size(nonSchmidCoefficients)>5) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
-     + nonSchmidCoefficients(6) * math_tensorproduct33(direction, direction)
+     + nonSchmidCoefficients(6) * math_outer(direction, direction)
  enddo
 end function lattice_nonSchmidMatrix
 
@@ -2274,8 +2256,7 @@ end function lattice_slip_transverse
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Projection of the transverse direction onto the slip plane
-!> @details: This projection is used to calculate forest hardening for edge dislocations and for 
-! mode III failure (ToDo: MD I am not 100% sure about mode III)
+!> @details: This projection is used to calculate forest hardening for edge dislocations
 !--------------------------------------------------------------------------------------------------
 function slipProjection_transverse(Nslip,structure,cOverA) result(projection)
  use math, only: &
@@ -2301,8 +2282,7 @@ end function slipProjection_transverse
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Projection of the slip direction onto the slip plane
-!> @details: This projection is used to calculate forest hardening for screw dislocations and for 
-! mode II failure (ToDo: MD I am not 100% sure about mode II)
+!> @details: This projection is used to calculate forest hardening for screw dislocations
 !--------------------------------------------------------------------------------------------------
 function slipProjection_direction(Nslip,structure,cOverA) result(projection)
  use math, only: &
@@ -2324,32 +2304,6 @@ function slipProjection_direction(Nslip,structure,cOverA) result(projection)
  enddo; enddo
 
 end function slipProjection_direction
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Projection of the slip plane onto itself
-!> @details: This projection is used for mode I failure
-!--------------------------------------------------------------------------------------------------
-function slipProjection_normal(Nslip,structure,cOverA) result(projection)
- use math, only: &
-   math_mul3x3
-
- implicit none
- integer(pInt),    dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
- character(len=*),                          intent(in) :: structure                                 !< lattice structure
- real(pReal),                               intent(in) :: cOverA                                    !< c/a ratio
- real(pReal),     dimension(sum(Nslip),sum(Nslip))     :: projection
-
- real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
- integer(pInt) :: i, j
-
- coordinateSystem = coordinateSystem_slip(Nslip,structure,cOverA)
-
- do i=1_pInt, sum(Nslip); do j=1_pInt, sum(Nslip)
-   projection(i,j) = abs(math_mul3x3(coordinateSystem(1:3,2,i),coordinateSystem(1:3,2,j)))
- enddo; enddo
-
-end function slipProjection_normal
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2406,6 +2360,7 @@ end function coordinateSystem_slip
 function buildInteraction(activeA,activeB,maxA,maxB,values,matrix)
  use IO, only: &
    IO_error
+
  implicit none
  integer(pInt), dimension(:),           intent(in) :: &
     activeA, &                                                                                      !< number of active systems as specified in material.config
@@ -2446,7 +2401,7 @@ function buildCoordinateSystem(active,complete,system,structure,cOverA)
  use IO, only: &
    IO_error
  use math, only: &
-   math_crossproduct
+   math_cross
 
  implicit none
  integer(pInt), dimension(:), intent(in) :: &
@@ -2503,8 +2458,8 @@ function buildCoordinateSystem(active,complete,system,structure,cOverA)
 
      buildCoordinateSystem(1:3,1,a) = direction/norm2(direction)
      buildCoordinateSystem(1:3,2,a) = normal/norm2(normal)
-     buildCoordinateSystem(1:3,3,a) = math_crossproduct(buildCoordinateSystem(1:3,1,a),&
-                                                        buildCoordinateSystem(1:3,2,a))
+     buildCoordinateSystem(1:3,3,a) = math_cross(buildCoordinateSystem(1:3,1,a),&
+                                                 buildCoordinateSystem(1:3,2,a))
 
    enddo activeSystems
  enddo activeFamilies
@@ -2522,7 +2477,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
  use prec, only: &
    dEq0
  use math, only: &
-   math_crossproduct, &
+   math_cross, &
    math_tensorproduct33, &
    math_mul33x33, &
    math_mul33x3, &
@@ -2643,7 +2598,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
    do i = 1_pInt,sum(Ntrans)
      x = lattice_fccTohex_systemTrans(1:3,i)/norm2(lattice_fccTohex_systemTrans(1:3,i))
      z = lattice_fccTohex_systemTrans(4:6,i)/norm2(lattice_fccTohex_systemTrans(4:6,i))
-     y = -math_crossproduct(x,z)
+     y = -math_cross(x,z)
      Q(1:3,1,i) = x
      Q(1:3,2,i) = y
      Q(1:3,3,i) = z
