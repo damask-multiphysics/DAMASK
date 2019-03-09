@@ -723,6 +723,8 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
      lattice_Scleavage(1:3,1:3,1:3,1:myNcleavage,myPhase) = &
      lattice_SchmidMatrix_cleavage(lattice_hex_ncleavagesystem,'hex',covera)
 
+   case (LATTICE_bct_ID)
+
    case (LATTICE_ort_ID)
      myNcleavage   = lattice_ort_Ncleavage
      lattice_NcleavageSystem(1:3,myPhase)  = lattice_ort_NcleavageSystem
