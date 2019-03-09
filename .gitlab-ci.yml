@@ -49,7 +49,7 @@ variables:
   # ===============================================================================================
   # Names of module files to load
   # ===============================================================================================
-  # ++++++++++++ Compiler ++++++++++++++++++++++++++++++++++++++++++++++
+  # ++++++++++++ Compiler +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   IntelCompiler16_4:               "Compiler/Intel/16.4 Libraries/IMKL/2016"
   IntelCompiler17_8:               "Compiler/Intel/17.8 Libraries/IMKL/2017"
   IntelCompiler18_4:               "Compiler/Intel/18.4 Libraries/IMKL/2018"
@@ -57,19 +57,19 @@ variables:
   # ------------ Defaults ----------------------------------------------
   IntelCompiler:                   "$IntelCompiler18_4"
   GNUCompiler:                     "$GNUCompiler8_2"
-  # ++++++++++++ MPI +++++++++++++++++++++++++++++++++++++++++++++++++++
+  # ++++++++++++ MPI ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   IMPI2018Intel18_4:               "MPI/Intel/18.4/IntelMPI/2018"
   MPICH3_3GNU8_2:                  "MPI/GNU/8.2/MPICH/3.3"
   # ------------ Defaults ----------------------------------------------
   MPICH_Intel:                     "$IMPI2018Intel18_4"
   MPICH_GNU:                       "$MPICH3_3GNU8_2"
-  # ++++++++++++ PETSc +++++++++++++++++++++++++++++++++++++++++++++++++
+  # ++++++++++++ PETSc ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   PETSc3_10_3IMPI2018Intel18_4:    "Libraries/PETSc/3.10.3/Intel-18.4-IntelMPI-2018"
   PETSc3_10_3MPICH3_3GNU8_2:       "Libraries/PETSc/3.10.3/GNU-8.2-MPICH-3.3"
   # ------------ Defaults ----------------------------------------------
   PETSc_MPICH_Intel:               "$PETSc3_10_3IMPI2018Intel18_4"
   PETSc_MPICH_GNU:                 "$PETSc3_10_3MPICH3_3GNU8_2"
-  # ++++++++++++ FEM +++++++++++++++++++++++++++++++++++++++++++++++++++
+  # ++++++++++++ commercial FEM ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   Abaqus2019:                      "FEM/Abaqus/2019"
   MSC2018_1:                       "FEM/MSC/2018.1"
   # ------------ Defaults ----------------------------------------------
@@ -77,7 +77,8 @@ variables:
   MSC:                             "$MSC2018_1"
   IntelMarc:                       "$IntelCompiler17_8"
   IntelAbaqus:                     "$IntelCompiler16_4"
-  # ++++++++++++ Documentation +++++++++++++++++++++++++++++++++++++++++
+  HDF5Marc:                        "HDF5/1.10.4/Intel-17.8"
+  # ++++++++++++ Documentation ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   Doxygen1_8_15:                   "Documentation/Doxygen/1.8.15"
   # ------------ Defaults ----------------------------------------------
   Doxygen:                         "$Doxygen1_8_15"
@@ -394,7 +395,8 @@ TextureComponents:
 Marc_compileIfort2018_1:
   stage: compileMarc
   script:
-    - module load $IntelMarc $MSC
+    - module load $IntelMarc $HDF5Marc $MSC
+    - export DAMASK_HDF5=ON
     - Marc_compileIfort/test.py -m 2018.1
   except:
     - master
@@ -405,7 +407,7 @@ Marc_compileIfort2018_1:
 Hex_elastic:
   stage: marc
   script:
-    - module load $IntelMarc $MSC
+    - module load $IntelMarc $HDF5Marc $MSC
     - Hex_elastic/test.py
   except:
     - master
@@ -414,7 +416,7 @@ Hex_elastic:
 CubicFCC_elastic:
   stage: marc
   script:
-    - module load $IntelMarc $MSC
+    - module load $IntelMarc $HDF5Marc $MSC
     - CubicFCC_elastic/test.py
   except:
     - master
@@ -423,7 +425,7 @@ CubicFCC_elastic:
 CubicBCC_elastic:
   stage: marc
   script:
-    - module load $IntelMarc $MSC
+    - module load $IntelMarc $HDF5Marc $MSC
     - CubicBCC_elastic/test.py
   except:
     - master
@@ -432,7 +434,7 @@ CubicBCC_elastic:
 J2_plasticBehavior:
   stage: marc
   script:
-    - module load $IntelMarc $MSC
+    - module load $IntelMarc $HDF5Marc $MSC
     - J2_plasticBehavior/test.py
   except:
     - master
