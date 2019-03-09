@@ -108,8 +108,8 @@ subroutine basic_init
 
  PetscErrorCode :: ierr
  PetscScalar, pointer, dimension(:,:,:,:)   ::  F
- PetscInt, dimension(:), allocatable :: localK  
- integer :: proc, fileUnit
+ PetscInt, dimension(worldsize) :: localK  
+ integer :: fileUnit
  character(len=1024) :: rankStr
  
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasic init  -+>>>'
@@ -125,10 +125,9 @@ subroutine basic_init
 ! initialize solver specific parts of PETSc
  call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
  call SNESSetOptionsPrefix(snes,'mech_',ierr);CHKERRQ(ierr) 
- allocate(localK(worldsize), source = 0); localK(worldrank+1) = grid3
- do proc = 1, worldsize                                                                             !ToDo: there are smarter options in MPI
-   call MPI_Bcast(localK(proc),1,MPI_INTEGER,proc-1,PETSC_COMM_WORLD,ierr)
- enddo  
+ localK              = 0
+ localK(worldrank+1) = grid3
+ call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)
  call DMDACreate3d(PETSC_COMM_WORLD, &
         DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                     ! cut off stencil at boundary
         DMDA_STENCIL_BOX, &                                                                         ! Moore (26) neighborhood around central point
