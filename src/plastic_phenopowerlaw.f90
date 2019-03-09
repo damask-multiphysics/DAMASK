@@ -575,9 +575,9 @@ subroutine plastic_phenopowerlaw_results(instance,group)
  use results
 
  implicit none
- integer(pInt), intent(in) :: instance
+ integer, intent(in) :: instance
  character(len=*) :: group
- integer(pInt) :: o
+ integer :: o
 
  associate(prm => param(instance), stt => state(instance))
  outputsLoop: do o = 1_pInt,size(prm%outputID)
@@ -590,7 +590,7 @@ subroutine plastic_phenopowerlaw_results(instance,group)
  enddo outputsLoop
  end associate
 #else
- integer(pInt), intent(in) :: instance
+ integer, intent(in) :: instance
  character(len=*) :: group
 #endif
 end subroutine plastic_phenopowerlaw_results

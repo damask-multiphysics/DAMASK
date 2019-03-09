@@ -102,7 +102,8 @@ module plastic_disloUCLA
    plastic_disloUCLA_dependentState, &
    plastic_disloUCLA_LpAndItsTangent, &
    plastic_disloUCLA_dotState, &
-   plastic_disloUCLA_postResults
+   plastic_disloUCLA_postResults, &
+   plastic_disloUCLA_results
  private :: &
    kinetics
 
@@ -559,6 +560,32 @@ function plastic_disloUCLA_postResults(Mp,Temperature,instance,of) result(postRe
  end associate
 
 end function plastic_disloUCLA_postResults
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine plastic_disloUCLA_results(instance,group)
+#if defined(PETSc) || defined(DAMASKHDF5)
+  use results
+
+  implicit none
+  integer, intent(in) :: instance
+  character(len=*) :: group
+  integer :: o
+
+  associate(prm => param(instance), stt => state(instance))
+  outputsLoop: do o = 1_pInt,size(prm%outputID)
+    select case(prm%outputID(o))
+    end select
+  enddo outputsLoop
+  end associate
+#else
+  integer, intent(in) :: instance
+  character(len=*) :: group
+#endif
+
+end subroutine plastic_disloUCLA_results
 
 
 !--------------------------------------------------------------------------------------------------

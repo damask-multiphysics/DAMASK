@@ -222,7 +222,8 @@ module plastic_nonlocal
  plastic_nonlocal_dotState, &
  plastic_nonlocal_deltaState, &
  plastic_nonlocal_updateCompatibility, &
- plastic_nonlocal_postResults
+ plastic_nonlocal_postResults, &
+ plastic_nonlocal_results
  
  private :: &
  plastic_nonlocal_kinetics
@@ -2557,5 +2558,31 @@ outputsLoop: do o = 1_pInt,size(param(instance)%outputID)
 enddo outputsLoop
 end associate
 end function plastic_nonlocal_postResults
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine plastic_nonlocal_results(instance,group)
+#if defined(PETSc) || defined(DAMASKHDF5)
+  use results
+
+  implicit none
+  integer, intent(in) :: instance
+  character(len=*) :: group
+  integer :: o
+
+  associate(prm => param(instance), stt => state(instance))
+  outputsLoop: do o = 1_pInt,size(prm%outputID)
+    select case(prm%outputID(o))
+    end select
+  enddo outputsLoop
+  end associate
+#else
+  integer, intent(in) :: instance
+  character(len=*) :: group
+#endif
+
+end subroutine plastic_nonlocal_results
 
 end module plastic_nonlocal

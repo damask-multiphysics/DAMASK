@@ -168,7 +168,8 @@ module plastic_dislotwin
    plastic_dislotwin_dependentState, &
    plastic_dislotwin_LpAndItsTangent, &
    plastic_dislotwin_dotState, &
-   plastic_dislotwin_postResults
+   plastic_dislotwin_postResults, &
+   plastic_dislotwin_results
  private :: &
    kinetics_slip, &
    kinetics_twin, &
@@ -1086,6 +1087,32 @@ function plastic_dislotwin_postResults(Mp,Temperature,instance,of) result(postRe
  end associate
  
 end function plastic_dislotwin_postResults
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine plastic_dislotwin_results(instance,group)
+#if defined(PETSc) || defined(DAMASKHDF5)
+  use results
+
+  implicit none
+  integer, intent(in) :: instance
+  character(len=*) :: group
+  integer :: o
+
+  associate(prm => param(instance), stt => state(instance))
+  outputsLoop: do o = 1_pInt,size(prm%outputID)
+    select case(prm%outputID(o))
+    end select
+  enddo outputsLoop
+  end associate
+#else
+  integer, intent(in) :: instance
+  character(len=*) :: group
+#endif
+
+end subroutine plastic_dislotwin_results
 
 
 !--------------------------------------------------------------------------------------------------

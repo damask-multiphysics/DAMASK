@@ -68,7 +68,8 @@ module plastic_isotropic
    plastic_isotropic_LpAndItsTangent, &
    plastic_isotropic_LiAndItsTangent, &
    plastic_isotropic_dotState, &
-   plastic_isotropic_postResults
+   plastic_isotropic_postResults, &
+   plastic_isotropic_results
 
 contains
 
@@ -480,6 +481,32 @@ function plastic_isotropic_postResults(Mp,instance,of) result(postResults)
  end associate
 
 end function plastic_isotropic_postResults
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine plastic_isotropic_results(instance,group)
+#if defined(PETSc) || defined(DAMASKHDF5)
+  use results
+
+  implicit none
+  integer, intent(in) :: instance
+  character(len=*) :: group
+  integer :: o
+
+  associate(prm => param(instance), stt => state(instance))
+  outputsLoop: do o = 1_pInt,size(prm%outputID)
+    select case(prm%outputID(o))
+    end select
+  enddo outputsLoop
+  end associate
+#else
+  integer, intent(in) :: instance
+  character(len=*) :: group
+#endif
+
+end subroutine plastic_isotropic_results
 
 
 end module plastic_isotropic

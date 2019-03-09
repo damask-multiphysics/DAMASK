@@ -83,7 +83,8 @@ module plastic_kinehardening
    plastic_kinehardening_LpAndItsTangent, &
    plastic_kinehardening_dotState, &
    plastic_kinehardening_deltaState, &
-   plastic_kinehardening_postResults
+   plastic_kinehardening_postResults, &
+   plastic_kinehardening_results
  private :: &
    kinetics
 
@@ -546,6 +547,32 @@ function plastic_kinehardening_postResults(Mp,instance,of) result(postResults)
  end associate
 
 end function plastic_kinehardening_postResults
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine plastic_kinehardening_results(instance,group)
+#if defined(PETSc) || defined(DAMASKHDF5)
+  use results
+
+  implicit none
+  integer, intent(in) :: instance
+  character(len=*) :: group
+  integer :: o
+
+  associate(prm => param(instance), stt => state(instance))
+  outputsLoop: do o = 1_pInt,size(prm%outputID)
+    select case(prm%outputID(o))
+    end select
+  enddo outputsLoop
+  end associate
+#else
+  integer, intent(in) :: instance
+  character(len=*) :: group
+#endif
+
+end subroutine plastic_kinehardening_results
 
 
 !--------------------------------------------------------------------------------------------------
