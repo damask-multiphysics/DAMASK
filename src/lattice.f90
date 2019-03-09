@@ -1920,7 +1920,7 @@ function lattice_SchmidMatrix_slip(Nslip,structure,cOverA) result(SchmidMatrix)
    IO_error
  use math, only: &
    math_trace33, &
-   math_tensorproduct33
+   math_outer
 
  implicit none
  integer(pInt),    dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
@@ -1961,7 +1961,7 @@ function lattice_SchmidMatrix_slip(Nslip,structure,cOverA) result(SchmidMatrix)
  coordinateSystem = buildCoordinateSystem(Nslip,NslipMax,slipSystems,structure,cOverA)
 
  do i = 1, sum(Nslip)
-   SchmidMatrix(1:3,1:3,i) = math_tensorproduct33(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
+   SchmidMatrix(1:3,1:3,i) = math_outer(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
    if (abs(math_trace33(SchmidMatrix(1:3,1:3,i))) > tol_math_check) &
      call IO_error(0_pInt,i,ext_msg = 'dilatational Schmid matrix for slip')
  enddo
@@ -1980,7 +1980,7 @@ function lattice_SchmidMatrix_twin(Ntwin,structure,cOverA) result(SchmidMatrix)
    IO_error
  use math, only: &
    math_trace33, &
-   math_tensorproduct33
+   math_outer
 
  implicit none
  integer(pInt),    dimension(:),            intent(in) :: Ntwin                                     !< number of active twin systems per family
@@ -2018,7 +2018,7 @@ function lattice_SchmidMatrix_twin(Ntwin,structure,cOverA) result(SchmidMatrix)
  coordinateSystem = buildCoordinateSystem(Ntwin,NtwinMax,twinSystems,structure,cOverA)
 
  do i = 1, sum(Ntwin)
-   SchmidMatrix(1:3,1:3,i) = math_tensorproduct33(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
+   SchmidMatrix(1:3,1:3,i) = math_outer(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
    if (abs(math_trace33(SchmidMatrix(1:3,1:3,i))) > tol_math_check) &
      call IO_error(0_pInt,i,ext_msg = 'dilatational Schmid matrix for twin')
  enddo
@@ -2031,13 +2031,8 @@ end function lattice_SchmidMatrix_twin
 !> details only active twin systems are considered
 !--------------------------------------------------------------------------------------------------
 function lattice_SchmidMatrix_trans(Ntrans,structure_target,cOverA,a_bcc,a_fcc) result(SchmidMatrix)
- use prec, only: &
-   tol_math_check
  use IO, only: &
    IO_error
- use math, only: &
-   math_trace33, &
-   math_tensorproduct33
 
  implicit none
  integer(pInt),    dimension(:),            intent(in) :: Ntrans                                    !< number of active twin systems per family
@@ -2068,7 +2063,7 @@ function lattice_SchmidMatrix_trans(Ntrans,structure_target,cOverA,a_bcc,a_fcc) 
 !--------------------------------------------------------------------------------------------------
 function lattice_SchmidMatrix_cleavage(Ncleavage,structure,cOverA) result(SchmidMatrix)
  use math, only: &
-   math_tensorproduct33
+   math_outer
  use IO, only: &
    IO_error
 
@@ -2114,9 +2109,9 @@ function lattice_SchmidMatrix_cleavage(Ncleavage,structure,cOverA) result(Schmid
  coordinateSystem = buildCoordinateSystem(Ncleavage,NcleavageMax,cleavageSystems,structure,cOverA)
 
  do i = 1, sum(Ncleavage)
-   SchmidMatrix(1:3,1:3,1,i) = math_tensorproduct33(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
-   SchmidMatrix(1:3,1:3,2,i) = math_tensorproduct33(coordinateSystem(1:3,3,i),coordinateSystem(1:3,2,i))
-   SchmidMatrix(1:3,1:3,3,i) = math_tensorproduct33(coordinateSystem(1:3,2,i),coordinateSystem(1:3,2,i))
+   SchmidMatrix(1:3,1:3,1,i) = math_outer(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
+   SchmidMatrix(1:3,1:3,2,i) = math_outer(coordinateSystem(1:3,3,i),coordinateSystem(1:3,2,i))
+   SchmidMatrix(1:3,1:3,3,i) = math_outer(coordinateSystem(1:3,2,i),coordinateSystem(1:3,2,i))
  enddo
 
 end function lattice_SchmidMatrix_cleavage
@@ -2186,7 +2181,7 @@ end function lattice_slip_transverse
 !--------------------------------------------------------------------------------------------------
 function slipProjection_transverse(Nslip,structure,cOverA) result(projection)
  use math, only: &
-   math_mul3x3
+   math_inner
 
  implicit none
  integer(pInt),    dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
@@ -2200,7 +2195,7 @@ function slipProjection_transverse(Nslip,structure,cOverA) result(projection)
  coordinateSystem = coordinateSystem_slip(Nslip,structure,cOverA)
 
  do i=1_pInt, sum(Nslip); do j=1_pInt, sum(Nslip)
-   projection(i,j) = abs(math_mul3x3(coordinateSystem(1:3,2,i),coordinateSystem(1:3,3,j)))
+   projection(i,j) = abs(math_inner(coordinateSystem(1:3,2,i),coordinateSystem(1:3,3,j)))
  enddo; enddo
 
 end function slipProjection_transverse
@@ -2212,7 +2207,7 @@ end function slipProjection_transverse
 !--------------------------------------------------------------------------------------------------
 function slipProjection_direction(Nslip,structure,cOverA) result(projection)
  use math, only: &
-   math_mul3x3
+   math_inner
 
  implicit none
  integer(pInt),    dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
@@ -2226,7 +2221,7 @@ function slipProjection_direction(Nslip,structure,cOverA) result(projection)
  coordinateSystem = coordinateSystem_slip(Nslip,structure,cOverA)
 
  do i=1_pInt, sum(Nslip); do j=1_pInt, sum(Nslip)
-   projection(i,j) = abs(math_mul3x3(coordinateSystem(1:3,2,i),coordinateSystem(1:3,1,j)))
+   projection(i,j) = abs(math_inner(coordinateSystem(1:3,2,i),coordinateSystem(1:3,1,j)))
  enddo; enddo
 
 end function slipProjection_direction
@@ -2237,8 +2232,6 @@ end function slipProjection_direction
 !> @details Order: Direction, plane (normal), and common perpendicular
 !--------------------------------------------------------------------------------------------------
 function coordinateSystem_slip(Nslip,structure,cOverA) result(coordinateSystem)
- use math, only: &
-   math_mul3x3
  use IO, only: &
    IO_error
 
@@ -2404,7 +2397,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
    dEq0
  use math, only: &
    math_cross, &
-   math_tensorproduct33, &
+   math_outer, &
    math_mul33x33, &
    math_mul33x3, &
    math_axisAngleToR, &
@@ -2508,9 +2501,9 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
      y = real(LATTICE_fccTobcc_bainVariant(4:6,i),pReal)
      z = real(LATTICE_fccTobcc_bainVariant(7:9,i),pReal)
 
-     U = (a_bcc/a_fcc)*math_tensorproduct33(x,x) &
-       + (a_bcc/a_fcc)*math_tensorproduct33(y,y) * sqrt(2.0_pReal) &
-       + (a_bcc/a_fcc)*math_tensorproduct33(z,z) * sqrt(2.0_pReal)
+     U = (a_bcc/a_fcc)*math_outer(x,x) &
+       + (a_bcc/a_fcc)*math_outer(y,y) * sqrt(2.0_pReal) &
+       + (a_bcc/a_fcc)*math_outer(z,z) * sqrt(2.0_pReal)
      Q(1:3,1:3,i) = math_mul33x33(R,B)
      S(1:3,1:3,i) = math_mul33x33(R,U) - MATH_I3
    enddo

@@ -72,19 +72,11 @@ module math
  interface math_crossproduct
    module procedure math_cross
  end interface math_crossproduct
- interface math_tensorproduct
-   module procedure math_outer
- end interface math_tensorproduct
- interface math_tensorproduct33
-   module procedure math_outer
- end interface math_tensorproduct33
  interface math_mul3x3
    module procedure math_inner
  end interface math_mul3x3
  public :: &
    math_mul3x3, &
-   math_tensorproduct33, &
-   math_tensorproduct, &
    math_crossproduct
 !---------------------------------------------------------------------------------------------------
 
