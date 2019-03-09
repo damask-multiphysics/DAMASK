@@ -90,7 +90,7 @@ subroutine damage_nonlocal_init
    associate(prm => param(damage_typeInstance(h)), &
              config => config_homogenization(h))
              
-
+   instance = damage_typeInstance(h)
    outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
    allocate(prm%outputID(0))
    
@@ -106,7 +106,6 @@ subroutine damage_nonlocal_init
           end select
      
    enddo
-
 
    homog = h
 
