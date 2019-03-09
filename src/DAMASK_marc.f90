@@ -54,32 +54,33 @@ subroutine DAMASK_interface_init
 
  implicit none
  integer, dimension(8) :: &
-   dateAndTime                                                                                      ! type default integer
+   dateAndTime
  integer :: ierr
  character(len=1024) :: wd
 
- call date_and_time(values = dateAndTime)
- write(6,'(/,a)') ' <<<+-  DAMASK_abaqus  -+>>>'
- write(6,'(/,a)') ' Roters et al., Computational Materials Science 158, 2018, 420-478'
- write(6,'(a,/)') ' https://doi.org/10.1016/j.commatsci.2018.04.030'
+ write(6,'(/,a)') ' <<<+-  DAMASK_marc init -+>>>'
 
- write(6,'(a,/)')              ' Version: '//DAMASKVERSION
+ write(6,'(/,a)') ' Roters et al., Computational Materials Science 158:420–478, 2018.'
+ write(6,'(a)')   ' https://doi.org/10.1016/j.commatsci.2018.04.030'
 
-! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
+ write(6,'(/,a)') ' Version: '//DAMASKVERSION
+
+ ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
 #if __INTEL_COMPILER >= 1800
- write(6,*) 'Compiled with: ', compiler_version()
- write(6,*) 'Compiler options: ', compiler_options()
+  write(6,'(/,a)') 'Compiled with: '//compiler_version()
+  write(6,'(a)')   'Compiler options: '//compiler_options()
 #else
- write(6,'(a,i4.4,a,i8.8)') ' Compiled with Intel fortran version :', __INTEL_COMPILER,&
-                                                    ', build date :', __INTEL_COMPILER_BUILD_DATE
+  write(6,'(/,a,i4.4,a,i8.8)') ' Compiled with Intel fortran version :', __INTEL_COMPILER,&
+                                                       ', build date :', __INTEL_COMPILER_BUILD_DATE
 #endif
 
- write(6,*) 'Compiled on ', __DATE__,' at ',__TIME__
+ write(6,'(/,a)') ' Compiled on: '//__DATE__//' at '//__TIME__
 
- write(6,'(a,2(i2.2,a),i4.4)') ' Date: ',dateAndTime(3),'/',dateAndTime(2),'/', dateAndTime(1)
- write(6,'(a,2(i2.2,a),i2.2)') ' Time: ',dateAndTime(5),':', dateAndTime(6),':', dateAndTime(7)
+ call date_and_time(values = dateAndTime)
+ write(6,'(/,a,2(i2.2,a),i4.4)') ' Date: ',dateAndTime(3),'/',dateAndTime(2),'/', dateAndTime(1)
+ write(6,'(a,2(i2.2,a),i2.2)')   ' Time: ',dateAndTime(5),':', dateAndTime(6),':', dateAndTime(7)
 
- inquire(5, name=wd)                                                                                ! determine inputputfile
+ inquire(5, name=wd)
  wd = wd(1:scan(wd,'/',back=.true.))
  ierr = CHDIR(wd)
  if (ierr /= 0) then
