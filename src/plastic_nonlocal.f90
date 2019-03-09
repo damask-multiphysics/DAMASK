@@ -32,12 +32,6 @@ module plastic_nonlocal
  integer(pInt), dimension(:), allocatable, public, protected :: &
    totalNslip                                                                                       !< total number of active slip systems for each instance
  
- integer(pInt), dimension(:,:), allocatable, private :: &
-   Nslip, &                                                                                         !< number of active slip systems
-   slipFamily                                                                                   !< lookup table relating active slip system to slip family for each instance
-
-
- 
  real(pReal), dimension(:,:,:,:,:,:), allocatable, private :: &
    compatibility                                                                                    !< slip system compatibility between me and my neighbors
  
@@ -312,8 +306,6 @@ subroutine plastic_nonlocal_init
   allocate(plastic_nonlocal_output(maxval(phase_Noutput), maxNinstances))
            plastic_nonlocal_output = ''
   allocate(plastic_nonlocal_outputID(maxval(phase_Noutput), maxNinstances),       source=undefined_ID)
-  allocate(Nslip(lattice_maxNslipFamily,maxNinstances),       source=0_pInt)
-  allocate(slipFamily(lattice_maxNslip,maxNinstances),        source=0_pInt)
   allocate(totalNslip(maxNinstances),                         source=0_pInt)
 
 
@@ -604,8 +596,7 @@ extmsg = trim(extmsg)//' fEdgeMultiplication'
     plasticState(p)%offsetDeltaState = 0_pInt                                                             ! ToDo: state structure does not follow convention
     plasticState(p)%sizePostResults = sum(plastic_nonlocal_sizePostResult(:,phase_plasticityInstance(p)))
     
-    Nslip(1:size(prm%Nslip),phase_plasticityInstance(p)) = prm%Nslip                                      ! ToDo: DEPRECATED
-    totalNslip(phase_plasticityInstance(p)) =  sum(Nslip(1:size(prm%Nslip),phase_plasticityInstance(p)))  ! ToDo: DEPRECATED
+    totalNslip(phase_plasticityInstance(p)) =  prm%totalNslip
     
     ! ToDo: Not really sure if this large number of mostly overlapping pointers is useful
    stt%rho => plasticState(p)%state                              (0_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
@@ -1868,7 +1859,7 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
   endif
 
 
-  !*** be aware of the definition of lattice_st = lattice_sd x lattice_sn !!!
+  !*** be aware of the definition of slip_transverse = slip_direction x slip_normal !!!
   !*** opposite sign to our p vector in the (s,p,n) triplet !!!
   
   m(1:3,1:ns,1) =  prm%slip_direction
@@ -2154,8 +2145,7 @@ use rotations, only:  rotation
 use material, only:   material_phase, &
                       material_texture, &
                       phase_localPlasticity, &
-                      phase_plasticityInstance, &
-                      homogenization_maxNgrains
+                      phase_plasticityInstance
 use mesh, only:       mesh_ipNeighborhood, &
                       theMesh
 use lattice, only:    lattice_qDisorientation
