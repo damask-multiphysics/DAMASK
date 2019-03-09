@@ -182,11 +182,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_dislotwin_init
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use prec, only: &
    pStringLen, &
    dEq0, &
@@ -200,9 +195,7 @@ subroutine plastic_dislotwin_init
    math_expand,&
    PI
  use IO, only: &
-   IO_warning, &
-   IO_error, &
-   IO_timeStamp
+   IO_error
  use material, only: &
    phase_plasticity, &
    phase_plasticityInstance, &
@@ -213,7 +206,6 @@ subroutine plastic_dislotwin_init
    material_phase, &  
    plasticState
  use config, only: &
-   MATERIAL_partPhase, &
    config_phase
  use lattice
 
@@ -244,10 +236,8 @@ subroutine plastic_dislotwin_init
  write(6,'(a)')     ' https://doi.org/10.1016/j.commatsci.2006.04.014'
  write(6,'(/,a)')   ' Wong et al., Acta Materialia, 118:140–151, 2016'
  write(6,'(a,/)')   ' https://doi.org/10.1016/j.actamat.2016.07.032'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
- Ninstance = int(count(phase_plasticity == PLASTICITY_DISLOTWIN_ID),pInt)
+ Ninstance = count(phase_plasticity == PLASTICITY_DISLOTWIN_ID)
 
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance

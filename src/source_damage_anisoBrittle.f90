@@ -63,11 +63,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_anisoBrittle_init
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use prec, only: &
    pStringLen
  use debug, only: &
@@ -89,8 +84,7 @@ subroutine source_damage_anisoBrittle_init
    sourceState
  use config, only: &
    config_phase, &
-   material_Nphase, &
-   MATERIAL_partPhase
+   material_Nphase
  use lattice, only: &
    lattice_maxNcleavageFamily
 
@@ -109,7 +103,6 @@ subroutine source_damage_anisoBrittle_init
    outputs
 
  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_DAMAGE_ANISOBRITTLE_LABEL//' init  -+>>>'
-#include "compilation_info.f90"
 
  Ninstance = int(count(phase_source == SOURCE_damage_anisoBrittle_ID),pInt)
  if (Ninstance == 0_pInt) return

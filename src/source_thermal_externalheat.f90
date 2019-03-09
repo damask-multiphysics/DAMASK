@@ -62,8 +62,7 @@ subroutine source_thermal_externalheat_init
     SOURCE_thermal_externalheat_ID
   use config, only: &
     config_phase, &
-    material_Nphase, &
-    MATERIAL_partPhase
+    material_Nphase
  
   implicit none
  

@@ -57,7 +57,6 @@ subroutine thermal_adiabatic_init
    temperature, &
    temperatureRate
  use config, only: &
-   material_partHomogenization, &
    config_homogenization
 
  implicit none
@@ -277,7 +276,6 @@ function thermal_adiabatic_getMassDensity(ip,el)
    lattice_massDensity
  use material, only: &
    homogenization_Ngrains, &
-   mappingHomogenization, &
    material_phase
  use mesh, only: &
    mesh_element

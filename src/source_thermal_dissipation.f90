@@ -60,8 +60,7 @@ subroutine source_thermal_dissipation_init
    sourceState
  use config, only: &
    config_phase, &
-   material_Nphase, &
-   MATERIAL_partPhase
+   material_Nphase
 
  implicit none
  integer(pInt) :: Ninstance,instance,source,sourceOffset

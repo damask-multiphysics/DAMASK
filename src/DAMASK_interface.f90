@@ -446,7 +446,7 @@ subroutine setSIGUSR1(signal) bind(C)
   integer(C_INT), value :: signal
   SIGUSR1 = .true.
 
-  write(6,*) 'received signal ',signal, 'set SIGUSR1'
+  write(6,'(a,i2.2,a)') ' received signal ',signal, ', set SIGUSR1'
 
 end subroutine setSIGUSR1
 
@@ -461,7 +461,7 @@ subroutine setSIGUSR2(signal) bind(C)
   integer(C_INT), value :: signal
   SIGUSR2 = .true.
 
-  write(6,*) 'received signal ',signal, 'set SIGUSR2'
+  write(6,'(a,i2.2,a)') ' received signal ',signal, ', set SIGUSR2'
 
 end subroutine setSIGUSR2
 

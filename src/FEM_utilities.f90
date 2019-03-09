@@ -494,24 +494,12 @@ end subroutine utilities_indexActiveSet
 !> @brief cleans up
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_destroy()
- !use material, only: &
- !  homogenization_Ngrains
 
  !implicit none
  !PetscInt       :: homog, cryst, grain, phase 
  !PetscErrorCode :: ierr
 
- !call PetscViewerHDF5PopGroup(resUnit, ierr); CHKERRQ(ierr)
  !call VecDestroy(coordinatesVec,ierr); CHKERRQ(ierr)
- !do homog = 1, material_Nhomogenization
- !  call VecDestroy(homogenizationResultsVec(homog),ierr);CHKERRQ(ierr)
- !  do cryst = 1, material_Ncrystallite; do grain = 1, homogenization_Ngrains(homog)
- !    call VecDestroy(crystalliteResultsVec(cryst,grain),ierr);CHKERRQ(ierr)
- !  enddo; enddo
- !  do phase = 1, material_Nphase; do grain = 1, homogenization_Ngrains(homog)
- !    call VecDestroy(phaseResultsVec(phase,grain),ierr);CHKERRQ(ierr)
- !  enddo; enddo  
- !enddo      
  !call PetscViewerDestroy(resUnit, ierr); CHKERRQ(ierr)
 
 end subroutine utilities_destroy

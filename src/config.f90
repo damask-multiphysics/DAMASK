@@ -59,21 +59,11 @@ module config
    microstructure_name, &                                                                           !< name of each microstructure
    texture_name                                                                                     !< name of each texture
 
-! ToDo: make private, no one needs to know that
- character(len=*), parameter, public  :: &
-   MATERIAL_partHomogenization = 'homogenization', &                                                !< keyword for homogenization part
-   MATERIAL_partCrystallite    = 'crystallite', &                                                   !< keyword for crystallite part
-   MATERIAL_partPhase          = 'phase', &                                                         !< keyword for phase part
-   MATERIAL_partMicrostructure = 'microstructure'                                                   !< keyword for microstructure part
- character(len=*), parameter, private  :: &
-   MATERIAL_partTexture        = 'texture'                                                          !< keyword for texture part
 
 ! ToDo: Remove, use size(config_phase) etc
  integer(pInt), public, protected :: &
    material_Nphase, &                                                                               !< number of phases
-   material_Nhomogenization, &                                                                      !< number of homogenizations
-   material_Nmicrostructure, &                                                                      !< number of microstructures
-   material_Ncrystallite                                                                            !< number of crystallite settings
+   material_Nhomogenization                                                                         !< number of homogenizations
 
  public :: &
    config_init, &
@@ -126,40 +116,38 @@ subroutine config_init()
    part = IO_lc(IO_getTag(line,'<','>'))
    select case (trim(part))
     
-     case (trim(material_partPhase))
+     case (trim('phase'))
        call parseFile(phase_name,config_phase,line,fileContent(i+1:))
-       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Phase          parsed'; flush(6)
+       if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Phase          parsed'; flush(6)
     
-     case (trim(material_partMicrostructure))
+     case (trim('microstructure'))
        call parseFile(microstructure_name,config_microstructure,line,fileContent(i+1:))
-       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Microstructure parsed'; flush(6)
+       if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Microstructure parsed'; flush(6)
     
-     case (trim(material_partCrystallite))
+     case (trim('crystallite'))
        call parseFile(crystallite_name,config_crystallite,line,fileContent(i+1:))
-       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Crystallite    parsed'; flush(6)
+       if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Crystallite    parsed'; flush(6)
     
-     case (trim(material_partHomogenization))
+     case (trim('homogenization'))
        call parseFile(homogenization_name,config_homogenization,line,fileContent(i+1:))
-       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Homogenization parsed'; flush(6)
+       if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Homogenization parsed'; flush(6)
     
-     case (trim(material_partTexture))
+     case (trim('texture'))
        call parseFile(texture_name,config_texture,line,fileContent(i+1:))
-       if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Texture        parsed'; flush(6)
+       if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Texture        parsed'; flush(6)
 
    end select
 
  enddo
  
  material_Nhomogenization = size(config_homogenization)
- material_Nmicrostructure = size(config_microstructure)
- material_Ncrystallite    = size(config_crystallite)
  material_Nphase          = size(config_phase)
  
- if (material_Nhomogenization < 1_pInt) call IO_error(160_pInt,ext_msg=material_partHomogenization)
- if (material_Nmicrostructure < 1_pInt) call IO_error(160_pInt,ext_msg=material_partMicrostructure)
- if (material_Ncrystallite < 1_pInt)    call IO_error(160_pInt,ext_msg=material_partCrystallite)
- if (material_Nphase < 1_pInt)          call IO_error(160_pInt,ext_msg=material_partPhase)
- if (size(config_texture) < 1_pInt)     call IO_error(160_pInt,ext_msg=material_partTexture)
+ if (material_Nhomogenization    < 1) call IO_error(160_pInt,ext_msg='<homogenization>')
+ if (size(config_microstructure) < 1) call IO_error(160_pInt,ext_msg='<microstructure>')
+ if (size(config_crystallite)    < 1) call IO_error(160_pInt,ext_msg='<crystallite>')
+ if (material_Nphase             < 1) call IO_error(160_pInt,ext_msg='<phase>')
+ if (size(config_texture)        < 1) call IO_error(160_pInt,ext_msg='<texture>')
 
 end subroutine config_init
 

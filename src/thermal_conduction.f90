@@ -58,7 +58,6 @@ subroutine thermal_conduction_init
    temperature, &
    temperatureRate
  use config, only: &
-   material_partHomogenization, &
    config_homogenization
 
  implicit none
@@ -70,7 +69,7 @@ subroutine thermal_conduction_init
 
  write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_CONDUCTION_label//' init  -+>>>'
  
- maxNinstance = int(count(thermal_type == THERMAL_conduction_ID),pInt)
+ maxNinstance = count(thermal_type == THERMAL_conduction_ID)
  if (maxNinstance == 0_pInt) return
  
  allocate(thermal_conduction_sizePostResult (maxval(homogenization_Noutput),maxNinstance),source=0_pInt)

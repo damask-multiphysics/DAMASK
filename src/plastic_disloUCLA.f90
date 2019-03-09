@@ -114,11 +114,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_disloUCLA_init()
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use prec, only: &
    pStringLen
  use debug, only: &
@@ -128,8 +123,7 @@ subroutine plastic_disloUCLA_init()
  use math, only: &
    math_expand
  use IO, only: &
-   IO_error, &
-   IO_timeStamp
+   IO_error
  use material, only: &
    phase_plasticity, &
    phase_plasticityInstance, &
@@ -140,7 +134,6 @@ subroutine plastic_disloUCLA_init()
    material_phase, &
    plasticState
  use config, only: &
-   MATERIAL_partPhase, &
    config_phase
  use lattice
 
@@ -167,8 +160,6 @@ subroutine plastic_disloUCLA_init()
  write(6,'(/,a)')   ' <<<+-  plastic_'//PLASTICITY_DISLOUCLA_label//' init  -+>>>'
  write(6,'(/,a)')   ' Cereceda et al., International Journal of Plasticity 78, 2016, 242-256'
  write(6,'(/,a)')   ' http://dx.doi.org/10.1016/j.ijplas.2015.09.002'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
  Ninstance = int(count(phase_plasticity == PLASTICITY_DISLOUCLA_ID),pInt)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &

@@ -62,11 +62,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_anisoDuctile_init
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use prec, only: &
    pStringLen
  use debug, only: &
@@ -75,7 +70,7 @@ subroutine source_damage_anisoDuctile_init
    debug_levelBasic
  use IO, only: &
    IO_error
-    use math, only: &
+ use math, only: &
    math_expand
  use material, only: &
    material_allocateSourceState, &
@@ -88,8 +83,7 @@ subroutine source_damage_anisoDuctile_init
    sourceState
  use config, only: &
    config_phase, &
-   material_Nphase, &
-   MATERIAL_partPhase
+   material_Nphase
  use lattice, only: &
    lattice_maxNslipFamily
    
@@ -109,9 +103,8 @@ subroutine source_damage_anisoDuctile_init
    outputs
 
  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_DAMAGE_ANISODUCTILE_LABEL//' init  -+>>>'
-#include "compilation_info.f90"
 
- Ninstance = int(count(phase_source == SOURCE_damage_anisoDuctile_ID),pInt)
+ Ninstance = count(phase_source == SOURCE_damage_anisoDuctile_ID)
  if (Ninstance == 0_pInt) return
  
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
