@@ -43,12 +43,12 @@ parser.add_option('-R',
                   '--labrotation',
                   dest='labrotation',
                   type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
-                  help = 'angle and axis of additional lab frame rotation [%default]')
+                  help = 'axis and angle of additional lab frame rotation [%default]')
 parser.add_option('-r',
                   '--crystalrotation',
                   dest='crystalrotation',
                   type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
-                  help = 'angle and axis of additional crystal frame rotation [%default]')
+                  help = 'axis and angle of additional crystal frame rotation [%default]')
 parser.add_option('--eulers',
                   dest = 'eulers',
                   metavar = 'string',
@@ -79,8 +79,8 @@ parser.add_option('-z',
                   help = 'label of lab z vector (expressed in crystal coords)')
 
 parser.set_defaults(output = [],
-                    labrotation     = (0.,1.,0.,0.),                                                # no rotation about 1,0,0
-                    crystalrotation = (0.,1.,0.,0.),                                                # no rotation about 1,0,0
+                    labrotation     = (1.,1.,1.,0.),                                                # no rotation about (1,1,1)
+                    crystalrotation = (1.,1.,1.,0.),                                                # no rotation about (1,1,1)
                    )
 
 (options, filenames) = parser.parse_args()
@@ -107,10 +107,8 @@ if np.sum(input) != 1: parser.error('needs exactly one input format.')
                          (options.quaternion,representations['quaternion'][1],'quaternion'),
                         ][np.where(input)[0][0]]                                                    # select input label that was requested
 
-crystalrotation = np.array(options.crystalrotation[1:4] + (options.crystalrotation[0],))            # Compatibility hack
-labrotation     = np.array(options.labrotation[1:4]     + (options.labrotation[0],))                # Compatibility hack
-r = damask.Rotation.fromAxisAngle(crystalrotation,options.degrees)                                  # crystal frame rotation
-R = damask.Rotation.fromAxisAngle(labrotation,options.degrees)                                      #     lab frame rotation
+r = damask.Rotation.fromAxisAngle(np.array(options.crystalrotation),options.degrees,normalise=True)
+R = damask.Rotation.fromAxisAngle(np.array(options.labrotation),options.degrees,normalise=True)
 
 
 # --- loop over input files ------------------------------------------------------------------------
