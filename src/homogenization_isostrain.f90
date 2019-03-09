@@ -36,17 +36,11 @@ contains
 !> @brief allocates all neccessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_isostrain_init()
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use debug, only: &
    debug_HOMOGENIZATION, &
    debug_level, &
    debug_levelBasic
  use IO, only: &
-   IO_timeStamp, &
    IO_error
  use material, only: &
    homogenization_type, &
@@ -67,8 +61,6 @@ subroutine homogenization_isostrain_init()
    tag  = ''
 
  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_ISOSTRAIN_label//' init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
  Ninstance = int(count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID),pInt)
  if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0_pInt) &

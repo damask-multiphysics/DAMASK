@@ -90,7 +90,6 @@ subroutine CPFEM_init
  use prec, only: &
    pInt, pReal
  use IO, only: &
-   IO_timeStamp, &
    IO_error
  use numerics, only: &
    worldrank

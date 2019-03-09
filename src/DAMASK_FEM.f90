@@ -7,11 +7,6 @@
 !> results
 !--------------------------------------------------------------------------------------------------
 program DAMASK_FEM 
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
 #include <petsc/finclude/petscsys.h>
  use PetscDM
  use prec, only: &
@@ -31,8 +26,7 @@ program DAMASK_FEM
    IO_error, &
    IO_lc, &
    IO_intOut, &
-   IO_warning, &
-   IO_timeStamp
+   IO_warning
  use math                                                                                           ! need to include the whole module for FFTW
  use CPFEM2, only: &
    CPFEM_initAll
@@ -118,8 +112,6 @@ program DAMASK_FEM
 ! init DAMASK (all modules)
  call CPFEM_initAll
  write(6,'(/,a)')   ' <<<+-  DAMASK_FEM init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
  
 ! reading basic information from load case file and allocate data structure containing load cases
  call DMGetDimension(geomMesh,dimPlex,ierr)! CHKERRQ(ierr)                                            !< dimension of mesh (2D or 3D)

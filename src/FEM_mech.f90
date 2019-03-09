@@ -66,9 +66,7 @@ contains
 !> @brief allocates all neccessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_mech_init(fieldBC)
- use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  use IO, only: &
-   IO_timeStamp, &
    IO_error
  use DAMASK_interface, only: &
    getSolverJobName
@@ -111,8 +109,6 @@ subroutine FEM_mech_init(fieldBC)
  PetscErrorCode                         :: ierr
 
  write(6,'(/,a)') ' <<<+-  FEM_mech init  -+>>>'
- write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech mesh

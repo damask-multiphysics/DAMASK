@@ -280,14 +280,8 @@ contains
 !> material.config
 !--------------------------------------------------------------------------------------------------
 subroutine material_init()
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use IO, only: &
-   IO_error, &
-   IO_timeStamp
+   IO_error
  use debug, only: &
    debug_level, &
    debug_material, &
@@ -321,8 +315,6 @@ subroutine material_init()
  myDebug = debug_level(debug_material)
 
  write(6,'(/,a)') ' <<<+-  material init  -+>>>'
- write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
  call material_parsePhase()
  if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Phase          parsed'; flush(6)

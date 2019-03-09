@@ -503,64 +503,63 @@ end subroutine utilities_FFTvectorBackward
 !> @brief doing convolution gamma_hat * field_real, ensuring that average value = fieldAim
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_fourierGammaConvolution(fieldAim)
- use numerics, only: &
-   memory_efficient
- use math, only: &
-   math_det33, &
-   math_invert
- use mesh, only: &
-   grid3, &
-   grid, &
-   grid3Offset
-
- implicit none
- real(pReal), intent(in), dimension(3,3) :: fieldAim                                                !< desired average value of the field after convolution
- complex(pReal),          dimension(3,3) :: temp33_complex, xiDyad_cmplx
- real(pReal)                             :: matA(6,6), matInvA(6,6) 
-
- integer(pInt) :: &
-   i, j, k, &
-   l, m, n, o
- logical :: err
-
-
- write(6,'(/,a)') ' ... doing gamma convolution ...............................................'
- flush(6)
+  use numerics, only: &
+    memory_efficient
+  use math, only: &
+    math_det33, &
+    math_invert2
+  use mesh, only: &
+    grid3, &
+    grid, &
+    grid3Offset
+ 
+  implicit none
+  real(pReal), intent(in), dimension(3,3) :: fieldAim                                               !< desired average value of the field after convolution
+  complex(pReal),          dimension(3,3) :: temp33_complex, xiDyad_cmplx
+  real(pReal),             dimension(6,6) :: A, A_inv
+ 
+  integer :: &
+    i, j, k, &
+    l, m, n, o
+  logical :: err
+ 
+ 
+  write(6,'(/,a)') ' ... doing gamma convolution ...............................................'
+  flush(6)
 
 !--------------------------------------------------------------------------------------------------
 ! do the actual spectral method calculation (mechanical equilibrium)
- memoryEfficient: if(memory_efficient) then
-   do k = 1_pInt, grid3; do j = 1_pInt, grid(2); do i = 1_pInt, grid1Red
-     if (any([i,j,k+grid3Offset] /= 1_pInt)) then                                                                ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
-       forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-         xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k))*xi1st(m,i,j,k)
-       forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-         temp33_complex(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal)*xiDyad_cmplx)
-       matA(1:3,1:3) = real(temp33_complex); matA(4:6,4:6) = real(temp33_complex)
-       matA(1:3,4:6) = aimag(temp33_complex); matA(4:6,1:3) = -aimag(temp33_complex)
-       if (abs(math_det33(matA(1:3,1:3))) > 1e-16) then
-         call math_invert(6_pInt, matA, matInvA, err)
-         temp33_complex = cmplx(matInvA(1:3,1:3),matInvA(1:3,4:6),pReal)
-         forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-           gamma_hat(l,m,n,o,1,1,1) =  temp33_complex(l,n)*conjg(-xi1st(o,i,j,k))*xi1st(m,i,j,k)
-       else  
-         gamma_hat(1:3,1:3,1:3,1:3,1,1,1) = cmplx(0.0_pReal,0.0_pReal,pReal)
-       endif
-       forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-         temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3,1,1,1)*tensorField_fourier(1:3,1:3,i,j,k))
-       tensorField_fourier(1:3,1:3,i,j,k) = temp33_Complex
-     endif
-   enddo; enddo; enddo
- else memoryEfficient
-   do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid1Red
-     forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-       temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3,i,j,k) * tensorField_fourier(1:3,1:3,i,j,k))
-     tensorField_fourier(1:3,1:3,i,j,k) = temp33_Complex
-   enddo; enddo; enddo
- endif memoryEfficient
-
- if (grid3Offset == 0_pInt) &
-   tensorField_fourier(1:3,1:3,1,1,1) = cmplx(fieldAim/wgt,0.0_pReal,pReal)
+  memoryEfficient: if(memory_efficient) then
+    do k = 1, grid3; do j = 1, grid(2); do i = 1, grid1Red
+      if (any([i,j,k+grid3Offset] /= 1)) then                                                        ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
+        forall(l = 1:3, m = 1:3) &
+          xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k))*xi1st(m,i,j,k)
+        forall(l = 1:3, m = 1:3) &
+          temp33_complex(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal)*xiDyad_cmplx)
+        A(1:3,1:3) =  real(temp33_complex); A(4:6,4:6) =   real(temp33_complex)
+        A(1:3,4:6) = aimag(temp33_complex); A(4:6,1:3) = -aimag(temp33_complex)
+        if (abs(math_det33(A(1:3,1:3))) > 1e-16) then
+          call math_invert2(A_inv, err, A)
+          temp33_complex = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pReal)
+          forall(l=1:3, m=1:3, n=1:3, o=1:3) &
+            gamma_hat(l,m,n,o,1,1,1) =  temp33_complex(l,n)*conjg(-xi1st(o,i,j,k))*xi1st(m,i,j,k)
+        else  
+          gamma_hat(1:3,1:3,1:3,1:3,1,1,1) = cmplx(0.0_pReal,0.0_pReal,pReal)
+        endif
+        forall(l = 1:3, m = 1:3) &
+          temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3,1,1,1)*tensorField_fourier(1:3,1:3,i,j,k))
+        tensorField_fourier(1:3,1:3,i,j,k) = temp33_Complex
+      endif
+    enddo; enddo; enddo
+  else memoryEfficient
+    do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid1Red
+      forall(l = 1:3, m = 1:3) &
+        temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3,i,j,k) * tensorField_fourier(1:3,1:3,i,j,k))
+      tensorField_fourier(1:3,1:3,i,j,k) = temp33_Complex
+    enddo; enddo; enddo
+  endif memoryEfficient
+ 
+  if (grid3Offset == 0) tensorField_fourier(1:3,1:3,1,1,1) = cmplx(fieldAim/wgt,0.0_pReal,pReal)
 
 end subroutine utilities_fourierGammaConvolution
 
@@ -725,7 +724,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
    math_99to3333, &
    math_rotate_forward3333, &
    math_rotate_forward33, &
-   math_invert
+   math_invert2
 
  implicit none
  real(pReal),              dimension(3,3,3,3) :: utilities_maskedCompliance                         !< masked compliance
@@ -768,7 +767,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
            c_reduced(k,j) = temp99_Real(n,m)
    endif; enddo; endif; enddo
 
-   call math_invert(size_reduced, c_reduced, s_reduced, errmatinv)                                  ! invert reduced stiffness
+   call math_invert2(s_reduced, errmatinv, c_reduced)                                               ! invert reduced stiffness
    if (any(IEEE_is_NaN(s_reduced))) errmatinv = .true.
    if (errmatinv) call IO_error(error_ID=400_pInt,ext_msg='utilities_maskedCompliance')
    temp99_Real = 0.0_pReal                                                                          ! fill up compliance with zeros
