@@ -53,7 +53,7 @@ subroutine damage_nonlocal_init
    homogenization_Noutput, &
    DAMAGE_nonlocal_label, &
    DAMAGE_nonlocal_ID, &
-   material_homog, & 
+   material_homogenizationAt, & 
    mappingHomogenization, & 
    damageState, &
    damageMapping, &
@@ -109,7 +109,7 @@ subroutine damage_nonlocal_init
 
    homog = h
 
-     NofMyHomog = count(material_homog == homog)
+     NofMyHomog = count(material_homogenizationAt == homog)
      instance = damage_typeInstance(homog)
 
 
@@ -274,7 +274,7 @@ end function damage_nonlocal_getMobility
 !--------------------------------------------------------------------------------------------------
 subroutine damage_nonlocal_putNonLocalDamage(phi,ip,el)
  use material, only: &
-   material_homog, &
+   material_homogenizationAt, &
    damageMapping, &
    damage
 
@@ -288,7 +288,7 @@ subroutine damage_nonlocal_putNonLocalDamage(phi,ip,el)
    homog, &
    offset
  
- homog  = material_homog(ip,el)
+ homog  = material_homogenizationAt(el)
  offset = damageMapping(homog)%p(ip,el)
  damage(homog)%p(offset) = phi
 

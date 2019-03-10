@@ -162,10 +162,6 @@ module material
 ! DEPRECATED: use material_phaseAt
  integer(pInt), dimension(:,:,:), allocatable, public :: &
    material_phase                                                                                   !< phase (index) of each grain,IP,element
-! DEPRECATED: use material_homogenizationAt
- integer(pInt), dimension(:,:), allocatable, public :: &
-   material_homog                                                                                   !< homogenization (index) of each IP,element
-! END DEPRECATED
 
  type(tPlasticState), allocatable, dimension(:), public :: &
    plasticState
@@ -1043,25 +1039,19 @@ subroutine material_populateGrains
                   phaseID,textureID,dGrains,myNgrains,myNorientations,myNconstituents, &
                   grain,constituentGrain,ipGrain,symExtension, ip
  real(pReal) :: deviation,extreme,rnd
- integer(pInt),         dimension (:,:), allocatable :: Nelems                                           ! counts number of elements in homog, micro array
- type(group_int), dimension (:,:), allocatable :: elemsOfHomogMicro                                ! lists element number in homog, micro array
+ integer(pInt),         dimension (:,:), allocatable :: Nelems                                      ! counts number of elements in homog, micro array
+ type(group_int), dimension (:,:), allocatable :: elemsOfHomogMicro                                 ! lists element number in homog, micro array
 
  myDebug = debug_level(debug_material)
 
  allocate(material_volume(homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),       source=0.0_pReal)
  allocate(material_phase(homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),        source=0_pInt)
- allocate(material_homog(theMesh%elem%nIPs,theMesh%Nelems),                                  source=0_pInt)
  allocate(material_texture(homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),      source=0_pInt)
  allocate(material_EulerAngles(3,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),source=0.0_pReal)
 
  allocate(Ngrains(size(config_homogenization),size(config_microstructure)),            source=0_pInt)
  allocate(Nelems (size(config_homogenization),size(config_microstructure)),            source=0_pInt)
 
-! populating homogenization schemes in each
-!--------------------------------------------------------------------------------------------------
- do e = 1_pInt, theMesh%Nelems
-   material_homog(1_pInt:theMesh%elem%nIPs,e) = theMesh%homogenizationAt(e)
- enddo
 
 !--------------------------------------------------------------------------------------------------
 ! precounting of elements for each homog/micro pair

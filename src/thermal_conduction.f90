@@ -50,7 +50,7 @@ subroutine thermal_conduction_init
    homogenization_Noutput, &
    THERMAL_conduction_label, &
    THERMAL_conduction_ID, &
-   material_homog, & 
+   material_homogenizationAt, & 
    mappingHomogenization, & 
    thermalState, &
    thermalMapping, &
@@ -81,7 +81,7 @@ subroutine thermal_conduction_init
  
  initializeInstances: do section = 1_pInt, size(thermal_type)
    if (thermal_type(section) /= THERMAL_conduction_ID) cycle
-   NofMyHomog=count(material_homog==section)
+   NofMyHomog=count(material_homogenizationAt==section)
    instance = thermal_typeInstance(section)
    outputs = config_homogenization(section)%getStrings('(output)',defaultVal=emptyStringArray)
    do i=1_pInt, size(outputs)

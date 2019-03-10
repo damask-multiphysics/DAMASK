@@ -112,7 +112,7 @@ end function kinematics_thermal_expansion_initialStrain
 subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ipc, ip, el)
   use material, only: &
     material_phase, &
-    material_homog, &
+   material_homogenizationAt, &
     temperature, &
     temperatureRate, &
     thermalMapping
@@ -136,7 +136,7 @@ subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ipc, ip,
     T, TRef, TDot  
     
   phase = material_phase(ipc,ip,el)
-  homog = material_homog(ip,el)
+  homog = material_homogenizationAt(el)
   offset = thermalMapping(homog)%p(ip,el)
   T = temperature(homog)%p(offset)
   TDot = temperatureRate(homog)%p(offset)

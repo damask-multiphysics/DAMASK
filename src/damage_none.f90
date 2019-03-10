@@ -22,7 +22,7 @@ subroutine damage_none_init()
     damage_initialPhi, &
     damage, &
     damage_type, &
-    material_homog, &
+    material_homogenizationAt, &
     damageState, &
     DAMAGE_NONE_LABEL, &
     DAMAGE_NONE_ID
@@ -37,7 +37,7 @@ subroutine damage_none_init()
    initializeInstances: do homog = 1, size(config_homogenization)
     
     myhomog: if (damage_type(homog) == DAMAGE_NONE_ID) then
-      NofMyHomog = count(material_homog == homog)
+      NofMyHomog = count(material_homogenizationAt == homog)
       damageState(homog)%sizeState = 0
       damageState(homog)%sizePostResults = 0
       allocate(damageState(homog)%state0   (0,NofMyHomog))

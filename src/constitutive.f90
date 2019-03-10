@@ -613,7 +613,7 @@ pure function constitutive_initialFi(ipc, ip, el)
    math_I3
  use material, only: &
    material_phase, &
-   material_homog, &
+   material_homogenizationAt, &
    thermalMapping, &
    phase_kinematics, &
    phase_Nkinematics, &
@@ -641,7 +641,7 @@ pure function constitutive_initialFi(ipc, ip, el)
  KinematicsLoop: do k = 1_pInt, phase_Nkinematics(phase)                                            !< Warning: small initial strain assumption
    kinematicsType: select case (phase_kinematics(k,phase))
      case (KINEMATICS_thermal_expansion_ID) kinematicsType
-       homog = material_homog(ip,el)
+       homog = material_homogenizationAt(el)
        offset = thermalMapping(homog)%p(ip,el)
        constitutive_initialFi = &
          constitutive_initialFi + kinematics_thermal_expansion_initialStrain(homog,phase,offset)

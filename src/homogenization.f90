@@ -118,7 +118,7 @@ subroutine homogenization_init
  mainProcess2: if (worldrank == 0) then
    call IO_write_jobFile(FILEUNIT,'outputHomogenization')
    do p = 1,size(config_homogenization)
-     if (any(material_homog == p)) then
+     if (any(material_homogenizationAt == p)) then
        i = homogenization_typeInstance(p)                                                               ! which instance of this homogenization type
        valid = .true.                                                                                   ! assume valid
        select case(homogenization_type(p))                                                              ! split per homogenization type

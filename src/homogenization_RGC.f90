@@ -107,11 +107,10 @@ subroutine homogenization_RGC_init()
    IO_error
  use material, only: &
 #ifdef DEBUG
-   material_homogenizationAt, &
    mappingHomogenization, &
 #endif
    homogenization_type, &
-   material_homog, &
+   material_homogenizationAt, &
    homogState, &
    HOMOGENIZATION_RGC_ID, &
    HOMOGENIZATION_RGC_LABEL, &
@@ -217,7 +216,7 @@ subroutine homogenization_RGC_init()
      
    enddo
 
-   NofMyHomog = count(material_homog == h)
+   NofMyHomog = count(material_homogenizationAt == h)
    nIntFaceTot = 3_pInt*(  (prm%Nconstituents(1)-1_pInt)*prm%Nconstituents(2)*prm%Nconstituents(3) &
                          + prm%Nconstituents(1)*(prm%Nconstituents(2)-1_pInt)*prm%Nconstituents(3) &
                          + prm%Nconstituents(1)*prm%Nconstituents(2)*(prm%Nconstituents(3)-1_pInt))

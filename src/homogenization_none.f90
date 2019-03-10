@@ -26,7 +26,7 @@ subroutine homogenization_none_init()
     config_homogenization
   use material, only: &
     homogenization_type, &
-    material_homog, &
+    material_homogenizationAt, &
     homogState, &
     HOMOGENIZATION_NONE_LABEL, &
     HOMOGENIZATION_NONE_ID
@@ -46,7 +46,7 @@ subroutine homogenization_none_init()
   do h = 1, size(homogenization_type)
     if (homogenization_type(h) /= HOMOGENIZATION_NONE_ID) cycle
     
-    NofMyHomog = count(material_homog == h)
+    NofMyHomog = count(material_homogenizationAt == h)
     homogState(h)%sizeState = 0
     homogState(h)%sizePostResults = 0
     allocate(homogState(h)%state0   (0,NofMyHomog))

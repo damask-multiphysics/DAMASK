@@ -205,7 +205,7 @@ subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
  use material, only: &
    phaseAt, phasememberAt, &
    sourceState, &
-   material_homog, &
+   material_homogenizationAt, &
    damage, &
    damageMapping
  use lattice, only: &
@@ -235,7 +235,7 @@ subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
  constituent = phasememberAt(ipc,ip,el)
  instance = source_damage_anisoBrittle_instance(phase)
  sourceOffset = source_damage_anisoBrittle_offset(phase)
- homog = material_homog(ip,el)
+ homog = material_homogenizationAt(el)
  damageOffset = damageMapping(homog)%p(ip,el)
  
  sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = 0.0_pReal

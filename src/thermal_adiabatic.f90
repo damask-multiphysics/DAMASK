@@ -49,7 +49,7 @@ subroutine thermal_adiabatic_init
    homogenization_Noutput, &
    THERMAL_ADIABATIC_label, &
    THERMAL_adiabatic_ID, &
-   material_homog, & 
+   material_homogenizationAt, & 
    mappingHomogenization, & 
    thermalState, &
    thermalMapping, &
@@ -80,7 +80,7 @@ subroutine thermal_adiabatic_init
  
  initializeInstances: do section = 1_pInt, size(thermal_type)
    if (thermal_type(section) /= THERMAL_adiabatic_ID) cycle
-   NofMyHomog=count(material_homog==section)
+   NofMyHomog=count(material_homogenizationAt==section)
    instance = thermal_typeInstance(section)
    outputs = config_homogenization(section)%getStrings('(output)',defaultVal=emptyStringArray)
    do i=1_pInt, size(outputs)
@@ -120,6 +120,7 @@ function thermal_adiabatic_updateState(subdt, ip, el)
    err_thermal_tolAbs, &
    err_thermal_tolRel
  use material, only: &
+   material_homogenizationAt, &
    mappingHomogenization, &
    thermalState, &
    temperature, &
@@ -140,7 +141,7 @@ function thermal_adiabatic_updateState(subdt, ip, el)
  real(pReal) :: &
    T, Tdot, dTdot_dT  
 
- homog  = mappingHomogenization(2,ip,el)
+ homog  = material_homogenizationAt(el)
  offset = mappingHomogenization(1,ip,el)
  
  T = thermalState(homog)%subState0(1,offset)

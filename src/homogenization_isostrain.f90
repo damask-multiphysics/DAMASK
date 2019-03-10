@@ -44,7 +44,7 @@ subroutine homogenization_isostrain_init()
    IO_error
  use material, only: &
    homogenization_type, &
-   material_homog, &
+   material_homogenizationAt, &
    homogState, &
    HOMOGENIZATION_ISOSTRAIN_ID, &
    HOMOGENIZATION_ISOSTRAIN_LABEL, &
@@ -85,7 +85,7 @@ subroutine homogenization_isostrain_init()
        call IO_error(211_pInt,ext_msg=trim(tag)//' ('//HOMOGENIZATION_isostrain_label//')')
    end select
 
-   NofMyHomog = count(material_homog == h)
+   NofMyHomog = count(material_homogenizationAt == h)
    homogState(h)%sizeState       = 0_pInt
    homogState(h)%sizePostResults = 0_pInt
    allocate(homogState(h)%state0   (0_pInt,NofMyHomog))

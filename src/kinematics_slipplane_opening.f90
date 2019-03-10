@@ -121,7 +121,7 @@ subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, 
    math_outer
  use material, only: &
    material_phase, &
-   material_homog, &
+   material_homogenizationAt, &
    damage, &
    damageMapping
 
@@ -148,7 +148,7 @@ subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, 
    
  phase = material_phase(ipc,ip,el)
  instance = kinematics_slipplane_opening_instance(phase)
- homog = material_homog(ip,el)
+ homog = material_homogenizationAt(el)
  damageOffset = damageMapping(homog)%p(ip,el)
  
  associate(prm => param(instance))

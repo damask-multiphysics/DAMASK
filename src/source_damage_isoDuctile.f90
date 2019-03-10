@@ -173,7 +173,7 @@ subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
    phaseAt, phasememberAt, &
    plasticState, &
    sourceState, &
-   material_homog, &
+   material_homogenizationAt, &
    damage, &
    damageMapping
 
@@ -189,7 +189,7 @@ subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
  constituent = phasememberAt(ipc,ip,el)
  instance = source_damage_isoDuctile_instance(phase)
  sourceOffset = source_damage_isoDuctile_offset(phase)
- homog = material_homog(ip,el)
+ homog = material_homogenizationAt(el)
  damageOffset = damageMapping(homog)%p(ip,el)
 
  sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = &

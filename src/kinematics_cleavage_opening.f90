@@ -54,11 +54,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine kinematics_cleavage_opening_init()
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use debug, only: &
    debug_level,&
    debug_constitutive,&
@@ -66,9 +61,7 @@ subroutine kinematics_cleavage_opening_init()
  use config, only: &
    config_phase
  use IO, only: &
-   IO_warning, &
-   IO_error, &
-   IO_timeStamp
+   IO_error
  use material, only: &
    phase_kinematics, &
    KINEMATICS_cleavage_opening_label, &
@@ -84,8 +77,6 @@ subroutine kinematics_cleavage_opening_init()
  integer(pInt) :: maxNinstance,p,instance,kinematics
 
  write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_cleavage_opening_LABEL//' init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
  maxNinstance = int(count(phase_kinematics == KINEMATICS_cleavage_opening_ID),pInt)
  if (maxNinstance == 0_pInt) return
@@ -145,7 +136,7 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, i
    math_mul33xx33
  use material, only: &
    material_phase, &
-   material_homog, &
+   material_homogenizationAt, &
    damage, &
    damageMapping
  use lattice, only: &
@@ -174,7 +165,7 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, i
 
  phase = material_phase(ipc,ip,el)
  instance = kinematics_cleavage_opening_instance(phase)
- homog = material_homog(ip,el)
+ homog = material_homogenizationAt(el)
  damageOffset = damageMapping(homog)%p(ip,el)
  
  Ld = 0.0_pReal

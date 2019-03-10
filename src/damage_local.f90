@@ -53,7 +53,7 @@ subroutine damage_local_init
    homogenization_Noutput, &
    DAMAGE_local_label, &
    DAMAGE_local_ID, &
-   material_homog, & 
+   material_homogenizationAt, & 
    mappingHomogenization, & 
    damageState, &
    damageMapping, &
@@ -111,7 +111,7 @@ subroutine damage_local_init
 
    homog = h
 
-     NofMyHomog = count(material_homog == homog)
+     NofMyHomog = count(material_homogenizationAt == homog)
      instance = damage_typeInstance(homog)
 
 
