@@ -902,6 +902,9 @@ end function mesh_cellCenterCoordinates
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_ipAreas
  use math, only: &
+#ifdef __PGI
+   norm2, &
+#endif
    math_crossproduct
 
  implicit none

@@ -1094,6 +1094,9 @@ logical function integrateStress(&
                          constitutive_LiAndItsTangents, &
                          constitutive_SandItsTangents
  use math, only:         math_mul33x33, &
+#ifdef __PGI
+   norm2, &
+#endif
                          math_mul33xx33, &
                          math_mul3333xx3333, &
                          math_inv33, &
