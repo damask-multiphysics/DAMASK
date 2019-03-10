@@ -6,11 +6,11 @@
 !--------------------------------------------------------------------------------------------------
 module homogenization_none
 
- implicit none
- private
- 
- public :: &
-   homogenization_none_init
+  implicit none
+  private
+  
+  public :: &
+    homogenization_none_init
 
 contains
 
@@ -18,52 +18,42 @@ contains
 !> @brief allocates all neccessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_none_init()
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
- use prec, only: &
-   pInt
- use debug, only: &
-   debug_HOMOGENIZATION, &
-   debug_level, &
-   debug_levelBasic
- use IO, only: &
-   IO_timeStamp
-
- use material, only: &
-   homogenization_type, &
-   material_homog, &
-   homogState, &
-   HOMOGENIZATION_NONE_LABEL, &
-   HOMOGENIZATION_NONE_ID
-
- implicit none
- integer(pInt) :: &
-   Ninstance, &
-   h, &
-   NofMyHomog
-
- write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_NONE_label//' init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
-
- Ninstance = int(count(homogenization_type == HOMOGENIZATION_NONE_ID),pInt)
- if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0_pInt) &
-   write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
-
- do h = 1_pInt, size(homogenization_type)
-   if (homogenization_type(h) /= HOMOGENIZATION_NONE_ID) cycle
-   
-   NofMyHomog = count(material_homog == h)
-   homogState(h)%sizeState = 0_pInt
-   homogState(h)%sizePostResults = 0_pInt
-   allocate(homogState(h)%state0   (0_pInt,NofMyHomog))
-   allocate(homogState(h)%subState0(0_pInt,NofMyHomog))
-   allocate(homogState(h)%state    (0_pInt,NofMyHomog))
-
- enddo
+  use debug, only: &
+    debug_HOMOGENIZATION, &
+    debug_level, &
+    debug_levelBasic
+  use config, only: &
+    config_homogenization
+  use material, only: &
+    homogenization_type, &
+    material_homogenizationAt, &
+    homogState, &
+    HOMOGENIZATION_NONE_LABEL, &
+    HOMOGENIZATION_NONE_ID
+ 
+  implicit none
+  integer :: &
+    Ninstance, &
+    h, &
+    NofMyHomog
+ 
+  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_NONE_label//' init  -+>>>'
+ 
+  Ninstance = count(homogenization_type == HOMOGENIZATION_NONE_ID)
+  if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0) &
+    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+ 
+  do h = 1, size(homogenization_type)
+    if (homogenization_type(h) /= HOMOGENIZATION_NONE_ID) cycle
+    
+    NofMyHomog = count(material_homogenizationAt == h)
+    homogState(h)%sizeState = 0
+    homogState(h)%sizePostResults = 0
+    allocate(homogState(h)%state0   (0,NofMyHomog))
+    allocate(homogState(h)%subState0(0,NofMyHomog))
+    allocate(homogState(h)%state    (0,NofMyHomog))
+ 
+  enddo
 
 end subroutine homogenization_none_init
 

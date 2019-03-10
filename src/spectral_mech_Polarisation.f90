@@ -80,16 +80,10 @@ contains
 !> @brief allocates all necessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
 subroutine Polarisation_init
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use IO, only: &
    IO_intOut, &
    IO_error, &
-   IO_read_realFile, &
-   IO_timeStamp
+   IO_open_jobFile_binary
  use debug, only: &
   debug_level, &
   debug_spectral, &
@@ -124,15 +118,14 @@ subroutine Polarisation_init
    FandF_tau, &                                                                                     ! overall pointer to solution data
    F, &                                                                                             ! specific (sub)pointer
    F_tau                                                                                            ! specific (sub)pointer
- PetscInt, dimension(:), allocatable :: localK 
- integer(pInt) :: proc
+ PetscInt, dimension(worldsize) :: localK 
+ integer :: fileUnit
  character(len=1024) :: rankStr
  
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverPolarisation init  -+>>>'
- write(6,'(/,a)') ' Shanthraj et al., International Journal of Plasticity, 66:31–45, 2015'
- write(6,'(a,/)') ' https://doi.org/10.1016/j.ijplas.2014.02.006'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
+
+ write(6,'(/,a)') ' Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
+ write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2014.02.006'
 
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
@@ -145,10 +138,9 @@ subroutine Polarisation_init
 ! initialize solver specific parts of PETSc
  call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
  call SNESSetOptionsPrefix(snes,'mech_',ierr);CHKERRQ(ierr) 
- allocate(localK(worldsize), source = 0); localK(worldrank+1) = grid3
- do proc = 1, worldsize
-   call MPI_Bcast(localK(proc),1,MPI_INTEGER,proc-1,PETSC_COMM_WORLD,ierr)
- enddo  
+ localK              = 0
+ localK(worldrank+1) = grid3
+ call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)
  call DMDACreate3d(PETSC_COMM_WORLD, &
         DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                     ! cut off stencil at boundary
         DMDA_STENCIL_BOX, &                                                                         ! Moore (26) neighborhood around central point
@@ -173,23 +165,28 @@ subroutine Polarisation_init
  call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)                             ! places pointer on PETSc data
  F        => FandF_tau( 0: 8,:,:,:)
  F_tau    => FandF_tau( 9:17,:,:,:)
- restart: if (restartInc > 0_pInt) then
+ restart: if (restartInc > 0) then
    if (iand(debug_level(debug_spectral),debug_spectralRestart) /= 0) then
      write(6,'(/,a,'//IO_intOut(restartInc)//',a)') &
      'reading values of increment ', restartInc, ' from file'
      flush(6)
    endif
+
+   fileUnit = IO_open_jobFile_binary('F_aimDot')
+   read(fileUnit) F_aimDot; close(fileUnit)
+
    write(rankStr,'(a1,i0)')'_',worldrank
-   call IO_read_realFile(777,'F'//trim(rankStr),trim(getSolverJobName()),size(F))
-   read (777,rec=1) F; close (777)
-   call IO_read_realFile(777,'F_lastInc'//trim(rankStr),trim(getSolverJobName()),size(F_lastInc))
-   read (777,rec=1) F_lastInc; close (777)
-   call IO_read_realFile(777,'F_tau'//trim(rankStr),trim(getSolverJobName()),size(F_tau))
-   read (777,rec=1) F_tau; close (777)
-   call IO_read_realFile(777,'F_tau_lastInc'//trim(rankStr),trim(getSolverJobName()),size(F_tau_lastInc))
-   read (777,rec=1) F_tau_lastInc; close (777)
-   call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(F_aimDot))
-   read (777,rec=1) F_aimDot; close (777)
+
+   fileUnit = IO_open_jobFile_binary('F'//trim(rankStr))
+   read(fileUnit) F; close (fileUnit)
+   fileUnit = IO_open_jobFile_binary('F_lastInc'//trim(rankStr))
+   read(fileUnit) F_lastInc; close (fileUnit)
+
+   fileUnit = IO_open_jobFile_binary('F_tau'//trim(rankStr))
+   read(fileUnit) F_tau; close (fileUnit)
+   fileUnit = IO_open_jobFile_binary('F_tau_lastInc'//trim(rankStr))
+   read(fileUnit) F_tau_lastInc; close (fileUnit)
+
    F_aim         = reshape(sum(sum(sum(F,dim=4),dim=3),dim=2) * wgt, [3,3])                         ! average of F
    call MPI_Allreduce(MPI_IN_PLACE,F_aim,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
    if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='F_aim')
@@ -218,12 +215,12 @@ subroutine Polarisation_init
      write(6,'(/,a,'//IO_intOut(restartInc)//',a)') &
      'reading more values of increment ', restartInc, ' from file'
    flush(6)
-   call IO_read_realFile(777,'C_volAvg',trim(getSolverJobName()),size(C_volAvg))
-   read (777,rec=1) C_volAvg; close (777)
-   call IO_read_realFile(777,'C_volAvgLastInc',trim(getSolverJobName()),size(C_volAvgLastInc))
-   read (777,rec=1) C_volAvgLastInc; close (777)
-   call IO_read_realFile(777,'C_ref',trim(getSolverJobName()),size(C_minMaxAvg))
-   read (777,rec=1) C_minMaxAvg; close (777)
+   fileUnit = IO_open_jobFile_binary('C_volAvg')
+   read(fileUnit) C_volAvg; close(fileUnit)
+   fileUnit = IO_open_jobFile_binary('C_volAvgLastInv')
+   read(fileUnit) C_volAvgLastInc; close(fileUnit)
+   fileUnit = IO_open_jobFile_binary('C_ref')
+   read(fileUnit) C_minMaxAvg; close(fileUnit)
  endif restartRead
 
  call Utilities_updateGamma(C_minMaxAvg,.true.)
@@ -552,7 +549,7 @@ subroutine Polarisation_forward(guess,timeinc,timeinc_old,loadCaseTime,deformati
     tBoundaryCondition, &
     cutBack
   use IO, only: &
-    IO_write_JobRealFile
+    IO_open_jobFile_binary
   use FEsolving, only: &
     restartWrite
 
@@ -572,6 +569,8 @@ subroutine Polarisation_forward(guess,timeinc,timeinc_old,loadCaseTime,deformati
   PetscScalar, dimension(:,:,:,:), pointer :: FandF_tau, F, F_tau
   integer(pInt) :: i, j, k
   real(pReal), dimension(3,3) :: F_lambda33
+
+  integer :: fileUnit
   character(len=32) :: rankStr
 
 !--------------------------------------------------------------------------------------------------
@@ -590,24 +589,25 @@ subroutine Polarisation_forward(guess,timeinc,timeinc_old,loadCaseTime,deformati
       write(6,'(/,a)') ' writing converged results for restart'
       flush(6)
 
-      if (worldrank == 0_pInt) then
-        call IO_write_jobRealFile(777,'C_volAvg',size(C_volAvg))
-        write (777,rec=1) C_volAvg; close(777)
-        call IO_write_jobRealFile(777,'C_volAvgLastInc',size(C_volAvgLastInc))
-        write (777,rec=1) C_volAvgLastInc; close(777)
-        call IO_write_jobRealFile(777,'F_aimDot',size(F_aimDot))
-        write (777,rec=1) F_aimDot; close(777)
+      if (worldrank == 0) then
+        fileUnit = IO_open_jobFile_binary('C_volAvg','w')
+        write(fileUnit) C_volAvg; close(fileUnit)
+        fileUnit = IO_open_jobFile_binary('C_volAvgLastInv','w')
+        write(fileUnit) C_volAvgLastInc; close(fileUnit)
+        fileUnit = IO_open_jobFile_binary('F_aimDot','w')
+        write(fileUnit) F_aimDot; close(fileUnit)
       endif
 
       write(rankStr,'(a1,i0)')'_',worldrank
-      call IO_write_jobRealFile(777,'F'//trim(rankStr),size(F))                                      ! writing deformation gradient field to file
-      write (777,rec=1) F; close (777)
-      call IO_write_jobRealFile(777,'F_lastInc'//trim(rankStr),size(F_lastInc))                      ! writing F_lastInc field to file
-      write (777,rec=1) F_lastInc; close (777)
-      call IO_write_jobRealFile(777,'F_tau'//trim(rankStr),size(F_tau))                              ! writing deformation gradient field to file
-      write (777,rec=1) F_tau; close (777)
-      call IO_write_jobRealFile(777,'F_tau_lastInc'//trim(rankStr),size(F_tau_lastInc))              ! writing F_tau_lastInc field to file
-      write (777,rec=1) F_tau_lastInc; close (777)
+      fileUnit = IO_open_jobFile_binary('F'//trim(rankStr),'w')
+      write(fileUnit) F; close (fileUnit)
+      fileUnit = IO_open_jobFile_binary('F_lastInc'//trim(rankStr),'w')
+      write(fileUnit) F_lastInc; close (fileUnit)
+
+      fileUnit = IO_open_jobFile_binary('F_tau'//trim(rankStr),'w')
+      write(fileUnit) F_tau; close (fileUnit)
+      fileUnit = IO_open_jobFile_binary('F_tau_lastInc'//trim(rankStr),'w')
+      write(fileUnit) F_tau_lastInc; close (fileUnit)
     endif
 
     call CPFEM_age()                                                                                 ! age state and kinematics
@@ -618,6 +618,7 @@ subroutine Polarisation_forward(guess,timeinc,timeinc_old,loadCaseTime,deformati
 
     F_aimDot = merge(stress_BC%maskFloat*(F_aim-F_aim_lastInc)/timeinc_old, 0.0_pReal, guess)
     F_aim_lastInc = F_aim
+
     !--------------------------------------------------------------------------------------------------
     ! calculate rate for aim
     if     (deformation_BC%myType=='l') then                                                          ! calculate F_aimDot from given L and current F

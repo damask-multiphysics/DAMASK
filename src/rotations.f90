@@ -157,6 +157,10 @@ end subroutine
 function rotVector(self,v,active)
  use prec, only: &
    dEq
+#ifdef __PGI
+ use math, only: &
+   norm2
+#endif
    
  implicit none
  real(pReal),                 dimension(3) :: rotVector
@@ -552,14 +556,8 @@ function om2ax(om) result(ax)
    LWORK = 20   
  
  ! call the eigenvalue solver
-#if (FLOAT==8)
    call dgeev('N','V',3,o,3,Wr,Wi,devNull,3,VR,3,WORK,LWORK,INFO)
-#elif (FLOAT==4)
-   call sgeev('N','V',3,o,3,Wr,Wi,devNull,3,VR,3,WORK,LWORK,INFO)
-#else
-   NO SUITABLE PRECISION FOR REAL SELECTED, STOPPING COMPILATION
-#endif
-   if (INFO /= 0) call IO_error(0_pInt,ext_msg='Error in om2ax/(s/d)geev: (S/D)GEEV return not zero')
+   if (INFO /= 0) call IO_error(0_pInt,ext_msg='Error in om2ax DGEEV return not zero')
    i = maxloc(merge(1.0_pReal,0.0_pReal,cEq(cmplx(Wr,Wi,pReal),cmplx(1.0_pReal,0.0_pReal,pReal),tol=1.0e-14_pReal)),dim=1) ! poor substitute for findloc
    ax(1:3) = VR(1:3,i)
    where (                dNeq0([om(2,3)-om(3,2), om(3,1)-om(1,3), om(1,2)-om(2,1)])) &
@@ -579,6 +577,9 @@ pure function ro2ax(ro) result(ax)
  use prec, only: &
    dEq0
  use math, only: &
+#ifdef __PGI
+   norm2, &
+#endif
    PI
 
  implicit none 
@@ -668,6 +669,9 @@ pure function ro2ho(ro) result(ho)
  use prec, only: &
    dEq0
  use math, only: &
+#ifdef __PGI
+   norm2, &
+#endif
    PI
 
  implicit none
@@ -724,6 +728,10 @@ end function qu2om
 function om2qu(om) result(qu)
  use prec, only: &
    dEq
+#ifdef __PGI
+ use math, only: &
+   norm2
+#endif
 
  implicit none
  real(pReal),      intent(in), dimension(3,3) :: om
@@ -797,6 +805,9 @@ pure function qu2ro(qu) result(ro)
  use prec, only: &
    dEq0
  use math, only: &
+#ifdef __PGI
+   norm2, &
+#endif
    math_clip
  
  type(quaternion), intent(in)              :: qu
@@ -825,6 +836,9 @@ pure function qu2ho(qu) result(ho)
  use prec, only: &
    dEq0
  use math, only: &
+#ifdef __PGI
+   norm2, &
+#endif
    math_clip
 
  implicit none

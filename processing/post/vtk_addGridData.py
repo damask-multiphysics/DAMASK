@@ -67,7 +67,6 @@ elif vtk_ext == '.vtk':
   reader.Update()
   rGrid = reader.GetRectilinearGridOutput()
   writer = vtk.vtkXMLRectilinearGridWriter()
-  vtk_ext = '.vtr'
 elif vtk_ext == '.vtu':
   reader = vtk.vtkXMLUnstructuredGridReader()
   reader.SetFileName(options.vtk)
@@ -77,7 +76,7 @@ elif vtk_ext == '.vtu':
 else:
   parser.error('Unsupported VTK file type extension.')
 
-writer.SetFileName(vtk_file+vtk_ext)
+writer.SetFileName(vtk_file+'.'+writer.GetDefaultFileExtension())
 
 Npoints = rGrid.GetNumberOfPoints()
 Ncells  = rGrid.GetNumberOfCells()

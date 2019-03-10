@@ -68,48 +68,18 @@ module math
      ],[2,9])                                                                                       !< arrangement in Plain notation
      
 !--------------------------------------------------------------------------------------------------
-! Provide deprecated names for compatibility
-
- interface math_cross
-   module procedure math_crossproduct
- end interface math_cross
-
-! ToDo MD: Our naming scheme was a little bit odd: We use essentially the re-ordering according to Nye
-! (convenient because Abaqus and Marc want to have 12 on position 4)
-! but weight the shear components according to Mandel (convenient for matrix multiplications)
- 
- interface math_Plain33to9
-   module procedure math_33to9
- end interface math_Plain33to9
- 
- interface math_Plain9to33
-   module procedure math_9to33
- end interface math_Plain9to33
- 
- interface math_Mandel33to6
-   module procedure math_sym33to6
- end interface math_Mandel33to6
- 
-  interface math_Mandel6to33
-   module procedure math_6toSym33
- end interface math_Mandel6to33
- 
-  interface math_Plain3333to99
-   module procedure math_3333to99
- end interface math_Plain3333to99
- 
- interface math_Plain99to3333
-   module procedure math_99to3333
- end interface math_Plain99to3333
- 
+! Provide deprecated name for compatibility
+ interface math_crossproduct
+   module procedure math_cross
+ end interface math_crossproduct
+ interface math_mul3x3
+   module procedure math_inner
+ end interface math_mul3x3
  public :: &
-   math_Plain33to9, &
-   math_Plain9to33, &
-   math_Mandel33to6, &
-   math_Mandel6to33, &
-   math_Plain3333to99, &
-   math_Plain99to3333
+   math_mul3x3, &
+   math_crossproduct
 !---------------------------------------------------------------------------------------------------
+
 
  public :: &
 #if defined(__PGI)
@@ -124,16 +94,12 @@ module math
    math_civita, &
    math_delta, &
    math_cross, &
-   math_crossproduct, &
-   math_tensorproduct33, &
-   math_mul3x3, &
-   math_mul6x6, &
+   math_outer, &
+   math_inner, &
    math_mul33xx33, &
    math_mul3333xx33, &
    math_mul3333xx3333, &
    math_mul33x33, &
-   math_mul66x66, &
-   math_mul99x99, &
    math_mul33x3, &
    math_mul33x3_complex, &
    math_mul66x6 , &
@@ -214,25 +180,16 @@ contains
 !> @brief initialization of random seed generator
 !--------------------------------------------------------------------------------------------------
 subroutine math_init
-
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
- use numerics, only: randomSeed
- use IO,       only: IO_timeStamp
+ use numerics, only: &
+   randomSeed
 
  implicit none
  integer(pInt) :: i
  real(pReal), dimension(4) ::   randTest
-! the following variables are system dependend and shound NOT be pInt
- integer :: randSize                                                                                ! gfortran requires a variable length to compile
- integer, dimension(:), allocatable :: randInit                                                     ! if recalculations of former randomness (with given seed) is necessary
-                                                                                                    ! comment the first random_seed call out, set randSize to 1, and use ifort
+ integer :: randSize
+ integer, dimension(:), allocatable :: randInit
+ 
  write(6,'(/,a)')   ' <<<+-  math init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
  call random_seed(size=randSize)
  if (allocated(randInit)) deallocate(randInit)
@@ -537,73 +494,46 @@ end function math_delta
 !--------------------------------------------------------------------------------------------------
 !> @brief cross product a x b
 !--------------------------------------------------------------------------------------------------
-pure function math_crossproduct(A,B)
+pure function math_cross(A,B)
 
  implicit none
  real(pReal), dimension(3), intent(in) ::  A,B
- real(pReal), dimension(3) ::  math_crossproduct
+ real(pReal), dimension(3) :: math_cross
 
- math_crossproduct = [ A(2)*B(3) -A(3)*B(2), &
-                       A(3)*B(1) -A(1)*B(3), &
-                       A(1)*B(2) -A(2)*B(1) ]
+ math_cross = [ A(2)*B(3) -A(3)*B(2), &
+                A(3)*B(1) -A(1)*B(3), &
+                A(1)*B(2) -A(2)*B(1) ]
 
-end function math_crossproduct
+end function math_cross
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief tensor product A \otimes B of arbitrary sized vectors A and B
+!> @brief outer product A \otimes B of arbitrary sized vectors A and B
 !--------------------------------------------------------------------------------------------------
-pure function math_tensorproduct(A,B)
+pure function math_outer(A,B)
 
  implicit none
  real(pReal), dimension(:), intent(in) ::  A,B
- real(pReal), dimension(size(A,1),size(B,1)) ::  math_tensorproduct
+ real(pReal), dimension(size(A,1),size(B,1)) ::  math_outer
  integer(pInt) :: i,j
 
- forall(i=1_pInt:size(A,1),j=1_pInt:size(B,1)) math_tensorproduct(i,j) = A(i)*B(j)
+ forall(i=1_pInt:size(A,1),j=1_pInt:size(B,1)) math_outer(i,j) = A(i)*B(j)
 
-end function math_tensorproduct
+end function math_outer
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief tensor product A \otimes B of leght-3 vectors A and B
+!> @brief outer product A \otimes B of arbitrary sized vectors A and B
 !--------------------------------------------------------------------------------------------------
-pure function math_tensorproduct33(A,B)
+real(pReal) pure function math_inner(A,B)
 
  implicit none
- real(pReal), dimension(3,3) ::  math_tensorproduct33
- real(pReal), dimension(3), intent(in) ::  A,B
- integer(pInt) :: i,j
+ real(pReal), dimension(:),         intent(in) :: A
+ real(pReal), dimension(size(A,1)), intent(in) :: B
 
- forall(i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_tensorproduct33(i,j) = A(i)*B(j)
+ math_inner = sum(A*B)
 
-end function math_tensorproduct33
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief matrix multiplication 3x3 = 1
-!--------------------------------------------------------------------------------------------------
-real(pReal) pure function math_mul3x3(A,B)
-
- implicit none
- real(pReal), dimension(3), intent(in) ::  A,B
-
- math_mul3x3 = sum(A*B)
-
-end function math_mul3x3
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief matrix multiplication 6x6 = 1
-!--------------------------------------------------------------------------------------------------
-real(pReal) pure function math_mul6x6(A,B)
-
- implicit none
- real(pReal), dimension(6), intent(in) ::  A,B
-
- math_mul6x6 = sum(A*B)
-
-end function math_mul6x6
+end function math_inner
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2108,7 +2038,7 @@ function math_eigenvectorBasisSym(m)
  
  do i=1_pInt, size(m,1)
    math_eigenvectorBasisSym = math_eigenvectorBasisSym &
-                            + sqrt(values(i)) * math_tensorproduct(vectors(:,i),vectors(:,i))
+                            + sqrt(values(i)) * math_outer(vectors(:,i),vectors(:,i))
  enddo
 
 end function math_eigenvectorBasisSym

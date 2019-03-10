@@ -25,13 +25,13 @@ parser.add_option('-d', '--data',
 parser.add_option('-r', '--rotation',
                   dest = 'rotation',
                   type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
-                  help = 'angle and axis to rotate data [%default]')
+                  help = 'axis and angle to rotate data [%default]')
 parser.add_option('--degrees',
                   dest = 'degrees',
                   action = 'store_true',
                   help = 'angles are given in degrees')
 
-parser.set_defaults(rotation = (0.,1.,1.,1.),                                                       # no rotation about 1,1,1
+parser.set_defaults(rotation = (1.,1.,1.,0),                                                        # no rotation about (1,1,1)
                     degrees = False,
                    )
                     
@@ -40,8 +40,7 @@ parser.set_defaults(rotation = (0.,1.,1.,1.),                                   
 if options.data is None:
   parser.error('no data column specified.')
 
-rotation = np.array(options.rotation[1:4]+(options.rotation[0],))                                   # Compatibility hack
-r = damask.Rotation.fromAxisAngle(rotation,options.degrees,normalise=True)
+r = damask.Rotation.fromAxisAngle(np.array(options.rotation),options.degrees,normalise=True)
 
 # --- loop over input files -------------------------------------------------------------------------
 

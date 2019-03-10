@@ -49,7 +49,7 @@ subroutine thermal_adiabatic_init
    homogenization_Noutput, &
    THERMAL_ADIABATIC_label, &
    THERMAL_adiabatic_ID, &
-   material_homog, & 
+   material_homogenizationAt, & 
    mappingHomogenization, & 
    thermalState, &
    thermalMapping, &
@@ -57,7 +57,6 @@ subroutine thermal_adiabatic_init
    temperature, &
    temperatureRate
  use config, only: &
-   material_partHomogenization, &
    config_homogenization
 
  implicit none
@@ -81,7 +80,7 @@ subroutine thermal_adiabatic_init
  
  initializeInstances: do section = 1_pInt, size(thermal_type)
    if (thermal_type(section) /= THERMAL_adiabatic_ID) cycle
-   NofMyHomog=count(material_homog==section)
+   NofMyHomog=count(material_homogenizationAt==section)
    instance = thermal_typeInstance(section)
    outputs = config_homogenization(section)%getStrings('(output)',defaultVal=emptyStringArray)
    do i=1_pInt, size(outputs)
@@ -121,6 +120,7 @@ function thermal_adiabatic_updateState(subdt, ip, el)
    err_thermal_tolAbs, &
    err_thermal_tolRel
  use material, only: &
+   material_homogenizationAt, &
    mappingHomogenization, &
    thermalState, &
    temperature, &
@@ -141,7 +141,7 @@ function thermal_adiabatic_updateState(subdt, ip, el)
  real(pReal) :: &
    T, Tdot, dTdot_dT  
 
- homog  = mappingHomogenization(2,ip,el)
+ homog  = material_homogenizationAt(el)
  offset = mappingHomogenization(1,ip,el)
  
  T = thermalState(homog)%subState0(1,offset)
@@ -164,10 +164,9 @@ end function thermal_adiabatic_updateState
 !> @brief returns heat generation rate
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_adiabatic_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
- use math, only: &
-   math_6toSym33
  use material, only: &
    homogenization_Ngrains, &
+   material_homogenizationAt, &
    mappingHomogenization, &
    phaseAt, &
    phasememberAt, &
@@ -181,7 +180,7 @@ subroutine thermal_adiabatic_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
  use source_thermal_externalheat, only: &
    source_thermal_externalheat_getRateAndItsTangent
  use crystallite, only: &
-   crystallite_Tstar_v, &
+   crystallite_S, &
    crystallite_Lp  
 
  implicit none
@@ -202,7 +201,7 @@ subroutine thermal_adiabatic_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
    source, &
    constituent
    
- homog  = mappingHomogenization(2,ip,el)
+ homog  = material_homogenizationAt(el)
  instance = thermal_typeInstance(homog)
   
  Tdot = 0.0_pReal
@@ -214,7 +213,7 @@ subroutine thermal_adiabatic_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
      select case(phase_source(source,phase))                                                   
        case (SOURCE_thermal_dissipation_ID)
         call source_thermal_dissipation_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
-                                                             math_6toSym33(crystallite_Tstar_v(1:6,grain,ip,el)), &
+                                                             crystallite_S(1:3,1:3,grain,ip,el), &
                                                              crystallite_Lp(1:3,1:3,grain,ip,el), &
                                                              phase)
 
@@ -279,7 +278,6 @@ function thermal_adiabatic_getMassDensity(ip,el)
    lattice_massDensity
  use material, only: &
    homogenization_Ngrains, &
-   mappingHomogenization, &
    material_phase
  use mesh, only: &
    mesh_element

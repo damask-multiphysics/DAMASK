@@ -1,5 +1,5 @@
 # -*- coding: UTF-8 no BOM -*-
-import sys,time,random,threading,os,subprocess,shlex
+import sys,time,os,subprocess,shlex
 import numpy as np
 from optparse import Option
 
@@ -168,77 +168,6 @@ def progressBar(iteration, total, prefix='', bar_length=50):
 
   if iteration == total: sys.stderr.write('\n')
   sys.stderr.flush()
-
-# -----------------------------
-class backgroundMessage(threading.Thread):
-  """Reporting with animation to indicate progress"""
-
-  choices = {'bounce':   ['_', 'o', 'O', '°', '‾', '‾', '°', 'O', 'o', '_'],
-             'spin':     ['◜', '◝', '◞', '◟'],
-             'circle':   ['◴', '◵', '◶', '◷'],
-             'hexagon':  ['⬢', '⬣'],
-             'square':   ['▖', '▘', '▝', '▗'],
-             'triangle': ['ᐊ', 'ᐊ', 'ᐃ', 'ᐅ', 'ᐅ', 'ᐃ'],
-             'amoeba':   ['▖', '▏', '▘', '▔', '▝', '▕', '▗', '▁'],
-             'beat':     ['▁', '▂', '▃', '▅', '▆', '▇', '▇', '▆', '▅', '▃', '▂'],
-             'prison':   ['ᚋ', 'ᚌ', 'ᚍ', 'ᚏ', 'ᚎ', 'ᚍ', 'ᚌ', 'ᚋ'],
-             'breath':   ['ᚐ', 'ᚑ', 'ᚒ', 'ᚓ', 'ᚔ', 'ᚓ', 'ᚒ', 'ᚑ', 'ᚐ'],
-             'pulse':    ['·', '•', '●', '●', '•'],
-             'ant':      ['⠁', '⠂', '⠐', '⠠', '⠄', '⡀', '⢀', '⠠', '⠄', '⠂', '⠐', '⠈'],
-             'juggle':   ['꜈', '꜉', '꜊', '꜋', '꜌', '꜑', '꜐', '꜏', '꜍'],
-#             'wobbler':  ['▁', '◣', '▏', '◤', '▔', '◥', '▕', '◢'],
-             'grout':    ['▁', '▏', '▔', '▕'],
-             'partner':  ['⚬', '⚭', '⚮', '⚯', '⚮', '⚭'],
-             'classic':  ['-', '\\', '|', '/',],
-            }    
-
-  def __init__(self,symbol = None,wait = 0.1):
-    """Sets animation symbol"""
-    super(backgroundMessage, self).__init__()
-    self._stop = threading.Event()
-    self.message = ''
-    self.new_message = ''
-    self.counter = 0
-    self.gap     = ' '
-    self.symbols = self.choices[symbol if symbol in self.choices else random.choice(list(self.choices.keys()))]
-    self.waittime = wait
-  
-  def __quit__(self):
-    """Cleans output"""
-    length = len(self.symbols[self.counter] + self.gap + self.message)
-    sys.stderr.write(chr(8)*length + ' '*length + chr(8)*length)
-    sys.stderr.write('')
-    sys.stderr.flush()
-  
-  def stop(self):
-    self._stop.set()
-
-  def stopped(self):
-    return self._stop.is_set()
-
-  def run(self):
-    while not threading.enumerate()[0]._Thread__stopped:
-      time.sleep(self.waittime)
-      self.update_message()
-    self.__quit__()
-
-  def set_message(self, new_message):
-    self.new_message = new_message
-    self.print_message()
-  
-  def print_message(self):
-    length = len(self.symbols[self.counter] + self.gap + self.message)
-    sys.stderr.write(chr(8)*length + ' '*length + chr(8)*length + \
-                     self.symbols[self.counter] + self.gap + self.new_message)      # delete former and print new message
-    sys.stderr.flush()
-    self.message = self.new_message
-      
-  def update_message(self):
-    self.counter = (self.counter + 1)%len(self.symbols)
-    self.print_message()
-
-  def animation(self,which = None):
-    return ''.join(self.choices[which]) if which in self.choices else ''
 
 
 def leastsqBound(func, x0, args=(), bounds=None, Dfun=None, full_output=0,

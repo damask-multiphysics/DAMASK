@@ -19,7 +19,7 @@ add_library(PREC OBJECT "prec.f90")
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:PREC>)
 
 add_library(ELEMENT OBJECT "element.f90")
-add_dependencies(ELEMENT PREC)
+add_dependencies(ELEMENT IO)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:ELEMENT>)
 
 add_library(QUIT OBJECT "quit.f90")

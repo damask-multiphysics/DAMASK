@@ -83,7 +83,8 @@ module plastic_kinehardening
    plastic_kinehardening_LpAndItsTangent, &
    plastic_kinehardening_dotState, &
    plastic_kinehardening_deltaState, &
-   plastic_kinehardening_postResults
+   plastic_kinehardening_postResults, &
+   plastic_kinehardening_results
  private :: &
    kinetics
 
@@ -95,11 +96,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_kinehardening_init
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use prec, only: &
    dEq0, &
    pStringLen
@@ -116,8 +112,7 @@ subroutine plastic_kinehardening_init
  use math, only: &
    math_expand
  use IO, only: &
-   IO_error, &
-   IO_timeStamp
+   IO_error
  use material, only: &
 #ifdef DEBUG
    phasememberAt, &
@@ -131,7 +126,6 @@ subroutine plastic_kinehardening_init
    material_phase, &
    plasticState
  use config, only: &
-   MATERIAL_partPhase, &
    config_phase
  use lattice
 
@@ -156,11 +150,9 @@ subroutine plastic_kinehardening_init
    outputs
 
  write(6,'(/,a)')   ' <<<+-  plastic_'//PLASTICITY_KINEHARDENING_label//' init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
- Ninstance = int(count(phase_plasticity == PLASTICITY_KINEHARDENING_ID),pInt)
- if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
+ Ninstance = count(phase_plasticity == PLASTICITY_KINEHARDENING_ID)
+ if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
  allocate(plastic_kinehardening_sizePostResult(maxval(phase_Noutput),Ninstance),source=0_pInt)
@@ -555,6 +547,32 @@ function plastic_kinehardening_postResults(Mp,instance,of) result(postResults)
  end associate
 
 end function plastic_kinehardening_postResults
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine plastic_kinehardening_results(instance,group)
+#if defined(PETSc) || defined(DAMASKHDF5)
+  use results
+
+  implicit none
+  integer, intent(in) :: instance
+  character(len=*) :: group
+  integer :: o
+
+  associate(prm => param(instance), stt => state(instance))
+  outputsLoop: do o = 1_pInt,size(prm%outputID)
+    select case(prm%outputID(o))
+    end select
+  enddo outputsLoop
+  end associate
+#else
+  integer, intent(in) :: instance
+  character(len=*) :: group
+#endif
+
+end subroutine plastic_kinehardening_results
 
 
 !--------------------------------------------------------------------------------------------------

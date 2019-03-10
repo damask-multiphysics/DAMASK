@@ -127,14 +127,6 @@ contains
 !> @brief allocates all neccessary fields, sets debug flags
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_init()
- use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
- use DAMASK_interface, only: &
-  getSolverJobName
- use IO, only: &
-   IO_error, &
-   IO_warning, &
-   IO_timeStamp, &
-   IO_open_file
  use numerics, only: &                        
    structOrder, &
    integrationOrder, &
@@ -155,20 +147,15 @@ subroutine utilities_init()
    mesh_NcpElemsGlobal, &
    mesh_maxNips, &
    geomMesh
- use material, only: &
-   material_homog
 
  implicit none
 
  character(len=1024)                :: petsc_optionsPhysics
  integer(pInt)                      :: dimPlex
- PetscInt,    allocatable           :: nEntities(:), nOutputCells(:), nOutputNodes(:)
  PetscInt                           :: dim
  PetscErrorCode                     :: ierr
 
  write(6,'(/,a)')   ' <<<+-  DAMASK_FEM_utilities init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
  
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters
@@ -194,24 +181,6 @@ subroutine utilities_init()
  wgt = 1.0/real(mesh_maxNips*mesh_NcpElemsGlobal,pReal)
 
  call DMGetDimension(geomMesh,dimPlex,ierr); CHKERRQ(ierr) 
- allocate(nEntities(dimPlex+1), source=0)
- allocate(nOutputNodes(worldsize), source = 0)
- allocate(nOutputCells(worldsize), source = 0)
- do dim = 0, dimPlex
-   call DMGetStratumSize(geomMesh,'depth',dim,nEntities(dim+1),ierr)
-   CHKERRQ(ierr)
- enddo
- select case (integrationOrder)
-   case(1_pInt)
-     nOutputNodes(worldrank+1) = nEntities(1)
-   case(2_pInt)  
-     nOutputNodes(worldrank+1) = sum(nEntities)
-   case default
-     nOutputNodes(worldrank+1) = mesh_maxNips*nEntities(dimPlex+1)
- end select    
- nOutputCells(worldrank+1) = count(material_homog > 0_pInt)
- call MPI_Allreduce(MPI_IN_PLACE,nOutputNodes,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)
- call MPI_Allreduce(MPI_IN_PLACE,nOutputCells,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)
 
 end subroutine utilities_init
 
@@ -286,6 +255,7 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
  call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
 
 end subroutine utilities_constitutiveResponse
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Create index sets of boundary dofs (in local and global numbering)
@@ -376,6 +346,7 @@ subroutine utilities_indexBoundaryDofs(dm_local,nFaceSets,numFields,local2global
  deallocate(localIndices)
  
 end subroutine utilities_indexBoundaryDofs
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Project BC values to local vector
@@ -502,24 +473,12 @@ end subroutine utilities_indexActiveSet
 !> @brief cleans up
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_destroy()
- !use material, only: &
- !  homogenization_Ngrains
 
  !implicit none
  !PetscInt       :: homog, cryst, grain, phase 
  !PetscErrorCode :: ierr
 
- !call PetscViewerHDF5PopGroup(resUnit, ierr); CHKERRQ(ierr)
  !call VecDestroy(coordinatesVec,ierr); CHKERRQ(ierr)
- !do homog = 1, material_Nhomogenization
- !  call VecDestroy(homogenizationResultsVec(homog),ierr);CHKERRQ(ierr)
- !  do cryst = 1, material_Ncrystallite; do grain = 1, homogenization_Ngrains(homog)
- !    call VecDestroy(crystalliteResultsVec(cryst,grain),ierr);CHKERRQ(ierr)
- !  enddo; enddo
- !  do phase = 1, material_Nphase; do grain = 1, homogenization_Ngrains(homog)
- !    call VecDestroy(phaseResultsVec(phase,grain),ierr);CHKERRQ(ierr)
- !  enddo; enddo  
- !enddo      
  !call PetscViewerDestroy(resUnit, ierr); CHKERRQ(ierr)
 
 end subroutine utilities_destroy

@@ -400,12 +400,12 @@ MARCCODEPROF=
 #MARCCODEPROF="ON"
 
 if test "$MARC_INTEGER_SIZE" = "i4" ; then
-  I8FFLAGS="-real-size 64 -integer-size 32"
-  I8DEFINES="-DFLOAT=8 -DINT=4"
+  I8FFLAGS=
+  I8DEFINES=
   I8CDEFINES=
 else
-  I8FFLAGS="-i8 -real-size 64 -integer-size 64"
-  I8DEFINES="-DI64 -DFLOAT=8 -DINT=8"
+  I8FFLAGS="-i8 -integer-size 64"
+  I8DEFINES="-DI64 -DINT=8"
   I8CDEFINES="-U_DOUBLE -D_SINGLE"
 fi
 

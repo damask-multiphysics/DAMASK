@@ -32,12 +32,6 @@ module plastic_nonlocal
  integer(pInt), dimension(:), allocatable, public, protected :: &
    totalNslip                                                                                       !< total number of active slip systems for each instance
  
- integer(pInt), dimension(:,:), allocatable, private :: &
-   Nslip, &                                                                                         !< number of active slip systems
-   slipFamily                                                                                   !< lookup table relating active slip system to slip family for each instance
-
-
- 
  real(pReal), dimension(:,:,:,:,:,:), allocatable, private :: &
    compatibility                                                                                    !< slip system compatibility between me and my neighbors
  
@@ -228,7 +222,8 @@ module plastic_nonlocal
  plastic_nonlocal_dotState, &
  plastic_nonlocal_deltaState, &
  plastic_nonlocal_updateCompatibility, &
- plastic_nonlocal_postResults
+ plastic_nonlocal_postResults, &
+ plastic_nonlocal_results
  
  private :: &
  plastic_nonlocal_kinetics
@@ -290,8 +285,14 @@ subroutine plastic_nonlocal_init
  
   write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_label//' init  -+>>>'
 
- maxNinstances = int(count(phase_plasticity == PLASTICITY_NONLOCAL_ID),pInt)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
+  write(6,'(/,a)')   ' Reuber et al., Acta Materialia 71:333–348, 2014'
+  write(6,'(a)')     ' https://doi.org/10.1016/j.actamat.2014.03.012'
+
+  write(6,'(/,a)')   ' Kords, Dissertation RWTH Aachen, 2014'
+  write(6,'(a)')     ' http://publications.rwth-aachen.de/record/229993'
+
+ maxNinstances = count(phase_plasticity == PLASTICITY_NONLOCAL_ID)
+  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
     write(6,'(a16,1x,i5,/)') '# instances:',maxNinstances
 
 
@@ -306,8 +307,6 @@ subroutine plastic_nonlocal_init
   allocate(plastic_nonlocal_output(maxval(phase_Noutput), maxNinstances))
            plastic_nonlocal_output = ''
   allocate(plastic_nonlocal_outputID(maxval(phase_Noutput), maxNinstances),       source=undefined_ID)
-  allocate(Nslip(lattice_maxNslipFamily,maxNinstances),       source=0_pInt)
-  allocate(slipFamily(lattice_maxNslip,maxNinstances),        source=0_pInt)
   allocate(totalNslip(maxNinstances),                         source=0_pInt)
 
 
@@ -598,8 +597,7 @@ extmsg = trim(extmsg)//' fEdgeMultiplication'
     plasticState(p)%offsetDeltaState = 0_pInt                                                             ! ToDo: state structure does not follow convention
     plasticState(p)%sizePostResults = sum(plastic_nonlocal_sizePostResult(:,phase_plasticityInstance(p)))
     
-    Nslip(1:size(prm%Nslip),phase_plasticityInstance(p)) = prm%Nslip                                      ! ToDo: DEPRECATED
-    totalNslip(phase_plasticityInstance(p)) =  sum(Nslip(1:size(prm%Nslip),phase_plasticityInstance(p)))  ! ToDo: DEPRECATED
+    totalNslip(phase_plasticityInstance(p)) =  prm%totalNslip
     
     ! ToDo: Not really sure if this large number of mostly overlapping pointers is useful
    stt%rho => plasticState(p)%state                              (0_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
@@ -1378,7 +1376,7 @@ dv_dtau(1:ns,2) = dv_dtau(1:ns,1)
 dv_dtauNS(1:ns,2) = dv_dtauNS(1:ns,1)
 
 !screws
-if (size(prm%nonSchmidCoeff) == 0_pInt) then                                                 ! no non-Schmid contributions
+if (size(prm%nonSchmidCoeff) == 0_pInt) then                                                        ! no non-Schmid contributions
   forall(t = 3_pInt:4_pInt)
     v(1:ns,t) = v(1:ns,1)
     dv_dtau(1:ns,t) = dv_dtau(1:ns,1)
@@ -1548,13 +1546,13 @@ dUpper(1:ns,1) = prm%mu *  prm%burgers &
 dUpper(1:ns,2) = prm%mu *  prm%burgers / (4.0_pReal * PI * abs(tau))
 
 
-forall (c = 1_pInt:2_pInt)
+do c = 1, 2
   where(dNeq0(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+abs(rhoSgl(1:ns,2*c+3))&
                                      +abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)))) &
     dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
                        + abs(rhoSgl(1:ns,2*c+3)) + abs(rhoSgl(1:ns,2*c+4)) + rhoDip(1:ns,c)), &
                        dUpper(1:ns,c))
-end forall
+enddo
 dUpper = max(dUpper,dLower)
 deltaDUpper = dUpper - dUpperOld
 
@@ -1626,6 +1624,10 @@ use debug,    only: debug_level, &
                     debug_e
 #endif
 use math,     only: math_mul3x3, &
+#ifdef __PGI
+   norm2, &
+#endif
+
                     math_mul33x3, &
                     math_mul33xx33, &
                     math_mul33x33, &
@@ -1804,13 +1806,13 @@ dUpper(1:ns,1) = prm%mu * prm%burgers(1:ns) &
                / (8.0_pReal * pi * (1.0_pReal - prm%nu) * abs(tau))
 dUpper(1:ns,2) = prm%mu * prm%burgers(1:ns) &
                / (4.0_pReal * pi * abs(tau))
-forall (c = 1_pInt:2_pInt)
+do c = 1, 2
   where(dNeq0(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+abs(rhoSgl(1:ns,2*c+3))&
                                      +abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)))) &
     dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
                        + abs(rhoSgl(1:ns,2*c+3)) + abs(rhoSgl(1:ns,2*c+4)) + rhoDip(1:ns,c)), &
                        dUpper(1:ns,c))
-end forall
+enddo
 dUpper = max(dUpper,dLower)
 
 !****************************************************************************
@@ -1862,7 +1864,7 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
   endif
 
 
-  !*** be aware of the definition of lattice_st = lattice_sd x lattice_sn !!!
+  !*** be aware of the definition of slip_transverse = slip_direction x slip_normal !!!
   !*** opposite sign to our p vector in the (s,p,n) triplet !!!
   
   m(1:3,1:ns,1) =  prm%slip_direction
@@ -2148,8 +2150,7 @@ use rotations, only:  rotation
 use material, only:   material_phase, &
                       material_texture, &
                       phase_localPlasticity, &
-                      phase_plasticityInstance, &
-                      homogenization_maxNgrains
+                      phase_plasticityInstance
 use mesh, only:       mesh_ipNeighborhood, &
                       theMesh
 use lattice, only:    lattice_qDisorientation
@@ -2385,13 +2386,13 @@ dUpper(1:ns,1) = prm%mu * prm%burgers(1:ns) &
                / (8.0_pReal * pi * (1.0_pReal - prm%nu) * abs(tau))
 dUpper(1:ns,2) = prm%mu * prm%burgers(1:ns) &
                / (4.0_pReal * pi * abs(tau))
-forall (c = 1_pInt:2_pInt)
+do c = 1, 2
   where(dNeq0(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+abs(rhoSgl(1:ns,2*c+3))&
                                      +abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)))) &
     dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
                        + abs(rhoSgl(1:ns,2*c+3)) + abs(rhoSgl(1:ns,2*c+4)) + rhoDip(1:ns,c)), &
                        dUpper(1:ns,c))
-end forall
+enddo
 dUpper = max(dUpper,dLower)
 
 
@@ -2561,5 +2562,31 @@ outputsLoop: do o = 1_pInt,size(param(instance)%outputID)
 enddo outputsLoop
 end associate
 end function plastic_nonlocal_postResults
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine plastic_nonlocal_results(instance,group)
+#if defined(PETSc) || defined(DAMASKHDF5)
+  use results
+
+  implicit none
+  integer, intent(in) :: instance
+  character(len=*) :: group
+  integer :: o
+
+  associate(prm => param(instance), stt => state(instance))
+  outputsLoop: do o = 1_pInt,size(prm%outputID)
+    select case(prm%outputID(o))
+    end select
+  enddo outputsLoop
+  end associate
+#else
+  integer, intent(in) :: instance
+  character(len=*) :: group
+#endif
+
+end subroutine plastic_nonlocal_results
 
 end module plastic_nonlocal

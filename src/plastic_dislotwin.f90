@@ -168,7 +168,8 @@ module plastic_dislotwin
    plastic_dislotwin_dependentState, &
    plastic_dislotwin_LpAndItsTangent, &
    plastic_dislotwin_dotState, &
-   plastic_dislotwin_postResults
+   plastic_dislotwin_postResults, &
+   plastic_dislotwin_results
  private :: &
    kinetics_slip, &
    kinetics_twin, &
@@ -182,11 +183,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_dislotwin_init
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use prec, only: &
    pStringLen, &
    dEq0, &
@@ -200,9 +196,7 @@ subroutine plastic_dislotwin_init
    math_expand,&
    PI
  use IO, only: &
-   IO_warning, &
-   IO_error, &
-   IO_timeStamp
+   IO_error
  use material, only: &
    phase_plasticity, &
    phase_plasticityInstance, &
@@ -213,7 +207,6 @@ subroutine plastic_dislotwin_init
    material_phase, &  
    plasticState
  use config, only: &
-   MATERIAL_partPhase, &
    config_phase
  use lattice
 
@@ -238,16 +231,17 @@ subroutine plastic_dislotwin_init
    outputs
 
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_DISLOTWIN_label//' init  -+>>>'
- write(6,'(/,a)')   ' A. Ma and F. Roters, Acta Materialia, 52(12):3603–3612, 2004'
- write(6,'(a)')     ' https://doi.org/10.1016/j.actamat.2004.04.012'
- write(6,'(/,a)')   ' F.Roters et al., Computational Materials Science, 39:91–95, 2007'
- write(6,'(a)')     ' https://doi.org/10.1016/j.commatsci.2006.04.014'
- write(6,'(/,a)')   ' Wong et al., Acta Materialia, 118:140–151, 2016'
- write(6,'(a,/)')   ' https://doi.org/10.1016/j.actamat.2016.07.032'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
- Ninstance = int(count(phase_plasticity == PLASTICITY_DISLOTWIN_ID),pInt)
+ write(6,'(/,a)')   ' Ma and Roters, Acta Materialia 52(12):3603–3612, 2004'
+ write(6,'(a)')     ' https://doi.org/10.1016/j.actamat.2004.04.012'
+
+ write(6,'(/,a)')   ' Roters et al., Computational Materials Science 39:91–95, 2007'
+ write(6,'(a)')     ' https://doi.org/10.1016/j.commatsci.2006.04.014'
+
+ write(6,'(/,a)')   ' Wong et al., Acta Materialia 118:140–151, 2016'
+ write(6,'(a,/)')   ' https://doi.org/10.1016/j.actamat.2016.07.032'
+
+ Ninstance = count(phase_plasticity == PLASTICITY_DISLOTWIN_ID)
 
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
@@ -681,7 +675,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,instance,
    dNeq0
  use math, only: &
    math_eigenValuesVectorsSym, &
-   math_tensorproduct33, &
+   math_outer, &
    math_symmetric33, &
    math_mul33xx33, &
    math_mul33x3
@@ -755,8 +749,8 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,instance,
    call math_eigenValuesVectorsSym(Mp,eigValues,eigVectors,error)
 
    do i = 1_pInt,6_pInt
-     Schmid_shearBand = 0.5_pReal * math_tensorproduct33(math_mul33x3(eigVectors,sb_sComposition(1:3,i)),&
-                                                         math_mul33x3(eigVectors,sb_mComposition(1:3,i)))
+     Schmid_shearBand = 0.5_pReal * math_outer(math_mul33x3(eigVectors,sb_sComposition(1:3,i)),&
+                                               math_mul33x3(eigVectors,sb_mComposition(1:3,i)))
      tau = math_mul33xx33(Mp,Schmid_shearBand)
    
      significantShearBandStress: if (abs(tau) > tol_math_check) then
@@ -1096,6 +1090,32 @@ end function plastic_dislotwin_postResults
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief writes results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine plastic_dislotwin_results(instance,group)
+#if defined(PETSc) || defined(DAMASKHDF5)
+  use results
+
+  implicit none
+  integer, intent(in) :: instance
+  character(len=*) :: group
+  integer :: o
+
+  associate(prm => param(instance), stt => state(instance))
+  outputsLoop: do o = 1_pInt,size(prm%outputID)
+    select case(prm%outputID(o))
+    end select
+  enddo outputsLoop
+  end associate
+#else
+  integer, intent(in) :: instance
+  character(len=*) :: group
+#endif
+
+end subroutine plastic_dislotwin_results
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Shear rates on slip systems, their derivatives with respect to resolved stress and the
 !  resolved stresss
 !> @details Derivatives and resolved stress are calculated only optionally.
@@ -1127,7 +1147,7 @@ pure subroutine kinetics_slip(Mp,Temperature,instance,of, &
  real(pReal), dimension(param(instance)%totalNslip) :: &
    dgdot_dtau
 
- real, dimension(param(instance)%totalNslip) :: &
+ real(pReal), dimension(param(instance)%totalNslip) :: &
    tau, &
    stressRatio, &
    StressRatio_p, &

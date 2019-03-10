@@ -38,17 +38,16 @@ module crystallite
    crystallite_subdt, &                                                                             !< substepped time increment of each grain
    crystallite_subFrac, &                                                                           !< already calculated fraction of increment
    crystallite_subStep                                                                              !< size of next integration step
- real(pReal),               dimension(:,:,:,:),      allocatable, public :: &
-   crystallite_Tstar_v, &                                                                           !< current 2nd Piola-Kirchhoff stress vector (end of converged time step) ToDo: Should be called S, 3x3
-   crystallite_Tstar0_v, &                                                                          !< 2nd Piola-Kirchhoff stress vector at start of FE inc ToDo: Should be called S, 3x3
-   crystallite_partionedTstar0_v                                                                    !< 2nd Piola-Kirchhoff stress vector at start of homog inc ToDo: Should be called S, 3x3
- type(rotation),            dimension(:,:,:),      allocatable, private :: &
+ type(rotation),            dimension(:,:,:),        allocatable, private :: &
    crystallite_orientation, &                                                                       !< orientation 
    crystallite_orientation0                                                                         !< initial orientation
  real(pReal),               dimension(:,:,:,:,:),    allocatable, public, protected :: &
    crystallite_Fe, &                                                                                !< current "elastic" def grad (end of converged time step)
    crystallite_P                                                                                    !< 1st Piola-Kirchhoff stress per grain
  real(pReal),               dimension(:,:,:,:,:),    allocatable, public :: &
+   crystallite_S, &                                                                                 !< current 2nd Piola-Kirchhoff stress vector (end of converged time step)
+   crystallite_S0, &                                                                                !< 2nd Piola-Kirchhoff stress vector at start of FE inc
+   crystallite_partionedS0, &                                                                       !< 2nd Piola-Kirchhoff stress vector at start of homog inc
    crystallite_Fp, &                                                                                !< current plastic def grad (end of converged time step)
    crystallite_Fp0, &                                                                               !< plastic def grad at start of FE inc
    crystallite_partionedFp0,&                                                                       !< plastic def grad at start of homog inc
@@ -130,11 +129,6 @@ contains
 !> @brief allocates and initialize per grain variables
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_init
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
 #ifdef DEBUG
  use debug, only: &
    debug_info, &
@@ -156,7 +150,6 @@ subroutine crystallite_init
    theMesh, &
    mesh_element
  use IO, only: &
-   IO_timeStamp, &
    IO_stringValue, &
    IO_write_jobFile, &
    IO_error
@@ -188,20 +181,14 @@ subroutine crystallite_init
  character(len=65536), dimension(:), allocatable :: str
 
  write(6,'(/,a)')   ' <<<+-  crystallite init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
  cMax = homogenization_maxNgrains
  iMax = theMesh%elem%nIPs
  eMax = theMesh%nElems
 
-! ---------------------------------------------------------------------------
-! ToDo (when working on homogenization): should be 3x3 tensor called S
- allocate(crystallite_Tstar0_v(6,cMax,iMax,eMax),            source=0.0_pReal)
- allocate(crystallite_partionedTstar0_v(6,cMax,iMax,eMax),   source=0.0_pReal)
- allocate(crystallite_Tstar_v(6,cMax,iMax,eMax),             source=0.0_pReal)
-! ---------------------------------------------------------------------------
-
+ allocate(crystallite_S0(3,3,cMax,iMax,eMax),                source=0.0_pReal)
+ allocate(crystallite_partionedS0(3,3,cMax,iMax,eMax),       source=0.0_pReal)
+ allocate(crystallite_S(3,3,cMax,iMax,eMax),                 source=0.0_pReal)
  allocate(crystallite_subS0(3,3,cMax,iMax,eMax),             source=0.0_pReal)
  allocate(crystallite_P(3,3,cMax,iMax,eMax),                 source=0.0_pReal)
  allocate(crystallite_F0(3,3,cMax,iMax,eMax),                source=0.0_pReal)
@@ -295,7 +282,7 @@ subroutine crystallite_init
         crystallite_outputID(o,c) = lp_ID
       case ('li') outputName
         crystallite_outputID(o,c) = li_ID
-      case ('p','firstpiola','1stpiola') outputName
+      case ('p','firstpiola','1stpiola') outputName                                                 ! ToDo: no alias (p only)
         crystallite_outputID(o,c) = p_ID
       case ('s','tstar','secondpiola','2ndpiola') outputName                                        ! ToDo: no alias (s only)
         crystallite_outputID(o,c) = s_ID
@@ -444,9 +431,7 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
    IO_error
  use math, only: &
    math_inv33, &
-   math_mul33x33, &
-   math_6toSym33, &
-   math_sym33to6
+   math_mul33x33
  use mesh, only: &
    theMesh, &
    mesh_element
@@ -511,7 +496,7 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
        crystallite_subFi0(1:3,1:3,c,i,e) = crystallite_partionedFi0(1:3,1:3,c,i,e)
        crystallite_subLi0(1:3,1:3,c,i,e) = crystallite_partionedLi0(1:3,1:3,c,i,e)
        crystallite_subF0(1:3,1:3,c,i,e)  = crystallite_partionedF0(1:3,1:3,c,i,e)
-       crystallite_subS0(1:3,1:3,c,i,e)  = math_6toSym33(crystallite_partionedTstar0_v(1:6,c,i,e))
+       crystallite_subS0(1:3,1:3,c,i,e)  = crystallite_partionedS0(1:3,1:3,c,i,e)
        crystallite_subFrac(c,i,e) = 0.0_pReal
        crystallite_subStep(c,i,e) = 1.0_pReal/subStepSizeCryst
        crystallite_todo(c,i,e) = .true.
@@ -557,7 +542,7 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
              crystallite_subLi0(1:3,1:3,c,i,e) = crystallite_Li  (1:3,1:3,c,i,e)
              crystallite_subFp0(1:3,1:3,c,i,e) = crystallite_Fp  (1:3,1:3,c,i,e)
              crystallite_subFi0(1:3,1:3,c,i,e) = crystallite_Fi  (1:3,1:3,c,i,e)
-             crystallite_subS0 (1:3,1:3,c,i,e) = math_6toSym33(crystallite_Tstar_v(1:6,c,i,e))
+             crystallite_subS0 (1:3,1:3,c,i,e) = crystallite_S   (1:3,1:3,c,i,e)
              !if abbrevation, make c and p private in omp
              plasticState(    phaseAt(c,i,e))%subState0(:,phasememberAt(c,i,e)) &
                = plasticState(phaseAt(c,i,e))%state(    :,phasememberAt(c,i,e))
@@ -583,7 +568,7 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
            crystallite_invFp(1:3,1:3,c,i,e) = math_inv33(crystallite_Fp    (1:3,1:3,c,i,e))
            crystallite_Fi   (1:3,1:3,c,i,e) =            crystallite_subFi0(1:3,1:3,c,i,e)
            crystallite_invFi(1:3,1:3,c,i,e) = math_inv33(crystallite_Fi    (1:3,1:3,c,i,e))
-           crystallite_Tstar_v(1:6,c,i,e)   = math_sym33to6(crystallite_subS0(1:3,1:3,c,i,e))
+           crystallite_S    (1:3,1:3,c,i,e) =            crystallite_S0    (1:3,1:3,c,i,e)
            if (crystallite_subStep(c,i,e) < 1.0_pReal) then                                         ! actual (not initial) cutback
              crystallite_Lp (1:3,1:3,c,i,e) =            crystallite_subLp0(1:3,1:3,c,i,e)
              crystallite_Li (1:3,1:3,c,i,e) =            crystallite_subLi0(1:3,1:3,c,i,e)
@@ -707,7 +692,6 @@ subroutine crystallite_stressTangent()
    math_inv33, &
    math_identity2nd, &
    math_mul33x33, &
-   math_6toSym33, &
    math_3333to99, &
    math_99to3333, &
    math_I3, &
@@ -758,7 +742,7 @@ subroutine crystallite_stressTangent()
                                         crystallite_Fe(1:3,1:3,c,i,e), &
                                         crystallite_Fi(1:3,1:3,c,i,e),c,i,e)                        ! call constitutive law to calculate elastic stress tangent
        call constitutive_LiAndItsTangents(devNull,dLidS,dLidFi, &
-                                          math_6toSym33(crystallite_Tstar_v(1:6,c,i,e)), &
+                                          crystallite_S (1:3,1:3,c,i,e), &
                                           crystallite_Fi(1:3,1:3,c,i,e), &
                                           c,i,e)                                                    ! call constitutive law to calculate Li tangent in lattice configuration
 
@@ -787,7 +771,7 @@ subroutine crystallite_stressTangent()
        endif
 
        call constitutive_LpAndItsTangents(devNull,dLpdS,dLpdFi, &
-                                          math_6toSym33(crystallite_Tstar_v(1:6,c,i,e)), &
+                                          crystallite_S (1:3,1:3,c,i,e), &
                                           crystallite_Fi(1:3,1:3,c,i,e),c,i,e)                      ! call constitutive law to calculate Lp tangent in lattice configuration
        dLpdS = math_mul3333xx3333(dLpdFi,dFidS) + dLpdS
 
@@ -832,15 +816,15 @@ subroutine crystallite_stressTangent()
 !--------------------------------------------------------------------------------------------------
 ! assemble dPdF
        temp_33_1 = math_mul33x33(crystallite_invFp(1:3,1:3,c,i,e), &
-                                 math_mul33x33(math_6toSym33(crystallite_Tstar_v(1:6,c,i,e)), &
+                                 math_mul33x33(crystallite_S(1:3,1:3,c,i,e), &
                                                transpose(crystallite_invFp(1:3,1:3,c,i,e))))
-       temp_33_2 = math_mul33x33(math_6toSym33(crystallite_Tstar_v(1:6,c,i,e)), &
+       temp_33_2 = math_mul33x33(crystallite_S(1:3,1:3,c,i,e), &
                                  transpose(crystallite_invFp(1:3,1:3,c,i,e)))
        temp_33_3 = math_mul33x33(crystallite_subF(1:3,1:3,c,i,e), &
                                  crystallite_invFp(1:3,1:3,c,i,e))
        temp_33_4 = math_mul33x33(math_mul33x33(crystallite_subF(1:3,1:3,c,i,e), &
                                                crystallite_invFp(1:3,1:3,c,i,e)), &
-                                 math_6toSym33(crystallite_Tstar_v(1:6,c,i,e)))
+                                              crystallite_S(1:3,1:3,c,i,e))
 
        crystallite_dPdF(1:3,1:3,1:3,1:3,c,i,e) = 0.0_pReal
        do p=1_pInt, 3_pInt
@@ -943,8 +927,7 @@ function crystallite_postResults(ipc, ip, el)
    math_mul33x33, &
    math_det33, &
    math_I3, &
-   inDeg, &
-   math_6toSym33
+   inDeg
  use mesh, only: &
    theMesh, &
    mesh_element, &
@@ -1048,7 +1031,7 @@ function crystallite_postResults(ipc, ip, el)
      case (s_ID)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = &
-         reshape(math_6toSym33(crystallite_Tstar_v(1:6,ipc,ip,el)),[mySize])
+         reshape(crystallite_S(1:3,1:3,ipc,ip,el),[mySize])
      case (elasmatrix_ID)
        mySize = 36_pInt
        crystallite_postResults(c+1:c+mySize) = reshape(constitutive_homogenizedC(ipc,ip,el),[mySize])
@@ -1070,7 +1053,7 @@ function crystallite_postResults(ipc, ip, el)
  c = c + 1_pInt
  if (size(crystallite_postResults)-c > 0_pInt) &
    crystallite_postResults(c+1:size(crystallite_postResults)) = &
-      constitutive_postResults(math_6toSym33(crystallite_Tstar_v(1:6,ipc,ip,el)), crystallite_Fi(1:3,1:3,ipc,ip,el), &
+      constitutive_postResults(crystallite_S(1:3,1:3,ipc,ip,el), crystallite_Fi(1:3,1:3,ipc,ip,el), &
                                ipc, ip, el)
 
 end function crystallite_postResults
@@ -1111,13 +1094,15 @@ logical function integrateStress(&
                          constitutive_LiAndItsTangents, &
                          constitutive_SandItsTangents
  use math, only:         math_mul33x33, &
+#ifdef __PGI
+   norm2, &
+#endif
                          math_mul33xx33, &
                          math_mul3333xx3333, &
                          math_inv33, &
                          math_det33, &
                          math_I3, &
                          math_identity2nd, &
-                         math_sym33to6, &
                          math_3333to99, &
                          math_33to9, &
                          math_9to33
@@ -1487,7 +1472,7 @@ logical function integrateStress(&
  integrateStress = .true.
  crystallite_P    (1:3,1:3,ipc,ip,el) = math_mul33x33(math_mul33x33(Fg_new,invFp_new), &
                                                       math_mul33x33(S,transpose(invFp_new)))
- crystallite_Tstar_v  (1:6,ipc,ip,el) = math_sym33to6(S)
+ crystallite_S    (1:3,1:3,ipc,ip,el) = S
  crystallite_Lp   (1:3,1:3,ipc,ip,el) = Lpguess
  crystallite_Li   (1:3,1:3,ipc,ip,el) = Liguess
  crystallite_Fp   (1:3,1:3,ipc,ip,el) = Fp_new
@@ -2279,8 +2264,6 @@ end subroutine update_state
 subroutine update_dotState(timeFraction)
  use, intrinsic :: &
    IEEE_arithmetic
- use math, only: &
-   math_6toSym33 !ToDo: Temporarly needed until T_star_v is called S and stored as matrix
  use material, only: &
    plasticState, &
    sourceState, &
@@ -2313,7 +2296,7 @@ subroutine update_dotState(timeFraction)
      do g = 1,homogenization_Ngrains(mesh_element(3,e))
          !$OMP FLUSH(nonlocalStop)
         if ((crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) .and. .not. nonlocalStop) then
-           call constitutive_collectDotState(math_6toSym33(crystallite_Tstar_v(1:6,g,i,e)), &
+           call constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
                                              crystallite_Fe, &
                                              crystallite_Fi(1:3,1:3,g,i,e), &
                                              crystallite_Fp, &
@@ -2350,8 +2333,6 @@ subroutine update_deltaState
    phaseAt, phasememberAt
  use constitutive, only: &
    constitutive_collectDeltaState
- use math, only: &
-   math_6toSym33
  implicit none
  integer(pInt) :: &
    e, &                                                                                             !< element index in element loop
@@ -2374,10 +2355,10 @@ subroutine update_deltaState
      do g = 1,homogenization_Ngrains(mesh_element(3,e))
          !$OMP FLUSH(nonlocalStop)
          if ((crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) .and. .not. nonlocalStop) then
-        call constitutive_collectDeltaState(math_6toSym33(crystallite_Tstar_v(1:6,g,i,e)), &
-                                                          crystallite_Fe(1:3,1:3,g,i,e), &
-                                                          crystallite_Fi(1:3,1:3,g,i,e), &
-                                                          g,i,e)
+        call constitutive_collectDeltaState(crystallite_S(1:3,1:3,g,i,e), &
+                                            crystallite_Fe(1:3,1:3,g,i,e), &
+                                            crystallite_Fi(1:3,1:3,g,i,e), &
+                                            g,i,e)
          p = phaseAt(g,i,e); c = phasememberAt(g,i,e)
          myOffset = plasticState(p)%offsetDeltaState
          mySize   = plasticState(p)%sizeDeltaState
@@ -2440,8 +2421,6 @@ logical function stateJump(ipc,ip,el)
    mesh_element
  use constitutive, only: &
    constitutive_collectDeltaState
- use math, only: &
-   math_6toSym33
 
  implicit none
  integer(pInt), intent(in):: &
@@ -2459,10 +2438,10 @@ logical function stateJump(ipc,ip,el)
  c = phasememberAt(ipc,ip,el)
  p = phaseAt(ipc,ip,el)
 
- call constitutive_collectDeltaState(math_6toSym33(crystallite_Tstar_v(1:6,ipc,ip,el)), &
-                                                   crystallite_Fe(1:3,1:3,ipc,ip,el), &
-                                                   crystallite_Fi(1:3,1:3,ipc,ip,el), &
-                                                   ipc,ip,el)
+ call constitutive_collectDeltaState(crystallite_S(1:3,1:3,ipc,ip,el), &
+                                     crystallite_Fe(1:3,1:3,ipc,ip,el), &
+                                     crystallite_Fi(1:3,1:3,ipc,ip,el), &
+                                     ipc,ip,el)
 
  myOffset = plasticState(p)%offsetDeltaState
  mySize   = plasticState(p)%sizeDeltaState

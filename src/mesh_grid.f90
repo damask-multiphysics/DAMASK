@@ -22,9 +22,8 @@ module mesh
 
  integer(pInt), dimension(:), allocatable, private :: &
    microGlobal
- integer(pInt), dimension(:), allocatable, public, protected :: &
-   mesh_homogenizationAt, &                                                                         !< homogenization ID of each element
-   mesh_microstructureAt                                                                            !< microstructure ID of each element
+ integer(pInt), dimension(:), allocatable, private :: &
+   mesh_homogenizationAt
 
  integer(pInt), dimension(:,:), allocatable, public, protected :: &
    mesh_element                                                                                     !< entryCount and list of elements containing node
@@ -175,11 +174,7 @@ subroutine mesh_init(ip,el)
 
  use DAMASK_interface
  use IO, only: &
-   IO_open_file, &
-   IO_error, &
-   IO_timeStamp, &
-   IO_error, &
-   IO_write_jobFile
+   IO_error
  use debug, only: &
    debug_e, &
    debug_i, &
@@ -272,7 +267,8 @@ subroutine mesh_init(ip,el)
 ! for a homogeneous mesh, all elements have the same number of IPs and and cell nodes.
 ! hence, xxPerElem instead of maxXX
 ! better name
- mesh_microstructureAt  = mesh_element(4,:)
+ theMesh%homogenizationAt  = mesh_element(3,:)
+ theMesh%microstructureAt  = mesh_element(4,:)
 !!!!!!!!!!!!!!!!!!!!!!!!
  deallocate(mesh_cell)
 end subroutine mesh_init
@@ -906,6 +902,9 @@ end function mesh_cellCenterCoordinates
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_ipAreas
  use math, only: &
+#ifdef __PGI
+   norm2, &
+#endif
    math_crossproduct
 
  implicit none

@@ -21,16 +21,11 @@ module IO
                 '────────────'
  public :: &
    IO_init, &
-   IO_read, &
+   IO_read_ASCII, &
    IO_recursiveRead, &
-   IO_checkAndRewind, &
-   IO_open_file_stat, &
-   IO_open_jobFile_stat, &
    IO_open_file, &
+   IO_open_jobFile_binary, &
    IO_write_jobFile, &
-   IO_write_jobRealFile, &
-   IO_read_realFile, &
-   IO_read_intFile, &
    IO_isBlank, &
    IO_getTag, &
    IO_stringPos, &
@@ -70,87 +65,99 @@ contains
 ! ToDo: needed?
 !--------------------------------------------------------------------------------------------------
 subroutine IO_init
-
- implicit none
-
- write(6,'(/,a)')   ' <<<+-  IO init  -+>>>'
-
+ 
+  implicit none
+ 
+  write(6,'(/,a)')   ' <<<+-  IO init  -+>>>'
+ 
 end subroutine IO_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief recursively reads a line from a text file.
-!!        Recursion is triggered by "{path/to/inputfile}" in a line
-!> @details unstable and buggy
+!> @brief reads a line from a text file.
 !--------------------------------------------------------------------------------------------------
-recursive function IO_read(fileUnit,reset) result(line)
-!ToDo: remove recursion once material.config handling is done fully via config module
- implicit none
- integer(pInt), intent(in)           :: fileUnit                                                    !< file unit
- logical,       intent(in), optional :: reset
-
- integer(pInt), dimension(10) :: unitOn = 0_pInt                                                    ! save the stack of recursive file units
- integer(pInt)                :: stack = 1_pInt                                                     ! current stack position
- character(len=8192), dimension(10) :: pathOn = ''
- character(len=512)           :: path,input
- integer(pInt)                :: myStat
- character(len=65536)         :: line
-
- character(len=*), parameter  :: SEP = achar(47)//achar(92)                                         ! forward and backward slash ("/", "\")
-
-!--------------------------------------------------------------------------------------------------
-! reset case
- if(present(reset)) then; if (reset) then                                                           ! do not short circuit here
-   do while (stack > 1_pInt)                                                                        ! can go back to former file
-     close(unitOn(stack))
-     stack = stack-1_pInt
-   enddo
-   return
- endif; endif
+function IO_read(fileUnit) result(line)
+  use prec, only: &
+    pStringLen
+ 
+  implicit none
+  integer, intent(in) :: fileUnit                                                                   !< file unit
+ 
+  character(len=pStringLen) :: line
+ 
+ 
+  read(fileUnit,'(a256)',END=100) line
+ 
+100 end function IO_read
 
 
 !--------------------------------------------------------------------------------------------------
-! read from file
- unitOn(1) = fileUnit
+!> @brief reads an entire ASCII file into an array
+!--------------------------------------------------------------------------------------------------
+function IO_read_ASCII(fileName) result(fileContent)
+  use prec, only: &
+    pStringLen
+  implicit none
+  character(len=*),          intent(in)                :: fileName
 
- read(unitOn(stack),'(a65536)',END=100) line
-
- input = IO_getTag(line,'{','}')
+  character(len=pStringLen), dimension(:), allocatable :: fileContent                                      !< file content, separated per lines
+  character(len=pStringLen)                            :: line
+  character(len=:),                        allocatable :: rawData
+  integer ::  &
+    fileLength, &
+    fileUnit, &
+    startPos, endPos, &
+    myTotalLines, &                                                                                 !< # lines read from file
+    l, &
+    myStat
+  logical :: warned
+  
+!--------------------------------------------------------------------------------------------------
+! read data as stream
+  inquire(file = fileName, size=fileLength)
+  if (fileLength == 0) then
+    allocate(fileContent(0))
+    return
+  endif
+  open(newunit=fileUnit, file=fileName, access='stream',&
+       status='old', position='rewind', action='read',iostat=myStat)
+  if(myStat /= 0) call IO_error(100,ext_msg=trim(fileName))
+  allocate(character(len=fileLength)::rawData)
+  read(fileUnit) rawData
+  close(fileUnit)
 
 !--------------------------------------------------------------------------------------------------
-! normal case
- if (input == '') return                                                                            ! regular line
+! count lines to allocate string array
+  myTotalLines = 1
+  do l=1, len(rawData)
+    if (rawData(l:l) == new_line('')) myTotalLines = myTotalLines+1
+  enddo
+  allocate(fileContent(myTotalLines))
 
 !--------------------------------------------------------------------------------------------------
-! recursion case
- if (stack >= 10_pInt) call IO_error(104_pInt,ext_msg=input)                                        ! recursion limit reached
+! split raw data at end of line
+  warned = .false.
+  startPos = 1
+  l = 1
+  do while (l <= myTotalLines)
+    endPos = merge(startPos + scan(rawData(startPos:),new_line('')) - 2,len(rawData),l /= myTotalLines)
+    if (endPos - startPos > pStringLen-1) then
+      line = rawData(startPos:startPos+pStringLen-1)
+      if (.not. warned) then
+        call IO_warning(207,ext_msg=trim(fileName),el=l)
+        warned = .true.
+      endif
+    else
+      line = rawData(startPos:endpos)
+    endif
+    startPos = endPos + 2                                                                           ! jump to next line start
 
- inquire(UNIT=unitOn(stack),NAME=path)                                                              ! path of current file
- stack = stack+1_pInt
- if(scan(input,SEP) == 1) then                                                                      ! absolut path given (UNIX only)
-   pathOn(stack) = input
- else
-   pathOn(stack) = path(1:scan(path,SEP,.true.))//input                                             ! glue include to current file's dir
- endif
+    fileContent(l) = line
+    l = l + 1
 
- open(newunit=unitOn(stack),iostat=myStat,file=pathOn(stack),action='read',status='old',position='rewind')                         ! open included file
- if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=pathOn(stack))
+  enddo
 
- line = IO_read(fileUnit)
-
- return
-
-!--------------------------------------------------------------------------------------------------
-! end of file case
-100 if (stack > 1_pInt) then                                                                        ! can go back to former file
-   close(unitOn(stack))
-   stack = stack-1_pInt
-   line = IO_read(fileUnit)
- else                                                                                               ! top-most file reached
-   line = IO_EOF
- endif
-
-end function IO_read
+end function IO_read_ASCII
 
 
 !--------------------------------------------------------------------------------------------------
@@ -183,6 +190,10 @@ recursive function IO_recursiveRead(fileName,cnt) result(fileContent)
 !--------------------------------------------------------------------------------------------------
 ! read data as stream
   inquire(file = fileName, size=fileLength)
+  if (fileLength == 0) then
+    allocate(fileContent(0))
+    return
+  endif
   open(newunit=fileUnit, file=fileName, access='stream',&
        status='old', position='rewind', action='read',iostat=myStat)
   if(myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=trim(fileName))
@@ -233,86 +244,76 @@ end function IO_recursiveRead
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief checks if unit is opened for reading, if true rewinds. Otherwise stops with
-!!        error message
-!--------------------------------------------------------------------------------------------------
-subroutine IO_checkAndRewind(fileUnit)
-
- implicit none
- integer(pInt), intent(in) :: fileUnit                                                              !< file unit
- logical                   :: fileOpened
- character(len=15)         :: fileRead
-
- inquire(unit=fileUnit, opened=fileOpened, read=fileRead)
- if (.not. fileOpened .or. trim(fileRead)/='YES') call IO_error(102_pInt)
- rewind(fileUnit)
-
-end subroutine IO_checkAndRewind
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief   opens existing file for reading to given unit. Path to file is relative to working
 !!          directory
-!> @details like IO_open_file_stat, but error is handled via call to IO_error and not via return
-!!          value
 !--------------------------------------------------------------------------------------------------
 subroutine IO_open_file(fileUnit,path)
-
- implicit none
- integer(pInt),      intent(in) :: fileUnit                                                         !< file unit
- character(len=*),   intent(in) :: path                                                             !< relative path from working directory
-
- integer(pInt)                  :: myStat
-
- open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
- if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
-
+ 
+  implicit none
+  integer,            intent(in) :: fileUnit                                                        !< file unit
+  character(len=*),   intent(in) :: path                                                            !< relative path from working directory
+ 
+  integer                        :: myStat
+ 
+  open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
+  if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
+ 
 end subroutine IO_open_file
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief   opens existing file for reading to given unit. Path to file is relative to working
-!!          directory
-!> @details Like IO_open_file, but error is handled via return value and not via call to IO_error
+!> @brief opens an existing file for reading or a new file for writing. Name is the job name
+!> @details replaces an existing file when writing
 !--------------------------------------------------------------------------------------------------
-logical function IO_open_file_stat(fileUnit,path)
-!ToDo: DEPRECATED once material.config handling is done fully via config module
- implicit none
- integer(pInt),      intent(in) :: fileUnit                                                         !< file unit
- character(len=*),   intent(in) :: path                                                             !< relative path from working directory
+integer function IO_open_jobFile_binary(extension,mode)
+  use DAMASK_interface, only: &
+    getSolverJobName
 
- integer(pInt)                  :: myStat
+  implicit none
+  character(len=*), intent(in)           :: extension
+  character,        intent(in), optional :: mode
+ 
+  if (present(mode)) then
+    IO_open_jobFile_binary = IO_open_binary(trim(getSolverJobName())//'.'//trim(extension),mode)
+  else
+    IO_open_jobFile_binary = IO_open_binary(trim(getSolverJobName())//'.'//trim(extension))
+  endif
 
- open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
- if (myStat /= 0_pInt) close(fileUnit)
- IO_open_file_stat = (myStat == 0_pInt)
-
-end function IO_open_file_stat
+end function IO_open_jobFile_binary
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief   opens existing file for reading to given unit. File is named after solver job name
-!!          plus given extension and located in current working directory
-!> @details Like IO_open_jobFile, but error is handled via return value and not via call to
-!!          IO_error
+!> @brief opens an existing file for reading or a new file for writing.
+!> @details replaces an existing file when writing
 !--------------------------------------------------------------------------------------------------
-logical function IO_open_jobFile_stat(fileUnit,ext)
- use DAMASK_interface, only: &
-   getSolverJobName
+integer function IO_open_binary(fileName,mode)
 
- implicit none
- integer(pInt),      intent(in) :: fileUnit                                                         !< file unit
- character(len=*),   intent(in) :: ext                                                              !< extension of file
+  implicit none
+  character(len=*), intent(in)           :: fileName
+  character,        intent(in), optional :: mode
+ 
+  character :: m
+  integer   :: ierr 
 
- integer(pInt)                  :: myStat
- character(len=1024)            :: path
+  if (present(mode)) then
+    m = mode
+  else
+    m = 'r'
+  endif
 
- path = trim(getSolverJobName())//'.'//ext
- open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
- if (myStat /= 0_pInt) close(fileUnit)
- IO_open_jobFile_stat = (myStat == 0_pInt)
+ if    (m == 'w') then
+   open(newunit=IO_open_binary, file=trim(fileName),&
+        status='replace',access='stream',action='write',iostat=ierr)
+   if (ierr /= 0) call IO_error(100,ext_msg='could not open file (w): '//trim(fileName))
+ elseif(m == 'r') then
+   open(newunit=IO_open_binary, file=trim(fileName),&
+        status='old',    access='stream',action='read', iostat=ierr)
+   if (ierr /= 0) call IO_error(100,ext_msg='could not open file (r): '//trim(fileName))
+ else
+   call IO_error(100,ext_msg='unknown access mode: '//m)
+ endif
 
-end function IO_open_JobFile_stat
+end function IO_open_binary
 
 
 #if defined(Marc4DAMASK) || defined(Abaqus)
@@ -321,7 +322,6 @@ end function IO_open_JobFile_stat
 !--------------------------------------------------------------------------------------------------
 subroutine IO_open_inputFile(fileUnit,modelName)
  use DAMASK_interface, only: &
-   getSolverJobName, &
    inputFileExtension
 
  implicit none
@@ -453,92 +453,6 @@ subroutine IO_write_jobFile(fileUnit,ext)
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 
 end subroutine IO_write_jobFile
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief opens binary file containing array of pReal numbers to given unit for writing. File is
-!!        named after solver job name plus given extension and located in current working directory
-!--------------------------------------------------------------------------------------------------
-subroutine IO_write_jobRealFile(fileUnit,ext,recMultiplier)
- use DAMASK_interface, only: &
-   getSolverJobName
-
- implicit none
- integer(pInt),      intent(in)           :: fileUnit                                               !< file unit
- character(len=*),   intent(in)           :: ext                                                    !< extension of file
- integer(pInt),      intent(in), optional :: recMultiplier                                          !< record length (multiple of pReal Numbers, if not given set to one)
-
- integer(pInt)                            :: myStat
- character(len=1024)                      :: path
-
- path = trim(getSolverJobName())//'.'//ext
- if (present(recMultiplier)) then
-   open(fileUnit,status='replace',form='unformatted',access='direct', &
-                                                   recl=pReal*recMultiplier,iostat=myStat,file=path)
- else
-   open(fileUnit,status='replace',form='unformatted',access='direct', &
-                                                   recl=pReal,iostat=myStat,file=path)
- endif
-
- if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
-
-end subroutine IO_write_jobRealFile
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief opens binary file containing array of pReal numbers to given unit for reading. File is
-!!        located in current working directory
-!--------------------------------------------------------------------------------------------------
-subroutine IO_read_realFile(fileUnit,ext,modelName,recMultiplier)
-
- implicit none
- integer(pInt),      intent(in)           :: fileUnit                                               !< file unit
- character(len=*),   intent(in)           :: ext, &                                                 !< extension of file
-                                             modelName                                              !< model name, in case of restart not solver job name
- integer(pInt),      intent(in), optional :: recMultiplier                                          !< record length (multiple of pReal Numbers, if not given set to one)
-
- integer(pInt)                            :: myStat
- character(len=1024)                      :: path
-
- path = trim(modelName)//'.'//ext
- if (present(recMultiplier)) then
-   open(fileUnit,status='old',form='unformatted',access='direct', &
-                 recl=pReal*recMultiplier,iostat=myStat,file=path)
- else
-   open(fileUnit,status='old',form='unformatted',access='direct', &
-                 recl=pReal,iostat=myStat,file=path)
- endif
- if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
-
-end subroutine IO_read_realFile
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief opens binary file containing array of pInt numbers to given unit for reading. File is
-!!        located in current working directory
-!--------------------------------------------------------------------------------------------------
-subroutine IO_read_intFile(fileUnit,ext,modelName,recMultiplier)
-
- implicit none
- integer(pInt),      intent(in)           :: fileUnit                                               !< file unit
- character(len=*),   intent(in)           :: ext, &                                                 !< extension of file
-                                             modelName                                              !< model name, in case of restart not solver job name
- integer(pInt),      intent(in), optional :: recMultiplier                                          !< record length (multiple of pReal Numbers, if not given set to one)
-
- integer(pInt)                            :: myStat
- character(len=1024)                      :: path
-
- path = trim(modelName)//'.'//ext
- if (present(recMultiplier)) then
-   open(fileUnit,status='old',form='unformatted',access='direct', &
-                 recl=pInt*recMultiplier,iostat=myStat,file=path)
- else
-   open(fileUnit,status='old',form='unformatted',access='direct', &
-                 recl=pInt,iostat=myStat,file=path)
- endif
- if (myStat /= 0) call IO_error(100_pInt,ext_msg=path)
-
-end subroutine IO_read_intFile
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1217,7 +1131,6 @@ integer(pInt) function IO_countDataLines(fileUnit)
    chunkPos = IO_stringPos(line)
    tmp = IO_lc(IO_stringValue(line,chunkPos,1_pInt))
    if (tmp(1:1) == '*' .and. tmp(2:2) /= '*') then                                                  ! found keyword
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
      exit
    else
      if (tmp(2:2) /= '*') IO_countDataLines = IO_countDataLines + 1_pInt
@@ -1253,7 +1166,6 @@ integer(pInt) function IO_countNumericalDataLines(fileUnit)
    if (verify(trim(tmp),'0123456789') == 0) then                                                    ! numerical values
      IO_countNumericalDataLines = IO_countNumericalDataLines + 1_pInt
    else
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
      exit
    endif
  enddo
@@ -1309,18 +1221,15 @@ integer(pInt) function IO_countContinuousIntValues(fileUnit)
    line = IO_read(fileUnit)
    chunkPos = IO_stringPos(line)
    if (chunkPos(1) < 1_pInt) then                                                                   ! empty line
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
      exit
    elseif (IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'to' ) then                               ! found range indicator
      IO_countContinuousIntValues = 1_pInt + abs(  IO_intValue(line,chunkPos,3_pInt) &
                                                 - IO_intValue(line,chunkPos,1_pInt))
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
      exit                                                                                           ! only one single range indicator allowed                              
    else
      IO_countContinuousIntValues = IO_countContinuousIntValues+chunkPos(1)-1_pInt                   ! add line's count when assuming 'c'
      if ( IO_lc(IO_stringValue(line,chunkPos,chunkPos(1))) /= 'c' ) then                            ! line finished, read last value
        IO_countContinuousIntValues = IO_countContinuousIntValues+1_pInt
-       line = IO_read(fileUnit, .true.)                                                             ! reset IO_read
        exit                                                                                         ! data ended
      endif
    endif
@@ -1462,27 +1371,27 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
 !> @brief returns verified integer value in given string
 !--------------------------------------------------------------------------------------------------
 integer(pInt) function IO_verifyIntValue (string,validChars,myName)
-
- implicit none
- character(len=*), intent(in) :: string, &                                                            !< string for conversion to int value. Must not contain spaces!
-                                 validChars, &                                                        !< valid characters in string
-                                 myName                                                               !< name of caller function (for debugging)
- integer(pInt)                :: readStatus, invalidWhere
-
- IO_verifyIntValue = 0_pInt
-
- invalidWhere = verify(string,validChars)
- if (invalidWhere == 0_pInt) then
-   read(UNIT=string,iostat=readStatus,FMT=*) IO_verifyIntValue                                        ! no offending chars found
-   if (readStatus /= 0_pInt) &                                                                        ! error during string to integer conversion
-     call IO_warning(203_pInt,ext_msg=myName//'"'//string//'"')
- else
-   call IO_warning(202_pInt,ext_msg=myName//'"'//string//'"')                                         ! complain about offending characters
-   read(UNIT=string(1_pInt:invalidWhere-1_pInt),iostat=readStatus,FMT=*) IO_verifyIntValue            ! interpret remaining string
-   if (readStatus /= 0_pInt) &                                                                        ! error during string to integer conversion
-     call IO_warning(203_pInt,ext_msg=myName//'"'//string(1_pInt:invalidWhere-1_pInt)//'"')
- endif
-
+ 
+  implicit none
+  character(len=*), intent(in) :: string, &                                                         !< string for conversion to int value. Must not contain spaces!
+                                  validChars, &                                                     !< valid characters in string
+                                  myName                                                            !< name of caller function (for debugging)
+  integer                      :: readStatus, invalidWhere
+ 
+  IO_verifyIntValue = 0
+ 
+  invalidWhere = verify(string,validChars)
+  if (invalidWhere == 0) then
+    read(UNIT=string,iostat=readStatus,FMT=*) IO_verifyIntValue                                     ! no offending chars found
+    if (readStatus /= 0) &                                                                          ! error during string to integer conversion
+      call IO_warning(203,ext_msg=myName//'"'//string//'"')
+  else
+    call IO_warning(202,ext_msg=myName//'"'//string//'"')                                           ! complain about offending characters
+    read(UNIT=string(1:invalidWhere-1),iostat=readStatus,FMT=*) IO_verifyIntValue                   ! interpret remaining string
+    if (readStatus /= 0) &                                                                          ! error during string to integer conversion
+      call IO_warning(203,ext_msg=myName//'"'//string(1:invalidWhere-1)//'"')
+  endif
+ 
 end function IO_verifyIntValue
 
 
@@ -1490,28 +1399,28 @@ end function IO_verifyIntValue
 !> @brief returns verified float value in given string
 !--------------------------------------------------------------------------------------------------
 real(pReal) function IO_verifyFloatValue (string,validChars,myName)
-
- implicit none
- character(len=*), intent(in) :: string, &                                                            !< string for conversion to int value. Must not contain spaces!
-                                 validChars, &                                                        !< valid characters in string
-                                 myName                                                               !< name of caller function (for debugging)
-
- integer(pInt)                :: readStatus, invalidWhere
-
- IO_verifyFloatValue = 0.0_pReal
-
- invalidWhere = verify(string,validChars)
- if (invalidWhere == 0_pInt) then
-   read(UNIT=string,iostat=readStatus,FMT=*) IO_verifyFloatValue                                      ! no offending chars found
-   if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
-     call IO_warning(203_pInt,ext_msg=myName//'"'//string//'"')
- else
-   call IO_warning(202_pInt,ext_msg=myName//'"'//string//'"')                                         ! complain about offending characters
-   read(UNIT=string(1_pInt:invalidWhere-1_pInt),iostat=readStatus,FMT=*) IO_verifyFloatValue          ! interpret remaining string
-   if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
-     call IO_warning(203_pInt,ext_msg=myName//'"'//string(1_pInt:invalidWhere-1_pInt)//'"')
- endif
-
+ 
+  implicit none
+  character(len=*), intent(in) :: string, &                                                         !< string for conversion to int value. Must not contain spaces!
+                                  validChars, &                                                     !< valid characters in string
+                                  myName                                                            !< name of caller function (for debugging)
+ 
+  integer                      :: readStatus, invalidWhere
+ 
+  IO_verifyFloatValue = 0.0_pReal
+ 
+  invalidWhere = verify(string,validChars)
+  if (invalidWhere == 0) then
+    read(UNIT=string,iostat=readStatus,FMT=*) IO_verifyFloatValue                                   ! no offending chars found
+    if (readStatus /= 0) &                                                                          ! error during string to float conversion
+      call IO_warning(203,ext_msg=myName//'"'//string//'"')
+  else
+    call IO_warning(202,ext_msg=myName//'"'//string//'"')                                           ! complain about offending characters
+    read(UNIT=string(1:invalidWhere-1),iostat=readStatus,FMT=*) IO_verifyFloatValue                 ! interpret remaining string
+    if (readStatus /= 0) &                                                                          ! error during string to float conversion
+      call IO_warning(203,ext_msg=myName//'"'//string(1:invalidWhere-1)//'"')
+  endif
+ 
 end function IO_verifyFloatValue
 
 end module IO

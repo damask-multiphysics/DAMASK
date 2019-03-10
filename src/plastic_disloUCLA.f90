@@ -102,7 +102,8 @@ module plastic_disloUCLA
    plastic_disloUCLA_dependentState, &
    plastic_disloUCLA_LpAndItsTangent, &
    plastic_disloUCLA_dotState, &
-   plastic_disloUCLA_postResults
+   plastic_disloUCLA_postResults, &
+   plastic_disloUCLA_results
  private :: &
    kinetics
 
@@ -114,11 +115,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_disloUCLA_init()
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use prec, only: &
    pStringLen
  use debug, only: &
@@ -128,8 +124,7 @@ subroutine plastic_disloUCLA_init()
  use math, only: &
    math_expand
  use IO, only: &
-   IO_error, &
-   IO_timeStamp
+   IO_error
  use material, only: &
    phase_plasticity, &
    phase_plasticityInstance, &
@@ -140,7 +135,6 @@ subroutine plastic_disloUCLA_init()
    material_phase, &
    plasticState
  use config, only: &
-   MATERIAL_partPhase, &
    config_phase
  use lattice
 
@@ -165,10 +159,9 @@ subroutine plastic_disloUCLA_init()
    outputs
 
  write(6,'(/,a)')   ' <<<+-  plastic_'//PLASTICITY_DISLOUCLA_label//' init  -+>>>'
- write(6,'(/,a)')   ' Cereceda et al., International Journal of Plasticity 78, 2016, 242-256'
- write(6,'(/,a)')   ' http://dx.doi.org/10.1016/j.ijplas.2015.09.002'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
+
+ write(6,'(/,a)')   ' Cereceda et al., International Journal of Plasticity 78:242–256, 2016'
+ write(6,'(a)')     ' https://dx.doi.org/10.1016/j.ijplas.2015.09.002'
 
  Ninstance = int(count(phase_plasticity == PLASTICITY_DISLOUCLA_ID),pInt)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
@@ -567,6 +560,32 @@ function plastic_disloUCLA_postResults(Mp,Temperature,instance,of) result(postRe
  end associate
 
 end function plastic_disloUCLA_postResults
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine plastic_disloUCLA_results(instance,group)
+#if defined(PETSc) || defined(DAMASKHDF5)
+  use results
+
+  implicit none
+  integer, intent(in) :: instance
+  character(len=*) :: group
+  integer :: o
+
+  associate(prm => param(instance), stt => state(instance))
+  outputsLoop: do o = 1_pInt,size(prm%outputID)
+    select case(prm%outputID(o))
+    end select
+  enddo outputsLoop
+  end associate
+#else
+  integer, intent(in) :: instance
+  character(len=*) :: group
+#endif
+
+end subroutine plastic_disloUCLA_results
 
 
 !--------------------------------------------------------------------------------------------------

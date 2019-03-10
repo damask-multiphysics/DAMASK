@@ -10,9 +10,6 @@ module damage_nonlocal
 
  implicit none
  private
- integer(pInt),                       dimension(:),           allocatable,         public, protected :: &
-   damage_nonlocal_sizePostResults                                                           !< cumulative size of post results
-
  integer(pInt),                       dimension(:,:),         allocatable, target, public :: &
    damage_nonlocal_sizePostResult                                                            !< size of each post result output
 
@@ -26,9 +23,14 @@ module damage_nonlocal
    enumerator :: undefined_ID, &
                  damage_ID
  end enum
- integer(kind(undefined_ID)),         dimension(:,:),         allocatable,          private :: & 
-   damage_nonlocal_outputID                                                                  !< ID of each post result output
 
+ type, private :: tParameters
+   integer(kind(undefined_ID)),         dimension(:),   allocatable   :: &
+     outputID
+ end type tParameters
+ 
+ type(tparameters),          dimension(:), allocatable, private :: &
+   param
 
  public :: &
    damage_nonlocal_init, &
@@ -40,142 +42,92 @@ module damage_nonlocal
 
 contains
 
-
 !--------------------------------------------------------------------------------------------------
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine damage_nonlocal_init(fileUnit)
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
- use IO, only: &
-   IO_read, &
-   IO_lc, &
-   IO_getTag, &
-   IO_isBlank, &
-   IO_stringPos, &
-   IO_stringValue, &
-   IO_floatValue, &
-   IO_intValue, &
-   IO_warning, &
-   IO_error, &
-   IO_timeStamp, &
-   IO_EOF
+subroutine damage_nonlocal_init
  use material, only: &
    damage_type, &
    damage_typeInstance, &
    homogenization_Noutput, &
    DAMAGE_nonlocal_label, &
    DAMAGE_nonlocal_ID, &
-   material_homog, & 
+   material_homogenizationAt, & 
    mappingHomogenization, & 
    damageState, &
    damageMapping, &
    damage, &
    damage_initialPhi
  use config, only: &
-   material_partHomogenization
+   config_homogenization
 
  implicit none
- integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt) :: maxNinstance,mySize=0_pInt,section,instance,o
+ integer(pInt) :: maxNinstance,homog,instance,o,i
  integer(pInt) :: sizeState
- integer(pInt) :: NofMyHomog   
- character(len=65536) :: &
-   tag  = '', &
-   line = ''
+ integer(pInt) :: NofMyHomog, h
+  integer(kind(undefined_ID)) :: &
+   outputID
+ character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
+  character(len=65536), dimension(:), allocatable :: &
+   outputs
 
  write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_nonlocal_label//' init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
  
  maxNinstance = int(count(damage_type == DAMAGE_nonlocal_ID),pInt)
  if (maxNinstance == 0_pInt) return
  
- allocate(damage_nonlocal_sizePostResults(maxNinstance),                               source=0_pInt)
  allocate(damage_nonlocal_sizePostResult (maxval(homogenization_Noutput),maxNinstance),source=0_pInt)
  allocate(damage_nonlocal_output         (maxval(homogenization_Noutput),maxNinstance))
           damage_nonlocal_output = ''
- allocate(damage_nonlocal_outputID       (maxval(homogenization_Noutput),maxNinstance),source=undefined_ID)
  allocate(damage_nonlocal_Noutput        (maxNinstance),                               source=0_pInt) 
 
- rewind(fileUnit)
- section = 0_pInt
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partHomogenization)! wind forward to <homogenization>
-   line = IO_read(fileUnit)
- enddo
- 
- parsingFile: do while (trim(line) /= IO_EOF)                                                       ! read through sections of homog part
-   line = IO_read(fileUnit)
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
-     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
-     exit                                                                                           
-   endif   
-   if (IO_getTag(line,'[',']') /= '') then                                                          ! next homog section
-     section = section + 1_pInt                                                                     ! advance homog section counter
-     cycle                                                                                          ! skip to next line
-   endif
-
-   if (section > 0_pInt ) then; if (damage_type(section) == DAMAGE_nonlocal_ID) then                ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
-
-     instance = damage_typeInstance(section)                                                        ! which instance of my damage is present homog
-     chunkPos = IO_stringPos(line)
-     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                              ! extract key
-     select case(tag)
-       case ('(output)')
-         select case(IO_lc(IO_stringValue(line,chunkPos,2_pInt)))
+ allocate(param(maxNinstance))
+  
+ do h = 1, size(damage_type)
+   if (damage_type(h) /= DAMAGE_NONLOCAL_ID) cycle
+   associate(prm => param(damage_typeInstance(h)), &
+             config => config_homogenization(h))
+             
+   instance = damage_typeInstance(h)
+   outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
+   allocate(prm%outputID(0))
+   
+   do i=1, size(outputs)
+     outputID = undefined_ID
+     select case(outputs(i))
+     
            case ('damage')
-             damage_nonlocal_Noutput(instance) = damage_nonlocal_Noutput(instance) + 1_pInt
-             damage_nonlocal_outputID(damage_nonlocal_Noutput(instance),instance) = damage_ID
-             damage_nonlocal_output(damage_nonlocal_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,chunkPos,2_pInt))
+           damage_nonlocal_output(i,damage_typeInstance(h)) = outputs(i)
+             damage_nonlocal_Noutput(instance) = damage_nonlocal_Noutput(instance) + 1
+            damage_nonlocal_sizePostResult(i,damage_typeInstance(h)) = 1
+       prm%outputID = [prm%outputID , damage_ID]
           end select
+     
+   enddo
 
-     end select
-   endif; endif
- enddo parsingFile
- 
- initializeInstances: do section = 1_pInt, size(damage_type)
-   if (damage_type(section) == DAMAGE_nonlocal_ID) then
-     NofMyHomog=count(material_homog==section)
-     instance = damage_typeInstance(section)
+   homog = h
 
-!--------------------------------------------------------------------------------------------------
-!  Determine size of postResults array
-     outputsLoop: do o = 1_pInt,damage_nonlocal_Noutput(instance)
-       select case(damage_nonlocal_outputID(o,instance))
-         case(damage_ID)
-           mySize = 1_pInt
-       end select
- 
-       if (mySize > 0_pInt) then  ! any meaningful output found
-          damage_nonlocal_sizePostResult(o,instance) = mySize
-          damage_nonlocal_sizePostResults(instance)  = damage_nonlocal_sizePostResults(instance) + mySize
-       endif
-     enddo outputsLoop
+     NofMyHomog = count(material_homogenizationAt == homog)
+     instance = damage_typeInstance(homog)
+
 
 ! allocate state arrays
-     sizeState = 0_pInt
-     damageState(section)%sizeState = sizeState
-     damageState(section)%sizePostResults = damage_nonlocal_sizePostResults(instance)
-     allocate(damageState(section)%state0   (sizeState,NofMyHomog))
-     allocate(damageState(section)%subState0(sizeState,NofMyHomog))
-     allocate(damageState(section)%state    (sizeState,NofMyHomog))
+     sizeState = 1_pInt
+     damageState(homog)%sizeState = sizeState
+     damageState(homog)%sizePostResults = sum(damage_nonlocal_sizePostResult(:,instance))
+     allocate(damageState(homog)%state0   (sizeState,NofMyHomog), source=damage_initialPhi(homog))
+     allocate(damageState(homog)%subState0(sizeState,NofMyHomog), source=damage_initialPhi(homog))
+     allocate(damageState(homog)%state    (sizeState,NofMyHomog), source=damage_initialPhi(homog))
 
-     nullify(damageMapping(section)%p)
-     damageMapping(section)%p => mappingHomogenization(1,:,:)
-     deallocate(damage(section)%p)
-     allocate(damage(section)%p(NofMyHomog), source=damage_initialPhi(section))
+     nullify(damageMapping(homog)%p)
+     damageMapping(homog)%p => mappingHomogenization(1,:,:)
+     deallocate(damage(homog)%p)
+     damage(homog)%p => damageState(homog)%state(1,:)
      
-   endif
- 
- enddo initializeInstances
+   end associate
+ enddo
 end subroutine damage_nonlocal_init
 
 !--------------------------------------------------------------------------------------------------
@@ -184,7 +136,7 @@ end subroutine damage_nonlocal_init
 subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el)
  use material, only: &
    homogenization_Ngrains, &
-   mappingHomogenization, &
+   material_homogenizationAt, &
    phaseAt, &
    phasememberAt, &
    phase_source, &
@@ -218,10 +170,10 @@ subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip,
 
  phiDot = 0.0_pReal
  dPhiDot_dPhi = 0.0_pReal
- do grain = 1, homogenization_Ngrains(mappingHomogenization(2,ip,el))
+ do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
    phase = phaseAt(grain,ip,el)
    constituent = phasememberAt(grain,ip,el)
-   do source = 1_pInt, phase_Nsources(phase)
+   do source = 1, phase_Nsources(phase)
      select case(phase_source(source,phase))                                                   
        case (SOURCE_damage_isoBrittle_ID)
         call source_damage_isobrittle_getRateAndItsTangent  (localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
@@ -245,8 +197,8 @@ subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip,
    enddo  
  enddo
  
- phiDot = phiDot/real(homogenization_Ngrains(mappingHomogenization(2,ip,el)),pReal)
- dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Ngrains(mappingHomogenization(2,ip,el)),pReal)
+ phiDot = phiDot/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
+ dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
  
 end subroutine damage_nonlocal_getSourceAndItsTangent
 
@@ -261,7 +213,7 @@ function damage_nonlocal_getDiffusion33(ip,el)
  use material, only: &
    homogenization_Ngrains, &
    material_phase, &
-   mappingHomogenization
+   material_homogenizationAt
  use crystallite, only: &
    crystallite_push33ToRef
 
@@ -275,7 +227,7 @@ function damage_nonlocal_getDiffusion33(ip,el)
    homog, &
    grain
    
- homog  = mappingHomogenization(2,ip,el)
+ homog  = material_homogenizationAt(el)
  damage_nonlocal_getDiffusion33 = 0.0_pReal  
  do grain = 1, homogenization_Ngrains(homog)
    damage_nonlocal_getDiffusion33 = damage_nonlocal_getDiffusion33 + &
@@ -322,7 +274,7 @@ end function damage_nonlocal_getMobility
 !--------------------------------------------------------------------------------------------------
 subroutine damage_nonlocal_putNonLocalDamage(phi,ip,el)
  use material, only: &
-   material_homog, &
+   material_homogenizationAt, &
    damageMapping, &
    damage
 
@@ -336,7 +288,7 @@ subroutine damage_nonlocal_putNonLocalDamage(phi,ip,el)
    homog, &
    offset
  
- homog  = material_homog(ip,el)
+ homog  = material_homogenizationAt(el)
  offset = damageMapping(homog)%p(ip,el)
  damage(homog)%p(offset) = phi
 
@@ -347,35 +299,37 @@ end subroutine damage_nonlocal_putNonLocalDamage
 !--------------------------------------------------------------------------------------------------
 function damage_nonlocal_postResults(ip,el)
  use material, only: &
-   mappingHomogenization, &
+   material_homogenizationAt, &
    damage_typeInstance, &
+   damageMapping, &
    damage
 
  implicit none
  integer(pInt),              intent(in) :: &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- real(pReal), dimension(damage_nonlocal_sizePostResults(damage_typeInstance(mappingHomogenization(2,ip,el)))) :: &
+ real(pReal), dimension(sum(damage_nonlocal_sizePostResult(:,damage_typeInstance(material_homogenizationAt(el))))) :: &
    damage_nonlocal_postResults
 
  integer(pInt) :: &
    instance, homog, offset, o, c
    
- homog     = mappingHomogenization(2,ip,el)
- offset    = mappingHomogenization(1,ip,el)
+ homog     = material_homogenizationAt(el)
+ offset    = damageMapping(homog)%p(ip,el)
  instance  = damage_typeInstance(homog)
-
+ associate(prm => param(instance))
  c = 0_pInt
- damage_nonlocal_postResults = 0.0_pReal
 
- do o = 1_pInt,damage_nonlocal_Noutput(instance)
-    select case(damage_nonlocal_outputID(o,instance))
+ outputsLoop: do o = 1_pInt,size(prm%outputID)
+   select case(prm%outputID(o))
  
       case (damage_ID)
         damage_nonlocal_postResults(c+1_pInt) = damage(homog)%p(offset)
         c = c + 1
     end select
- enddo
+ enddo outputsLoop
+
+ end associate
 end function damage_nonlocal_postResults
 
 end module damage_nonlocal

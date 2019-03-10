@@ -63,9 +63,6 @@ module debug
    debug_jacobianMax             = -huge(1.0_pReal), &
    debug_jacobianMin             =  huge(1.0_pReal)
 
- character(len=64), parameter, private ::  &
-   debug_CONFIGFILE         = 'debug.config'                                                        !< name of configuration file
-
 #ifdef PETSc
  character(len=1024), parameter, public :: &
    PETSCDEBUG = ' -snes_view -snes_monitor '
@@ -81,46 +78,38 @@ contains
 !> @brief reads in parameters from debug.config and allocates arrays
 !--------------------------------------------------------------------------------------------------
 subroutine debug_init
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
-
+ use prec, only: &
+   pStringLen
  use IO, only: &
-   IO_read, &
+   IO_read_ASCII, &
    IO_error, &
-   IO_open_file_stat, &
    IO_isBlank, &
    IO_stringPos, &
    IO_stringValue, &
    IO_lc, &
    IO_floatValue, &
-   IO_intValue, &
-   IO_timeStamp, &
-   IO_EOF
+   IO_intValue
 
  implicit none
- integer(pInt), parameter                 :: FILEUNIT    = 330_pInt
+ character(len=pStringLen), dimension(:), allocatable :: fileContent
 
- integer(pInt)                            :: i, what
- integer(pInt), allocatable, dimension(:) :: chunkPos
- character(len=65536)                     :: tag, line
+ integer                            :: i, what, j
+ integer, allocatable, dimension(:) :: chunkPos
+ character(len=pStringLen)          :: tag, line
+ logical :: fexist 
 
  write(6,'(/,a)')   ' <<<+-  debug init  -+>>>'
 #ifdef DEBUG
  write(6,'(a)') achar(27)//'[31m <<<+-  DEBUG version  -+>>>'//achar(27)//'[0m'
 #endif
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
-!--------------------------------------------------------------------------------------------------
-! try to open the config file
 
- line = ''
- fileExists: if(IO_open_file_stat(FILEUNIT,debug_configFile)) then
-   do while (trim(line) /= IO_EOF)                                                                  ! read thru sections of phase part
-     line = IO_read(FILEUNIT)
+ inquire(file='debug.config', exist=fexist)
+
+ fileExists: if (fexist) then
+   fileContent = IO_read_ASCII('debug.config') 
+   do j=1, size(fileContent)
+     line = fileContent(j)
      if (IO_isBlank(line)) cycle                                                                    ! skip empty lines
      chunkPos = IO_stringPos(line)
      tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                              ! extract key
@@ -189,7 +178,6 @@ subroutine debug_init
        enddo
       endif
    enddo
-   close(FILEUNIT)
 
    do i = 1_pInt, debug_maxNtype
      if (debug_level(i) == 0) &

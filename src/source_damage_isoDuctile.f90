@@ -53,11 +53,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_isoDuctile_init
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use prec, only: &
    pStringLen
  use debug, only: &
@@ -65,7 +60,6 @@ subroutine source_damage_isoDuctile_init
    debug_constitutive,&
    debug_levelBasic
  use IO, only: &
-   IO_warning, &
    IO_error
  use material, only: &
    material_allocateSourceState, &
@@ -78,8 +72,7 @@ subroutine source_damage_isoDuctile_init
    sourceState
  use config, only: &
    config_phase, &
-   material_Nphase, &
-   MATERIAL_partPhase
+   material_Nphase
 
  implicit none
 
@@ -95,12 +88,11 @@ subroutine source_damage_isoDuctile_init
    outputs
 
  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_DAMAGE_ISODUCTILE_LABEL//' init  -+>>>'
-#include "compilation_info.f90"
 
- Ninstance = int(count(phase_source == SOURCE_damage_isoDuctile_ID),pInt)
+ Ninstance = count(phase_source == SOURCE_damage_isoDuctile_ID)
  if (Ninstance == 0_pInt) return
  
- if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
+ if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
  
  allocate(source_damage_isoDuctile_offset(material_Nphase), source=0_pInt)
@@ -181,7 +173,7 @@ subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
    phaseAt, phasememberAt, &
    plasticState, &
    sourceState, &
-   material_homog, &
+   material_homogenizationAt, &
    damage, &
    damageMapping
 
@@ -197,7 +189,7 @@ subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
  constituent = phasememberAt(ipc,ip,el)
  instance = source_damage_isoDuctile_instance(phase)
  sourceOffset = source_damage_isoDuctile_offset(phase)
- homog = material_homog(ip,el)
+ homog = material_homogenizationAt(el)
  damageOffset = damageMapping(homog)%p(ip,el)
 
  sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = &

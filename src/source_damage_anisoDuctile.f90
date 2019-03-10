@@ -22,9 +22,6 @@ module source_damage_anisoDuctile
    source_damage_anisoDuctile_output                                                                            !< name of each post result output
    
 
- integer(pInt),                       dimension(:,:),         allocatable,         private :: &
-   source_damage_anisoDuctile_Nslip                                                                         !< number of slip systems per family
-   
  enum, bind(c) 
    enumerator :: undefined_ID, &
                  damage_drivingforce_ID
@@ -37,9 +34,9 @@ module source_damage_anisoDuctile
      N
    real(pReal), dimension(:), allocatable :: &
      critPlasticStrain
-   integer(pInt) :: &
+   integer :: &
      totalNslip
-   integer(pInt), dimension(:), allocatable :: &
+   integer, dimension(:), allocatable :: &
      Nslip
    integer(kind(undefined_ID)), allocatable, dimension(:) :: &
      outputID
@@ -62,11 +59,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_anisoDuctile_init
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use prec, only: &
    pStringLen
  use debug, only: &
@@ -75,7 +67,7 @@ subroutine source_damage_anisoDuctile_init
    debug_levelBasic
  use IO, only: &
    IO_error
-    use math, only: &
+ use math, only: &
    math_expand
  use material, only: &
    material_allocateSourceState, &
@@ -87,14 +79,10 @@ subroutine source_damage_anisoDuctile_init
    material_phase, &  
    sourceState
  use config, only: &
-   config_phase, &
-   material_Nphase, &
-   MATERIAL_partPhase
- use lattice, only: &
-   lattice_maxNslipFamily
+   config_phase
+
    
  implicit none
-
  integer(pInt) :: Ninstance,phase,instance,source,sourceOffset
  integer(pInt) :: NofMyPhase,p ,i
 
@@ -109,17 +97,16 @@ subroutine source_damage_anisoDuctile_init
    outputs
 
  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_DAMAGE_ANISODUCTILE_LABEL//' init  -+>>>'
-#include "compilation_info.f90"
 
- Ninstance = int(count(phase_source == SOURCE_damage_anisoDuctile_ID),pInt)
+ Ninstance = count(phase_source == SOURCE_damage_anisoDuctile_ID)
  if (Ninstance == 0_pInt) return
  
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
  
- allocate(source_damage_anisoDuctile_offset(material_Nphase), source=0_pInt)
- allocate(source_damage_anisoDuctile_instance(material_Nphase), source=0_pInt)
- do phase = 1, material_Nphase
+ allocate(source_damage_anisoDuctile_offset(size(config_phase)), source=0_pInt)
+ allocate(source_damage_anisoDuctile_instance(size(config_phase)), source=0_pInt)
+ do phase = 1, size(config_phase)
    source_damage_anisoDuctile_instance(phase) = count(phase_source(:,1:phase) == source_damage_anisoDuctile_ID)
    do source = 1, phase_Nsources(phase)
      if (phase_source(source,phase) == source_damage_anisoDuctile_ID) &
@@ -131,7 +118,6 @@ subroutine source_damage_anisoDuctile_init
  allocate(source_damage_anisoDuctile_output(maxval(phase_Noutput),Ninstance))
           source_damage_anisoDuctile_output = ''
 
- allocate(source_damage_anisoDuctile_Nslip(lattice_maxNslipFamily,Ninstance),        source=0_pInt)
 
  allocate(param(Ninstance))
  
@@ -143,7 +129,7 @@ subroutine source_damage_anisoDuctile_init
    prm%aTol   = config%getFloat('anisoductile_atol',defaultVal = 1.0e-3_pReal)
 
    prm%N      = config%getFloat('anisoductile_ratesensitivity')
-   
+   prm%totalNslip = sum(prm%Nslip)
    ! sanity checks
    if (prm%aTol                 < 0.0_pReal) extmsg = trim(extmsg)//' anisoductile_atol'
    
@@ -192,8 +178,6 @@ subroutine source_damage_anisoDuctile_init
    sourceState(phase)%p(sourceOffset)%sizePostResults = sum(source_damage_anisoDuctile_sizePostResult(:,instance))
    sourceState(phase)%p(sourceOffset)%aTolState=param(instance)%aTol
    
-   source_damage_anisoDuctile_Nslip(1:size(param(instance)%Nslip),instance) = param(instance)%Nslip
-   
  enddo
   
 end subroutine source_damage_anisoDuctile_init
@@ -206,11 +190,9 @@ subroutine source_damage_anisoDuctile_dotState(ipc, ip, el)
    phaseAt, phasememberAt, &
    plasticState, &
    sourceState, &
-   material_homog, &
+   material_homogenizationAt, &
    damage, &
    damageMapping
- use lattice, only: &
-   lattice_maxNslipFamily
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -223,26 +205,21 @@ subroutine source_damage_anisoDuctile_dotState(ipc, ip, el)
    sourceOffset, &
    homog, damageOffset, &
    instance, &
-   index, f, i
+   f, i
 
  phase = phaseAt(ipc,ip,el)
  constituent = phasememberAt(ipc,ip,el)
  instance = source_damage_anisoDuctile_instance(phase)
  sourceOffset = source_damage_anisoDuctile_offset(phase)
- homog = material_homog(ip,el)
+ homog = material_homogenizationAt(el)
  damageOffset = damageMapping(homog)%p(ip,el)
 
- index = 1_pInt
- sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = 0.0_pReal
- do f = 1_pInt,lattice_maxNslipFamily
-   do i = 1_pInt,source_damage_anisoDuctile_Nslip(f,instance)                                              ! process each (active) slip system in family
+
+ do i = 1, param(instance)%totalNslip
      sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = &
        sourceState(phase)%p(sourceOffset)%dotState(1,constituent) + &
-       plasticState(phase)%slipRate(index,constituent)/ &
-       ((damage(homog)%p(damageOffset))**param(instance)%N)/param(instance)%critPlasticStrain(index) 
-     
-     index = index + 1_pInt
-   enddo
+       plasticState(phase)%slipRate(i,constituent)/ &
+       ((damage(homog)%p(damageOffset))**param(instance)%N)/param(instance)%critPlasticStrain(i) 
  enddo
  
 end subroutine source_damage_anisoDuctile_dotState

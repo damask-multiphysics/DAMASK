@@ -36,21 +36,15 @@ contains
 !> @brief allocates all neccessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_isostrain_init()
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use debug, only: &
    debug_HOMOGENIZATION, &
    debug_level, &
    debug_levelBasic
  use IO, only: &
-   IO_timeStamp, &
    IO_error
  use material, only: &
    homogenization_type, &
-   material_homog, &
+   material_homogenizationAt, &
    homogState, &
    HOMOGENIZATION_ISOSTRAIN_ID, &
    HOMOGENIZATION_ISOSTRAIN_LABEL, &
@@ -67,8 +61,6 @@ subroutine homogenization_isostrain_init()
    tag  = ''
 
  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_ISOSTRAIN_label//' init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
  Ninstance = int(count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID),pInt)
  if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0_pInt) &
@@ -93,7 +85,7 @@ subroutine homogenization_isostrain_init()
        call IO_error(211_pInt,ext_msg=trim(tag)//' ('//HOMOGENIZATION_isostrain_label//')')
    end select
 
-   NofMyHomog = count(material_homog == h)
+   NofMyHomog = count(material_homogenizationAt == h)
    homogState(h)%sizeState       = 0_pInt
    homogState(h)%sizePostResults = 0_pInt
    allocate(homogState(h)%state0   (0_pInt,NofMyHomog))

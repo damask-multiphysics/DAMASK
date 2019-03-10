@@ -47,14 +47,10 @@ subroutine constitutive_init()
    worldrank
  use IO, only: &
    IO_error, &
-   IO_open_file, &
-   IO_open_jobFile_stat, &
    IO_write_jobFile
  use config, only: &
    material_Nphase, &
-   material_localFileExt, &
    phase_name, &
-   material_configFile, &
    config_deallocate
  use material, only: &
    material_phase, &
@@ -482,7 +478,7 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
 
  end select plasticityType
 
-#ifdef __INTEL_COMPILER
+#if defined(__INTEL_COMPILER) || defined(__PGI)
  forall(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt)
 #else
  do concurrent(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt)
@@ -490,7 +486,7 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
    dLp_dFi(i,j,1:3,1:3) = math_mul33x33(math_mul33x33(Fi,S),transpose(dLp_dMp(i,j,1:3,1:3))) + &
                           math_mul33x33(math_mul33x33(Fi,dLp_dMp(i,j,1:3,1:3)),S)
    dLp_dS(i,j,1:3,1:3)  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),dLp_dMp(i,j,1:3,1:3))       ! ToDo: @PS: why not:   dLp_dMp:(FiT Fi)
-#ifdef __INTEL_COMPILER
+#if defined(__INTEL_COMPILER) || defined(__PGI)
  end forall
 #else
  enddo
@@ -617,7 +613,7 @@ pure function constitutive_initialFi(ipc, ip, el)
    math_I3
  use material, only: &
    material_phase, &
-   material_homog, &
+   material_homogenizationAt, &
    thermalMapping, &
    phase_kinematics, &
    phase_Nkinematics, &
@@ -645,7 +641,7 @@ pure function constitutive_initialFi(ipc, ip, el)
  KinematicsLoop: do k = 1_pInt, phase_Nkinematics(phase)                                            !< Warning: small initial strain assumption
    kinematicsType: select case (phase_kinematics(k,phase))
      case (KINEMATICS_thermal_expansion_ID) kinematicsType
-       homog = material_homog(ip,el)
+       homog = material_homogenizationAt(el)
        offset = thermalMapping(homog)%p(ip,el)
        constitutive_initialFi = &
          constitutive_initialFi + kinematics_thermal_expansion_initialStrain(homog,phase,offset)
@@ -1106,38 +1102,70 @@ end function constitutive_postResults
 !> @brief writes constitutive results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_results()
- use material, only: &
-   PLASTICITY_ISOTROPIC_ID, &
-   PLASTICITY_PHENOPOWERLAW_ID, &
-   PLASTICITY_KINEHARDENING_ID, &
-   PLASTICITY_DISLOTWIN_ID, &
-   PLASTICITY_DISLOUCLA_ID, &
-   PLASTICITY_NONLOCAL_ID
+  use material, only: &
+    PLASTICITY_ISOTROPIC_ID, &
+    PLASTICITY_PHENOPOWERLAW_ID, &
+    PLASTICITY_KINEHARDENING_ID, &
+    PLASTICITY_DISLOTWIN_ID, &
+    PLASTICITY_DISLOUCLA_ID, &
+    PLASTICITY_NONLOCAL_ID
 #if defined(PETSc) || defined(DAMASKHDF5)
- use results
- use HDF5_utilities
- use config, only: &
-   config_name_phase => phase_name                                                                  ! anticipate logical name
+  use results
+  use HDF5_utilities
+  use config, only: &
+    config_name_phase => phase_name                                                                  ! anticipate logical name
    
- use material, only: &
-   phase_plasticityInstance, &
-   material_phase_plasticity_type => phase_plasticity
- use plastic_phenopowerlaw, only: &
-   plastic_phenopowerlaw_results
- 
- implicit none
- integer(pInt) :: p  
- call HDF5_closeGroup(results_addGroup('current/phase'))                                              
- do p=1,size(config_name_phase)                                                                           
-   call HDF5_closeGroup(results_addGroup('current/phase/'//trim(config_name_phase(p))))
-   if (material_phase_plasticity_type(p) == PLASTICITY_PHENOPOWERLAW_ID) then
-     call plastic_phenopowerlaw_results(phase_plasticityInstance(p),'current/phase/'//trim(config_name_phase(p)))
-   endif
+  use material, only: &
+    phase_plasticityInstance, &
+    material_phase_plasticity_type => phase_plasticity
+    
+  use plastic_isotropic, only: &
+    plastic_isotropic_results
+  use plastic_phenopowerlaw, only: &
+    plastic_phenopowerlaw_results
+  use plastic_kinehardening, only: &
+    plastic_kinehardening_results
+  use plastic_dislotwin, only: &
+    plastic_dislotwin_results  
+  use plastic_disloUCLA, only: &
+    plastic_disloUCLA_results 
+  use plastic_nonlocal, only: &
+    plastic_nonlocal_results 
+        
+  implicit none
+  integer :: p  
+  call HDF5_closeGroup(results_addGroup('current/phase'))                                              
+  do p=1,size(config_name_phase)                                                                           
+    call HDF5_closeGroup(results_addGroup('current/phase/'//trim(config_name_phase(p))))
+    
+    select case(material_phase_plasticity_type(p))
+    
+      case(PLASTICITY_ISOTROPIC_ID)
+        call plastic_isotropic_results(phase_plasticityInstance(p),'current/phase/'//trim(config_name_phase(p)))
+        
+      case(PLASTICITY_PHENOPOWERLAW_ID)
+        call plastic_phenopowerlaw_results(phase_plasticityInstance(p),'current/phase/'//trim(config_name_phase(p)))
+         
+       case(PLASTICITY_KINEHARDENING_ID)
+         call plastic_kinehardening_results(phase_plasticityInstance(p),'current/phase/'//trim(config_name_phase(p))) 
+
+       case(PLASTICITY_DISLOTWIN_ID)
+         call plastic_dislotwin_results(phase_plasticityInstance(p),'current/phase/'//trim(config_name_phase(p)))
+      
+       case(PLASTICITY_DISLOUCLA_ID)
+         call plastic_disloUCLA_results(phase_plasticityInstance(p),'current/phase/'//trim(config_name_phase(p)))   
+       
+       case(PLASTICITY_NONLOCAL_ID)
+         call plastic_nonlocal_results(phase_plasticityInstance(p),'current/phase/'//trim(config_name_phase(p)))
+    
+    end select
+  
  enddo      
 
 #endif
 
 
 end subroutine constitutive_results
+
 
 end module constitutive

@@ -68,7 +68,8 @@ module plastic_isotropic
    plastic_isotropic_LpAndItsTangent, &
    plastic_isotropic_LiAndItsTangent, &
    plastic_isotropic_dotState, &
-   plastic_isotropic_postResults
+   plastic_isotropic_postResults, &
+   plastic_isotropic_results
 
 contains
 
@@ -76,12 +77,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_isotropic_init()
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
+subroutine plastic_isotropic_init
  use prec, only: &
    pStringLen
  use debug, only: &
@@ -95,8 +91,7 @@ subroutine plastic_isotropic_init()
    debug_constitutive, &
    debug_levelBasic
  use IO, only: &
-   IO_error, &
-   IO_timeStamp
+   IO_error
  use material, only: &
 #ifdef DEBUG
    phasememberAt, &
@@ -110,7 +105,6 @@ subroutine plastic_isotropic_init()
    material_phase, &
    plasticState
  use config, only: &
-   MATERIAL_partPhase, &
    config_phase
  use lattice
 
@@ -132,12 +126,11 @@ subroutine plastic_isotropic_init()
    outputs
 
  write(6,'(/,a)')   ' <<<+-  plastic_'//PLASTICITY_ISOTROPIC_label//' init  -+>>>'
- write(6,'(/,a)')   ' Maiti and Eisenlohr, Scripta Materialia, 145:37-40, 2018'
- write(6,'(/,a)')   ' https://doi.org/10.1016/j.scriptamat.2017.09.047'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
- Ninstance = int(count(phase_plasticity == PLASTICITY_ISOTROPIC_ID),pInt)
+ write(6,'(/,a)')   ' Maiti and Eisenlohr, Scripta Materialia 145:37–40, 2018'
+ write(6,'(a)')     ' https://doi.org/10.1016/j.scriptamat.2017.09.047'
+
+ Ninstance = count(phase_plasticity == PLASTICITY_ISOTROPIC_ID)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
@@ -488,6 +481,32 @@ function plastic_isotropic_postResults(Mp,instance,of) result(postResults)
  end associate
 
 end function plastic_isotropic_postResults
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine plastic_isotropic_results(instance,group)
+#if defined(PETSc) || defined(DAMASKHDF5)
+  use results
+
+  implicit none
+  integer, intent(in) :: instance
+  character(len=*) :: group
+  integer :: o
+
+  associate(prm => param(instance), stt => state(instance))
+  outputsLoop: do o = 1_pInt,size(prm%outputID)
+    select case(prm%outputID(o))
+    end select
+  enddo outputsLoop
+  end associate
+#else
+  integer, intent(in) :: instance
+  character(len=*) :: group
+#endif
+
+end subroutine plastic_isotropic_results
 
 
 end module plastic_isotropic

@@ -60,8 +60,7 @@ subroutine source_thermal_dissipation_init
    sourceState
  use config, only: &
    config_phase, &
-   material_Nphase, &
-   MATERIAL_partPhase
+   material_Nphase
 
  implicit none
  integer(pInt) :: Ninstance,instance,source,sourceOffset
@@ -106,7 +105,7 @@ end subroutine source_thermal_dissipation_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns local vacancy generation rate 
+!> @brief returns dissipation rate
 !--------------------------------------------------------------------------------------------------
 subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDOT_dT, Tstar, Lp, phase)
 

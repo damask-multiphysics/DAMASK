@@ -45,6 +45,8 @@ subroutine DAMASK_interface_init()
   use, intrinsic :: &
     iso_c_binding
   use PETScSys
+  use prec, only: &
+    pReal
   use system_routines, only: &
     signalusr1_C, &
     signalusr2_C, &
@@ -101,12 +103,14 @@ subroutine DAMASK_interface_init()
     threadLevel, &
 #endif
     worldrank = 0, &
-    worldsize = 0
+    worldsize = 0, &
+    typeSize
   integer, allocatable, dimension(:) :: &
     chunkPos
   integer, dimension(8) :: &
     dateAndTime
-  PetscErrorCode :: ierr
+  integer        :: mpi_err
+  PetscErrorCode :: petsc_err
   external :: &
     quit
 
@@ -117,16 +121,21 @@ subroutine DAMASK_interface_init()
 #ifdef _OPENMP
   ! If openMP is enabled, check if the MPI libary supports it and initialize accordingly.
   ! Otherwise, the first call to PETSc will do the initialization.
-  call MPI_Init_Thread(MPI_THREAD_FUNNELED,threadLevel,ierr);CHKERRQ(ierr)
+  call MPI_Init_Thread(MPI_THREAD_FUNNELED,threadLevel,mpi_err)
+  if (mpi_err /= 0) call quit(1)
   if (threadLevel<MPI_THREAD_FUNNELED) then
     write(6,'(a)') ' MPI library does not support OpenMP'
     call quit(1)
   endif
 #endif
-  call PETScInitialize(PETSC_NULL_CHARACTER,ierr)                                                   ! according to PETSc manual, that should be the first line in the code
-  CHKERRQ(ierr)                                                                                     ! this is a macro definition, it is case sensitive
-  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
-  call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,ierr);CHKERRQ(ierr)
+  call PETScInitialize(PETSC_NULL_CHARACTER,petsc_err)                                              ! according to PETSc manual, that should be the first line in the code
+  CHKERRQ(petsc_err)                                                                                ! this is a macro definition, it is case sensitive
+
+  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,mpi_err)
+  if (mpi_err /= 0) call quit(1)
+  call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,mpi_err)
+  if (mpi_err /= 0) call quit(1)
+
   mainProcess: if (worldrank == 0) then
     if (output_unit /= 6) then
       write(output_unit,'(a)') ' STDOUT != 6'
@@ -141,29 +150,44 @@ subroutine DAMASK_interface_init()
     open(6,file='/dev/null',status='replace')                                                       ! close(6) alone will leave some temp files in cwd
   endif mainProcess
 
-  call date_and_time(values = dateAndTime)
   write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
-  write(6,'(/,a)') ' Roters et al., Computational Materials Science 158, 2018, 420-478'
-  write(6,'(a,/)') ' https://doi.org/10.1016/j.commatsci.2018.04.030'
 
-  write(6,'(a,/)')              ' Version: '//DAMASKVERSION
+  write(6,'(/,a)') ' Roters et al., Computational Materials Science 158:420–478, 2018'
+  write(6,'(a)')   ' https://doi.org/10.1016/j.commatsci.2018.04.030'
+
+  write(6,'(/,a)') ' Version: '//DAMASKVERSION
 
  ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
 #if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
-  write(6,*) 'Compiled with: ', compiler_version()
-  write(6,*) 'Compiler options: ', compiler_options()
+  write(6,'(/,a)') 'Compiled with: '//compiler_version()
+  write(6,'(a)')   'Compiler options: '//compiler_options()
 #elif defined(__INTEL_COMPILER)
-  write(6,'(a,i4.4,a,i8.8)') ' Compiled with Intel fortran version :', __INTEL_COMPILER,&
-                                                     ', build date :', __INTEL_COMPILER_BUILD_DATE
+  write(6,'(/,a,i4.4,a,i8.8)') ' Compiled with Intel fortran version :', __INTEL_COMPILER,&
+                                                       ', build date :', __INTEL_COMPILER_BUILD_DATE
 #elif defined(__PGI)
-  write(6,'(a,i4.4,a,i8.8)') ' Compiled with PGI fortran version :', __PGIC__,&
-                                                                '.', __PGIC_MINOR__
+  write(6,'(a,i4.4,a,i8.8)')   ' Compiled with PGI fortran version :', __PGIC__,&
+                                                                  '.', __PGIC_MINOR__
 #endif
 
-  write(6,*) 'Compiled on ', __DATE__,' at ',__TIME__
+  write(6,'(/,a)') ' Compiled on: '//__DATE__//' at '//__TIME__
 
-  write(6,'(a,2(i2.2,a),i4.4)') ' Date: ',dateAndTime(3),'/',dateAndTime(2),'/', dateAndTime(1)
-  write(6,'(a,2(i2.2,a),i2.2)') ' Time: ',dateAndTime(5),':', dateAndTime(6),':', dateAndTime(7)
+  call date_and_time(values = dateAndTime)
+  write(6,'(/,a,2(i2.2,a),i4.4)') ' Date: ',dateAndTime(3),'/',dateAndTime(2),'/', dateAndTime(1)
+  write(6,'(a,2(i2.2,a),i2.2)')   ' Time: ',dateAndTime(5),':', dateAndTime(6),':', dateAndTime(7)
+
+  call MPI_Type_size(MPI_INTEGER,typeSize,mpi_err)
+  if (mpi_err /= 0) call quit(1)
+  if (typeSize*8 /= bit_size(0)) then
+    write(6,'(a)') ' Mismatch between MPI and DAMASK integer' 
+    call quit(1)
+  endif
+
+  call MPI_Type_size(MPI_DOUBLE,typeSize,mpi_err)
+  if (mpi_err /= 0) call quit(1)
+  if (typeSize*8 /= storage_size(0.0_pReal)) then
+    write(6,'(a)') ' Mismatch between MPI and DAMASK real' 
+    call quit(1)
+  endif
 
   call get_command(commandLine)
   chunkPos = IIO_stringPos(commandLine)
@@ -369,7 +393,7 @@ end function getLoadCaseFile
 function rectifyPath(path)
 
   implicit none
-  character(len=*) :: path
+  character(len=*)    :: path
   character(len=1024) :: rectifyPath
   integer :: i,j,k,l
 
@@ -446,7 +470,7 @@ subroutine setSIGUSR1(signal) bind(C)
   integer(C_INT), value :: signal
   SIGUSR1 = .true.
 
-  write(6,*) 'received signal ',signal, 'set SIGUSR1'
+  write(6,'(a,i2.2,a)') ' received signal ',signal, ', set SIGUSR1'
 
 end subroutine setSIGUSR1
 
@@ -461,7 +485,7 @@ subroutine setSIGUSR2(signal) bind(C)
   integer(C_INT), value :: signal
   SIGUSR2 = .true.
 
-  write(6,*) 'received signal ',signal, 'set SIGUSR2'
+  write(6,'(a,i2.2,a)') ' received signal ',signal, ', set SIGUSR2'
 
 end subroutine setSIGUSR2
 

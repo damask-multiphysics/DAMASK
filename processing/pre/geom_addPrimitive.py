@@ -31,25 +31,34 @@ Depending on the sign of the dimension parameters, these objects can be boxes, c
 
 """, version = scriptID)
 
-parser.add_option('-c', '--center',     dest='center', type='float', nargs = 3, metavar=' '.join(['float']*3),
+parser.add_option('-c', '--center',     dest='center', 
+                  type='float', nargs = 3, metavar=' '.join(['float']*3),
                   help='a,b,c origin of primitive %default')
-parser.add_option('-d', '--dimension',  dest='dimension', type='float', nargs = 3, metavar=' '.join(['float']*3),
+parser.add_option('-d', '--dimension',  dest='dimension',
+                  type='float', nargs = 3, metavar=' '.join(['float']*3),
                   help='a,b,c extension of hexahedral box; negative values are diameters')
-parser.add_option('-e', '--exponent',  dest='exponent', type='float', nargs = 3, metavar=' '.join(['float']*3),
+parser.add_option('-e', '--exponent',  dest='exponent',
+                  type='float', nargs = 3, metavar=' '.join(['float']*3),
                   help='i,j,k exponents for axes - 0 gives octahedron (|x|^(2^0) + |y|^(2^0) + |z|^(2^0) < 1), \
                   1 gives a sphere (|x|^(2^1) + |y|^(2^1) + |z|^(2^1) < 1), \
                   large values produce boxes, negative turns concave.')
-parser.add_option('-f', '--fill',       dest='fill', type='int', metavar = 'int',
+parser.add_option('-f', '--fill',       dest='fill',
+                  type='int', metavar = 'int',
                   help='grain index to fill primitive. "0" selects maximum microstructure index + 1 [%default]')
-parser.add_option('-q', '--quaternion', dest='quaternion', type='float', nargs = 4, metavar=' '.join(['float']*4),
+parser.add_option('-q', '--quaternion', dest='quaternion',
+                  type='float', nargs = 4, metavar=' '.join(['float']*4),
                   help = 'rotation of primitive as quaternion')
-parser.add_option('-a', '--angleaxis',  dest='angleaxis', nargs = 4, metavar=' '.join(['float']*4), type=float,
-                  help = 'angle,x,y,z clockwise rotation of primitive about axis by angle')
-parser.add_option(     '--degrees',     dest='degrees', action='store_true',
+parser.add_option('-a', '--angleaxis',  dest='angleaxis', type=float,
+                  nargs = 4, metavar=' '.join(['float']*4),
+                  help = 'axis and angle to rotate primitive')
+parser.add_option(     '--degrees',     dest='degrees',
+                  action='store_true',
                   help = 'angle is given in degrees [%default]')
-parser.add_option(     '--nonperiodic', dest='periodic', action='store_false',
+parser.add_option(     '--nonperiodic', dest='periodic',
+                  action='store_false',
                   help = 'wrap around edges [%default]')
-parser.add_option(     '--realspace',  dest='realspace', action='store_true',
+parser.add_option(     '--realspace',  dest='realspace',
+                  action='store_true',
                   help = '-c and -d span [origin,origin+size] instead of [0,grid] coordinates')
 parser.set_defaults(center = (.0,.0,.0),
                     fill = 0,
@@ -63,8 +72,7 @@ parser.set_defaults(center = (.0,.0,.0),
 if options.dimension is None:
   parser.error('no dimension specified.')   
 if options.angleaxis is not None:
-  ax = np.array(options.angleaxis[1:4] + (options.angleaxis[0],))   # Compatibility hack
-  rotation = damask.Rotation.fromAxisAngle(ax,options.degrees,normalise=True)
+  rotation = damask.Rotation.fromAxisAngle(np.array(options.angleaxis),options.degrees,normalise=True)
 elif options.quaternion is not None:
   rotation = damask.Rotation.fromQuaternion(options.quaternion)
 else:

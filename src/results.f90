@@ -13,35 +13,36 @@ module results
   use PETSC
 #endif
 
- implicit none
- private
- integer(HID_T), public, protected :: tempCoordinates, tempResults
- integer(HID_T), private :: resultsFile, currentIncID, plist_id
+  implicit none
+  private
+  integer(HID_T), public, protected :: tempCoordinates, tempResults
+  integer(HID_T), private :: resultsFile, currentIncID, plist_id
 
 
- public :: &
-   results_init, &
-   results_openJobFile, &
-   results_closeJobFile, &
-   results_addIncrement, &
-   results_addGroup, &
-   results_openGroup, &
-   results_writeVectorDataset, &
-   results_setLink, &
-   results_removeLink
+  public :: &
+    results_init, &
+    results_openJobFile, &
+    results_closeJobFile, &
+    results_addIncrement, &
+    results_addGroup, &
+    results_openGroup, &
+    results_writeVectorDataset, &
+    results_setLink, &
+    results_removeLink
 contains
 
 subroutine results_init
- use, intrinsic :: &
-   iso_fortran_env  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
- use DAMASK_interface, only: &
-   getSolverJobName
- implicit none
+  use DAMASK_interface, only: &
+    getSolverJobName
 
- write(6,'(/,a)') ' <<<+-  results init  -+>>>'
-#include "compilation_info.f90"
+  implicit none
 
- call HDF5_closeFile(HDF5_openFile(trim(getSolverJobName())//'.hdf5','w',.true.))
+  write(6,'(/,a)') ' <<<+-  results init  -+>>>'
+
+  write(6,'(/,a)') ' Diehl et al., Integrating Materials and Manufacturing Innovation 6(1):83–91, 2017'
+  write(6,'(a)')   ' https://doi.org/10.1007/s40192-018-0118-7'
+
+  call HDF5_closeFile(HDF5_openFile(trim(getSolverJobName())//'.hdf5','w',.true.))
 
 end subroutine results_init
 

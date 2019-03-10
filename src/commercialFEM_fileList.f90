@@ -9,6 +9,7 @@
 #include "config.f90"
 #ifdef DAMASKHDF5
 #include "HDF5_utilities.f90"
+#include "results.f90"
 #endif
 #include "math.f90"
 #include "quaternions.f90"
