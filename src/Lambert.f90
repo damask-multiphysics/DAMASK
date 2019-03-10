@@ -164,19 +164,19 @@ pure function LambertBallToCube(xyz) result(cube)
    qxy = sum(xyz2**2)
    
    special: if (dEq0(qxy)) then 
-     Tinv = 0.0
+     Tinv = 0.0_pReal
    else special
      q2 = qxy + maxval(abs(xyz2))**2
      sq2 = sqrt(q2)
      q = (beta/R2/R1) * sqrt(q2*qxy/(q2-maxval(abs(xyz2))*sq2))
      tt = (minval(abs(xyz2))**2+maxval(abs(xyz2))*sq2)/R2/qxy 
-     Tinv = q * sign(1.0,xyz2) * merge([ 1.0_pReal, acos(math_clip(tt,-1.0_pReal,1.0_pReal))/PI12], &
-                                       [ acos(math_clip(tt,-1.0_pReal,1.0_pReal))/PI12, 1.0_pReal], &
-                                       abs(xyz2(2)) <= abs(xyz2(1)))
+     Tinv = q * sign(1.0_pReal,xyz2) * merge([ 1.0_pReal, acos(math_clip(tt,-1.0_pReal,1.0_pReal))/PI12], &
+                                             [ acos(math_clip(tt,-1.0_pReal,1.0_pReal))/PI12, 1.0_pReal], &
+                                              abs(xyz2(2)) <= abs(xyz2(1)))
    endif special
    
    ! inverse M_1
-   xyz1 = [ Tinv(1), Tinv(2), sign(1.0,xyz3(3)) * rs / pref ] /sc
+   xyz1 = [ Tinv(1), Tinv(2), sign(1.0_pReal,xyz3(3)) * rs / pref ] /sc
    
    ! reverst the coordinates back to the regular order according to the original pyramid number
    cube = xyz1(p)
