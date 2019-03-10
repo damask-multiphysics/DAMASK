@@ -1148,7 +1148,7 @@ subroutine utilities_updateIPcoords(F)
   call utilities_fourierTensorDivergence()
  
   do k = 1_pInt, grid3; do j = 1_pInt, grid(2); do i = 1_pInt, grid1Red
-    if (any(cNeq(xi1st(1:3,i,j,k),cmplx(0.0_pReal,0.0_pReal)))) &
+    if (any(cNeq(xi1st(1:3,i,j,k),cmplx(0.0,0.0,pReal)))) &
       vectorField_fourier(1:3,i,j,k) = vectorField_fourier(1:3,i,j,k)/ &
                                        sum(conjg(-xi1st(1:3,i,j,k))*xi1st(1:3,i,j,k))
   enddo; enddo; enddo
