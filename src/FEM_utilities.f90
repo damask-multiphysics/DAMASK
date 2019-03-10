@@ -147,14 +147,11 @@ subroutine utilities_init()
    mesh_NcpElemsGlobal, &
    mesh_maxNips, &
    geomMesh
- use material, only: &
-   material_homog
 
  implicit none
 
  character(len=1024)                :: petsc_optionsPhysics
  integer(pInt)                      :: dimPlex
- PetscInt,    allocatable           :: nEntities(:), nOutputCells(:), nOutputNodes(:)
  PetscInt                           :: dim
  PetscErrorCode                     :: ierr
 
@@ -184,24 +181,6 @@ subroutine utilities_init()
  wgt = 1.0/real(mesh_maxNips*mesh_NcpElemsGlobal,pReal)
 
  call DMGetDimension(geomMesh,dimPlex,ierr); CHKERRQ(ierr) 
- allocate(nEntities(dimPlex+1), source=0)
- allocate(nOutputNodes(worldsize), source = 0)
- allocate(nOutputCells(worldsize), source = 0)
- do dim = 0, dimPlex
-   call DMGetStratumSize(geomMesh,'depth',dim,nEntities(dim+1),ierr)
-   CHKERRQ(ierr)
- enddo
- select case (integrationOrder)
-   case(1_pInt)
-     nOutputNodes(worldrank+1) = nEntities(1)
-   case(2_pInt)  
-     nOutputNodes(worldrank+1) = sum(nEntities)
-   case default
-     nOutputNodes(worldrank+1) = mesh_maxNips*nEntities(dimPlex+1)
- end select    
- nOutputCells(worldrank+1) = count(material_homog > 0_pInt)
- call MPI_Allreduce(MPI_IN_PLACE,nOutputNodes,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)
- call MPI_Allreduce(MPI_IN_PLACE,nOutputCells,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)
 
 end subroutine utilities_init
 
