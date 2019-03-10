@@ -136,7 +136,7 @@ end subroutine damage_nonlocal_init
 subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el)
  use material, only: &
    homogenization_Ngrains, &
-   mappingHomogenization, &
+   material_homogenizationAt, &
    phaseAt, &
    phasememberAt, &
    phase_source, &
@@ -170,7 +170,7 @@ subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip,
 
  phiDot = 0.0_pReal
  dPhiDot_dPhi = 0.0_pReal
- do grain = 1, homogenization_Ngrains(mappingHomogenization(2,ip,el))
+ do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
    phase = phaseAt(grain,ip,el)
    constituent = phasememberAt(grain,ip,el)
    do source = 1, phase_Nsources(phase)
@@ -197,8 +197,8 @@ subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip,
    enddo  
  enddo
  
- phiDot = phiDot/real(homogenization_Ngrains(mappingHomogenization(2,ip,el)),pReal)
- dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Ngrains(mappingHomogenization(2,ip,el)),pReal)
+ phiDot = phiDot/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
+ dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
  
 end subroutine damage_nonlocal_getSourceAndItsTangent
 
@@ -213,7 +213,7 @@ function damage_nonlocal_getDiffusion33(ip,el)
  use material, only: &
    homogenization_Ngrains, &
    material_phase, &
-   mappingHomogenization
+   material_homogenizationAt
  use crystallite, only: &
    crystallite_push33ToRef
 
@@ -227,7 +227,7 @@ function damage_nonlocal_getDiffusion33(ip,el)
    homog, &
    grain
    
- homog  = mappingHomogenization(2,ip,el)
+ homog  = material_homogenizationAt(el)
  damage_nonlocal_getDiffusion33 = 0.0_pReal  
  do grain = 1, homogenization_Ngrains(homog)
    damage_nonlocal_getDiffusion33 = damage_nonlocal_getDiffusion33 + &
@@ -299,7 +299,7 @@ end subroutine damage_nonlocal_putNonLocalDamage
 !--------------------------------------------------------------------------------------------------
 function damage_nonlocal_postResults(ip,el)
  use material, only: &
-   mappingHomogenization, &
+   material_homogenizationAt, &
    damage_typeInstance, &
    damageMapping, &
    damage
@@ -308,13 +308,13 @@ function damage_nonlocal_postResults(ip,el)
  integer(pInt),              intent(in) :: &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- real(pReal), dimension(sum(damage_nonlocal_sizePostResult(:,damage_typeInstance(mappingHomogenization(2,ip,el))))) :: &
+ real(pReal), dimension(sum(damage_nonlocal_sizePostResult(:,damage_typeInstance(material_homogenizationAt(el))))) :: &
    damage_nonlocal_postResults
 
  integer(pInt) :: &
    instance, homog, offset, o, c
    
- homog     = mappingHomogenization(2,ip,el)
+ homog     = material_homogenizationAt(el)
  offset    = damageMapping(homog)%p(ip,el)
  instance  = damage_typeInstance(homog)
  associate(prm => param(instance))

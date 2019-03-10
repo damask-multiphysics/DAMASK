@@ -119,6 +119,7 @@ end subroutine thermal_conduction_init
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
  use material, only: &
+   material_homogenizationAt, &
    homogenization_Ngrains, &
    mappingHomogenization, &
    phaseAt, &
@@ -155,7 +156,7 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
    source, &
    constituent
    
- homog  = mappingHomogenization(2,ip,el)
+ homog  = material_homogenizationAt(el)
  offset = mappingHomogenization(1,ip,el)
  instance = thermal_typeInstance(homog)
   
@@ -302,7 +303,7 @@ end function thermal_conduction_getMassDensity
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_conduction_putTemperatureAndItsRate(T,Tdot,ip,el)
  use material, only: &
-   mappingHomogenization, &
+   material_homogenizationAt, &
    temperature, &
    temperatureRate, &
    thermalMapping
@@ -318,7 +319,7 @@ subroutine thermal_conduction_putTemperatureAndItsRate(T,Tdot,ip,el)
    homog, &
    offset  
  
- homog  = mappingHomogenization(2,ip,el)
+ homog  = material_homogenizationAt(el)
  offset = thermalMapping(homog)%p(ip,el)
  temperature    (homog)%p(offset) = T
  temperatureRate(homog)%p(offset) = Tdot

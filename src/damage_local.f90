@@ -143,6 +143,7 @@ function damage_local_updateState(subdt, ip, el)
    err_damage_tolAbs, &
    err_damage_tolRel
  use material, only: &
+   material_homogenizationAt, &
    mappingHomogenization, &
    damageState
  
@@ -160,7 +161,7 @@ function damage_local_updateState(subdt, ip, el)
  real(pReal) :: &
    phi, phiDot, dPhiDot_dPhi  
  
- homog  = mappingHomogenization(2,ip,el)
+ homog  = material_homogenizationAt(el)
  offset = mappingHomogenization(1,ip,el)
  phi = damageState(homog)%subState0(1,offset)
  call damage_local_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el)
@@ -182,7 +183,7 @@ end function damage_local_updateState
 subroutine damage_local_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el)
  use material, only: &
    homogenization_Ngrains, &
-   mappingHomogenization, &
+   material_homogenizationAt, &
    phaseAt, &
    phasememberAt, &
    phase_source, &
@@ -216,7 +217,7 @@ subroutine damage_local_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el
 
  phiDot = 0.0_pReal
  dPhiDot_dPhi = 0.0_pReal
- do grain = 1, homogenization_Ngrains(mappingHomogenization(2,ip,el))
+ do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
    phase = phaseAt(grain,ip,el)
    constituent = phasememberAt(grain,ip,el)
    do source = 1, phase_Nsources(phase)
@@ -243,8 +244,8 @@ subroutine damage_local_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el
    enddo  
  enddo
  
- phiDot = phiDot/real(homogenization_Ngrains(mappingHomogenization(2,ip,el)),pReal)
- dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Ngrains(mappingHomogenization(2,ip,el)),pReal)
+ phiDot = phiDot/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
+ dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
  
 end subroutine damage_local_getSourceAndItsTangent
 
@@ -253,7 +254,7 @@ end subroutine damage_local_getSourceAndItsTangent
 !--------------------------------------------------------------------------------------------------
 function damage_local_postResults(ip,el)
  use material, only: &
-   mappingHomogenization, &
+   material_homogenizationAt, &
    damage_typeInstance, &
    damageMapping, &
    damage
@@ -262,13 +263,13 @@ function damage_local_postResults(ip,el)
  integer(pInt),              intent(in) :: &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- real(pReal), dimension(sum(damage_local_sizePostResult(:,damage_typeInstance(mappingHomogenization(2,ip,el))))) :: &
+ real(pReal), dimension(sum(damage_local_sizePostResult(:,damage_typeInstance(material_homogenizationAt(el))))) :: &
    damage_local_postResults
 
  integer(pInt) :: &
    instance, homog, offset, o, c
    
- homog     = mappingHomogenization(2,ip,el)
+ homog     = material_homogenizationAt(el)
  offset    = damageMapping(homog)%p(ip,el)
  instance  = damage_typeInstance(homog)
  associate(prm => param(instance))

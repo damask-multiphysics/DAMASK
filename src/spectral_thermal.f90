@@ -61,7 +61,7 @@ subroutine spectral_thermal_init
     thermal_conduction_getMassDensity, &
     thermal_conduction_getSpecificHeat
   use material, only: &
-    mappingHomogenization, &
+    material_homogenizationAt, &
     temperature, &
     thermalMapping
   use numerics, only: &
@@ -118,8 +118,8 @@ subroutine spectral_thermal_init
   cell = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     cell = cell + 1
-    temperature_current(i,j,k) = temperature(mappingHomogenization(2,1,cell))% &
-                                   p(thermalMapping(mappingHomogenization(2,1,cell))%p(1,cell))
+    temperature_current(i,j,k) = temperature(material_homogenizationAt(cell))% &
+                                   p(thermalMapping(material_homogenizationAt(cell))%p(1,cell))
     temperature_lastInc(i,j,k) = temperature_current(i,j,k)
     temperature_stagInc(i,j,k) = temperature_current(i,j,k)
   enddo; enddo; enddo

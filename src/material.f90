@@ -391,6 +391,8 @@ subroutine material_init()
 ! END DEPRECATED
 
  allocate(material_homogenizationAt,source=theMesh%homogenizationAt)
+ allocate(material_AggregateAt,     source=theMesh%homogenizationAt)
+ 
  allocate(CounterPhase         (size(config_phase)),         source=0_pInt)
  allocate(CounterHomogenization(size(config_homogenization)),source=0_pInt)
 
@@ -399,7 +401,7 @@ subroutine material_init()
  myHomog = theMesh%homogenizationAt(e)
    do i = 1_pInt, theMesh%elem%nIPs
      CounterHomogenization(myHomog) = CounterHomogenization(myHomog) + 1_pInt
-     mappingHomogenization(1:2,i,e) = [CounterHomogenization(myHomog),myHomog]
+     mappingHomogenization(1:2,i,e) = [CounterHomogenization(myHomog),huge(1)]
      do g = 1_pInt,homogenization_Ngrains(myHomog)
        myPhase = material_phase(g,i,e)
        CounterPhase(myPhase) = CounterPhase(myPhase)+1_pInt                             ! not distinguishing between instances of same phase

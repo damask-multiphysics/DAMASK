@@ -166,6 +166,7 @@ end function thermal_adiabatic_updateState
 subroutine thermal_adiabatic_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
  use material, only: &
    homogenization_Ngrains, &
+   material_homogenizationAt, &
    mappingHomogenization, &
    phaseAt, &
    phasememberAt, &
@@ -200,7 +201,7 @@ subroutine thermal_adiabatic_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
    source, &
    constituent
    
- homog  = mappingHomogenization(2,ip,el)
+ homog  = material_homogenizationAt(el)
  instance = thermal_typeInstance(homog)
   
  Tdot = 0.0_pReal
