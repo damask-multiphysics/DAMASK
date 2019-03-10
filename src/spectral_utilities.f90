@@ -224,11 +224,11 @@ subroutine utilities_init()
  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
  CHKERRQ(ierr)
 
- grid1Red = grid(1)/2_pInt + 1_pInt
+ grid1Red = grid(1)/2 + 1
  wgt = 1.0/real(product(grid),pReal)
 
- write(6,'(a,3(i12  ))')  ' grid     a b c: ', grid
- write(6,'(a,3(es12.5))') ' size     x y z: ', geomSize
+ write(6,'(/,a,3(i12  ))')  ' grid     a b c: ', grid
+ write(6,'(a,3(es12.5))')   ' size     x y z: ', geomSize
 
  select case (spectral_derivative)
    case ('continuous')
