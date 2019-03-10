@@ -33,10 +33,6 @@ use PETScis
    mesh_maxNips                                                                                     !< max number of IPs in any CP element
 !!!! BEGIN DEPRECATED !!!!!
 
- integer(pInt), dimension(:), allocatable, public, protected :: &
-   mesh_homogenizationAt, &                                                                         !< homogenization ID of each element
-   mesh_microstructureAt                                                                            !< microstructure ID of each element
- 
  integer(pInt), dimension(:,:), allocatable, public, protected :: &
    mesh_element !DEPRECATED
 
@@ -264,16 +260,12 @@ subroutine mesh_init()
  allocate(FEsolving_execIP(2_pInt,mesh_NcpElems)); FEsolving_execIP = 1_pInt                        ! parallel loop bounds set to comprise from first IP...
  forall (j = 1_pInt:mesh_NcpElems) FEsolving_execIP(2,j) = FE_Nips(FE_geomtype(mesh_element(2,j)))  ! ...up to own IP count for each element
  
-!!!! COMPATIBILITY HACK !!!!
-! for a homogeneous mesh, all elements have the same number of IPs and and cell nodes.
-! hence, xxPerElem instead of maxXX
-! better name
- mesh_homogenizationAt = mesh_element(3,:)
- mesh_microstructureAt = mesh_element(4,:)
-!!!!!!!!!!!!!!!!!!!!!!!!
  allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pReal)
  call theMesh%init(dimplex,integrationOrder,mesh_node0)
  call theMesh%setNelems(mesh_NcpElems)
+
+ theMesh%homogenizationAt  = mesh_element(3,:)
+ theMesh%microstructureAt  = mesh_element(4,:)
  
 end subroutine mesh_init
 

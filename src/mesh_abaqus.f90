@@ -25,10 +25,6 @@ module mesh
    mesh_maxNcellnodes                                                                               !< max number of cell nodes in any CP element
 !!!! BEGIN DEPRECATED !!!!!
 
- integer(pInt), dimension(:), allocatable, public, protected :: &
-   mesh_homogenizationAt, &                                                                         !< homogenization ID of each element
-   mesh_microstructureAt                                                                            !< microstructure ID of each element
-
  integer(pInt), dimension(:,:), allocatable, public, protected :: &
    mesh_element, & !DEPRECATED
    mesh_sharedElem, &                                                                               !< entryCount and list of elements containing node
@@ -520,9 +516,8 @@ subroutine mesh_init(ip,el)
 
 
 ! better name
- mesh_homogenizationAt  = mesh_element(3,:)
- mesh_microstructureAt  = mesh_element(4,:)
-
+ theMesh%homogenizationAt  = mesh_element(3,:)
+ theMesh%microstructureAt  = mesh_element(4,:)
 
 contains
 

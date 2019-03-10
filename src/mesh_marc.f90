@@ -18,10 +18,6 @@ module mesh
    mesh_Ncells, &                                                                                   !< total number of cells in mesh
    mesh_maxNsharedElems                                                                             !< max number of CP elements sharing a node
 
- integer(pInt), dimension(:), allocatable, public, protected :: &
-   mesh_homogenizationAt, &                                                                         !< homogenization ID of each element
-   mesh_microstructureAt                                                                            !< microstructure ID of each element
-
  integer(pInt), dimension(:,:), allocatable, public, protected :: &
    mesh_element, & !DEPRECATED
    mesh_sharedElem, &                                                                               !< entryCount and list of elements containing node
@@ -408,11 +404,8 @@ subroutine mesh_init(ip,el)
  calcMode = .false.                                                                                 ! pretend to have collected what first call is asking (F = I)
  calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                       ! first ip,el needs to be already pingponged to "calc"
 
-!!!! COMPATIBILITY HACK !!!!
-! better name
- mesh_homogenizationAt  = mesh_element(3,:)
- mesh_microstructureAt  = mesh_element(4,:)
-!!!!!!!!!!!!!!!!!!!!!!!!
+ theMesh%homogenizationAt  = mesh_element(3,:)
+ theMesh%microstructureAt  = mesh_element(4,:)
 
 end subroutine mesh_init
 

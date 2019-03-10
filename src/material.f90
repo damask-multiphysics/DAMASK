@@ -298,7 +298,6 @@ subroutine material_init()
    phase_name, &
    texture_name
  use mesh, only: &
-   mesh_homogenizationAt, &
    theMesh
 
  implicit none
@@ -395,13 +394,13 @@ subroutine material_init()
  allocate(mappingHomogenizationConst(                            theMesh%elem%nIPs,theMesh%Nelems),source=1_pInt)
 ! END DEPRECATED
 
- allocate(material_homogenizationAt,source=mesh_homogenizationAt)
+ allocate(material_homogenizationAt,source=theMesh%homogenizationAt)
  allocate(CounterPhase         (size(config_phase)),         source=0_pInt)
  allocate(CounterHomogenization(size(config_homogenization)),source=0_pInt)
 
 ! BEGIN DEPRECATED
  do e = 1_pInt,theMesh%Nelems
- myHomog = mesh_homogenizationAt(e)
+ myHomog = theMesh%homogenizationAt(e)
    do i = 1_pInt, theMesh%elem%nIPs
      CounterHomogenization(myHomog) = CounterHomogenization(myHomog) + 1_pInt
      mappingHomogenization(1:2,i,e) = [CounterHomogenization(myHomog),myHomog]
@@ -435,7 +434,7 @@ subroutine material_parseHomogenization
  use config, only : &
    config_homogenization
  use mesh, only: &
-   mesh_homogenizationAt
+   theMesh
  use IO, only: &
    IO_error
 
@@ -456,7 +455,7 @@ subroutine material_parseHomogenization
  allocate(damage_initialPhi(size(config_homogenization)),             source=1.0_pReal)
 
  forall (h = 1_pInt:size(config_homogenization)) &
-   homogenization_active(h) = any(mesh_homogenizationAt == h)
+   homogenization_active(h) = any(theMesh%homogenizationAt == h)
 
 
  do h=1_pInt, size(config_homogenization)
@@ -542,7 +541,6 @@ subroutine material_parseMicrostructure
    config_microstructure, &
    microstructure_name
  use mesh, only: &
-   mesh_microstructureAt, &
    theMesh
 
  implicit none
@@ -558,11 +556,11 @@ subroutine material_parseMicrostructure
  allocate(microstructure_active(size(config_microstructure)),               source=.false.)
  allocate(microstructure_elemhomo(size(config_microstructure)),             source=.false.)
 
- if(any(mesh_microstructureAt > size(config_microstructure))) &
+ if(any(theMesh%microstructureAt > size(config_microstructure))) &
   call IO_error(155_pInt,ext_msg='More microstructures in geometry than sections in material.config')
 
  forall (e = 1_pInt:theMesh%Nelems) &
-   microstructure_active(mesh_microstructureAt(e)) = .true.                                         ! current microstructure used in model? Elementwise view, maximum N operations for N elements
+   microstructure_active(theMesh%microstructureAt(e)) = .true.                                         ! current microstructure used in model? Elementwise view, maximum N operations for N elements
 
  do m=1_pInt, size(config_microstructure)
    microstructure_Nconstituents(m) =  config_microstructure(m)%countKeys('(constituent)')
@@ -1013,8 +1011,6 @@ subroutine material_populateGrains
    math_sampleFiberOri, &
    math_symmetricEulers
  use mesh, only: &
-   mesh_homogenizationAt, &
-   mesh_microstructureAt, &
    theMesh, &
    mesh_ipVolume
  use config, only: &
@@ -1064,14 +1060,14 @@ subroutine material_populateGrains
 ! populating homogenization schemes in each
 !--------------------------------------------------------------------------------------------------
  do e = 1_pInt, theMesh%Nelems
-   material_homog(1_pInt:theMesh%elem%nIPs,e) = mesh_homogenizationAt(e)
+   material_homog(1_pInt:theMesh%elem%nIPs,e) = theMesh%homogenizationAt(e)
  enddo
 
 !--------------------------------------------------------------------------------------------------
 ! precounting of elements for each homog/micro pair
  do e = 1_pInt, theMesh%Nelems
-   homog = mesh_homogenizationAt(e)
-   micro = mesh_microstructureAt(e)
+   homog = theMesh%homogenizationAt(e)
+   micro = theMesh%microstructureAt(e)
    Nelems(homog,micro) = Nelems(homog,micro) + 1_pInt
  enddo
  allocate(elemsOfHomogMicro(size(config_homogenization),size(config_microstructure)))
@@ -1088,8 +1084,8 @@ subroutine material_populateGrains
 ! identify maximum grain count per IP (from element) and find grains per homog/micro pair
  Nelems = 0_pInt                                                                                    ! reuse as counter
  elementLooping: do e = 1_pInt,theMesh%Nelems
-   homog = mesh_homogenizationAt(e)
-   micro = mesh_microstructureAt(e)
+   homog = theMesh%homogenizationAt(e)
+   micro = theMesh%microstructureAt(e)
    if (homog < 1_pInt .or. homog > size(config_homogenization)) &                                      ! out of bounds
      call IO_error(154_pInt,e,0_pInt,0_pInt)
    if (micro < 1_pInt .or. micro > size(config_microstructure)) &                                      ! out of bounds
