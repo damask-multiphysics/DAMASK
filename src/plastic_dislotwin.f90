@@ -1147,7 +1147,7 @@ pure subroutine kinetics_slip(Mp,Temperature,instance,of, &
  real(pReal), dimension(param(instance)%totalNslip) :: &
    dgdot_dtau
 
- real, dimension(param(instance)%totalNslip) :: &
+ real(pReal), dimension(param(instance)%totalNslip) :: &
    tau, &
    stressRatio, &
    StressRatio_p, &
