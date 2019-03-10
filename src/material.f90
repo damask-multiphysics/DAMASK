@@ -687,7 +687,7 @@ subroutine material_parsePhase
  allocate(phase_stiffnessDegradation(maxval(phase_NstiffnessDegradations),size(config_phase)), &
           source=STIFFNESS_DEGRADATION_undefined_ID)
  do p=1_pInt, size(config_phase)
-#if defined(__GFORTRAN__)
+#if defined(__GFORTRAN__) || defined(__PGI)
    str = ['GfortranBug86277']
    str = config_phase(p)%getStrings('(source)',defaultVal=str)
    if (str(1) == 'GfortranBug86277') str = [character(len=65536)::]
@@ -711,7 +711,7 @@ subroutine material_parsePhase
      end select
    enddo
 
-#if defined(__GFORTRAN__)
+#if defined(__GFORTRAN__) || defined(__PGI)
    str = ['GfortranBug86277']
    str = config_phase(p)%getStrings('(kinematics)',defaultVal=str)
    if (str(1) == 'GfortranBug86277') str = [character(len=65536)::]
@@ -728,7 +728,7 @@ subroutine material_parsePhase
          phase_kinematics(kinematicsCtr,p) = KINEMATICS_thermal_expansion_ID
      end select
    enddo
-#if defined(__GFORTRAN__)
+#if defined(__GFORTRAN__) || defined(__PGI)
    str = ['GfortranBug86277']
    str = config_phase(p)%getStrings('(stiffness_degradation)',defaultVal=str)
    if (str(1) == 'GfortranBug86277') str = [character(len=65536)::]
