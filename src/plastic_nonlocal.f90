@@ -1624,6 +1624,10 @@ use debug,    only: debug_level, &
                     debug_e
 #endif
 use math,     only: math_mul3x3, &
+#ifdef __PGI
+   norm2, &
+#endif
+
                     math_mul33x3, &
                     math_mul33xx33, &
                     math_mul33x33, &

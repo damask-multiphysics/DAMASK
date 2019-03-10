@@ -354,6 +354,10 @@ end function pow_quat__
 !> ToDo: Lacks any check for invalid operations
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental function exp__(self)
+#ifdef __PGI
+ use math, only: &
+   norm2
+#endif
 
  implicit none
  class(quaternion), intent(in) :: self
@@ -374,6 +378,10 @@ end function exp__
 !> ToDo: Lacks any check for invalid operations
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental function log__(self)
+#ifdef __PGI
+ use math, only: &
+   norm2
+#endif
 
  implicit none
  class(quaternion), intent(in) :: self
@@ -393,6 +401,10 @@ end function log__
 !> norm of a quaternion
 !---------------------------------------------------------------------------------------------------
 real(pReal) elemental function abs__(a)
+#ifdef __PGI
+ use math, only: &
+   norm2
+#endif
 
  implicit none
  class(quaternion), intent(in) :: a

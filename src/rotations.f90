@@ -157,6 +157,10 @@ end subroutine
 function rotVector(self,v,active)
  use prec, only: &
    dEq
+#ifdef __PGI
+ use math, only: &
+   norm2
+#endif
    
  implicit none
  real(pReal),                 dimension(3) :: rotVector
@@ -573,6 +577,9 @@ pure function ro2ax(ro) result(ax)
  use prec, only: &
    dEq0
  use math, only: &
+#ifdef __PGI
+   norm2, &
+#endif
    PI
 
  implicit none 
@@ -662,6 +669,9 @@ pure function ro2ho(ro) result(ho)
  use prec, only: &
    dEq0
  use math, only: &
+#ifdef __PGI
+   norm2, &
+#endif
    PI
 
  implicit none
@@ -718,6 +728,10 @@ end function qu2om
 function om2qu(om) result(qu)
  use prec, only: &
    dEq
+#ifdef __PGI
+ use math, only: &
+   norm2
+#endif
 
  implicit none
  real(pReal),      intent(in), dimension(3,3) :: om
@@ -791,6 +805,9 @@ pure function qu2ro(qu) result(ro)
  use prec, only: &
    dEq0
  use math, only: &
+#ifdef __PGI
+   norm2, &
+#endif
    math_clip
  
  type(quaternion), intent(in)              :: qu
@@ -819,6 +836,9 @@ pure function qu2ho(qu) result(ho)
  use prec, only: &
    dEq0
  use math, only: &
+#ifdef __PGI
+   norm2, &
+#endif
    math_clip
 
  implicit none
