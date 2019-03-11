@@ -3,7 +3,7 @@
 !> @author Shaokang Zhang, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Spectral solver for thermal conduction
 !--------------------------------------------------------------------------------------------------
-module spectral_thermal
+module grid_thermal_spectral
 #include <petsc/finclude/petscsnes.h>
 #include <petsc/finclude/petscdmda.h>
  use PETScdmda
@@ -16,9 +16,6 @@ module spectral_thermal
 
  implicit none
  private
-
- character (len=*), parameter, public :: &
-   spectral_thermal_label = 'spectralthermal'
    
 !--------------------------------------------------------------------------------------------------
 ! derived types
@@ -27,7 +24,7 @@ module spectral_thermal
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
  SNES,     private :: thermal_snes
- Vec,      private :: solution
+ Vec,      private :: solution_vec
  PetscInt, private :: xstart, xend, ystart, yend, zstart, zend
  real(pReal), private, dimension(:,:,:), allocatable :: &
    temperature_current, &                                                                           !< field of current temperature
@@ -41,16 +38,16 @@ module spectral_thermal
  real(pReal), private                 :: mobility_ref
  
  public :: &
-   spectral_thermal_init, &
-   spectral_thermal_solution, &
-   spectral_thermal_forward
+   grid_thermal_spectral_init, &
+   grid_thermal_spectral_solution, &
+   grid_thermal_spectral_forward
 
 contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
-subroutine spectral_thermal_init
+subroutine grid_thermal_spectral_init
   use spectral_utilities, only: &
     wgt
   use mesh, only: &
@@ -66,19 +63,27 @@ subroutine spectral_thermal_init
     thermalMapping
   use numerics, only: &
     worldrank, &
-    worldsize
+    worldsize, &
+    petsc_options
 
   implicit none
   integer, dimension(worldsize) :: localK  
   integer :: i, j, k, cell
   DM :: thermal_grid
-  PetscScalar,  dimension(:,:,:), pointer     :: x_scal
+  PetscScalar,  dimension(:,:,:), pointer :: x_scal
   PetscErrorCode :: ierr
 
-  write(6,'(/,a)') ' <<<+-  spectral_thermal init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  grid_thermal_spectral init  -+>>>'
 
   write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, 2019'
   write(6,'(a)')   ' https://doi.org/10.1007/978-981-10-6855-3_80'
+
+!--------------------------------------------------------------------------------------------------
+! set default and user defined options for PETSc
+ call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-thermal_snes_type ngmres',ierr)
+ CHKERRQ(ierr)
+ call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
+ CHKERRQ(ierr)
  
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
@@ -99,8 +104,8 @@ subroutine spectral_thermal_init
   call SNESSetDM(thermal_snes,thermal_grid,ierr); CHKERRQ(ierr)                                     ! connect snes to da
   call DMsetFromOptions(thermal_grid,ierr); CHKERRQ(ierr)
   call DMsetUp(thermal_grid,ierr); CHKERRQ(ierr)
-  call DMCreateGlobalVector(thermal_grid,solution        ,ierr); CHKERRQ(ierr)                      ! global solution vector (grid x 1, i.e. every def grad tensor)
-  call DMDASNESSetFunctionLocal(thermal_grid,INSERT_VALUES,spectral_thermal_formResidual,&
+  call DMCreateGlobalVector(thermal_grid,solution_vec,ierr); CHKERRQ(ierr)                          ! global solution vector (grid x 1, i.e. every def grad tensor)
+  call DMDASNESSetFunctionLocal(thermal_grid,INSERT_VALUES,grid_thermal_spectral_formResidual,&
                                                                              PETSC_NULL_SNES,ierr)  ! residual vector of same shape as solution vector
   CHKERRQ(ierr) 
   call SNESSetFromOptions(thermal_snes,ierr); CHKERRQ(ierr)                                         ! pull it all together with additional CLI arguments
@@ -123,9 +128,9 @@ subroutine spectral_thermal_init
     temperature_lastInc(i,j,k) = temperature_current(i,j,k)
     temperature_stagInc(i,j,k) = temperature_current(i,j,k)
   enddo; enddo; enddo
-  call DMDAVecGetArrayF90(thermal_grid,solution,x_scal,ierr); CHKERRQ(ierr)                         !< get the data out of PETSc to work with
+  call DMDAVecGetArrayF90(thermal_grid,solution_vec,x_scal,ierr); CHKERRQ(ierr)                     !< get the data out of PETSc to work with
   x_scal(xstart:xend,ystart:yend,zstart:zend) = temperature_current
-  call DMDAVecRestoreArrayF90(thermal_grid,solution,x_scal,ierr); CHKERRQ(ierr)
+  call DMDAVecRestoreArrayF90(thermal_grid,solution_vec,x_scal,ierr); CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! thermal reference diffusion update
@@ -143,12 +148,12 @@ subroutine spectral_thermal_init
   mobility_ref = mobility_ref*wgt
   call MPI_Allreduce(MPI_IN_PLACE,mobility_ref,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
 
-end subroutine spectral_thermal_init
+end subroutine grid_thermal_spectral_init
   
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the spectral thermal scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-type(tSolutionState) function spectral_thermal_solution(timeinc,timeinc_old,loadCaseTime)
+function grid_thermal_spectral_solution(timeinc,timeinc_old,loadCaseTime) result(solution)
   use numerics, only: &
     itmax, &
     err_thermal_tolAbs, &
@@ -162,40 +167,40 @@ type(tSolutionState) function spectral_thermal_solution(timeinc,timeinc_old,load
   implicit none
 
   real(pReal), intent(in) :: &
-    timeinc, &                                                                                       !< increment in time for current solution
-    timeinc_old, &                                                                                   !< increment in time of last increment
-    loadCaseTime                                                                                     !< remaining time of current load case
+    timeinc, &                                                                                      !< increment in time for current solution
+    timeinc_old, &                                                                                  !< increment in time of last increment
+    loadCaseTime                                                                                    !< remaining time of current load case
   integer :: i, j, k, cell
+  type(tSolutionState) :: solution
   PetscInt  :: position
   PetscReal :: minTemperature, maxTemperature, stagNorm, solnNorm
 
   PetscErrorCode :: ierr   
   SNESConvergedReason :: reason
 
-  spectral_thermal_solution%converged =.false.
+  solution%converged =.false.
  
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data 
   params%timeinc = timeinc
   params%timeincOld = timeinc_old
 
-  call SNESSolve(thermal_snes,PETSC_NULL_VEC,solution,ierr); CHKERRQ(ierr)
+  call SNESSolve(thermal_snes,PETSC_NULL_VEC,solution_vec,ierr); CHKERRQ(ierr)
   call SNESGetConvergedReason(thermal_snes,reason,ierr); CHKERRQ(ierr)
 
   if (reason < 1) then
-    spectral_thermal_solution%converged = .false.
-    spectral_thermal_solution%iterationsNeeded = itmax
+    solution%converged = .false.
+    solution%iterationsNeeded = itmax
   else
-    spectral_thermal_solution%converged = .true.
-    spectral_thermal_solution%iterationsNeeded = totalIter
+    solution%converged = .true.
+    solution%iterationsNeeded = totalIter
   endif
   stagNorm = maxval(abs(temperature_current - temperature_stagInc))
   solnNorm = maxval(abs(temperature_current))
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
   call MPI_Allreduce(MPI_IN_PLACE,solnNorm,1,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
   temperature_stagInc = temperature_current
-  spectral_thermal_solution%stagConverged =     stagNorm < err_thermal_tolAbs &
-                                           .or. stagNorm < err_thermal_tolRel*solnNorm 
+  solution%stagConverged = stagNorm < min(err_thermal_tolAbs, err_thermal_tolRel*solnNorm)
 
 !--------------------------------------------------------------------------------------------------
 ! updating thermal state 
@@ -207,22 +212,22 @@ type(tSolutionState) function spectral_thermal_solution(timeinc,timeinc_old,load
                                                      1,cell)
   enddo; enddo; enddo
 
-  call VecMin(solution,position,minTemperature,ierr); CHKERRQ(ierr)
-  call VecMax(solution,position,maxTemperature,ierr); CHKERRQ(ierr) 
-  if (spectral_thermal_solution%converged) &
+  call VecMin(solution_vec,position,minTemperature,ierr); CHKERRQ(ierr)
+  call VecMax(solution_vec,position,maxTemperature,ierr); CHKERRQ(ierr) 
+  if (solution%converged) &
     write(6,'(/,a)') ' ... thermal conduction converged ..................................'
   write(6,'(/,a,f8.4,2x,f8.4,2x,f8.4,/)',advance='no') ' Minimum|Maximum|Delta Temperature / K = ',&
                                                         minTemperature, maxTemperature, stagNorm
   write(6,'(/,a)') ' ==========================================================================='
   flush(6) 
 
-end function spectral_thermal_solution
+end function grid_thermal_spectral_solution
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forms the spectral thermal residual vector
 !--------------------------------------------------------------------------------------------------
-subroutine spectral_thermal_formResidual(in,x_scal,f_scal,dummy,ierr)
+subroutine grid_thermal_spectral_formResidual(in,x_scal,f_scal,dummy,ierr)
  use mesh, only: &
    grid, &
    grid3
@@ -297,12 +302,13 @@ subroutine spectral_thermal_formResidual(in,x_scal,f_scal,dummy,ierr)
 ! constructing residual
  f_scal = temperature_current - scalarField_real(1:grid(1),1:grid(2),1:grid3)
 
-end subroutine spectral_thermal_formResidual
+end subroutine grid_thermal_spectral_formResidual
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forwarding routine
 !--------------------------------------------------------------------------------------------------
-subroutine spectral_thermal_forward()
+subroutine grid_thermal_spectral_forward()
  use mesh, only: &
    grid, &
    grid3
@@ -329,9 +335,9 @@ subroutine spectral_thermal_forward()
 ! reverting thermal field state 
    cell = 0
    call SNESGetDM(thermal_snes,dm_local,ierr); CHKERRQ(ierr)
-   call DMDAVecGetArrayF90(dm_local,solution,x_scal,ierr); CHKERRQ(ierr)                              !< get the data out of PETSc to work with
+   call DMDAVecGetArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)                              !< get the data out of PETSc to work with
    x_scal(xstart:xend,ystart:yend,zstart:zend) = temperature_current
-   call DMDAVecRestoreArrayF90(dm_local,solution,x_scal,ierr); CHKERRQ(ierr)
+   call DMDAVecRestoreArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)
    do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
      cell = cell + 1
      call thermal_conduction_putTemperatureAndItsRate(temperature_current(i,j,k), &
@@ -358,6 +364,6 @@ subroutine spectral_thermal_forward()
    call MPI_Allreduce(MPI_IN_PLACE,mobility_ref,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  endif
  
-end subroutine spectral_thermal_forward
+end subroutine grid_thermal_spectral_forward
 
-end module spectral_thermal
+end module grid_thermal_spectral

@@ -80,7 +80,7 @@ program DAMASK_spectral
  use spectral_mech_Basic
  use spectral_mech_Polarisation
  use spectral_damage
- use spectral_thermal
+ use grid_thermal_spectral
  use results
 
  implicit none
@@ -365,7 +365,7 @@ program DAMASK_spectral
        call mech_init
      
      case(FIELD_THERMAL_ID)
-       call spectral_thermal_init
+       call grid_thermal_spectral_init
 
      case(FIELD_DAMAGE_ID)
        call spectral_damage_init
@@ -510,8 +510,8 @@ program DAMASK_spectral
                        stress_BC          = loadCases(currentLoadCase)%stress, &
                        rotation_BC        = loadCases(currentLoadCase)%rotation)
 
-             case(FIELD_THERMAL_ID); call spectral_thermal_forward()
-             case(FIELD_DAMAGE_ID);  call spectral_damage_forward()
+             case(FIELD_THERMAL_ID); call grid_thermal_spectral_forward
+             case(FIELD_DAMAGE_ID);  call spectral_damage_forward
            end select
          enddo
 
@@ -529,7 +529,7 @@ program DAMASK_spectral
                                         rotation_BC        = loadCases(currentLoadCase)%rotation)
 
                case(FIELD_THERMAL_ID)
-                 solres(field) = spectral_thermal_solution(timeinc,timeIncOld,remainingLoadCaseTime)
+                 solres(field) = grid_thermal_spectral_solution(timeinc,timeIncOld,remainingLoadCaseTime)
 
                case(FIELD_DAMAGE_ID)
                  solres(field) = spectral_damage_solution(timeinc,timeIncOld,remainingLoadCaseTime)
