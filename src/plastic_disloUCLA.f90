@@ -212,9 +212,9 @@ subroutine plastic_disloUCLA_init()
        prm%nonSchmid_neg  = prm%Schmid
      endif
 
-     prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
-                                                             config%getFloats('interaction_slipslip'), &
-                                                             config%getString('lattice_structure'))
+     prm%interaction_SlipSlip = lattice_interaction_SlipBySlip(prm%Nslip, &
+                                                               config%getFloats('interaction_slipslip'), &
+                                                               config%getString('lattice_structure'))
      prm%forestProjectionEdge = lattice_forestProjection(prm%Nslip,config%getString('lattice_structure'),&
                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
 
@@ -492,7 +492,7 @@ subroutine plastic_disloUCLA_dependentState(instance,of)
                                        prm%forestProjectionEdge(:,i)))
    dst%threshold_stress(i,of) = prm%mu*prm%burgers(i) &
                               * sqrt(dot_product(stt%rhoEdge(:,of)+stt%rhoEdgeDip(:,of), &
-                                                 prm%interaction_SlipSlip(i,:)))
+                                                 prm%interaction_SlipSlip(:,i)))
  end forall
 
  dst%mfp(:,of) = prm%grainSize/(1.0_pReal+prm%grainSize*dst%dislocationSpacing(:,of)/prm%Clambda)

@@ -280,9 +280,9 @@ subroutine plastic_dislotwin_init
    slipActive: if (prm%totalNslip > 0_pInt) then
      prm%Schmid_slip          = lattice_SchmidMatrix_slip(prm%Nslip,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
-     prm%interaction_SlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
-                                                             config%getFloats('interaction_slipslip'), &
-                                                             config%getString('lattice_structure'))
+     prm%interaction_SlipSlip = lattice_interaction_SlipBySlip(prm%Nslip, &
+                                                               config%getFloats('interaction_slipslip'), &
+                                                               config%getString('lattice_structure'))
      prm%forestProjection     = lattice_forestProjection (prm%Nslip,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
 
@@ -347,9 +347,9 @@ subroutine plastic_dislotwin_init
    if (prm%totalNtwin > 0_pInt) then
      prm%Schmid_twin          = lattice_SchmidMatrix_twin(prm%Ntwin,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
-     prm%interaction_TwinTwin = lattice_interaction_TwinTwin(prm%Ntwin,&
-                                                             config%getFloats('interaction_twintwin'), &
-                                                            config%getString('lattice_structure'))
+     prm%interaction_TwinTwin = lattice_interaction_TwinByTwin(prm%Ntwin,&
+                                                               config%getFloats('interaction_twintwin'), &
+                                                               config%getString('lattice_structure'))
 
      prm%burgers_twin = config%getFloats('twinburgers',     requiredSize=size(prm%Ntwin))
      prm%twinsize     = config%getFloats('twinsize',     requiredSize=size(prm%Ntwin))
@@ -397,9 +397,9 @@ subroutine plastic_dislotwin_init
      prm%xc_trans         = config%getFloat('xc_trans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
      prm%L0_trans         = config%getFloat('l0_trans')
 
-     prm%interaction_TransTrans = lattice_interaction_TransTrans(prm%Ntrans,&
-                                                             config%getFloats('interaction_transtrans'), &
-                                                             config%getString('lattice_structure'))
+     prm%interaction_TransTrans = lattice_interaction_TransByTrans(prm%Ntrans,&
+                                                                   config%getFloats('interaction_transtrans'), &
+                                                                   config%getString('lattice_structure'))
                                                              
      prm%C66_trans        = lattice_C66_trans(prm%Ntrans,prm%C66, &
                                   config%getString('trans_lattice_structure'), &
@@ -433,19 +433,19 @@ subroutine plastic_dislotwin_init
    endif
    
    if (prm%totalNslip > 0_pInt .and. prm%totalNtwin > 0_pInt) then
-     prm%interaction_SlipTwin = lattice_interaction_SlipTwin(prm%Nslip,prm%Ntwin,&
-                                                             config%getFloats('interaction_sliptwin'), &
-                                                             config%getString('lattice_structure')) 
-     prm%interaction_TwinSlip = lattice_interaction_TwinSlip(prm%Ntwin,prm%Nslip,&
-                                                             config%getFloats('interaction_twinslip'), &
-                                                             config%getString('lattice_structure'))
+     prm%interaction_SlipTwin = lattice_interaction_SlipByTwin(prm%Nslip,prm%Ntwin,&
+                                                               config%getFloats('interaction_sliptwin'), &
+                                                               config%getString('lattice_structure')) 
+     prm%interaction_TwinSlip = lattice_interaction_TwinBySlip(prm%Ntwin,prm%Nslip,&
+                                                               config%getFloats('interaction_twinslip'), &
+                                                               config%getString('lattice_structure'))
      if (prm%fccTwinTransNucleation .and. prm%totalNtwin > 12_pInt) write(6,*) 'mist' ! ToDo: implement better test. The model will fail also if ntwin is [6,6]
    endif    
 
    if (prm%totalNslip > 0_pInt .and. prm%totalNtrans > 0_pInt) then  
-     prm%interaction_SlipTrans = lattice_interaction_SlipTrans(prm%Nslip,prm%Ntrans,&
-                                                               config%getFloats('interaction_sliptrans'), &
-                                                               config%getString('lattice_structure')) 
+     prm%interaction_SlipTrans = lattice_interaction_SlipByTrans(prm%Nslip,prm%Ntrans,&
+                                                                 config%getFloats('interaction_sliptrans'), &
+                                                                 config%getString('lattice_structure')) 
      if (prm%fccTwinTransNucleation .and. prm%totalNtrans > 12_pInt) write(6,*) 'mist' ! ToDo: implement better test. The model will fail also if ntrans is [6,6]
    endif  
   
@@ -941,7 +941,7 @@ subroutine plastic_dislotwin_dependentState(temperature,instance,of)
  !* 1/mean free distance between 2 twin stacks from different systems seen by a moving dislocation
  if (prm%totalNtwin > 0_pInt .and. prm%totalNslip > 0_pInt) &
    dst%invLambdaSlipTwin(1_pInt:prm%totalNslip,of) = &
-     matmul(prm%interaction_SlipTwin,fOverStacksize)/(1.0_pReal-sumf_twin)
+     matmul(transpose(prm%interaction_SlipTwin),fOverStacksize)/(1.0_pReal-sumf_twin)               ! ToDo: Transpose need
 
  !* 1/mean free distance between 2 twin stacks from different systems seen by a growing twin
 
@@ -952,7 +952,7 @@ subroutine plastic_dislotwin_dependentState(temperature,instance,of)
  !* 1/mean free distance between 2 martensite lamellar from different systems seen by a moving dislocation
  if (prm%totalNtrans > 0_pInt .and. prm%totalNslip > 0_pInt) &
    dst%invLambdaSlipTrans(1_pInt:prm%totalNslip,of) = &                                  ! ToDo: does not work if Ntrans is not 12
-      matmul(prm%interaction_SlipTrans,ftransOverLamellarSize)/(1.0_pReal-sumf_trans)
+      matmul(transpose(prm%interaction_SlipTrans),ftransOverLamellarSize)/(1.0_pReal-sumf_trans)    ! ToDo: Transpose needed
 
  !* 1/mean free distance between 2 martensite stacks from different systems seen by a growing martensite (1/lambda_trans)
  !ToDo: needed? if (prm%totalNtrans > 0_pInt) &
@@ -978,7 +978,7 @@ subroutine plastic_dislotwin_dependentState(temperature,instance,of)
  forall (i = 1_pInt:prm%totalNslip) dst%threshold_stress_slip(i,of) = &
      prm%mu*prm%burgers_slip(i)*&
      sqrt(dot_product(stt%rhoEdge(1_pInt:prm%totalNslip,of)+stt%rhoEdgeDip(1_pInt:prm%totalNslip,of),&
-                      prm%interaction_SlipSlip(i,1:prm%totalNslip)))
+                      prm%interaction_SlipSlip(:,i)))
 
  !* threshold stress for growing twin/martensite
  if(prm%totalNtwin == prm%totalNslip) &

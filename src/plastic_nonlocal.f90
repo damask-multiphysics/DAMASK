@@ -346,9 +346,9 @@ subroutine plastic_nonlocal_init
         prm%nonSchmid_neg  = prm%Schmid
       endif
 
-      prm%interactionSlipSlip = lattice_interaction_SlipSlip(prm%Nslip, &
-                                                              config%getFloats('interaction_slipslip'), &
-                                                              config%getString('lattice_structure'))
+      prm%interactionSlipSlip = lattice_interaction_SlipBySlip(prm%Nslip, &
+                                                               config%getFloats('interaction_slipslip'), &
+                                                               config%getString('lattice_structure'))
 
       prm%forestProjection_edge  = lattice_forestProjection_edge (prm%Nslip,config%getString('lattice_structure'),&
                                                                   config%getFloat('c/a',defaultVal=0.0_pReal))
@@ -1000,12 +1000,12 @@ if (lattice_structure(ph) ==  LATTICE_bcc_ID .or. lattice_structure(ph) == LATTI
                   + prm%linetensionEffect &
                   * log(0.35_pReal * prm%burgers(s) * sqrt(myRhoForest)) &
                   / log(0.35_pReal * prm%burgers(s) * 1e6_pReal)) ** 2.0_pReal
-    myInteractionMatrix(s,1:ns) = correction * myInteractionMatrix(s,1:ns) 
+    myInteractionMatrix(s,1:ns) = correction * myInteractionMatrix(1:ns,s) 
   enddo
 endif
 forall (s = 1_pInt:ns) &
   dst%tau_threshold(s,of) = prm%mu * prm%burgers(s) &
-                  * sqrt(dot_product((sum(abs(rhoSgl),2) + sum(abs(rhoDip),2)), myInteractionMatrix(s,1:ns)))
+                  * sqrt(dot_product((sum(abs(rhoSgl),2) + sum(abs(rhoDip),2)), myInteractionMatrix(1:ns,s)))
 
 
 !*** calculate the dislocation stress of the neighboring excess dislocation densities
