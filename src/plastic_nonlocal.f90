@@ -991,8 +991,6 @@ forall (s = 1_pInt:ns) &
 !*** coefficients are corrected for the line tension effect 
 !*** (see Kubin,Devincre,Hoc; 2008; Modeling dislocation storage rates and mean free paths in face-centered cubic crystals)
 
-myInteractionMatrix = 0.0_pReal
-myInteractionMatrix(1:ns,1:ns) = prm%interactionSlipSlip(1:ns,1:ns)
 if (lattice_structure(ph) ==  LATTICE_bcc_ID .or. lattice_structure(ph) == LATTICE_fcc_ID) then     ! only fcc and bcc
   do s = 1_pInt,ns 
     myRhoForest = max(rhoForest(s),prm%significantRho)
@@ -1000,8 +998,10 @@ if (lattice_structure(ph) ==  LATTICE_bcc_ID .or. lattice_structure(ph) == LATTI
                   + prm%linetensionEffect &
                   * log(0.35_pReal * prm%burgers(s) * sqrt(myRhoForest)) &
                   / log(0.35_pReal * prm%burgers(s) * 1e6_pReal)) ** 2.0_pReal
-    myInteractionMatrix(s,1:ns) = correction * myInteractionMatrix(1:ns,s) 
+    myInteractionMatrix(1:ns,s) = correction * prm%interactionSlipSlip(1:ns,s) 
   enddo
+else
+  myInteractionMatrix = prm%interactionSlipSlip
 endif
 forall (s = 1_pInt:ns) &
   dst%tau_threshold(s,of) = prm%mu * prm%burgers(s) &
