@@ -383,15 +383,13 @@ end function om2eu
 !> @brief convert axis angle pair to orientation matrix
 !---------------------------------------------------------------------------------------------------
 pure function ax2om(ax) result(om)
- use prec, only: &
-   pInt
 
  implicit none
  real(pReal), intent(in), dimension(4)   :: ax
  real(pReal),             dimension(3,3) :: om
  
  real(pReal)                             :: q, c, s, omc
- integer(pInt)                           :: i
+ integer                                 :: i
 
  c = cos(ax(4))
  s = sin(ax(4))
@@ -476,13 +474,12 @@ end function ax2ho
 !---------------------------------------------------------------------------------------------------
 pure function ho2ax(ho) result(ax)
  use prec, only: &
-   pInt, &
    dEq0
  implicit none 
  real(pReal), intent(in), dimension(3) :: ho
  real(pReal),             dimension(4) :: ax
  
- integer(pInt)                         :: i
+ integer                               :: i
  real(pReal)                           :: hmag_squared, s, hm
  real(pReal), parameter, dimension(16) :: &
    tfit = [ 1.0000000000018852_pReal,      -0.5000000002194847_pReal, & 
@@ -519,7 +516,6 @@ end function ho2ax
 !---------------------------------------------------------------------------------------------------
 function om2ax(om) result(ax)
  use prec, only: &
-   pInt, &
    dEq0, &
    cEq, &
    dNeq0
@@ -537,7 +533,7 @@ function om2ax(om) result(ax)
  real(pReal), dimension(3)   :: Wr, Wi
  real(pReal), dimension(10)  :: WORK
  real(pReal), dimension(3,3) :: VR, devNull, o
- integer(pInt)               :: INFO, LWORK, i
+ integer                     :: INFO, LWORK, i
  
  external :: dgeev,sgeev
  
@@ -557,7 +553,7 @@ function om2ax(om) result(ax)
  
  ! call the eigenvalue solver
    call dgeev('N','V',3,o,3,Wr,Wi,devNull,3,VR,3,WORK,LWORK,INFO)
-   if (INFO /= 0) call IO_error(0_pInt,ext_msg='Error in om2ax DGEEV return not zero')
+   if (INFO /= 0) call IO_error(0,ext_msg='Error in om2ax DGEEV return not zero')
    i = maxloc(merge(1.0_pReal,0.0_pReal,cEq(cmplx(Wr,Wi,pReal),cmplx(1.0_pReal,0.0_pReal,pReal),tol=1.0e-14_pReal)),dim=1) ! poor substitute for findloc
    ax(1:3) = VR(1:3,i)
    where (                dNeq0([om(2,3)-om(3,2), om(3,1)-om(1,3), om(1,2)-om(2,1)])) &

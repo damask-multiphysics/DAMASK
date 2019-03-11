@@ -73,16 +73,16 @@ contains
 function LambertCubeToBall(cube) result(ball)
  use, intrinsic :: IEEE_ARITHMETIC
  use prec, only: &
-   pInt, &
    dEq0
 
  implicit none
  real(pReal), intent(in), dimension(3) :: cube
  real(pReal),             dimension(3) :: ball, LamXYZ, XYZ
- real(pReal)                 ::  T(2), c, s, q
- real(pReal), parameter      :: eps = 1.0e-8_pReal
- integer(pInt), dimension(3) :: p
- integer(pInt), dimension(2) :: order
+ real(pReal),             dimension(2) :: T
+ real(pReal)                           :: c, s, q
+ real(pReal), parameter                :: eps = 1.0e-8_pReal
+ integer,                 dimension(3) :: p
+ integer,                 dimension(2) :: order
  
  if (maxval(abs(cube)) > AP/2.0+eps) then
    ball = IEEE_value(cube,IEEE_positive_inf)
@@ -135,7 +135,6 @@ pure function LambertBallToCube(xyz) result(cube)
    IEEE_positive_inf, &
    IEEE_value
  use prec, only: &
-   pInt, &
    dEq0
 
  implicit none
@@ -143,7 +142,7 @@ pure function LambertBallToCube(xyz) result(cube)
  real(pReal),             dimension(3) :: cube, xyz1, xyz3
  real(pReal),             dimension(2) :: Tinv, xyz2
  real(pReal)                           :: rs, qxy, q2, sq2, q, tt
- integer(pInt),           dimension(3) :: p
+ integer,                 dimension(3) :: p
  
  rs = norm2(xyz)
  if (rs > R1) then 
@@ -192,12 +191,10 @@ end function LambertBallToCube
 !> @brief determine to which pyramid a point in a cubic grid belongs
 !--------------------------------------------------------------------------
 pure function GetPyramidOrder(xyz)
- use prec, only: &
-   pInt
 
  implicit none
  real(pReal),intent(in),dimension(3) :: xyz
- integer(pInt),         dimension(3) :: GetPyramidOrder
+ integer,               dimension(3) :: GetPyramidOrder
 
  if      (((abs(xyz(1)) <=  xyz(3)).and.(abs(xyz(2)) <=  xyz(3))) .or. &
           ((abs(xyz(1)) <= -xyz(3)).and.(abs(xyz(2)) <= -xyz(3)))) then
