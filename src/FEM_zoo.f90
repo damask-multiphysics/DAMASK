@@ -34,20 +34,9 @@ contains
 !> @brief initializes FEM interpolation data
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_Zoo_init
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
- use IO, only: &
-   IO_timeStamp
-   
  implicit none
   
  write(6,'(/,a)')   ' <<<+-  FEM_Zoo init  -+>>>'
- write(6,'(a)')     ' $Id: FEM_Zoo.f90 4354 2015-08-04 15:04:53Z MPIE\p.shanthraj $'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
 !--------------------------------------------------------------------------------------------------
 ! 2D linear

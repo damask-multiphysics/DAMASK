@@ -7,11 +7,6 @@
 !> results
 !--------------------------------------------------------------------------------------------------
 program DAMASK_spectral
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
 #include <petsc/finclude/petscsys.h>
  use PETScsys
  use prec, only: &
@@ -35,8 +30,7 @@ program DAMASK_spectral
    IO_error, &
    IO_lc, &
    IO_intOut, &
-   IO_warning, &
-   IO_timeStamp
+   IO_warning
  use debug, only: &
    debug_level, &
    debug_spectral, &
@@ -155,10 +149,9 @@ program DAMASK_spectral
 ! init DAMASK (all modules)
  call CPFEM_initAll
  write(6,'(/,a)')   ' <<<+-  DAMASK_spectral init  -+>>>'
- write(6,'(/,a,/)') ' Roters et al., Computational Materials Science, 2018'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
+ write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, 2019'
+ write(6,'(a)')   ' https://doi.org/10.1007/978-981-10-6855-3_80'
 
  call results_openJobFile()
  call results_closeJobFile()

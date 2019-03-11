@@ -35,8 +35,7 @@ module IO
    IO_lc, &
    IO_error, &
    IO_warning, &
-   IO_intOut, &
-   IO_timeStamp
+   IO_intOut
 #if defined(Marc4DAMASK) || defined(Abaqus)
  public :: &
    IO_open_inputFile, &
@@ -715,21 +714,6 @@ pure function IO_intOut(intToPrint)
   IO_intOut = 'I'//trim(min_width)//'.'//trim(width)
 
 end function IO_intOut
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns time stamp
-!--------------------------------------------------------------------------------------------------
-function IO_timeStamp()
-
-  implicit none
-  character(len=10) :: IO_timeStamp
-  integer(pInt), dimension(8) :: values
-
-  call DATE_AND_TIME(VALUES=values)
-  write(IO_timeStamp,'(i2.2,a1,i2.2,a1,i2.2)') values(5),':',values(6),':',values(7)
-
-end function IO_timeStamp
 
 
 !--------------------------------------------------------------------------------------------------
