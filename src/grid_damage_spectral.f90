@@ -3,13 +3,12 @@
 !> @author Shaokang Zhang, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Spectral solver for nonlocal damage
 !--------------------------------------------------------------------------------------------------
-module spectral_damage
+module grid_damage_spectral
 #include <petsc/finclude/petscsnes.h>
 #include <petsc/finclude/petscdmda.h>
  use PETScdmda
  use PETScsnes
  use prec, only: & 
-   pInt, &
    pReal
  use spectral_utilities, only: &
    tSolutionState, &
@@ -17,9 +16,6 @@ module spectral_damage
 
  implicit none
  private
-
- character (len=*), parameter, public :: &
-   spectral_damage_label = 'spectraldamage'
    
 !--------------------------------------------------------------------------------------------------
 ! derived types
@@ -28,7 +24,7 @@ module spectral_damage
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
  SNES, private :: damage_snes
- Vec,  private :: solution
+ Vec,  private :: solution_vec
  PetscInt, private :: xstart, xend, ystart, yend, zstart, zend
  real(pReal), private, dimension(:,:,:), allocatable :: &
    damage_current, &                                                                           !< field of current damage
@@ -37,21 +33,21 @@ module spectral_damage
 
 !--------------------------------------------------------------------------------------------------
 ! reference diffusion tensor, mobility etc. 
- integer(pInt),               private :: totalIter = 0                                              !< total iteration in current increment
+ integer,               private :: totalIter = 0                                              !< total iteration in current increment
  real(pReal), dimension(3,3), private :: D_ref
  real(pReal), private                 :: mobility_ref
  
  public :: &
-   spectral_damage_init, &
-   spectral_damage_solution, &
-   spectral_damage_forward
+   grid_damage_spectral_init, &
+   grid_damage_spectral_solution, &
+   grid_damage_spectral_forward
 
 contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
-subroutine spectral_damage_init()
+subroutine grid_damage_spectral_init
   use IO, only: &
     IO_intOut
   use spectral_utilities, only: &
@@ -64,7 +60,8 @@ subroutine spectral_damage_init()
     damage_nonlocal_getMobility
   use numerics, only: &
     worldrank, &
-    worldsize
+    worldsize, &
+    petsc_options
     
   implicit none
   PetscInt, dimension(worldsize) :: localK  
@@ -74,11 +71,18 @@ subroutine spectral_damage_init()
   PetscErrorCode :: ierr
   character(len=100) :: snes_type
  
-  write(6,'(/,a)') ' <<<+-  spectral_damage init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  grid_spectral_damage init  -+>>>'
 
   write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, 2019'
   write(6,'(a)')   ' https://doi.org/10.1007/978-981-10-6855-3_80'
  
+!--------------------------------------------------------------------------------------------------
+! set default and user defined options for PETSc
+ call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-damage_snes_type ngmres',ierr)
+ CHKERRQ(ierr)
+ call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
+ CHKERRQ(ierr)
+
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
   call SNESCreate(PETSC_COMM_WORLD,damage_snes,ierr); CHKERRQ(ierr)
@@ -98,8 +102,8 @@ subroutine spectral_damage_init()
   call SNESSetDM(damage_snes,damage_grid,ierr); CHKERRQ(ierr)                                       !< connect snes to da
   call DMsetFromOptions(damage_grid,ierr); CHKERRQ(ierr)
   call DMsetUp(damage_grid,ierr); CHKERRQ(ierr)
-  call DMCreateGlobalVector(damage_grid,solution,ierr); CHKERRQ(ierr)                               !< global solution vector (grid x 1, i.e. every def grad tensor)
-  call DMDASNESSetFunctionLocal(damage_grid,INSERT_VALUES,spectral_damage_formResidual,&
+  call DMCreateGlobalVector(damage_grid,solution_vec,ierr); CHKERRQ(ierr)                               !< global solution vector (grid x 1, i.e. every def grad tensor)
+  call DMDASNESSetFunctionLocal(damage_grid,INSERT_VALUES,grid_damage_spectral_formResidual,&
                                                                              PETSC_NULL_SNES,ierr)  !< residual vector of same shape as solution vector
   CHKERRQ(ierr) 
   call SNESSetFromOptions(damage_snes,ierr); CHKERRQ(ierr)                                          !< pull it all together with additional CLI arguments
@@ -122,14 +126,14 @@ subroutine spectral_damage_init()
   xend = xstart + xend - 1
   yend = ystart + yend - 1
   zend = zstart + zend - 1 
-  call VecSet(solution,1.0_pReal,ierr); CHKERRQ(ierr)
+  call VecSet(solution_vec,1.0_pReal,ierr); CHKERRQ(ierr)
   allocate(damage_current(grid(1),grid(2),grid3), source=1.0_pReal)
   allocate(damage_lastInc(grid(1),grid(2),grid3), source=1.0_pReal)
   allocate(damage_stagInc(grid(1),grid(2),grid3), source=1.0_pReal)
 
 !--------------------------------------------------------------------------------------------------
 ! damage reference diffusion update
-  cell = 0_pInt
+  cell = 0
   D_ref = 0.0_pReal
   mobility_ref = 0.0_pReal
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
@@ -142,12 +146,12 @@ subroutine spectral_damage_init()
   mobility_ref = mobility_ref*wgt
   call MPI_Allreduce(MPI_IN_PLACE,mobility_ref,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
 
-end subroutine spectral_damage_init
+end subroutine grid_damage_spectral_init
   
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the spectral damage scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-type(tSolutionState) function spectral_damage_solution(timeinc,timeinc_old,loadCaseTime)
+function grid_damage_spectral_solution(timeinc,timeinc_old,loadCaseTime) result(solution)
   use numerics, only: &
     itmax, &
     err_damage_tolAbs, &
@@ -167,33 +171,34 @@ type(tSolutionState) function spectral_damage_solution(timeinc,timeinc_old,loadC
   integer :: i, j, k, cell
   PetscInt  ::position
   PetscReal ::  minDamage, maxDamage, stagNorm, solnNorm
-  PetscErrorCode :: ierr   
+  PetscErrorCode :: ierr
+ type(tSolutionState) :: &
+   solution
   SNESConvergedReason :: reason
 
- spectral_damage_solution%converged =.false.
+ solution%converged =.false.
  
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data 
   params%timeinc = timeinc
   params%timeincOld = timeinc_old
  
-  call SNESSolve(damage_snes,PETSC_NULL_VEC,solution,ierr); CHKERRQ(ierr)
+  call SNESSolve(damage_snes,PETSC_NULL_VEC,solution_vec,ierr); CHKERRQ(ierr)
   call SNESGetConvergedReason(damage_snes,reason,ierr); CHKERRQ(ierr)
  
   if (reason < 1) then
-    spectral_damage_solution%converged = .false.
-    spectral_damage_solution%iterationsNeeded = itmax
+    solution%converged = .false.
+    solution%iterationsNeeded = itmax
   else
-    spectral_damage_solution%converged = .true.
-    spectral_damage_solution%iterationsNeeded = totalIter
+    solution%converged = .true.
+    solution%iterationsNeeded = totalIter
   endif
   stagNorm = maxval(abs(damage_current - damage_stagInc))
   solnNorm = maxval(abs(damage_current))
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
   call MPI_Allreduce(MPI_IN_PLACE,solnNorm,1,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
   damage_stagInc = damage_current
-  spectral_damage_solution%stagConverged =     stagNorm < err_damage_tolAbs &
-                                          .or. stagNorm < err_damage_tolRel*solnNorm
+  solution%stagConverged = stagNorm < min(err_damage_tolAbs,err_damage_tolRel*solnNorm)
 
 !--------------------------------------------------------------------------------------------------
 ! updating damage state 
@@ -205,20 +210,20 @@ type(tSolutionState) function spectral_damage_solution(timeinc,timeinc_old,loadC
  
   call VecMin(solution,position,minDamage,ierr); CHKERRQ(ierr)
   call VecMax(solution,position,maxDamage,ierr); CHKERRQ(ierr)
-  if (spectral_damage_solution%converged) &
+  if (solution%converged) &
      write(6,'(/,a)') ' ... nonlocal damage converged .....................................'
    write(6,'(/,a,f8.6,2x,f8.6,2x,f8.6,/)',advance='no') ' Minimum|Maximum|Delta Damage      = ',&
                                                         minDamage, maxDamage, stagNorm
   write(6,'(/,a)') ' ==========================================================================='
   flush(6) 
 
-end function spectral_damage_solution
+end function grid_damage_spectral_solution
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forms the spectral damage residual vector
 !--------------------------------------------------------------------------------------------------
-subroutine spectral_damage_formResidual(in,x_scal,f_scal,dummy,ierr)
+subroutine grid_damage_spectral_formResidual(in,x_scal,f_scal,dummy,ierr)
  use numerics, only: &
    residualStiffness
  use mesh, only: &
@@ -252,7 +257,7 @@ subroutine spectral_damage_formResidual(in,x_scal,f_scal,dummy,ierr)
    f_scal
  PetscObject :: dummy
  PetscErrorCode :: ierr
- integer(pInt) :: i, j, k, cell
+ integer :: i, j, k, cell
  real(pReal)   :: phiDot, dPhiDot_dPhi, mobility
 
  damage_current = x_scal 
@@ -263,18 +268,18 @@ subroutine spectral_damage_formResidual(in,x_scal,f_scal,dummy,ierr)
  call utilities_FFTscalarForward()
  call utilities_fourierScalarGradient()                                                             !< calculate gradient of damage field
  call utilities_FFTvectorBackward()
- cell = 0_pInt
- do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid(1)
-   cell = cell + 1_pInt
+ cell = 0
+ do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
+   cell = cell + 1
    vectorField_real(1:3,i,j,k) = math_mul33x3(damage_nonlocal_getDiffusion33(1,cell) - D_ref, &
                                               vectorField_real(1:3,i,j,k))
  enddo; enddo; enddo
  call utilities_FFTvectorForward()
  call utilities_fourierVectorDivergence()                                                           !< calculate damage divergence in fourier field
  call utilities_FFTscalarBackward()
- cell = 0_pInt
- do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid(1)
-   cell = cell + 1_pInt
+ cell = 0
+ do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
+   cell = cell + 1
    call damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, damage_current(i,j,k), 1, cell)
    mobility = damage_nonlocal_getMobility(1,cell)
    scalarField_real(i,j,k) = params%timeinc*scalarField_real(i,j,k) + &
@@ -298,12 +303,12 @@ subroutine spectral_damage_formResidual(in,x_scal,f_scal,dummy,ierr)
 ! constructing residual
  f_scal = scalarField_real(1:grid(1),1:grid(2),1:grid3) - damage_current
 
-end subroutine spectral_damage_formResidual
+end subroutine grid_damage_spectral_formResidual
 
 !--------------------------------------------------------------------------------------------------
 !> @brief spectral damage forwarding routine
 !--------------------------------------------------------------------------------------------------
-subroutine spectral_damage_forward()
+subroutine grid_damage_spectral_forward()
  use mesh, only: &
    grid, &
    grid3
@@ -316,7 +321,7 @@ subroutine spectral_damage_forward()
    damage_nonlocal_getMobility
    
  implicit none
- integer(pInt)                               :: i, j, k, cell
+ integer                               :: i, j, k, cell
  DM :: dm_local
  PetscScalar,  dimension(:,:,:), pointer     :: x_scal
  PetscErrorCode                              :: ierr
@@ -326,24 +331,24 @@ subroutine spectral_damage_forward()
    damage_stagInc = damage_lastInc
 !--------------------------------------------------------------------------------------------------
 ! reverting damage field state 
-   cell = 0_pInt
+   cell = 0
    call SNESGetDM(damage_snes,dm_local,ierr); CHKERRQ(ierr)
-   call DMDAVecGetArrayF90(dm_local,solution,x_scal,ierr); CHKERRQ(ierr)                            !< get the data out of PETSc to work with
+   call DMDAVecGetArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)                            !< get the data out of PETSc to work with
    x_scal(xstart:xend,ystart:yend,zstart:zend) = damage_current
-   call DMDAVecRestoreArrayF90(dm_local,solution,x_scal,ierr); CHKERRQ(ierr)
-   do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid(1)
-     cell = cell + 1_pInt                                                                           
+   call DMDAVecRestoreArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)
+   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
+     cell = cell + 1                                                                           
      call damage_nonlocal_putNonLocalDamage(damage_current(i,j,k),1,cell)
    enddo; enddo; enddo
  else
 !--------------------------------------------------------------------------------------------------
 ! update rate and forward last inc
    damage_lastInc = damage_current
-   cell = 0_pInt
+   cell = 0
    D_ref = 0.0_pReal
    mobility_ref = 0.0_pReal
-   do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid(1)
-     cell = cell + 1_pInt
+   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
+     cell = cell + 1
      D_ref = D_ref + damage_nonlocal_getDiffusion33(1,cell)
      mobility_ref = mobility_ref + damage_nonlocal_getMobility(1,cell)
    enddo; enddo; enddo
@@ -353,6 +358,6 @@ subroutine spectral_damage_forward()
    call MPI_Allreduce(MPI_IN_PLACE,mobility_ref,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  endif  
 
-end subroutine spectral_damage_forward
+end subroutine grid_damage_spectral_forward
 
-end module spectral_damage
+end module grid_damage_spectral
