@@ -2272,38 +2272,41 @@ end function coordinateSystem_slip
 !--------------------------------------------------------------------------------------------------
 !> @brief Populates reduced interaction matrix
 !--------------------------------------------------------------------------------------------------
-function buildInteraction(activeA,activeB,maxA,maxB,values,matrix)
+function buildInteraction(acting_used,reacting_used,acting_max,reacting_max,values,matrix)
  use IO, only: &
    IO_error
 
  implicit none
  integer,     dimension(:),                       intent(in) :: &
-    activeA, &                                                                                      !< number of active systems as specified in material.config
-    activeB, &                                                                                      !< number of active systems as specified in material.config
-    maxA, &                                                                                         !< number of maximum available systems
-    maxB                                                                                            !< number of maximum available systems
- real(pReal), dimension(:),                       intent(in) :: values                              !< interaction values
- integer,     dimension(:,:),                     intent(in) :: matrix                              !< complete interaction matrix
- real(pReal), dimension(sum(activeA),sum(activeB))           :: buildInteraction
+    acting_used, &                                                                                 !< # of acting systems per family as specified in material.config
+    reacting_used, &                                                                               !< # of reacting systems per family as specified in material.config
+    acting_max, &
+    reacting_max
+ real(pReal), dimension(:),                       intent(in) :: values                             !< interaction values
+ integer,     dimension(:,:),                     intent(in) :: matrix                             !< interaction matrix
+ real(pReal), dimension(sum(acting_used),sum(reacting_used))           :: buildInteraction
 
  integer :: &
-   index_myFamily, index_otherFamily, &
-   mf, ms, of, os
+   acting_family_index, reacting_family_index, &
+   acting_family, acting_system, reacting_family, reacting_system
 
- myFamilies: do mf = 1,size(activeA,1)
-   index_myFamily = sum(activeA(1:mf-1))
-   mySystems: do ms = 1,activeA(mf)
+ do acting_family = 1,size(acting_used,1)
+   acting_family_index = sum(acting_used(1:acting_family-1))
+   do acting_system = 1,acting_used(acting_family)
 
-     otherFamilies: do of = 1,size(activeB,1)
-     index_otherFamily = sum(activeB(1:of-1))
-       otherSystems: do os = 1,activeB(of)
-         if(matrix(sum(maxA(1:mf-1))+ms, sum(maxB(1:of-1))+os) > size(values)) &
+     do reacting_family = 1,size(reacting_used,1)
+     reacting_family_index = sum(reacting_used(1:reacting_family-1))
+       do reacting_system = 1,reacting_used(reacting_family)
+       
+         if(matrix(sum(acting_max(1:acting_family-1))+acting_system, &
+                  sum(reacting_max(1:reacting_family-1))+reacting_system) > size(values)) &
            call IO_error(138,ext_msg='buildInteraction')
-         buildInteraction(index_myFamily+ms,index_otherFamily+os) = &
-                                       values(matrix(sum(maxA(1:mf-1))+ms, sum(maxB(1:of-1))+os))
-     enddo otherSystems; enddo otherFamilies;
+         buildInteraction(acting_family_index+acting_system,reacting_family_index+reacting_system) = &
+         values(matrix(sum(acting_max(1:acting_family-1))+acting_system, &
+         sum(reacting_max(1:reacting_family-1))+reacting_system))
+     enddo; enddo
 
- enddo mySystems;enddo myFamilies
+ enddo; enddo
 
 end function buildInteraction
 
