@@ -51,6 +51,10 @@ module config
    config_homogenization, &
    config_texture, &
    config_crystallite
+   
+  type(tPartitionedStringList), public, protected :: &
+   config_numerics, &
+   config_debug
  
  character(len=64), dimension(:), allocatable, public, protected :: &
    phase_name, &                                                                                    !< name of each phase
@@ -74,12 +78,13 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief reads material.config and stores its content per part
 !--------------------------------------------------------------------------------------------------
-subroutine config_init()
+subroutine config_init
  use prec, only: &
    pStringLen
  use DAMASK_interface, only: &
    getSolverJobName
  use IO, only: &
+   IO_read_ASCII, &
    IO_error, &
    IO_lc, &
    IO_getTag
@@ -103,10 +108,12 @@ subroutine config_init()
 
  inquire(file=trim(getSolverJobName())//'.materialConfig',exist=fileExists)
  if(fileExists) then
+   write(6,'(/,a)') ' reading '//trim(getSolverJobName())//'.materialConfig'; flush(6)
    fileContent = read_materialConfig(trim(getSolverJobName())//'.materialConfig')
  else
    inquire(file='material.config',exist=fileExists)
    if(.not. fileExists) call IO_error(100_pInt,ext_msg='material.config')
+   write(6,'(/,a)') ' reading material.config'; flush(6)
    fileContent = read_materialConfig('material.config')
  endif
 
@@ -147,6 +154,21 @@ subroutine config_init()
  if (size(config_crystallite)    < 1) call IO_error(160_pInt,ext_msg='<crystallite>')
  if (material_Nphase             < 1) call IO_error(160_pInt,ext_msg='<phase>')
  if (size(config_texture)        < 1) call IO_error(160_pInt,ext_msg='<texture>')
+ 
+ 
+  inquire(file='numerics.config', exist=fileExists)
+  if (fileExists) then
+    write(6,'(/,a)') ' reading numerics.config'; flush(6)
+    fileContent = IO_read_ASCII('numerics.config')
+    call parse_debugAndNumericsConfig(config_numerics,fileContent)
+  endif
+  
+  inquire(file='debug.config', exist=fileExists)
+  if (fileExists) then
+    write(6,'(/,a)') ' reading debug.config'; flush(6)
+    fileContent = IO_read_ASCII('debug.config')
+    call parse_debugAndNumericsConfig(config_debug,fileContent)
+  endif
 
 contains
 
@@ -160,14 +182,14 @@ recursive function read_materialConfig(fileName,cnt) result(fileContent)
     IO_warning
 
   implicit none
-  character(len=*),   intent(in)                :: fileName
-  integer(pInt),      intent(in), optional      :: cnt                                              !< recursion counter
-  character(len=256), dimension(:), allocatable :: fileContent                                      !< file content, separated per lines
-  character(len=256), dimension(:), allocatable :: includedContent
-  character(len=256)                            :: line
-  character(len=256), parameter                 :: dummy = 'https://damask.mpie.de'                 !< to fill up remaining array
+  character(len=*),          intent(in)                :: fileName
+  integer,                   intent(in), optional      :: cnt                                       !< recursion counter
+  character(len=pStringLen), dimension(:), allocatable :: fileContent                               !< file content, separated per lines
+  character(len=pStringLen), dimension(:), allocatable :: includedContent
+  character(len=pStringLen)                            :: line
+  character(len=pStringLen), parameter                 :: dummy = 'https://damask.mpie.de'          !< to fill up remaining array
   character(len=:),                 allocatable :: rawData
-  integer(pInt) ::  &
+  integer ::  &
     fileLength, &
     fileUnit, &
     startPos, endPos, &
@@ -196,8 +218,8 @@ recursive function read_materialConfig(fileName,cnt) result(fileContent)
 
 !--------------------------------------------------------------------------------------------------
 ! count lines to allocate string array
-  myTotalLines = 1_pInt
-  do l=1_pInt, len(rawData)
+  myTotalLines = 1
+  do l=1, len(rawData)
     if (rawData(l:l) == new_line('')) myTotalLines = myTotalLines+1
   enddo
   allocate(fileContent(myTotalLines))
@@ -205,27 +227,27 @@ recursive function read_materialConfig(fileName,cnt) result(fileContent)
 !--------------------------------------------------------------------------------------------------
 ! split raw data at end of line and handle includes
   warned = .false.
-  startPos = 1_pInt
-  l = 1_pInt
+  startPos = 1
+  l = 1
   do while (l <= myTotalLines)
-    endPos = merge(startPos + scan(rawData(startPos:),new_line('')) - 2_pInt,len(rawData),l /= myTotalLines)
-    if (endPos - startPos > 255_pInt) then
-      line = rawData(startPos:startPos+255_pInt)
+    endPos = merge(startPos + scan(rawData(startPos:),new_line('')) - 2,len(rawData),l /= myTotalLines)
+    if (endPos - startPos > pStringLen -1) then
+      line = rawData(startPos:startPos+pStringLen-1)
       if (.not. warned) then
-        call IO_warning(207_pInt,ext_msg=trim(fileName),el=l)
+        call IO_warning(207,ext_msg=trim(fileName),el=l)
         warned = .true.
       endif
     else
       line = rawData(startPos:endpos)
     endif
-    startPos = endPos + 2_pInt                                                                        ! jump to next line start
+    startPos = endPos + 2                                                                           ! jump to next line start
 
     recursion: if (scan(trim(adjustl(line)),'{') == 1 .and. scan(trim(line),'}') > 2) then
-      includedContent = read_materialConfig(trim(line(scan(line,'{')+1_pInt:scan(line,'}')-1_pInt)), &
-                        merge(cnt,1_pInt,present(cnt)))                                               ! to track recursion depth
-      fileContent     = [ fileContent(1:l-1_pInt), includedContent, [(dummy,i=1,myTotalLines-l)] ]    ! add content and grow array
-      myTotalLines    = myTotalLines - 1_pInt + size(includedContent)
-      l               = l            - 1_pInt + size(includedContent)
+      includedContent = read_materialConfig(trim(line(scan(line,'{')+1:scan(line,'}')-1)), &
+                        merge(cnt,1,present(cnt)))                                                  ! to track recursion depth
+      fileContent     = [ fileContent(1:l-1), includedContent, [(dummy,i=1,myTotalLines-l)] ]       ! add content and grow array
+      myTotalLines    = myTotalLines - 1 + size(includedContent)
+      l               = l            - 1 + size(includedContent)
     else recursion
       fileContent(l) = line
       l = l + 1_pInt
@@ -241,12 +263,6 @@ end function read_materialConfig
 !--------------------------------------------------------------------------------------------------
 subroutine parse_materialConfig(sectionNames,part,line, &
                                 fileContent)
- use prec, only: &
-   pStringLen
- use IO, only: &
-   IO_error, &
-   IO_getTag
-
  implicit none
  character(len=64),            allocatable, dimension(:), intent(out)   :: sectionNames
  type(tPartitionedStringList), allocatable, dimension(:), intent(inout) :: part
@@ -291,6 +307,23 @@ subroutine parse_materialConfig(sectionNames,part,line, &
 
 end subroutine parse_materialConfig
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief parses the material.config file
+!--------------------------------------------------------------------------------------------------
+subroutine parse_debugAndNumericsConfig(config_list, &
+                                        fileContent)
+ implicit none
+ type(tPartitionedStringList),              intent(out) :: config_list
+ character(len=pStringLen),   dimension(:), intent(in)  :: fileContent
+ integer :: i
+
+ do i = 1_pInt, size(fileContent)
+   call config_list%add(trim(adjustl(fileContent(i))))
+ enddo
+
+end subroutine parse_debugAndNumericsConfig
+
 end subroutine config_init
 
 
@@ -320,7 +353,13 @@ subroutine config_deallocate(what)
 
    case('material.config/texture')
      deallocate(config_texture)
-
+     
+   case('debug.config')
+     call config_debug%free
+     
+   case('numerics.config')
+     call config_numerics%free
+     
    case default
      call IO_error(0_pInt,ext_msg='config_deallocate')
 
