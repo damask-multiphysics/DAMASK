@@ -82,7 +82,6 @@ subroutine config_init()
  use IO, only: &
    IO_error, &
    IO_lc, &
-   IO_recursiveRead, &
    IO_getTag
  use debug, only: &
    debug_level, &
@@ -104,11 +103,11 @@ subroutine config_init()
 
  inquire(file=trim(getSolverJobName())//'.materialConfig',exist=fileExists)
  if(fileExists) then
-   fileContent = IO_recursiveRead(trim(getSolverJobName())//'.materialConfig')
+   fileContent = read_materialConfig(trim(getSolverJobName())//'.materialConfig')
  else
    inquire(file='material.config',exist=fileExists)
    if(.not. fileExists) call IO_error(100_pInt,ext_msg='material.config')
-   fileContent = IO_recursiveRead('material.config')
+   fileContent = read_materialConfig('material.config')
  endif
 
  do i = 1_pInt, size(fileContent)
@@ -117,23 +116,23 @@ subroutine config_init()
    select case (trim(part))
     
      case (trim('phase'))
-       call parseFile(phase_name,config_phase,line,fileContent(i+1:))
+       call parse_materialConfig(phase_name,config_phase,line,fileContent(i+1:))
        if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Phase          parsed'; flush(6)
     
      case (trim('microstructure'))
-       call parseFile(microstructure_name,config_microstructure,line,fileContent(i+1:))
+       call parse_materialConfig(microstructure_name,config_microstructure,line,fileContent(i+1:))
        if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Microstructure parsed'; flush(6)
     
      case (trim('crystallite'))
-       call parseFile(crystallite_name,config_crystallite,line,fileContent(i+1:))
+       call parse_materialConfig(crystallite_name,config_crystallite,line,fileContent(i+1:))
        if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Crystallite    parsed'; flush(6)
     
      case (trim('homogenization'))
-       call parseFile(homogenization_name,config_homogenization,line,fileContent(i+1:))
+       call parse_materialConfig(homogenization_name,config_homogenization,line,fileContent(i+1:))
        if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Homogenization parsed'; flush(6)
     
      case (trim('texture'))
-       call parseFile(texture_name,config_texture,line,fileContent(i+1:))
+       call parse_materialConfig(texture_name,config_texture,line,fileContent(i+1:))
        if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Texture        parsed'; flush(6)
 
    end select
@@ -149,14 +148,99 @@ subroutine config_init()
  if (material_Nphase             < 1) call IO_error(160_pInt,ext_msg='<phase>')
  if (size(config_texture)        < 1) call IO_error(160_pInt,ext_msg='<texture>')
 
-end subroutine config_init
+contains
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief reads material.config
+!!        Recursion is triggered by "{path/to/inputfile}" in a line
+!--------------------------------------------------------------------------------------------------
+recursive function read_materialConfig(fileName,cnt) result(fileContent)
+  use IO, only: &
+    IO_warning
+
+  implicit none
+  character(len=*),   intent(in)                :: fileName
+  integer(pInt),      intent(in), optional      :: cnt                                              !< recursion counter
+  character(len=256), dimension(:), allocatable :: fileContent                                      !< file content, separated per lines
+  character(len=256), dimension(:), allocatable :: includedContent
+  character(len=256)                            :: line
+  character(len=256), parameter                 :: dummy = 'https://damask.mpie.de'                 !< to fill up remaining array
+  character(len=:),                 allocatable :: rawData
+  integer(pInt) ::  &
+    fileLength, &
+    fileUnit, &
+    startPos, endPos, &
+    myTotalLines, &                                                                                 !< # lines read from file without include statements
+    l,i, &
+    myStat
+  logical :: warned
+  
+  if (present(cnt)) then
+    if (cnt>10_pInt) call IO_error(106_pInt,ext_msg=trim(fileName))
+  endif
+
+!--------------------------------------------------------------------------------------------------
+! read data as stream
+  inquire(file = fileName, size=fileLength)
+  if (fileLength == 0) then
+    allocate(fileContent(0))
+    return
+  endif
+  open(newunit=fileUnit, file=fileName, access='stream',&
+       status='old', position='rewind', action='read',iostat=myStat)
+  if(myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=trim(fileName))
+  allocate(character(len=fileLength)::rawData)
+  read(fileUnit) rawData
+  close(fileUnit)
+
+!--------------------------------------------------------------------------------------------------
+! count lines to allocate string array
+  myTotalLines = 1_pInt
+  do l=1_pInt, len(rawData)
+    if (rawData(l:l) == new_line('')) myTotalLines = myTotalLines+1
+  enddo
+  allocate(fileContent(myTotalLines))
+
+!--------------------------------------------------------------------------------------------------
+! split raw data at end of line and handle includes
+  warned = .false.
+  startPos = 1_pInt
+  l = 1_pInt
+  do while (l <= myTotalLines)
+    endPos = merge(startPos + scan(rawData(startPos:),new_line('')) - 2_pInt,len(rawData),l /= myTotalLines)
+    if (endPos - startPos > 255_pInt) then
+      line = rawData(startPos:startPos+255_pInt)
+      if (.not. warned) then
+        call IO_warning(207_pInt,ext_msg=trim(fileName),el=l)
+        warned = .true.
+      endif
+    else
+      line = rawData(startPos:endpos)
+    endif
+    startPos = endPos + 2_pInt                                                                        ! jump to next line start
+
+    recursion: if (scan(trim(adjustl(line)),'{') == 1 .and. scan(trim(line),'}') > 2) then
+      includedContent = read_materialConfig(trim(line(scan(line,'{')+1_pInt:scan(line,'}')-1_pInt)), &
+                        merge(cnt,1_pInt,present(cnt)))                                               ! to track recursion depth
+      fileContent     = [ fileContent(1:l-1_pInt), includedContent, [(dummy,i=1,myTotalLines-l)] ]    ! add content and grow array
+      myTotalLines    = myTotalLines - 1_pInt + size(includedContent)
+      l               = l            - 1_pInt + size(includedContent)
+    else recursion
+      fileContent(l) = line
+      l = l + 1_pInt
+    endif recursion
+
+  enddo
+
+end function read_materialConfig
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the material.config file
 !--------------------------------------------------------------------------------------------------
-subroutine parseFile(sectionNames,part,line, &
-                     fileContent)
+subroutine parse_materialConfig(sectionNames,part,line, &
+                                fileContent)
  use prec, only: &
    pStringLen
  use IO, only: &
@@ -205,7 +289,10 @@ subroutine parseFile(sectionNames,part,line, &
    endif
  enddo
 
-end subroutine parseFile
+end subroutine parse_materialConfig
+
+end subroutine config_init
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief deallocates the linked lists that store the content of the configuration files
