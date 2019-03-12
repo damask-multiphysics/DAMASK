@@ -2273,40 +2273,44 @@ end function coordinateSystem_slip
 !> @brief Populates reduced interaction matrix
 !--------------------------------------------------------------------------------------------------
 function buildInteraction(acting_used,reacting_used,acting_max,reacting_max,values,matrix)
- use IO, only: &
-   IO_error
-
- implicit none
- integer,     dimension(:),                       intent(in) :: &
-    acting_used, &                                                                                 !< # of acting systems per family as specified in material.config
-    reacting_used, &                                                                               !< # of reacting systems per family as specified in material.config
-    acting_max, &
-    reacting_max
- real(pReal), dimension(:),                       intent(in) :: values                             !< interaction values
- integer,     dimension(:,:),                     intent(in) :: matrix                             !< interaction matrix
- real(pReal), dimension(sum(acting_used),sum(reacting_used))           :: buildInteraction
-
- integer :: &
-   acting_family_index, reacting_family_index, &
-   acting_family, acting_system, reacting_family, reacting_system
-
- do acting_family = 1,size(acting_used,1)
-   acting_family_index = sum(acting_used(1:acting_family-1))
-   do acting_system = 1,acting_used(acting_family)
-
-     do reacting_family = 1,size(reacting_used,1)
-     reacting_family_index = sum(reacting_used(1:reacting_family-1))
-       do reacting_system = 1,reacting_used(reacting_family)
-       
-         if(matrix(sum(acting_max(1:acting_family-1))+acting_system, &
-                  sum(reacting_max(1:reacting_family-1))+reacting_system) > size(values)) &
-           call IO_error(138,ext_msg='buildInteraction')
-         buildInteraction(acting_family_index+acting_system,reacting_family_index+reacting_system) = &
-         values(matrix(sum(acting_max(1:acting_family-1))+acting_system, &
-         sum(reacting_max(1:reacting_family-1))+reacting_system))
-     enddo; enddo
-
- enddo; enddo
+  use IO, only: &
+    IO_error
+ 
+  implicit none
+  integer,     dimension(:),                                 intent(in) :: &
+     acting_used, &                                                                                 !< # of   acting systems per family as specified in material.config
+     reacting_used, &                                                                               !< # of reacting systems per family as specified in material.config
+     acting_max, &                                                                                  !< max # of   acting systems per family for given lattice
+     reacting_max                                                                                   !< max # of reacting systems per family for given lattice
+  real(pReal), dimension(:),                                 intent(in) :: values                   !< interaction values
+  integer,     dimension(:,:),                               intent(in) :: matrix                   !< interaction types
+  real(pReal), dimension(sum(acting_used),sum(reacting_used))           :: buildInteraction
+ 
+  integer :: &
+    acting_family_index,     acting_family,   acting_system, &
+    reacting_family_index, reacting_family, reacting_system, &
+    i,j,k,l
+ 
+  do acting_family = 1,size(acting_used,1)
+    acting_family_index = sum(acting_used(1:acting_family-1))
+    do acting_system = 1,acting_used(acting_family)
+ 
+      do reacting_family = 1,size(reacting_used,1)
+      reacting_family_index = sum(reacting_used(1:reacting_family-1))
+        do reacting_system = 1,reacting_used(reacting_family)
+          
+          i = sum(  acting_max(1:  acting_family-1)) +   acting_system
+          j = sum(reacting_max(1:reacting_family-1)) + reacting_system
+          
+          k =   acting_family_index +   acting_system
+          l = reacting_family_index + reacting_system
+          
+          if (matrix(i,j) > size(values)) call IO_error(138,ext_msg='buildInteraction')
+          
+          buildInteraction(k,l) = values(matrix(i,j))
+          
+      enddo; enddo
+  enddo; enddo
 
 end function buildInteraction
 
