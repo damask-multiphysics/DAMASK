@@ -4,7 +4,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Polarisation scheme solver
 !--------------------------------------------------------------------------------------------------
-module spectral_mech_Polarisation
+module grid_mech_spectral_polarisation
 #include <petsc/finclude/petscsnes.h>
 #include <petsc/finclude/petscdmda.h>
  use PETScdmda
@@ -22,7 +22,7 @@ module spectral_mech_Polarisation
  private
 
  character (len=*), parameter, public :: &
-   DAMASK_spectral_solverPolarisation_label = 'polarisation'
+   GRID_MECH_SPECTRAL_POLARISATION_LABEL = 'polarisation'
    
 !--------------------------------------------------------------------------------------------------
 ! derived types
@@ -70,16 +70,16 @@ module spectral_mech_Polarisation
    totalIter = 0_pInt                                                                               !< total iteration in current increment
  
  public :: &
-   Polarisation_init, &
-   Polarisation_solution, &
-   Polarisation_forward
+   grid_mech_spectral_polarisation_init, &
+   grid_mech_spectral_polarisation_solution, &
+   grid_mech_spectral_polarisation_forward
 
 contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all necessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
-subroutine Polarisation_init
+subroutine grid_mech_spectral_polarisation_init
  use IO, only: &
    IO_intOut, &
    IO_error, &
@@ -92,7 +92,8 @@ subroutine Polarisation_init
    restartInc
  use numerics, only: &
    worldrank, &
-   worldsize
+   worldsize, &
+   petsc_options
  use homogenization, only: &
    materialpoint_F0
  use DAMASK_interface, only: &
@@ -128,6 +129,13 @@ subroutine Polarisation_init
  write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2014.02.006'
 
 !--------------------------------------------------------------------------------------------------
+! set default and user defined options for PETSc
+ call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-mech_snes_type ngmres',ierr)
+ CHKERRQ(ierr)
+ call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
+ CHKERRQ(ierr)
+
+!--------------------------------------------------------------------------------------------------
 ! allocate global fields
  allocate (F_lastInc    (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
  allocate (Fdot         (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
@@ -154,9 +162,9 @@ subroutine Polarisation_init
  call DMsetFromOptions(da,ierr); CHKERRQ(ierr)
  call DMsetUp(da,ierr); CHKERRQ(ierr)
  call DMcreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                                     ! global solution vector (grid x 18, i.e. every def grad tensor)
- call DMDASNESsetFunctionLocal(da,INSERT_VALUES,Polarisation_formResidual,PETSC_NULL_SNES,ierr)     ! residual vector of same shape as solution vector
+ call DMDASNESsetFunctionLocal(da,INSERT_VALUES,formResidual,PETSC_NULL_SNES,ierr)     ! residual vector of same shape as solution vector
  CHKERRQ(ierr) 
- call SNESsetConvergenceTest(snes,Polarisation_converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr)  ! specify custom convergence check function "_converged"
+ call SNESsetConvergenceTest(snes,grid_mech_spectral_polarisation_converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr)  ! specify custom convergence check function "_converged"
  CHKERRQ(ierr)
  call SNESsetFromOptions(snes,ierr); CHKERRQ(ierr)                                                  ! pull it all together with additional CLI arguments
 
@@ -227,13 +235,13 @@ subroutine Polarisation_init
  C_scale = C_minMaxAvg
  S_scale = math_invSym3333(C_minMaxAvg)
  
-end subroutine Polarisation_init
+end subroutine grid_mech_spectral_polarisation_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the Polarisation scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-type(tSolutionState) function Polarisation_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation_BC)
+function grid_mech_spectral_polarisation_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation_BC) result(solution)
  use IO, only: &
    IO_error
  use numerics, only: &
@@ -255,12 +263,13 @@ type(tSolutionState) function Polarisation_solution(incInfoIn,timeinc,timeinc_ol
  character(len=*), intent(in) :: &
    incInfoIn
  real(pReal), intent(in) :: &
-   timeinc, &                                                                                       !< increment time for current solution
-   timeinc_old                                                                                      !< increment time of last successful increment
+   timeinc, &                                                                                       !< time increment of current solution
+   timeinc_old                                                                                      !< time increment of last successful increment
  type(tBoundaryCondition),    intent(in) :: &
    stress_BC
  real(pReal), dimension(3,3), intent(in) :: rotation_BC
- 
+ type(tSolutionState)                    :: &
+   solution
 !--------------------------------------------------------------------------------------------------
 ! PETSc Data
  PetscErrorCode :: ierr   
@@ -293,19 +302,19 @@ type(tSolutionState) function Polarisation_solution(incInfoIn,timeinc,timeinc_ol
 ! check convergence
  call SNESGetConvergedReason(snes,reason,ierr); CHKERRQ(ierr)
 
- Polarisation_solution%converged = reason > 0
- Polarisation_solution%iterationsNeeded = totalIter
- Polarisation_solution%termIll = terminallyIll
+ solution%converged = reason > 0
+ solution%iterationsNeeded = totalIter
+ solution%termIll = terminallyIll
  terminallyIll = .false.
  if (reason == -4) call IO_error(893_pInt)                                                         ! MPI error
 
-end function Polarisation_solution
+end function grid_mech_spectral_polarisation_solution
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forms the Polarisation residual vector
 !--------------------------------------------------------------------------------------------------
-subroutine Polarisation_formResidual(in, &                                                         ! DMDA info (needs to be named "in" for XRANGE, etc. macros to work)
+subroutine formResidual(in, &                                                         ! DMDA info (needs to be named "in" for XRANGE, etc. macros to work)
                                      FandF_tau, &                                                  ! defgrad fields on grid
                                      residuum, &                                                   ! residuum fields on grid
                                      dummy, &
@@ -449,13 +458,13 @@ subroutine Polarisation_formResidual(in, &                                      
  nullify(F_tau)
  nullify(residual_F)
  nullify(residual_F_tau)
-end subroutine Polarisation_formResidual
+end subroutine formResidual
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief convergence check
 !--------------------------------------------------------------------------------------------------
-subroutine Polarisation_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
+subroutine grid_mech_spectral_polarisation_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
  use numerics, only: &
    itmax, &
    itmin, &
@@ -521,14 +530,14 @@ subroutine Polarisation_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,
  write(6,'(/,a)') ' ==========================================================================='
  flush(6) 
 
-end subroutine Polarisation_converged
+end subroutine grid_mech_spectral_polarisation_converged
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forwarding routine
 !> @details find new boundary conditions and best F estimate for end of current timestep
 !> possibly writing restart information, triggering of state increment in DAMASK, and updating of IPcoordinates
 !--------------------------------------------------------------------------------------------------
-subroutine Polarisation_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,stress_BC,rotation_BC)
+subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,stress_BC,rotation_BC)
  use math, only: &
    math_mul33x33, &
    math_mul3333xx33, &
@@ -670,6 +679,6 @@ subroutine Polarisation_forward(guess,timeinc,timeinc_old,loadCaseTime,deformati
  nullify(F_tau)
  call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
 
-end subroutine Polarisation_forward
+end subroutine grid_mech_spectral_polarisation_forward
 
-end module spectral_mech_Polarisation
+end module grid_mech_spectral_polarisation

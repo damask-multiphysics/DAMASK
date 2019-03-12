@@ -72,7 +72,7 @@ program DAMASK_spectral
    FIELD_THERMAL_ID, &
    FIELD_DAMAGE_ID
  use grid_mech_spectral_basic
- use spectral_mech_Polarisation
+ use grid_mech_spectral_polarisation
  use grid_damage_spectral
  use grid_thermal_spectral
  use results
@@ -171,12 +171,12 @@ program DAMASK_spectral
      mech_forward  => grid_mech_spectral_basic_forward
      mech_solution => grid_mech_spectral_basic_solution
 
-   case (DAMASK_spectral_SolverPolarisation_label)
+   case (GRID_MECH_SPECTRAL_POLARISATION_LABEL)
      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
        call IO_warning(42_pInt, ext_msg='debug Divergence')
-     mech_init     => polarisation_init
-     mech_forward  => polarisation_forward
-     mech_solution => polarisation_solution
+     mech_init     => grid_mech_spectral_polarisation_init
+     mech_forward  => grid_mech_spectral_polarisation_forward
+     mech_solution => grid_mech_spectral_polarisation_solution
 
    case default
      call IO_error(error_ID = 891_pInt, ext_msg = trim(spectral_solver))
