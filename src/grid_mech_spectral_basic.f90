@@ -22,7 +22,7 @@ module grid_mech_spectral_basic
  private
 
  character (len=*), parameter, public :: &
-   GRID_MECH_SPECTRAL_BASIC_LABEL = 'spectral_basic'
+   GRID_MECH_SPECTRAL_BASIC_LABEL = 'basic'
    
 !--------------------------------------------------------------------------------------------------
 ! derived types
