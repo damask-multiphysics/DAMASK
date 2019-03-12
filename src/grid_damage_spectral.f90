@@ -41,11 +41,14 @@ module grid_damage_spectral
    grid_damage_spectral_init, &
    grid_damage_spectral_solution, &
    grid_damage_spectral_forward
+ private :: &
+   formResidual
 
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief allocates all neccessary fields and fills them with data, potentially from restart info
+!> @brief allocates all neccessary fields and fills them with data
+! ToDo: Restart not implemented
 !--------------------------------------------------------------------------------------------------
 subroutine grid_damage_spectral_init
   use IO, only: &
@@ -103,7 +106,7 @@ subroutine grid_damage_spectral_init
   call DMsetFromOptions(damage_grid,ierr); CHKERRQ(ierr)
   call DMsetUp(damage_grid,ierr); CHKERRQ(ierr)
   call DMCreateGlobalVector(damage_grid,solution_vec,ierr); CHKERRQ(ierr)                               !< global solution vector (grid x 1, i.e. every def grad tensor)
-  call DMDASNESSetFunctionLocal(damage_grid,INSERT_VALUES,grid_damage_spectral_formResidual,&
+  call DMDASNESSetFunctionLocal(damage_grid,INSERT_VALUES,formResidual,&
                                                                              PETSC_NULL_SNES,ierr)  !< residual vector of same shape as solution vector
   CHKERRQ(ierr) 
   call SNESSetFromOptions(damage_snes,ierr); CHKERRQ(ierr)                                          !< pull it all together with additional CLI arguments
@@ -208,8 +211,8 @@ function grid_damage_spectral_solution(timeinc,timeinc_old,loadCaseTime) result(
     call damage_nonlocal_putNonLocalDamage(damage_current(i,j,k),1,cell)
   enddo; enddo; enddo
  
-  call VecMin(solution,position,minDamage,ierr); CHKERRQ(ierr)
-  call VecMax(solution,position,maxDamage,ierr); CHKERRQ(ierr)
+  call VecMin(solution_vec,position,minDamage,ierr); CHKERRQ(ierr)
+  call VecMax(solution_vec,position,maxDamage,ierr); CHKERRQ(ierr)
   if (solution%converged) &
      write(6,'(/,a)') ' ... nonlocal damage converged .....................................'
    write(6,'(/,a,f8.6,2x,f8.6,2x,f8.6,/)',advance='no') ' Minimum|Maximum|Delta Damage      = ',&
@@ -221,9 +224,65 @@ end function grid_damage_spectral_solution
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief spectral damage forwarding routine
+!--------------------------------------------------------------------------------------------------
+subroutine grid_damage_spectral_forward()
+ use mesh, only: &
+   grid, &
+   grid3
+ use spectral_utilities, only: &
+   cutBack, &
+   wgt
+ use damage_nonlocal, only: &
+   damage_nonlocal_putNonLocalDamage, &
+   damage_nonlocal_getDiffusion33, &
+   damage_nonlocal_getMobility
+   
+ implicit none
+ integer                               :: i, j, k, cell
+ DM :: dm_local
+ PetscScalar,  dimension(:,:,:), pointer     :: x_scal
+ PetscErrorCode                              :: ierr
+
+ if (cutBack) then 
+   damage_current = damage_lastInc
+   damage_stagInc = damage_lastInc
+!--------------------------------------------------------------------------------------------------
+! reverting damage field state 
+   cell = 0
+   call SNESGetDM(damage_snes,dm_local,ierr); CHKERRQ(ierr)
+   call DMDAVecGetArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)                            !< get the data out of PETSc to work with
+   x_scal(xstart:xend,ystart:yend,zstart:zend) = damage_current
+   call DMDAVecRestoreArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)
+   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
+     cell = cell + 1                                                                           
+     call damage_nonlocal_putNonLocalDamage(damage_current(i,j,k),1,cell)
+   enddo; enddo; enddo
+ else
+!--------------------------------------------------------------------------------------------------
+! update rate and forward last inc
+   damage_lastInc = damage_current
+   cell = 0
+   D_ref = 0.0_pReal
+   mobility_ref = 0.0_pReal
+   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
+     cell = cell + 1
+     D_ref = D_ref + damage_nonlocal_getDiffusion33(1,cell)
+     mobility_ref = mobility_ref + damage_nonlocal_getMobility(1,cell)
+   enddo; enddo; enddo
+   D_ref = D_ref*wgt
+   call MPI_Allreduce(MPI_IN_PLACE,D_ref,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
+   mobility_ref = mobility_ref*wgt
+   call MPI_Allreduce(MPI_IN_PLACE,mobility_ref,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
+ endif  
+
+end subroutine grid_damage_spectral_forward
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief forms the spectral damage residual vector
 !--------------------------------------------------------------------------------------------------
-subroutine grid_damage_spectral_formResidual(in,x_scal,f_scal,dummy,ierr)
+subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
  use numerics, only: &
    residualStiffness
  use mesh, only: &
@@ -295,69 +354,15 @@ subroutine grid_damage_spectral_formResidual(in,x_scal,f_scal,dummy,ierr)
  call utilities_fourierGreenConvolution(D_ref, mobility_ref, params%timeinc)
  call utilities_FFTscalarBackward()
  where(scalarField_real(1:grid(1),1:grid(2),1:grid3) > damage_lastInc) &
-   scalarField_real(1:grid(1),1:grid(2),1:grid3) = damage_lastInc
+       scalarField_real(1:grid(1),1:grid(2),1:grid3) = damage_lastInc
  where(scalarField_real(1:grid(1),1:grid(2),1:grid3) < residualStiffness) &
-   scalarField_real(1:grid(1),1:grid(2),1:grid3) = residualStiffness
+       scalarField_real(1:grid(1),1:grid(2),1:grid3) = residualStiffness
  
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
  f_scal = scalarField_real(1:grid(1),1:grid(2),1:grid3) - damage_current
 
-end subroutine grid_damage_spectral_formResidual
+end subroutine formResidual
 
-!--------------------------------------------------------------------------------------------------
-!> @brief spectral damage forwarding routine
-!--------------------------------------------------------------------------------------------------
-subroutine grid_damage_spectral_forward()
- use mesh, only: &
-   grid, &
-   grid3
- use spectral_utilities, only: &
-   cutBack, &
-   wgt
- use damage_nonlocal, only: &
-   damage_nonlocal_putNonLocalDamage, &
-   damage_nonlocal_getDiffusion33, &
-   damage_nonlocal_getMobility
-   
- implicit none
- integer                               :: i, j, k, cell
- DM :: dm_local
- PetscScalar,  dimension(:,:,:), pointer     :: x_scal
- PetscErrorCode                              :: ierr
-
- if (cutBack) then 
-   damage_current = damage_lastInc
-   damage_stagInc = damage_lastInc
-!--------------------------------------------------------------------------------------------------
-! reverting damage field state 
-   cell = 0
-   call SNESGetDM(damage_snes,dm_local,ierr); CHKERRQ(ierr)
-   call DMDAVecGetArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)                            !< get the data out of PETSc to work with
-   x_scal(xstart:xend,ystart:yend,zstart:zend) = damage_current
-   call DMDAVecRestoreArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)
-   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
-     cell = cell + 1                                                                           
-     call damage_nonlocal_putNonLocalDamage(damage_current(i,j,k),1,cell)
-   enddo; enddo; enddo
- else
-!--------------------------------------------------------------------------------------------------
-! update rate and forward last inc
-   damage_lastInc = damage_current
-   cell = 0
-   D_ref = 0.0_pReal
-   mobility_ref = 0.0_pReal
-   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
-     cell = cell + 1
-     D_ref = D_ref + damage_nonlocal_getDiffusion33(1,cell)
-     mobility_ref = mobility_ref + damage_nonlocal_getMobility(1,cell)
-   enddo; enddo; enddo
-   D_ref = D_ref*wgt
-   call MPI_Allreduce(MPI_IN_PLACE,D_ref,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-   mobility_ref = mobility_ref*wgt
-   call MPI_Allreduce(MPI_IN_PLACE,mobility_ref,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
- endif  
-
-end subroutine grid_damage_spectral_forward
 
 end module grid_damage_spectral
