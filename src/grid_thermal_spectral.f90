@@ -41,11 +41,14 @@ module grid_thermal_spectral
    grid_thermal_spectral_init, &
    grid_thermal_spectral_solution, &
    grid_thermal_spectral_forward
+ private :: &
+  formResidual
 
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief allocates all neccessary fields and fills them with data, potentially from restart info
+!> @brief allocates all neccessary fields and fills them with data
+! ToDo: Restart not implemented
 !--------------------------------------------------------------------------------------------------
 subroutine grid_thermal_spectral_init
   use spectral_utilities, only: &
@@ -105,8 +108,7 @@ subroutine grid_thermal_spectral_init
   call DMsetFromOptions(thermal_grid,ierr); CHKERRQ(ierr)
   call DMsetUp(thermal_grid,ierr); CHKERRQ(ierr)
   call DMCreateGlobalVector(thermal_grid,solution_vec,ierr); CHKERRQ(ierr)                          ! global solution vector (grid x 1, i.e. every def grad tensor)
-  call DMDASNESSetFunctionLocal(thermal_grid,INSERT_VALUES,grid_thermal_spectral_formResidual,&
-                                                                             PETSC_NULL_SNES,ierr)  ! residual vector of same shape as solution vector
+  call DMDASNESSetFunctionLocal(thermal_grid,INSERT_VALUES,formResidual,PETSC_NULL_SNES,ierr)       ! residual vector of same shape as solution vector
   CHKERRQ(ierr) 
   call SNESSetFromOptions(thermal_snes,ierr); CHKERRQ(ierr)                                         ! pull it all together with additional CLI arguments
 
@@ -225,9 +227,71 @@ end function grid_thermal_spectral_solution
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief forwarding routine
+!--------------------------------------------------------------------------------------------------
+subroutine grid_thermal_spectral_forward()
+ use mesh, only: &
+   grid, &
+   grid3
+ use spectral_utilities, only: &
+   cutBack, &
+   wgt
+ use thermal_conduction, only: &
+   thermal_conduction_putTemperatureAndItsRate, &
+   thermal_conduction_getConductivity33, &
+   thermal_conduction_getMassDensity, &
+   thermal_conduction_getSpecificHeat
+   
+ implicit none
+ integer :: i, j, k, cell
+ DM :: dm_local
+ PetscScalar,  dimension(:,:,:), pointer :: x_scal
+ PetscErrorCode :: ierr
+ 
+ if (cutBack) then 
+   temperature_current = temperature_lastInc
+   temperature_stagInc = temperature_lastInc
+
+!--------------------------------------------------------------------------------------------------
+! reverting thermal field state 
+   cell = 0
+   call SNESGetDM(thermal_snes,dm_local,ierr); CHKERRQ(ierr)
+   call DMDAVecGetArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)                        !< get the data out of PETSc to work with
+   x_scal(xstart:xend,ystart:yend,zstart:zend) = temperature_current
+   call DMDAVecRestoreArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)
+   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
+     cell = cell + 1
+     call thermal_conduction_putTemperatureAndItsRate(temperature_current(i,j,k), &
+                                                      (temperature_current(i,j,k) - &
+                                                       temperature_lastInc(i,j,k))/params%timeinc, &
+                                                      1,cell)
+   enddo; enddo; enddo
+ else
+!--------------------------------------------------------------------------------------------------
+! update rate and forward last inc
+   temperature_lastInc = temperature_current
+   cell = 0
+   D_ref = 0.0_pReal
+   mobility_ref = 0.0_pReal
+   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
+     cell = cell + 1
+     D_ref = D_ref + thermal_conduction_getConductivity33(1,cell)
+     mobility_ref = mobility_ref + thermal_conduction_getMassDensity(1,cell)* &
+                                   thermal_conduction_getSpecificHeat(1,cell)
+   enddo; enddo; enddo
+   D_ref = D_ref*wgt
+   call MPI_Allreduce(MPI_IN_PLACE,D_ref,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
+   mobility_ref = mobility_ref*wgt
+   call MPI_Allreduce(MPI_IN_PLACE,mobility_ref,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
+ endif
+ 
+end subroutine grid_thermal_spectral_forward
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief forms the spectral thermal residual vector
 !--------------------------------------------------------------------------------------------------
-subroutine grid_thermal_spectral_formResidual(in,x_scal,f_scal,dummy,ierr)
+subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
  use mesh, only: &
    grid, &
    grid3
@@ -302,68 +366,6 @@ subroutine grid_thermal_spectral_formResidual(in,x_scal,f_scal,dummy,ierr)
 ! constructing residual
  f_scal = temperature_current - scalarField_real(1:grid(1),1:grid(2),1:grid3)
 
-end subroutine grid_thermal_spectral_formResidual
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief forwarding routine
-!--------------------------------------------------------------------------------------------------
-subroutine grid_thermal_spectral_forward()
- use mesh, only: &
-   grid, &
-   grid3
- use spectral_utilities, only: &
-   cutBack, &
-   wgt
- use thermal_conduction, only: &
-   thermal_conduction_putTemperatureAndItsRate, &
-   thermal_conduction_getConductivity33, &
-   thermal_conduction_getMassDensity, &
-   thermal_conduction_getSpecificHeat
-   
- implicit none
- integer :: i, j, k, cell
- DM :: dm_local
- PetscScalar,  dimension(:,:,:), pointer :: x_scal
- PetscErrorCode :: ierr
- 
- if (cutBack) then 
-   temperature_current = temperature_lastInc
-   temperature_stagInc = temperature_lastInc
-
-!--------------------------------------------------------------------------------------------------
-! reverting thermal field state 
-   cell = 0
-   call SNESGetDM(thermal_snes,dm_local,ierr); CHKERRQ(ierr)
-   call DMDAVecGetArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)                              !< get the data out of PETSc to work with
-   x_scal(xstart:xend,ystart:yend,zstart:zend) = temperature_current
-   call DMDAVecRestoreArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)
-   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
-     cell = cell + 1
-     call thermal_conduction_putTemperatureAndItsRate(temperature_current(i,j,k), &
-                                                      (temperature_current(i,j,k) - &
-                                                       temperature_lastInc(i,j,k))/params%timeinc, &
-                                                      1,cell)
-   enddo; enddo; enddo
- else
-!--------------------------------------------------------------------------------------------------
-! update rate and forward last inc
-   temperature_lastInc = temperature_current
-   cell = 0
-   D_ref = 0.0_pReal
-   mobility_ref = 0.0_pReal
-   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
-     cell = cell + 1
-     D_ref = D_ref + thermal_conduction_getConductivity33(1,cell)
-     mobility_ref = mobility_ref + thermal_conduction_getMassDensity(1,cell)* &
-                                   thermal_conduction_getSpecificHeat(1,cell)
-   enddo; enddo; enddo
-   D_ref = D_ref*wgt
-   call MPI_Allreduce(MPI_IN_PLACE,D_ref,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-   mobility_ref = mobility_ref*wgt
-   call MPI_Allreduce(MPI_IN_PLACE,mobility_ref,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
- endif
- 
-end subroutine grid_thermal_spectral_forward
+end subroutine formResidual
 
 end module grid_thermal_spectral

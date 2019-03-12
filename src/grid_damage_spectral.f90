@@ -364,5 +364,4 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
 
 end subroutine formResidual
 
-
 end module grid_damage_spectral
