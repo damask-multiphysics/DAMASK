@@ -2,14 +2,14 @@
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Basic scheme solver
+!> @brief Grid solver for mechanics: Spectral basic
 !--------------------------------------------------------------------------------------------------
-module spectral_mech_basic
+module grid_mech_spectral_basic
 #include <petsc/finclude/petscsnes.h>
 #include <petsc/finclude/petscdmda.h>
  use PETScdmda
  use PETScsnes
- use prec, only: & 
+ use prec, only: &
    pInt, &
    pReal
  use math, only: &
@@ -22,7 +22,7 @@ module spectral_mech_basic
  private
 
  character (len=*), parameter, public :: &
-   DAMASK_spectral_SolverBasic_label = 'basic'
+   GRID_MECH_SPECTRAL_BASIC_LABEL = 'spectral_basic'
    
 !--------------------------------------------------------------------------------------------------
 ! derived types
@@ -63,16 +63,16 @@ module spectral_mech_basic
    totalIter = 0_pInt                                                                               !< total iteration in current increment
 
  public :: &
-   basic_init, &
-   basic_solution, &
-   basic_forward
+   grid_mech_spectral_basic_init, &
+   grid_mech_spectral_basic_solution, &
+   grid_mech_spectral_basic_forward
 
 contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all necessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
-subroutine basic_init
+subroutine grid_mech_spectral_basic_init
  use IO, only: &
    IO_intOut, &
    IO_error, &
@@ -85,15 +85,16 @@ subroutine basic_init
    restartInc
  use numerics, only: &
    worldrank, &
-   worldsize
+   worldsize, &
+   petsc_options
  use homogenization, only: &
    materialpoint_F0
  use DAMASK_interface, only: &
    getSolverJobName
  use spectral_utilities, only: &
-   Utilities_constitutiveResponse, &
-   Utilities_updateGamma, &
-   Utilities_updateIPcoords, &
+   utilities_constitutiveResponse, &
+   utilities_updateGamma, &
+   utilities_updateIPcoords, &
    wgt
  use mesh, only: &
    grid, &
@@ -111,14 +112,21 @@ subroutine basic_init
  PetscInt, dimension(worldsize) :: localK  
  integer :: fileUnit
  character(len=1024) :: rankStr
- 
- write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasic init  -+>>>'
+
+ write(6,'(/,a)') ' <<<+-  grid_mech_spectral_basic init  -+>>>'
 
  write(6,'(/,a)') ' Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013'
  write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2012.09.012'
 
  write(6,'(/,a)') ' Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
  write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2014.02.006'
+
+!--------------------------------------------------------------------------------------------------
+! set default and user defined options for PETSc
+ call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-mech_snes_type ngmres',ierr)
+ CHKERRQ(ierr)
+ call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
+ CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
@@ -145,9 +153,9 @@ subroutine basic_init
  call DMsetFromOptions(da,ierr); CHKERRQ(ierr)
  call DMsetUp(da,ierr); CHKERRQ(ierr)
  call DMcreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                                     ! global solution vector (grid x 9, i.e. every def grad tensor)
- call DMDASNESsetFunctionLocal(da,INSERT_VALUES,Basic_formResidual,PETSC_NULL_SNES,ierr)            ! residual vector of same shape as solution vector
+ call DMDASNESsetFunctionLocal(da,INSERT_VALUES,grid_mech_spectral_basic_formResidual,PETSC_NULL_SNES,ierr)            ! residual vector of same shape as solution vector
  CHKERRQ(ierr) 
- call SNESsetConvergenceTest(snes,Basic_converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr)         ! specify custom convergence check function "_converged"
+ call SNESsetConvergenceTest(snes,grid_mech_spectral_basic_converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr)         ! specify custom convergence check function "_converged"
  CHKERRQ(ierr)
  call SNESsetFromOptions(snes,ierr); CHKERRQ(ierr)                                                  ! pull it all together with additional CLI arguments
 
@@ -192,8 +200,8 @@ subroutine basic_init
  call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                 ! write data back to PETSc
                                                                                                     ! QUESTION: why not writing back right after reading (l.189)?
 
- restartRead: if (restartInc > 0_pInt) then                                                         ! QUESTION: are those values not calc'ed by constitutiveResponse? why reading from file?
-   if (iand(debug_level(debug_spectral),debug_spectralRestart) /= 0 .and. worldrank == 0_pInt) &
+ restartRead: if (restartInc > 0_pInt) then
+   if (iand(debug_level(debug_spectral),debug_spectralRestart) /= 0) &
      write(6,'(/,a,'//IO_intOut(restartInc)//',a)') &
      'reading more values of increment ', restartInc, ' from file'
    flush(6)
@@ -207,20 +215,19 @@ subroutine basic_init
 
  call Utilities_updateGamma(C_minMaxAvg,.true.)
 
-end subroutine basic_init
+end subroutine grid_mech_spectral_basic_init
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the Basic scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-type(tSolutionState) function basic_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation_BC)
- use IO, only: &
-   IO_error
+function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation_BC) result(solution)
  use numerics, only: &
    update_gamma
  use spectral_utilities, only: &
    tBoundaryCondition, &
-   Utilities_maskedCompliance, &
-   Utilities_updateGamma
+   utilities_maskedCompliance, &
+   utilities_updateGamma
  use FEsolving, only: &
    restartWrite, &
    terminallyIll
@@ -232,15 +239,17 @@ type(tSolutionState) function basic_solution(incInfoIn,timeinc,timeinc_old,stres
  character(len=*),            intent(in) :: &
    incInfoIn
  real(pReal),                 intent(in) :: &
-   timeinc, &                                                                                       !< increment time for current solution
-   timeinc_old                                                                                      !< increment time of last successful increment
+   timeinc, &                                                                                       !< time increment of current solution
+   timeinc_old                                                                                      !< time increment of last successful increment
  type(tBoundaryCondition),    intent(in) :: &
    stress_BC
  real(pReal), dimension(3,3), intent(in) :: rotation_BC
+ type(tSolutionState)                    :: &
+   solution
  
 !--------------------------------------------------------------------------------------------------
 ! PETSc Data
- PetscErrorCode :: ierr   
+ PetscErrorCode :: ierr
  SNESConvergedReason :: reason
 
  incInfo = incInfoIn
@@ -250,9 +259,8 @@ type(tSolutionState) function basic_solution(incInfoIn,timeinc,timeinc_old,stres
  S = Utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
  if (update_gamma) call Utilities_updateGamma(C_minMaxAvg,restartWrite)
  
-
 !--------------------------------------------------------------------------------------------------
-! set module wide availabe data
+! set module wide available data 
  params%stress_mask = stress_BC%maskFloat
  params%stress_BC   = stress_BC%values
  params%rotation_BC = rotation_BC
@@ -267,19 +275,19 @@ type(tSolutionState) function basic_solution(incInfoIn,timeinc,timeinc_old,stres
 ! check convergence
  call SNESGetConvergedReason(snes,reason,ierr); CHKERRQ(ierr)
  
- basic_solution%converged = reason > 0
- basic_solution%iterationsNeeded = totalIter
- basic_solution%termIll = terminallyIll
+ solution%converged = reason > 0
+ solution%iterationsNeeded = totalIter
+ solution%termIll = terminallyIll
  terminallyIll = .false.
- if (reason == -4) call IO_error(893_pInt)                                                         ! MPI error
 
-end function basic_solution
+
+end function grid_mech_spectral_basic_solution
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forms the basic residual vector
 !--------------------------------------------------------------------------------------------------
-subroutine Basic_formResidual(in, &                                                                ! DMDA info (needs to be named "in" for XRANGE, etc. macros to work)
+subroutine grid_mech_spectral_basic_formResidual(in, &                                             ! DMDA info (needs to be named "in" for XRANGE, etc. macros to work)
                               F, &                                                                 ! defgrad field on grid
                               residuum, &                                                          ! residuum field on grid
                               dummy, &
@@ -302,8 +310,8 @@ subroutine Basic_formResidual(in, &                                             
    utilities_FFTtensorForward, &
    utilities_fourierGammaConvolution, &
    utilities_FFTtensorBackward, &
-   Utilities_constitutiveResponse, &
-   Utilities_divergenceRMS
+   utilities_constitutiveResponse, &
+   utilities_divergenceRMS
  use IO, only: &
    IO_intOut 
  use FEsolving, only: &
@@ -315,13 +323,13 @@ subroutine Basic_formResidual(in, &                                             
    dimension(3,3, XG_RANGE,YG_RANGE,ZG_RANGE), intent(in) :: F
  PetscScalar, &
    dimension(3,3, X_RANGE,Y_RANGE,Z_RANGE),   intent(out) :: residuum
+ real(pReal), dimension(3,3) :: &
+   deltaF_aim
  PetscInt :: &
    PETScIter, &
    nfuncs
  PetscObject :: dummy
  PetscErrorCode :: ierr
- real(pReal), dimension(3,3) :: &
-   deltaF_aim
 
  call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
  call SNESGetIterationNumber(snes,PETScIter,ierr); CHKERRQ(ierr)
@@ -367,13 +375,13 @@ subroutine Basic_formResidual(in, &                                             
 ! constructing residual
  residuum = tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3)                                   ! Gamma*P gives correction towards div(P) = 0, so needs to be zero, too
 
-end subroutine Basic_formResidual
+end subroutine grid_mech_spectral_basic_formResidual
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief convergence check
 !--------------------------------------------------------------------------------------------------
-subroutine Basic_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
+subroutine grid_mech_spectral_basic_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
  use numerics, only: &
    itmax, &
    itmin, &
@@ -420,21 +428,21 @@ subroutine Basic_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,i
  write(6,'(a,f12.2,a,es8.2,a,es9.2,a)')    ' error stress BC  = ', &
          err_BC/BCTol,    ' (',err_BC, ' Pa,  tol = ',BCTol,')' 
  write(6,'(/,a)') ' ==========================================================================='
-flush(6) 
+ flush(6) 
  
-end subroutine Basic_converged
+end subroutine grid_mech_spectral_basic_converged
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forwarding routine
 !> @details find new boundary conditions and best F estimate for end of current timestep
 !> possibly writing restart information, triggering of state increment in DAMASK, and updating of IPcoordinates
 !--------------------------------------------------------------------------------------------------
-subroutine Basic_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,stress_BC,rotation_BC)
+subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,stress_BC,rotation_BC)
   use math, only: &
     math_mul33x33 ,&
     math_rotate_backward33
   use numerics, only: &
-    worldrank 
+    worldrank
   use homogenization, only: &
     materialpoint_F0
   use mesh, only: &
@@ -443,9 +451,9 @@ subroutine Basic_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,s
   use CPFEM2, only: &
     CPFEM_age
   use spectral_utilities, only: &
-    Utilities_calculateRate, &
-    Utilities_forwardField, &
-    Utilities_updateIPcoords, &
+    utilities_calculateRate, &
+    utilities_forwardField, &
+    utilities_updateIPcoords, &
     tBoundaryCondition, &
     cutBack
   use IO, only: &
@@ -465,7 +473,7 @@ subroutine Basic_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,s
     deformation_BC
   real(pReal), dimension(3,3), intent(in) :: &
     rotation_BC
-  PetscErrorCode :: ierr 
+  PetscErrorCode :: ierr
   PetscScalar, dimension(:,:,:,:), pointer :: F
   
   integer :: fileUnit
@@ -536,6 +544,6 @@ subroutine Basic_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,s
               math_rotate_backward33(F_aim,rotation_BC)),[9,grid(1),grid(2),grid3])
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
   
-end subroutine Basic_forward
+end subroutine grid_mech_spectral_basic_forward
 
-end module spectral_mech_basic
+end module grid_mech_spectral_basic

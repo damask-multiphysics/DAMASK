@@ -71,7 +71,7 @@ program DAMASK_spectral
    FIELD_MECH_ID, &
    FIELD_THERMAL_ID, &
    FIELD_DAMAGE_ID
- use spectral_mech_Basic
+ use grid_mech_spectral_basic
  use spectral_mech_Polarisation
  use grid_damage_spectral
  use grid_thermal_spectral
@@ -135,11 +135,11 @@ program DAMASK_spectral
  integer(pInt), parameter :: maxRealOut = maxByteOut/pReal
  integer(pLongInt), dimension(2) :: outputIndex
  PetscErrorCode :: ierr
- procedure(basic_init), pointer :: &
+ procedure(grid_mech_spectral_basic_init), pointer :: &
    mech_init
- procedure(basic_forward), pointer :: &
+ procedure(grid_mech_spectral_basic_forward), pointer :: &
    mech_forward
- procedure(basic_solution), pointer :: &
+ procedure(grid_mech_spectral_basic_solution), pointer :: &
    mech_solution
 
  external :: &
@@ -166,10 +166,10 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! assign mechanics solver depending on selected type
  select case (spectral_solver)
-   case (DAMASK_spectral_SolverBasic_label)
-     mech_init     => basic_init
-     mech_forward  => basic_forward
-     mech_solution => basic_solution
+   case (GRID_MECH_SPECTRAL_BASIC_LABEL)
+     mech_init     => grid_mech_spectral_basic_init
+     mech_forward  => grid_mech_spectral_basic_forward
+     mech_solution => grid_mech_spectral_basic_solution
 
    case (DAMASK_spectral_SolverPolarisation_label)
      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
