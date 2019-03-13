@@ -7,8 +7,7 @@
 !--------------------------------------------------------------------------------------------------
 module config
  use prec, only: &
-   pReal, &
-   pInt
+   pReal
 
  implicit none
  private 

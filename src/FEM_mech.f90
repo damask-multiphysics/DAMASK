@@ -14,10 +14,7 @@ module FEM_mech
  use PETScDMplex
  use PETScDT
  use prec, only: & 
-   pInt, &
    pReal
- use math, only: &
-   math_I3
  use FEM_utilities, only: &
    tSolutionState, &
    tFieldBC, &
@@ -88,8 +85,8 @@ subroutine FEM_mech_init(fieldBC)
  PetscDS                                :: mechDS
  PetscDualSpace                         :: mechDualSpace
  DMLabel                                :: BCLabel
- PetscInt,          allocatable, target :: numComp(:), numDoF(:), bcField(:)
- PetscInt,                      pointer :: pNumComp(:), pNumDof(:), pBcField(:), pBcPoint(:)
+ PetscInt,  dimension(:),        allocatable, target :: numComp, numDoF, bcField
+ PetscInt,  dimension(:),                     pointer :: pNumComp, pNumDof, pBcField, pBcPoint
  PetscInt                               :: numBC, bcSize, nc
  IS                                     :: bcPoint
  IS,                allocatable, target :: bcComps(:), bcPoints(:)
@@ -467,20 +464,20 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
  PetscReal                            :: detJ, IcellJMat(dimPlex,dimPlex)
  PetscReal,                    target :: v0(dimPlex), cellJ(dimPlex*dimPlex), &
                                                       invcellJ(dimPlex*dimPlex)
- PetscReal,                   pointer :: pV0(:), pCellJ(:), pInvcellJ(:)
- PetscReal,   dimension(:),   pointer :: basisField, basisFieldDer
+ PetscReal,   dimension(:),   pointer :: basisField, basisFieldDer, &
+                                         pV0, pCellJ, pInvcellJ
  PetscInt                             :: cellStart, cellEnd, cell, field, face, &
                                          qPt, basis, comp, cidx
- PetscScalar,                  target :: K_e   (cellDof,cellDof), &
-                                         K_eA  (cellDof,cellDof), &  
-                                         K_eB  (cellDof,cellDof), &  
-                                         K_eVec(cellDof*cellDof)
+ PetscScalar,dimension(cellDOF,cellDOF),  target :: K_e, &
+                                         K_eA  , &  
+                                         K_eB  
+ PetscScalar,                  target :: K_eVec(cellDof*cellDof)
  PetscReal                            :: BMat   (dimPlex*dimPlex,cellDof), &
                                          BMatAvg(dimPlex*dimPlex,cellDof), &
                                          MatA   (dimPlex*dimPlex,cellDof), &
                                          MatB   (1              ,cellDof)
  PetscScalar, dimension(:),   pointer :: pK_e, x_scal
- PetscReal,   dimension(3,3)          :: F = math_I3, FAvg, FInv
+ PetscReal,   dimension(3,3)          :: F, FAvg, FInv
  PetscObject                          :: dummy
  PetscInt                             :: bcSize
  IS                                   :: bcPoints
@@ -619,11 +616,11 @@ subroutine FEM_mech_forward(guess,timeinc,timeinc_old,fieldBC)
  if (guess .and. .not. cutBack) then 
    ForwardData = .True.
    materialpoint_F0 = materialpoint_F
-   call SNESGetDM(mech_snes,dm_local,ierr); CHKERRQ(ierr)                                                 !< retrieve mesh info from mech_snes into dm_local
+   call SNESGetDM(mech_snes,dm_local,ierr); CHKERRQ(ierr)                                           !< retrieve mesh info from mech_snes into dm_local
    call DMGetSection(dm_local,section,ierr); CHKERRQ(ierr)
    call DMGetLocalVector(dm_local,x_local,ierr); CHKERRQ(ierr)
    call VecSet(x_local,0.0,ierr); CHKERRQ(ierr)
-   call DMGlobalToLocalBegin(dm_local,solution,INSERT_VALUES,x_local,ierr)                       !< retrieve my partition of global solution vector
+   call DMGlobalToLocalBegin(dm_local,solution,INSERT_VALUES,x_local,ierr)                          !< retrieve my partition of global solution vector
    CHKERRQ(ierr)
    call DMGlobalToLocalEnd(dm_local,solution,INSERT_VALUES,x_local,ierr)
    CHKERRQ(ierr)
