@@ -152,6 +152,35 @@ subroutine DAMASK_interface_init()
 
   write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
 
+  write(6,*) achar(27)//'[94m'
+  write(6,*) '     _/_/_/      _/_/    _/      _/    _/_/      _/_/_/  _/    _/'
+  write(6,*) '    _/    _/  _/    _/  _/_/  _/_/  _/    _/  _/        _/  _/'
+  write(6,*) '   _/    _/  _/_/_/_/  _/  _/  _/  _/_/_/_/    _/_/    _/_/'
+  write(6,*) '  _/    _/  _/    _/  _/      _/  _/    _/        _/  _/  _/'
+  write(6,*) ' _/_/_/    _/    _/  _/      _/  _/    _/  _/_/_/    _/    _/'
+  write(6,*) ' '
+  write(6,*) '██████╗  █████╗ ███╗   ███╗ █████╗ ███████╗██╗  ██╗'
+  write(6,*) '██╔══██╗██╔══██╗████╗ ████║██╔══██╗██╔════╝██║ ██╔╝'
+  write(6,*) '██║  ██║███████║██╔████╔██║███████║███████╗█████╔╝ '
+  write(6,*) '██║  ██║██╔══██║██║╚██╔╝██║██╔══██║╚════██║██╔═██╗ '
+  write(6,*) '██████╔╝██║  ██║██║ ╚═╝ ██║██║  ██║███████║██║  ██╗'
+  write(6,*) '╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝'
+  write(6,*) ' _____  _____  __  __  _____  _____  __ ___'
+  write(6,*) '|  _  \/  _  \/  \/  \/  _  \/  ___>|  |  /'
+  write(6,*) '|  |  ||  _  ||  \/  ||  _  ||___  ||  _ < '
+  write(6,*) '|_____/\__|__/\__ \__/\__|__/<_____/|__|__\'
+  write(6,*) '                                           '
+  write(6,*) ' _____  _______ _______ _______ _______ __  __ '
+  write(6,*) '|     \|   _   |   |   |   _   |     __|  |/  |'
+  write(6,*) '|  --  |       |       |       |__     |     < '
+  write(6,*) '|_____/|___|___|__|_|__|___|___|_______|__|\__|'
+  write(6,*) '                                               '
+  write(6,*) ' _____  _____  __  __  _____  _____  __ ___'
+  write(6,*) '|  _  \/  _  \/  \/  \/  _  \/  ___>|  |  /'
+  write(6,*) '|  |  ||  _  ||  \/  ||  _  ||___  ||  _ < '
+  write(6,*) '|_____/\__|__/\__ \__/\__|__/<_____/|__|__\'
+  write(6,*) achar(27)//'[0m'
+
   write(6,'(/,a)') ' Roters et al., Computational Materials Science 158:420–478, 2019'
   write(6,'(a)')   ' https://doi.org/10.1016/j.commatsci.2018.04.030'
 
@@ -159,8 +188,8 @@ subroutine DAMASK_interface_init()
 
  ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
 #if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
-  write(6,'(/,a)') 'Compiled with: '//compiler_version()
-  write(6,'(a)')   'Compiler options: '//compiler_options()
+  write(6,'(/,a)') ' Compiled with: '//compiler_version()
+  write(6,'(a)')   ' Compiler options: '//compiler_options()
 #elif defined(__INTEL_COMPILER)
   write(6,'(/,a,i4.4,a,i8.8)') ' Compiled with Intel fortran version :', __INTEL_COMPILER,&
                                                        ', build date :', __INTEL_COMPILER_BUILD_DATE

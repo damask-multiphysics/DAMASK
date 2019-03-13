@@ -56,8 +56,8 @@ subroutine DAMASK_interface_init
 
 ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
 #if __INTEL_COMPILER >= 1800
- write(6,'(/,a)') 'Compiled with: '//compiler_version()
- write(6,'(a)')   'Compiler options: '//compiler_options()
+ write(6,'(/,a)') ' Compiled with: '//compiler_version()
+ write(6,'(a)')   ' Compiler options: '//compiler_options()
 #else
  write(6,'(/,a,i4.4,a,i8.8)') ' Compiled with Intel fortran version :', __INTEL_COMPILER,&
                                                       ', build date :', __INTEL_COMPILER_BUILD_DATE

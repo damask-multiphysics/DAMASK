@@ -2,6 +2,8 @@
 if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
     SET_SOURCE_FILES_PROPERTIES( "lattice.f90" PROPERTIES
                                 COMPILE_FLAGS "-ffree-line-length-240")
+    SET_SOURCE_FILES_PROPERTIES( "DAMASK_interface.f90" PROPERTIES
+                                COMPILE_FLAGS "-ffree-line-length-164")
     # long lines for interaction matrix
 endif()
 
