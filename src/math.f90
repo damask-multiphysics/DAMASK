@@ -7,8 +7,7 @@
 !--------------------------------------------------------------------------------------------------
 module math
  use prec, only: &
-   pReal, &
-   pInt
+   pReal
 
  implicit none
  private
@@ -34,37 +33,37 @@ module math
      1.0_pReal,                 1.0_pReal,                 1.0_pReal, &
      1.0_pReal/sqrt(2.0_pReal), 1.0_pReal/sqrt(2.0_pReal), 1.0_pReal/sqrt(2.0_pReal) ]              !< weighting for Mandel notation (backward)
 
- integer(pInt), dimension (2,6), parameter, private :: &
+ integer, dimension (2,6), parameter, private :: &
    mapNye = reshape([&
-     1_pInt,1_pInt, &
-     2_pInt,2_pInt, &
-     3_pInt,3_pInt, &
-     1_pInt,2_pInt, &
-     2_pInt,3_pInt, &
-     1_pInt,3_pInt  &
+     1,1, &
+     2,2, &
+     3,3, &
+     1,2, &
+     2,3, &
+     1,3  &
      ],[2,6])                                                                                       !< arrangement in Nye notation.
 
- integer(pInt), dimension (2,6), parameter, private :: &
+ integer, dimension (2,6), parameter, private :: &
    mapVoigt = reshape([&
-     1_pInt,1_pInt, &
-     2_pInt,2_pInt, &
-     3_pInt,3_pInt, &
-     2_pInt,3_pInt, &
-     1_pInt,3_pInt, &
-     1_pInt,2_pInt  &
+     1,1, &
+     2,2, &
+     3,3, &
+     2,3, &
+     1,3, &
+     1,2  &
      ],[2,6])                                                                                       !< arrangement in Voigt notation
 
- integer(pInt), dimension (2,9), parameter, private :: &
+ integer, dimension (2,9), parameter, private :: &
    mapPlain = reshape([&
-     1_pInt,1_pInt, &
-     1_pInt,2_pInt, &
-     1_pInt,3_pInt, &
-     2_pInt,1_pInt, &
-     2_pInt,2_pInt, &
-     2_pInt,3_pInt, &
-     3_pInt,1_pInt, &
-     3_pInt,2_pInt, &
-     3_pInt,3_pInt  &
+     1,1, &
+     1,2, &
+     1,3, &
+     2,1, &
+     2,2, &
+     2,3, &
+     3,1, &
+     3,2, &
+     3,3  &
      ],[2,9])                                                                                       !< arrangement in Plain notation
      
 !--------------------------------------------------------------------------------------------------
@@ -184,18 +183,17 @@ subroutine math_init
    randomSeed
 
  implicit none
- integer(pInt) :: i
- real(pReal), dimension(4) ::   randTest
+ integer :: i
+ real(pReal), dimension(4) :: randTest
  integer :: randSize
  integer, dimension(:), allocatable :: randInit
  
  write(6,'(/,a)')   ' <<<+-  math init  -+>>>'
 
  call random_seed(size=randSize)
- if (allocated(randInit)) deallocate(randInit)
  allocate(randInit(randSize))
- if (randomSeed > 0_pInt) then
-   randInit(1:randSize) = int(randomSeed)                                                           ! randomSeed is of type pInt, randInit not
+ if (randomSeed > 0) then
+   randInit = randomSeed
    call random_seed(put=randInit)
  else
    call random_seed()
@@ -204,12 +202,12 @@ subroutine math_init
    call random_seed(put = randInit)
  endif
 
- do i = 1_pInt, 4_pInt
+ do i = 1, 4
    call random_number(randTest(i))
  enddo
 
  write(6,'(a,I2)') ' size  of random seed:    ', randSize
- do i = 1_pInt,randSize
+ do i = 1,randSize
    write(6,'(a,I2,I14)') ' value of random seed:    ', i, randInit(i)
  enddo
  write(6,'(a,4(/,26x,f17.14),/)') ' start of random sequence: ', randTest
@@ -244,7 +242,7 @@ subroutine math_check
       any(abs(-q-q2) > tol_math_check) ) then
    write (error_msg, '(a,e14.6)' ) &
           'quat -> axisAngle -> quat maximum deviation ',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
-   call IO_error(401_pInt,ext_msg=error_msg)
+   call IO_error(401,ext_msg=error_msg)
  endif
 
  ! +++ q -> R -> q  +++
@@ -254,7 +252,7 @@ subroutine math_check
       any(abs(-q-q2) > tol_math_check) ) then
    write (error_msg, '(a,e14.6)' ) &
           'quat -> R -> quat maximum deviation ',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
-   call IO_error(401_pInt,ext_msg=error_msg)
+   call IO_error(401,ext_msg=error_msg)
  endif
 
  ! +++ q -> euler -> q  +++
@@ -264,7 +262,7 @@ subroutine math_check
       any(abs(-q-q2) > tol_math_check) ) then
    write (error_msg, '(a,e14.6)' ) &
           'quat -> euler -> quat maximum deviation ',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
-   call IO_error(401_pInt,ext_msg=error_msg)
+   call IO_error(401,ext_msg=error_msg)
  endif
 
  ! +++ R -> euler -> R  +++
@@ -273,32 +271,32 @@ subroutine math_check
  if ( any(abs( R-R2) > tol_math_check) ) then
    write (error_msg, '(a,e14.6)' ) &
           'R -> euler -> R maximum deviation ',maxval(abs( R-R2))
-   call IO_error(401_pInt,ext_msg=error_msg)
+   call IO_error(401,ext_msg=error_msg)
  endif
 
  ! +++ check rotation sense of q and R +++
- v = halton([2_pInt,8_pInt,5_pInt])     ! random vector
+ v = halton([2,8,5])     ! random vector
  R = math_qToR(q)
  if (any(abs(math_mul33x3(R,v) - math_qRot(q,v)) > tol_math_check)) then
    write (error_msg, '(a)' ) 'R(q)*v has different sense than q*v'
-   call IO_error(401_pInt,ext_msg=error_msg)
+   call IO_error(401,ext_msg=error_msg)
  endif
 
  ! +++ check vector expansion +++
  if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal,3.0_pReal,3.0_pReal,3.0_pReal] - &
-             math_expand([1.0_pReal,2.0_pReal,3.0_pReal],[1_pInt,2_pInt,3_pInt,0_pInt])) > tol_math_check)) then
+             math_expand([1.0_pReal,2.0_pReal,3.0_pReal],[1,2,3,0])) > tol_math_check)) then
    write (error_msg, '(a)' ) 'math_expand [1,2,3] by [1,2,3,0] => [1,2,2,3,3,3]'
-   call IO_error(401_pInt,ext_msg=error_msg)
+   call IO_error(401,ext_msg=error_msg)
  endif
  if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal] - &
-             math_expand([1.0_pReal,2.0_pReal,3.0_pReal],[1_pInt,2_pInt])) > tol_math_check)) then
+             math_expand([1.0_pReal,2.0_pReal,3.0_pReal],[1,2])) > tol_math_check)) then
    write (error_msg, '(a)' ) 'math_expand [1,2,3] by [1,2] => [1,2,2]'
-   call IO_error(401_pInt,ext_msg=error_msg)
+   call IO_error(401,ext_msg=error_msg)
  endif
  if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal,1.0_pReal,1.0_pReal,1.0_pReal] - &
-             math_expand([1.0_pReal,2.0_pReal],[1_pInt,2_pInt,3_pInt])) > tol_math_check)) then
+             math_expand([1.0_pReal,2.0_pReal],[1,2,3])) > tol_math_check)) then
    write (error_msg, '(a)' ) 'math_expand [1,2] by [1,2,3] => [1,2,2,1,1,1]'
-   call IO_error(401_pInt,ext_msg=error_msg)
+   call IO_error(401,ext_msg=error_msg)
  endif
  
 end subroutine math_check
@@ -312,9 +310,9 @@ end subroutine math_check
 recursive subroutine math_qsort(a, istart, iend, sortDim)
 
  implicit none
- integer(pInt), dimension(:,:), intent(inout) :: a
- integer(pInt), intent(in),optional :: istart,iend, sortDim
- integer(pInt) :: ipivot,s,e,d
+ integer, dimension(:,:), intent(inout) :: a
+ integer, intent(in),optional :: istart,iend, sortDim
+ integer :: ipivot,s,e,d
  
  if(present(istart)) then
    s = istart
@@ -336,8 +334,8 @@ recursive subroutine math_qsort(a, istart, iend, sortDim)
   
  if (s < e) then
    ipivot = qsort_partition(a,s, e, d)
-   call math_qsort(a, s, ipivot-1_pInt, d)
-   call math_qsort(a, ipivot+1_pInt, e, d)
+   call math_qsort(a, s, ipivot-1, d)
+   call math_qsort(a, ipivot+1, e, d)
  endif
 
 !--------------------------------------------------------------------------------------------------
@@ -346,17 +344,17 @@ recursive subroutine math_qsort(a, istart, iend, sortDim)
  !-------------------------------------------------------------------------------------------------
  !> @brief Partitioning required for quicksort
  !-------------------------------------------------------------------------------------------------
- integer(pInt) function qsort_partition(a, istart, iend, sort)
+ integer function qsort_partition(a, istart, iend, sort)
  
    implicit none
-   integer(pInt), dimension(:,:), intent(inout) :: a
-   integer(pInt),                 intent(in)    :: istart,iend,sort
-   integer(pInt), dimension(size(a,1))          :: tmp
-   integer(pInt) :: i,j
+   integer, dimension(:,:), intent(inout) :: a
+   integer,                 intent(in)    :: istart,iend,sort
+   integer, dimension(size(a,1))          :: tmp
+   integer :: i,j
   
    do
      ! find the first element on the right side less than or equal to the pivot point
-     do j = iend, istart, -1_pInt
+     do j = iend, istart, -1
        if (a(sort,j) <= a(sort,istart)) exit
      enddo
      ! find the first element on the left side greater than the pivot point
@@ -390,15 +388,15 @@ pure function math_expand(what,how)
 
  implicit none
  real(pReal),   dimension(:), intent(in) :: what
- integer(pInt), dimension(:), intent(in) :: how
+ integer, dimension(:), intent(in) :: how
  real(pReal), dimension(sum(how)) ::  math_expand
- integer(pInt) :: i
+ integer :: i
 
- if (sum(how) == 0_pInt) &
+ if (sum(how) == 0) &
    return
 
- do i = 1_pInt, size(how)
-   math_expand(sum(how(1:i-1))+1:sum(how(1:i))) = what(mod(i-1_pInt,size(what))+1_pInt)
+ do i = 1, size(how)
+   math_expand(sum(how(1:i-1))+1:sum(how(1:i))) = what(mod(i-1,size(what))+1)
  enddo
 
 end function math_expand
@@ -410,11 +408,11 @@ end function math_expand
 pure function math_range(N)
 
  implicit none
- integer(pInt), intent(in) :: N                                                                     !< length of range
- integer(pInt) :: i
- integer(pInt), dimension(N) :: math_range
+ integer, intent(in) :: N                                                                           !< length of range
+ integer :: i
+ integer, dimension(N) :: math_range
 
- math_range = [(i,i=1_pInt,N)]
+ math_range = [(i,i=1,N)]
 
 end function math_range
 
@@ -425,12 +423,12 @@ end function math_range
 pure function math_identity2nd(dimen)
 
  implicit none
- integer(pInt), intent(in) :: dimen                                                                 !< tensor dimension
- integer(pInt) :: i
+ integer, intent(in) :: dimen                                                                       !< tensor dimension
+ integer :: i
  real(pReal), dimension(dimen,dimen) :: math_identity2nd
 
  math_identity2nd = 0.0_pReal
- forall(i=1_pInt:dimen) math_identity2nd(i,i) = 1.0_pReal
+ forall(i=1:dimen) math_identity2nd(i,i) = 1.0_pReal
 
 end function math_identity2nd
 
@@ -441,13 +439,13 @@ end function math_identity2nd
 pure function math_identity4th(dimen)
 
  implicit none
- integer(pInt), intent(in) :: dimen                                                                 !< tensor dimension
- integer(pInt) :: i,j,k,l
+ integer, intent(in) :: dimen                                                                       !< tensor dimension
+ integer :: i,j,k,l
  real(pReal), dimension(dimen,dimen,dimen,dimen) ::  math_identity4th
  real(pReal), dimension(dimen,dimen)             ::  identity2nd
 
  identity2nd = math_identity2nd(dimen)
- forall(i=1_pInt:dimen,j=1_pInt:dimen,k=1_pInt:dimen,l=1_pInt:dimen) &
+ forall(i=1:dimen,j=1:dimen,k=1:dimen,l=1:dimen) &
    math_identity4th(i,j,k,l) = 0.5_pReal*(identity2nd(i,k)*identity2nd(j,l)+identity2nd(i,l)*identity2nd(j,k))
 
 end function math_identity4th
@@ -462,15 +460,15 @@ end function math_identity4th
 real(pReal) pure function math_civita(i,j,k)
 
  implicit none
- integer(pInt), intent(in) :: i,j,k
+ integer, intent(in) :: i,j,k
 
  math_civita = 0.0_pReal
- if (((i == 1_pInt).and.(j == 2_pInt).and.(k == 3_pInt)) .or. &
-     ((i == 2_pInt).and.(j == 3_pInt).and.(k == 1_pInt)) .or. &
-     ((i == 3_pInt).and.(j == 1_pInt).and.(k == 2_pInt))) math_civita = 1.0_pReal
- if (((i == 1_pInt).and.(j == 3_pInt).and.(k == 2_pInt)) .or. &
-     ((i == 2_pInt).and.(j == 1_pInt).and.(k == 3_pInt)) .or. &
-     ((i == 3_pInt).and.(j == 2_pInt).and.(k == 1_pInt))) math_civita = -1.0_pReal
+ if (((i == 1).and.(j == 2).and.(k == 3)) .or. &
+     ((i == 2).and.(j == 3).and.(k == 1)) .or. &
+     ((i == 3).and.(j == 1).and.(k == 2))) math_civita = 1.0_pReal
+ if (((i == 1).and.(j == 3).and.(k == 2)) .or. &
+     ((i == 2).and.(j == 1).and.(k == 3)) .or. &
+     ((i == 3).and.(j == 2).and.(k == 1))) math_civita = -1.0_pReal
 
 end function math_civita
 
@@ -484,7 +482,7 @@ end function math_civita
 real(pReal) pure function math_delta(i,j)
 
  implicit none
- integer(pInt), intent (in) :: i,j
+ integer, intent (in) :: i,j
 
  math_delta = merge(0.0_pReal, 1.0_pReal, i /= j)
 
@@ -515,9 +513,9 @@ pure function math_outer(A,B)
  implicit none
  real(pReal), dimension(:), intent(in) ::  A,B
  real(pReal), dimension(size(A,1),size(B,1)) ::  math_outer
- integer(pInt) :: i,j
+ integer :: i,j
 
- forall(i=1_pInt:size(A,1),j=1_pInt:size(B,1)) math_outer(i,j) = A(i)*B(j)
+ forall(i=1:size(A,1),j=1:size(B,1)) math_outer(i,j) = A(i)*B(j)
 
 end function math_outer
 
@@ -543,10 +541,10 @@ real(pReal) pure function math_mul33xx33(A,B)
 
  implicit none
  real(pReal), dimension(3,3), intent(in) ::  A,B
- integer(pInt) :: i,j
+ integer :: i,j
  real(pReal), dimension(3,3) ::              C
 
- forall(i=1_pInt:3_pInt,j=1_pInt:3_pInt) C(i,j) = A(i,j) * B(i,j)
+ forall(i=1:3,j=1:3) C(i,j) = A(i,j) * B(i,j)
  math_mul33xx33 = sum(C)
 
 end function math_mul33xx33
@@ -561,9 +559,9 @@ pure function math_mul3333xx33(A,B)
  real(pReal), dimension(3,3) :: math_mul3333xx33
  real(pReal), dimension(3,3,3,3), intent(in) ::  A
  real(pReal), dimension(3,3), intent(in) ::  B
- integer(pInt) :: i,j 
+ integer :: i,j 
 
- forall(i = 1_pInt:3_pInt,j = 1_pInt:3_pInt) math_mul3333xx33(i,j) = sum(A(i,j,1:3,1:3)*B(1:3,1:3))
+ forall(i = 1:3,j = 1:3) math_mul3333xx33(i,j) = sum(A(i,j,1:3,1:3)*B(1:3,1:3))
 
 end function math_mul3333xx33
 
@@ -574,12 +572,12 @@ end function math_mul3333xx33
 pure function math_mul3333xx3333(A,B)
 
  implicit none
- integer(pInt) :: i,j,k,l
+ integer :: i,j,k,l
  real(pReal), dimension(3,3,3,3), intent(in) ::  A
  real(pReal), dimension(3,3,3,3), intent(in) ::  B
  real(pReal), dimension(3,3,3,3) :: math_mul3333xx3333
 
- forall(i = 1_pInt:3_pInt,j = 1_pInt:3_pInt, k = 1_pInt:3_pInt, l= 1_pInt:3_pInt) &
+ forall(i = 1:3,j = 1:3, k = 1:3, l= 1:3) &
    math_mul3333xx3333(i,j,k,l) = sum(A(i,j,1:3,1:3)*B(1:3,1:3,k,l))
 
 end function math_mul3333xx3333
@@ -593,9 +591,9 @@ pure function math_mul33x33(A,B)
  implicit none
  real(pReal), dimension(3,3) ::  math_mul33x33
  real(pReal), dimension(3,3), intent(in) ::  A,B
- integer(pInt) :: i,j
+ integer :: i,j
 
- forall(i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_mul33x33(i,j) = A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j)
+ forall(i=1:3,j=1:3) math_mul33x33(i,j) = A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j)
 
 end function math_mul33x33
 
@@ -608,9 +606,9 @@ pure function math_mul66x66(A,B)
  implicit none
  real(pReal), dimension(6,6) ::  math_mul66x66
  real(pReal), dimension(6,6), intent(in) ::  A,B
- integer(pInt) :: i,j
+ integer :: i,j
 
- forall(i=1_pInt:6_pInt,j=1_pInt:6_pInt) &
+ forall(i=1:6,j=1:6) &
    math_mul66x66(i,j) = A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j) &
                       + A(i,4)*B(4,j) + A(i,5)*B(5,j) + A(i,6)*B(6,j)
 
@@ -625,9 +623,9 @@ pure function math_mul99x99(A,B)
  implicit none
  real(pReal), dimension(9,9) ::  math_mul99x99
  real(pReal), dimension(9,9), intent(in) ::  A,B
- integer(pInt)  i,j
+ integer  i,j
 
- forall(i=1_pInt:9_pInt,j=1_pInt:9_pInt) &
+ forall(i=1:9,j=1:9) &
    math_mul99x99(i,j) = A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j) &
                       + A(i,4)*B(4,j) + A(i,5)*B(5,j) + A(i,6)*B(6,j) &
                       + A(i,7)*B(7,j) + A(i,8)*B(8,j) + A(i,9)*B(9,j)
@@ -644,9 +642,9 @@ pure function math_mul33x3(A,B)
  real(pReal), dimension(3) ::  math_mul33x3
  real(pReal), dimension(3,3), intent(in) ::  A
  real(pReal), dimension(3),   intent(in) ::  B
- integer(pInt) :: i 
+ integer :: i 
 
- forall (i=1_pInt:3_pInt) math_mul33x3(i) = sum(A(i,1:3)*B)
+ forall (i=1:3) math_mul33x3(i) = sum(A(i,1:3)*B)
 
 end function math_mul33x3
 
@@ -660,9 +658,9 @@ pure function math_mul33x3_complex(A,B)
  complex(pReal), dimension(3) ::  math_mul33x3_complex
  complex(pReal), dimension(3,3), intent(in) ::  A
  real(pReal),    dimension(3),   intent(in) ::  B
- integer(pInt) :: i 
+ integer :: i 
 
- forall (i=1_pInt:3_pInt) math_mul33x3_complex(i) = sum(A(i,1:3)*cmplx(B,0.0_pReal,pReal))
+ forall (i=1:3) math_mul33x3_complex(i) = sum(A(i,1:3)*cmplx(B,0.0_pReal,pReal))
 
 end function math_mul33x3_complex
 
@@ -676,9 +674,9 @@ pure function math_mul66x6(A,B)
  real(pReal), dimension(6) ::  math_mul66x6
  real(pReal), dimension(6,6), intent(in) ::  A
  real(pReal), dimension(6),   intent(in) ::  B
- integer(pInt) :: i
+ integer :: i
 
- forall (i=1_pInt:6_pInt) math_mul66x6(i) = A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3) &
+ forall (i=1:6) math_mul66x6(i) = A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3) &
                                           + A(i,4)*B(4) + A(i,5)*B(5) + A(i,6)*B(6)
 
 end function math_mul66x6
@@ -690,8 +688,8 @@ end function math_mul66x6
 pure function math_exp33(A,n)
 
  implicit none
- integer(pInt) :: i
- integer(pInt), intent(in), optional :: n
+ integer :: i
+ integer, intent(in), optional :: n
  real(pReal), dimension(3,3), intent(in) :: A
  real(pReal), dimension(3,3) :: B, math_exp33
  real(pReal) :: invFac
@@ -700,7 +698,7 @@ pure function math_exp33(A,n)
  invFac = 1.0_pReal                                                                                 ! 0!
  math_exp33 = B                                                                                     ! A^0 = eye2
 
- do i = 1_pInt, merge(n,5_pInt,present(n))
+ do i = 1, merge(n,5,present(n))
    invFac = invFac/real(i,pReal)                                                                    ! invfac = 1/i!
    B = math_mul33x33(B,A)
    math_exp33 = math_exp33 + invFac*B                                                               ! exp = SUM (A^i)/i!
@@ -717,9 +715,9 @@ pure function math_transpose33(A)
  implicit none 
  real(pReal),dimension(3,3) :: math_transpose33
  real(pReal),dimension(3,3),intent(in)  :: A
- integer(pInt) :: i,j
+ integer :: i,j
 
- forall(i=1_pInt:3_pInt, j=1_pInt:3_pInt) math_transpose33(i,j) = A(j,i)
+ forall(i=1:3, j=1:3) math_transpose33(i,j) = A(j,i)
 
 end function math_transpose33
 
@@ -814,10 +812,10 @@ function math_invSym3333(A)
 
  real(pReal),dimension(3,3,3,3),intent(in) :: A
 
- integer(pInt) :: ierr
- integer(pInt), dimension(6)   :: ipiv6
- real(pReal),   dimension(6,6) :: temp66_Real
- real(pReal),   dimension(6)   :: work6
+ integer :: ierr
+ integer,     dimension(6)   :: ipiv6
+ real(pReal), dimension(6,6) :: temp66_Real
+ real(pReal), dimension(6)   :: work6
  external :: &
   dgetrf, &
   dgetri
@@ -825,10 +823,10 @@ function math_invSym3333(A)
  temp66_real = math_sym3333to66(A)
  call dgetrf(6,6,temp66_real,6,ipiv6,ierr)
  call dgetri(6,temp66_real,6,ipiv6,work6,6,ierr)
- if (ierr == 0_pInt) then
+ if (ierr == 0) then
    math_invSym3333 = math_66toSym3333(temp66_real)
  else
-   call IO_error(400_pInt, ext_msg = 'math_invSym3333')
+   call IO_error(400, ext_msg = 'math_invSym3333')
  endif
 
 end function math_invSym3333
@@ -859,13 +857,13 @@ end subroutine math_invert2
 subroutine math_invert(myDim,A, InvA, error)
 
  implicit none
- integer(pInt), intent(in)  :: myDim
+ integer, intent(in)  :: myDim
  real(pReal), dimension(myDim,myDim), intent(in)  :: A
 
 
- integer(pInt) :: ierr
- integer(pInt), dimension(myDim)       :: ipiv
- real(pReal),   dimension(myDim)       :: work
+ integer :: ierr
+ integer,     dimension(myDim) :: ipiv
+ real(pReal), dimension(myDim) :: work
  
  real(pReal), dimension(myDim,myDim), intent(out) :: invA
  logical, intent(out) :: error
@@ -876,7 +874,7 @@ subroutine math_invert(myDim,A, InvA, error)
  invA = A 
  call dgetrf(myDim,myDim,invA,myDim,ipiv,ierr)
  call dgetri(myDim,InvA,myDim,ipiv,work,myDim,ierr)
- error = merge(.true.,.false., ierr /= 0_pInt)
+ error = merge(.true.,.false., ierr /= 0)
  
 end subroutine math_invert
 
@@ -1029,8 +1027,8 @@ real(pReal) pure function math_detSym33(m)
  implicit none
  real(pReal), dimension(3,3), intent(in) :: m
  
-  math_detSym33 = -(m(1,1)*m(2,3)**2_pInt + m(2,2)*m(1,3)**2_pInt + m(3,3)*m(1,2)**2_pInt) &
-                  + m(1,1)*m(2,2)*m(3,3)  + 2.0_pReal * m(1,2)*m(1,3)*m(2,3)
+  math_detSym33 = -(m(1,1)*m(2,3)**2 + m(2,2)*m(1,3)**2 + m(3,3)*m(1,2)**2) &
+                  + m(1,1)*m(2,2)*m(3,3) + 2.0_pReal * m(1,2)*m(1,3)*m(2,3)
 
 end function  math_detSym33
 
@@ -1044,9 +1042,9 @@ pure function math_33to9(m33)
  real(pReal), dimension(9)               :: math_33to9
  real(pReal), dimension(3,3), intent(in) :: m33
  
- integer(pInt) :: i
+ integer :: i
 
- forall(i=1_pInt:9_pInt) math_33to9(i) = m33(mapPlain(1,i),mapPlain(2,i))
+ forall(i=1:9) math_33to9(i) = m33(mapPlain(1,i),mapPlain(2,i))
 
 end function math_33to9
 
@@ -1060,9 +1058,9 @@ pure function math_9to33(v9)
  real(pReal), dimension(3,3)           :: math_9to33
  real(pReal), dimension(9), intent(in) :: v9
  
- integer(pInt) :: i
+ integer :: i
 
- forall(i=1_pInt:9_pInt) math_9to33(mapPlain(1,i),mapPlain(2,i)) = v9(i)
+ forall(i=1:9) math_9to33(mapPlain(1,i),mapPlain(2,i)) = v9(i)
 
 end function math_9to33
 
@@ -1081,7 +1079,7 @@ pure function math_sym33to6(m33,weighted)
  logical,     optional,       intent(in) :: weighted
  
  real(pReal), dimension(6) :: w
- integer(pInt) :: i
+ integer :: i
  
  if(present(weighted)) then
    w = merge(nrmMandel,1.0_pReal,weighted)
@@ -1089,7 +1087,7 @@ pure function math_sym33to6(m33,weighted)
    w = nrmMandel
  endif
 
- forall(i=1_pInt:6_pInt) math_sym33to6(i) = w(i)*m33(mapNye(1,i),mapNye(2,i))
+ forall(i=1:6) math_sym33to6(i) = w(i)*m33(mapNye(1,i),mapNye(2,i))
 
 end function math_sym33to6
 
@@ -1108,7 +1106,7 @@ pure function math_6toSym33(v6,weighted)
  logical,     optional,     intent(in) :: weighted
 
  real(pReal), dimension(6) :: w
- integer(pInt) :: i
+ integer :: i
  
  if(present(weighted)) then
    w = merge(invnrmMandel,1.0_pReal,weighted)
@@ -1116,7 +1114,7 @@ pure function math_6toSym33(v6,weighted)
    w = invnrmMandel
  endif
 
- do i=1_pInt,6_pInt
+ do i=1,6
    math_6toSym33(mapNye(1,i),mapNye(2,i)) = w(i)*v6(i)
    math_6toSym33(mapNye(2,i),mapNye(1,i)) = w(i)*v6(i)
  enddo
@@ -1133,9 +1131,9 @@ pure function math_3333to99(m3333)
  real(pReal), dimension(9,9)                 :: math_3333to99
  real(pReal), dimension(3,3,3,3), intent(in) :: m3333
 
- integer(pInt) :: i,j
+ integer :: i,j
 
- forall(i=1_pInt:9_pInt,j=1_pInt:9_pInt) &
+ forall(i=1:9,j=1:9) &
    math_3333to99(i,j) = m3333(mapPlain(1,i),mapPlain(2,i),mapPlain(1,j),mapPlain(2,j))
 
 end function math_3333to99
@@ -1150,9 +1148,9 @@ pure function math_99to3333(m99)
  real(pReal), dimension(3,3,3,3)         :: math_99to3333
  real(pReal), dimension(9,9), intent(in) :: m99
 
- integer(pInt) :: i,j
+ integer :: i,j
 
- forall(i=1_pInt:9_pInt,j=1_pInt:9_pInt) &
+ forall(i=1:9,j=1:9) &
    math_99to3333(mapPlain(1,i),mapPlain(2,i),mapPlain(1,j),mapPlain(2,j)) = m99(i,j)
 
 end function math_99to3333
@@ -1172,7 +1170,7 @@ pure function math_sym3333to66(m3333,weighted)
  logical,     optional,           intent(in) :: weighted
 
  real(pReal), dimension(6) :: w
- integer(pInt) :: i,j
+ integer :: i,j
  
  if(present(weighted)) then
    w = merge(nrmMandel,1.0_pReal,weighted)
@@ -1180,7 +1178,7 @@ pure function math_sym3333to66(m3333,weighted)
    w = nrmMandel
  endif
 
- forall(i=1_pInt:6_pInt,j=1_pInt:6_pInt) &
+ forall(i=1:6,j=1:6) &
    math_sym3333to66(i,j) = w(i)*w(j)*m3333(mapNye(1,i),mapNye(2,i),mapNye(1,j),mapNye(2,j))
 
 end function math_sym3333to66
@@ -1200,7 +1198,7 @@ pure function math_66toSym3333(m66,weighted)
  logical,     optional,          intent(in) :: weighted
  
  real(pReal), dimension(6) :: w
- integer(pInt) :: i,j
+ integer :: i,j
  
  if(present(weighted)) then
    w = merge(invnrmMandel,1.0_pReal,weighted)
@@ -1208,7 +1206,7 @@ pure function math_66toSym3333(m66,weighted)
    w = invnrmMandel
  endif
 
- do i=1_pInt,6_pInt; do j=1_pInt, 6_pInt
+ do i=1,6; do j=1, 6
    math_66toSym3333(mapNye(1,i),mapNye(2,i),mapNye(1,j),mapNye(2,j)) = w(i)*w(j)*m66(i,j)
    math_66toSym3333(mapNye(2,i),mapNye(1,i),mapNye(1,j),mapNye(2,j)) = w(i)*w(j)*m66(i,j)
    math_66toSym3333(mapNye(1,i),mapNye(2,i),mapNye(2,j),mapNye(1,j)) = w(i)*w(j)*m66(i,j)
@@ -1226,9 +1224,9 @@ pure function math_Voigt66to3333(m66)
  implicit none
  real(pReal), dimension(3,3,3,3) :: math_Voigt66to3333
  real(pReal), dimension(6,6), intent(in) :: m66
- integer(pInt) :: i,j
+ integer :: i,j
 
- do i=1_pInt,6_pInt; do j=1_pInt, 6_pInt
+ do i=1,6; do j=1, 6
    math_Voigt66to3333(mapVoigt(1,i),mapVoigt(2,i),mapVoigt(1,j),mapVoigt(2,j)) = m66(i,j)
    math_Voigt66to3333(mapVoigt(2,i),mapVoigt(1,i),mapVoigt(1,j),mapVoigt(2,j)) = m66(i,j)
    math_Voigt66to3333(mapVoigt(1,i),mapVoigt(2,i),mapVoigt(2,j),mapVoigt(1,j)) = m66(i,j)
@@ -1250,7 +1248,7 @@ function math_qRand()
  real(pReal), dimension(4) :: math_qRand
  real(pReal), dimension(3) :: rnd
 
- rnd = halton([8_pInt,4_pInt,9_pInt])
+ rnd = halton([8,4,9])
  math_qRand = [cos(2.0_pReal*PI*rnd(1))*sqrt(rnd(3)), &
                sin(2.0_pReal*PI*rnd(2))*sqrt(1.0_pReal-rnd(3)), &
                cos(2.0_pReal*PI*rnd(2))*sqrt(1.0_pReal-rnd(3)), &
@@ -1346,10 +1344,10 @@ pure function math_qRot(Q,v)
  real(pReal), dimension(3), intent(in) :: v
  real(pReal), dimension(3) :: math_qRot
  real(pReal), dimension(4,4) :: T
- integer(pInt) :: i, j
+ integer :: i, j
 
- do i = 1_pInt,4_pInt
-   do j = 1_pInt,i
+ do i = 1,4
+   do j = 1,i
      T(i,j) = Q(i) * Q(j)
    enddo
  enddo
@@ -1408,7 +1406,7 @@ pure function math_RtoQ(R)
  real(pReal), dimension(3,3), intent(in) :: R
  real(pReal), dimension(4)   :: absQ, math_RtoQ
  real(pReal) :: max_absQ
- integer, dimension(1) :: largest !no pInt, maxloc returns integer default
+ integer, dimension(1) :: largest
 
  math_RtoQ = 0.0_pReal
 
@@ -1639,9 +1637,9 @@ pure function math_qToR(q)
  implicit none
  real(pReal), dimension(4), intent(in) :: q
  real(pReal), dimension(3,3) :: math_qToR, T,S
- integer(pInt) :: i, j
+ integer :: i, j
 
- forall(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt) T(i,j) = q(i+1_pInt) * q(j+1_pInt)
+ forall(i = 1:3, j = 1:3) T(i,j) = q(i+1) * q(j+1)
 
  S = reshape( [0.0_pReal,     -q(4),      q(3), &
                     q(4), 0.0_pReal,     -q(2), &
@@ -1772,7 +1770,7 @@ function math_sampleRandomOri()
  implicit none
  real(pReal), dimension(3) :: math_sampleRandomOri, rnd
 
- rnd = halton([1_pInt,7_pInt,3_pInt])
+ rnd = halton([1,7,3])
  math_sampleRandomOri  = [rnd(1)*2.0_pReal*PI, &
                           acos(2.0_pReal*rnd(2)-1.0_pReal), &
                           rnd(3)*2.0_pReal*PI]
@@ -1800,7 +1798,7 @@ function math_sampleGaussOri(center,FWHM)
    math_sampleGaussOri = center
  else
    GaussConvolution: do
-     rnd = halton([8_pInt,3_pInt,6_pInt,11_pInt])
+     rnd = halton([8,3,6,11])
      axis(1)    = rnd(1)*2.0_pReal-1.0_pReal                                                        ! uniform on [-1,1]
      axis(2:3)  = [sqrt(1.0-axis(1)**2.0_pReal)*cos(rnd(2)*2.0*PI),&
                    sqrt(1.0-axis(1)**2.0_pReal)*sin(rnd(2)*2.0*PI)]                                 ! random axis
@@ -1830,10 +1828,10 @@ function math_sampleFiberOri(alpha,beta,FWHM)
    u
  real(pReal), dimension(3) :: rnd
  real(pReal), dimension(:),allocatable :: a                                                         !< 2D vector to tilt
- integer(pInt), dimension(:),allocatable :: idx                                                     !< components of 2D vector
+ integer, dimension(:),allocatable :: idx                                                           !< components of 2D vector
  real(pReal), dimension(3,3) :: R                                                                   !< Rotation matrix (composed of three components)
  real(pReal):: angle,c
- integer(pInt):: j,&                                                                                !< index of smallest component
+ integer:: j,&                                                                                      !< index of smallest component
    i
 
  allocate(a(0))
@@ -1843,11 +1841,11 @@ function math_sampleFiberOri(alpha,beta,FWHM)
 
  R = math_EulerAxisAngleToR(math_crossproduct(fInC,fInS),-acos(dot_product(fInC,fInS)))             !< rotation to align fiber axis in crystal and sample system
 
- rnd = halton([7_pInt,10_pInt,3_pInt])
+ rnd = halton([7,10,3])
  R = math_mul33x33(R,math_EulerAxisAngleToR(fInS,rnd(1)*2.0_pReal*PI))                              !< additional rotation (0..360deg) perpendicular to fiber axis
 
  if (FWHM > 0.1_pReal*INRAD) then
-   reducedTo2D: do i=1_pInt,3_pInt
+   reducedTo2D: do i=1,3
      if (i /= minloc(abs(fInS),1)) then
        a=[a,fInS(i)]
        idx=[idx,i]
@@ -1868,7 +1866,7 @@ function math_sampleFiberOri(alpha,beta,FWHM)
        R = math_mul33x33(R,math_EulerAxisAngleToR(math_crossproduct(u,fInS),angle))                 ! tilt around direction of smallest component
        exit
      endif rejectionSampling
-     rnd = halton([7_pInt,10_pInt,3_pInt])
+     rnd = halton([7,10,3])
    enddo GaussConvolution
  endif
  math_sampleFiberOri = math_RtoEuler(R)
@@ -1897,7 +1895,7 @@ real(pReal) function math_sampleGaussVar(meanvalue, stddev, width)
    myWidth = merge(width,3.0_pReal,present(width))                                                  ! use +-3*sigma as default value for scatter if not given
   
    do
-     rnd = halton([6_pInt,2_pInt])
+     rnd = halton([6,2])
      scatter = myWidth * (2.0_pReal * rnd(1) - 1.0_pReal)
      if (rnd(2) <= exp(-0.5_pReal * scatter ** 2.0_pReal)) exit                                     ! test if scattered value is drawn
    enddo
@@ -1915,7 +1913,7 @@ end function math_sampleGaussVar
 pure function math_symmetricEulers(sym,Euler)
 
  implicit none
- integer(pInt), intent(in) :: sym                                                                   !< symmetry Class
+ integer, intent(in) :: sym                                                                         !< symmetry Class
  real(pReal), dimension(3), intent(in) :: Euler
  real(pReal), dimension(3,3) :: math_symmetricEulers
 
@@ -1926,9 +1924,9 @@ pure function math_symmetricEulers(sym,Euler)
  math_symmetricEulers = modulo(math_symmetricEulers,2.0_pReal*pi)
 
  select case (sym)
-   case (4_pInt)                                                                                    ! orthotropic: all done
+   case (4)                                                                                         ! orthotropic: all done
 
-   case (2_pInt)                                                                                    ! monoclinic: return only first
+   case (2)                                                                                         ! monoclinic: return only first
      math_symmetricEulers(1:3,2:3) = 0.0_pReal
 
    case default                                                                                     ! triclinic: return blank
@@ -1949,14 +1947,14 @@ subroutine math_eigenValuesVectorsSym(m,values,vectors,error)
  real(pReal), dimension(size(m,1)),            intent(out) :: values
  real(pReal), dimension(size(m,1),size(m,1)),  intent(out) :: vectors
  logical, intent(out) :: error
- integer(pInt) :: info
+ integer :: info
  real(pReal), dimension((64+2)*size(m,1)) :: work                                                    ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
  external :: &
   dsyev
 
  vectors = m                                                                                         ! copy matrix to input (doubles as output) array
  call dsyev('V','U',size(m,1),vectors,size(m,1),values,work,(64+2)*size(m,1),info)
- error = (info == 0_pInt)
+ error = (info == 0)
 
 end subroutine math_eigenValuesVectorsSym
 
@@ -1982,11 +1980,11 @@ subroutine math_eigenValuesVectorsSym33(m,values,vectors)
 
  vectors(1:3,2) = [ m(1, 2) * m(2, 3) - m(1, 3) * m(2, 2), &
                     m(1, 3) * m(1, 2) - m(2, 3) * m(1, 1), &
-                    m(1, 2)**2_pInt]
+                    m(1, 2)**2]
 
  T = maxval(abs(values))
- U = max(T, T**2_pInt)
- threshold = sqrt(5.68e-14_pReal * U**2_pInt)
+ U = max(T, T**2)
+ threshold = sqrt(5.68e-14_pReal * U**2)
 
 ! Calculate first eigenvector by the formula v[0] = (m - lambda[0]).e1 x (m - lambda[0]).e2
  vectors(1:3,1) = [ vectors(1,2) + m(1, 3) * values(1), &
@@ -2030,13 +2028,13 @@ function math_eigenvectorBasisSym(m)
  real(pReal), dimension(size(m,1),size(m,1))   :: vectors
  real(pReal), dimension(size(m,1),size(m,1))   :: math_eigenvectorBasisSym
  logical :: error
- integer(pInt) :: i
+ integer :: i
 
  math_eigenvectorBasisSym = 0.0_pReal
  call math_eigenValuesVectorsSym(m,values,vectors,error)
  if(error) return
  
- do i=1_pInt, size(m,1)
+ do i=1, size(m,1)
    math_eigenvectorBasisSym = math_eigenvectorBasisSym &
                             + sqrt(values(i)) * math_outer(vectors(:,i),vectors(:,i))
  enddo
@@ -2193,7 +2191,7 @@ function math_rotationalPart33(m)
 
  inversionFailed: if (all(dEq0(Uinv))) then
    math_rotationalPart33 = math_I3
-   call IO_warning(650_pInt)
+   call IO_warning(650)
  else inversionFailed
    math_rotationalPart33 = math_mul33x33(m,Uinv)
  endif inversionFailed
@@ -2213,14 +2211,14 @@ function math_eigenvaluesSym(m)
  real(pReal), dimension(:,:),                  intent(in)  :: m
  real(pReal), dimension(size(m,1))                         :: math_eigenvaluesSym
  real(pReal), dimension(size(m,1),size(m,1))               :: vectors
- integer(pInt) :: info
+ integer :: info
  real(pReal), dimension((64+2)*size(m,1)) :: work                                                    ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
  external :: &
   dsyev
 
  vectors = m                                                                                         ! copy matrix to input (doubles as output) array
  call dsyev('N','U',size(m,1),vectors,size(m,1),math_eigenvaluesSym,work,(64+2)*size(m,1),info)
- if (info /= 0_pInt) math_eigenvaluesSym = IEEE_value(1.0_pReal,IEEE_quiet_NaN)
+ if (info /= 0) math_eigenvaluesSym = IEEE_value(1.0_pReal,IEEE_quiet_NaN)
 
 end function math_eigenvaluesSym
 
@@ -2294,19 +2292,19 @@ end function math_invariantsSym33
 function halton(bases)
    
  implicit none
- integer(pInt), intent(in), dimension(:):: &
+ integer, intent(in), dimension(:):: &
    bases                                                                                            !< bases (prime number ID)
  real(pReal),               dimension(size(bases)) :: &
    halton
- integer(pInt), save :: &
-   current = 1_pInt
+ integer, save :: &
+   current = 1
  real(pReal),               dimension(size(bases)) :: &
    base_inv
- integer(pInt),             dimension(size(bases)) :: &
+ integer,             dimension(size(bases)) :: &
    base, &
    t
- integer(pInt), dimension(0:1600), parameter :: &
-   prime = int([&
+ integer, dimension(0:1600), parameter :: &
+   prime = [&
            1, &
            2,     3,     5,     7,    11,    13,    17,    19,    23,    29, &
           31,    37,    41,    43,    47,    53,    59,    61,    67,    71, &
@@ -2482,9 +2480,9 @@ function halton(bases)
        13121, 13127, 13147, 13151, 13159, 13163, 13171, 13177, 13183, 13187, &
        13217, 13219, 13229, 13241, 13249, 13259, 13267, 13291, 13297, 13309, &
        13313, 13327, 13331, 13337, 13339, 13367, 13381, 13397, 13399, 13411, &
-       13417, 13421, 13441, 13451, 13457, 13463, 13469, 13477, 13487, 13499],pInt)
+       13417, 13421, 13441, 13451, 13457, 13463, 13469, 13477, 13487, 13499]
 
- current = current + 1_pInt
+ current = current + 1
 
  base = prime(bases)
  base_inv = 1.0_pReal/real(base,pReal)
@@ -2492,7 +2490,7 @@ function halton(bases)
  halton = 0.0_pReal
  t = current
 
- do while (any( t /= 0_pInt) )
+ do while (any( t /= 0) )
    halton = halton + real(mod(t,base), pReal) * base_inv
    base_inv = base_inv / real(base, pReal)
    t = t / base
@@ -2504,11 +2502,11 @@ end function halton
 !--------------------------------------------------------------------------------------------------
 !> @brief factorial
 !--------------------------------------------------------------------------------------------------
-integer(pInt) pure function math_factorial(n)
+integer pure function math_factorial(n)
 
  implicit none
- integer(pInt), intent(in) :: n
- integer(pInt) :: i
+ integer, intent(in) :: n
+ integer :: i
  
  math_factorial = product([(i, i=1,n)])
 
@@ -2518,11 +2516,11 @@ end function math_factorial
 !--------------------------------------------------------------------------------------------------
 !> @brief binomial coefficient
 !--------------------------------------------------------------------------------------------------
-integer(pInt) pure function math_binomial(n,k)
+integer pure function math_binomial(n,k)
 
  implicit none
- integer(pInt), intent(in) :: n, k
- integer(pInt) :: i, j
+ integer, intent(in) :: n, k
+ integer :: i, j
  
  j = min(k,n-k)
  math_binomial = product([(i, i=n, n-j+1, -1)])/math_factorial(j)
@@ -2533,13 +2531,13 @@ end function math_binomial
 !--------------------------------------------------------------------------------------------------
 !> @brief multinomial coefficient
 !--------------------------------------------------------------------------------------------------
-integer(pInt) pure function math_multinomial(alpha)
+integer pure function math_multinomial(alpha)
 
  implicit none
- integer(pInt), intent(in), dimension(:) :: alpha
- integer(pInt) :: i
+ integer, intent(in), dimension(:) :: alpha
+ integer :: i
  
- math_multinomial = 1_pInt
+ math_multinomial = 1
  do i = 1, size(alpha)
    math_multinomial = math_multinomial*math_binomial(sum(alpha(1:i)),alpha(i))
  enddo  
@@ -2616,11 +2614,11 @@ pure function math_rotate_forward3333(tensor,rot_tensor)
  real(pReal), dimension(3,3,3,3) ::  math_rotate_forward3333
  real(pReal), dimension(3,3), intent(in) :: rot_tensor
  real(pReal), dimension(3,3,3,3), intent(in) :: tensor
- integer(pInt) :: i,j,k,l,m,n,o,p
+ integer :: i,j,k,l,m,n,o,p
 
  math_rotate_forward3333 = 0.0_pReal
- do i = 1_pInt,3_pInt;do j = 1_pInt,3_pInt;do k = 1_pInt,3_pInt;do l = 1_pInt,3_pInt
- do m = 1_pInt,3_pInt;do n = 1_pInt,3_pInt;do o = 1_pInt,3_pInt;do p = 1_pInt,3_pInt
+ do i = 1,3;do j = 1,3;do k = 1,3;do l = 1,3
+ do m = 1,3;do n = 1,3;do o = 1,3;do p = 1,3
    math_rotate_forward3333(i,j,k,l) &
      = math_rotate_forward3333(i,j,k,l) &
      + rot_tensor(i,m) * rot_tensor(j,n) * rot_tensor(k,o) * rot_tensor(l,p) * tensor(m,n,o,p)
