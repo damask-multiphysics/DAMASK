@@ -11,22 +11,19 @@ subroutine quit(stop_id)
  use MPI, only: &
    MPI_finalize
 #endif
- use prec, only: &
-   pInt
  use PetscSys
  use hdf5
 
  implicit none
- integer(pInt), intent(in) :: stop_id
+ integer, intent(in) :: stop_id
  integer, dimension(8) :: dateAndTime                                                               ! type default integer
- integer :: hdferr
- integer(pInt) :: error = 0_pInt
+ integer :: error
  PetscErrorCode :: ierr = 0
 
- call h5open_f(hdferr)
- if (hdferr /= 0) write(6,'(a,i5)') ' Error in h5open_f',hdferr                                     ! prevents error if not opened yet
- call h5close_f(hdferr)
- if (hdferr /= 0) write(6,'(a,i5)') ' Error in h5close_f',hdferr
+ call h5open_f(error)
+ if (error /= 0) write(6,'(a,i5)') ' Error in h5open_f ',error                                      ! prevents error if not opened yet
+ call h5close_f(error)
+ if (error /= 0) write(6,'(a,i5)') ' Error in h5close_f ',error
 
  call PETScFinalize(ierr)
  CHKERRQ(ierr)
@@ -45,8 +42,8 @@ subroutine quit(stop_id)
                                                       dateAndTime(6),':',&
                                                       dateAndTime(7)
 
- if (stop_id == 0_pInt .and. ierr == 0_pInt .and. error == 0_pInt) stop 0                           ! normal termination
- if (stop_id == 2_pInt .and. ierr == 0_pInt .and. error == 0_pInt) stop 2                           ! not all incs converged
+ if (stop_id == 0 .and. ierr == 0 .and. error == 0) stop 0                                          ! normal termination
+ if (stop_id == 2 .and. ierr == 0 .and. error == 0) stop 2                                          ! not all incs converged
  stop 1                                                                                             ! error (message from IO_error)
 
 end subroutine quit

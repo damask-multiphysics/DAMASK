@@ -120,9 +120,7 @@ subroutine tMesh_FEM_init(self,dimen,order,nodes)
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_init()
  use DAMASK_interface
- use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use IO, only: &
-   IO_timeStamp, &
    IO_error, &
    IO_open_file, &
    IO_stringPos, &
@@ -161,8 +159,6 @@ subroutine mesh_init()
 
  
  write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
  ! read in file
  call DMPlexCreateFromFile(PETSC_COMM_WORLD,geometryFile,PETSC_TRUE,globalMesh,ierr)

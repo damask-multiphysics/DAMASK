@@ -43,11 +43,6 @@ contains
 !> solver the information is provided by the interface module
 !--------------------------------------------------------------------------------------------------
 subroutine FE_init
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
  use debug, only: &
    debug_level, &
    debug_FEsolving, &
@@ -61,8 +56,7 @@ subroutine FE_init
    IO_open_inputFile, &
    IO_open_logFile, &
 #endif
-   IO_warning, &
-   IO_timeStamp
+   IO_warning
  use DAMASK_interface
  
  implicit none
@@ -75,8 +69,6 @@ subroutine FE_init
 #endif
 
  write(6,'(/,a)')   ' <<<+-  FEsolving init  -+>>>'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
  modelName = getSolverJobName()
 

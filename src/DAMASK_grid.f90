@@ -7,11 +7,6 @@
 !> results
 !--------------------------------------------------------------------------------------------------
 program DAMASK_spectral
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
 #include <petsc/finclude/petscsys.h>
  use PETScsys
  use prec, only: &
@@ -35,8 +30,7 @@ program DAMASK_spectral
    IO_error, &
    IO_lc, &
    IO_intOut, &
-   IO_warning, &
-   IO_timeStamp
+   IO_warning
  use debug, only: &
    debug_level, &
    debug_spectral, &
@@ -77,10 +71,10 @@ program DAMASK_spectral
    FIELD_MECH_ID, &
    FIELD_THERMAL_ID, &
    FIELD_DAMAGE_ID
- use spectral_mech_Basic
- use spectral_mech_Polarisation
- use spectral_damage
- use spectral_thermal
+ use grid_mech_spectral_basic
+ use grid_mech_spectral_polarisation
+ use grid_damage_spectral
+ use grid_thermal_spectral
  use results
 
  implicit none
@@ -141,11 +135,11 @@ program DAMASK_spectral
  integer(pInt), parameter :: maxRealOut = maxByteOut/pReal
  integer(pLongInt), dimension(2) :: outputIndex
  PetscErrorCode :: ierr
- procedure(basic_init), pointer :: &
+ procedure(grid_mech_spectral_basic_init), pointer :: &
    mech_init
- procedure(basic_forward), pointer :: &
+ procedure(grid_mech_spectral_basic_forward), pointer :: &
    mech_forward
- procedure(basic_solution), pointer :: &
+ procedure(grid_mech_spectral_basic_solution), pointer :: &
    mech_solution
 
  external :: &
@@ -155,10 +149,9 @@ program DAMASK_spectral
 ! init DAMASK (all modules)
  call CPFEM_initAll
  write(6,'(/,a)')   ' <<<+-  DAMASK_spectral init  -+>>>'
- write(6,'(/,a,/)') ' Roters et al., Computational Materials Science, 2018'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
-#include "compilation_info.f90"
 
+ write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, 2019'
+ write(6,'(a)')   ' https://doi.org/10.1007/978-981-10-6855-3_80'
 
  call results_openJobFile()
  call results_closeJobFile()
@@ -173,17 +166,17 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! assign mechanics solver depending on selected type
  select case (spectral_solver)
-   case (DAMASK_spectral_SolverBasic_label)
-     mech_init     => basic_init
-     mech_forward  => basic_forward
-     mech_solution => basic_solution
+   case (GRID_MECH_SPECTRAL_BASIC_LABEL)
+     mech_init     => grid_mech_spectral_basic_init
+     mech_forward  => grid_mech_spectral_basic_forward
+     mech_solution => grid_mech_spectral_basic_solution
 
-   case (DAMASK_spectral_SolverPolarisation_label)
+   case (GRID_MECH_SPECTRAL_POLARISATION_LABEL)
      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
        call IO_warning(42_pInt, ext_msg='debug Divergence')
-     mech_init     => polarisation_init
-     mech_forward  => polarisation_forward
-     mech_solution => polarisation_solution
+     mech_init     => grid_mech_spectral_polarisation_init
+     mech_forward  => grid_mech_spectral_polarisation_forward
+     mech_solution => grid_mech_spectral_polarisation_solution
 
    case default
      call IO_error(error_ID = 891_pInt, ext_msg = trim(spectral_solver))
@@ -365,10 +358,10 @@ program DAMASK_spectral
        call mech_init
      
      case(FIELD_THERMAL_ID)
-       call spectral_thermal_init
+       call grid_thermal_spectral_init
 
      case(FIELD_DAMAGE_ID)
-       call spectral_damage_init
+       call grid_damage_spectral_init
 
    end select
  enddo
@@ -510,8 +503,8 @@ program DAMASK_spectral
                        stress_BC          = loadCases(currentLoadCase)%stress, &
                        rotation_BC        = loadCases(currentLoadCase)%rotation)
 
-             case(FIELD_THERMAL_ID); call spectral_thermal_forward()
-             case(FIELD_DAMAGE_ID);  call spectral_damage_forward()
+             case(FIELD_THERMAL_ID); call grid_thermal_spectral_forward
+             case(FIELD_DAMAGE_ID);  call grid_damage_spectral_forward
            end select
          enddo
 
@@ -529,10 +522,10 @@ program DAMASK_spectral
                                         rotation_BC        = loadCases(currentLoadCase)%rotation)
 
                case(FIELD_THERMAL_ID)
-                 solres(field) = spectral_thermal_solution(timeinc,timeIncOld,remainingLoadCaseTime)
+                 solres(field) = grid_thermal_spectral_solution(timeinc,timeIncOld,remainingLoadCaseTime)
 
                case(FIELD_DAMAGE_ID)
-                 solres(field) = spectral_damage_solution(timeinc,timeIncOld,remainingLoadCaseTime)
+                 solres(field) = grid_damage_spectral_solution(timeinc,timeIncOld,remainingLoadCaseTime)
 
              end select
 

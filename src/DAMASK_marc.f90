@@ -60,15 +60,15 @@ subroutine DAMASK_interface_init
 
  write(6,'(/,a)') ' <<<+-  DAMASK_marc init -+>>>'
 
- write(6,'(/,a)') ' Roters et al., Computational Materials Science 158:420–478, 2018'
+ write(6,'(/,a)') ' Roters et al., Computational Materials Science 158:420–478, 2019'
  write(6,'(a)')   ' https://doi.org/10.1016/j.commatsci.2018.04.030'
 
  write(6,'(/,a)') ' Version: '//DAMASKVERSION
 
  ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
 #if __INTEL_COMPILER >= 1800
-  write(6,'(/,a)') 'Compiled with: '//compiler_version()
-  write(6,'(a)')   'Compiler options: '//compiler_options()
+  write(6,'(/,a)') ' Compiled with: '//compiler_version()
+  write(6,'(a)')   ' Compiler options: '//compiler_options()
 #else
   write(6,'(/,a,i4.4,a,i8.8)') ' Compiled with Intel fortran version :', __INTEL_COMPILER,&
                                                        ', build date :', __INTEL_COMPILER_BUILD_DATE

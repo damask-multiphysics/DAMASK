@@ -2,6 +2,8 @@
 if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
     SET_SOURCE_FILES_PROPERTIES( "lattice.f90" PROPERTIES
                                 COMPILE_FLAGS "-ffree-line-length-240")
+    SET_SOURCE_FILES_PROPERTIES( "DAMASK_interface.f90" PROPERTIES
+                                COMPILE_FLAGS "-ffree-line-length-164")
     # long lines for interaction matrix
 endif()
 
@@ -172,17 +174,17 @@ if (PROJECT_NAME STREQUAL "DAMASK_spectral")
       list(APPEND OBJECTFILES $<TARGET_OBJECTS:SPECTRAL_UTILITIES>)
 
       add_library(SPECTRAL_SOLVER OBJECT
-      "spectral_thermal.f90"
-      "spectral_damage.f90"
-      "spectral_mech_Polarisation.f90"
-      "spectral_mech_Basic.f90")
+      "grid_thermal_spectral.f90"
+      "grid_damage_spectral.f90"
+      "grid_mech_spectral_basic.f90"
+      "grid_mech_spectral_polarisation.f90")
       add_dependencies(SPECTRAL_SOLVER SPECTRAL_UTILITIES)
       list(APPEND OBJECTFILES $<TARGET_OBJECTS:SPECTRAL_SOLVER>)
 
       if(NOT CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
-        add_executable(DAMASK_spectral "DAMASK_spectral.f90" ${OBJECTFILES})
+        add_executable(DAMASK_spectral "DAMASK_grid.f90" ${OBJECTFILES})
       else()
-        add_library(DAMASK_spectral OBJECT "DAMASK_spectral.f90")
+        add_library(DAMASK_spectral OBJECT "DAMASK_grid.f90")
       endif()
 
       add_dependencies(DAMASK_spectral SPECTRAL_SOLVER)
