@@ -1021,7 +1021,7 @@ else
 endif
 forall (s = 1_pInt:ns) &
   dst%tau_threshold(s,of) = prm%mu * prm%burgers(s) &
-                  * sqrt(dot_product((sum(abs(rhoSgl),2) + sum(abs(rhoDip),2)), myInteractionMatrix(1:ns,s)))
+                  * sqrt(dot_product(sum(abs(rho),2), myInteractionMatrix(1:ns,s)))
 
 
 !*** calculate the dislocation stress of the neighboring excess dislocation densities
@@ -1697,6 +1697,7 @@ integer(pInt) ::                            ph, &
                                             topp, &                                                 !< type of dislocation with opposite sign to t
                                             s                                                       !< index of my current slip system
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),10) :: &
+                                            rho, &
                                             rhoDot, &                                               !< density evolution
                                             rhoDotMultiplication, &                                 !< density evolution by multiplication
                                             rhoDotFlux, &                                           !< density evolution by flux
@@ -1705,7 +1706,6 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt
                                             rhoDotThermalAnnihilation                               !< density evolution by thermal annihilation
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),8) :: &
                                             rhoSgl, &                                               !< current single dislocation densities (positive/negative screw and edge without dipoles)
-                                            rhoSglOriginal, &
                                             neighbor_rhoSgl, &                                      !< current single dislocation densities of neighboring ip (positive/negative screw and edge without dipoles)
                                             my_rhoSgl                                               !< single dislocation densities of central ip (positive/negative screw and edge without dipoles)
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),4) :: &
@@ -1714,13 +1714,11 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt
                                             neighbor_v, &                                           !< dislocation glide velocity of enighboring ip
                                             gdot                                                    !< shear rates
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el)))) :: &
-                                            rhoForest, &                                            !< forest dislocation density
                                             tau, &                                                  !< current resolved shear stress
                                             vClimb                                              !< climb velocity of edge dipoles
                                             
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),2) :: &
                                             rhoDip, &                                               !< current dipole dislocation densities (screw and edge dipoles)
-                                            rhoDipOriginal, & 
                                             dLower, &                                               !< minimum stable dipole distance for edges and screws
                                             dUpper                                                  !< current maximum stable dipole distance for edges and screws
 real(pReal), dimension(3,totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),4) :: &
@@ -1746,7 +1744,7 @@ logical                                     considerEnteringFlux, &
  p = phaseAt(1,ip,el)
  o = phasememberAt(1,ip,el)
 
-if (timestep <= 0.0_pReal) then                                                                     ! if illegal timestep... Why here and not on function entry??
+if (timestep <= 0.0_pReal) then                                                                     ! if illegal timestep... 
   plasticState(p)%dotState = 0.0_pReal                                                              ! ...return without doing anything (-> zero dotState)
   return
 endif
@@ -1760,31 +1758,19 @@ endif
 
 ph = material_phase(1_pInt,ip,el)
 instance = phase_plasticityInstance(ph)
-associate(prm => param(instance),dst => microstructure(instance),dot => dotState(instance))
+associate(prm => param(instance),dst => microstructure(instance),dot => dotState(instance),stt => state(instance))
 ns = totalNslip(instance)
 
 tau = 0.0_pReal
 gdot = 0.0_pReal
 
+rho = getRho(instance,o,ip,el)
+rhoSgl = rho(:,sgl)
+rhoDip = rho(:,dip)
 
 forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
-  rhoSgl(s,t) =     max(plasticState(p)%state(iRhoU(s,t,instance),o), 0.0_pReal)                      ! ensure positive single mobile densities
-  rhoSgl(s,t+4_pInt) =  plasticState(p)%state(iRhoB(s,t,instance),o)
   v(s,t) =              plasticState(p)%state(iV   (s,t,instance),o)
 endforall
-forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
-  rhoDip(s,c) =     max(plasticState(p)%state(iRhoD(s,c,instance),o), 0.0_pReal)                      ! ensure positive dipole densities
-endforall
-rhoForest =              plasticState(p)%state(iRhoF(1:ns,instance),o)
-
-rhoSglOriginal = rhoSgl
-rhoDipOriginal = rhoDip
-where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < prm%significantN &
-  .or. abs(rhoSgl) < prm%significantRho) &
-  rhoSgl = 0.0_pReal
-where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < prm%significantN &
-  .or. abs(rhoDip) < prm%significantRho) &
-  rhoDip = 0.0_pReal
 
 
 !****************************************************************************
@@ -1832,17 +1818,17 @@ rhoDotMultiplication = 0.0_pReal
 if (lattice_structure(ph) == LATTICE_bcc_ID) then                                                 ! BCC
   forall (s = 1:ns, sum(abs(v(s,1:4))) > 0.0_pReal)
     rhoDotMultiplication(s,1:2) = sum(abs(gdot(s,3:4))) / prm%burgers(s) &                        ! assuming double-cross-slip of screws to be decisive for multiplication
-                                * sqrt(rhoForest(s)) / prm%lambda0(s) ! &                         ! mean free path
+                                * sqrt(stt%rho_forest(s,o)) / prm%lambda0(s) ! &                         ! mean free path
                                 ! * 2.0_pReal * sum(abs(v(s,3:4))) / sum(abs(v(s,1:4)))             ! ratio of screw to overall velocity determines edge generation
     rhoDotMultiplication(s,3:4) = sum(abs(gdot(s,3:4))) /prm%burgers(s) &                        ! assuming double-cross-slip of screws to be decisive for multiplication
-                                * sqrt(rhoForest(s)) / prm%lambda0(s) ! &                         ! mean free path
+                                * sqrt(stt%rho_forest(s,o)) / prm%lambda0(s) ! &                         ! mean free path
                                 ! * 2.0_pReal * sum(abs(v(s,1:2))) / sum(abs(v(s,1:4)))             ! ratio of edge to overall velocity determines screw generation
   endforall
 
 else                                                                                                ! ALL OTHER STRUCTURES
   rhoDotMultiplication(1:ns,1:4) = spread( &
         (sum(abs(gdot(1:ns,1:2)),2) * prm%fEdgeMultiplication + sum(abs(gdot(1:ns,3:4)),2)) &
-      * sqrt(rhoForest(1:ns)) / prm%lambda0 / prm%burgers(1:ns), 2, 4)
+      * sqrt(stt%rho_forest(:,o)) / prm%lambda0 / prm%burgers(1:ns), 2, 4)
 endif
 
 
@@ -2062,7 +2048,7 @@ forall (c=1_pInt:2_pInt) &
 if (lattice_structure(ph) == LATTICE_fcc_ID) & ! only fcc
   forall (s = 1:ns, prm%colinearSystem(s) > 0_pInt) &
     rhoDotAthermalAnnihilation(prm%colinearSystem(s),1:2) = - rhoDotAthermalAnnihilation(s,10) &
-      * 0.25_pReal * sqrt(rhoForest(s)) * (dUpper(s,2) + dLower(s,2)) * prm%edgeJogFactor
+      * 0.25_pReal * sqrt(stt%rho_forest(s,o)) * (dUpper(s,2) + dLower(s,2)) * prm%edgeJogFactor
 
   
   
@@ -2116,15 +2102,15 @@ results(instance)%rhoDotEdgeJogs(1:ns,o) = 2.0_pReal * rhoDotThermalAnnihilation
     write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> total density change', &
                                             rhoDot * timestep
     write(6,'(a,/,10(12x,12(f12.5,1x),/))') '<< CONST >> relative density change', &
-                                            rhoDot(1:ns,1:8) * timestep / (abs(rhoSglOriginal)+1.0e-10), &
-                                            rhoDot(1:ns,9:10) * timestep / (rhoDipOriginal+1.0e-10)
+                                            rhoDot(1:ns,1:8)  * timestep / (abs(stt%rho(:,sgl))+1.0e-10), &
+                                            rhoDot(1:ns,9:10) * timestep / (stt%rho(:,dip)+1.0e-10)
     write(6,*)
   endif
 #endif
 
 
-if (    any(rhoSglOriginal(1:ns,1:4) + rhoDot(1:ns,1:4) * timestep < -prm%aTolRho) &
-   .or. any(rhoDipOriginal(1:ns,1:2) + rhoDot(1:ns,9:10) * timestep < -prm%aTolRho)) then
+if (    any(stt%rho(:,mob) + rhoDot(1:ns,1:4) * timestep < -prm%aTolRho) &
+   .or. any(stt%rho(:,dip) + rhoDot(1:ns,9:10) * timestep < -prm%aTolRho)) then
 #ifdef DEBUG
   if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt) then 
     write(6,'(a,i5,a,i2)') '<< CONST >> evolution rate leads to negative density at el ',el,' ip ',ip
