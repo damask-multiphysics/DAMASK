@@ -22,8 +22,6 @@ module plastic_nonlocal
 
   integer, dimension(8), parameter :: &
     sgl = [1,2,3,4,5,6,7,8]
-  integer, dimension(2), parameter :: &
-    dip = [9,10]
   integer, dimension(5), parameter :: &
     edg = [1,2,5,6,9], &
     scr = [3,4,7,8,10]
@@ -39,6 +37,10 @@ module plastic_nonlocal
     mob_edg_neg = 2, &  
     mob_scr_pos = 3, &
     mob_scr_neg = 4
+  integer, dimension(2), parameter :: &
+    dip = [9,10], &
+    imm_edg = imm(1:2), &
+    imm_scr = imm(3:4)
 
  integer(pInt), dimension(:,:), allocatable, private :: &
    iRhoF                                                                                            !< state indices for forest density
@@ -444,7 +446,7 @@ subroutine plastic_nonlocal_init
       ! ToDo: discuss logic
       prm%rhoSglScatter               = config%getFloat('rhosglscatter')
       prm%rhoSglRandom                = config%getFloat('rhosglrandom',0.0_pReal)
-      if (config%keyExists('rhosglrandom')) & 
+      if (config%keyExists('/rhosglrandom/')) & 
         prm%rhoSglRandomBinning       = config%getFloat('rhosglrandombinning',0.0_pReal) !ToDo: useful default?
      ! if (rhoSglRandom(instance) < 0.0_pReal) &
      ! if (rhoSglRandomBinning(instance) <= 0.0_pReal) &
@@ -452,7 +454,7 @@ subroutine plastic_nonlocal_init
       prm%surfaceTransmissivity       = config%getFloat('surfacetransmissivity',defaultVal=1.0_pReal)
       prm%grainboundaryTransmissivity = config%getFloat('grainboundarytransmissivity',defaultVal=-1.0_pReal)
       prm%fEdgeMultiplication         = config%getFloat('edgemultiplication')
-      prm%shortRangeStressCorrection  = config%getInt('shortrangestresscorrection',defaultVal=0_pInt ) > 0_pInt ! ToDo: use /flag/ type key
+      prm%shortRangeStressCorrection  = config%keyExists('/shortrangestresscorrection/')
    
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
@@ -942,7 +944,6 @@ integer(pInt)                   ns, neighbor_el, &                ! element numb
                                 neighbor_instance, &             ! instance of this plasticity of neighboring material point
                                 c, &                          ! index of dilsocation character (edge, screw)
                                 s, &                          ! slip system index
-                                t, &                          ! index of dilsocation type (e+, e-, s+, s-, used e+, used e-, used s+, used s-)
                                 dir, &
                                 n, &
                                 nRealNeighbors                ! number of really existing neighbors
@@ -968,8 +969,6 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,e
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),10) :: &
                                 rho, &
                                 rho_neighbor
-real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),8) :: &
-                                rhoSgl                        ! single dislocation density (edge+, edge-, screw+, screw-, used edge+, used edge-, used screw+, used screw-)
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))), &
                        totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el)))) :: &
                                 myInteractionMatrix           ! corrected slip interaction matrix
@@ -993,7 +992,6 @@ associate(prm => param(instance),dst => microstructure(instance), stt => state(i
 ns = prm%totalNslip
 
 rho = getRho(instance,of,ip,el)
-rhoSgl = rho(:,sgl)
 
 stt%rho_forest(:,of) = matmul(prm%forestProjection_Edge, sum(abs(rho(:,edg)),2)) &
                      + matmul(prm%forestProjection_Screw,sum(abs(rho(:,scr)),2))        
@@ -1114,14 +1112,12 @@ if (.not. phase_localPlasticity(ph) .and. prm%shortRangeStressCorrection) then
     enddo
       
       ! ... plus gradient from deads ...
-    do t = 1_pInt,4_pInt
-      c = (t - 1_pInt) / 2_pInt + 1_pInt
-      rhoExcessGradient(c) = rhoExcessGradient(c) + rhoSgl(s,t+4_pInt) / FVsize
-    enddo
+    rhoExcessGradient(1) = rhoExcessGradient(1) + sum(rho(s,imm_edg)) / FVsize
+    rhoExcessGradient(2) = rhoExcessGradient(2) + sum(rho(s,imm_scr)) / FVsize
 
       ! ... normalized with the total density ...
-    rhoTotal(1) = (sum(abs(rho(s,edg))) + sum(neighbor_rhoTotal(1,s,:))) / real(1_pInt + nRealNeighbors,pReal)
-    rhoTotal(2) = (sum(abs(rho(s,scr))) + sum(neighbor_rhoTotal(2,s,:))) / real(1_pInt + nRealNeighbors,pReal)
+    rhoTotal(1) = (sum(abs(rho(s,edg))) + sum(neighbor_rhoTotal(1,s,:))) / real(1 + nRealNeighbors,pReal)
+    rhoTotal(2) = (sum(abs(rho(s,scr))) + sum(neighbor_rhoTotal(2,s,:))) / real(1 + nRealNeighbors,pReal)
 
     rhoExcessGradient_over_rho = 0.0_pReal
     where(rhoTotal > 0.0_pReal) &
@@ -1129,8 +1125,7 @@ if (.not. phase_localPlasticity(ph) .and. prm%shortRangeStressCorrection) then
     
       ! ... gives the local stress correction when multiplied with a factor
     dst%tau_back(s,of) = - prm%mu * prm%burgers(s) / (2.0_pReal * pi) &
-               * (rhoExcessGradient_over_rho(1) / (1.0_pReal - prm%nu) &
-                  + rhoExcessGradient_over_rho(2))
+                      * (rhoExcessGradient_over_rho(1) / (1.0_pReal - prm%nu) + rhoExcessGradient_over_rho(2))
 
   enddo
 endif
@@ -1504,25 +1499,23 @@ endforall
 forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
   dUpperOld(s,c) = plasticState(ph)%state(iD(s,c,instance),of)
 endforall
- rho =  getRho(instance,of,ip,el)
- rhoSgl = rho(:,sgl)
- rhoDip = rho(:,dip)
 
+ rho =  getRho(instance,of,ip,el)
+ rhoDip = rho(:,dip)
 
 !****************************************************************************
 !*** dislocation remobilization (bauschinger effect)
-deltaRhoRemobilization = 0.0_pReal
-do t = 1_pInt,4_pInt
-  do s = 1_pInt,ns
-    if (rhoSgl(s,t+4_pInt) * v(s,t) < 0.0_pReal) then
-      deltaRhoRemobilization(s,t) = abs(rhoSgl(s,t+4_pInt))
-      rhoSgl(s,t) = rhoSgl(s,t) + abs(rhoSgl(s,t+4_pInt))
-      deltaRhoRemobilization(s,t+4_pInt) = - rhoSgl(s,t+4_pInt)
-      rhoSgl(s,t+4_pInt) = 0.0_pReal
-    endif
-  enddo
-enddo
+where(rho(:,imm) * v < 0.0_pReal)
+  deltaRhoRemobilization(:,mob) = abs(rho(:,imm))
+  deltaRhoRemobilization(:,imm) =   - rho(:,imm)
+  rho(:,mob) = rho(:,mob) + abs(rho(:,imm))
+  rho(:,imm) = 0.0_pReal
+elsewhere
+  deltaRhoRemobilization(:,mob) = 0.0_pReal
+  deltaRhoRemobilization(:,imm) = 0.0_pReal
+endwhere  
 
+rhoSgl = rho(:,sgl)
 
 
 !****************************************************************************
