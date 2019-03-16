@@ -916,7 +916,6 @@ use mesh, only: &
 use material, only: &
   material_phase, &
   phase_localPlasticity, &
-  plasticState, &
   phaseAt, phasememberAt, &
   phase_plasticityInstance
 use lattice, only: &
@@ -935,7 +934,6 @@ real(pReal), dimension(3,3), intent(in) :: &
  integer(pInt) :: &
    ph, &                                                                                             !< phase
    of, &                                                                                             !< offset
-   np, &                                                                                            !< neighbor phase
    no                                                                                               !< nieghbor offset
 
 integer(pInt)                   ns, neighbor_el, &                ! element number of neighboring material point
@@ -970,8 +968,6 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,e
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),10) :: &
                                 rho, &
                                 rho_neighbor
-real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),2) :: &
-                                rhoDip                        ! dipole dislocation density (edge, screw)
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),8) :: &
                                 rhoSgl                        ! single dislocation density (edge+, edge-, screw+, screw-, used edge+, used edge-, used screw+, used screw-)
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))), &
@@ -998,7 +994,6 @@ ns = prm%totalNslip
 
 rho = getRho(instance,of,ip,el)
 rhoSgl = rho(:,sgl)
-rhoDip = rho(:,dip)
 
 stt%rho_forest(:,of) = matmul(prm%forestProjection_Edge, sum(abs(rho(:,edg)),2)) &
                      + matmul(prm%forestProjection_Screw,sum(abs(rho(:,scr)),2))        
@@ -1050,36 +1045,25 @@ if (.not. phase_localPlasticity(ph) .and. prm%shortRangeStressCorrection) then
   
   !* loop through my neighborhood and get the connection vectors (in lattice frame) and the excess densities
   
-  nRealNeighbors = 0_pInt
+  nRealNeighbors = 0
   neighbor_rhoTotal = 0.0_pReal
   do n = 1_pInt,theMesh%elem%nIPneighbors
     neighbor_el = mesh_ipNeighborhood(1,n,ip,el)
     neighbor_ip = mesh_ipNeighborhood(2,n,ip,el)
-    np = phaseAt(1,neighbor_ip,neighbor_el)
     no = phasememberAt(1,neighbor_ip,neighbor_el)
     if (neighbor_el > 0 .and. neighbor_ip > 0) then
       neighbor_instance = phase_plasticityInstance(material_phase(1,neighbor_ip,neighbor_el))
       if (neighbor_instance == instance) then
 
-          nRealNeighbors = nRealNeighbors + 1_pInt
+          nRealNeighbors = nRealNeighbors + 1
           rho_neighbor = getRho(instance,no,neighbor_ip,neighbor_el)
 
           rho_edg_delta_neighbor(:,n) = rho_neighbor(:,mob_edg_pos) - rho_neighbor(:,mob_edg_neg)
           rho_scr_delta_neighbor(:,n) = rho_neighbor(:,mob_scr_pos) - rho_neighbor(:,mob_scr_neg)
            
-          forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
+          neighbor_rhoTotal(1,:,n) = sum(abs(rho_neighbor(:,edg)),2)
+          neighbor_rhoTotal(2,:,n) = sum(abs(rho_neighbor(:,scr)),2)
 
-            neighbor_rhoExcess(c,s,n) = &
-                max(plasticState(np)%state(iRhoU(s,2*c-1,neighbor_instance),no), 0.0_pReal) &       ! positive mobiles
-              - max(plasticState(np)%state(iRhoU(s,2*c,neighbor_instance),  no), 0.0_pReal)         ! negative mobiles
-            neighbor_rhoTotal(c,s,n) = &
-                max(plasticState(np)%state(iRhoU(s,2*c-1,neighbor_instance),no), 0.0_pReal) &       ! positive mobiles
-              + max(plasticState(np)%state(iRhoU(s,2*c,neighbor_instance),  no), 0.0_pReal) &       ! negative mobiles
-              + abs(plasticState(np)%state(iRhoB(s,2*c-1,neighbor_instance),no)) &                  ! positive deads
-              + abs(plasticState(np)%state(iRhoB(s,2*c,neighbor_instance),  no)) &                  ! negative deads
-              + max(plasticState(np)%state(iRhoD(s,c,neighbor_instance),    no), 0.0_pReal)         ! dipoles
-
-          endforall
           connection_latticeConf(1:3,n) = &
             math_mul33x3(invFe, mesh_ipCoordinates(1:3,neighbor_ip,neighbor_el) &
                                 - mesh_ipCoordinates(1:3,ip,el))
@@ -1090,19 +1074,19 @@ if (.not. phase_localPlasticity(ph) .and. prm%shortRangeStressCorrection) then
       else
         ! local neighbor or different lattice structure or different constitution instance -> use central values instead
         connection_latticeConf(1:3,n) = 0.0_pReal
-        neighbor_rhoExcess(1:2,1:ns,n) = rhoExcess
-        rho_edg_delta_neighbor(:,n) = rho_scr_delta
+        rho_edg_delta_neighbor(:,n) = rho_edg_delta
         rho_scr_delta_neighbor(:,n) = rho_scr_delta
       endif
     else
       ! free surface -> use central values instead
       connection_latticeConf(1:3,n) = 0.0_pReal
-      neighbor_rhoExcess(1:2,1:ns,n) = rhoExcess
-      rho_edg_delta_neighbor(:,n) = rho_scr_delta
+      rho_edg_delta_neighbor(:,n) = rho_edg_delta
       rho_scr_delta_neighbor(:,n) = rho_scr_delta
     endif
   enddo
   
+  neighbor_rhoExcess(1,:,:) = rho_edg_delta_neighbor
+  neighbor_rhoExcess(2,:,:) = rho_scr_delta_neighbor
 
   !* loop through the slip systems and calculate the dislocation gradient by
   !* 1. interpolation of the excess density in the neighorhood
@@ -1124,10 +1108,9 @@ if (.not. phase_localPlasticity(ph) .and. prm%shortRangeStressCorrection) then
                                   - neighbor_rhoExcess(c,s,neighbors(2))
       enddo
       invConnections = math_inv33(connections)
-      if (all(dEq0(invConnections))) &
-        call IO_error(-1_pInt,ext_msg='back stress calculation: inversion error')
-      rhoExcessGradient(c) = math_mul3x3(m(1:3,s,c), &
-                                         math_mul33x3(invConnections,rhoExcessDifferences))
+      if (all(dEq0(invConnections))) call IO_error(-1_pInt,ext_msg='back stress calculation: inversion error')
+
+      rhoExcessGradient(c) = math_mul3x3(m(1:3,s,c), math_mul33x3(invConnections,rhoExcessDifferences))
     enddo
       
       ! ... plus gradient from deads ...
@@ -1137,12 +1120,12 @@ if (.not. phase_localPlasticity(ph) .and. prm%shortRangeStressCorrection) then
     enddo
 
       ! ... normalized with the total density ...
+    rhoTotal(1) = (sum(abs(rho(s,edg))) + sum(neighbor_rhoTotal(1,s,:))) / real(1_pInt + nRealNeighbors,pReal)
+    rhoTotal(2) = (sum(abs(rho(s,scr))) + sum(neighbor_rhoTotal(2,s,:))) / real(1_pInt + nRealNeighbors,pReal)
+
     rhoExcessGradient_over_rho = 0.0_pReal
-    forall (c = 1_pInt:2_pInt) &
-      rhoTotal(c) = (sum(abs(rhoSgl(s,[2*c-1,2*c,2*c+3,2*c+4]))) + rhoDip(s,c) &
-                            + sum(neighbor_rhoTotal(c,s,:)))  / real(1_pInt + nRealNeighbors,pReal)
-    forall (c = 1_pInt:2_pInt, rhoTotal(c) > 0.0_pReal) &
-      rhoExcessGradient_over_rho(c) = rhoExcessGradient(c) / rhoTotal(c)
+    where(rhoTotal > 0.0_pReal) &
+      rhoExcessGradient_over_rho = rhoExcessGradient / rhoTotal
     
       ! ... gives the local stress correction when multiplied with a factor
     dst%tau_back(s,of) = - prm%mu * prm%burgers(s) / (2.0_pReal * pi) &
