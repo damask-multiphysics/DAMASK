@@ -19,7 +19,27 @@ module plastic_nonlocal
  
  character(len=64), dimension(:,:), allocatable, target, public :: &
    plastic_nonlocal_output                                                                     !< name of each post result output
- 
+
+  integer, dimension(8), parameter :: &
+    sgl = [1,2,3,4,5,6,7,8]
+  integer, dimension(2), parameter :: &
+    dip = [9,10]
+  integer, dimension(5), parameter :: &
+    edg = [1,2,5,6,9], &
+    scr = [3,4,7,8,10]
+  integer, dimension(4), parameter :: &
+    mob = [1,2,3,4], &
+    imm = [5,6,7,8], &
+    pos = sgl(1:7:2), &
+    neg = sgl(2:8:2), &
+    sgl_edg = edg(1:4), &
+    sgl_scr = scr(1:4)
+  integer, parameter :: &
+    mob_edg_pos = 1, &
+    mob_edg_neg = 2, &  
+    mob_scr_pos = 3, &
+    mob_scr_neg = 4
+
  integer(pInt), dimension(:,:), allocatable, private :: &
    iRhoF                                                                                            !< state indices for forest density
  integer(pInt), dimension(:,:,:), allocatable, private :: &
@@ -200,6 +220,7 @@ module plastic_nonlocal
          rho_dip_scr, &
        rhoSglScrew, &
        rhoSglEdge, &
+       rho_forest, &
      accumulatedshear
  end type tNonlocalState
  
@@ -686,6 +707,8 @@ extmsg = trim(extmsg)//' fEdgeMultiplication'
     plasticState(p)%aTolState(10_pInt*prm%totalNslip + 1_pInt:11_pInt*prm%totalNslip )  = prm%aTolShear
     plasticState(p)%slipRate => plasticState(p)%dotState(10_pInt*prm%totalNslip + 1_pInt:11_pInt*prm%totalNslip ,1:NofMyPhase)
     plasticState(p)%accumulatedSlip => plasticState(p)%state (10_pInt*prm%totalNslip + 1_pInt:11_pInt*prm%totalNslip ,1:NofMyPhase)
+    
+    stt%rho_forest => plasticState(p)%state       (11_pInt*prm%totalNslip + 1_pInt:12_pInt*prm%totalNslip ,1:NofMyPhase)
 
 
    allocate(dst%tau_Threshold(prm%totalNslip,NofMyPhase),source=0.0_pReal)
@@ -742,7 +765,9 @@ allocate(compatibility(2,maxval(totalNslip),maxval(totalNslip),theMesh%elem%nIPn
          iRhoD(s,c,phase_plasticityInstance(p)) = l
        enddo
      enddo
-     l = l + param(phase_plasticityInstance(p))%totalNslip
+     
+     l = l + param(phase_plasticityInstance(p))%totalNslip ! shear(rates)
+     
      do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
        l = l + 1_pInt
        iRhoF(s,phase_plasticityInstance(p)) = l
@@ -925,15 +950,12 @@ integer(pInt)                   ns, neighbor_el, &                ! element numb
                                 nRealNeighbors                ! number of really existing neighbors
 integer(pInt), dimension(2) ::  neighbors
 real(pReal)                     FVsize, &
-                                correction, &
-                                myRhoForest
+                                correction
 real(pReal), dimension(2) ::    rhoExcessGradient, &
                                 rhoExcessGradient_over_rho, &
                                 rhoTotal
 real(pReal), dimension(3) ::    rhoExcessDifferences, &
                                 normal_latticeConf
-real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el)))) :: &
-                                rhoForest                 ! forest dislocation density
 real(pReal), dimension(3,3) ::  invFe, &                      ! inverse of elastic deformation gradient
                                 invFp, &                      ! inverse of plastic deformation gradient
                                 connections, &
@@ -942,6 +964,12 @@ real(pReal), dimension(3,theMesh%elem%nIPneighbors) :: &
                                 connection_latticeConf
 real(pReal), dimension(2,totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el)))) :: &
                                 rhoExcess
+real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el)))) :: &
+                       rho_edg_delta, &
+                       rho_scr_delta
+real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),10) :: &
+                                rho, &
+                                rho_neighbor
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),2) :: &
                                 rhoDip                        ! dipole dislocation density (edge, screw)
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),8) :: &
@@ -949,6 +977,12 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))), &
                        totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el)))) :: &
                                 myInteractionMatrix           ! corrected slip interaction matrix
+                                
+real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),theMesh%elem%nIPneighbors) :: &
+                       rho_edg_delta_neighbor, &
+                       rho_scr_delta_neighbor, &
+                       rho_edg_sum_neighbor, &
+                       rho_scr_sum_neighbor
 real(pReal), dimension(2,maxval(totalNslip),theMesh%elem%nIPneighbors) :: &
                                 neighbor_rhoExcess, &      ! excess density at neighboring material point
                                 neighbor_rhoTotal          ! total density at neighboring material point
@@ -958,7 +992,7 @@ real(pReal), dimension(3,totalNslip(phase_plasticityInstance(material_phase(1_pI
 ph = phaseAt(1,ip,el)
 of = phasememberAt(1,ip,el)
 instance = phase_plasticityInstance(ph)
-associate(prm => param(instance),dst => microstructure(instance))
+associate(prm => param(instance),dst => microstructure(instance), stt => state(instance))
 
 ns = prm%totalNslip
 
@@ -977,14 +1011,10 @@ where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < prm%significantN &
   .or. abs(rhoDip) < prm%significantRho) &
   rhoDip = 0.0_pReal
 
-!*** calculate the forest dislocation density
-!*** (= projection of screw and edge dislocations)
+rho = getRho(instance,of,ip,el)
 
-forall (s = 1_pInt:ns) &
-  rhoForest(s) = dot_product((sum(abs(rhoSgl(1:ns,[1,2,5,6])),2) + rhoDip(1:ns,1)), &
-                              prm%forestProjection_Edge(s,1:ns)) & 
-               + dot_product((sum(abs(rhoSgl(1:ns,[3,4,7,8])),2) + rhoDip(1:ns,2)), &
-                              prm%forestProjection_Screw(s,1:ns))
+stt%rho_forest(:,of) = matmul(prm%forestProjection_Edge, sum(abs(rho(:,edg)),2)) &
+                     + matmul(prm%forestProjection_Screw,sum(abs(rho(:,scr)),2))        
 
 
 !*** calculate the threshold shear stress for dislocation slip 
@@ -992,11 +1022,10 @@ forall (s = 1_pInt:ns) &
 !*** (see Kubin,Devincre,Hoc; 2008; Modeling dislocation storage rates and mean free paths in face-centered cubic crystals)
 
 if (lattice_structure(ph) ==  LATTICE_bcc_ID .or. lattice_structure(ph) == LATTICE_fcc_ID) then     ! only fcc and bcc
-  do s = 1_pInt,ns 
-    myRhoForest = max(rhoForest(s),prm%significantRho)
+  do s = 1_pInt,ns
     correction = (  1.0_pReal - prm%linetensionEffect &
                   + prm%linetensionEffect &
-                  * log(0.35_pReal * prm%burgers(s) * sqrt(myRhoForest)) &
+                  * log(0.35_pReal * prm%burgers(s) * sqrt(max(stt%rho_forest(s,of),prm%significantRho))) &
                   / log(0.35_pReal * prm%burgers(s) * 1e6_pReal)) ** 2.0_pReal
     myInteractionMatrix(1:ns,s) = correction * prm%interactionSlipSlip(1:ns,s) 
   enddo
@@ -1023,8 +1052,13 @@ forall (s = 1_pInt:ns) &
 if (.not. phase_localPlasticity(ph) .and. prm%shortRangeStressCorrection) then
   invFe = math_inv33(Fe)
   invFp = math_inv33(Fp)
-  rhoExcess(1,1:ns) = rhoSgl(1:ns,1) - rhoSgl(1:ns,2)
-  rhoExcess(2,1:ns) = rhoSgl(1:ns,3) - rhoSgl(1:ns,4)
+
+  rho_edg_delta = rho(:,mob_edg_pos) - rho(:,mob_edg_neg)
+  rho_scr_delta = rho(:,mob_scr_pos) - rho(:,mob_scr_neg)
+
+  rhoExcess(1,1:ns) = rho_edg_delta
+  rhoExcess(2,1:ns) = rho_scr_delta
+
   FVsize = mesh_ipVolume(ip,el) ** (1.0_pReal/3.0_pReal)
   
   !* loop through my neighborhood and get the connection vectors (in lattice frame) and the excess densities
@@ -1038,8 +1072,14 @@ if (.not. phase_localPlasticity(ph) .and. prm%shortRangeStressCorrection) then
     no = phasememberAt(1,neighbor_ip,neighbor_el)
     if (neighbor_el > 0 .and. neighbor_ip > 0) then
       neighbor_instance = phase_plasticityInstance(material_phase(1,neighbor_ip,neighbor_el))
-      if (neighbor_instance == instance) then                                                       ! same instance should be same structure
+      if (neighbor_instance == instance) then
+
           nRealNeighbors = nRealNeighbors + 1_pInt
+          rho_neighbor = getRho(instance,no,neighbor_ip,neighbor_el)
+
+          rho_edg_delta_neighbor(:,n) = rho_neighbor(:,mob_edg_pos) - rho_neighbor(:,mob_edg_neg)
+          rho_scr_delta_neighbor(:,n) = rho_neighbor(:,mob_scr_pos) - rho_neighbor(:,mob_scr_neg)
+           
           forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
 
             neighbor_rhoExcess(c,s,n) = &
@@ -1064,11 +1104,15 @@ if (.not. phase_localPlasticity(ph) .and. prm%shortRangeStressCorrection) then
         ! local neighbor or different lattice structure or different constitution instance -> use central values instead
         connection_latticeConf(1:3,n) = 0.0_pReal
         neighbor_rhoExcess(1:2,1:ns,n) = rhoExcess
+        rho_edg_delta_neighbor(:,n) = rho_scr_delta
+        rho_scr_delta_neighbor(:,n) = rho_scr_delta
       endif
     else
       ! free surface -> use central values instead
       connection_latticeConf(1:3,n) = 0.0_pReal
       neighbor_rhoExcess(1:2,1:ns,n) = rhoExcess
+      rho_edg_delta_neighbor(:,n) = rho_scr_delta
+      rho_scr_delta_neighbor(:,n) = rho_scr_delta
     endif
   enddo
   
@@ -1121,16 +1165,12 @@ if (.not. phase_localPlasticity(ph) .and. prm%shortRangeStressCorrection) then
   enddo
 endif
 
-
-!*** set dependent states
-plasticState(ph)%state(iRhoF(1:ns,instance),of) = rhoForest
-
 #ifdef DEBUG
   if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
       .and. ((debug_e == el .and. debug_i == ip)&
              .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
     write(6,'(/,a,i8,1x,i2,1x,i1,/)') '<< CONST >> nonlocal_microstructure at el ip ',el,ip
-    write(6,'(a,/,12x,12(e10.3,1x))') '<< CONST >> rhoForest', rhoForest
+    write(6,'(a,/,12x,12(e10.3,1x))') '<< CONST >> rhoForest', stt%rho_forest(:,of)
     write(6,'(a,/,12x,12(f10.5,1x))') '<< CONST >> tauThreshold / MPa', dst%tau_threshold(:,of)*1e-6
     write(6,'(a,/,12x,12(f10.5,1x),/)') '<< CONST >> tauBack / MPa', dst%tau_back(:,of)*1e-6
   endif
@@ -2562,6 +2602,29 @@ outputsLoop: do o = 1_pInt,size(param(instance)%outputID)
 enddo outputsLoop
 end associate
 end function plastic_nonlocal_postResults
+
+
+function getRho(instance,of,ip,el)
+  use mesh
+  
+  implicit none
+  integer, intent(in) :: instance, of,ip,el
+  real(pReal), dimension(param(instance)%totalNslip,10) :: getRho
+  
+  associate(prm => param(instance))
+
+  getRho = reshape(state(instance)%rho(:,of),[prm%totalNslip,10])
+  
+  ! ensure mobile densities (not for imm, they have a sign)
+  getRho(:,mob) = max(getRho(:,mob),0.0_pReal)
+  getRho(:,dip) = max(getRho(:,dip),0.0_pReal)
+  
+  where (abs(getRho) * mesh_ipVolume(ip,el) ** 0.667_pReal < prm%significantN &
+    .or. abs(getRho) < prm%significantRho) &
+    getRho = 0.0_pReal
+
+  end associate
+end function getRho
 
 
 !--------------------------------------------------------------------------------------------------
