@@ -996,22 +996,9 @@ associate(prm => param(instance),dst => microstructure(instance), stt => state(i
 
 ns = prm%totalNslip
 
-!*** get basic states
-forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
-  rhoSgl(s,t) = max(plasticState(ph)%state(iRhoU(s,t,instance),of), 0.0_pReal)                              ! ensure positive single mobile densities
-  rhoSgl(s,t+4_pInt) = plasticState(ph)%state(iRhoB(s,t,instance),of)
-endforall
-forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
-  rhoDip(s,c) = max(plasticState(ph)%state(iRhoD(s,c,instance),of), 0.0_pReal)                              ! ensure positive dipole densities
-
-where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < prm%significantN &
-  .or. abs(rhoSgl) < prm%significantRho) &
-  rhoSgl = 0.0_pReal
-where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < prm%significantN &
-  .or. abs(rhoDip) < prm%significantRho) &
-  rhoDip = 0.0_pReal
-
 rho = getRho(instance,of,ip,el)
+rhoSgl = rho(:,sgl)
+rhoDip = rho(:,dip)
 
 stt%rho_forest(:,of) = matmul(prm%forestProjection_Edge, sum(abs(rho(:,edg)),2)) &
                      + matmul(prm%forestProjection_Screw,sum(abs(rho(:,scr)),2))        
@@ -1355,7 +1342,9 @@ integer(pInt)                               instance, &                         
                                             t, &                                                    !< dislocation type
                                             s                                                       !< index of my current slip system
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),8) :: &
-                                            rhoSgl                                                  !< single dislocation densities (including blocked) 
+                                            rhoSgl                                                  !< single dislocation densities (including blocked)
+real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),10) :: &
+                                            rho
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),4) :: &
                                             v, &                                                    !< velocity
                                             tauNS, &                                                !< resolved shear stress including non Schmid and backstress terms
@@ -1374,20 +1363,12 @@ associate(prm => param(instance),dst=>microstructure(instance))
 ns = prm%totalNslip
 
 !*** shortcut to state variables 
-
-
-forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
-  rhoSgl(s,t) = max(plasticState(ph)%state(iRhoU(s,t,instance),of), 0.0_pReal)                         ! ensure positive single mobile densities
-  rhoSgl(s,t+4_pInt) = plasticState(ph)%state(iRhoB(s,t,instance),of)
-endforall
-where (abs(rhoSgl) * volume ** 0.667_pReal < prm%significantN &
-  .or. abs(rhoSgl) < prm%significantRho) &
-  rhoSgl = 0.0_pReal
+rho = getRho(instance,of,ip,el)
+rhoSgl = rho(:,sgl)
 
 
 !*** get resolved shear stress
 !*** for screws possible non-schmid contributions are also taken into account
-
 do s = 1_pInt,ns
   tau(s) = math_mul33xx33(Mp, prm%Schmid(1:3,1:3,s))
   tauNS(s,1) = tau(s)
@@ -1505,6 +1486,8 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,e
                                             deltaRho, &                     ! density increment
                                             deltaRhoRemobilization, &       ! density increment by remobilization
                                             deltaRhoDipole2SingleStress     ! density increment by dipole dissociation (by stress change)
+real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),10) :: &
+                                            rho                       ! current  dislocation densities
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),8) :: &
                                             rhoSgl                        ! current single dislocation densities (positive/negative screw and edge without dipoles)
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),4) :: &
@@ -1530,33 +1513,21 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,e
  instance = phase_plasticityInstance(ph)
  associate(prm => param(instance),dst => microstructure(instance))
  ns = totalNslip(instance)
-
-
+ 
 !*** shortcut to state variables 
-
  forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
-  rhoSgl(s,t) = max(plasticState(ph)%state(iRhoU(s,t,instance),of), 0.0_pReal)                              ! ensure positive single mobile densities
-  rhoSgl(s,t+4_pInt) = plasticState(ph)%state(iRhoB(s,t,instance),of)
   v(s,t) = plasticState(ph)%state(iV(s,t,instance),of)
 endforall
 forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
-  rhoDip(s,c) = max(plasticState(ph)%state(iRhoD(s,c,instance),of), 0.0_pReal)                              ! ensure positive dipole densities
   dUpperOld(s,c) = plasticState(ph)%state(iD(s,c,instance),of)
 endforall
-
-where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < prm%significantN &
-  .or. abs(rhoSgl) < prm%significantRho) &
-  rhoSgl = 0.0_pReal
-where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < prm%significantN &
-  .or. abs(rhoDip) < prm%significantRho) &
-  rhoDip = 0.0_pReal
-
-
+ rho =  getRho(instance,of,ip,el)
+ rhoSgl = rho(:,sgl)
+ rhoDip = rho(:,dip)
 
 
 !****************************************************************************
 !*** dislocation remobilization (bauschinger effect)
-
 deltaRhoRemobilization = 0.0_pReal
 do t = 1_pInt,4_pInt
   do s = 1_pInt,ns
