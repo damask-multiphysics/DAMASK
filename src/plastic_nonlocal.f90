@@ -37,16 +37,16 @@ module plastic_nonlocal
  
  enum, bind(c) 
    enumerator :: undefined_ID, &
-                 rho_sgl_edge_pos_mobile_ID, &
-                 rho_sgl_edge_neg_mobile_ID, &
-                 rho_sgl_screw_pos_mobile_ID, &
-                 rho_sgl_screw_neg_mobile_ID, &
-                 rho_sgl_edge_pos_immobile_ID, &
-                 rho_sgl_edge_neg_immobile_ID, &
-                 rho_sgl_screw_pos_immobile_ID, &
-                 rho_sgl_screw_neg_immobile_ID, &
-                 rho_dip_edge_ID, &
-                 rho_dip_screw_ID, &
+                 rho_sgl_mob_edg_pos_ID, &
+                 rho_sgl_mob_edg_neg_ID, &
+                 rho_sgl_mob_scr_pos_ID, &
+                 rho_sgl_mob_scr_neg_ID, &
+                 rho_sgl_imm_edg_pos_ID, &
+                 rho_sgl_imm_edg_neg_ID, &
+                 rho_sgl_imm_scr_pos_ID, &
+                 rho_sgl_imm_scr_neg_ID, &
+                 rho_dip_edg_ID, &
+                 rho_dip_scr_ID, &
                  rho_forest_ID, &
                  shearrate_ID, &
                  resolvedstress_ID, &
@@ -177,18 +177,18 @@ module plastic_nonlocal
        rhoSgl, &
          rhoSglMobile, &                       ! iRhoU                               
            rhoSglEdgeMobile, &
-             rhoSglEdgeMobilePos, &
-             rhoSglEdgeMobileNeg, &
+             rho_sgl_mob_edg_pos, &
+             rho_sgl_mob_edg_neg, &
            rhoSglScrewMobile, &
-             rhoSglScrewMobilePos, &
-             rhoSglScrewMobileNeg, &
+             rho_sgl_mob_scr_pos, &
+             rho_sgl_mob_scr_neg, &
          rhoSglImmobile, &                     ! iRhoB
            rhoSglEdgeImmobile, &
-             rhoSglEdgeImmobilePos, &
-             rhoSglEdgeImmobileNeg, &
+             rho_sgl_imm_edg_pos, &
+             rho_sgl_imm_edg_neg, &
            rhoSglScrewImmobile, &
-             rhoSglScrewImmobilePos, &
-             rhoSglScrewImmobileNeg, &
+             rho_sgl_imm_scr_pos, &
+             rho_sgl_imm_scr_neg, &
        rhoSglPos, &
          rhoSglMobilePos, &
          rhoSglImmobilePos, &
@@ -196,8 +196,8 @@ module plastic_nonlocal
          rhoSglMobileNeg, &
          rhoSglImmobileNeg, &
        rhoDip, &                               ! iRhoD
-         rhoDipEdge, &
-         rhoDipScrew, &
+         rho_dip_edg, &
+         rho_dip_scr, &
        rhoSglScrew, &
        rhoSglEdge, &
      accumulatedshear
@@ -490,25 +490,25 @@ extmsg = trim(extmsg)//' fEdgeMultiplication'
       outputID = undefined_ID
       select case(trim(outputs(i)))
         case ('rho_sgl_edge_pos_mobile')
-          outputID = merge(rho_sgl_edge_pos_mobile_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_sgl_mob_edg_pos_ID,undefined_ID,prm%totalNslip>0_pInt)
         case ('rho_sgl_edge_neg_mobile')
-          outputID = merge(rho_sgl_edge_neg_mobile_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_sgl_mob_edg_neg_ID,undefined_ID,prm%totalNslip>0_pInt)
         case ('rho_sgl_screw_pos_mobile')
-          outputID = merge(rho_sgl_screw_pos_mobile_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_sgl_mob_scr_pos_ID,undefined_ID,prm%totalNslip>0_pInt)
         case ('rho_sgl_screw_neg_mobile')
-          outputID = merge(rho_sgl_screw_neg_mobile_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_sgl_mob_scr_neg_ID,undefined_ID,prm%totalNslip>0_pInt)
         case ('rho_sgl_edge_pos_immobile')
-          outputID = merge(rho_sgl_edge_pos_immobile_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_sgl_imm_edg_pos_ID,undefined_ID,prm%totalNslip>0_pInt)
         case ('rho_sgl_edge_neg_immobile')
-          outputID = merge(rho_sgl_edge_neg_immobile_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_sgl_imm_edg_neg_ID,undefined_ID,prm%totalNslip>0_pInt)
         case ('rho_sgl_screw_pos_immobile')
-          outputID = merge(rho_sgl_screw_pos_immobile_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_sgl_imm_scr_pos_ID,undefined_ID,prm%totalNslip>0_pInt)
         case ('rho_sgl_screw_neg_immobile')
-          outputID = merge(rho_sgl_screw_neg_immobile_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_sgl_imm_scr_neg_ID,undefined_ID,prm%totalNslip>0_pInt)
         case ('rho_dip_edge')
-          outputID = merge(rho_dip_edge_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_dip_edg_ID,undefined_ID,prm%totalNslip>0_pInt)
         case ('rho_dip_screw')
-          outputID = merge(rho_dip_screw_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_dip_scr_ID,undefined_ID,prm%totalNslip>0_pInt)
         case ('rho_forest')
           outputID = merge(rho_forest_ID,undefined_ID,prm%totalNslip>0_pInt)
         case ('shearrate')
@@ -620,25 +620,25 @@ extmsg = trim(extmsg)//' fEdgeMultiplication'
          dot%rhoSglEdgeMobile => plasticState(p)%dotState        (0_pInt*prm%totalNslip+1_pInt: 2_pInt*prm%totalNslip,:)
          del%rhoSglEdgeMobile => plasticState(p)%deltaState      (0_pInt*prm%totalNslip+1_pInt: 2_pInt*prm%totalNslip,:)
          
-           stt%rhoSglEdgeMobilePos => plasticState(p)%state      (0_pInt*prm%totalNslip+1_pInt: 1_pInt*prm%totalNslip,:)
-           dot%rhoSglEdgeMobilePos => plasticState(p)%dotState   (0_pInt*prm%totalNslip+1_pInt: 1_pInt*prm%totalNslip,:)
-           del%rhoSglEdgeMobilePos => plasticState(p)%deltaState (0_pInt*prm%totalNslip+1_pInt: 1_pInt*prm%totalNslip,:)
+           stt%rho_sgl_mob_edg_pos => plasticState(p)%state      (0_pInt*prm%totalNslip+1_pInt: 1_pInt*prm%totalNslip,:)
+           dot%rho_sgl_mob_edg_pos => plasticState(p)%dotState   (0_pInt*prm%totalNslip+1_pInt: 1_pInt*prm%totalNslip,:)
+           del%rho_sgl_mob_edg_pos => plasticState(p)%deltaState (0_pInt*prm%totalNslip+1_pInt: 1_pInt*prm%totalNslip,:)
            
-           stt%rhoSglEdgeMobileNeg => plasticState(p)%state      (1_pInt*prm%totalNslip+1_pInt: 2_pInt*prm%totalNslip,:)
-           dot%rhoSglEdgeMobileNeg => plasticState(p)%dotState   (1_pInt*prm%totalNslip+1_pInt: 2_pInt*prm%totalNslip,:)
-           del%rhoSglEdgeMobileNeg => plasticState(p)%deltaState (1_pInt*prm%totalNslip+1_pInt: 2_pInt*prm%totalNslip,:)
+           stt%rho_sgl_mob_edg_neg => plasticState(p)%state      (1_pInt*prm%totalNslip+1_pInt: 2_pInt*prm%totalNslip,:)
+           dot%rho_sgl_mob_edg_neg => plasticState(p)%dotState   (1_pInt*prm%totalNslip+1_pInt: 2_pInt*prm%totalNslip,:)
+           del%rho_sgl_mob_edg_neg => plasticState(p)%deltaState (1_pInt*prm%totalNslip+1_pInt: 2_pInt*prm%totalNslip,:)
            
          stt%rhoSglScrewMobile => plasticState(p)%state          (2_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
          dot%rhoSglScrewMobile => plasticState(p)%dotState       (2_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
          del%rhoSglScrewMobile => plasticState(p)%deltaState     (2_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
          
-           stt%rhoSglScrewMobilePos => plasticState(p)%state     (2_pInt*prm%totalNslip+1_pInt: 3_pInt*prm%totalNslip,:)
-           dot%rhoSglScrewMobilePos => plasticState(p)%dotState  (2_pInt*prm%totalNslip+1_pInt: 3_pInt*prm%totalNslip,:)
-           del%rhoSglScrewMobilePos => plasticState(p)%deltaState  (2_pInt*prm%totalNslip+1_pInt: 3_pInt*prm%totalNslip,:)
+           stt%rho_sgl_mob_scr_pos => plasticState(p)%state     (2_pInt*prm%totalNslip+1_pInt: 3_pInt*prm%totalNslip,:)
+           dot%rho_sgl_mob_scr_pos => plasticState(p)%dotState  (2_pInt*prm%totalNslip+1_pInt: 3_pInt*prm%totalNslip,:)
+           del%rho_sgl_mob_scr_pos => plasticState(p)%deltaState  (2_pInt*prm%totalNslip+1_pInt: 3_pInt*prm%totalNslip,:)
 
-           stt%rhoSglScrewMobileNeg => plasticState(p)%state     (3_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
-           dot%rhoSglScrewMobileNeg => plasticState(p)%dotState  (3_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
-           del%rhoSglScrewMobileNeg => plasticState(p)%deltaState  (3_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
+           stt%rho_sgl_mob_scr_neg => plasticState(p)%state     (3_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
+           dot%rho_sgl_mob_scr_neg => plasticState(p)%dotState  (3_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
+           del%rho_sgl_mob_scr_neg => plasticState(p)%deltaState  (3_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
            
        stt%rhoSglImmobile => plasticState(p)%state               (4_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
        dot%rhoSglImmobile => plasticState(p)%dotState            (4_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
@@ -648,37 +648,37 @@ extmsg = trim(extmsg)//' fEdgeMultiplication'
          dot%rhoSglEdgeImmobile => plasticState(p)%dotState      (4_pInt*prm%totalNslip+1_pInt: 6_pInt*prm%totalNslip,:)
          del%rhoSglEdgeImmobile => plasticState(p)%deltaState      (4_pInt*prm%totalNslip+1_pInt: 6_pInt*prm%totalNslip,:)
          
-           stt%rhoSglEdgeImmobilePos => plasticState(p)%state    (4_pInt*prm%totalNslip+1_pInt: 5_pInt*prm%totalNslip,:)
-           dot%rhoSglEdgeImmobilePos => plasticState(p)%dotState (4_pInt*prm%totalNslip+1_pInt: 5_pInt*prm%totalNslip,:)
-           del%rhoSglEdgeImmobilePos => plasticState(p)%deltaState (4_pInt*prm%totalNslip+1_pInt: 5_pInt*prm%totalNslip,:)
+           stt%rho_sgl_imm_edg_pos => plasticState(p)%state    (4_pInt*prm%totalNslip+1_pInt: 5_pInt*prm%totalNslip,:)
+           dot%rho_sgl_imm_edg_pos => plasticState(p)%dotState (4_pInt*prm%totalNslip+1_pInt: 5_pInt*prm%totalNslip,:)
+           del%rho_sgl_imm_edg_pos => plasticState(p)%deltaState (4_pInt*prm%totalNslip+1_pInt: 5_pInt*prm%totalNslip,:)
            
-           stt%rhoSglEdgeImmobileNeg => plasticState(p)%state    (5_pInt*prm%totalNslip+1_pInt: 6_pInt*prm%totalNslip,:)
-           dot%rhoSglEdgeImmobileNeg => plasticState(p)%dotState (5_pInt*prm%totalNslip+1_pInt: 6_pInt*prm%totalNslip,:)
-           del%rhoSglEdgeImmobileNeg => plasticState(p)%deltaState (5_pInt*prm%totalNslip+1_pInt: 6_pInt*prm%totalNslip,:)
+           stt%rho_sgl_imm_edg_neg => plasticState(p)%state    (5_pInt*prm%totalNslip+1_pInt: 6_pInt*prm%totalNslip,:)
+           dot%rho_sgl_imm_edg_neg => plasticState(p)%dotState (5_pInt*prm%totalNslip+1_pInt: 6_pInt*prm%totalNslip,:)
+           del%rho_sgl_imm_edg_neg => plasticState(p)%deltaState (5_pInt*prm%totalNslip+1_pInt: 6_pInt*prm%totalNslip,:)
            
          stt%rhoSglScrewImmobile => plasticState(p)%state        (6_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
          dot%rhoSglScrewImmobile => plasticState(p)%dotState     (6_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
          del%rhoSglScrewImmobile => plasticState(p)%deltaState     (6_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
                   
-           stt%rhoSglScrewImmobilePos => plasticState(p)%state   (6_pInt*prm%totalNslip+1_pInt: 7_pInt*prm%totalNslip,:)
-           dot%rhoSglScrewImmobilePos => plasticState(p)%dotState(6_pInt*prm%totalNslip+1_pInt: 7_pInt*prm%totalNslip,:)
-           del%rhoSglScrewImmobilePos => plasticState(p)%deltaState(6_pInt*prm%totalNslip+1_pInt: 7_pInt*prm%totalNslip,:)
+           stt%rho_sgl_imm_scr_pos => plasticState(p)%state   (6_pInt*prm%totalNslip+1_pInt: 7_pInt*prm%totalNslip,:)
+           dot%rho_sgl_imm_scr_pos => plasticState(p)%dotState(6_pInt*prm%totalNslip+1_pInt: 7_pInt*prm%totalNslip,:)
+           del%rho_sgl_imm_scr_pos => plasticState(p)%deltaState(6_pInt*prm%totalNslip+1_pInt: 7_pInt*prm%totalNslip,:)
            
-           stt%rhoSglScrewImmobileNeg => plasticState(p)%state   (7_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
-           dot%rhoSglScrewImmobileNeg => plasticState(p)%dotState(7_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
-           del%rhoSglScrewImmobileNeg => plasticState(p)%deltaState(7_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
+           stt%rho_sgl_imm_scr_neg => plasticState(p)%state   (7_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
+           dot%rho_sgl_imm_scr_neg => plasticState(p)%dotState(7_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
+           del%rho_sgl_imm_scr_neg => plasticState(p)%deltaState(7_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
    
      stt%rhoDip => plasticState(p)%state                         (8_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
      dot%rhoDip => plasticState(p)%dotState                      (8_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
      del%rhoDip => plasticState(p)%deltaState                      (8_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
      
-       stt%rhoDipEdge => plasticState(p)%state                   (8_pInt*prm%totalNslip+1_pInt: 9_pInt*prm%totalNslip,:)
-       dot%rhoDipEdge => plasticState(p)%dotState                (8_pInt*prm%totalNslip+1_pInt: 9_pInt*prm%totalNslip,:)
-       del%rhoDipEdge => plasticState(p)%deltaState              (8_pInt*prm%totalNslip+1_pInt: 9_pInt*prm%totalNslip,:)
+       stt%rho_dip_edg => plasticState(p)%state                   (8_pInt*prm%totalNslip+1_pInt: 9_pInt*prm%totalNslip,:)
+       dot%rho_dip_edg => plasticState(p)%dotState                (8_pInt*prm%totalNslip+1_pInt: 9_pInt*prm%totalNslip,:)
+       del%rho_dip_edg => plasticState(p)%deltaState              (8_pInt*prm%totalNslip+1_pInt: 9_pInt*prm%totalNslip,:)
        
-       stt%rhoDipScrew => plasticState(p)%state                  (9_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
-       dot%rhoDipScrew => plasticState(p)%dotState               (9_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
-       del%rhoDipScrew => plasticState(p)%deltaState               (9_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
+       stt%rho_dip_scr => plasticState(p)%state                  (9_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
+       dot%rho_dip_scr => plasticState(p)%dotState               (9_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
+       del%rho_dip_scr => plasticState(p)%deltaState               (9_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
     
     stt%accumulatedshear => plasticState(p)%state       (10_pInt*prm%totalNslip + 1_pInt:11_pInt*prm%totalNslip ,1:NofMyPhase)
     dot%accumulatedshear => plasticState(p)%dotState   (10_pInt*prm%totalNslip + 1_pInt:11_pInt*prm%totalNslip ,1:NofMyPhase)
@@ -840,13 +840,13 @@ subroutine stateInit(phase,NofMyPhase)
        do s = from,upto
          noise = [math_sampleGaussVar(0.0_pReal, prm%rhoSglScatter), &
                   math_sampleGaussVar(0.0_pReal, prm%rhoSglScatter)]
-         stt%rhoSglEdgeMobilePos(s,e)  = prm%rhoSglEdgePos0(f)  + noise(1)
-         stt%rhoSglEdgeMobileNeg(s,e)  = prm%rhoSglEdgeNeg0(f)  + noise(1)
-         stt%rhoSglScrewMobilePos(s,e) = prm%rhoSglScrewPos0(f) + noise(2)
-         stt%rhoSglScrewMobileNeg(s,e) = prm%rhoSglScrewNeg0(f) + noise(2)
+         stt%rho_sgl_mob_edg_pos(s,e)  = prm%rhoSglEdgePos0(f)  + noise(1)
+         stt%rho_sgl_mob_edg_neg(s,e)  = prm%rhoSglEdgeNeg0(f)  + noise(1)
+         stt%rho_sgl_mob_scr_pos(s,e) = prm%rhoSglScrewPos0(f) + noise(2)
+         stt%rho_sgl_mob_scr_neg(s,e) = prm%rhoSglScrewNeg0(f) + noise(2)
        enddo
-       stt%rhoDipEdge(from:upto,e)     = prm%rhoDipEdge0(f)
-       stt%rhoDipScrew(from:upto,e)    = prm%rhoDipScrew0(f)
+       stt%rho_dip_edg(from:upto,e)     = prm%rhoDipEdge0(f)
+       stt%rho_dip_scr(from:upto,e)    = prm%rhoDipScrew0(f)
      enddo
    enddo
   endif
@@ -2399,44 +2399,44 @@ dUpper = max(dUpper,dLower)
 outputsLoop: do o = 1_pInt,size(param(instance)%outputID)
   select case(param(instance)%outputID(o))
       
-    case (rho_sgl_edge_pos_mobile_ID)
-      postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,1)
+    case (rho_sgl_mob_edg_pos_ID)
+      postResults(cs+1_pInt:cs+ns) = stt%rho_sgl_mob_edg_pos(:,of)
       cs = cs + ns
       
-    case (rho_sgl_edge_pos_immobile_ID)
-      postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,5)
+    case (rho_sgl_imm_edg_pos_ID)
+      postResults(cs+1_pInt:cs+ns) = stt%rho_sgl_imm_edg_pos(:,of)
       cs = cs + ns
       
-    case (rho_sgl_edge_neg_mobile_ID)
-      postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,2)
+    case (rho_sgl_mob_edg_neg_ID)
+      postResults(cs+1_pInt:cs+ns) = stt%rho_sgl_mob_edg_neg(:,of)
       cs = cs + ns
       
-    case (rho_sgl_edge_neg_immobile_ID)
-      postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,6)
+    case (rho_sgl_imm_edg_neg_ID)
+      postResults(cs+1_pInt:cs+ns) = stt%rho_sgl_imm_edg_neg(:,of)
       cs = cs + ns
       
-    case (rho_dip_edge_ID)
-      postResults(cs+1_pInt:cs+ns) = rhoDip(1:ns,1)
+    case (rho_dip_edg_ID)
+      postResults(cs+1_pInt:cs+ns) = stt%rho_dip_edg(:,of)
       cs = cs + ns
       
-    case (rho_sgl_screw_pos_mobile_ID)
-      postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,3)
+    case (rho_sgl_mob_scr_pos_ID)
+      postResults(cs+1_pInt:cs+ns) = stt%rho_sgl_mob_scr_pos(:,of)
       cs = cs + ns
       
-    case (rho_sgl_screw_pos_immobile_ID)
-      postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,7)
+    case (rho_sgl_imm_scr_pos_ID)
+      postResults(cs+1_pInt:cs+ns) = stt%rho_sgl_imm_scr_pos(:,of)
       cs = cs + ns
 
-    case (rho_sgl_screw_neg_mobile_ID)
-      postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,4)
+    case (rho_sgl_mob_scr_neg_ID)
+      postResults(cs+1_pInt:cs+ns) = stt%rho_sgl_mob_scr_neg(:,of)
       cs = cs + ns
 
-    case (rho_sgl_screw_neg_immobile_ID)
-      postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,8)
+    case (rho_sgl_imm_scr_neg_ID)
+      postResults(cs+1_pInt:cs+ns) = stt%rho_sgl_imm_scr_neg(:,of)
       cs = cs + ns
 
-    case (rho_dip_screw_ID)
-      postResults(cs+1_pInt:cs+ns) = rhoDip(1:ns,2)
+    case (rho_dip_scr_ID)
+      postResults(cs+1_pInt:cs+ns) = stt%rho_dip_scr(:,of)
       cs = cs + ns
       
     case (rho_forest_ID)
