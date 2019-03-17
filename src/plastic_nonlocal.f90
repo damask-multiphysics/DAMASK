@@ -69,14 +69,11 @@ module plastic_nonlocal
                  rho_dip_scr_ID, &
                  rho_forest_ID, &
                  shearrate_ID, &
-                 resolvedstress_ID, &
-                 resolvedstress_external_ID, &
                  resolvedstress_back_ID, &
                  resistance_ID, &
                  rho_dot_sgl_ID, &
                  rho_dot_sgl_mobile_ID, &
                  rho_dot_dip_ID, &
-                 rho_dot_gen_ID, &
                  rho_dot_gen_edge_ID, &
                  rho_dot_gen_screw_ID, &
                  rho_dot_sgl2dip_edge_ID, &
@@ -92,8 +89,6 @@ module plastic_nonlocal
                  velocity_edge_neg_ID, &
                  velocity_screw_pos_ID, &
                  velocity_screw_neg_ID, &
-                 maximumdipoleheight_edge_ID, &
-                 maximumdipoleheight_screw_ID, &
                  accumulatedshear_ID
  end enum
  
@@ -530,10 +525,6 @@ extmsg = trim(extmsg)//' fEdgeMultiplication'
           outputID = merge(rho_forest_ID,undefined_ID,prm%totalNslip>0_pInt)
         case ('shearrate')
           outputID = merge(shearrate_ID,undefined_ID,prm%totalNslip>0_pInt)
-        case ('resolvedstress')
-          outputID = merge(resolvedstress_ID,undefined_ID,prm%totalNslip>0_pInt)
-        case ('resolvedstress_external')
-          outputID = merge(resolvedstress_external_ID,undefined_ID,prm%totalNslip>0_pInt)
         case ('resolvedstress_back')
           outputID = merge(resolvedstress_back_ID,undefined_ID,prm%totalNslip>0_pInt)
         case ('resistance')
@@ -544,8 +535,6 @@ extmsg = trim(extmsg)//' fEdgeMultiplication'
           outputID = merge(rho_dot_sgl_mobile_ID,undefined_ID,prm%totalNslip>0_pInt)
         case ('rho_dot_dip')
           outputID = merge(rho_dot_dip_ID,undefined_ID,prm%totalNslip>0_pInt)
-        case ('rho_dot_gen')
-          outputID = merge(rho_dot_gen_ID,undefined_ID,prm%totalNslip>0_pInt)
         case ('rho_dot_gen_edge')
           outputID = merge(rho_dot_gen_edge_ID,undefined_ID,prm%totalNslip>0_pInt)
         case ('rho_dot_gen_screw')
@@ -576,10 +565,6 @@ extmsg = trim(extmsg)//' fEdgeMultiplication'
           outputID = merge(velocity_screw_pos_ID,undefined_ID,prm%totalNslip>0_pInt)
         case ('velocity_screw_neg')
           outputID = merge(velocity_screw_neg_ID,undefined_ID,prm%totalNslip>0_pInt)
-        case ('maximumdipoleheight_edge')
-          outputID = merge(maximumdipoleheight_edge_ID,undefined_ID,prm%totalNslip>0_pInt)
-        case ('maximumdipoleheight_screw')
-          outputID = merge(maximumdipoleheight_screw_ID,undefined_ID,prm%totalNslip>0_pInt)
         case ('accumulatedshear','accumulated_shear')
           outputID = merge(accumulatedshear_ID,undefined_ID,prm%totalNslip>0_pInt)
       end select
@@ -2210,10 +2195,6 @@ end subroutine plastic_nonlocal_updateCompatibility
 function plastic_nonlocal_postResults(Mp,ip,el) result(postResults)
  use prec, only: &
    dNeq0
- use math, only: &
-   math_mul33x3, &
-   math_mul33xx33, &
-   pi
  use material, only: &
    material_phase, &
    phaseAt, phasememberAt, &
@@ -2241,18 +2222,14 @@ function plastic_nonlocal_postResults(Mp,ip,el) result(postResults)
    s                                                                                                !< index of my current slip system
 
  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),8) :: &
-   rhoSgl, &                                                                                        !< current single dislocation densities (positive/negative screw and edge without dipoles)
+   rhoSgl, &
    rhoDotSgl                                                                                        !< evolution rate of single dislocation densities (positive/negative screw and edge without dipoles)
  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),4) :: &
    gdot, &                                                                                          !< shear rates
    v                                                                                                !< velocities
- real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el)))) :: &
-   tau                                                                                           !< current resolved shear stress
  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),2) :: &
-   rhoDip, &                                                                                        !< current dipole dislocation densities (screw and edge dipoles)
-   rhoDotDip, &                                                                                     !< evolution rate of dipole dislocation densities (screw and edge dipoles)
-   dLower, &                                                                                        !< minimum stable dipole distance for edges and screws
-   dUpper                                                                                           !< current maximum stable dipole distance for edges and screws  
+   rhoDotDip                                                                                        !< evolution rate of dipole dislocation densities (screw and edge dipoles)
+
    
 ph  = phaseAt(1,ip,el)
 of = phasememberAt(1,ip,el)
@@ -2265,14 +2242,11 @@ associate(prm => param(instance),dst => microstructure(instance),stt=>state(inst
 !* short hand notations for state variables
 
 forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
-  rhoSgl(s,t)           = plasticState(ph)%State(iRhoU(s,t,instance),of)
   rhoSgl(s,t+4_pInt)    = plasticState(ph)%State(iRhoB(s,t,instance),of)
   v(s,t)                = plasticState(ph)%State(iV(s,t,instance),of)
-  rhoDotSgl(s,t)        = plasticState(ph)%dotState(iRhoU(s,t,instance),of)
   rhoDotSgl(s,t+4_pInt) = plasticState(ph)%dotState(iRhoB(s,t,instance),of)
 endforall
 forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
-  rhoDip(s,c)    = plasticState(ph)%State(iRhoD(s,c,instance),of)
   rhoDotDip(s,c) = plasticState(ph)%dotState(iRhoD(s,c,instance),of)
 endforall
 
@@ -2283,25 +2257,6 @@ forall (t = 1_pInt:4_pInt) &
   
 
 !* calculate limits for stable dipole height
-
-do s = 1_pInt,ns
-  tau(s) = math_mul33xx33(Mp, prm%Schmid(1:3,1:3,s)) + dst%tau_back(s,of)
-  if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
-enddo
-
-dLower = prm%minDipoleHeight(1:ns,1:2)
-dUpper(1:ns,1) = prm%mu * prm%burgers(1:ns) &
-               / (8.0_pReal * pi * (1.0_pReal - prm%nu) * abs(tau))
-dUpper(1:ns,2) = prm%mu * prm%burgers(1:ns) &
-               / (4.0_pReal * pi * abs(tau))
-do c = 1, 2
-  where(dNeq0(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+abs(rhoSgl(1:ns,2*c+3))&
-                                     +abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)))) &
-    dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
-                       + abs(rhoSgl(1:ns,2*c+3)) + abs(rhoSgl(1:ns,2*c+4)) + rhoDip(1:ns,c)), &
-                       dUpper(1:ns,c))
-enddo
-dUpper = max(dUpper,dLower)
 
 
 outputsLoop: do o = 1_pInt,size(param(instance)%outputID)
@@ -2355,18 +2310,8 @@ outputsLoop: do o = 1_pInt,size(param(instance)%outputID)
       postResults(cs+1_pInt:cs+ns) = sum(gdot,2)
       cs = cs + ns
       
-    case (resolvedstress_ID)
-      postResults(cs+1_pInt:cs+ns) = tau
-      cs = cs + ns
-      
     case (resolvedstress_back_ID)
       postResults(cs+1_pInt:cs+ns) =  dst%tau_back(:,of)
-      cs = cs + ns
-      
-    case (resolvedstress_external_ID)
-      do s = 1_pInt,ns  
-        postResults(cs+s) = math_mul33xx33(Mp, prm%Schmid(1:3,1:3,s))
-      enddo
       cs = cs + ns
       
     case (resistance_ID)
@@ -2384,11 +2329,6 @@ outputsLoop: do o = 1_pInt,size(param(instance)%outputID)
       
     case (rho_dot_dip_ID)
       postResults(cs+1_pInt:cs+ns) = sum(rhoDotDip,2)
-      cs = cs + ns
-    
-    case (rho_dot_gen_ID)  ! Obsolete
-      postResults(cs+1_pInt:cs+ns) = results(instance)%rhoDotMultiplication(1:ns,1,of) &
-                                   + results(instance)%rhoDotMultiplication(1:ns,2,of)
       cs = cs + ns
 
     case (rho_dot_gen_edge_ID)
@@ -2452,14 +2392,6 @@ outputsLoop: do o = 1_pInt,size(param(instance)%outputID)
     
     case (velocity_screw_neg_ID)
       postResults(cs+1_pInt:cs+ns) = v(1:ns,4)
-      cs = cs + ns
-    
-    case (maximumdipoleheight_edge_ID)
-      postResults(cs+1_pInt:cs+ns) = dUpper(1:ns,1)
-      cs = cs + ns
-      
-    case (maximumdipoleheight_screw_ID)
-      postResults(cs+1_pInt:cs+ns) = dUpper(1:ns,2)
       cs = cs + ns
 
     case(accumulatedshear_ID)
