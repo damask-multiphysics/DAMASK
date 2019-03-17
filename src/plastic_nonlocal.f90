@@ -1469,7 +1469,6 @@ subroutine plastic_nonlocal_deltaState(Mp,ip,el)
   where(dNeq0(sqrt(sum(abs(rho(:,scr)),2)))) &
     dUpper(1:ns,2) = min(1.0_pReal/sqrt(sum(abs(rho(:,scr)),2)),dUpper(1:ns,2))
   
-  
   dUpper = max(dUpper,prm%minDipoleHeight)
   deltaDUpper = dUpper - dUpperOld
   
@@ -1691,16 +1690,16 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
     if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
   enddo
   
-  dLower = prm%minDipoleHeight(1:ns,1:2)
+  dLower = prm%minDipoleHeight
   dUpper(1:ns,1) = prm%mu * prm%burgers/(8.0_pReal * PI * (1.0_pReal - prm%nu) * abs(tau))
   dUpper(1:ns,2) = prm%mu * prm%burgers/(4.0_pReal * PI * abs(tau))
-  do c = 1, 2
-    where(dNeq0(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+abs(rhoSgl(1:ns,2*c+3))&
-                                       +abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)))) &
-      dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
-                         + abs(rhoSgl(1:ns,2*c+3)) + abs(rhoSgl(1:ns,2*c+4)) + rhoDip(1:ns,c)), &
-                         dUpper(1:ns,c))
-  enddo
+  
+  where(dNeq0(sqrt(sum(abs(rho(:,edg)),2)))) &
+    dUpper(1:ns,1) = min(1.0_pReal/sqrt(sum(abs(rho(:,edg)),2)),dUpper(1:ns,1))
+ 
+  where(dNeq0(sqrt(sum(abs(rho(:,scr)),2)))) &
+    dUpper(1:ns,2) = min(1.0_pReal/sqrt(sum(abs(rho(:,scr)),2)),dUpper(1:ns,2))
+
   dUpper = max(dUpper,dLower)
   
   !****************************************************************************
@@ -1826,12 +1825,12 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
                          * math_mul3x3(m(1:3,s,t), normal_neighbor2me) * area                       ! positive line length that wants to enter through this interface
               where (compatibility(c,1:ns,s,n,ip,el) > 0.0_pReal) &                                 ! positive compatibility...
                 rhoDotFlux(1:ns,t) = rhoDotFlux(1:ns,t) &
-                                        + lineLength / mesh_ipVolume(ip,el) &                       ! ... transferring to equally signed mobile dislocation type
-                                        * compatibility(c,1:ns,s,n,ip,el) ** 2.0_pReal
+                                   + lineLength / mesh_ipVolume(ip,el) &                            ! ... transferring to equally signed mobile dislocation type
+                                   * compatibility(c,1:ns,s,n,ip,el) ** 2.0_pReal
               where (compatibility(c,1:ns,s,n,ip,el) < 0.0_pReal) &                                 ! ..negative compatibility...
                 rhoDotFlux(1:ns,topp) = rhoDotFlux(1:ns,topp) &
-                                           + lineLength / mesh_ipVolume(ip,el) &                    ! ... transferring to opposite signed mobile dislocation type
-                                           * compatibility(c,1:ns,s,n,ip,el) ** 2.0_pReal
+                                      + lineLength / mesh_ipVolume(ip,el) &                         ! ... transferring to opposite signed mobile dislocation type
+                                      * compatibility(c,1:ns,s,n,ip,el) ** 2.0_pReal
             endif
           enddo
         enddo
@@ -1995,7 +1994,6 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
     endif
 #endif
     plasticState(p)%dotState = IEEE_value(1.0_pReal,IEEE_quiet_NaN)
-    return
   else
     forall (s = 1:ns, t = 1:4) 
       plasticState(p)%dotState(iRhoU(s,t,instance),o) = rhoDot(s,t)
@@ -2012,8 +2010,8 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
 end subroutine plastic_nonlocal_dotState
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return array of constitutive results
-!> @detail  Compatibility is defined as normalized product of signed cosine of the angle between the slip 
+!> @brief Compatibility update
+!> @detail Compatibility is defined as normalized product of signed cosine of the angle between the slip 
 ! plane normals and signed cosine of the angle between the slip directions. Only the largest values
 ! that sum up to a total of 1 are considered, all others are set to zero.
 !--------------------------------------------------------------------------------------------------
@@ -2080,7 +2078,7 @@ subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
   
   forall(s1 = 1:ns) my_compatibility(1:2,s1,s1,1:Nneighbors) = 1.0_pReal 
   
-  !*** Loop thrugh neighbors and check whether there is any my_compatibility.
+  !*** Loop thrugh neighbors and check whether there is any compatibility.
   
   neighbors: do n = 1,Nneighbors
     neighbor_e = mesh_ipNeighborhood(1,n,i,e)
@@ -2097,11 +2095,10 @@ subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
     
     
     !* PHASE BOUNDARY
-    !* If we encounter a different nonlocal "cpfem" phase at the neighbor, 
+    !* If we encounter a different nonlocal phase at the neighbor, 
     !* we consider this to be a real "physical" phase boundary, so completely incompatible.
-    !* If one of the two "CPFEM" phases has a local plasticity law, 
+    !* If one of the two phases has a local plasticity law, 
     !* we do not consider this to be a phase boundary, so completely compatible.
-    
     neighbor_phase = material_phase(1,neighbor_i,neighbor_e)
     if (neighbor_phase /= ph) then
       if (.not. phase_localPlasticity(neighbor_phase) .and. .not. phase_localPlasticity(ph))&
@@ -2112,7 +2109,6 @@ subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
       
     !* GRAIN BOUNDARY !
     !* fixed transmissivity for adjacent ips with different texture (only if explicitly given in material.config)
-  
     if (prm%grainboundaryTransmissivity >= 0.0_pReal) then
       neighbor_textureID = material_texture(1,neighbor_i,neighbor_e)
       if (neighbor_textureID /= textureID) then
@@ -2130,8 +2126,8 @@ subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
     !* Its sign is always positive for screws, for edges it has the same sign as the slip normal projection. 
     !* Since the sum for each slip system can easily exceed one (which would result in a transmissivity larger than one), 
     !* only values above or equal to a certain threshold value are considered. This threshold value is chosen, such that
-    !* the number of compatible slip systems is minimized with the sum of the original my_compatibility values exceeding one. 
-    !* Finally the smallest my_compatibility value is decreased until the sum is exactly equal to one. 
+    !* the number of compatible slip systems is minimized with the sum of the original compatibility values exceeding one. 
+    !* Finally the smallest compatibility value is decreased until the sum is exactly equal to one. 
     !* All values below the threshold are set to zero.
     else
       rot = orientation(1,i,e)%misorientation(orientation(1,neighbor_i,neighbor_e))
@@ -2171,6 +2167,7 @@ subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
   compatibility(1:2,1:ns,1:ns,1:Nneighbors,i,e) = my_compatibility
   
   end associate
+  
 end subroutine plastic_nonlocal_updateCompatibility
 
  
@@ -2379,6 +2376,10 @@ end associate
 end function plastic_nonlocal_postResults
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief returns copy of current dislocation densities from state
+!> @details raw values is rectified
+!--------------------------------------------------------------------------------------------------
 function getRho(instance,of,ip,el)
   use mesh
   
@@ -2398,6 +2399,7 @@ function getRho(instance,of,ip,el)
     getRho = 0.0_pReal
 
   end associate
+
 end function getRho
 
 
