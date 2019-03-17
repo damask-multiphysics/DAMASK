@@ -15,10 +15,10 @@ module plastic_nonlocal
    KB = 1.38e-23_pReal                                                                              !< Physical parameter, Boltzmann constant in J/Kelvin
 
  integer(pInt), dimension(:,:), allocatable, target, public :: &
-   plastic_nonlocal_sizePostResult                                                             !< size of each post result output
+   plastic_nonlocal_sizePostResult                                                                  !< size of each post result output
  
  character(len=64), dimension(:,:), allocatable, target, public :: &
-   plastic_nonlocal_output                                                                     !< name of each post result output
+   plastic_nonlocal_output                                                                          !< name of each post result output
 
   integer, dimension(8), parameter :: &
     sgl = [1,2,3,4,5,6,7,8]
@@ -42,8 +42,6 @@ module plastic_nonlocal
     imm_edg = imm(1:2), &
     imm_scr = imm(3:4)
 
- integer(pInt), dimension(:,:), allocatable, private :: &
-   iRhoF                                                                                            !< state indices for forest density
  integer(pInt), dimension(:,:,:), allocatable, private :: &
    iRhoU, &                                                                                         !< state indices for unblocked density
    iRhoB, &                                                                                         !< state indices for blocked density
@@ -716,7 +714,6 @@ extmsg = trim(extmsg)//' fEdgeMultiplication'
   allocate(iRhoD(maxval(totalNslip),2,maxNinstances), source=0_pInt)
   allocate(iV(maxval(totalNslip),4,maxNinstances),    source=0_pInt)
   allocate(iD(maxval(totalNslip),2,maxNinstances),    source=0_pInt)
-  allocate(iRhoF(maxval(totalNslip),maxNinstances),   source=0_pInt)
 ! END DEPRECATED------------------------------------------------------------------------------------
 
 allocate(compatibility(2,maxval(totalNslip),maxval(totalNslip),theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), &
@@ -749,11 +746,8 @@ allocate(compatibility(2,maxval(totalNslip),maxval(totalNslip),theMesh%elem%nIPn
      enddo
      
      l = l + param(phase_plasticityInstance(p))%totalNslip ! shear(rates)
-     
-     do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
-       l = l + 1_pInt
-       iRhoF(s,phase_plasticityInstance(p)) = l
-     enddo
+     l = l + param(phase_plasticityInstance(p))%totalNslip ! rho_forest
+
      do t = 1_pInt,4_pInt
        do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
          l = l + 1_pInt
@@ -2253,7 +2247,6 @@ function plastic_nonlocal_postResults(Mp,ip,el) result(postResults)
    gdot, &                                                                                          !< shear rates
    v                                                                                                !< velocities
  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el)))) :: &
-   rhoForest, &                                                                                     !< forest dislocation density
    tau                                                                                           !< current resolved shear stress
  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),2) :: &
    rhoDip, &                                                                                        !< current dipole dislocation densities (screw and edge dipoles)
@@ -2282,7 +2275,6 @@ forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
   rhoDip(s,c)    = plasticState(ph)%State(iRhoD(s,c,instance),of)
   rhoDotDip(s,c) = plasticState(ph)%dotState(iRhoD(s,c,instance),of)
 endforall
-rhoForest    = plasticState(ph)%State(iRhoF(1:ns,instance),of)
 
 !* Calculate shear rate
 
@@ -2356,7 +2348,7 @@ outputsLoop: do o = 1_pInt,size(param(instance)%outputID)
       cs = cs + ns
       
     case (rho_forest_ID)
-      postResults(cs+1_pInt:cs+ns) = rhoForest
+      postResults(cs+1_pInt:cs+ns) = stt%rho_forest(:,of)
       cs = cs + ns
       
     case (shearrate_ID)
@@ -2495,7 +2487,7 @@ function getRho(instance,of,ip,el)
   getRho(:,mob) = max(getRho(:,mob),0.0_pReal)
   getRho(:,dip) = max(getRho(:,dip),0.0_pReal)
   
-  where(abs(getRho) < max(prm%significantN/mesh_ipVolume(ip,el) ** (2.0_pReal/3.0_pReal),prm%significantRho)) &
+  where(abs(getRho) < max(prm%significantN/mesh_ipVolume(ip,el)**(2.0_pReal/3.0_pReal),prm%significantRho)) &
     getRho = 0.0_pReal
 
   end associate
