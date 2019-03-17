@@ -2028,8 +2028,8 @@ results(instance)%rhoDotEdgeJogs(1:ns,o) = 2.0_pReal * rhoDotThermalAnnihilation
 #endif
 
 
-if (    any(stt%rho(:,mob) + rhoDot(1:ns,1:4) * timestep < -prm%aTolRho) &
-   .or. any(stt%rho(:,dip) + rhoDot(1:ns,9:10) * timestep < -prm%aTolRho)) then
+if (    any(rho(:,mob) + rhoDot(1:ns,1:4)  * timestep < -prm%aTolRho) &
+   .or. any(rho(:,dip) + rhoDot(1:ns,9:10) * timestep < -prm%aTolRho)) then
 #ifdef DEBUG
   if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt) then 
     write(6,'(a,i5,a,i2)') '<< CONST >> evolution rate leads to negative density at el ',el,' ip ',ip
@@ -2495,8 +2495,8 @@ function getRho(instance,of,ip,el)
   getRho(:,mob) = max(getRho(:,mob),0.0_pReal)
   getRho(:,dip) = max(getRho(:,dip),0.0_pReal)
   
-  where (abs(getRho) < max (prm%significantN/mesh_ipVolume(ip,el) ** (2.0_pReal/3.0_pReal), &
-                            prm%significantRho))  getRho = 0.0_pReal
+  where(abs(getRho) < max(prm%significantN/mesh_ipVolume(ip,el) ** (2.0_pReal/3.0_pReal),prm%significantRho)) &
+    getRho = 0.0_pReal
 
   end associate
 end function getRho
