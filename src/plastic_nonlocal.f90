@@ -6,15 +6,14 @@
 !--------------------------------------------------------------------------------------------------
 module plastic_nonlocal
  use prec, only: &
-   pReal, &
-   pInt
+   pReal
  
  implicit none
  private
  real(pReal), parameter, private :: &
    KB = 1.38e-23_pReal                                                                              !< Physical parameter, Boltzmann constant in J/Kelvin
 
- integer(pInt), dimension(:,:), allocatable, target, public :: &
+ integer, dimension(:,:), allocatable, target, public :: &
    plastic_nonlocal_sizePostResult                                                                  !< size of each post result output
  
  character(len=64), dimension(:,:), allocatable, target, public :: &
@@ -42,14 +41,14 @@ module plastic_nonlocal
     imm_edg = imm(1:2), &
     imm_scr = imm(3:4)
 
- integer(pInt), dimension(:,:,:), allocatable, private :: &
+ integer, dimension(:,:,:), allocatable, private :: &
    iRhoU, &                                                                                         !< state indices for unblocked density
    iRhoB, &                                                                                         !< state indices for blocked density
    iRhoD, &                                                                                         !< state indices for dipole density
    iV, &                                                                                            !< state indices for dislcation velocities
    iD                                                                                               !< state indices for stable dipole height
  
- integer(pInt), dimension(:), allocatable, public, protected :: &
+ integer, dimension(:), allocatable, private, protected :: &
    totalNslip                                                                                       !< total number of active slip systems for each instance
  
  real(pReal), dimension(:,:,:,:,:,:), allocatable, private :: &
@@ -146,14 +145,14 @@ module plastic_nonlocal
    forestProjection_Screw                                                                          !< matrix of forest projections of screw dislocations
      real(pReal), dimension(:), allocatable, private :: &
    nonSchmidCoeff
-   integer(pInt) :: totalNslip
+   integer :: totalNslip
    
    real(pReal), dimension(:,:,:), allocatable, private :: &
    Schmid, &                                                                                           !< Schmid contribution
    nonSchmid_pos, &
    nonSchmid_neg                                                                              !< combined projection of Schmid and non-Schmid contributions to the resolved shear stress (only for screws)
    
-   integer(pInt)  , dimension(:) ,allocatable , public:: &
+   integer  , dimension(:) ,allocatable , public:: &
    Nslip,&
    colinearSystem                                                                                   !< colinear system to the active slip system (only valid for fcc!)
 
@@ -274,10 +273,10 @@ subroutine plastic_nonlocal_init
 
   implicit none
   character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
-  integer(pInt),          dimension(0), parameter :: emptyIntArray    = [integer(pInt)::]
+  integer,          dimension(0), parameter :: emptyIntArray    = [integer::]
   real(pReal),            dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
 
-  integer(pInt) :: &
+  integer :: &
     maxNinstances, &
     p, i, &
     l, &
@@ -286,14 +285,14 @@ subroutine plastic_nonlocal_init
     t, &                ! index of dislocation type
     c                ! index of dislocation character
 
-  integer(pInt) :: sizeState, sizeDotState,sizeDependentState, sizeDeltaState
+  integer :: sizeState, sizeDotState,sizeDependentState, sizeDeltaState
   integer(kind(undefined_ID)) :: &
     outputID
   character(len=512) :: &
     extmsg    = '', &
     structure
   character(len=65536), dimension(:), allocatable :: outputs
-  integer(pInt) :: NofMyPhase 
+  integer :: NofMyPhase 
  
   write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_label//' init  -+>>>'
 
@@ -315,14 +314,14 @@ subroutine plastic_nonlocal_init
     allocate(microstructure(maxNinstances))
   allocate(results(maxNinstances)) 
 
-  allocate(plastic_nonlocal_sizePostResult(maxval(phase_Noutput), maxNinstances), source=0_pInt)
+  allocate(plastic_nonlocal_sizePostResult(maxval(phase_Noutput), maxNinstances), source=0)
   allocate(plastic_nonlocal_output(maxval(phase_Noutput), maxNinstances))
            plastic_nonlocal_output = ''
   allocate(plastic_nonlocal_outputID(maxval(phase_Noutput), maxNinstances),       source=undefined_ID)
-  allocate(totalNslip(maxNinstances),                         source=0_pInt)
+  allocate(totalNslip(maxNinstances),                         source=0)
 
 
-  do p=1_pInt, size(config_phase)
+  do p=1, size(config_phase)
     if (phase_plasticity(p) /= PLASTICITY_NONLOCAL_ID) cycle
     associate(prm => param(phase_plasticityInstance(p)), &
               dot => dotState(phase_plasticityInstance(p)), &
@@ -344,15 +343,15 @@ subroutine plastic_nonlocal_init
 
     prm%Nslip      = config%getInts('nslip',defaultVal=emptyIntArray)
     prm%totalNslip = sum(prm%Nslip)
-    slipActive: if (prm%totalNslip > 0_pInt) then
+    slipActive: if (prm%totalNslip > 0) then
       prm%Schmid = lattice_SchmidMatrix_slip(prm%Nslip,config%getString('lattice_structure'),&
                                              config%getFloat('c/a',defaultVal=0.0_pReal))
 
       if(trim(config%getString('lattice_structure')) == 'bcc') then
         prm%nonSchmidCoeff = config%getFloats('nonschmid_coefficients',&
                                                defaultVal = emptyRealArray)
-        prm%nonSchmid_pos  = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1_pInt)
-        prm%nonSchmid_neg  = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1_pInt)
+        prm%nonSchmid_pos  = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1)
+        prm%nonSchmid_neg  = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1)
       else
         prm%nonSchmid_pos  = prm%Schmid
         prm%nonSchmid_neg  = prm%Schmid
@@ -375,9 +374,9 @@ subroutine plastic_nonlocal_init
                                                     config%getFloat('c/a',defaultVal=0.0_pReal))
 
       ! collinear systems (only for octahedral slip systems in fcc)
-      allocate(prm%colinearSystem(prm%totalNslip), source = -1_pInt)
-      do s1 = 1_pInt, prm%totalNslip
-        do s2 = 1_pInt, prm%totalNslip
+      allocate(prm%colinearSystem(prm%totalNslip), source = -1)
+      do s1 = 1, prm%totalNslip
+        do s2 = 1, prm%totalNslip
            if (all(dEq0 (math_cross(prm%slip_direction(1:3,s1),prm%slip_direction(1:3,s2)))) .and. &
                any(dNeq0(math_cross(prm%slip_normal   (1:3,s1),prm%slip_normal   (1:3,s2))))) &
              prm%colinearSystem(s1) = s2
@@ -498,75 +497,75 @@ extmsg = trim(extmsg)//' fEdgeMultiplication'
 !  output pararameters       
     outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
     allocate(prm%outputID(0))
-    do i=1_pInt, size(outputs)
+    do i=1, size(outputs)
       outputID = undefined_ID
       select case(trim(outputs(i)))
         case ('rho_sgl_edge_pos_mobile')
-          outputID = merge(rho_sgl_mob_edg_pos_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_sgl_mob_edg_pos_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_sgl_edge_neg_mobile')
-          outputID = merge(rho_sgl_mob_edg_neg_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_sgl_mob_edg_neg_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_sgl_screw_pos_mobile')
-          outputID = merge(rho_sgl_mob_scr_pos_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_sgl_mob_scr_pos_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_sgl_screw_neg_mobile')
-          outputID = merge(rho_sgl_mob_scr_neg_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_sgl_mob_scr_neg_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_sgl_edge_pos_immobile')
-          outputID = merge(rho_sgl_imm_edg_pos_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_sgl_imm_edg_pos_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_sgl_edge_neg_immobile')
-          outputID = merge(rho_sgl_imm_edg_neg_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_sgl_imm_edg_neg_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_sgl_screw_pos_immobile')
-          outputID = merge(rho_sgl_imm_scr_pos_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_sgl_imm_scr_pos_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_sgl_screw_neg_immobile')
-          outputID = merge(rho_sgl_imm_scr_neg_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_sgl_imm_scr_neg_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_dip_edge')
-          outputID = merge(rho_dip_edg_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_dip_edg_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_dip_screw')
-          outputID = merge(rho_dip_scr_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_dip_scr_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_forest')
-          outputID = merge(rho_forest_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_forest_ID,undefined_ID,prm%totalNslip>0)
         case ('shearrate')
-          outputID = merge(shearrate_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(shearrate_ID,undefined_ID,prm%totalNslip>0)
         case ('resolvedstress_back')
-          outputID = merge(resolvedstress_back_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(resolvedstress_back_ID,undefined_ID,prm%totalNslip>0)
         case ('resistance')
-          outputID = merge(resistance_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(resistance_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_dot_sgl')
-          outputID = merge(rho_dot_sgl_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_dot_sgl_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_dot_sgl_mobile')
-          outputID = merge(rho_dot_sgl_mobile_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_dot_sgl_mobile_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_dot_dip')
-          outputID = merge(rho_dot_dip_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_dot_dip_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_dot_gen_edge')
-          outputID = merge(rho_dot_gen_edge_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_dot_gen_edge_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_dot_gen_screw')
-          outputID = merge(rho_dot_gen_screw_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_dot_gen_screw_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_dot_sgl2dip_edge')
-          outputID = merge(rho_dot_sgl2dip_edge_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_dot_sgl2dip_edge_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_dot_sgl2dip_screw')
-          outputID = merge(rho_dot_sgl2dip_screw_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_dot_sgl2dip_screw_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_dot_ann_ath')
-          outputID = merge(rho_dot_ann_ath_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_dot_ann_ath_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_dot_ann_the_edge')
-          outputID = merge(rho_dot_ann_the_edge_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_dot_ann_the_edge_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_dot_ann_the_screw')
-          outputID = merge(rho_dot_ann_the_screw_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_dot_ann_the_screw_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_dot_edgejogs')
-          outputID = merge(rho_dot_edgejogs_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_dot_edgejogs_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_dot_flux_mobile')
-          outputID = merge(rho_dot_flux_mobile_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_dot_flux_mobile_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_dot_flux_edge')
-          outputID = merge(rho_dot_flux_edge_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_dot_flux_edge_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_dot_flux_screw')
-          outputID = merge(rho_dot_flux_screw_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(rho_dot_flux_screw_ID,undefined_ID,prm%totalNslip>0)
         case ('velocity_edge_pos')
-          outputID = merge(velocity_edge_pos_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(velocity_edge_pos_ID,undefined_ID,prm%totalNslip>0)
         case ('velocity_edge_neg')
-          outputID = merge(velocity_edge_neg_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(velocity_edge_neg_ID,undefined_ID,prm%totalNslip>0)
         case ('velocity_screw_pos')
-          outputID = merge(velocity_screw_pos_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(velocity_screw_pos_ID,undefined_ID,prm%totalNslip>0)
         case ('velocity_screw_neg')
-          outputID = merge(velocity_screw_neg_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(velocity_screw_neg_ID,undefined_ID,prm%totalNslip>0)
         case ('accumulatedshear','accumulated_shear')
-          outputID = merge(accumulatedshear_ID,undefined_ID,prm%totalNslip>0_pInt)
+          outputID = merge(accumulatedshear_ID,undefined_ID,prm%totalNslip>0)
       end select
 
       if (outputID /= undefined_ID) then
@@ -580,100 +579,100 @@ extmsg = trim(extmsg)//' fEdgeMultiplication'
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
     NofMyPhase=count(material_phase==p)
-    sizeDotState = int(size([       'rhoSglEdgePosMobile   ','rhoSglEdgeNegMobile   ', &
-                                    'rhoSglScrewPosMobile  ','rhoSglScrewNegMobile  ', &
-                                    'rhoSglEdgePosImmobile ','rhoSglEdgeNegImmobile ', &
-                                    'rhoSglScrewPosImmobile','rhoSglScrewNegImmobile', &
-                                    'rhoDipEdge            ','rhoDipScrew           ', &
-                                    'accumulatedshear      ' ]),pInt) * prm%totalNslip              !< "basic" microstructural state variables that are independent from other state variables
-    sizeDependentState = int(size([ 'rhoForest   ']),pInt) * prm%totalNslip                         !< microstructural state variables that depend on other state variables
+    sizeDotState =     size([   'rhoSglEdgePosMobile   ','rhoSglEdgeNegMobile   ', &
+                                'rhoSglScrewPosMobile  ','rhoSglScrewNegMobile  ', &
+                                'rhoSglEdgePosImmobile ','rhoSglEdgeNegImmobile ', &
+                                'rhoSglScrewPosImmobile','rhoSglScrewNegImmobile', &
+                                'rhoDipEdge            ','rhoDipScrew           ', &
+                                'accumulatedshear      ' ]) * prm%totalNslip                        !< "basic" microstructural state variables that are independent from other state variables
+    sizeDependentState = size([ 'rhoForest   '])) * prm%totalNslip                                  !< microstructural state variables that depend on other state variables
     sizeState          = sizeDotState + sizeDependentState &
-                       + int(size([ 'velocityEdgePos     ','velocityEdgeNeg     ', & 
-                                    'velocityScrewPos    ','velocityScrewNeg    ', &
-                                    'maxDipoleHeightEdge ','maxDipoleHeightScrew' ]),pInt) * prm%totalNslip !< other dependent state variables that are not updated by microstructure
+                       + size([ 'velocityEdgePos     ','velocityEdgeNeg     ', & 
+                                'velocityScrewPos    ','velocityScrewNeg    ', &
+                                'maxDipoleHeightEdge ','maxDipoleHeightScrew' ]) * prm%totalNslip !< other dependent state variables that are not updated by microstructure
     sizeDeltaState            = sizeDotState
     
     call material_allocatePlasticState(p,NofMyPhase,sizeState,sizeDotState,sizeDeltaState, &
-                                       prm%totalNslip,0_pInt,0_pInt)    
+                                       prm%totalNslip,0,0)    
     plasticState(p)%nonlocal = .true.
-    plasticState(p)%offsetDeltaState = 0_pInt                                                             ! ToDo: state structure does not follow convention
+    plasticState(p)%offsetDeltaState = 0                                                             ! ToDo: state structure does not follow convention
     plasticState(p)%sizePostResults = sum(plastic_nonlocal_sizePostResult(:,phase_plasticityInstance(p)))
     
     totalNslip(phase_plasticityInstance(p)) =  prm%totalNslip
     
     ! ToDo: Not really sure if this large number of mostly overlapping pointers is useful
-   stt%rho => plasticState(p)%state                              (0_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
-   dot%rho => plasticState(p)%dotState                           (0_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
-   del%rho => plasticState(p)%deltaState                         (0_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
-   plasticState(p)%aTolState(1:10_pInt*prm%totalNslip) = prm%aTolRho
+   stt%rho => plasticState(p)%state                              (0*prm%totalNslip+1:10*prm%totalNslip,:)
+   dot%rho => plasticState(p)%dotState                           (0*prm%totalNslip+1:10*prm%totalNslip,:)
+   del%rho => plasticState(p)%deltaState                         (0*prm%totalNslip+1:10*prm%totalNslip,:)
+   plasticState(p)%aTolState(1:10*prm%totalNslip) = prm%aTolRho
    
-   stt%rhoSglEdge  => plasticState(p)%state      (0_pInt*prm%totalNslip+1_pInt:06_pInt*prm%totalNslip:2*prm%totalNslip,:)
-   stt%rhoSglScrew => plasticState(p)%state         (2_pInt*prm%totalNslip+1_pInt:08_pInt*prm%totalNslip:2*prm%totalNslip,:)
+   stt%rhoSglEdge  => plasticState(p)%state      (0*prm%totalNslip+1:06*prm%totalNslip:2*prm%totalNslip,:)
+   stt%rhoSglScrew => plasticState(p)%state         (2*prm%totalNslip+1:08*prm%totalNslip:2*prm%totalNslip,:)
    
-     stt%rhoSgl => plasticState(p)%state                         (0_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
-     dot%rhoSgl => plasticState(p)%dotState                      (0_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
-     del%rhoSgl => plasticState(p)%deltaState                    (0_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
+     stt%rhoSgl => plasticState(p)%state                         (0*prm%totalNslip+1: 8*prm%totalNslip,:)
+     dot%rhoSgl => plasticState(p)%dotState                      (0*prm%totalNslip+1: 8*prm%totalNslip,:)
+     del%rhoSgl => plasticState(p)%deltaState                    (0*prm%totalNslip+1: 8*prm%totalNslip,:)
      
-       stt%rhoSglMobile => plasticState(p)%state                 (0_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
-       dot%rhoSglMobile => plasticState(p)%dotState              (0_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
-       del%rhoSglMobile => plasticState(p)%deltaState            (0_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
+       stt%rhoSglMobile => plasticState(p)%state                 (0*prm%totalNslip+1: 4*prm%totalNslip,:)
+       dot%rhoSglMobile => plasticState(p)%dotState              (0*prm%totalNslip+1: 4*prm%totalNslip,:)
+       del%rhoSglMobile => plasticState(p)%deltaState            (0*prm%totalNslip+1: 4*prm%totalNslip,:)
          
-           stt%rho_sgl_mob_edg_pos => plasticState(p)%state      (0_pInt*prm%totalNslip+1_pInt: 1_pInt*prm%totalNslip,:)
-           dot%rho_sgl_mob_edg_pos => plasticState(p)%dotState   (0_pInt*prm%totalNslip+1_pInt: 1_pInt*prm%totalNslip,:)
-           del%rho_sgl_mob_edg_pos => plasticState(p)%deltaState (0_pInt*prm%totalNslip+1_pInt: 1_pInt*prm%totalNslip,:)
+           stt%rho_sgl_mob_edg_pos => plasticState(p)%state      (0*prm%totalNslip+1: 1*prm%totalNslip,:)
+           dot%rho_sgl_mob_edg_pos => plasticState(p)%dotState   (0*prm%totalNslip+1: 1*prm%totalNslip,:)
+           del%rho_sgl_mob_edg_pos => plasticState(p)%deltaState (0*prm%totalNslip+1: 1*prm%totalNslip,:)
            
-           stt%rho_sgl_mob_edg_neg => plasticState(p)%state      (1_pInt*prm%totalNslip+1_pInt: 2_pInt*prm%totalNslip,:)
-           dot%rho_sgl_mob_edg_neg => plasticState(p)%dotState   (1_pInt*prm%totalNslip+1_pInt: 2_pInt*prm%totalNslip,:)
-           del%rho_sgl_mob_edg_neg => plasticState(p)%deltaState (1_pInt*prm%totalNslip+1_pInt: 2_pInt*prm%totalNslip,:)
+           stt%rho_sgl_mob_edg_neg => plasticState(p)%state      (1*prm%totalNslip+1: 2*prm%totalNslip,:)
+           dot%rho_sgl_mob_edg_neg => plasticState(p)%dotState   (1*prm%totalNslip+1: 2*prm%totalNslip,:)
+           del%rho_sgl_mob_edg_neg => plasticState(p)%deltaState (1*prm%totalNslip+1: 2*prm%totalNslip,:)
          
-           stt%rho_sgl_mob_scr_pos => plasticState(p)%state     (2_pInt*prm%totalNslip+1_pInt: 3_pInt*prm%totalNslip,:)
-           dot%rho_sgl_mob_scr_pos => plasticState(p)%dotState  (2_pInt*prm%totalNslip+1_pInt: 3_pInt*prm%totalNslip,:)
-           del%rho_sgl_mob_scr_pos => plasticState(p)%deltaState  (2_pInt*prm%totalNslip+1_pInt: 3_pInt*prm%totalNslip,:)
+           stt%rho_sgl_mob_scr_pos => plasticState(p)%state     (2*prm%totalNslip+1: 3*prm%totalNslip,:)
+           dot%rho_sgl_mob_scr_pos => plasticState(p)%dotState  (2*prm%totalNslip+1: 3*prm%totalNslip,:)
+           del%rho_sgl_mob_scr_pos => plasticState(p)%deltaState  (2*prm%totalNslip+1: 3*prm%totalNslip,:)
 
-           stt%rho_sgl_mob_scr_neg => plasticState(p)%state     (3_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
-           dot%rho_sgl_mob_scr_neg => plasticState(p)%dotState  (3_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
-           del%rho_sgl_mob_scr_neg => plasticState(p)%deltaState  (3_pInt*prm%totalNslip+1_pInt: 4_pInt*prm%totalNslip,:)
+           stt%rho_sgl_mob_scr_neg => plasticState(p)%state     (3*prm%totalNslip+1: 4*prm%totalNslip,:)
+           dot%rho_sgl_mob_scr_neg => plasticState(p)%dotState  (3*prm%totalNslip+1: 4*prm%totalNslip,:)
+           del%rho_sgl_mob_scr_neg => plasticState(p)%deltaState  (3*prm%totalNslip+1: 4*prm%totalNslip,:)
            
-       stt%rhoSglImmobile => plasticState(p)%state               (4_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
-       dot%rhoSglImmobile => plasticState(p)%dotState            (4_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
-       del%rhoSglImmobile => plasticState(p)%deltaState            (4_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
+       stt%rhoSglImmobile => plasticState(p)%state               (4*prm%totalNslip+1: 8*prm%totalNslip,:)
+       dot%rhoSglImmobile => plasticState(p)%dotState            (4*prm%totalNslip+1: 8*prm%totalNslip,:)
+       del%rhoSglImmobile => plasticState(p)%deltaState            (4*prm%totalNslip+1: 8*prm%totalNslip,:)
          
-           stt%rho_sgl_imm_edg_pos => plasticState(p)%state    (4_pInt*prm%totalNslip+1_pInt: 5_pInt*prm%totalNslip,:)
-           dot%rho_sgl_imm_edg_pos => plasticState(p)%dotState (4_pInt*prm%totalNslip+1_pInt: 5_pInt*prm%totalNslip,:)
-           del%rho_sgl_imm_edg_pos => plasticState(p)%deltaState (4_pInt*prm%totalNslip+1_pInt: 5_pInt*prm%totalNslip,:)
+           stt%rho_sgl_imm_edg_pos => plasticState(p)%state    (4*prm%totalNslip+1: 5*prm%totalNslip,:)
+           dot%rho_sgl_imm_edg_pos => plasticState(p)%dotState (4*prm%totalNslip+1: 5*prm%totalNslip,:)
+           del%rho_sgl_imm_edg_pos => plasticState(p)%deltaState (4*prm%totalNslip+1: 5*prm%totalNslip,:)
            
-           stt%rho_sgl_imm_edg_neg => plasticState(p)%state    (5_pInt*prm%totalNslip+1_pInt: 6_pInt*prm%totalNslip,:)
-           dot%rho_sgl_imm_edg_neg => plasticState(p)%dotState (5_pInt*prm%totalNslip+1_pInt: 6_pInt*prm%totalNslip,:)
-           del%rho_sgl_imm_edg_neg => plasticState(p)%deltaState (5_pInt*prm%totalNslip+1_pInt: 6_pInt*prm%totalNslip,:)
+           stt%rho_sgl_imm_edg_neg => plasticState(p)%state    (5*prm%totalNslip+1: 6*prm%totalNslip,:)
+           dot%rho_sgl_imm_edg_neg => plasticState(p)%dotState (5*prm%totalNslip+1: 6*prm%totalNslip,:)
+           del%rho_sgl_imm_edg_neg => plasticState(p)%deltaState (5*prm%totalNslip+1: 6*prm%totalNslip,:)
            
-           stt%rho_sgl_imm_scr_pos => plasticState(p)%state   (6_pInt*prm%totalNslip+1_pInt: 7_pInt*prm%totalNslip,:)
-           dot%rho_sgl_imm_scr_pos => plasticState(p)%dotState(6_pInt*prm%totalNslip+1_pInt: 7_pInt*prm%totalNslip,:)
-           del%rho_sgl_imm_scr_pos => plasticState(p)%deltaState(6_pInt*prm%totalNslip+1_pInt: 7_pInt*prm%totalNslip,:)
+           stt%rho_sgl_imm_scr_pos => plasticState(p)%state   (6*prm%totalNslip+1: 7*prm%totalNslip,:)
+           dot%rho_sgl_imm_scr_pos => plasticState(p)%dotState(6*prm%totalNslip+1: 7*prm%totalNslip,:)
+           del%rho_sgl_imm_scr_pos => plasticState(p)%deltaState(6*prm%totalNslip+1: 7*prm%totalNslip,:)
            
-           stt%rho_sgl_imm_scr_neg => plasticState(p)%state   (7_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
-           dot%rho_sgl_imm_scr_neg => plasticState(p)%dotState(7_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
-           del%rho_sgl_imm_scr_neg => plasticState(p)%deltaState(7_pInt*prm%totalNslip+1_pInt: 8_pInt*prm%totalNslip,:)
+           stt%rho_sgl_imm_scr_neg => plasticState(p)%state   (7*prm%totalNslip+1: 8*prm%totalNslip,:)
+           dot%rho_sgl_imm_scr_neg => plasticState(p)%dotState(7*prm%totalNslip+1: 8*prm%totalNslip,:)
+           del%rho_sgl_imm_scr_neg => plasticState(p)%deltaState(7*prm%totalNslip+1: 8*prm%totalNslip,:)
    
-     stt%rhoDip => plasticState(p)%state                         (8_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
-     dot%rhoDip => plasticState(p)%dotState                      (8_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
-     del%rhoDip => plasticState(p)%deltaState                      (8_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
+     stt%rhoDip => plasticState(p)%state                         (8*prm%totalNslip+1:10*prm%totalNslip,:)
+     dot%rhoDip => plasticState(p)%dotState                      (8*prm%totalNslip+1:10*prm%totalNslip,:)
+     del%rhoDip => plasticState(p)%deltaState                      (8*prm%totalNslip+1:10*prm%totalNslip,:)
      
-       stt%rho_dip_edg => plasticState(p)%state                   (8_pInt*prm%totalNslip+1_pInt: 9_pInt*prm%totalNslip,:)
-       dot%rho_dip_edg => plasticState(p)%dotState                (8_pInt*prm%totalNslip+1_pInt: 9_pInt*prm%totalNslip,:)
-       del%rho_dip_edg => plasticState(p)%deltaState              (8_pInt*prm%totalNslip+1_pInt: 9_pInt*prm%totalNslip,:)
+       stt%rho_dip_edg => plasticState(p)%state                   (8*prm%totalNslip+1: 9*prm%totalNslip,:)
+       dot%rho_dip_edg => plasticState(p)%dotState                (8*prm%totalNslip+1: 9*prm%totalNslip,:)
+       del%rho_dip_edg => plasticState(p)%deltaState              (8*prm%totalNslip+1: 9*prm%totalNslip,:)
        
-       stt%rho_dip_scr => plasticState(p)%state                  (9_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
-       dot%rho_dip_scr => plasticState(p)%dotState               (9_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
-       del%rho_dip_scr => plasticState(p)%deltaState               (9_pInt*prm%totalNslip+1_pInt:10_pInt*prm%totalNslip,:)
+       stt%rho_dip_scr => plasticState(p)%state                  (9*prm%totalNslip+1:10*prm%totalNslip,:)
+       dot%rho_dip_scr => plasticState(p)%dotState               (9*prm%totalNslip+1:10*prm%totalNslip,:)
+       del%rho_dip_scr => plasticState(p)%deltaState               (9*prm%totalNslip+1:10*prm%totalNslip,:)
     
-    stt%accumulatedshear => plasticState(p)%state       (10_pInt*prm%totalNslip + 1_pInt:11_pInt*prm%totalNslip ,1:NofMyPhase)
-    dot%accumulatedshear => plasticState(p)%dotState   (10_pInt*prm%totalNslip + 1_pInt:11_pInt*prm%totalNslip ,1:NofMyPhase)
-    del%accumulatedshear => plasticState(p)%deltaState  (10_pInt*prm%totalNslip + 1_pInt:11_pInt*prm%totalNslip ,1:NofMyPhase)
-    plasticState(p)%aTolState(10_pInt*prm%totalNslip + 1_pInt:11_pInt*prm%totalNslip )  = prm%aTolShear
-    plasticState(p)%slipRate => plasticState(p)%dotState(10_pInt*prm%totalNslip + 1_pInt:11_pInt*prm%totalNslip ,1:NofMyPhase)
-    plasticState(p)%accumulatedSlip => plasticState(p)%state (10_pInt*prm%totalNslip + 1_pInt:11_pInt*prm%totalNslip ,1:NofMyPhase)
+    stt%accumulatedshear => plasticState(p)%state       (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
+    dot%accumulatedshear => plasticState(p)%dotState   (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
+    del%accumulatedshear => plasticState(p)%deltaState  (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
+    plasticState(p)%aTolState(10*prm%totalNslip + 1:11*prm%totalNslip )  = prm%aTolShear
+    plasticState(p)%slipRate => plasticState(p)%dotState(10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
+    plasticState(p)%accumulatedSlip => plasticState(p)%state (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
     
-    stt%rho_forest => plasticState(p)%state       (11_pInt*prm%totalNslip + 1_pInt:12_pInt*prm%totalNslip ,1:NofMyPhase)
+    stt%rho_forest => plasticState(p)%state       (11*prm%totalNslip + 1:12*prm%totalNslip ,1:NofMyPhase)
 
 
    allocate(dst%tau_Threshold(prm%totalNslip,NofMyPhase),source=0.0_pReal)
@@ -688,44 +687,44 @@ extmsg = trim(extmsg)//' fEdgeMultiplication'
   end associate
   
 
-  if (NofMyPhase > 0_pInt) call stateInit(p,NofMyPhase)
+  if (NofMyPhase > 0) call stateInit(p,NofMyPhase)
   plasticState(p)%state0 = plasticState(p)%state
 
   enddo
  
 ! BEGIN DEPRECATED----------------------------------------------------------------------------------
-  allocate(iRhoU(maxval(totalNslip),4,maxNinstances), source=0_pInt)
-  allocate(iRhoB(maxval(totalNslip),4,maxNinstances), source=0_pInt)
-  allocate(iRhoD(maxval(totalNslip),2,maxNinstances), source=0_pInt)
-  allocate(iV(maxval(totalNslip),4,maxNinstances),    source=0_pInt)
-  allocate(iD(maxval(totalNslip),2,maxNinstances),    source=0_pInt)
+  allocate(iRhoU(maxval(totalNslip),4,maxNinstances), source=0)
+  allocate(iRhoB(maxval(totalNslip),4,maxNinstances), source=0)
+  allocate(iRhoD(maxval(totalNslip),2,maxNinstances), source=0)
+  allocate(iV(maxval(totalNslip),4,maxNinstances),    source=0)
+  allocate(iD(maxval(totalNslip),2,maxNinstances),    source=0)
 ! END DEPRECATED------------------------------------------------------------------------------------
 
 allocate(compatibility(2,maxval(totalNslip),maxval(totalNslip),theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), &
                                                                                    source=0.0_pReal)
                                             
- initializeInstances: do p = 1_pInt, size(phase_plasticity)
+ initializeInstances: do p = 1, size(phase_plasticity)
    NofMyPhase=count(material_phase==p)
    myPhase2: if (phase_plasticity(p) == PLASTICITY_NONLOCAL_ID) then
 
      !*** determine indices to state array
 
-     l = 0_pInt
-     do t = 1_pInt,4_pInt
-       do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
-         l = l + 1_pInt
+     l = 0
+     do t = 1,4
+       do s = 1,param(phase_plasticityInstance(p))%totalNslip
+         l = l + 1
          iRhoU(s,t,phase_plasticityInstance(p)) = l
        enddo
      enddo
-     do t = 1_pInt,4_pInt
-       do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
-         l = l + 1_pInt
+     do t = 1,4
+       do s = 1,param(phase_plasticityInstance(p))%totalNslip
+         l = l + 1
          iRhoB(s,t,phase_plasticityInstance(p)) = l
        enddo
      enddo
-     do c = 1_pInt,2_pInt
-       do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
-         l = l + 1_pInt
+     do c = 1,2
+       do s = 1,param(phase_plasticityInstance(p))%totalNslip
+         l = l + 1
          iRhoD(s,c,phase_plasticityInstance(p)) = l
        enddo
      enddo
@@ -733,20 +732,20 @@ allocate(compatibility(2,maxval(totalNslip),maxval(totalNslip),theMesh%elem%nIPn
      l = l + param(phase_plasticityInstance(p))%totalNslip ! shear(rates)
      l = l + param(phase_plasticityInstance(p))%totalNslip ! rho_forest
 
-     do t = 1_pInt,4_pInt
-       do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
-         l = l + 1_pInt
+     do t = 1,4
+       do s = 1,param(phase_plasticityInstance(p))%totalNslip
+         l = l + 1
          iV(s,t,phase_plasticityInstance(p)) = l
        enddo
      enddo
-     do c = 1_pInt,2_pInt
-       do s = 1_pInt,param(phase_plasticityInstance(p))%totalNslip
-         l = l + 1_pInt
+     do c = 1,2
+       do s = 1,param(phase_plasticityInstance(p))%totalNslip
+         l = l + 1
          iD(s,c,phase_plasticityInstance(p)) = l
        enddo
      enddo
      if (iD(param(phase_plasticityInstance(p))%totalNslip,2,phase_plasticityInstance(p)) /= plasticState(p)%sizeState) &  ! check if last index is equal to size of state
-       call IO_error(0_pInt, ext_msg = 'state indices not properly set ('//PLASTICITY_NONLOCAL_label//')')
+       call IO_error(0, ext_msg = 'state indices not properly set ('//PLASTICITY_NONLOCAL_label//')')
      
      
    endif myPhase2
@@ -812,8 +811,8 @@ subroutine stateInit(phase,NofMyPhase)
   meanDensity = 0.0_pReal
   do while(meanDensity < prm%rhoSglRandom)
     call random_number(rnd)
-    phasemember = nint(rnd(1)*real(NofMyPhase,pReal) + 0.5_pReal,pInt)
-    s           = nint(rnd(2)*real(prm%totalNslip,pReal)*4.0_pReal + 0.5_pReal,pInt)
+    phasemember = nint(rnd(1)*real(NofMyPhase,pReal) + 0.5_pReal)
+    s           = nint(rnd(2)*real(prm%totalNslip,pReal)*4.0_pReal + 0.5_pReal)
     meanDensity = meanDensity + densityBinning * volume(phasemember) / totalVolume
     stt%rhoSglMobile(s,phasemember) = densityBinning
   enddo
@@ -886,18 +885,18 @@ use lattice, only: &
 
 implicit none
 
-integer(pInt), intent(in) ::    ip, &                         ! current integration point
+integer, intent(in) ::    ip, &                         ! current integration point
                                 el                            ! current element
 real(pReal), dimension(3,3), intent(in) :: &
                                 Fe, &                         ! elastic deformation gradient
                                 Fp                            ! elastic deformation gradient
 
- integer(pInt) :: &
+ integer :: &
    ph, &                                                                                             !< phase
    of, &                                                                                             !< offset
    no                                                                                               !< nieghbor offset
 
-integer(pInt)                   ns, neighbor_el, &                ! element number of neighboring material point
+integer                   ns, neighbor_el, &                ! element number of neighboring material point
                                 neighbor_ip, &                ! integration point of neighboring material point
                                 instance, &                      ! my instance of this plasticity
                                 neighbor_instance, &             ! instance of this plasticity of neighboring material point
@@ -906,7 +905,7 @@ integer(pInt)                   ns, neighbor_el, &                ! element numb
                                 dir, &
                                 n, &
                                 nRealNeighbors                ! number of really existing neighbors
-integer(pInt), dimension(2) ::  neighbors
+integer, dimension(2) ::  neighbors
 real(pReal)                     FVsize, &
                                 correction
 real(pReal), dimension(2) ::    rhoExcessGradient, &
@@ -920,7 +919,7 @@ real(pReal), dimension(3,3) ::  invFe, &                      ! inverse of elast
                                 invConnections
 real(pReal), dimension(3,theMesh%elem%nIPneighbors) :: &
                                 connection_latticeConf
-real(pReal), dimension(2,totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el)))) :: &
+real(pReal), dimension(2,totalNslip(phase_plasticityInstance(material_phase(1,ip,el)))) :: &
                                 rhoExcess
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el)))) :: &
                        rho_edg_delta, &
@@ -928,8 +927,8 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,e
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),10) :: &
                                 rho, &
                                 rho_neighbor
-real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))), &
-                       totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el)))) :: &
+real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))), &
+                       totalNslip(phase_plasticityInstance(material_phase(1,ip,el)))) :: &
                                 myInteractionMatrix           ! corrected slip interaction matrix
                                 
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),theMesh%elem%nIPneighbors) :: &
@@ -940,7 +939,7 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,e
 real(pReal), dimension(2,maxval(totalNslip),theMesh%elem%nIPneighbors) :: &
                                 neighbor_rhoExcess, &      ! excess density at neighboring material point
                                 neighbor_rhoTotal          ! total density at neighboring material point
-real(pReal), dimension(3,totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),2) :: &
+real(pReal), dimension(3,totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),2) :: &
                                 m                             ! direction of dislocation motion
 
 ph = phaseAt(1,ip,el)
@@ -961,7 +960,7 @@ stt%rho_forest(:,of) = matmul(prm%forestProjection_Edge, sum(abs(rho(:,edg)),2))
 !*** (see Kubin,Devincre,Hoc; 2008; Modeling dislocation storage rates and mean free paths in face-centered cubic crystals)
 
 if (lattice_structure(ph) ==  LATTICE_bcc_ID .or. lattice_structure(ph) == LATTICE_fcc_ID) then     ! only fcc and bcc
-  do s = 1_pInt,ns
+  do s = 1,ns
     correction = (  1.0_pReal - prm%linetensionEffect &
                   + prm%linetensionEffect &
                   * log(0.35_pReal * prm%burgers(s) * sqrt(max(stt%rho_forest(s,of),prm%significantRho))) &
@@ -971,7 +970,7 @@ if (lattice_structure(ph) ==  LATTICE_bcc_ID .or. lattice_structure(ph) == LATTI
 else
   myInteractionMatrix = prm%interactionSlipSlip
 endif
-forall (s = 1_pInt:ns) &
+forall (s = 1:ns) &
   dst%tau_threshold(s,of) = prm%mu * prm%burgers(s) &
                   * sqrt(dot_product(sum(abs(rho),2), myInteractionMatrix(1:ns,s)))
 
@@ -1004,7 +1003,7 @@ if (.not. phase_localPlasticity(ph) .and. prm%shortRangeStressCorrection) then
   
   nRealNeighbors = 0
   neighbor_rhoTotal = 0.0_pReal
-  do n = 1_pInt,theMesh%elem%nIPneighbors
+  do n = 1,theMesh%elem%nIPneighbors
     neighbor_el = mesh_ipNeighborhood(1,n,ip,el)
     neighbor_ip = mesh_ipNeighborhood(2,n,ip,el)
     no = phasememberAt(1,neighbor_ip,neighbor_el)
@@ -1052,20 +1051,20 @@ if (.not. phase_localPlasticity(ph) .and. prm%shortRangeStressCorrection) then
   m(1:3,1:ns,1) =  prm%slip_direction
   m(1:3,1:ns,2) = -prm%slip_transverse
 
-  do s = 1_pInt,ns
+  do s = 1,ns
     
       ! gradient from interpolation of neighboring excess density ...
-    do c = 1_pInt,2_pInt
-      do dir = 1_pInt,3_pInt
-        neighbors(1) = 2_pInt * dir - 1_pInt
-        neighbors(2) = 2_pInt * dir
+    do c = 1,2
+      do dir = 1,3
+        neighbors(1) = 2 * dir - 1
+        neighbors(2) = 2 * dir
         connections(dir,1:3) = connection_latticeConf(1:3,neighbors(1)) &
                              - connection_latticeConf(1:3,neighbors(2))
         rhoExcessDifferences(dir) = neighbor_rhoExcess(c,s,neighbors(1)) &
                                   - neighbor_rhoExcess(c,s,neighbors(2))
       enddo
       invConnections = math_inv33(connections)
-      if (all(dEq0(invConnections))) call IO_error(-1_pInt,ext_msg='back stress calculation: inversion error')
+      if (all(dEq0(invConnections))) call IO_error(-1,ext_msg='back stress calculation: inversion error')
 
       rhoExcessGradient(c) = math_mul3x3(m(1:3,s,c), math_mul33x3(invConnections,rhoExcessDifferences))
     enddo
@@ -1090,9 +1089,9 @@ if (.not. phase_localPlasticity(ph) .and. prm%shortRangeStressCorrection) then
 endif
 
 #ifdef DEBUG
-  if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
+  if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0 &
       .and. ((debug_e == el .and. debug_i == ip)&
-             .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
+             .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0)) then
     write(6,'(/,a,i8,1x,i2,1x,i1,/)') '<< CONST >> nonlocal_microstructure at el ip ',el,ip
     write(6,'(a,/,12x,12(e10.3,1x))') '<< CONST >> rhoForest', stt%rho_forest(:,of)
     write(6,'(a,/,12x,12(f10.5,1x))') '<< CONST >> tauThreshold / MPa', dst%tau_threshold(:,of)*1e-6
@@ -1112,7 +1111,7 @@ subroutine plastic_nonlocal_kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, &
                                      tauThreshold, c, Temperature, instance, of)
 
 implicit none
-integer(pInt), intent(in) ::                c, &                           !< dislocation character (1:edge, 2:screw)
+integer, intent(in) ::                c, &                           !< dislocation character (1:edge, 2:screw)
                                             instance, of
 real(pReal), intent(in) ::                  Temperature                 !< temperature
 real(pReal), dimension(param(instance)%totalNslip), &
@@ -1125,7 +1124,7 @@ real(pReal), dimension(param(instance)%totalNslip), &
                                             dv_dtau, &                  !< velocity derivative with respect to resolved shear stress (without non Schmid contributions)
                                             dv_dtauNS                   !< velocity derivative with respect to resolved shear stress (including non Schmid contributions)
 
-integer(pInt)    ::                         ns, &                       !< short notation for the total number of active slip systems
+integer    ::                         ns, &                       !< short notation for the total number of active slip systems
                                             s                           !< index of my current slip system
 real(pReal)                                 tauRel_P, & 
                                             tauRel_S, &
@@ -1157,7 +1156,7 @@ dv_dtauNS = 0.0_pReal
 
 
 if (Temperature > 0.0_pReal) then
-  do s = 1_pInt,ns
+  do s = 1,ns
     if (abs(tau(s)) > tauThreshold(s)) then
 
       !* Peierls contribution
@@ -1257,7 +1256,7 @@ subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
                     phase_plasticityInstance
 
 implicit none
-integer(pInt), intent(in) ::                ip, &                                                   !< current integration point
+integer, intent(in) ::                ip, &                                                   !< current integration point
                                             el                                                      !< current element number
 real(pReal), intent(in) ::                  Temperature, &                                             !< temperature
 volume !< volume of the materialpoint
@@ -1268,7 +1267,7 @@ real(pReal), dimension(3,3), intent(out) :: Lp                                  
 real(pReal), dimension(3,3,3,3), intent(out) :: dLp_dMp                                             !< derivative of Lp with respect to Tstar (9x9 matrix)
 
 
-integer(pInt)                               instance, &                                             !< current instance of this plasticity
+integer                               instance, &                                             !< current instance of this plasticity
                                             ns, &                                                   !< short notation for the total number of active slip systems
                                             i, &
                                             j, &
@@ -1278,22 +1277,22 @@ integer(pInt)                               instance, &                         
                                             of, &                                                    !offset
                                             t, &                                                    !< dislocation type
                                             s                                                       !< index of my current slip system
-real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),8) :: &
+real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),8) :: &
                                             rhoSgl                                                  !< single dislocation densities (including blocked)
-real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),10) :: &
+real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),10) :: &
                                             rho
-real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),4) :: &
+real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),4) :: &
                                             v, &                                                    !< velocity
                                             tauNS, &                                                !< resolved shear stress including non Schmid and backstress terms
                                             dv_dtau, &                                              !< velocity derivative with respect to the shear stress
                                             dv_dtauNS                                               !< velocity derivative with respect to the shear stress
-real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el)))) :: &
+real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el)))) :: &
                                             tau, &                                                  !< resolved shear stress including backstress terms
                                             gdotTotal                                            !< shear rate
 
 !*** shortcut for mapping
-ph = phaseAt(1_pInt,ip,el)
-of = phasememberAt(1_pInt,ip,el)
+ph = phaseAt(1,ip,el)
+of = phasememberAt(1,ip,el)
 
 instance = phase_plasticityInstance(ph)
 associate(prm => param(instance),dst=>microstructure(instance))
@@ -1306,7 +1305,7 @@ rhoSgl = rho(:,sgl)
 
 !*** get resolved shear stress
 !*** for screws possible non-schmid contributions are also taken into account
-do s = 1_pInt,ns
+do s = 1,ns
   tau(s) = math_mul33xx33(Mp, prm%Schmid(1:3,1:3,s))
   tauNS(s,1) = tau(s)
   tauNS(s,2) = tau(s)
@@ -1318,7 +1317,7 @@ do s = 1_pInt,ns
     tauNS(s,4) = math_mul33xx33(Mp, -prm%nonSchmid_pos(1:3,1:3,s))
   endif
 enddo
-forall (t = 1_pInt:4_pInt) &
+forall (t = 1:4) &
   tauNS(1:ns,t) = tauNS(1:ns,t) + dst%tau_back(:,of)
 tau = tau + dst%tau_back(:,of)
 
@@ -1328,35 +1327,35 @@ tau = tau + dst%tau_back(:,of)
 ! edges 
 call plastic_nonlocal_kinetics(v(1:ns,1), dv_dtau(1:ns,1), dv_dtauNS(1:ns,1), &
                                     tau(1:ns), tauNS(1:ns,1), dst%tau_Threshold(1:ns,of), &
-                                      1_pInt, Temperature, instance, of)
+                                      1, Temperature, instance, of)
 v(1:ns,2) = v(1:ns,1)
 dv_dtau(1:ns,2) = dv_dtau(1:ns,1)
 dv_dtauNS(1:ns,2) = dv_dtauNS(1:ns,1)
 
 !screws
-if (size(prm%nonSchmidCoeff) == 0_pInt) then                                                        ! no non-Schmid contributions
-  forall(t = 3_pInt:4_pInt)
+if (size(prm%nonSchmidCoeff) == 0) then                                                        ! no non-Schmid contributions
+  forall(t = 3:4)
     v(1:ns,t) = v(1:ns,1)
     dv_dtau(1:ns,t) = dv_dtau(1:ns,1)
     dv_dtauNS(1:ns,t) = dv_dtauNS(1:ns,1)
   endforall
 else                                                                                                ! take non-Schmid contributions into account
-  do t = 3_pInt,4_pInt
+  do t = 3,4
     call plastic_nonlocal_kinetics(v(1:ns,t), dv_dtau(1:ns,t), dv_dtauNS(1:ns,t), &
                                         tau(1:ns), tauNS(1:ns,t), dst%tau_Threshold(1:ns,of), &
-                                          2_pInt , Temperature, instance, of)
+                                          2 , Temperature, instance, of)
   enddo
 endif
 
 
 !*** store velocity in state
 
-forall (t = 1_pInt:4_pInt) &
+forall (t = 1:4) &
   plasticState(ph)%state(iV(1:ns,t,instance),of) = v(1:ns,t)
 !*** Bauschinger effect
 
-forall (s = 1_pInt:ns, t = 5_pInt:8_pInt, rhoSgl(s,t) * v(s,t-4_pInt) < 0.0_pReal) &
-  rhoSgl(s,t-4_pInt) = rhoSgl(s,t-4_pInt) + abs(rhoSgl(s,t))
+forall (s = 1:ns, t = 5:8, rhoSgl(s,t) * v(s,t-4) < 0.0_pReal) &
+  rhoSgl(s,t-4) = rhoSgl(s,t-4) + abs(rhoSgl(s,t))
 
 
 !*** Calculation of Lp and its tangent
@@ -1366,9 +1365,9 @@ gdotTotal = sum(rhoSgl(1:ns,1:4) * v, 2) * prm%burgers(1:ns)
 Lp = 0.0_pReal
 dLp_dMp = 0.0_pReal
 
-do s = 1_pInt,ns
+do s = 1,ns
   Lp = Lp + gdotTotal(s) * prm%Schmid(1:3,1:3,s)
-  forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt,k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
+  forall (i=1:3,j=1:3,k=1:3,l=1:3) &
     dLp_dMp(i,j,k,l) = dLp_dMp(i,j,k,l) &
         + prm%Schmid(i,j,s) * prm%Schmid(k,l,s) &
         * sum(rhoSgl(s,1:4) * dv_dtau(s,1:4)) * prm%burgers(s) &
@@ -1407,16 +1406,16 @@ use material, only: material_phase, &
                     phase_plasticityInstance
 
 implicit none
-integer(pInt), intent(in) ::                ip, &                    ! current grain number
+integer, intent(in) ::                ip, &                    ! current grain number
                                             el                        ! current element number
 real(pReal), dimension(3,3), intent(in) ::    Mp                                        !< MandelStress
 
 
- integer(pInt) :: &
+ integer :: &
    ph, &                                                                   !< phase
    of                                                                                        !< offset
 
-integer(pInt) ::instance, &               ! current instance of this plasticity
+integer ::instance, &               ! current instance of this plasticity
                                             ns, &                     ! short notation for the total number of active slip systems
                                             c, &                      ! character of dislocation
                                             t, &                      ! type of dislocation
@@ -1445,10 +1444,10 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,e
  ns = totalNslip(instance)
  
 !*** shortcut to state variables 
- forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
+ forall (s = 1:ns, t = 1:4)
   v(s,t) = plasticState(ph)%state(iV(s,t,instance),of)
 endforall
-forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
+forall (s = 1:ns, c = 1:2)
   dUpperOld(s,c) = plasticState(ph)%state(iD(s,c,instance),of)
 endforall
 
@@ -1473,7 +1472,7 @@ deltaRhoRemobilization(:,dip) = 0.0_pReal
 
 !*** calculate limits for stable dipole height
 
-do s = 1_pInt,prm%totalNslip
+do s = 1,prm%totalNslip
   tau(s) = math_mul33xx33(Mp, prm%Schmid(1:3,1:3,s)) +dst%tau_back(s,of)
   if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
 enddo
@@ -1495,27 +1494,27 @@ deltaDUpper = dUpper - dUpperOld
 
 !*** dissociation by stress increase
 deltaRhoDipole2SingleStress = 0.0_pReal
-forall (c=1_pInt:2_pInt, s=1_pInt:ns, deltaDUpper(s,c) < 0.0_pReal .and. &
+forall (c=1:2, s=1:ns, deltaDUpper(s,c) < 0.0_pReal .and. &
                                         dNeq0(dUpperOld(s,c) - dLower(s,c))) &
-  deltaRhoDipole2SingleStress(s,8_pInt+c) = rhoDip(s,c) * deltaDUpper(s,c) &
+  deltaRhoDipole2SingleStress(s,8+c) = rhoDip(s,c) * deltaDUpper(s,c) &
                                            / (dUpperOld(s,c) - dLower(s,c))
 
-forall (t=1_pInt:4_pInt) &
-  deltaRhoDipole2SingleStress(1_pInt:ns,t) = -0.5_pReal &
-                                  * deltaRhoDipole2SingleStress(1_pInt:ns,(t-1_pInt)/2_pInt+9_pInt)
+forall (t=1:4) &
+  deltaRhoDipole2SingleStress(1:ns,t) = -0.5_pReal &
+                                  * deltaRhoDipole2SingleStress(1:ns,(t-1)/2+9)
 
 
 !*** store new maximum dipole height in state
-forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
+forall (s = 1:ns, c = 1:2) &
   plasticState(ph)%state(iD(s,c,instance),of) = dUpper(s,c) 
 
 plasticState(ph)%deltaState(:,of) = 0.0_pReal
 del%rho(:,of) = reshape(deltaRhoRemobilization + deltaRhoDipole2SingleStress, [10*ns])
 
 #ifdef DEBUG
-  if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
+  if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0 &
       .and. ((debug_e == el .and. debug_i == ip)&
-             .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt )) then
+             .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0 )) then
     write(6,'(a,/,8(12x,12(e12.5,1x),/))') '<< CONST >> dislocation remobilization', deltaRhoRemobilization(1:ns,1:8)
     write(6,'(a,/,10(12x,12(e12.5,1x),/),/)') '<< CONST >> dipole dissociation by stress increase', deltaRhoDipole2SingleStress
   endif
@@ -1576,7 +1575,7 @@ use lattice,  only: lattice_structure, &
 implicit none
 
 !*** input variables
-integer(pInt), intent(in) ::                ip, &                                                   !< current integration point
+integer, intent(in) ::                ip, &                                                   !< current integration point
                                             el                                                      !< current element number
 real(pReal), intent(in) ::                  Temperature, &                                          !< temperature
                                             timestep                                                !< substepped crystallite time increment
@@ -1587,7 +1586,7 @@ real(pReal), dimension(3,3,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%n
 
  
 !*** local variables
-integer(pInt) ::                            ph, &                              
+integer ::                            ph, &                              
                                             instance, &                                             !< current instance of this plasticity
                                             neighbor_instance, &                                    !< instance of my neighbor's plasticity
                                             ns, &                                                   !< short notation for the total number of active slip systems
@@ -1607,7 +1606,7 @@ integer(pInt) ::                            ph, &
                                             np,&                                                    !< neighbour phase shortcut
                                             topp, &                                                 !< type of dislocation with opposite sign to t
                                             s                                                       !< index of my current slip system
-real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),10) :: &
+real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),10) :: &
                                             rho, &
                                             rhoDot, &                                               !< density evolution
                                             rhoDotMultiplication, &                                 !< density evolution by multiplication
@@ -1615,24 +1614,24 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt
                                             rhoDotSingle2DipoleGlide, &                             !< density evolution by dipole formation (by glide)
                                             rhoDotAthermalAnnihilation, &                           !< density evolution by athermal annihilation
                                             rhoDotThermalAnnihilation                               !< density evolution by thermal annihilation
-real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),8) :: &
+real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),8) :: &
                                             rhoSgl, &                                               !< current single dislocation densities (positive/negative screw and edge without dipoles)
                                             neighbor_rhoSgl, &                                      !< current single dislocation densities of neighboring ip (positive/negative screw and edge without dipoles)
                                             my_rhoSgl                                               !< single dislocation densities of central ip (positive/negative screw and edge without dipoles)
-real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),4) :: &
+real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),4) :: &
                                             v, &                                                    !< current dislocation glide velocity
                                             my_v, &                                                 !< dislocation glide velocity of central ip
                                             neighbor_v, &                                           !< dislocation glide velocity of enighboring ip
                                             gdot                                                    !< shear rates
-real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el)))) :: &
+real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el)))) :: &
                                             tau, &                                                  !< current resolved shear stress
                                             vClimb                                              !< climb velocity of edge dipoles
                                             
-real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),2) :: &
+real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),2) :: &
                                             rhoDip, &                                               !< current dipole dislocation densities (screw and edge dipoles)
                                             dLower, &                                               !< minimum stable dipole distance for edges and screws
                                             dUpper                                                  !< current maximum stable dipole distance for edges and screws
-real(pReal), dimension(3,totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),4) :: &
+real(pReal), dimension(3,totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),4) :: &
                                             m                                                       !< direction of dislocation motion
 real(pReal), dimension(3,3) ::              my_F, &                                                 !< my total deformation gradient
                                             neighbor_F, &                                           !< total deformation gradient of my neighbor
@@ -1660,7 +1659,7 @@ if (timestep <= 0.0_pReal) then                                                 
   return
 endif
 
-ph = material_phase(1_pInt,ip,el)
+ph = material_phase(1,ip,el)
 instance = phase_plasticityInstance(ph)
 associate(prm => param(instance),dst => microstructure(instance),dot => dotState(instance),stt => state(instance))
 ns = totalNslip(instance)
@@ -1672,7 +1671,7 @@ rho = getRho(instance,o,ip,el)
 rhoSgl = rho(:,sgl)
 rhoDip = rho(:,dip)
 
-forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
+forall (s = 1:ns, t = 1:4)
   v(s,t) = plasticState(p)%state(iV   (s,t,instance),o)
 endforall
 
@@ -1680,13 +1679,13 @@ endforall
 !****************************************************************************
 !*** Calculate shear rate
 
-forall (t = 1_pInt:4_pInt) &
-  gdot(1_pInt:ns,t) = rhoSgl(1_pInt:ns,t) *  prm%burgers(1:ns) * v(1:ns,t)
+forall (t = 1:4) &
+  gdot(1:ns,t) = rhoSgl(1:ns,t) *  prm%burgers(1:ns) * v(1:ns,t)
 
 #ifdef DEBUG
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt &
+  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0 &
       .and. ((debug_e == el .and. debug_i == ip)&
-             .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt )) then
+             .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0 )) then
     write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> rho / 1/m^2', rhoSgl, rhoDip
     write(6,'(a,/,4(12x,12(e12.5,1x),/))') '<< CONST >> gdot / 1/s',gdot
   endif
@@ -1697,7 +1696,7 @@ forall (t = 1_pInt:4_pInt) &
 !****************************************************************************
 !*** calculate limits for stable dipole height
 
-do s = 1_pInt,ns   ! loop over slip systems
+do s = 1,ns   ! loop over slip systems
   tau(s) = math_mul33xx33(Mp, prm%Schmid(1:3,1:3,s)) + dst%tau_back(s,o)
   if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
 enddo
@@ -1740,7 +1739,7 @@ endif
 
 rhoDotFlux = 0.0_pReal
 !? why needed here
-if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then                                    ! only for nonlocal plasticity
+if (.not. phase_localPlasticity(material_phase(1,ip,el))) then                                    ! only for nonlocal plasticity
 
   !*** check CFL (Courant-Friedrichs-Lewy) condition for flux
 
@@ -1748,7 +1747,7 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
           .and. prm%CFLfactor * abs(v) * timestep &
               > mesh_ipVolume(ip,el) / maxval(mesh_ipArea(:,ip,el)))) then                          ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
 #ifdef DEBUG
-    if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt) then 
+    if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0) then 
       write(6,'(a,i5,a,i2)') '<< CONST >> CFL condition not fullfilled at el ',el,' ip ',ip
       write(6,'(a,e10.3,a,e10.3)') '<< CONST >> velocity is at  ', &
         maxval(abs(v), abs(gdot) > 0.0_pReal &
@@ -1771,10 +1770,10 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
   m(1:3,1:ns,3) = -prm%slip_transverse
   m(1:3,1:ns,4) =  prm%slip_transverse
   
-  my_Fe = Fe(1:3,1:3,1_pInt,ip,el)
-  my_F = math_mul33x33(my_Fe, Fp(1:3,1:3,1_pInt,ip,el))
+  my_Fe = Fe(1:3,1:3,1,ip,el)
+  my_F = math_mul33x33(my_Fe, Fp(1:3,1:3,1,ip,el))
   
-  do n = 1_pInt,theMesh%elem%nIPneighbors
+  do n = 1,theMesh%elem%nIPneighbors
 
     neighbor_el = mesh_ipNeighborhood(1,n,ip,el)
     neighbor_ip = mesh_ipNeighborhood(2,n,ip,el)
@@ -1782,15 +1781,15 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
     np = phaseAt(1,neighbor_ip,neighbor_el)
     no = phasememberAt(1,neighbor_ip,neighbor_el)
 
-    opposite_neighbor = n + mod(n,2_pInt) - mod(n+1_pInt,2_pInt)
+    opposite_neighbor = n + mod(n,2) - mod(n+1,2)
     opposite_el = mesh_ipNeighborhood(1,opposite_neighbor,ip,el)
     opposite_ip = mesh_ipNeighborhood(2,opposite_neighbor,ip,el)
     opposite_n  = mesh_ipNeighborhood(3,opposite_neighbor,ip,el)
   
-    if (neighbor_n > 0_pInt) then                                                                    ! if neighbor exists, average deformation gradient
-      neighbor_instance = phase_plasticityInstance(material_phase(1_pInt,neighbor_ip,neighbor_el))
-      neighbor_Fe = Fe(1:3,1:3,1_pInt,neighbor_ip,neighbor_el)
-      neighbor_F = math_mul33x33(neighbor_Fe, Fp(1:3,1:3,1_pInt,neighbor_ip,neighbor_el))
+    if (neighbor_n > 0) then                                                                    ! if neighbor exists, average deformation gradient
+      neighbor_instance = phase_plasticityInstance(material_phase(1,neighbor_ip,neighbor_el))
+      neighbor_Fe = Fe(1:3,1:3,1,neighbor_ip,neighbor_el)
+      neighbor_F = math_mul33x33(neighbor_Fe, Fp(1:3,1:3,1,neighbor_ip,neighbor_el))
       Favg = 0.5_pReal * (my_F + neighbor_F)
     else                                                                                            ! if no neighbor, take my value as average
       Favg = my_F
@@ -1809,14 +1808,14 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
     considerEnteringFlux = .false.
     neighbor_v = 0.0_pReal        ! needed for check of sign change in flux density below 
     neighbor_rhoSgl = 0.0_pReal
-    if (neighbor_n > 0_pInt) then
+    if (neighbor_n > 0) then
       if (phase_plasticity(material_phase(1,neighbor_ip,neighbor_el)) == PLASTICITY_NONLOCAL_ID &
           .and. any(compatibility(:,:,:,n,ip,el) > 0.0_pReal)) &
         considerEnteringFlux = .true.
     endif
     
     if (considerEnteringFlux) then
-        forall (s = 1:ns, t = 1_pInt:4_pInt)
+        forall (s = 1:ns, t = 1:4)
           neighbor_v(s,t) =          plasticState(np)%state(iV   (s,t,neighbor_instance),no)
           neighbor_rhoSgl(s,t) = max(plasticState(np)%state(iRhoU(s,t,neighbor_instance),no), &
                                                                                           0.0_pReal)
@@ -1831,22 +1830,22 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
                          / math_det33(neighbor_Fe)                                                  ! interface normal in the lattice configuration of my neighbor
       area = mesh_ipArea(neighbor_n,neighbor_ip,neighbor_el) * norm2(normal_neighbor2me)
       normal_neighbor2me = normal_neighbor2me / norm2(normal_neighbor2me)                           ! normalize the surface normal to unit length
-      do s = 1_pInt,ns
-        do t = 1_pInt,4_pInt
-          c = (t + 1_pInt) / 2
-          topp = t + mod(t,2_pInt) - mod(t+1_pInt,2_pInt)
+      do s = 1,ns
+        do t = 1,4
+          c = (t + 1) / 2
+          topp = t + mod(t,2) - mod(t+1,2)
           if (neighbor_v(s,t) * math_mul3x3(m(1:3,s,t), normal_neighbor2me) > 0.0_pReal &           ! flux from my neighbor to me == entering flux for me
               .and. v(s,t) * neighbor_v(s,t) >= 0.0_pReal ) then                                    ! ... only if no sign change in flux density  
             lineLength = neighbor_rhoSgl(s,t) * neighbor_v(s,t) &
                        * math_mul3x3(m(1:3,s,t), normal_neighbor2me) * area                         ! positive line length that wants to enter through this interface
-            where (compatibility(c,1_pInt:ns,s,n,ip,el) > 0.0_pReal) &                              ! positive compatibility...
-              rhoDotFlux(1_pInt:ns,t) = rhoDotFlux(1_pInt:ns,t) &
+            where (compatibility(c,1:ns,s,n,ip,el) > 0.0_pReal) &                              ! positive compatibility...
+              rhoDotFlux(1:ns,t) = rhoDotFlux(1:ns,t) &
                                       + lineLength / mesh_ipVolume(ip,el) &                         ! ... transferring to equally signed mobile dislocation type
-                                      * compatibility(c,1_pInt:ns,s,n,ip,el) ** 2.0_pReal
-            where (compatibility(c,1_pInt:ns,s,n,ip,el) < 0.0_pReal) &                              ! ..negative compatibility...
-              rhoDotFlux(1_pInt:ns,topp) = rhoDotFlux(1_pInt:ns,topp) &
+                                      * compatibility(c,1:ns,s,n,ip,el) ** 2.0_pReal
+            where (compatibility(c,1:ns,s,n,ip,el) < 0.0_pReal) &                              ! ..negative compatibility...
+              rhoDotFlux(1:ns,topp) = rhoDotFlux(1:ns,topp) &
                                          + lineLength / mesh_ipVolume(ip,el) &                      ! ... transferring to opposite signed mobile dislocation type
-                                         * compatibility(c,1_pInt:ns,s,n,ip,el) ** 2.0_pReal
+                                         * compatibility(c,1:ns,s,n,ip,el) ** 2.0_pReal
           endif
         enddo
       enddo
@@ -1862,7 +1861,7 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
     !* That means for an interface of zero transmissivity the leaving flux is fully converted to dead dislocations.
     
     considerLeavingFlux = .true.
-    if (opposite_n > 0_pInt) then
+    if (opposite_n > 0) then
       if (phase_plasticity(material_phase(1,opposite_ip,opposite_el)) /= PLASTICITY_NONLOCAL_ID) &
         considerLeavingFlux = .false.
     endif
@@ -1878,19 +1877,19 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
                          / math_det33(my_Fe)                                                        ! interface normal in my lattice configuration
       area = mesh_ipArea(n,ip,el) * norm2(normal_me2neighbor)
       normal_me2neighbor = normal_me2neighbor / norm2(normal_me2neighbor)                           ! normalize the surface normal to unit length    
-      do s = 1_pInt,ns
-        do t = 1_pInt,4_pInt
-          c = (t + 1_pInt) / 2_pInt
+      do s = 1,ns
+        do t = 1,4
+          c = (t + 1) / 2
           if (my_v(s,t) * math_mul3x3(m(1:3,s,t), normal_me2neighbor) > 0.0_pReal ) then            ! flux from me to my neighbor == leaving flux for me (might also be a pure flux from my mobile density to dead density if interface not at all transmissive)
             if (my_v(s,t) * neighbor_v(s,t) >= 0.0_pReal) then                                      ! no sign change in flux density
-              transmissivity = sum(compatibility(c,1_pInt:ns,s,n,ip,el)**2.0_pReal)                 ! overall transmissivity from this slip system to my neighbor
+              transmissivity = sum(compatibility(c,1:ns,s,n,ip,el)**2.0_pReal)                 ! overall transmissivity from this slip system to my neighbor
             else                                                                                    ! sign change in flux density means sign change in stress which does not allow for dislocations to arive at the neighbor
               transmissivity = 0.0_pReal
             endif
             lineLength = my_rhoSgl(s,t) * my_v(s,t) &
                        * math_mul3x3(m(1:3,s,t), normal_me2neighbor) * area                         ! positive line length of mobiles that wants to leave through this interface
             rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / mesh_ipVolume(ip,el)                   ! subtract dislocation flux from current type
-            rhoDotFlux(s,t+4_pInt) = rhoDotFlux(s,t+4_pInt) &
+            rhoDotFlux(s,t+4) = rhoDotFlux(s,t+4) &
                                    + lineLength / mesh_ipVolume(ip,el) * (1.0_pReal - transmissivity) &
                                    * sign(1.0_pReal, my_v(s,t))                                     ! dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point
           endif
@@ -1908,7 +1907,7 @@ endif
 
 !*** formation by glide
 
-do c = 1_pInt,2_pInt
+do c = 1,2
   rhoDotSingle2DipoleGlide(1:ns,2*c-1) = -2.0_pReal * dUpper(1:ns,c) / prm%burgers(1:ns) &
                                                     * (rhoSgl(1:ns,2*c-1) * abs(gdot(1:ns,2*c)) &         ! negative mobile --> positive mobile
                                                        + rhoSgl(1:ns,2*c) * abs(gdot(1:ns,2*c-1)) &       ! positive mobile --> negative mobile
@@ -1936,15 +1935,15 @@ enddo
 
 rhoDotAthermalAnnihilation = 0.0_pReal
 
-forall (c=1_pInt:2_pInt) &  
-  rhoDotAthermalAnnihilation(1:ns,c+8_pInt) = -2.0_pReal * dLower(1:ns,c) / prm%burgers(1:ns) &
+forall (c=1:2) &  
+  rhoDotAthermalAnnihilation(1:ns,c+8) = -2.0_pReal * dLower(1:ns,c) / prm%burgers(1:ns) &
                * (  2.0_pReal * (rhoSgl(1:ns,2*c-1) * abs(gdot(1:ns,2*c)) + rhoSgl(1:ns,2*c) * abs(gdot(1:ns,2*c-1))) &             ! was single hitting single
                   + 2.0_pReal * (abs(rhoSgl(1:ns,2*c+3)) * abs(gdot(1:ns,2*c)) + abs(rhoSgl(1:ns,2*c+4)) * abs(gdot(1:ns,2*c-1))) & ! was single hitting immobile single or was immobile single hit by single
                   + rhoDip(1:ns,c) * (abs(gdot(1:ns,2*c-1)) + abs(gdot(1:ns,2*c))))                                                 ! single knocks dipole constituent
 ! annihilated screw dipoles leave edge jogs behind on the colinear system
 
 if (lattice_structure(ph) == LATTICE_fcc_ID) &
-  forall (s = 1:ns, prm%colinearSystem(s) > 0_pInt) &
+  forall (s = 1:ns, prm%colinearSystem(s) > 0) &
     rhoDotAthermalAnnihilation(prm%colinearSystem(s),1:2) = - rhoDotAthermalAnnihilation(s,10) &
       * 0.25_pReal * sqrt(stt%rho_forest(s,o)) * (dUpper(s,2) + dLower(s,2)) * prm%edgeJogFactor
 
@@ -1957,7 +1956,7 @@ selfDiffusion = prm%Dsd0 * exp(-prm%selfDiffusionEnergy / (KB * Temperature))
 vClimb =  prm%atomicVolume * selfDiffusion / ( KB * Temperature ) &
           * prm%mu / ( 2.0_pReal * PI * (1.0_pReal-prm%nu) ) &
           * 2.0_pReal / ( dUpper(1:ns,1) + dLower(1:ns,1) )
-forall (s = 1_pInt:ns, dUpper(s,1) > dLower(s,1)) &
+forall (s = 1:ns, dUpper(s,1) > dLower(s,1)) &
   rhoDotThermalAnnihilation(s,9) = max(- 4.0_pReal * rhoDip(s,1) * vClimb(s) / (dUpper(s,1) - dLower(s,1)), &
                                        - rhoDip(s,1) / timestep - rhoDotAthermalAnnihilation(s,9) &
                                                                 - rhoDotSingle2DipoleGlide(s,9))    ! make sure that we do not annihilate more dipoles than we have
@@ -1984,9 +1983,9 @@ results(instance)%rhoDotEdgeJogs(1:ns,o) = 2.0_pReal * rhoDotThermalAnnihilation
 
 
 #ifdef DEBUG
-  if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
+  if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0 &
       .and. ((debug_e == el .and. debug_i == ip)&
-             .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt )) then
+             .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0 )) then
     write(6,'(a,/,4(12x,12(e12.5,1x),/))')  '<< CONST >> dislocation multiplication', &
                                             rhoDotMultiplication(1:ns,1:4) * timestep
     write(6,'(a,/,8(12x,12(e12.5,1x),/))')  '<< CONST >> dislocation flux', &
@@ -2010,7 +2009,7 @@ results(instance)%rhoDotEdgeJogs(1:ns,o) = 2.0_pReal * rhoDotThermalAnnihilation
 if (    any(rho(:,mob) + rhoDot(1:ns,1:4)  * timestep < -prm%aTolRho) &
    .or. any(rho(:,dip) + rhoDot(1:ns,9:10) * timestep < -prm%aTolRho)) then
 #ifdef DEBUG
-  if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt) then 
+  if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0) then 
     write(6,'(a,i5,a,i2)') '<< CONST >> evolution rate leads to negative density at el ',el,' ip ',ip
     write(6,'(a)') '<< CONST >> enforcing cutback !!!'
   endif
@@ -2018,12 +2017,12 @@ if (    any(rho(:,mob) + rhoDot(1:ns,1:4)  * timestep < -prm%aTolRho) &
   plasticState(p)%dotState = IEEE_value(1.0_pReal,IEEE_quiet_NaN)
   return
 else
-  forall (s = 1:ns, t = 1_pInt:4_pInt) 
+  forall (s = 1:ns, t = 1:4) 
     plasticState(p)%dotState(iRhoU(s,t,instance),o) = rhoDot(s,t)
-    plasticState(p)%dotState(iRhoB(s,t,instance),o) = rhoDot(s,t+4_pInt)
+    plasticState(p)%dotState(iRhoB(s,t,instance),o) = rhoDot(s,t+4)
   endforall
-  forall (s = 1:ns, c = 1_pInt:2_pInt) &
-    plasticState(p)%dotState(iRhoD(s,c,instance),o) = rhoDot(s,c+8_pInt)
+  forall (s = 1:ns, c = 1:2) &
+    plasticState(p)%dotState(iRhoD(s,c,instance),o) = rhoDot(s,c+8)
   forall (s = 1:ns) &
     dot%accumulatedshear(s,o) = sum(gdot(s,1:4))
 endif
@@ -2053,13 +2052,13 @@ use lattice, only:    lattice_qDisorientation
 implicit none
 
 !* input variables
-integer(pInt), intent(in) ::                    i, &                                                ! ip index
+integer, intent(in) ::                    i, &                                                ! ip index
                                                 e                                                   ! element index
 type(rotation), dimension(1,theMesh%elem%nIPs,theMesh%nElems), intent(in) :: &
                                                 orientation                                         ! crystal orientation in quaternions
                                             
 !* local variables
-integer(pInt)                                   Nneighbors, &                                       ! number of neighbors
+integer                                   Nneighbors, &                                       ! number of neighbors
                                                 n, &                                                ! neighbor index 
                                                 neighbor_e, &                                       ! element index of my neighbor
                                                 neighbor_i, &                                       ! integration point index of my neighbor
@@ -2093,11 +2092,11 @@ associate(prm => param(instance))
 !*** start out fully compatible
 
 my_compatibility = 0.0_pReal
-forall(s1 = 1_pInt:ns) my_compatibility(1:2,s1,s1,1:Nneighbors) = 1.0_pReal 
+forall(s1 = 1:ns) my_compatibility(1:2,s1,s1,1:Nneighbors) = 1.0_pReal 
 
 !*** Loop thrugh neighbors and check whether there is any my_compatibility.
 
-neighbors: do n = 1_pInt,Nneighbors
+neighbors: do n = 1,Nneighbors
   neighbor_e = mesh_ipNeighborhood(1,n,i,e)
   neighbor_i = mesh_ipNeighborhood(2,n,i,e)
   
@@ -2105,8 +2104,8 @@ neighbors: do n = 1_pInt,Nneighbors
   !* FREE SURFACE
   !* Set surface transmissivity to the value specified in the material.config
   
-  if (neighbor_e <= 0_pInt .or. neighbor_i <= 0_pInt) then
-    forall(s1 = 1_pInt:ns) my_compatibility(1:2,s1,s1,n) = sqrt(prm%surfaceTransmissivity)
+  if (neighbor_e <= 0 .or. neighbor_i <= 0) then
+    forall(s1 = 1:ns) my_compatibility(1:2,s1,s1,n) = sqrt(prm%surfaceTransmissivity)
     cycle
   endif
   
@@ -2120,7 +2119,7 @@ neighbors: do n = 1_pInt,Nneighbors
   neighbor_phase = material_phase(1,neighbor_i,neighbor_e)
   if (neighbor_phase /= ph) then
     if (.not. phase_localPlasticity(neighbor_phase) .and. .not. phase_localPlasticity(ph))&
-      forall(s1 = 1_pInt:ns) my_compatibility(1:2,s1,s1,n) = 0.0_pReal
+      forall(s1 = 1:ns) my_compatibility(1:2,s1,s1,n) = 0.0_pReal
     cycle
   endif
 
@@ -2132,7 +2131,7 @@ neighbors: do n = 1_pInt,Nneighbors
     neighbor_textureID = material_texture(1,neighbor_i,neighbor_e)
     if (neighbor_textureID /= textureID) then
       if (.not. phase_localPlasticity(neighbor_phase)) then
-        forall(s1 = 1_pInt:ns) &
+        forall(s1 = 1:ns) &
           my_compatibility(1:2,s1,s1,n) = sqrt(prm%grainboundaryTransmissivity)
       endif
       cycle
@@ -2151,8 +2150,8 @@ neighbors: do n = 1_pInt,Nneighbors
   else
     rot = orientation(1,i,e)%misorientation(orientation(1,neighbor_i,neighbor_e))
     absoluteMisorientation = rot%asQuaternion()
-    mySlipSystems: do s1 = 1_pInt,ns
-      neighborSlipSystems: do s2 = 1_pInt,ns
+    mySlipSystems: do s1 = 1,ns
+      neighborSlipSystems: do s2 = 1,ns
         my_compatibility(1,s2,s1,n) =  math_mul3x3(prm%slip_normal(1:3,s1), &
         math_qRot(absoluteMisorientation, prm%slip_normal(1:3,s2))) &
                                 * abs(math_mul3x3(prm%slip_direction(1:3,s1), &
@@ -2203,14 +2202,14 @@ function plastic_nonlocal_postResults(Mp,ip,el) result(postResults)
 
  implicit none
  real(pReal), dimension(3,3), intent(in) ::  Mp                                                     !< MandelStress
- integer(pInt),                intent(in) :: &
+ integer,                intent(in) :: &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
  
- real(pReal),   dimension(sum(plastic_nonlocal_sizePostResult(:,phase_plasticityInstance(material_phase(1_pInt,ip,el))))) :: &
+ real(pReal),   dimension(sum(plastic_nonlocal_sizePostResult(:,phase_plasticityInstance(material_phase(1,ip,el))))) :: &
    postResults
  
- integer(pInt) :: &
+ integer :: &
    ph, &
    instance, &                                                                                      !< current instance of this plasticity
    ns, &                                                                                            !< short notation for the total number of active slip systems
@@ -2221,13 +2220,13 @@ function plastic_nonlocal_postResults(Mp,ip,el) result(postResults)
    t, &                                                                                             !< type of dislocation
    s                                                                                                !< index of my current slip system
 
- real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),8) :: &
+ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),8) :: &
    rhoSgl, &
    rhoDotSgl                                                                                        !< evolution rate of single dislocation densities (positive/negative screw and edge without dipoles)
- real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),4) :: &
+ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),4) :: &
    gdot, &                                                                                          !< shear rates
    v                                                                                                !< velocities
- real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),2) :: &
+ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),2) :: &
    rhoDotDip                                                                                        !< evolution rate of dipole dislocation densities (screw and edge dipoles)
 
    
@@ -2236,166 +2235,166 @@ of = phasememberAt(1,ip,el)
 instance = phase_plasticityInstance(ph)
 ns = totalNslip(instance)
 
-cs = 0_pInt
+cs = 0
 
 associate(prm => param(instance),dst => microstructure(instance),stt=>state(instance))
 !* short hand notations for state variables
 
-forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
-  rhoSgl(s,t+4_pInt)    = plasticState(ph)%State(iRhoB(s,t,instance),of)
+forall (s = 1:ns, t = 1:4)
+  rhoSgl(s,t+4)    = plasticState(ph)%State(iRhoB(s,t,instance),of)
   v(s,t)                = plasticState(ph)%State(iV(s,t,instance),of)
-  rhoDotSgl(s,t+4_pInt) = plasticState(ph)%dotState(iRhoB(s,t,instance),of)
+  rhoDotSgl(s,t+4) = plasticState(ph)%dotState(iRhoB(s,t,instance),of)
 endforall
-forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
+forall (s = 1:ns, c = 1:2)
   rhoDotDip(s,c) = plasticState(ph)%dotState(iRhoD(s,c,instance),of)
 endforall
 
 !* Calculate shear rate
 
-forall (t = 1_pInt:4_pInt) &
+forall (t = 1:4) &
   gdot(1:ns,t) = rhoSgl(1:ns,t) * prm%burgers(1:ns) * v(1:ns,t)
   
 
 !* calculate limits for stable dipole height
 
 
-outputsLoop: do o = 1_pInt,size(param(instance)%outputID)
+outputsLoop: do o = 1,size(param(instance)%outputID)
   select case(param(instance)%outputID(o))
       
     case (rho_sgl_mob_edg_pos_ID)
-      postResults(cs+1_pInt:cs+ns) = stt%rho_sgl_mob_edg_pos(:,of)
+      postResults(cs+1:cs+ns) = stt%rho_sgl_mob_edg_pos(:,of)
       cs = cs + ns
       
     case (rho_sgl_imm_edg_pos_ID)
-      postResults(cs+1_pInt:cs+ns) = stt%rho_sgl_imm_edg_pos(:,of)
+      postResults(cs+1:cs+ns) = stt%rho_sgl_imm_edg_pos(:,of)
       cs = cs + ns
       
     case (rho_sgl_mob_edg_neg_ID)
-      postResults(cs+1_pInt:cs+ns) = stt%rho_sgl_mob_edg_neg(:,of)
+      postResults(cs+1:cs+ns) = stt%rho_sgl_mob_edg_neg(:,of)
       cs = cs + ns
       
     case (rho_sgl_imm_edg_neg_ID)
-      postResults(cs+1_pInt:cs+ns) = stt%rho_sgl_imm_edg_neg(:,of)
+      postResults(cs+1:cs+ns) = stt%rho_sgl_imm_edg_neg(:,of)
       cs = cs + ns
       
     case (rho_dip_edg_ID)
-      postResults(cs+1_pInt:cs+ns) = stt%rho_dip_edg(:,of)
+      postResults(cs+1:cs+ns) = stt%rho_dip_edg(:,of)
       cs = cs + ns
       
     case (rho_sgl_mob_scr_pos_ID)
-      postResults(cs+1_pInt:cs+ns) = stt%rho_sgl_mob_scr_pos(:,of)
+      postResults(cs+1:cs+ns) = stt%rho_sgl_mob_scr_pos(:,of)
       cs = cs + ns
       
     case (rho_sgl_imm_scr_pos_ID)
-      postResults(cs+1_pInt:cs+ns) = stt%rho_sgl_imm_scr_pos(:,of)
+      postResults(cs+1:cs+ns) = stt%rho_sgl_imm_scr_pos(:,of)
       cs = cs + ns
 
     case (rho_sgl_mob_scr_neg_ID)
-      postResults(cs+1_pInt:cs+ns) = stt%rho_sgl_mob_scr_neg(:,of)
+      postResults(cs+1:cs+ns) = stt%rho_sgl_mob_scr_neg(:,of)
       cs = cs + ns
 
     case (rho_sgl_imm_scr_neg_ID)
-      postResults(cs+1_pInt:cs+ns) = stt%rho_sgl_imm_scr_neg(:,of)
+      postResults(cs+1:cs+ns) = stt%rho_sgl_imm_scr_neg(:,of)
       cs = cs + ns
 
     case (rho_dip_scr_ID)
-      postResults(cs+1_pInt:cs+ns) = stt%rho_dip_scr(:,of)
+      postResults(cs+1:cs+ns) = stt%rho_dip_scr(:,of)
       cs = cs + ns
       
     case (rho_forest_ID)
-      postResults(cs+1_pInt:cs+ns) = stt%rho_forest(:,of)
+      postResults(cs+1:cs+ns) = stt%rho_forest(:,of)
       cs = cs + ns
       
     case (shearrate_ID)
-      postResults(cs+1_pInt:cs+ns) = sum(gdot,2)
+      postResults(cs+1:cs+ns) = sum(gdot,2)
       cs = cs + ns
       
     case (resolvedstress_back_ID)
-      postResults(cs+1_pInt:cs+ns) =  dst%tau_back(:,of)
+      postResults(cs+1:cs+ns) =  dst%tau_back(:,of)
       cs = cs + ns
       
     case (resistance_ID)
-      postResults(cs+1_pInt:cs+ns) = dst%tau_Threshold(:,of)
+      postResults(cs+1:cs+ns) = dst%tau_Threshold(:,of)
       cs = cs + ns
       
     case (rho_dot_sgl_ID)
-      postResults(cs+1_pInt:cs+ns) = sum(rhoDotSgl(1:ns,1:4),2) &
+      postResults(cs+1:cs+ns) = sum(rhoDotSgl(1:ns,1:4),2) &
                                    + sum(rhoDotSgl(1:ns,5:8)*sign(1.0_pReal,rhoSgl(1:ns,5:8)),2)
       cs = cs + ns
       
     case (rho_dot_sgl_mobile_ID)
-      postResults(cs+1_pInt:cs+ns) = sum(rhoDotSgl(1:ns,1:4),2)
+      postResults(cs+1:cs+ns) = sum(rhoDotSgl(1:ns,1:4),2)
       cs = cs + ns
       
     case (rho_dot_dip_ID)
-      postResults(cs+1_pInt:cs+ns) = sum(rhoDotDip,2)
+      postResults(cs+1:cs+ns) = sum(rhoDotDip,2)
       cs = cs + ns
 
     case (rho_dot_gen_edge_ID)
-      postResults(cs+1_pInt:cs+ns) = results(instance)%rhoDotMultiplication(1:ns,1,of)
+      postResults(cs+1:cs+ns) = results(instance)%rhoDotMultiplication(1:ns,1,of)
       cs = cs + ns
 
     case (rho_dot_gen_screw_ID)
-      postResults(cs+1_pInt:cs+ns) = results(instance)%rhoDotMultiplication(1:ns,2,of)
+      postResults(cs+1:cs+ns) = results(instance)%rhoDotMultiplication(1:ns,2,of)
       cs = cs + ns
     
     case (rho_dot_sgl2dip_edge_ID)
-      postResults(cs+1_pInt:cs+ns) = results(instance)%rhoDotSingle2DipoleGlide(1:ns,1,of)
+      postResults(cs+1:cs+ns) = results(instance)%rhoDotSingle2DipoleGlide(1:ns,1,of)
       cs = cs + ns
     
     case (rho_dot_sgl2dip_screw_ID)
-      postResults(cs+1_pInt:cs+ns) = results(instance)%rhoDotSingle2DipoleGlide(1:ns,2,of)
+      postResults(cs+1:cs+ns) = results(instance)%rhoDotSingle2DipoleGlide(1:ns,2,of)
       cs = cs + ns
     
     case (rho_dot_ann_ath_ID)
-      postResults(cs+1_pInt:cs+ns) = results(instance)%rhoDotAthermalAnnihilation(1:ns,1,of) & 
+      postResults(cs+1:cs+ns) = results(instance)%rhoDotAthermalAnnihilation(1:ns,1,of) & 
                                    + results(instance)%rhoDotAthermalAnnihilation(1:ns,2,of)
       cs = cs + ns
 
     case (rho_dot_ann_the_edge_ID) 
-      postResults(cs+1_pInt:cs+ns) = results(instance)%rhoDotThermalAnnihilation(1:ns,1,of) 
+      postResults(cs+1:cs+ns) = results(instance)%rhoDotThermalAnnihilation(1:ns,1,of) 
       cs = cs + ns
 
     case (rho_dot_ann_the_screw_ID) 
-      postResults(cs+1_pInt:cs+ns) = results(instance)%rhoDotThermalAnnihilation(1:ns,2,of)
+      postResults(cs+1:cs+ns) = results(instance)%rhoDotThermalAnnihilation(1:ns,2,of)
       cs = cs + ns
 
     case (rho_dot_edgejogs_ID) 
-      postResults(cs+1_pInt:cs+ns) = results(instance)%rhoDotEdgeJogs(1:ns,of)
+      postResults(cs+1:cs+ns) = results(instance)%rhoDotEdgeJogs(1:ns,of)
       cs = cs + ns
 
     case (rho_dot_flux_mobile_ID)
-      postResults(cs+1_pInt:cs+ns) = sum(results(instance)%rhoDotFlux(1:ns,1:4,of),2)
+      postResults(cs+1:cs+ns) = sum(results(instance)%rhoDotFlux(1:ns,1:4,of),2)
       cs = cs + ns
     
     case (rho_dot_flux_edge_ID)
-      postResults(cs+1_pInt:cs+ns) = sum(results(instance)%rhoDotFlux(1:ns,1:2,of),2) &
+      postResults(cs+1:cs+ns) = sum(results(instance)%rhoDotFlux(1:ns,1:2,of),2) &
                           + sum(results(instance)%rhoDotFlux(1:ns,5:6,of)*sign(1.0_pReal,rhoSgl(1:ns,5:6)),2)
       cs = cs + ns
       
     case (rho_dot_flux_screw_ID)
-      postResults(cs+1_pInt:cs+ns) = sum(results(instance)%rhoDotFlux(1:ns,3:4,of),2) &
+      postResults(cs+1:cs+ns) = sum(results(instance)%rhoDotFlux(1:ns,3:4,of),2) &
                           + sum(results(instance)%rhoDotFlux(1:ns,7:8,of)*sign(1.0_pReal,rhoSgl(1:ns,7:8)),2)
       cs = cs + ns
             
     case (velocity_edge_pos_ID)
-      postResults(cs+1_pInt:cs+ns) = v(1:ns,1)
+      postResults(cs+1:cs+ns) = v(1:ns,1)
       cs = cs + ns
     
     case (velocity_edge_neg_ID)
-      postResults(cs+1_pInt:cs+ns) = v(1:ns,2)
+      postResults(cs+1:cs+ns) = v(1:ns,2)
       cs = cs + ns
     
     case (velocity_screw_pos_ID)
-      postResults(cs+1_pInt:cs+ns) = v(1:ns,3)
+      postResults(cs+1:cs+ns) = v(1:ns,3)
       cs = cs + ns
     
     case (velocity_screw_neg_ID)
-      postResults(cs+1_pInt:cs+ns) = v(1:ns,4)
+      postResults(cs+1:cs+ns) = v(1:ns,4)
       cs = cs + ns
 
     case(accumulatedshear_ID)
-      postResults(cs+1_pInt:cs+ns) = stt%accumulatedshear(:,of)
+      postResults(cs+1:cs+ns) = stt%accumulatedshear(:,of)
       cs = cs + ns
     
   end select
@@ -2439,7 +2438,7 @@ subroutine plastic_nonlocal_results(instance,group)
   integer :: o
 
   associate(prm => param(instance), stt => state(instance))
-  outputsLoop: do o = 1_pInt,size(prm%outputID)
+  outputsLoop: do o = 1,size(prm%outputID)
     select case(prm%outputID(o))
     end select
   enddo outputsLoop
