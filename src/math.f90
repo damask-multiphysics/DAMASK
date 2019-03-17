@@ -1895,7 +1895,7 @@ real(pReal) function math_sampleGaussVar(meanvalue, stddev, width)
    myWidth = merge(width,3.0_pReal,present(width))                                                  ! use +-3*sigma as default value for scatter if not given
   
    do
-     rnd = halton([6,2])
+     call random_number(rnd)
      scatter = myWidth * (2.0_pReal * rnd(1) - 1.0_pReal)
      if (rnd(2) <= exp(-0.5_pReal * scatter ** 2.0_pReal)) exit                                     ! test if scattered value is drawn
    enddo
