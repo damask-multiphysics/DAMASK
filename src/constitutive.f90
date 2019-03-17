@@ -1042,40 +1042,34 @@ function constitutive_postResults(S, Fi, ipc, ip, el)
  startPos = 1_pInt
  endPos = plasticState(material_phase(ipc,ip,el))%sizePostResults
 
+ of = phasememberAt(ipc,ip,el)
+ instance = phase_plasticityInstance(material_phase(ipc,ip,el))
+
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_ISOTROPIC_ID) plasticityType
-     of = phasememberAt(ipc,ip,el)
-     instance = phase_plasticityInstance(material_phase(ipc,ip,el))
      constitutive_postResults(startPos:endPos) = &
        plastic_isotropic_postResults(Mp,instance,of)
 
    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
-     of = phasememberAt(ipc,ip,el)
-     instance = phase_plasticityInstance(material_phase(ipc,ip,el))
      constitutive_postResults(startPos:endPos) = &
        plastic_phenopowerlaw_postResults(Mp,instance,of)
 
    case (PLASTICITY_KINEHARDENING_ID) plasticityType
-     of = phasememberAt(ipc,ip,el)
-     instance = phase_plasticityInstance(material_phase(ipc,ip,el))
      constitutive_postResults(startPos:endPos) = &
        plastic_kinehardening_postResults(Mp,instance,of)
 
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
-     of = phasememberAt(ipc,ip,el)
-     instance = phase_plasticityInstance(material_phase(ipc,ip,el))
      constitutive_postResults(startPos:endPos) = &
        plastic_dislotwin_postResults(Mp,temperature(ho)%p(tme),instance,of)
 
    case (PLASTICITY_DISLOUCLA_ID) plasticityType
-     of = phasememberAt(ipc,ip,el)
-     instance = phase_plasticityInstance(material_phase(ipc,ip,el))
      constitutive_postResults(startPos:endPos) = &
        plastic_disloucla_postResults(Mp,temperature(ho)%p(tme),instance,of)
 
    case (PLASTICITY_NONLOCAL_ID) plasticityType
      constitutive_postResults(startPos:endPos) = &
-       plastic_nonlocal_postResults (Mp,ip,el)
+       plastic_nonlocal_postResults (material_phase(ipc,ip,el),instance,of)
+
  end select plasticityType
 
  SourceLoop: do i = 1_pInt, phase_Nsources(material_phase(ipc,ip,el))
