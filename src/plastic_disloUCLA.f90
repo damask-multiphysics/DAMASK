@@ -7,14 +7,13 @@
 !--------------------------------------------------------------------------------------------------
 module plastic_disloUCLA
  use prec, only: &
-   pReal, &
-   pInt
+   pReal
 
  implicit none
  private
  integer,                       dimension(:,:),   allocatable, target, public :: &
    plastic_disloUCLA_sizePostResult                                                                 !< size of each post result output
- character(len=64),             dimension(:,:),         allocatable, target, public :: &
+ character(len=64),             dimension(:,:),   allocatable, target, public :: &
    plastic_disloUCLA_output                                                                         !< name of each post result output
 
  real(pReal),                                                 parameter,           private :: &
@@ -61,13 +60,13 @@ module plastic_disloUCLA
    real(pReal),                  dimension(:,:),  allocatable :: &
      interaction_SlipSlip, &                                                                        !< slip resistance from slip activity
      forestProjectionEdge
-   real(pReal),                 dimension(:,:,:),  allocatable :: &
+   real(pReal),                  dimension(:,:,:),  allocatable :: &
      Schmid, &
      nonSchmid_pos, &
      nonSchmid_neg
    integer :: &
      totalNslip                                                                                     !< total number of active slip system
-   integer,                   dimension(:), allocatable, :: &
+   integer,                      dimension(:), allocatable, :: &
      Nslip                                                                                          !< number of active slip systems for each family
    integer(kind(undefined_ID)),  dimension(:),allocatable :: &
      outputID                                                                                       !< ID of each post result output
@@ -79,7 +78,7 @@ module plastic_disloUCLA
    real(pReal), dimension(:,:), pointer :: &
      rhoEdge, &
      rhoEdgeDip, &
-     accshear
+     gamma_sl
  end type tDisloUCLAState
 
  type, private :: tDisloUCLAdependentState
@@ -146,9 +145,9 @@ subroutine plastic_disloUCLA_init()
    sizeState, sizeDotState, &
    startIndex, endIndex
 
- integer,          dimension(0), parameter :: emptyIntArray    = [integer::]
- real(pReal),            dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
- character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
+ integer,              dimension(0), parameter :: emptyIntArray    = [integer::]
+ real(pReal),          dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
+ character(len=65536), dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
 
  integer(kind(undefined_ID)) :: &
    outputID
@@ -163,7 +162,7 @@ subroutine plastic_disloUCLA_init()
  write(6,'(/,a)')   ' Cereceda et al., International Journal of Plasticity 78:242–256, 2016'
  write(6,'(a)')     ' https://dx.doi.org/10.1016/j.ijplas.2015.09.002'
 
- Ninstance = int(count(phase_plasticity == PLASTICITY_DISLOUCLA_ID),pInt)
+ Ninstance = count(phase_plasticity == PLASTICITY_DISLOUCLA_ID)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
@@ -343,8 +342,8 @@ subroutine plastic_disloUCLA_init()
 
    startIndex = endIndex + 1
    endIndex   = endIndex + prm%totalNslip
-   stt%accshear=>plasticState(p)%state(startIndex:endIndex,:)
-   dot%accshear=>plasticState(p)%dotState(startIndex:endIndex,:)
+   stt%gamma_sl=>plasticState(p)%state(startIndex:endIndex,:)
+   dot%gamma_sl=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = 1.0e6_pReal  !ToDo: better make optional parameter
    ! global alias
    plasticState(p)%slipRate        => plasticState(p)%dotState(startIndex:endIndex,:)
@@ -376,9 +375,9 @@ pure subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,inst
 
  real(pReal), dimension(3,3), intent(in) :: &
    Mp                                                                                               !< Mandel stress
- real(pReal),                intent(in) :: &
+ real(pReal),                 intent(in) :: &
    temperature                                                                                      !< temperature
- integer,               intent(in) :: &
+ integer,                     intent(in) :: &
    instance, &
    of
 
@@ -442,7 +441,7 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
                gdot_pos,gdot_neg, &
                tau_pos1 = tau_pos,tau_neg1 = tau_neg)
 
- dot%accshear(:,of) = (gdot_pos+gdot_neg)                                                      ! ToDo: needs to be abs
+ dot%gamma_sl(:,of) = (gdot_pos+gdot_neg)                                                      ! ToDo: needs to be abs
  VacancyDiffusion = prm%D0*exp(-prm%Qsd/(kB*Temperature))
 
  where(dEq0(tau_pos))                                                                          ! ToDo: use avg of pos and neg
@@ -452,7 +451,7 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
    EdgeDipDistance = math_clip((3.0_pReal*prm%mu*prm%burgers)/(16.0_pReal*PI*abs(tau_pos)), &
                                prm%minDipDistance, &                                                ! lower limit
                                dst%mfp(:,of))                                                       ! upper limit
-   DotRhoDipFormation = merge(((2.0_pReal*EdgeDipDistance)/prm%burgers)* stt%rhoEdge(:,of)*abs(dot%accshear(:,of)), & ! ToDo: ignore region of spontaneous annihilation
+   DotRhoDipFormation = merge(((2.0_pReal*EdgeDipDistance)/prm%burgers)* stt%rhoEdge(:,of)*abs(dot%gamma_sl(:,of)), & ! ToDo: ignore region of spontaneous annihilation
                               0.0_pReal, &
                               prm%dipoleformation)
    ClimbVelocity = (3.0_pReal*prm%mu*VacancyDiffusion*prm%atomicVolume/(2.0_pReal*pi*kB*Temperature)) &
@@ -460,11 +459,11 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
    DotRhoEdgeDipClimb = (4.0_pReal*ClimbVelocity*stt%rhoEdgeDip(:,of))/(EdgeDipDistance-prm%minDipDistance) ! ToDo: Discuss with Franz: Stress dependency?
  end where
 
- dot%rhoEdge(:,of) = abs(dot%accshear(:,of))/(prm%burgers*dst%mfp(:,of)) &                     ! multiplication
+ dot%rhoEdge(:,of) = abs(dot%gamma_sl(:,of))/(prm%burgers*dst%mfp(:,of)) &                     ! multiplication
                    - DotRhoDipFormation &
-                   - (2.0_pReal*prm%minDipDistance)/prm%burgers*stt%rhoEdge(:,of)*abs(dot%accshear(:,of)) !* Spontaneous annihilation of 2 single edge dislocations
+                   - (2.0_pReal*prm%minDipDistance)/prm%burgers*stt%rhoEdge(:,of)*abs(dot%gamma_sl(:,of)) !* Spontaneous annihilation of 2 single edge dislocations
  dot%rhoEdgeDip(:,of) = DotRhoDipFormation &
-                      - (2.0_pReal*prm%minDipDistance)/prm%burgers*stt%rhoEdgeDip(:,of)*abs(dot%accshear(:,of)) & !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
+                      - (2.0_pReal*prm%minDipDistance)/prm%burgers*stt%rhoEdgeDip(:,of)*abs(dot%gamma_sl(:,of)) & !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
                       - DotRhoEdgeDipClimb
 
  end associate
@@ -545,7 +544,7 @@ function plastic_disloUCLA_postResults(Mp,Temperature,instance,of) result(postRe
        call kinetics(Mp,Temperature,instance,of,gdot_pos,gdot_neg)
        postResults(c+1:c+prm%totalNslip) = gdot_pos + gdot_neg
      case (accumulatedshear_ID)
-       postResults(c+1:c+prm%totalNslip) = stt%accshear(1:prm%totalNslip, of)
+       postResults(c+1:c+prm%totalNslip) = stt%gamma_sl(1:prm%totalNslip, of)
      case (mfp_ID)
        postResults(c+1:c+prm%totalNslip) = dst%mfp(1:prm%totalNslip, of)
      case (thresholdstress_ID)
