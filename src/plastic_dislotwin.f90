@@ -93,7 +93,7 @@ module plastic_dislotwin
    real(pReal),                  dimension(:,:),   allocatable :: & 
      h_sl_sl, &                                                                                     !< 
      h_sl_tw, &                                                                                     !<
-     interaction_TwinTwin, &                                                                        !< 
+     h_tw_tw, &                                                                        !< 
      interaction_SlipTrans, &                                                                       !< 
      interaction_TransTrans                                                                         !< 
    integer,                      dimension(:,:),   allocatable :: & 
@@ -112,8 +112,8 @@ module plastic_dislotwin
      totalNtwin, &                                                                                   !< total number of active twin system
      totalNtrans                                                                                     !< total number of active transformation system 
    integer,                      dimension(:),     allocatable :: & 
-     Nslip, &                                                                                        !< number of active slip systems for each family
-     Ntwin, &                                                                                        !< number of active twin systems for each family
+     N_sl, &                                                                                         !< number of active slip systems for each family
+     N_tw, &                                                                                         !< number of active twin systems for each family
      Ntrans                                                                                          !< number of active transformation systems for each family
    integer(kind(undefined_ID)),  dimension(:),     allocatable :: &
      outputID                                                                                        !< ID of each post result output
@@ -271,34 +271,34 @@ subroutine plastic_dislotwin_init
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
-   prm%Nslip      = config%getInts('nslip',defaultVal=emptyIntArray)
-   prm%totalNslip = sum(prm%Nslip)
+   prm%N_sl      = config%getInts('nslip',defaultVal=emptyIntArray)
+   prm%totalNslip = sum(prm%N_sl)
    slipActive: if (prm%totalNslip > 0) then
-     prm%Schmid_slip          = lattice_SchmidMatrix_slip(prm%Nslip,config%getString('lattice_structure'),&
+     prm%Schmid_slip          = lattice_SchmidMatrix_slip(prm%N_sl,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
-     prm%h_sl_sl = lattice_interaction_SlipBySlip(prm%Nslip, &
+     prm%h_sl_sl = lattice_interaction_SlipBySlip(prm%N_sl, &
                                                   config%getFloats('interaction_slipslip'), &
                                                   config%getString('lattice_structure'))
-     prm%forestProjection     = lattice_forestProjection (prm%Nslip,config%getString('lattice_structure'),&
+     prm%forestProjection     = lattice_forestProjection (prm%N_sl,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
 
      prm%fccTwinTransNucleation = merge(.true., .false., lattice_structure(p) == LATTICE_FCC_ID) &
-                                .and. (prm%Nslip(1) == 12)
+                                .and. (prm%N_sl(1) == 12)
      if(prm%fccTwinTransNucleation) &
        prm%fcc_twinNucleationSlipPair = lattice_fcc_twinNucleationSlipPair
 
-     prm%rho0                 = config%getFloats('rhoedge0',   requiredSize=size(prm%Nslip))  !ToDo: rename to rho_0
-     prm%rhoDip0              = config%getFloats('rhoedgedip0',requiredSize=size(prm%Nslip))  !ToDo: rename to rho_dip_0
-     prm%v0                   = config%getFloats('v0',         requiredSize=size(prm%Nslip))
-     prm%burgers_slip         = config%getFloats('slipburgers',requiredSize=size(prm%Nslip))
-     prm%Qedge                = config%getFloats('qedge',      requiredSize=size(prm%Nslip))  !ToDo: rename (ask Karo)
-     prm%CLambdaSlip          = config%getFloats('clambdaslip',requiredSize=size(prm%Nslip))
-     prm%p                    = config%getFloats('p_slip',     requiredSize=size(prm%Nslip))
-     prm%q                    = config%getFloats('q_slip',     requiredSize=size(prm%Nslip))
-     prm%B                    = config%getFloats('b',          requiredSize=size(prm%Nslip), &
-                                                          defaultVal=[(0.0_pReal, i=1,size(prm%Nslip))])
-     prm%tau_peierls          = config%getFloats('tau_peierls',requiredSize=size(prm%Nslip), &
-                                                          defaultVal=[(0.0_pReal, i=1,size(prm%Nslip))]) ! Deprecated
+     prm%rho0                 = config%getFloats('rhoedge0',   requiredSize=size(prm%N_sl))  !ToDo: rename to rho_0
+     prm%rhoDip0              = config%getFloats('rhoedgedip0',requiredSize=size(prm%N_sl))  !ToDo: rename to rho_dip_0
+     prm%v0                   = config%getFloats('v0',         requiredSize=size(prm%N_sl))
+     prm%burgers_slip         = config%getFloats('slipburgers',requiredSize=size(prm%N_sl))
+     prm%Qedge                = config%getFloats('qedge',      requiredSize=size(prm%N_sl))  !ToDo: rename (ask Karo)
+     prm%CLambdaSlip          = config%getFloats('clambdaslip',requiredSize=size(prm%N_sl))
+     prm%p                    = config%getFloats('p_slip',     requiredSize=size(prm%N_sl))
+     prm%q                    = config%getFloats('q_slip',     requiredSize=size(prm%N_sl))
+     prm%B                    = config%getFloats('b',          requiredSize=size(prm%N_sl), &
+                                                          defaultVal=[(0.0_pReal, i=1,size(prm%N_sl))])
+     prm%tau_peierls          = config%getFloats('tau_peierls',requiredSize=size(prm%N_sl), &
+                                                          defaultVal=[(0.0_pReal, i=1,size(prm%N_sl))]) ! Deprecated
 
      prm%CEdgeDipMinDistance  = config%getFloat('cedgedipmindistance')
      prm%D0                   = config%getFloat('d0')
@@ -306,17 +306,17 @@ subroutine plastic_dislotwin_init
      prm%atomicVolume         = config%getFloat('catomicvolume') * prm%burgers_slip**3.0_pReal
 
      ! expand: family => system
-     prm%rho0         = math_expand(prm%rho0,        prm%Nslip)
-     prm%rhoDip0      = math_expand(prm%rhoDip0,     prm%Nslip)
-     prm%v0           = math_expand(prm%v0,          prm%Nslip)
-     prm%burgers_slip = math_expand(prm%burgers_slip,prm%Nslip)
-     prm%Qedge        = math_expand(prm%Qedge,       prm%Nslip)
-     prm%CLambdaSlip  = math_expand(prm%CLambdaSlip, prm%Nslip)
-     prm%p            = math_expand(prm%p,           prm%Nslip)
-     prm%q            = math_expand(prm%q,           prm%Nslip)
-     prm%B            = math_expand(prm%B,           prm%Nslip)
-     prm%tau_peierls  = math_expand(prm%tau_peierls, prm%Nslip)
-     prm%atomicVolume = math_expand(prm%atomicVolume,prm%Nslip)                                   
+     prm%rho0         = math_expand(prm%rho0,        prm%N_sl)
+     prm%rhoDip0      = math_expand(prm%rhoDip0,     prm%N_sl)
+     prm%v0           = math_expand(prm%v0,          prm%N_sl)
+     prm%burgers_slip = math_expand(prm%burgers_slip,prm%N_sl)
+     prm%Qedge        = math_expand(prm%Qedge,       prm%N_sl)
+     prm%CLambdaSlip  = math_expand(prm%CLambdaSlip, prm%N_sl)
+     prm%p            = math_expand(prm%p,           prm%N_sl)
+     prm%q            = math_expand(prm%q,           prm%N_sl)
+     prm%B            = math_expand(prm%B,           prm%N_sl)
+     prm%tau_peierls  = math_expand(prm%tau_peierls, prm%N_sl)
+     prm%atomicVolume = math_expand(prm%atomicVolume,prm%N_sl)                                   
 
      ! sanity checks
      if (    prm%D0           <= 0.0_pReal)          extmsg = trim(extmsg)//' D0'
@@ -338,39 +338,39 @@ subroutine plastic_dislotwin_init
 
 !--------------------------------------------------------------------------------------------------
 ! twin related parameters
-   prm%Ntwin      = config%getInts('ntwin', defaultVal=emptyIntArray)
-   prm%totalNtwin = sum(prm%Ntwin)
+   prm%N_tw      = config%getInts('ntwin', defaultVal=emptyIntArray)
+   prm%totalNtwin = sum(prm%N_tw)
    if (prm%totalNtwin > 0) then
-     prm%Schmid_twin          = lattice_SchmidMatrix_twin(prm%Ntwin,config%getString('lattice_structure'),&
-                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
-     prm%interaction_TwinTwin = lattice_interaction_TwinByTwin(prm%Ntwin,&
-                                                               config%getFloats('interaction_twintwin'), &
-                                                               config%getString('lattice_structure'))
+     prm%Schmid_twin  = lattice_SchmidMatrix_twin(prm%N_tw,config%getString('lattice_structure'),&
+                                                  config%getFloat('c/a',defaultVal=0.0_pReal))
+     prm%h_tw_tw      = lattice_interaction_TwinByTwin(prm%N_tw,&
+                                                       config%getFloats('interaction_twintwin'), &
+                                                       config%getString('lattice_structure'))
 
-     prm%burgers_twin = config%getFloats('twinburgers',     requiredSize=size(prm%Ntwin))
-     prm%twinsize     = config%getFloats('twinsize',     requiredSize=size(prm%Ntwin))
-     prm%r            = config%getFloats('r_twin',     requiredSize=size(prm%Ntwin))
+     prm%burgers_twin = config%getFloats('twinburgers',     requiredSize=size(prm%N_tw))
+     prm%twinsize     = config%getFloats('twinsize',     requiredSize=size(prm%N_tw))
+     prm%r            = config%getFloats('r_twin',     requiredSize=size(prm%N_tw))
 
      prm%xc_twin         = config%getFloat('xc_twin')
      prm%L0_twin         = config%getFloat('l0_twin')
      prm%Cthresholdtwin  = config%getFloat('cthresholdtwin', defaultVal=0.0_pReal)
      prm%Cmfptwin        = config%getFloat('cmfptwin',       defaultVal=0.0_pReal) ! ToDo: How to handle that???
 
-     prm%shear_twin      = lattice_characteristicShear_Twin(prm%Ntwin,config%getString('lattice_structure'),&
+     prm%shear_twin      = lattice_characteristicShear_Twin(prm%N_tw,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
 
-     prm%C66_twin        = lattice_C66_twin(prm%Ntwin,prm%C66,config%getString('lattice_structure'),&
+     prm%C66_twin        = lattice_C66_twin(prm%N_tw,prm%C66,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
 
      if (.not. prm%fccTwinTransNucleation) then
        prm%Ndot0_twin = config%getFloats('ndot0_twin') 
-       prm%Ndot0_twin = math_expand(prm%Ndot0_twin,prm%Ntwin)
+       prm%Ndot0_twin = math_expand(prm%Ndot0_twin,prm%N_tw)
      endif
 
      ! expand: family => system
-     prm%burgers_twin = math_expand(prm%burgers_twin,prm%Ntwin)
-     prm%twinsize     = math_expand(prm%twinsize,prm%Ntwin)
-     prm%r            = math_expand(prm%r,prm%Ntwin)
+     prm%burgers_twin = math_expand(prm%burgers_twin,prm%N_tw)
+     prm%twinsize     = math_expand(prm%twinsize,prm%N_tw)
+     prm%r            = math_expand(prm%r,prm%N_tw)
      
    else
      allocate(prm%twinsize(0))
@@ -422,21 +422,21 @@ subroutine plastic_dislotwin_init
      allocate(prm%burgers_trans(0))
    endif
    
-   if (sum(prm%Ntwin) > 0  .or. prm%totalNtrans > 0) then
+   if (sum(prm%N_tw) > 0  .or. prm%totalNtrans > 0) then
      prm%SFE_0K     = config%getFloat('sfe_0k')
      prm%dSFE_dT    = config%getFloat('dsfe_dt')
      prm%VcrossSlip = config%getFloat('vcrossslip')
    endif
    
    if (prm%totalNslip > 0 .and. prm%totalNtwin > 0) then
-     prm%h_sl_tw = lattice_interaction_SlipByTwin(prm%Nslip,prm%Ntwin,&
+     prm%h_sl_tw = lattice_interaction_SlipByTwin(prm%N_sl,prm%N_tw,&
                                                   config%getFloats('interaction_sliptwin'), &
                                                   config%getString('lattice_structure'))
-     if (prm%fccTwinTransNucleation .and. prm%totalNtwin > 12) write(6,*) 'mist' ! ToDo: implement better test. The model will fail also if ntwin is [6,6]
+     if (prm%fccTwinTransNucleation .and. prm%totalNtwin > 12) write(6,*) 'mist' ! ToDo: implement better test. The model will fail also if N_tw is [6,6]
    endif    
 
    if (prm%totalNslip > 0 .and. prm%totalNtrans > 0) then  
-     prm%interaction_SlipTrans = lattice_interaction_SlipByTrans(prm%Nslip,prm%Ntrans,&
+     prm%interaction_SlipTrans = lattice_interaction_SlipByTrans(prm%N_sl,prm%Ntrans,&
                                                                  config%getFloats('interaction_sliptrans'), &
                                                                  config%getString('lattice_structure')) 
      if (prm%fccTwinTransNucleation .and. prm%totalNtrans > 12) write(6,*) 'mist' ! ToDo: implement better test. The model will fail also if ntrans is [6,6]
@@ -813,13 +813,13 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
              EdgeDipDistance, ClimbVelocity,DotRhoEdgeDipClimb,DotRhoEdgeDipAnnihilation, &
              DotRhoDipFormation,DotRhoEdgeEdgeAnnihilation, &
             tau
- real(pReal), dimension(plasticState(instance)%Nslip) :: &
+ real(pReal), dimension(param(instance)%totalNslip) :: &
    EdgeDipMinDistance, &
    DotRhoMultiplication, &
    gdot_slip
- real(pReal), dimension(plasticState(instance)%Ntwin) :: &
+ real(pReal), dimension(param(instance)%totalNtwin) :: &
    gdot_twin
- real(pReal), dimension(plasticState(instance)%Ntrans) :: &
+ real(pReal), dimension(param(instance)%totalNtrans) :: &
    gdot_trans
 
  associate(prm => param(instance),    stt => state(instance), &
@@ -939,7 +939,7 @@ subroutine plastic_dislotwin_dependentState(temperature,instance,of)
  !* 1/mean free distance between 2 twin stacks from different systems seen by a growing twin
 
   !ToDo: needed? if (prm%totalNtwin > 0) &
- dst%invLambdaTwin(1:prm%totalNtwin,of) = matmul(prm%interaction_TwinTwin,fOverStacksize)/(1.0_pReal-sumf_twin)
+ dst%invLambdaTwin(1:prm%totalNtwin,of) = matmul(prm%h_tw_tw,fOverStacksize)/(1.0_pReal-sumf_twin)
 
 
  !* 1/mean free distance between 2 martensite lamellar from different systems seen by a moving dislocation
