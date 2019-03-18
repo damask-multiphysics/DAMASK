@@ -12,9 +12,9 @@ module plastic_disloUCLA
 
  implicit none
  private
- integer(pInt),                       dimension(:,:),         allocatable, target, public :: &
+ integer,                       dimension(:,:),   allocatable, target, public :: &
    plastic_disloUCLA_sizePostResult                                                                 !< size of each post result output
- character(len=64),                   dimension(:,:),         allocatable, target, public :: &
+ character(len=64),             dimension(:,:),         allocatable, target, public :: &
    plastic_disloUCLA_output                                                                         !< name of each post result output
 
  real(pReal),                                                 parameter,           private :: &
@@ -39,7 +39,7 @@ module plastic_disloUCLA
      mu, &
      D0, &                                                                                          !< prefactor for self-diffusion coefficient
      Qsd                                                                                            !< activation energy for dislocation climb
-   real(pReal),                 allocatable, dimension(:) :: &
+   real(pReal),                 dimension(:),  allocatable :: &
      rho0, &                                                                                        !< initial edge dislocation density
      rhoDip0, &                                                                                     !< initial edge dipole density
      burgers, &                                                                                     !< absolute length of burgers vector [m]
@@ -58,32 +58,32 @@ module plastic_disloUCLA
      kink_height, &                                                                                 !< height of the kink pair
      w, &                                                                                           !< width of the kink pair
      omega                                                                                          !< attempt frequency for kink pair nucleation
-   real(pReal),                 allocatable, dimension(:,:) :: &
+   real(pReal),                  dimension(:,:),  allocatable :: &
      interaction_SlipSlip, &                                                                        !< slip resistance from slip activity
      forestProjectionEdge
-   real(pReal),                 allocatable, dimension(:,:,:) :: &
+   real(pReal),                 dimension(:,:,:),  allocatable :: &
      Schmid, &
      nonSchmid_pos, &
      nonSchmid_neg
-   integer(pInt) :: &
+   integer :: &
      totalNslip                                                                                     !< total number of active slip system
-   integer(pInt),               allocatable, dimension(:) :: &
+   integer,                   dimension(:), allocatable, :: &
      Nslip                                                                                          !< number of active slip systems for each family
-   integer(kind(undefined_ID)), allocatable, dimension(:) :: &
+   integer(kind(undefined_ID)),  dimension(:),allocatable :: &
      outputID                                                                                       !< ID of each post result output
    logical :: &
      dipoleFormation                                                                                !< flag indicating consideration of dipole formation
  end type                                                                                           !< container type for internal constitutive parameters
 
  type, private :: tDisloUCLAState
-   real(pReal), pointer, dimension(:,:) :: &
+   real(pReal), dimension(:,:), pointer :: &
      rhoEdge, &
      rhoEdgeDip, &
      accshear
  end type tDisloUCLAState
 
  type, private :: tDisloUCLAdependentState
-   real(pReal), allocatable, dimension(:,:) :: &
+   real(pReal), dimension(:,:), allocatable :: &
      mfp, &
      dislocationSpacing, &
      threshold_stress
@@ -139,14 +139,14 @@ subroutine plastic_disloUCLA_init()
  use lattice
 
  implicit none
- integer(pInt) :: &
+ integer :: &
    Ninstance, &
    p, i, &
    NipcMyPhase, &
    sizeState, sizeDotState, &
    startIndex, endIndex
 
- integer(pInt),          dimension(0), parameter :: emptyIntArray    = [integer(pInt)::]
+ integer,          dimension(0), parameter :: emptyIntArray    = [integer::]
  real(pReal),            dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
 
@@ -164,10 +164,10 @@ subroutine plastic_disloUCLA_init()
  write(6,'(a)')     ' https://dx.doi.org/10.1016/j.ijplas.2015.09.002'
 
  Ninstance = int(count(phase_plasticity == PLASTICITY_DISLOUCLA_ID),pInt)
- if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
+ if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
- allocate(plastic_disloUCLA_sizePostResult(maxval(phase_Noutput),Ninstance),source=0_pInt)
+ allocate(plastic_disloUCLA_sizePostResult(maxval(phase_Noutput),Ninstance),source=0)
  allocate(plastic_disloUCLA_output(maxval(phase_Noutput),Ninstance))
           plastic_disloUCLA_output = ''
 
@@ -177,7 +177,7 @@ subroutine plastic_disloUCLA_init()
  allocate(dependentState(Ninstance))
 
 
- do p = 1_pInt, size(phase_plasticity)
+ do p = 1, size(phase_plasticity)
    if (phase_plasticity(p) /= PLASTICITY_DISLOUCLA_ID) cycle
    associate(prm => param(phase_plasticityInstance(p)), &
              dot => dotState(phase_plasticityInstance(p)), &
@@ -198,15 +198,15 @@ subroutine plastic_disloUCLA_init()
 ! slip related parameters
    prm%Nslip      = config%getInts('nslip',defaultVal=emptyIntArray)
    prm%totalNslip = sum(prm%Nslip)
-   slipActive: if (prm%totalNslip > 0_pInt) then
+   slipActive: if (prm%totalNslip > 0) then
      prm%Schmid = lattice_SchmidMatrix_slip(prm%Nslip,config%getString('lattice_structure'),&
                                             config%getFloat('c/a',defaultVal=0.0_pReal))
 
      if(trim(config%getString('lattice_structure')) == 'bcc') then
        prm%nonSchmidCoeff = config%getFloats('nonschmid_coefficients',&
                                                  defaultVal = emptyRealArray)
-       prm%nonSchmid_pos  = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1_pInt)
-       prm%nonSchmid_neg  = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1_pInt)
+       prm%nonSchmid_pos  = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1)
+       prm%nonSchmid_neg  = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1)
      else
        prm%nonSchmid_pos  = prm%Schmid
        prm%nonSchmid_neg  = prm%Schmid
@@ -227,9 +227,9 @@ subroutine plastic_disloUCLA_init()
      prm%clambda     = config%getFloats('clambdaslip',    requiredSize=size(prm%Nslip))
      prm%tau_Peierls = config%getFloats('tau_peierls',    requiredSize=size(prm%Nslip))  ! ToDo: Deprecated
      prm%p           = config%getFloats('p_slip',         requiredSize=size(prm%Nslip), &
-                                        defaultVal=[(1.0_pReal,i=1_pInt,size(prm%Nslip))])
+                                        defaultVal=[(1.0_pReal,i=1,size(prm%Nslip))])
      prm%q           = config%getFloats('q_slip',         requiredSize=size(prm%Nslip), &
-                                        defaultVal=[(1.0_pReal,i=1_pInt,size(prm%Nslip))])
+                                        defaultVal=[(1.0_pReal,i=1,size(prm%Nslip))])
      prm%kink_height = config%getFloats('kink_height',    requiredSize=size(prm%Nslip))
      prm%w           = config%getFloats('kink_width',     requiredSize=size(prm%Nslip))
      prm%omega       = config%getFloats('omega',          requiredSize=size(prm%Nslip))
@@ -282,28 +282,28 @@ subroutine plastic_disloUCLA_init()
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
    if (extmsg /= '') &
-     call IO_error(211_pInt,ext_msg=trim(extmsg)//'('//PLASTICITY_DISLOUCLA_label//')')
+     call IO_error(211,ext_msg=trim(extmsg)//'('//PLASTICITY_DISLOUCLA_label//')')
 
 !--------------------------------------------------------------------------------------------------
 !  output pararameters
    outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
    allocate(prm%outputID(0))
-   do i=1_pInt, size(outputs)
+   do i=1, size(outputs)
      outputID = undefined_ID
      select case(trim(outputs(i)))
 
        case ('edge_density')
-         outputID  = merge(rho_ID,undefined_ID,prm%totalNslip>0_pInt)
+         outputID  = merge(rho_ID,undefined_ID,prm%totalNslip>0)
        case ('dipole_density')
-         outputID = merge(rhoDip_ID,undefined_ID,prm%totalNslip>0_pInt)
+         outputID = merge(rhoDip_ID,undefined_ID,prm%totalNslip>0)
        case ('shear_rate','shearrate','shear_rate_slip','shearrate_slip')
-         outputID = merge(shearrate_ID,undefined_ID,prm%totalNslip>0_pInt)
+         outputID = merge(shearrate_ID,undefined_ID,prm%totalNslip>0)
        case ('accumulated_shear','accumulatedshear','accumulated_shear_slip')
-         outputID = merge(accumulatedshear_ID,undefined_ID,prm%totalNslip>0_pInt)
+         outputID = merge(accumulatedshear_ID,undefined_ID,prm%totalNslip>0)
        case ('mfp','mfp_slip')
-         outputID = merge(mfp_ID,undefined_ID,prm%totalNslip>0_pInt)
+         outputID = merge(mfp_ID,undefined_ID,prm%totalNslip>0)
        case ('threshold_stress','threshold_stress_slip')
-         outputID = merge(thresholdstress_ID,undefined_ID,prm%totalNslip>0_pInt)
+         outputID = merge(thresholdstress_ID,undefined_ID,prm%totalNslip>0)
 
      end select
 
@@ -318,30 +318,30 @@ subroutine plastic_disloUCLA_init()
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
    NipcMyPhase = count(material_phase == p)
-   sizeDotState = int(size(['rhoEdge     ','rhoEdgeDip  ','accshearslip']),pInt) * prm%totalNslip
+   sizeDotState = size(['rhoEdge     ','rhoEdgeDip  ','accshearslip']) * prm%totalNslip
    sizeState = sizeDotState
 
-   call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0_pInt, &
-                                      prm%totalNslip,0_pInt,0_pInt)
+   call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0, &
+                                      prm%totalNslip,0,0)
    plasticState(p)%sizePostResults = sum(plastic_disloUCLA_sizePostResult(:,phase_plasticityInstance(p)))
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
-   startIndex = 1_pInt
+   startIndex = 1
    endIndex   = prm%totalNslip
    stt%rhoEdge=>plasticState(p)%state(startIndex:endIndex,:)
    stt%rhoEdge= spread(prm%rho0,2,NipcMyPhase)
    dot%rhoEdge=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
 
-   startIndex = endIndex + 1_pInt
+   startIndex = endIndex + 1
    endIndex   = endIndex + prm%totalNslip
    stt%rhoEdgeDip=>plasticState(p)%state(startIndex:endIndex,:)
    stt%rhoEdgeDip= spread(prm%rhoDip0,2,NipcMyPhase)
    dot%rhoEdgeDip=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
 
-   startIndex = endIndex + 1_pInt
+   startIndex = endIndex + 1
    endIndex   = endIndex + prm%totalNslip
    stt%accshear=>plasticState(p)%state(startIndex:endIndex,:)
    dot%accshear=>plasticState(p)%dotState(startIndex:endIndex,:)
@@ -378,11 +378,11 @@ pure subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,inst
    Mp                                                                                               !< Mandel stress
  real(pReal),                intent(in) :: &
    temperature                                                                                      !< temperature
- integer(pInt),               intent(in) :: &
+ integer,               intent(in) :: &
    instance, &
    of
 
- integer(pInt) :: &
+ integer :: &
    i,k,l,m,n
  real(pReal), dimension(param(instance)%totalNslip) :: &
    gdot_pos,gdot_neg, &
@@ -394,9 +394,9 @@ pure subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,inst
  associate(prm => param(instance))
 
  call kinetics(Mp,Temperature,instance,of,gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_dtau_neg)
- do i = 1_pInt, prm%totalNslip
+ do i = 1, prm%totalNslip
    Lp = Lp + (gdot_pos(i)+gdot_neg(i))*prm%Schmid(1:3,1:3,i)
-   forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
+   forall (k=1:3,l=1:3,m=1:3,n=1:3) &
      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
                       + dgdot_dtau_pos(i) * prm%Schmid(k,l,i) * prm%nonSchmid_pos(m,n,i) &
                       + dgdot_dtau_neg(i) * prm%Schmid(k,l,i) * prm%nonSchmid_neg(m,n,i)
@@ -423,7 +423,7 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
    Mp                                                                                               !< Mandel stress
  real(pReal),                  intent(in) :: &
    temperature                                                                                      !< temperature
- integer(pInt),                intent(in) :: &
+ integer,                      intent(in) :: &
    instance, &
    of
 
@@ -478,16 +478,16 @@ end subroutine plastic_disloUCLA_dotState
 subroutine plastic_disloUCLA_dependentState(instance,of)
 
  implicit none
- integer(pInt),                intent(in) :: &
+ integer,      intent(in) :: &
    instance, &
    of
 
- integer(pInt) :: &
+ integer :: &
    i
 
  associate(prm => param(instance), stt => state(instance),dst => dependentState(instance))
 
- forall (i = 1_pInt:prm%totalNslip)
+ forall (i = 1:prm%totalNslip)
    dst%dislocationSpacing(i,of) = sqrt(dot_product(stt%rhoEdge(:,of)+stt%rhoEdgeDip(:,of), &
                                        prm%forestProjectionEdge(:,i)))
    dst%threshold_stress(i,of) = prm%mu*prm%burgers(i) &
@@ -518,38 +518,38 @@ function plastic_disloUCLA_postResults(Mp,Temperature,instance,of) result(postRe
    Mp                                                                                               !< Mandel stress
  real(pReal),                 intent(in) :: &
    temperature                                                                                      !< temperature
- integer(pInt),               intent(in) :: &
+ integer,                     intent(in) :: &
    instance, &
    of
 
  real(pReal), dimension(sum(plastic_disloUCLA_sizePostResult(:,instance))) :: &
   postResults
 
- integer(pInt) :: &
+ integer :: &
    o,c,i
  real(pReal), dimension(param(instance)%totalNslip) :: &
    gdot_pos,gdot_neg
 
- c = 0_pInt
+ c = 0
 
  associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
 
- outputsLoop: do o = 1_pInt,size(prm%outputID)
+ outputsLoop: do o = 1,size(prm%outputID)
    select case(prm%outputID(o))
 
      case (rho_ID)
-       postResults(c+1_pInt:c+prm%totalNslip) = stt%rhoEdge(1_pInt:prm%totalNslip,of)
+       postResults(c+1:c+prm%totalNslip) = stt%rhoEdge(1:prm%totalNslip,of)
      case (rhoDip_ID)
-       postResults(c+1_pInt:c+prm%totalNslip) = stt%rhoEdgeDip(1_pInt:prm%totalNslip,of)
+       postResults(c+1:c+prm%totalNslip) = stt%rhoEdgeDip(1:prm%totalNslip,of)
      case (shearrate_ID)
        call kinetics(Mp,Temperature,instance,of,gdot_pos,gdot_neg)
        postResults(c+1:c+prm%totalNslip) = gdot_pos + gdot_neg
      case (accumulatedshear_ID)
-       postResults(c+1_pInt:c+prm%totalNslip) = stt%accshear(1_pInt:prm%totalNslip, of)
+       postResults(c+1:c+prm%totalNslip) = stt%accshear(1:prm%totalNslip, of)
      case (mfp_ID)
-       postResults(c+1_pInt:c+prm%totalNslip) = dst%mfp(1_pInt:prm%totalNslip, of)
+       postResults(c+1:c+prm%totalNslip) = dst%mfp(1:prm%totalNslip, of)
      case (thresholdstress_ID)
-       postResults(c+1_pInt:c+prm%totalNslip) = dst%threshold_stress(1_pInt:prm%totalNslip,of)
+       postResults(c+1:c+prm%totalNslip) = dst%threshold_stress(1:prm%totalNslip,of)
 
    end select
 
@@ -575,7 +575,7 @@ subroutine plastic_disloUCLA_results(instance,group)
   integer :: o
 
   associate(prm => param(instance), stt => state(instance))
-  outputsLoop: do o = 1_pInt,size(prm%outputID)
+  outputsLoop: do o = 1,size(prm%outputID)
     select case(prm%outputID(o))
     end select
   enddo outputsLoop
@@ -609,7 +609,7 @@ pure subroutine kinetics(Mp,Temperature,instance,of, &
    Mp                                                                                               !< Mandel stress
  real(pReal),                  intent(in) :: &
    temperature                                                                                      !< temperature
- integer(pInt),                intent(in) :: &
+ integer,                      intent(in) :: &
    instance, &
    of
 
@@ -627,11 +627,11 @@ pure subroutine kinetics(Mp,Temperature,instance,of, &
    dvel, vel, &
    tau_pos,tau_neg, &
    needsGoodName                                                                                    ! ToDo: @Karo: any idea?
- integer(pInt) :: j
+ integer :: j
 
  associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
 
- do j = 1_pInt, prm%totalNslip
+ do j = 1, prm%totalNslip
    tau_pos(j) = math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,j))
    tau_neg(j) = math_mul33xx33(Mp,prm%nonSchmid_neg(1:3,1:3,j))
  enddo
