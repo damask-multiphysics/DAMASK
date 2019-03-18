@@ -39,7 +39,7 @@ module plastic_disloUCLA
      D0, &                                                                                          !< prefactor for self-diffusion coefficient
      Qsd                                                                                            !< activation energy for dislocation climb
    real(pReal),                 dimension(:),  allocatable :: &
-     rho0, &                                                                                        !< initial edge dislocation density
+     rho_mob_0, &                                                                                        !< initial edge dislocation density
      rhoDip0, &                                                                                     !< initial edge dipole density
      burgers, &                                                                                     !< absolute length of burgers vector [m]
      nonSchmidCoeff, &
@@ -66,7 +66,7 @@ module plastic_disloUCLA
      nonSchmid_neg
    integer :: &
      totalNslip                                                                                     !< total number of active slip system
-   integer,                      dimension(:), allocatable, :: &
+   integer,                      dimension(:), allocatable :: &
      Nslip                                                                                          !< number of active slip systems for each family
    integer(kind(undefined_ID)),  dimension(:),allocatable :: &
      outputID                                                                                       !< ID of each post result output
@@ -76,8 +76,8 @@ module plastic_disloUCLA
 
  type, private :: tDisloUCLAState
    real(pReal), dimension(:,:), pointer :: &
-     rhoEdge, &
-     rhoEdgeDip, &
+     rho_mob, &
+     rho_dip, &
      gamma_sl
  end type tDisloUCLAState
 
@@ -217,7 +217,7 @@ subroutine plastic_disloUCLA_init()
      prm%forestProjectionEdge = lattice_forestProjection(prm%Nslip,config%getString('lattice_structure'),&
                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
 
-     prm%rho0        = config%getFloats('rhoedge0',       requiredSize=size(prm%Nslip))
+     prm%rho_mob_0   = config%getFloats('rhoedge0',       requiredSize=size(prm%Nslip))
      prm%rhoDip0     = config%getFloats('rhoedgedip0',    requiredSize=size(prm%Nslip))
      prm%v0          = config%getFloats('v0',             requiredSize=size(prm%Nslip))
      prm%burgers     = config%getFloats('slipburgers',    requiredSize=size(prm%Nslip))
@@ -243,7 +243,7 @@ subroutine plastic_disloUCLA_init()
      prm%dipoleformation        = config%getFloat('dipoleformationfactor') > 0.0_pReal !should be on by default, ToDo: change to /key/-type key
 
      ! expand: family => system
-     prm%rho0           = math_expand(prm%rho0,           prm%Nslip)
+     prm%rho_mob_0      = math_expand(prm%rho_mob_0,      prm%Nslip)
      prm%rhoDip0        = math_expand(prm%rhoDip0,        prm%Nslip)
      prm%q              = math_expand(prm%q,              prm%Nslip)
      prm%p              = math_expand(prm%p,              prm%Nslip)
@@ -264,7 +264,7 @@ subroutine plastic_disloUCLA_init()
      ! sanity checks
      if (    prm%D0             <= 0.0_pReal)  extmsg = trim(extmsg)//' d0'
      if (    prm%Qsd            <= 0.0_pReal)  extmsg = trim(extmsg)//' qsd'
-     if (any(prm%rho0           <  0.0_pReal)) extmsg = trim(extmsg)//' rhoedge0'
+     if (any(prm%rho_mob_0      <  0.0_pReal)) extmsg = trim(extmsg)//' rhoedge0'
      if (any(prm%rhoDip0        <  0.0_pReal)) extmsg = trim(extmsg)//' rhoedgedip0'
      if (any(prm%v0             <  0.0_pReal)) extmsg = trim(extmsg)//' v0'
      if (any(prm%burgers        <= 0.0_pReal)) extmsg = trim(extmsg)//' slipburgers'
@@ -274,7 +274,7 @@ subroutine plastic_disloUCLA_init()
      if (any(prm%atomicVolume   <= 0.0_pReal)) extmsg = trim(extmsg)//' catomicvolume or slipburgers'
 
    else slipActive
-     allocate(prm%rho0(0))
+     allocate(prm%rho_mob_0(0))
      allocate(prm%rhoDip0(0))
    endif slipActive
 
@@ -328,16 +328,16 @@ subroutine plastic_disloUCLA_init()
 ! locally defined state aliases and initialization of state0 and aTolState
    startIndex = 1
    endIndex   = prm%totalNslip
-   stt%rhoEdge=>plasticState(p)%state(startIndex:endIndex,:)
-   stt%rhoEdge= spread(prm%rho0,2,NipcMyPhase)
-   dot%rhoEdge=>plasticState(p)%dotState(startIndex:endIndex,:)
+   stt%rho_mob=>plasticState(p)%state(startIndex:endIndex,:)
+   stt%rho_mob= spread(prm%rho_mob_0,2,NipcMyPhase)
+   dot%rho_mob=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
 
    startIndex = endIndex + 1
    endIndex   = endIndex + prm%totalNslip
-   stt%rhoEdgeDip=>plasticState(p)%state(startIndex:endIndex,:)
-   stt%rhoEdgeDip= spread(prm%rhoDip0,2,NipcMyPhase)
-   dot%rhoEdgeDip=>plasticState(p)%dotState(startIndex:endIndex,:)
+   stt%rho_dip=>plasticState(p)%state(startIndex:endIndex,:)
+   stt%rho_dip= spread(prm%rhoDip0,2,NipcMyPhase)
+   dot%rho_dip=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
 
    startIndex = endIndex + 1
@@ -451,19 +451,19 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
    EdgeDipDistance = math_clip((3.0_pReal*prm%mu*prm%burgers)/(16.0_pReal*PI*abs(tau_pos)), &
                                prm%minDipDistance, &                                                ! lower limit
                                dst%mfp(:,of))                                                       ! upper limit
-   DotRhoDipFormation = merge(((2.0_pReal*EdgeDipDistance)/prm%burgers)* stt%rhoEdge(:,of)*abs(dot%gamma_sl(:,of)), & ! ToDo: ignore region of spontaneous annihilation
+   DotRhoDipFormation = merge(((2.0_pReal*EdgeDipDistance)/prm%burgers)* stt%rho_mob(:,of)*abs(dot%gamma_sl(:,of)), & ! ToDo: ignore region of spontaneous annihilation
                               0.0_pReal, &
                               prm%dipoleformation)
    ClimbVelocity = (3.0_pReal*prm%mu*VacancyDiffusion*prm%atomicVolume/(2.0_pReal*pi*kB*Temperature)) &
                  * (1.0_pReal/(EdgeDipDistance+prm%minDipDistance))
-   DotRhoEdgeDipClimb = (4.0_pReal*ClimbVelocity*stt%rhoEdgeDip(:,of))/(EdgeDipDistance-prm%minDipDistance) ! ToDo: Discuss with Franz: Stress dependency?
+   DotRhoEdgeDipClimb = (4.0_pReal*ClimbVelocity*stt%rho_dip(:,of))/(EdgeDipDistance-prm%minDipDistance) ! ToDo: Discuss with Franz: Stress dependency?
  end where
 
- dot%rhoEdge(:,of) = abs(dot%gamma_sl(:,of))/(prm%burgers*dst%mfp(:,of)) &                     ! multiplication
+ dot%rho_mob(:,of) = abs(dot%gamma_sl(:,of))/(prm%burgers*dst%mfp(:,of)) &                     ! multiplication
                    - DotRhoDipFormation &
-                   - (2.0_pReal*prm%minDipDistance)/prm%burgers*stt%rhoEdge(:,of)*abs(dot%gamma_sl(:,of)) !* Spontaneous annihilation of 2 single edge dislocations
- dot%rhoEdgeDip(:,of) = DotRhoDipFormation &
-                      - (2.0_pReal*prm%minDipDistance)/prm%burgers*stt%rhoEdgeDip(:,of)*abs(dot%gamma_sl(:,of)) & !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
+                   - (2.0_pReal*prm%minDipDistance)/prm%burgers*stt%rho_mob(:,of)*abs(dot%gamma_sl(:,of)) !* Spontaneous annihilation of 2 single edge dislocations
+ dot%rho_dip(:,of) = DotRhoDipFormation &
+                      - (2.0_pReal*prm%minDipDistance)/prm%burgers*stt%rho_dip(:,of)*abs(dot%gamma_sl(:,of)) & !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
                       - DotRhoEdgeDipClimb
 
  end associate
@@ -487,10 +487,10 @@ subroutine plastic_disloUCLA_dependentState(instance,of)
  associate(prm => param(instance), stt => state(instance),dst => dependentState(instance))
 
  forall (i = 1:prm%totalNslip)
-   dst%dislocationSpacing(i,of) = sqrt(dot_product(stt%rhoEdge(:,of)+stt%rhoEdgeDip(:,of), &
+   dst%dislocationSpacing(i,of) = sqrt(dot_product(stt%rho_mob(:,of)+stt%rho_dip(:,of), &
                                        prm%forestProjectionEdge(:,i)))
    dst%threshold_stress(i,of) = prm%mu*prm%burgers(i) &
-                              * sqrt(dot_product(stt%rhoEdge(:,of)+stt%rhoEdgeDip(:,of), &
+                              * sqrt(dot_product(stt%rho_mob(:,of)+stt%rho_dip(:,of), &
                                                  prm%interaction_SlipSlip(:,i)))
  end forall
 
@@ -537,9 +537,9 @@ function plastic_disloUCLA_postResults(Mp,Temperature,instance,of) result(postRe
    select case(prm%outputID(o))
 
      case (rho_ID)
-       postResults(c+1:c+prm%totalNslip) = stt%rhoEdge(1:prm%totalNslip,of)
+       postResults(c+1:c+prm%totalNslip) = stt%rho_mob(1:prm%totalNslip,of)
      case (rhoDip_ID)
-       postResults(c+1:c+prm%totalNslip) = stt%rhoEdgeDip(1:prm%totalNslip,of)
+       postResults(c+1:c+prm%totalNslip) = stt%rho_dip(1:prm%totalNslip,of)
      case (shearrate_ID)
        call kinetics(Mp,Temperature,instance,of,gdot_pos,gdot_neg)
        postResults(c+1:c+prm%totalNslip) = gdot_pos + gdot_neg
@@ -595,7 +595,7 @@ end subroutine plastic_disloUCLA_results
 ! have the optional arguments at the end
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics(Mp,Temperature,instance,of, &
-                 gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_dtau_neg,tau_pos1,tau_neg1)
+                 gamma_pos,gamma_neg,dgamma_dtau_pos,dgamma_dtau_neg,tau_pos1,tau_neg1)
  use prec, only: &
    tol_math_check, &
    dEq, dNeq0
@@ -613,11 +613,11 @@ pure subroutine kinetics(Mp,Temperature,instance,of, &
    of
 
  real(pReal),                  intent(out), dimension(param(instance)%totalNslip) :: &
-   gdot_pos, &
-   gdot_neg
+   gamma_pos, &
+   gamma_neg
  real(pReal),                  intent(out), optional, dimension(param(instance)%totalNslip) :: &
-   dgdot_dtau_pos, &
-   dgdot_dtau_neg, &
+   dgamma_dtau_pos, &
+   dgamma_dtau_neg, &
    tau_pos1, &
    tau_neg1
  real(pReal), dimension(param(instance)%totalNslip) :: &
@@ -625,6 +625,7 @@ pure subroutine kinetics(Mp,Temperature,instance,of, &
    StressRatio_p,StressRatio_pminus1, &
    dvel, vel, &
    tau_pos,tau_neg, &
+   t_n, t_k, dtk,dtn, &
    needsGoodName                                                                                    ! ToDo: @Karo: any idea?
  integer :: j
 
@@ -640,7 +641,7 @@ pure subroutine kinetics(Mp,Temperature,instance,of, &
  if (present(tau_neg1)) tau_neg1 = tau_neg
 
  associate(BoltzmannRatio  => prm%H0kp/(kB*Temperature), &
-           DotGamma0       => stt%rhoEdge(:,of)*prm%burgers*prm%v0, &
+           DotGamma0       => stt%rho_mob(:,of)*prm%burgers*prm%v0, &
            effectiveLength => dst%mfp(:,of) - prm%w)
 
  significantPositiveTau: where(abs(tau_pos)-dst%threshold_stress(:,of) > tol_math_check)
@@ -648,41 +649,28 @@ pure subroutine kinetics(Mp,Temperature,instance,of, &
    StressRatio_p       = StressRatio** prm%p
    StressRatio_pminus1 = StressRatio**(prm%p-1.0_pReal)
    needsGoodName       = exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)
+   
+   t_n = prm%burgers/(needsGoodName*prm%omega*effectiveLength)
+   t_k = effectiveLength * prm%B /(2.0_pReal*prm%burgers*tau_pos)     ! our definition of tk is different with the one in dislotwin
 
-   vel = 2.0_pReal*prm%burgers * prm%kink_height * prm%omega  &
-            * effectiveLength * tau_pos * needsGoodName  &
-          / (  2.0_pReal*(prm%burgers**2.0_pReal)*tau_pos &
-             + prm%omega * prm%B * effectiveLength**2.0_pReal* needsGoodName  &
-            )
+   vel = prm%kink_height/(t_n + t_k)
 
-   gdot_pos = DotGamma0 * sign(vel,tau_pos) * 0.5_pReal
+   gamma_pos = DotGamma0 * sign(vel,tau_pos) * 0.5_pReal
  else where significantPositiveTau
-   gdot_pos = 0.0_pReal
+   gamma_pos = 0.0_pReal
  end where significantPositiveTau
 
- if (present(dgdot_dtau_pos)) then
+ if (present(dgamma_dtau_pos)) then
  significantPositiveTau2: where(abs(tau_pos)-dst%threshold_stress(:,of) > tol_math_check)
-   dvel = 2.0_pReal*prm%burgers * prm%kink_height * prm%omega* effectiveLength &
-             * ( &
-                 (needsGoodName + tau_pos * abs(needsGoodName)*BoltzmannRatio*prm%p &
-                                * prm%q/prm%tau0 &
-                                * StressRatio_pminus1*(1-StressRatio_p)**(prm%q-1.0_pReal)   &
-                 ) &
-               * (  2.0_pReal*(prm%burgers**2.0_pReal)*tau_pos &
-                  +  prm%omega * prm%B* effectiveLength **2.0_pReal* needsGoodName &
-                 ) &
-               - tau_pos * needsGoodName * (2.0_pReal*prm%burgers**2.0_pReal &
-                                                 +  prm%omega * prm%B *effectiveLength **2.0_pReal&
-                                                  * (abs(needsGoodName)*BoltzmannRatio*prm%p *prm%q/prm%tau0 &
-                                                *StressRatio_pminus1*(1-StressRatio_p)**(prm%q-1.0_pReal)  )&
-                                               ) &
-              )  &
-            /(2.0_pReal*prm%burgers**2.0_pReal*tau_pos &
-              + prm%omega * prm%B* effectiveLength**2.0_pReal* needsGoodName )**2.0_pReal
+   dtn = t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
+            * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau0
+   dtk = t_k / tau_pos
+  
+   dvel = prm%kink_height * (dtk + dtn) / (t_n + t_k)**2.0_pReal
 
-   dgdot_dtau_pos = DotGamma0 * dvel* 0.5_pReal
+   dgamma_dtau_pos = DotGamma0 * dvel* 0.5_pReal
  else where significantPositiveTau2
-   dgdot_dtau_pos = 0.0_pReal
+   dgamma_dtau_pos = 0.0_pReal
  end where significantPositiveTau2
  endif
 
@@ -692,40 +680,27 @@ pure subroutine kinetics(Mp,Temperature,instance,of, &
    StressRatio_pminus1 = StressRatio**(prm%p-1.0_pReal)
    needsGoodName       = exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)
 
-   vel = 2.0_pReal*prm%burgers * prm%kink_height * prm%omega  &
-            * effectiveLength * tau_neg * needsGoodName  &
-          / (  2.0_pReal*(prm%burgers**2.0_pReal)*tau_neg &
-             + prm%omega * prm%B * effectiveLength**2.0_pReal* needsGoodName  &
-            )
+   t_n = prm%burgers/(needsGoodName*prm%omega*effectiveLength)
+   t_k = effectiveLength * prm%B /(2.0_pReal*prm%burgers*tau_pos)     ! our definition of tk is different with the one in dislotwin
 
-   gdot_neg = DotGamma0 * sign(vel,tau_neg) * 0.5_pReal
+   vel = prm%kink_height/(t_n + t_k)
+
+   gamma_neg = DotGamma0 * sign(vel,tau_neg) * 0.5_pReal
  else where significantNegativeTau
-   gdot_neg = 0.0_pReal
+   gamma_neg = 0.0_pReal
  end where significantNegativeTau
 
- if (present(dgdot_dtau_neg)) then
+ if (present(dgamma_dtau_neg)) then
  significantNegativeTau2: where(abs(tau_neg)-dst%threshold_stress(:,of) > tol_math_check)
-   dvel = 2.0_pReal*prm%burgers * prm%kink_height * prm%omega* effectiveLength &
-             * ( &
-                 (needsGoodName + tau_neg * abs(needsGoodName)*BoltzmannRatio*prm%p &
-                                * prm%q/prm%tau0 &
-                                * StressRatio_pminus1*(1-StressRatio_p)**(prm%q-1.0_pReal)   &
-                 ) &
-               * (  2.0_pReal*(prm%burgers**2.0_pReal)*tau_neg &
-                  +  prm%omega * prm%B* effectiveLength **2.0_pReal* needsGoodName &
-                 ) &
-               - tau_neg * needsGoodName * (2.0_pReal*prm%burgers**2.0_pReal &
-                                                 +  prm%omega * prm%B *effectiveLength **2.0_pReal&
-                                                  * (abs(needsGoodName)*BoltzmannRatio*prm%p *prm%q/prm%tau0 &
-                                                *StressRatio_pminus1*(1-StressRatio_p)**(prm%q-1.0_pReal)  )&
-                                               ) &
-              )  &
-            /(2.0_pReal*prm%burgers**2.0_pReal*tau_neg &
-              + prm%omega * prm%B* effectiveLength**2.0_pReal* needsGoodName )**2.0_pReal
+   dtn = t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
+            * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau0
+   dtk = t_k / tau_pos
+  
+   dvel = prm%kink_height * (dtk + dtn) / (t_n + t_k)**2.0_pReal
 
-   dgdot_dtau_neg = DotGamma0 * dvel * 0.5_pReal
+   dgamma_dtau_neg = DotGamma0 * dvel * 0.5_pReal
  else where significantNegativeTau2
-   dgdot_dtau_neg = 0.0_pReal
+   dgamma_dtau_neg = 0.0_pReal
  end where significantNegativeTau2
  end if
  end associate
