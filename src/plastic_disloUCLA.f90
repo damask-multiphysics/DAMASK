@@ -22,10 +22,10 @@ module plastic_disloUCLA
  enum, bind(c)
    enumerator :: &
      undefined_ID, &
-     rho_ID, &
-     rhoDip_ID, &
-     shearrate_ID, &
-     accumulatedshear_ID, &
+     rho_mob_ID, &
+     rho_dip_ID, &
+     gamma_dot_sl_ID, &
+     gamma_sl_ID, &
      mfp_ID, &
      thresholdstress_ID
  end enum
@@ -292,13 +292,13 @@ subroutine plastic_disloUCLA_init()
      select case(trim(outputs(i)))
 
        case ('edge_density')
-         outputID  = merge(rho_ID,undefined_ID,prm%totalNslip>0)
+         outputID  = merge(rho_mob_ID,undefined_ID,prm%totalNslip>0)
        case ('dipole_density')
-         outputID = merge(rhoDip_ID,undefined_ID,prm%totalNslip>0)
+         outputID = merge(rho_dip_ID,undefined_ID,prm%totalNslip>0)
        case ('shear_rate','shearrate','shear_rate_slip','shearrate_slip')
-         outputID = merge(shearrate_ID,undefined_ID,prm%totalNslip>0)
+         outputID = merge(gamma_dot_sl_ID,undefined_ID,prm%totalNslip>0)
        case ('accumulated_shear','accumulatedshear','accumulated_shear_slip')
-         outputID = merge(accumulatedshear_ID,undefined_ID,prm%totalNslip>0)
+         outputID = merge(gamma_sl_ID,undefined_ID,prm%totalNslip>0)
        case ('mfp','mfp_slip')
          outputID = merge(mfp_ID,undefined_ID,prm%totalNslip>0)
        case ('threshold_stress','threshold_stress_slip')
@@ -536,14 +536,14 @@ function plastic_disloUCLA_postResults(Mp,Temperature,instance,of) result(postRe
  outputsLoop: do o = 1,size(prm%outputID)
    select case(prm%outputID(o))
 
-     case (rho_ID)
+     case (rho_mob_ID)
        postResults(c+1:c+prm%totalNslip) = stt%rho_mob(1:prm%totalNslip,of)
-     case (rhoDip_ID)
+     case (rho_dip_ID)
        postResults(c+1:c+prm%totalNslip) = stt%rho_dip(1:prm%totalNslip,of)
-     case (shearrate_ID)
+     case (gamma_dot_sl_ID)
        call kinetics(Mp,Temperature,instance,of,gdot_pos,gdot_neg)
        postResults(c+1:c+prm%totalNslip) = gdot_pos + gdot_neg
-     case (accumulatedshear_ID)
+     case (gamma_sl_ID)
        postResults(c+1:c+prm%totalNslip) = stt%gamma_sl(1:prm%totalNslip, of)
      case (mfp_ID)
        postResults(c+1:c+prm%totalNslip) = dst%mfp(1:prm%totalNslip, of)
