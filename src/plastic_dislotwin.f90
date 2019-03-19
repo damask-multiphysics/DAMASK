@@ -581,7 +581,7 @@ subroutine plastic_dislotwin_init
    allocate(dst%Lambda_sl             (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
    allocate(dst%tau_pass              (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
 
-   allocate(dst%Lambda_tw              (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
+   allocate(dst%Lambda_tw             (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
    allocate(dst%threshold_stress_twin (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
    allocate(dst%tau_r_twin            (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
    allocate(dst%twinVolume            (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
@@ -921,7 +921,7 @@ subroutine plastic_dislotwin_dependentState(temperature,instance,of)
 
 
  forall (i = 1:prm%totalNslip) &
-   lambda_sl_sl_inv = &
+   lambda_sl_sl_inv(i) = &
      sqrt(dot_product((stt%rhoEdge(1:prm%totalNslip,of)+stt%rhoEdgeDip(1:prm%totalNslip,of)),&
                       prm%forestProjection(1:prm%totalNslip,i)))/prm%CLambdaSlip(i) ! change order and use matmul
 
