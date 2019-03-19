@@ -50,7 +50,6 @@ module plastic_dislotwin
      qShearBand, &                                                                                  !< q-exponent in shear band velocity
      CEdgeDipMinDistance, &                                                                         !<
      Cmfptwin, &                                                                                    !<
-     Cthresholdtwin, &                                                                              !<
      SolidSolutionStrength, &                                                                       !<strength due to elements in solid solution
      L0_twin, &                                                                                     !< Length of twin nuclei in Burgers vectors
      L0_trans, &                                                                                    !< Length of trans nuclei in Burgers vectors
@@ -67,7 +66,6 @@ module plastic_dislotwin
      aTolTransFrac, &                                                                               !< absolute tolerance for integration of trans volume fraction
      deltaG, &                                                                                      !< Free energy difference between austensite and martensite
      Cmfptrans, &                                                                                   !<
-     Cthresholdtrans, &                                                                             !<
      transStackHeight                                                                               !< Stack height of hex nucleus 
    real(pReal),                  dimension(:),     allocatable :: & 
      rho_mob_0, &                                                                                   !< initial unipolar dislocation density per slip system
@@ -141,7 +139,7 @@ module plastic_dislotwin
      mfp_slip, &
      mfp_twin, &
      mfp_trans, &
-     threshold_stress_slip, &
+     tau_pass, &
      threshold_stress_twin, &
      threshold_stress_trans, &
      twinVolume, &
@@ -353,7 +351,6 @@ subroutine plastic_dislotwin_init
 
      prm%xc_twin         = config%getFloat('xc_twin')
      prm%L0_twin         = config%getFloat('l0_twin')
-     prm%Cthresholdtwin  = config%getFloat('cthresholdtwin', defaultVal=0.0_pReal)
      prm%Cmfptwin        = config%getFloat('cmfptwin',       defaultVal=0.0_pReal) ! ToDo: How to handle that???
 
      prm%shear_twin      = lattice_characteristicShear_Twin(prm%N_tw,config%getString('lattice_structure'),&
@@ -386,7 +383,6 @@ subroutine plastic_dislotwin_init
      prm%burgers_trans = config%getFloats('transburgers')
      prm%burgers_trans = math_expand(prm%burgers_trans,prm%Ntrans)
      
-     prm%Cthresholdtrans  = config%getFloat('cthresholdtrans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
      prm%transStackHeight = config%getFloat('transstackheight', defaultVal=0.0_pReal) ! ToDo: How to handle that???
      prm%Cmfptrans        = config%getFloat('cmfptrans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
      prm%deltaG           = config%getFloat('deltag')
@@ -591,7 +587,7 @@ subroutine plastic_dislotwin_init
    allocate(dst%invLambdaSlipTwin     (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
    allocate(dst%invLambdaSlipTrans    (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
    allocate(dst%mfp_slip              (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
-   allocate(dst%threshold_stress_slip (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
+   allocate(dst%tau_pass              (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
 
    allocate(dst%invLambdaTwin         (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
    allocate(dst%mfp_twin              (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
@@ -715,7 +711,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,instance,
         0, 1, 1  &
         ],pReal),[ 3,6])
 
- associate(prm => param(instance), stt => state(instance), dst => microstructure(instance))
+ associate(prm => param(instance), stt => state(instance))
 
  f_unrotated = 1.0_pReal &
              - sum(stt%twinFraction(1:prm%totalNtwin,of)) &
@@ -968,17 +964,17 @@ subroutine plastic_dislotwin_dependentState(temperature,instance,of)
  dst%mfp_trans(:,of) = prm%Cmfptrans*prm%GrainSize/(1.0_pReal+prm%GrainSize*dst%invLambdaTrans(:,of))
 
  !* threshold stress for dislocation motion
- forall (i = 1:prm%totalNslip) dst%threshold_stress_slip(i,of) = &
+ forall (i = 1:prm%totalNslip) dst%tau_pass(i,of) = &
      prm%mu*prm%b_sl(i)*&
      sqrt(dot_product(stt%rhoEdge(1:prm%totalNslip,of)+stt%rhoEdgeDip(1:prm%totalNslip,of),&
                       prm%h_sl_sl(:,i)))
 
  !* threshold stress for growing twin/martensite
  if(prm%totalNtwin == prm%totalNslip) &
- dst%threshold_stress_twin(:,of) = prm%Cthresholdtwin* &
-     (SFE/(3.0_pReal*prm%b_tw)+ 3.0_pReal*prm%b_tw*prm%mu/(prm%L0_twin*prm%b_sl)) ! slip burgers here correct?
+ dst%threshold_stress_twin(:,of) = &
+             (SFE/(3.0_pReal*prm%b_tw)+ 3.0_pReal*prm%b_tw*prm%mu/(prm%L0_twin*prm%b_sl)) ! slip burgers here correct?
  if(prm%totalNtrans == prm%totalNslip) &
-   dst%threshold_stress_trans(:,of) = prm%Cthresholdtrans* &
+   dst%threshold_stress_trans(:,of) =  &
          (SFE/(3.0_pReal*prm%burgers_trans) + 3.0_pReal*prm%burgers_trans*prm%mu/&
               (prm%L0_trans*prm%b_sl) + prm%transStackHeight*prm%deltaG/ (3.0_pReal*prm%burgers_trans) )    
  
@@ -1052,7 +1048,7 @@ function plastic_dislotwin_postResults(Mp,Temperature,instance,of) result(postRe
        enddo
        c = c + prm%totalNslip
      case (threshold_stress_slip_ID)
-       postResults(c+1:c+prm%totalNslip) = dst%threshold_stress_slip(1:prm%totalNslip,of)
+       postResults(c+1:c+prm%totalNslip) = dst%tau_pass(1:prm%totalNslip,of)
        c = c + prm%totalNslip
 
      case (f_tw_ID)
@@ -1158,7 +1154,7 @@ pure subroutine kinetics_slip(Mp,Temperature,instance,of, &
    tau(i) = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,i))
  enddo
  
- tau_eff = abs(tau)-dst%threshold_stress_slip(:,of)
+ tau_eff = abs(tau)-dst%tau_pass(:,of)
    
  significantStress: where(tau_eff > tol_math_check)
    stressRatio    = tau_eff/(prm%SolidSolutionStrength+prm%tau_peierls)
