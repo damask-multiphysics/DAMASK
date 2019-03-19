@@ -26,7 +26,7 @@ module plastic_disloUCLA
      rho_dip_ID, &
      gamma_dot_sl_ID, &
      gamma_sl_ID, &
-     mfp_ID, &
+     Lambda_sl_ID, &
      thresholdstress_ID
  end enum
 
@@ -34,22 +34,20 @@ module plastic_disloUCLA
    real(pReal) :: &
      aTolRho, &
      grainSize, &
-     SolidSolutionStrength, &                                                                       !< Strength due to elements in solid solution
      mu, &
      D0, &                                                                                          !< prefactor for self-diffusion coefficient
      Qsd                                                                                            !< activation energy for dislocation climb
    real(pReal),                 dimension(:),  allocatable :: &
-     rho_mob_0, &                                                                                        !< initial edge dislocation density
+     rho_mob_0, &                                                                                   !< initial edge dislocation density
      rhoDip0, &                                                                                     !< initial edge dipole density
      burgers, &                                                                                     !< absolute length of burgers vector [m]
      nonSchmidCoeff, &
      minDipDistance, &
      CLambda, &                                                                                     !< Adj. parameter for distance between 2 forest dislocations
      atomicVolume, &
-     tau_Peierls, &
-     tau0, &
+     tau_0, &
      !* mobility law parameters
-     H0kp, &                                                                                        !< activation energy for glide [J]
+     delta_F, &                                                                                     !< activation energy for glide [J]
      v0, &                                                                                          !< dislocation velocity prefactor [m/s]
      p, &                                                                                           !< p-exponent in glide velocity
      q, &                                                                                           !< q-exponent in glide velocity
@@ -58,7 +56,7 @@ module plastic_disloUCLA
      w, &                                                                                           !< width of the kink pair
      omega                                                                                          !< attempt frequency for kink pair nucleation
    real(pReal),                  dimension(:,:),  allocatable :: &
-     interaction_SlipSlip, &                                                                        !< slip resistance from slip activity
+     h_sl_sl, &                                                                                     !< slip resistance from slip activity
      forestProjectionEdge
    real(pReal),                  dimension(:,:,:),  allocatable :: &
      Schmid, &
@@ -67,7 +65,7 @@ module plastic_disloUCLA
    integer :: &
      totalNslip                                                                                     !< total number of active slip system
    integer,                      dimension(:), allocatable :: &
-     Nslip                                                                                          !< number of active slip systems for each family
+     N_sl                                                                                           !< number of active slip systems for each family
    integer(kind(undefined_ID)),  dimension(:),allocatable :: &
      outputID                                                                                       !< ID of each post result output
    logical :: &
@@ -195,46 +193,45 @@ subroutine plastic_disloUCLA_init()
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
-   prm%Nslip      = config%getInts('nslip',defaultVal=emptyIntArray)
-   prm%totalNslip = sum(prm%Nslip)
+   prm%N_sl      = config%getInts('nslip',defaultVal=emptyIntArray)
+   prm%totalNslip = sum(prm%N_sl)
    slipActive: if (prm%totalNslip > 0) then
-     prm%Schmid = lattice_SchmidMatrix_slip(prm%Nslip,config%getString('lattice_structure'),&
+     prm%Schmid = lattice_SchmidMatrix_slip(prm%N_sl,config%getString('lattice_structure'),&
                                             config%getFloat('c/a',defaultVal=0.0_pReal))
 
      if(trim(config%getString('lattice_structure')) == 'bcc') then
        prm%nonSchmidCoeff = config%getFloats('nonschmid_coefficients',&
                                                  defaultVal = emptyRealArray)
-       prm%nonSchmid_pos  = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1)
-       prm%nonSchmid_neg  = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1)
+       prm%nonSchmid_pos  = lattice_nonSchmidMatrix(prm%N_sl,prm%nonSchmidCoeff,+1)
+       prm%nonSchmid_neg  = lattice_nonSchmidMatrix(prm%N_sl,prm%nonSchmidCoeff,-1)
      else
        prm%nonSchmid_pos  = prm%Schmid
        prm%nonSchmid_neg  = prm%Schmid
      endif
 
-     prm%interaction_SlipSlip = lattice_interaction_SlipBySlip(prm%Nslip, &
-                                                               config%getFloats('interaction_slipslip'), &
-                                                               config%getString('lattice_structure'))
-     prm%forestProjectionEdge = lattice_forestProjection(prm%Nslip,config%getString('lattice_structure'),&
+     prm%h_sl_sl     = lattice_interaction_SlipBySlip(prm%N_sl, &
+                                                      config%getFloats('interaction_slipslip'), &
+                                                      config%getString('lattice_structure'))
+     prm%forestProjectionEdge = lattice_forestProjection(prm%N_sl,config%getString('lattice_structure'),&
                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
 
-     prm%rho_mob_0   = config%getFloats('rhoedge0',       requiredSize=size(prm%Nslip))
-     prm%rhoDip0     = config%getFloats('rhoedgedip0',    requiredSize=size(prm%Nslip))
-     prm%v0          = config%getFloats('v0',             requiredSize=size(prm%Nslip))
-     prm%burgers     = config%getFloats('slipburgers',    requiredSize=size(prm%Nslip))
-     prm%H0kp        = config%getFloats('qedge',          requiredSize=size(prm%Nslip))
+     prm%rho_mob_0   = config%getFloats('rhoedge0',       requiredSize=size(prm%N_sl))
+     prm%rhoDip0     = config%getFloats('rhoedgedip0',    requiredSize=size(prm%N_sl))
+     prm%v0          = config%getFloats('v0',             requiredSize=size(prm%N_sl))
+     prm%burgers     = config%getFloats('slipburgers',    requiredSize=size(prm%N_sl))
+     prm%delta_F     = config%getFloats('qedge',          requiredSize=size(prm%N_sl))
 
-     prm%clambda     = config%getFloats('clambdaslip',    requiredSize=size(prm%Nslip))
-     prm%tau_Peierls = config%getFloats('tau_peierls',    requiredSize=size(prm%Nslip))  ! ToDo: Deprecated
-     prm%p           = config%getFloats('p_slip',         requiredSize=size(prm%Nslip), &
-                                        defaultVal=[(1.0_pReal,i=1,size(prm%Nslip))])
-     prm%q           = config%getFloats('q_slip',         requiredSize=size(prm%Nslip), &
-                                        defaultVal=[(1.0_pReal,i=1,size(prm%Nslip))])
-     prm%kink_height = config%getFloats('kink_height',    requiredSize=size(prm%Nslip))
-     prm%w           = config%getFloats('kink_width',     requiredSize=size(prm%Nslip))
-     prm%omega       = config%getFloats('omega',          requiredSize=size(prm%Nslip))
-     prm%B           = config%getFloats('friction_coeff', requiredSize=size(prm%Nslip))
+     prm%clambda     = config%getFloats('clambdaslip',    requiredSize=size(prm%N_sl))
+     prm%tau_0       = config%getFloats('tau_peierls',    requiredSize=size(prm%N_sl))
+     prm%p           = config%getFloats('p_slip',         requiredSize=size(prm%N_sl), &
+                                        defaultVal=[(1.0_pReal,i=1,size(prm%N_sl))])
+     prm%q           = config%getFloats('q_slip',         requiredSize=size(prm%N_sl), &
+                                        defaultVal=[(1.0_pReal,i=1,size(prm%N_sl))])
+     prm%kink_height = config%getFloats('kink_height',    requiredSize=size(prm%N_sl))
+     prm%w           = config%getFloats('kink_width',     requiredSize=size(prm%N_sl))
+     prm%omega       = config%getFloats('omega',          requiredSize=size(prm%N_sl))
+     prm%B           = config%getFloats('friction_coeff', requiredSize=size(prm%N_sl))
 
-     prm%SolidSolutionStrength  = config%getFloat('solidsolutionstrength')                 ! ToDo: Deprecated
      prm%grainSize              = config%getFloat('grainsize')
      prm%D0                     = config%getFloat('d0')
      prm%Qsd                    = config%getFloat('qsd')
@@ -243,23 +240,22 @@ subroutine plastic_disloUCLA_init()
      prm%dipoleformation        = config%getFloat('dipoleformationfactor') > 0.0_pReal !should be on by default, ToDo: change to /key/-type key
 
      ! expand: family => system
-     prm%rho_mob_0      = math_expand(prm%rho_mob_0,      prm%Nslip)
-     prm%rhoDip0        = math_expand(prm%rhoDip0,        prm%Nslip)
-     prm%q              = math_expand(prm%q,              prm%Nslip)
-     prm%p              = math_expand(prm%p,              prm%Nslip)
-     prm%H0kp           = math_expand(prm%H0kp,           prm%Nslip)
-     prm%burgers        = math_expand(prm%burgers,        prm%Nslip)
-     prm%kink_height    = math_expand(prm%kink_height,    prm%Nslip)
-     prm%w              = math_expand(prm%w,              prm%Nslip)
-     prm%omega          = math_expand(prm%omega,          prm%Nslip)
-     prm%tau_Peierls    = math_expand(prm%tau_Peierls,    prm%Nslip)
-     prm%v0             = math_expand(prm%v0,             prm%Nslip)
-     prm%B              = math_expand(prm%B,              prm%Nslip)
-     prm%clambda        = math_expand(prm%clambda,        prm%Nslip)
-     prm%atomicVolume   = math_expand(prm%atomicVolume,   prm%Nslip)
-     prm%minDipDistance = math_expand(prm%minDipDistance, prm%Nslip)
+     prm%rho_mob_0      = math_expand(prm%rho_mob_0,      prm%N_sl)
+     prm%rhoDip0        = math_expand(prm%rhoDip0,        prm%N_sl)
+     prm%q              = math_expand(prm%q,              prm%N_sl)
+     prm%p              = math_expand(prm%p,              prm%N_sl)
+     prm%delta_F        = math_expand(prm%delta_F,        prm%N_sl)
+     prm%burgers        = math_expand(prm%burgers,        prm%N_sl)
+     prm%kink_height    = math_expand(prm%kink_height,    prm%N_sl)
+     prm%w              = math_expand(prm%w,              prm%N_sl)
+     prm%omega          = math_expand(prm%omega,          prm%N_sl)
+     prm%tau_0          = math_expand(prm%tau_0,          prm%N_sl)
+     prm%v0             = math_expand(prm%v0,             prm%N_sl)
+     prm%B              = math_expand(prm%B,              prm%N_sl)
+     prm%clambda        = math_expand(prm%clambda,        prm%N_sl)
+     prm%atomicVolume   = math_expand(prm%atomicVolume,   prm%N_sl)
+     prm%minDipDistance = math_expand(prm%minDipDistance, prm%N_sl)
 
-     prm%tau0 = prm%tau_peierls + prm%SolidSolutionStrength
 
      ! sanity checks
      if (    prm%D0             <= 0.0_pReal)  extmsg = trim(extmsg)//' d0'
@@ -268,8 +264,8 @@ subroutine plastic_disloUCLA_init()
      if (any(prm%rhoDip0        <  0.0_pReal)) extmsg = trim(extmsg)//' rhoedgedip0'
      if (any(prm%v0             <  0.0_pReal)) extmsg = trim(extmsg)//' v0'
      if (any(prm%burgers        <= 0.0_pReal)) extmsg = trim(extmsg)//' slipburgers'
-     if (any(prm%H0kp           <= 0.0_pReal)) extmsg = trim(extmsg)//' qedge'
-     if (any(prm%tau_peierls    <  0.0_pReal)) extmsg = trim(extmsg)//' tau_peierls'
+     if (any(prm%delta_F        <= 0.0_pReal)) extmsg = trim(extmsg)//' qedge'
+     if (any(prm%tau_0          <  0.0_pReal)) extmsg = trim(extmsg)//' tau_0'
      if (any(prm%minDipDistance <= 0.0_pReal)) extmsg = trim(extmsg)//' cedgedipmindistance or slipburgers'
      if (any(prm%atomicVolume   <= 0.0_pReal)) extmsg = trim(extmsg)//' catomicvolume or slipburgers'
 
@@ -300,7 +296,7 @@ subroutine plastic_disloUCLA_init()
        case ('accumulated_shear','accumulatedshear','accumulated_shear_slip')
          outputID = merge(gamma_sl_ID,undefined_ID,prm%totalNslip>0)
        case ('mfp','mfp_slip')
-         outputID = merge(mfp_ID,undefined_ID,prm%totalNslip>0)
+         outputID = merge(Lambda_sl_ID,undefined_ID,prm%totalNslip>0)
        case ('threshold_stress','threshold_stress_slip')
          outputID = merge(thresholdstress_ID,undefined_ID,prm%totalNslip>0)
 
@@ -439,7 +435,7 @@ subroutine plastic_disloUCLA_dotState(Mp,Temperature,instance,of)
 
  call kinetics(Mp,Temperature,instance,of,&
                gdot_pos,gdot_neg, &
-               tau_pos1 = tau_pos,tau_neg1 = tau_neg)
+               tau_pos_out = tau_pos,tau_neg_out = tau_neg)
 
  dot%gamma_sl(:,of) = (gdot_pos+gdot_neg)                                                      ! ToDo: needs to be abs
  VacancyDiffusion = prm%D0*exp(-prm%Qsd/(kB*Temperature))
@@ -491,7 +487,7 @@ subroutine plastic_disloUCLA_dependentState(instance,of)
                                        prm%forestProjectionEdge(:,i)))
    dst%threshold_stress(i,of) = prm%mu*prm%burgers(i) &
                               * sqrt(dot_product(stt%rho_mob(:,of)+stt%rho_dip(:,of), &
-                                                 prm%interaction_SlipSlip(:,i)))
+                                                 prm%h_sl_sl(:,i)))
  end forall
 
  dst%mfp(:,of) = prm%grainSize/(1.0_pReal+prm%grainSize*dst%dislocationSpacing(:,of)/prm%Clambda)
@@ -545,7 +541,7 @@ function plastic_disloUCLA_postResults(Mp,Temperature,instance,of) result(postRe
        postResults(c+1:c+prm%totalNslip) = gdot_pos + gdot_neg
      case (gamma_sl_ID)
        postResults(c+1:c+prm%totalNslip) = stt%gamma_sl(1:prm%totalNslip, of)
-     case (mfp_ID)
+     case (Lambda_sl_ID)
        postResults(c+1:c+prm%totalNslip) = dst%mfp(1:prm%totalNslip, of)
      case (thresholdstress_ID)
        postResults(c+1:c+prm%totalNslip) = dst%threshold_stress(1:prm%totalNslip,of)
@@ -595,7 +591,7 @@ end subroutine plastic_disloUCLA_results
 ! have the optional arguments at the end
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics(Mp,Temperature,instance,of, &
-                 gamma_pos,gamma_neg,dgamma_dtau_pos,dgamma_dtau_neg,tau_pos1,tau_neg1)
+                 gamma_pos,gamma_neg,dgamma_dtau_pos,dgamma_dtau_neg,tau_pos_out,tau_neg_out)
  use prec, only: &
    tol_math_check, &
    dEq, dNeq0
@@ -618,8 +614,8 @@ pure subroutine kinetics(Mp,Temperature,instance,of, &
  real(pReal),                  intent(out), optional, dimension(param(instance)%totalNslip) :: &
    dgamma_dtau_pos, &
    dgamma_dtau_neg, &
-   tau_pos1, &
-   tau_neg1
+   tau_pos_out, &
+   tau_neg_out
  real(pReal), dimension(param(instance)%totalNslip) :: &
    StressRatio, &
    StressRatio_p,StressRatio_pminus1, &
@@ -637,15 +633,15 @@ pure subroutine kinetics(Mp,Temperature,instance,of, &
  enddo
 
 
- if (present(tau_pos1)) tau_pos1 = tau_pos
- if (present(tau_neg1)) tau_neg1 = tau_neg
+ if (present(tau_pos_out)) tau_pos_out = tau_pos
+ if (present(tau_neg_out)) tau_neg_out = tau_neg
 
- associate(BoltzmannRatio  => prm%H0kp/(kB*Temperature), &
+ associate(BoltzmannRatio  => prm%delta_F/(kB*Temperature), &
            DotGamma0       => stt%rho_mob(:,of)*prm%burgers*prm%v0, &
            effectiveLength => dst%mfp(:,of) - prm%w)
 
  significantPositiveTau: where(abs(tau_pos)-dst%threshold_stress(:,of) > tol_math_check)
-   StressRatio = (abs(tau_pos)-dst%threshold_stress(:,of))/prm%tau0
+   StressRatio = (abs(tau_pos)-dst%threshold_stress(:,of))/prm%tau_0
    StressRatio_p       = StressRatio** prm%p
    StressRatio_pminus1 = StressRatio**(prm%p-1.0_pReal)
    needsGoodName       = exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)
@@ -663,7 +659,7 @@ pure subroutine kinetics(Mp,Temperature,instance,of, &
  if (present(dgamma_dtau_pos)) then
  significantPositiveTau2: where(abs(tau_pos)-dst%threshold_stress(:,of) > tol_math_check)
    dtn = t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
-            * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau0
+       * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau_0
    dtk = t_k / tau_pos
   
    dvel = prm%kink_height * (dtk + dtn) / (t_n + t_k)**2.0_pReal
@@ -675,7 +671,7 @@ pure subroutine kinetics(Mp,Temperature,instance,of, &
  endif
 
  significantNegativeTau: where(abs(tau_neg)-dst%threshold_stress(:,of) > tol_math_check)
-   StressRatio = (abs(tau_neg)-dst%threshold_stress(:,of))/prm%tau0
+   StressRatio = (abs(tau_neg)-dst%threshold_stress(:,of))/prm%tau_0
    StressRatio_p       = StressRatio** prm%p
    StressRatio_pminus1 = StressRatio**(prm%p-1.0_pReal)
    needsGoodName       = exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)
@@ -693,7 +689,7 @@ pure subroutine kinetics(Mp,Temperature,instance,of, &
  if (present(dgamma_dtau_neg)) then
  significantNegativeTau2: where(abs(tau_neg)-dst%threshold_stress(:,of) > tol_math_check)
    dtn = t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
-            * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau0
+       * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau_0
    dtk = t_k / tau_pos
   
    dvel = prm%kink_height * (dtk + dtn) / (t_n + t_k)**2.0_pReal
@@ -703,6 +699,7 @@ pure subroutine kinetics(Mp,Temperature,instance,of, &
    dgamma_dtau_neg = 0.0_pReal
  end where significantNegativeTau2
  end if
+ 
  end associate
  end associate
 
