@@ -890,13 +890,13 @@ subroutine plastic_dislotwin_dependentState(temperature,instance,of)
    i
  real(pReal) :: &
    sumf_twin,SFE,sumf_trans
- real(pReal), dimension(param(instance)%totalNtwin) :: &
+ real(pReal), dimension(param(instance)%totalNslip) :: &
    lambda_sl_sl_inv, & !* 1/mean free distance between 2 forest dislocations seen by a moving dislocation
    lambda_sl_tw_inv, & !* 1/mean free distance between 2 twin stacks from different systems seen by a moving dislocation
    lambda_sl_tr_inv    !* 1/mean free distance between 2 martensite lamellar from different systems seen by a moving dislocation
- real(pReal), dimension(param(instance)%totalNtrans) :: &
+ real(pReal), dimension(param(instance)%totalNtwin) :: &
    lambda_tw_tw_inv  !* 1/mean free distance between 2 twin stacks from different systems seen by a growing twin
-  real(pReal), dimension(param(instance)%totalNslip) :: &
+  real(pReal), dimension(param(instance)%totalNtrans) :: &
    lambda_tr_tr_inv  !* 1/mean free distance between 2 martensite stacks from different systems seen by a growing martensite (1/lambda_trans)
 
  real(pReal), dimension(:), allocatable :: &
