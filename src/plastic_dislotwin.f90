@@ -112,7 +112,7 @@ module plastic_dislotwin
    integer,                      dimension(:),     allocatable :: & 
      N_sl, &                                                                                         !< number of active slip systems for each family
      N_tw, &                                                                                         !< number of active twin systems for each family
-     Ntrans                                                                                          !< number of active transformation systems for each family
+     N_tr                                                                                          !< number of active transformation systems for each family
    integer(kind(undefined_ID)),  dimension(:),     allocatable :: &
      outputID                                                                                        !< ID of each post result output
    logical :: &
@@ -131,14 +131,9 @@ module plastic_dislotwin
 
  type, private :: tDislotwinMicrostructure
    real(pReal),                  dimension(:,:),   allocatable :: &
-     invLambdaSlip, &
-     invLambdaSlipTwin, &
-     invLambdaSlipTrans, &
-     invLambdaTwin, &
-     invLambdaTrans, &
-     mfp_slip, &
-     mfp_twin, &
-     mfp_trans, &
+     Lambda_sl, & !* mean free path between 2 obstacles seen by a moving dislocation
+     Lambda_tw, &  !* mean free path between 2 obstacles seen by a growing twin
+     Lambda_tr, &!* mean free path between 2 obstacles seen by a growing martensite
      tau_pass, &
      threshold_stress_twin, &
      threshold_stress_trans, &
@@ -377,11 +372,11 @@ subroutine plastic_dislotwin_init
   
 !--------------------------------------------------------------------------------------------------
 ! transformation related parameters
-   prm%Ntrans      = config%getInts('ntrans', defaultVal=emptyIntArray)
-   prm%totalNtrans = sum(prm%Ntrans)
+   prm%N_tr      = config%getInts('ntrans', defaultVal=emptyIntArray)
+   prm%totalNtrans = sum(prm%N_tr)
    if (prm%totalNtrans > 0) then
      prm%burgers_trans = config%getFloats('transburgers')
-     prm%burgers_trans = math_expand(prm%burgers_trans,prm%Ntrans)
+     prm%burgers_trans = math_expand(prm%burgers_trans,prm%N_tr)
      
      prm%transStackHeight = config%getFloat('transstackheight', defaultVal=0.0_pReal) ! ToDo: How to handle that???
      prm%Cmfptrans        = config%getFloat('cmfptrans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
@@ -389,17 +384,17 @@ subroutine plastic_dislotwin_init
      prm%xc_trans         = config%getFloat('xc_trans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
      prm%L0_trans         = config%getFloat('l0_trans')
 
-     prm%interaction_TransTrans = lattice_interaction_TransByTrans(prm%Ntrans,&
+     prm%interaction_TransTrans = lattice_interaction_TransByTrans(prm%N_tr,&
                                                                    config%getFloats('interaction_transtrans'), &
                                                                    config%getString('lattice_structure'))
                                                              
-     prm%C66_trans        = lattice_C66_trans(prm%Ntrans,prm%C66, &
+     prm%C66_trans        = lattice_C66_trans(prm%N_tr,prm%C66, &
                                   config%getString('trans_lattice_structure'), &
                                   0.0_pReal, &
                                   config%getFloat('a_bcc', defaultVal=0.0_pReal), &
                                   config%getFloat('a_fcc', defaultVal=0.0_pReal))
                                   
-      prm%Schmid_trans        = lattice_SchmidMatrix_trans(prm%Ntrans, &
+      prm%Schmid_trans        = lattice_SchmidMatrix_trans(prm%N_tr, &
                                   config%getString('trans_lattice_structure'), &
                                   0.0_pReal, &
                                   config%getFloat('a_bcc', defaultVal=0.0_pReal), &
@@ -407,12 +402,12 @@ subroutine plastic_dislotwin_init
                                                  
      if (lattice_structure(p) /= LATTICE_fcc_ID) then
         prm%Ndot0_trans = config%getFloats('ndot0_trans')
-        prm%Ndot0_trans = math_expand(prm%Ndot0_trans,prm%Ntrans)
+        prm%Ndot0_trans = math_expand(prm%Ndot0_trans,prm%N_tr)
      endif
      prm%lamellarsize = config%getFloats('lamellarsize')
-     prm%lamellarsize = math_expand(prm%lamellarsize,prm%Ntrans)
+     prm%lamellarsize = math_expand(prm%lamellarsize,prm%N_tr)
      prm%s = config%getFloats('s_trans',defaultVal=[0.0_pReal])
-     prm%s = math_expand(prm%s,prm%Ntrans)
+     prm%s = math_expand(prm%s,prm%N_tr)
    else
      allocate(prm%lamellarsize(0))
      allocate(prm%burgers_trans(0))
@@ -432,10 +427,10 @@ subroutine plastic_dislotwin_init
    endif    
 
    if (prm%totalNslip > 0 .and. prm%totalNtrans > 0) then  
-     prm%interaction_SlipTrans = lattice_interaction_SlipByTrans(prm%N_sl,prm%Ntrans,&
+     prm%interaction_SlipTrans = lattice_interaction_SlipByTrans(prm%N_sl,prm%N_tr,&
                                                                  config%getFloats('interaction_sliptrans'), &
                                                                  config%getString('lattice_structure')) 
-     if (prm%fccTwinTransNucleation .and. prm%totalNtrans > 12) write(6,*) 'mist' ! ToDo: implement better test. The model will fail also if ntrans is [6,6]
+     if (prm%fccTwinTransNucleation .and. prm%totalNtrans > 12) write(6,*) 'mist' ! ToDo: implement better test. The model will fail also if N_tr is [6,6]
    endif  
   
 !--------------------------------------------------------------------------------------------------
@@ -583,20 +578,15 @@ subroutine plastic_dislotwin_init
    dot%strainTransFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTol_f_tr
 
-   allocate(dst%invLambdaSlip         (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
-   allocate(dst%invLambdaSlipTwin     (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
-   allocate(dst%invLambdaSlipTrans    (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
-   allocate(dst%mfp_slip              (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
+   allocate(dst%Lambda_sl             (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
    allocate(dst%tau_pass              (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
 
-   allocate(dst%invLambdaTwin         (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
-   allocate(dst%mfp_twin              (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
+   allocate(dst%Lambda_tw              (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
    allocate(dst%threshold_stress_twin (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
    allocate(dst%tau_r_twin            (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
    allocate(dst%twinVolume            (prm%totalNtwin, NipcMyPhase),source=0.0_pReal)
 
-   allocate(dst%invLambdaTrans        (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
-   allocate(dst%mfp_trans             (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
+   allocate(dst%Lambda_tr             (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
    allocate(dst%threshold_stress_trans(prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
    allocate(dst%tau_r_trans           (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
    allocate(dst%martensiteVolume      (prm%totalNtrans,NipcMyPhase),source=0.0_pReal)
@@ -629,7 +619,7 @@ function plastic_dislotwin_homogenizedC(ipc,ip,el) result(homogenizedC)
    el                                                                                              !< element
 
  integer :: i, &
-                  of
+            of
  real(pReal) :: f_unrotated
 
  of = phasememberAt(ipc,ip,el)
@@ -829,7 +819,7 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
  call kinetics_slip(Mp,temperature,instance,of,gdot_slip)
  dot%accshear_slip(:,of) = abs(gdot_slip)
  
- DotRhoMultiplication = abs(gdot_slip)/(prm%b_sl*dst%mfp_slip(:,of))
+ DotRhoMultiplication = abs(gdot_slip)/(prm%b_sl*dst%Lambda_sl(:,of))
  EdgeDipMinDistance   = prm%CEdgeDipMinDistance*prm%b_sl
  
  slipState: do i = 1, prm%totalNslip
@@ -840,7 +830,7 @@ subroutine plastic_dislotwin_dotState(Mp,Temperature,instance,of)
      DotRhoEdgeDipClimb = 0.0_pReal
    else significantSlipStress
      EdgeDipDistance = 3.0_pReal*prm%mu*prm%b_sl(i)/(16.0_pReal*PI*abs(tau))
-     EdgeDipDistance = math_clip(EdgeDipDistance, right = dst%mfp_slip(i,of))
+     EdgeDipDistance = math_clip(EdgeDipDistance, right = dst%Lambda_sl(i,of))
      EdgeDipDistance = math_clip(EdgeDipDistance, left  = EdgeDipMinDistance(i))
 
      if (prm%dipoleFormation) then
@@ -900,6 +890,15 @@ subroutine plastic_dislotwin_dependentState(temperature,instance,of)
    i
  real(pReal) :: &
    sumf_twin,SFE,sumf_trans
+ real(pReal), dimension(param(instance)%totalNtwin) :: &
+   lambda_sl_sl_inv, & !* 1/mean free distance between 2 forest dislocations seen by a moving dislocation
+   lambda_sl_tw_inv, & !* 1/mean free distance between 2 twin stacks from different systems seen by a moving dislocation
+   lambda_sl_tr_inv    !* 1/mean free distance between 2 martensite lamellar from different systems seen by a moving dislocation
+ real(pReal), dimension(param(instance)%totalNtrans) :: &
+   lambda_tw_tw_inv  !* 1/mean free distance between 2 twin stacks from different systems seen by a growing twin
+  real(pReal), dimension(param(instance)%totalNslip) :: &
+   lambda_tr_tr_inv  !* 1/mean free distance between 2 martensite stacks from different systems seen by a growing martensite (1/lambda_trans)
+
  real(pReal), dimension(:), allocatable :: &
    x0, &
    fOverStacksize, &
@@ -921,47 +920,46 @@ subroutine plastic_dislotwin_dependentState(temperature,instance,of)
  !Todo: Physically ok, but naming could be adjusted
 
 
- !* 1/mean free distance between 2 forest dislocations seen by a moving dislocation
  forall (i = 1:prm%totalNslip) &
-   dst%invLambdaSlip(i,of) = &
+   lambda_sl_sl_inv = &
      sqrt(dot_product((stt%rhoEdge(1:prm%totalNslip,of)+stt%rhoEdgeDip(1:prm%totalNslip,of)),&
-                      prm%forestProjection(1:prm%totalNslip,i)))/prm%CLambdaSlip(i)
+                      prm%forestProjection(1:prm%totalNslip,i)))/prm%CLambdaSlip(i) ! change order and use matmul
 
- !* 1/mean free distance between 2 twin stacks from different systems seen by a moving dislocation
+ 
  if (prm%totalNtwin > 0 .and. prm%totalNslip > 0) &
-   dst%invLambdaSlipTwin(1:prm%totalNslip,of) = &
-     matmul(transpose(prm%h_sl_tw),fOverStacksize)/(1.0_pReal-sumf_twin)               ! ToDo: Change order and use matmul
+   lambda_sl_tw_inv = &
+     matmul(transpose(prm%h_sl_tw),fOverStacksize)/(1.0_pReal-sumf_twin)               ! ToDo: Change order/no transpose
 
- !* 1/mean free distance between 2 twin stacks from different systems seen by a growing twin
+ 
 
   !ToDo: needed? if (prm%totalNtwin > 0) &
- dst%invLambdaTwin(1:prm%totalNtwin,of) = matmul(prm%h_tw_tw,fOverStacksize)/(1.0_pReal-sumf_twin)
+ lambda_tw_tw_inv = matmul(prm%h_tw_tw,fOverStacksize)/(1.0_pReal-sumf_twin)
 
 
- !* 1/mean free distance between 2 martensite lamellar from different systems seen by a moving dislocation
+ 
  if (prm%totalNtrans > 0 .and. prm%totalNslip > 0) &
-   dst%invLambdaSlipTrans(1:prm%totalNslip,of) = &                                  ! ToDo: does not work if Ntrans is not 12
-      matmul(transpose(prm%interaction_SlipTrans),ftransOverLamellarSize)/(1.0_pReal-sumf_trans)    ! ToDo: Transpose needed
+   lambda_sl_tr_inv = &                                                                      ! ToDo: does not work if N_tr is not 12
+      matmul(transpose(prm%interaction_SlipTrans),ftransOverLamellarSize)/(1.0_pReal-sumf_trans)    ! ToDo: remove transpose
 
- !* 1/mean free distance between 2 martensite stacks from different systems seen by a growing martensite (1/lambda_trans)
+ 
  !ToDo: needed? if (prm%totalNtrans > 0) &
- dst%invLambdaTrans(1:prm%totalNtrans,of) = matmul(prm%interaction_TransTrans,ftransOverLamellarSize)/(1.0_pReal-sumf_trans)
+ lambda_tr_tr_inv = matmul(prm%interaction_TransTrans,ftransOverLamellarSize)/(1.0_pReal-sumf_trans)
 
- !* mean free path between 2 obstacles seen by a moving dislocation
- do i = 1,prm%totalNslip
-    if ((prm%totalNtwin > 0) .or. (prm%totalNtrans > 0)) then              ! ToDo: Change order and use matmul
-       dst%mfp_slip(i,of) = &
+ 
+
+    if ((prm%totalNtwin > 0) .or. (prm%totalNtrans > 0)) then              ! ToDo: Change order
+       dst%Lambda_sl(:,of) = &
          prm%GrainSize/(1.0_pReal+prm%GrainSize*&
-         (dst%invLambdaSlip(i,of) + dst%invLambdaSlipTwin(i,of) + dst%invLambdaSlipTrans(i,of)))
+         (lambda_sl_sl_inv + lambda_sl_tw_inv + lambda_sl_tr_inv))
     else
-       dst%mfp_slip(i,of) = prm%GrainSize &
-                          / (1.0_pReal+prm%GrainSize*dst%invLambdaSlip(i,of)) !!!!!! correct?
+       dst%Lambda_sl(:,of) = prm%GrainSize &
+                          / (1.0_pReal+prm%GrainSize*lambda_sl_sl_inv) !!!!!! correct?
     endif
- enddo
 
- !* mean free path between 2 obstacles seen by a growing twin/martensite
- dst%mfp_twin(:,of)  = prm%Cmfptwin*prm%GrainSize/ (1.0_pReal+prm%GrainSize*dst%invLambdaTwin(:,of))
- dst%mfp_trans(:,of) = prm%Cmfptrans*prm%GrainSize/(1.0_pReal+prm%GrainSize*dst%invLambdaTrans(:,of))
+
+
+ dst%Lambda_tw(:,of) = prm%Cmfptwin *prm%GrainSize/(1.0_pReal+prm%GrainSize*lambda_tw_tw_inv)
+ dst%Lambda_tr(:,of) = prm%Cmfptrans*prm%GrainSize/(1.0_pReal+prm%GrainSize*lambda_tr_tr_inv)
 
  !* threshold stress for dislocation motion
  forall (i = 1:prm%totalNslip) dst%tau_pass(i,of) = &
@@ -979,8 +977,8 @@ subroutine plastic_dislotwin_dependentState(temperature,instance,of)
               (prm%L0_trans*prm%b_sl) + prm%transStackHeight*prm%deltaG/ (3.0_pReal*prm%burgers_trans) )    
  
 
- dst%twinVolume(:,of)       = (PI/4.0_pReal)*prm%twinsize*dst%mfp_twin(:,of)**2.0_pReal
- dst%martensiteVolume(:,of) = (PI/4.0_pReal)*prm%lamellarsize*dst%mfp_trans(:,of)**2.0_pReal
+ dst%twinVolume(:,of)       = (PI/4.0_pReal)*prm%twinsize*dst%Lambda_tw(:,of)**2.0_pReal
+ dst%martensiteVolume(:,of) = (PI/4.0_pReal)*prm%lamellarsize*dst%Lambda_tr(:,of)**2.0_pReal
 
 
  x0 = prm%mu*prm%b_tw**2.0_pReal/(SFE*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)  ! ToDo: In the paper, this is the burgers vector for slip
@@ -1040,7 +1038,7 @@ function plastic_dislotwin_postResults(Mp,Temperature,instance,of) result(postRe
       postResults(c+1:c+prm%totalNslip)  = stt%accshear_slip(1:prm%totalNslip,of)
        c = c + prm%totalNslip
      case (mfp_slip_ID)
-       postResults(c+1:c+prm%totalNslip) = dst%mfp_slip(1:prm%totalNslip,of)
+       postResults(c+1:c+prm%totalNslip) = dst%Lambda_sl(1:prm%totalNslip,of)
        c = c + prm%totalNslip
      case (resolved_stress_slip_ID)
        do j = 1, prm%totalNslip
@@ -1055,7 +1053,7 @@ function plastic_dislotwin_postResults(Mp,Temperature,instance,of) result(postRe
        postResults(c+1:c+prm%totalNtwin) = stt%twinFraction(1:prm%totalNtwin,of)
        c = c + prm%totalNtwin    
      case (mfp_twin_ID)
-       postResults(c+1:c+prm%totalNtwin) = dst%mfp_twin(1:prm%totalNtwin,of)
+       postResults(c+1:c+prm%totalNtwin) = dst%Lambda_tw(1:prm%totalNtwin,of)
        c = c + prm%totalNtwin
      case (resolved_stress_twin_ID)
        do j = 1, prm%totalNtwin
