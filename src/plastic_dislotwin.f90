@@ -61,9 +61,9 @@ module plastic_dislotwin
      sbQedge, &                                                                                     !< value for shearband systems Qedge
      SFE_0K, &                                                                                      !< stacking fault energy at zero K
      dSFE_dT, &                                                                                     !< temperature dependance of stacking fault energy
-     aTolRho, &                                                                                     !< absolute tolerance for integration of dislocation density
-     aTolTwinFrac, &                                                                                !< absolute tolerance for integration of twin volume fraction
-     aTolTransFrac, &                                                                               !< absolute tolerance for integration of trans volume fraction
+     aTol_rho, &                                                                                    !< absolute tolerance for integration of dislocation density
+     aTol_f_tw, &                                                                                   !< absolute tolerance for integration of twin volume fraction
+     aTol_f_tr, &                                                                                   !< absolute tolerance for integration of trans volume fraction
      deltaG, &                                                                                      !< Free energy difference between austensite and martensite
      Cmfptrans, &                                                                                   !<
      transStackHeight                                                                               !< Stack height of hex nucleus 
@@ -257,9 +257,9 @@ subroutine plastic_dislotwin_init
              dst => microstructure(phase_plasticityInstance(p)), &
              config   => config_phase(p))
 
-   prm%aTolRho       = config%getFloat('atol_rho', defaultVal=0.0_pReal)
-   prm%aTolTwinFrac  = config%getFloat('atol_twinfrac', defaultVal=0.0_pReal)
-   prm%aTolTransFrac = config%getFloat('atol_transfrac', defaultVal=0.0_pReal)
+   prm%aTol_rho  = config%getFloat('atol_rho',       defaultVal=0.0_pReal)
+   prm%aTol_f_tw = config%getFloat('atol_twinfrac',  defaultVal=0.0_pReal)
+   prm%aTol_f_tr = config%getFloat('atol_transfrac', defaultVal=0.0_pReal)
 
    ! This data is read in already in lattice
    prm%mu = lattice_mu(p)
@@ -469,14 +469,14 @@ subroutine plastic_dislotwin_init
    if (any(prm%atomicVolume <= 0.0_pReal)) &
      call IO_error(211,el=p,ext_msg='cAtomicVolume ('//PLASTICITY_DISLOTWIN_label//')')
    if (prm%totalNtwin > 0) then
-     if (prm%aTolRho <= 0.0_pReal) &
-       call IO_error(211,el=p,ext_msg='aTolRho ('//PLASTICITY_DISLOTWIN_label//')')   
-     if (prm%aTolTwinFrac <= 0.0_pReal) &
-       call IO_error(211,el=p,ext_msg='aTolTwinFrac ('//PLASTICITY_DISLOTWIN_label//')')
+     if (prm%aTol_rho <= 0.0_pReal) &
+       call IO_error(211,el=p,ext_msg='aTol_rho ('//PLASTICITY_DISLOTWIN_label//')')   
+     if (prm%aTol_f_tw <= 0.0_pReal) &
+       call IO_error(211,el=p,ext_msg='aTol_f_tw ('//PLASTICITY_DISLOTWIN_label//')')
    endif
    if (prm%totalNtrans > 0) then
-     if (prm%aTolTransFrac <= 0.0_pReal) &
-       call IO_error(211,el=p,ext_msg='aTolTransFrac ('//PLASTICITY_DISLOTWIN_label//')')
+     if (prm%aTol_f_tr <= 0.0_pReal) &
+       call IO_error(211,el=p,ext_msg='aTol_f_tr ('//PLASTICITY_DISLOTWIN_label//')')
    endif
  
    outputs = config%getStrings('(output)', defaultVal=emptyStringArray)
@@ -553,14 +553,14 @@ subroutine plastic_dislotwin_init
    stt%rhoEdge=>plasticState(p)%state(startIndex:endIndex,:)
    stt%rhoEdge= spread(prm%rho_mob_0,2,NipcMyPhase)
    dot%rhoEdge=>plasticState(p)%dotState(startIndex:endIndex,:)
-   plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
+   plasticState(p)%aTolState(startIndex:endIndex) = prm%aTol_rho
 
    startIndex = endIndex + 1
    endIndex   = endIndex + prm%totalNslip
    stt%rhoEdgeDip=>plasticState(p)%state(startIndex:endIndex,:)
    stt%rhoEdgeDip= spread(prm%rho_dip_0,2,NipcMyPhase)
    dot%rhoEdgeDip=>plasticState(p)%dotState(startIndex:endIndex,:)
-   plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
+   plasticState(p)%aTolState(startIndex:endIndex) = prm%aTol_rho
 
    startIndex = endIndex + 1
    endIndex   = endIndex + prm%totalNslip
@@ -575,13 +575,13 @@ subroutine plastic_dislotwin_init
    endIndex   = endIndex + prm%totalNtwin
    stt%twinFraction=>plasticState(p)%state(startIndex:endIndex,:)
    dot%twinFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
-   plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTwinFrac
+   plasticState(p)%aTolState(startIndex:endIndex) = prm%aTol_f_tw
    
    startIndex = endIndex + 1
    endIndex   = endIndex + prm%totalNtrans
    stt%strainTransFraction=>plasticState(p)%state(startIndex:endIndex,:)
    dot%strainTransFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
-   plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolTransFrac
+   plasticState(p)%aTolState(startIndex:endIndex) = prm%aTol_f_tr
 
    allocate(dst%invLambdaSlip         (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
    allocate(dst%invLambdaSlipTwin     (prm%totalNslip, NipcMyPhase),source=0.0_pReal)
