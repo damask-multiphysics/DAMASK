@@ -24,7 +24,7 @@ module plastic_disloUCLA
      undefined_ID, &
      rho_mob_ID, &
      rho_dip_ID, &
-     gamma_dot_sl_ID, &
+     dot_gamma_sl_ID, &
      gamma_sl_ID, &
      Lambda_sl_ID, &
      thresholdstress_ID
@@ -32,10 +32,10 @@ module plastic_disloUCLA
 
  type, private :: tParameters
    real(pReal) :: &
-     aTolRho, &
+     aTol_rho, &
      D, &                                                                                           !< grain size
      mu, &
-     D0, &                                                                                          !< prefactor for self-diffusion coefficient
+     D_0, &                                                                                          !< prefactor for self-diffusion coefficient
      Q_cl                                                                                           !< activation energy for dislocation climb
    real(pReal),                 dimension(:),  allocatable :: &
      rho_mob_0, &                                                                                   !< initial dislocation density
@@ -185,10 +185,10 @@ subroutine plastic_disloUCLA_init()
 !  optional parameters that need to be defined
    prm%mu = lattice_mu(p)
 
-   prm%aTolRho = config%getFloat('atol_rho')
+   prm%aTol_rho = config%getFloat('atol_rho')
 
    ! sanity checks
-   if (prm%aTolRho <= 0.0_pReal) extmsg = trim(extmsg)//' atol_rho'
+   if (prm%aTol_rho <= 0.0_pReal) extmsg = trim(extmsg)//' atol_rho'
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
@@ -232,7 +232,7 @@ subroutine plastic_disloUCLA_init()
      prm%B           = config%getFloats('friction_coeff', requiredSize=size(prm%N_sl))
 
      prm%D                   = config%getFloat('grainsize')
-     prm%D0                  = config%getFloat('d0')
+     prm%D_0                 = config%getFloat('d0')
      prm%Q_cl                = config%getFloat('qsd')
      prm%atomicVolume        = config%getFloat('catomicvolume')       * prm%b_sl**3.0_pReal
      prm%D_a                 = config%getFloat('cedgedipmindistance') * prm%b_sl
@@ -257,7 +257,7 @@ subroutine plastic_disloUCLA_init()
 
 
      ! sanity checks
-     if (    prm%D0             <= 0.0_pReal)  extmsg = trim(extmsg)//' d0'
+     if (    prm%D_0            <= 0.0_pReal)  extmsg = trim(extmsg)//' D_0'
      if (    prm%Q_cl           <= 0.0_pReal)  extmsg = trim(extmsg)//' Q_cl'
      if (any(prm%rho_mob_0      <  0.0_pReal)) extmsg = trim(extmsg)//' rhoedge0'
      if (any(prm%rho_dip_0      <  0.0_pReal)) extmsg = trim(extmsg)//' rhoedgedip0'
@@ -291,7 +291,7 @@ subroutine plastic_disloUCLA_init()
        case ('dipole_density')
          outputID = merge(rho_dip_ID,undefined_ID,prm%sum_N_sl>0)
        case ('shear_rate','shearrate','shear_rate_slip','shearrate_slip')
-         outputID = merge(gamma_dot_sl_ID,undefined_ID,prm%sum_N_sl>0)
+         outputID = merge(dot_gamma_sl_ID,undefined_ID,prm%sum_N_sl>0)
        case ('accumulated_shear','accumulatedshear','accumulated_shear_slip')
          outputID = merge(gamma_sl_ID,undefined_ID,prm%sum_N_sl>0)
        case ('mfp','mfp_slip')
@@ -326,20 +326,20 @@ subroutine plastic_disloUCLA_init()
    stt%rho_mob=>plasticState(p)%state(startIndex:endIndex,:)
    stt%rho_mob= spread(prm%rho_mob_0,2,NipcMyPhase)
    dot%rho_mob=>plasticState(p)%dotState(startIndex:endIndex,:)
-   plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
+   plasticState(p)%aTolState(startIndex:endIndex) = prm%aTol_rho
 
    startIndex = endIndex + 1
    endIndex   = endIndex + prm%sum_N_sl
    stt%rho_dip=>plasticState(p)%state(startIndex:endIndex,:)
    stt%rho_dip= spread(prm%rho_dip_0,2,NipcMyPhase)
    dot%rho_dip=>plasticState(p)%dotState(startIndex:endIndex,:)
-   plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolRho
+   plasticState(p)%aTolState(startIndex:endIndex) = prm%aTol_rho
 
    startIndex = endIndex + 1
    endIndex   = endIndex + prm%sum_N_sl
    stt%gamma_sl=>plasticState(p)%state(startIndex:endIndex,:)
    dot%gamma_sl=>plasticState(p)%dotState(startIndex:endIndex,:)
-   plasticState(p)%aTolState(startIndex:endIndex) = 1.0e6_pReal  !ToDo: better make optional parameter
+   plasticState(p)%aTolState(startIndex:endIndex) = 1.0e6_pReal                                     !Don't use for convergence check
    ! global alias
    plasticState(p)%slipRate        => plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%accumulatedSlip => plasticState(p)%state(startIndex:endIndex,:)
@@ -359,7 +359,7 @@ end subroutine plastic_disloUCLA_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-pure subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,instance,of)
+pure subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
 
  implicit none
  real(pReal), dimension(3,3),     intent(out) :: &
@@ -370,7 +370,7 @@ pure subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,inst
  real(pReal), dimension(3,3), intent(in) :: &
    Mp                                                                                               !< Mandel stress
  real(pReal),                 intent(in) :: &
-   temperature                                                                                      !< temperature
+   T                                                                                                !< temperature
  integer,                     intent(in) :: &
    instance, &
    of
@@ -386,7 +386,7 @@ pure subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,Temperature,inst
 
  associate(prm => param(instance))
 
- call kinetics(Mp,Temperature,instance,of,gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_dtau_neg)
+ call kinetics(Mp,T,instance,of,gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_dtau_neg)
  do i = 1, prm%sum_N_sl
    Lp = Lp + (gdot_pos(i)+gdot_neg(i))*prm%Schmid(1:3,1:3,i)
    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -435,10 +435,10 @@ subroutine plastic_disloUCLA_dotState(Mp,T,instance,of)
                gdot_pos,gdot_neg, &
                tau_pos_out = tau_pos,tau_neg_out = tau_neg)
 
- dot%gamma_sl(:,of) = (gdot_pos+gdot_neg)                                                      ! ToDo: needs to be abs
- VacancyDiffusion = prm%D0*exp(-prm%Q_cl/(kB*T))
+ dot%gamma_sl(:,of) = (gdot_pos+gdot_neg)                                                           ! ToDo: needs to be abs
+ VacancyDiffusion = prm%D_0*exp(-prm%Q_cl/(kB*T))
 
- where(dEq0(tau_pos))                                                                          ! ToDo: use avg of pos and neg
+ where(dEq0(tau_pos))                                                                               ! ToDo: use avg of pos and neg
    DotRhoDipFormation = 0.0_pReal
    DotRhoEdgeDipClimb = 0.0_pReal
  else where
@@ -500,7 +500,7 @@ end subroutine plastic_disloUCLA_dependentState
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-function plastic_disloUCLA_postResults(Mp,Temperature,instance,of) result(postResults)
+function plastic_disloUCLA_postResults(Mp,T,instance,of) result(postResults)
  use prec, only: &
    dEq, dNeq0
  use math, only: &
@@ -511,7 +511,7 @@ function plastic_disloUCLA_postResults(Mp,Temperature,instance,of) result(postRe
  real(pReal), dimension(3,3), intent(in) :: &
    Mp                                                                                               !< Mandel stress
  real(pReal),                 intent(in) :: &
-   temperature                                                                                      !< temperature
+   T                                                                                                !< temperature
  integer,                     intent(in) :: &
    instance, &
    of
@@ -535,8 +535,8 @@ function plastic_disloUCLA_postResults(Mp,Temperature,instance,of) result(postRe
        postResults(c+1:c+prm%sum_N_sl) = stt%rho_mob(1:prm%sum_N_sl,of)
      case (rho_dip_ID)
        postResults(c+1:c+prm%sum_N_sl) = stt%rho_dip(1:prm%sum_N_sl,of)
-     case (gamma_dot_sl_ID)
-       call kinetics(Mp,Temperature,instance,of,gdot_pos,gdot_neg)
+     case (dot_gamma_sl_ID)
+       call kinetics(Mp,T,instance,of,gdot_pos,gdot_neg)
        postResults(c+1:c+prm%sum_N_sl) = gdot_pos + gdot_neg
      case (gamma_sl_ID)
        postResults(c+1:c+prm%sum_N_sl) = stt%gamma_sl(1:prm%sum_N_sl, of)
@@ -589,7 +589,7 @@ end subroutine plastic_disloUCLA_results
 ! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
 ! have the optional arguments at the end
 !--------------------------------------------------------------------------------------------------
-pure subroutine kinetics(Mp,Temperature,instance,of, &
+pure subroutine kinetics(Mp,T,instance,of, &
                  gamma_pos,gamma_neg,dgamma_dtau_pos,dgamma_dtau_neg,tau_pos_out,tau_neg_out)
  use prec, only: &
    tol_math_check, &
@@ -602,7 +602,7 @@ pure subroutine kinetics(Mp,Temperature,instance,of, &
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
  real(pReal),                  intent(in) :: &
-   temperature                                                                                      !< temperature
+   T                                                                                                !< temperature
  integer,                      intent(in) :: &
    instance, &
    of
@@ -635,7 +635,7 @@ pure subroutine kinetics(Mp,Temperature,instance,of, &
  if (present(tau_pos_out)) tau_pos_out = tau_pos
  if (present(tau_neg_out)) tau_neg_out = tau_neg
 
- associate(BoltzmannRatio  => prm%delta_F/(kB*Temperature), &
+ associate(BoltzmannRatio  => prm%delta_F/(kB*T), &
            DotGamma0       => stt%rho_mob(:,of)*prm%b_sl*prm%v0, &
            effectiveLength => dst%Lambda_sl(:,of) - prm%w)
 
