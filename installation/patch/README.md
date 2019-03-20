@@ -11,8 +11,8 @@ patch -p1 < installation/patch/nameOfPatch
 
 ## Available patches
 
-  * **fwbw_derivative** switches the default spatial derivative from continuous to forward/backward difference.  
-    This generally reduces spurious oscillations in the result as the spatial accuracy of the derivative is then compatible with the underlying solution grid.
+  * **disable_HDF5** disables all HDF5 output.
+    HDF5 output is an experimental feature. Also, some routines not present in HDF5 1.8.x are remove to allow compilation of DAMASK with HDF5 < 1.10.x
 
 ## Create patch
 commit your changes

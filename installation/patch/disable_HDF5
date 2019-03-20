@@ -1,0 +1,57 @@
+diff --git a/src/DAMASK_grid.f90 b/src/DAMASK_grid.f90
+index 496bfd0d..7b0f499c 100644
+--- a/src/DAMASK_grid.f90
++++ b/src/DAMASK_grid.f90
+@@ -75,7 +75,6 @@ program DAMASK_spectral
+  use grid_mech_spectral_polarisation
+  use grid_damage_spectral
+  use grid_thermal_spectral
+- use results
+ 
+  implicit none
+ 
+@@ -153,8 +152,6 @@ program DAMASK_spectral
+  write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, 2019'
+  write(6,'(a)')   ' https://doi.org/10.1007/978-981-10-6855-3_80'
+ 
+- call results_openJobFile()
+- call results_closeJobFile()
+ !--------------------------------------------------------------------------------------------------
+ ! initialize field solver information
+  nActiveFields = 1
+@@ -595,7 +592,6 @@ program DAMASK_spectral
+            if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_write')
+          enddo
+          fileOffset = fileOffset + sum(outputSize)                                                  ! forward to current file position
+-         call CPFEM_results(totalIncsCounter,time)
+        endif
+        if (              loadCases(currentLoadCase)%restartFrequency > 0_pInt &                     ! writing of restart info requested ...
+            .and. mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0_pInt) then               ! ... and at frequency of writing restart information
+diff --git a/src/HDF5_utilities.f90 b/src/HDF5_utilities.f90
+index a81aaee0..3d3cdee3 100644
+--- a/src/HDF5_utilities.f90
++++ b/src/HDF5_utilities.f90
+@@ -197,7 +197,6 @@ integer(HID_T) function HDF5_addGroup(fileHandle,groupName)
+  !-------------------------------------------------------------------------------------------------
+  ! setting I/O mode to collective
+ #ifdef PETSc
+- call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
+  if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_addGroup: h5pset_all_coll_metadata_ops_f ('//trim(groupName)//')')
+ #endif
+  
+@@ -232,7 +231,6 @@ integer(HID_T) function HDF5_openGroup(fileHandle,groupName)
+  !-------------------------------------------------------------------------------------------------
+  ! setting I/O mode to collective
+ #ifdef PETSc
+- call h5pget_all_coll_metadata_ops_f(aplist_id, is_collective, hdferr)
+  if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup: h5pset_all_coll_metadata_ops_f ('//trim(groupName)//')')
+ #endif
+  
+@@ -1646,7 +1644,6 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
+  call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr) 
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_read: h5pcreate_f')
+ #ifdef PETSc
+- call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
+  if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_read: h5pset_all_coll_metadata_ops_f')
+ #endif
+ 
