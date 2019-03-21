@@ -46,16 +46,16 @@ module plastic_dislotwin
      D0, &                                                                                          !< prefactor for self-diffusion coefficient
      Qsd, &                                                                                         !< activation energy for dislocation climb
      D, &                                                                                           !<grain size
-     pShearBand, &                                                                                  !< p-exponent in shear band velocity
-     qShearBand, &                                                                                  !< q-exponent in shear band velocity
+     p_sb, &                                                                                        !< p-exponent in shear band velocity
+     q_sb, &                                                                                        !< q-exponent in shear band velocity
      CEdgeDipMinDistance, &                                                                         !<
      i_tw, &                                                                                        !<
      SolidSolutionStrength, &                                                                       !<strength due to elements in solid solution
-     L0_twin, &                                                                                     !< Length of twin nuclei in Burgers vectors
-     L0_trans, &                                                                                    !< Length of trans nuclei in Burgers vectors
+     L_tw, &                                                                                        !< Length of twin nuclei in Burgers vectors
+     L_tr, &                                                                                        !< Length of trans nuclei in Burgers vectors
      xc_twin, &                                                                                     !< critical distance for formation of twin nucleus
      xc_trans, &                                                                                    !< critical distance for formation of trans nucleus
-     VcrossSlip, &                                                                                  !< cross slip volume
+     V_cs, &                                                                                        !< cross slip volume
      sbResistance, &                                                                                !< value for shearband resistance (might become an internal state variable at some point)
      sbVelocity, &                                                                                  !< value for shearband velocity_0
      sbQedge, &                                                                                     !< activation energy for shear bands
@@ -64,7 +64,7 @@ module plastic_dislotwin
      aTol_rho, &                                                                                    !< absolute tolerance for integration of dislocation density
      aTol_f_tw, &                                                                                   !< absolute tolerance for integration of twin volume fraction
      aTol_f_tr, &                                                                                   !< absolute tolerance for integration of trans volume fraction
-     deltaG, &                                                                                      !< Free energy difference between austensite and martensite
+     gamma_fcc_hex, &                                                                                      !< Free energy difference between austensite and martensite
      i_tr, &                                                                                        !<
      transStackHeight                                                                               !< Stack height of hex nucleus 
    real(pReal),                  dimension(:),     allocatable :: & 
@@ -85,25 +85,25 @@ module plastic_dislotwin
      q, &                                                                                           !< q-exponent in glide velocity
      r, &                                                                                           !< r-exponent in twin nucleation rate
      s, &                                                                                           !< s-exponent in trans nucleation rate
-     shear_twin, &                                                                                  !< characteristic shear for twins
+     gamma_char, &                                                                                  !< characteristic shear for twins
      B                                                                                              !< drag coefficient
    real(pReal),                  dimension(:,:),   allocatable :: & 
      h_sl_sl, &                                                                                     !< 
      h_sl_tw, &                                                                                     !<
-     h_tw_tw, &                                                                        !< 
-     interaction_SlipTrans, &                                                                       !< 
-     interaction_TransTrans                                                                         !< 
+     h_tw_tw, &                                                                                     !< 
+     h_sl_tr, &                                                                                     !< 
+     h_tr_tr                                                                                        !< 
    integer,                      dimension(:,:),   allocatable :: & 
      fcc_twinNucleationSlipPair                                                                     ! ToDo: Better name? Is also use for trans
    real(pReal),                  dimension(:,:),   allocatable :: & 
      forestProjection, &
      C66
    real(pReal),                  dimension(:,:,:), allocatable :: &
-     Schmid_trans, &
-     Schmid_slip, &
-     Schmid_twin, &
-     C66_twin, &
-     C66_trans
+     P_tr, &
+     P_sl, &
+     P_tw, &
+     C66_tw, &
+     C66_tr
    integer :: & 
      sum_N_sl, &                                                                                     !< total number of active slip system
      sum_N_tw, &                                                                                     !< total number of active twin system
@@ -123,9 +123,9 @@ module plastic_dislotwin
    real(pReal),                  dimension(:,:),   pointer :: &
      rho_mob, &
      rho_dip, &
-     accshear_slip, &
+     gamma_sl, &
      f_tw, &
-     strainTransFraction
+     f_tr
  end type tDislotwinState
 
  type, private :: tDislotwinMicrostructure
@@ -266,7 +266,7 @@ subroutine plastic_dislotwin_init
    prm%N_sl      = config%getInts('nslip',defaultVal=emptyIntArray)
    prm%sum_N_sl = sum(prm%N_sl)
    slipActive: if (prm%sum_N_sl > 0) then
-     prm%Schmid_slip          = lattice_SchmidMatrix_slip(prm%N_sl,config%getString('lattice_structure'),&
+     prm%P_sl          = lattice_SchmidMatrix_slip(prm%N_sl,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
      prm%h_sl_sl = lattice_interaction_SlipBySlip(prm%N_sl, &
                                                   config%getFloats('interaction_slipslip'), &
@@ -329,7 +329,7 @@ subroutine plastic_dislotwin_init
    prm%N_tw      = config%getInts('ntwin', defaultVal=emptyIntArray)
    prm%sum_N_tw = sum(prm%N_tw)
    if (prm%sum_N_tw > 0) then
-     prm%Schmid_twin  = lattice_SchmidMatrix_twin(prm%N_tw,config%getString('lattice_structure'),&
+     prm%P_tw  = lattice_SchmidMatrix_twin(prm%N_tw,config%getString('lattice_structure'),&
                                                   config%getFloat('c/a',defaultVal=0.0_pReal))
      prm%h_tw_tw      = lattice_interaction_TwinByTwin(prm%N_tw,&
                                                        config%getFloats('interaction_twintwin'), &
@@ -340,13 +340,13 @@ subroutine plastic_dislotwin_init
      prm%r            = config%getFloats('r_twin',       requiredSize=size(prm%N_tw))
 
      prm%xc_twin   = config%getFloat('xc_twin')
-     prm%L0_twin   = config%getFloat('l0_twin')
+     prm%L_tw   = config%getFloat('l0_twin')
      prm%i_tw      = config%getFloat('cmfptwin')
 
-     prm%shear_twin      = lattice_characteristicShear_Twin(prm%N_tw,config%getString('lattice_structure'),&
+     prm%gamma_char      = lattice_characteristicShear_Twin(prm%N_tw,config%getString('lattice_structure'),&
                                                             config%getFloat('c/a',defaultVal=0.0_pReal))
 
-     prm%C66_twin        = lattice_C66_twin(prm%N_tw,prm%C66,config%getString('lattice_structure'),&
+     prm%C66_tw        = lattice_C66_twin(prm%N_tw,prm%C66,config%getString('lattice_structure'),&
                                             config%getFloat('c/a',defaultVal=0.0_pReal))
 
      if (.not. prm%fccTwinTransNucleation) then
@@ -375,21 +375,21 @@ subroutine plastic_dislotwin_init
      
      prm%transStackHeight = config%getFloat('transstackheight', defaultVal=0.0_pReal) ! ToDo: How to handle that???
      prm%i_tr             = config%getFloat('cmfptrans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
-     prm%deltaG           = config%getFloat('deltag')
+     prm%gamma_fcc_hex    = config%getFloat('deltag')
      prm%xc_trans         = config%getFloat('xc_trans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
-     prm%L0_trans         = config%getFloat('l0_trans')
+     prm%L_tr         = config%getFloat('l0_trans')
 
-     prm%interaction_TransTrans = lattice_interaction_TransByTrans(prm%N_tr,&
+     prm%h_tr_tr = lattice_interaction_TransByTrans(prm%N_tr,&
                                                                    config%getFloats('interaction_transtrans'), &
                                                                    config%getString('lattice_structure'))
                                                              
-     prm%C66_trans        = lattice_C66_trans(prm%N_tr,prm%C66, &
+     prm%C66_tr        = lattice_C66_trans(prm%N_tr,prm%C66, &
                                   config%getString('trans_lattice_structure'), &
                                   0.0_pReal, &
                                   config%getFloat('a_bcc', defaultVal=0.0_pReal), &
                                   config%getFloat('a_fcc', defaultVal=0.0_pReal))
                                   
-      prm%Schmid_trans        = lattice_SchmidMatrix_trans(prm%N_tr, &
+      prm%P_tr        = lattice_SchmidMatrix_trans(prm%N_tr, &
                                   config%getString('trans_lattice_structure'), &
                                   0.0_pReal, &
                                   config%getFloat('a_bcc', defaultVal=0.0_pReal), &
@@ -411,7 +411,7 @@ subroutine plastic_dislotwin_init
    if (sum(prm%N_tw) > 0  .or. prm%sum_N_tr > 0) then
      prm%SFE_0K     = config%getFloat('sfe_0k')
      prm%dSFE_dT    = config%getFloat('dsfe_dt')
-     prm%VcrossSlip = config%getFloat('vcrossslip')
+     prm%V_cs       = config%getFloat('vcrossslip')
    endif
    
    if (prm%sum_N_sl > 0 .and. prm%sum_N_tw > 0) then
@@ -422,7 +422,7 @@ subroutine plastic_dislotwin_init
    endif    
 
    if (prm%sum_N_sl > 0 .and. prm%sum_N_tr > 0) then  
-     prm%interaction_SlipTrans = lattice_interaction_SlipByTrans(prm%N_sl,prm%N_tr,&
+     prm%h_sl_tr = lattice_interaction_SlipByTrans(prm%N_sl,prm%N_tr,&
                                                                  config%getFloats('interaction_sliptrans'), &
                                                                  config%getString('lattice_structure')) 
      if (prm%fccTwinTransNucleation .and. prm%sum_N_tr > 12) write(6,*) 'mist' ! ToDo: implement better test. The model will fail also if N_tr is [6,6]
@@ -434,14 +434,14 @@ subroutine plastic_dislotwin_init
    if (prm%sbVelocity > 0.0_pReal) then  
      prm%sbResistance = config%getFloat('shearbandresistance')
      prm%sbQedge      = config%getFloat('qedgepersbsystem')
-     prm%pShearBand   = config%getFloat('p_shearband')
-     prm%qShearBand   = config%getFloat('q_shearband')
+     prm%p_sb         = config%getFloat('p_shearband')
+     prm%q_sb         = config%getFloat('q_shearband')
      
      ! sanity checks
      if (prm%sbResistance  <  0.0_pReal) extmsg = trim(extmsg)//' shearbandresistance'
      if (prm%sbQedge       <  0.0_pReal) extmsg = trim(extmsg)//' qedgepersbsystem'
-     if (prm%pShearBand    <= 0.0_pReal) extmsg = trim(extmsg)//' p_shearband'
-     if (prm%qShearBand    <= 0.0_pReal) extmsg = trim(extmsg)//' q_shearband'
+     if (prm%p_sb          <= 0.0_pReal) extmsg = trim(extmsg)//' p_shearband'
+     if (prm%q_sb          <= 0.0_pReal) extmsg = trim(extmsg)//' q_shearband'
    endif
 
 
@@ -554,8 +554,8 @@ subroutine plastic_dislotwin_init
 
    startIndex = endIndex + 1
    endIndex   = endIndex + prm%sum_N_sl
-   stt%accshear_slip=>plasticState(p)%state(startIndex:endIndex,:)
-   dot%accshear_slip=>plasticState(p)%dotState(startIndex:endIndex,:)
+   stt%gamma_sl=>plasticState(p)%state(startIndex:endIndex,:)
+   dot%gamma_sl=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = 1.0e6_pReal  !ToDo: better make optional parameter
    ! global alias
    plasticState(p)%slipRate        => plasticState(p)%dotState(startIndex:endIndex,:)
@@ -569,8 +569,8 @@ subroutine plastic_dislotwin_init
    
    startIndex = endIndex + 1
    endIndex   = endIndex + prm%sum_N_tr
-   stt%strainTransFraction=>plasticState(p)%state(startIndex:endIndex,:)
-   dot%strainTransFraction=>plasticState(p)%dotState(startIndex:endIndex,:)
+   stt%f_tr=>plasticState(p)%state(startIndex:endIndex,:)
+   dot%f_tr=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTol_f_tr
 
    allocate(dst%Lambda_sl             (prm%sum_N_sl, NipcMyPhase),source=0.0_pReal)
@@ -623,16 +623,16 @@ function plastic_dislotwin_homogenizedC(ipc,ip,el) result(homogenizedC)
 
  f_unrotated = 1.0_pReal &
              - sum(stt%f_tw(1:prm%sum_N_tw,of)) &
-             - sum(stt%strainTransFraction(1:prm%sum_N_tr,of))
+             - sum(stt%f_tr(1:prm%sum_N_tr,of))
 
  homogenizedC = f_unrotated * prm%C66
  do i=1,prm%sum_N_tw
    homogenizedC = homogenizedC &
-                + stt%f_tw(i,of)*prm%C66_twin(1:6,1:6,i)
+                + stt%f_tw(i,of)*prm%C66_tw(1:6,1:6,i)
  enddo
  do i=1,prm%sum_N_tr
    homogenizedC = homogenizedC &
-                + stt%strainTransFraction(i,of)*prm%C66_trans(1:6,1:6,i)
+                + stt%f_tr(i,of)*prm%C66_tr(1:6,1:6,i)
  enddo
 
  end associate
@@ -700,17 +700,17 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
 
  f_unrotated = 1.0_pReal &
              - sum(stt%f_tw(1:prm%sum_N_tw,of)) &
-             - sum(stt%strainTransFraction(1:prm%sum_N_tr,of))
+             - sum(stt%f_tr(1:prm%sum_N_tr,of))
 
  Lp = 0.0_pReal
  dLp_dMp = 0.0_pReal 
 
  call kinetics_slip(Mp,T,instance,of,dot_gamma_sl,dgamma_dtau_slip)
  slipContribution: do i = 1, prm%sum_N_sl
-   Lp = Lp + dot_gamma_sl(i)*prm%Schmid_slip(1:3,1:3,i)
+   Lp = Lp + dot_gamma_sl(i)*prm%P_sl(1:3,1:3,i)
    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                      + dgamma_dtau_slip(i) * prm%Schmid_slip(k,l,i) * prm%Schmid_slip(m,n,i)
+                      + dgamma_dtau_slip(i) * prm%P_sl(k,l,i) * prm%P_sl(m,n,i)
  enddo slipContribution
  
  !ToDo: Why do this before shear banding?
@@ -728,11 +728,11 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
      tau = math_mul33xx33(Mp,Schmid_shearBand)
    
      significantShearBandStress: if (abs(tau) > tol_math_check) then
-       StressRatio_p = (abs(tau)/prm%sbResistance)**prm%pShearBand
-       dot_gamma_sb = sign(prm%sbVelocity*exp(-BoltzmannRatio*(1-StressRatio_p)**prm%qShearBand), tau)
-       dgamma_dtau = abs(dot_gamma_sb)*BoltzmannRatio* prm%pShearBand*prm%qShearBand/ prm%sbResistance &
-                  * (abs(tau)/prm%sbResistance)**(prm%pShearBand-1.0_pReal) &
-                  * (1.0_pReal-StressRatio_p)**(prm%qShearBand-1.0_pReal)
+       StressRatio_p = (abs(tau)/prm%sbResistance)**prm%p_sb
+       dot_gamma_sb = sign(prm%sbVelocity*exp(-BoltzmannRatio*(1-StressRatio_p)**prm%q_sb), tau)
+       dgamma_dtau = abs(dot_gamma_sb)*BoltzmannRatio* prm%p_sb*prm%q_sb/ prm%sbResistance &
+                  * (abs(tau)/prm%sbResistance)**(prm%p_sb-1.0_pReal) &
+                  * (1.0_pReal-StressRatio_p)**(prm%q_sb-1.0_pReal)
  
        Lp = Lp + dot_gamma_sb * Schmid_shearBand
        forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -745,18 +745,18 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
  
  call kinetics_twin(Mp,T,dot_gamma_sl,instance,of,dot_gamma_twin,dgamma_dtau_twin)
  twinContibution: do i = 1, prm%sum_N_tw
-   Lp = Lp + dot_gamma_twin(i)*prm%Schmid_twin(1:3,1:3,i) * f_unrotated
+   Lp = Lp + dot_gamma_twin(i)*prm%P_tw(1:3,1:3,i) * f_unrotated
    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                      + dgamma_dtau_twin(i)* prm%Schmid_twin(k,l,i)*prm%Schmid_twin(m,n,i) * f_unrotated
+                      + dgamma_dtau_twin(i)* prm%P_tw(k,l,i)*prm%P_tw(m,n,i) * f_unrotated
  enddo twinContibution
  
  call kinetics_twin(Mp,T,dot_gamma_sl,instance,of,dot_gamma_tr,dgamma_dtau_trans)
  transContibution: do i = 1, prm%sum_N_tr
-   Lp = Lp + dot_gamma_tr(i)*prm%Schmid_trans(1:3,1:3,i) * f_unrotated
+   Lp = Lp + dot_gamma_tr(i)*prm%P_tr(1:3,1:3,i) * f_unrotated
    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                      + dgamma_dtau_trans(i)* prm%Schmid_trans(k,l,i)*prm%Schmid_trans(m,n,i) * f_unrotated
+                      + dgamma_dtau_trans(i)* prm%P_tr(k,l,i)*prm%P_tr(m,n,i) * f_unrotated
  enddo transContibution
 
 
@@ -776,8 +776,6 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
    math_clip, &
    math_mul33xx33, &
    PI 
- use material, only: &
-   plasticState
 
  implicit none
  real(pReal), dimension(3,3),  intent(in):: &
@@ -808,17 +806,17 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
 
  f_unrotated = 1.0_pReal &
              - sum(stt%f_tw(1:prm%sum_N_tw,of)) &
-             - sum(stt%strainTransFraction(1:prm%sum_N_tr,of))
+             - sum(stt%f_tr(1:prm%sum_N_tr,of))
  VacancyDiffusion = prm%D0*exp(-prm%Qsd/(kB*T))
 
  call kinetics_slip(Mp,T,instance,of,dot_gamma_sl)
- dot%accshear_slip(:,of) = abs(dot_gamma_sl)
+ dot%gamma_sl(:,of) = abs(dot_gamma_sl)
  
  DotRhoMultiplication = abs(dot_gamma_sl)/(prm%b_sl*dst%Lambda_sl(:,of))
  EdgeDipMinDistance   = prm%CEdgeDipMinDistance*prm%b_sl
  
  slipState: do i = 1, prm%sum_N_sl
-   tau = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,i))
+   tau = math_mul33xx33(Mp,prm%P_sl(1:3,1:3,i))
 
    significantSlipStress: if (dEq0(tau)) then
      Dotrho_DipFormation = 0.0_pReal
@@ -857,7 +855,7 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
  enddo slipState
  
  call kinetics_twin(Mp,T,dot_gamma_sl,instance,of,dot_gamma_twin)
- dot%f_tw(:,of) = f_unrotated*dot_gamma_twin/prm%shear_twin
+ dot%f_tw(:,of) = f_unrotated*dot_gamma_twin/prm%gamma_char
 
  call kinetics_trans(Mp,T,dot_gamma_sl,instance,of,dot_gamma_tr)
  dot%f_tw(:,of) = f_unrotated*dot_gamma_tr
@@ -905,7 +903,7 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
            dst => microstructure(instance))
 
  sumf_twin  = sum(stt%f_tw(1:prm%sum_N_tw,of))
- sumf_trans = sum(stt%strainTransFraction(1:prm%sum_N_tr,of))
+ sumf_trans = sum(stt%f_tr(1:prm%sum_N_tr,of))
 
  SFE = prm%SFE_0K + prm%dSFE_dT * T
  
@@ -934,11 +932,11 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
  
  if (prm%sum_N_tr > 0 .and. prm%sum_N_sl > 0) &
    lambda_sl_tr_inv = &                                                                      ! ToDo: does not work if N_tr is not 12
-      matmul(transpose(prm%interaction_SlipTrans),ftransOverLamellarSize)/(1.0_pReal-sumf_trans)    ! ToDo: remove transpose
+      matmul(transpose(prm%h_sl_tr),ftransOverLamellarSize)/(1.0_pReal-sumf_trans)    ! ToDo: remove transpose
 
  
  !ToDo: needed? if (prm%sum_N_tr > 0) &
- lambda_tr_tr_inv = matmul(prm%interaction_TransTrans,ftransOverLamellarSize)/(1.0_pReal-sumf_trans)
+ lambda_tr_tr_inv = matmul(prm%h_tr_tr,ftransOverLamellarSize)/(1.0_pReal-sumf_trans)
 
  
 
@@ -965,18 +963,18 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
  !* threshold stress for growing twin/martensite
  if(prm%sum_N_tw == prm%sum_N_sl) &
  dst%threshold_stress_twin(:,of) = &
-             (SFE/(3.0_pReal*prm%b_tw)+ 3.0_pReal*prm%b_tw*prm%mu/(prm%L0_twin*prm%b_sl)) ! slip burgers here correct?
+             (SFE/(3.0_pReal*prm%b_tw)+ 3.0_pReal*prm%b_tw*prm%mu/(prm%L_tw*prm%b_sl)) ! slip burgers here correct?
  if(prm%sum_N_tr == prm%sum_N_sl) &
    dst%threshold_stress_trans(:,of) =  &
          (SFE/(3.0_pReal*prm%b_tr) + 3.0_pReal*prm%b_tr*prm%mu/&
-              (prm%L0_trans*prm%b_sl) + prm%transStackHeight*prm%deltaG/ (3.0_pReal*prm%b_tr) )    
+              (prm%L_tr*prm%b_sl) + prm%transStackHeight*prm%gamma_fcc_hex/ (3.0_pReal*prm%b_tr) )    
  
 
  dst%f_tw(:,of)       = (PI/4.0_pReal)*prm%twinsize*dst%Lambda_tw(:,of)**2.0_pReal
  dst%f_tr(:,of) = (PI/4.0_pReal)*prm%lamellarsize*dst%Lambda_tr(:,of)**2.0_pReal
 
 
- x0 = prm%mu*prm%b_tw**2.0_pReal/(SFE*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)  ! ToDo: In the paper, this is the burgers vector for slip
+ x0 = prm%mu*prm%b_tw**2.0_pReal/(SFE*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)  ! ToDo: In the paper, this is the burgers vector for slip and is the same for twin and trans
  dst%tau_r_tw(:,of) = prm%mu*prm%b_tw/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%xc_twin)+cos(pi/3.0_pReal)/x0)
 
  x0 = prm%mu*prm%b_tr**2.0_pReal/(SFE*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu) ! ToDo: In the paper, this is the burgers vector for slip
@@ -1030,14 +1028,14 @@ function plastic_dislotwin_postResults(Mp,T,instance,of) result(postResults)
        call kinetics_slip(Mp,T,instance,of,postResults(c+1:c+prm%sum_N_sl))
        c = c + prm%sum_N_sl
      case (gamma_sl_ID)
-      postResults(c+1:c+prm%sum_N_sl)  = stt%accshear_slip(1:prm%sum_N_sl,of)
+      postResults(c+1:c+prm%sum_N_sl)  = stt%gamma_sl(1:prm%sum_N_sl,of)
        c = c + prm%sum_N_sl
      case (Lambda_sl_ID)
        postResults(c+1:c+prm%sum_N_sl) = dst%Lambda_sl(1:prm%sum_N_sl,of)
        c = c + prm%sum_N_sl
      case (resolved_stress_slip_ID)
        do j = 1, prm%sum_N_sl
-         postResults(c+j) = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,j))
+         postResults(c+j) = math_mul33xx33(Mp,prm%P_sl(1:3,1:3,j))
        enddo
        c = c + prm%sum_N_sl
      case (threshold_stress_slip_ID)
@@ -1052,7 +1050,7 @@ function plastic_dislotwin_postResults(Mp,T,instance,of) result(postResults)
        c = c + prm%sum_N_tw
      case (resolved_stress_twin_ID)
        do j = 1, prm%sum_N_tw
-         postResults(c+j) = math_mul33xx33(Mp,prm%Schmid_twin(1:3,1:3,j))
+         postResults(c+j) = math_mul33xx33(Mp,prm%P_tw(1:3,1:3,j))
        enddo
        c = c + prm%sum_N_tw
      case (threshold_stress_twin_ID)
@@ -1060,7 +1058,7 @@ function plastic_dislotwin_postResults(Mp,T,instance,of) result(postResults)
        c = c + prm%sum_N_tw
 
      case (f_tr_ID)
-       postResults(c+1:c+prm%sum_N_tr) = stt%strainTransFraction(1:prm%sum_N_tr,of)
+       postResults(c+1:c+prm%sum_N_tr) = stt%f_tr(1:prm%sum_N_tr,of)
        c = c + prm%sum_N_tr
    end select
  enddo
@@ -1144,7 +1142,7 @@ pure subroutine kinetics_slip(Mp,T,instance,of, &
  associate(prm => param(instance), stt => state(instance), dst => microstructure(instance))
 
  do i = 1, prm%sum_N_sl
-   tau(i) = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,i))
+   tau(i) = math_mul33xx33(Mp,prm%P_sl(1:3,1:3,i))
  enddo
  
  tau_eff = abs(tau)-dst%tau_pass(:,of)
@@ -1217,15 +1215,15 @@ pure subroutine kinetics_twin(Mp,T,dot_gamma_sl,instance,of,&
  associate(prm => param(instance), stt => state(instance), dst => microstructure(instance))
 
  do i = 1, prm%sum_N_tw
-   tau(i) = math_mul33xx33(Mp,prm%Schmid_twin(1:3,1:3,i))
+   tau(i) = math_mul33xx33(Mp,prm%P_tw(1:3,1:3,i))
    isFCC: if (prm%fccTwinTransNucleation) then
      s1=prm%fcc_twinNucleationSlipPair(1,i)
      s2=prm%fcc_twinNucleationSlipPair(2,i)
      if (tau(i) < dst%tau_r_tw(i,of)) then
        Ndot0=(abs(dot_gamma_sl(s1))*(stt%rho_mob(s2,of)+stt%rho_dip(s2,of))+&
               abs(dot_gamma_sl(s2))*(stt%rho_mob(s1,of)+stt%rho_dip(s1,of)))/&                      ! ToDo: MD: it would be more consistent to use shearrates from state
-               (prm%L0_twin*prm%b_sl(i))*&
-               (1.0_pReal-exp(-prm%VcrossSlip/(kB*T)*&
+               (prm%L_tw*prm%b_sl(i))*&
+               (1.0_pReal-exp(-prm%V_cs/(kB*T)*&
                (dst%tau_r_tw(i,of)-tau)))
      else
        Ndot0=0.0_pReal
@@ -1237,7 +1235,7 @@ pure subroutine kinetics_twin(Mp,T,dot_gamma_sl,instance,of,&
 
  significantStress: where(tau > tol_math_check)
    StressRatio_r = (dst%threshold_stress_twin(:,of)/tau)**prm%r
-   dot_gamma_twin  = prm%shear_twin * dst%f_tw(:,of) * Ndot0*exp(-StressRatio_r)
+   dot_gamma_twin  = prm%gamma_char * dst%f_tw(:,of) * Ndot0*exp(-StressRatio_r)
    dgamma_dtau = (dot_gamma_twin*prm%r/tau)*StressRatio_r
  else where significantStress
    dot_gamma_twin  = 0.0_pReal
@@ -1289,15 +1287,15 @@ pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,instance,of,&
  associate(prm => param(instance), stt => state(instance), dst => microstructure(instance))
 
  do i = 1, prm%sum_N_tr
-   tau(i) = math_mul33xx33(Mp,prm%Schmid_trans(1:3,1:3,i))
+   tau(i) = math_mul33xx33(Mp,prm%P_tr(1:3,1:3,i))
    isFCC: if (prm%fccTwinTransNucleation) then
      s1=prm%fcc_twinNucleationSlipPair(1,i)
      s2=prm%fcc_twinNucleationSlipPair(2,i)
      if (tau(i) < dst%tau_r_tr(i,of)) then
        Ndot0=(abs(dot_gamma_sl(s1))*(stt%rho_mob(s2,of)+stt%rho_dip(s2,of))+&
               abs(dot_gamma_sl(s2))*(stt%rho_mob(s1,of)+stt%rho_dip(s1,of)))/&                      ! ToDo: MD: it would be more consistent to use shearrates from state
-               (prm%L0_trans*prm%b_sl(i))*&
-               (1.0_pReal-exp(-prm%VcrossSlip/(kB*T)*&
+               (prm%L_tr*prm%b_sl(i))*&
+               (1.0_pReal-exp(-prm%V_cs/(kB*T)*&
                (dst%tau_r_tr(i,of)-tau)))
      else
        Ndot0=0.0_pReal
