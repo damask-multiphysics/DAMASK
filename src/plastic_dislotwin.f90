@@ -66,7 +66,7 @@ module plastic_dislotwin
      aTol_f_tr, &                                                                                   !< absolute tolerance for integration of trans volume fraction
      gamma_fcc_hex, &                                                                                      !< Free energy difference between austensite and martensite
      i_tr, &                                                                                        !<
-     transStackHeight                                                                               !< Stack height of hex nucleus 
+     h                                                                                              !< Stack height of hex nucleus 
    real(pReal),                  dimension(:),     allocatable :: & 
      rho_mob_0, &                                                                                   !< initial unipolar dislocation density per slip system
      rho_dip_0, &                                                                                   !< initial dipole dislocation density per slip system
@@ -76,11 +76,11 @@ module plastic_dislotwin
      Delta_F,&                                                                                      !< activation energy for glide [J] for each slip system
      v0, &                                                                                          !< dislocation velocity prefactor [m/s] for each slip system
      dot_N_0_tw, &                                                                                  !< twin nucleation rate [1/m³s] for each twin system
-     dot_N_0_tr, &                                                                                 !< trans nucleation rate [1/m³s] for each trans system
-     twinsize, &                                                                                    !< twin thickness [m] for each twin system
+     dot_N_0_tr, &                                                                                  !< trans nucleation rate [1/m³s] for each trans system
+     t_tw, &                                                                                        !< twin thickness [m] for each twin system
      CLambdaSlip, &                                                                                 !< Adj. parameter for distance between 2 forest dislocations for each slip system
      atomicVolume, &
-     lamellarsize, &                                                                                !< martensite lamellar thickness [m] for each trans system and instance
+     t_tr, &                                                                                       !< martensite lamellar thickness [m] for each trans system and instance
      p, &                                                                                           !< p-exponent in glide velocity
      q, &                                                                                           !< q-exponent in glide velocity
      r, &                                                                                           !< r-exponent in twin nucleation rate
@@ -337,7 +337,7 @@ subroutine plastic_dislotwin_init
                                                        config%getString('lattice_structure'))
 
      prm%b_tw         = config%getFloats('twinburgers',  requiredSize=size(prm%N_tw))
-     prm%twinsize     = config%getFloats('twinsize',     requiredSize=size(prm%N_tw))
+     prm%t_tw         = config%getFloats('twinsize',     requiredSize=size(prm%N_tw))
      prm%r            = config%getFloats('r_twin',       requiredSize=size(prm%N_tw))
 
      prm%xc_twin   = config%getFloat('xc_twin')
@@ -357,11 +357,11 @@ subroutine plastic_dislotwin_init
 
      ! expand: family => system
      prm%b_tw         = math_expand(prm%b_tw,prm%N_tw)
-     prm%twinsize     = math_expand(prm%twinsize,prm%N_tw)
+     prm%t_tw         = math_expand(prm%t_tw,prm%N_tw)
      prm%r            = math_expand(prm%r,prm%N_tw)
      
    else
-     allocate(prm%twinsize(0))
+     allocate(prm%t_tw(0))
      allocate(prm%b_tw(0))
      allocate(prm%r(0))
    endif
@@ -374,11 +374,11 @@ subroutine plastic_dislotwin_init
      prm%b_tr = config%getFloats('transburgers')
      prm%b_tr = math_expand(prm%b_tr,prm%N_tr)
      
-     prm%transStackHeight = config%getFloat('transstackheight', defaultVal=0.0_pReal) ! ToDo: How to handle that???
+     prm%h                = config%getFloat('transstackheight', defaultVal=0.0_pReal) ! ToDo: How to handle that???
      prm%i_tr             = config%getFloat('cmfptrans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
      prm%gamma_fcc_hex    = config%getFloat('deltag')
      prm%xc_trans         = config%getFloat('xc_trans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
-     prm%L_tr         = config%getFloat('l0_trans')
+     prm%L_tr             = config%getFloat('l0_trans')
 
      prm%h_tr_tr = lattice_interaction_TransByTrans(prm%N_tr,&
                                                                    config%getFloats('interaction_transtrans'), &
@@ -400,12 +400,12 @@ subroutine plastic_dislotwin_init
         prm%dot_N_0_tr = config%getFloats('ndot0_trans')
         prm%dot_N_0_tr = math_expand(prm%dot_N_0_tr,prm%N_tr)
      endif
-     prm%lamellarsize = config%getFloats('lamellarsize')
-     prm%lamellarsize = math_expand(prm%lamellarsize,prm%N_tr)
-     prm%s = config%getFloats('s_trans',defaultVal=[0.0_pReal])
-     prm%s = math_expand(prm%s,prm%N_tr)
+     prm%t_tr = config%getFloats('lamellarsize')
+     prm%t_tr = math_expand(prm%t_tr,prm%N_tr)
+     prm%s    = config%getFloats('s_trans',defaultVal=[0.0_pReal])
+     prm%s    = math_expand(prm%s,prm%N_tr)
    else
-     allocate(prm%lamellarsize(0))
+     allocate(prm%t_tr(0))
      allocate(prm%b_tr(0))
    endif
    
@@ -906,8 +906,8 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
  SFE = prm%SFE_0K + prm%dSFE_dT * T
  
  !* rescaled volume fraction for topology
- fOverStacksize         =  stt%f_tw(1:prm%sum_N_tw,of)/prm%twinsize  !ToDo: this is per system
- ftransOverLamellarSize =  sumf_trans/prm%lamellarsize                !ToDo: But this not ...
+ fOverStacksize         =  stt%f_tw(1:prm%sum_N_tw,of)/prm%t_tw  !ToDo: this is per system
+ ftransOverLamellarSize =  sumf_trans/prm%t_tr                !ToDo: But this not ...
  !Todo: Physically ok, but naming could be adjusted
 
 
@@ -965,11 +965,11 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
  if(prm%sum_N_tr == prm%sum_N_sl) &
    dst%tau_hat_tr(:,of) =  &
          (SFE/(3.0_pReal*prm%b_tr) + 3.0_pReal*prm%b_tr*prm%mu/&
-              (prm%L_tr*prm%b_sl) + prm%transStackHeight*prm%gamma_fcc_hex/ (3.0_pReal*prm%b_tr) )    
+              (prm%L_tr*prm%b_sl) + prm%h*prm%gamma_fcc_hex/ (3.0_pReal*prm%b_tr) )    
  
 
- dst%f_tw(:,of)       = (PI/4.0_pReal)*prm%twinsize*dst%Lambda_tw(:,of)**2.0_pReal
- dst%f_tr(:,of) = (PI/4.0_pReal)*prm%lamellarsize*dst%Lambda_tr(:,of)**2.0_pReal
+ dst%f_tw(:,of) = (PI/4.0_pReal)*prm%t_tw*dst%Lambda_tw(:,of)**2.0_pReal
+ dst%f_tr(:,of) = (PI/4.0_pReal)*prm%t_tr*dst%Lambda_tr(:,of)**2.0_pReal
 
 
  x0 = prm%mu*prm%b_tw**2.0_pReal/(SFE*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)  ! ToDo: In the paper, this is the burgers vector for slip and is the same for twin and trans
