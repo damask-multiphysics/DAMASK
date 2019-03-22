@@ -892,8 +892,8 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
 
  real(pReal), dimension(:), allocatable :: &
    x0, &
-   fOverStacksize, &
-   ftransOverLamellarSize
+   f_over_t_tw, &
+   f_over_t_tr
 
 
  associate(prm => param(instance),&
@@ -906,8 +906,8 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
  SFE = prm%SFE_0K + prm%dSFE_dT * T
  
  !* rescaled volume fraction for topology
- fOverStacksize         =  stt%f_tw(1:prm%sum_N_tw,of)/prm%t_tw  !ToDo: this is per system
- ftransOverLamellarSize =  sumf_trans/prm%t_tr                !ToDo: But this not ...
+ f_over_t_tw =  stt%f_tw(1:prm%sum_N_tw,of)/prm%t_tw  !ToDo: this is per system
+ f_over_t_tr =  sumf_trans/prm%t_tr                !ToDo: But this not ...
  !Todo: Physically ok, but naming could be adjusted
 
 
@@ -919,22 +919,22 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
  
  if (prm%sum_N_tw > 0 .and. prm%sum_N_sl > 0) &
    inv_lambda_sl_tw = &
-     matmul(transpose(prm%h_sl_tw),fOverStacksize)/(1.0_pReal-sumf_twin)               ! ToDo: Change order/no transpose
+     matmul(transpose(prm%h_sl_tw),f_over_t_tw)/(1.0_pReal-sumf_twin)               ! ToDo: Change order/no transpose
 
  
 
   !ToDo: needed? if (prm%sum_N_tw > 0) &
- inv_lambda_tw_tw = matmul(prm%h_tw_tw,fOverStacksize)/(1.0_pReal-sumf_twin)
+ inv_lambda_tw_tw = matmul(prm%h_tw_tw,f_over_t_tw)/(1.0_pReal-sumf_twin)
 
 
  
  if (prm%sum_N_tr > 0 .and. prm%sum_N_sl > 0) &
    inv_lambda_sl_tr = &                                                                      ! ToDo: does not work if N_tr is not 12
-      matmul(transpose(prm%h_sl_tr),ftransOverLamellarSize)/(1.0_pReal-sumf_trans)    ! ToDo: remove transpose
+      matmul(transpose(prm%h_sl_tr),f_over_t_tr)/(1.0_pReal-sumf_trans)    ! ToDo: remove transpose
 
  
  !ToDo: needed? if (prm%sum_N_tr > 0) &
- inv_lambda_tr_tr = matmul(prm%h_tr_tr,ftransOverLamellarSize)/(1.0_pReal-sumf_trans)
+ inv_lambda_tr_tr = matmul(prm%h_tr_tr,f_over_t_tr)/(1.0_pReal-sumf_trans)
 
  
 
