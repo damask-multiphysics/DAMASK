@@ -657,11 +657,11 @@ pure subroutine kinetics(Mp,T,instance,of, &
  
   if (present(ddot_gamma_dtau_pos)) then
   significantPositiveTau2: where(abs(tau_pos)-dst%threshold_stress(:,of) > tol_math_check)
-    dtn = t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
+    dtn = -1.0_pReal * t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
         * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau_0
-    dtk = t_k / tau_pos
+    dtk = -1.0_pReal * t_k / tau_pos
    
-    dvel = prm%kink_height * (dtk + dtn) / (t_n + t_k)**2.0_pReal
+    dvel = -1.0_pReal * prm%kink_height * (dtk + dtn) / (t_n + t_k)**2.0_pReal
  
     ddot_gamma_dtau_pos = dot_gamma_0 * dvel* 0.5_pReal
   else where significantPositiveTau2
@@ -687,11 +687,11 @@ pure subroutine kinetics(Mp,T,instance,of, &
  
   if (present(ddot_gamma_dtau_neg)) then
   significantNegativeTau2: where(abs(tau_neg)-dst%threshold_stress(:,of) > tol_math_check)
-    dtn = t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
+    dtn = -1.0_pReal * t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
         * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau_0
-    dtk = t_k / tau_neg
+    dtk = -1.0_pReal * t_k / tau_neg
    
-    dvel = prm%kink_height * (dtk + dtn) / (t_n + t_k)**2.0_pReal
+    dvel = -1.0_pReal * prm%kink_height * (dtk + dtn) / (t_n + t_k)**2.0_pReal
  
     ddot_gamma_dtau_neg = dot_gamma_0 * dvel * 0.5_pReal
   else where significantNegativeTau2
