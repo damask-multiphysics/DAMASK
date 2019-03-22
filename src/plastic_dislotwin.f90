@@ -75,8 +75,8 @@ module plastic_dislotwin
      b_tr, &                                                                                        !< absolute length of burgers vector [m] for each transformation system
      Delta_F,&                                                                                      !< activation energy for glide [J] for each slip system
      v0, &                                                                                          !< dislocation velocity prefactor [m/s] for each slip system
-     Ndot0_twin, &                                                                                  !< twin nucleation rate [1/m³s] for each twin system
-     Ndot0_trans, &                                                                                 !< trans nucleation rate [1/m³s] for each trans system
+     dot_N_0_tw, &                                                                                  !< twin nucleation rate [1/m³s] for each twin system
+     dot_N_0_tr, &                                                                                 !< trans nucleation rate [1/m³s] for each trans system
      twinsize, &                                                                                    !< twin thickness [m] for each twin system
      CLambdaSlip, &                                                                                 !< Adj. parameter for distance between 2 forest dislocations for each slip system
      atomicVolume, &
@@ -105,19 +105,19 @@ module plastic_dislotwin
      C66_tw, &
      C66_tr
    integer :: & 
-     sum_N_sl, &                                                                                     !< total number of active slip system
-     sum_N_tw, &                                                                                     !< total number of active twin system
-     sum_N_tr                                                                                        !< total number of active transformation system 
+     sum_N_sl, &                                                                                    !< total number of active slip system
+     sum_N_tw, &                                                                                    !< total number of active twin system
+     sum_N_tr                                                                                       !< total number of active transformation system 
    integer,                      dimension(:),     allocatable :: & 
-     N_sl, &                                                                                         !< number of active slip systems for each family
-     N_tw, &                                                                                         !< number of active twin systems for each family
-     N_tr                                                                                            !< number of active transformation systems for each family
+     N_sl, &                                                                                        !< number of active slip systems for each family
+     N_tw, &                                                                                        !< number of active twin systems for each family
+     N_tr                                                                                           !< number of active transformation systems for each family
    integer(kind(undefined_ID)),  dimension(:),     allocatable :: &
-     outputID                                                                                        !< ID of each post result output
+     outputID                                                                                       !< ID of each post result output
    logical :: &
-     fccTwinTransNucleation, &                                                                       !< twinning and transformation models are for fcc
-     dipoleFormation                                                                                 !< flag indicating consideration of dipole formation
- end type                                                                                            !< container type for internal constitutive parameters
+     fccTwinTransNucleation, &                                                                      !< twinning and transformation models are for fcc
+     dipoleFormation                                                                                !< flag indicating consideration of dipole formation
+ end type                                                                                           !< container type for internal constitutive parameters
 
  type, private :: tDislotwinState
    real(pReal),                  dimension(:,:),   pointer :: &
@@ -351,8 +351,8 @@ subroutine plastic_dislotwin_init
                                             config%getFloat('c/a',defaultVal=0.0_pReal))
 
      if (.not. prm%fccTwinTransNucleation) then
-       prm%Ndot0_twin = config%getFloats('ndot0_twin') 
-       prm%Ndot0_twin = math_expand(prm%Ndot0_twin,prm%N_tw)
+       prm%dot_N_0_tw = config%getFloats('ndot0_twin') 
+       prm%dot_N_0_tw = math_expand(prm%dot_N_0_tw,prm%N_tw)
      endif
 
      ! expand: family => system
@@ -397,8 +397,8 @@ subroutine plastic_dislotwin_init
                                   config%getFloat('a_fcc', defaultVal=0.0_pReal))
                                                  
      if (lattice_structure(p) /= LATTICE_fcc_ID) then
-        prm%Ndot0_trans = config%getFloats('ndot0_trans')
-        prm%Ndot0_trans = math_expand(prm%Ndot0_trans,prm%N_tr)
+        prm%dot_N_0_tr = config%getFloats('ndot0_trans')
+        prm%dot_N_0_tr = math_expand(prm%dot_N_0_tr,prm%N_tr)
      endif
      prm%lamellarsize = config%getFloats('lamellarsize')
      prm%lamellarsize = math_expand(prm%lamellarsize,prm%N_tr)
@@ -454,7 +454,7 @@ subroutine plastic_dislotwin_init
    
 
        !if (Ndot0PerTwinFamily(f,p) < 0.0_pReal) &
-        ! call IO_error(211,el=p,ext_msg='ndot0_twin ('//PLASTICITY_DISLOTWIN_label//')')
+        ! call IO_error(211,el=p,ext_msg='dot_N_0_tw ('//PLASTICITY_DISLOTWIN_label//')')
 
    if (any(prm%atomicVolume <= 0.0_pReal)) &
      call IO_error(211,el=p,ext_msg='cAtomicVolume ('//PLASTICITY_DISLOTWIN_label//')')
@@ -664,14 +664,14 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
  integer :: i,k,l,m,n
  real(pReal) :: f_unrotated,StressRatio_p,&
                 BoltzmannRatio, &
-    dgamma_dtau, &
+    ddot_gamma_dtau, &
     tau
  real(pReal), dimension(param(instance)%sum_N_sl) :: &
-    dot_gamma_sl,dgamma_dtau_slip
+    dot_gamma_sl,ddot_gamma_dtau_slip
  real(pReal), dimension(param(instance)%sum_N_tw) :: &
-    dot_gamma_twin,dgamma_dtau_twin
+    dot_gamma_twin,ddot_gamma_dtau_twin
  real(pReal), dimension(param(instance)%sum_N_tr) :: &
-    dot_gamma_tr,dgamma_dtau_trans
+    dot_gamma_tr,ddot_gamma_dtau_trans
  real(pReal):: dot_gamma_sb
  real(pReal), dimension(3,3) :: eigVectors, P_sb
  real(pReal), dimension(3)   :: eigValues
@@ -705,12 +705,12 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
  Lp = 0.0_pReal
  dLp_dMp = 0.0_pReal 
 
- call kinetics_slip(Mp,T,instance,of,dot_gamma_sl,dgamma_dtau_slip)
+ call kinetics_slip(Mp,T,instance,of,dot_gamma_sl,ddot_gamma_dtau_slip)
  slipContribution: do i = 1, prm%sum_N_sl
    Lp = Lp + dot_gamma_sl(i)*prm%P_sl(1:3,1:3,i)
    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                      + dgamma_dtau_slip(i) * prm%P_sl(k,l,i) * prm%P_sl(m,n,i)
+                      + ddot_gamma_dtau_slip(i) * prm%P_sl(k,l,i) * prm%P_sl(m,n,i)
  enddo slipContribution
  
  !ToDo: Why do this before shear banding?
@@ -730,33 +730,33 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
      significantShearBandStress: if (abs(tau) > tol_math_check) then
        StressRatio_p = (abs(tau)/prm%sbResistance)**prm%p_sb
        dot_gamma_sb = sign(prm%sbVelocity*exp(-BoltzmannRatio*(1-StressRatio_p)**prm%q_sb), tau)
-       dgamma_dtau = abs(dot_gamma_sb)*BoltzmannRatio* prm%p_sb*prm%q_sb/ prm%sbResistance &
+       ddot_gamma_dtau = abs(dot_gamma_sb)*BoltzmannRatio* prm%p_sb*prm%q_sb/ prm%sbResistance &
                   * (abs(tau)/prm%sbResistance)**(prm%p_sb-1.0_pReal) &
                   * (1.0_pReal-StressRatio_p)**(prm%q_sb-1.0_pReal)
  
        Lp = Lp + dot_gamma_sb * P_sb
        forall (k=1:3,l=1:3,m=1:3,n=1:3) &
          dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                          + dgamma_dtau * P_sb(k,l) * P_sb(m,n)
+                          + ddot_gamma_dtau * P_sb(k,l) * P_sb(m,n)
      endif significantShearBandStress
    enddo
 
  endif shearBandingContribution
  
- call kinetics_twin(Mp,T,dot_gamma_sl,instance,of,dot_gamma_twin,dgamma_dtau_twin)
+ call kinetics_twin(Mp,T,dot_gamma_sl,instance,of,dot_gamma_twin,ddot_gamma_dtau_twin)
  twinContibution: do i = 1, prm%sum_N_tw
    Lp = Lp + dot_gamma_twin(i)*prm%P_tw(1:3,1:3,i) * f_unrotated
    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                      + dgamma_dtau_twin(i)* prm%P_tw(k,l,i)*prm%P_tw(m,n,i) * f_unrotated
+                      + ddot_gamma_dtau_twin(i)* prm%P_tw(k,l,i)*prm%P_tw(m,n,i) * f_unrotated
  enddo twinContibution
  
- call kinetics_twin(Mp,T,dot_gamma_sl,instance,of,dot_gamma_tr,dgamma_dtau_trans)
+ call kinetics_twin(Mp,T,dot_gamma_sl,instance,of,dot_gamma_tr,ddot_gamma_dtau_trans)
  transContibution: do i = 1, prm%sum_N_tr
    Lp = Lp + dot_gamma_tr(i)*prm%P_tr(1:3,1:3,i) * f_unrotated
    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                      + dgamma_dtau_trans(i)* prm%P_tr(k,l,i)*prm%P_tr(m,n,i) * f_unrotated
+                      + ddot_gamma_dtau_trans(i)* prm%P_tr(k,l,i)*prm%P_tr(m,n,i) * f_unrotated
  enddo transContibution
 
 
@@ -882,13 +882,13 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
  real(pReal) :: &
    sumf_twin,SFE,sumf_trans
  real(pReal), dimension(param(instance)%sum_N_sl) :: &
-   lambda_sl_sl_inv, & !* 1/mean free distance between 2 forest dislocations seen by a moving dislocation
-   lambda_sl_tw_inv, & !* 1/mean free distance between 2 twin stacks from different systems seen by a moving dislocation
-   lambda_sl_tr_inv    !* 1/mean free distance between 2 martensite lamellar from different systems seen by a moving dislocation
+   inv_lambda_sl_sl, & !* 1/mean free distance between 2 forest dislocations seen by a moving dislocation
+   inv_lambda_sl_tw, & !* 1/mean free distance between 2 twin stacks from different systems seen by a moving dislocation
+   inv_lambda_sl_tr    !* 1/mean free distance between 2 martensite lamellar from different systems seen by a moving dislocation
  real(pReal), dimension(param(instance)%sum_N_tw) :: &
-   lambda_tw_tw_inv  !* 1/mean free distance between 2 twin stacks from different systems seen by a growing twin
+   inv_lambda_tw_tw  !* 1/mean free distance between 2 twin stacks from different systems seen by a growing twin
   real(pReal), dimension(param(instance)%sum_N_tr) :: &
-   lambda_tr_tr_inv  !* 1/mean free distance between 2 martensite stacks from different systems seen by a growing martensite (1/lambda_trans)
+   inv_lambda_tr_tr  !* 1/mean free distance between 2 martensite stacks from different systems seen by a growing martensite (1/lambda_trans)
 
  real(pReal), dimension(:), allocatable :: &
    x0, &
@@ -912,45 +912,45 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
 
 
  forall (i = 1:prm%sum_N_sl) &
-   lambda_sl_sl_inv(i) = &
+   inv_lambda_sl_sl(i) = &
      sqrt(dot_product((stt%rho_mob(1:prm%sum_N_sl,of)+stt%rho_dip(1:prm%sum_N_sl,of)),&
                       prm%forestProjection(1:prm%sum_N_sl,i)))/prm%CLambdaSlip(i) ! change order and use matmul
 
  
  if (prm%sum_N_tw > 0 .and. prm%sum_N_sl > 0) &
-   lambda_sl_tw_inv = &
+   inv_lambda_sl_tw = &
      matmul(transpose(prm%h_sl_tw),fOverStacksize)/(1.0_pReal-sumf_twin)               ! ToDo: Change order/no transpose
 
  
 
   !ToDo: needed? if (prm%sum_N_tw > 0) &
- lambda_tw_tw_inv = matmul(prm%h_tw_tw,fOverStacksize)/(1.0_pReal-sumf_twin)
+ inv_lambda_tw_tw = matmul(prm%h_tw_tw,fOverStacksize)/(1.0_pReal-sumf_twin)
 
 
  
  if (prm%sum_N_tr > 0 .and. prm%sum_N_sl > 0) &
-   lambda_sl_tr_inv = &                                                                      ! ToDo: does not work if N_tr is not 12
+   inv_lambda_sl_tr = &                                                                      ! ToDo: does not work if N_tr is not 12
       matmul(transpose(prm%h_sl_tr),ftransOverLamellarSize)/(1.0_pReal-sumf_trans)    ! ToDo: remove transpose
 
  
  !ToDo: needed? if (prm%sum_N_tr > 0) &
- lambda_tr_tr_inv = matmul(prm%h_tr_tr,ftransOverLamellarSize)/(1.0_pReal-sumf_trans)
+ inv_lambda_tr_tr = matmul(prm%h_tr_tr,ftransOverLamellarSize)/(1.0_pReal-sumf_trans)
 
  
 
     if ((prm%sum_N_tw > 0) .or. (prm%sum_N_tr > 0)) then              ! ToDo: Change order
        dst%Lambda_sl(:,of) = &
          prm%D/(1.0_pReal+prm%D*&
-         (lambda_sl_sl_inv + lambda_sl_tw_inv + lambda_sl_tr_inv))
+         (inv_lambda_sl_sl + inv_lambda_sl_tw + inv_lambda_sl_tr))
     else
        dst%Lambda_sl(:,of) = prm%D &
-                          / (1.0_pReal+prm%D*lambda_sl_sl_inv) !!!!!! correct?
+                          / (1.0_pReal+prm%D*inv_lambda_sl_sl) !!!!!! correct?
     endif
 
 
 
- dst%Lambda_tw(:,of) = prm%i_tw*prm%D/(1.0_pReal+prm%D*lambda_tw_tw_inv)
- dst%Lambda_tr(:,of) = prm%i_tr*prm%D/(1.0_pReal+prm%D*lambda_tr_tr_inv)
+ dst%Lambda_tw(:,of) = prm%i_tw*prm%D/(1.0_pReal+prm%D*inv_lambda_tw_tw)
+ dst%Lambda_tr(:,of) = prm%i_tr*prm%D/(1.0_pReal+prm%D*inv_lambda_tr_tr)
 
  !* threshold stress for dislocation motion
  forall (i = 1:prm%sum_N_sl) dst%tau_pass(i,of) = &
@@ -1100,7 +1100,7 @@ end subroutine plastic_dislotwin_results
 ! have the optional arguments at the end
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_slip(Mp,T,instance,of, &
-                              dot_gamma_sl,dgamma_dtau_slip,tau_slip)
+                              dot_gamma_sl,ddot_gamma_dtau_slip,tau_slip)
  use prec, only: &
   tol_math_check, &
   dNeq0
@@ -1119,10 +1119,10 @@ pure subroutine kinetics_slip(Mp,T,instance,of, &
  real(pReal), dimension(param(instance)%sum_N_sl), intent(out) :: &
    dot_gamma_sl
  real(pReal), dimension(param(instance)%sum_N_sl), optional, intent(out) :: &
-   dgamma_dtau_slip, &
+   ddot_gamma_dtau_slip, &
    tau_slip
  real(pReal), dimension(param(instance)%sum_N_sl) :: &
-   dgamma_dtau
+   ddot_gamma_dtau
 
  real(pReal), dimension(param(instance)%sum_N_sl) :: &
    tau, &
@@ -1154,23 +1154,23 @@ pure subroutine kinetics_slip(Mp,T,instance,of, &
 
    dot_gamma_sl = sign(stt%rho_mob(:,of)*prm%b_sl/(v_wait_inverse+v_run_inverse),tau)
 
-   dV_wait_inverse_dTau = v_wait_inverse * prm%p * prm%q * BoltzmannRatio &
+   dV_wait_inverse_dTau = -1.0_pReal * v_wait_inverse * prm%p * prm%q * BoltzmannRatio &
                         * (stressRatio**(prm%p-1.0_pReal)) &
                         * (1.0_pReal-StressRatio_p)**(prm%q-1.0_pReal) &
                         / prm%tau_0
-   dV_run_inverse_dTau  = v_run_inverse/tau_eff
-   dV_dTau              = (dV_wait_inverse_dTau+dV_run_inverse_dTau) &
+   dV_run_inverse_dTau  = -1.0_pReal * v_run_inverse/tau_eff
+   dV_dTau              = -1.0_pReal * (dV_wait_inverse_dTau+dV_run_inverse_dTau) &
                         / (v_wait_inverse+v_run_inverse)**2.0_pReal
-   dgamma_dtau = dV_dTau*stt%rho_mob(:,of)*prm%b_sl
+   ddot_gamma_dtau = dV_dTau*stt%rho_mob(:,of)*prm%b_sl
  else where significantStress
-   dot_gamma_sl  = 0.0_pReal
-   dgamma_dtau = 0.0_pReal
+   dot_gamma_sl    = 0.0_pReal
+   ddot_gamma_dtau = 0.0_pReal
  end where significantStress
  
  end associate
  
- if(present(dgamma_dtau_slip)) dgamma_dtau_slip = dgamma_dtau
- if(present(tau_slip))        tau_slip        = tau
+ if(present(ddot_gamma_dtau_slip)) ddot_gamma_dtau_slip = ddot_gamma_dtau
+ if(present(tau_slip))             tau_slip             = tau
  
 end subroutine kinetics_slip
 
@@ -1179,7 +1179,7 @@ end subroutine kinetics_slip
 !> @brief calculates shear rates on twin systems
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_twin(Mp,T,dot_gamma_sl,instance,of,&
-                              dot_gamma_twin,dgamma_dtau_twin)
+                              dot_gamma_twin,ddot_gamma_dtau_twin)
  use prec, only: &
    tol_math_check, &
    dNeq0
@@ -1200,13 +1200,13 @@ pure subroutine kinetics_twin(Mp,T,dot_gamma_sl,instance,of,&
  real(pReal), dimension(param(instance)%sum_N_tw), intent(out) :: &
    dot_gamma_twin
  real(pReal), dimension(param(instance)%sum_N_tw), optional, intent(out) :: &
-   dgamma_dtau_twin
+   ddot_gamma_dtau_twin
 
  real, dimension(param(instance)%sum_N_tw) :: &
    tau, &
    Ndot0, &
    stressRatio_r, &
-   dgamma_dtau
+   ddot_gamma_dtau
 
  integer :: i,s1,s2
  
@@ -1227,22 +1227,22 @@ pure subroutine kinetics_twin(Mp,T,dot_gamma_sl,instance,of,&
        Ndot0=0.0_pReal
      end if
    else isFCC
-     Ndot0=prm%Ndot0_twin(i)
+     Ndot0=prm%dot_N_0_tw(i)
    endif isFCC
  enddo
 
  significantStress: where(tau > tol_math_check)
    StressRatio_r = (dst%tau_hat_tw(:,of)/tau)**prm%r
    dot_gamma_twin  = prm%gamma_char * dst%f_tw(:,of) * Ndot0*exp(-StressRatio_r)
-   dgamma_dtau = (dot_gamma_twin*prm%r/tau)*StressRatio_r
+   ddot_gamma_dtau = (dot_gamma_twin*prm%r/tau)*StressRatio_r
  else where significantStress
    dot_gamma_twin  = 0.0_pReal
-   dgamma_dtau = 0.0_pReal
+   ddot_gamma_dtau = 0.0_pReal
  end where significantStress
  
  end associate
 
- if(present(dgamma_dtau_twin)) dgamma_dtau_twin = dgamma_dtau
+ if(present(ddot_gamma_dtau_twin)) ddot_gamma_dtau_twin = ddot_gamma_dtau
 
 end subroutine kinetics_twin
 
@@ -1251,7 +1251,7 @@ end subroutine kinetics_twin
 !> @brief calculates shear rates on twin systems
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,instance,of,&
-                              dot_gamma_tr,dgamma_dtau_trans)
+                              dot_gamma_tr,ddot_gamma_dtau_trans)
  use prec, only: &
    tol_math_check, &
    dNeq0
@@ -1272,13 +1272,13 @@ pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,instance,of,&
  real(pReal), dimension(param(instance)%sum_N_tr), intent(out) :: &
    dot_gamma_tr
  real(pReal), dimension(param(instance)%sum_N_tr), optional, intent(out) :: &
-   dgamma_dtau_trans
+   ddot_gamma_dtau_trans
 
  real, dimension(param(instance)%sum_N_tr) :: &
    tau, &
    Ndot0, &
    stressRatio_s, &
-   dgamma_dtau
+   ddot_gamma_dtau
 
  integer :: i,s1,s2
  
@@ -1299,22 +1299,22 @@ pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,instance,of,&
        Ndot0=0.0_pReal
      end if
    else isFCC
-     Ndot0=prm%Ndot0_trans(i)
+     Ndot0=prm%dot_N_0_tr(i)
    endif isFCC
  enddo
 
  significantStress: where(tau > tol_math_check)
    StressRatio_s = (dst%tau_hat_tr(:,of)/tau)**prm%s
    dot_gamma_tr  = dst%f_tr(:,of) * Ndot0*exp(-StressRatio_s)
-   dgamma_dtau = (dot_gamma_tr*prm%r/tau)*StressRatio_s
+   ddot_gamma_dtau = (dot_gamma_tr*prm%r/tau)*StressRatio_s
  else where significantStress
    dot_gamma_tr  = 0.0_pReal
-   dgamma_dtau = 0.0_pReal
+   ddot_gamma_dtau = 0.0_pReal
  end where significantStress
  
  end associate
 
- if(present(dgamma_dtau_trans)) dgamma_dtau_trans = dgamma_dtau
+ if(present(ddot_gamma_dtau_trans)) ddot_gamma_dtau_trans = ddot_gamma_dtau
 
 end subroutine kinetics_trans
 
