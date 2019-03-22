@@ -505,7 +505,7 @@ subroutine plastic_dislotwin_init
        case ('resolved_stress_twin')
          outputID = merge(resolved_stress_twin_ID,undefined_ID,prm%sum_N_tw >0)
          outputSize = prm%sum_N_tw
-       case ('tau_hat_tw')
+       case ('threshold_stress_twin')
          outputID = merge(tau_hat_tw_ID,undefined_ID,prm%sum_N_tw >0)
          outputSize = prm%sum_N_tw
          
