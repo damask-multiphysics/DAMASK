@@ -426,8 +426,10 @@ subroutine plastic_disloUCLA_dotState(Mp,T,instance,of)
     gdot_pos, gdot_neg,&
     tau_pos,&
     tau_neg, &
-    DotRhoDipFormation, v_cl, EdgeDipDistance, &
-    DotRhoEdgeDipClimb
+    v_cl, &
+    dot_rho_dip_formation, &
+    dot_rho_dip_climb, &
+    dip_distance
  
   associate(prm => param(instance), stt => state(instance),dot => dotState(instance), dst => dependentState(instance))
  
@@ -439,26 +441,26 @@ subroutine plastic_disloUCLA_dotState(Mp,T,instance,of)
   VacancyDiffusion = prm%D_0*exp(-prm%Q_cl/(kB*T))
  
   where(dEq0(tau_pos))                                                                              ! ToDo: use avg of pos and neg
-    DotRhoDipFormation = 0.0_pReal
-    DotRhoEdgeDipClimb = 0.0_pReal
+    dot_rho_dip_formation = 0.0_pReal
+    dot_rho_dip_climb     = 0.0_pReal
   else where
-    EdgeDipDistance = math_clip((3.0_pReal*prm%mu*prm%b_sl)/(16.0_pReal*PI*abs(tau_pos)), &
-                                prm%D_a, &                                                          ! lower limit
-                                dst%Lambda_sl(:,of))                                                ! upper limit
-    dotRhoDipFormation = merge(((2.0_pReal*EdgeDipDistance)/prm%b_sl)* stt%rho_mob(:,of)*abs(dot%gamma_sl(:,of)), & ! ToDo: ignore region of spontaneous annihilation
-                               0.0_pReal, &
-                               prm%dipoleformation)
+    dip_distance = math_clip(3.0_pReal*prm%mu*prm%b_sl/(16.0_pReal*PI*abs(tau_pos)), &
+                             prm%D_a, &                                                          ! lower limit
+                             dst%Lambda_sl(:,of))                                                ! upper limit
+    dot_rho_dip_formation = merge(2.0_pReal*dip_distance* stt%rho_mob(:,of)*abs(dot%gamma_sl(:,of))/prm%b_sl, & ! ToDo: ignore region of spontaneous annihilation
+                                  0.0_pReal, &
+                                  prm%dipoleformation)
     v_cl = (3.0_pReal*prm%mu*VacancyDiffusion*prm%atomicVolume/(2.0_pReal*pi*kB*T)) &
-                  * (1.0_pReal/(EdgeDipDistance+prm%D_a))
-    dotRhoEdgeDipClimb = (4.0_pReal*v_cl*stt%rho_dip(:,of))/(EdgeDipDistance-prm%D_a)               ! ToDo: Discuss with Franz: Stress dependency?
+                  * (1.0_pReal/(dip_distance+prm%D_a))
+    dot_rho_dip_climb = (4.0_pReal*v_cl*stt%rho_dip(:,of))/(dip_distance-prm%D_a)               ! ToDo: Discuss with Franz: Stress dependency?
   end where
  
   dot%rho_mob(:,of) = abs(dot%gamma_sl(:,of))/(prm%b_sl*dst%Lambda_sl(:,of)) &                      ! multiplication
-                    - DotRhoDipFormation &
+                    - dot_rho_dip_formation &
                     - (2.0_pReal*prm%D_a)/prm%b_sl*stt%rho_mob(:,of)*abs(dot%gamma_sl(:,of))        ! Spontaneous annihilation of 2 single edge dislocations
-  dot%rho_dip(:,of) = DotRhoDipFormation &
+  dot%rho_dip(:,of) = dot_rho_dip_formation &
                     - (2.0_pReal*prm%D_a)/prm%b_sl*stt%rho_dip(:,of)*abs(dot%gamma_sl(:,of)) &      ! Spontaneous annihilation of a single edge dislocation with a dipole constituent
-                    - DotRhoEdgeDipClimb
+                    - dot_rho_dip_climb
  
   end associate
 
@@ -520,7 +522,7 @@ function plastic_disloUCLA_postResults(Mp,T,instance,of) result(postResults)
    postResults
  
   integer :: &
-    o,c,i
+    o,c
   real(pReal), dimension(param(instance)%sum_N_sl) :: &
     gdot_pos,gdot_neg
  
