@@ -751,7 +751,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
                       + ddot_gamma_dtau_twin(i)* prm%P_tw(k,l,i)*prm%P_tw(m,n,i) * f_unrotated
  enddo twinContibution
  
- call kinetics_twin(Mp,T,dot_gamma_sl,instance,of,dot_gamma_tr,ddot_gamma_dtau_trans)
+ call kinetics_trans(Mp,T,dot_gamma_sl,instance,of,dot_gamma_tr,ddot_gamma_dtau_trans)
  transContibution: do i = 1, prm%sum_N_tr
    Lp = Lp + dot_gamma_tr(i)*prm%P_tr(1:3,1:3,i) * f_unrotated
    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
