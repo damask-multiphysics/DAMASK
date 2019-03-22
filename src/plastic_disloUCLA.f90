@@ -378,21 +378,21 @@ pure subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
  integer :: &
    i,k,l,m,n
  real(pReal), dimension(param(instance)%sum_N_sl) :: &
-   gdot_pos,gdot_neg, &
-   dgdot_dtau_pos,dgdot_dtau_neg
+   dot_gamma_pos,dot_gamma_neg, &
+   ddot_gamma_dtau_pos,ddot_gamma_dtau_neg
 
  Lp = 0.0_pReal
  dLp_dMp = 0.0_pReal
 
  associate(prm => param(instance))
 
- call kinetics(Mp,T,instance,of,gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_dtau_neg)
+ call kinetics(Mp,T,instance,of,dot_gamma_pos,dot_gamma_neg,ddot_gamma_dtau_pos,ddot_gamma_dtau_neg)
  do i = 1, prm%sum_N_sl
-   Lp = Lp + (gdot_pos(i)+gdot_neg(i))*prm%Schmid(1:3,1:3,i)
+   Lp = Lp + (dot_gamma_pos(i)+dot_gamma_neg(i))*prm%Schmid(1:3,1:3,i)
    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                      + dgdot_dtau_pos(i) * prm%Schmid(k,l,i) * prm%nonSchmid_pos(m,n,i) &
-                      + dgdot_dtau_neg(i) * prm%Schmid(k,l,i) * prm%nonSchmid_neg(m,n,i)
+                      + ddot_gamma_dtau_pos(i) * prm%Schmid(k,l,i) * prm%nonSchmid_pos(m,n,i) &
+                      + ddot_gamma_dtau_neg(i) * prm%Schmid(k,l,i) * prm%nonSchmid_neg(m,n,i)
  enddo
 
  end associate
@@ -590,7 +590,7 @@ end subroutine plastic_disloUCLA_results
 ! have the optional arguments at the end
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics(Mp,T,instance,of, &
-                 gamma_pos,gamma_neg,dgamma_dtau_pos,dgamma_dtau_neg,tau_pos_out,tau_neg_out)
+                 dot_gamma_pos,dot_gamma_neg,ddot_gamma_dtau_pos,ddot_gamma_dtau_neg,tau_pos_out,tau_neg_out)
  use prec, only: &
    tol_math_check, &
    dEq, dNeq0
@@ -608,11 +608,11 @@ pure subroutine kinetics(Mp,T,instance,of, &
    of
 
  real(pReal),                  intent(out), dimension(param(instance)%sum_N_sl) :: &
-   gamma_pos, &
-   gamma_neg
+   dot_gamma_pos, &
+   dot_gamma_neg
  real(pReal),                  intent(out), optional, dimension(param(instance)%sum_N_sl) :: &
-   dgamma_dtau_pos, &
-   dgamma_dtau_neg, &
+   ddot_gamma_dtau_pos, &
+   ddot_gamma_dtau_neg, &
    tau_pos_out, &
    tau_neg_out
  real(pReal), dimension(param(instance)%sum_N_sl) :: &
@@ -636,7 +636,7 @@ pure subroutine kinetics(Mp,T,instance,of, &
  if (present(tau_neg_out)) tau_neg_out = tau_neg
 
  associate(BoltzmannRatio  => prm%delta_F/(kB*T), &
-           DotGamma0       => stt%rho_mob(:,of)*prm%b_sl*prm%v0, &
+           dot_gamma_0     => stt%rho_mob(:,of)*prm%b_sl*prm%v0, &
            effectiveLength => dst%Lambda_sl(:,of) - prm%w)
 
  significantPositiveTau: where(abs(tau_pos)-dst%threshold_stress(:,of) > tol_math_check)
@@ -650,12 +650,12 @@ pure subroutine kinetics(Mp,T,instance,of, &
 
    vel = prm%kink_height/(t_n + t_k)
 
-   gamma_pos = DotGamma0 * sign(vel,tau_pos) * 0.5_pReal
+   dot_gamma_pos = dot_gamma_0 * sign(vel,tau_pos) * 0.5_pReal
  else where significantPositiveTau
-   gamma_pos = 0.0_pReal
+   dot_gamma_pos = 0.0_pReal
  end where significantPositiveTau
 
- if (present(dgamma_dtau_pos)) then
+ if (present(ddot_gamma_dtau_pos)) then
  significantPositiveTau2: where(abs(tau_pos)-dst%threshold_stress(:,of) > tol_math_check)
    dtn = t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
        * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau_0
@@ -663,9 +663,9 @@ pure subroutine kinetics(Mp,T,instance,of, &
   
    dvel = prm%kink_height * (dtk + dtn) / (t_n + t_k)**2.0_pReal
 
-   dgamma_dtau_pos = DotGamma0 * dvel* 0.5_pReal
+   ddot_gamma_dtau_pos = dot_gamma_0 * dvel* 0.5_pReal
  else where significantPositiveTau2
-   dgamma_dtau_pos = 0.0_pReal
+   ddot_gamma_dtau_pos = 0.0_pReal
  end where significantPositiveTau2
  endif
 
@@ -680,22 +680,22 @@ pure subroutine kinetics(Mp,T,instance,of, &
 
    vel = prm%kink_height/(t_n + t_k)
 
-   gamma_neg = DotGamma0 * sign(vel,tau_neg) * 0.5_pReal
+   dot_gamma_neg = dot_gamma_0 * sign(vel,tau_neg) * 0.5_pReal
  else where significantNegativeTau
-   gamma_neg = 0.0_pReal
+   dot_gamma_neg = 0.0_pReal
  end where significantNegativeTau
 
- if (present(dgamma_dtau_neg)) then
+ if (present(ddot_gamma_dtau_neg)) then
  significantNegativeTau2: where(abs(tau_neg)-dst%threshold_stress(:,of) > tol_math_check)
    dtn = t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
        * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau_0
-   dtk = t_k / tau_pos
+   dtk = t_k / tau_neg
   
    dvel = prm%kink_height * (dtk + dtn) / (t_n + t_k)**2.0_pReal
 
-   dgamma_dtau_neg = DotGamma0 * dvel * 0.5_pReal
+   ddot_gamma_dtau_neg = dot_gamma_0 * dvel * 0.5_pReal
  else where significantNegativeTau2
-   dgamma_dtau_neg = 0.0_pReal
+   ddot_gamma_dtau_neg = 0.0_pReal
  end where significantNegativeTau2
  end if
  
