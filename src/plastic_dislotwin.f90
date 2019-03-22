@@ -35,7 +35,7 @@ module plastic_dislotwin
      f_tw_ID, &
      Lambda_tw_ID, &
      resolved_stress_twin_ID, &
-     threshold_stress_twin_ID, &
+     tau_hat_tw_ID, &
      f_tr_ID
  end enum
 
@@ -50,7 +50,7 @@ module plastic_dislotwin
      q_sb, &                                                                                        !< q-exponent in shear band velocity
      CEdgeDipMinDistance, &                                                                         !<
      i_tw, &                                                                                        !<
-     SolidSolutionStrength, &                                                                       !<strength due to elements in solid solution
+     tau_0, &                                                                                       !<strength due to elements in solid solution
      L_tw, &                                                                                        !< Length of twin nuclei in Burgers vectors
      L_tr, &                                                                                        !< Length of trans nuclei in Burgers vectors
      xc_twin, &                                                                                     !< critical distance for formation of twin nucleus
@@ -134,8 +134,8 @@ module plastic_dislotwin
      Lambda_tw, &  !* mean free path between 2 obstacles seen by a growing twin
      Lambda_tr, &!* mean free path between 2 obstacles seen by a growing martensite
      tau_pass, &
-     threshold_stress_twin, &
-     threshold_stress_trans, &
+     tau_hat_tw, &
+     tau_hat_tr, &
      f_tw, &
      f_tr, &
      tau_r_tw, &                                                                                    !< stress to bring partials close together (twin)
@@ -290,6 +290,7 @@ subroutine plastic_dislotwin_init
      prm%B                    = config%getFloats('b',          requiredSize=size(prm%N_sl), &
                                                           defaultVal=[(0.0_pReal, i=1,size(prm%N_sl))])
 
+     prm%tau_0                = config%getFloat('solidsolutionstrength')
      prm%CEdgeDipMinDistance  = config%getFloat('cedgedipmindistance')
      prm%D0                   = config%getFloat('d0')
      prm%Qsd                  = config%getFloat('qsd')
@@ -447,7 +448,6 @@ subroutine plastic_dislotwin_init
 
 
    prm%D             = config%getFloat('grainsize')
-   prm%SolidSolutionStrength = config%getFloat('solidsolutionstrength')                              ! Deprecated
 
    if (config%keyExists('dipoleformationfactor')) call IO_error(1,ext_msg='use /nodipoleformation/')
    prm%dipoleformation = .not. config%keyExists('/nodipoleformation/')
@@ -505,8 +505,8 @@ subroutine plastic_dislotwin_init
        case ('resolved_stress_twin')
          outputID = merge(resolved_stress_twin_ID,undefined_ID,prm%sum_N_tw >0)
          outputSize = prm%sum_N_tw
-       case ('threshold_stress_twin')
-         outputID = merge(threshold_stress_twin_ID,undefined_ID,prm%sum_N_tw >0)
+       case ('tau_hat_tw')
+         outputID = merge(tau_hat_tw_ID,undefined_ID,prm%sum_N_tw >0)
          outputSize = prm%sum_N_tw
          
        case ('strain_trans_fraction')
@@ -577,12 +577,12 @@ subroutine plastic_dislotwin_init
    allocate(dst%tau_pass              (prm%sum_N_sl, NipcMyPhase),source=0.0_pReal)
 
    allocate(dst%Lambda_tw             (prm%sum_N_tw, NipcMyPhase),source=0.0_pReal)
-   allocate(dst%threshold_stress_twin (prm%sum_N_tw, NipcMyPhase),source=0.0_pReal)
+   allocate(dst%tau_hat_tw            (prm%sum_N_tw, NipcMyPhase),source=0.0_pReal)
    allocate(dst%tau_r_tw              (prm%sum_N_tw, NipcMyPhase),source=0.0_pReal)
    allocate(dst%f_tw                  (prm%sum_N_tw, NipcMyPhase),source=0.0_pReal)
 
    allocate(dst%Lambda_tr             (prm%sum_N_tr,NipcMyPhase),source=0.0_pReal)
-   allocate(dst%threshold_stress_trans(prm%sum_N_tr,NipcMyPhase),source=0.0_pReal)
+   allocate(dst%tau_hat_tr            (prm%sum_N_tr,NipcMyPhase),source=0.0_pReal)
    allocate(dst%tau_r_tr              (prm%sum_N_tr,NipcMyPhase),source=0.0_pReal)
    allocate(dst%f_tr                  (prm%sum_N_tr,NipcMyPhase),source=0.0_pReal)
 
@@ -960,10 +960,10 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
 
  !* threshold stress for growing twin/martensite
  if(prm%sum_N_tw == prm%sum_N_sl) &
- dst%threshold_stress_twin(:,of) = &
+ dst%tau_hat_tw(:,of) = &
              (SFE/(3.0_pReal*prm%b_tw)+ 3.0_pReal*prm%b_tw*prm%mu/(prm%L_tw*prm%b_sl)) ! slip burgers here correct?
  if(prm%sum_N_tr == prm%sum_N_sl) &
-   dst%threshold_stress_trans(:,of) =  &
+   dst%tau_hat_tr(:,of) =  &
          (SFE/(3.0_pReal*prm%b_tr) + 3.0_pReal*prm%b_tr*prm%mu/&
               (prm%L_tr*prm%b_sl) + prm%transStackHeight*prm%gamma_fcc_hex/ (3.0_pReal*prm%b_tr) )    
  
@@ -1051,8 +1051,8 @@ function plastic_dislotwin_postResults(Mp,T,instance,of) result(postResults)
          postResults(c+j) = math_mul33xx33(Mp,prm%P_tw(1:3,1:3,j))
        enddo
        c = c + prm%sum_N_tw
-     case (threshold_stress_twin_ID)
-       postResults(c+1:c+prm%sum_N_tw) = dst%threshold_stress_twin(1:prm%sum_N_tw,of)
+     case (tau_hat_tw_ID)
+       postResults(c+1:c+prm%sum_N_tw) = dst%tau_hat_tw(1:prm%sum_N_tw,of)
        c = c + prm%sum_N_tw
 
      case (f_tr_ID)
@@ -1146,7 +1146,7 @@ pure subroutine kinetics_slip(Mp,T,instance,of, &
  tau_eff = abs(tau)-dst%tau_pass(:,of)
    
  significantStress: where(tau_eff > tol_math_check)
-   stressRatio    = tau_eff/prm%SolidSolutionStrength
+   stressRatio    = tau_eff/prm%tau_0
    StressRatio_p  = stressRatio** prm%p
    BoltzmannRatio = prm%Delta_F/(kB*T)
    v_wait_inverse = prm%v0**(-1.0_pReal) * exp(BoltzmannRatio*(1.0_pReal-StressRatio_p)** prm%q)
@@ -1157,7 +1157,7 @@ pure subroutine kinetics_slip(Mp,T,instance,of, &
    dV_wait_inverse_dTau = v_wait_inverse * prm%p * prm%q * BoltzmannRatio &
                         * (stressRatio**(prm%p-1.0_pReal)) &
                         * (1.0_pReal-StressRatio_p)**(prm%q-1.0_pReal) &
-                        / prm%SolidSolutionStrength
+                        / prm%tau_0
    dV_run_inverse_dTau  = v_run_inverse/tau_eff
    dV_dTau              = (dV_wait_inverse_dTau+dV_run_inverse_dTau) &
                         / (v_wait_inverse+v_run_inverse)**2.0_pReal
@@ -1232,7 +1232,7 @@ pure subroutine kinetics_twin(Mp,T,dot_gamma_sl,instance,of,&
  enddo
 
  significantStress: where(tau > tol_math_check)
-   StressRatio_r = (dst%threshold_stress_twin(:,of)/tau)**prm%r
+   StressRatio_r = (dst%tau_hat_tw(:,of)/tau)**prm%r
    dot_gamma_twin  = prm%gamma_char * dst%f_tw(:,of) * Ndot0*exp(-StressRatio_r)
    dgamma_dtau = (dot_gamma_twin*prm%r/tau)*StressRatio_r
  else where significantStress
@@ -1304,7 +1304,7 @@ pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,instance,of,&
  enddo
 
  significantStress: where(tau > tol_math_check)
-   StressRatio_s = (dst%threshold_stress_trans(:,of)/tau)**prm%s
+   StressRatio_s = (dst%tau_hat_tr(:,of)/tau)**prm%s
    dot_gamma_tr  = dst%f_tr(:,of) * Ndot0*exp(-StressRatio_s)
    dgamma_dtau = (dot_gamma_tr*prm%r/tau)*StressRatio_s
  else where significantStress
