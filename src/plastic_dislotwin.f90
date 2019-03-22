@@ -26,7 +26,7 @@ module plastic_dislotwin
      undefined_ID, &
      rho_mob_ID, &
      rho_dip_ID, &
-     gamma_dot_sl_ID, &
+     dot_gamma_sl_ID, &
      gamma_sl_ID, &
      Lambda_sl_ID, &
      resolved_stress_slip_ID, &
@@ -481,7 +481,7 @@ subroutine plastic_dislotwin_init
          outputID = merge(rho_dip_ID,undefined_ID,prm%sum_N_sl > 0)
          outputSize = prm%sum_N_sl
        case ('shear_rate_slip','shearrate_slip')
-         outputID = merge(gamma_dot_sl_ID,undefined_ID,prm%sum_N_sl > 0)
+         outputID = merge(dot_gamma_sl_ID,undefined_ID,prm%sum_N_sl > 0)
          outputSize = prm%sum_N_sl
        case ('accumulated_shear_slip')
          outputID = merge(gamma_sl_ID,undefined_ID,prm%sum_N_sl > 0)
@@ -673,7 +673,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
  real(pReal), dimension(param(instance)%sum_N_tr) :: &
     dot_gamma_tr,dgamma_dtau_trans
  real(pReal):: dot_gamma_sb
- real(pReal), dimension(3,3) :: eigVectors, Schmid_shearBand
+ real(pReal), dimension(3,3) :: eigVectors, P_sb
  real(pReal), dimension(3)   :: eigValues
  logical :: error
  real(pReal), dimension(3,6), parameter :: &
@@ -723,9 +723,9 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
    call math_eigenValuesVectorsSym(Mp,eigValues,eigVectors,error)
 
    do i = 1,6
-     Schmid_shearBand = 0.5_pReal * math_outer(math_mul33x3(eigVectors,sb_sComposition(1:3,i)),&
+     P_sb = 0.5_pReal * math_outer(math_mul33x3(eigVectors,sb_sComposition(1:3,i)),&
                                                math_mul33x3(eigVectors,sb_mComposition(1:3,i)))
-     tau = math_mul33xx33(Mp,Schmid_shearBand)
+     tau = math_mul33xx33(Mp,P_sb)
    
      significantShearBandStress: if (abs(tau) > tol_math_check) then
        StressRatio_p = (abs(tau)/prm%sbResistance)**prm%p_sb
@@ -734,10 +734,10 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
                   * (abs(tau)/prm%sbResistance)**(prm%p_sb-1.0_pReal) &
                   * (1.0_pReal-StressRatio_p)**(prm%q_sb-1.0_pReal)
  
-       Lp = Lp + dot_gamma_sb * Schmid_shearBand
+       Lp = Lp + dot_gamma_sb * P_sb
        forall (k=1:3,l=1:3,m=1:3,n=1:3) &
          dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                          + dgamma_dtau * Schmid_shearBand(k,l) * Schmid_shearBand(m,n)
+                          + dgamma_dtau * P_sb(k,l) * P_sb(m,n)
      endif significantShearBandStress
    enddo
 
@@ -789,12 +789,12 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
  integer :: i
  real(pReal) :: f_unrotated,&
              VacancyDiffusion,&
-             EdgeDipDistance, ClimbVelocity,Dotrho_dipClimb,Dotrho_dipAnnihilation, &
-             Dotrho_DipFormation,Dotrho_mobEdgeAnnihilation, &
+             rho_dip_distance, ClimbVelocity, &
             tau
  real(pReal), dimension(param(instance)%sum_N_sl) :: &
-   EdgeDipMinDistance, &
-   DotRhoMultiplication, &
+   dot_rho_dip_formation, &
+   dot_rho_dip_climb, &
+   rho_dip_distance_min, &
    dot_gamma_sl
  real(pReal), dimension(param(instance)%sum_N_tw) :: &
    dot_gamma_twin
@@ -812,47 +812,45 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
  call kinetics_slip(Mp,T,instance,of,dot_gamma_sl)
  dot%gamma_sl(:,of) = abs(dot_gamma_sl)
  
- DotRhoMultiplication = abs(dot_gamma_sl)/(prm%b_sl*dst%Lambda_sl(:,of))
- EdgeDipMinDistance   = prm%CEdgeDipMinDistance*prm%b_sl
+ rho_dip_distance_min   = prm%CEdgeDipMinDistance*prm%b_sl
  
  slipState: do i = 1, prm%sum_N_sl
    tau = math_mul33xx33(Mp,prm%P_sl(1:3,1:3,i))
 
    significantSlipStress: if (dEq0(tau)) then
-     Dotrho_DipFormation = 0.0_pReal
-     Dotrho_dipClimb = 0.0_pReal
+     dot_rho_dip_formation(i) = 0.0_pReal
+     dot_rho_dip_climb(i) = 0.0_pReal
    else significantSlipStress
-     EdgeDipDistance = 3.0_pReal*prm%mu*prm%b_sl(i)/(16.0_pReal*PI*abs(tau))
-     EdgeDipDistance = math_clip(EdgeDipDistance, right = dst%Lambda_sl(i,of))
-     EdgeDipDistance = math_clip(EdgeDipDistance, left  = EdgeDipMinDistance(i))
+     rho_dip_distance = 3.0_pReal*prm%mu*prm%b_sl(i)/(16.0_pReal*PI*abs(tau))
+     rho_dip_distance = math_clip(rho_dip_distance, right = dst%Lambda_sl(i,of))
+     rho_dip_distance = math_clip(rho_dip_distance, left  = rho_dip_distance_min(i))
 
      if (prm%dipoleFormation) then
-       Dotrho_DipFormation = 2.0_pReal*(EdgeDipDistance-EdgeDipMinDistance(i))/prm%b_sl(i) &
-                          * stt%rho_mob(i,of)*abs(dot_gamma_sl(i))
+       dot_rho_dip_formation(i) = 2.0_pReal*(rho_dip_distance-rho_dip_distance_min(i))/prm%b_sl(i) &
+                                * stt%rho_mob(i,of)*abs(dot_gamma_sl(i))
      else
-       Dotrho_DipFormation = 0.0_pReal
+       dot_rho_dip_formation(i) = 0.0_pReal
      endif
 
-     if (dEq0(EdgeDipDistance-EdgeDipMinDistance(i))) then
-       Dotrho_dipClimb = 0.0_pReal
+     if (dEq0(rho_dip_distance-rho_dip_distance_min(i))) then
+       dot_rho_dip_climb(i) = 0.0_pReal
      else
        ClimbVelocity = 3.0_pReal*prm%mu*VacancyDiffusion*prm%atomicVolume(i) &
-                     / (2.0_pReal*PI*kB*T*(EdgeDipDistance+EdgeDipMinDistance(i)))
-       Dotrho_dipClimb = 4.0_pReal*ClimbVelocity*stt%rho_dip(i,of) &
-                          / (EdgeDipDistance-EdgeDipMinDistance(i))
+                     / (2.0_pReal*PI*kB*T*(rho_dip_distance+rho_dip_distance_min(i)))
+       dot_rho_dip_climb(i) = 4.0_pReal*ClimbVelocity*stt%rho_dip(i,of) &
+                            / (rho_dip_distance-rho_dip_distance_min(i))
      endif
    endif significantSlipStress
- 
-   !* Spontaneous annihilation of 2 single edge dislocations
-   Dotrho_mobEdgeAnnihilation = 2.0_pReal*EdgeDipMinDistance(i)/prm%b_sl(i) &
-                              * stt%rho_mob(i,of)*abs(dot_gamma_sl(i))
-   !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
-   Dotrho_dipAnnihilation = 2.0_pReal*EdgeDipMinDistance(i)/prm%b_sl(i) &
-                             * stt%rho_dip(i,of)*abs(dot_gamma_sl(i))
-
-   dot%rho_mob(i,of) = DotRhoMultiplication(i)-Dotrho_DipFormation-Dotrho_mobEdgeAnnihilation
-   dot%rho_dip(i,of) = Dotrho_DipFormation-Dotrho_dipAnnihilation-Dotrho_dipClimb
  enddo slipState
+
+ dot%rho_mob(:,of) = abs(dot_gamma_sl)/(prm%b_sl*dst%Lambda_sl(:,of)) &
+                   - dot_rho_dip_formation &
+                   - 2.0_pReal*rho_dip_distance_min/prm%b_sl * stt%rho_mob(:,of)*abs(dot_gamma_sl)
+
+ dot%rho_dip(:,of) = dot_rho_dip_formation &
+                   - 2.0_pReal*rho_dip_distance_min/prm%b_sl * stt%rho_dip(:,of)*abs(dot_gamma_sl) &
+                   - dot_rho_dip_climb
+
  
  call kinetics_twin(Mp,T,dot_gamma_sl,instance,of,dot_gamma_twin)
  dot%f_tw(:,of) = f_unrotated*dot_gamma_twin/prm%gamma_char
@@ -1024,7 +1022,7 @@ function plastic_dislotwin_postResults(Mp,T,instance,of) result(postResults)
      case (rho_dip_ID)
        postResults(c+1:c+prm%sum_N_sl) = stt%rho_dip(1:prm%sum_N_sl,of)
        c = c + prm%sum_N_sl
-     case (gamma_dot_sl_ID)
+     case (dot_gamma_sl_ID)
        call kinetics_slip(Mp,T,instance,of,postResults(c+1:c+prm%sum_N_sl))
        c = c + prm%sum_N_sl
      case (gamma_sl_ID)
