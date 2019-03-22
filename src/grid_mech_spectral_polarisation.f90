@@ -2,7 +2,7 @@
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Polarisation scheme solver
+!> @brief Grid solver for mechanics: Spectral Polarisation
 !--------------------------------------------------------------------------------------------------
 module grid_mech_spectral_polarisation
 #include <petsc/finclude/petscsnes.h>
@@ -10,7 +10,6 @@ module grid_mech_spectral_polarisation
  use PETScdmda
  use PETScsnes
  use prec, only: & 
-   pInt, &
    pReal
  use math, only: &
    math_I3
@@ -51,7 +50,8 @@ module grid_mech_spectral_polarisation
    F_av = 0.0_pReal, &                                                                              !< average incompatible def grad field
    P_av = 0.0_pReal, &                                                                              !< average 1st Piola--Kirchhoff stress
    P_avLastEval = 0.0_pReal                                                                         !< average 1st Piola--Kirchhoff stress last call of CPFEM_general
-   character(len=1024), private :: incInfo                                                          !< time and increment information
+ 
+ character(len=1024), private :: incInfo                                                          !< time and increment information
  real(pReal), private, dimension(3,3,3,3) :: &
    C_volAvg = 0.0_pReal, &                                                                          !< current volume average stiffness 
    C_volAvgLastInc = 0.0_pReal, &                                                                   !< previous volume average stiffness
@@ -66,13 +66,15 @@ module grid_mech_spectral_polarisation
    err_curl, &                                                                                      !< RMS of curl of F
    err_div                                                                                          !< RMS of div of P
   
- integer(pInt), private :: &
-   totalIter = 0_pInt                                                                               !< total iteration in current increment
+ integer, private :: &
+   totalIter = 0                                                                                    !< total iteration in current increment
  
  public :: &
    grid_mech_spectral_polarisation_init, &
    grid_mech_spectral_polarisation_solution, &
    grid_mech_spectral_polarisation_forward
+ private :: &
+   formResidual
 
 contains
 
@@ -99,9 +101,9 @@ subroutine grid_mech_spectral_polarisation_init
  use DAMASK_interface, only: &
    getSolverJobName
  use spectral_utilities, only: &
-   Utilities_constitutiveResponse, &
-   Utilities_updateGamma, &
-   Utilities_updateIPcoords, &
+    utilities_constitutiveResponse, &
+    utilities_updateGamma, &
+    utilities_updateIPcoords, &
    wgt
  use mesh, only: &
    grid, &
@@ -123,7 +125,7 @@ subroutine grid_mech_spectral_polarisation_init
  integer :: fileUnit
  character(len=1024) :: rankStr
  
- write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverPolarisation init  -+>>>'
+ write(6,'(/,a)') ' <<<+-  grid_mech_spectral_polarisation init  -+>>>'
 
  write(6,'(/,a)') ' Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
  write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2014.02.006'
@@ -189,7 +191,6 @@ subroutine grid_mech_spectral_polarisation_init
    read(fileUnit) F; close (fileUnit)
    fileUnit = IO_open_jobFile_binary('F_lastInc'//trim(rankStr))
    read(fileUnit) F_lastInc; close (fileUnit)
-
    fileUnit = IO_open_jobFile_binary('F_tau'//trim(rankStr))
    read(fileUnit) F_tau; close (fileUnit)
    fileUnit = IO_open_jobFile_binary('F_tau_lastInc'//trim(rankStr))
@@ -197,11 +198,11 @@ subroutine grid_mech_spectral_polarisation_init
 
    F_aim         = reshape(sum(sum(sum(F,dim=4),dim=3),dim=2) * wgt, [3,3])                         ! average of F
    call MPI_Allreduce(MPI_IN_PLACE,F_aim,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-   if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='F_aim')
+   if(ierr /=0) call IO_error(894, ext_msg='F_aim')
    F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
    call MPI_Allreduce(MPI_IN_PLACE,F_aim_lastInc,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-   if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='F_aim_lastInc')
- elseif (restartInc == 0_pInt) then restart
+   if(ierr /=0) call IO_error(894, ext_msg='F_aim_lastInc')
+ elseif (restartInc == 0) then restart
    F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                          ! initialize to identity
    F = reshape(F_lastInc,[9,grid(1),grid(2),grid3])
    F_tau = 2.0_pReal*F
@@ -214,12 +215,10 @@ subroutine grid_mech_spectral_polarisation_init
                                      reshape(F,shape(F_lastInc)), &                                 ! target F
                                      0.0_pReal, &                                                   ! time increment
                                      math_I3)                                                       ! no rotation of boundary condition
- nullify(F)
- nullify(F_tau)
- call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)                         ! write data back to PETSc
+ call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)                         ! deassociate pointer
 
- restartRead: if (restartInc > 0_pInt) then
-   if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0 .and. worldrank == 0_pInt) &
+ restartRead: if (restartInc > 0) then
+   if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0 .and. worldrank == 0) &
      write(6,'(/,a,'//IO_intOut(restartInc)//',a)') &
      'reading more values of increment ', restartInc, ' from file'
    flush(6)
@@ -250,8 +249,8 @@ function grid_mech_spectral_polarisation_solution(incInfoIn,timeinc,timeinc_old,
    math_invSym3333
  use spectral_utilities, only: &
    tBoundaryCondition, &
-   Utilities_maskedCompliance, &
-   Utilities_updateGamma
+    utilities_maskedCompliance, &
+    utilities_updateGamma
  use FEsolving, only: &
    restartWrite, &
    terminallyIll
@@ -287,7 +286,7 @@ function grid_mech_spectral_polarisation_solution(incInfoIn,timeinc,timeinc_old,
  endif  
 
 !--------------------------------------------------------------------------------------------------
-! set module wide availabe data
+! set module wide available data 
  params%stress_mask = stress_BC%maskFloat
  params%stress_BC   = stress_BC%values
  params%rotation_BC = rotation_BC
@@ -306,159 +305,8 @@ function grid_mech_spectral_polarisation_solution(incInfoIn,timeinc,timeinc_old,
  solution%iterationsNeeded = totalIter
  solution%termIll = terminallyIll
  terminallyIll = .false.
- if (reason == -4) call IO_error(893_pInt)                                                         ! MPI error
 
 end function grid_mech_spectral_polarisation_solution
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief forms the Polarisation residual vector
-!--------------------------------------------------------------------------------------------------
-subroutine formResidual(in, &                                                         ! DMDA info (needs to be named "in" for XRANGE, etc. macros to work)
-                                     FandF_tau, &                                                  ! defgrad fields on grid
-                                     residuum, &                                                   ! residuum fields on grid
-                                     dummy, &
-                                     ierr)
- use numerics, only: &
-   itmax, &
-   itmin, &
-   polarAlpha, &
-   polarBeta
- use mesh, only: &
-   grid, &
-   grid3
- use IO, only: &
-   IO_intOut
- use math, only: &
-   math_rotate_backward33, &
-   math_mul3333xx33, &
-   math_invSym3333, &
-   math_mul33x33
- use debug, only: &
-   debug_level, &
-   debug_spectral, &
-   debug_spectralRotation
- use spectral_utilities, only: &
-   wgt, &
-   tensorField_real, &
-   utilities_FFTtensorForward, &
-   utilities_fourierGammaConvolution, &
-   utilities_FFTtensorBackward, &
-   Utilities_constitutiveResponse, &
-   Utilities_divergenceRMS, &
-   Utilities_curlRMS
- use homogenization, only: &
-   materialpoint_dPdF
- use FEsolving, only: &
-   terminallyIll
-
- implicit none
- DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: in
- PetscScalar, &
-   target, dimension(3,3,2, XG_RANGE,YG_RANGE,ZG_RANGE), intent(in) :: FandF_tau
- PetscScalar, &
-   target, dimension(3,3,2,  X_RANGE, Y_RANGE, Z_RANGE), intent(out) :: residuum
- PetscScalar, pointer, dimension(:,:,:,:,:) :: &
-   F, &
-   F_tau, &
-   residual_F, &
-   residual_F_tau
- PetscInt :: &
-   PETScIter, &
-   nfuncs
- PetscObject :: dummy
- PetscErrorCode :: ierr
- integer(pInt) :: &
-   i, j, k, e
-
- F                 => FandF_tau(1:3,1:3,1,&
-                                XG_RANGE,YG_RANGE,ZG_RANGE)
- F_tau             => FandF_tau(1:3,1:3,2,&
-                                XG_RANGE,YG_RANGE,ZG_RANGE)
- residual_F        => residuum(1:3,1:3,1,&
-                                X_RANGE, Y_RANGE, Z_RANGE)
- residual_F_tau    => residuum(1:3,1:3,2,&
-                                X_RANGE, Y_RANGE, Z_RANGE)
-
- F_av = sum(sum(sum(F,dim=5),dim=4),dim=3) * wgt
- call MPI_Allreduce(MPI_IN_PLACE,F_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
- 
- call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
- call SNESGetIterationNumber(snes,PETScIter,ierr);  CHKERRQ(ierr)
-
- if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1_pInt                                            ! new increment
-!--------------------------------------------------------------------------------------------------
-! begin of new iteration
- newIteration: if (totalIter <= PETScIter) then
-   totalIter = totalIter + 1_pInt
-   write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') &
-           trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
-   if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
-     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
-             ' deformation gradient aim (lab) =', transpose(math_rotate_backward33(F_aim,params%rotation_BC))
-   write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
-             ' deformation gradient aim       =', transpose(F_aim)
-   flush(6)
- endif newIteration
-
-!--------------------------------------------------------------------------------------------------
-! 
- tensorField_real = 0.0_pReal
- do k = 1_pInt, grid3; do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
-   tensorField_real(1:3,1:3,i,j,k) = &
-     polarBeta*math_mul3333xx33(C_scale,F(1:3,1:3,i,j,k) - math_I3) -&
-     polarAlpha*math_mul33x33(F(1:3,1:3,i,j,k), &
-                        math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))
- enddo; enddo; enddo
- 
-!--------------------------------------------------------------------------------------------------
-! doing convolution in Fourier space 
- call utilities_FFTtensorForward()
- call utilities_fourierGammaConvolution(math_rotate_backward33(polarBeta*F_aim,params%rotation_BC)) 
- call utilities_FFTtensorBackward()
-
-!--------------------------------------------------------------------------------------------------
-! constructing residual                         
- residual_F_tau = polarBeta*F - tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3)
-
-!--------------------------------------------------------------------------------------------------
-! evaluate constitutive response
- P_avLastEval = P_av
- call Utilities_constitutiveResponse(residual_F,P_av,C_volAvg,C_minMaxAvg, &
-                                     F - residual_F_tau/polarBeta,params%timeinc,params%rotation_BC)
- call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr) 
-
-!--------------------------------------------------------------------------------------------------
-! calculate divergence
- tensorField_real = 0.0_pReal
- tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = residual_F                                   !< stress field in disguise
- call utilities_FFTtensorForward()
- err_div = Utilities_divergenceRMS()                                                                  !< root mean squared error in divergence of stress
- 
-!--------------------------------------------------------------------------------------------------
-! constructing residual
- e = 0_pInt
- do k = 1_pInt, grid3; do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
-   e = e + 1_pInt
-   residual_F(1:3,1:3,i,j,k) = &
-     math_mul3333xx33(math_invSym3333(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,e) + C_scale), &
-                      residual_F(1:3,1:3,i,j,k) - math_mul33x33(F(1:3,1:3,i,j,k), &
-                      math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))) &
-                      + residual_F_tau(1:3,1:3,i,j,k)
- enddo; enddo; enddo
- 
-!--------------------------------------------------------------------------------------------------
-! calculating curl
- tensorField_real = 0.0_pReal
- tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = F
- call utilities_FFTtensorForward()
- err_curl = Utilities_curlRMS()
-
- nullify(F)
- nullify(F_tau)
- nullify(residual_F)
- nullify(residual_F_tau)
-end subroutine formResidual
 
 
 !--------------------------------------------------------------------------------------------------
@@ -483,9 +331,9 @@ subroutine grid_mech_spectral_polarisation_converged(snes_local,PETScIter,xnorm,
  SNES :: snes_local
  PetscInt :: PETScIter
  PetscReal :: &
-   xnorm, &
-   snorm, &
-   fnorm
+   xnorm, &                                                                                        ! not used
+   snorm, &                                                                                        ! not used
+   fnorm                                                                                           ! not used
  SNESConvergedReason :: reason
  PetscObject :: dummy
  PetscErrorCode :: ierr
@@ -552,9 +400,9 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
   use CPFEM2, only: &
     CPFEM_age
   use spectral_utilities, only: &
-    Utilities_calculateRate, &
-    Utilities_forwardField, &
-    Utilities_updateIPcoords, &
+    utilities_calculateRate, &
+    utilities_forwardField, &
+    utilities_updateIPcoords, &
     tBoundaryCondition, &
     cutBack
   use IO, only: &
@@ -576,7 +424,7 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
     rotation_BC
   PetscErrorCode :: ierr
   PetscScalar, dimension(:,:,:,:), pointer :: FandF_tau, F, F_tau
-  integer(pInt) :: i, j, k
+  integer :: i, j, k
   real(pReal), dimension(3,3) :: F_lambda33
 
   integer :: fileUnit
@@ -664,7 +512,7 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
     F_tau = reshape(Utilities_forwardField(timeinc,F_tau_lastInc,F_taudot), &
                     [9,grid(1),grid(2),grid3])                                                        ! does not have any average value as boundary condition
   else
-   do k = 1_pInt, grid3; do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
+   do k = 1, grid3; do j = 1, grid(2); do i = 1, grid(1)
       F_lambda33 = reshape(F_tau(1:9,i,j,k)-F(1:9,i,j,k),[3,3])
       F_lambda33 = math_mul3333xx33(S_scale,math_mul33x33(F_lambda33, &
                                   math_mul3333xx33(C_scale,&
@@ -680,5 +528,149 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
  call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
 
 end subroutine grid_mech_spectral_polarisation_forward
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief forms the polarisation residual vector
+!--------------------------------------------------------------------------------------------------
+subroutine formResidual(in, FandF_tau, &
+                        residuum, dummy,ierr)
+ use numerics, only: &
+   itmax, &
+   itmin, &
+   polarAlpha, &
+   polarBeta
+ use mesh, only: &
+   grid, &
+   grid3
+ use IO, only: &
+   IO_intOut
+ use math, only: &
+   math_rotate_backward33, &
+   math_mul3333xx33, &
+   math_invSym3333, &
+   math_mul33x33
+ use debug, only: &
+   debug_level, &
+   debug_spectral, &
+   debug_spectralRotation
+ use spectral_utilities, only: &
+   wgt, &
+   tensorField_real, &
+   utilities_FFTtensorForward, &
+   utilities_fourierGammaConvolution, &
+   utilities_FFTtensorBackward, &
+   Utilities_constitutiveResponse, &
+   Utilities_divergenceRMS, &
+   Utilities_curlRMS
+ use homogenization, only: &
+   materialpoint_dPdF
+ use FEsolving, only: &
+   terminallyIll
+
+ implicit none
+ DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: in                                               !< DMDA info (needs to be named "in" for macros like XRANGE to work)
+ PetscScalar, dimension(3,3,2, XG_RANGE,YG_RANGE,ZG_RANGE), &
+   target, intent(in) :: FandF_tau
+ PetscScalar, dimension(3,3,2,  X_RANGE, Y_RANGE, Z_RANGE),&
+   target,  intent(out) :: residuum                                                                 !< residuum field
+ PetscScalar, pointer, dimension(:,:,:,:,:) :: &
+   F, &
+   F_tau, &
+   residual_F, &
+   residual_F_tau
+ PetscInt :: &
+   PETScIter, &
+   nfuncs
+ PetscObject :: dummy
+ PetscErrorCode :: ierr
+ integer :: &
+   i, j, k, e
+
+ F                 => FandF_tau(1:3,1:3,1,&
+                                XG_RANGE,YG_RANGE,ZG_RANGE)
+ F_tau             => FandF_tau(1:3,1:3,2,&
+                                XG_RANGE,YG_RANGE,ZG_RANGE)
+ residual_F        => residuum(1:3,1:3,1,&
+                                X_RANGE, Y_RANGE, Z_RANGE)
+ residual_F_tau    => residuum(1:3,1:3,2,&
+                                X_RANGE, Y_RANGE, Z_RANGE)
+
+ F_av = sum(sum(sum(F,dim=5),dim=4),dim=3) * wgt
+ call MPI_Allreduce(MPI_IN_PLACE,F_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
+ 
+ call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
+ call SNESGetIterationNumber(snes,PETScIter,ierr);  CHKERRQ(ierr)
+
+ if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1                                                ! new increment
+!--------------------------------------------------------------------------------------------------
+! begin of new iteration
+ newIteration: if (totalIter <= PETScIter) then
+   totalIter = totalIter + 1
+   write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') &
+           trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
+   if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
+     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
+             ' deformation gradient aim (lab) =', transpose(math_rotate_backward33(F_aim,params%rotation_BC))
+   write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
+             ' deformation gradient aim       =', transpose(F_aim)
+   flush(6)
+ endif newIteration
+
+!--------------------------------------------------------------------------------------------------
+! 
+ tensorField_real = 0.0_pReal
+ do k = 1, grid3; do j = 1, grid(2); do i = 1, grid(1)
+   tensorField_real(1:3,1:3,i,j,k) = &
+     polarBeta*math_mul3333xx33(C_scale,F(1:3,1:3,i,j,k) - math_I3) -&
+     polarAlpha*math_mul33x33(F(1:3,1:3,i,j,k), &
+                        math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))
+ enddo; enddo; enddo
+ 
+!--------------------------------------------------------------------------------------------------
+! doing convolution in Fourier space 
+ call utilities_FFTtensorForward()
+ call utilities_fourierGammaConvolution(math_rotate_backward33(polarBeta*F_aim,params%rotation_BC)) 
+ call utilities_FFTtensorBackward()
+
+!--------------------------------------------------------------------------------------------------
+! constructing residual                         
+ residual_F_tau = polarBeta*F - tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3)
+
+!--------------------------------------------------------------------------------------------------
+! evaluate constitutive response
+ P_avLastEval = P_av
+ call Utilities_constitutiveResponse(residual_F, &                                                    ! "residuum" gets field of first PK stress (to save memory)
+                                     P_av,C_volAvg,C_minMaxAvg, &
+                                     F - residual_F_tau/polarBeta,params%timeinc,params%rotation_BC)
+ call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr) 
+
+!--------------------------------------------------------------------------------------------------
+! calculate divergence
+ tensorField_real = 0.0_pReal
+ tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = residual_F                                   !< stress field in disguise
+ call utilities_FFTtensorForward()
+ err_div = Utilities_divergenceRMS()                                                                  !< root mean squared error in divergence of stress
+ 
+!--------------------------------------------------------------------------------------------------
+! constructing residual
+ e = 0
+ do k = 1, grid3; do j = 1, grid(2); do i = 1, grid(1)
+   e = e + 1
+   residual_F(1:3,1:3,i,j,k) = &
+     math_mul3333xx33(math_invSym3333(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,e) + C_scale), &
+                      residual_F(1:3,1:3,i,j,k) - math_mul33x33(F(1:3,1:3,i,j,k), &
+                      math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))) &
+                      + residual_F_tau(1:3,1:3,i,j,k)
+ enddo; enddo; enddo
+ 
+!--------------------------------------------------------------------------------------------------
+! calculating curl
+ tensorField_real = 0.0_pReal
+ tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = F
+ call utilities_FFTtensorForward()
+ err_curl = Utilities_curlRMS()
+
+end subroutine formResidual
 
 end module grid_mech_spectral_polarisation

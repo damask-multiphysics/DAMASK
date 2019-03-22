@@ -170,7 +170,7 @@ function grid_damage_spectral_solution(timeinc,timeinc_old,loadCaseTime) result(
     loadCaseTime                                                                                    !< remaining time of current load case
   integer :: i, j, k, cell
   type(tSolutionState) :: solution
-  PetscInt  ::position
+  PetscInt  :: devNull
   PetscReal :: minDamage, maxDamage, stagNorm, solnNorm
   
   PetscErrorCode :: ierr
@@ -208,8 +208,8 @@ function grid_damage_spectral_solution(timeinc,timeinc_old,loadCaseTime) result(
     call damage_nonlocal_putNonLocalDamage(damage_current(i,j,k),1,cell)
   enddo; enddo; enddo
  
-  call VecMin(solution_vec,position,minDamage,ierr); CHKERRQ(ierr)
-  call VecMax(solution_vec,position,maxDamage,ierr); CHKERRQ(ierr)
+  call VecMin(solution_vec,devNull,minDamage,ierr); CHKERRQ(ierr)
+  call VecMax(solution_vec,devNull,maxDamage,ierr); CHKERRQ(ierr)
   if (solution%converged) &
     write(6,'(/,a)') ' ... nonlocal damage converged .....................................'
   write(6,'(/,a,f8.6,2x,f8.6,2x,f8.6,/)',advance='no') ' Minimum|Maximum|Delta Damage      = ',&
