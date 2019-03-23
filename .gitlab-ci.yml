@@ -325,7 +325,7 @@ Nonlocal_Damage_DetectChanges:
 
 SpectralAll_restart:
   stage: spectral
-  script: SpectralAll_restart/test.py
+  script: grid_all_restart/test.py
   except:
     - master
     - release
