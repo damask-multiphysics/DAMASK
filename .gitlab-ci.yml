@@ -141,9 +141,9 @@ Pre_General:
     - master
     - release
 
-Spectral_geometryPacking:
+grid_geometryPacking:
   stage: preprocessing
-  script: Spectral_geometryPacking/test.py
+  script: grid_geometryPacking/test.py
   except:
     - master
     - release
@@ -215,7 +215,7 @@ Post_OrientationConversion:
     - release
 
 ###################################################################################################
-Compile_Spectral_Intel:
+grid_mech_compile_Intel:
   stage: compilePETSc
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
@@ -235,7 +235,7 @@ Compile_FEM_Intel:
     - master
     - release
 
-Compile_Spectral_GNU:
+grid_mech_compile_GNU:
   stage: compilePETSc
   script:
     - module load $GNUCompiler $MPICH_GNU $PETSc_MPICH_GNU
@@ -323,7 +323,7 @@ Nonlocal_Damage_DetectChanges:
     - master
     - release
 
-SpectralAll_restart:
+grid_all_restart:
   stage: spectral
   script: grid_all_restart/test.py
   except:
@@ -337,9 +337,9 @@ SpectralAll_parsingLoadCase:
     - master
     - release
 
-SpectralBasic_loadCaseRotation:
+grid_all_loadCaseRotation:
   stage: spectral
-  script: SpectralBasic_loadCaseRotation/test.py
+  script: grid_all_loadCaseRotation/test.py
   except:
     - master
     - release
