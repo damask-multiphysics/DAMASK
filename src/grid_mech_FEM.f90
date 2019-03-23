@@ -20,9 +20,6 @@ module grid_mech_FEM
 
  implicit none
  private
-
- character (len=*), parameter, public :: &
-   grid_mech_FEM_label = 'fem'
    
 !--------------------------------------------------------------------------------------------------
 ! derived types
@@ -76,13 +73,10 @@ contains
 !> @brief allocates all necessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mech_FEM_init
- use IO, only: &
-   IO_intOut, &
-   IO_error
- use debug, only: &
-  debug_level, &
-  debug_spectral, &
-  debug_spectralRestart
+  use IO, only: &
+    IO_intOut, &
+    IO_error, &
+    IO_open_jobFile_binary
  use FEsolving, only: &
    restartInc
  use numerics, only: &
@@ -120,10 +114,12 @@ subroutine grid_mech_FEM_init
                       1.0_pReal, 1.0_pReal, 1.0_pReal, 1.0_pReal], [4,8])
  PetscErrorCode :: ierr
  integer(pInt) :: rank
+ integer :: fileUnit
  character(len=1024) :: rankStr
  real(pReal), dimension(3,3,3,3) :: devNull
-  PetscScalar, pointer, dimension(:,:,:,:) :: &
-  u_current,u_lastincrement,u_rate
+ PetscScalar, pointer, dimension(:,:,:,:) :: &
+ u_current,u_lastincrement,u_rate
+
  write(6,'(/,a)') ' <<<+-  grid_mech_FEM init  -+>>>'
 
 !--------------------------------------------------------------------------------------------------
@@ -165,11 +161,11 @@ subroutine grid_mech_FEM_init
  call DMCreateGlobalVector(mech_grid,solution_current,ierr); CHKERRQ(ierr)
  call DMCreateGlobalVector(mech_grid,solution_lastInc,ierr); CHKERRQ(ierr)
  call DMCreateGlobalVector(mech_grid,solution_rate   ,ierr); CHKERRQ(ierr)
- call DMSNESSetFunctionLocal(mech_grid,grid_mech_FEM_formResidual,PETSC_NULL_SNES,ierr)
+ call DMSNESSetFunctionLocal(mech_grid,formResidual,PETSC_NULL_SNES,ierr)
  CHKERRQ(ierr) 
- call DMSNESSetJacobianLocal(mech_grid,grid_mech_FEM_formJacobian,PETSC_NULL_SNES,ierr)
+ call DMSNESSetJacobianLocal(mech_grid,formJacobian,PETSC_NULL_SNES,ierr)
  CHKERRQ(ierr)
- call SNESSetConvergenceTest(mech_snes,grid_mech_FEM_converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr) 
+ call SNESSetConvergenceTest(mech_snes,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr) 
  CHKERRQ(ierr)                                                                                      ! specify custom convergence check function "_converged"
  call SNESSetMaxLinearSolveFailures(mech_snes, huge(1), ierr); CHKERRQ(ierr)                        ! ignore linear solve failures 
  call SNESSetFromOptions(mech_snes,ierr); CHKERRQ(ierr)                                             ! pull it all together with additional cli arguments
@@ -197,38 +193,39 @@ subroutine grid_mech_FEM_init
                       -1.0_pReal/delta(1),-1.0_pReal/delta(2), 1.0_pReal/delta(3), &
                        1.0_pReal/delta(1),-1.0_pReal/delta(2), 1.0_pReal/delta(3), &
                       -1.0_pReal/delta(1), 1.0_pReal/delta(2), 1.0_pReal/delta(3), &
-                       1.0_pReal/delta(1), 1.0_pReal/delta(2), 1.0_pReal/delta(3)],pReal), [3,8])/4.0_pReal      ! shape function derivative matrix
+                       1.0_pReal/delta(1), 1.0_pReal/delta(2), 1.0_pReal/delta(3)],pReal), [3,8])/4.0_pReal ! shape function derivative matrix
 
  HGMat = matmul(transpose(HGcomp),HGcomp) &
        * HGCoeff*(delta(1)*delta(2) + delta(2)*delta(3) + delta(3)*delta(1))/16.0_pReal             ! hourglass stabilization matrix
 
- restart: if (restartInc > 0_pInt) then
-   if (iand(debug_level(debug_spectral),debug_spectralRestart) /= 0) then
-     write(6,'(/,a,'//IO_intOut(restartInc)//',a)') &
-     'reading values of increment ', restartInc, ' from file'
-     flush(6)
-   endif
-   !write(rankStr,'(a1,i0)')'_',worldrank
-   !call IO_read_realFile(777,'F'//trim(rankStr),trim(getSolverJobName()),size(F))
-   !read (777,rec=1) F; close (777)
-   !call IO_read_realFile(777,'F_lastInc'//trim(rankStr),trim(getSolverJobName()),size(F_lastInc))
-   !read (777,rec=1) F_lastInc; close (777)
-   !call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(F_aimDot))
-   !read (777,rec=1) F_aimDot; close (777)
-   !call IO_read_realFile(777,'u_current'//trim(rankStr),trim(getSolverJobName()),size(u_current))
-   !read (777,rec=1) u_current; close (777)
-   !call IO_read_realFile(777,'u_lastincrement'//trim(rankStr),trim(getSolverJobName()),size(u_lastincrement))
-   !read (777,rec=1) u_lastincrement; close (777)
+!--------------------------------------------------------------------------------------------------
+! init fields
+ restart: if (restartInc > 0) then
+   write(6,'(/,a,'//IO_intOut(restartInc)//',a)') 'reading values of increment ', restartInc, ' from file'
+
+   fileUnit = IO_open_jobFile_binary('F_aimDot')
+   read(fileUnit) F_aimDot; close(fileUnit)
+
+   write(rankStr,'(a1,i0)')'_',worldrank
+
+   fileUnit = IO_open_jobFile_binary('F'//trim(rankStr))
+   read(fileUnit) F; close (fileUnit)
+   fileUnit = IO_open_jobFile_binary('F_lastInc'//trim(rankStr))
+   read(fileUnit) F_lastInc; close (fileUnit)
+   fileUnit = IO_open_jobFile_binary('u'//trim(rankStr))
+   read(fileUnit) u_current; close (fileUnit)
+   fileUnit = IO_open_jobFile_binary('u_lastInc'//trim(rankStr))
+   read(fileUnit) u_lastincrement; close (fileUnit)
 
    F_aim         = sum(sum(sum(F,dim=5),dim=4),dim=3) * wgt                         ! average of F
    call MPI_Allreduce(MPI_IN_PLACE,F_aim,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-   if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='F_aim')
+   if(ierr /=0) call IO_error(894, ext_msg='F_aim')
    F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt! average of F_lastInc 
    call MPI_Allreduce(MPI_IN_PLACE,F_aim_lastInc,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-   if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='F_aim_lastInc')
- elseif (restartInc == 0_pInt) then restart
+   if(ierr /=0) call IO_error(894, ext_msg='F_aim_lastInc')
+ elseif (restartInc == 0) then restart
    F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                          ! initialize to identity
-   F = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)
+   F         = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)
  endif restart
  materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                            ! set starting condition for materialpoint_stressAndItsTangent
  call Utilities_updateIPcoords(F)
@@ -242,14 +239,11 @@ subroutine grid_mech_FEM_init
  CHKERRQ(ierr)
 
  restartRead: if (restartInc > 0_pInt) then
-   if (iand(debug_level(debug_spectral),debug_spectralRestart) /= 0 .and. worldrank == 0_pInt) &
-     write(6,'(/,a,'//IO_intOut(restartInc)//',a)') &
-     'reading more values of increment ', restartInc, ' from file'
-   flush(6)
-   !call IO_read_realFile(777,'C_volAvg',trim(getSolverJobName()),size(C_volAvg))
-   !read (777,rec=1) C_volAvg; close (777)
-   !call IO_read_realFile(777,'C_volAvgLastInc',trim(getSolverJobName()),size(C_volAvgLastInc))
-   !read (777,rec=1) C_volAvgLastInc; close (777)
+   write(6,'(/,a,'//IO_intOut(restartInc)//',a)') 'reading more values of increment ', restartInc, ' from file'
+   fileUnit = IO_open_jobFile_binary('C_volAvg')
+   read(fileUnit) C_volAvg; close(fileUnit)
+   fileUnit = IO_open_jobFile_binary('C_volAvgLastInv')
+  read(fileUnit) C_volAvgLastInc; close(fileUnit)
  endif restartRead
 
 end subroutine grid_mech_FEM_init
@@ -314,15 +308,198 @@ function grid_mech_FEM_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation
  solution%termIll = terminallyIll
  terminallyIll = .false.
 
- if (reason == SNES_DIVERGED_FNORM_NAN) call IO_error(893_pInt)
-
 end function grid_mech_FEM_solution
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief forwarding routine
+!> @details find new boundary conditions and best F estimate for end of current timestep
+!> possibly writing restart information, triggering of state increment in DAMASK, and updating of IPcoordinates
+!--------------------------------------------------------------------------------------------------
+subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,stress_BC,rotation_BC)
+  use math, only: &
+    math_mul33x33 ,&
+    math_rotate_backward33
+  use numerics, only: &
+    worldrank
+  use homogenization, only: &
+    materialpoint_F0
+  use mesh, only: &
+    grid, &
+    grid3
+  use CPFEM2, only: &
+    CPFEM_age
+  use spectral_utilities, only: &
+    utilities_updateIPcoords, &
+    tBoundaryCondition, &
+    cutBack
+  use IO, only: &
+    IO_open_jobFile_binary
+  use FEsolving, only: &
+    restartWrite
+
+  implicit none
+  logical,                     intent(in) :: &
+    guess
+  real(pReal),                 intent(in) :: &
+    timeinc_old, &
+    timeinc, &
+    loadCaseTime                                                                                     !< remaining time of current load case
+  type(tBoundaryCondition),    intent(in) :: &
+    stress_BC, &
+    deformation_BC
+  real(pReal), dimension(3,3), intent(in) :: &
+    rotation_BC
+  PetscErrorCode :: ierr
+    integer :: fileUnit
+  character(len=32) :: rankStr
+    PetscScalar, pointer, dimension(:,:,:,:) :: &
+  u_current,u_lastincrement,u_rate
+  
+ call DMDAVecGetArrayF90(mech_grid,solution_current,u_current,ierr); CHKERRQ(ierr)
+ call DMDAVecGetArrayF90(mech_grid,solution_lastInc,u_lastincrement,ierr); CHKERRQ(ierr)
+ 
+  if (cutBack) then
+    C_volAvg    = C_volAvgLastInc        ! QUESTION: where is this required?
+  else
+  !--------------------------------------------------------------------------------------------------
+    ! restart information for spectral solver
+
+    
+     if (restartWrite) then                                                                           ! QUESTION: where is this logical properly set?
+      write(6,'(/,a)') ' writing converged results for restart'
+      flush(6)
+
+      if (worldrank == 0) then
+        fileUnit = IO_open_jobFile_binary('C_volAvg','w')
+        write(fileUnit) C_volAvg; close(fileUnit)
+        fileUnit = IO_open_jobFile_binary('C_volAvgLastInv','w')
+        write(fileUnit) C_volAvgLastInc; close(fileUnit)
+        fileUnit = IO_open_jobFile_binary('F_aimDot','w')
+        write(fileUnit) F_aimDot; close(fileUnit)
+      endif
+
+      write(rankStr,'(a1,i0)')'_',worldrank
+      fileUnit = IO_open_jobFile_binary('F'//trim(rankStr),'w')
+      write(fileUnit) F; close (fileUnit)
+      fileUnit = IO_open_jobFile_binary('F_lastInc'//trim(rankStr),'w')
+      write(fileUnit) F_lastInc; close (fileUnit)
+      fileUnit = IO_open_jobFile_binary('u'//trim(rankStr),'w')
+      write(fileUnit) u_current; close (fileUnit)
+      fileUnit = IO_open_jobFile_binary('u_lastInc'//trim(rankStr),'w')
+      write(fileUnit) u_lastincrement; close (fileUnit)
+    endif
+    call CPFEM_age()                                                                                 ! age state and kinematics
+    call utilities_updateIPcoords(F)
+
+    C_volAvgLastInc    = C_volAvg
+ 
+    F_aimDot = merge(stress_BC%maskFloat*(F_aim-F_aim_lastInc)/timeinc_old, 0.0_pReal, guess)
+    F_aim_lastInc = F_aim
+
+    !--------------------------------------------------------------------------------------------------
+    ! calculate rate for aim
+    if     (deformation_BC%myType=='l') then                                                          ! calculate F_aimDot from given L and current F
+      F_aimDot = &
+      F_aimDot + deformation_BC%maskFloat * math_mul33x33(deformation_BC%values, F_aim_lastInc)
+    elseif(deformation_BC%myType=='fdot') then                                                        ! F_aimDot is prescribed
+      F_aimDot = &
+      F_aimDot + deformation_BC%maskFloat * deformation_BC%values
+    elseif (deformation_BC%myType=='f') then                                                          ! aim at end of load case is prescribed
+      F_aimDot = &
+      F_aimDot + deformation_BC%maskFloat * (deformation_BC%values - F_aim_lastInc)/loadCaseTime
+    endif
+
+
+    if (guess) then
+      call VecWAXPY(solution_rate,-1.0,solution_lastInc,solution_current,ierr)
+      CHKERRQ(ierr)
+      call VecScale(solution_rate,1.0/timeinc_old,ierr); CHKERRQ(ierr)
+    else
+      call VecSet(solution_rate,0.0,ierr); CHKERRQ(ierr)
+    endif
+    call VecCopy(solution_current,solution_lastInc,ierr); CHKERRQ(ierr)
+    F_lastInc        = F                                                                              ! winding F forward
+    materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
+  endif
+
+!--------------------------------------------------------------------------------------------------
+! update average and local deformation gradients
+ F_aim = F_aim_lastInc + F_aimDot * timeinc
+ call VecAXPY(solution_current,timeinc,solution_rate,ierr); CHKERRQ(ierr)
+
+ call DMDAVecRestoreArrayF90(mech_grid,solution_current,u_current,ierr)
+ CHKERRQ(ierr)
+ call DMDAVecRestoreArrayF90(mech_grid,solution_lastInc,u_lastincrement,ierr)
+ CHKERRQ(ierr)
+
+end subroutine grid_mech_FEM_forward
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief convergence check
+!--------------------------------------------------------------------------------------------------
+subroutine converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
+use mesh
+use spectral_utilities
+ use numerics, only: &
+   itmax, &
+   itmin, &
+   err_div_tolRel, &
+   err_div_tolAbs, &
+   err_stress_tolRel, &
+   err_stress_tolAbs
+ use FEsolving, only: &
+   terminallyIll
+
+ implicit none
+ SNES :: snes_local
+ PetscInt :: PETScIter
+ PetscReal :: &
+   xnorm, &                                                                                         ! not used
+   snorm, &                                                                                         ! not used
+   fnorm
+ SNESConvergedReason :: reason
+ PetscObject :: dummy
+ PetscErrorCode :: ierr
+ real(pReal) :: &
+   err_div, &
+   divTol, &
+   BCTol
+
+ err_div = fnorm*sqrt(wgt)*geomSize(1)/scaledGeomSize(1)/detJ
+ divTol = max(maxval(abs(P_av))*err_div_tolRel   ,err_div_tolAbs)
+ BCTol  = max(maxval(abs(P_av))*err_stress_tolRel,err_stress_tolAbs)
+
+
+ if ((totalIter >= itmin -1 .and. &
+                           all([ err_div/divTol, &
+                                 err_BC /BCTol       ] < 1.0_pReal)) &
+             .or.    terminallyIll) then  
+   reason = 1
+ elseif (totalIter >= itmax) then
+   reason = -1
+ else
+   reason = 0
+ endif
+
+!--------------------------------------------------------------------------------------------------
+! report
+ write(6,'(1/,a)') ' ... reporting .............................................................'
+ write(6,'(1/,a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
+         err_div/divTol,  ' (',err_div,' / m, tol = ',divTol,')'
+ write(6,'(a,f12.2,a,es8.2,a,es9.2,a)')    ' error stress BC  = ', &
+         err_BC/BCTol,    ' (',err_BC, ' Pa,  tol = ',BCTol,')' 
+ write(6,'(/,a)') ' ==========================================================================='
+ flush(6)
+ 
+end subroutine converged
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forms the residual vector
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mech_FEM_formResidual(da_local,x_local,f_local,dummy,ierr)
+subroutine formResidual(da_local,x_local,f_local,dummy,ierr)
  use numerics, only: &
    itmax, &
    itmin
@@ -452,13 +629,13 @@ subroutine grid_mech_FEM_formResidual(da_local,x_local,f_local,dummy,ierr)
  endif
  call DMDAVecRestoreArrayF90(da_local,f_local,f_scal,ierr);CHKERRQ(ierr) 
  
-end subroutine grid_mech_FEM_formResidual
+end subroutine formResidual
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forms the FEM stiffness matrix
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mech_FEM_formJacobian(da_local,x_local,Jac_pre,Jac,dummy,ierr)
+subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,ierr)
  use mesh, only: &
    mesh_ipCoordinates
  use homogenization, only: &
@@ -551,185 +728,6 @@ subroutine grid_mech_FEM_formJacobian(da_local,x_local,Jac_pre,Jac,dummy,ierr)
  call MatSetNearNullSpace(Jac,matnull,ierr); CHKERRQ(ierr)
  call MatNullSpaceDestroy(matnull,ierr); CHKERRQ(ierr)
 
-end subroutine grid_mech_FEM_formJacobian
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief convergence check
-!--------------------------------------------------------------------------------------------------
-subroutine grid_mech_FEM_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
-use mesh
-use spectral_utilities
- use numerics, only: &
-   itmax, &
-   itmin, &
-   err_div_tolRel, &
-   err_div_tolAbs, &
-   err_stress_tolRel, &
-   err_stress_tolAbs
- use FEsolving, only: &
-   terminallyIll
-
- implicit none
- SNES :: snes_local
- PetscInt :: PETScIter
- PetscReal :: &
-   xnorm, &                                                                                         ! not used
-   snorm, &                                                                                         ! not used
-   fnorm
- SNESConvergedReason :: reason
- PetscObject :: dummy
- PetscErrorCode :: ierr
- real(pReal) :: &
-   err_div, &
-   divTol, &
-   BCTol
-
-err_div = fnorm*sqrt(wgt)*geomSize(1)/scaledGeomSize(1)/detJ
- divTol = max(maxval(abs(P_av))*err_div_tolRel   ,err_div_tolAbs)
- BCTol  = max(maxval(abs(P_av))*err_stress_tolRel,err_stress_tolAbs)
-
- write(6,*) BCTol,divTol
- converged: if ((totalIter >= itmin -1 .and. &
-                           all([ err_div/divTol, &
-                                 err_BC /BCTol       ] < 1.0_pReal)) &
-             .or.    terminallyIll) then  
-   reason = 1
- elseif (totalIter >= itmax) then converged
-   reason = -1
- else converged
-   reason = 0
- endif converged
-
-!--------------------------------------------------------------------------------------------------
-! report
- write(6,'(1/,a)') ' ... reporting .............................................................'
- write(6,'(1/,a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
-         err_div/divTol,  ' (',err_div,' / m, tol = ',divTol,')'
- write(6,'(a,f12.2,a,es8.2,a,es9.2,a)')    ' error stress BC  = ', &
-         err_BC/BCTol,    ' (',err_BC, ' Pa,  tol = ',BCTol,')' 
- write(6,'(/,a)') ' ==========================================================================='
- flush(6) 
- 
-end subroutine grid_mech_FEM_converged
-
-!--------------------------------------------------------------------------------------------------
-!> @brief forwarding routine
-!> @details find new boundary conditions and best F estimate for end of current timestep
-!> possibly writing restart information, triggering of state increment in DAMASK, and updating of IPcoordinates
-!--------------------------------------------------------------------------------------------------
-subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,stress_BC,rotation_BC)
-  use math, only: &
-    math_mul33x33 ,&
-    math_rotate_backward33
-  use numerics, only: &
-    worldrank
-  use homogenization, only: &
-    materialpoint_F0
-  use mesh, only: &
-    grid, &
-    grid3
-  use CPFEM2, only: &
-    CPFEM_age
-  use spectral_utilities, only: &
-    utilities_updateIPcoords, &
-    tBoundaryCondition, &
-    cutBack
-  use FEsolving, only: &
-    restartWrite
-
-  implicit none
-  logical,                     intent(in) :: &
-    guess
-  real(pReal),                 intent(in) :: &
-    timeinc_old, &
-    timeinc, &
-    loadCaseTime                                                                                     !< remaining time of current load case
-  type(tBoundaryCondition),    intent(in) :: &
-    stress_BC, &
-    deformation_BC
-  real(pReal), dimension(3,3), intent(in) :: &
-    rotation_BC
-  PetscErrorCode :: ierr
-  character(len=32) :: rankStr
-    PetscScalar, pointer, dimension(:,:,:,:) :: &
-  u_current,u_lastincrement,u_rate
-  
- call DMDAVecGetArrayF90(mech_grid,solution_current,u_current,ierr); CHKERRQ(ierr)
- call DMDAVecGetArrayF90(mech_grid,solution_lastInc,u_lastincrement,ierr); CHKERRQ(ierr)
- 
-  if (cutBack) then
-    C_volAvg    = C_volAvgLastInc        ! QUESTION: where is this required?
-  else
-  !--------------------------------------------------------------------------------------------------
-    ! restart information for spectral solver
-    !if (restartWrite) then
-    !  write(6,'(/,a)') ' writing converged results for restart'
-    !  flush(6)
-
-    !  if (worldrank == 0_pInt) then
-    !    call IO_write_jobRealFile(777,'C_volAvg',size(C_volAvg))
-    !    write (777,rec=1) C_volAvg; close(777)
-    !    call IO_write_jobRealFile(777,'C_volAvgLastInc',size(C_volAvgLastInc))
-    !    write (777,rec=1) C_volAvgLastInc; close(777)
-    !    call IO_write_jobRealFile(777,'F_aimDot',size(F_aimDot))
-    !    write (777,rec=1) F_aimDot; close(777)
-    !  endif
-
-    !  write(rankStr,'(a1,i0)')'_',worldrank
-    !  call IO_write_jobRealFile(777,'F'//trim(rankStr),size(F))                                      ! writing deformation gradient field to file
-    !  write (777,rec=1) F; close (777)
-    !  call IO_write_jobRealFile(777,'F_lastInc'//trim(rankStr),size(F_lastInc))                      ! writing F_lastInc field to file
-    !  write (777,rec=1) F_lastInc; close (777)
-    !  call IO_write_jobRealFile(777,'u_current'//trim(rankStr),size(u_current))
-    !  write (777,rec=1) u_current; close (777)
-    !  call IO_write_jobRealFile(777,'u_lastincrement'//trim(rankStr),size(u_lastincrement))
-    !  write (777,rec=1) u_lastincrement; close (777)
-    !endif
-    call CPFEM_age()                                                                                 ! age state and kinematics
-    call utilities_updateIPcoords(F)
-
-    C_volAvgLastInc    = C_volAvg
- 
-    F_aimDot = merge(stress_BC%maskFloat*(F_aim-F_aim_lastInc)/timeinc_old, 0.0_pReal, guess)
-    F_aim_lastInc = F_aim
-
-    !--------------------------------------------------------------------------------------------------
-    ! calculate rate for aim
-    if     (deformation_BC%myType=='l') then                                                          ! calculate F_aimDot from given L and current F
-      F_aimDot = &
-      F_aimDot + deformation_BC%maskFloat * math_mul33x33(deformation_BC%values, F_aim_lastInc)
-    elseif(deformation_BC%myType=='fdot') then                                                        ! F_aimDot is prescribed
-      F_aimDot = &
-      F_aimDot + deformation_BC%maskFloat * deformation_BC%values
-    elseif (deformation_BC%myType=='f') then                                                          ! aim at end of load case is prescribed
-      F_aimDot = &
-      F_aimDot + deformation_BC%maskFloat * (deformation_BC%values - F_aim_lastInc)/loadCaseTime
-    endif
-
-
-    if (guess) then
-      call VecWAXPY(solution_rate,-1.0,solution_lastInc,solution_current,ierr)
-      CHKERRQ(ierr)
-      call VecScale(solution_rate,1.0/timeinc_old,ierr); CHKERRQ(ierr)
-    else
-      call VecSet(solution_rate,0.0,ierr); CHKERRQ(ierr)
-    endif
-    call VecCopy(solution_current,solution_lastInc,ierr); CHKERRQ(ierr)
-    F_lastInc        = F                                                                              ! winding F forward
-    materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
-  endif
-
-!--------------------------------------------------------------------------------------------------
-! update average and local deformation gradients
- F_aim = F_aim_lastInc + F_aimDot * timeinc
- call VecAXPY(solution_current,timeinc,solution_rate,ierr); CHKERRQ(ierr)
-
- call DMDAVecRestoreArrayF90(mech_grid,solution_current,u_current,ierr)
- CHKERRQ(ierr)
- call DMDAVecRestoreArrayF90(mech_grid,solution_lastInc,u_lastincrement,ierr)
- CHKERRQ(ierr)
-
-end subroutine grid_mech_FEM_forward
+end subroutine formJacobian
 
 end module grid_mech_FEM

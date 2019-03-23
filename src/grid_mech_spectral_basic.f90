@@ -19,10 +19,7 @@ module grid_mech_spectral_basic
  
   implicit none
   private
- 
-  character (len=*), parameter, public :: &
-    GRID_MECH_SPECTRAL_BASIC_LABEL = 'basic'
-   
+
 !--------------------------------------------------------------------------------------------------
 ! derived types
   type(tSolutionParams), private :: params
@@ -79,10 +76,6 @@ subroutine grid_mech_spectral_basic_init
     IO_intOut, &
     IO_error, &
     IO_open_jobFile_binary
-  use debug, only: &
-   debug_level, &
-   debug_spectral, &
-   debug_spectralRestart
   use FEsolving, only: &
     restartInc
   use numerics, only: &
@@ -158,20 +151,16 @@ subroutine grid_mech_spectral_basic_init
   call DMcreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                                    ! global solution vector (grid x 9, i.e. every def grad tensor)
   call DMDASNESsetFunctionLocal(da,INSERT_VALUES,formResidual,PETSC_NULL_SNES,ierr)                 ! residual vector of same shape as solution vector
   CHKERRQ(ierr) 
-  call SNESsetConvergenceTest(snes,grid_mech_spectral_basic_converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr)! specify custom convergence check function "_converged"
+  call SNESsetConvergenceTest(snes,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr)! specify custom convergence check function "_converged"
   CHKERRQ(ierr)
   call SNESsetFromOptions(snes,ierr); CHKERRQ(ierr)                                                 ! pull it all together with additional CLI arguments
 
 !--------------------------------------------------------------------------------------------------
-! init fields                 
+! init fields    
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                   ! places pointer on PETSc data
  
   restart: if (restartInc > 0) then                                                     
-    if (iand(debug_level(debug_spectral),debug_spectralRestart) /= 0) then
-      write(6,'(/,a,'//IO_intOut(restartInc)//',a)') &
-      'reading values of increment ', restartInc, ' from file'
-      flush(6)
-    endif
+    write(6,'(/,a,'//IO_intOut(restartInc)//',a)') 'reading values of increment ', restartInc, ' from file'
  
     fileUnit = IO_open_jobFile_binary('F_aimDot')
     read(fileUnit) F_aimDot; close(fileUnit)
@@ -203,10 +192,7 @@ subroutine grid_mech_spectral_basic_init
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                ! deassociate pointer
  
   restartRead: if (restartInc > 0) then
-    if (iand(debug_level(debug_spectral),debug_spectralRestart) /= 0 .and. worldrank == 0) &
-      write(6,'(/,a,'//IO_intOut(restartInc)//',a)') &
-      'reading more values of increment ', restartInc, ' from file'
-    flush(6)
+    write(6,'(/,a,'//IO_intOut(restartInc)//',a)') 'reading more values of increment ', restartInc, ' from file'
     fileUnit = IO_open_jobFile_binary('C_volAvg')
     read(fileUnit) C_volAvg; close(fileUnit)
     fileUnit = IO_open_jobFile_binary('C_volAvgLastInv')
@@ -284,60 +270,6 @@ function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_
 
 end function grid_mech_spectral_basic_solution
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief convergence check
-!--------------------------------------------------------------------------------------------------
-subroutine grid_mech_spectral_basic_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
-  use numerics, only: &
-    itmax, &
-    itmin, &
-    err_div_tolRel, &
-    err_div_tolAbs, &
-    err_stress_tolRel, &
-    err_stress_tolAbs
-  use FEsolving, only: &
-    terminallyIll
-
-  implicit none
-  SNES :: snes_local
-  PetscInt :: PETScIter
-  PetscReal :: &
-    xnorm, &                                                                                        ! not used
-    snorm, &                                                                                        ! not used
-    fnorm                                                                                           ! not used
-  SNESConvergedReason :: reason
-  PetscObject :: dummy
-  PetscErrorCode :: ierr
-  real(pReal) :: &
-    divTol, &
-    BCTol
-
-  divTol = max(maxval(abs(P_av))*err_div_tolRel   ,err_div_tolAbs)
-  BCTol  = max(maxval(abs(P_av))*err_stress_tolRel,err_stress_tolAbs)
-
-  converged: if ((totalIter >= itmin .and. &
-                            all([ err_div/divTol, &
-                                  err_BC /BCTol       ] < 1.0_pReal)) &
-              .or.    terminallyIll) then  
-    reason = 1
-  elseif (totalIter >= itmax) then converged
-    reason = -1
-  else converged
-    reason = 0
-  endif converged
-
-!--------------------------------------------------------------------------------------------------
-! report
-  write(6,'(1/,a)') ' ... reporting .............................................................'
-  write(6,'(1/,a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
-          err_div/divTol,  ' (',err_div,' / m, tol = ',divTol,')'
-  write(6,'(a,f12.2,a,es8.2,a,es9.2,a)')    ' error stress BC  = ', &
-          err_BC/BCTol,    ' (',err_BC, ' Pa,  tol = ',BCTol,')' 
-  write(6,'(/,a)') ' ==========================================================================='
-  flush(6) 
- 
-end subroutine grid_mech_spectral_basic_converged
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forwarding routine
@@ -452,6 +384,61 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
   
 end subroutine grid_mech_spectral_basic_forward
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief convergence check
+!--------------------------------------------------------------------------------------------------
+subroutine converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
+  use numerics, only: &
+    itmax, &
+    itmin, &
+    err_div_tolRel, &
+    err_div_tolAbs, &
+    err_stress_tolRel, &
+    err_stress_tolAbs
+  use FEsolving, only: &
+    terminallyIll
+
+  implicit none
+  SNES :: snes_local
+  PetscInt :: PETScIter
+  PetscReal :: &
+    xnorm, &                                                                                        ! not used
+    snorm, &                                                                                        ! not used
+    fnorm                                                                                           ! not used
+  SNESConvergedReason :: reason
+  PetscObject :: dummy
+  PetscErrorCode :: ierr
+  real(pReal) :: &
+    divTol, &
+    BCTol
+
+  divTol = max(maxval(abs(P_av))*err_div_tolRel   ,err_div_tolAbs)
+  BCTol  = max(maxval(abs(P_av))*err_stress_tolRel,err_stress_tolAbs)
+
+  if ((totalIter >= itmin .and. &
+                            all([ err_div/divTol, &
+                                  err_BC /BCTol       ] < 1.0_pReal)) &
+              .or.    terminallyIll) then  
+    reason = 1
+  elseif (totalIter >= itmax) then
+    reason = -1
+  else
+    reason = 0
+  endif
+
+!--------------------------------------------------------------------------------------------------
+! report
+  write(6,'(1/,a)') ' ... reporting .............................................................'
+  write(6,'(1/,a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
+          err_div/divTol,  ' (',err_div,' / m, tol = ',divTol,')'
+  write(6,'(a,f12.2,a,es8.2,a,es9.2,a)')    ' error stress BC  = ', &
+          err_BC/BCTol,    ' (',err_BC, ' Pa,  tol = ',BCTol,')' 
+  write(6,'(/,a)') ' ==========================================================================='
+  flush(6) 
+ 
+end subroutine converged
 
 
 !--------------------------------------------------------------------------------------------------
