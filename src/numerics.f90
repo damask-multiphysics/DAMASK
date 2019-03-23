@@ -92,7 +92,6 @@ module numerics
  character(len=64), private :: &
    fftw_plan_mode             = 'FFTW_PATIENT'                                                      !< reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patient planner flag
  character(len=64), protected, public :: & 
-   spectral_solver            = 'basic', &                                                          !< spectral solution method 
    spectral_derivative        = 'continuous'                                                        !< spectral spatial derivative method
  character(len=1024), protected, public :: &
    petsc_defaultOptions       = '-mech_snes_type ngmres &
@@ -344,8 +343,6 @@ subroutine numerics_init
          update_gamma = IO_intValue(line,chunkPos,2_pInt) > 0_pInt
        case ('petsc_options')
          petsc_options = trim(line(chunkPos(4):))
-       case ('spectralsolver','myspectralsolver')
-         spectral_solver = IO_lc(IO_stringValue(line,chunkPos,2_pInt))
        case ('err_curl_tolabs')
          err_curl_tolAbs = IO_floatValue(line,chunkPos,2_pInt)
        case ('err_curl_tolrel')
@@ -499,7 +496,6 @@ subroutine numerics_init
  write(6,'(a24,1x,es8.1)')   ' err_curl_tolRel:        ',err_curl_tolRel
  write(6,'(a24,1x,es8.1)')   ' polarAlpha:             ',polarAlpha
  write(6,'(a24,1x,es8.1)')   ' polarBeta:              ',polarBeta
- write(6,'(a24,1x,a)')       ' spectral solver:        ',trim(spectral_solver)
  write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_defaultOptions)//' '//trim(petsc_options)
 #endif
 
