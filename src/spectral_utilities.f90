@@ -101,6 +101,17 @@ module spectral_utilities
    real(pReal) :: timeinc
    real(pReal) :: timeincOld
  end type tSolutionParams
+ 
+ type, private :: tNumerics
+   real(pReal) :: &
+     spectral_derivative, &
+     fftw_planner_flag, &
+     fftw_timelimit, &
+     memory_efficient, &
+     petsc_defaultOptions, &
+     petsc_options, &
+     divergence_correction
+ end type tNumerics
 
  enum, bind(c)
    enumerator :: DERIVATIVE_CONTINUOUS_ID, &
@@ -190,10 +201,13 @@ subroutine utilities_init()
  integer(C_INTPTR_T) :: alloc_local, local_K, local_K_offset
  integer(C_INTPTR_T), parameter :: &
    scalarSize = 1_C_INTPTR_T, &
-   vecSize = 3_C_INTPTR_T, &
+   vecSize    = 3_C_INTPTR_T, &
    tensorSize = 9_C_INTPTR_T
 
  write(6,'(/,a)') ' <<<+-  spectral_utilities init  -+>>>'
+ 
+ write(6,'(/,a)') ' Diehl, Diploma Thesis TU München, 2010'
+ write(6,'(a)')   ' https://doi.org/10.13140/2.1.3234.3840'
 
  write(6,'(/,a)') ' Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013'
  write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2012.09.012'

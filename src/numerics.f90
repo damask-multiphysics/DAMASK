@@ -77,7 +77,7 @@ module numerics
 
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters:
-#ifdef Spectral
+#ifdef Grid
  real(pReal), protected, public :: &
    err_div_tolAbs             =  1.0e-4_pReal, &                                                    !< absolute tolerance for equilibrium
    err_div_tolRel             =  5.0e-4_pReal, &                                                    !< relative tolerance for equilibrium
@@ -318,7 +318,7 @@ subroutine numerics_init
 
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters
-#ifdef Spectral
+#ifdef Grid
        case ('err_div_tolabs')
          err_div_tolAbs = IO_floatValue(line,chunkPos,2_pInt)
        case ('err_div_tolrel')
@@ -376,8 +376,6 @@ subroutine numerics_init
             'bbarstabilisation')
          call IO_warning(40_pInt,ext_msg=tag)
 #endif
-       case default                                                                                ! found unknown keyword
-         call IO_error(300_pInt,ext_msg=tag)
      end select
    enddo
 
@@ -386,7 +384,7 @@ subroutine numerics_init
    flush(6)
  endif fileExists
 
-#ifdef Spectral
+#ifdef Grid
  select case(IO_lc(fftw_plan_mode))                                                                ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
    case('estimate','fftw_estimate')                                                                ! ordered from slow execution (but fast plan creation) to fast execution
      fftw_planner_flag = 64_pInt
@@ -475,7 +473,7 @@ subroutine numerics_init
 
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters
-#ifdef Spectral
+#ifdef Grid
  write(6,'(a24,1x,L8)')      ' continueCalculation:    ',continueCalculation
  write(6,'(a24,1x,L8)')      ' memory_efficient:       ',memory_efficient
  write(6,'(a24,1x,i8)')      ' divergence_correction:  ',divergence_correction
@@ -560,7 +558,7 @@ subroutine numerics_init
  if (err_thermal_tolrel <= 0.0_pReal)      call IO_error(301_pInt,ext_msg='err_thermal_tolrel')
  if (err_damage_tolabs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_damage_tolabs')
  if (err_damage_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_damage_tolrel')
-#ifdef Spectral
+#ifdef Grid
  if (divergence_correction < 0_pInt .or. &
      divergence_correction > 2_pInt)       call IO_error(301_pInt,ext_msg='divergence_correction')
  if (update_gamma .and. &
