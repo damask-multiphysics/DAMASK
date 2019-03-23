@@ -64,6 +64,7 @@ module grid_mech_spectral_basic
     grid_mech_spectral_basic_solution, &
     grid_mech_spectral_basic_forward
   private :: &
+    converged, &
     formResidual
 
 contains
@@ -151,7 +152,7 @@ subroutine grid_mech_spectral_basic_init
   call DMcreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                                    ! global solution vector (grid x 9, i.e. every def grad tensor)
   call DMDASNESsetFunctionLocal(da,INSERT_VALUES,formResidual,PETSC_NULL_SNES,ierr)                 ! residual vector of same shape as solution vector
   CHKERRQ(ierr) 
-  call SNESsetConvergenceTest(snes,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr)! specify custom convergence check function "_converged"
+  call SNESsetConvergenceTest(snes,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr)! specify custom convergence check function "converged"
   CHKERRQ(ierr)
   call SNESsetFromOptions(snes,ierr); CHKERRQ(ierr)                                                 ! pull it all together with additional CLI arguments
 
@@ -266,7 +267,6 @@ function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_
   solution%iterationsNeeded = totalIter
   solution%termIll = terminallyIll
   terminallyIll = .false.
-
 
 end function grid_mech_spectral_basic_solution
 
