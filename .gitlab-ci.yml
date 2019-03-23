@@ -219,8 +219,8 @@ Compile_Spectral_Intel:
   stage: compilePETSc
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
-    - cp -r SpectralAll_compile SpectralAll_compile_Intel
-    - SpectralAll_compile_Intel/test.py
+    - cp -r grid_mech_compile grid_mech_compile_Intel
+    - grid_mech_compile_Intel/test.py
   except:
     - master
     - release
@@ -239,8 +239,8 @@ Compile_Spectral_GNU:
   stage: compilePETSc
   script:
     - module load $GNUCompiler $MPICH_GNU $PETSc_MPICH_GNU
-    - cp -r SpectralAll_compile SpectralAll_compile_GNU
-    - SpectralAll_compile_GNU/test.py
+    - cp -r grid_mech_compile grid_mech_compile_GNU
+    - grid_mech_compile_GNU/test.py
   except:
     - master
     - release
