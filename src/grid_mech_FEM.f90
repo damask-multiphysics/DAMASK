@@ -362,10 +362,8 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
   if (cutBack) then
     C_volAvg    = C_volAvgLastInc        ! QUESTION: where is this required?
   else
-  !--------------------------------------------------------------------------------------------------
-    ! restart information for spectral solver
-
-    
+ !--------------------------------------------------------------------------------------------------
+ ! restart information for spectral solver
      if (restartWrite) then                                                                           ! QUESTION: where is this logical properly set?
       write(6,'(/,a)') ' writing converged results for restart'
       flush(6)
@@ -409,7 +407,7 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
       F_aimDot = &
       F_aimDot + deformation_BC%maskFloat * (deformation_BC%values - F_aim_lastInc)/loadCaseTime
     endif
-
+    
 
     if (guess) then
       call VecWAXPY(solution_rate,-1.0,solution_lastInc,solution_current,ierr)
@@ -419,8 +417,10 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
       call VecSet(solution_rate,0.0,ierr); CHKERRQ(ierr)
     endif
     call VecCopy(solution_current,solution_lastInc,ierr); CHKERRQ(ierr)
+    
     F_lastInc        = F                                                                              ! winding F forward
     materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
+  
   endif
 
 !--------------------------------------------------------------------------------------------------
@@ -567,7 +567,7 @@ subroutine formResidual(da_local,x_local,f_local,dummy,ierr)
      x_elem(ctr,1:3) = x_scal(0:2,i+ii,j+jj,k+kk)
    enddo; enddo; enddo
    ii = i-xstart+1; jj = j-ystart+1; kk = k-zstart+1
-   F(1:3,1:3,ii,jj,kk) = F_aim + transpose(matmul(BMat,x_elem)) 
+   F(1:3,1:3,ii,jj,kk) = math_rotate_backward33(F_aim,params%rotation_BC) + transpose(matmul(BMat,x_elem)) 
  enddo; enddo; enddo
  call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,ierr);CHKERRQ(ierr)
 
