@@ -45,10 +45,9 @@ module grid_mech_spectral_polarisation
    F_aim = math_I3, &                                                                               !< current prescribed deformation gradient
    F_aim_lastInc = math_I3, &                                                                       !< previous average deformation gradient
    F_av = 0.0_pReal, &                                                                              !< average incompatible def grad field
-   P_av = 0.0_pReal, &                                                                              !< average 1st Piola--Kirchhoff stress
-   P_avLastEval = 0.0_pReal                                                                         !< average 1st Piola--Kirchhoff stress last call of CPFEM_general
+   P_av = 0.0_pReal                                                                                 !< average 1st Piola--Kirchhoff stress
  
- character(len=1024), private :: incInfo                                                          !< time and increment information
+ character(len=1024), private :: incInfo                                                            !< time and increment information
  real(pReal), private, dimension(3,3,3,3) :: &
    C_volAvg = 0.0_pReal, &                                                                          !< current volume average stiffness 
    C_volAvgLastInc = 0.0_pReal, &                                                                   !< previous volume average stiffness
@@ -210,7 +209,6 @@ subroutine grid_mech_spectral_polarisation_init
 
  restartRead: if (restartInc > 0) then
    write(6,'(/,a,'//IO_intOut(restartInc)//',a)') 'reading more values of increment ', restartInc, ' from file'
-
    fileUnit = IO_open_jobFile_binary('C_volAvg')
    read(fileUnit) C_volAvg; close(fileUnit)
    fileUnit = IO_open_jobFile_binary('C_volAvgLastInv')
@@ -230,8 +228,6 @@ end subroutine grid_mech_spectral_polarisation_init
 !> @brief solution for the Polarisation scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
 function grid_mech_spectral_polarisation_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation_BC) result(solution)
- use IO, only: &
-   IO_error
  use numerics, only: &
    update_gamma
  use math, only: &
@@ -348,8 +344,6 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
   integer :: fileUnit
   character(len=32) :: rankStr
 
-!--------------------------------------------------------------------------------------------------
-! update coordinates and rate and forward last inc
   call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
   F        => FandF_tau( 0: 8,:,:,:)
   F_tau    => FandF_tau( 9:17,:,:,:)
@@ -440,8 +434,6 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
    enddo; enddo; enddo
  endif
 
- nullify(F)
- nullify(F_tau)
  call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
 
 end subroutine grid_mech_spectral_polarisation_forward
@@ -460,8 +452,6 @@ subroutine converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
    err_curl_tolAbs, &
    err_stress_tolRel, &
    err_stress_tolAbs
- use math, only: &
-   math_mul3333xx33
  use FEsolving, only: &
    terminallyIll
 
@@ -479,15 +469,7 @@ subroutine converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
    curlTol, &
    divTol, &
    BCTol
-     
-!--------------------------------------------------------------------------------------------------
-! stress BC handling
- F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%stress_BC)))                                   ! S = 0.0 for no bc
- err_BC = maxval(abs((1.0_pReal-params%stress_mask) * math_mul3333xx33(C_scale,F_aim-F_av) + &
-                                params%stress_mask  * (P_av-params%stress_BC)))                     ! mask = 0.0 for no bc
 
-!--------------------------------------------------------------------------------------------------
-! error calculation
  curlTol    = max(maxval(abs(F_aim-math_I3))*err_curl_tolRel  ,err_curl_tolAbs)
  divTol     = max(maxval(abs(P_av))         *err_div_tolRel   ,err_div_tolAbs)
  BCTol      = max(maxval(abs(P_av))         *err_stress_tolRel,err_stress_tolAbs)
@@ -517,6 +499,8 @@ subroutine converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
  flush(6) 
 
 end subroutine converged
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief forms the polarisation residual vector
 !--------------------------------------------------------------------------------------------------
@@ -530,9 +514,8 @@ subroutine formResidual(in, FandF_tau, &
  use mesh, only: &
    grid, &
    grid3
- use IO, only: &
-   IO_intOut
  use math, only: &
+   math_rotate_forward33, &
    math_rotate_backward33, &
    math_mul3333xx33, &
    math_invSym3333, &
@@ -547,9 +530,11 @@ subroutine formResidual(in, FandF_tau, &
    utilities_FFTtensorForward, &
    utilities_fourierGammaConvolution, &
    utilities_FFTtensorBackward, &
-   Utilities_constitutiveResponse, &
-   Utilities_divergenceRMS, &
-   Utilities_curlRMS
+   utilities_constitutiveResponse, &
+   utilities_divergenceRMS, &
+   utilities_curlRMS
+ use IO, only: &
+    IO_intOut 
  use homogenization, only: &
    materialpoint_dPdF
  use FEsolving, only: &
@@ -616,9 +601,9 @@ subroutine formResidual(in, FandF_tau, &
  
 !--------------------------------------------------------------------------------------------------
 ! doing convolution in Fourier space 
- call utilities_FFTtensorForward()
+ call utilities_FFTtensorForward
  call utilities_fourierGammaConvolution(math_rotate_backward33(polarBeta*F_aim,params%rotation_BC)) 
- call utilities_FFTtensorBackward()
+ call utilities_FFTtensorBackward
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual                         
@@ -626,19 +611,22 @@ subroutine formResidual(in, FandF_tau, &
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
- P_avLastEval = P_av
- call Utilities_constitutiveResponse(residual_F, &                                                    ! "residuum" gets field of first PK stress (to save memory)
+ call utilities_constitutiveResponse(residual_F, &                                                    ! "residuum" gets field of first PK stress (to save memory)
                                      P_av,C_volAvg,C_minMaxAvg, &
                                      F - residual_F_tau/polarBeta,params%timeinc,params%rotation_BC)
  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr) 
-
+ 
 !--------------------------------------------------------------------------------------------------
+! stress BC handling
+ F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%stress_BC)))                                   ! S = 0.0 for no bc
+ err_BC = maxval(abs((1.0_pReal-params%stress_mask) * math_mul3333xx33(C_scale,F_aim &
+                                                -math_rotate_forward33(F_av,params%rotation_BC)) + &
+                                params%stress_mask  * (P_av-params%stress_BC)))                     ! mask = 0.0 for no bc
 ! calculate divergence
  tensorField_real = 0.0_pReal
  tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = residual_F                                   !< stress field in disguise
- call utilities_FFTtensorForward()
+ call utilities_FFTtensorForward
  err_div = Utilities_divergenceRMS()                                                                  !< root mean squared error in divergence of stress
- 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
  e = 0
