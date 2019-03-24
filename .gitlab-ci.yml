@@ -451,9 +451,9 @@ Abaqus_compile:
     - release
 
 ###################################################################################################
-SpectralExample:
+grid_all_example:
   stage: example
-  script: SpectralAll_example/test.py
+  script: grid_all_example/test.py
   only:
     - development
 
