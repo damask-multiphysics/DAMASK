@@ -29,10 +29,7 @@ module DAMASK_interface
     getGeometryFile, &
     getLoadCaseFile, &
     rectifyPath, &
-    makeRelativePath, &
-    IIO_stringValue, &
-    IIO_intValue, &
-    IIO_stringPos
+    makeRelativePath
 contains
 
 !--------------------------------------------------------------------------------------------------
@@ -93,11 +90,13 @@ subroutine DAMASK_interface_init()
   implicit none
   character(len=1024) :: &
     commandLine, &                                                                                  !< command line call as string
-    loadcaseArg   = '', &                                                                           !< -l argument given to the executable
+    arg, &                                                                                          !< individual argument
+    loadCaseArg   = '', &                                                                           !< -l argument given to the executable
     geometryArg   = '', &                                                                           !< -g argument given to the executable
     workingDirArg = '', &                                                                           !< -w argument given to the executable
     userName                                                                                        !< name of user calling the executable
   integer :: &
+    stat, &
     i, &
 #ifdef _OPENMP
     threadLevel, &
@@ -105,8 +104,6 @@ subroutine DAMASK_interface_init()
     worldrank = 0, &
     worldsize = 0, &
     typeSize
-  integer, allocatable, dimension(:) :: &
-    chunkPos
   integer, dimension(8) :: &
     dateAndTime
   integer        :: mpi_err
@@ -198,10 +195,9 @@ subroutine DAMASK_interface_init()
     call quit(1)
   endif
 
-  call get_command(commandLine)
-  chunkPos = IIO_stringPos(commandLine)
-  do i = 2, chunkPos(1)
-    select case(IIO_stringValue(commandLine,chunkPos,i))                                            ! extract key
+  do i = 1, command_argument_count()
+    call get_command_argument(i,arg)
+    select case(trim(arg))                                                                          ! extract key
       case ('-h','--help')
         write(6,'(a)')  ' #######################################################################'
         write(6,'(a)')  ' DAMASK Command Line Interface:'
@@ -240,14 +236,17 @@ subroutine DAMASK_interface_init()
         write(6,'(a,/)')'        Prints this message and exits'
         call quit(0)                                                                                ! normal Termination
       case ('-l', '--load', '--loadcase')
-        if ( i < chunkPos(1)) loadcaseArg = trim(IIO_stringValue(commandLine,chunkPos,i+1))
+        call get_command_argument(i+1,loadCaseArg)
       case ('-g', '--geom', '--geometry')
-        if (i < chunkPos(1)) geometryArg = trim(IIO_stringValue(commandLine,chunkPos,i+1))
+        call get_command_argument(i+1,geometryArg)
       case ('-w', '-d', '--wd', '--directory', '--workingdir', '--workingdirectory')
-        if (i < chunkPos(1)) workingDirArg = trim(IIO_stringValue(commandLine,chunkPos,i+1))
+        call get_command_argument(i+1,workingDirArg)
       case ('-r', '--rs', '--restart')
-        if (i < chunkPos(1)) then
-          interface_restartInc = IIO_IntValue(commandLine,chunkPos,i+1)
+        call get_command_argument(i+1,arg)
+        read(arg,*,iostat=stat) interface_restartInc
+        if (interface_restartInc < 0 .or. stat /=0) then
+          write(6,'(a)') ' Could not parse restart increment: '//trim(arg)
+          call quit(1)
         endif
     end select
   enddo
@@ -261,6 +260,7 @@ subroutine DAMASK_interface_init()
   geometryFile = getGeometryFile(geometryArg)
   loadCaseFile = getLoadCaseFile(loadCaseArg)
 
+  call get_command(commandLine)
   call get_environment_variable('USER',userName)
   ! ToDo: https://stackoverflow.com/questions/8953424/how-to-get-the-username-in-c-c-in-linux
   write(6,'(/,a,i4.1)') ' MPI processes: ',worldsize
@@ -497,68 +497,5 @@ subroutine setSIGUSR2(signal) bind(C)
   write(6,'(a,i2.2,a)') ' received signal ',signal, ', set SIGUSR2'
 
 end subroutine setSIGUSR2
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief taken from IO, check IO_stringValue for documentation
-!--------------------------------------------------------------------------------------------------
-pure function IIO_stringValue(string,chunkPos,myChunk)
-
-  implicit none
-  integer,    dimension(:),                     intent(in)   :: chunkPos                            !< positions of start and end of each tag/chunk in given string
-  integer,                                      intent(in)   :: myChunk                             !< position number of desired chunk
-  character(len=chunkPos(myChunk*2+1)-chunkPos(myChunk*2)+1) :: IIO_stringValue
-  character(len=*),                             intent(in)   :: string                              !< raw input with known start and end of each chunk
-
-  IIO_stringValue = string(chunkPos(myChunk*2):chunkPos(myChunk*2+1))
-
-end function IIO_stringValue
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief taken from IO, check IO_intValue for documentation
-!--------------------------------------------------------------------------------------------------
-integer pure function IIO_intValue(string,chunkPos,myChunk)
-
-  implicit none
-  character(len=*),               intent(in) :: string                                              !< raw input with known start and end of each chunk
-  integer,                        intent(in) :: myChunk                                             !< position number of desired sub string
-  integer,         dimension(:),  intent(in) :: chunkPos                                            !< positions of start and end of each tag/chunk in given string
-
-
-   valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1) then
-     IIO_intValue = 0
-   else valuePresent
-     read(UNIT=string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)),ERR=100,FMT=*) IIO_intValue
-   endif valuePresent
-   return
-100 IIO_intValue = huge(1)
-
-end function IIO_intValue
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief taken from IO, check IO_stringPos for documentation
-!--------------------------------------------------------------------------------------------------
-pure function IIO_stringPos(string)
-
-  implicit none
-  integer,       dimension(:), allocatable            :: IIO_stringPos
-  character(len=*),                        intent(in) :: string                                     !< string in which chunks are searched for
-
-  character(len=*), parameter  :: SEP=achar(44)//achar(32)//achar(9)//achar(10)//achar(13)          ! comma and whitespaces
-  integer                      :: left, right
-
-  allocate(IIO_stringPos(1), source=0)
-  right = 0
-
-  do while (verify(string(right+1:),SEP)>0)
-    left  = right + verify(string(right+1:),SEP)
-    right = left + scan(string(left:),SEP) - 2
-    IIO_stringPos = [IIO_stringPos,left, right]
-    IIO_stringPos(1) = IIO_stringPos(1)+1
-  enddo
-
-end function IIO_stringPos
 
 end module
