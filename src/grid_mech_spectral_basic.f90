@@ -161,8 +161,12 @@ subroutine grid_mech_spectral_basic_init
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                   ! places pointer on PETSc data
  
   restart: if (restartInc > 0) then                                                     
-    write(6,'(/,a,'//IO_intOut(restartInc)//',a)') 'reading values of increment ', restartInc, ' from file'
- 
+    write(6,'(/,a,'//IO_intOut(restartInc)//',a)') ' reading values of increment ', restartInc, ' from file'
+
+    fileUnit = IO_open_jobFile_binary('F_aim')
+    read(fileUnit) F_aim; close(fileUnit)
+    fileUnit = IO_open_jobFile_binary('F_aim_lastInc')
+    read(fileUnit) F_aim_lastInc; close(fileUnit)
     fileUnit = IO_open_jobFile_binary('F_aimDot')
     read(fileUnit) F_aimDot; close(fileUnit)
  
@@ -173,12 +177,6 @@ subroutine grid_mech_spectral_basic_init
     fileUnit = IO_open_jobFile_binary('F_lastInc'//trim(rankStr))
     read(fileUnit) F_lastInc; close (fileUnit)
  
-    F_aim         = reshape(sum(sum(sum(F,dim=4),dim=3),dim=2) * wgt, [3,3])                        ! average of F
-    call MPI_Allreduce(MPI_IN_PLACE,F_aim,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-    if(ierr /=0) call IO_error(894, ext_msg='F_aim')
-    F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                ! average of F_lastInc 
-    call MPI_Allreduce(MPI_IN_PLACE,F_aim_lastInc,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-    if(ierr /=0) call IO_error(894, ext_msg='F_aim_lastInc')
   elseif (restartInc == 0) then restart
     F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                         ! initialize to identity
     F = reshape(F_lastInc,[9,grid(1),grid(2),grid3])
@@ -335,6 +333,10 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
         write(fileUnit) C_volAvg; close(fileUnit)
         fileUnit = IO_open_jobFile_binary('C_volAvgLastInv','w')
         write(fileUnit) C_volAvgLastInc; close(fileUnit)
+        fileUnit = IO_open_jobFile_binary('F_aim','w')
+        write(fileUnit) F_aim; close(fileUnit)
+        fileUnit = IO_open_jobFile_binary('F_aim_lastInc','w')
+        write(fileUnit) F_aim_lastInc; close(fileUnit)
         fileUnit = IO_open_jobFile_binary('F_aimDot','w')
         write(fileUnit) F_aimDot; close(fileUnit)
       endif
@@ -369,7 +371,7 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
     endif
 
 
-    Fdot =  Utilities_calculateRate(guess, &
+    Fdot =  utilities_calculateRate(guess, &
                                     F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]),timeinc_old, &
                                     math_rotate_backward33(F_aimDot,rotation_BC))
     F_lastInc        = reshape(F,         [3,3,grid(1),grid(2),grid3])                                ! winding F forward

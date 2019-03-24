@@ -170,8 +170,12 @@ subroutine grid_mech_spectral_polarisation_init
  F_tau    => FandF_tau( 9:17,:,:,:)
 
  restart: if (restartInc > 0) then
-   write(6,'(/,a,'//IO_intOut(restartInc)//',a)') 'reading values of increment ', restartInc, ' from file'
+   write(6,'(/,a,'//IO_intOut(restartInc)//',a)') ' reading values of increment ', restartInc, ' from file'
 
+   fileUnit = IO_open_jobFile_binary('F_aim')
+   read(fileUnit) F_aim; close(fileUnit)
+   fileUnit = IO_open_jobFile_binary('F_aim_lastInc')
+   read(fileUnit) F_aim_lastInc; close(fileUnit)
    fileUnit = IO_open_jobFile_binary('F_aimDot')
    read(fileUnit) F_aimDot; close(fileUnit)
 
@@ -186,12 +190,6 @@ subroutine grid_mech_spectral_polarisation_init
    fileUnit = IO_open_jobFile_binary('F_tau_lastInc'//trim(rankStr))
    read(fileUnit) F_tau_lastInc; close (fileUnit)
 
-   F_aim         = reshape(sum(sum(sum(F,dim=4),dim=3),dim=2) * wgt, [3,3])                         ! average of F
-   call MPI_Allreduce(MPI_IN_PLACE,F_aim,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-   if(ierr /=0) call IO_error(894, ext_msg='F_aim')
-   F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
-   call MPI_Allreduce(MPI_IN_PLACE,F_aim_lastInc,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-   if(ierr /=0) call IO_error(894, ext_msg='F_aim_lastInc')
  elseif (restartInc == 0) then restart
    F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                          ! initialize to identity
    F = reshape(F_lastInc,[9,grid(1),grid(2),grid3])
@@ -208,7 +206,7 @@ subroutine grid_mech_spectral_polarisation_init
  call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)                         ! deassociate pointer
 
  restartRead: if (restartInc > 0) then
-   write(6,'(/,a,'//IO_intOut(restartInc)//',a)') 'reading more values of increment ', restartInc, ' from file'
+   write(6,'(/,a,'//IO_intOut(restartInc)//',a)') ' reading more values of increment ', restartInc, ' from file'
    fileUnit = IO_open_jobFile_binary('C_volAvg')
    read(fileUnit) C_volAvg; close(fileUnit)
    fileUnit = IO_open_jobFile_binary('C_volAvgLastInv')
@@ -265,7 +263,7 @@ function grid_mech_spectral_polarisation_solution(incInfoIn,timeinc,timeinc_old,
 ! update stiffness (and gamma operator)
  S = Utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
  if (update_gamma) then
-   call Utilities_updateGamma(C_minMaxAvg,restartWrite)
+   call utilities_updateGamma(C_minMaxAvg,restartWrite)
    C_scale = C_minMaxAvg
    S_scale = math_invSym3333(C_minMaxAvg)
  endif  
@@ -363,6 +361,10 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
         write(fileUnit) C_volAvg; close(fileUnit)
         fileUnit = IO_open_jobFile_binary('C_volAvgLastInv','w')
         write(fileUnit) C_volAvgLastInc; close(fileUnit)
+        fileUnit = IO_open_jobFile_binary('F_aim','w')
+        write(fileUnit) F_aim; close(fileUnit)
+        fileUnit = IO_open_jobFile_binary('F_aim_lastInc','w')
+        write(fileUnit) F_aim_lastInc; close(fileUnit)
         fileUnit = IO_open_jobFile_binary('F_aimDot','w')
         write(fileUnit) F_aimDot; close(fileUnit)
       endif
@@ -372,7 +374,6 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
       write(fileUnit) F; close (fileUnit)
       fileUnit = IO_open_jobFile_binary('F_lastInc'//trim(rankStr),'w')
       write(fileUnit) F_lastInc; close (fileUnit)
-
       fileUnit = IO_open_jobFile_binary('F_tau'//trim(rankStr),'w')
       write(fileUnit) F_tau; close (fileUnit)
       fileUnit = IO_open_jobFile_binary('F_tau_lastInc'//trim(rankStr),'w')
@@ -402,10 +403,10 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
     endif
 
 
-    Fdot        = Utilities_calculateRate(guess, &
+    Fdot        = utilities_calculateRate(guess, &
                                           F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]),timeinc_old, &
                                           math_rotate_backward33(F_aimDot,rotation_BC))
-    F_tauDot    = Utilities_calculateRate(guess, &
+    F_tauDot    = utilities_calculateRate(guess, &
                                           F_tau_lastInc,reshape(F_tau,[3,3,grid(1),grid(2),grid3]), timeinc_old, &
                                           math_rotate_backward33(F_aimDot,rotation_BC))
     F_lastInc        = reshape(F,         [3,3,grid(1),grid(2),grid3])                                ! winding F forward
@@ -416,10 +417,10 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * timeinc
-  F = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                        ! estimate of F at end of time+timeinc that matches rotated F_aim on average
+  F = reshape(utilities_forwardField(timeinc,F_lastInc,Fdot, &                                        ! estimate of F at end of time+timeinc that matches rotated F_aim on average
                                      math_rotate_backward33(F_aim,rotation_BC)),&
               [9,grid(1),grid(2),grid3])
-  if (guess) then
+ if (guess) then
     F_tau = reshape(Utilities_forwardField(timeinc,F_tau_lastInc,F_taudot), &
                     [9,grid(1),grid(2),grid3])                                                        ! does not have any average value as boundary condition
   else
@@ -489,7 +490,7 @@ subroutine converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
 !--------------------------------------------------------------------------------------------------
 ! report
  write(6,'(1/,a)') ' ... reporting .............................................................'
- write(6,'(/,a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
+ write(6,'(1/,a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
            err_div/divTol,  ' (',err_div, ' / m, tol = ',divTol,')'
  write(6,  '(a,f12.2,a,es8.2,a,es9.2,a)') ' error curl       = ', &
            err_curl/curlTol,' (',err_curl,' -,   tol = ',curlTol,')'
