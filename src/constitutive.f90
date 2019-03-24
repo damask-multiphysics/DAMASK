@@ -877,7 +877,8 @@ subroutine constitutive_collectDotState(S, FeArray, Fi, FpArray, subdt, ipc, ip,
        call source_damage_anisoDuctile_dotState (         ipc, ip, el)
 
      case (SOURCE_thermal_externalheat_ID) sourceType
-       call source_thermal_externalheat_dotState(         ipc, ip, el)
+       of = phasememberAt(ipc,ip,el)
+       call source_thermal_externalheat_dotState(material_phase(ipc,ip,el),of)
 
    end select sourceType
 
