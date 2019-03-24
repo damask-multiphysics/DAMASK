@@ -281,9 +281,9 @@ Spectral_PackedGeometry:
     - master
     - release
 
-Spectral_parsingArguments:
+grid_parsingArguments:
   stage: spectral
-  script: Spectral_parsingArguments/test.py
+  script: grid_parsingArguments/test.py
   except:
     - master
     - release
