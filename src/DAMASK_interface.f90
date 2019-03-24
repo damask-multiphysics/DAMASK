@@ -13,8 +13,9 @@ module DAMASK_interface
   implicit none
   private
   logical, public, protected :: &
-    SIGUSR1, &                                                                                      !< user-defined signal 1
-    SIGUSR2                                                                                         !< user-defined signal 2
+    SIGTERM, &                                                                                      !< termination signal 
+    SIGUSR1, &                                                                                      !< 1. user-defined signal
+    SIGUSR2                                                                                         !< 2. user-defined signal
   integer, public, protected :: &
     interface_restartInc = 0                                                                        !< Increment at which calculation starts
   character(len=1024), public, protected :: &
@@ -23,7 +24,10 @@ module DAMASK_interface
 
   public :: &
     getSolverJobName, &
-    DAMASK_interface_init
+    DAMASK_interface_init, &
+    setSIGTERM, &
+    setSIGUSR1, &
+    setSIGUSR2
   private :: &
     setWorkingDirectory, &
     getGeometryFile, &
@@ -279,10 +283,12 @@ subroutine DAMASK_interface_init()
   if (interface_restartInc > 0) &
     write(6,'(a,i6.6)') ' Restart from increment: ', interface_restartInc
 
-  call signalusr1_c(c_funloc(setSIGUSR1))
-  call signalusr2_c(c_funloc(setSIGUSR2))
-  SIGUSR1 = .false.
-  SIGUSR2 = .false.
+  !call signalterm_c(c_funloc(catchSIGTERM))
+  call signalusr1_c(c_funloc(catchSIGUSR1))
+  call signalusr2_c(c_funloc(catchSIGUSR2))
+  call setSIGTERM(.false.)
+  call setSIGUSR1(.false.)
+  call setSIGUSR2(.false.)
 
 
 end subroutine DAMASK_interface_init
@@ -470,9 +476,36 @@ end function makeRelativePath
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief sets global variable SIGUSR1 to .true. if program receives SIGUSR1
+!> @brief sets global variable SIGTERM to .true.
 !--------------------------------------------------------------------------------------------------
-subroutine setSIGUSR1(signal) bind(C)
+subroutine catchSIGTERM(signal) bind(C)
+  use :: iso_c_binding
+
+  implicit none
+  integer(C_INT), value :: signal
+  SIGTERM = .true.
+
+  write(6,'(a,i2.2,a)') ' received signal ',signal, ', set SIGTERM'
+
+end subroutine catchSIGTERM
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief sets global variable SIGTERM
+!--------------------------------------------------------------------------------------------------
+subroutine setSIGTERM(state)
+
+  implicit none
+  logical, intent(in) :: state
+  SIGTERM = state
+
+end subroutine setSIGTERM
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief sets global variable SIGUSR1 to .true.
+!--------------------------------------------------------------------------------------------------
+subroutine catchSIGUSR1(signal) bind(C)
   use :: iso_c_binding
 
   implicit none
@@ -481,13 +514,25 @@ subroutine setSIGUSR1(signal) bind(C)
 
   write(6,'(a,i2.2,a)') ' received signal ',signal, ', set SIGUSR1'
 
+end subroutine catchSIGUSR1
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief sets global variable SIGUSR1
+!--------------------------------------------------------------------------------------------------
+subroutine setSIGUSR1(state)
+
+  implicit none
+  logical, intent(in) :: state
+  SIGUSR1 = state
+
 end subroutine setSIGUSR1
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief sets global variable SIGUSR2 to .true. if program receives SIGUSR2
 !--------------------------------------------------------------------------------------------------
-subroutine setSIGUSR2(signal) bind(C)
+subroutine catchSIGUSR2(signal) bind(C)
   use :: iso_c_binding
 
   implicit none
@@ -496,6 +541,19 @@ subroutine setSIGUSR2(signal) bind(C)
 
   write(6,'(a,i2.2,a)') ' received signal ',signal, ', set SIGUSR2'
 
+end subroutine catchSIGUSR2
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief sets global variable SIGUSR2
+!--------------------------------------------------------------------------------------------------
+subroutine setSIGUSR2(state)
+
+  implicit none
+  logical, intent(in) :: state
+  SIGUSR2 = state
+
 end subroutine setSIGUSR2
+
 
 end module
