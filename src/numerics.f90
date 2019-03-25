@@ -88,17 +88,11 @@ module numerics
    rotation_tol               =  1.0e-12_pReal, &                                                   !< tolerance of rotation specified in loadcase, Default 1.0e-12: first guess
    polarAlpha                 =  1.0_pReal, &                                                       !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme 
    polarBeta                  =  1.0_pReal                                                          !< polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme 
- character(len=64), private :: &
-   fftw_plan_mode             = 'FFTW_PATIENT'                                                      !< reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patient planner flag
- character(len=64), protected, public :: & 
-   spectral_derivative        = 'continuous'                                                        !< spectral spatial derivative method
  character(len=1024), protected, public :: &
    petsc_defaultOptions       = '-mech_snes_type ngmres &
                                 &-damage_snes_type ngmres &
                                 &-thermal_snes_type ngmres ', &
    petsc_options              = ''
- integer(pInt), protected, public :: &
-   fftw_planner_flag          =  32_pInt                                                            !< conversion of fftw_plan_mode to integer, basically what is usually done in the include file of fftw
  logical, protected, public :: &
    continueCalculation        = .false., &                                                          !< false:exit if BVP solver does not converge, true: continue calculation despite BVP solver not converging
    memory_efficient           = .true., &                                                           !< for fast execution (pre calculation of gamma_hat), Default .true.: do not precalculate
@@ -327,10 +321,6 @@ subroutine numerics_init
          err_stress_tolabs = IO_floatValue(line,chunkPos,2_pInt)
        case ('continuecalculation')
          continueCalculation = IO_intValue(line,chunkPos,2_pInt) > 0_pInt
-       case ('fftw_plan_mode')
-         fftw_plan_mode = IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-       case ('spectralderivative')
-         spectral_derivative = IO_lc(IO_stringValue(line,chunkPos,2_pInt))
        case ('update_gamma')
          update_gamma = IO_intValue(line,chunkPos,2_pInt) > 0_pInt
        case ('petsc_options')
@@ -366,21 +356,6 @@ subroutine numerics_init
    flush(6)
  endif fileExists
 
-#ifdef Grid
- select case(IO_lc(fftw_plan_mode))                                                                ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
-   case('estimate','fftw_estimate')                                                                ! ordered from slow execution (but fast plan creation) to fast execution
-     fftw_planner_flag = 64_pInt
-   case('measure','fftw_measure')
-     fftw_planner_flag = 0_pInt
-   case('patient','fftw_patient')
-     fftw_planner_flag= 32_pInt
-   case('exhaustive','fftw_exhaustive')
-     fftw_planner_flag = 8_pInt 
-   case default
-     call IO_warning(warning_ID=47_pInt,ext_msg=trim(IO_lc(fftw_plan_mode)))
-     fftw_planner_flag = 32_pInt
- end select
-#endif
 
 !--------------------------------------------------------------------------------------------------
 ! writing parameters to output
@@ -457,9 +432,6 @@ subroutine numerics_init
 ! spectral parameters
 #ifdef Grid
  write(6,'(a24,1x,L8)')      ' continueCalculation:    ',continueCalculation
- write(6,'(a24,1x,a)')       ' spectral_derivative:    ',trim(spectral_derivative)
- write(6,'(a24,1x,a)')       ' fftw_plan_mode:         ',trim(fftw_plan_mode)
- write(6,'(a24,1x,i8)')      ' fftw_planner_flag:      ',fftw_planner_flag
  write(6,'(a24,1x,L8,/)')    ' update_gamma:           ',update_gamma
  write(6,'(a24,1x,es8.1)')   ' err_stress_tolAbs:      ',err_stress_tolAbs
  write(6,'(a24,1x,es8.1)')   ' err_stress_tolRel:      ',err_stress_tolRel

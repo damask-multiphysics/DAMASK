@@ -9,6 +9,7 @@ module spectral_utilities
   use PETScSys
  use prec, only: &
    pReal, &
+   pStringLen, &
    pInt
  use math, only: &
   math_I3
@@ -102,17 +103,18 @@ module spectral_utilities
    real(pReal) :: timeincOld
  end type tSolutionParams
  
- type, private :: tNumerics
+ type, private :: tNumerics                                                                        !< scales divergence/curl calculation: 0- no correction, 1- size scaled to 1, 2- size scaled to Npoints
+   real(pReal) :: &
+     FFTW_timelimit                                                                                 !< timelimit for FFTW plan creation, see www.fftw.org
+   integer :: &
+     divergence_correction
    logical :: &
      memory_efficient
-   integer :: &
-     divergence_correction !< correct divergence calculation in fourier space 0: no correction, 1: size scaled to 1, 2: size scaled to Npoints
-   real(pReal) :: &
+   character(len=pStringLen) :: &
      spectral_derivative, &
-     fftw_planner_flag, &
-     FFTW_timelimit, &                                                                              !< timelimit for FFTW plan creation for FFTW, see www.fftw.org
-     petsc_defaultOptions, &
-     petsc_options
+     FFTW_plan_mode, &
+     PETSc_defaultOptions, &
+     PETSc_options
  end type tNumerics
  
  type(tNumerics) :: num                                                                             ! numerics parameters. Better name?
@@ -167,10 +169,9 @@ contains
 subroutine utilities_init
  use IO, only: &
    IO_error, &
-   IO_warning
+   IO_warning, &
+   IO_lc
  use numerics, only: &
-   spectral_derivative, &
-   fftw_planner_flag, &
    petsc_defaultOptions, &
    petsc_options
  use debug, only: &
@@ -194,7 +195,8 @@ subroutine utilities_init
 
  implicit none
  PetscErrorCode :: ierr
- integer(pInt)               :: i, j, k
+ integer(pInt)               :: i, j, k, &
+   FFTW_planner_flag
  integer(pInt), dimension(3) :: k_s
  type(C_PTR) :: &
    tensorField, &                                                                                   !< field containing data for FFTW in real and fourier space (in place)
@@ -247,14 +249,16 @@ subroutine utilities_init
  write(6,'(/,a,3(i12  ))')  ' grid     a b c: ', grid
  write(6,'(a,3(es12.5))')   ' size     x y z: ', geomSize
  
- num%memory_efficient      = config_numerics%getInt  ('memory_efficient',       defaultVal=1) > 0
- num%FFTW_timelimit        = config_numerics%getFloat('fftw_timelimit',         defaultVal=-1.0)
- num%divergence_correction = config_numerics%getInt  ('divergence_correction',  defaultVal=2)
+ num%memory_efficient      = config_numerics%getInt   ('memory_efficient',       defaultVal=1) > 0
+ num%FFTW_timelimit        = config_numerics%getFloat ('fftw_timelimit',         defaultVal=-1.0)
+ num%divergence_correction = config_numerics%getInt   ('divergence_correction',  defaultVal=2)
+ num%spectral_derivative   = config_numerics%getString('spectral_derivative',    defaultVal='continuous')
+ num%FFTW_plan_mode        = config_numerics%getString('fftw_plan_mode',         defaultVal='FFTW_PATIENT')
  
  if (num%divergence_correction < 0 .or. num%divergence_correction > 2) &
    call IO_error(301_pInt,ext_msg='divergence_correction')
                      
- select case (spectral_derivative)
+ select case (num%spectral_derivative)
    case ('continuous')
      spectral_derivative_ID = DERIVATIVE_CONTINUOUS_ID
    case ('central_difference')
@@ -262,7 +266,7 @@ subroutine utilities_init
    case ('fwbw_difference')
      spectral_derivative_ID = DERIVATIVE_FWBW_DIFF_ID
    case default
-     call IO_error(892_pInt,ext_msg=trim(spectral_derivative))
+     call IO_error(892_pInt,ext_msg=trim(num%spectral_derivative))
  end select
 
 !--------------------------------------------------------------------------------------------------
@@ -283,6 +287,20 @@ subroutine utilities_init
    scaledGeomSize = geomSize
  endif
 
+
+ select case(IO_lc(num%FFTW_plan_mode))                                                             ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
+   case('estimate','fftw_estimate')                                                                 ! ordered from slow execution (but fast plan creation) to fast execution
+     FFTW_planner_flag = 64_pInt
+   case('measure','fftw_measure')
+     FFTW_planner_flag = 0_pInt
+   case('patient','fftw_patient')
+     FFTW_planner_flag= 32_pInt
+   case('exhaustive','fftw_exhaustive')
+     FFTW_planner_flag = 8_pInt 
+   case default
+     call IO_warning(warning_ID=47_pInt,ext_msg=trim(IO_lc(num%FFTW_plan_mode)))
+     FFTW_planner_flag = 32_pInt
+ end select
 
 !--------------------------------------------------------------------------------------------------
 ! MPI allocation
@@ -315,12 +333,12 @@ subroutine utilities_init
  planTensorForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &           ! dimension, logical length in each dimension in reversed order
                                        tensorSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
                                                       tensorField_real, tensorField_fourier, &      ! input data, output data
-                                                              PETSC_COMM_WORLD, fftw_planner_flag)  ! use all processors, planer precision
+                                                              PETSC_COMM_WORLD, FFTW_planner_flag)  ! use all processors, planer precision
  if (.not. C_ASSOCIATED(planTensorForth)) call IO_error(810, ext_msg='planTensorForth')
  planTensorBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &           ! dimension, logical length in each dimension in reversed order
                                       tensorSize,  FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
                                                        tensorField_fourier,tensorField_real, &      ! input data, output data
-                                                              PETSC_COMM_WORLD, fftw_planner_flag)  ! all processors, planer precision
+                                                              PETSC_COMM_WORLD, FFTW_planner_flag)  ! all processors, planer precision
  if (.not. C_ASSOCIATED(planTensorBack)) call IO_error(810, ext_msg='planTensorBack')
 
 !--------------------------------------------------------------------------------------------------
@@ -328,12 +346,12 @@ subroutine utilities_init
  planVectorForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &           ! dimension, logical length in each dimension in reversed order
                                           vecSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
                                                       vectorField_real, vectorField_fourier, &      ! input data, output data
-                                                              PETSC_COMM_WORLD, fftw_planner_flag)  ! use all processors, planer precision
+                                                              PETSC_COMM_WORLD, FFTW_planner_flag)  ! use all processors, planer precision
  if (.not. C_ASSOCIATED(planVectorForth)) call IO_error(810, ext_msg='planVectorForth')
  planVectorBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)],  &          ! dimension, logical length in each dimension in reversed order
                                         vecSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &  ! no. of transforms, default iblock and oblock
                                                      vectorField_fourier,vectorField_real, &        ! input data, output data
-                                                              PETSC_COMM_WORLD, fftw_planner_flag)  ! all processors, planer precision
+                                                              PETSC_COMM_WORLD, FFTW_planner_flag)  ! all processors, planer precision
  if (.not. C_ASSOCIATED(planVectorBack)) call IO_error(810, ext_msg='planVectorBack')
 
 !--------------------------------------------------------------------------------------------------
@@ -341,12 +359,12 @@ subroutine utilities_init
  planScalarForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &           ! dimension, logical length in each dimension in reversed order
                                       scalarSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, & ! no. of transforms, default iblock and oblock
                                                       scalarField_real, scalarField_fourier, &      ! input data, output data
-                                                              PETSC_COMM_WORLD, fftw_planner_flag)  ! use all processors, planer precision
+                                                              PETSC_COMM_WORLD, FFTW_planner_flag)  ! use all processors, planer precision
  if (.not. C_ASSOCIATED(planScalarForth)) call IO_error(810, ext_msg='planScalarForth')
  planScalarBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &           ! dimension, logical length in each dimension in reversed order, no. of transforms
                                       scalarSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, & ! no. of transforms, default iblock and oblock
                                                       scalarField_fourier,scalarField_real, &       ! input data, output data
-                                                              PETSC_COMM_WORLD, fftw_planner_flag)  ! use all processors, planer precision
+                                                              PETSC_COMM_WORLD, FFTW_planner_flag)  ! use all processors, planer precision
  if (.not. C_ASSOCIATED(planScalarBack)) call IO_error(810, ext_msg='planScalarBack')
 
 !--------------------------------------------------------------------------------------------------
@@ -426,9 +444,9 @@ subroutine utilities_updateGamma(C,saveReference)
   endif
  
   if(.not. num%memory_efficient) then
-    gamma_hat =  cmplx(0.0_pReal,0.0_pReal,pReal)                                                     ! for the singular point and any non invertible A
+    gamma_hat =  cmplx(0.0_pReal,0.0_pReal,pReal)                                                   ! for the singular point and any non invertible A
     do k = grid3Offset+1, grid3Offset+grid3; do j = 1, grid(2); do i = 1, grid1Red
-      if (any([i,j,k] /= 1)) then                                                                ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
+      if (any([i,j,k] /= 1)) then                                                                   ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
         forall(l = 1:3, m = 1:3) &
           xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k-grid3Offset))*xi1st(m,i,j,k-grid3Offset)
         forall(l = 1:3, m = 1:3) &
@@ -497,7 +515,7 @@ subroutine utilities_FFTscalarBackward
  implicit none
 
  call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
- scalarField_real = scalarField_real * wgt                                                    ! normalize the result by number of elements
+ scalarField_real = scalarField_real * wgt                                                          ! normalize the result by number of elements
 
 end subroutine utilities_FFTscalarBackward
 
@@ -524,7 +542,7 @@ subroutine utilities_FFTvectorBackward
  implicit none
 
  call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
- vectorField_real = vectorField_real * wgt                                                    ! normalize the result by number of elements
+ vectorField_real = vectorField_real * wgt                                                          ! normalize the result by number of elements
 
 end subroutine utilities_FFTvectorBackward
 
