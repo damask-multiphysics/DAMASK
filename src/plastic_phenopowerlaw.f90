@@ -204,9 +204,9 @@ subroutine plastic_phenopowerlaw_init
        prm%nonSchmid_pos  = prm%Schmid_slip
        prm%nonSchmid_neg  = prm%Schmid_slip
      endif
-     prm%interaction_SlipSlip = lattice_interaction_SlipBySlip(prm%Nslip, &
+     prm%interaction_SlipSlip = transpose(lattice_interaction_SlipBySlip(prm%Nslip, &
                                                                config%getFloats('interaction_slipslip'), &
-                                                               config%getString('lattice_structure'))
+                                                               config%getString('lattice_structure')))
 
      prm%xi_slip_0   = config%getFloats('tau0_slip',   requiredSize=size(prm%Nslip))
      prm%xi_slip_sat = config%getFloats('tausat_slip', requiredSize=size(prm%Nslip))
@@ -241,9 +241,9 @@ subroutine plastic_phenopowerlaw_init
    twinActive: if (prm%totalNtwin > 0_pInt) then
      prm%Schmid_twin          = lattice_SchmidMatrix_twin(prm%Ntwin,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
-     prm%interaction_TwinTwin = lattice_interaction_TwinByTwin(prm%Ntwin,&
+     prm%interaction_TwinTwin = transpose(lattice_interaction_TwinByTwin(prm%Ntwin,&
                                                                config%getFloats('interaction_twintwin'), &
-                                                               config%getString('lattice_structure'))
+                                                               config%getString('lattice_structure')))
      prm%gamma_twin_char      = lattice_characteristicShear_twin(prm%Ntwin,config%getString('lattice_structure'),&
                                                             config%getFloat('c/a'))
 
@@ -269,15 +269,15 @@ subroutine plastic_phenopowerlaw_init
 !--------------------------------------------------------------------------------------------------
 ! slip-twin related parameters
    slipAndTwinActive: if (prm%totalNslip > 0_pInt .and. prm%totalNtwin > 0_pInt) then
-     prm%interaction_SlipTwin = lattice_interaction_SlipByTwin(prm%Nslip,prm%Ntwin,&
+     prm%interaction_SlipTwin = transpose(lattice_interaction_SlipByTwin(prm%Nslip,prm%Ntwin,&
                                                                config%getFloats('interaction_sliptwin'), &
-                                                               config%getString('lattice_structure'))
-     prm%interaction_TwinSlip = lattice_interaction_TwinBySlip(prm%Ntwin,prm%Nslip,&
+                                                               config%getString('lattice_structure')))
+     prm%interaction_TwinSlip = transpose(lattice_interaction_TwinBySlip(prm%Ntwin,prm%Nslip,&
                                                                config%getFloats('interaction_twinslip'), &
-                                                               config%getString('lattice_structure'))
+                                                               config%getString('lattice_structure')))
    else slipAndTwinActive
-     allocate(prm%interaction_SlipTwin(prm%TotalNtwin,prm%TotalNslip))                              ! at least one dimension is 0
-     allocate(prm%interaction_TwinSlip(prm%TotalNslip,prm%TotalNtwin))                              ! at least one dimension is 0
+     allocate(prm%interaction_SlipTwin(prm%TotalNslip,prm%TotalNtwin))                              ! at least one dimension is 0
+     allocate(prm%interaction_TwinSlip(prm%TotalNtwin,prm%TotalNslip))                              ! at least one dimension is 0
      prm%h0_TwinSlip = 0.0_pReal
    endif slipAndTwinActive
 
@@ -447,8 +447,6 @@ subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
    instance, &
    of
 
- integer(pInt) :: &
-   i
  real(pReal) :: &
    c_SlipSlip,c_TwinSlip,c_TwinTwin, &
    xi_slip_sat_offset,&
@@ -483,17 +481,12 @@ subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
 
 !--------------------------------------------------------------------------------------------------
 ! hardening
- hardeningSlip: do i = 1_pInt, prm%totalNslip
-   dot%xi_slip(i,of) = dot_product(prm%interaction_SlipSlip(:,i),right_SlipSlip*dot%gamma_slip(:,of)) &
-                     * c_SlipSlip * left_SlipSlip(i) &
-                     + dot_product(prm%interaction_SlipTwin(:,i),dot%gamma_twin(:,of))
- enddo hardeningSlip
+ dot%xi_slip(:,of) = c_SlipSlip * left_SlipSlip * &
+                     matmul(prm%interaction_SlipSlip,dot%gamma_slip(:,of)*right_SlipSlip) &
+                   + matmul(prm%interaction_SlipTwin,dot%gamma_twin(:,of))
 
- hardeningTwin: do i = 1_pInt, prm%totalNtwin
-   dot%xi_twin(i,of) = c_TwinSlip * dot_product(prm%interaction_TwinSlip(:,i),dot%gamma_slip(:,of)) &
-                     + c_TwinTwin * dot_product(prm%interaction_TwinTwin(:,i),dot%gamma_twin(:,of))
- enddo hardeningTwin
-
+ dot%xi_twin(:,of) = c_TwinSlip * matmul(prm%interaction_TwinSlip,dot%gamma_slip(:,of)) &
+                   + c_TwinTwin * matmul(prm%interaction_TwinTwin,dot%gamma_twin(:,of))
  end associate
 
 end subroutine plastic_phenopowerlaw_dotState
