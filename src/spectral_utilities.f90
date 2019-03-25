@@ -105,13 +105,14 @@ module spectral_utilities
  type, private :: tNumerics
    logical :: &
      memory_efficient
+   integer :: &
+     divergence_correction !< correct divergence calculation in fourier space 0: no correction, 1: size scaled to 1, 2: size scaled to Npoints
    real(pReal) :: &
      spectral_derivative, &
      fftw_planner_flag, &
      FFTW_timelimit, &                                                                              !< timelimit for FFTW plan creation for FFTW, see www.fftw.org
      petsc_defaultOptions, &
-     petsc_options, &
-     divergence_correction
+     petsc_options
  end type tNumerics
  
  type(tNumerics) :: num                                                                             ! numerics parameters. Better name?
@@ -171,8 +172,7 @@ subroutine utilities_init
    spectral_derivative, &
    fftw_planner_flag, &
    petsc_defaultOptions, &
-   petsc_options, &
-   divergence_correction
+   petsc_options
  use debug, only: &
    debug_level, &
    debug_SPECTRAL, &
@@ -247,8 +247,12 @@ subroutine utilities_init
  write(6,'(/,a,3(i12  ))')  ' grid     a b c: ', grid
  write(6,'(a,3(es12.5))')   ' size     x y z: ', geomSize
  
- num%memory_efficient = config_numerics%getInt  ('memory_efficient',defaultVal=1) > 0
- num%FFTW_timelimit   = config_numerics%getFloat('fftw_timelimit',  defaultVal=-1.0)
+ num%memory_efficient      = config_numerics%getInt  ('memory_efficient',       defaultVal=1) > 0
+ num%FFTW_timelimit        = config_numerics%getFloat('fftw_timelimit',         defaultVal=-1.0)
+ num%divergence_correction = config_numerics%getInt  ('divergence_correction',  defaultVal=2)
+ 
+ if (num%divergence_correction < 0 .or. num%divergence_correction > 2) &
+   call IO_error(301_pInt,ext_msg='divergence_correction')
                      
  select case (spectral_derivative)
    case ('continuous')
@@ -264,12 +268,12 @@ subroutine utilities_init
 !--------------------------------------------------------------------------------------------------
 ! scale dimension to calculate either uncorrected, dimension-independent, or dimension- and
 ! resolution-independent divergence
- if (divergence_correction == 1_pInt) then
+ if (num%divergence_correction == 1) then
    do j = 1_pInt, 3_pInt
     if (j /= minloc(geomSize,1) .and. j /= maxloc(geomSize,1)) &
       scaledGeomSize = geomSize/geomSize(j)
    enddo
- elseif (divergence_correction == 2_pInt) then
+ elseif (num%divergence_correction == 2) then
    do j = 1_pInt, 3_pInt
     if (      j /= int(minloc(geomSize/real(grid,pReal),1),pInt) &
         .and. j /= int(maxloc(geomSize/real(grid,pReal),1),pInt)) &
@@ -362,7 +366,7 @@ subroutine utilities_init
        if(j > grid(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - grid(2)                                    ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
          do i = 1_pInt, grid1Red
            k_s(1) = i - 1_pInt                                                                      ! symmetry, junst running from 0,1,...,N/2,N/2+1
-           xi2nd(1:3,i,j,k-grid3Offset) = utilities_getFreqDerivative(k_s)                          ! if divergence_correction is set, frequencies are calculated on unit length
+           xi2nd(1:3,i,j,k-grid3Offset) = utilities_getFreqDerivative(k_s)
            where(mod(grid,2)==0 .and. [i,j,k] == grid/2+1 .and. &
                  spectral_derivative_ID == DERIVATIVE_CONTINUOUS_ID)                                ! for even grids, set the Nyquist Freq component to 0.0
              xi1st(1:3,i,j,k-grid3Offset) = cmplx(0.0_pReal,0.0_pReal,pReal)

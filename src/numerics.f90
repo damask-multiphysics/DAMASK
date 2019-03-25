@@ -98,8 +98,7 @@ module numerics
                                 &-thermal_snes_type ngmres ', &
    petsc_options              = ''
  integer(pInt), protected, public :: &
-   fftw_planner_flag          =  32_pInt, &                                                         !< conversion of fftw_plan_mode to integer, basically what is usually done in the include file of fftw
-   divergence_correction      =  2_pInt                                                             !< correct divergence calculation in fourier space 0: no correction, 1: size scaled to 1, 2: size scaled to Npoints
+   fftw_planner_flag          =  32_pInt                                                            !< conversion of fftw_plan_mode to integer, basically what is usually done in the include file of fftw
  logical, protected, public :: &
    continueCalculation        = .false., &                                                          !< false:exit if BVP solver does not converge, true: continue calculation despite BVP solver not converging
    memory_efficient           = .true., &                                                           !< for fast execution (pre calculation of gamma_hat), Default .true.: do not precalculate
@@ -332,8 +331,6 @@ subroutine numerics_init
          fftw_plan_mode = IO_lc(IO_stringValue(line,chunkPos,2_pInt))
        case ('spectralderivative')
          spectral_derivative = IO_lc(IO_stringValue(line,chunkPos,2_pInt))
-       case ('divergence_correction')
-         divergence_correction = IO_intValue(line,chunkPos,2_pInt)
        case ('update_gamma')
          update_gamma = IO_intValue(line,chunkPos,2_pInt) > 0_pInt
        case ('petsc_options')
@@ -460,7 +457,6 @@ subroutine numerics_init
 ! spectral parameters
 #ifdef Grid
  write(6,'(a24,1x,L8)')      ' continueCalculation:    ',continueCalculation
- write(6,'(a24,1x,i8)')      ' divergence_correction:  ',divergence_correction
  write(6,'(a24,1x,a)')       ' spectral_derivative:    ',trim(spectral_derivative)
  write(6,'(a24,1x,a)')       ' fftw_plan_mode:         ',trim(fftw_plan_mode)
  write(6,'(a24,1x,i8)')      ' fftw_planner_flag:      ',fftw_planner_flag
@@ -538,8 +534,6 @@ subroutine numerics_init
  if (err_damage_tolabs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_damage_tolabs')
  if (err_damage_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_damage_tolrel')
 #ifdef Grid
- if (divergence_correction < 0_pInt .or. &
-     divergence_correction > 2_pInt)       call IO_error(301_pInt,ext_msg='divergence_correction')
  if (update_gamma .and. &
                    .not. memory_efficient) call IO_error(error_ID = 847_pInt)
  if (err_stress_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolRel')
