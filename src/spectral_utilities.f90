@@ -18,9 +18,9 @@ module spectral_utilities
  private
  include 'fftw3-mpi.f03'
 
- logical,       public             :: cutBack = .false.                                              !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
- integer(pInt), public, parameter  :: maxPhaseFields = 2_pInt
- integer(pInt), public             :: nActiveFields = 0_pInt
+ logical, public             :: cutBack = .false.                                                   !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
+ integer, public, parameter  :: maxPhaseFields = 2
+ integer, public             :: nActiveFields = 0
 
 !--------------------------------------------------------------------------------------------------
 ! field labels information
@@ -38,7 +38,7 @@ module spectral_utilities
 
 !--------------------------------------------------------------------------------------------------
 ! variables storing information for spectral method and FFTW
- integer(pInt), public                                                    :: grid1Red               !< grid(1)/2
+ integer, public                                                          :: grid1Red               !< grid(1)/2
  real   (C_DOUBLE),        public,  dimension(:,:,:,:,:),     pointer     :: tensorField_real       !< real representation (some stress or deformation) of field_fourier
  complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:,:,:),     pointer     :: tensorField_fourier    !< field on which the Fourier transform operates
  real(C_DOUBLE),           public,  dimension(:,:,:,:),       pointer     :: vectorField_real       !< vector field real representation for fftw
@@ -71,15 +71,16 @@ module spectral_utilities
 !--------------------------------------------------------------------------------------------------
 ! derived types
  type, public :: tSolutionState                                                                     !< return type of solution from spectral solver variants
-   logical       :: converged         = .true.
-   logical       :: stagConverged     = .true.
-   logical       :: termIll           = .false.
-   integer(pInt) :: iterationsNeeded  = 0_pInt
+   logical :: &
+      converged         = .true., &
+      stagConverged     = .true., &
+      termIll           = .false.
+   integer    :: iterationsNeeded  = 0
  end type tSolutionState
 
  type, public :: tBoundaryCondition                                                                 !< set of parameters defining a boundary condition
-   real(pReal), dimension(3,3) :: values      = 0.0_pReal
-   real(pReal), dimension(3,3) :: maskFloat   = 0.0_pReal
+   real(pReal), dimension(3,3) :: values      = 0.0_pReal, &
+                                  maskFloat   = 0.0_pReal
    logical,     dimension(3,3) :: maskLogical = .false.
    character(len=64)           :: myType      = 'None'
  end type tBoundaryCondition
@@ -89,10 +90,10 @@ module spectral_utilities
    type(tBoundaryCondition) ::     stress, &                                                        !< stress BC
                                    deformation                                                      !< deformation BC (Fdot or L)
    real(pReal) ::                  time                   = 0.0_pReal                               !< length of increment
-   integer(pInt) ::                incs                   = 0_pInt, &                               !< number of increments
-                                   outputfrequency        = 1_pInt, &                               !< frequency of result writes
-                                   restartfrequency       = 0_pInt, &                               !< frequency of restart writes
-                                   logscale               = 0_pInt                                  !< linear/logarithmic time inc flag
+   integer ::                      incs                   = 0, &                                    !< number of increments
+                                   outputfrequency        = 1, &                                    !< frequency of result writes
+                                   restartfrequency       = 0, &                                    !< frequency of restart writes
+                                   logscale               = 0                                       !< linear/logarithmic time inc flag
    logical ::                      followFormerTrajectory = .true.                                  !< follow trajectory of former loadcase
    integer(kind(FIELD_UNDEFINED_ID)), allocatable :: ID(:)
  end type tLoadCase
@@ -103,7 +104,7 @@ module spectral_utilities
    real(pReal) :: timeincOld
  end type tSolutionParams
  
- type, private :: tNumerics                                                                        !< scales divergence/curl calculation: 0- no correction, 1- size scaled to 1, 2- size scaled to Npoints
+ type, private :: tNumerics                                                                         !< scales divergence/curl calculation: 0- no correction, 1- size scaled to 1, 2- size scaled to Npoints
    real(pReal) :: &
      FFTW_timelimit                                                                                 !< timelimit for FFTW plan creation, see www.fftw.org
    integer :: &
@@ -195,9 +196,9 @@ subroutine utilities_init
 
  implicit none
  PetscErrorCode :: ierr
- integer(pInt)               :: i, j, k, &
+ integer        :: i, j, k, &
    FFTW_planner_flag
- integer(pInt), dimension(3) :: k_s
+ integer, dimension(3) :: k_s
  type(C_PTR) :: &
    tensorField, &                                                                                   !< field containing data for FFTW in real and fourier space (in place)
    vectorField, &                                                                                   !< field containing data for FFTW in real space when debugging FFTW (no in place)
@@ -256,7 +257,7 @@ subroutine utilities_init
  num%FFTW_plan_mode        = config_numerics%getString('fftw_plan_mode',         defaultVal='FFTW_PATIENT')
  
  if (num%divergence_correction < 0 .or. num%divergence_correction > 2) &
-   call IO_error(301_pInt,ext_msg='divergence_correction')
+   call IO_error(301,ext_msg='divergence_correction')
                      
  select case (num%spectral_derivative)
    case ('continuous')
@@ -266,19 +267,19 @@ subroutine utilities_init
    case ('fwbw_difference')
      spectral_derivative_ID = DERIVATIVE_FWBW_DIFF_ID
    case default
-     call IO_error(892_pInt,ext_msg=trim(num%spectral_derivative))
+     call IO_error(892,ext_msg=trim(num%spectral_derivative))
  end select
 
 !--------------------------------------------------------------------------------------------------
 ! scale dimension to calculate either uncorrected, dimension-independent, or dimension- and
 ! resolution-independent divergence
  if (num%divergence_correction == 1) then
-   do j = 1_pInt, 3_pInt
+   do j = 1, 3
     if (j /= minloc(geomSize,1) .and. j /= maxloc(geomSize,1)) &
       scaledGeomSize = geomSize/geomSize(j)
    enddo
  elseif (num%divergence_correction == 2) then
-   do j = 1_pInt, 3_pInt
+   do j = 1, 3
     if (      j /= int(minloc(geomSize/real(grid,pReal),1),pInt) &
         .and. j /= int(maxloc(geomSize/real(grid,pReal),1),pInt)) &
       scaledGeomSize = geomSize/geomSize(j)*real(grid(j),pReal)
@@ -290,17 +291,24 @@ subroutine utilities_init
 
  select case(IO_lc(num%FFTW_plan_mode))                                                             ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
    case('estimate','fftw_estimate')                                                                 ! ordered from slow execution (but fast plan creation) to fast execution
-     FFTW_planner_flag = 64_pInt
+     FFTW_planner_flag = 64
    case('measure','fftw_measure')
-     FFTW_planner_flag = 0_pInt
+     FFTW_planner_flag = 0
    case('patient','fftw_patient')
-     FFTW_planner_flag= 32_pInt
+     FFTW_planner_flag= 32
    case('exhaustive','fftw_exhaustive')
-     FFTW_planner_flag = 8_pInt 
+     FFTW_planner_flag = 8 
    case default
-     call IO_warning(warning_ID=47_pInt,ext_msg=trim(IO_lc(num%FFTW_plan_mode)))
-     FFTW_planner_flag = 32_pInt
+     call IO_warning(warning_ID=47,ext_msg=trim(IO_lc(num%FFTW_plan_mode)))
+     FFTW_planner_flag = 32
  end select
+
+!--------------------------------------------------------------------------------------------------
+! general initialization of FFTW (see manual on fftw.org for more details)
+ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(0,ext_msg='Fortran to C')             ! check for correct precision in C
+ call fftw_set_timelimit(num%FFTW_timelimit)                                                        ! set timelimit for plan creation
+
+ if (debugGeneral) write(6,'(/,a)') ' FFTW initialized'; flush(6)
 
 !--------------------------------------------------------------------------------------------------
 ! MPI allocation
@@ -368,22 +376,15 @@ subroutine utilities_init
  if (.not. C_ASSOCIATED(planScalarBack)) call IO_error(810, ext_msg='planScalarBack')
 
 !--------------------------------------------------------------------------------------------------
-! general initialization of FFTW (see manual on fftw.org for more details)
- if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(0_pInt,ext_msg='Fortran to C')             ! check for correct precision in C
- call fftw_set_timelimit(num%FFTW_timelimit)                                                        ! set timelimit for plan creation
-
- if (debugGeneral) write(6,'(/,a)') ' FFTW initialized'; flush(6)
-
-!--------------------------------------------------------------------------------------------------
 ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
- do k = grid3Offset+1_pInt, grid3Offset+grid3
-   k_s(3) = k - 1_pInt
-   if(k > grid(3)/2_pInt + 1_pInt) k_s(3) = k_s(3) - grid(3)                                        ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
-     do j = 1_pInt, grid(2)
-       k_s(2) = j - 1_pInt
-       if(j > grid(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - grid(2)                                    ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
-         do i = 1_pInt, grid1Red
-           k_s(1) = i - 1_pInt                                                                      ! symmetry, junst running from 0,1,...,N/2,N/2+1
+ do k = grid3Offset+1, grid3Offset+grid3
+   k_s(3) = k - 1
+   if(k > grid(3)/2 + 1) k_s(3) = k_s(3) - grid(3)                                                  ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
+     do j = 1, grid(2)
+       k_s(2) = j - 1
+       if(j > grid(2)/2 + 1) k_s(2) = k_s(2) - grid(2)                                              ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
+         do i = 1, grid1Red
+           k_s(1) = i - 1                                                                           ! symmetry, junst running from 0,1,...,N/2,N/2+1
            xi2nd(1:3,i,j,k-grid3Offset) = utilities_getFreqDerivative(k_s)
            where(mod(grid,2)==0 .and. [i,j,k] == grid/2+1 .and. &
                  spectral_derivative_ID == DERIVATIVE_CONTINUOUS_ID)                                ! for even grids, set the Nyquist Freq component to 0.0
@@ -435,7 +436,7 @@ subroutine utilities_updateGamma(C,saveReference)
  
   C_ref = C
   if (saveReference) then
-    if (worldrank == 0_pInt) then
+    if (worldrank == 0) then
       write(6,'(/,a)') ' writing reference stiffness to file'
       flush(6)
       fileUnit = IO_open_jobFile_binary('C_ref','w')
@@ -625,11 +626,11 @@ subroutine utilities_fourierGreenConvolution(D_ref, mobility_ref, deltaT)
   real(pReal), dimension(3,3), intent(in) :: D_ref
   real(pReal),                 intent(in) :: mobility_ref, deltaT
   complex(pReal)                          :: GreenOp_hat
-  integer(pInt)                           :: i, j, k
+  integer                                 :: i, j, k
  
 !--------------------------------------------------------------------------------------------------
 ! do the actual spectral method calculation
-  do k = 1_pInt, grid3; do j = 1_pInt, grid(2) ;do i = 1_pInt, grid1Red
+  do k = 1, grid3; do j = 1, grid(2) ;do i = 1, grid1Red
     GreenOp_hat =  cmplx(1.0_pReal,0.0_pReal,pReal)/ &
                    (cmplx(mobility_ref,0.0_pReal,pReal) + cmplx(deltaT,0.0_pReal)*&
                     sum(conjg(xi1st(1:3,i,j,k))* matmul(cmplx(D_ref,0.0_pReal),xi1st(1:3,i,j,k))))   ! why not use dot_product 
@@ -651,7 +652,7 @@ real(pReal) function utilities_divergenceRMS()
     grid3
 
   implicit none
-  integer(pInt) :: i, j, k, ierr
+  integer :: i, j, k, ierr
   complex(pReal), dimension(3)   :: rescaledGeom
 
   write(6,'(/,a)') ' ... calculating divergence ................................................'
@@ -662,8 +663,8 @@ real(pReal) function utilities_divergenceRMS()
 !--------------------------------------------------------------------------------------------------
 ! calculating RMS divergence criterion in Fourier space
   utilities_divergenceRMS = 0.0_pReal
-  do k = 1_pInt, grid3; do j = 1_pInt, grid(2)
-    do i = 2_pInt, grid1Red -1_pInt                                                                 ! Has somewhere a conj. complex counterpart. Therefore count it twice.
+  do k = 1, grid3; do j = 1, grid(2)
+    do i = 2, grid1Red -1                                                                           ! Has somewhere a conj. complex counterpart. Therefore count it twice.
       utilities_divergenceRMS = utilities_divergenceRMS &
             + 2.0_pReal*(sum (real(matmul(tensorField_fourier(1:3,1:3,i,j,k),&                      ! (sqrt(real(a)**2 + aimag(a)**2))**2 = real(a)**2 + aimag(a)**2. do not take square root and square again
                                           conjg(-xi1st(1:3,i,j,k))*rescaledGeom))**2.0_pReal)&      ! --> sum squared L_2 norm of vector
@@ -680,9 +681,9 @@ real(pReal) function utilities_divergenceRMS()
                + sum(aimag(matmul(tensorField_fourier(1:3,1:3,grid1Red,j,k), &
                                   conjg(-xi1st(1:3,grid1Red,j,k))*rescaledGeom))**2.0_pReal)
   enddo; enddo
-  if(grid(1) == 1_pInt) utilities_divergenceRMS = utilities_divergenceRMS * 0.5_pReal               ! counted twice in case of grid(1) == 1
+  if(grid(1) == 1) utilities_divergenceRMS = utilities_divergenceRMS * 0.5_pReal                    ! counted twice in case of grid(1) == 1
   call MPI_Allreduce(MPI_IN_PLACE,utilities_divergenceRMS,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-  if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='utilities_divergenceRMS')
+  if(ierr /=0) call IO_error(894, ext_msg='utilities_divergenceRMS')
   utilities_divergenceRMS = sqrt(utilities_divergenceRMS) * wgt                                     ! RMS in real space calculated with Parsevals theorem from Fourier space
 
 
@@ -701,7 +702,7 @@ real(pReal) function utilities_curlRMS()
     grid3
  
   implicit none
-  integer(pInt)  ::  i, j, k, l, ierr
+  integer  ::  i, j, k, l, ierr
   complex(pReal), dimension(3,3) :: curl_fourier
   complex(pReal), dimension(3)   :: rescaledGeom
  
@@ -714,9 +715,9 @@ real(pReal) function utilities_curlRMS()
 ! calculating max curl criterion in Fourier space
   utilities_curlRMS = 0.0_pReal
  
-  do k = 1_pInt, grid3; do j = 1_pInt, grid(2);
-    do i = 2_pInt, grid1Red - 1_pInt
-      do l = 1_pInt, 3_pInt
+  do k = 1, grid3; do j = 1, grid(2);
+    do i = 2, grid1Red - 1
+      do l = 1, 3
         curl_fourier(l,1) = (+tensorField_fourier(l,3,i,j,k)*xi1st(2,i,j,k)*rescaledGeom(2) &
                              -tensorField_fourier(l,2,i,j,k)*xi1st(3,i,j,k)*rescaledGeom(3))
         curl_fourier(l,2) = (+tensorField_fourier(l,1,i,j,k)*xi1st(3,i,j,k)*rescaledGeom(3) &
@@ -727,7 +728,7 @@ real(pReal) function utilities_curlRMS()
       utilities_curlRMS = utilities_curlRMS &
                         +2.0_pReal*sum(real(curl_fourier)**2.0_pReal+aimag(curl_fourier)**2.0_pReal)! Has somewhere a conj. complex counterpart. Therefore count it twice.
     enddo
-    do l = 1_pInt, 3_pInt
+    do l = 1, 3
        curl_fourier = (+tensorField_fourier(l,3,1,j,k)*xi1st(2,1,j,k)*rescaledGeom(2) &
                        -tensorField_fourier(l,2,1,j,k)*xi1st(3,1,j,k)*rescaledGeom(3))
        curl_fourier = (+tensorField_fourier(l,1,1,j,k)*xi1st(3,1,j,k)*rescaledGeom(3) &
@@ -737,7 +738,7 @@ real(pReal) function utilities_curlRMS()
     enddo
     utilities_curlRMS = utilities_curlRMS &
                       + sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal)         ! this layer (DC) does not have a conjugate complex counterpart (if grid(1) /= 1)
-    do l = 1_pInt, 3_pInt
+    do l = 1, 3
       curl_fourier = (+tensorField_fourier(l,3,grid1Red,j,k)*xi1st(2,grid1Red,j,k)*rescaledGeom(2) &
                       -tensorField_fourier(l,2,grid1Red,j,k)*xi1st(3,grid1Red,j,k)*rescaledGeom(3))
       curl_fourier = (+tensorField_fourier(l,1,grid1Red,j,k)*xi1st(3,grid1Red,j,k)*rescaledGeom(3) &
@@ -750,9 +751,9 @@ real(pReal) function utilities_curlRMS()
   enddo; enddo
  
   call MPI_Allreduce(MPI_IN_PLACE,utilities_curlRMS,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-  if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='utilities_curlRMS')
+  if(ierr /=0) call IO_error(894, ext_msg='utilities_curlRMS')
   utilities_curlRMS = sqrt(utilities_curlRMS) * wgt
-  if(grid(1) == 1_pInt) utilities_curlRMS = utilities_curlRMS * 0.5_pReal                           ! counted twice in case of grid(1) == 1
+  if(grid(1) == 1) utilities_curlRMS = utilities_curlRMS * 0.5_pReal                                ! counted twice in case of grid(1) == 1
 
 end function utilities_curlRMS
 
@@ -777,10 +778,10 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
  real(pReal), intent(in) , dimension(3,3,3,3) :: C                                                  !< current average stiffness
  real(pReal), intent(in) , dimension(3,3)     :: rot_BC                                             !< rotation of load frame
  logical,     intent(in),  dimension(3,3)     :: mask_stress                                        !< mask of stress BC
- integer(pInt) :: j, k, m, n
+ integer :: j, k, m, n
  logical, dimension(9) :: mask_stressVector
  real(pReal), dimension(9,9) :: temp99_Real
- integer(pInt) :: size_reduced = 0_pInt
+ integer :: size_reduced = 0
  real(pReal),              dimension(:,:), allocatable ::  &
    s_reduced, &                                                                                     !< reduced compliance matrix (depending on number of stress BC)
    c_reduced, &                                                                                     !< reduced stiffness (depending on number of stress BC)
@@ -790,7 +791,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
 
  mask_stressVector = reshape(transpose(mask_stress), [9])
  size_reduced = int(count(mask_stressVector), pInt)
- if(size_reduced > 0_pInt )then
+ if(size_reduced > 0 )then
    allocate (c_reduced(size_reduced,size_reduced), source =0.0_pReal)
    allocate (s_reduced(size_reduced,size_reduced), source =0.0_pReal)
    allocate (sTimesC(size_reduced,size_reduced),   source =0.0_pReal)
@@ -802,40 +803,40 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
                                                   transpose(temp99_Real)*1.0e-9_pReal
      flush(6)
    endif
-   k = 0_pInt                                                                                       ! calculate reduced stiffness
-   do n = 1_pInt,9_pInt
+   k = 0                                                                                            ! calculate reduced stiffness
+   do n = 1,9
      if(mask_stressVector(n)) then
-       k = k + 1_pInt
-       j = 0_pInt
-       do m = 1_pInt,9_pInt
+       k = k + 1
+       j = 0
+       do m = 1,9
          if(mask_stressVector(m)) then
-           j = j + 1_pInt
+           j = j + 1
            c_reduced(k,j) = temp99_Real(n,m)
    endif; enddo; endif; enddo
 
    call math_invert2(s_reduced, errmatinv, c_reduced)                                               ! invert reduced stiffness
    if (any(IEEE_is_NaN(s_reduced))) errmatinv = .true.
-   if (errmatinv) call IO_error(error_ID=400_pInt,ext_msg='utilities_maskedCompliance')
+   if (errmatinv) call IO_error(error_ID=400,ext_msg='utilities_maskedCompliance')
    temp99_Real = 0.0_pReal                                                                          ! fill up compliance with zeros
-    k = 0_pInt
-    do n = 1_pInt,9_pInt
+    k = 0
+    do n = 1,9
       if(mask_stressVector(n)) then
-        k = k + 1_pInt
-        j = 0_pInt
-        do m = 1_pInt,9_pInt
+        k = k + 1
+        j = 0
+        do m = 1,9
           if(mask_stressVector(m)) then
-            j = j + 1_pInt
+            j = j + 1
             temp99_Real(n,m) = s_reduced(k,j)
    endif; enddo; endif; enddo
 
 !--------------------------------------------------------------------------------------------------
 ! check if inversion was successful
    sTimesC = matmul(c_reduced,s_reduced)
-   do m=1_pInt, size_reduced
-     do n=1_pInt, size_reduced
+   do m=1, size_reduced
+     do n=1, size_reduced
        errmatinv = errmatinv &
-              .or. (m==n .and. abs(sTimesC(m,n)-1.0_pReal) > 1.0e-12_pReal) &                    ! diagonal elements of S*C should be 1
-              .or. (m/=n .and. abs(sTimesC(m,n))           > 1.0e-12_pReal)                      ! off-diagonal elements of S*C should be 0
+              .or. (m==n .and. abs(sTimesC(m,n)-1.0_pReal) > 1.0e-12_pReal) &                       ! diagonal elements of S*C should be 1
+              .or. (m/=n .and. abs(sTimesC(m,n))           > 1.0e-12_pReal)                         ! off-diagonal elements of S*C should be 0
      enddo
    enddo
    if (debugGeneral .or. errmatinv) then
@@ -844,7 +845,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
      write(6,trim(formatString),advance='no') ' C * S (load) ', &
                                                             transpose(matmul(c_reduced,s_reduced))
      write(6,trim(formatString),advance='no') ' S (load) ', transpose(s_reduced)
-     if(errmatinv) call IO_error(error_ID=400_pInt,ext_msg='utilities_maskedCompliance')
+     if(errmatinv) call IO_error(error_ID=400,ext_msg='utilities_maskedCompliance')
    endif
  else
    temp99_real = 0.0_pReal
@@ -868,10 +869,10 @@ subroutine utilities_fourierScalarGradient()
     grid
  
   implicit none
-  integer(pInt)                :: i, j, k
+  integer :: i, j, k
  
   vectorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
-  forall(k = 1_pInt:grid3, j = 1_pInt:grid(2), i = 1_pInt:grid1Red) &
+  forall(k = 1:grid3, j = 1:grid(2), i = 1:grid1Red) &
     vectorField_fourier(1:3,i,j,k) = scalarField_fourier(i,j,k)*xi1st(1:3,i,j,k)
  
 end subroutine utilities_fourierScalarGradient
@@ -886,10 +887,10 @@ subroutine utilities_fourierVectorDivergence()
     grid
  
   implicit none
-  integer(pInt)                :: i, j, k
+  integer                :: i, j, k
  
   scalarField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
-  forall(k = 1_pInt:grid3, j = 1_pInt:grid(2), i = 1_pInt:grid1Red) &
+  forall(k = 1:grid3, j = 1:grid(2), i = 1:grid1Red) &
       scalarField_fourier(i,j,k) = scalarField_fourier(i,j,k) + &
         sum(vectorField_fourier(1:3,i,j,k)*conjg(-xi1st(1:3,i,j,k)))
  
@@ -905,11 +906,11 @@ subroutine utilities_fourierVectorGradient()
     grid
  
   implicit none
-  integer(pInt) :: i, j, k, m, n
+  integer :: i, j, k, m, n
  
   tensorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
-  do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid1Red
-    do m = 1_pInt, 3_pInt; do n = 1_pInt, 3_pInt
+  do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid1Red
+    do m = 1, 3; do n = 1, 3
       tensorField_fourier(m,n,i,j,k) = vectorField_fourier(m,i,j,k)*xi1st(n,i,j,k)
     enddo; enddo
   enddo; enddo; enddo
@@ -926,11 +927,11 @@ subroutine utilities_fourierTensorDivergence()
     grid
  
   implicit none
-  integer(pInt) :: i, j, k, m, n
+  integer :: i, j, k, m, n
  
   vectorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
-  do k = 1_pInt, grid3;  do j = 1_pInt, grid(2);  do i = 1_pInt,grid1Red
-    do m = 1_pInt, 3_pInt; do n = 1_pInt, 3_pInt
+  do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid1Red
+    do m = 1, 3; do n = 1, 3
       vectorField_fourier(m,i,j,k) = &
         vectorField_fourier(m,i,j,k) + &
         tensorField_fourier(m,n,i,j,k)*conjg(-xi1st(n,i,j,k))
@@ -973,7 +974,7 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   real(pReal), intent(in), dimension(3,3)                         :: rotation_BC                    !< rotation of load frame
  
   
-  integer(pInt) :: &
+  integer :: &
     i,ierr
   real(pReal), dimension(3,3,3,3) :: dPdF_max,      dPdF_min
   real(pReal)                     :: dPdF_norm_max, dPdF_norm_min
@@ -1002,7 +1003,7 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   dPdF_norm_max = 0.0_pReal
   dPdF_min = huge(1.0_pReal)
   dPdF_norm_min = huge(1.0_pReal)
-  do i = 1_pInt, product(grid(1:2))*grid3
+  do i = 1, product(grid(1:2))*grid3
     if (dPdF_norm_max < sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)) then
       dPdF_max = materialpoint_dPdF(1:3,1:3,1:3,1:3,1,i)
       dPdF_norm_max = sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)
@@ -1015,15 +1016,15 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
  
   valueAndRank = [dPdF_norm_max,real(worldrank,pReal)]
   call MPI_Allreduce(MPI_IN_PLACE,valueAndRank,1, MPI_2DOUBLE_PRECISION, MPI_MAXLOC, PETSC_COMM_WORLD, ierr)
-  if (ierr /= 0_pInt) call IO_error(894_pInt, ext_msg='MPI_Allreduce max')
+  if (ierr /= 0) call IO_error(894, ext_msg='MPI_Allreduce max')
   call MPI_Bcast(dPdF_max,81,MPI_DOUBLE,int(valueAndRank(2)),PETSC_COMM_WORLD, ierr)
-  if (ierr /= 0_pInt) call IO_error(894_pInt, ext_msg='MPI_Bcast max')
+  if (ierr /= 0) call IO_error(894, ext_msg='MPI_Bcast max')
   
   valueAndRank = [dPdF_norm_min,real(worldrank,pReal)]
   call MPI_Allreduce(MPI_IN_PLACE,valueAndRank,1, MPI_2DOUBLE_PRECISION, MPI_MINLOC, PETSC_COMM_WORLD, ierr)
-  if (ierr /= 0_pInt) call IO_error(894_pInt, ext_msg='MPI_Allreduce min')
+  if (ierr /= 0) call IO_error(894, ext_msg='MPI_Allreduce min')
   call MPI_Bcast(dPdF_min,81,MPI_DOUBLE,int(valueAndRank(2)),PETSC_COMM_WORLD, ierr)
-  if (ierr /= 0_pInt) call IO_error(894_pInt, ext_msg='MPI_Bcast min')
+  if (ierr /= 0) call IO_error(894, ext_msg='MPI_Bcast min')
   
   C_minmaxAvg = 0.5_pReal*(dPdF_max + dPdF_min)
  
@@ -1113,8 +1114,8 @@ pure function utilities_getFreqDerivative(k_s)
     grid
 
   implicit none
-  integer(pInt), intent(in),  dimension(3) :: k_s                                                   !< indices of frequency
-  complex(pReal),             dimension(3) :: utilities_getFreqDerivative
+  integer, intent(in),  dimension(3) :: k_s                                                         !< indices of frequency
+  complex(pReal),       dimension(3) :: utilities_getFreqDerivative
 
   select case (spectral_derivative_ID)
     case (DERIVATIVE_CONTINUOUS_ID)                                                                    
@@ -1175,7 +1176,7 @@ subroutine utilities_updateIPcoords(F)
   implicit none
  
   real(pReal),   dimension(3,3,grid(1),grid(2),grid3), intent(in) :: F
-  integer(pInt) :: i, j, k, m, ierr
+  integer :: i, j, k, m, ierr
   real(pReal),   dimension(3) :: step, offset_coords
   real(pReal),   dimension(3,3) :: Favg
  
@@ -1186,7 +1187,7 @@ subroutine utilities_updateIPcoords(F)
   call utilities_FFTtensorForward()
   call utilities_fourierTensorDivergence()
  
-  do k = 1_pInt, grid3; do j = 1_pInt, grid(2); do i = 1_pInt, grid1Red
+  do k = 1, grid3; do j = 1, grid(2); do i = 1, grid1Red
     if (any(cNeq(xi1st(1:3,i,j,k),cmplx(0.0,0.0,pReal)))) &
       vectorField_fourier(1:3,i,j,k) = vectorField_fourier(1:3,i,j,k)/ &
                                        sum(conjg(-xi1st(1:3,i,j,k))*xi1st(1:3,i,j,k))
@@ -1196,23 +1197,23 @@ subroutine utilities_updateIPcoords(F)
  
  !--------------------------------------------------------------------------------------------------
  ! average F
-  if (grid3Offset == 0_pInt) Favg = real(tensorField_fourier(1:3,1:3,1,1,1),pReal)*wgt
+  if (grid3Offset == 0) Favg = real(tensorField_fourier(1:3,1:3,1,1,1),pReal)*wgt
   call MPI_Bcast(Favg,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
-  if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='update_IPcoords')
+  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords')
  
  !--------------------------------------------------------------------------------------------------
  ! add average to fluctuation and put (0,0,0) on (0,0,0)
   step = geomSize/real(grid, pReal)
-  if (grid3Offset == 0_pInt) offset_coords = vectorField_real(1:3,1,1,1)
+  if (grid3Offset == 0) offset_coords = vectorField_real(1:3,1,1,1)
   call MPI_Bcast(offset_coords,3,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
-  if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='update_IPcoords')
+  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords')
   offset_coords = math_mul33x3(Favg,step/2.0_pReal) - offset_coords
-  m = 1_pInt
-  do k = 1_pInt,grid3; do j = 1_pInt,grid(2); do i = 1_pInt,grid(1)
+  m = 1
+  do k = 1,grid3; do j = 1,grid(2); do i = 1,grid(1)
     mesh_ipCoordinates(1:3,1,m) = vectorField_real(1:3,i,j,k) &
                                 + offset_coords &
-                                + math_mul33x3(Favg,step*real([i,j,k+grid3Offset]-1_pInt,pReal))
-    m = m+1_pInt
+                                + math_mul33x3(Favg,step*real([i,j,k+grid3Offset]-1,pReal))
+    m = m+1
   enddo; enddo; enddo
 
 end subroutine utilities_updateIPcoords
