@@ -118,7 +118,7 @@ subroutine grid_mech_FEM_init
  character(len=1024) :: rankStr
  real(pReal), dimension(3,3,3,3) :: devNull
  PetscScalar, pointer, dimension(:,:,:,:) :: &
- u_current,u_lastincrement,u_rate
+ u_current,u_lastInc
 
  write(6,'(/,a)') ' <<<+-  grid_mech_FEM init  -+>>>'
 
@@ -176,7 +176,7 @@ subroutine grid_mech_FEM_init
  call VecSet(solution_lastInc,0.0,ierr);CHKERRQ(ierr)
  call VecSet(solution_rate   ,0.0,ierr);CHKERRQ(ierr)
  call DMDAVecGetArrayF90(mech_grid,solution_current,u_current,ierr); CHKERRQ(ierr)
- call DMDAVecGetArrayF90(mech_grid,solution_lastInc,u_lastincrement,ierr); CHKERRQ(ierr)
+ call DMDAVecGetArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr); CHKERRQ(ierr)
 
  call DMDAGetCorners(mech_grid,xstart,ystart,zstart,xend,yend,zend,ierr)                            ! local grid extent
  CHKERRQ(ierr) 
@@ -203,6 +203,10 @@ subroutine grid_mech_FEM_init
  restart: if (restartInc > 0) then
    write(6,'(/,a,'//IO_intOut(restartInc)//',a)') 'reading values of increment ', restartInc, ' from file'
 
+   fileUnit = IO_open_jobFile_binary('F_aim')
+   read(fileUnit) F_aim; close(fileUnit)
+   fileUnit = IO_open_jobFile_binary('F_aim_lastInc')
+   read(fileUnit) F_aim_lastInc; close(fileUnit)
    fileUnit = IO_open_jobFile_binary('F_aimDot')
    read(fileUnit) F_aimDot; close(fileUnit)
 
@@ -215,14 +219,8 @@ subroutine grid_mech_FEM_init
    fileUnit = IO_open_jobFile_binary('u'//trim(rankStr))
    read(fileUnit) u_current; close (fileUnit)
    fileUnit = IO_open_jobFile_binary('u_lastInc'//trim(rankStr))
-   read(fileUnit) u_lastincrement; close (fileUnit)
+   read(fileUnit) u_lastInc; close (fileUnit)
 
-   F_aim         = sum(sum(sum(F,dim=5),dim=4),dim=3) * wgt                         ! average of F
-   call MPI_Allreduce(MPI_IN_PLACE,F_aim,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-   if(ierr /=0) call IO_error(894, ext_msg='F_aim')
-   F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt! average of F_lastInc 
-   call MPI_Allreduce(MPI_IN_PLACE,F_aim_lastInc,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-   if(ierr /=0) call IO_error(894, ext_msg='F_aim_lastInc')
  elseif (restartInc == 0) then restart
    F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                          ! initialize to identity
    F         = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)
@@ -235,7 +233,7 @@ subroutine grid_mech_FEM_init
                                      math_I3)                                                       ! no rotation of boundary condition
  call DMDAVecRestoreArrayF90(mech_grid,solution_current,u_current,ierr)
  CHKERRQ(ierr)
- call DMDAVecRestoreArrayF90(mech_grid,solution_lastInc,u_lastincrement,ierr)
+ call DMDAVecRestoreArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr)
  CHKERRQ(ierr)
 
  restartRead: if (restartInc > 0_pInt) then
@@ -354,10 +352,10 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
     integer :: fileUnit
   character(len=32) :: rankStr
     PetscScalar, pointer, dimension(:,:,:,:) :: &
-  u_current,u_lastincrement,u_rate
+  u_current,u_lastInc
   
  call DMDAVecGetArrayF90(mech_grid,solution_current,u_current,ierr); CHKERRQ(ierr)
- call DMDAVecGetArrayF90(mech_grid,solution_lastInc,u_lastincrement,ierr); CHKERRQ(ierr)
+ call DMDAVecGetArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr); CHKERRQ(ierr)
  
   if (cutBack) then
     C_volAvg    = C_volAvgLastInc        ! QUESTION: where is this required?
@@ -373,6 +371,10 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
         write(fileUnit) C_volAvg; close(fileUnit)
         fileUnit = IO_open_jobFile_binary('C_volAvgLastInv','w')
         write(fileUnit) C_volAvgLastInc; close(fileUnit)
+        fileUnit = IO_open_jobFile_binary('F_aim','w')
+        write(fileUnit) F_aim; close(fileUnit)
+        fileUnit = IO_open_jobFile_binary('F_aim_lastInc','w')
+        write(fileUnit) F_aim_lastInc; close(fileUnit)
         fileUnit = IO_open_jobFile_binary('F_aimDot','w')
         write(fileUnit) F_aimDot; close(fileUnit)
       endif
@@ -385,7 +387,8 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
       fileUnit = IO_open_jobFile_binary('u'//trim(rankStr),'w')
       write(fileUnit) u_current; close (fileUnit)
       fileUnit = IO_open_jobFile_binary('u_lastInc'//trim(rankStr),'w')
-      write(fileUnit) u_lastincrement; close (fileUnit)
+      write(fileUnit) u_lastInc; close (fileUnit)
+
     endif
     call CPFEM_age()                                                                                 ! age state and kinematics
     call utilities_updateIPcoords(F)
@@ -430,7 +433,7 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
 
  call DMDAVecRestoreArrayF90(mech_grid,solution_current,u_current,ierr)
  CHKERRQ(ierr)
- call DMDAVecRestoreArrayF90(mech_grid,solution_lastInc,u_lastincrement,ierr)
+ call DMDAVecRestoreArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr)
  CHKERRQ(ierr)
 
 end subroutine grid_mech_FEM_forward
@@ -472,7 +475,7 @@ use spectral_utilities
  BCTol  = max(maxval(abs(P_av))*err_stress_tolRel,err_stress_tolAbs)
 
 
- if ((totalIter >= itmin -1 .and. &
+ if ((totalIter >= itmin .and. &
                            all([ err_div/divTol, &
                                  err_BC /BCTol       ] < 1.0_pReal)) &
              .or.    terminallyIll) then  
@@ -543,12 +546,13 @@ subroutine formResidual(da_local,x_local,f_local,dummy,ierr)
  call SNESGetIterationNumber(mech_snes,PETScIter,ierr); CHKERRQ(ierr)
 
  if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1_pInt                                            ! new increment
+
 !--------------------------------------------------------------------------------------------------
 ! begin of new iteration
  newIteration: if (totalIter <= PETScIter) then
    totalIter = totalIter + 1_pInt
    write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') &
-           trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
+           trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter+1, '≤', itmax
    if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
      write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
              ' deformation gradient aim (lab) =', transpose(math_rotate_backward33(F_aim,params%rotation_BC))
