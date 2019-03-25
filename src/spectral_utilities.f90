@@ -103,15 +103,18 @@ module spectral_utilities
  end type tSolutionParams
  
  type, private :: tNumerics
+   logical :: &
+     memory_efficient
    real(pReal) :: &
      spectral_derivative, &
      fftw_planner_flag, &
-     fftw_timelimit, &
-     memory_efficient, &
+     FFTW_timelimit, &                                                                              !< timelimit for FFTW plan creation for FFTW, see www.fftw.org
      petsc_defaultOptions, &
      petsc_options, &
      divergence_correction
  end type tNumerics
+ 
+ type(tNumerics) :: num                                                                             ! numerics parameters. Better name?
 
  enum, bind(c)
    enumerator :: DERIVATIVE_CONTINUOUS_ID, &
@@ -160,15 +163,13 @@ contains
 !> level chosen.
 !> Initializes FFTW.
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_init()
+subroutine utilities_init
  use IO, only: &
    IO_error, &
    IO_warning
  use numerics, only: &
    spectral_derivative, &
    fftw_planner_flag, &
-   fftw_timelimit, &
-   memory_efficient, &
    petsc_defaultOptions, &
    petsc_options, &
    divergence_correction
@@ -180,6 +181,8 @@ subroutine utilities_init()
    debug_SPECTRALFFTW, &
    debug_SPECTRALPETSC, &
    debug_SPECTRALROTATION
+ use config, only: &
+   config_numerics
  use debug, only: &
    PETSCDEBUG
  use math
@@ -243,7 +246,10 @@ subroutine utilities_init()
 
  write(6,'(/,a,3(i12  ))')  ' grid     a b c: ', grid
  write(6,'(a,3(es12.5))')   ' size     x y z: ', geomSize
-
+ 
+ num%memory_efficient = config_numerics%getInt  ('memory_efficient',defaultVal=1) > 0
+ num%FFTW_timelimit   = config_numerics%getFloat('fftw_timelimit',  defaultVal=-1.0)
+                     
  select case (spectral_derivative)
    case ('continuous')
      spectral_derivative_ID = DERIVATIVE_CONTINUOUS_ID
@@ -342,7 +348,7 @@ subroutine utilities_init()
 !--------------------------------------------------------------------------------------------------
 ! general initialization of FFTW (see manual on fftw.org for more details)
  if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(0_pInt,ext_msg='Fortran to C')             ! check for correct precision in C
- call fftw_set_timelimit(fftw_timelimit)                                                            ! set timelimit for plan creation
+ call fftw_set_timelimit(num%FFTW_timelimit)                                                        ! set timelimit for plan creation
 
  if (debugGeneral) write(6,'(/,a)') ' FFTW initialized'; flush(6)
 
@@ -365,7 +371,7 @@ subroutine utilities_init()
            endwhere
  enddo; enddo; enddo
 
- if(memory_efficient) then                                                                          ! allocate just single fourth order tensor
+ if(num%memory_efficient) then                                                                      ! allocate just single fourth order tensor
    allocate (gamma_hat(3,3,3,3,1,1,1), source = cmplx(0.0_pReal,0.0_pReal,pReal))
  else                                                                                               ! precalculation of gamma_hat field
    allocate (gamma_hat(3,3,3,3,grid1Red,grid(2),grid3), source = cmplx(0.0_pReal,0.0_pReal,pReal))
@@ -385,7 +391,6 @@ subroutine utilities_updateGamma(C,saveReference)
   use IO, only: &
     IO_open_jobFile_binary
   use numerics, only: &
-    memory_efficient, &
     worldrank
   use mesh, only: &
     grid3Offset, &
@@ -416,7 +421,7 @@ subroutine utilities_updateGamma(C,saveReference)
     endif
   endif
  
-  if(.not. memory_efficient) then
+  if(.not. num%memory_efficient) then
     gamma_hat =  cmplx(0.0_pReal,0.0_pReal,pReal)                                                     ! for the singular point and any non invertible A
     do k = grid3Offset+1, grid3Offset+grid3; do j = 1, grid(2); do i = 1, grid1Red
       if (any([i,j,k] /= 1)) then                                                                ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
@@ -444,7 +449,7 @@ end subroutine utilities_updateGamma
 !> @brief forward FFT of data in field_real to field_fourier
 !> @details Does an unweighted filtered FFT transform from real to complex
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTtensorForward()
+subroutine utilities_FFTtensorForward
  implicit none
 
 !--------------------------------------------------------------------------------------------------
@@ -458,7 +463,7 @@ end subroutine utilities_FFTtensorForward
 !> @brief backward FFT of data in field_fourier to field_real
 !> @details Does an weighted inverse FFT transform from complex to real
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTtensorBackward()
+subroutine utilities_FFTtensorBackward
  implicit none
 
  call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
@@ -470,7 +475,7 @@ end subroutine utilities_FFTtensorBackward
 !> @brief forward FFT of data in scalarField_real to scalarField_fourier
 !> @details Does an unweighted filtered FFT transform from real to complex
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTscalarForward()
+subroutine utilities_FFTscalarForward
  implicit none
 
 !--------------------------------------------------------------------------------------------------
@@ -484,7 +489,7 @@ end subroutine utilities_FFTscalarForward
 !> @brief backward FFT of data in scalarField_fourier to scalarField_real
 !> @details Does an weighted inverse FFT transform from complex to real
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTscalarBackward()
+subroutine utilities_FFTscalarBackward
  implicit none
 
  call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
@@ -497,7 +502,7 @@ end subroutine utilities_FFTscalarBackward
 !> @brief forward FFT of data in field_real to field_fourier with highest freqs. removed
 !> @details Does an unweighted filtered FFT transform from real to complex.
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTvectorForward()
+subroutine utilities_FFTvectorForward
  implicit none
 
 !--------------------------------------------------------------------------------------------------
@@ -511,7 +516,7 @@ end subroutine utilities_FFTvectorForward
 !> @brief backward FFT of data in field_fourier to field_real
 !> @details Does an weighted inverse FFT transform from complex to real
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTvectorBackward()
+subroutine utilities_FFTvectorBackward
  implicit none
 
  call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
@@ -524,8 +529,6 @@ end subroutine utilities_FFTvectorBackward
 !> @brief doing convolution gamma_hat * field_real, ensuring that average value = fieldAim
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_fourierGammaConvolution(fieldAim)
-  use numerics, only: &
-    memory_efficient
   use math, only: &
     math_det33, &
     math_invert2
@@ -550,7 +553,7 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
 
 !--------------------------------------------------------------------------------------------------
 ! do the actual spectral method calculation (mechanical equilibrium)
-  memoryEfficient: if(memory_efficient) then
+  memoryEfficient: if(num%memory_efficient) then
     do k = 1, grid3; do j = 1, grid(2); do i = 1, grid1Red
       if (any([i,j,k+grid3Offset] /= 1)) then                                                        ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
         forall(l = 1:3, m = 1:3) &

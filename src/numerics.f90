@@ -85,7 +85,6 @@ module numerics
    err_curl_tolRel            =  5.0e-4_pReal, &                                                    !< relative tolerance for compatibility
    err_stress_tolAbs          =  1.0e3_pReal,  &                                                    !< absolute tolerance for fullfillment of stress BC
    err_stress_tolRel          =  0.01_pReal, &                                                      !< relative tolerance for fullfillment of stress BC
-   fftw_timelimit             = -1.0_pReal, &                                                       !< sets the timelimit of plan creation for FFTW, see manual on www.fftw.org, Default -1.0: disable timelimit
    rotation_tol               =  1.0e-12_pReal, &                                                   !< tolerance of rotation specified in loadcase, Default 1.0e-12: first guess
    polarAlpha                 =  1.0_pReal, &                                                       !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme 
    polarBeta                  =  1.0_pReal                                                          !< polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme 
@@ -329,10 +328,6 @@ subroutine numerics_init
          err_stress_tolabs = IO_floatValue(line,chunkPos,2_pInt)
        case ('continuecalculation')
          continueCalculation = IO_intValue(line,chunkPos,2_pInt) > 0_pInt
-       case ('memory_efficient')
-         memory_efficient = IO_intValue(line,chunkPos,2_pInt) > 0_pInt
-       case ('fftw_timelimit')
-         fftw_timelimit = IO_floatValue(line,chunkPos,2_pInt)
        case ('fftw_plan_mode')
          fftw_plan_mode = IO_lc(IO_stringValue(line,chunkPos,2_pInt))
        case ('spectralderivative')
@@ -351,13 +346,6 @@ subroutine numerics_init
          polarAlpha = IO_floatValue(line,chunkPos,2_pInt)
        case ('polarbeta')
          polarBeta = IO_floatValue(line,chunkPos,2_pInt)
-#else
-      case ('err_div_tolabs','err_div_tolrel','err_stress_tolrel','err_stress_tolabs',&             ! found spectral parameter for FEM build
-            'memory_efficient','fftw_timelimit','fftw_plan_mode', &
-            'divergence_correction','update_gamma','spectralfilter','myfilter', &
-            'err_curl_tolabs','err_curl_tolrel', &
-            'polaralpha','polarbeta')
-         call IO_warning(40_pInt,ext_msg=tag)
 #endif
 
 !--------------------------------------------------------------------------------------------------
@@ -371,13 +359,10 @@ subroutine numerics_init
          petsc_options = trim(line(chunkPos(4):))
        case ('bbarstabilisation')
          BBarStabilisation = IO_intValue(line,chunkPos,2_pInt) > 0_pInt
-#else
-      case ('integrationorder','structorder','thermalorder', 'damageorder', &
-            'bbarstabilisation')
-         call IO_warning(40_pInt,ext_msg=tag)
 #endif
      end select
    enddo
+
 
  else fileExists
    write(6,'(a,/)') ' using standard values'
@@ -475,14 +460,8 @@ subroutine numerics_init
 ! spectral parameters
 #ifdef Grid
  write(6,'(a24,1x,L8)')      ' continueCalculation:    ',continueCalculation
- write(6,'(a24,1x,L8)')      ' memory_efficient:       ',memory_efficient
  write(6,'(a24,1x,i8)')      ' divergence_correction:  ',divergence_correction
  write(6,'(a24,1x,a)')       ' spectral_derivative:    ',trim(spectral_derivative)
- if(fftw_timelimit<0.0_pReal) then
-   write(6,'(a24,1x,L8)')    ' fftw_timelimit:         ',.false.
- else    
-   write(6,'(a24,1x,es8.1)') ' fftw_timelimit:         ',fftw_timelimit
- endif
  write(6,'(a24,1x,a)')       ' fftw_plan_mode:         ',trim(fftw_plan_mode)
  write(6,'(a24,1x,i8)')      ' fftw_planner_flag:      ',fftw_planner_flag
  write(6,'(a24,1x,L8,/)')    ' update_gamma:           ',update_gamma
