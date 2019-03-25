@@ -4,158 +4,160 @@
 !> @brief Utilities used by the different spectral solver variants
 !--------------------------------------------------------------------------------------------------
 module spectral_utilities
- use, intrinsic :: iso_c_binding
+  use, intrinsic :: iso_c_binding
 #include <petsc/finclude/petscsys.h>
   use PETScSys
- use prec, only: &
-   pReal, &
-   pStringLen, &
-   pInt
- use math, only: &
-  math_I3
+  use prec, only: &
+    pReal, &
+    pStringLen
+  use math, only: &
+   math_I3
 
- implicit none
- private
- include 'fftw3-mpi.f03'
+  implicit none
+  private
+  include 'fftw3-mpi.f03'
 
- logical, public             :: cutBack = .false.                                                   !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
- integer, public, parameter  :: maxPhaseFields = 2
- integer, public             :: nActiveFields = 0
+  logical, public             :: cutBack = .false.                                                  !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
+  integer, public, parameter  :: maxPhaseFields = 2
+  integer, public             :: nActiveFields = 0
 
 !--------------------------------------------------------------------------------------------------
 ! field labels information
- enum, bind(c)
-   enumerator :: FIELD_UNDEFINED_ID, &
-                 FIELD_MECH_ID, &
-                 FIELD_THERMAL_ID, &
-                 FIELD_DAMAGE_ID, &
-                 FIELD_VACANCYDIFFUSION_ID
- end enum
+  enum, bind(c)
+    enumerator :: &
+      FIELD_UNDEFINED_ID, &
+      FIELD_MECH_ID, &
+      FIELD_THERMAL_ID, &
+      FIELD_DAMAGE_ID
+  end enum
 
 !--------------------------------------------------------------------------------------------------
 ! grid related information information
- real(pReal),   public                :: wgt                                                        !< weighting factor 1/Nelems
+  real(pReal),   public :: wgt                                                                      !< weighting factor 1/Nelems
 
 !--------------------------------------------------------------------------------------------------
 ! variables storing information for spectral method and FFTW
- integer, public                                                          :: grid1Red               !< grid(1)/2
- real   (C_DOUBLE),        public,  dimension(:,:,:,:,:),     pointer     :: tensorField_real       !< real representation (some stress or deformation) of field_fourier
- complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:,:,:),     pointer     :: tensorField_fourier    !< field on which the Fourier transform operates
- real(C_DOUBLE),           public,  dimension(:,:,:,:),       pointer     :: vectorField_real       !< vector field real representation for fftw
- complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:,:),       pointer     :: vectorField_fourier    !< vector field fourier representation for fftw
- real(C_DOUBLE),           public,  dimension(:,:,:),         pointer     :: scalarField_real       !< scalar field real representation for fftw
- complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:),         pointer     :: scalarField_fourier    !< scalar field fourier representation for fftw
- complex(pReal),           private, dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat              !< gamma operator (field) for spectral method
- complex(pReal),           private, dimension(:,:,:,:),       allocatable :: xi1st                  !< wave vector field for first derivatives
- complex(pReal),           private, dimension(:,:,:,:),       allocatable :: xi2nd                  !< wave vector field for second derivatives
- real(pReal),              private, dimension(3,3,3,3)                    :: C_ref                  !< mechanic reference stiffness
- real(pReal), protected,   public,  dimension(3)                          :: scaledGeomSize         !< scaled geometry size for calculation of divergence (Basic, Basic PETSc)
+  integer, public                                                          :: grid1Red              !< grid(1)/2
+  real   (C_DOUBLE),        public,  dimension(:,:,:,:,:),     pointer     :: tensorField_real      !< real representation (some stress or deformation) of field_fourier
+  complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:,:,:),     pointer     :: tensorField_fourier   !< field on which the Fourier transform operates
+  real(C_DOUBLE),           public,  dimension(:,:,:,:),       pointer     :: vectorField_real      !< vector field real representation for fftw
+  complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:,:),       pointer     :: vectorField_fourier   !< vector field fourier representation for fftw
+  real(C_DOUBLE),           public,  dimension(:,:,:),         pointer     :: scalarField_real      !< scalar field real representation for fftw
+  complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:),         pointer     :: scalarField_fourier   !< scalar field fourier representation for fftw
+  complex(pReal),           private, dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat             !< gamma operator (field) for spectral method
+  complex(pReal),           private, dimension(:,:,:,:),       allocatable :: xi1st                 !< wave vector field for first derivatives
+  complex(pReal),           private, dimension(:,:,:,:),       allocatable :: xi2nd                 !< wave vector field for second derivatives
+  real(pReal),              private, dimension(3,3,3,3)                    :: C_ref                 !< mechanic reference stiffness
+  real(pReal), protected,   public,  dimension(3)                          :: scaledGeomSize        !< scaled geometry size for calculation of divergence (Basic, Basic PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! plans for FFTW
- type(C_PTR),   private :: &
-   planTensorForth, &                                                                               !< FFTW MPI plan P(x) to P(k)
-   planTensorBack, &                                                                                !< FFTW MPI plan F(k) to F(x)
-   planVectorForth, &                                                                               !< FFTW MPI plan v(x) to v(k)
-   planVectorBack, &                                                                                !< FFTW MPI plan v(k) to v(x)
-   planScalarForth, &                                                                               !< FFTW MPI plan s(x) to s(k)
-   planScalarBack                                                                                   !< FFTW MPI plan s(k) to s(x)
+  type(C_PTR),   private :: &
+    planTensorForth, &                                                                              !< FFTW MPI plan P(x) to P(k)
+    planTensorBack, &                                                                               !< FFTW MPI plan F(k) to F(x)
+    planVectorForth, &                                                                              !< FFTW MPI plan v(x) to v(k)
+    planVectorBack, &                                                                               !< FFTW MPI plan v(k) to v(x)
+    planScalarForth, &                                                                              !< FFTW MPI plan s(x) to s(k)
+    planScalarBack                                                                                  !< FFTW MPI plan s(k) to s(x)
 
 !--------------------------------------------------------------------------------------------------
 ! variables controlling debugging
- logical, private :: &
-   debugGeneral, &                                                                                  !< general debugging of spectral solver
-   debugRotation, &                                                                                 !< also printing out results in lab frame
-   debugPETSc                                                                                       !< use some in debug defined options for more verbose PETSc solution
+  logical, private :: &
+    debugGeneral, &                                                                                 !< general debugging of spectral solver
+    debugRotation, &                                                                                !< also printing out results in lab frame
+    debugPETSc                                                                                      !< use some in debug defined options for more verbose PETSc solution
 
 !--------------------------------------------------------------------------------------------------
 ! derived types
- type, public :: tSolutionState                                                                     !< return type of solution from spectral solver variants
-   logical :: &
-      converged         = .true., &
-      stagConverged     = .true., &
-      termIll           = .false.
-   integer    :: iterationsNeeded  = 0
- end type tSolutionState
+  type, public :: tSolutionState                                                                    !< return type of solution from spectral solver variants
+    integer :: &
+       iterationsNeeded  = 0
+    logical :: &
+       converged         = .true., &
+       stagConverged     = .true., &
+       termIll           = .false.
+  end type tSolutionState
 
- type, public :: tBoundaryCondition                                                                 !< set of parameters defining a boundary condition
-   real(pReal), dimension(3,3) :: values      = 0.0_pReal, &
-                                  maskFloat   = 0.0_pReal
-   logical,     dimension(3,3) :: maskLogical = .false.
-   character(len=64)           :: myType      = 'None'
- end type tBoundaryCondition
+  type, public :: tBoundaryCondition                                                                !< set of parameters defining a boundary condition
+    real(pReal), dimension(3,3) :: values      = 0.0_pReal, &
+                                   maskFloat   = 0.0_pReal
+    logical,     dimension(3,3) :: maskLogical = .false.
+    character(len=64)           :: myType      = 'None'
+  end type tBoundaryCondition
 
- type, public :: tLoadCase
-   real(pReal), dimension (3,3) :: rotation               = math_I3                                 !< rotation of BC
-   type(tBoundaryCondition) ::     stress, &                                                        !< stress BC
-                                   deformation                                                      !< deformation BC (Fdot or L)
-   real(pReal) ::                  time                   = 0.0_pReal                               !< length of increment
-   integer ::                      incs                   = 0, &                                    !< number of increments
-                                   outputfrequency        = 1, &                                    !< frequency of result writes
-                                   restartfrequency       = 0, &                                    !< frequency of restart writes
-                                   logscale               = 0                                       !< linear/logarithmic time inc flag
-   logical ::                      followFormerTrajectory = .true.                                  !< follow trajectory of former loadcase
-   integer(kind(FIELD_UNDEFINED_ID)), allocatable :: ID(:)
- end type tLoadCase
+  type, public :: tLoadCase
+    real(pReal), dimension (3,3) :: rotation               = math_I3                                !< rotation of BC
+    type(tBoundaryCondition) ::     stress, &                                                       !< stress BC
+                                    deformation                                                     !< deformation BC (Fdot or L)
+    real(pReal) ::                  time                   = 0.0_pReal                              !< length of increment
+    integer ::                      incs                   = 0, &                                   !< number of increments
+                                    outputfrequency        = 1, &                                   !< frequency of result writes
+                                    restartfrequency       = 0, &                                   !< frequency of restart writes
+                                    logscale               = 0                                      !< linear/logarithmic time inc flag
+    logical ::                      followFormerTrajectory = .true.                                 !< follow trajectory of former loadcase
+    integer(kind(FIELD_UNDEFINED_ID)), allocatable :: ID(:)
+  end type tLoadCase
 
- type, public :: tSolutionParams                                                                    !< @todo use here the type definition for a full loadcase
-   real(pReal), dimension(3,3) :: stress_mask, stress_BC, rotation_BC
-   real(pReal) :: timeinc
-   real(pReal) :: timeincOld
- end type tSolutionParams
- 
- type, private :: tNumerics                                                                         !< scales divergence/curl calculation: 0- no correction, 1- size scaled to 1, 2- size scaled to Npoints
-   real(pReal) :: &
-     FFTW_timelimit                                                                                 !< timelimit for FFTW plan creation, see www.fftw.org
-   integer :: &
-     divergence_correction
-   logical :: &
-     memory_efficient
-   character(len=pStringLen) :: &
-     spectral_derivative, &
-     FFTW_plan_mode, &
-     PETSc_defaultOptions, &
-     PETSc_options
- end type tNumerics
- 
- type(tNumerics) :: num                                                                             ! numerics parameters. Better name?
+  type, public :: tSolutionParams                                                                   !< @todo use here the type definition for a full loadcase
+    real(pReal), dimension(3,3) :: stress_mask, stress_BC, rotation_BC
+    real(pReal) :: timeinc
+    real(pReal) :: timeincOld
+  end type tSolutionParams
+  
+  type, private :: tNumerics                                                                        !< scales divergence/curl calculation: 0- no correction, 1- size scaled to 1, 2- size scaled to Npoints
+    real(pReal) :: &
+      FFTW_timelimit                                                                                !< timelimit for FFTW plan creation, see www.fftw.org
+    integer :: &
+      divergence_correction
+    logical :: &
+      memory_efficient
+    character(len=pStringLen) :: &
+      spectral_derivative, &
+      FFTW_plan_mode, &
+      PETSc_defaultOptions, &
+      PETSc_options
+  end type tNumerics
+  
+  type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
 
- enum, bind(c)
-   enumerator :: DERIVATIVE_CONTINUOUS_ID, &
-                 DERIVATIVE_CENTRAL_DIFF_ID, &
-                 DERIVATIVE_FWBW_DIFF_ID
- end enum
- integer(kind(DERIVATIVE_CONTINUOUS_ID)) :: &
-   spectral_derivative_ID
+  enum, bind(c)
+    enumerator :: &
+      DERIVATIVE_CONTINUOUS_ID, &
+      DERIVATIVE_CENTRAL_DIFF_ID, &
+      DERIVATIVE_FWBW_DIFF_ID
+  end enum
 
- public :: &
-   utilities_init, &
-   utilities_updateGamma, &
-   utilities_FFTtensorForward, &
-   utilities_FFTtensorBackward, &
-   utilities_FFTvectorForward, &
-   utilities_FFTvectorBackward, &
-   utilities_FFTscalarForward, &
-   utilities_FFTscalarBackward, &
-   utilities_fourierGammaConvolution, &
-   utilities_fourierGreenConvolution, &
-   utilities_divergenceRMS, &
-   utilities_curlRMS, &
-   utilities_fourierScalarGradient, &
-   utilities_fourierVectorDivergence, &
-   utilities_fourierVectorGradient, &
-   utilities_fourierTensorDivergence, &
-   utilities_maskedCompliance, &
-   utilities_constitutiveResponse, &
-   utilities_calculateRate, &
-   utilities_forwardField, &
-   utilities_updateIPcoords, &
-   FIELD_UNDEFINED_ID, &
-   FIELD_MECH_ID, &
-   FIELD_THERMAL_ID, &
-   FIELD_DAMAGE_ID
- private :: &
-   utilities_getFreqDerivative
+  integer(kind(DERIVATIVE_CONTINUOUS_ID)) :: &
+    spectral_derivative_ID
+
+  public :: &
+    utilities_init, &
+    utilities_updateGamma, &
+    utilities_FFTtensorForward, &
+    utilities_FFTtensorBackward, &
+    utilities_FFTvectorForward, &
+    utilities_FFTvectorBackward, &
+    utilities_FFTscalarForward, &
+    utilities_FFTscalarBackward, &
+    utilities_fourierGammaConvolution, &
+    utilities_fourierGreenConvolution, &
+    utilities_divergenceRMS, &
+    utilities_curlRMS, &
+    utilities_fourierScalarGradient, &
+    utilities_fourierVectorDivergence, &
+    utilities_fourierVectorGradient, &
+    utilities_fourierTensorDivergence, &
+    utilities_maskedCompliance, &
+    utilities_constitutiveResponse, &
+    utilities_calculateRate, &
+    utilities_forwardField, &
+    utilities_updateIPcoords, &
+    FIELD_UNDEFINED_ID, &
+    FIELD_MECH_ID, &
+    FIELD_THERMAL_ID, &
+    FIELD_DAMAGE_ID
+  private :: &
+    utilities_getFreqDerivative
 
 contains
 
@@ -168,237 +170,237 @@ contains
 !> Initializes FFTW.
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_init
- use IO, only: &
-   IO_error, &
-   IO_warning, &
-   IO_lc
- use numerics, only: &
-   petsc_defaultOptions, &
-   petsc_options
- use debug, only: &
-   debug_level, &
-   debug_SPECTRAL, &
-   debug_LEVELBASIC, &
-   debug_SPECTRALDIVERGENCE, &
-   debug_SPECTRALFFTW, &
-   debug_SPECTRALPETSC, &
-   debug_SPECTRALROTATION
- use config, only: &
-   config_numerics
- use debug, only: &
-   PETSCDEBUG
- use math
- use mesh, only: &
-   grid, &
-   grid3, &
-   grid3Offset, &
-   geomSize
-
- implicit none
- PetscErrorCode :: ierr
- integer        :: i, j, k, &
-   FFTW_planner_flag
- integer, dimension(3) :: k_s
- type(C_PTR) :: &
-   tensorField, &                                                                                   !< field containing data for FFTW in real and fourier space (in place)
-   vectorField, &                                                                                   !< field containing data for FFTW in real space when debugging FFTW (no in place)
-   scalarField                                                                                      !< field containing data for FFTW in real space when debugging FFTW (no in place)
- integer(C_INTPTR_T), dimension(3) :: gridFFTW
- integer(C_INTPTR_T) :: alloc_local, local_K, local_K_offset
- integer(C_INTPTR_T), parameter :: &
-   scalarSize = 1_C_INTPTR_T, &
-   vecSize    = 3_C_INTPTR_T, &
-   tensorSize = 9_C_INTPTR_T
-
- write(6,'(/,a)') ' <<<+-  spectral_utilities init  -+>>>'
+  use IO, only: &
+    IO_error, &
+    IO_warning, &
+    IO_lc
+  use numerics, only: &
+    petsc_defaultOptions, &
+    petsc_options
+  use debug, only: &
+    debug_level, &
+    debug_SPECTRAL, &
+    debug_LEVELBASIC, &
+    debug_SPECTRALDIVERGENCE, &
+    debug_SPECTRALFFTW, &
+    debug_SPECTRALPETSC, &
+    debug_SPECTRALROTATION
+  use config, only: &
+    config_numerics
+  use debug, only: &
+    PETSCDEBUG
+  use math
+  use mesh, only: &
+    grid, &
+    grid3, &
+    grid3Offset, &
+    geomSize
  
- write(6,'(/,a)') ' Diehl, Diploma Thesis TU München, 2010'
- write(6,'(a)')   ' https://doi.org/10.13140/2.1.3234.3840'
-
- write(6,'(/,a)') ' Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013'
- write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2012.09.012'
-
- write(6,'(/,a)') ' Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
- write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2014.02.006'
-
- write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, 2019'
- write(6,'(a)')   ' https://doi.org/10.1007/978-981-10-6855-3_80'
+  implicit none
+  PetscErrorCode :: ierr
+  integer        :: i, j, k, &
+    FFTW_planner_flag
+  integer, dimension(3) :: k_s
+  type(C_PTR) :: &
+    tensorField, &                                                                                  !< field containing data for FFTW in real and fourier space (in place)
+    vectorField, &                                                                                  !< field containing data for FFTW in real space when debugging FFTW (no in place)
+    scalarField                                                                                     !< field containing data for FFTW in real space when debugging FFTW (no in place)
+  integer(C_INTPTR_T), dimension(3) :: gridFFTW
+  integer(C_INTPTR_T) :: alloc_local, local_K, local_K_offset
+  integer(C_INTPTR_T), parameter :: &
+    scalarSize = 1_C_INTPTR_T, &
+    vecSize    = 3_C_INTPTR_T, &
+    tensorSize = 9_C_INTPTR_T
+ 
+  write(6,'(/,a)') ' <<<+-  spectral_utilities init  -+>>>'
+  
+  write(6,'(/,a)') ' Diehl, Diploma Thesis TU München, 2010'
+  write(6,'(a)')   ' https://doi.org/10.13140/2.1.3234.3840'
+ 
+  write(6,'(/,a)') ' Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013'
+  write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2012.09.012'
+ 
+  write(6,'(/,a)') ' Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
+  write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2014.02.006'
+ 
+  write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, 2019'
+  write(6,'(a)')   ' https://doi.org/10.1007/978-981-10-6855-3_80'
 
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters
- debugGeneral    = iand(debug_level(debug_SPECTRAL),debug_LEVELBASIC)         /= 0
- debugRotation   = iand(debug_level(debug_SPECTRAL),debug_SPECTRALROTATION)   /= 0
- debugPETSc      = iand(debug_level(debug_SPECTRAL),debug_SPECTRALPETSC)      /= 0
-
- if(debugPETSc) write(6,'(3(/,a),/)') &
-                ' Initializing PETSc with debug options: ', &
-                trim(PETScDebug), &
-                ' add more using the PETSc_Options keyword in numerics.config '; flush(6)
-
- call PETScOptionsClear(PETSC_NULL_OPTIONS,ierr)
- CHKERRQ(ierr)
- if(debugPETSc) call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),ierr)
- CHKERRQ(ierr)
- call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_defaultOptions),ierr)
- CHKERRQ(ierr)
- call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
- CHKERRQ(ierr)
-
- grid1Red = grid(1)/2 + 1
- wgt = 1.0/real(product(grid),pReal)
-
- write(6,'(/,a,3(i12  ))')  ' grid     a b c: ', grid
- write(6,'(a,3(es12.5))')   ' size     x y z: ', geomSize
+  debugGeneral    = iand(debug_level(debug_SPECTRAL),debug_LEVELBASIC)         /= 0
+  debugRotation   = iand(debug_level(debug_SPECTRAL),debug_SPECTRALROTATION)   /= 0
+  debugPETSc      = iand(debug_level(debug_SPECTRAL),debug_SPECTRALPETSC)      /= 0
  
- num%memory_efficient      = config_numerics%getInt   ('memory_efficient',       defaultVal=1) > 0
- num%FFTW_timelimit        = config_numerics%getFloat ('fftw_timelimit',         defaultVal=-1.0)
- num%divergence_correction = config_numerics%getInt   ('divergence_correction',  defaultVal=2)
- num%spectral_derivative   = config_numerics%getString('spectral_derivative',    defaultVal='continuous')
- num%FFTW_plan_mode        = config_numerics%getString('fftw_plan_mode',         defaultVal='FFTW_PATIENT')
+  if(debugPETSc) write(6,'(3(/,a),/)') &
+                 ' Initializing PETSc with debug options: ', &
+                 trim(PETScDebug), &
+                 ' add more using the PETSc_Options keyword in numerics.config '; flush(6)
  
- if (num%divergence_correction < 0 .or. num%divergence_correction > 2) &
-   call IO_error(301,ext_msg='divergence_correction')
-                     
- select case (num%spectral_derivative)
-   case ('continuous')
-     spectral_derivative_ID = DERIVATIVE_CONTINUOUS_ID
-   case ('central_difference')
-     spectral_derivative_ID = DERIVATIVE_CENTRAL_DIFF_ID
-   case ('fwbw_difference')
-     spectral_derivative_ID = DERIVATIVE_FWBW_DIFF_ID
-   case default
-     call IO_error(892,ext_msg=trim(num%spectral_derivative))
- end select
+  call PETScOptionsClear(PETSC_NULL_OPTIONS,ierr)
+  CHKERRQ(ierr)
+  if(debugPETSc) call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),ierr)
+  CHKERRQ(ierr)
+  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_defaultOptions),ierr)
+  CHKERRQ(ierr)
+  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
+  CHKERRQ(ierr)
+ 
+  grid1Red = grid(1)/2 + 1
+  wgt = 1.0/real(product(grid),pReal)
+ 
+  write(6,'(/,a,3(i12  ))')  ' grid     a b c: ', grid
+  write(6,'(a,3(es12.5))')   ' size     x y z: ', geomSize
+  
+  num%memory_efficient      = config_numerics%getInt   ('memory_efficient',       defaultVal=1) > 0
+  num%FFTW_timelimit        = config_numerics%getFloat ('fftw_timelimit',         defaultVal=-1.0)
+  num%divergence_correction = config_numerics%getInt   ('divergence_correction',  defaultVal=2)
+  num%spectral_derivative   = config_numerics%getString('spectral_derivative',    defaultVal='continuous')
+  num%FFTW_plan_mode        = config_numerics%getString('fftw_plan_mode',         defaultVal='FFTW_PATIENT')
+  
+  if (num%divergence_correction < 0 .or. num%divergence_correction > 2) &
+    call IO_error(301,ext_msg='divergence_correction')
+                      
+  select case (num%spectral_derivative)
+    case ('continuous')
+      spectral_derivative_ID = DERIVATIVE_CONTINUOUS_ID
+    case ('central_difference')
+      spectral_derivative_ID = DERIVATIVE_CENTRAL_DIFF_ID
+    case ('fwbw_difference')
+      spectral_derivative_ID = DERIVATIVE_FWBW_DIFF_ID
+    case default
+      call IO_error(892,ext_msg=trim(num%spectral_derivative))
+  end select
 
 !--------------------------------------------------------------------------------------------------
 ! scale dimension to calculate either uncorrected, dimension-independent, or dimension- and
 ! resolution-independent divergence
- if (num%divergence_correction == 1) then
-   do j = 1, 3
-    if (j /= minloc(geomSize,1) .and. j /= maxloc(geomSize,1)) &
-      scaledGeomSize = geomSize/geomSize(j)
-   enddo
- elseif (num%divergence_correction == 2) then
-   do j = 1, 3
-    if (      j /= int(minloc(geomSize/real(grid,pReal),1),pInt) &
-        .and. j /= int(maxloc(geomSize/real(grid,pReal),1),pInt)) &
-      scaledGeomSize = geomSize/geomSize(j)*real(grid(j),pReal)
-   enddo
- else
-   scaledGeomSize = geomSize
- endif
-
-
- select case(IO_lc(num%FFTW_plan_mode))                                                             ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
-   case('estimate','fftw_estimate')                                                                 ! ordered from slow execution (but fast plan creation) to fast execution
-     FFTW_planner_flag = 64
-   case('measure','fftw_measure')
-     FFTW_planner_flag = 0
-   case('patient','fftw_patient')
-     FFTW_planner_flag= 32
-   case('exhaustive','fftw_exhaustive')
-     FFTW_planner_flag = 8 
-   case default
-     call IO_warning(warning_ID=47,ext_msg=trim(IO_lc(num%FFTW_plan_mode)))
-     FFTW_planner_flag = 32
- end select
+  if (num%divergence_correction == 1) then
+    do j = 1, 3
+     if (j /= minloc(geomSize,1) .and. j /= maxloc(geomSize,1)) &
+       scaledGeomSize = geomSize/geomSize(j)
+    enddo
+  elseif (num%divergence_correction == 2) then
+    do j = 1, 3
+     if (      j /= int(minloc(geomSize/real(grid,pReal),1)) &
+         .and. j /= int(maxloc(geomSize/real(grid,pReal),1))) &
+       scaledGeomSize = geomSize/geomSize(j)*real(grid(j),pReal)
+    enddo
+  else
+    scaledGeomSize = geomSize
+  endif
+ 
+ 
+  select case(IO_lc(num%FFTW_plan_mode))                                                            ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
+    case('estimate','fftw_estimate')                                                                ! ordered from slow execution (but fast plan creation) to fast execution
+      FFTW_planner_flag = 64
+    case('measure','fftw_measure')
+      FFTW_planner_flag = 0
+    case('patient','fftw_patient')
+      FFTW_planner_flag= 32
+    case('exhaustive','fftw_exhaustive')
+      FFTW_planner_flag = 8 
+    case default
+      call IO_warning(warning_ID=47,ext_msg=trim(IO_lc(num%FFTW_plan_mode)))
+      FFTW_planner_flag = 32
+  end select
 
 !--------------------------------------------------------------------------------------------------
 ! general initialization of FFTW (see manual on fftw.org for more details)
- if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(0,ext_msg='Fortran to C')             ! check for correct precision in C
- call fftw_set_timelimit(num%FFTW_timelimit)                                                        ! set timelimit for plan creation
-
- if (debugGeneral) write(6,'(/,a)') ' FFTW initialized'; flush(6)
+  if (pReal /= C_DOUBLE .or. kind(1) /= C_INT) call IO_error(0,ext_msg='Fortran to C')              ! check for correct precision in C
+  call fftw_set_timelimit(num%FFTW_timelimit)                                                       ! set timelimit for plan creation
+ 
+  if (debugGeneral) write(6,'(/,a)') ' FFTW initialized'; flush(6)
 
 !--------------------------------------------------------------------------------------------------
 ! MPI allocation
- gridFFTW = int(grid,C_INTPTR_T)
- alloc_local = fftw_mpi_local_size_3d(gridFFTW(3), gridFFTW(2), gridFFTW(1)/2 +1, &
-                                      PETSC_COMM_WORLD, local_K, local_K_offset)
- allocate (xi1st (3,grid1Red,grid(2),grid3),source = cmplx(0.0_pReal,0.0_pReal,pReal))              ! frequencies for first derivatives, only half the size for first dimension
- allocate (xi2nd (3,grid1Red,grid(2),grid3),source = cmplx(0.0_pReal,0.0_pReal,pReal))              ! frequencies for second derivatives, only half the size for first dimension
+  gridFFTW = int(grid,C_INTPTR_T)
+  alloc_local = fftw_mpi_local_size_3d(gridFFTW(3), gridFFTW(2), gridFFTW(1)/2 +1, &
+                                       PETSC_COMM_WORLD, local_K, local_K_offset)
+  allocate (xi1st (3,grid1Red,grid(2),grid3),source = cmplx(0.0_pReal,0.0_pReal,pReal))             ! frequencies for first derivatives, only half the size for first dimension
+  allocate (xi2nd (3,grid1Red,grid(2),grid3),source = cmplx(0.0_pReal,0.0_pReal,pReal))             ! frequencies for second derivatives, only half the size for first dimension
+  
+  tensorField = fftw_alloc_complex(tensorSize*alloc_local)
+  call c_f_pointer(tensorField, tensorField_real,    [3_C_INTPTR_T,3_C_INTPTR_T, &
+                   2_C_INTPTR_T*(gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T),gridFFTW(2),local_K])     ! place a pointer for a real tensor representation
+  call c_f_pointer(tensorField, tensorField_fourier, [3_C_INTPTR_T,3_C_INTPTR_T, &
+                   gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T ,              gridFFTW(2),local_K])     ! place a pointer for a fourier tensor representation
  
- tensorField = fftw_alloc_complex(tensorSize*alloc_local)
- call c_f_pointer(tensorField, tensorField_real,    [3_C_INTPTR_T,3_C_INTPTR_T, &
-                  2_C_INTPTR_T*(gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T),gridFFTW(2),local_K])      ! place a pointer for a real tensor representation
- call c_f_pointer(tensorField, tensorField_fourier, [3_C_INTPTR_T,3_C_INTPTR_T, &
-                  gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T ,              gridFFTW(2),local_K])      ! place a pointer for a fourier tensor representation
-
- vectorField = fftw_alloc_complex(vecSize*alloc_local)
- call c_f_pointer(vectorField, vectorField_real,   [3_C_INTPTR_T,&
-                  2_C_INTPTR_T*(gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T),gridFFTW(2),local_K])      ! place a pointer for a real vector representation
- call c_f_pointer(vectorField, vectorField_fourier,[3_C_INTPTR_T,&
-                  gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T,               gridFFTW(2),local_K])      ! place a pointer for a fourier vector representation
-
- scalarField = fftw_alloc_complex(scalarSize*alloc_local)                                           ! allocate data for real representation (no in place transform)
- call c_f_pointer(scalarField,    scalarField_real, &
-                  [2_C_INTPTR_T*(gridFFTW(1)/2_C_INTPTR_T + 1),gridFFTW(2),local_K])                ! place a pointer for a real scalar representation
- call c_f_pointer(scalarField, scalarField_fourier, &
-                   [             gridFFTW(1)/2_C_INTPTR_T + 1 ,gridFFTW(2),local_K])                ! place a pointer for a fourier scarlar representation
+  vectorField = fftw_alloc_complex(vecSize*alloc_local)
+  call c_f_pointer(vectorField, vectorField_real,   [3_C_INTPTR_T,&
+                   2_C_INTPTR_T*(gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T),gridFFTW(2),local_K])     ! place a pointer for a real vector representation
+  call c_f_pointer(vectorField, vectorField_fourier,[3_C_INTPTR_T,&
+                   gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T,               gridFFTW(2),local_K])     ! place a pointer for a fourier vector representation
+ 
+  scalarField = fftw_alloc_complex(scalarSize*alloc_local)                                          ! allocate data for real representation (no in place transform)
+  call c_f_pointer(scalarField,    scalarField_real, &
+                   [2_C_INTPTR_T*(gridFFTW(1)/2_C_INTPTR_T + 1),gridFFTW(2),local_K])               ! place a pointer for a real scalar representation
+  call c_f_pointer(scalarField, scalarField_fourier, &
+                    [             gridFFTW(1)/2_C_INTPTR_T + 1 ,gridFFTW(2),local_K])               ! place a pointer for a fourier scarlar representation
 
 !--------------------------------------------------------------------------------------------------
 ! tensor MPI fftw plans
- planTensorForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &           ! dimension, logical length in each dimension in reversed order
-                                       tensorSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
-                                                      tensorField_real, tensorField_fourier, &      ! input data, output data
-                                                              PETSC_COMM_WORLD, FFTW_planner_flag)  ! use all processors, planer precision
- if (.not. C_ASSOCIATED(planTensorForth)) call IO_error(810, ext_msg='planTensorForth')
- planTensorBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &           ! dimension, logical length in each dimension in reversed order
-                                      tensorSize,  FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
-                                                       tensorField_fourier,tensorField_real, &      ! input data, output data
-                                                              PETSC_COMM_WORLD, FFTW_planner_flag)  ! all processors, planer precision
- if (.not. C_ASSOCIATED(planTensorBack)) call IO_error(810, ext_msg='planTensorBack')
+  planTensorForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &          ! dimension, logical length in each dimension in reversed order
+                                        tensorSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
+                                                       tensorField_real, tensorField_fourier, &     ! input data, output data
+                                                               PETSC_COMM_WORLD, FFTW_planner_flag) ! use all processors, planer precision
+  if (.not. C_ASSOCIATED(planTensorForth)) call IO_error(810, ext_msg='planTensorForth')
+  planTensorBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &          ! dimension, logical length in each dimension in reversed order
+                                       tensorSize,  FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
+                                                        tensorField_fourier,tensorField_real, &     ! input data, output data
+                                                               PETSC_COMM_WORLD, FFTW_planner_flag) ! all processors, planer precision
+  if (.not. C_ASSOCIATED(planTensorBack)) call IO_error(810, ext_msg='planTensorBack')
 
 !--------------------------------------------------------------------------------------------------
 ! vector MPI fftw plans
- planVectorForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &           ! dimension, logical length in each dimension in reversed order
-                                          vecSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
-                                                      vectorField_real, vectorField_fourier, &      ! input data, output data
-                                                              PETSC_COMM_WORLD, FFTW_planner_flag)  ! use all processors, planer precision
- if (.not. C_ASSOCIATED(planVectorForth)) call IO_error(810, ext_msg='planVectorForth')
- planVectorBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)],  &          ! dimension, logical length in each dimension in reversed order
-                                        vecSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &  ! no. of transforms, default iblock and oblock
-                                                     vectorField_fourier,vectorField_real, &        ! input data, output data
-                                                              PETSC_COMM_WORLD, FFTW_planner_flag)  ! all processors, planer precision
- if (.not. C_ASSOCIATED(planVectorBack)) call IO_error(810, ext_msg='planVectorBack')
+  planVectorForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &          ! dimension, logical length in each dimension in reversed order
+                                           vecSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK,&! no. of transforms, default iblock and oblock
+                                                       vectorField_real, vectorField_fourier, &     ! input data, output data
+                                                               PETSC_COMM_WORLD, FFTW_planner_flag) ! use all processors, planer precision
+  if (.not. C_ASSOCIATED(planVectorForth)) call IO_error(810, ext_msg='planVectorForth')
+  planVectorBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)],  &         ! dimension, logical length in each dimension in reversed order
+                                         vecSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, & ! no. of transforms, default iblock and oblock
+                                                      vectorField_fourier,vectorField_real, &       ! input data, output data
+                                                               PETSC_COMM_WORLD, FFTW_planner_flag) ! all processors, planer precision
+  if (.not. C_ASSOCIATED(planVectorBack)) call IO_error(810, ext_msg='planVectorBack')
 
 !--------------------------------------------------------------------------------------------------
 ! scalar MPI fftw plans
- planScalarForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &           ! dimension, logical length in each dimension in reversed order
-                                      scalarSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, & ! no. of transforms, default iblock and oblock
-                                                      scalarField_real, scalarField_fourier, &      ! input data, output data
-                                                              PETSC_COMM_WORLD, FFTW_planner_flag)  ! use all processors, planer precision
- if (.not. C_ASSOCIATED(planScalarForth)) call IO_error(810, ext_msg='planScalarForth')
- planScalarBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &           ! dimension, logical length in each dimension in reversed order, no. of transforms
-                                      scalarSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, & ! no. of transforms, default iblock and oblock
-                                                      scalarField_fourier,scalarField_real, &       ! input data, output data
-                                                              PETSC_COMM_WORLD, FFTW_planner_flag)  ! use all processors, planer precision
- if (.not. C_ASSOCIATED(planScalarBack)) call IO_error(810, ext_msg='planScalarBack')
+  planScalarForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &          ! dimension, logical length in each dimension in reversed order
+                                       scalarSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
+                                                       scalarField_real, scalarField_fourier, &     ! input data, output data
+                                                               PETSC_COMM_WORLD, FFTW_planner_flag) ! use all processors, planer precision
+  if (.not. C_ASSOCIATED(planScalarForth)) call IO_error(810, ext_msg='planScalarForth')
+  planScalarBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &          ! dimension, logical length in each dimension in reversed order, no. of transforms
+                                       scalarSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
+                                                       scalarField_fourier,scalarField_real, &      ! input data, output data
+                                                               PETSC_COMM_WORLD, FFTW_planner_flag) ! use all processors, planer precision
+  if (.not. C_ASSOCIATED(planScalarBack)) call IO_error(810, ext_msg='planScalarBack')
 
 !--------------------------------------------------------------------------------------------------
 ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
- do k = grid3Offset+1, grid3Offset+grid3
-   k_s(3) = k - 1
-   if(k > grid(3)/2 + 1) k_s(3) = k_s(3) - grid(3)                                                  ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
-     do j = 1, grid(2)
-       k_s(2) = j - 1
-       if(j > grid(2)/2 + 1) k_s(2) = k_s(2) - grid(2)                                              ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
-         do i = 1, grid1Red
-           k_s(1) = i - 1                                                                           ! symmetry, junst running from 0,1,...,N/2,N/2+1
-           xi2nd(1:3,i,j,k-grid3Offset) = utilities_getFreqDerivative(k_s)
-           where(mod(grid,2)==0 .and. [i,j,k] == grid/2+1 .and. &
-                 spectral_derivative_ID == DERIVATIVE_CONTINUOUS_ID)                                ! for even grids, set the Nyquist Freq component to 0.0
-             xi1st(1:3,i,j,k-grid3Offset) = cmplx(0.0_pReal,0.0_pReal,pReal)
-           elsewhere
-             xi1st(1:3,i,j,k-grid3Offset) = xi2nd(1:3,i,j,k-grid3Offset)
-           endwhere
- enddo; enddo; enddo
-
- if(num%memory_efficient) then                                                                      ! allocate just single fourth order tensor
-   allocate (gamma_hat(3,3,3,3,1,1,1), source = cmplx(0.0_pReal,0.0_pReal,pReal))
- else                                                                                               ! precalculation of gamma_hat field
-   allocate (gamma_hat(3,3,3,3,grid1Red,grid(2),grid3), source = cmplx(0.0_pReal,0.0_pReal,pReal))
- endif
+  do k = grid3Offset+1, grid3Offset+grid3
+    k_s(3) = k - 1
+    if(k > grid(3)/2 + 1) k_s(3) = k_s(3) - grid(3)                                                 ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
+      do j = 1, grid(2)
+        k_s(2) = j - 1
+        if(j > grid(2)/2 + 1) k_s(2) = k_s(2) - grid(2)                                             ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
+          do i = 1, grid1Red
+            k_s(1) = i - 1                                                                          ! symmetry, junst running from 0,1,...,N/2,N/2+1
+            xi2nd(1:3,i,j,k-grid3Offset) = utilities_getFreqDerivative(k_s)
+            where(mod(grid,2)==0 .and. [i,j,k] == grid/2+1 .and. &
+                  spectral_derivative_ID == DERIVATIVE_CONTINUOUS_ID)                               ! for even grids, set the Nyquist Freq component to 0.0
+              xi1st(1:3,i,j,k-grid3Offset) = cmplx(0.0_pReal,0.0_pReal,pReal)
+            elsewhere
+              xi1st(1:3,i,j,k-grid3Offset) = xi2nd(1:3,i,j,k-grid3Offset)
+            endwhere
+  enddo; enddo; enddo
+ 
+  if(num%memory_efficient) then                                                                     ! allocate just single fourth order tensor
+    allocate (gamma_hat(3,3,3,3,1,1,1), source = cmplx(0.0_pReal,0.0_pReal,pReal))
+  else                                                                                              ! precalculation of gamma_hat field
+    allocate (gamma_hat(3,3,3,3,grid1Red,grid(2),grid3), source = cmplx(0.0_pReal,0.0_pReal,pReal))
+  endif
 
 end subroutine utilities_init
 
@@ -473,11 +475,9 @@ end subroutine utilities_updateGamma
 !> @details Does an unweighted filtered FFT transform from real to complex
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTtensorForward
- implicit none
+  implicit none
 
-!--------------------------------------------------------------------------------------------------
-! doing the tensor FFT
- call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
+  call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
 
 end subroutine utilities_FFTtensorForward
 
@@ -487,10 +487,10 @@ end subroutine utilities_FFTtensorForward
 !> @details Does an weighted inverse FFT transform from complex to real
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTtensorBackward
- implicit none
+  implicit none
 
- call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
- tensorField_real = tensorField_real * wgt                                                          ! normalize the result by number of elements
+  call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
+  tensorField_real = tensorField_real * wgt                                                         ! normalize the result by number of elements
 
 end subroutine utilities_FFTtensorBackward
 
@@ -499,11 +499,9 @@ end subroutine utilities_FFTtensorBackward
 !> @details Does an unweighted filtered FFT transform from real to complex
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTscalarForward
- implicit none
+  implicit none
 
-!--------------------------------------------------------------------------------------------------
-! doing the scalar FFT
- call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
+  call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
 
 end subroutine utilities_FFTscalarForward
 
@@ -513,10 +511,10 @@ end subroutine utilities_FFTscalarForward
 !> @details Does an weighted inverse FFT transform from complex to real
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTscalarBackward
- implicit none
+  implicit none
 
- call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
- scalarField_real = scalarField_real * wgt                                                          ! normalize the result by number of elements
+  call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
+  scalarField_real = scalarField_real * wgt                                                         ! normalize the result by number of elements
 
 end subroutine utilities_FFTscalarBackward
 
@@ -526,11 +524,9 @@ end subroutine utilities_FFTscalarBackward
 !> @details Does an unweighted filtered FFT transform from real to complex.
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTvectorForward
- implicit none
+  implicit none
 
-!--------------------------------------------------------------------------------------------------
-! doing the vector FFT
- call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
+  call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
 
 end subroutine utilities_FFTvectorForward
 
@@ -540,10 +536,10 @@ end subroutine utilities_FFTvectorForward
 !> @details Does an weighted inverse FFT transform from complex to real
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTvectorBackward
- implicit none
+  implicit none
 
- call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
- vectorField_real = vectorField_real * wgt                                                          ! normalize the result by number of elements
+  call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
+  vectorField_real = vectorField_real * wgt                                                         ! normalize the result by number of elements
 
 end subroutine utilities_FFTvectorBackward
 
@@ -578,7 +574,7 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
 ! do the actual spectral method calculation (mechanical equilibrium)
   memoryEfficient: if(num%memory_efficient) then
     do k = 1, grid3; do j = 1, grid(2); do i = 1, grid1Red
-      if (any([i,j,k+grid3Offset] /= 1)) then                                                        ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
+      if (any([i,j,k+grid3Offset] /= 1)) then                                                       ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
         forall(l = 1:3, m = 1:3) &
           xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k))*xi1st(m,i,j,k)
         forall(l = 1:3, m = 1:3) &
@@ -633,7 +629,7 @@ subroutine utilities_fourierGreenConvolution(D_ref, mobility_ref, deltaT)
   do k = 1, grid3; do j = 1, grid(2) ;do i = 1, grid1Red
     GreenOp_hat =  cmplx(1.0_pReal,0.0_pReal,pReal)/ &
                    (cmplx(mobility_ref,0.0_pReal,pReal) + cmplx(deltaT,0.0_pReal)*&
-                    sum(conjg(xi1st(1:3,i,j,k))* matmul(cmplx(D_ref,0.0_pReal),xi1st(1:3,i,j,k))))   ! why not use dot_product 
+                    sum(conjg(xi1st(1:3,i,j,k))* matmul(cmplx(D_ref,0.0_pReal),xi1st(1:3,i,j,k))))
     scalarField_fourier(i,j,k) = scalarField_fourier(i,j,k)*GreenOp_hat
   enddo; enddo; enddo
 
@@ -762,63 +758,48 @@ end function utilities_curlRMS
 !> @brief calculates mask compliance tensor used to adjust F to fullfill stress BC
 !--------------------------------------------------------------------------------------------------
 function utilities_maskedCompliance(rot_BC,mask_stress,C)
- use, intrinsic :: &
-   IEEE_arithmetic
- use IO, only: &
-   IO_error
- use math, only: &
-   math_3333to99, &
-   math_99to3333, &
-   math_rotate_forward3333, &
-   math_rotate_forward33, &
-   math_invert2
-
- implicit none
- real(pReal),              dimension(3,3,3,3) :: utilities_maskedCompliance                         !< masked compliance
- real(pReal), intent(in) , dimension(3,3,3,3) :: C                                                  !< current average stiffness
- real(pReal), intent(in) , dimension(3,3)     :: rot_BC                                             !< rotation of load frame
- logical,     intent(in),  dimension(3,3)     :: mask_stress                                        !< mask of stress BC
- integer :: j, k, m, n
- logical, dimension(9) :: mask_stressVector
- real(pReal), dimension(9,9) :: temp99_Real
- integer :: size_reduced = 0
- real(pReal),              dimension(:,:), allocatable ::  &
-   s_reduced, &                                                                                     !< reduced compliance matrix (depending on number of stress BC)
-   c_reduced, &                                                                                     !< reduced stiffness (depending on number of stress BC)
-   sTimesC                                                                                          !< temp variable to check inversion
- logical :: errmatinv
- character(len=1024):: formatString
-
- mask_stressVector = reshape(transpose(mask_stress), [9])
- size_reduced = int(count(mask_stressVector), pInt)
- if(size_reduced > 0 )then
-   allocate (c_reduced(size_reduced,size_reduced), source =0.0_pReal)
-   allocate (s_reduced(size_reduced,size_reduced), source =0.0_pReal)
-   allocate (sTimesC(size_reduced,size_reduced),   source =0.0_pReal)
-   temp99_Real = math_3333to99(math_rotate_forward3333(C,rot_BC))
-
-   if(debugGeneral) then
-     write(6,'(/,a)') ' ... updating masked compliance ............................................'
-     write(6,'(/,a,/,9(9(2x,f12.7,1x)/))',advance='no') ' Stiffness C (load) / GPa =',&
-                                                  transpose(temp99_Real)*1.0e-9_pReal
-     flush(6)
-   endif
-   k = 0                                                                                            ! calculate reduced stiffness
-   do n = 1,9
-     if(mask_stressVector(n)) then
-       k = k + 1
-       j = 0
-       do m = 1,9
-         if(mask_stressVector(m)) then
-           j = j + 1
-           c_reduced(k,j) = temp99_Real(n,m)
-   endif; enddo; endif; enddo
-
-   call math_invert2(s_reduced, errmatinv, c_reduced)                                               ! invert reduced stiffness
-   if (any(IEEE_is_NaN(s_reduced))) errmatinv = .true.
-   if (errmatinv) call IO_error(error_ID=400,ext_msg='utilities_maskedCompliance')
-   temp99_Real = 0.0_pReal                                                                          ! fill up compliance with zeros
-    k = 0
+  use, intrinsic :: &
+    IEEE_arithmetic
+  use IO, only: &
+    IO_error
+  use math, only: &
+    math_3333to99, &
+    math_99to3333, &
+    math_rotate_forward3333, &
+    math_rotate_forward33, &
+    math_invert2
+ 
+  implicit none
+  real(pReal),              dimension(3,3,3,3) :: utilities_maskedCompliance                        !< masked compliance
+  real(pReal), intent(in) , dimension(3,3,3,3) :: C                                                 !< current average stiffness
+  real(pReal), intent(in) , dimension(3,3)     :: rot_BC                                            !< rotation of load frame
+  logical,     intent(in),  dimension(3,3)     :: mask_stress                                       !< mask of stress BC
+  integer :: j, k, m, n
+  logical, dimension(9) :: mask_stressVector
+  real(pReal), dimension(9,9) :: temp99_Real
+  integer :: size_reduced = 0
+  real(pReal),              dimension(:,:), allocatable ::  &
+    s_reduced, &                                                                                    !< reduced compliance matrix (depending on number of stress BC)
+    c_reduced, &                                                                                    !< reduced stiffness (depending on number of stress BC)
+    sTimesC                                                                                         !< temp variable to check inversion
+  logical :: errmatinv
+  character(len=1024):: formatString
+ 
+  mask_stressVector = reshape(transpose(mask_stress), [9])
+  size_reduced = count(mask_stressVector)
+  if(size_reduced > 0 )then
+    allocate (c_reduced(size_reduced,size_reduced), source =0.0_pReal)
+    allocate (s_reduced(size_reduced,size_reduced), source =0.0_pReal)
+    allocate (sTimesC(size_reduced,size_reduced),   source =0.0_pReal)
+    temp99_Real = math_3333to99(math_rotate_forward3333(C,rot_BC))
+ 
+    if(debugGeneral) then
+      write(6,'(/,a)') ' ... updating masked compliance ............................................'
+      write(6,'(/,a,/,9(9(2x,f12.7,1x)/))',advance='no') ' Stiffness C (load) / GPa =',&
+                                                   transpose(temp99_Real)*1.0e-9_pReal
+      flush(6)
+    endif
+    k = 0                                                                                           ! calculate reduced stiffness
     do n = 1,9
       if(mask_stressVector(n)) then
         k = k + 1
@@ -826,36 +807,51 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
         do m = 1,9
           if(mask_stressVector(m)) then
             j = j + 1
-            temp99_Real(n,m) = s_reduced(k,j)
-   endif; enddo; endif; enddo
+            c_reduced(k,j) = temp99_Real(n,m)
+    endif; enddo; endif; enddo
+ 
+    call math_invert2(s_reduced, errmatinv, c_reduced)                                              ! invert reduced stiffness
+    if (any(IEEE_is_NaN(s_reduced))) errmatinv = .true.
+    if (errmatinv) call IO_error(error_ID=400,ext_msg='utilities_maskedCompliance')
+    temp99_Real = 0.0_pReal                                                                         ! fill up compliance with zeros
+     k = 0
+     do n = 1,9
+       if(mask_stressVector(n)) then
+         k = k + 1
+         j = 0
+         do m = 1,9
+           if(mask_stressVector(m)) then
+             j = j + 1
+             temp99_Real(n,m) = s_reduced(k,j)
+    endif; enddo; endif; enddo
 
 !--------------------------------------------------------------------------------------------------
 ! check if inversion was successful
-   sTimesC = matmul(c_reduced,s_reduced)
-   do m=1, size_reduced
-     do n=1, size_reduced
-       errmatinv = errmatinv &
-              .or. (m==n .and. abs(sTimesC(m,n)-1.0_pReal) > 1.0e-12_pReal) &                       ! diagonal elements of S*C should be 1
-              .or. (m/=n .and. abs(sTimesC(m,n))           > 1.0e-12_pReal)                         ! off-diagonal elements of S*C should be 0
-     enddo
-   enddo
-   if (debugGeneral .or. errmatinv) then
-     write(formatString, '(i2)') size_reduced
-     formatString = '(/,a,/,'//trim(formatString)//'('//trim(formatString)//'(2x,es9.2,1x)/))'
-     write(6,trim(formatString),advance='no') ' C * S (load) ', &
-                                                            transpose(matmul(c_reduced,s_reduced))
-     write(6,trim(formatString),advance='no') ' S (load) ', transpose(s_reduced)
-     if(errmatinv) call IO_error(error_ID=400,ext_msg='utilities_maskedCompliance')
-   endif
- else
-   temp99_real = 0.0_pReal
- endif
- if(debugGeneral) then
-   write(6,'(/,a,/,9(9(2x,f10.5,1x)/),/)',advance='no') &
-     ' Masked Compliance (load) * GPa =', transpose(temp99_Real)*1.0e9_pReal
-   flush(6)
- endif
- utilities_maskedCompliance = math_99to3333(temp99_Real)
+    sTimesC = matmul(c_reduced,s_reduced)
+    do m=1, size_reduced
+      do n=1, size_reduced
+        errmatinv = errmatinv &
+               .or. (m==n .and. abs(sTimesC(m,n)-1.0_pReal) > 1.0e-12_pReal) &                      ! diagonal elements of S*C should be 1
+               .or. (m/=n .and. abs(sTimesC(m,n))           > 1.0e-12_pReal)                        ! off-diagonal elements of S*C should be 0
+      enddo
+    enddo
+    if (debugGeneral .or. errmatinv) then
+      write(formatString, '(i2)') size_reduced
+      formatString = '(/,a,/,'//trim(formatString)//'('//trim(formatString)//'(2x,es9.2,1x)/))'
+      write(6,trim(formatString),advance='no') ' C * S (load) ', &
+                                                             transpose(matmul(c_reduced,s_reduced))
+      write(6,trim(formatString),advance='no') ' S (load) ', transpose(s_reduced)
+      if(errmatinv) call IO_error(error_ID=400,ext_msg='utilities_maskedCompliance')
+    endif
+  else
+    temp99_real = 0.0_pReal
+  endif
+  if(debugGeneral) then
+    write(6,'(/,a,/,9(9(2x,f10.5,1x)/),/)',advance='no') &
+      ' Masked Compliance (load) * GPa =', transpose(temp99_Real)*1.0e9_pReal
+    flush(6)
+  endif
+  utilities_maskedCompliance = math_99to3333(temp99_Real)
 
 end function utilities_maskedCompliance
 
@@ -891,8 +887,8 @@ subroutine utilities_fourierVectorDivergence()
  
   scalarField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
   forall(k = 1:grid3, j = 1:grid(2), i = 1:grid1Red) &
-      scalarField_fourier(i,j,k) = scalarField_fourier(i,j,k) + &
-        sum(vectorField_fourier(1:3,i,j,k)*conjg(-xi1st(1:3,i,j,k)))
+    scalarField_fourier(i,j,k) = scalarField_fourier(i,j,k) &
+                               + sum(vectorField_fourier(1:3,i,j,k)*conjg(-xi1st(1:3,i,j,k)))
  
 end subroutine utilities_fourierVectorDivergence
 
@@ -932,9 +928,8 @@ subroutine utilities_fourierTensorDivergence()
   vectorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid1Red
     do m = 1, 3; do n = 1, 3
-      vectorField_fourier(m,i,j,k) = &
-        vectorField_fourier(m,i,j,k) + &
-        tensorField_fourier(m,n,i,j,k)*conjg(-xi1st(n,i,j,k))
+      vectorField_fourier(m,i,j,k) = vectorField_fourier(m,i,j,k) &
+                                   + tensorField_fourier(m,n,i,j,k)*conjg(-xi1st(n,i,j,k))
     enddo; enddo
   enddo; enddo; enddo
 
