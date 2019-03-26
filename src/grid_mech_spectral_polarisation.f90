@@ -22,8 +22,15 @@ module grid_mech_spectral_polarisation
  
 !--------------------------------------------------------------------------------------------------
 ! derived types
- type(tSolutionParams), private :: params
-
+  type(tSolutionParams), private :: params
+  
+  type, private :: tNumerics
+    logical :: &
+      update_gamma !< update gamma operator with current stiffness
+  end type tNumerics
+  
+  type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
+  
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
  DM,   private :: da
@@ -85,6 +92,8 @@ subroutine grid_mech_spectral_polarisation_init
    IO_open_jobFile_binary
  use FEsolving, only: &
    restartInc
+ use config, only :&
+   config_numerics
  use numerics, only: &
    worldrank, &
    worldsize, &
@@ -94,9 +103,9 @@ subroutine grid_mech_spectral_polarisation_init
  use DAMASK_interface, only: &
    getSolverJobName
  use spectral_utilities, only: &
-    utilities_constitutiveResponse, &
-    utilities_updateGamma, &
-    utilities_updateIPcoords, &
+   utilities_constitutiveResponse, &
+   utilities_updateGamma, &
+   utilities_updateIPcoords, &
    wgt
  use mesh, only: &
    grid, &
@@ -122,6 +131,8 @@ subroutine grid_mech_spectral_polarisation_init
 
  write(6,'(/,a)') ' Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
  write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2014.02.006'
+ 
+ num%update_gamma = config_numerics%getInt('update_gamma',defaultVal=0) > 0
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
@@ -226,8 +237,6 @@ end subroutine grid_mech_spectral_polarisation_init
 !> @brief solution for the Polarisation scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
 function grid_mech_spectral_polarisation_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation_BC) result(solution)
- use numerics, only: &
-   update_gamma
  use math, only: &
    math_invSym3333
  use spectral_utilities, only: &
@@ -262,7 +271,7 @@ function grid_mech_spectral_polarisation_solution(incInfoIn,timeinc,timeinc_old,
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
  S = Utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
- if (update_gamma) then
+ if (num%update_gamma) then
    call utilities_updateGamma(C_minMaxAvg,restartWrite)
    C_scale = C_minMaxAvg
    S_scale = math_invSym3333(C_minMaxAvg)

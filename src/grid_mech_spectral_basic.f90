@@ -23,6 +23,13 @@ module grid_mech_spectral_basic
 !--------------------------------------------------------------------------------------------------
 ! derived types
   type(tSolutionParams), private :: params
+  
+  type, private :: tNumerics
+    logical :: &
+      update_gamma !< update gamma operator with current stiffness
+  end type tNumerics
+  
+  type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
@@ -79,6 +86,8 @@ subroutine grid_mech_spectral_basic_init
     IO_open_jobFile_binary
   use FEsolving, only: &
     restartInc
+  use config, only :&
+    config_numerics
   use numerics, only: &
     worldrank, &
     worldsize, &
@@ -117,6 +126,8 @@ subroutine grid_mech_spectral_basic_init
  
   write(6,'(/,a)') ' Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
   write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2014.02.006'
+  
+  num%update_gamma = config_numerics%getInt('update_gamma',defaultVal=0) > 0
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
@@ -209,8 +220,6 @@ end subroutine grid_mech_spectral_basic_init
 !> @brief solution for the basic scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
 function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation_BC) result(solution)
-  use numerics, only: &
-    update_gamma
   use spectral_utilities, only: &
     tBoundaryCondition, &
     utilities_maskedCompliance, &
@@ -243,7 +252,7 @@ function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
   S = Utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
-  if (update_gamma) call Utilities_updateGamma(C_minMaxAvg,restartWrite)
+  if (num%update_gamma) call Utilities_updateGamma(C_minMaxAvg,restartWrite)
  
 !--------------------------------------------------------------------------------------------------
 ! set module wide available data 

@@ -104,16 +104,16 @@ module spectral_utilities
     real(pReal) :: timeincOld
   end type tSolutionParams
   
-  type, private :: tNumerics                                                                        !< scales divergence/curl calculation: 0- no correction, 1- size scaled to 1, 2- size scaled to Npoints
+  type, private :: tNumerics                                                                        
     real(pReal) :: &
       FFTW_timelimit                                                                                !< timelimit for FFTW plan creation, see www.fftw.org
     integer :: &
-      divergence_correction
+      divergence_correction                                                                         !< scale divergence/curl calculation: [0: no correction, 1: size scaled to 1, 2: size scaled to Npoints]
     logical :: &
-      memory_efficient
+      memory_efficient                                                                              !< calculate gamma operator on the fly
     character(len=pStringLen) :: &
-      spectral_derivative, &
-      FFTW_plan_mode, &
+      spectral_derivative, &                                                                        !< approximation used for derivatives in Fourier space
+      FFTW_plan_mode, &                                                                             !< FFTW plan mode, see www.fftw.org
       PETSc_defaultOptions, &
       PETSc_options
   end type tNumerics
@@ -405,13 +405,13 @@ subroutine utilities_init
 end subroutine utilities_init
 
 
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @brief updates reference stiffness and potentially precalculated gamma operator
 !> @details Sets the current reference stiffness to the stiffness given as an argument.
 !> If the gamma operator is precalculated, it is calculated with this stiffness.
 !> In case of an on-the-fly calculation, only the reference stiffness is updated.
 !> Also writes out the current reference stiffness for restart.
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 subroutine utilities_updateGamma(C,saveReference)
   use IO, only: &
     IO_open_jobFile_binary

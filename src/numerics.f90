@@ -94,9 +94,8 @@ module numerics
                                 &-thermal_snes_type ngmres ', &
    petsc_options              = ''
  logical, protected, public :: &
-   continueCalculation        = .false., &                                                          !< false:exit if BVP solver does not converge, true: continue calculation despite BVP solver not converging
-   memory_efficient           = .true., &                                                           !< for fast execution (pre calculation of gamma_hat), Default .true.: do not precalculate
-   update_gamma               = .false.                                                             !< update gamma operator with current stiffness, Default .false.: use initial stiffness 
+   continueCalculation        = .false.                                                          !< false:exit if BVP solver does not converge, true: continue calculation despite BVP solver not converging
+
 #endif
 
 !--------------------------------------------------------------------------------------------------
@@ -321,8 +320,6 @@ subroutine numerics_init
          err_stress_tolabs = IO_floatValue(line,chunkPos,2_pInt)
        case ('continuecalculation')
          continueCalculation = IO_intValue(line,chunkPos,2_pInt) > 0_pInt
-       case ('update_gamma')
-         update_gamma = IO_intValue(line,chunkPos,2_pInt) > 0_pInt
        case ('petsc_options')
          petsc_options = trim(line(chunkPos(4):))
        case ('err_curl_tolabs')
@@ -432,7 +429,6 @@ subroutine numerics_init
 ! spectral parameters
 #ifdef Grid
  write(6,'(a24,1x,L8)')      ' continueCalculation:    ',continueCalculation
- write(6,'(a24,1x,L8,/)')    ' update_gamma:           ',update_gamma
  write(6,'(a24,1x,es8.1)')   ' err_stress_tolAbs:      ',err_stress_tolAbs
  write(6,'(a24,1x,es8.1)')   ' err_stress_tolRel:      ',err_stress_tolRel
  write(6,'(a24,1x,es8.1)')   ' err_div_tolAbs:         ',err_div_tolAbs
@@ -506,8 +502,6 @@ subroutine numerics_init
  if (err_damage_tolabs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_damage_tolabs')
  if (err_damage_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_damage_tolrel')
 #ifdef Grid
- if (update_gamma .and. &
-                   .not. memory_efficient) call IO_error(error_ID = 847_pInt)
  if (err_stress_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolRel')
  if (err_stress_tolabs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolAbs')
  if (err_div_tolRel < 0.0_pReal)           call IO_error(301_pInt,ext_msg='err_div_tolRel')
