@@ -4,8 +4,8 @@ stages:
   - preprocessing
   - postprocessing
   - compilePETSc
-  - prepareSpectral
-  - spectral
+  - prepareGrid
+  - grid
   - compileMarc
   - marc
   - compileAbaqus
@@ -172,7 +172,7 @@ Post_General:
 
 Post_GeometryReconstruction:
   stage: postprocessing
-  script: Spectral_geometryReconstruction/test.py
+  script: spectral_geometryReconstruction/test.py
   except:
     - master
     - release
@@ -257,104 +257,104 @@ Compile_FEM_GNU:
 
 ###################################################################################################
 Compile_Intel_Prepare:
-  stage: prepareSpectral
+  stage: prepareGrid
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - cd $DAMASKROOT
-    - make clean spectral processing
+    - make clean grid processing
   except:
     - master
     - release
 
 ###################################################################################################
 Thermal:
-  stage: spectral
+  stage: grid
   script: Thermal/test.py
   except:
     - master
     - release
 
-Spectral_PackedGeometry:
-  stage: spectral
-  script: Spectral_PackedGeometry/test.py
+grid_packedGeometry:
+  stage: grid
+  script: grid_packedGeometry/test.py
   except:
     - master
     - release
 
 grid_parsingArguments:
-  stage: spectral
+  stage: grid
   script: grid_parsingArguments/test.py
   except:
     - master
     - release
 
 StateIntegration_compareVariants:
-  stage: spectral
+  stage: grid
   script: StateIntegration_compareVariants/test.py
   except:
     - master
     - release
 
 nonlocal_densityConservation:
-  stage: spectral
+  stage: grid
   script: nonlocal_densityConservation/test.py
   except:
     - master
     - release
 
 Spectral_ipNeighborhood:
-  stage: spectral
+  stage: grid
   script: Spectral_ipNeighborhood/test.py
   except:
     - master
     - release
 
 RGC_DetectChanges:
-  stage: spectral
+  stage: grid
   script: RGC_DetectChanges/test.py
   except:
     - master
     - release
 
 Nonlocal_Damage_DetectChanges:
-  stage: spectral
+  stage: grid
   script: Nonlocal_Damage_DetectChanges/test.py
   except:
     - master
     - release
 
 grid_all_restart:
-  stage: spectral
+  stage: grid
   script: grid_all_restart/test.py
   except:
     - master
     - release
 
-SpectralAll_parsingLoadCase:
-  stage: spectral
-  script: SpectralAll_parsingLoadCase/test.py
+grid_parsingLoadCase:
+  stage: grid
+  script: grid_parsingLoadCase/test.py
   except:
     - master
     - release
 
 grid_all_loadCaseRotation:
-  stage: spectral
+  stage: grid
   script: grid_all_loadCaseRotation/test.py
   except:
     - master
     - release
 
-Spectral_MPI:
-  stage: spectral
+grid_mech_MPI:
+  stage: grid
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
-    - Spectral_MPI/test.py
+    - grid_mech_MPI/test.py
   except:
     - master
     - release
 
 grid_all_restartMPI:
-  stage: spectral
+  stage: grid
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - grid_all_restartMPI/test.py
@@ -363,28 +363,28 @@ grid_all_restartMPI:
     - release
 
 Plasticity_DetectChanges:
-  stage: spectral
+  stage: grid
   script: Plasticity_DetectChanges/test.py
   except:
     - master
     - release
 
 Homogenization:
-  stage: spectral
+  stage: grid
   script: Homogenization/test.py
   except:
     - master
     - release
 
 Phenopowerlaw_singleSlip:
-  stage: spectral
+  stage: grid
   script: Phenopowerlaw_singleSlip/test.py
   except:
     - master
     - release
 
 TextureComponents:
-  stage: spectral
+  stage: grid
   script: TextureComponents/test.py
   except:
     - master
@@ -463,7 +463,7 @@ SpectralRuntime:
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - cd $DAMASKROOT
-    - make clean spectral processing OPTIMIZATION=AGGRESSIVE
+    - make clean grid processing OPTIMIZATION=AGGRESSIVE
     - cd $TESTROOT/performance                                                                      # location of old results
     - git checkout .                                                                                # undo any changes (i.e. run time data from non-development branch)
     - cd $DAMASKROOT/PRIVATE/testing
@@ -501,7 +501,7 @@ Marc:
     - master
     - release
 
-Spectral:
+GridSolver:
   stage: createDocumentation
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen

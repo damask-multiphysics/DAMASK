@@ -3,7 +3,11 @@ SHELL = /bin/sh
 # Makefile for the installation of DAMASK
 ########################################################################################
 .PHONY: all
-all: spectral FEM processing
+all: grid FEM processing
+
+.PHONY: grid
+grid: build/grid
+	@(cd build/grid;make -j4 --no-print-directory -ws all install;)
 
 .PHONY: spectral
 spectral: build/grid
