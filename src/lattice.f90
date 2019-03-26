@@ -1007,7 +1007,7 @@ function lattice_characteristicShear_Twin(Ntwin,structure,CoverA) result(charact
 
  implicit none
  integer,     dimension(:),            intent(in) :: Ntwin                                          !< number of active twin systems per family
- character(len=3),                     intent(in) :: structure                                      !< lattice structure
+ character(len=*),                     intent(in) :: structure                                      !< lattice structure
  real(pReal),                          intent(in) :: cOverA                                         !< c/a ratio
  real(pReal), dimension(sum(Ntwin))               :: characteristicShear
  
