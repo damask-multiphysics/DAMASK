@@ -437,13 +437,11 @@ subroutine utilities_updateGamma(C,saveReference)
   logical :: err
  
   C_ref = C
-  if (saveReference) then
-    if (worldrank == 0) then
-      write(6,'(/,a)') ' writing reference stiffness to file'
-      flush(6)
-      fileUnit = IO_open_jobFile_binary('C_ref','w')
-      write(fileUnit) C_ref; close(fileUnit)
-    endif
+  if (saveReference .and. worldrank == 0) then
+    write(6,'(/,a)') ' writing reference stiffness to file'
+    flush(6)
+    fileUnit = IO_open_jobFile_binary('C_ref','w')
+    write(fileUnit) C_ref; close(fileUnit)
   endif
  
   if(.not. num%memory_efficient) then
