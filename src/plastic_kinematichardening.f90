@@ -204,9 +204,9 @@ subroutine plastic_kinehardening_init
        prm%nonSchmid_pos  = prm%Schmid
        prm%nonSchmid_neg  = prm%Schmid
      endif
-     prm%interaction_SlipSlip = lattice_interaction_SlipBySlip(prm%Nslip, &
+     prm%interaction_SlipSlip = transpose(lattice_interaction_SlipBySlip(prm%Nslip, &
                                                                config%getFloats('interaction_slipslip'), &
-                                                               config%getString('lattice_structure'))
+                                                               config%getString('lattice_structure')))
 
      prm%crss0    = config%getFloats('crss0',    requiredSize=size(prm%Nslip))
      prm%tau1     = config%getFloats('tau1',     requiredSize=size(prm%Nslip))
@@ -397,8 +397,6 @@ subroutine plastic_kinehardening_dotState(Mp,instance,of)
    instance, &
    of
 
- integer(pInt) :: &
-   i
  real(pReal) :: &
    sumGamma
  real(pReal), dimension(param(instance)%totalNslip) :: &
@@ -411,13 +409,13 @@ subroutine plastic_kinehardening_dotState(Mp,instance,of)
  dot%accshear(:,of) = abs(gdot_pos+gdot_neg)
  sumGamma = sum(stt%accshear(:,of))
 
- do i = 1_pInt, prm%totalNslip
-   dot%crss(i,of) = dot_product(prm%interaction_SlipSlip(:,i),dot%accshear(:,of)) &
-                  * (  prm%theta1(i) &
-                     + (prm%theta0(i) - prm%theta1(i) + prm%theta0(i)*prm%theta1(i)*sumGamma/prm%tau1(i)) &
-                     * exp(-sumGamma*prm%theta0(i)/prm%tau1(i)) &
-                    )
- enddo
+ 
+ dot%crss(:,of) = matmul(prm%interaction_SlipSlip,dot%accshear(:,of)) &
+                * (  prm%theta1 &
+                    + (prm%theta0 - prm%theta1 + prm%theta0*prm%theta1*sumGamma/prm%tau1) &
+                    * exp(-sumGamma*prm%theta0/prm%tau1) &
+                  )
+                    
  dot%crss_back(:,of) = stt%sense(:,of)*dot%accshear(:,of) * &
           ( prm%theta1_b + &
             (prm%theta0_b - prm%theta1_b &
