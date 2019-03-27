@@ -14,9 +14,9 @@ module plastic_isotropic
 
  implicit none
  private
- integer(pInt),                       dimension(:,:),   allocatable, target, public :: &
+ integer,           dimension(:,:),   allocatable, target, public :: &
    plastic_isotropic_sizePostResult                                                                 !< size of each post result output
- character(len=64),                   dimension(:,:),   allocatable, target, public :: &
+ character(len=64), dimension(:,:),   allocatable, target, public :: &
    plastic_isotropic_output                                                                         !< name of each post result output
 
  enum, bind(c)
@@ -42,8 +42,8 @@ module plastic_isotropic
      tausat_SinhFitD, &
      aTolFlowstress, &
      aTolShear
-   integer(pInt) :: &
-     of_debug = 0_pInt
+   integer :: &
+     of_debug = 0
    integer(kind(undefined_ID)), allocatable, dimension(:) :: &
      outputID
    logical :: &
@@ -109,7 +109,7 @@ subroutine plastic_isotropic_init
  use lattice
 
  implicit none
- integer(pInt) :: &
+ integer :: &
    Ninstance, &
    p, i, &
    NipcMyPhase, &
@@ -131,10 +131,10 @@ subroutine plastic_isotropic_init
  write(6,'(a)')     ' https://doi.org/10.1016/j.scriptamat.2017.09.047'
 
  Ninstance = count(phase_plasticity == PLASTICITY_ISOTROPIC_ID)
- if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
+ if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
- allocate(plastic_isotropic_sizePostResult(maxval(phase_Noutput),Ninstance),source=0_pInt)
+ allocate(plastic_isotropic_sizePostResult(maxval(phase_Noutput),Ninstance),source=0)
  allocate(plastic_isotropic_output(maxval(phase_Noutput),Ninstance))
           plastic_isotropic_output = ''
 
@@ -142,7 +142,7 @@ subroutine plastic_isotropic_init
  allocate(state(Ninstance))
  allocate(dotState(Ninstance))
 
- do p = 1_pInt, size(phase_plasticity)
+ do p = 1, size(phase_plasticity)
    if (phase_plasticity(p) /= PLASTICITY_ISOTROPIC_ID) cycle
    associate(prm => param(phase_plasticityInstance(p)), &
              dot => dotState(phase_plasticityInstance(p)), &
@@ -188,13 +188,13 @@ subroutine plastic_isotropic_init
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
    if (extmsg /= '') &
-     call IO_error(211_pInt,ext_msg=trim(extmsg)//'('//PLASTICITY_ISOTROPIC_label//')')
+     call IO_error(211,ext_msg=trim(extmsg)//'('//PLASTICITY_ISOTROPIC_label//')')
 
 !--------------------------------------------------------------------------------------------------
 !  output pararameters
    outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
    allocate(prm%outputID(0))
-   do i=1_pInt, size(outputs)
+   do i=1, size(outputs)
      outputID = undefined_ID
      select case(outputs(i))
 
@@ -207,7 +207,7 @@ subroutine plastic_isotropic_init
 
      if (outputID /= undefined_ID) then
        plastic_isotropic_output(i,phase_plasticityInstance(p)) = outputs(i)
-       plastic_isotropic_sizePostResult(i,phase_plasticityInstance(p)) = 1_pInt
+       plastic_isotropic_sizePostResult(i,phase_plasticityInstance(p)) = 1
        prm%outputID = [prm%outputID, outputID]
     endif
 
@@ -219,8 +219,8 @@ subroutine plastic_isotropic_init
    sizeDotState = size(['flowstress       ','accumulated_shear'])
    sizeState = sizeDotState
 
-   call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0_pInt, &
-                                      1_pInt,0_pInt,0_pInt)
+   call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0, &
+                                      1,0,0)
    plasticState(p)%sizePostResults = sum(plastic_isotropic_sizePostResult(:,phase_plasticityInstance(p)))
 
 !--------------------------------------------------------------------------------------------------
@@ -269,7 +269,7 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
  real(pReal), dimension(3,3), intent(in) :: &
    Mp                                                                                               !< Mandel stress
- integer(pInt),               intent(in) :: &
+ integer,                     intent(in) :: &
    instance, &
    of
 
@@ -279,7 +279,7 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
    gamma_dot, &                                                                                     !< strainrate
    norm_Mp_dev, &                                                                                   !< norm of the deviatoric part of the Mandel stress
    squarenorm_Mp_dev                                                                                !< square of the norm of the deviatoric part of the Mandel stress
- integer(pInt) :: &
+ integer :: &
    k, l, m, n
 
  associate(prm => param(instance), stt => state(instance))
@@ -293,19 +293,19 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
    Lp = Mp_dev/norm_Mp_dev * gamma_dot/prm%fTaylor
 #ifdef DEBUG
-   if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &
-       .and. (of == prm%of_debug .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
+   if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0 &
+       .and. (of == prm%of_debug .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0)) then
      write(6,'(/,a,/,3(12x,3(f12.4,1x)/))') '<< CONST isotropic >> Tstar (dev) / MPa', &
                                       transpose(Mp_dev)*1.0e-6_pReal
      write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> norm Tstar / MPa', norm_Mp_dev*1.0e-6_pReal
      write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> gdot', gamma_dot
    end if
 #endif
-   forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
+   forall (k=1:3,l=1:3,m=1:3,n=1:3) &
      dLp_dMp(k,l,m,n) = (prm%n-1.0_pReal) * Mp_dev(k,l)*Mp_dev(m,n) / squarenorm_Mp_dev
-   forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
+   forall (k=1:3,l=1:3) &
      dLp_dMp(k,l,k,l) = dLp_dMp(k,l,k,l) + 1.0_pReal
-   forall (k=1_pInt:3_pInt,m=1_pInt:3_pInt) &
+   forall (k=1:3,m=1:3) &
      dLp_dMp(k,k,m,m) = dLp_dMp(k,k,m,m) - 1.0_pReal/3.0_pReal
    dLp_dMp = gamma_dot / prm%fTaylor * dLp_dMp / norm_Mp_dev
  else
@@ -335,7 +335,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,instance,of)
 
  real(pReal), dimension(3,3),   intent(in) :: &
    Tstar                                                                                            !< Mandel stress ToDo: Mi?
- integer(pInt),                 intent(in) :: &
+ integer,                       intent(in) :: &
    instance, &
    of
 
@@ -345,7 +345,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,instance,of)
    gamma_dot, &                                                                                     !< strainrate
    norm_Tstar_sph, &                                                                                !< euclidean norm of Tstar_sph
    squarenorm_Tstar_sph                                                                             !< square of the euclidean norm of Tstar_sph
- integer(pInt) :: &
+ integer :: &
    k, l, m, n
 
  associate(prm => param(instance), stt => state(instance))
@@ -358,9 +358,9 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,instance,of)
    gamma_dot = prm%gdot0 * (sqrt(1.5_pReal) * norm_Tstar_sph /(prm%fTaylor*stt%flowstress(of))) **prm%n
 
    Li = Tstar_sph/norm_Tstar_sph * gamma_dot/prm%fTaylor
-   forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
+   forall (k=1:3,l=1:3,m=1:3,n=1:3) &
      dLi_dTstar(k,l,m,n) = (prm%n-1.0_pReal) * Tstar_sph(k,l)*Tstar_sph(m,n) / squarenorm_Tstar_sph
-   forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
+   forall (k=1:3,l=1:3) &
      dLi_dTstar(k,l,k,l) = dLi_dTstar(k,l,k,l) + 1.0_pReal
 
    dLi_dTstar = gamma_dot / prm%fTaylor * dLi_dTstar / norm_Tstar_sph
@@ -387,7 +387,7 @@ subroutine plastic_isotropic_dotState(Mp,instance,of)
  implicit none
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
- integer(pInt),                intent(in) :: &
+ integer,                      intent(in) :: &
    instance, &
    of
 
@@ -442,7 +442,7 @@ function plastic_isotropic_postResults(Mp,instance,of) result(postResults)
  implicit none
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
- integer(pInt),                intent(in) :: &
+ integer,                      intent(in) :: &
    instance, &
    of
 
@@ -451,7 +451,7 @@ function plastic_isotropic_postResults(Mp,instance,of) result(postResults)
 
  real(pReal) :: &
    norm_Mp                                                                                          !< norm of the Mandel stress
- integer(pInt) :: &
+ integer :: &
    o,c
 
  associate(prm => param(instance), stt => state(instance))
@@ -462,18 +462,18 @@ function plastic_isotropic_postResults(Mp,instance,of) result(postResults)
    norm_Mp = sqrt(math_mul33xx33(math_deviatoric33(Mp),math_deviatoric33(Mp)))
  endif
 
- c = 0_pInt
+ c = 0
 
- outputsLoop: do o = 1_pInt,size(prm%outputID)
+ outputsLoop: do o = 1,size(prm%outputID)
    select case(prm%outputID(o))
 
      case (flowstress_ID)
-       postResults(c+1_pInt) = stt%flowstress(of)
-       c = c + 1_pInt
+       postResults(c+1) = stt%flowstress(of)
+       c = c + 1
      case (strainrate_ID)
-       postResults(c+1_pInt) = prm%gdot0 &
+       postResults(c+1) = prm%gdot0 &
                              * (sqrt(1.5_pReal) * norm_Mp /(prm%fTaylor * stt%flowstress(of)))**prm%n
-       c = c + 1_pInt
+       c = c + 1
 
    end select
  enddo outputsLoop
@@ -496,7 +496,7 @@ subroutine plastic_isotropic_results(instance,group)
   integer :: o
 
   associate(prm => param(instance), stt => state(instance))
-  outputsLoop: do o = 1_pInt,size(prm%outputID)
+  outputsLoop: do o = 1,size(prm%outputID)
     select case(prm%outputID(o))
     end select
   enddo outputsLoop
