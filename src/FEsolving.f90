@@ -72,7 +72,7 @@ subroutine FE_init
 
  modelName = getSolverJobName()
 
-#if defined(Spectral) || defined(FEM)
+#if defined(Grid) || defined(FEM)
  restartInc = interface_RestartInc
 
  if(restartInc < 0_pInt) then

@@ -282,13 +282,13 @@ subroutine plastic_nonlocal_init
   character(len=65536), dimension(:), allocatable :: outputs
   integer :: NofMyPhase 
  
-  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_label//' init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_label//' init  -+>>>'
 
-  write(6,'(/,a)')   ' Reuber et al., Acta Materialia 71:333–348, 2014'
-  write(6,'(a)')     ' https://doi.org/10.1016/j.actamat.2014.03.012'
+  write(6,'(/,a)') ' Reuber et al., Acta Materialia 71:333–348, 2014'
+  write(6,'(a)')   ' https://doi.org/10.1016/j.actamat.2014.03.012'
 
-  write(6,'(/,a)')   ' Kords, Dissertation RWTH Aachen, 2014'
-  write(6,'(a)')     ' http://publications.rwth-aachen.de/record/229993'
+  write(6,'(/,a)') ' Kords, Dissertation RWTH Aachen, 2014'
+  write(6,'(a)')   ' http://publications.rwth-aachen.de/record/229993'
 
   maxNinstances = count(phase_plasticity == PLASTICITY_NONLOCAL_ID)
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &

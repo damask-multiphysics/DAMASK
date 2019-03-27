@@ -19,13 +19,17 @@ module grid_mech_spectral_basic
  
   implicit none
   private
- 
-  character (len=*), parameter, public :: &
-    GRID_MECH_SPECTRAL_BASIC_LABEL = 'basic'
-   
+
 !--------------------------------------------------------------------------------------------------
 ! derived types
   type(tSolutionParams), private :: params
+  
+  type, private :: tNumerics
+    logical :: &
+      update_gamma !< update gamma operator with current stiffness
+  end type tNumerics
+  
+  type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
@@ -35,7 +39,9 @@ module grid_mech_spectral_basic
 
 !--------------------------------------------------------------------------------------------------
 ! common pointwise data
-  real(pReal), private, dimension(:,:,:,:,:), allocatable ::  F_lastInc, Fdot
+  real(pReal), private, dimension(:,:,:,:,:), allocatable ::  &
+    F_lastInc, &
+    Fdot
 
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
@@ -44,9 +50,8 @@ module grid_mech_spectral_basic
     F_aim = math_I3, &                                                                              !< current prescribed deformation gradient
     F_aim_lastInc = math_I3, &                                                                      !< previous average deformation gradient
     P_av = 0.0_pReal                                                                                !< average 1st Piola--Kirchhoff stress
- 
-  character(len=1024), private :: incInfo                                                           !< time and increment information
- 
+
+  character(len=1024), private :: incInfo                                                           !< time and increment information 
   real(pReal), private, dimension(3,3,3,3) :: &
     C_volAvg = 0.0_pReal, &                                                                         !< current volume average stiffness 
     C_volAvgLastInc = 0.0_pReal, &                                                                  !< previous volume average stiffness
@@ -65,6 +70,9 @@ module grid_mech_spectral_basic
     grid_mech_spectral_basic_init, &
     grid_mech_spectral_basic_solution, &
     grid_mech_spectral_basic_forward
+  private :: &
+    converged, &
+    formResidual
 
 contains
 
@@ -76,12 +84,10 @@ subroutine grid_mech_spectral_basic_init
     IO_intOut, &
     IO_error, &
     IO_open_jobFile_binary
-  use debug, only: &
-   debug_level, &
-   debug_spectral, &
-   debug_spectralRestart
   use FEsolving, only: &
     restartInc
+  use config, only :&
+    config_numerics
   use numerics, only: &
     worldrank, &
     worldsize, &
@@ -107,7 +113,8 @@ subroutine grid_mech_spectral_basic_init
     temp33_Real = 0.0_pReal
  
   PetscErrorCode :: ierr
-  PetscScalar, pointer, dimension(:,:,:,:)   ::  F
+  PetscScalar, pointer, dimension(:,:,:,:) :: &
+   F                                                                                                ! pointer to solution data
   PetscInt, dimension(worldsize) :: localK  
   integer :: fileUnit
   character(len=1024) :: rankStr
@@ -119,6 +126,8 @@ subroutine grid_mech_spectral_basic_init
  
   write(6,'(/,a)') ' Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
   write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2014.02.006'
+  
+  num%update_gamma = config_numerics%getInt('update_gamma',defaultVal=0) > 0
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
@@ -152,23 +161,23 @@ subroutine grid_mech_spectral_basic_init
   call DMsetFromOptions(da,ierr); CHKERRQ(ierr)
   call DMsetUp(da,ierr); CHKERRQ(ierr)
   call DMcreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                                    ! global solution vector (grid x 9, i.e. every def grad tensor)
-  call DMDASNESsetFunctionLocal(da,INSERT_VALUES,grid_mech_spectral_basic_formResidual,PETSC_NULL_SNES,ierr)! residual vector of same shape as solution vector
+  call DMDASNESsetFunctionLocal(da,INSERT_VALUES,formResidual,PETSC_NULL_SNES,ierr)                 ! residual vector of same shape as solution vector
   CHKERRQ(ierr) 
-  call SNESsetConvergenceTest(snes,grid_mech_spectral_basic_converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr)! specify custom convergence check function "_converged"
+  call SNESsetConvergenceTest(snes,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr)! specify custom convergence check function "converged"
   CHKERRQ(ierr)
   call SNESsetFromOptions(snes,ierr); CHKERRQ(ierr)                                                 ! pull it all together with additional CLI arguments
 
 !--------------------------------------------------------------------------------------------------
-! init fields                 
-  call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                    ! get the data out of PETSc to work with
+! init fields    
+  call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                   ! places pointer on PETSc data
  
   restart: if (restartInc > 0) then                                                     
-    if (iand(debug_level(debug_spectral),debug_spectralRestart) /= 0) then
-      write(6,'(/,a,'//IO_intOut(restartInc)//',a)') &
-      'reading values of increment ', restartInc, ' from file'
-      flush(6)
-    endif
- 
+    write(6,'(/,a,'//IO_intOut(restartInc)//',a)') ' reading values of increment ', restartInc, ' from file'
+
+    fileUnit = IO_open_jobFile_binary('F_aim')
+    read(fileUnit) F_aim; close(fileUnit)
+    fileUnit = IO_open_jobFile_binary('F_aim_lastInc')
+    read(fileUnit) F_aim_lastInc; close(fileUnit)
     fileUnit = IO_open_jobFile_binary('F_aimDot')
     read(fileUnit) F_aimDot; close(fileUnit)
  
@@ -179,12 +188,6 @@ subroutine grid_mech_spectral_basic_init
     fileUnit = IO_open_jobFile_binary('F_lastInc'//trim(rankStr))
     read(fileUnit) F_lastInc; close (fileUnit)
  
-    F_aim         = reshape(sum(sum(sum(F,dim=4),dim=3),dim=2) * wgt, [3,3])                        ! average of F
-    call MPI_Allreduce(MPI_IN_PLACE,F_aim,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-    if(ierr /=0) call IO_error(894, ext_msg='F_aim')
-    F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                ! average of F_lastInc 
-    call MPI_Allreduce(MPI_IN_PLACE,F_aim_lastInc,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-    if(ierr /=0) call IO_error(894, ext_msg='F_aim_lastInc')
   elseif (restartInc == 0) then restart
     F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                         ! initialize to identity
     F = reshape(F_lastInc,[9,grid(1),grid(2),grid3])
@@ -196,14 +199,10 @@ subroutine grid_mech_spectral_basic_init
                                       reshape(F,shape(F_lastInc)), &                                ! target F
                                       0.0_pReal, &                                                  ! time increment
                                       math_I3)                                                      ! no rotation of boundary condition
-  call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                ! write data back to PETSc
-                                                                                                    ! QUESTION: why not writing back right after reading (l.189)?
+  call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                ! deassociate pointer
  
   restartRead: if (restartInc > 0) then
-    if (iand(debug_level(debug_spectral),debug_spectralRestart) /= 0) &
-      write(6,'(/,a,'//IO_intOut(restartInc)//',a)') &
-      'reading more values of increment ', restartInc, ' from file'
-    flush(6)
+    write(6,'(/,a,'//IO_intOut(restartInc)//',a)') 'reading more values of increment ', restartInc, ' from file'
     fileUnit = IO_open_jobFile_binary('C_volAvg')
     read(fileUnit) C_volAvg; close(fileUnit)
     fileUnit = IO_open_jobFile_binary('C_volAvgLastInv')
@@ -218,11 +217,9 @@ end subroutine grid_mech_spectral_basic_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief solution for the Basic scheme with internal iterations
+!> @brief solution for the basic scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
 function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation_BC) result(solution)
-  use numerics, only: &
-    update_gamma
   use spectral_utilities, only: &
     tBoundaryCondition, &
     utilities_maskedCompliance, &
@@ -245,7 +242,6 @@ function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_
   real(pReal), dimension(3,3), intent(in) :: rotation_BC
   type(tSolutionState)                    :: &
     solution
- 
 !--------------------------------------------------------------------------------------------------
 ! PETSc Data
   PetscErrorCode :: ierr
@@ -256,7 +252,7 @@ function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
   S = Utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
-  if (update_gamma) call Utilities_updateGamma(C_minMaxAvg,restartWrite)
+  if (num%update_gamma) call Utilities_updateGamma(C_minMaxAvg,restartWrite)
  
 !--------------------------------------------------------------------------------------------------
 ! set module wide available data 
@@ -279,154 +275,8 @@ function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_
   solution%termIll = terminallyIll
   terminallyIll = .false.
 
-
 end function grid_mech_spectral_basic_solution
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief forms the basic residual vector
-!--------------------------------------------------------------------------------------------------
-subroutine grid_mech_spectral_basic_formResidual(in, F, &
-                              residuum, dummy, ierr)
-  use numerics, only: &
-    itmax, &
-    itmin
-  use mesh, only: &
-    grid, &
-    grid3
-  use math, only: &
-    math_rotate_backward33, &
-    math_mul3333xx33
-  use debug, only: &
-    debug_level, &
-    debug_spectral, &
-    debug_spectralRotation
-  use spectral_utilities, only: &
-    tensorField_real, &
-    utilities_FFTtensorForward, &
-    utilities_fourierGammaConvolution, &
-    utilities_FFTtensorBackward, &
-    utilities_constitutiveResponse, &
-    utilities_divergenceRMS
-  use IO, only: &
-    IO_intOut 
-  use FEsolving, only: &
-    terminallyIll
-
-  implicit none
-  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: in                                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
-  PetscScalar, dimension(3,3,XG_RANGE,YG_RANGE,ZG_RANGE), &
-    intent(in)  :: F                                                                                !< deformation gradient field
-  PetscScalar, dimension(3,3,X_RANGE,Y_RANGE,Z_RANGE), &
-    intent(out) :: residuum                                                                         !< residuum field
-  real(pReal),  dimension(3,3) :: &
-    deltaF_aim
-  PetscInt :: &
-    PETScIter, &
-    nfuncs
-  PetscObject :: dummy
-  PetscErrorCode :: ierr
-
-  call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
-  call SNESGetIterationNumber(snes,PETScIter,ierr); CHKERRQ(ierr)
-
-  if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1                                              ! new increment
-!--------------------------------------------------------------------------------------------------
-! begin of new iteration
-  newIteration: if (totalIter <= PETScIter) then
-    totalIter = totalIter + 1
-    write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') &
-            trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
-    if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
-      write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
-              ' deformation gradient aim (lab) =', transpose(math_rotate_backward33(F_aim,params%rotation_BC))
-    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
-              ' deformation gradient aim       =', transpose(F_aim)
-    flush(6)
-  endif newIteration
-
-!--------------------------------------------------------------------------------------------------
-! evaluate constitutive response
-  call Utilities_constitutiveResponse(residuum, &                                                   ! "residuum" gets field of first PK stress (to save memory)
-                                      P_av,C_volAvg,C_minMaxAvg, &
-                                      F,params%timeinc,params%rotation_BC)
-  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
-  
-!--------------------------------------------------------------------------------------------------
-! stress BC handling
-  deltaF_aim = math_mul3333xx33(S, P_av - params%stress_BC)
-  F_aim = F_aim - deltaF_aim
-  err_BC = maxval(abs(params%stress_mask * (P_av - params%stress_BC)))                              ! mask = 0.0 when no stress bc
-
-!--------------------------------------------------------------------------------------------------
-! updated deformation gradient using fix point algorithm of basic scheme
-  tensorField_real = 0.0_pReal
-  tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = residuum                                  ! store fPK field for subsequent FFT forward transform
-  call utilities_FFTtensorForward                                                                   ! FFT forward of global "tensorField_real"
-  err_div = Utilities_divergenceRMS()                                                               ! divRMS of tensorField_fourier for later use
-  call utilities_fourierGammaConvolution(math_rotate_backward33(deltaF_aim,params%rotation_BC))     ! convolution of Gamma and tensorField_fourier, with arg 
-  call utilities_FFTtensorBackward                                                                  ! FFT backward of global tensorField_fourier
- 
-!--------------------------------------------------------------------------------------------------
-! constructing residual
-  residuum = tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3)                                   ! Gamma*P gives correction towards div(P) = 0, so needs to be zero, too
-
-end subroutine grid_mech_spectral_basic_formResidual
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief convergence check
-!--------------------------------------------------------------------------------------------------
-subroutine grid_mech_spectral_basic_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
-  use numerics, only: &
-    itmax, &
-    itmin, &
-    err_div_tolRel, &
-    err_div_tolAbs, &
-    err_stress_tolRel, &
-    err_stress_tolAbs
-  use FEsolving, only: &
-    terminallyIll
-
-  implicit none
-  SNES :: snes_local
-  PetscInt :: PETScIter
-  PetscReal :: &
-    xnorm, &                                                                                        ! not used
-    snorm, &                                                                                        ! not used
-    fnorm                                                                                           ! not used
-  SNESConvergedReason :: reason
-  PetscObject :: dummy
-  PetscErrorCode :: ierr
-  real(pReal) :: &
-    divTol, &
-    BCTol
-
-  divTol = max(maxval(abs(P_av))*err_div_tolRel   ,err_div_tolAbs)
-  BCTol  = max(maxval(abs(P_av))*err_stress_tolRel,err_stress_tolAbs)
-
-  converged: if ((totalIter >= itmin .and. &
-                            all([ err_div/divTol, &
-                                  err_BC /BCTol       ] < 1.0_pReal)) &
-              .or.    terminallyIll) then  
-    reason = 1
-  elseif (totalIter >= itmax) then converged
-    reason = -1
-  else converged
-    reason = 0
-  endif converged
-
-!--------------------------------------------------------------------------------------------------
-! report
-  write(6,'(1/,a)') ' ... reporting .............................................................'
-  write(6,'(1/,a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
-          err_div/divTol,  ' (',err_div,' / m, tol = ',divTol,')'
-  write(6,'(a,f12.2,a,es8.2,a,es9.2,a)')    ' error stress BC  = ', &
-          err_BC/BCTol,    ' (',err_BC, ' Pa,  tol = ',BCTol,')' 
-  write(6,'(/,a)') ' ==========================================================================='
-  flush(6) 
- 
-end subroutine grid_mech_spectral_basic_converged
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forwarding routine
@@ -492,6 +342,10 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
         write(fileUnit) C_volAvg; close(fileUnit)
         fileUnit = IO_open_jobFile_binary('C_volAvgLastInv','w')
         write(fileUnit) C_volAvgLastInc; close(fileUnit)
+        fileUnit = IO_open_jobFile_binary('F_aim','w')
+        write(fileUnit) F_aim; close(fileUnit)
+        fileUnit = IO_open_jobFile_binary('F_aim_lastInc','w')
+        write(fileUnit) F_aim_lastInc; close(fileUnit)
         fileUnit = IO_open_jobFile_binary('F_aimDot','w')
         write(fileUnit) F_aimDot; close(fileUnit)
       endif
@@ -526,7 +380,7 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
     endif
 
 
-    Fdot =  Utilities_calculateRate(guess, &
+    Fdot =  utilities_calculateRate(guess, &
                                     F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]),timeinc_old, &
                                     math_rotate_backward33(F_aimDot,rotation_BC))
     F_lastInc        = reshape(F,         [3,3,grid(1),grid(2),grid3])                                ! winding F forward
@@ -541,5 +395,152 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
   
 end subroutine grid_mech_spectral_basic_forward
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief convergence check
+!--------------------------------------------------------------------------------------------------
+subroutine converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
+  use numerics, only: &
+    itmax, &
+    itmin, &
+    err_div_tolRel, &
+    err_div_tolAbs, &
+    err_stress_tolRel, &
+    err_stress_tolAbs
+  use FEsolving, only: &
+    terminallyIll
+
+  implicit none
+  SNES :: snes_local
+  PetscInt :: PETScIter
+  PetscReal :: &
+    xnorm, &                                                                                        ! not used
+    snorm, &                                                                                        ! not used
+    fnorm                                                                                           ! not used
+  SNESConvergedReason :: reason
+  PetscObject :: dummy
+  PetscErrorCode :: ierr
+  real(pReal) :: &
+    divTol, &
+    BCTol
+
+  divTol = max(maxval(abs(P_av))*err_div_tolRel   ,err_div_tolAbs)
+  BCTol  = max(maxval(abs(P_av))*err_stress_tolRel,err_stress_tolAbs)
+
+  if ((totalIter >= itmin .and. &
+                            all([ err_div/divTol, &
+                                  err_BC /BCTol       ] < 1.0_pReal)) &
+              .or.    terminallyIll) then  
+    reason = 1
+  elseif (totalIter >= itmax) then
+    reason = -1
+  else
+    reason = 0
+  endif
+
+!--------------------------------------------------------------------------------------------------
+! report
+  write(6,'(1/,a)') ' ... reporting .............................................................'
+  write(6,'(1/,a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
+          err_div/divTol,  ' (',err_div,' / m, tol = ',divTol,')'
+  write(6,'(a,f12.2,a,es8.2,a,es9.2,a)')    ' error stress BC  = ', &
+          err_BC/BCTol,    ' (',err_BC, ' Pa,  tol = ',BCTol,')' 
+  write(6,'(/,a)') ' ==========================================================================='
+  flush(6) 
+ 
+end subroutine converged
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief forms the basic residual vector
+!--------------------------------------------------------------------------------------------------
+subroutine formResidual(in, F, &
+                        residuum, dummy, ierr)
+  use numerics, only: &
+    itmax, &
+    itmin
+  use mesh, only: &
+    grid, &
+    grid3
+  use math, only: &
+    math_rotate_backward33, &
+    math_mul3333xx33
+  use debug, only: &
+    debug_level, &
+    debug_spectral, &
+    debug_spectralRotation
+  use spectral_utilities, only: &
+    tensorField_real, &
+    utilities_FFTtensorForward, &
+    utilities_fourierGammaConvolution, &
+    utilities_FFTtensorBackward, &
+    utilities_constitutiveResponse, &
+    utilities_divergenceRMS
+  use IO, only: &
+    IO_intOut 
+  use FEsolving, only: &
+    terminallyIll
+
+  implicit none
+  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: in                                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
+  PetscScalar, dimension(3,3,XG_RANGE,YG_RANGE,ZG_RANGE), &
+    intent(in) :: F                                                                                 !< deformation gradient field
+  PetscScalar, dimension(3,3,X_RANGE,Y_RANGE,Z_RANGE), &
+    intent(out) :: residuum                                                                         !< residuum field
+  real(pReal),  dimension(3,3) :: &
+    deltaF_aim
+  PetscInt :: &
+    PETScIter, &
+    nfuncs
+  PetscObject :: dummy
+  PetscErrorCode :: ierr
+
+  call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
+  call SNESGetIterationNumber(snes,PETScIter,ierr); CHKERRQ(ierr)
+
+  if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1                                              ! new increment
+!--------------------------------------------------------------------------------------------------
+! begin of new iteration
+  newIteration: if (totalIter <= PETScIter) then
+    totalIter = totalIter + 1
+    write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') &
+            trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
+    if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
+      write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
+              ' deformation gradient aim (lab) =', transpose(math_rotate_backward33(F_aim,params%rotation_BC))
+    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
+              ' deformation gradient aim       =', transpose(F_aim)
+    flush(6)
+  endif newIteration
+
+!--------------------------------------------------------------------------------------------------
+! evaluate constitutive response
+  call Utilities_constitutiveResponse(residuum, &                                                   ! "residuum" gets field of first PK stress (to save memory)
+                                      P_av,C_volAvg,C_minMaxAvg, &
+                                      F,params%timeinc,params%rotation_BC)
+  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
+  
+!--------------------------------------------------------------------------------------------------
+! stress BC handling
+  deltaF_aim = math_mul3333xx33(S, P_av - params%stress_BC)
+  F_aim = F_aim - deltaF_aim
+  err_BC = maxval(abs(params%stress_mask * (P_av - params%stress_BC)))                              ! mask = 0.0 when no stress bc
+
+!--------------------------------------------------------------------------------------------------
+! updated deformation gradient using fix point algorithm of basic scheme
+  tensorField_real = 0.0_pReal
+  tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = residuum                                  ! store fPK field for subsequent FFT forward transform
+  call utilities_FFTtensorForward                                                                   ! FFT forward of global "tensorField_real"
+  err_div = Utilities_divergenceRMS()                                                               ! divRMS of tensorField_fourier for later use
+  call utilities_fourierGammaConvolution(math_rotate_backward33(deltaF_aim,params%rotation_BC))     ! convolution of Gamma and tensorField_fourier, with arg 
+  call utilities_FFTtensorBackward                                                                  ! FFT backward of global tensorField_fourier
+ 
+!--------------------------------------------------------------------------------------------------
+! constructing residual
+  residuum = tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3)                                   ! Gamma*P gives correction towards div(P) = 0, so needs to be zero, too
+
+end subroutine formResidual
+
 
 end module grid_mech_spectral_basic

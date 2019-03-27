@@ -3,20 +3,24 @@ SHELL = /bin/sh
 # Makefile for the installation of DAMASK
 ########################################################################################
 .PHONY: all
-all: spectral FEM processing
+all: grid FEM processing
+
+.PHONY: grid
+grid: build/grid
+	@(cd build/grid;make -j4 --no-print-directory -ws all install;)
 
 .PHONY: spectral
-spectral: build/spectral
-	@(cd build/spectral;make -j4 --no-print-directory -ws all install;)
+spectral: build/grid
+	@(cd build/grid;make -j4 --no-print-directory -ws all install;)
 
 .PHONY: FEM
 FEM: build/FEM
 	@(cd build/FEM; make -j4 --no-print-directory -ws all install;)
 
-.PHONY: build/spectral
-build/spectral:
-	@mkdir -p build/spectral
-	@(cd build/spectral; cmake -Wno-dev -DDAMASK_SOLVER=SPECTRAL -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILDCMD_POST=${BUILDCMD_POST} -DBUILDCMD_PRE=${BUILDCMD_PRE} -DOPTIMIZATION=${OPTIMIZATION} -DOPENMP=${OPENMP} ../../;)
+.PHONY: build/grid
+build/grid:
+	@mkdir -p build/grid
+	@(cd build/grid; cmake -Wno-dev -DDAMASK_SOLVER=GRID -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILDCMD_POST=${BUILDCMD_POST} -DBUILDCMD_PRE=${BUILDCMD_PRE} -DOPTIMIZATION=${OPTIMIZATION} -DOPENMP=${OPENMP} ../../;)
 
 .PHONY: build/FEM
 build/FEM:

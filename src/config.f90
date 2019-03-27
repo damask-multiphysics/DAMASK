@@ -608,7 +608,7 @@ character(len=65536) function getString(this,key,defaultVal,raw)
  implicit none
  class(tPartitionedStringList), target, intent(in)           :: this
  character(len=*),                      intent(in)           :: key
- character(len=65536),                  intent(in), optional :: defaultVal
+ character(len=*),                      intent(in), optional :: defaultVal
  logical,                               intent(in), optional :: raw
  type(tPartitionedStringList),  pointer                      :: item
  logical                                                     :: found, &
@@ -622,7 +622,7 @@ character(len=65536) function getString(this,key,defaultVal,raw)
  found = present(defaultVal)
  if (found) then
    getString = trim(defaultVal)
-   if (len_trim(getString) /= len_trim(defaultVal)) call IO_error(0,ext_msg='getString')
+   !if (len_trim(getString) /= len_trim(defaultVal)) call IO_error(0,ext_msg='getString')
  endif
 
  item => this
