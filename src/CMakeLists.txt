@@ -176,6 +176,7 @@ if (PROJECT_NAME STREQUAL "DAMASK_spectral")
       add_library(SPECTRAL_SOLVER OBJECT
       "grid_thermal_spectral.f90"
       "grid_damage_spectral.f90"
+      "grid_mech_FEM.f90"
       "grid_mech_spectral_basic.f90"
       "grid_mech_spectral_polarisation.f90")
       add_dependencies(SPECTRAL_SOLVER SPECTRAL_UTILITIES)

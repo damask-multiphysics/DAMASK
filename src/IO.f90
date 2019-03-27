@@ -823,8 +823,6 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
    msg = 'microstructure count mismatch'
  case (846_pInt)
    msg = 'rotation for load case rotation ill-defined (R:RT != I)'
- case (847_pInt)
-   msg = 'update of gamma operator not possible when pre-calculated'
  case (880_pInt)
    msg = 'mismatch of microstructure count and a*b*c in geom file'
  case (891_pInt)

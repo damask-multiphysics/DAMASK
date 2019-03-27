@@ -31,6 +31,8 @@ program DAMASK_spectral
    IO_lc, &
    IO_intOut, &
    IO_warning
+ use config, only: &
+   config_numerics
  use debug, only: &
    debug_level, &
    debug_spectral, &
@@ -50,7 +52,6 @@ program DAMASK_spectral
    worldsize, &
    stagItMax, &
    maxCutBack, &
-   spectral_solver, &
    continueCalculation
  use homogenization, only: &
    materialpoint_sizeResults, &
@@ -73,6 +74,7 @@ program DAMASK_spectral
    FIELD_DAMAGE_ID
  use grid_mech_spectral_basic
  use grid_mech_spectral_polarisation
+ use grid_mech_FEM
  use grid_damage_spectral
  use grid_thermal_spectral
  use results
@@ -165,21 +167,28 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! assign mechanics solver depending on selected type
- select case (spectral_solver)
-   case (GRID_MECH_SPECTRAL_BASIC_LABEL)
+ select case (trim(config_numerics%getString('spectral_solver',defaultVal='basic')))
+   case ('basic')
      mech_init     => grid_mech_spectral_basic_init
      mech_forward  => grid_mech_spectral_basic_forward
      mech_solution => grid_mech_spectral_basic_solution
 
-   case (GRID_MECH_SPECTRAL_POLARISATION_LABEL)
+   case ('polarisation')
      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
        call IO_warning(42_pInt, ext_msg='debug Divergence')
      mech_init     => grid_mech_spectral_polarisation_init
      mech_forward  => grid_mech_spectral_polarisation_forward
      mech_solution => grid_mech_spectral_polarisation_solution
+     
+   case ('fem')
+     if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
+       call IO_warning(42_pInt, ext_msg='debug Divergence')
+     mech_init     => grid_mech_FEM_init
+     mech_forward  => grid_mech_FEM_forward
+     mech_solution => grid_mech_FEM_solution
 
    case default
-     call IO_error(error_ID = 891_pInt, ext_msg = trim(spectral_solver))
+     call IO_error(error_ID = 891_pInt, ext_msg = config_numerics%getString('spectral_solver'))
 
  end select
 

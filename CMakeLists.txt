@@ -105,9 +105,9 @@ set (CMAKE_C_COMPILER       "${PETSC_MPICC}")
 # Now start to care about DAMASK
 
 # DAMASK solver defines project to build
-if (DAMASK_SOLVER STREQUAL "SPECTRAL")
+if (DAMASK_SOLVER STREQUAL "GRID")
     project (DAMASK_spectral Fortran C)
-    add_definitions (-DSpectral)
+    add_definitions (-DGrid)
     message ("Building Spectral Solver\n")
 elseif (DAMASK_SOLVER STREQUAL "FEM")
     project (DAMASK_FEM Fortran C)
