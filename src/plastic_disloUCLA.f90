@@ -208,9 +208,9 @@ subroutine plastic_disloUCLA_init()
         prm%nonSchmid_neg  = prm%Schmid
       endif
  
-      prm%h_sl_sl     = lattice_interaction_SlipBySlip(prm%N_sl, &
+      prm%h_sl_sl     = transpose(lattice_interaction_SlipBySlip(prm%N_sl, &
                                                        config%getFloats('interaction_slipslip'), &
-                                                       config%getString('lattice_structure'))
+                                                       config%getString('lattice_structure')))
       prm%forestProjectionEdge = lattice_forestProjection(prm%N_sl,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
  
@@ -484,13 +484,11 @@ subroutine plastic_disloUCLA_dependentState(instance,of)
  
   associate(prm => param(instance), stt => state(instance),dst => dependentState(instance))
  
-  forall (i = 1:prm%sum_N_sl)
+  forall (i = 1:prm%sum_N_sl) &
     dislocationSpacing(i) = sqrt(dot_product(stt%rho_mob(:,of)+stt%rho_dip(:,of), &
                                         prm%forestProjectionEdge(:,i)))
-    dst%threshold_stress(i,of) = prm%mu*prm%b_sl(i) &
-                               * sqrt(dot_product(stt%rho_mob(:,of)+stt%rho_dip(:,of), &
-                                                  prm%h_sl_sl(:,i)))
-  end forall
+  dst%threshold_stress(:,of) = prm%mu*prm%b_sl &
+                             * sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,of)+stt%rho_dip(:,of)))
  
   dst%Lambda_sl(:,of) = prm%D/(1.0_pReal+prm%D*dislocationSpacing/prm%i_sl)
  
