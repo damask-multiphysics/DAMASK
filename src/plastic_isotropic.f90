@@ -9,8 +9,7 @@
 !--------------------------------------------------------------------------------------------------
 module plastic_isotropic
   use prec, only: &
-    pReal, &
-    pInt
+    pReal
  
   implicit none
   private

@@ -295,7 +295,7 @@ character(len=65536) function getString(this,key,defaultVal,raw)
   implicit none
   class(tPartitionedStringList), target, intent(in)           :: this
   character(len=*),                      intent(in)           :: key
-  character(len=65536),                  intent(in), optional :: defaultVal
+  character(len=*),                      intent(in), optional :: defaultVal
   logical,                               intent(in), optional :: raw
   type(tPartitionedStringList),  pointer                      :: item
   logical                                                     :: found, &
@@ -308,8 +308,8 @@ character(len=65536) function getString(this,key,defaultVal,raw)
  
   found = present(defaultVal)
   if (found) then
+    if (len_trim(defaultVal) > len(getString)) call IO_error(0,ext_msg='getString')
     getString = trim(defaultVal)
-    if (len_trim(getString) /= len_trim(defaultVal)) call IO_error(0,ext_msg='getString')
   endif
  
   item => this
@@ -444,17 +444,17 @@ function getStrings(this,key,defaultVal,raw)
     IO_StringValue
  
   implicit none
-  character(len=65536),dimension(:), allocatable           :: getStrings
-  class(tPartitionedStringList), target, intent(in)        :: this
-  character(len=*),                   intent(in)           :: key
-  character(len=65536),dimension(:),  intent(in), optional :: defaultVal
-  logical,                            intent(in), optional :: raw
-  type(tPartitionedStringList), pointer                    :: item
-  character(len=65536)                                     :: str
-  integer                                                  :: i
-  logical                                                  :: found, &
-                                                              whole, &
-                                                              cumulative
+  character(len=65536),dimension(:), allocatable             :: getStrings
+  class(tPartitionedStringList),target, intent(in)           :: this
+  character(len=*),                     intent(in)           :: key
+  character(len=*),    dimension(:),    intent(in), optional :: defaultVal
+  logical,                              intent(in), optional :: raw
+  type(tPartitionedStringList), pointer                      :: item
+  character(len=65536)                                       :: str
+  integer                                                    :: i
+  logical                                                    :: found, &
+                                                                whole, &
+                                                                cumulative
  
   cumulative = (key(1:1) == '(' .and. key(len_trim(key):len_trim(key)) == ')')
   if (present(raw)) then
@@ -499,7 +499,12 @@ function getStrings(this,key,defaultVal,raw)
   enddo
  
   if (.not. found) then
-    if (present(defaultVal)) then; getStrings = defaultVal; else; call IO_error(140,ext_msg=key); endif
+    if (present(defaultVal)) then
+      if (len(defaultVal) > len(getStrings)) call IO_error(0,ext_msg='getStrings')
+      getStrings = defaultVal
+    else
+      call IO_error(140,ext_msg=key)
+    endif
   endif
 
 end function getStrings
