@@ -23,17 +23,17 @@ module plastic_isotropic
     enumerator :: &
       undefined_ID, &
       xi_ID, &
-      strainrate_ID
+      dot_gamma_ID
   end enum
  
   type, private :: tParameters
     real(pReal) :: &
       M, &                                                                                          !< Taylor factor
       xi_0, &                                                                                       !< initial critical stress
-      gdot0, &                                                                                      !< reference strain rate
+      dot_gamma_0, &                                                                                !< reference strain rate
       n, &                                                                                          !< stress exponent
       h0, &
-      h0_slopeLnRate, &
+      h_ln, &
       xi_inf, &                                                                                     !< maximum critical stress
       a, &
       c_1, &
@@ -41,7 +41,7 @@ module plastic_isotropic
       c_3, &
       c_2, &
       aTol_xi, &
-      aTolShear
+      aTol_gamma
     integer :: &
       of_debug = 0
     integer(kind(undefined_ID)), allocatable, dimension(:) :: &
@@ -53,7 +53,7 @@ module plastic_isotropic
   type, private :: tIsotropicState
     real(pReal), pointer, dimension(:) :: &
       xi, &
-      accumulatedShear
+      gamma
   end type tIsotropicState
 
 !--------------------------------------------------------------------------------------------------
@@ -156,32 +156,32 @@ subroutine plastic_isotropic_init
  
     prm%xi_0            = config%getFloat('tau0')
     prm%xi_inf          = config%getFloat('tausat')
-    prm%gdot0           = config%getFloat('gdot0')
+    prm%dot_gamma_0     = config%getFloat('gdot0')
     prm%n               = config%getFloat('n')
     prm%h0              = config%getFloat('h0')
     prm%M               = config%getFloat('m')
-    prm%h0_slopeLnRate  = config%getFloat('h0_slopelnrate', defaultVal=0.0_pReal)
+    prm%h_ln            = config%getFloat('h0_slopelnrate', defaultVal=0.0_pReal)
     prm%c_1             = config%getFloat('tausat_sinhfita',defaultVal=0.0_pReal)
     prm%c_4             = config%getFloat('tausat_sinhfitb',defaultVal=0.0_pReal)
     prm%c_3             = config%getFloat('tausat_sinhfitc',defaultVal=0.0_pReal)
     prm%c_2             = config%getFloat('tausat_sinhfitd',defaultVal=0.0_pReal)
     prm%a               = config%getFloat('a')
     prm%aTol_xi         = config%getFloat('atol_flowstress',defaultVal=1.0_pReal)
-    prm%aTolShear       = config%getFloat('atol_shear',     defaultVal=1.0e-6_pReal)
+    prm%aTol_gamma      = config%getFloat('atol_shear',     defaultVal=1.0e-6_pReal)
  
     prm%dilatation      = config%keyExists('/dilatation/')
  
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
     extmsg = ''
-    if (prm%aTolShear      <= 0.0_pReal) extmsg = trim(extmsg)//' aTolShear'
-    if (prm%xi_0            < 0.0_pReal) extmsg = trim(extmsg)//' xi_0'
-    if (prm%gdot0          <= 0.0_pReal) extmsg = trim(extmsg)//' gdot0'
+    if (prm%aTol_gamma     <= 0.0_pReal) extmsg = trim(extmsg)//' aTol_gamma'
+    if (prm%xi_0           < 0.0_pReal) extmsg = trim(extmsg)//' xi_0'
+    if (prm%dot_gamma_0    <= 0.0_pReal) extmsg = trim(extmsg)//' dot_gamma_0'
     if (prm%n              <= 0.0_pReal) extmsg = trim(extmsg)//' n'
     if (prm%a              <= 0.0_pReal) extmsg = trim(extmsg)//' a'
     if (prm%M              <= 0.0_pReal) extmsg = trim(extmsg)//' m'
     if (prm%aTol_xi        <= 0.0_pReal) extmsg = trim(extmsg)//' atol_xi'
-    if (prm%aTolShear      <= 0.0_pReal) extmsg = trim(extmsg)//' atol_shear'
+    if (prm%aTol_gamma     <= 0.0_pReal) extmsg = trim(extmsg)//' atol_shear'
  
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
@@ -199,7 +199,7 @@ subroutine plastic_isotropic_init
         case ('xi')
           outputID = xi_ID
         case ('strainrate')
-          outputID = strainrate_ID
+          outputID = dot_gamma_ID
  
       end select
  
@@ -228,9 +228,9 @@ subroutine plastic_isotropic_init
     dot%xi  => plasticState(p)%dotState(1,:)
     plasticState(p)%aTolState(1) = prm%aTol_xi
  
-    stt%accumulatedShear  => plasticState(p)%state   (2,:)
-    dot%accumulatedShear  => plasticState(p)%dotState(2,:)
-    plasticState(p)%aTolState(2) = prm%aTolShear
+    stt%gamma  => plasticState(p)%state   (2,:)
+    dot%gamma  => plasticState(p)%dotState(2,:)
+    plasticState(p)%aTolState(2) = prm%aTol_gamma
     ! global alias
     plasticState(p)%slipRate        => plasticState(p)%dotState(2:2,:)
     plasticState(p)%accumulatedSlip => plasticState(p)%state   (2:2,:)
@@ -274,7 +274,7 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
   real(pReal), dimension(3,3) :: &
     Mp_dev                                                                                          !< deviatoric part of the Mandel stress
   real(pReal) :: &
-    gamma_dot, &                                                                                    !< strainrate
+    dot_gamma, &                                                                                    !< strainrate
     norm_Mp_dev, &                                                                                  !< norm of the deviatoric part of the Mandel stress
     squarenorm_Mp_dev                                                                               !< square of the norm of the deviatoric part of the Mandel stress
   integer :: &
@@ -287,16 +287,16 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
   norm_Mp_dev = sqrt(squarenorm_Mp_dev)
  
   if (norm_Mp_dev > 0.0_pReal) then
-    gamma_dot = prm%gdot0 * (sqrt(1.5_pReal) * norm_Mp_dev/(prm%M*stt%xi(of))) **prm%n
+    dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pReal) * norm_Mp_dev/(prm%M*stt%xi(of))) **prm%n
  
-    Lp = Mp_dev/norm_Mp_dev * gamma_dot/prm%M
+    Lp = Mp_dev/norm_Mp_dev * dot_gamma/prm%M
 #ifdef DEBUG
     if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0 &
         .and. (of == prm%of_debug .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0)) then
       write(6,'(/,a,/,3(12x,3(f12.4,1x)/))') '<< CONST isotropic >> Tstar (dev) / MPa', &
                                        transpose(Mp_dev)*1.0e-6_pReal
       write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> norm Tstar / MPa', norm_Mp_dev*1.0e-6_pReal
-      write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> gdot', gamma_dot
+      write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> gdot', dot_gamma
     end if
 #endif
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -305,7 +305,7 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
       dLp_dMp(k,l,k,l) = dLp_dMp(k,l,k,l) + 1.0_pReal
     forall (k=1:3,m=1:3) &
       dLp_dMp(k,k,m,m) = dLp_dMp(k,k,m,m) - 1.0_pReal/3.0_pReal
-    dLp_dMp = gamma_dot / prm%M * dLp_dMp / norm_Mp_dev
+    dLp_dMp = dot_gamma / prm%M * dLp_dMp / norm_Mp_dev
   else
     Lp = 0.0_pReal
     dLp_dMp = 0.0_pReal
@@ -340,7 +340,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,instance,of)
   real(pReal), dimension(3,3) :: &
     Tstar_sph                                                                                       !< sphiatoric part of the Mandel stress
   real(pReal) :: &
-    gamma_dot, &                                                                                    !< strainrate
+    dot_gamma, &                                                                                    !< strainrate
     norm_Tstar_sph, &                                                                               !< euclidean norm of Tstar_sph
     squarenorm_Tstar_sph                                                                            !< square of the euclidean norm of Tstar_sph
   integer :: &
@@ -353,15 +353,15 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,instance,of)
   norm_Tstar_sph = sqrt(squarenorm_Tstar_sph)
  
   if (prm%dilatation .and. norm_Tstar_sph > 0.0_pReal) then                                         ! no stress or J2 plastitiy --> Li and its derivative are zero
-    gamma_dot = prm%gdot0 * (sqrt(1.5_pReal) * norm_Tstar_sph /(prm%M*stt%xi(of))) **prm%n
+    dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pReal) * norm_Tstar_sph /(prm%M*stt%xi(of))) **prm%n
  
-    Li = Tstar_sph/norm_Tstar_sph * gamma_dot/prm%M
+    Li = Tstar_sph/norm_Tstar_sph * dot_gamma/prm%M
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
       dLi_dTstar(k,l,m,n) = (prm%n-1.0_pReal) * Tstar_sph(k,l)*Tstar_sph(m,n) / squarenorm_Tstar_sph
     forall (k=1:3,l=1:3) &
       dLi_dTstar(k,l,k,l) = dLi_dTstar(k,l,k,l) + 1.0_pReal
  
-    dLi_dTstar = gamma_dot / prm%M * dLi_dTstar / norm_Tstar_sph
+    dLi_dTstar = dot_gamma / prm%M * dLi_dTstar / norm_Tstar_sph
   else
     Li = 0.0_pReal
     dLi_dTstar = 0.0_pReal
@@ -390,8 +390,7 @@ subroutine plastic_isotropic_dotState(Mp,instance,of)
     of
  
   real(pReal) :: &
-    gamma_dot, &                                                                                    !< strainrate
-    hardening, &                                                                                    !< hardening coefficient
+    dot_gamma, &                                                                                    !< strainrate
     xi_inf_star, &                                                                                  !< saturation xi
     norm_Mp                                                                                         !< norm of the (deviatoric) Mandel stress
  
@@ -403,26 +402,25 @@ subroutine plastic_isotropic_dotState(Mp,instance,of)
     norm_Mp = sqrt(math_mul33xx33(math_deviatoric33(Mp),math_deviatoric33(Mp)))
   endif
  
-  gamma_dot = prm%gdot0 * (sqrt(1.5_pReal) * norm_Mp /(prm%M*stt%xi(of))) **prm%n
+  dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pReal) * norm_Mp /(prm%M*stt%xi(of))) **prm%n
  
-  if (abs(gamma_dot) > 1e-12_pReal) then
+  if (abs(dot_gamma) > 1e-12_pReal) then
     if (dEq0(prm%c_1)) then
       xi_inf_star = prm%xi_inf
     else
       xi_inf_star = prm%xi_inf &
-                  + asinh( (gamma_dot / prm%c_1)**(1.0_pReal / prm%c_2) &
+                  + asinh( (dot_gamma / prm%c_1)**(1.0_pReal / prm%c_2) &
                          )**(1.0_pReal / prm%c_3) &
-                     / prm%c_4 * (gamma_dot / prm%gdot0)**(1.0_pReal / prm%n)
+                     / prm%c_4 * (dot_gamma / prm%dot_gamma_0)**(1.0_pReal / prm%n)
     endif
-    hardening = ( prm%h0 + prm%h0_slopeLnRate * log(gamma_dot) ) &
-                * abs( 1.0_pReal - stt%xi(of)/xi_inf_star )**prm%a &
-                * sign(1.0_pReal, 1.0_pReal - stt%xi(of)/xi_inf_star)
+    dot%xi(of) = ( prm%h0 + prm%h_ln * log(dot_gamma) ) &
+              * abs( 1.0_pReal - stt%xi(of)/xi_inf_star )**prm%a &
+              * sign(1.0_pReal, 1.0_pReal - stt%xi(of)/xi_inf_star)
   else
-    hardening = 0.0_pReal
+    dot%xi(of) = 0.0_pReal
   endif
  
-  dot%xi              (of) = hardening * gamma_dot
-  dot%accumulatedShear(of) =             gamma_dot
+  dot%gamma(of) = dot_gamma                                                                         ! ToDo: not really used
  
   end associate
 
@@ -468,8 +466,8 @@ function plastic_isotropic_postResults(Mp,instance,of) result(postResults)
       case (xi_ID)
         postResults(c+1) = stt%xi(of)
         c = c + 1
-      case (strainrate_ID)
-        postResults(c+1) = prm%gdot0 &
+      case (dot_gamma_ID)
+        postResults(c+1) = prm%dot_gamma_0 &
                               * (sqrt(1.5_pReal) * norm_Mp /(prm%M * stt%xi(of)))**prm%n
         c = c + 1
  
