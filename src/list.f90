@@ -224,7 +224,8 @@ real(pReal) function getFloat(this,key,defaultVal)
   real(pReal),                           intent(in), optional :: defaultVal
   type(tPartitionedStringList), pointer                       :: item
   logical                                                     :: found
-
+  
+  getFloat = huge(1.0)                                                                              ! suppress warning about unitialized value
   found = present(defaultVal)
   if (found) getFloat = defaultVal
   
@@ -261,6 +262,7 @@ integer function getInt(this,key,defaultVal)
   type(tPartitionedStringList), pointer                       :: item
   logical                                                     :: found
 
+  getInt = huge(1)                                                                                  ! suppress warning about unitialized value
   found = present(defaultVal)
   if (found) getInt = defaultVal
   

@@ -44,8 +44,12 @@ add_library(DEBUG OBJECT "debug.f90")
 add_dependencies(DEBUG IO)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:DEBUG>)
 
-add_library(DAMASK_CONFIG OBJECT "config.f90")
-add_dependencies(DAMASK_CONFIG DEBUG)
+add_library(DAMASK_LIST OBJECT "list.f90")                                                          # LIST is a keyword in CMake
+add_dependencies(DAMASK_LIST IO)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:DAMASK_LIST>)
+
+add_library(DAMASK_CONFIG OBJECT "config.f90")                                                      # CONFIG is a keyword in CMake
+add_dependencies(DAMASK_CONFIG DAMASK_LIST DEBUG)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:DAMASK_CONFIG>)
 
 add_library(HDF5_UTILITIES OBJECT "HDF5_utilities.f90")
