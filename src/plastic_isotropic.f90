@@ -403,7 +403,7 @@ subroutine plastic_isotropic_dotState(Mp,instance,of)
  
   dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pReal) * norm_Mp /(prm%M*stt%xi(of))) **prm%n
  
-  if (abs(dot_gamma) > 1e-12_pReal) then
+  if (dot_gamma > 1e-12_pReal) then
     if (dEq0(prm%c_1)) then
       xi_inf_star = prm%xi_inf
     else
@@ -412,9 +412,10 @@ subroutine plastic_isotropic_dotState(Mp,instance,of)
                          )**(1.0_pReal / prm%c_3) &
                      / prm%c_4 * (dot_gamma / prm%dot_gamma_0)**(1.0_pReal / prm%n)
     endif
-    dot%xi(of) = ( prm%h0 + prm%h_ln * log(dot_gamma) ) &
-              * abs( 1.0_pReal - stt%xi(of)/xi_inf_star )**prm%a &
-              * sign(1.0_pReal, 1.0_pReal - stt%xi(of)/xi_inf_star)
+    dot%xi(of) = dot_gamma &
+               * ( prm%h0 + prm%h_ln * log(dot_gamma) ) &
+               * abs( 1.0_pReal - stt%xi(of)/xi_inf_star )**prm%a &
+               * sign(1.0_pReal, 1.0_pReal - stt%xi(of)/xi_inf_star)
   else
     dot%xi(of) = 0.0_pReal
   endif
