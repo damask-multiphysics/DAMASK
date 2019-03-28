@@ -195,7 +195,7 @@ subroutine plastic_isotropic_init
       outputID = undefined_ID
       select case(outputs(i))
  
-        case ('xi')
+        case ('flowstress')
           outputID = xi_ID
         case ('strainrate')
           outputID = dot_gamma_ID
