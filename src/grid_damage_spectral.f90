@@ -79,7 +79,8 @@ subroutine grid_damage_spectral_init
  
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
- call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-damage_snes_type ngmres',ierr)
+ call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-damage_snes_type newtonls -damage_snes_mf &
+                               &-damage_snes_ksp_ew -damage_ksp_type fgmres',ierr)
  CHKERRQ(ierr)
  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
  CHKERRQ(ierr)
