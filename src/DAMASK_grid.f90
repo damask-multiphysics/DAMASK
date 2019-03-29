@@ -167,7 +167,7 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! assign mechanics solver depending on selected type
- select case (trim(config_numerics%getString('spectral_solver',defaultVal='basic')))
+ select case (trim(config_numerics%getString('spectralsolver',defaultVal='basic')))
    case ('basic')
      mech_init     => grid_mech_spectral_basic_init
      mech_forward  => grid_mech_spectral_basic_forward
