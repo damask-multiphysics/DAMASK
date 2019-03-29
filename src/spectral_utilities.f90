@@ -256,7 +256,7 @@ subroutine utilities_init
   num%FFTW_timelimit        = config_numerics%getFloat ('fftw_timelimit',         defaultVal=-1.0)
   num%divergence_correction = config_numerics%getInt   ('divergence_correction',  defaultVal=2)
   num%spectral_derivative   = config_numerics%getString('spectral_derivative',    defaultVal='continuous')
-  num%FFTW_plan_mode        = config_numerics%getString('fftw_plan_mode',         defaultVal='FFTW_PATIENT')
+  num%FFTW_plan_mode        = config_numerics%getString('fftw_plan_mode',         defaultVal='FFTW_MEASURE')
   
   if (num%divergence_correction < 0 .or. num%divergence_correction > 2) &
     call IO_error(301,ext_msg='divergence_correction')
@@ -292,17 +292,17 @@ subroutine utilities_init
  
  
   select case(IO_lc(num%FFTW_plan_mode))                                                            ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
-    case('estimate','fftw_estimate')                                                                ! ordered from slow execution (but fast plan creation) to fast execution
-      FFTW_planner_flag = 64
-    case('measure','fftw_measure')
-      FFTW_planner_flag = 0
-    case('patient','fftw_patient')
-      FFTW_planner_flag= 32
-    case('exhaustive','fftw_exhaustive')
-      FFTW_planner_flag = 8 
+    case('fftw_estimate')                                                                           ! ordered from slow execution (but fast plan creation) to fast execution
+      FFTW_planner_flag = FFTW_ESTIMATE
+    case('fftw_measure')
+      FFTW_planner_flag = FFTW_MEASURE
+    case('fftw_patient')
+      FFTW_planner_flag = FFTW_PATIENT
+    case('fftw_exhaustive')
+      FFTW_planner_flag = FFTW_EXHAUSTIVE
     case default
       call IO_warning(warning_ID=47,ext_msg=trim(IO_lc(num%FFTW_plan_mode)))
-      FFTW_planner_flag = 32
+      FFTW_planner_flag = FFTW_MEASURE
   end select
 
 !--------------------------------------------------------------------------------------------------
