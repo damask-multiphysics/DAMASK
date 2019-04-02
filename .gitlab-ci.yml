@@ -8,7 +8,6 @@ stages:
   - grid
   - compileMarc
   - marc
-  - compileAbaqus
   - example
   - performance
   - createPackage
@@ -440,15 +439,6 @@ J2_plasticBehavior:
     - master
     - release
 
-###################################################################################################
-Abaqus_compile:
-  stage: compileAbaqus
-  script:
-    - module load $IntelAbaqus $Abaqus
-    - Abaqus_compileIfort/test.py
-  except:
-    - master
-    - release
 
 ###################################################################################################
 grid_all_example:
