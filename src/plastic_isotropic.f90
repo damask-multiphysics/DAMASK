@@ -288,7 +288,7 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
   if (norm_Mp_dev > 0.0_pReal) then
     dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pReal) * norm_Mp_dev/(prm%M*stt%xi(of))) **prm%n
  
-    Lp = Mp_dev/norm_Mp_dev * dot_gamma/prm%M
+    Lp = dot_gamma/prm%M * Mp_dev/norm_Mp_dev
 #ifdef DEBUG
     if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0 &
         .and. (of == prm%of_debug .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0)) then
@@ -321,6 +321,7 @@ end subroutine plastic_isotropic_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,instance,of)
   use math, only: &
+    math_I3, &
     math_spherical33, &
     math_mul33xx33
  
@@ -354,7 +355,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,instance,of)
   if (prm%dilatation .and. norm_Tstar_sph > 0.0_pReal) then                                         ! no stress or J2 plastitiy --> Li and its derivative are zero
     dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pReal) * norm_Tstar_sph /(prm%M*stt%xi(of))) **prm%n
  
-    Li = Tstar_sph/norm_Tstar_sph * dot_gamma/prm%M
+    Li = math_I3/sqrt(3.0_pReal) * dot_gamma/prm%M
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
       dLi_dTstar(k,l,m,n) = (prm%n-1.0_pReal) * Tstar_sph(k,l)*Tstar_sph(m,n) / squarenorm_Tstar_sph
     forall (k=1:3,l=1:3) &
