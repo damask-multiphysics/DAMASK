@@ -60,7 +60,7 @@ subroutine DAMASK_interface_init()
     getCWD
 
 #include <petsc/finclude/petscsys.h>
-#if defined(__GFORTRAN__) &&  __GNUC__<=GCC_MIN
+#if defined(__GFORTRAN__) &&  __GNUC__<GCC_MIN
 ===================================================================================================
    -----  WRONG COMPILER VERSION ----- WRONG COMPILER VERSION ----- WRONG COMPILER VERSION -----
 ===================================================================================================
@@ -72,7 +72,7 @@ subroutine DAMASK_interface_init()
 ===================================================================================================
 #endif
 
-#if defined(__INTEL_COMPILER) && __INTEL_COMPILER<=INTEL_MIN
+#if defined(__INTEL_COMPILER) && __INTEL_COMPILER<INTEL_MIN
 ===================================================================================================
    -----  WRONG COMPILER VERSION ----- WRONG COMPILER VERSION ----- WRONG COMPILER VERSION -----
 ===================================================================================================
@@ -84,7 +84,7 @@ subroutine DAMASK_interface_init()
 ===================================================================================================
 #endif
 
-#if PETSC_VERSION_MAJOR!=3 || PETSC_VERSION_MINOR<=PETSC_MINOR_MIN || PETSC_VERSION_MINOR>PETSC_MINOR_MAX
+#if PETSC_VERSION_MAJOR!=3 || PETSC_VERSION_MINOR<PETSC_MINOR_MIN || PETSC_VERSION_MINOR>PETSC_MINOR_MAX
 ===================================================================================================
 --  WRONG PETSc VERSION --- WRONG PETSc VERSION --- WRONG PETSc VERSION ---  WRONG PETSc VERSION --
 ===================================================================================================
