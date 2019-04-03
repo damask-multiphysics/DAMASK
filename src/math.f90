@@ -81,9 +81,6 @@ module math
 
 
  public :: &
-#if defined(__PGI)
-   norm2, &
-#endif
    math_init, &
    math_qsort, &
    math_expand, &
@@ -2646,20 +2643,5 @@ real(pReal) pure elemental function math_clip(a, left, right)
    math_clip = merge (IEEE_value(1.0_pReal,IEEE_quiet_NaN),math_clip, left>right)
 
 end function math_clip
-
-
-#if defined(__PGI)
-!--------------------------------------------------------------------------------------------------
-!> @brief substitute for the norm2 intrinsic which is not available in PGI 18.10
-!--------------------------------------------------------------------------------------------------
-real(pReal) pure function norm2(v)
- 
- implicit none
- real(pReal), intent(in), dimension(3) :: v
- 
- norm2 = sqrt(sum(v**2))
-
-end function norm2
-#endif
 
 end module math

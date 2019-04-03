@@ -157,10 +157,6 @@ end subroutine
 function rotVector(self,v,active)
  use prec, only: &
    dEq
-#ifdef __PGI
- use math, only: &
-   norm2
-#endif
    
  implicit none
  real(pReal),                 dimension(3) :: rotVector
@@ -168,21 +164,28 @@ function rotVector(self,v,active)
  real(pReal),     intent(in), dimension(3) :: v
  logical,         intent(in), optional     :: active
  
- type(quaternion)                  :: q
-  
+ type(quaternion)  :: q
+ logical           :: passive
+
+ if (present(active)) then
+   passive = .not. active
+ else
+   passive = .true.
+ endif
+
  if (dEq(norm2(v),1.0_pReal,tol=1.0e-15_pReal)) then
-   passive: if (merge(.not. active, .true., present(active))) then                                  ! ToDo: not save (PGI)
+   if (passive) then
      q = self%q * (quaternion([0.0_pReal, v(1), v(2), v(3)]) * conjg(self%q) )
-   else passive
+   else
      q = conjg(self%q) * (quaternion([0.0_pReal, v(1), v(2), v(3)]) * self%q )
-   endif passive
+   endif
    rotVector = [q%x,q%y,q%z]
  else
-   passive2: if (merge(.not. active, .true., present(active))) then                                 ! ToDo: not save (PGI)
+   if (passive) then
      rotVector = matmul(self%asRotationMatrix(),v)
-   else passive2
+   else
      rotVector = matmul(transpose(self%asRotationMatrix()),v)
-   endif passive2
+   endif
  endif
 
 end function rotVector
@@ -573,9 +576,6 @@ pure function ro2ax(ro) result(ax)
  use prec, only: &
    dEq0
  use math, only: &
-#ifdef __PGI
-   norm2, &
-#endif
    PI
 
  implicit none 
@@ -665,9 +665,6 @@ pure function ro2ho(ro) result(ho)
  use prec, only: &
    dEq0
  use math, only: &
-#ifdef __PGI
-   norm2, &
-#endif
    PI
 
  implicit none
@@ -724,10 +721,6 @@ end function qu2om
 function om2qu(om) result(qu)
  use prec, only: &
    dEq
-#ifdef __PGI
- use math, only: &
-   norm2
-#endif
 
  implicit none
  real(pReal),      intent(in), dimension(3,3) :: om
@@ -801,9 +794,6 @@ pure function qu2ro(qu) result(ro)
  use prec, only: &
    dEq0
  use math, only: &
-#ifdef __PGI
-   norm2, &
-#endif
    math_clip
  
  type(quaternion), intent(in)              :: qu
@@ -816,9 +806,12 @@ pure function qu2ro(qu) result(ro)
    ro = [qu%x, qu%y, qu%z, IEEE_value(ro(4),IEEE_positive_inf)]
  else
    s = norm2([qu%x,qu%y,qu%z])
-   ro = merge ( [ 0.0_pReal, 0.0_pReal, P, 0.0_pReal], &
-                [ qu%x/s,  qu%y/s,  qu%z/s, tan(acos(math_clip(qu%w,-1.0_pReal,1.0_pReal)))], &
-                s < thr)                                                                            !ToDo: not save (PGI compiler)
+   if (s < thr) then
+     ro = [ 0.0_pReal, 0.0_pReal, P, 0.0_pReal]
+   else
+     ro = [ qu%x/s,  qu%y/s,  qu%z/s, tan(acos(math_clip(qu%w,-1.0_pReal,1.0_pReal)))]
+   endif
+   
  end if
 
 end function qu2ro
@@ -832,9 +825,6 @@ pure function qu2ho(qu) result(ho)
  use prec, only: &
    dEq0
  use math, only: &
-#ifdef __PGI
-   norm2, &
-#endif
    math_clip
 
  implicit none
