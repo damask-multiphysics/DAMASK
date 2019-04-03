@@ -9,6 +9,11 @@
 !>           by DAMASK. Interpretating the command line arguments to get load case, geometry file,
 !>           and working directory.
 !--------------------------------------------------------------------------------------------------
+#define GCC_MIN 6
+#define INTEL_MIN 1600
+#define PETSC_MAJOR 3
+#define PETSC_MINOR_MIN 10
+#define PETSC_MINOR_MAX 11
 module DAMASK_interface
   implicit none
   private
@@ -55,27 +60,27 @@ subroutine DAMASK_interface_init()
     getCWD
 
 #include <petsc/finclude/petscsys.h>
-#if defined(__GFORTRAN__) &&  __GNUC__ < 5
+#if defined(__GFORTRAN__) &&  __GNUC__ <= GCC_MIN
 ===================================================================================================
-  5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0
+   -----  WRONG COMPILER VERSION ----- WRONG COMPILER VERSION ----- WRONG COMPILER VERSION -----
 ===================================================================================================
-==================   THIS VERSION OF DAMASK REQUIRES gfortran > 5.0  ==============================
-======================   THIS VERSION OF DAMASK REQUIRES gfortran > 5.0  ==========================
-=========================   THIS VERSION OF DAMASK REQUIRES gfortran > 5.0  =======================
+===============   THIS VERSION OF DAMASK REQUIRES A NEWER gfortran VERSION   ======================
+==================   THIS VERSION OF DAMASK REQUIRES A NEWER gfortran VERSION   ===================
+=====================   THIS VERSION OF DAMASK REQUIRES A NEWER gfortran VERSION   ================
 ===================================================================================================
-  5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0
+   -----  WRONG COMPILER VERSION ----- WRONG COMPILER VERSION ----- WRONG COMPILER VERSION -----
 ===================================================================================================
 #endif
 
-#if defined(__INTEL_COMPILER) && __INTEL_COMPILER < 1600
+#if defined(__INTEL_COMPILER) && __INTEL_COMPILER <= INTEL_MIN
 ===================================================================================================
-  16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0
+   -----  WRONG COMPILER VERSION ----- WRONG COMPILER VERSION ----- WRONG COMPILER VERSION -----
 ===================================================================================================
-==================   THIS VERSION OF DAMASK REQUIRES ifort > 16.0  ================================
-======================   THIS VERSION OF DAMASK REQUIRES ifort > 16.0   ===========================
-=========================   THIS VERSION OF DAMASK REQUIRES ifort > 16.0   ========================
+=================   THIS VERSION OF DAMASK REQUIRES A NEWER ifort VERSION   =======================
+====================   THIS VERSION OF DAMASK REQUIRES A NEWER ifort VERSION   ====================
+=======================   THIS VERSION OF DAMASK REQUIRES A NEWER ifort VERSION   =================
 ===================================================================================================
-  16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0
+   -----  WRONG COMPILER VERSION ----- WRONG COMPILER VERSION ----- WRONG COMPILER VERSION -----
 ===================================================================================================
 #endif
 
