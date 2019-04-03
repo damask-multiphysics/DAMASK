@@ -8,6 +8,7 @@
 module math
  use prec, only: &
    pReal
+ use future
 
  implicit none
  private

@@ -42,6 +42,7 @@ module Lambert
     pReal
   use math, only: &
     PI
+  use future
 
   implicit none
   private

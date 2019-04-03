@@ -7,7 +7,8 @@
 module plastic_nonlocal
   use prec, only: &
     pReal
-  
+  use future
+ 
   implicit none
   private
   real(pReal), parameter, private :: &

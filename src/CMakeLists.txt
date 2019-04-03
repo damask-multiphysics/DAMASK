@@ -36,6 +36,10 @@ add_library(IO OBJECT "IO.f90")
 add_dependencies(IO DAMASK_INTERFACE)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:IO>)
 
+add_library(FUTURE OBJECT "future.f90")
+add_dependencies(FUTURE IO)
+list(APPEND OBJECTFILES $<TARGET_OBJECTS:FUTURE>)
+
 add_library(NUMERICS OBJECT "numerics.f90")
 add_dependencies(NUMERICS IO)
 list(APPEND OBJECTFILES $<TARGET_OBJECTS:NUMERICS>)

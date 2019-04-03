@@ -18,6 +18,7 @@ module crystallite
     FEsolving_execIP
   use material, only: &
     homogenization_Ngrains
+  use future
  
   implicit none
  
@@ -352,7 +353,7 @@ subroutine crystallite_init
       crystallite_F0(1:3,1:3,c,i,e)  = math_I3
       crystallite_localPlasticity(c,i,e) = phase_localPlasticity(material_phase(c,i,e))
       crystallite_Fe(1:3,1:3,c,i,e)  = math_inv33(matmul(crystallite_Fi0(1:3,1:3,c,i,e), &
-                                                                crystallite_Fp0(1:3,1:3,c,i,e)))    ! assuming that euler angles are given in internal strain free configuration
+                                                         crystallite_Fp0(1:3,1:3,c,i,e)))           ! assuming that euler angles are given in internal strain free configuration
       crystallite_Fp(1:3,1:3,c,i,e)  = crystallite_Fp0(1:3,1:3,c,i,e)
       crystallite_Fi(1:3,1:3,c,i,e)  = crystallite_Fi0(1:3,1:3,c,i,e)
       crystallite_requested(c,i,e) = .true.
@@ -600,8 +601,8 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
                                             + crystallite_subStep(c,i,e) * (crystallite_partionedF (1:3,1:3,c,i,e) &
                                                                           - crystallite_partionedF0(1:3,1:3,c,i,e))
             crystallite_Fe(1:3,1:3,c,i,e) = matmul(matmul(crystallite_subF (1:3,1:3,c,i,e), &
-                                                                        crystallite_invFp(1:3,1:3,c,i,e)), &
-                                                                        crystallite_invFi(1:3,1:3,c,i,e))
+                                                          crystallite_invFp(1:3,1:3,c,i,e)), &
+                                                   crystallite_invFi(1:3,1:3,c,i,e))
             crystallite_subdt(c,i,e) = crystallite_subStep(c,i,e) * crystallite_dt(c,i,e)
             crystallite_converged(c,i,e) = .false.
           endif

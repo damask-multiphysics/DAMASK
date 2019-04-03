@@ -36,6 +36,7 @@
 module quaternions
  use prec, only: &
    pReal
+ use future
 
  implicit none
  public
