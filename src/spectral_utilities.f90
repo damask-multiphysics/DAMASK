@@ -253,7 +253,7 @@ subroutine utilities_init
   write(6,'(a,3(es12.5))')   ' size     x y z: ', geomSize
   
   num%memory_efficient      = config_numerics%getInt   ('memory_efficient',       defaultVal=1) > 0
-  num%FFTW_timelimit        = config_numerics%getFloat ('fftw_timelimit',         defaultVal=-1.0)
+  num%FFTW_timelimit        = config_numerics%getFloat ('fftw_timelimit',         defaultVal=-1.0_pReal)
   num%divergence_correction = config_numerics%getInt   ('divergence_correction',  defaultVal=2)
   num%spectral_derivative   = config_numerics%getString('spectral_derivative',    defaultVal='continuous')
   num%FFTW_plan_mode        = config_numerics%getString('fftw_plan_mode',         defaultVal='FFTW_MEASURE')

@@ -153,7 +153,7 @@ subroutine grid_mech_FEM_init
         [grid(1)],[grid(2)],localK, &
         mech_grid,ierr)
  CHKERRQ(ierr)
- call DMDASetUniformCoordinates(mech_grid,0.0,geomSize(1),0.0,geomSize(2),0.0,geomSize(3),ierr)
+ call DMDASetUniformCoordinates(mech_grid,0.0_pReal,geomSize(1),0.0_pReal,geomSize(2),0.0_pReal,geomSize(3),ierr)
  CHKERRQ(ierr)
  call SNESSetDM(mech_snes,mech_grid,ierr); CHKERRQ(ierr)
  call DMsetFromOptions(mech_grid,ierr); CHKERRQ(ierr)
@@ -172,9 +172,9 @@ subroutine grid_mech_FEM_init
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
- call VecSet(solution_current,0.0,ierr);CHKERRQ(ierr)
- call VecSet(solution_lastInc,0.0,ierr);CHKERRQ(ierr)
- call VecSet(solution_rate   ,0.0,ierr);CHKERRQ(ierr)
+ call VecSet(solution_current,0.0_pReal,ierr);CHKERRQ(ierr)
+ call VecSet(solution_lastInc,0.0_pReal,ierr);CHKERRQ(ierr)
+ call VecSet(solution_rate   ,0.0_pReal,ierr);CHKERRQ(ierr)
  call DMDAVecGetArrayF90(mech_grid,solution_current,u_current,ierr); CHKERRQ(ierr)
  call DMDAVecGetArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr); CHKERRQ(ierr)
 
@@ -412,11 +412,11 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
     
 
     if (guess) then
-      call VecWAXPY(solution_rate,-1.0,solution_lastInc,solution_current,ierr)
+      call VecWAXPY(solution_rate,-1.0_pReal,solution_lastInc,solution_current,ierr)
       CHKERRQ(ierr)
-      call VecScale(solution_rate,1.0/timeinc_old,ierr); CHKERRQ(ierr)
+      call VecScale(solution_rate,1.0_pReal/timeinc_old,ierr); CHKERRQ(ierr)
     else
-      call VecSet(solution_rate,0.0,ierr); CHKERRQ(ierr)
+      call VecSet(solution_rate,0.0_pReal,ierr); CHKERRQ(ierr)
     endif
     call VecCopy(solution_current,solution_lastInc,ierr); CHKERRQ(ierr)
     
@@ -590,7 +590,7 @@ subroutine formResidual(da_local,x_local,f_local,dummy,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
- call VecSet(f_local,0.0,ierr);CHKERRQ(ierr)
+ call VecSet(f_local,0.0_pReal,ierr);CHKERRQ(ierr)
  call DMDAVecGetArrayF90(da_local,f_local,f_scal,ierr);CHKERRQ(ierr)
  call DMDAVecGetArrayF90(da_local,x_local,x_scal,ierr);CHKERRQ(ierr)
  ele = 0
