@@ -1,6 +1,6 @@
 ########################################################################################
 # Compiler options for building DAMASK
-cmake_minimum_required (VERSION 2.8.8 FATAL_ERROR)
+cmake_minimum_required (VERSION 3.6.0 FATAL_ERROR)
 
 #---------------------------------------------------------------------------------------
 # Find PETSc from system environment
