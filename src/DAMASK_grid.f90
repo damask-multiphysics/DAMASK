@@ -337,7 +337,7 @@ program DAMASK_spectral
        endif
        enddo; write(6,'(/)',advance='no')
      enddo
-    if (any(abs(math_mul33x33(newLoadCase%rotation, &
+    if (any(abs(matmul(newLoadCase%rotation, &
                 transpose(newLoadCase%rotation))-math_I3) > &
                 reshape(spread(tol_math_check,1,9),[ 3,3]))&
                 .or. abs(math_det33(newLoadCase%rotation)) > &

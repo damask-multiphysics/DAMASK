@@ -174,8 +174,6 @@ subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
    sourceState
  use math, only : &
    math_sym33to6, &
-   math_mul33x33, &
-   math_mul66x6, &
    math_I3
 
  implicit none
@@ -200,9 +198,10 @@ subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
  sourceOffset = source_damage_isoBrittle_offset(phase)
 
                                    
- strain = 0.5_pReal*math_sym33to6(math_mul33x33(transpose(Fe),Fe)-math_I3)
+ strain = 0.5_pReal*math_sym33to6(matmul(transpose(Fe),Fe)-math_I3)
 
- strainenergy = 2.0_pReal*sum(strain*math_mul66x6(C,strain))/param(instance)%critStrainEnergy
+ strainenergy = 2.0_pReal*sum(strain*matmul(C,strain))/param(instance)%critStrainEnergy
+ ! ToDo: check strainenergy = 2.0_pReal*dot_product(strain,matmul(C,strain))/param(instance)%critStrainEnergy
  
  if (strainenergy > sourceState(phase)%p(sourceOffset)%subState0(1,constituent)) then
    sourceState(phase)%p(sourceOffset)%deltaState(1,constituent) = &

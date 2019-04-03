@@ -144,8 +144,7 @@ subroutine crystallite_init
  use math, only: &
    math_I3, &
    math_EulerToR, &
-   math_inv33, &
-   math_mul33x33
+   math_inv33
  use mesh, only: &
    theMesh, &
    mesh_element
@@ -353,7 +352,7 @@ subroutine crystallite_init
      crystallite_Fi0(1:3,1:3,c,i,e) = constitutive_initialFi(c,i,e)
      crystallite_F0(1:3,1:3,c,i,e)  = math_I3
      crystallite_localPlasticity(c,i,e) = phase_localPlasticity(material_phase(c,i,e))
-     crystallite_Fe(1:3,1:3,c,i,e)  = math_inv33(math_mul33x33(crystallite_Fi0(1:3,1:3,c,i,e), &
+     crystallite_Fe(1:3,1:3,c,i,e)  = math_inv33(matmul(crystallite_Fi0(1:3,1:3,c,i,e), &
                                                                crystallite_Fp0(1:3,1:3,c,i,e)))     ! assuming that euler angles are given in internal strain free configuration
      crystallite_Fp(1:3,1:3,c,i,e)  = crystallite_Fp0(1:3,1:3,c,i,e)
      crystallite_Fi(1:3,1:3,c,i,e)  = crystallite_Fi0(1:3,1:3,c,i,e)
@@ -430,8 +429,7 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
    IO_warning, &
    IO_error
  use math, only: &
-   math_inv33, &
-   math_mul33x33
+   math_inv33
  use mesh, only: &
    theMesh, &
    mesh_element
@@ -602,7 +600,7 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
            crystallite_subF(1:3,1:3,c,i,e) = crystallite_subF0(1:3,1:3,c,i,e) &
                                            + crystallite_subStep(c,i,e) * (crystallite_partionedF (1:3,1:3,c,i,e) &
                                                                          - crystallite_partionedF0(1:3,1:3,c,i,e))
-           crystallite_Fe(1:3,1:3,c,i,e) = math_mul33x33(math_mul33x33(crystallite_subF (1:3,1:3,c,i,e), &
+           crystallite_Fe(1:3,1:3,c,i,e) = matmul(matmul(crystallite_subF (1:3,1:3,c,i,e), &
                                                                        crystallite_invFp(1:3,1:3,c,i,e)), &
                                                                        crystallite_invFi(1:3,1:3,c,i,e))
            crystallite_subdt(c,i,e) = crystallite_subStep(c,i,e) * crystallite_dt(c,i,e)
@@ -691,7 +689,6 @@ subroutine crystallite_stressTangent()
  use math, only: &
    math_inv33, &
    math_identity2nd, &
-   math_mul33x33, &
    math_3333to99, &
    math_99to3333, &
    math_I3, &
@@ -753,11 +750,11 @@ subroutine crystallite_stressTangent()
          lhs_3333 = 0.0_pReal; rhs_3333 = 0.0_pReal
          do o=1_pInt,3_pInt; do p=1_pInt,3_pInt
            lhs_3333(1:3,1:3,o,p) = lhs_3333(1:3,1:3,o,p) &
-                                 + crystallite_subdt(c,i,e)*math_mul33x33(invSubFi0,dLidFi(1:3,1:3,o,p))
+                                 + crystallite_subdt(c,i,e)*matmul(invSubFi0,dLidFi(1:3,1:3,o,p))
            lhs_3333(1:3,o,1:3,p) = lhs_3333(1:3,o,1:3,p) &
                                  + crystallite_invFi(1:3,1:3,c,i,e)*crystallite_invFi(p,o,c,i,e)
            rhs_3333(1:3,1:3,o,p) = rhs_3333(1:3,1:3,o,p) &
-                                 - crystallite_subdt(c,i,e)*math_mul33x33(invSubFi0,dLidS(1:3,1:3,o,p))
+                                 - crystallite_subdt(c,i,e)*matmul(invSubFi0,dLidS(1:3,1:3,o,p))
          enddo;enddo
          call math_invert2(temp_99,error,math_3333to99(lhs_3333))
          if (error) then
@@ -777,19 +774,19 @@ subroutine crystallite_stressTangent()
 
 !--------------------------------------------------------------------------------------------------
 ! calculate dSdF
-       temp_33_1 = transpose(math_mul33x33(crystallite_invFp(1:3,1:3,c,i,e), &
+       temp_33_1 = transpose(matmul(crystallite_invFp(1:3,1:3,c,i,e), &
                                            crystallite_invFi(1:3,1:3,c,i,e)))
-       temp_33_2 = math_mul33x33(           crystallite_subF  (1:3,1:3,c,i,e), &
+       temp_33_2 = matmul(           crystallite_subF  (1:3,1:3,c,i,e), &
                                  math_inv33(crystallite_subFp0(1:3,1:3,c,i,e)))
-       temp_33_3 = math_mul33x33(math_mul33x33(crystallite_subF  (1:3,1:3,c,i,e), &
+       temp_33_3 = matmul(matmul(crystallite_subF  (1:3,1:3,c,i,e), &
                                                crystallite_invFp (1:3,1:3,c,i,e)), &
                                     math_inv33(crystallite_subFi0(1:3,1:3,c,i,e)))
 
        forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) 
-         rhs_3333(p,o,1:3,1:3)  = math_mul33x33(dSdFe(p,o,1:3,1:3),temp_33_1)
-         temp_3333(1:3,1:3,p,o) = math_mul33x33(math_mul33x33(temp_33_2,dLpdS(1:3,1:3,p,o)), &
+         rhs_3333(p,o,1:3,1:3)  = matmul(dSdFe(p,o,1:3,1:3),temp_33_1)
+         temp_3333(1:3,1:3,p,o) = matmul(matmul(temp_33_2,dLpdS(1:3,1:3,p,o)), &
                                                 crystallite_invFi(1:3,1:3,c,i,e)) &
-                                + math_mul33x33(temp_33_3,dLidS(1:3,1:3,p,o))
+                                + matmul(temp_33_3,dLidS(1:3,1:3,p,o))
        end forall
        lhs_3333 = crystallite_subdt(c,i,e)*math_mul3333xx3333(dSdFe,temp_3333) &
                 + math_mul3333xx3333(dSdFi,dFidS)
@@ -809,20 +806,20 @@ subroutine crystallite_stressTangent()
        forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt)
          dFpinvdF(1:3,1:3,p,o) &
            = -crystallite_subdt(c,i,e) &
-           * math_mul33x33(math_inv33(crystallite_subFp0(1:3,1:3,c,i,e)), &
-                           math_mul33x33(temp_3333(1:3,1:3,p,o),crystallite_invFi(1:3,1:3,c,i,e)))
+           * matmul(math_inv33(crystallite_subFp0(1:3,1:3,c,i,e)), &
+                           matmul(temp_3333(1:3,1:3,p,o),crystallite_invFi(1:3,1:3,c,i,e)))
        end forall
 
 !--------------------------------------------------------------------------------------------------
 ! assemble dPdF
-       temp_33_1 = math_mul33x33(crystallite_invFp(1:3,1:3,c,i,e), &
-                                 math_mul33x33(crystallite_S(1:3,1:3,c,i,e), &
+       temp_33_1 = matmul(crystallite_invFp(1:3,1:3,c,i,e), &
+                                 matmul(crystallite_S(1:3,1:3,c,i,e), &
                                                transpose(crystallite_invFp(1:3,1:3,c,i,e))))
-       temp_33_2 = math_mul33x33(crystallite_S(1:3,1:3,c,i,e), &
+       temp_33_2 = matmul(crystallite_S(1:3,1:3,c,i,e), &
                                  transpose(crystallite_invFp(1:3,1:3,c,i,e)))
-       temp_33_3 = math_mul33x33(crystallite_subF(1:3,1:3,c,i,e), &
+       temp_33_3 = matmul(crystallite_subF(1:3,1:3,c,i,e), &
                                  crystallite_invFp(1:3,1:3,c,i,e))
-       temp_33_4 = math_mul33x33(math_mul33x33(crystallite_subF(1:3,1:3,c,i,e), &
+       temp_33_4 = matmul(matmul(crystallite_subF(1:3,1:3,c,i,e), &
                                                crystallite_invFp(1:3,1:3,c,i,e)), &
                                               crystallite_S(1:3,1:3,c,i,e))
 
@@ -832,9 +829,9 @@ subroutine crystallite_stressTangent()
        enddo
        forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt)
          crystallite_dPdF(1:3,1:3,p,o,c,i,e) = crystallite_dPdF(1:3,1:3,p,o,c,i,e) + &
-           math_mul33x33(math_mul33x33(crystallite_subF(1:3,1:3,c,i,e),dFpinvdF(1:3,1:3,p,o)),temp_33_2) + &
-           math_mul33x33(math_mul33x33(temp_33_3,dSdF(1:3,1:3,p,o)),transpose(crystallite_invFp(1:3,1:3,c,i,e))) + &
-           math_mul33x33(temp_33_4,transpose(dFpinvdF(1:3,1:3,p,o)))
+           matmul(matmul(crystallite_subF(1:3,1:3,c,i,e),dFpinvdF(1:3,1:3,p,o)),temp_33_2) + &
+           matmul(matmul(temp_33_3,dSdF(1:3,1:3,p,o)),transpose(crystallite_invFp(1:3,1:3,c,i,e))) + &
+           matmul(temp_33_4,transpose(dFpinvdF(1:3,1:3,p,o)))
        end forall
 
    enddo; enddo
@@ -895,7 +892,6 @@ end subroutine crystallite_orientations
 !--------------------------------------------------------------------------------------------------
 function crystallite_push33ToRef(ipc,ip,el, tensor33)
  use math, only: &
-  math_mul33x33, &
   math_inv33, &
   math_EulerToR
  use material, only: &
@@ -910,9 +906,9 @@ function crystallite_push33ToRef(ipc,ip,el, tensor33)
    ip, &                      ! integration point index
    ipc                         ! grain index
 
- T = math_mul33x33(math_EulerToR(material_EulerAngles(1:3,ipc,ip,el)), &
+ T = matmul(math_EulerToR(material_EulerAngles(1:3,ipc,ip,el)), &
                    transpose(math_inv33(crystallite_subF(1:3,1:3,ipc,ip,el))))
- crystallite_push33ToRef = math_mul33x33(transpose(T),math_mul33x33(tensor33,T))
+ crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))
 
 end function crystallite_push33ToRef
 
@@ -924,7 +920,6 @@ function crystallite_postResults(ipc, ip, el)
  use math, only: &
    math_qToEuler, &
    math_qToEulerAxisAngle, &
-   math_mul33x33, &
    math_det33, &
    math_I3, &
    inDeg
@@ -1093,11 +1088,7 @@ logical function integrateStress(&
  use constitutive, only: constitutive_LpAndItsTangents, &
                          constitutive_LiAndItsTangents, &
                          constitutive_SandItsTangents
- use math, only:         math_mul33x33, &
-#ifdef __PGI
-   norm2, &
-#endif
-                         math_mul33xx33, &
+ use math, only:         math_mul33xx33, &
                          math_mul3333xx3333, &
                          math_inv33, &
                          math_det33, &
@@ -1203,7 +1194,7 @@ logical function integrateStress(&
 #endif
    return
  endif failedInversionFp
- A = math_mul33x33(Fg_new,invFp_current)                                                            ! intermediate tensor needed later to calculate dFe_dLp
+ A = matmul(Fg_new,invFp_current)                                                            ! intermediate tensor needed later to calculate dFe_dLp
 
  invFi_current = math_inv33(crystallite_subFi0(1:3,1:3,ipc,ip,el))
  failedInversionFi: if (all(dEq0(invFi_current))) then
@@ -1235,7 +1226,7 @@ logical function integrateStress(&
      return
    endif LiLoopLimit
 
-   invFi_new = math_mul33x33(invFi_current,math_I3 - dt*Liguess)
+   invFi_new = matmul(invFi_current,math_I3 - dt*Liguess)
    Fi_new    = math_inv33(invFi_new)
    detInvFi  = math_det33(invFi_new)
 
@@ -1260,7 +1251,7 @@ logical function integrateStress(&
      !* calculate (elastic) 2nd Piola--Kirchhoff stress tensor and its tangent from constitutive law
 
      B  = math_I3 - dt*Lpguess
-     Fe = math_mul33x33(math_mul33x33(A,B), invFi_new)
+     Fe = matmul(matmul(A,B), invFi_new)
      call constitutive_SandItsTangents(S, dS_dFe, dS_dFi, &
                                        Fe, Fi_new, ipc, ip, el)                                     ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative in unloaded configuration
 
@@ -1406,13 +1397,13 @@ logical function integrateStress(&
 
    !* calculate Jacobian for correction term
    if (mod(jacoCounterLi, iJacoLpresiduum) == 0_pInt) then
-     temp_33     = math_mul33x33(math_mul33x33(A,B),invFi_current)
+     temp_33     = matmul(matmul(A,B),invFi_current)
      forall(o=1_pInt:3_pInt,p=1_pInt:3_pInt)
        dFe_dLi(1:3,o,1:3,p) = -dt*math_I3(o,p)*temp_33                                          ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
        dFi_dLi(1:3,o,1:3,p) = -dt*math_I3(o,p)*invFi_current
      end forall
      forall(o=1_pInt:3_pInt,p=1_pInt:3_pInt) &
-       dFi_dLi(1:3,1:3,o,p) = math_mul33x33(math_mul33x33(Fi_new,dFi_dLi(1:3,1:3,o,p)),Fi_new)
+       dFi_dLi(1:3,1:3,o,p) = matmul(matmul(Fi_new,dFi_dLi(1:3,1:3,o,p)),Fi_new)
 
      dRLi_dLi  = math_identity2nd(9_pInt) &
                - math_3333to99(math_mul3333xx3333(dLi_dS, math_mul3333xx3333(dS_dFe, dFe_dLi) + &
@@ -1449,7 +1440,7 @@ logical function integrateStress(&
  enddo LiLoop
 
  !* calculate new plastic and elastic deformation gradient
- invFp_new = math_mul33x33(invFp_current,B)
+ invFp_new = matmul(invFp_current,B)
  invFp_new = invFp_new / math_det33(invFp_new)**(1.0_pReal/3.0_pReal)                               ! regularize
  Fp_new = math_inv33(invFp_new)
  failedInversionInvFp: if (all(dEq0(Fp_new))) then
@@ -1465,13 +1456,13 @@ logical function integrateStress(&
 #endif
    return
  endif failedInversionInvFp
- Fe_new = math_mul33x33(math_mul33x33(Fg_new,invFp_new),invFi_new)
+ Fe_new = matmul(matmul(Fg_new,invFp_new),invFi_new)
 
 !--------------------------------------------------------------------------------------------------
 ! stress integration was successful
  integrateStress = .true.
- crystallite_P    (1:3,1:3,ipc,ip,el) = math_mul33x33(math_mul33x33(Fg_new,invFp_new), &
-                                                      math_mul33x33(S,transpose(invFp_new)))
+ crystallite_P    (1:3,1:3,ipc,ip,el) = matmul(matmul(Fg_new,invFp_new), &
+                                                      matmul(S,transpose(invFp_new)))
  crystallite_S    (1:3,1:3,ipc,ip,el) = S
  crystallite_Lp   (1:3,1:3,ipc,ip,el) = Lpguess
  crystallite_Li   (1:3,1:3,ipc,ip,el) = Liguess
@@ -1489,9 +1480,9 @@ logical function integrateStress(&
    write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST integrateStress >> P / MPa', &
               transpose(crystallite_P(1:3,1:3,ipc,ip,el))*1.0e-6_pReal
    write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST integrateStress >> Cauchy / MPa', &
-              math_mul33x33(crystallite_P(1:3,1:3,ipc,ip,el), transpose(Fg_new)) * 1.0e-6_pReal / math_det33(Fg_new)
+              matmul(crystallite_P(1:3,1:3,ipc,ip,el), transpose(Fg_new)) * 1.0e-6_pReal / math_det33(Fg_new)
    write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST integrateStress >> Fe Lp Fe^-1', &
-              transpose(math_mul33x33(Fe_new, math_mul33x33(crystallite_Lp(1:3,1:3,ipc,ip,el), math_inv33(Fe_new))))
+              transpose(matmul(Fe_new, matmul(crystallite_Lp(1:3,1:3,ipc,ip,el), math_inv33(Fe_new))))
    write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST integrateStress >> Fp',transpose(crystallite_Fp(1:3,1:3,ipc,ip,el))
    write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST integrateStress >> Fi',transpose(crystallite_Fi(1:3,1:3,ipc,ip,el))
  endif

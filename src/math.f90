@@ -277,7 +277,7 @@ subroutine math_check
  ! +++ check rotation sense of q and R +++
  v = halton([2,8,5])     ! random vector
  R = math_qToR(q)
- if (any(abs(math_mul33x3(R,v) - math_qRot(q,v)) > tol_math_check)) then
+ if (any(abs(matmul(R,v) - math_qRot(q,v)) > tol_math_check)) then
    write (error_msg, '(a)' ) 'R(q)*v has different sense than q*v'
    call IO_error(401,ext_msg=error_msg)
  endif
@@ -700,7 +700,7 @@ pure function math_exp33(A,n)
 
  do i = 1, merge(n,5,present(n))
    invFac = invFac/real(i,pReal)                                                                    ! invfac = 1/i!
-   B = math_mul33x33(B,A)
+   B = matmul(B,A)
    math_exp33 = math_exp33 + invFac*B                                                               ! exp = SUM (A^i)/i!
  enddo
 
@@ -1754,7 +1754,7 @@ real(pReal) pure function math_EulerMisorientation(EulerA,EulerB)
  real(pReal), dimension(3), intent(in) :: EulerA,EulerB
  real(pReal) :: cosTheta
 
- cosTheta = (math_trace33(math_mul33x33(math_EulerToR(EulerB), &
+ cosTheta = (math_trace33(matmul(math_EulerToR(EulerB), &
                               transpose(math_EulerToR(EulerA)))) - 1.0_pReal) * 0.5_pReal
 
  math_EulerMisorientation = acos(math_clip(cosTheta,-1.0_pReal,1.0_pReal))
@@ -1807,7 +1807,7 @@ function math_sampleGaussOri(center,FWHM)
      angle = math_EulerMisorientation([0.0_pReal,0.0_pReal,0.0_pReal],math_RtoEuler(R))
      if (rnd(4) <= exp(-4.0_pReal*log(2.0_pReal)*(angle/FWHM)**2_pReal)) exit                       ! rejection sampling (Gaussian)
    enddo GaussConvolution
-   math_sampleGaussOri = math_RtoEuler(math_mul33x33(R,math_EulerToR(center)))
+   math_sampleGaussOri = math_RtoEuler(matmul(R,math_EulerToR(center)))
  endif
 
 end function math_sampleGaussOri
@@ -1842,7 +1842,7 @@ function math_sampleFiberOri(alpha,beta,FWHM)
  R = math_EulerAxisAngleToR(math_crossproduct(fInC,fInS),-acos(dot_product(fInC,fInS)))             !< rotation to align fiber axis in crystal and sample system
 
  rnd = halton([7,10,3])
- R = math_mul33x33(R,math_EulerAxisAngleToR(fInS,rnd(1)*2.0_pReal*PI))                              !< additional rotation (0..360deg) perpendicular to fiber axis
+ R = matmul(R,math_EulerAxisAngleToR(fInS,rnd(1)*2.0_pReal*PI))                              !< additional rotation (0..360deg) perpendicular to fiber axis
 
  if (FWHM > 0.1_pReal*INRAD) then
    reducedTo2D: do i=1,3
@@ -1863,7 +1863,7 @@ function math_sampleFiberOri(alpha,beta,FWHM)
      u(j)    = fInS(j)
 
      rejectionSampling: if (rnd(3) <= exp(-4.0_pReal*log(2.0_pReal)*(angle/FWHM)**2_pReal)) then
-       R = math_mul33x33(R,math_EulerAxisAngleToR(math_crossproduct(u,fInS),angle))                 ! tilt around direction of smallest component
+       R = matmul(R,math_EulerAxisAngleToR(math_crossproduct(u,fInS),angle))                 ! tilt around direction of smallest component
        exit
      endif rejectionSampling
      rnd = halton([7,10,3])
@@ -2079,23 +2079,23 @@ pure function math_eigenvectorBasisSym33(m)
    N(1:3,1:3,2) = m-values(2)*math_I3
    N(1:3,1:3,3) = m-values(3)*math_I3
    twoSimilarEigenvalues: if(abs(values(1)-values(2)) < TOL) then 
-     EB(1:3,1:3,3)=math_mul33x33(N(1:3,1:3,1),N(1:3,1:3,2))/ &
+     EB(1:3,1:3,3)=matmul(N(1:3,1:3,1),N(1:3,1:3,2))/ &
                                                ((values(3)-values(1))*(values(3)-values(2)))
      EB(1:3,1:3,1)=math_I3-EB(1:3,1:3,3)
    elseif(abs(values(2)-values(3)) < TOL) then twoSimilarEigenvalues
-     EB(1:3,1:3,1)=math_mul33x33(N(1:3,1:3,2),N(1:3,1:3,3))/ &
+     EB(1:3,1:3,1)=matmul(N(1:3,1:3,2),N(1:3,1:3,3))/ &
                                                ((values(1)-values(2))*(values(1)-values(3)))
      EB(1:3,1:3,2)=math_I3-EB(1:3,1:3,1)
    elseif(abs(values(3)-values(1)) < TOL) then twoSimilarEigenvalues 
-     EB(1:3,1:3,2)=math_mul33x33(N(1:3,1:3,1),N(1:3,1:3,3))/ &
+     EB(1:3,1:3,2)=matmul(N(1:3,1:3,1),N(1:3,1:3,3))/ &
                                                ((values(2)-values(1))*(values(2)-values(3)))
      EB(1:3,1:3,1)=math_I3-EB(1:3,1:3,2)
    else twoSimilarEigenvalues
-     EB(1:3,1:3,1)=math_mul33x33(N(1:3,1:3,2),N(1:3,1:3,3))/ &
+     EB(1:3,1:3,1)=matmul(N(1:3,1:3,2),N(1:3,1:3,3))/ &
                                                ((values(1)-values(2))*(values(1)-values(3)))
-     EB(1:3,1:3,2)=math_mul33x33(N(1:3,1:3,1),N(1:3,1:3,3))/ &
+     EB(1:3,1:3,2)=matmul(N(1:3,1:3,1),N(1:3,1:3,3))/ &
                                                ((values(2)-values(1))*(values(2)-values(3)))
-     EB(1:3,1:3,3)=math_mul33x33(N(1:3,1:3,1),N(1:3,1:3,2))/ &
+     EB(1:3,1:3,3)=matmul(N(1:3,1:3,1),N(1:3,1:3,2))/ &
                                                ((values(3)-values(1))*(values(3)-values(2)))
    endif twoSimilarEigenvalues
  endif threeSimilarEigenvalues
@@ -2144,23 +2144,23 @@ pure function math_eigenvectorBasisSym33_log(m)
    N(1:3,1:3,2) = m-values(2)*math_I3
    N(1:3,1:3,3) = m-values(3)*math_I3
    twoSimilarEigenvalues: if(abs(values(1)-values(2)) < TOL) then 
-     EB(1:3,1:3,3)=math_mul33x33(N(1:3,1:3,1),N(1:3,1:3,2))/ &
+     EB(1:3,1:3,3)=matmul(N(1:3,1:3,1),N(1:3,1:3,2))/ &
                                                ((values(3)-values(1))*(values(3)-values(2)))
      EB(1:3,1:3,1)=math_I3-EB(1:3,1:3,3)
    elseif(abs(values(2)-values(3)) < TOL) then twoSimilarEigenvalues
-     EB(1:3,1:3,1)=math_mul33x33(N(1:3,1:3,2),N(1:3,1:3,3))/ &
+     EB(1:3,1:3,1)=matmul(N(1:3,1:3,2),N(1:3,1:3,3))/ &
                                                ((values(1)-values(2))*(values(1)-values(3)))
      EB(1:3,1:3,2)=math_I3-EB(1:3,1:3,1)
    elseif(abs(values(3)-values(1)) < TOL) then twoSimilarEigenvalues 
-     EB(1:3,1:3,2)=math_mul33x33(N(1:3,1:3,1),N(1:3,1:3,3))/ &
+     EB(1:3,1:3,2)=matmul(N(1:3,1:3,1),N(1:3,1:3,3))/ &
                                                ((values(2)-values(1))*(values(2)-values(3)))
      EB(1:3,1:3,1)=math_I3-EB(1:3,1:3,2)
    else twoSimilarEigenvalues
-     EB(1:3,1:3,1)=math_mul33x33(N(1:3,1:3,2),N(1:3,1:3,3))/ &
+     EB(1:3,1:3,1)=matmul(N(1:3,1:3,2),N(1:3,1:3,3))/ &
                                                ((values(1)-values(2))*(values(1)-values(3)))
-     EB(1:3,1:3,2)=math_mul33x33(N(1:3,1:3,1),N(1:3,1:3,3))/ &
+     EB(1:3,1:3,2)=matmul(N(1:3,1:3,1),N(1:3,1:3,3))/ &
                                                ((values(2)-values(1))*(values(2)-values(3)))
-     EB(1:3,1:3,3)=math_mul33x33(N(1:3,1:3,1),N(1:3,1:3,2))/ &
+     EB(1:3,1:3,3)=matmul(N(1:3,1:3,1),N(1:3,1:3,2))/ &
                                                ((values(3)-values(1))*(values(3)-values(2)))
    endif twoSimilarEigenvalues
  endif threeSimilarEigenvalues
@@ -2186,14 +2186,14 @@ function math_rotationalPart33(m)
  real(pReal), dimension(3,3) :: math_rotationalPart33
  real(pReal), dimension(3,3) :: U , Uinv
 
- U = math_eigenvectorBasisSym33(math_mul33x33(transpose(m),m))
+ U = math_eigenvectorBasisSym33(matmul(transpose(m),m))
  Uinv = math_inv33(U)
 
  inversionFailed: if (all(dEq0(Uinv))) then
    math_rotationalPart33 = math_I3
    call IO_warning(650)
  else inversionFailed
-   math_rotationalPart33 = math_mul33x33(m,Uinv)
+   math_rotationalPart33 = matmul(m,Uinv)
  endif inversionFailed
 
 end function math_rotationalPart33
@@ -2586,7 +2586,7 @@ pure function math_rotate_forward33(tensor,rot_tensor)
  real(pReal), dimension(3,3) ::  math_rotate_forward33
  real(pReal), dimension(3,3), intent(in) :: tensor, rot_tensor
 
- math_rotate_forward33 = math_mul33x33(rot_tensor,math_mul33x33(tensor,transpose(rot_tensor)))
+ math_rotate_forward33 = matmul(rot_tensor,matmul(tensor,transpose(rot_tensor)))
 
 end function math_rotate_forward33
 
@@ -2600,7 +2600,7 @@ pure function math_rotate_backward33(tensor,rot_tensor)
  real(pReal), dimension(3,3) ::  math_rotate_backward33
  real(pReal), dimension(3,3), intent(in) :: tensor, rot_tensor
 
- math_rotate_backward33 = math_mul33x33(transpose(rot_tensor),math_mul33x33(tensor,rot_tensor))
+ math_rotate_backward33 = matmul(transpose(rot_tensor),matmul(tensor,rot_tensor))
 
 end function math_rotate_backward33
 

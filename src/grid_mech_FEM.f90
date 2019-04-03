@@ -316,7 +316,6 @@ end function grid_mech_FEM_solution
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,stress_BC,rotation_BC)
   use math, only: &
-    math_mul33x33 ,&
     math_rotate_backward33
   use numerics, only: &
     worldrank
@@ -402,7 +401,7 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
     ! calculate rate for aim
     if     (deformation_BC%myType=='l') then                                                          ! calculate F_aimDot from given L and current F
       F_aimDot = &
-      F_aimDot + deformation_BC%maskFloat * math_mul33x33(deformation_BC%values, F_aim_lastInc)
+      F_aimDot + deformation_BC%maskFloat * matmul(deformation_BC%values, F_aim_lastInc)
     elseif(deformation_BC%myType=='fdot') then                                                        ! F_aimDot is prescribed
       F_aimDot = &
       F_aimDot + deformation_BC%maskFloat * deformation_BC%values

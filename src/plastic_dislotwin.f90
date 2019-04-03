@@ -651,8 +651,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
    math_eigenValuesVectorsSym, &
    math_outer, &
    math_symmetric33, &
-   math_mul33xx33, &
-   math_mul33x3
+   math_mul33xx33
  
  implicit none
  real(pReal), dimension(3,3),     intent(out) :: Lp
@@ -723,8 +722,8 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
    call math_eigenValuesVectorsSym(Mp,eigValues,eigVectors,error)
 
    do i = 1,6
-     P_sb = 0.5_pReal * math_outer(math_mul33x3(eigVectors,sb_sComposition(1:3,i)),&
-                                               math_mul33x3(eigVectors,sb_mComposition(1:3,i)))
+     P_sb = 0.5_pReal * math_outer(matmul(eigVectors,sb_sComposition(1:3,i)),&
+                                   matmul(eigVectors,sb_mComposition(1:3,i)))
      tau = math_mul33xx33(Mp,P_sb)
    
      significantShearBandStress: if (abs(tau) > tol_math_check) then

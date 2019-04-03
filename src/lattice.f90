@@ -655,7 +655,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
  use prec, only: &
   tol_math_check
  use math, only: &
-   math_mul33x33, &
    math_sym3333to66, &
    math_Voigt66to3333, &
    math_cross
@@ -1141,8 +1140,7 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_target, &
    math_axisAngleToR, &
    math_sym3333to66, &
    math_66toSym3333, &
-   math_rotate_forward3333, &
-   math_mul33x33
+   math_rotate_forward3333
 
  implicit none
  integer,     dimension(:),             intent(in) :: Ntrans                                        !< number of active twin systems per family
@@ -1210,7 +1208,6 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
    INRAD, &
    math_outer, &
    math_cross, &
-   math_mul33x3, &
    math_axisAngleToR
  implicit none
  integer,     dimension(:),                intent(in) :: Nslip                                      !< number of active slip systems per family
@@ -1232,7 +1229,7 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
  do i = 1,sum(Nslip)
    direction = coordinateSystem(1:3,1,i)
    normal    = coordinateSystem(1:3,2,i)
-   np = math_mul33x3(math_axisAngleToR(direction,60.0_pReal*INRAD), normal)
+   np = matmul(math_axisAngleToR(direction,60.0_pReal*INRAD), normal)
    if (size(nonSchmidCoefficients)>0) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
      + nonSchmidCoefficients(1) * math_outer(direction, np)
    if (size(nonSchmidCoefficients)>1) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
@@ -2401,8 +2398,6 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
  use math, only: &
    math_cross, &
    math_outer, &
-   math_mul33x33, &
-   math_mul33x3, &
    math_axisAngleToR, &
    INRAD, &
    MATH_I3
@@ -2508,8 +2503,8 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
      U = (a_bcc/a_fcc)*math_outer(x,x) &
        + (a_bcc/a_fcc)*math_outer(y,y) * sqrt(2.0_pReal) &
        + (a_bcc/a_fcc)*math_outer(z,z) * sqrt(2.0_pReal)
-     Q(1:3,1:3,i) = math_mul33x33(R,B)
-     S(1:3,1:3,i) = math_mul33x33(R,U) - MATH_I3
+     Q(1:3,1:3,i) = matmul(R,B)
+     S(1:3,1:3,i) = matmul(R,U) - MATH_I3
    enddo
  elseif (cOverA > 0.0_pReal .and. dEq0(a_bcc)) then                                                 ! fcc -> hex transformation
    ss      = MATH_I3
@@ -2525,7 +2520,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
      Q(1:3,1,i) = x
      Q(1:3,2,i) = y
      Q(1:3,3,i) = z
-     S(1:3,1:3,i) = math_mul33x33(Q(1:3,1:3,i), math_mul33x33(math_mul33x33(sd,ss), transpose(Q(1:3,1:3,i)))) - MATH_I3  ! ToDo: This is of interest for the Schmid matrix only
+     S(1:3,1:3,i) = matmul(Q(1:3,1:3,i), matmul(matmul(sd,ss), transpose(Q(1:3,1:3,i)))) - MATH_I3  ! ToDo: This is of interest for the Schmid matrix only
    enddo
  else
    call IO_error(0) !ToDo: define error

@@ -610,7 +610,6 @@ end subroutine utilities_fourierGammaConvolution
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_fourierGreenConvolution(D_ref, mobility_ref, deltaT)
   use math, only: &
-    math_mul33x3, &
     PI
   use mesh, only: &
     grid, &
@@ -1158,8 +1157,6 @@ subroutine utilities_updateIPcoords(F)
     cNeq
   use IO, only: &
     IO_error
-  use math, only: &
-    math_mul33x3
   use mesh, only: &
     grid, &
     grid3, &
@@ -1200,12 +1197,12 @@ subroutine utilities_updateIPcoords(F)
   if (grid3Offset == 0) offset_coords = vectorField_real(1:3,1,1,1)
   call MPI_Bcast(offset_coords,3,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
   if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords')
-  offset_coords = math_mul33x3(Favg,step/2.0_pReal) - offset_coords
+  offset_coords = matmul(Favg,step/2.0_pReal) - offset_coords
   m = 1
   do k = 1,grid3; do j = 1,grid(2); do i = 1,grid(1)
     mesh_ipCoordinates(1:3,1,m) = vectorField_real(1:3,i,j,k) &
                                 + offset_coords &
-                                + math_mul33x3(Favg,step*real([i,j,k+grid3Offset]-1,pReal))
+                                + matmul(Favg,step*real([i,j,k+grid3Offset]-1,pReal))
     m = m+1
   enddo; enddo; enddo
 

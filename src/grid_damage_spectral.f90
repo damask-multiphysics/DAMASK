@@ -286,8 +286,6 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   use mesh, only: &
     grid, &
     grid3
-  use math, only: &
-    math_mul33x3
   use spectral_utilities, only: &
     scalarField_real, &
     vectorField_real, &
@@ -328,7 +326,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   cell = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     cell = cell + 1
-    vectorField_real(1:3,i,j,k) = math_mul33x3(damage_nonlocal_getDiffusion33(1,cell) - D_ref, &
+    vectorField_real(1:3,i,j,k) = matmul(damage_nonlocal_getDiffusion33(1,cell) - D_ref, &
                                                vectorField_real(1:3,i,j,k))
   enddo; enddo; enddo
   call utilities_FFTvectorForward

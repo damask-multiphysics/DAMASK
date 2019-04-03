@@ -561,8 +561,6 @@ function mesh_nodesAroundCentres(gDim,Favg,centres) result(nodes)
    debug_mesh, &
    debug_level, &
    debug_levelBasic
- use math, only: &
-   math_mul33x3
 
  implicit none
  real(pReal), intent(in), dimension(:,:,:,:) :: &
@@ -624,7 +622,7 @@ function mesh_nodesAroundCentres(gDim,Favg,centres) result(nodes)
          lookup = me-diag+shift*iRes
          wrappedCentres(1:3,i+1_pInt,        j+1_pInt,        k+1_pInt) = &
                 centres(1:3,lookup(1)+1_pInt,lookup(2)+1_pInt,lookup(3)+1_pInt) &
-                - math_mul33x3(Favg, real(shift,pReal)*gDim)
+                - matmul(Favg, real(shift,pReal)*gDim)
        endif
  enddo; enddo; enddo
 
