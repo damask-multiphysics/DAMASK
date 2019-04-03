@@ -199,7 +199,7 @@ function grid_damage_spectral_solution(timeinc,timeinc_old,loadCaseTime) result(
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
   call MPI_Allreduce(MPI_IN_PLACE,solnNorm,1,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
   damage_stagInc = damage_current
-  solution%stagConverged = stagNorm < min(err_damage_tolAbs, err_damage_tolRel*solnNorm)
+  solution%stagConverged = stagNorm < max(err_damage_tolAbs, err_damage_tolRel*solnNorm)
 
 !--------------------------------------------------------------------------------------------------
 ! updating damage state 

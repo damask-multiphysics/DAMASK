@@ -202,7 +202,7 @@ function grid_thermal_spectral_solution(timeinc,timeinc_old,loadCaseTime) result
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
   call MPI_Allreduce(MPI_IN_PLACE,solnNorm,1,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
   temperature_stagInc = temperature_current
-  solution%stagConverged = stagNorm < min(err_thermal_tolAbs, err_thermal_tolRel*solnNorm)
+  solution%stagConverged = stagNorm < max(err_thermal_tolAbs, err_thermal_tolRel*solnNorm)
 
 !--------------------------------------------------------------------------------------------------
 ! updating thermal state 
