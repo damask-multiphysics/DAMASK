@@ -346,7 +346,7 @@ subroutine crystallite_init
  !$OMP PARALLEL DO PRIVATE(myNcomponents,i,c)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     myNcomponents = homogenization_Ngrains(mesh_element(3,e))
-    forall (i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), c = 1:myNcomponents)
+    do i = FEsolving_execIP(1,e), FEsolving_execIP(2,e); do c = 1, myNcomponents
       crystallite_Fp0(1:3,1:3,c,i,e) = math_EulerToR(material_EulerAngles(1:3,c,i,e))               ! plastic def gradient reflects init orientation
       crystallite_Fi0(1:3,1:3,c,i,e) = constitutive_initialFi(c,i,e)
       crystallite_F0(1:3,1:3,c,i,e)  = math_I3
@@ -356,7 +356,7 @@ subroutine crystallite_init
       crystallite_Fp(1:3,1:3,c,i,e)  = crystallite_Fp0(1:3,1:3,c,i,e)
       crystallite_Fi(1:3,1:3,c,i,e)  = crystallite_Fi0(1:3,1:3,c,i,e)
       crystallite_requested(c,i,e) = .true.
-    endforall
+    enddo; enddo
   enddo
   !$OMP END PARALLEL DO
  
@@ -754,7 +754,7 @@ subroutine crystallite_stressTangent()
                                   + crystallite_invFi(1:3,1:3,c,i,e)*crystallite_invFi(p,o,c,i,e)
             rhs_3333(1:3,1:3,o,p) = rhs_3333(1:3,1:3,o,p) &
                                   - crystallite_subdt(c,i,e)*matmul(invSubFi0,dLidS(1:3,1:3,o,p))
-          enddo;enddo
+          enddo; enddo
           call math_invert2(temp_99,error,math_3333to99(lhs_3333))
           if (error) then
             call IO_warning(warning_ID=600,el=e,ip=i,g=c, &
@@ -781,12 +781,12 @@ subroutine crystallite_stressTangent()
                                                 crystallite_invFp (1:3,1:3,c,i,e)), &
                                      math_inv33(crystallite_subFi0(1:3,1:3,c,i,e)))
 
-        forall(p=1:3, o=1:3) 
+        do o=1,3; do p=1,3
           rhs_3333(p,o,1:3,1:3)  = matmul(dSdFe(p,o,1:3,1:3),temp_33_1)
           temp_3333(1:3,1:3,p,o) = matmul(matmul(temp_33_2,dLpdS(1:3,1:3,p,o)), &
                                                  crystallite_invFi(1:3,1:3,c,i,e)) &
                                  + matmul(temp_33_3,dLidS(1:3,1:3,p,o))
-        end forall
+        enddo; enddo
         lhs_3333 = crystallite_subdt(c,i,e)*math_mul3333xx3333(dSdFe,temp_3333) &
                  + math_mul3333xx3333(dSdFi,dFidS)
 
@@ -802,12 +802,12 @@ subroutine crystallite_stressTangent()
 !--------------------------------------------------------------------------------------------------
 ! calculate dFpinvdF
         temp_3333 = math_mul3333xx3333(dLpdS,dSdF)
-        forall(p=1:3, o=1:3)
+        do o=1,3; do p=1,3
           dFpinvdF(1:3,1:3,p,o) &
             = -crystallite_subdt(c,i,e) &
             * matmul(math_inv33(crystallite_subFp0(1:3,1:3,c,i,e)), &
                             matmul(temp_3333(1:3,1:3,p,o),crystallite_invFi(1:3,1:3,c,i,e)))
-        end forall
+        enddo; enddo
 
 !--------------------------------------------------------------------------------------------------
 ! assemble dPdF
@@ -823,15 +823,15 @@ subroutine crystallite_stressTangent()
                                                crystallite_S(1:3,1:3,c,i,e))
 
         crystallite_dPdF(1:3,1:3,1:3,1:3,c,i,e) = 0.0_pReal
-        do p=1, 3
+        do p=1,3
           crystallite_dPdF(p,1:3,p,1:3,c,i,e) = transpose(temp_33_1)
         enddo
-        forall(p=1:3, o=1:3)
+        do o=1,3; do p=1,3
           crystallite_dPdF(1:3,1:3,p,o,c,i,e) = crystallite_dPdF(1:3,1:3,p,o,c,i,e) + &
             matmul(matmul(crystallite_subF(1:3,1:3,c,i,e),dFpinvdF(1:3,1:3,p,o)),temp_33_2) + &
             matmul(matmul(temp_33_3,dSdF(1:3,1:3,p,o)),transpose(crystallite_invFp(1:3,1:3,c,i,e))) + &
             matmul(temp_33_4,transpose(dFpinvdF(1:3,1:3,p,o)))
-        end forall
+        enddo; enddo
 
     enddo; enddo
   enddo elementLooping
@@ -1302,7 +1302,9 @@ logical function integrateStress(ipc,ip,el,timeFraction)
 
      !* calculate Jacobian for correction term
       if (mod(jacoCounterLp, iJacoLpresiduum) == 0) then
-        forall(o=1:3,p=1:3) dFe_dLp(o,1:3,p,1:3) = A(o,p)*transpose(invFi_new)                      ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
+        do o=1,3; do p=1,3
+          dFe_dLp(o,1:3,p,1:3) = A(o,p)*transpose(invFi_new)                                        ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
+        enddo; enddo
         dFe_dLp  = - dt * dFe_dLp
         dRLp_dLp = math_identity2nd(9) &
                  - math_3333to99(math_mul3333xx3333(math_mul3333xx3333(dLp_dS,dS_dFe),dFe_dLp))
@@ -1391,13 +1393,13 @@ logical function integrateStress(ipc,ip,el,timeFraction)
     !* calculate Jacobian for correction term
     if (mod(jacoCounterLi, iJacoLpresiduum) == 0) then
       temp_33     = matmul(matmul(A,B),invFi_current)
-      forall(o=1:3,p=1:3)
+      do o=1,3; do p=1,3
         dFe_dLi(1:3,o,1:3,p) = -dt*math_I3(o,p)*temp_33                                             ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
         dFi_dLi(1:3,o,1:3,p) = -dt*math_I3(o,p)*invFi_current
-      end forall
-      forall(o=1:3,p=1:3) &
+      enddo; enddo
+      do o=1,3; do p=1,3
         dFi_dLi(1:3,1:3,o,p) = matmul(matmul(Fi_new,dFi_dLi(1:3,1:3,o,p)),Fi_new)
- 
+      enddo; enddo
       dRLi_dLi  = math_identity2nd(9) &
                 - math_3333to99(math_mul3333xx3333(dLi_dS, math_mul3333xx3333(dS_dFe, dFe_dLi) + &
                                                   math_mul3333xx3333(dS_dFi, dFi_dLi)))  &
@@ -2102,12 +2104,12 @@ subroutine setConvergenceFlag()
    i, &                                                                                             !< integration point index in ip loop
    g                                                                                                !< grain index in grain loop
  
- !OMP DO PARALLEL PRIVATE(i,g)
+ !OMP DO PARALLEL PRIVATE
  do e = FEsolving_execElem(1),FEsolving_execElem(2)
-   forall (i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
-                  g = 1:homogenization_Ngrains(mesh_element(3,e)))
-     crystallite_converged(g,i,e) = crystallite_todo(g,i,e) .or. crystallite_converged(g,i,e)       ! if still "to do" then converged per definition
- end forall; enddo
+   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+     do g = 1,homogenization_Ngrains(mesh_element(3,e))
+       crystallite_converged(g,i,e) = crystallite_todo(g,i,e) .or. crystallite_converged(g,i,e)     ! if still "to do" then converged per definition
+ enddo; enddo; enddo
  !OMP END DO PARALLEL
 
 end subroutine setConvergenceFlag
