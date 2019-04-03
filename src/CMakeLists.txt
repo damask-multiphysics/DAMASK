@@ -14,7 +14,7 @@ list(FILTER sources EXCLUDE REGEX ".*mesh_abaqus.*\\.f90")
 list(FILTER sources EXCLUDE REGEX ".*commercialFEM_fileList.*\\.f90")
 
 
-if (PROJECT_NAME STREQUAL "DAMASK_spectral")
+if (PROJECT_NAME STREQUAL "DAMASK_grid")
 
       # probably we should have subfolders for FEM and spectral
       list(FILTER sources EXCLUDE REGEX ".*DAMASK_FEM.*\\.f90")
@@ -41,6 +41,6 @@ elseif (PROJECT_NAME STREQUAL "DAMASK_FEM")
       list(FILTER sources EXCLUDE REGEX ".*spectral_utilities.*\\.f90")
       list(FILTER sources EXCLUDE REGEX ".*mesh_grid.*\\.f90")
 
-      add_executable(DAMASK_spectral ${sources})
+      add_executable(DAMASK_FEM ${sources})
       
 endif()

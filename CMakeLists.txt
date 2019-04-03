@@ -106,9 +106,9 @@ set (CMAKE_C_COMPILER       "${PETSC_MPICC}")
 
 # DAMASK solver defines project to build
 if (DAMASK_SOLVER STREQUAL "GRID")
-    project (DAMASK_spectral Fortran C)
+    project (DAMASK_grid Fortran C)
     add_definitions (-DGrid)
-    message ("Building Spectral Solver\n")
+    message ("Building Grid Solver\n")
 elseif (DAMASK_SOLVER STREQUAL "FEM")
     project (DAMASK_FEM Fortran C)
     add_definitions (-DFEM)
@@ -489,11 +489,11 @@ add_subdirectory (src)
 
 # INSTALL BUILT BINARIES
 if (CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
-   exec_program (mktemp ARGS -d OUTPUT_VARIABLE BLACK_HOLE)
-   install (PROGRAMS    ${PROJECT_BINARY_DIR}/src/prec.mod
-            DESTINATION ${BLACK_HOLE})
+   exec_program (mktemp OUTPUT_VARIABLE nothing)
+   exec_program (mktemp ARGS -d OUTPUT_VARIABLE black_hole)
+   install (PROGRAMS ${nothing} DESTINATION ${black_hole})
 else ()
-   if (PROJECT_NAME STREQUAL "DAMASK_spectral")
+   if (PROJECT_NAME STREQUAL "DAMASK_grid")
        install (PROGRAMS    ${PROJECT_BINARY_DIR}/src/DAMASK_spectral
                 DESTINATION ${CMAKE_INSTALL_PREFIX})
    elseif (PROJECT_NAME STREQUAL "DAMASK_FEM")
