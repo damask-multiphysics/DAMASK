@@ -1059,6 +1059,7 @@ subroutine HDF5_write_pReal1(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape,loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
  endif
 
+ if (product(totalShape) /= 0) &
  call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal1: h5dwrite_f')
@@ -1099,6 +1100,7 @@ subroutine HDF5_write_pReal2(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
  endif
 
+ if (product(totalShape) /= 0) &
  call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal2: h5dwrite_f')
@@ -1139,6 +1141,7 @@ subroutine HDF5_write_pReal3(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
  endif
 
+ if (product(totalShape) /= 0) &
  call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal3: h5dwrite_f')
@@ -1179,6 +1182,7 @@ subroutine HDF5_write_pReal4(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
  endif
 
+ if (product(totalShape) /= 0) &
  call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal4: h5dwrite_f')
@@ -1220,6 +1224,7 @@ subroutine HDF5_write_pReal5(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
  endif
 
+ if (product(totalShape) /= 0) &
  call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal5: h5dwrite_f')
@@ -1260,6 +1265,7 @@ subroutine HDF5_write_pReal6(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
  endif
 
+ if (product(totalShape) /= 0) &
  call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal6: h5dwrite_f')
@@ -1300,6 +1306,7 @@ subroutine HDF5_write_pReal7(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
  endif
 
+ if (product(totalShape) /= 0) &
  call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal7: h5dwrite_f')
@@ -1341,6 +1348,7 @@ subroutine HDF5_write_pInt1(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,.false.)
  endif
 
+ if (product(totalShape) /= 0) &
  call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt1: h5dwrite_f')
@@ -1381,6 +1389,7 @@ subroutine HDF5_write_pInt2(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,.false.)
  endif
 
+ if (product(totalShape) /= 0) &
  call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt2: h5dwrite_f')
@@ -1421,6 +1430,7 @@ subroutine HDF5_write_pInt3(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,.false.)
  endif
 
+ if (product(totalShape) /= 0) &
  call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt3: h5dwrite_f')
@@ -1461,6 +1471,7 @@ subroutine HDF5_write_pInt4(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,.false.)
  endif
 
+ if (product(totalShape) /= 0) &
  call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt4: h5dwrite_f')
@@ -1501,6 +1512,7 @@ subroutine HDF5_write_pInt5(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,.false.)
  endif
 
+ if (product(totalShape) /= 0) &
  call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt5: h5dwrite_f')
@@ -1541,6 +1553,7 @@ subroutine HDF5_write_pInt6(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,.false.)
  endif
 
+ if (product(totalShape) /= 0) &
  call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt6: h5dwrite_f')
@@ -1581,6 +1594,7 @@ subroutine HDF5_write_pInt7(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,.false.)
  endif
 
+ if (product(totalShape) /= 0) &
  call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt7: h5dwrite_f')
@@ -1690,8 +1704,8 @@ end subroutine finalize_read
 !> @brief initialize HDF5 handles, determines global shape and start for parallel write
 !--------------------------------------------------------------------------------------------------
 subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                           myStart, globalShape, &
-                           loc_id,localShape,datasetName,datatype,parallel)
+                           myStart, totalShape, &
+                           loc_id,myShape,datasetName,datatype,parallel)
  use numerics, only: &
    worldrank, &
    worldsize
@@ -1699,58 +1713,59 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
  implicit none
  integer(HID_T),    intent(in) :: loc_id                                                             !< file or group handle
  character(len=*),  intent(in) :: datasetName                                                        !< name of the dataset in the file
- logical,           intent(in)           :: parallel
- integer(HID_T),    intent(in)  :: datatype
+ logical,           intent(in) :: parallel
+ integer(HID_T),    intent(in) :: datatype
  integer(HSIZE_T),  intent(in),   dimension(:) :: &
-   localShape   
- integer(HSIZE_T),  intent(out), dimension(size(localShape,1)):: &
+   myShape   
+ integer(HSIZE_T),  intent(out), dimension(size(myShape,1)):: &
    myStart, &
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   totalShape                                                                                      !< shape of the dataset (all processes)
  integer(HID_T),    intent(out) :: dset_id, filespace_id, memspace_id, plist_id
     
- integer(pInt), dimension(worldsize) :: &
+ integer, dimension(worldsize) :: &
    writeSize                                                                                        !< contribution of all processes
  integer :: ierr
  integer :: hdferr
 
 !-------------------------------------------------------------------------------------------------
-! creating a property list for transfer properties
+! creating a property list for transfer properties (is collective when reading in parallel)
  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_write: h5pcreate_f')
-
-!--------------------------------------------------------------------------------------------------
- writeSize              = 0_pInt
- writeSize(worldrank+1) = int(localShape(ubound(localShape,1)),pInt)
-
 #ifdef PETSc
 if (parallel) then
    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
    if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_write: h5pset_dxpl_mpio_f')
+ endif
+#endif
+
+!--------------------------------------------------------------------------------------------------
+! determine the global data layout among all processes
+ writeSize              = 0_pInt
+ writeSize(worldrank+1) = int(myShape(ubound(myShape,1)),pInt)
+#ifdef PETSc
+if (parallel) then
    call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
    if (ierr /= 0) call IO_error(894_pInt,ext_msg='initialize_write: MPI_allreduce')
  endif
 #endif
-
  myStart                   = int(0,HSIZE_T)
  myStart(ubound(myStart))  = int(sum(writeSize(1:worldrank)),HSIZE_T)
- globalShape = [localShape(1:ubound(localShape,1)-1),int(sum(writeSize),HSIZE_T)]
+ totalShape = [myShape(1:ubound(myShape,1)-1),int(sum(writeSize),HSIZE_T)]
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape) and in file (global shape)
- call h5screate_simple_f(size(localShape), localShape, memspace_id, hdferr, localShape)
+ call h5screate_simple_f(size(myShape), myShape, memspace_id, hdferr, myShape)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_write: h5dopen_f')
- call h5screate_simple_f(size(globalShape), globalShape, filespace_id, hdferr, globalShape)
+ call h5screate_simple_f(size(totalShape), totalShape, filespace_id, hdferr, totalShape)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_write: h5dget_space_f')
 
 !--------------------------------------------------------------------------------------------------
-! create dataset
+! create dataset in the file and select a hyperslab from it (the portion of the current process)
  call h5dcreate_f(loc_id, trim(datasetName), datatype, filespace_id, dset_id, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_write: h5dcreate_f')
- 
-!--------------------------------------------------------------------------------------------------
-! select a hyperslab (the portion of the current process) in the file
- call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, localShape, hdferr)
+ call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, myShape, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='initialize_write: h5sselect_hyperslab_f')
+
 
 end subroutine initialize_write
 
