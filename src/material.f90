@@ -274,6 +274,7 @@ contains
 !> material.config
 !--------------------------------------------------------------------------------------------------
 subroutine material_init
+ use results
  use IO, only: &
    IO_error
  use debug, only: &
@@ -409,6 +410,9 @@ subroutine material_init
      enddo
    enddo
  enddo
+ 
+ call results_openJobFile
+ call results_closeJobFile
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 

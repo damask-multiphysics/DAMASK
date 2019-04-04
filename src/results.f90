@@ -55,6 +55,8 @@ subroutine results_init
   call HDF5_addAttribute(resultsFile,'DAMASK',DAMASKVERSION)
   call get_command(commandLine)
   call HDF5_addAttribute(resultsFile,'call',trim(commandLine))
+  call HDF5_closeGroup(results_addGroup('mapping'))
+  call HDF5_closeGroup(results_addGroup('mapping/cellResults'))
   call HDF5_closeFile(resultsFile)
 
 end subroutine results_init
@@ -302,6 +304,95 @@ subroutine results_writeTensorDataset_int(group,dataset,label,description,SIunit
 
 end subroutine results_writeTensorDataset_int
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief adds the unique mapping from spatial position and constituent ID to results
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_mapping_phase(phaseAt,memberAt,label)
+  use numerics, only: &
+    worldrank, &
+    worldsize
+    
+  integer,           dimension(:,:),   intent(in)  :: phaseAt
+  integer,           dimension(:,:,:), intent(in)  :: memberAt
+  character(len=64), dimension(:),     intent(in)  :: label
+  
+  integer,           dimension(:,:),   allocatable :: memberAt_global
+  
+  integer, dimension(size(label),0:worldsize-1) :: members
+  integer, dimension(0:worldsize-1)             :: writeSize     
+  
+  integer(HID_T)  :: loc_id, dtype_id, dset_id, space_id, name_id, plist_id, dt5_id
+  integer(HID_T), dimension(size(memberAt,1))  :: position_id
+  
+  integer(SIZE_T) :: typesize, type_size_string, type_size_int, type_size_compound
+  integer         :: ierr, i
+  
+  character(len=1) :: constituent_number
+
+  memberAt_global = reshape(memberAt,[size(memberAt,1),size(memberAt)/size(memberAt,1)])
+
+!---------------------------------------------------------------------------------------------------
+! property list for transfer properties (needed for MPI)
+  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, ierr)
+
+!---------------------------------------------------------------------------------------------------
+! compound type: name of phase section + position(s) within results array
+  call h5tcopy_f(H5T_NATIVE_CHARACTER, dt5_id, ierr)
+  call h5tset_size_f(dt5_id, int(len(label(1)),SIZE_T), ierr)
+  call h5tget_size_f(dt5_id, type_size_string, ierr)
+  call h5tget_size_f(H5T_STD_I32LE, type_size_int, ierr)
+  type_size_compound = type_size_string + type_size_int*size(memberAt,1)                            ! total size of derived type
+  
+  call h5tcreate_f(H5T_COMPOUND_F, type_size_compound, dtype_id, ierr)
+  call h5tinsert_f(dtype_id, "Name",  0_SIZE_T, dt5_id, ierr)
+  do i=1, size(memberAt,1)
+    write(constituent_number, '(i0)') i
+    call h5tinsert_f(dtype_id, "Index "//trim(constituent_number),type_size_string+(i-1)*type_size_int,&
+                    H5T_STD_I32LE, ierr)
+  enddo
+  
+!--------------------------------------------------------------------------------------------------
+! Create memory types for each component of the compound type
+  call h5tcreate_f(H5T_COMPOUND_F, int(type_size_string,SIZE_T), name_id, ierr)
+  call h5tinsert_f(name_id, "Name",0_SIZE_T, dt5_id, ierr)
+  do i=1, size(memberAt,1)
+    write(constituent_number, '(i0)') i
+    call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), position_id(i), ierr)
+    call h5tinsert_f(position_id(i), "Index "//trim(constituent_number), 0_SIZE_T, H5T_STD_I32LE, ierr)
+  enddo
+  
+!--------------------------------------------------------------------------------------------------
+! Prepare MPI communication (transparent for non-MPI runs)
+  members = 0
+  do i=1, size(label)
+    members(i,worldrank) = count(memberAt == i)                                                     ! number of points/instance of this process
+  enddo
+  writeSize = 0
+  writeSize(worldrank) = sum(members(:,worldrank))                                                  ! total number of points by this process
+  
+#ifdef PETSc
+ call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, ierr)
+ if (ierr < 0) call IO_error(1,ext_msg='IO_mappingConstituent: h5pset_dxpl_mpio_f')
+ 
+ call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)         ! get total output size over each process
+ if (ierr /= 0) call IO_error(894_pInt,ext_msg='IO_mappingConstituent: MPI_allreduce')
+ 
+ call MPI_allreduce(MPI_IN_PLACE,members,size(members),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+ if (ierr /= 0) call IO_error(894_pInt,ext_msg='IO_mappingConstituent: MPI_allreduce')
+#endif
+
+
+ members(:,worldrank) = sum(members(:,0:worldrank-1),2)                                             ! starting id for each instance of this process
+  
+
+
+  loc_id = results_openGroup('/mapping/cellResults')
+  
+  
+  call HDF5_closeGroup(loc_id)
+
+end subroutine
 
 !!--------------------------------------------------------------------------------------------------
 !!> @brief adds the unique mapping from spatial position and constituent ID to results

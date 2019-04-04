@@ -72,9 +72,9 @@ subroutine CPFEM_initAll()
  call FE_init
  call mesh_init
  call lattice_init
- call material_init
  call HDF5_utilities_init
  call results_init
+ call material_init
  call constitutive_init
  call crystallite_init
  call homogenization_init
