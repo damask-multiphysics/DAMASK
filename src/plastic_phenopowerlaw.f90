@@ -575,6 +575,7 @@ subroutine plastic_phenopowerlaw_results(instance,group)
   associate(prm => param(instance), stt => state(instance))
   outputsLoop: do o = 1,size(prm%outputID)
     select case(prm%outputID(o))
+
       case (resistance_slip_ID)
         call results_writeDataset(group,stt%xi_slip,   'xi_slip', &
                                   'resistance against plastic slip','Pa')

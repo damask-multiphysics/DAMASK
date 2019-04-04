@@ -2402,7 +2402,7 @@ end function getRho
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_results(instance,group)
-#if defined(PETSc) || defined(DAMASKHDF5)
+#if defined(PETSc) || defined(DAMASK_HDF5)
   use results
 
   implicit none

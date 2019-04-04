@@ -574,10 +574,10 @@ subroutine plastic_disloUCLA_results(instance,group)
     select case(prm%outputID(o))
       case (rho_mob_ID)
         call results_writeDataset(group,stt%rho_mob,'rho_mob',&
-                                 'mobile dislocation density','1/m^2')
+                                 'mobile dislocation density','1/m²')
       case (rho_dip_ID)
         call results_writeDataset(group,stt%rho_dip,'rho_dip',&
-                                  'dislocation dipole density''1/m^2')
+                                  'dislocation dipole density''1/m²')
       case (dot_gamma_sl_ID)
         call results_writeDataset(group,stt%gamma_sl,'dot_gamma_sl',&
                                   'plastic slip','1')

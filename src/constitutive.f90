@@ -1109,35 +1109,42 @@ subroutine constitutive_results()
     plastic_nonlocal_results 
         
   implicit none
-  integer :: p  
-  call HDF5_closeGroup(results_addGroup('current/phase'))                                              
-  do p=1,size(config_name_phase)                                                                           
-    call HDF5_closeGroup(results_addGroup('current/phase/'//trim(config_name_phase(p))))
+  integer :: p
+  character(len=256) :: group
+  character(len=16)  :: i
+  
+  call HDF5_closeGroup(results_addGroup('current/constitutive'))   
+                                             
+  do p=1,size(config_name_phase)
+    write(i,('(i2.2)')) p                                                                           ! allow 99 groups
+    group = trim('current/constitutive')//'/'//trim(i)//'_'//trim(config_name_phase(p))
+    call HDF5_closeGroup(results_addGroup(group))
     
+    group = trim(group)//'/'//'plastic'
+    
+    call HDF5_closeGroup(results_addGroup(group))  
     select case(material_phase_plasticity_type(p))
     
       case(PLASTICITY_ISOTROPIC_ID)
-        call plastic_isotropic_results(phase_plasticityInstance(p),'current/phase/'//trim(config_name_phase(p)))
+      call plastic_isotropic_results(phase_plasticityInstance(p),group) 
         
       case(PLASTICITY_PHENOPOWERLAW_ID)
-        call plastic_phenopowerlaw_results(phase_plasticityInstance(p),'current/phase/'//trim(config_name_phase(p)))
+      call plastic_phenopowerlaw_results(phase_plasticityInstance(p),group) 
          
-       case(PLASTICITY_KINEHARDENING_ID)
-         call plastic_kinehardening_results(phase_plasticityInstance(p),'current/phase/'//trim(config_name_phase(p))) 
+      case(PLASTICITY_KINEHARDENING_ID)
+      call plastic_kinehardening_results(phase_plasticityInstance(p),group) 
 
-       case(PLASTICITY_DISLOTWIN_ID)
-         call plastic_dislotwin_results(phase_plasticityInstance(p),'current/phase/'//trim(config_name_phase(p)))
+      case(PLASTICITY_DISLOTWIN_ID)
+      call plastic_dislotwin_results(phase_plasticityInstance(p),group) 
       
-       case(PLASTICITY_DISLOUCLA_ID)
-         call plastic_disloUCLA_results(phase_plasticityInstance(p),'current/phase/'//trim(config_name_phase(p)))   
+      case(PLASTICITY_DISLOUCLA_ID)
+      call plastic_disloUCLA_results(phase_plasticityInstance(p),group) 
        
-       case(PLASTICITY_NONLOCAL_ID)
-         call plastic_nonlocal_results(phase_plasticityInstance(p),'current/phase/'//trim(config_name_phase(p)))
-    
+      case(PLASTICITY_NONLOCAL_ID)
+      call plastic_nonlocal_results(phase_plasticityInstance(p),group) 
     end select
   
- enddo      
-
+ enddo   
 #endif
 
 
