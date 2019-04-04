@@ -147,16 +147,14 @@ module material
    damage_initialPhi                                                                                !< initial damage per each homogenization
 
 ! NEW MAPPINGS 
- integer(pInt), dimension(:), allocatable, public, protected :: &
-   material_homogenizationAt, &                                                                     !< homogenization ID of each element (copy of mesh_homogenizationAt)
-   material_homogenizationMemberAt, &                                                               !< position of the element within its homogenization instance
-   material_aggregateAt, &                                                                          !< aggregate ID of each element FUTURE USE FOR OUTPUT
-   material_aggregatMemberAt                                                                        !< position of the element within its aggregate instance FUTURE USE FOR OUTPUT
- integer(pInt), dimension(:,:), allocatable, public, protected :: &
-   material_phaseAt, &                                                                              !< phase ID of each element
-   material_phaseMemberAt, &                                                                        !< position of the element within its phase instance
-   material_crystalliteAt, &                                                                        !< crystallite ID of each element CURRENTLY NOT PER CONSTITUTENT
-   material_crystalliteMemberAt                                                                     !< position of the element within its crystallite instance CURRENTLY NOT PER CONSTITUTENT
+ integer, dimension(:),     allocatable, public, protected :: &                                     ! (elem)
+   material_homogenizationAt                                                                        !< homogenization ID of each element (copy of mesh_homogenizationAt)
+ integer, dimension(:,:),   allocatable, public, protected :: &                                     ! (ip,elem)
+   material_homogenizationMemberAt                                                                  !< position of the element within its homogenization instance
+ integer, dimension(:,:), allocatable, public, protected :: &                                       ! (constituent,elem)
+   material_phaseAt                                                                                 !< phase ID of each element
+ integer, dimension(:,:,:), allocatable, public, protected :: &                                     ! (constituent,ip,elem)
+   material_phaseMemberAt                                                                           !< position of the element within its phase instance
 ! END NEW MAPPINGS
  
 ! DEPRECATED: use material_phaseAt
@@ -275,7 +273,7 @@ contains
 !> @details figures out if solverJobName.materialConfig is present, if not looks for
 !> material.config
 !--------------------------------------------------------------------------------------------------
-subroutine material_init()
+subroutine material_init
  use IO, only: &
    IO_error
  use debug, only: &
@@ -382,21 +380,50 @@ subroutine material_init()
  endif debugOut
 
  call material_populateGrains
+ 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! new mappings
+ allocate(material_homogenizationAt,source=theMesh%homogenizationAt)
+ allocate(material_homogenizationMemberAt(theMesh%elem%nIPs,theMesh%Nelems),source=0)
 
+ allocate(CounterHomogenization(size(config_homogenization)),source=0)
+ do e = 1, theMesh%Nelems
+   do i = 1, theMesh%elem%nIPs
+     CounterHomogenization(material_homogenizationAt(e)) = &
+     CounterHomogenization(material_homogenizationAt(e)) + 1
+     material_homogenizationMemberAt(i,e) = CounterHomogenization(material_homogenizationAt(e))
+   enddo
+ enddo
+
+
+ allocate(material_phaseAt(homogenization_maxNgrains,theMesh%Nelems), source=material_phase(:,1,:))
+ allocate(material_phaseMemberAt(homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),source=0)
+ 
+ allocate(CounterPhase(size(config_phase)),source=0)
+ do e = 1, theMesh%Nelems
+   do i = 1, theMesh%elem%nIPs
+     do c = 1, homogenization_maxNgrains
+       CounterPhase(material_phaseAt(c,e)) = &
+       CounterPhase(material_phaseAt(c,e)) + 1
+       material_phaseMemberAt(c,i,e) = CounterPhase(material_phaseAt(c,e))
+     enddo
+   enddo
+ enddo
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! BEGIN DEPRECATED
  allocate(phaseAt                   (  homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),source=0_pInt)
  allocate(phasememberAt             (  homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),source=0_pInt)
  allocate(mappingHomogenization     (2,                          theMesh%elem%nIPs,theMesh%Nelems),source=0_pInt)
  allocate(mappingHomogenizationConst(                            theMesh%elem%nIPs,theMesh%Nelems),source=1_pInt)
-! END DEPRECATED
-
- allocate(material_homogenizationAt,source=theMesh%homogenizationAt)
- allocate(material_AggregateAt,     source=theMesh%homogenizationAt)
  
- allocate(CounterPhase         (size(config_phase)),         source=0_pInt)
- allocate(CounterHomogenization(size(config_homogenization)),source=0_pInt)
+ CounterHomogenization=0
+ CounterPhase         =0
 
-! BEGIN DEPRECATED
+
  do e = 1_pInt,theMesh%Nelems
  myHomog = theMesh%homogenizationAt(e)
    do i = 1_pInt, theMesh%elem%nIPs
