@@ -5,9 +5,6 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !--------------------------------------------------------------------------------------------------
 module results
-  use prec
-  use IO
-  use HDF5
   use HDF5_utilities
 #ifdef PETSc
   use PETSC
@@ -18,13 +15,13 @@ module results
   integer(HID_T), public, protected :: tempCoordinates, tempResults
   integer(HID_T), private :: resultsFile, currentIncID, plist_id
 
- interface results_writeDataset
-   module procedure results_writeTensorDataset_real
-   module procedure results_writeTensorDataset_int
-   module procedure results_writeVectorDataset_real
-   module procedure results_writeVectorDataset_int
-   module procedure results_writeScalarDataset_real
- end interface results_writeDataset
+  interface results_writeDataset
+    module procedure results_writeTensorDataset_real
+    module procedure results_writeTensorDataset_int
+    module procedure results_writeVectorDataset_real
+    module procedure results_writeVectorDataset_int
+    module procedure results_writeScalarDataset_real
+  end interface results_writeDataset
 
   public :: &
     results_init, &
@@ -67,12 +64,12 @@ end subroutine results_init
 !> @brief opens the results file to append data
 !--------------------------------------------------------------------------------------------------
 subroutine results_openJobFile
- use DAMASK_interface, only: &
-   getSolverJobName
+  use DAMASK_interface, only: &
+    getSolverJobName
 
- implicit none
+  implicit none
 
- resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','a',.true.)
+  resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','a',.true.)
  
 end subroutine results_openJobFile
 
@@ -81,9 +78,9 @@ end subroutine results_openJobFile
 !> @brief closes the results file
 !--------------------------------------------------------------------------------------------------
 subroutine results_closeJobFile
- implicit none
+  implicit none
 
- call HDF5_closeFile(resultsFile)
+  call HDF5_closeFile(resultsFile)
 
 end subroutine results_closeJobFile
 
@@ -93,15 +90,15 @@ end subroutine results_closeJobFile
 !--------------------------------------------------------------------------------------------------
 subroutine results_addIncrement(inc,time)
  
- implicit none
- integer(pInt), intent(in) :: inc
- real(pReal),   intent(in) :: time
- character(len=pStringLen) :: incChar
+  implicit none
+  integer(pInt), intent(in) :: inc
+  real(pReal),   intent(in) :: time
+  character(len=pStringLen) :: incChar
 
- write(incChar,'(i5.5)') inc                                                                        ! allow up to 99999 increments
- call HDF5_closeGroup(results_addGroup(trim('inc'//trim(adjustl(incChar)))))
- call results_setLink(trim('inc'//trim(adjustl(incChar))),'current')
- call HDF5_addAttribute(resultsFile,'time/s',time,trim('inc'//trim(adjustl(incChar))))
+  write(incChar,'(i5.5)') inc                                                                       ! allow up to 99999 increments
+  call HDF5_closeGroup(results_addGroup(trim('inc'//trim(adjustl(incChar)))))
+  call results_setLink(trim('inc'//trim(adjustl(incChar))),'current')
+  call HDF5_addAttribute(resultsFile,'time/s',time,trim('inc'//trim(adjustl(incChar))))
 
 end subroutine results_addIncrement
 
@@ -110,10 +107,10 @@ end subroutine results_addIncrement
 !--------------------------------------------------------------------------------------------------
 integer(HID_T) function results_openGroup(groupName)
 
- implicit none
- character(len=*), intent(in) :: groupName
- 
- results_openGroup = HDF5_openGroup(resultsFile,groupName)
+  implicit none
+  character(len=*), intent(in) :: groupName
+  
+  results_openGroup = HDF5_openGroup(resultsFile,groupName)
 
 end function results_openGroup
 
@@ -123,10 +120,10 @@ end function results_openGroup
 !--------------------------------------------------------------------------------------------------
 integer(HID_T) function results_addGroup(groupName)
 
- implicit none
- character(len=*), intent(in) :: groupName
- 
- results_addGroup = HDF5_addGroup(resultsFile,groupName)
+  implicit none
+  character(len=*), intent(in) :: groupName
+  
+  results_addGroup = HDF5_addGroup(resultsFile,groupName)
 
 end function results_addGroup
 
@@ -135,13 +132,11 @@ end function results_addGroup
 !> @brief set link to object in results file
 !--------------------------------------------------------------------------------------------------
 subroutine results_setLink(path,link)
- use hdf5_utilities, only: &
-  HDF5_setLink
 
- implicit none
- character(len=*), intent(in) :: path, link
+  implicit none
+  character(len=*), intent(in) :: path, link
 
- call HDF5_setLink(resultsFile,path,link)
+  call HDF5_setLink(resultsFile,path,link)
 
 end subroutine results_setLink
 
@@ -151,10 +146,10 @@ end subroutine results_setLink
 !--------------------------------------------------------------------------------------------------
 subroutine results_addAttribute(attrLabel,attrValue,path)
 
- implicit none
- character(len=*), intent(in)  :: attrLabel, attrValue, path
+  implicit none
+  character(len=*), intent(in)  :: attrLabel, attrValue, path
 
- call HDF5_addAttribute_str(resultsFile,attrLabel, attrValue, path)
+  call HDF5_addAttribute_str(resultsFile,attrLabel, attrValue, path)
 
 end subroutine results_addAttribute
 
@@ -163,14 +158,13 @@ end subroutine results_addAttribute
 !> @brief remove link to an object
 !--------------------------------------------------------------------------------------------------
 subroutine results_removeLink(link)
- use hdf5
 
- implicit none
- character(len=*), intent(in) :: link
- integer                      :: hdferr
+  implicit none
+  character(len=*), intent(in) :: link
+  integer                      :: hdferr
 
- call h5ldelete_f(resultsFile,link, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'results_removeLink: h5ldelete_soft_f ('//trim(link)//')')
+  call h5ldelete_f(resultsFile,link, hdferr)
+  if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'results_removeLink: h5ldelete_soft_f ('//trim(link)//')')
 
 end subroutine results_removeLink
 
@@ -313,7 +307,6 @@ end subroutine results_writeTensorDataset_int
 !> @brief adds the unique mapping from spatial position and constituent ID to results
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_mappingPhase(mapping,mapping2,Nconstituents,material_phase,phase_name,dataspace_size,mpiOffset,mpiOffset_phase)
- use hdf5
 
  implicit none
  integer(pInt),    intent(in)                   :: Nconstituents, dataspace_size, mpiOffset
