@@ -465,26 +465,26 @@ subroutine HDF5_read_pReal1(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &                                             ! ToDo: Fortran 2018 size(shape(A)) = rank(A)
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
  integer :: hdferr
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
 !---------------------------------------------------------------------------------------------------
 ! initialize HDF5 data structures
  if (present(parallel)) then
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,parallel)
+                        myStart, totalShape, loc_id,myShape,datasetName,parallel)
  else
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,.false.)
+                        myStart, totalShape, loc_id,myShape,datasetName,.false.)
  endif
 
- call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,globalShape, hdferr,&
+ call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal1: h5dread_f')
 
@@ -506,26 +506,26 @@ subroutine HDF5_read_pReal2(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
  integer :: hdferr
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
 !---------------------------------------------------------------------------------------------------
 ! initialize HDF5 data structures
  if (present(parallel)) then
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,parallel)
+                        myStart, totalShape, loc_id,myShape,datasetName,parallel)
  else
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,.false.)
+                        myStart, totalShape, loc_id,myShape,datasetName,.false.)
  endif
 
- call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,globalShape, hdferr,&
+ call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal2: h5dread_f')
 
@@ -547,26 +547,26 @@ subroutine HDF5_read_pReal3(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
  integer :: hdferr
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
 !---------------------------------------------------------------------------------------------------
 ! initialize HDF5 data structures
  if (present(parallel)) then
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,parallel)
+                        myStart, totalShape, loc_id,myShape,datasetName,parallel)
  else
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,.false.)
+                        myStart, totalShape, loc_id,myShape,datasetName,.false.)
  endif
  
- call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,globalShape, hdferr,&
+ call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal3: h5dread_f')
 
@@ -588,26 +588,26 @@ subroutine HDF5_read_pReal4(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
  integer :: hdferr
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
 !---------------------------------------------------------------------------------------------------
 ! initialize HDF5 data structures
  if (present(parallel)) then
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,parallel)
+                        myStart, totalShape, loc_id,myShape,datasetName,parallel)
  else
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,.false.)
+                        myStart, totalShape, loc_id,myShape,datasetName,.false.)
  endif
 
- call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,globalShape, hdferr,&
+ call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal4: h5dread_f')
 
@@ -629,26 +629,26 @@ subroutine HDF5_read_pReal5(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
  integer :: hdferr
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
 !---------------------------------------------------------------------------------------------------
 ! initialize HDF5 data structures
  if (present(parallel)) then
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,parallel)
+                        myStart, totalShape, loc_id,myShape,datasetName,parallel)
  else
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,.false.)
+                        myStart, totalShape, loc_id,myShape,datasetName,.false.)
  endif
 
- call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,globalShape, hdferr,&
+ call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal5: h5dread_f')
 
@@ -670,26 +670,26 @@ subroutine HDF5_read_pReal6(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
  integer :: hdferr
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
 !---------------------------------------------------------------------------------------------------
 ! initialize HDF5 data structures
  if (present(parallel)) then
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,parallel)
+                        myStart, totalShape, loc_id,myShape,datasetName,parallel)
  else
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,.false.)
+                        myStart, totalShape, loc_id,myShape,datasetName,.false.)
  endif
 
- call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,globalShape, hdferr,&
+ call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal6: h5dread_f')
 
@@ -711,26 +711,26 @@ subroutine HDF5_read_pReal7(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
  integer :: hdferr
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
 !---------------------------------------------------------------------------------------------------
 ! initialize HDF5 data structures
  if (present(parallel)) then
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,parallel)
+                        myStart, totalShape, loc_id,myShape,datasetName,parallel)
  else
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,.false.)
+                        myStart, totalShape, loc_id,myShape,datasetName,.false.)
  endif
 
- call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,globalShape, hdferr,&
+ call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pReal7: h5dread_f')
 
@@ -745,7 +745,7 @@ end subroutine HDF5_read_pReal7
 subroutine HDF5_read_pInt1(loc_id,dataset,datasetName,parallel)
 
  implicit none
- integer(pInt),      intent(inout), dimension(:) :: dataset
+ integer,          intent(inout), dimension(:) :: dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
@@ -753,26 +753,26 @@ subroutine HDF5_read_pInt1(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
  integer :: hdferr
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
 !---------------------------------------------------------------------------------------------------
 ! initialize HDF5 data structures
  if (present(parallel)) then
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,parallel)
+                        myStart, totalShape, loc_id,myShape,datasetName,parallel)
  else
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,.false.)
+                        myStart, totalShape, loc_id,myShape,datasetName,.false.)
  endif
 
- call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,globalShape, hdferr,&
+ call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt1: h5dread_f')
 
@@ -786,7 +786,7 @@ end subroutine HDF5_read_pInt1
 subroutine HDF5_read_pInt2(loc_id,dataset,datasetName,parallel)
 
  implicit none
- integer(pInt),      intent(inout), dimension(:,:) :: dataset
+ integer,           intent(inout), dimension(:,:) :: dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
@@ -794,26 +794,26 @@ subroutine HDF5_read_pInt2(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
  integer :: hdferr
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
 !---------------------------------------------------------------------------------------------------
 ! initialize HDF5 data structures
  if (present(parallel)) then
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,parallel)
+                        myStart, totalShape, loc_id,myShape,datasetName,parallel)
  else
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,.false.)
+                        myStart, totalShape, loc_id,myShape,datasetName,.false.)
  endif
 
- call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,globalShape, hdferr,&
+ call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt2: h5dread_f')
  
@@ -827,7 +827,7 @@ end subroutine HDF5_read_pInt2
 subroutine HDF5_read_pInt3(loc_id,dataset,datasetName,parallel)
 
  implicit none
- integer(pInt),      intent(inout), dimension(:,:,:) :: dataset
+ integer,          intent(inout), dimension(:,:,:) :: dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
@@ -835,26 +835,26 @@ subroutine HDF5_read_pInt3(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
  integer :: hdferr
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
 !---------------------------------------------------------------------------------------------------
 ! initialize HDF5 data structures
  if (present(parallel)) then
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,parallel)
+                        myStart, totalShape, loc_id,myShape,datasetName,parallel)
  else
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,.false.)
+                        myStart, totalShape, loc_id,myShape,datasetName,.false.)
  endif
 
- call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,globalShape, hdferr,&
+ call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt3: h5dread_f')
   
@@ -868,7 +868,7 @@ end subroutine HDF5_read_pInt3
 subroutine HDF5_read_pInt4(loc_id,dataset,datasetName,parallel)
 
  implicit none
- integer(pInt),      intent(inout), dimension(:,:,:,:) :: dataset
+ integer,          intent(inout), dimension(:,:,:,:) :: dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
@@ -876,26 +876,26 @@ subroutine HDF5_read_pInt4(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
  integer :: hdferr
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
 !---------------------------------------------------------------------------------------------------
 ! initialize HDF5 data structures
  if (present(parallel)) then
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,parallel)
+                        myStart, totalShape, loc_id,myShape,datasetName,parallel)
  else
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,.false.)
+                        myStart, totalShape, loc_id,myShape,datasetName,.false.)
  endif
 
- call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,globalShape, hdferr,&
+ call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt4: h5dread_f')
   
@@ -909,7 +909,7 @@ end subroutine HDF5_read_pInt4
 subroutine HDF5_read_pInt5(loc_id,dataset,datasetName,parallel)
 
  implicit none
- integer(pInt),      intent(inout), dimension(:,:,:,:,:) :: dataset
+ integer,          intent(inout), dimension(:,:,:,:,:) :: dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
@@ -917,26 +917,26 @@ subroutine HDF5_read_pInt5(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
  integer :: hdferr
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
 
 !---------------------------------------------------------------------------------------------------
 ! initialize HDF5 data structures
  if (present(parallel)) then
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,parallel)
+                        myStart, totalShape, loc_id,myShape,datasetName,parallel)
  else
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,.false.)
+                        myStart, totalShape, loc_id,myShape,datasetName,.false.)
  endif
 
- call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,globalShape, hdferr,&
+ call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt5: h5dread_f')
   
@@ -950,7 +950,7 @@ end subroutine HDF5_read_pInt5
 subroutine HDF5_read_pInt6(loc_id,dataset,datasetName,parallel)
 
  implicit none
- integer(pInt),      intent(inout), dimension(:,:,:,:,:,:) :: dataset
+ integer,          intent(inout), dimension(:,:,:,:,:,:) :: dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
@@ -958,26 +958,26 @@ subroutine HDF5_read_pInt6(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
  integer :: hdferr
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
 !---------------------------------------------------------------------------------------------------
 ! initialize HDF5 data structures
  if (present(parallel)) then
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,parallel)
+                        myStart, totalShape, loc_id,myShape,datasetName,parallel)
  else
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,.false.)
+                        myStart, totalShape, loc_id,myShape,datasetName,.false.)
  endif
 
- call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,globalShape, hdferr,&
+ call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt6: h5dread_f')
   
@@ -991,7 +991,7 @@ end subroutine HDF5_read_pInt6
 subroutine HDF5_read_pInt7(loc_id,dataset,datasetName,parallel)
 
  implicit none
- integer(pInt),      intent(inout), dimension(:,:,:,:,:,:,:) :: dataset
+ integer,          intent(inout), dimension(:,:,:,:,:,:,:) :: dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
@@ -999,26 +999,26 @@ subroutine HDF5_read_pInt7(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
  integer :: hdferr
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
 !---------------------------------------------------------------------------------------------------
 ! initialize HDF5 data structures
  if (present(parallel)) then
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,parallel)
+                        myStart, totalShape, loc_id,myShape,datasetName,parallel)
  else
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, globalShape, loc_id,localShape,datasetName,.false.)
+                        myStart, totalShape, loc_id,myShape,datasetName,.false.)
  endif
 
- call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,globalShape, hdferr,&
+ call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                 file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_read_pInt7: h5dread_f')
   
@@ -1043,25 +1043,25 @@ subroutine HDF5_write_pReal1(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape,loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
+                         myStart, totalShape,loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape,loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
+                         myStart, totalShape,loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
  endif
 
- call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
+ call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal1: h5dread_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal1: h5dwrite_f')
 
  call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
@@ -1083,25 +1083,25 @@ subroutine HDF5_write_pReal2(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
  endif
 
- call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
+ call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal2: h5dread_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal2: h5dwrite_f')
 
  call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
@@ -1123,25 +1123,25 @@ subroutine HDF5_write_pReal3(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
  endif
 
- call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
+ call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal3: h5dread_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal3: h5dwrite_f')
 
  call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
@@ -1163,25 +1163,25 @@ subroutine HDF5_write_pReal4(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
  endif
 
- call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
+ call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal4: h5dread_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal4: h5dwrite_f')
 
  call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
@@ -1204,25 +1204,25 @@ subroutine HDF5_write_pReal5(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
  endif
 
- call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
+ call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal5: h5dread_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal5: h5dwrite_f')
 
  call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
@@ -1244,25 +1244,25 @@ subroutine HDF5_write_pReal6(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
  endif
 
- call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
+ call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal6: h5dread_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal6: h5dwrite_f')
 
  call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
@@ -1284,25 +1284,25 @@ subroutine HDF5_write_pReal7(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
  endif
 
- call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(globalShape,HSIZE_T), hdferr,&
+ call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal7: h5dread_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pReal7: h5dwrite_f')
 
  call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
@@ -1315,7 +1315,7 @@ end subroutine HDF5_write_pReal7
 subroutine HDF5_write_pInt1(loc_id,dataset,datasetName,parallel)
 
  implicit none
- integer(pInt),      intent(inout), dimension(:) ::    dataset
+ integer,          intent(inout), dimension(:) ::    dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
@@ -1325,25 +1325,25 @@ subroutine HDF5_write_pInt1(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,.false.)
  endif
 
- call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr,&
+ call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt1: h5dread_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt1: h5dwrite_f')
 
  call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
@@ -1355,7 +1355,7 @@ end subroutine HDF5_write_pInt1
 subroutine HDF5_write_pInt2(loc_id,dataset,datasetName,parallel)
 
  implicit none
- integer(pInt),      intent(inout), dimension(:,:) ::    dataset
+ integer,          intent(inout), dimension(:,:) ::    dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
@@ -1365,25 +1365,25 @@ subroutine HDF5_write_pInt2(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,.false.)
  endif
 
- call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr,&
+ call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt2: h5dread_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt2: h5dwrite_f')
 
  call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
@@ -1395,7 +1395,7 @@ end subroutine HDF5_write_pInt2
 subroutine HDF5_write_pInt3(loc_id,dataset,datasetName,parallel)
 
  implicit none
- integer(pInt),      intent(inout), dimension(:,:,:) ::    dataset
+ integer,           intent(inout), dimension(:,:,:) ::    dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
@@ -1405,25 +1405,25 @@ subroutine HDF5_write_pInt3(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,.false.)
  endif
 
- call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr,&
+ call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt3: h5dread_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt3: h5dwrite_f')
 
  call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
@@ -1435,7 +1435,7 @@ end subroutine HDF5_write_pInt3
 subroutine HDF5_write_pInt4(loc_id,dataset,datasetName,parallel)
 
  implicit none
- integer(pInt),      intent(inout), dimension(:,:,:,:) ::    dataset
+ integer,          intent(inout), dimension(:,:,:,:) ::    dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
@@ -1445,25 +1445,25 @@ subroutine HDF5_write_pInt4(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,.false.)
  endif
 
- call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr,&
+ call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt4: h5dread_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt4: h5dwrite_f')
 
  call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
@@ -1475,7 +1475,7 @@ end subroutine HDF5_write_pInt4
 subroutine HDF5_write_pInt5(loc_id,dataset,datasetName,parallel)
 
  implicit none
- integer(pInt),      intent(inout), dimension(:,:,:,:,:) ::    dataset
+ integer,          intent(inout), dimension(:,:,:,:,:) ::    dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
@@ -1485,25 +1485,25 @@ subroutine HDF5_write_pInt5(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,.false.)
  endif
 
- call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr,&
+ call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt5: h5dread_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt5: h5dwrite_f')
 
  call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
@@ -1515,7 +1515,7 @@ end subroutine HDF5_write_pInt5
 subroutine HDF5_write_pInt6(loc_id,dataset,datasetName,parallel)
 
  implicit none
- integer(pInt),      intent(inout), dimension(:,:,:,:,:,:) ::    dataset
+ integer,          intent(inout), dimension(:,:,:,:,:,:) ::    dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
@@ -1525,25 +1525,25 @@ subroutine HDF5_write_pInt6(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,.false.)
  endif
 
- call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr,&
+ call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt6: h5dread_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt6: h5dwrite_f')
 
  call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
@@ -1555,7 +1555,7 @@ end subroutine HDF5_write_pInt6
 subroutine HDF5_write_pInt7(loc_id,dataset,datasetName,parallel)
 
  implicit none
- integer(pInt),      intent(inout), dimension(:,:,:,:,:,:,:) ::    dataset
+ integer,          intent(inout), dimension(:,:,:,:,:,:,:) ::    dataset
  integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
  character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
  logical, intent(in), optional :: parallel
@@ -1565,25 +1565,25 @@ subroutine HDF5_write_pInt7(loc_id,dataset,datasetName,parallel)
  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
  integer(HSIZE_T), dimension(size(shape(dataset))) :: &
    myStart, &
-   localShape, &                                                                                    !< shape of the dataset (this process)
-   globalShape                                                                                      !< shape of the dataset (all processes)
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
 
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
- localShape = int(shape(dataset),HSIZE_T)
- if (any(localShape(1:size(localShape)-1) == 0)) return                                             !< empty dataset (last dimension can be empty)
+ myShape = int(shape(dataset),HSIZE_T)
+ if (any(myShape(1:size(myShape)-1) == 0)) return                                                   !< empty dataset (last dimension can be empty)
 
  if (present(parallel)) then
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,parallel)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
  else
    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                         myStart, globalShape, loc_id,localShape,datasetName,H5T_NATIVE_INTEGER,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,.false.)
  endif
 
- call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(globalShape,HSIZE_T), hdferr,&
+ call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                 file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt7: h5dread_f')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_pInt7: h5dwrite_f')
 
  call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
