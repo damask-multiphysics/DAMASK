@@ -9,7 +9,7 @@
 #include "list.f90"
 #include "future.f90"
 #include "config.f90"
-#ifdef DAMASKHDF5
+#ifdef DAMASK_HDF5
 #include "HDF5_utilities.f90"
 #include "results.f90"
 #endif
