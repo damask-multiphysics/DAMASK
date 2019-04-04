@@ -563,28 +563,34 @@ end function plastic_phenopowerlaw_postResults
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_phenopowerlaw_results(instance,group)
-#if defined(PETSc) || defined(DAMASKHDF5)
- use results
+#if defined(PETSc) || defined(DAMASK_HDF5)
+  use results
 
- implicit none
- integer, intent(in) :: instance
- character(len=*) :: group
- integer :: o
+  implicit none
+  integer,          intent(in) :: instance
+  character(len=*), intent(in) :: group
+  
+  integer :: o
 
- associate(prm => param(instance), stt => state(instance))
- outputsLoop: do o = 1,size(prm%outputID)
-   select case(prm%outputID(o))
-     case (resistance_slip_ID)
-       call results_writeVectorDataset(group,stt%xi_slip,'xi_slip','Pa')
-     case (accumulatedshear_slip_ID)
-       call results_writeVectorDataset(group,stt%gamma_slip,'gamma_slip','-')
-   end select
- enddo outputsLoop
- end associate
+  associate(prm => param(instance), stt => state(instance))
+  outputsLoop: do o = 1,size(prm%outputID)
+    select case(prm%outputID(o))
+      case (resistance_slip_ID)
+        call results_writeDataset(group,stt%xi_slip,   'xi_slip', &
+                                  'resistance against plastic slip','Pa')
+      case (accumulatedshear_slip_ID)
+        call results_writeDataset(group,stt%gamma_slip,'gamma_slip', &
+                                  'plastic slip','1')
+        
+    end select
+  enddo outputsLoop
+  end associate
+  
 #else
- integer, intent(in) :: instance
- character(len=*) :: group
+  integer,          intent(in) :: instance
+  character(len=*), intent(in) :: group
 #endif
+
 end subroutine plastic_phenopowerlaw_results
 
 

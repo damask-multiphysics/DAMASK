@@ -409,8 +409,7 @@ subroutine plastic_isotropic_dotState(Mp,instance,of)
       xi_inf_star = prm%xi_inf
     else
       xi_inf_star = prm%xi_inf &
-                  + asinh( (dot_gamma / prm%c_1)**(1.0_pReal / prm%c_2) &
-                         )**(1.0_pReal / prm%c_3) &
+                  + asinh( (dot_gamma / prm%c_1)**(1.0_pReal / prm%c_2))**(1.0_pReal / prm%c_3) &
                      / prm%c_4 * (dot_gamma / prm%dot_gamma_0)**(1.0_pReal / prm%n)
     endif
     dot%xi(of) = dot_gamma &
@@ -469,7 +468,7 @@ function plastic_isotropic_postResults(Mp,instance,of) result(postResults)
         c = c + 1
       case (dot_gamma_ID)
         postResults(c+1) = prm%dot_gamma_0 &
-                              * (sqrt(1.5_pReal) * norm_Mp /(prm%M * stt%xi(of)))**prm%n
+                         * (sqrt(1.5_pReal) * norm_Mp /(prm%M * stt%xi(of)))**prm%n
         c = c + 1
  
     end select
@@ -484,23 +483,27 @@ end function plastic_isotropic_postResults
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_isotropic_results(instance,group)
-#if defined(PETSc) || defined(DAMASKHDF5)
+#if defined(PETSc) || defined(DAMASK_HDF5)
   use results
 
   implicit none
-  integer, intent(in) :: instance
-  character(len=*) :: group
+  integer,          intent(in) :: instance
+  character(len=*), intent(in) :: group
+  
   integer :: o
 
   associate(prm => param(instance), stt => state(instance))
   outputsLoop: do o = 1,size(prm%outputID)
     select case(prm%outputID(o))
+      case (xi_ID)
+        call results_writeDataset(group,stt%xi,'xi','resistance against plastic flow','Pa')
     end select
   enddo outputsLoop
   end associate
+  
 #else
-  integer, intent(in) :: instance
-  character(len=*) :: group
+  integer,          intent(in) :: instance
+  character(len=*), intent(in) :: group
 #endif
 
 end subroutine plastic_isotropic_results

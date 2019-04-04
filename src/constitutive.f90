@@ -1085,7 +1085,7 @@ subroutine constitutive_results()
     PLASTICITY_DISLOTWIN_ID, &
     PLASTICITY_DISLOUCLA_ID, &
     PLASTICITY_NONLOCAL_ID
-#if defined(PETSc) || defined(DAMASKHDF5)
+#if defined(PETSc) || defined(DAMASK_HDF5)
   use results
   use HDF5_utilities
   use config, only: &

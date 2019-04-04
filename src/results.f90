@@ -18,6 +18,13 @@ module results
   integer(HID_T), public, protected :: tempCoordinates, tempResults
   integer(HID_T), private :: resultsFile, currentIncID, plist_id
 
+ interface results_writeDataset
+   module procedure results_writeTensorDataset_real
+   module procedure results_writeTensorDataset_int
+   module procedure results_writeVectorDataset_real
+   module procedure results_writeVectorDataset_int
+   module procedure results_writeScalarDataset_real
+ end interface results_writeDataset
 
   public :: &
     results_init, &
@@ -26,8 +33,9 @@ module results
     results_addIncrement, &
     results_addGroup, &
     results_openGroup, &
-    results_writeVectorDataset, &
+    results_writeDataset, &
     results_setLink, &
+    results_addAttribute, &
     results_removeLink
 contains
 
@@ -36,13 +44,21 @@ subroutine results_init
     getSolverJobName
 
   implicit none
+  character(len=pStringLen) :: commandLine
 
   write(6,'(/,a)') ' <<<+-  results init  -+>>>'
 
   write(6,'(/,a)') ' Diehl et al., Integrating Materials and Manufacturing Innovation 6(1):83–91, 2017'
   write(6,'(a)')   ' https://doi.org/10.1007/s40192-018-0118-7'
 
-  call HDF5_closeFile(HDF5_openFile(trim(getSolverJobName())//'.hdf5','w',.true.))
+  resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','w',.true.)
+  call HDF5_addAttribute(resultsFile,'DADF5-version',0.1)
+  call HDF5_addAttribute(resultsFile,'DADF5-major',0)
+  call HDF5_addAttribute(resultsFile,'DADF5-minor',1)
+  call HDF5_addAttribute(resultsFile,'DAMASK',DAMASKVERSION)
+  call get_command(commandLine)
+  call HDF5_addAttribute(resultsFile,'call',trim(commandLine))
+  call HDF5_closeFile(resultsFile)
 
 end subroutine results_init
 
@@ -50,18 +66,13 @@ end subroutine results_init
 !--------------------------------------------------------------------------------------------------
 !> @brief opens the results file to append data
 !--------------------------------------------------------------------------------------------------
-subroutine results_openJobFile()
+subroutine results_openJobFile
  use DAMASK_interface, only: &
    getSolverJobName
 
  implicit none
- character(len=pStringLen) :: commandLine
 
  resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','a',.true.)
- call HDF5_addAttribute(resultsFile,'DADF5',0.1_pReal)
- call HDF5_addAttribute(resultsFile,'DAMASK',DAMASKVERSION)
- call get_command(commandLine)
- call HDF5_addAttribute(resultsFile,'call',trim(commandLine))
  
 end subroutine results_openJobFile
 
@@ -69,7 +80,7 @@ end subroutine results_openJobFile
 !--------------------------------------------------------------------------------------------------
 !> @brief closes the results file
 !--------------------------------------------------------------------------------------------------
-subroutine results_closeJobFile()
+subroutine results_closeJobFile
  implicit none
 
  call HDF5_closeFile(resultsFile)
@@ -87,7 +98,7 @@ subroutine results_addIncrement(inc,time)
  real(pReal),   intent(in) :: time
  character(len=pStringLen) :: incChar
 
- write(incChar,*) inc
+ write(incChar,'(i5.5)') inc                                                                        ! allow up to 99999 increments
  call HDF5_closeGroup(results_addGroup(trim('inc'//trim(adjustl(incChar)))))
  call results_setLink(trim('inc'//trim(adjustl(incChar))),'current')
  call HDF5_addAttribute(resultsFile,'time/s',time,trim('inc'//trim(adjustl(incChar))))
@@ -136,6 +147,19 @@ end subroutine results_setLink
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief adds an attribute to an object
+!--------------------------------------------------------------------------------------------------
+subroutine results_addAttribute(attrLabel,attrValue,path)
+
+ implicit none
+ character(len=*), intent(in)  :: attrLabel, attrValue, path
+
+ call HDF5_addAttribute_str(resultsFile,attrLabel, attrValue, path)
+
+end subroutine results_addAttribute
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief remove link to an object
 !--------------------------------------------------------------------------------------------------
 subroutine results_removeLink(link)
@@ -152,22 +176,137 @@ end subroutine results_removeLink
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief stores a scalar dataset in a group
+!--------------------------------------------------------------------------------------------------
+subroutine results_writeScalarDataset_real(group,dataset,label,description,SIunit)
+
+  implicit none
+  character(len=*), intent(in)                  :: label,group,description
+  character(len=*), intent(in),    optional     :: SIunit
+  real(pReal),      intent(inout), dimension(:) :: dataset
+  
+  integer(HID_T) :: groupHandle
+ 
+  groupHandle = results_openGroup(group)
+  
+#ifdef PETSc
+  call HDF5_write(groupHandle,dataset,label,.true.)
+#endif
+  
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Description',description,label)
+  if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
+    call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
+  call HDF5_closeGroup(groupHandle)
+
+end subroutine results_writeScalarDataset_real
+
+!--------------------------------------------------------------------------------------------------
 !> @brief stores a vector dataset in a group
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeVectorDataset(group,dataset,label,SIunit)
+subroutine results_writeVectorDataset_real(group,dataset,label,description,SIunit)
 
- implicit none
- character(len=*), intent(in)                 :: SIunit,label,group
- real(pReal),      intent(inout), dimension(:,:) :: dataset
- integer(HID_T)        :: groupHandle
+  implicit none
+  character(len=*), intent(in)                    :: label,group,description
+  character(len=*), intent(in),    optional       :: SIunit
+  real(pReal),      intent(inout), dimension(:,:) :: dataset
+  
+  integer(HID_T) :: groupHandle
  
- groupHandle = results_openGroup(group)
- call HDF5_write(groupHandle,dataset,label)
- if (HDF5_objectExists(groupHandle,label)) &
-   call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
- call HDF5_closeGroup(groupHandle)
+  groupHandle = results_openGroup(group)
+  
+#ifdef PETSc
+  call HDF5_write(groupHandle,dataset,label,.true.)
+#endif
+  
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Description',description,label)
+  if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
+    call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
+  call HDF5_closeGroup(groupHandle)
 
-end subroutine results_writeVectorDataset
+end subroutine results_writeVectorDataset_real
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief stores a tensor dataset in a group
+!--------------------------------------------------------------------------------------------------
+subroutine results_writeTensorDataset_real(group,dataset,label,description,SIunit)
+
+  implicit none
+  character(len=*), intent(in)                      :: label,group,description
+  character(len=*), intent(in), optional            :: SIunit
+  real(pReal),      intent(inout), dimension(:,:,:) :: dataset
+  
+  integer(HID_T) :: groupHandle
+ 
+  groupHandle = results_openGroup(group)
+  
+#ifdef PETSc
+  call HDF5_write(groupHandle,dataset,label,.true.)
+#endif
+  
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Description',description,label)
+  if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
+    call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
+  call HDF5_closeGroup(groupHandle)
+
+end subroutine results_writeTensorDataset_real
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief stores a vector dataset in a group
+!--------------------------------------------------------------------------------------------------
+subroutine results_writeVectorDataset_int(group,dataset,label,description,SIunit)
+
+  implicit none
+  character(len=*), intent(in)                :: label,group,description
+  character(len=*), intent(in), optional      :: SIunit
+  integer,      intent(inout), dimension(:,:) :: dataset
+  
+  integer(HID_T) :: groupHandle
+ 
+  groupHandle = results_openGroup(group)
+  
+#ifdef PETSc
+  call HDF5_write(groupHandle,dataset,label,.true.)
+#endif
+  
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Description',description,label)
+  if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
+    call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
+  call HDF5_closeGroup(groupHandle)
+
+end subroutine results_writeVectorDataset_int
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief stores a vector dataset in a group
+!--------------------------------------------------------------------------------------------------
+subroutine results_writeTensorDataset_int(group,dataset,label,description,SIunit)
+
+  implicit none
+  character(len=*), intent(in)                  :: label,group,description
+  character(len=*), intent(in), optional        :: SIunit
+  integer,      intent(inout), dimension(:,:,:) :: dataset
+  
+  integer(HID_T) :: groupHandle
+ 
+  groupHandle = results_openGroup(group)
+  
+#ifdef PETSc
+  call HDF5_write(groupHandle,dataset,label,.true.)
+#endif
+  
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Description',description,label)
+  if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
+    call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
+  call HDF5_closeGroup(groupHandle)
+
+end subroutine results_writeTensorDataset_int
 
 
 !--------------------------------------------------------------------------------------------------
