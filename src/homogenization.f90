@@ -38,6 +38,30 @@ module homogenization
    materialpoint_converged
  logical,       dimension(:,:,:),       allocatable, private :: &
    materialpoint_doneAndHappy
+   
+ interface
+
+   module subroutine mech_none_init
+   end subroutine mech_none_init
+   
+   module subroutine mech_isostrain_init
+   end subroutine mech_isostrain_init
+   
+   module subroutine mech_isostrain_partitionDeformation(F,avgF)
+     real(pReal),   dimension (:,:,:), intent(out) :: F                                             !< partitioned deformation gradient
+     real(pReal),   dimension (3,3),   intent(in)  :: avgF                                          !< average deformation gradient at material point
+   end subroutine mech_isostrain_partitionDeformation
+   
+   module subroutine mech_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,instance)
+     real(pReal),   dimension (3,3),       intent(out) :: avgP                                      !< average stress at material point
+     real(pReal),   dimension (3,3,3,3),   intent(out) :: dAvgPdAvgF                                !< average stiffness at material point
+ 
+     real(pReal),   dimension (:,:,:),     intent(in)  :: P                                         !< partitioned stresses
+     real(pReal),   dimension (:,:,:,:,:), intent(in)  :: dPdF                                      !< partitioned stiffnesses
+     integer,                              intent(in)  :: instance 
+   end subroutine mech_isostrain_averageStressAndItsTangent
+
+ end interface
 
  public ::  &
    homogenization_init, &
@@ -77,9 +101,7 @@ subroutine homogenization_init
   config_homogenization, &
   homogenization_name
  use material
- use homogenization_none
- use homogenization_isostrain
- use homogenization_RGC
+ use homogenization_mech_RGC
  use thermal_isothermal
  use thermal_adiabatic
  use thermal_conduction
@@ -100,8 +122,8 @@ subroutine homogenization_init
  logical :: valid
 
 
- if (any(homogenization_type == HOMOGENIZATION_NONE_ID))      call homogenization_none_init
- if (any(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)) call homogenization_isostrain_init
+ if (any(homogenization_type == HOMOGENIZATION_NONE_ID))      call mech_none_init
+ if (any(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)) call mech_isostrain_init
  if (any(homogenization_type == HOMOGENIZATION_RGC_ID))       call homogenization_RGC_init
 
  if (any(thermal_type == THERMAL_isothermal_ID)) call thermal_isothermal_init
@@ -709,9 +731,7 @@ subroutine partitionDeformation(ip,el)
    HOMOGENIZATION_RGC_ID
  use crystallite, only: &
    crystallite_partionedF
- use homogenization_isostrain, only: &
-   homogenization_isostrain_partitionDeformation
- use homogenization_RGC, only: &
+ use homogenization_mech_RGC, only: &
    homogenization_RGC_partitionDeformation
 
  implicit none
@@ -725,7 +745,7 @@ subroutine partitionDeformation(ip,el)
      crystallite_partionedF(1:3,1:3,1,ip,el) = materialpoint_subF(1:3,1:3,ip,el)
 
    case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
-     call homogenization_isostrain_partitionDeformation(&
+     call mech_isostrain_partitionDeformation(&
                           crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
                           materialpoint_subF(1:3,1:3,ip,el))
 
@@ -760,7 +780,7 @@ function updateState(ip,el)
    crystallite_dPdF, &
    crystallite_partionedF,&
    crystallite_partionedF0
- use homogenization_RGC, only: &
+ use homogenization_mech_RGC, only: &
    homogenization_RGC_updateState
  use thermal_adiabatic, only: &
    thermal_adiabatic_updateState
@@ -824,9 +844,7 @@ subroutine averageStressAndItsTangent(ip,el)
    HOMOGENIZATION_RGC_ID
  use crystallite, only: &
    crystallite_P,crystallite_dPdF
- use homogenization_isostrain, only: &
-   homogenization_isostrain_averageStressAndItsTangent
- use homogenization_RGC, only: &
+ use homogenization_mech_RGC, only: &
    homogenization_RGC_averageStressAndItsTangent
 
  implicit none
@@ -840,7 +858,7 @@ subroutine averageStressAndItsTangent(ip,el)
        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el) = crystallite_dPdF(1:3,1:3,1:3,1:3,1,ip,el)
 
    case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
-     call homogenization_isostrain_averageStressAndItsTangent(&
+     call mech_isostrain_averageStressAndItsTangent(&
        materialpoint_P(1:3,1:3,ip,el), &
        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
        crystallite_P(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
@@ -887,7 +905,7 @@ function postResults(ip,el)
    DAMAGE_none_ID, &
    DAMAGE_local_ID, &
    DAMAGE_nonlocal_ID
- use homogenization_RGC, only: &
+ use homogenization_mech_RGC, only: &
    homogenization_RGC_postResults
  use thermal_adiabatic, only: &
    thermal_adiabatic_postResults

@@ -4,20 +4,16 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief dummy homogenization homogenization scheme for 1 constituent per material point
 !--------------------------------------------------------------------------------------------------
-module homogenization_mech_none
+submodule(homogenization) homogenization_mech_none
 
   implicit none
-  private
-  
-  public :: &
-    homogenization_none_init
 
 contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_none_init()
+module subroutine mech_none_init
   use debug, only: &
     debug_HOMOGENIZATION, &
     debug_level, &
@@ -55,6 +51,6 @@ subroutine homogenization_none_init()
  
   enddo
 
-end subroutine homogenization_none_init
+end subroutine mech_none_init
 
-end module homogenization_mech_none
+end submodule homogenization_mech_none

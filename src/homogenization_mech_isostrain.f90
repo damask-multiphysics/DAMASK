@@ -4,36 +4,32 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Isostrain (full constraint Taylor assuption) homogenization scheme
 !--------------------------------------------------------------------------------------------------
-module homogenization_mech_isostrain
+submodule(homogenization) homogenization_mech_isostrain
 
   implicit none
-  private
+
   enum, bind(c) 
     enumerator :: &
       parallel_ID, &
       average_ID
   end enum
  
-  type, private :: tParameters                                                                      !< container type for internal constitutive parameters
+  type :: tParameters                                                                               !< container type for internal constitutive parameters
     integer :: &
       Nconstituents
     integer(kind(average_ID)) :: &
       mapping
   end type
  
-  type(tParameters), dimension(:), allocatable, private :: param                                    !< containers of constitutive parameters (len Ninstance)
- 
-  public :: &
-    homogenization_isostrain_init, &
-    homogenization_isostrain_partitionDeformation, &
-    homogenization_isostrain_averageStressAndItsTangent
+  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstance)
+  
 
 contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_isostrain_init
+module subroutine mech_isostrain_init
   use debug, only: &
     debug_HOMOGENIZATION, &
     debug_level, &
@@ -94,15 +90,13 @@ subroutine homogenization_isostrain_init
  
   enddo
 
-end subroutine homogenization_isostrain_init
+end subroutine mech_isostrain_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief partitions the deformation gradient onto the constituents
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_isostrain_partitionDeformation(F,avgF)
-  use prec, only: &
-    pReal
+module subroutine mech_isostrain_partitionDeformation(F,avgF)
   
   implicit none
   real(pReal),   dimension (:,:,:), intent(out) :: F                                                !< partitioned deformation gradient
@@ -111,15 +105,13 @@ subroutine homogenization_isostrain_partitionDeformation(F,avgF)
  
   F = spread(avgF,3,size(F,3))
 
-end subroutine homogenization_isostrain_partitionDeformation
+end subroutine mech_isostrain_partitionDeformation
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief derive average stress and stiffness from constituent quantities 
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,instance)
-  use prec, only: &
-    pReal
+module subroutine mech_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,instance)
   
   implicit none
   real(pReal),   dimension (3,3),       intent(out) :: avgP                                         !< average stress at material point
@@ -128,7 +120,7 @@ subroutine homogenization_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P
   real(pReal),   dimension (:,:,:),     intent(in)  :: P                                            !< partitioned stresses
   real(pReal),   dimension (:,:,:,:,:), intent(in)  :: dPdF                                         !< partitioned stiffnesses
   integer,                              intent(in)  :: instance 
- 
+   
   associate(prm => param(instance))
   
   select case (prm%mapping)
@@ -142,6 +134,6 @@ subroutine homogenization_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P
   
   end associate
 
-end subroutine homogenization_isostrain_averageStressAndItsTangent
+end subroutine mech_isostrain_averageStressAndItsTangent
 
-end module homogenization_mech_isostrain
+end submodule homogenization_mech_isostrain

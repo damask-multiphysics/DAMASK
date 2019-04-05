@@ -337,9 +337,6 @@ elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -fimplicit-none")
   # assume "implicit none" even if not present in source
 
-  set (COMPILE_FLAGS "${COMPILE_FLAGS} -fmodule-private")
-  # assume "private" even if not present in source
-
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -Wall")
   # sets the following Fortran options:
   #   -Waliasing:                   warn about possible aliasing of dummy arguments. Specifically, it warns if the same actual argument is associated with a dummy argument with "INTENT(IN)" and a dummy argument with "INTENT(OUT)" in a call with an explicit interface.
