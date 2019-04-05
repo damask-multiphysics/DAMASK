@@ -9,7 +9,7 @@ module constitutive
 
  implicit none
  private
- integer(pInt), public, protected :: &
+ integer, public, protected :: &
    constitutive_plasticity_maxSizePostResults, &
    constitutive_plasticity_maxSizeDotState, &
    constitutive_source_maxSizePostResults, &
@@ -37,7 +37,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates arrays pointing to array of the various constitutive modules
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_init()
+subroutine constitutive_init
  use prec, only: &
    pReal
  use debug, only: &
@@ -111,14 +111,14 @@ subroutine constitutive_init()
  use kinematics_thermal_expansion
 
  implicit none
- integer(pInt), parameter :: FILEUNIT = 204_pInt
- integer(pInt) :: &
+ integer, parameter :: FILEUNIT = 204
+ integer :: &
    o, &                                                                                             !< counter in output loop
    ph, &                                                                                            !< counter in phase loop
    s, &                                                                                             !< counter in source loop
    ins                                                                                              !< instance of plasticity/source
 
- integer(pInt), dimension(:,:), pointer :: thisSize
+ integer, dimension(:,:), pointer :: thisSize
  character(len=64), dimension(:,:), pointer :: thisOutput
  character(len=32) :: outputName                                                                    !< name of output, intermediate fix until HDF5 output is ready
  logical :: knownPlasticity, knownSource, nonlocalConstitutionPresent
@@ -157,7 +157,7 @@ subroutine constitutive_init()
 !--------------------------------------------------------------------------------------------------
 ! write description file for constitutive output
    call IO_write_jobFile(FILEUNIT,'outputConstitutive')
-   PhaseLoop: do ph = 1_pInt,material_Nphase
+   PhaseLoop: do ph = 1,material_Nphase
      activePhase: if (any(material_phase == ph)) then
        ins = phase_plasticityInstance(ph)
        knownPlasticity = .true.                                                                     ! assume valid
@@ -197,14 +197,14 @@ subroutine constitutive_init()
        if (knownPlasticity) then
          write(FILEUNIT,'(a)') '(plasticity)'//char(9)//trim(outputName)
          if (phase_plasticity(ph) /= PLASTICITY_NONE_ID) then
-           OutputPlasticityLoop: do o = 1_pInt,size(thisOutput(:,ins))
-             if(len(trim(thisOutput(o,ins))) > 0_pInt) &
+           OutputPlasticityLoop: do o = 1,size(thisOutput(:,ins))
+             if(len(trim(thisOutput(o,ins))) > 0) &
                write(FILEUNIT,'(a,i4)') trim(thisOutput(o,ins))//char(9),thisSize(o,ins)
            enddo OutputPlasticityLoop
          endif
        endif
        
-       SourceLoop: do s = 1_pInt, phase_Nsources(ph)
+       SourceLoop: do s = 1, phase_Nsources(ph)
          knownSource = .true.                                                                       ! assume valid
          sourceType: select case (phase_source(s,ph))
            case (SOURCE_thermal_dissipation_ID) sourceType
@@ -242,8 +242,8 @@ subroutine constitutive_init()
          end select sourceType
          if (knownSource) then
            write(FILEUNIT,'(a)') '(source)'//char(9)//trim(outputName)
-           OutputSourceLoop: do o = 1_pInt,size(thisOutput(:,ins))
-             if(len(trim(thisOutput(o,ins))) > 0_pInt) &
+           OutputSourceLoop: do o = 1,size(thisOutput(:,ins))
+             if(len(trim(thisOutput(o,ins))) > 0) &
                write(FILEUNIT,'(a,i4)') trim(thisOutput(o,ins))//char(9),thisSize(o,ins)
            enddo OutputSourceLoop
          endif
@@ -253,17 +253,17 @@ subroutine constitutive_init()
    close(FILEUNIT)
  endif mainProcess
 
- constitutive_plasticity_maxSizeDotState = 0_pInt
- constitutive_plasticity_maxSizePostResults = 0_pInt
- constitutive_source_maxSizeDotState = 0_pInt
- constitutive_source_maxSizePostResults = 0_pInt
+ constitutive_plasticity_maxSizeDotState = 0
+ constitutive_plasticity_maxSizePostResults = 0
+ constitutive_source_maxSizeDotState = 0
+ constitutive_source_maxSizePostResults = 0
 
- PhaseLoop2:do ph = 1_pInt,material_Nphase
+ PhaseLoop2:do ph = 1,material_Nphase
 !--------------------------------------------------------------------------------------------------
 ! partition and inititalize state
    plasticState(ph)%partionedState0 = plasticState(ph)%state0
    plasticState(ph)%state           = plasticState(ph)%partionedState0
-   forall(s = 1_pInt:phase_Nsources(ph))
+   forall(s = 1:phase_Nsources(ph))
      sourceState(ph)%p(s)%partionedState0 = sourceState(ph)%p(s)%state0
      sourceState(ph)%p(s)%state           = sourceState(ph)%p(s)%partionedState0
    end forall
@@ -302,7 +302,7 @@ function constitutive_homogenizedC(ipc,ip,el)
 
  implicit none
  real(pReal), dimension(6,6) :: constitutive_homogenizedC
- integer(pInt), intent(in) :: &
+ integer, intent(in) :: &
    ipc, &                                                                                            !< component-ID of integration point
    ip, &                                                                                             !< integration point
    el                                                                                                !< element
@@ -341,14 +341,14 @@ subroutine constitutive_microstructure(Fe, Fp, ipc, ip, el)
    plastic_disloUCLA_dependentState
 
  implicit none
- integer(pInt), intent(in) :: &
+ integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
  real(pReal),   intent(in), dimension(3,3) :: &
    Fe, &                                                                                            !< elastic deformation gradient
    Fp                                                                                               !< plastic deformation gradient
- integer(pInt) :: &
+ integer :: &
    ho, &                                                                                            !< homogenization
    tme, &                                                                                           !< thermal member position
    instance, of
@@ -412,7 +412,7 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
    plastic_nonlocal_LpAndItsTangent
 
  implicit none
- integer(pInt), intent(in) :: &
+ integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
@@ -428,10 +428,10 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
    dLp_dMp                                                                                          !< derivative of Lp with respect to Mandel stress
  real(pReal), dimension(3,3) :: &
    Mp                                                                                               !< Mandel stress work conjugate with Lp
- integer(pInt) :: &
+ integer :: &
    ho, &                                                                                            !< homogenization
    tme                                                                                              !< thermal member position
- integer(pInt) :: &
+ integer :: &
    i, j, instance, of
 
  ho = material_homogenizationAt(el)
@@ -519,7 +519,7 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
    kinematics_thermal_expansion_LiAndItsTangent
 
  implicit none
- integer(pInt), intent(in) :: &
+ integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
@@ -541,7 +541,7 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
    my_dLi_dS
  real(pReal) :: &
    detFi
- integer(pInt) :: &
+ integer :: &
    k, i, j, &
    instance, of
 
@@ -562,7 +562,7 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
  Li = Li + my_Li
  dLi_dS = dLi_dS + my_dLi_dS
 
- KinematicsLoop: do k = 1_pInt, phase_Nkinematics(material_phase(ipc,ip,el))
+ KinematicsLoop: do k = 1, phase_Nkinematics(material_phase(ipc,ip,el))
    kinematicsType: select case (phase_kinematics(k,material_phase(ipc,ip,el)))
      case (KINEMATICS_cleavage_opening_ID) kinematicsType
        call kinematics_cleavage_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, ipc, ip, el)
@@ -583,7 +583,7 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
  Li = matmul(matmul(Fi,Li),FiInv)*detFi                                               !< push forward to intermediate configuration
  temp_33 = matmul(FiInv,Li)
 
- do i = 1_pInt,3_pInt; do j = 1_pInt,3_pInt
+ do i = 1,3; do j = 1,3
    dLi_dS(1:3,1:3,i,j)  = matmul(matmul(Fi,dLi_dS(1:3,1:3,i,j)),FiInv)*detFi
    dLi_dFi(1:3,1:3,i,j) = dLi_dFi(1:3,1:3,i,j) + Li*FiInv(j,i)
    dLi_dFi(1:3,i,1:3,j) = dLi_dFi(1:3,i,1:3,j) + math_I3*temp_33(j,i) + Li*FiInv(j,i)
@@ -612,22 +612,22 @@ pure function constitutive_initialFi(ipc, ip, el)
    kinematics_thermal_expansion_initialStrain
 
  implicit none
- integer(pInt), intent(in) :: &
+ integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
  real(pReal), dimension(3,3) :: &
    constitutive_initialFi                                                                           !< composite initial intermediate deformation gradient
- integer(pInt) :: &
+ integer :: &
    k                                                                                                !< counter in kinematics loop
- integer(pInt) :: &
+ integer :: &
    phase, &
    homog, offset
 
  constitutive_initialFi = math_I3
  phase = material_phase(ipc,ip,el)
 
- KinematicsLoop: do k = 1_pInt, phase_Nkinematics(phase)                                            !< Warning: small initial strain assumption
+ KinematicsLoop: do k = 1, phase_Nkinematics(phase)                                            !< Warning: small initial strain assumption
    kinematicsType: select case (phase_kinematics(k,phase))
      case (KINEMATICS_thermal_expansion_ID) kinematicsType
        homog = material_homogenizationAt(el)
@@ -650,7 +650,7 @@ subroutine constitutive_SandItsTangents(S, dS_dFe, dS_dFi, Fe, Fi, ipc, ip, el)
    pReal
 
  implicit none
- integer(pInt), intent(in) :: &
+ integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
@@ -691,7 +691,7 @@ subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
    STIFFNESS_DEGRADATION_damage_ID
 
  implicit none
- integer(pInt), intent(in) :: &
+ integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
@@ -705,19 +705,19 @@ subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
    dS_dFi                                                                                           !< derivative of 2nd P-K stress with respect to intermediate deformation gradient
  real(pReal), dimension(3,3) :: E
  real(pReal), dimension(3,3,3,3) :: C
- integer(pInt) :: &
+ integer :: &
    ho, &                                                                                            !< homogenization
    d                                                                                                !< counter in degradation loop
- integer(pInt) :: &
+ integer :: &
    i, j
 
  ho = material_homogenizationAt(el)
  C = math_66toSym3333(constitutive_homogenizedC(ipc,ip,el))
 
- DegradationLoop: do d = 1_pInt, phase_NstiffnessDegradations(material_phase(ipc,ip,el))
+ DegradationLoop: do d = 1, phase_NstiffnessDegradations(material_phase(ipc,ip,el))
    degradationType: select case(phase_stiffnessDegradation(d,material_phase(ipc,ip,el)))
      case (STIFFNESS_DEGRADATION_damage_ID) degradationType
-       C = C * damage(ho)%p(damageMapping(ho)%p(ip,el))**2_pInt
+       C = C * damage(ho)%p(damageMapping(ho)%p(ip,el))**2
    end select degradationType
  enddo DegradationLoop
 
@@ -725,7 +725,7 @@ subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
  S = math_mul3333xx33(C,matmul(matmul(transpose(Fi),E),Fi))                           !< 2PK stress in lattice configuration in work conjugate with GL strain pulled back to lattice configuration
 
  dS_dFe = 0.0_pReal
- forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt)
+ forall (i=1:3, j=1:3)
    dS_dFe(i,j,1:3,1:3) = &
      matmul(Fe,matmul(matmul(Fi,C(i,j,1:3,1:3)),transpose(Fi)))                !< dS_ij/dFe_kl = C_ijmn * Fi_lm * Fi_on * Fe_ko
    dS_dFi(i,j,1:3,1:3) = 2.0_pReal*matmul(matmul(E,Fi),C(i,j,1:3,1:3))                !< dS_ij/dFi_kl = C_ijln * E_km * Fe_mn
@@ -790,7 +790,7 @@ subroutine constitutive_collectDotState(S, FeArray, Fi, FpArray, subdt, ipc, ip,
    source_thermal_externalheat_dotState
 
  implicit none
- integer(pInt), intent(in) :: &
+ integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
@@ -805,7 +805,7 @@ subroutine constitutive_collectDotState(S, FeArray, Fi, FpArray, subdt, ipc, ip,
    S                                                                                                !< 2nd Piola Kirchhoff stress (vector notation)
  real(pReal),              dimension(3,3) :: &
    Mp
- integer(pInt) :: &
+ integer :: &
    ho, &                                                                                            !< homogenization
    tme, &                                                                                           !< thermal member position
    i, &                                                                                             !< counter in source loop
@@ -848,7 +848,7 @@ subroutine constitutive_collectDotState(S, FeArray, Fi, FpArray, subdt, ipc, ip,
                                          subdt,ip,el)
  end select plasticityType
 
- SourceLoop: do i = 1_pInt, phase_Nsources(material_phase(ipc,ip,el))
+ SourceLoop: do i = 1, phase_Nsources(material_phase(ipc,ip,el))
 
    sourceType: select case (phase_source(i,material_phase(ipc,ip,el)))
 
@@ -900,7 +900,7 @@ subroutine constitutive_collectDeltaState(S, Fe, Fi, ipc, ip, el)
    source_damage_isoBrittle_deltaState
 
  implicit none
- integer(pInt), intent(in) :: &
+ integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
@@ -910,7 +910,7 @@ subroutine constitutive_collectDeltaState(S, Fe, Fi, ipc, ip, el)
    Fi                                                                                               !< intermediate deformation gradient
  real(pReal),               dimension(3,3) :: &
    Mp
- integer(pInt) :: &
+ integer :: &
    i, &
    instance, of
 
@@ -928,7 +928,7 @@ subroutine constitutive_collectDeltaState(S, Fe, Fi, ipc, ip, el)
 
  end select plasticityType
 
- sourceLoop: do i = 1_pInt, phase_Nsources(material_phase(ipc,ip,el))
+ sourceLoop: do i = 1, phase_Nsources(material_phase(ipc,ip,el))
 
     sourceType: select case (phase_source(i,material_phase(ipc,ip,el)))
 
@@ -994,7 +994,7 @@ function constitutive_postResults(S, Fi, ipc, ip, el)
    source_damage_anisoDuctile_postResults
 
  implicit none
- integer(pInt), intent(in) :: &
+ integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
@@ -1007,9 +1007,9 @@ function constitutive_postResults(S, Fi, ipc, ip, el)
    S                                                                                                !< 2nd Piola Kirchhoff stress
  real(pReal), dimension(3,3) :: &
    Mp                                                                                               !< Mandel stress
- integer(pInt) :: &
+ integer :: &
    startPos, endPos
- integer(pInt) :: &
+ integer :: &
    ho, &                                                                                            !< homogenization
    tme, &                                                                                           !< thermal member position
    i, of, instance                                                                                  !< counter in source loop
@@ -1021,7 +1021,7 @@ function constitutive_postResults(S, Fi, ipc, ip, el)
  ho = material_homogenizationAt(el)
  tme = thermalMapping(ho)%p(ip,el)
 
- startPos = 1_pInt
+ startPos = 1
  endPos = plasticState(material_phase(ipc,ip,el))%sizePostResults
 
  of = phasememberAt(ipc,ip,el)
@@ -1054,8 +1054,8 @@ function constitutive_postResults(S, Fi, ipc, ip, el)
 
  end select plasticityType
 
- SourceLoop: do i = 1_pInt, phase_Nsources(material_phase(ipc,ip,el))
-   startPos = endPos + 1_pInt
+ SourceLoop: do i = 1, phase_Nsources(material_phase(ipc,ip,el))
+   startPos = endPos + 1
    endPos = endPos + sourceState(material_phase(ipc,ip,el))%p(i)%sizePostResults
    of = phasememberAt(ipc,ip,el)
    sourceType: select case (phase_source(i,material_phase(ipc,ip,el)))
