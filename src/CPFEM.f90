@@ -72,6 +72,12 @@ subroutine CPFEM_initAll(el,ip)
    mesh_init
  use material, only: &
    material_init
+#ifdef DAMASK_HDF5
+ use HDF5_utilities, only: &
+   HDF5_utilities_init
+ use results, only: &
+   results_init
+#endif
  use lattice, only: &
    lattice_init
  use constitutive, only: &
@@ -100,6 +106,10 @@ subroutine CPFEM_initAll(el,ip)
      call FE_init
      call mesh_init(ip, el)
      call lattice_init
+#ifdef DAMASK_HDF5
+     call HDF5_utilities_init
+     call results_init
+#endif
      call material_init
      call constitutive_init
      call crystallite_init

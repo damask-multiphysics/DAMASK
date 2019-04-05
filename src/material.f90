@@ -274,7 +274,7 @@ contains
 !> material.config
 !--------------------------------------------------------------------------------------------------
 subroutine material_init
-#ifdef DAMASK_HDF5
+#if defined(PETSc) || defined(DAMASK_HDF5)
  use results
 #endif
  use IO, only: &
@@ -413,9 +413,10 @@ subroutine material_init
    enddo
  enddo
  
-#ifdef DAMASK_HDF5
+#if defined(PETSc) || defined(DAMASK_HDF5)
  call results_openJobFile
  call results_mapping_constituent(material_phaseAt,material_phaseMemberAt,phase_name)
+ call results_mapping_materialpoint(material_homogenizationAt,material_homogenizationMemberAt,homogenization_name)
  call results_closeJobFile
 #endif
 
