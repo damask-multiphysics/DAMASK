@@ -33,7 +33,8 @@ module results
     results_writeDataset, &
     results_setLink, &
     results_addAttribute, &
-    results_removeLink
+    results_removeLink, &
+    results_mapping_constituent
 contains
 
 subroutine results_init
@@ -308,229 +309,140 @@ end subroutine results_writeTensorDataset_int
 !--------------------------------------------------------------------------------------------------
 !> @brief adds the unique mapping from spatial position and constituent ID to results
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_mapping_phase(phaseAt,memberAt,label)
+subroutine results_mapping_constituent(phaseAt,memberAt,label)
   use numerics, only: &
     worldrank, &
     worldsize
     
-  integer,           dimension(:,:),   intent(in)  :: phaseAt
-  integer,           dimension(:,:,:), intent(in)  :: memberAt
-  character(len=64), dimension(:),     intent(in)  :: label
+  integer,           dimension(:,:),   intent(in)  :: phaseAt                                       !< phase section at (constituent,element)
+  integer,           dimension(:,:,:), intent(in)  :: memberAt                                      !< phase member at (constituent,IP, element)
+  character(len=64), dimension(:),     intent(in)  :: label                                         !< label of each phase section
   
-  integer,           dimension(:,:),   allocatable :: memberAt_global
+  integer, dimension(size(memberAt,1),size(memberAt,2),size(memberAt,3)) :: &
+    phaseAt_perIP, &
+    memberAt_total
+  integer, dimension(size(label),0:worldsize-1) :: memberOffset                                     !< offset in member counting per process
+  integer, dimension(0:worldsize-1)             :: writeSize                                        !< amount of data written per process
+  integer(HSIZE_T), dimension(2) :: &
+    myShape, &                                                                                      !< shape of the dataset (this process)
+    myOffset, &
+    totalShape                                                                                      !< shape of the dataset (all processes)
   
-  integer, dimension(size(label),0:worldsize-1) :: members
-  integer, dimension(0:worldsize-1)             :: writeSize     
+  integer(HID_T) :: &
+    loc_id, &                                                                                       !< identifier of group in file
+    dtype_id, &                                                                                     !< identifier of compound data type
+    name_id, &                                                                                      !< identifier of name (string) in compound data type
+    position_id, &                                                                                  !< identifier of position/index (integer) in compound data type
+    dset_id, &
+    memspace_id, &
+    filespace_id, &
+    plist_id, &
+    dt_id
+
   
-  integer(HID_T)  :: loc_id, dtype_id, dset_id, space_id, name_id, plist_id, dt5_id
-  integer(HID_T), dimension(size(memberAt,1))  :: position_id
-  
-  integer(SIZE_T) :: typesize, type_size_string, type_size_int, type_size_compound
+  integer(SIZE_T) :: type_size_string, type_size_int
   integer         :: ierr, i
   
-  character(len=1) :: constituent_number
-
-  memberAt_global = reshape(memberAt,[size(memberAt,1),size(memberAt)/size(memberAt,1)])
-
 !---------------------------------------------------------------------------------------------------
-! property list for transfer properties (needed for MPI)
+! compound type: name of phase section + position/index within results array
+  call h5tcopy_f(H5T_NATIVE_CHARACTER, dt_id, ierr)
+  call h5tset_size_f(dt_id, int(len(label(1)),SIZE_T), ierr)
+  call h5tget_size_f(dt_id, type_size_string, ierr)
+  
+  call h5tget_size_f(H5T_NATIVE_INTEGER, type_size_int, ierr)
+  
+  call h5tcreate_f(H5T_COMPOUND_F, type_size_string + type_size_int, dtype_id, ierr)
+  call h5tinsert_f(dtype_id, "Name", 0_SIZE_T, dt_id,ierr)
+  call h5tinsert_f(dtype_id, "Position", type_size_string, H5T_NATIVE_INTEGER, ierr)
+  
+!--------------------------------------------------------------------------------------------------
+! create memory types for each component of the compound type
+  call h5tcreate_f(H5T_COMPOUND_F, type_size_string, name_id, ierr)
+  call h5tinsert_f(name_id, "Name", 0_SIZE_T, dt_id, ierr)
+  
+  call h5tcreate_f(H5T_COMPOUND_F, type_size_int, position_id, ierr)
+  call h5tinsert_f(position_id, "Position", 0_SIZE_T, H5T_NATIVE_INTEGER, ierr)
+  
+  call h5tclose_f(dt_id, ierr)
+
+!--------------------------------------------------------------------------------------------------
+! prepare MPI communication (transparent for non-MPI runs)
   call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, ierr)
-
-!---------------------------------------------------------------------------------------------------
-! compound type: name of phase section + position(s) within results array
-  call h5tcopy_f(H5T_NATIVE_CHARACTER, dt5_id, ierr)
-  call h5tset_size_f(dt5_id, int(len(label(1)),SIZE_T), ierr)
-  call h5tget_size_f(dt5_id, type_size_string, ierr)
-  call h5tget_size_f(H5T_STD_I32LE, type_size_int, ierr)
-  type_size_compound = type_size_string + type_size_int*size(memberAt,1)                            ! total size of derived type
-  
-  call h5tcreate_f(H5T_COMPOUND_F, type_size_compound, dtype_id, ierr)
-  call h5tinsert_f(dtype_id, "Name",  0_SIZE_T, dt5_id, ierr)
-  do i=1, size(memberAt,1)
-    write(constituent_number, '(i0)') i
-    call h5tinsert_f(dtype_id, "Index "//trim(constituent_number),type_size_string+(i-1)*type_size_int,&
-                    H5T_STD_I32LE, ierr)
-  enddo
-  
-!--------------------------------------------------------------------------------------------------
-! Create memory types for each component of the compound type
-  call h5tcreate_f(H5T_COMPOUND_F, int(type_size_string,SIZE_T), name_id, ierr)
-  call h5tinsert_f(name_id, "Name",0_SIZE_T, dt5_id, ierr)
-  do i=1, size(memberAt,1)
-    write(constituent_number, '(i0)') i
-    call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), position_id(i), ierr)
-    call h5tinsert_f(position_id(i), "Index "//trim(constituent_number), 0_SIZE_T, H5T_STD_I32LE, ierr)
-  enddo
-  
-!--------------------------------------------------------------------------------------------------
-! Prepare MPI communication (transparent for non-MPI runs)
-  members = 0
+  memberOffset = 0
   do i=1, size(label)
-    members(i,worldrank) = count(memberAt == i)                                                     ! number of points/instance of this process
+    memberOffset(i,worldrank) = count(phaseAt == i)*size(memberAt,2)                                ! number of points/instance of this process
   enddo
   writeSize = 0
-  writeSize(worldrank) = sum(members(:,worldrank))                                                  ! total number of points by this process
-  
+  writeSize(worldrank) = size(memberAt(1,:,:))                                                      ! total number of points by this process
+
+!--------------------------------------------------------------------------------------------------
+! MPI settings and communication
 #ifdef PETSc
  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, ierr)
- if (ierr < 0) call IO_error(1,ext_msg='IO_mappingConstituent: h5pset_dxpl_mpio_f')
+ if (ierr < 0) call IO_error(1,ext_msg='HDF5_mapping_phase: h5pset_dxpl_mpio_f')
  
- call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)         ! get total output size over each process
- if (ierr /= 0) call IO_error(894_pInt,ext_msg='IO_mappingConstituent: MPI_allreduce')
+ call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)         ! get output at each process
+ if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_mapping_phase: MPI_allreduce/writeSize')
  
- call MPI_allreduce(MPI_IN_PLACE,members,size(members),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
- if (ierr /= 0) call IO_error(894_pInt,ext_msg='IO_mappingConstituent: MPI_allreduce')
+ call MPI_allreduce(MPI_IN_PLACE,memberOffset,size(memberOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr) ! get offset at each process
+ if (ierr /= 0) call IO_error(894_pInt,ext_msg='HDF5_mapping_phase: MPI_allreduce/memberOffset')
 #endif
 
-
- members(:,worldrank) = sum(members(:,0:worldrank-1),2)                                             ! starting id for each instance of this process
+ myShape    = int([size(phaseAt,1),writeSize(worldrank)],  HSIZE_T)
+ myOffset   = int([0,sum(writeSize(0:worldrank-1))],       HSIZE_T)
+ totalShape = int([size(phaseAt,1),sum(writeSize)],        HSIZE_T)
   
+!--------------------------------------------------------------------------------------------------
+! create dataspace in memory (local shape = hyperslab) and in file (global shape)
+ call h5screate_simple_f(2,myShape,memspace_id,ierr,myShape)
+ if (ierr < 0) call IO_error(1_pInt,ext_msg='HDF5_mapping_phase: h5screate_simple_f/memspace_id')
+ 
+ call h5screate_simple_f(2,totalShape,filespace_id,ierr,totalShape)
+ if (ierr < 0) call IO_error(1_pInt,ext_msg='HDF5_mapping_phase: h5screate_simple_f/filespace_id')
+ 
+ call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myOffset, myShape, ierr)
+ if (ierr < 0) call IO_error(1_pInt,ext_msg='HDF5_mapping_phase: h5sselect_hyperslab_f')
 
-
-  loc_id = results_openGroup('/mapping/cellResults')
+!---------------------------------------------------------------------------------------------------
+! expand phaseAt to consider IPs (is not stored per IP)
+  do i = 1, size(phaseAt_perIP,2)
+    phaseAt_perIP(:,i,:) = phaseAt
+  enddo
   
-  
-  call HDF5_closeGroup(loc_id)
+!---------------------------------------------------------------------------------------------------
+! renumber member from my process to all processes
+  do i = 1, size(label)
+    where(phaseAt_perIP == i) memberAt_total = memberAt + sum(memberOffset(i,0:worldrank-1))
+  enddo
 
-end subroutine
+!--------------------------------------------------------------------------------------------------
+! write the components of the compound type individually
+ call h5pset_preserve_f(plist_id, .TRUE., ierr)
+ 
+ loc_id = results_openGroup('/mapping/cellResults')
+ call h5dcreate_f(loc_id, 'constituent', dtype_id, filespace_id, dset_id, ierr)
+ if (ierr < 0) call IO_error(1_pInt,ext_msg='HDF5_mapping_phase: h5dcreate_f')
+ 
+ call h5dwrite_f(dset_id, name_id, reshape(label(pack(phaseAt_perIP,.true.)),myShape), &
+                 myShape, ierr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+ if (ierr < 0) call IO_error(1_pInt,ext_msg='HDF5_mapping_phase: h5dwrite_f/name_id')
+ call h5dwrite_f(dset_id, position_id, reshape(pack(memberAt_total,.true.),myShape), &
+                 myShape, ierr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+ if (ierr < 0) call IO_error(1_pInt,ext_msg='HDF5_mapping_phase: h5dwrite_f/position_id')
 
-!!--------------------------------------------------------------------------------------------------
-!!> @brief adds the unique mapping from spatial position and constituent ID to results
-!!--------------------------------------------------------------------------------------------------
-!subroutine HDF5_mappingPhase(mapping,mapping2,Nconstituents,material_phase,phase_name,dataspace_size,mpiOffset,mpiOffset_phase)
+!--------------------------------------------------------------------------------------------------
+! close all
+ call HDF5_closeGroup(loc_id)
+ call h5pclose_f(plist_id, ierr)
+ call h5sclose_f(filespace_id, ierr)
+ call h5sclose_f(memspace_id, ierr)
+ call h5dclose_f(dset_id, ierr)
+ call h5tclose_f(dtype_id, ierr)
+ call h5tclose_f(name_id, ierr)
+ call h5tclose_f(position_id, ierr)
 
-! implicit none
-! integer(pInt),    intent(in)                   :: Nconstituents, dataspace_size, mpiOffset
-! integer(pInt),    intent(in), dimension(:)     :: mapping, mapping2
-! character(len=*), intent(in), dimension(:)     :: phase_name
-! integer(pInt),    intent(in), dimension(:)     :: mpiOffset_phase
-! integer(pInt),    intent(in), dimension(:,:,:) :: material_phase
+end subroutine results_mapping_constituent
 
-! character(len=len(phase_name(1))), dimension(:), allocatable :: namesNA
-! character(len=len(phase_name(1)))                            :: a
-! character(len=*),                  parameter                 :: n = "NULL"
-
-! integer(pInt)   :: hdferr, NmatPoints, i, j, k
-! integer(HID_T)  :: mapping_id, dtype_id, dset_id, space_id, name_id, position_id, plist_id, memspace
-! integer(HID_T)  :: dt5_id      ! Memory datatype identifier
-! integer(SIZE_T) :: typesize, type_sizec, type_sizei, type_size
-
-! integer(HSIZE_T),  dimension(2)                :: counter
-! integer(HSSIZE_T), dimension(2)                :: fileOffset
-! integer(pInt),     dimension(:,:), allocatable :: arrOffset
-
-! a = n
-! allocate(namesNA(0:size(phase_name)),source=[a,phase_name])
-! NmatPoints = size(mapping,1)/Nconstituents
-! mapping_ID = results_openGroup("current/mapGeometry")
-
-! allocate(arrOffset(Nconstituents,NmatPoints))
-! do i=1_pInt, NmatPoints
-!   do k=1_pInt, Nconstituents
-!     do j=1_pInt, size(phase_name)
-!       if(material_phase(k,1,i) == j) &
-!         arrOffset(k,i) = mpiOffset_phase(j)
-!     enddo
-!   enddo
-! enddo
-
-!!--------------------------------------------------------------------------------------------------
-!! create dataspace
-! call h5screate_simple_f(2, int([Nconstituents,dataspace_size],HSIZE_T), space_id, hdferr, &
-!                            int([Nconstituents,dataspace_size],HSIZE_T))
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeMapping')
-
-!!--------------------------------------------------------------------------------------------------
-!! compound type
-!     ! First calculate total size by calculating sizes of each member
-!     !
-!     CALL h5tcopy_f(H5T_NATIVE_CHARACTER, dt5_id, hdferr)
-!     typesize = len(phase_name(1))
-!     CALL h5tset_size_f(dt5_id, typesize, hdferr)
-!     CALL h5tget_size_f(dt5_id, type_sizec, hdferr)
-!     CALL h5tget_size_f(H5T_STD_I32LE,type_sizei, hdferr)
-!     type_size = type_sizec + type_sizei
-! call h5tcreate_f(H5T_COMPOUND_F, type_size, dtype_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeMapping: h5tcreate_f dtype_id')
-
-! call h5tinsert_f(dtype_id, "Name",          0_SIZE_T, dt5_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5tinsert_f 0')
-! call h5tinsert_f(dtype_id, "Position",  type_sizec, H5T_STD_I32LE, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5tinsert_f 2')
-
-!!--------------------------------------------------------------------------------------------------
-!! create Dataset
-! call h5dcreate_f(mapping_id, 'constitutive', dtype_id, space_id, dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase')
-
-!!--------------------------------------------------------------------------------------------------
-!! Create memory types (one compound datatype for each member)
-! call h5tcreate_f(H5T_COMPOUND_F, int(type_sizec,SIZE_T), name_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5tcreate_f instance_id')
-! call h5tinsert_f(name_id, "Name",        0_SIZE_T, dt5_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5tinsert_f instance_id')
-
-! call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), position_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5tcreate_f position_id')
-! call h5tinsert_f(position_id, "Position", 0_SIZE_T, H5T_STD_I32LE, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5tinsert_f position_id')
-
-!!--------------------------------------------------------------------------------------------------
-!! Define and select hyperslabs
-! counter(1)    = Nconstituents                  ! how big i am
-! counter(2)    = NmatPoints
-! fileOffset(1) = 0                              ! where i start to write my data
-! fileOffset(2) = mpiOffset
-
-! call h5screate_simple_f(2, counter, memspace, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5screate_simple_f')
-! call h5dget_space_f(dset_id, space_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5dget_space_f')
-! call h5sselect_hyperslab_f(space_id, H5S_SELECT_SET_F, fileOffset, counter, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5sselect_hyperslab_f')
-
-!!--------------------------------------------------------------------------------------------------
-! ! Create property list for collective dataset write
-!#ifdef PETSc
-! call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5pcreate_f')
-! call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5pset_dxpl_mpio_f')
-!#endif
-
-!!--------------------------------------------------------------------------------------------------
-!! write data by fields in the datatype. Fields order is not important.
-! call h5dwrite_f(dset_id, name_id, reshape(namesNA(mapping),[Nconstituents,NmatPoints]), &
-!                          int([Nconstituents,  dataspace_size],HSIZE_T), hdferr, &
-!                          file_space_id = space_id, mem_space_id = memspace, xfer_prp = plist_id)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5dwrite_f position_id')
-
-! call h5dwrite_f(dset_id, position_id, reshape(mapping2-1_pInt,[Nconstituents,NmatPoints])+arrOffset, &
-!                          int([Nconstituents,  dataspace_size],HSIZE_T), hdferr, &
-!                          file_space_id = space_id, mem_space_id = memspace, xfer_prp = plist_id)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5dwrite_f instance_id')
-
-!!--------------------------------------------------------------------------------------------------
-!! close types, dataspaces
-! call h5tclose_f(dtype_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5tclose_f dtype_id')
-! call h5tclose_f(position_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5tclose_f position_id')
-! call h5tclose_f(name_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5tclose_f name_id  ')
-! call h5tclose_f(dt5_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5tclose_f dt5_id')
-! call h5dclose_f(dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5dclose_f')
-! call h5sclose_f(space_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5sclose_f space_id')
-! call h5sclose_f(memspace, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5sclose_f memspace')
-! call h5pclose_f(plist_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingPhase: h5pclose_f')
-! call HDF5_closeGroup(mapping_ID)
-
-!end subroutine HDF5_mappingPhase
 
 !!--------------------------------------------------------------------------------------------------
 !!> @brief adds the backward mapping from spatial position and constituent ID to results
@@ -882,276 +794,6 @@ end subroutine
 
 !end subroutine HDF5_backwardMappingHomog
 
-!!--------------------------------------------------------------------------------------------------
-!!> @brief adds the unique mapping from spatial position and constituent ID to results
-!!--------------------------------------------------------------------------------------------------
-!subroutine HDF5_mappingCrystallite(crystalliteAt,crystmemberAt,crystallite_name,dataspace_size,mpiOffset,mpiOffset_cryst)
-! use hdf5
-
-! implicit none
-! integer(pInt),    intent(in), dimension(:,:)   :: crystalliteAt
-! integer(pInt),    intent(in), dimension(:,:,:) :: crystmemberAt
-! character(len=*), intent(in), dimension(:)     :: crystallite_name
-! integer(pInt),    intent(in), dimension(:)     :: mpiOffset_cryst
-! integer(pInt),    intent(in)                   :: dataspace_size, mpiOffset
-
-! integer         :: hdferr
-! integer(pInt)   :: NmatPoints, Nconstituents, i, j
-! integer(HID_T)  :: mapping_id, dtype_id, dset_id, space_id, name_id, plist_id, memspace
-
-! integer(HID_T), dimension(:), allocatable :: position_id
-
-! integer(HID_T)  :: dt5_id      ! Memory datatype identifier
-! integer(SIZE_T) :: typesize, type_sizec, type_sizei, type_size
-
-! integer(HSIZE_T),  dimension(1)              :: counter
-! integer(HSSIZE_T), dimension(1)              :: fileOffset
-! integer(pInt),     dimension(:), allocatable :: arrOffset
-
-! character(len=64) :: m
-
-! Nconstituents = size(crystmemberAt,1)
-! NmatPoints = count(crystalliteAt /=0_pInt)
-! mapping_ID = results_openGroup("current/mapGeometry")
-
-! allocate(position_id(Nconstituents))
-
-! allocate(arrOffset(NmatPoints))
-! do i=1_pInt, NmatPoints
-!   do j=1_pInt, size(crystallite_name)
-!     if(crystalliteAt(1,i) == j) &
-!       arrOffset(i) = Nconstituents*mpiOffset_cryst(j)
-!   enddo
-! enddo
-
-!!--------------------------------------------------------------------------------------------------
-!! create dataspace
-! call h5screate_simple_f(1, int([dataspace_size],HSIZE_T), space_id, hdferr, &
-!                            int([dataspace_size],HSIZE_T))
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeMapping')
-
-!!--------------------------------------------------------------------------------------------------
-!! compound type
-!     ! First calculate total size by calculating sizes of each member
-!     !
-!     CALL h5tcopy_f(H5T_NATIVE_CHARACTER, dt5_id, hdferr)
-!     typesize = len(crystallite_name(1))
-!     CALL h5tset_size_f(dt5_id, typesize, hdferr)
-!     CALL h5tget_size_f(dt5_id, type_sizec, hdferr)
-!     CALL h5tget_size_f(H5T_STD_I32LE, type_sizei, hdferr)
-!     type_size = type_sizec + type_sizei*Nconstituents
-! call h5tcreate_f(H5T_COMPOUND_F, type_size, dtype_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeMapping: h5tcreate_f dtype_id')
-
-! call h5tinsert_f(dtype_id, "Name",          0_SIZE_T, dt5_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tinsert_f 0')
-! do i=1_pInt, Nconstituents
-!   write(m, '(i0)') i
-!   call h5tinsert_f(dtype_id, "Position "//trim(m),  type_sizec+(i-1)*type_sizei, H5T_STD_I32LE, hdferr)
-!   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tinsert_f 2 '//trim(m))
-! enddo
-
-!!--------------------------------------------------------------------------------------------------
-!! create Dataset
-! call h5dcreate_f(mapping_id, 'crystallite', dtype_id, space_id, dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite')
-
-!!--------------------------------------------------------------------------------------------------
-!! Create memory types (one compound datatype for each member)
-! call h5tcreate_f(H5T_COMPOUND_F, int(type_sizec,SIZE_T), name_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tcreate_f instance_id')
-! call h5tinsert_f(name_id, "Name",        0_SIZE_T, dt5_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tinsert_f instance_id')
-
-! do i=1_pInt, Nconstituents
-!   write(m, '(i0)') i
-!   call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), position_id(i), hdferr)
-!   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tcreate_f position_id')
-!   call h5tinsert_f(position_id(i), "Position "//trim(m), 0_SIZE_T, H5T_STD_I32LE, hdferr)
-!   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tinsert_f position_id')
-! enddo
-
-!!--------------------------------------------------------------------------------------------------
-!! Define and select hyperslabs
-! counter = NmatPoints                    ! how big i am
-! fileOffset = mpiOffset                  ! where i start to write my data
-
-! call h5screate_simple_f(1, counter, memspace, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5screate_simple_f')
-! call h5dget_space_f(dset_id, space_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5dget_space_f')
-! call h5sselect_hyperslab_f(space_id, H5S_SELECT_SET_F, fileOffset, counter, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5sselect_hyperslab_f')
-
-!!--------------------------------------------------------------------------------------------------
-! ! Create property list for collective dataset write
-!#ifdef PETSc
-! call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5pcreate_f')
-! call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5pset_dxpl_mpio_f')
-!#endif
-
-!!--------------------------------------------------------------------------------------------------
-!! write data by fields in the datatype. Fields order is not important.
-! call h5dwrite_f(dset_id, name_id, crystallite_name(pack(crystalliteAt,crystalliteAt/=0_pInt)), &
-!                          int([dataspace_size],HSIZE_T), hdferr, file_space_id = space_id, &
-!                          mem_space_id = memspace, xfer_prp = plist_id)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5dwrite_f position_id')
-
-! do i=1_pInt, Nconstituents
-!   call h5dwrite_f(dset_id, position_id(i), pack(crystmemberAt(i,:,:)-1_pInt,crystmemberAt(i,:,:)/=0_pInt)+arrOffset,&
-!                            int([dataspace_size],HSIZE_T), hdferr, file_space_id = space_id, &
-!                            mem_space_id = memspace, xfer_prp = plist_id)
-!   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5dwrite_f instance_id')
-! enddo
-
-!!--------------------------------------------------------------------------------------------------
-!!close types, dataspaces
-! call h5tclose_f(dtype_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tclose_f dtype_id')
-! do i=1_pInt, Nconstituents
-!   call h5tclose_f(position_id(i), hdferr)
-! enddo
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tclose_f position_id')
-! call h5tclose_f(name_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tclose_f name_id')
-! call h5tclose_f(dt5_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tclose_f dt5_id')
-! call h5dclose_f(dset_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5dclose_f')
-! call h5sclose_f(space_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5sclose_f space_id')
-! call h5sclose_f(memspace, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5sclose_f memspace')
-! call h5pclose_f(plist_id, hdferr)
-! if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5pclose_f')
-! call HDF5_closeGroup(mapping_ID)
-
-!end subroutine HDF5_mappingCrystallite
-
-
-!!--------------------------------------------------------------------------------------------------
-!!> @brief adds the backward mapping from spatial position and constituent ID to results
-!!--------------------------------------------------------------------------------------------------
-!subroutine HDF5_backwardMappingCrystallite(crystalliteAt,crystmemberAt,crystallite_name,dataspace_size,mpiOffset,mpiOffset_cryst)
-! use hdf5
-
-! implicit none
-! integer(pInt),    intent(in), dimension(:,:)   :: crystalliteAt
-! integer(pInt),    intent(in), dimension(:,:,:) :: crystmemberAt
-! character(len=*), intent(in), dimension(:)     :: crystallite_name
-! integer(pInt),    intent(in), dimension(:)     :: dataspace_size, mpiOffset_cryst
-! integer(pInt),    intent(in)                   :: mpiOffset
-
-! integer         :: hdferr
-! integer(pInt)   :: NmatPoints, Nconstituents, i, j
-! integer(HID_T)  :: mapping_id, dtype_id, dset_id, space_id, position_id, plist_id, memspace
-! integer(SIZE_T) :: type_size
-
-! integer(pInt), dimension(:,:), allocatable     :: h_arr, arr
-
-! integer(HSIZE_T),  dimension(1) :: counter
-! integer(HSSIZE_T), dimension(1) :: fileOffset
-
-! character(len=64) :: crystallID
-
-! Nconstituents = size(crystmemberAt,1)
-! NmatPoints = count(crystalliteAt /=0_pInt)
-
-! allocate(h_arr(2,NmatPoints))
-! allocate(arr(2,Nconstituents*NmatPoints))
-
-! h_arr(1,:) = (/(i, i=0_pInt,NmatPoints-1_pInt)/)
-! h_arr(2,:) = pack(crystalliteAt,crystalliteAt/=0_pInt)
-
-! do i=1_pInt, NmatPoints
-!   do j=Nconstituents-1_pInt, 0_pInt, -1_pInt
-!     arr(1,Nconstituents*i-j) = h_arr(1,i)
-!     arr(2,Nconstituents*i-j) = h_arr(2,i)
-!   enddo
-! enddo
-
-! do i=1_pInt, size(crystallite_name)
-!   if (crystallite_name(i) == 'none') cycle
-!   write(crystallID, '(i0)') i
-!   mapping_ID = results_openGroup('/current/crystallite/'//trim(crystallID)//'_'//crystallite_name(i))
-!   NmatPoints = count(crystalliteAt == i)
-
-!!--------------------------------------------------------------------------------------------------
-!  ! create dataspace
-!   call h5screate_simple_f(1, int([Nconstituents*dataspace_size(i)],HSIZE_T), space_id, hdferr, &
-!                              int([Nconstituents*dataspace_size(i)],HSIZE_T))
-!   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeBackwardMapping')
-
-!!--------------------------------------------------------------------------------------------------
-!  ! compound type
-!   call h5tget_size_f(H5T_STD_I32LE, type_size, hdferr)
-!   call h5tcreate_f(H5T_COMPOUND_F, type_size, dtype_id, hdferr)
-!   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_writeBackwardMapping: h5tcreate_f dtype_id')
-
-!   call h5tinsert_f(dtype_id, "Position",          0_SIZE_T, H5T_STD_I32LE, hdferr)
-!   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5tinsert_f 0')
-
-!!--------------------------------------------------------------------------------------------------
-!  ! create Dataset
-!   call h5dcreate_f(mapping_id, 'mapGeometry', dtype_id, space_id, dset_id, hdferr)
-!   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite')
-
-!!--------------------------------------------------------------------------------------------------
-!  ! Create memory types
-!   call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), position_id, hdferr)
-!   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5tcreate_f position_id')
-!   call h5tinsert_f(position_id, "Position", 0_SIZE_T, H5T_STD_I32LE, hdferr)
-!   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5tinsert_f position_id')
-
-!!--------------------------------------------------------------------------------------------------
-!  ! Define and select hyperslabs
-!   counter = Nconstituents*NmatPoints                       ! how big i am
-!   fileOffset = Nconstituents*mpiOffset_cryst(i)            ! where i start to write my data
-
-!   call h5screate_simple_f(1, counter, memspace, hdferr)
-!   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5screate_simple_f')
-!   call h5dget_space_f(dset_id, space_id, hdferr)
-!   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5dget_space_f')
-!   call h5sselect_hyperslab_f(space_id, H5S_SELECT_SET_F, fileOffset, counter, hdferr)
-!   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5sselect_hyperslab_f')
-
-!!--------------------------------------------------------------------------------------------------
-! ! Create property list for collective dataset write
-!#ifdef PETSc
-!   call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
-!   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5pcreate_f')
-!   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-!   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5pset_dxpl_mpio_f')
-!#endif
-
-!!--------------------------------------------------------------------------------------------------
-!  ! write data by fields in the datatype. Fields order is not important.
-!   call h5dwrite_f(dset_id, position_id, pack(arr(1,:),arr(2,:)==i) + mpiOffset,&
-!                              int([Nconstituents*dataspace_size(i)],HSIZE_T), hdferr, file_space_id = space_id, &
-!                              mem_space_id = memspace, xfer_prp = plist_id)
-!   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5dwrite_f instance_id')
-
-!!--------------------------------------------------------------------------------------------------
-!  !close types, dataspaces
-!   call h5tclose_f(dtype_id, hdferr)
-!   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5tclose_f dtype_id')
-!   call h5tclose_f(position_id, hdferr)
-!   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5tclose_f position_id')
-!   call h5dclose_f(dset_id, hdferr)
-!   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5dclose_f')
-!   call h5sclose_f(space_id, hdferr)
-!   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5sclose_f space_id')
-!   call h5sclose_f(memspace, hdferr)
-!   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5sclose_f memspace')
-!   call h5pclose_f(plist_id, hdferr)
-!   if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_backwardMappingCrystallite: h5pclose_f')
-!   call HDF5_closeGroup(mapping_ID)
-
-! enddo
-
-!end subroutine HDF5_backwardMappingCrystallite
 
 !!--------------------------------------------------------------------------------------------------
 !!> @brief adds the unique cell to node mapping
