@@ -1,4 +1,4 @@
-#!/usr/local/bin/bash
+#!/usr/bin/env bash
 
 for geom in $(ls geom/*.geom)
 do
@@ -41,14 +41,12 @@ do
      cp geom/${vtr} postProc/${name}_inc${inc}.vtr
      vtk_addRectilinearGridData \
        postProc/${name}_inc${inc}.txt \
-       --inplace \
        --vtk postProc/${name}_inc${inc}.vtr \
        --data 'sph(p)','sph(Cauchy)',temperature \
        --tensor f,fe,fi,fp,p,Cauchy \
       
     vtk_addRectilinearGridData \
       postProc/${name}_inc${inc}_nodal.txt \
-      --inplace \
       --vtk postProc/${name}_inc${inc}.vtr \
       --data 'avg(f).pos','fluct(f).pos' \
 
