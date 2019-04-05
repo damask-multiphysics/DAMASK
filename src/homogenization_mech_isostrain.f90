@@ -4,7 +4,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Isostrain (full constraint Taylor assuption) homogenization scheme
 !--------------------------------------------------------------------------------------------------
-module homogenization_isostrain
+module homogenization_mech_isostrain
 
   implicit none
   private
@@ -144,4 +144,4 @@ subroutine homogenization_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P
 
 end subroutine homogenization_isostrain_averageStressAndItsTangent
 
-end module homogenization_isostrain
+end module homogenization_mech_isostrain

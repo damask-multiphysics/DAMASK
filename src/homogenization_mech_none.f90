@@ -4,7 +4,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief dummy homogenization homogenization scheme for 1 constituent per material point
 !--------------------------------------------------------------------------------------------------
-module homogenization_none
+module homogenization_mech_none
 
   implicit none
   private
@@ -57,4 +57,4 @@ subroutine homogenization_none_init()
 
 end subroutine homogenization_none_init
 
-end module homogenization_none
+end module homogenization_mech_none

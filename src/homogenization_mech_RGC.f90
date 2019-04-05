@@ -6,7 +6,7 @@
 !> @brief Relaxed grain cluster (RGC) homogenization scheme
 !> Nconstituents is defined as p x q x r (cluster)
 !--------------------------------------------------------------------------------------------------
-module homogenization_RGC
+module homogenization_mech_RGC
  use prec, only: &
    pReal
 
@@ -1309,4 +1309,4 @@ pure function interface1to4(iFace1D, nGDim)
 end function interface1to4
 
 
-end module homogenization_RGC
+end module homogenization_mech_RGC
