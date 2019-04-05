@@ -17,7 +17,7 @@ module homogenization_isostrain
  end enum
 
  type, private :: tParameters                                                                       !< container type for internal constitutive parameters
-   integer(pInt) :: &
+   integer :: &
      Nconstituents
    integer(kind(average_ID)) :: &
      mapping
@@ -53,7 +53,7 @@ subroutine homogenization_isostrain_init()
    config_homogenization
  
  implicit none
- integer(pInt) :: &
+ integer :: &
    Ninstance, &
    h, &
    NofMyHomog
@@ -63,12 +63,12 @@ subroutine homogenization_isostrain_init()
  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_ISOSTRAIN_label//' init  -+>>>'
 
  Ninstance = int(count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID),pInt)
- if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0_pInt) &
+ if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0) &
    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
  allocate(param(Ninstance))                                                                         ! one container of parameters per instance
 
- do h = 1_pInt, size(homogenization_type)
+ do h = 1, size(homogenization_type)
    if (homogenization_type(h) /= HOMOGENIZATION_ISOSTRAIN_ID) cycle
    
    associate(prm => param(homogenization_typeInstance(h)),&
@@ -82,15 +82,15 @@ subroutine homogenization_isostrain_init()
      case ('avg')
        prm%mapping = average_ID
      case default
-       call IO_error(211_pInt,ext_msg=trim(tag)//' ('//HOMOGENIZATION_isostrain_label//')')
+       call IO_error(211,ext_msg=trim(tag)//' ('//HOMOGENIZATION_isostrain_label//')')
    end select
 
    NofMyHomog = count(material_homogenizationAt == h)
-   homogState(h)%sizeState       = 0_pInt
-   homogState(h)%sizePostResults = 0_pInt
-   allocate(homogState(h)%state0   (0_pInt,NofMyHomog))
-   allocate(homogState(h)%subState0(0_pInt,NofMyHomog))
-   allocate(homogState(h)%state    (0_pInt,NofMyHomog))
+   homogState(h)%sizeState       = 0
+   homogState(h)%sizePostResults = 0
+   allocate(homogState(h)%state0   (0,NofMyHomog))
+   allocate(homogState(h)%subState0(0,NofMyHomog))
+   allocate(homogState(h)%state    (0,NofMyHomog))
    
    end associate
 
@@ -129,7 +129,7 @@ subroutine homogenization_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P
 
  real(pReal),   dimension (:,:,:),     intent(in)  :: P                                             !< partitioned stresses
  real(pReal),   dimension (:,:,:,:,:), intent(in)  :: dPdF                                          !< partitioned stiffnesses
- integer(pInt),                        intent(in)  :: instance 
+ integer,                              intent(in)  :: instance 
 
  associate(prm => param(instance))
  
