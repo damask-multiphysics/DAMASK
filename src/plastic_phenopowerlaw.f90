@@ -577,11 +577,18 @@ subroutine plastic_phenopowerlaw_results(instance,group)
     select case(prm%outputID(o))
 
       case (resistance_slip_ID)
-        call results_writeDataset(group,stt%xi_slip,   'xi_slip', &
+        call results_writeDataset(group,stt%xi_slip,   'xi_sl', &
                                   'resistance against plastic slip','Pa')
       case (accumulatedshear_slip_ID)
-        call results_writeDataset(group,stt%gamma_slip,'gamma_slip', &
-                                  'plastic slip','1')
+        call results_writeDataset(group,stt%gamma_slip,'gamma_sl', &
+                                  'plastic shear','1')
+                                  
+      case (resistance_twin_ID)
+        call results_writeDataset(group,stt%xi_twin,   'xi_tw', &
+                                  'resistance against twinning','Pa')
+      case (accumulatedshear_twin_ID)
+        call results_writeDataset(group,stt%gamma_twin,'gamma_tw', &
+                                  'twinning shear','1')
         
     end select
   enddo outputsLoop

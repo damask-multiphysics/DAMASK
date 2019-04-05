@@ -1077,13 +1077,13 @@ subroutine plastic_dislotwin_results(instance,group)
 
       case (rho_mob_ID)
         call results_writeDataset(group,stt%rho_mob,'rho_mob',&
-                                 'mobile dislocation density','1/m²')
+                                  'mobile dislocation density','1/m²')
       case (rho_dip_ID)
         call results_writeDataset(group,stt%rho_dip,'rho_dip',&
                                   'dislocation dipole density''1/m²')
       case (dot_gamma_sl_ID)
         call results_writeDataset(group,stt%gamma_sl,'dot_gamma_sl',&
-                                  'plastic slip','1')
+                                  'plastic shear','1')
       case (Lambda_sl_ID)
         call results_writeDataset(group,dst%Lambda_sl,'Lambda_sl',&
                                   'mean free path for slip','m')
@@ -1099,7 +1099,7 @@ subroutine plastic_dislotwin_results(instance,group)
                                   'mean free path for twinning','m')   
       case (tau_hat_tw_ID)
         call results_writeDataset(group,dst%tau_hat_tw,'tau_hat_tw',&
-                                  'threshold stress for twinnin','Pa')
+                                  'threshold stress for twinning','Pa')
 
       case (f_tr_ID)
         call results_writeDataset(group,stt%f_tr,'f_tr',&

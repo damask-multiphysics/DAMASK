@@ -2316,7 +2316,7 @@ outputsLoop: do o = 1,size(param(instance)%outputID)
     
     case (rho_dot_ann_ath_ID)
       postResults(cs+1:cs+ns) = results(instance)%rhoDotAthermalAnnihilation(1:ns,1,of) & 
-                                   + results(instance)%rhoDotAthermalAnnihilation(1:ns,2,of)
+                              + results(instance)%rhoDotAthermalAnnihilation(1:ns,2,of)
       cs = cs + ns
 
     case (rho_dot_ann_the_edge_ID) 
@@ -2413,6 +2413,39 @@ subroutine plastic_nonlocal_results(instance,group)
   associate(prm => param(instance), stt => state(instance))
   outputsLoop: do o = 1,size(prm%outputID)
     select case(prm%outputID(o))
+      case (rho_sgl_mob_edg_pos_ID)
+        call results_writeDataset(group,stt%rho_sgl_mob_edg_pos, 'rho_sgl_mob_edg_pos', &
+                                  'positive mobile edge density','1/m²')
+      case (rho_sgl_imm_edg_pos_ID)
+        call results_writeDataset(group,stt%rho_sgl_imm_edg_pos, 'rho_sgl_imm_edg_pos',&
+                                  'positive immobile edge density','1/m²')
+      case (rho_sgl_mob_edg_neg_ID)
+        call results_writeDataset(group,stt%rho_sgl_mob_edg_neg, 'rho_sgl_mob_edg_neg',&
+                                  'negative mobile edge density','1/m²')
+      case (rho_sgl_imm_edg_neg_ID)
+        call results_writeDataset(group,stt%rho_sgl_imm_edg_neg, 'rho_sgl_imm_edg_neg',&
+                                  'negative immobile edge density','1/m²')
+      case (rho_dip_edg_ID)
+        call results_writeDataset(group,stt%rho_dip_edg, 'rho_dip_edg',&
+                                  'edge dipole density','1/m²')
+      case (rho_sgl_mob_scr_pos_ID)
+        call results_writeDataset(group,stt%rho_sgl_mob_scr_pos, 'rho_sgl_mob_scr_pos',&
+                                  'positive mobile screw density','1/m²')
+      case (rho_sgl_imm_scr_pos_ID)
+        call results_writeDataset(group,stt%rho_sgl_imm_scr_pos, 'rho_sgl_imm_scr_pos',&
+                                  'positive immobile screw density','1/m²')
+      case (rho_sgl_mob_scr_neg_ID)
+        call results_writeDataset(group,stt%rho_sgl_mob_scr_neg, 'rho_sgl_mob_scr_neg',&
+                                  'negative mobile screw density','1/m²')
+      case (rho_sgl_imm_scr_neg_ID)
+        call results_writeDataset(group,stt%rho_sgl_imm_scr_neg, 'rho_sgl_imm_scr_neg',&
+                                  'negative immobile screw density','1/m²')
+      case (rho_dip_scr_ID)
+        call results_writeDataset(group,stt%rho_dip_scr, 'rho_dip_scr',&
+                                  'screw dipole density','1/m²')
+      case (rho_forest_ID)
+        call results_writeDataset(group,stt%rho_forest, 'rho_forest',&
+                                  'forest density','1/m²')
     end select
   enddo outputsLoop
   end associate

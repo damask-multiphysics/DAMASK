@@ -562,6 +562,27 @@ subroutine plastic_kinehardening_results(instance,group)
   associate(prm => param(instance), stt => state(instance))
   outputsLoop: do o = 1,size(prm%outputID)
     select case(prm%outputID(o))
+     case (crss_ID)
+       call results_writeDataset(group,stt%crss,'xi_sl', &
+                                'resistance against plastic slip','Pa')
+
+     case(crss_back_ID)
+       call results_writeDataset(group,stt%crss_back,'tau_back', &
+                                'back stress against plastic slip','Pa')
+                                
+     case (sense_ID)
+       call results_writeDataset(group,stt%sense,'sense_of_shear','tbd','1')
+
+     case (chi0_ID)
+       call results_writeDataset(group,stt%chi0,'chi0','tbd','Pa')
+       
+     case (gamma0_ID)
+       call results_writeDataset(group,stt%gamma0,'gamma0','tbd','1')
+       
+     case (accshear_ID)
+       call results_writeDataset(group,stt%accshear,'gamma_sl', &
+                                  'plastic shear','1')
+       
     end select
   enddo outputsLoop
   end associate
