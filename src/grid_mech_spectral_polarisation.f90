@@ -308,7 +308,6 @@ end function grid_mech_spectral_polarisation_solution
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,stress_BC,rotation_BC)
  use math, only: &
-   math_mul33x33, &
    math_mul3333xx33, &
    math_rotate_backward33
  use numerics, only: &
@@ -402,7 +401,7 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
     ! calculate rate for aim
     if     (deformation_BC%myType=='l') then                                                          ! calculate F_aimDot from given L and current F
       F_aimDot = &
-      F_aimDot + deformation_BC%maskFloat * math_mul33x33(deformation_BC%values, F_aim_lastInc)
+      F_aimDot + deformation_BC%maskFloat * matmul(deformation_BC%values, F_aim_lastInc)
     elseif(deformation_BC%myType=='fdot') then                                                        ! F_aimDot is prescribed
       F_aimDot = &
       F_aimDot + deformation_BC%maskFloat * deformation_BC%values
@@ -435,9 +434,9 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
   else
    do k = 1, grid3; do j = 1, grid(2); do i = 1, grid(1)
       F_lambda33 = reshape(F_tau(1:9,i,j,k)-F(1:9,i,j,k),[3,3])
-      F_lambda33 = math_mul3333xx33(S_scale,math_mul33x33(F_lambda33, &
+      F_lambda33 = math_mul3333xx33(S_scale,matmul(F_lambda33, &
                                   math_mul3333xx33(C_scale,&
-                                                   math_mul33x33(transpose(F_lambda33),&
+                                                   matmul(transpose(F_lambda33),&
                                                                  F_lambda33)-math_I3))*0.5_pReal)&
                               + math_I3
       F_tau(1:9,i,j,k) = reshape(F_lambda33,[9])+F(1:9,i,j,k)
@@ -528,8 +527,7 @@ subroutine formResidual(in, FandF_tau, &
    math_rotate_forward33, &
    math_rotate_backward33, &
    math_mul3333xx33, &
-   math_invSym3333, &
-   math_mul33x33
+   math_invSym3333
  use debug, only: &
    debug_level, &
    debug_spectral, &
@@ -605,7 +603,7 @@ subroutine formResidual(in, FandF_tau, &
  do k = 1, grid3; do j = 1, grid(2); do i = 1, grid(1)
    tensorField_real(1:3,1:3,i,j,k) = &
      polarBeta*math_mul3333xx33(C_scale,F(1:3,1:3,i,j,k) - math_I3) -&
-     polarAlpha*math_mul33x33(F(1:3,1:3,i,j,k), &
+     polarAlpha*matmul(F(1:3,1:3,i,j,k), &
                         math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))
  enddo; enddo; enddo
  
@@ -644,7 +642,7 @@ subroutine formResidual(in, FandF_tau, &
    e = e + 1
    residual_F(1:3,1:3,i,j,k) = &
      math_mul3333xx33(math_invSym3333(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,e) + C_scale), &
-                      residual_F(1:3,1:3,i,j,k) - math_mul33x33(F(1:3,1:3,i,j,k), &
+                      residual_F(1:3,1:3,i,j,k) - matmul(F(1:3,1:3,i,j,k), &
                       math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))) &
                       + residual_F_tau(1:3,1:3,i,j,k)
  enddo; enddo; enddo

@@ -7,14 +7,13 @@
 !--------------------------------------------------------------------------------------------------
 module plastic_kinehardening
  use prec, only: &
-   pReal, &
-   pInt
+   pReal
 
  implicit none
  private
- integer(pInt),                       dimension(:,:),   allocatable, target, public :: &
+ integer,           dimension(:,:),   allocatable, target, public :: &
    plastic_kinehardening_sizePostResult                                                             !< size of each post result output
- character(len=64),                   dimension(:,:),   allocatable, target, public :: &
+ character(len=64), dimension(:,:),   allocatable, target, public :: &
    plastic_kinehardening_output                                                                     !< name of each post result output
 
  enum, bind(c)
@@ -36,7 +35,7 @@ module plastic_kinehardening
      n, &                                                                                           !< stress exponent for slip
      aTolResistance, &
      aTolShear
-   real(pReal),                 allocatable, dimension(:) :: &
+   real(pReal), allocatable, dimension(:) :: &
      crss0, &                                                                                       !< initial critical shear stress for slip
      theta0, &                                                                                      !< initial hardening rate of forward stress for each slip
      theta1, &                                                                                      !< asymptotic hardening rate of forward stress for each slip
@@ -45,16 +44,16 @@ module plastic_kinehardening
      tau1, &
      tau1_b, &
      nonSchmidCoeff
-   real(pReal),                 allocatable, dimension(:,:) :: &
+   real(pReal), allocatable, dimension(:,:) :: &
      interaction_slipslip                                                                           !< slip resistance from slip activity
-   real(pReal),                 allocatable, dimension(:,:,:) :: &
+   real(pReal), allocatable, dimension(:,:,:) :: &
      Schmid, &
      nonSchmid_pos, &
      nonSchmid_neg
-   integer(pInt) :: &
+   integer :: &
      totalNslip, &                                                                                  !< total number of active slip system
-     of_debug = 0_pInt
-   integer(pInt),               allocatable, dimension(:) :: &
+     of_debug = 0
+   integer,     allocatable, dimension(:) :: &
      Nslip                                                                                          !< number of active slip systems for each family
    integer(kind(undefined_ID)), allocatable, dimension(:) :: &
      outputID                                                                                       !< ID of each post result output
@@ -130,14 +129,14 @@ subroutine plastic_kinehardening_init
  use lattice
 
  implicit none
- integer(pInt) :: &
+ integer :: &
    Ninstance, &
    p, i, o, &
    NipcMyPhase, &
    sizeState, sizeDeltaState, sizeDotState, &
    startIndex, endIndex
 
- integer(pInt),          dimension(0), parameter :: emptyIntArray    = [integer(pInt)::]
+ integer,                dimension(0), parameter :: emptyIntArray    = [integer::]
  real(pReal),            dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
 
@@ -155,7 +154,7 @@ subroutine plastic_kinehardening_init
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
- allocate(plastic_kinehardening_sizePostResult(maxval(phase_Noutput),Ninstance),source=0_pInt)
+ allocate(plastic_kinehardening_sizePostResult(maxval(phase_Noutput),Ninstance),source=0)
  allocate(plastic_kinehardening_output(maxval(phase_Noutput),Ninstance))
           plastic_kinehardening_output = ''
 
@@ -164,7 +163,7 @@ subroutine plastic_kinehardening_init
  allocate(dotState(Ninstance))
  allocate(deltaState(Ninstance))
 
- do p = 1_pInt, size(phase_plasticityInstance)
+ do p = 1, size(phase_plasticityInstance)
    if (phase_plasticity(p) /= PLASTICITY_KINEHARDENING_ID) cycle
    associate(prm => param(phase_plasticityInstance(p)), &
              dot => dotState(phase_plasticityInstance(p)), &
@@ -191,22 +190,22 @@ subroutine plastic_kinehardening_init
 ! slip related parameters
    prm%Nslip      = config%getInts('nslip',defaultVal=emptyIntArray)
    prm%totalNslip = sum(prm%Nslip)
-   slipActive: if (prm%totalNslip > 0_pInt) then
+   slipActive: if (prm%totalNslip > 0) then
      prm%Schmid = lattice_SchmidMatrix_slip(prm%Nslip,config%getString('lattice_structure'),&
                                             config%getFloat('c/a',defaultVal=0.0_pReal))
 
      if(trim(config%getString('lattice_structure')) == 'bcc') then
        prm%nonSchmidCoeff = config%getFloats('nonschmid_coefficients',&
                                               defaultVal = emptyRealArray)
-       prm%nonSchmid_pos  = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1_pInt)
-       prm%nonSchmid_neg  = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1_pInt)
+       prm%nonSchmid_pos  = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1)
+       prm%nonSchmid_neg  = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1)
      else
        prm%nonSchmid_pos  = prm%Schmid
        prm%nonSchmid_neg  = prm%Schmid
      endif
-     prm%interaction_SlipSlip = lattice_interaction_SlipBySlip(prm%Nslip, &
+     prm%interaction_SlipSlip = transpose(lattice_interaction_SlipBySlip(prm%Nslip, &
                                                                config%getFloats('interaction_slipslip'), &
-                                                               config%getString('lattice_structure'))
+                                                               config%getString('lattice_structure')))
 
      prm%crss0    = config%getFloats('crss0',    requiredSize=size(prm%Nslip))
      prm%tau1     = config%getFloats('tau1',     requiredSize=size(prm%Nslip))
@@ -245,32 +244,32 @@ subroutine plastic_kinehardening_init
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
    if (extmsg /= '') &
-     call IO_error(211_pInt,ext_msg=trim(extmsg)//'('//PLASTICITY_KINEHARDENING_label//')')
+     call IO_error(211,ext_msg=trim(extmsg)//'('//PLASTICITY_KINEHARDENING_label//')')
 
 !--------------------------------------------------------------------------------------------------
 !  output pararameters
    outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
    allocate(prm%outputID(0))
-   do i=1_pInt, size(outputs)
+   do i=1, size(outputs)
      outputID = undefined_ID
      select case(outputs(i))
 
        case ('resistance')
-         outputID = merge(crss_ID,undefined_ID,prm%totalNslip>0_pInt)
+         outputID = merge(crss_ID,undefined_ID,prm%totalNslip>0)
        case ('accumulatedshear')
-         outputID = merge(accshear_ID,undefined_ID,prm%totalNslip>0_pInt)
+         outputID = merge(accshear_ID,undefined_ID,prm%totalNslip>0)
        case ('shearrate')
-         outputID = merge(shearrate_ID,undefined_ID,prm%totalNslip>0_pInt)
+         outputID = merge(shearrate_ID,undefined_ID,prm%totalNslip>0)
        case ('resolvedstress')
-         outputID = merge(resolvedstress_ID,undefined_ID,prm%totalNslip>0_pInt)
+         outputID = merge(resolvedstress_ID,undefined_ID,prm%totalNslip>0)
        case ('backstress')
-         outputID = merge(crss_back_ID,undefined_ID,prm%totalNslip>0_pInt)
+         outputID = merge(crss_back_ID,undefined_ID,prm%totalNslip>0)
        case ('sense')
-         outputID = merge(sense_ID,undefined_ID,prm%totalNslip>0_pInt)
+         outputID = merge(sense_ID,undefined_ID,prm%totalNslip>0)
        case ('chi0')
-         outputID = merge(chi0_ID,undefined_ID,prm%totalNslip>0_pInt)
+         outputID = merge(chi0_ID,undefined_ID,prm%totalNslip>0)
        case ('gamma0')
-         outputID = merge(gamma0_ID,undefined_ID,prm%totalNslip>0_pInt)
+         outputID = merge(gamma0_ID,undefined_ID,prm%totalNslip>0)
 
      end select
 
@@ -290,25 +289,25 @@ subroutine plastic_kinehardening_init
    sizeState = sizeDotState + sizeDeltaState
 
    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,sizeDeltaState, &
-                                      prm%totalNslip,0_pInt,0_pInt)
+                                      prm%totalNslip,0,0)
    plasticState(p)%sizePostResults = sum(plastic_kinehardening_sizePostResult(:,phase_plasticityInstance(p)))
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
-   startIndex = 1_pInt
+   startIndex = 1
    endIndex   = prm%totalNslip
    stt%crss => plasticState(p)%state   (startIndex:endIndex,:)
    stt%crss = spread(prm%crss0, 2, NipcMyPhase)
    dot%crss => plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolResistance
 
-   startIndex = endIndex + 1_pInt
+   startIndex = endIndex + 1
    endIndex   = endIndex + prm%totalNslip
    stt%crss_back => plasticState(p)%state   (startIndex:endIndex,:)
    dot%crss_back => plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolResistance
 
-   startIndex = endIndex + 1_pInt
+   startIndex = endIndex + 1
    endIndex   = endIndex + prm%totalNslip
    stt%accshear => plasticState(p)%state   (startIndex:endIndex,:)
    dot%accshear => plasticState(p)%dotState(startIndex:endIndex,:)
@@ -318,17 +317,17 @@ subroutine plastic_kinehardening_init
    plasticState(p)%accumulatedSlip => plasticState(p)%state(startIndex:endIndex,:)
 
    o = plasticState(p)%offsetDeltaState
-   startIndex = endIndex + 1_pInt
+   startIndex = endIndex + 1
    endIndex   = endIndex + prm%totalNslip
    stt%sense => plasticState(p)%state     (startIndex  :endIndex  ,:)
    dlt%sense => plasticState(p)%deltaState(startIndex-o:endIndex-o,:)
 
-   startIndex = endIndex + 1_pInt
+   startIndex = endIndex + 1
    endIndex   = endIndex +  prm%totalNslip
    stt%chi0 => plasticState(p)%state     (startIndex  :endIndex  ,:)
    dlt%chi0 => plasticState(p)%deltaState(startIndex-o:endIndex-o,:)
 
-   startIndex = endIndex + 1_pInt
+   startIndex = endIndex + 1
    endIndex   = endIndex +  prm%totalNslip
    stt%gamma0 => plasticState(p)%state     (startIndex  :endIndex  ,:)
    dlt%gamma0 => plasticState(p)%deltaState(startIndex-o:endIndex-o,:)
@@ -355,11 +354,11 @@ pure subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
  real(pReal), dimension(3,3), intent(in) :: &
    Mp                                                                                               !< Mandel stress
- integer(pInt),               intent(in) :: &
+ integer,               intent(in) :: &
    instance, &
    of
 
- integer(pInt) :: &
+ integer :: &
    i,k,l,m,n
  real(pReal), dimension(param(instance)%totalNslip) :: &
    gdot_pos,gdot_neg, &
@@ -372,9 +371,9 @@ pure subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
  call kinetics(Mp,instance,of,gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_dtau_neg)
 
- do i = 1_pInt, prm%totalNslip
+ do i = 1, prm%totalNslip
    Lp = Lp + (gdot_pos(i)+gdot_neg(i))*prm%Schmid(1:3,1:3,i)
-   forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
+   forall (k=1:3,l=1:3,m=1:3,n=1:3) &
      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
                       + dgdot_dtau_pos(i) * prm%Schmid(k,l,i) * prm%nonSchmid_pos(m,n,i) &
                       + dgdot_dtau_neg(i) * prm%Schmid(k,l,i) * prm%nonSchmid_neg(m,n,i)
@@ -393,12 +392,10 @@ subroutine plastic_kinehardening_dotState(Mp,instance,of)
  implicit none
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
- integer(pInt),                intent(in) :: &
+ integer,                      intent(in) :: &
    instance, &
    of
 
- integer(pInt) :: &
-   i
  real(pReal) :: &
    sumGamma
  real(pReal), dimension(param(instance)%totalNslip) :: &
@@ -411,13 +408,13 @@ subroutine plastic_kinehardening_dotState(Mp,instance,of)
  dot%accshear(:,of) = abs(gdot_pos+gdot_neg)
  sumGamma = sum(stt%accshear(:,of))
 
- do i = 1_pInt, prm%totalNslip
-   dot%crss(i,of) = dot_product(prm%interaction_SlipSlip(:,i),dot%accshear(:,of)) &
-                  * (  prm%theta1(i) &
-                     + (prm%theta0(i) - prm%theta1(i) + prm%theta0(i)*prm%theta1(i)*sumGamma/prm%tau1(i)) &
-                     * exp(-sumGamma*prm%theta0(i)/prm%tau1(i)) &
-                    )
- enddo
+ 
+ dot%crss(:,of) = matmul(prm%interaction_SlipSlip,dot%accshear(:,of)) &
+                * (  prm%theta1 &
+                    + (prm%theta0 - prm%theta1 + prm%theta0*prm%theta1*sumGamma/prm%tau1) &
+                    * exp(-sumGamma*prm%theta0/prm%tau1) &
+                  )
+                    
  dot%crss_back(:,of) = stt%sense(:,of)*dot%accshear(:,of) * &
           ( prm%theta1_b + &
             (prm%theta0_b - prm%theta1_b &
@@ -448,7 +445,7 @@ subroutine plastic_kinehardening_deltaState(Mp,instance,of)
  implicit none
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
- integer(pInt),                intent(in) :: &
+ integer,                      intent(in) :: &
    instance, &
    of
 
@@ -464,9 +461,9 @@ subroutine plastic_kinehardening_deltaState(Mp,instance,of)
                dEq0(gdot_pos+gdot_neg,1e-10_pReal))                                                 ! current sense of shear direction
 
 #ifdef DEBUG
- if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0_pInt &
+ if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0 &
             .and. (of == prm%of_debug &
-                   .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
+                   .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0)) then
    write(6,'(a)') '======= kinehardening delta state ======='
    write(6,*) sense,state(instance)%sense(:,of)
  endif
@@ -499,42 +496,42 @@ function plastic_kinehardening_postResults(Mp,instance,of) result(postResults)
  implicit none
  real(pReal), dimension(3,3), intent(in) :: &
    Mp                                                                                               !< Mandel stress
- integer(pInt),               intent(in) :: &
+ integer,               intent(in) :: &
    instance, &
    of
 
  real(pReal), dimension(sum(plastic_kinehardening_sizePostResult(:,instance))) :: &
    postResults
 
- integer(pInt) :: &
+ integer :: &
    o,c,i
  real(pReal), dimension(param(instance)%totalNslip) :: &
    gdot_pos,gdot_neg
 
- c = 0_pInt
+ c = 0
 
  associate(prm => param(instance), stt => state(instance))
 
- outputsLoop: do o = 1_pInt,size(prm%outputID)
+ outputsLoop: do o = 1,size(prm%outputID)
    select case(prm%outputID(o))
 
      case (crss_ID)
-       postResults(c+1_pInt:c+prm%totalNslip) = stt%crss(:,of)
+       postResults(c+1:c+prm%totalNslip) = stt%crss(:,of)
      case(crss_back_ID)
-       postResults(c+1_pInt:c+prm%totalNslip) = stt%crss_back(:,of)
+       postResults(c+1:c+prm%totalNslip) = stt%crss_back(:,of)
      case (sense_ID)
-       postResults(c+1_pInt:c+prm%totalNslip) = stt%sense(:,of)
+       postResults(c+1:c+prm%totalNslip) = stt%sense(:,of)
      case (chi0_ID)
-       postResults(c+1_pInt:c+prm%totalNslip) = stt%chi0(:,of)
+       postResults(c+1:c+prm%totalNslip) = stt%chi0(:,of)
      case (gamma0_ID)
-       postResults(c+1_pInt:c+prm%totalNslip) = stt%gamma0(:,of)
+       postResults(c+1:c+prm%totalNslip) = stt%gamma0(:,of)
      case (accshear_ID)
-       postResults(c+1_pInt:c+prm%totalNslip) = stt%accshear(:,of)
+       postResults(c+1:c+prm%totalNslip) = stt%accshear(:,of)
      case (shearrate_ID)
        call kinetics(Mp,instance,of,gdot_pos,gdot_neg)
-       postResults(c+1_pInt:c+prm%totalNslip) = gdot_pos+gdot_neg
+       postResults(c+1:c+prm%totalNslip) = gdot_pos+gdot_neg
      case (resolvedstress_ID)
-       do i = 1_pInt, prm%totalNslip
+       do i = 1, prm%totalNslip
          postResults(c+i) = math_mul33xx33(Mp,prm%Schmid(1:3,1:3,i))
        enddo
 
@@ -562,7 +559,7 @@ subroutine plastic_kinehardening_results(instance,group)
   integer :: o
 
   associate(prm => param(instance), stt => state(instance))
-  outputsLoop: do o = 1_pInt,size(prm%outputID)
+  outputsLoop: do o = 1,size(prm%outputID)
     select case(prm%outputID(o))
     end select
   enddo outputsLoop
@@ -591,7 +588,7 @@ pure subroutine kinetics(Mp,instance,of, &
  implicit none
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
- integer(pInt),                intent(in) :: &
+ integer,                intent(in) :: &
    instance, &
    of
 
@@ -605,14 +602,14 @@ pure subroutine kinetics(Mp,instance,of, &
  real(pReal), dimension(param(instance)%totalNslip) :: &
    tau_pos, &
    tau_neg
- integer(pInt) :: i
- logical       :: nonSchmidActive
+ integer :: i
+ logical :: nonSchmidActive
 
  associate(prm => param(instance), stt => state(instance))
 
- nonSchmidActive = size(prm%nonSchmidCoeff) > 0_pInt
+ nonSchmidActive = size(prm%nonSchmidCoeff) > 0
 
- do i = 1_pInt, prm%totalNslip
+ do i = 1, prm%totalNslip
    tau_pos(i) =       math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i)) - stt%crss_back(i,of)
    tau_neg(i) = merge(math_mul33xx33(Mp,prm%nonSchmid_neg(1:3,1:3,i)) - stt%crss_back(i,of), &
                       0.0_pReal, nonSchmidActive)

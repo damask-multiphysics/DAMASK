@@ -253,10 +253,10 @@ subroutine utilities_init
   write(6,'(a,3(es12.5))')   ' size     x y z: ', geomSize
   
   num%memory_efficient      = config_numerics%getInt   ('memory_efficient',       defaultVal=1) > 0
-  num%FFTW_timelimit        = config_numerics%getFloat ('fftw_timelimit',         defaultVal=-1.0)
+  num%FFTW_timelimit        = config_numerics%getFloat ('fftw_timelimit',         defaultVal=-1.0_pReal)
   num%divergence_correction = config_numerics%getInt   ('divergence_correction',  defaultVal=2)
   num%spectral_derivative   = config_numerics%getString('spectral_derivative',    defaultVal='continuous')
-  num%FFTW_plan_mode        = config_numerics%getString('fftw_plan_mode',         defaultVal='FFTW_PATIENT')
+  num%FFTW_plan_mode        = config_numerics%getString('fftw_plan_mode',         defaultVal='FFTW_MEASURE')
   
   if (num%divergence_correction < 0 .or. num%divergence_correction > 2) &
     call IO_error(301,ext_msg='divergence_correction')
@@ -292,17 +292,17 @@ subroutine utilities_init
  
  
   select case(IO_lc(num%FFTW_plan_mode))                                                            ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
-    case('estimate','fftw_estimate')                                                                ! ordered from slow execution (but fast plan creation) to fast execution
-      FFTW_planner_flag = 64
-    case('measure','fftw_measure')
-      FFTW_planner_flag = 0
-    case('patient','fftw_patient')
-      FFTW_planner_flag= 32
-    case('exhaustive','fftw_exhaustive')
-      FFTW_planner_flag = 8 
+    case('fftw_estimate')                                                                           ! ordered from slow execution (but fast plan creation) to fast execution
+      FFTW_planner_flag = FFTW_ESTIMATE
+    case('fftw_measure')
+      FFTW_planner_flag = FFTW_MEASURE
+    case('fftw_patient')
+      FFTW_planner_flag = FFTW_PATIENT
+    case('fftw_exhaustive')
+      FFTW_planner_flag = FFTW_EXHAUSTIVE
     case default
       call IO_warning(warning_ID=47,ext_msg=trim(IO_lc(num%FFTW_plan_mode)))
-      FFTW_planner_flag = 32
+      FFTW_planner_flag = FFTW_MEASURE
   end select
 
 !--------------------------------------------------------------------------------------------------
@@ -610,7 +610,6 @@ end subroutine utilities_fourierGammaConvolution
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_fourierGreenConvolution(D_ref, mobility_ref, deltaT)
   use math, only: &
-    math_mul33x3, &
     PI
   use mesh, only: &
     grid, &
@@ -1158,8 +1157,6 @@ subroutine utilities_updateIPcoords(F)
     cNeq
   use IO, only: &
     IO_error
-  use math, only: &
-    math_mul33x3
   use mesh, only: &
     grid, &
     grid3, &
@@ -1200,12 +1197,12 @@ subroutine utilities_updateIPcoords(F)
   if (grid3Offset == 0) offset_coords = vectorField_real(1:3,1,1,1)
   call MPI_Bcast(offset_coords,3,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
   if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords')
-  offset_coords = math_mul33x3(Favg,step/2.0_pReal) - offset_coords
+  offset_coords = matmul(Favg,step/2.0_pReal) - offset_coords
   m = 1
   do k = 1,grid3; do j = 1,grid(2); do i = 1,grid(1)
     mesh_ipCoordinates(1:3,1,m) = vectorField_real(1:3,i,j,k) &
                                 + offset_coords &
-                                + math_mul33x3(Favg,step*real([i,j,k+grid3Offset]-1,pReal))
+                                + matmul(Favg,step*real([i,j,k+grid3Offset]-1,pReal))
     m = m+1
   enddo; enddo; enddo
 

@@ -7,7 +7,8 @@
 module plastic_nonlocal
   use prec, only: &
     pReal
-  
+  use future
+ 
   implicit none
   private
   real(pReal), parameter, private :: &
@@ -838,8 +839,7 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
     IO_error
   use math, only: &
     PI, &
-    math_mul33x3, &
-    math_mul3x3, &
+    math_inner, &
     math_inv33
 #ifdef DEBUG
   use debug, only: &
@@ -1004,10 +1004,10 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
             neighbor_rhoTotal(2,:,n) = sum(abs(rho_neighbor(:,scr)),2)
   
             connection_latticeConf(1:3,n) = &
-              math_mul33x3(invFe, mesh_ipCoordinates(1:3,neighbor_ip,neighbor_el) &
+              matmul(invFe, mesh_ipCoordinates(1:3,neighbor_ip,neighbor_el) &
                                   - mesh_ipCoordinates(1:3,ip,el))
-            normal_latticeConf = math_mul33x3(transpose(invFp), mesh_ipAreaNormal(1:3,n,ip,el))
-            if (math_mul3x3(normal_latticeConf,connection_latticeConf(1:3,n)) < 0.0_pReal) &        ! neighboring connection points in opposite direction to face normal: must be periodic image
+            normal_latticeConf = matmul(transpose(invFp), mesh_ipAreaNormal(1:3,n,ip,el))
+            if (math_inner(normal_latticeConf,connection_latticeConf(1:3,n)) < 0.0_pReal) &        ! neighboring connection points in opposite direction to face normal: must be periodic image
               connection_latticeConf(1:3,n) = normal_latticeConf * mesh_ipVolume(ip,el)/mesh_ipArea(n,ip,el) ! instead take the surface normal scaled with the diameter of the cell
         else
           ! local neighbor or different lattice structure or different constitution instance -> use central values instead
@@ -1047,7 +1047,7 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
         invConnections = math_inv33(connections)
         if (all(dEq0(invConnections))) call IO_error(-1,ext_msg='back stress calculation: inversion error')
   
-        rhoExcessGradient(c) = math_mul3x3(m(1:3,s,c), math_mul33x3(invConnections,rhoExcessDifferences))
+        rhoExcessGradient(c) = math_inner(m(1:3,s,c), matmul(invConnections,rhoExcessDifferences))
       enddo
         
         ! ... plus gradient from deads ...
@@ -1528,13 +1528,8 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
     debug_e
 #endif
   use math, only: &
-#ifdef __PGI
-    norm2, &
-#endif
-    math_mul3x3, &
-    math_mul33x3, &
+    math_inner, &
     math_mul33xx33, &
-    math_mul33x33, &
     math_inv33, &
     math_det33, &
     PI
@@ -1756,7 +1751,7 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
     m(1:3,1:ns,4) =  prm%slip_transverse
     
     my_Fe = Fe(1:3,1:3,1,ip,el)
-    my_F = math_mul33x33(my_Fe, Fp(1:3,1:3,1,ip,el))
+    my_F = matmul(my_Fe, Fp(1:3,1:3,1,ip,el))
     
     neighbors: do n = 1,theMesh%elem%nIPneighbors
   
@@ -1774,7 +1769,7 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
       if (neighbor_n > 0) then                                                                      ! if neighbor exists, average deformation gradient
         neighbor_instance = phase_plasticityInstance(material_phase(1,neighbor_ip,neighbor_el))
         neighbor_Fe = Fe(1:3,1:3,1,neighbor_ip,neighbor_el)
-        neighbor_F = math_mul33x33(neighbor_Fe, Fp(1:3,1:3,1,neighbor_ip,neighbor_el))
+        neighbor_F = matmul(neighbor_Fe, Fp(1:3,1:3,1,neighbor_ip,neighbor_el))
         Favg = 0.5_pReal * (my_F + neighbor_F)
       else                                                                                          ! if no neighbor, take my value as average
         Favg = my_F
@@ -1809,9 +1804,9 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
         where (neighbor_rhoSgl * mesh_ipVolume(neighbor_ip,neighbor_el) ** 0.667_pReal < prm%significantN &
           .or. neighbor_rhoSgl < prm%significantRho) &
           neighbor_rhoSgl = 0.0_pReal
-        normal_neighbor2me_defConf = math_det33(Favg) * math_mul33x3(math_inv33(transpose(Favg)), &
+        normal_neighbor2me_defConf = math_det33(Favg) * matmul(math_inv33(transpose(Favg)), &
                                      mesh_ipAreaNormal(1:3,neighbor_n,neighbor_ip,neighbor_el))     ! calculate the normal of the interface in (average) deformed configuration (now pointing from my neighbor to me!!!)
-        normal_neighbor2me = math_mul33x3(transpose(neighbor_Fe), normal_neighbor2me_defConf) &
+        normal_neighbor2me = matmul(transpose(neighbor_Fe), normal_neighbor2me_defConf) &
                            / math_det33(neighbor_Fe)                                                ! interface normal in the lattice configuration of my neighbor
         area = mesh_ipArea(neighbor_n,neighbor_ip,neighbor_el) * norm2(normal_neighbor2me)
         normal_neighbor2me = normal_neighbor2me / norm2(normal_neighbor2me)                         ! normalize the surface normal to unit length
@@ -1819,10 +1814,10 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
           do t = 1,4
             c = (t + 1) / 2
             topp = t + mod(t,2) - mod(t+1,2)
-            if (neighbor_v(s,t) * math_mul3x3(m(1:3,s,t), normal_neighbor2me) > 0.0_pReal &         ! flux from my neighbor to me == entering flux for me
+            if (neighbor_v(s,t) * math_inner(m(1:3,s,t), normal_neighbor2me) > 0.0_pReal &         ! flux from my neighbor to me == entering flux for me
                 .and. v(s,t) * neighbor_v(s,t) >= 0.0_pReal ) then                                  ! ... only if no sign change in flux density  
               lineLength = neighbor_rhoSgl(s,t) * neighbor_v(s,t) &
-                         * math_mul3x3(m(1:3,s,t), normal_neighbor2me) * area                       ! positive line length that wants to enter through this interface
+                         * math_inner(m(1:3,s,t), normal_neighbor2me) * area                       ! positive line length that wants to enter through this interface
               where (compatibility(c,1:ns,s,n,ip,el) > 0.0_pReal) &                                 ! positive compatibility...
                 rhoDotFlux(1:ns,t) = rhoDotFlux(1:ns,t) &
                                    + lineLength / mesh_ipVolume(ip,el) &                            ! ... transferring to equally signed mobile dislocation type
@@ -1856,23 +1851,23 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
         my_v = v
         
         normal_me2neighbor_defConf = math_det33(Favg) &
-                                   * math_mul33x3(math_inv33(transpose(Favg)), & 
+                                   * matmul(math_inv33(transpose(Favg)), & 
                                                              mesh_ipAreaNormal(1:3,n,ip,el))        ! calculate the normal of the interface in (average) deformed configuration (pointing from me to my neighbor!!!)
-        normal_me2neighbor = math_mul33x3(transpose(my_Fe), normal_me2neighbor_defConf) &
+        normal_me2neighbor = matmul(transpose(my_Fe), normal_me2neighbor_defConf) &
                            / math_det33(my_Fe)                                                      ! interface normal in my lattice configuration
         area = mesh_ipArea(n,ip,el) * norm2(normal_me2neighbor)
         normal_me2neighbor = normal_me2neighbor / norm2(normal_me2neighbor)                         ! normalize the surface normal to unit length    
         do s = 1,ns
           do t = 1,4
             c = (t + 1) / 2
-            if (my_v(s,t) * math_mul3x3(m(1:3,s,t), normal_me2neighbor) > 0.0_pReal ) then          ! flux from me to my neighbor == leaving flux for me (might also be a pure flux from my mobile density to dead density if interface not at all transmissive)
+            if (my_v(s,t) * math_inner(m(1:3,s,t), normal_me2neighbor) > 0.0_pReal ) then          ! flux from me to my neighbor == leaving flux for me (might also be a pure flux from my mobile density to dead density if interface not at all transmissive)
               if (my_v(s,t) * neighbor_v(s,t) >= 0.0_pReal) then                                    ! no sign change in flux density
                 transmissivity = sum(compatibility(c,1:ns,s,n,ip,el)**2.0_pReal)                    ! overall transmissivity from this slip system to my neighbor
               else                                                                                  ! sign change in flux density means sign change in stress which does not allow for dislocations to arive at the neighbor
                 transmissivity = 0.0_pReal
               endif
               lineLength = my_rhoSgl(s,t) * my_v(s,t) &
-                         * math_mul3x3(m(1:3,s,t), normal_me2neighbor) * area                       ! positive line length of mobiles that wants to leave through this interface
+                         * math_inner(m(1:3,s,t), normal_me2neighbor) * area                       ! positive line length of mobiles that wants to leave through this interface
               rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / mesh_ipVolume(ip,el)                 ! subtract dislocation flux from current type
               rhoDotFlux(s,t+4) = rhoDotFlux(s,t+4) &
                                      + lineLength / mesh_ipVolume(ip,el) * (1.0_pReal - transmissivity) &
@@ -2017,7 +2012,7 @@ end subroutine plastic_nonlocal_dotState
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_updateCompatibility(orientation,i,e) 
   use math, only: &
-    math_mul3x3, &
+    math_inner, &
     math_qRot
   use rotations, only: &
     rotation
@@ -2134,13 +2129,13 @@ subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
       absoluteMisorientation = rot%asQuaternion()
       mySlipSystems: do s1 = 1,ns
         neighborSlipSystems: do s2 = 1,ns
-          my_compatibility(1,s2,s1,n) =  math_mul3x3(prm%slip_normal(1:3,s1), &
+          my_compatibility(1,s2,s1,n) =  math_inner(prm%slip_normal(1:3,s1), &
           math_qRot(absoluteMisorientation, prm%slip_normal(1:3,s2))) &
-                                  * abs(math_mul3x3(prm%slip_direction(1:3,s1), &
+                                  * abs(math_inner(prm%slip_direction(1:3,s1), &
                                   math_qRot(absoluteMisorientation, prm%slip_direction(1:3,s2))))
-          my_compatibility(2,s2,s1,n) = abs(math_mul3x3(prm%slip_normal(1:3,s1), &
+          my_compatibility(2,s2,s1,n) = abs(math_inner(prm%slip_normal(1:3,s1), &
           math_qRot(absoluteMisorientation, prm%slip_normal(1:3,s2)))) &
-                                  * abs(math_mul3x3(prm%slip_direction(1:3,s1), &
+                                  * abs(math_inner(prm%slip_direction(1:3,s1), &
                                   math_qRot(absoluteMisorientation, prm%slip_direction(1:3,s2))))
         enddo neighborSlipSystems
         

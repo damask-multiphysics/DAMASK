@@ -992,9 +992,14 @@ class Lattice:
     
     models={'KS':self.KS, 'GT':self.GT, "GT'":self.GTdash, 
             'NW':self.NW, 'Pitsch': self.Pitsch, 'Bain':self.Bain}
+    try:
+      relationship = models[model]
+    except:
+      raise KeyError('Orientation relationship "{}" is unknown'.format(model))
 
-    relationship = models[model]
-
+    if self.lattice not in relationship['mapping']:
+      raise ValueError('Relationship "{}" not supported for lattice "{}"'.format(model,self.lattice))
+      
     r = {'lattice':Lattice((set(relationship['mapping'])-{self.lattice}).pop()),                    # target lattice
          'rotations':[] }
 

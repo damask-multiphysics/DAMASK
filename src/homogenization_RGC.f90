@@ -932,8 +932,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  !--------------------------------------------------------------------------------------------------
  function surfaceCorrection(avgF,instance,of)
   use math, only: &
-    math_invert33, &
-    math_mul33x33
+    math_invert33
   
   implicit none
   real(pReal), dimension(3)               :: surfaceCorrection
@@ -947,7 +946,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
   integer(pInt) :: i,j,iBase
   logical     ::  error
  
-  call math_invert33(math_mul33x33(transpose(avgF),avgF),invC,detF,error)
+  call math_invert33(matmul(transpose(avgF),avgF),invC,detF,error)
  
   surfaceCorrection = 0.0_pReal
   do iBase = 1_pInt,3_pInt
@@ -1139,8 +1138,6 @@ end function relaxationVector
 !> @brief identify the normal of an interface 
 !--------------------------------------------------------------------------------------------------
 pure function interfaceNormal(intFace,instance,of)
- use math, only: &
-   math_mul33x3
  
  implicit none
  real(pReal),   dimension (3)  ::            interfaceNormal
@@ -1156,7 +1153,7 @@ pure function interfaceNormal(intFace,instance,of)
  nPos = abs(intFace(1))                                                                             ! identify the position of the interface in global state array
  interfaceNormal(nPos) = real(intFace(1)/abs(intFace(1)),pReal)                                     ! get the normal vector w.r.t. cluster axis
 
- interfaceNormal = math_mul33x3(dependentState(instance)%orientation(1:3,1:3,of),interfaceNormal)   ! map the normal vector into sample coordinate system (basis)
+ interfaceNormal = matmul(dependentState(instance)%orientation(1:3,1:3,of),interfaceNormal)   ! map the normal vector into sample coordinate system (basis)
 
 end function interfaceNormal
 

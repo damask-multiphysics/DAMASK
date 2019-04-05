@@ -79,7 +79,8 @@ subroutine grid_damage_spectral_init
  
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
- call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-damage_snes_type ngmres',ierr)
+ call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-damage_snes_type newtonls -damage_snes_mf &
+                               &-damage_snes_ksp_ew -damage_ksp_type fgmres',ierr)
  CHKERRQ(ierr)
  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
  CHKERRQ(ierr)
@@ -198,7 +199,7 @@ function grid_damage_spectral_solution(timeinc,timeinc_old,loadCaseTime) result(
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
   call MPI_Allreduce(MPI_IN_PLACE,solnNorm,1,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
   damage_stagInc = damage_current
-  solution%stagConverged = stagNorm < min(err_damage_tolAbs, err_damage_tolRel*solnNorm)
+  solution%stagConverged = stagNorm < max(err_damage_tolAbs, err_damage_tolRel*solnNorm)
 
 !--------------------------------------------------------------------------------------------------
 ! updating damage state 
@@ -285,8 +286,6 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   use mesh, only: &
     grid, &
     grid3
-  use math, only: &
-    math_mul33x3
   use spectral_utilities, only: &
     scalarField_real, &
     vectorField_real, &
@@ -327,7 +326,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   cell = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     cell = cell + 1
-    vectorField_real(1:3,i,j,k) = math_mul33x3(damage_nonlocal_getDiffusion33(1,cell) - D_ref, &
+    vectorField_real(1:3,i,j,k) = matmul(damage_nonlocal_getDiffusion33(1,cell) - D_ref, &
                                                vectorField_real(1:3,i,j,k))
   enddo; enddo; enddo
   call utilities_FFTvectorForward

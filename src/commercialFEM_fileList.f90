@@ -6,6 +6,8 @@
 #include "IO.f90"
 #include "numerics.f90"
 #include "debug.f90"
+#include "list.f90"
+#include "future.f90"
 #include "config.f90"
 #ifdef DAMASKHDF5
 #include "HDF5_utilities.f90"

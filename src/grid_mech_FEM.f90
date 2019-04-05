@@ -153,7 +153,7 @@ subroutine grid_mech_FEM_init
         [grid(1)],[grid(2)],localK, &
         mech_grid,ierr)
  CHKERRQ(ierr)
- call DMDASetUniformCoordinates(mech_grid,0.0,geomSize(1),0.0,geomSize(2),0.0,geomSize(3),ierr)
+ call DMDASetUniformCoordinates(mech_grid,0.0_pReal,geomSize(1),0.0_pReal,geomSize(2),0.0_pReal,geomSize(3),ierr)
  CHKERRQ(ierr)
  call SNESSetDM(mech_snes,mech_grid,ierr); CHKERRQ(ierr)
  call DMsetFromOptions(mech_grid,ierr); CHKERRQ(ierr)
@@ -172,9 +172,9 @@ subroutine grid_mech_FEM_init
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
- call VecSet(solution_current,0.0,ierr);CHKERRQ(ierr)
- call VecSet(solution_lastInc,0.0,ierr);CHKERRQ(ierr)
- call VecSet(solution_rate   ,0.0,ierr);CHKERRQ(ierr)
+ call VecSet(solution_current,0.0_pReal,ierr);CHKERRQ(ierr)
+ call VecSet(solution_lastInc,0.0_pReal,ierr);CHKERRQ(ierr)
+ call VecSet(solution_rate   ,0.0_pReal,ierr);CHKERRQ(ierr)
  call DMDAVecGetArrayF90(mech_grid,solution_current,u_current,ierr); CHKERRQ(ierr)
  call DMDAVecGetArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr); CHKERRQ(ierr)
 
@@ -316,7 +316,6 @@ end function grid_mech_FEM_solution
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,stress_BC,rotation_BC)
   use math, only: &
-    math_mul33x33 ,&
     math_rotate_backward33
   use numerics, only: &
     worldrank
@@ -402,7 +401,7 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
     ! calculate rate for aim
     if     (deformation_BC%myType=='l') then                                                          ! calculate F_aimDot from given L and current F
       F_aimDot = &
-      F_aimDot + deformation_BC%maskFloat * math_mul33x33(deformation_BC%values, F_aim_lastInc)
+      F_aimDot + deformation_BC%maskFloat * matmul(deformation_BC%values, F_aim_lastInc)
     elseif(deformation_BC%myType=='fdot') then                                                        ! F_aimDot is prescribed
       F_aimDot = &
       F_aimDot + deformation_BC%maskFloat * deformation_BC%values
@@ -413,11 +412,11 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
     
 
     if (guess) then
-      call VecWAXPY(solution_rate,-1.0,solution_lastInc,solution_current,ierr)
+      call VecWAXPY(solution_rate,-1.0_pReal,solution_lastInc,solution_current,ierr)
       CHKERRQ(ierr)
-      call VecScale(solution_rate,1.0/timeinc_old,ierr); CHKERRQ(ierr)
+      call VecScale(solution_rate,1.0_pReal/timeinc_old,ierr); CHKERRQ(ierr)
     else
-      call VecSet(solution_rate,0.0,ierr); CHKERRQ(ierr)
+      call VecSet(solution_rate,0.0_pReal,ierr); CHKERRQ(ierr)
     endif
     call VecCopy(solution_current,solution_lastInc,ierr); CHKERRQ(ierr)
     
@@ -591,7 +590,7 @@ subroutine formResidual(da_local,x_local,f_local,dummy,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
- call VecSet(f_local,0.0,ierr);CHKERRQ(ierr)
+ call VecSet(f_local,0.0_pReal,ierr);CHKERRQ(ierr)
  call DMDAVecGetArrayF90(da_local,f_local,f_scal,ierr);CHKERRQ(ierr)
  call DMDAVecGetArrayF90(da_local,x_local,x_scal,ierr);CHKERRQ(ierr)
  ele = 0

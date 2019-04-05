@@ -268,9 +268,9 @@ subroutine plastic_dislotwin_init
    slipActive: if (prm%sum_N_sl > 0) then
      prm%P_sl          = lattice_SchmidMatrix_slip(prm%N_sl,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
-     prm%h_sl_sl = lattice_interaction_SlipBySlip(prm%N_sl, &
+     prm%h_sl_sl = transpose(lattice_interaction_SlipBySlip(prm%N_sl, &
                                                   config%getFloats('interaction_slipslip'), &
-                                                  config%getString('lattice_structure'))
+                                                  config%getString('lattice_structure')))
      prm%forestProjection     = lattice_forestProjection (prm%N_sl,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
 
@@ -332,9 +332,9 @@ subroutine plastic_dislotwin_init
    if (prm%sum_N_tw > 0) then
      prm%P_tw  = lattice_SchmidMatrix_twin(prm%N_tw,config%getString('lattice_structure'),&
                                                   config%getFloat('c/a',defaultVal=0.0_pReal))
-     prm%h_tw_tw      = lattice_interaction_TwinByTwin(prm%N_tw,&
+     prm%h_tw_tw      = transpose(lattice_interaction_TwinByTwin(prm%N_tw,&
                                                        config%getFloats('interaction_twintwin'), &
-                                                       config%getString('lattice_structure'))
+                                                       config%getString('lattice_structure')))
 
      prm%b_tw         = config%getFloats('twinburgers',  requiredSize=size(prm%N_tw))
      prm%t_tw         = config%getFloats('twinsize',     requiredSize=size(prm%N_tw))
@@ -380,9 +380,9 @@ subroutine plastic_dislotwin_init
      prm%xc_trans         = config%getFloat('xc_trans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
      prm%L_tr             = config%getFloat('l0_trans')
 
-     prm%h_tr_tr = lattice_interaction_TransByTrans(prm%N_tr,&
+     prm%h_tr_tr = transpose(lattice_interaction_TransByTrans(prm%N_tr,&
                                                                    config%getFloats('interaction_transtrans'), &
-                                                                   config%getString('lattice_structure'))
+                                                                   config%getString('lattice_structure')))
                                                              
      prm%C66_tr        = lattice_C66_trans(prm%N_tr,prm%C66, &
                                   config%getString('trans_lattice_structure'), &
@@ -416,16 +416,16 @@ subroutine plastic_dislotwin_init
    endif
    
    if (prm%sum_N_sl > 0 .and. prm%sum_N_tw > 0) then
-     prm%h_sl_tw = lattice_interaction_SlipByTwin(prm%N_sl,prm%N_tw,&
+     prm%h_sl_tw = transpose(lattice_interaction_SlipByTwin(prm%N_sl,prm%N_tw,&
                                                   config%getFloats('interaction_sliptwin'), &
-                                                  config%getString('lattice_structure'))
+                                                  config%getString('lattice_structure')))
      if (prm%fccTwinTransNucleation .and. prm%sum_N_tw > 12) write(6,*) 'mist' ! ToDo: implement better test. The model will fail also if N_tw is [6,6]
    endif    
 
    if (prm%sum_N_sl > 0 .and. prm%sum_N_tr > 0) then  
-     prm%h_sl_tr = lattice_interaction_SlipByTrans(prm%N_sl,prm%N_tr,&
+     prm%h_sl_tr = transpose(lattice_interaction_SlipByTrans(prm%N_sl,prm%N_tr,&
                                                                  config%getFloats('interaction_sliptrans'), &
-                                                                 config%getString('lattice_structure')) 
+                                                                 config%getString('lattice_structure')))
      if (prm%fccTwinTransNucleation .and. prm%sum_N_tr > 12) write(6,*) 'mist' ! ToDo: implement better test. The model will fail also if N_tr is [6,6]
    endif  
   
@@ -651,8 +651,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
    math_eigenValuesVectorsSym, &
    math_outer, &
    math_symmetric33, &
-   math_mul33xx33, &
-   math_mul33x3
+   math_mul33xx33
  
  implicit none
  real(pReal), dimension(3,3),     intent(out) :: Lp
@@ -723,8 +722,8 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
    call math_eigenValuesVectorsSym(Mp,eigValues,eigVectors,error)
 
    do i = 1,6
-     P_sb = 0.5_pReal * math_outer(math_mul33x3(eigVectors,sb_sComposition(1:3,i)),&
-                                               math_mul33x3(eigVectors,sb_mComposition(1:3,i)))
+     P_sb = 0.5_pReal * math_outer(matmul(eigVectors,sb_sComposition(1:3,i)),&
+                                   matmul(eigVectors,sb_mComposition(1:3,i)))
      tau = math_mul33xx33(Mp,P_sb)
    
      significantShearBandStress: if (abs(tau) > tol_math_check) then
@@ -918,8 +917,7 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
 
  
  if (prm%sum_N_tw > 0 .and. prm%sum_N_sl > 0) &
-   inv_lambda_sl_tw = &
-     matmul(transpose(prm%h_sl_tw),f_over_t_tw)/(1.0_pReal-sumf_twin)               ! ToDo: Change order/no transpose
+   inv_lambda_sl_tw = matmul(prm%h_sl_tw,f_over_t_tw)/(1.0_pReal-sumf_twin)
 
  
 
@@ -929,8 +927,7 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
 
  
  if (prm%sum_N_tr > 0 .and. prm%sum_N_sl > 0) &
-   inv_lambda_sl_tr = &                                                                      ! ToDo: does not work if N_tr is not 12
-      matmul(transpose(prm%h_sl_tr),f_over_t_tr)/(1.0_pReal-sumf_trans)    ! ToDo: remove transpose
+   inv_lambda_sl_tr = matmul(prm%h_sl_tr,f_over_t_tr)/(1.0_pReal-sumf_trans)
 
  
  !ToDo: needed? if (prm%sum_N_tr > 0) &
@@ -948,15 +945,11 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
     endif
 
 
-
  dst%Lambda_tw(:,of) = prm%i_tw*prm%D/(1.0_pReal+prm%D*inv_lambda_tw_tw)
  dst%Lambda_tr(:,of) = prm%i_tr*prm%D/(1.0_pReal+prm%D*inv_lambda_tr_tr)
 
  !* threshold stress for dislocation motion
- forall (i = 1:prm%sum_N_sl) dst%tau_pass(i,of) = &
-     prm%mu*prm%b_sl(i)*&
-     sqrt(dot_product(stt%rho_mob(1:prm%sum_N_sl,of)+stt%rho_dip(1:prm%sum_N_sl,of),&
-                      prm%h_sl_sl(:,i)))
+ dst%tau_pass(:,of) = prm%mu*prm%b_sl* sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,of)+stt%rho_dip(:,of)))
 
  !* threshold stress for growing twin/martensite
  if(prm%sum_N_tw == prm%sum_N_sl) &

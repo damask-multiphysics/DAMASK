@@ -381,8 +381,6 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
                                          S, Fi, ipc, ip, el)
  use prec, only: &
    pReal
- use math, only: &
-   math_mul33x33
  use material, only: &
    phasememberAt, &
    phase_plasticity, &
@@ -439,7 +437,7 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
  ho = material_homogenizationAt(el)
  tme = thermalMapping(ho)%p(ip,el)
 
- Mp  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),S)
+ Mp  = matmul(matmul(transpose(Fi),Fi),S)
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
 
@@ -478,19 +476,11 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
 
  end select plasticityType
 
-#if defined(__INTEL_COMPILER) || defined(__PGI)
- forall(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt)
-#else
- do concurrent(i = 1_pInt:3_pInt, j = 1_pInt:3_pInt)
-#endif
-   dLp_dFi(i,j,1:3,1:3) = math_mul33x33(math_mul33x33(Fi,S),transpose(dLp_dMp(i,j,1:3,1:3))) + &
-                          math_mul33x33(math_mul33x33(Fi,dLp_dMp(i,j,1:3,1:3)),S)
-   dLp_dS(i,j,1:3,1:3)  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),dLp_dMp(i,j,1:3,1:3))       ! ToDo: @PS: why not:   dLp_dMp:(FiT Fi)
-#if defined(__INTEL_COMPILER) || defined(__PGI)
- end forall
-#else
- enddo
-#endif
+ do i=1,3; do j=1,3
+   dLp_dFi(i,j,1:3,1:3) = matmul(matmul(Fi,S),transpose(dLp_dMp(i,j,1:3,1:3))) + &
+                          matmul(matmul(Fi,dLp_dMp(i,j,1:3,1:3)),S)
+   dLp_dS(i,j,1:3,1:3)  = matmul(matmul(transpose(Fi),Fi),dLp_dMp(i,j,1:3,1:3))                     ! ToDo: @PS: why not:   dLp_dMp:(FiT Fi)
+ enddo; enddo
 
 end subroutine constitutive_LpAndItsTangents
 
@@ -506,8 +496,7 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
  use math, only: &
    math_I3, &
    math_inv33, &
-   math_det33, &
-   math_mul33x33
+   math_det33
  use material, only: &
    phasememberAt, &
    phase_plasticity, &
@@ -591,11 +580,11 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
 
  FiInv = math_inv33(Fi)
  detFi = math_det33(Fi)
- Li = math_mul33x33(math_mul33x33(Fi,Li),FiInv)*detFi                                               !< push forward to intermediate configuration
- temp_33 = math_mul33x33(FiInv,Li)
+ Li = matmul(matmul(Fi,Li),FiInv)*detFi                                               !< push forward to intermediate configuration
+ temp_33 = matmul(FiInv,Li)
 
  do i = 1_pInt,3_pInt; do j = 1_pInt,3_pInt
-   dLi_dS(1:3,1:3,i,j)  = math_mul33x33(math_mul33x33(Fi,dLi_dS(1:3,1:3,i,j)),FiInv)*detFi
+   dLi_dS(1:3,1:3,i,j)  = matmul(matmul(Fi,dLi_dS(1:3,1:3,i,j)),FiInv)*detFi
    dLi_dFi(1:3,1:3,i,j) = dLi_dFi(1:3,1:3,i,j) + Li*FiInv(j,i)
    dLi_dFi(1:3,i,1:3,j) = dLi_dFi(1:3,i,1:3,j) + math_I3*temp_33(j,i) + Li*FiInv(j,i)
  end do; end do
@@ -689,7 +678,6 @@ subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
  use prec, only: &
    pReal
  use math, only : &
-   math_mul33x33, &
    math_mul3333xx33, &
    math_66toSym3333, &
    math_I3
@@ -733,14 +721,14 @@ subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
    end select degradationType
  enddo DegradationLoop
 
- E = 0.5_pReal*(math_mul33x33(transpose(Fe),Fe)-math_I3)                                            !< Green-Lagrange strain in unloaded configuration
- S = math_mul3333xx33(C,math_mul33x33(math_mul33x33(transpose(Fi),E),Fi))                           !< 2PK stress in lattice configuration in work conjugate with GL strain pulled back to lattice configuration
+ E = 0.5_pReal*(matmul(transpose(Fe),Fe)-math_I3)                                            !< Green-Lagrange strain in unloaded configuration
+ S = math_mul3333xx33(C,matmul(matmul(transpose(Fi),E),Fi))                           !< 2PK stress in lattice configuration in work conjugate with GL strain pulled back to lattice configuration
 
  dS_dFe = 0.0_pReal
  forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt)
    dS_dFe(i,j,1:3,1:3) = &
-     math_mul33x33(Fe,math_mul33x33(math_mul33x33(Fi,C(i,j,1:3,1:3)),transpose(Fi)))                !< dS_ij/dFe_kl = C_ijmn * Fi_lm * Fi_on * Fe_ko
-   dS_dFi(i,j,1:3,1:3) = 2.0_pReal*math_mul33x33(math_mul33x33(E,Fi),C(i,j,1:3,1:3))                !< dS_ij/dFi_kl = C_ijln * E_km * Fe_mn
+     matmul(Fe,matmul(matmul(Fi,C(i,j,1:3,1:3)),transpose(Fi)))                !< dS_ij/dFe_kl = C_ijmn * Fi_lm * Fi_on * Fe_ko
+   dS_dFi(i,j,1:3,1:3) = 2.0_pReal*matmul(matmul(E,Fi),C(i,j,1:3,1:3))                !< dS_ij/dFi_kl = C_ijln * E_km * Fe_mn
  end forall
 
 end subroutine constitutive_hooke_SandItsTangents
@@ -756,9 +744,6 @@ subroutine constitutive_collectDotState(S, FeArray, Fi, FpArray, subdt, ipc, ip,
    debug_level, &
    debug_constitutive, &
    debug_levelBasic
- use math, only: &
-   math_mul33x33, &
-   math_mul33x33
  use mesh, only: &
    theMesh
  use material, only: &
@@ -829,7 +814,7 @@ subroutine constitutive_collectDotState(S, FeArray, Fi, FpArray, subdt, ipc, ip,
  ho = material_homogenizationAt(el)
  tme = thermalMapping(ho)%p(ip,el)
 
- Mp  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),S)
+ Mp  = matmul(matmul(transpose(Fi),Fi),S)
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
 
@@ -877,7 +862,8 @@ subroutine constitutive_collectDotState(S, FeArray, Fi, FpArray, subdt, ipc, ip,
        call source_damage_anisoDuctile_dotState (         ipc, ip, el)
 
      case (SOURCE_thermal_externalheat_ID) sourceType
-       call source_thermal_externalheat_dotState(         ipc, ip, el)
+       of = phasememberAt(ipc,ip,el)
+       call source_thermal_externalheat_dotState(material_phase(ipc,ip,el),of)
 
    end select sourceType
 
@@ -896,8 +882,6 @@ subroutine constitutive_collectDeltaState(S, Fe, Fi, ipc, ip, el)
    debug_level, &
    debug_constitutive, &
    debug_levelBasic
- use math, only: &
-   math_mul33x33
  use material, only: &
    phasememberAt, &
    phase_plasticityInstance, &
@@ -930,7 +914,7 @@ subroutine constitutive_collectDeltaState(S, Fe, Fi, ipc, ip, el)
    i, &
    instance, of
 
- Mp  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),S)
+ Mp  = matmul(matmul(transpose(Fi),Fi),S)
 
  plasticityType: select case (phase_plasticity(material_phase(ipc,ip,el)))
 
@@ -965,8 +949,6 @@ end subroutine constitutive_collectDeltaState
 function constitutive_postResults(S, Fi, ipc, ip, el)
  use prec, only: &
    pReal
- use math, only: &
-  math_mul33x33
  use material, only: &
    phasememberAt, &
    phase_plasticityInstance, &
@@ -1034,7 +1016,7 @@ function constitutive_postResults(S, Fi, ipc, ip, el)
 
  constitutive_postResults = 0.0_pReal
 
- Mp  = math_mul33x33(math_mul33x33(transpose(Fi),Fi),S)
+ Mp  = matmul(matmul(transpose(Fi),Fi),S)
 
  ho = material_homogenizationAt(el)
  tme = thermalMapping(ho)%p(ip,el)

@@ -38,6 +38,8 @@ module source_damage_anisoBrittle
    real(pReal), dimension(:), allocatable :: &
      critDisp, &
      critLoad
+   real(pReal), dimension(:,:,:,:), allocatable :: &
+     cleavage_systems
    integer(pInt) :: &
      totalNcleavage
    integer(pInt), dimension(:), allocatable :: &
@@ -86,6 +88,7 @@ subroutine source_damage_anisoBrittle_init
    config_phase, &
    material_Nphase
  use lattice, only: &
+   lattice_SchmidMatrix_cleavage, &
    lattice_maxNcleavageFamily
 
  implicit none
@@ -148,6 +151,9 @@ subroutine source_damage_anisoBrittle_init
 
    prm%critDisp = config%getFloats('anisobrittle_criticaldisplacement',requiredSize=size(prm%Ncleavage))
    prm%critLoad = config%getFloats('anisobrittle_criticalload',        requiredSize=size(prm%Ncleavage))
+   
+   prm%cleavage_systems  = lattice_SchmidMatrix_cleavage (prm%Ncleavage,config%getString('lattice_structure'),&
+                                                    config%getFloat('c/a',defaultVal=0.0_pReal))
 
      ! expand: family => system
      prm%critDisp  = math_expand(prm%critDisp, prm%Ncleavage)
@@ -244,12 +250,14 @@ subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
  do f = 1_pInt,lattice_maxNcleavageFamily
    index_myFamily = sum(lattice_NcleavageSystem(1:f-1_pInt,phase))                                  ! at which index starts my family
    do i = 1_pInt,source_damage_anisoBrittle_Ncleavage(f,instance)                                   ! process each (active) cleavage system in family
+
      traction_d    = math_mul33xx33(S,lattice_Scleavage(1:3,1:3,1,index_myFamily+i,phase))
      traction_t    = math_mul33xx33(S,lattice_Scleavage(1:3,1:3,2,index_myFamily+i,phase))
      traction_n    = math_mul33xx33(S,lattice_Scleavage(1:3,1:3,3,index_myFamily+i,phase))
      
      traction_crit = param(instance)%critLoad(index)* &
                      damage(homog)%p(damageOffset)*damage(homog)%p(damageOffset)
+
      sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = &
        sourceState(phase)%p(sourceOffset)%dotState(1,constituent) + &
        param(instance)%sdot_0* &

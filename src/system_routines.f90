@@ -3,69 +3,76 @@
 !> @brief    provides wrappers to C routines
 !--------------------------------------------------------------------------------------------------
 module system_routines
- use, intrinsic :: ISO_C_Binding, only: &
-   C_INT, &
-   C_CHAR, &
-   C_NULL_CHAR
-
- implicit none
- private
+  use, intrinsic :: ISO_C_Binding, only: &
+    C_INT, &
+    C_CHAR, &
+    C_NULL_CHAR
  
- public :: &
-   signalusr1_C, &
-   signalusr2_C, &
-   isDirectory, &
-   getCWD, &
-   getHostName, &
-   setCWD
-
-interface
-
- function isDirectory_C(path) bind(C)
-   use, intrinsic :: ISO_C_Binding, only: &
-     C_INT, &
-     C_CHAR
-   integer(C_INT) :: isDirectory_C
-   character(kind=C_CHAR), dimension(1024), intent(in) :: path                                      ! C string is an array
-  end function isDirectory_C
-
- subroutine getCurrentWorkDir_C(str, stat) bind(C)
-   use, intrinsic :: ISO_C_Binding, only: &
-     C_INT, &
-     C_CHAR
-   character(kind=C_CHAR), dimension(1024), intent(out) :: str                                      ! C string is an array
-   integer(C_INT),intent(out)         :: stat
-  end subroutine getCurrentWorkDir_C
-
- subroutine getHostName_C(str, stat) bind(C)
-   use, intrinsic :: ISO_C_Binding, only: &
-     C_INT, &
-     C_CHAR
-   character(kind=C_CHAR), dimension(1024), intent(out) :: str                                      ! C string is an array
-   integer(C_INT),intent(out)         :: stat
-  end subroutine getHostName_C
-
- function chdir_C(path) bind(C)
-   use, intrinsic :: ISO_C_Binding, only: &
-     C_INT, &
-     C_CHAR
-   integer(C_INT) :: chdir_C
-   character(kind=C_CHAR), dimension(1024), intent(in) :: path                                      ! C string is an array
- end function chdir_C
+  implicit none
+  private
+  
+  public :: &
+    signalterm_C, &
+    signalusr1_C, &
+    signalusr2_C, &
+    isDirectory, &
+    getCWD, &
+    getHostName, &
+    setCWD
  
- subroutine signalusr1_C(handler) bind(C)
-   use, intrinsic :: ISO_C_Binding, only: &
-     C_FUNPTR
-   type(C_FUNPTR), intent(in), value :: handler
- end subroutine signalusr1_C
+  interface
  
+  function isDirectory_C(path) bind(C)
+    use, intrinsic :: ISO_C_Binding, only: &
+      C_INT, &
+      C_CHAR
+    integer(C_INT) :: isDirectory_C
+    character(kind=C_CHAR), dimension(1024), intent(in) :: path                                     ! C string is an array
+   end function isDirectory_C
+ 
+  subroutine getCurrentWorkDir_C(str, stat) bind(C)
+    use, intrinsic :: ISO_C_Binding, only: &
+      C_INT, &
+      C_CHAR
+    character(kind=C_CHAR), dimension(1024), intent(out) :: str                                     ! C string is an array
+    integer(C_INT),intent(out)         :: stat
+   end subroutine getCurrentWorkDir_C
+ 
+  subroutine getHostName_C(str, stat) bind(C)
+    use, intrinsic :: ISO_C_Binding, only: &
+      C_INT, &
+      C_CHAR
+    character(kind=C_CHAR), dimension(1024), intent(out) :: str                                     ! C string is an array
+    integer(C_INT),intent(out)         :: stat
+   end subroutine getHostName_C
+ 
+  function chdir_C(path) bind(C)
+    use, intrinsic :: ISO_C_Binding, only: &
+      C_INT, &
+      C_CHAR
+    integer(C_INT) :: chdir_C
+    character(kind=C_CHAR), dimension(1024), intent(in) :: path                                     ! C string is an array
+  end function chdir_C
+  
+  subroutine signalterm_C(handler) bind(C)
+    use, intrinsic :: ISO_C_Binding, only: &
+      C_FUNPTR
+    type(C_FUNPTR), intent(in), value :: handler
+  end subroutine signalterm_C
+ 
+  subroutine signalusr1_C(handler) bind(C)
+    use, intrinsic :: ISO_C_Binding, only: &
+      C_FUNPTR
+    type(C_FUNPTR), intent(in), value :: handler
+  end subroutine signalusr1_C
+  
   subroutine signalusr2_C(handler) bind(C)
-   use, intrinsic :: ISO_C_Binding, only: &
-     C_FUNPTR
-   type(C_FUNPTR), intent(in), value :: handler
- end subroutine signalusr2_C
-
-end interface
+    use, intrinsic :: ISO_C_Binding, only: &
+      C_FUNPTR
+    type(C_FUNPTR), intent(in), value :: handler
+  end subroutine signalusr2_C
+ 
+  end interface
 
 contains
 
