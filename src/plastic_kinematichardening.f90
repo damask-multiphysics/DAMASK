@@ -113,9 +113,6 @@ subroutine plastic_kinehardening_init
  use IO, only: &
    IO_error
  use material, only: &
-#ifdef DEBUG
-   phasememberAt, &
-#endif
    phase_plasticity, &
    phase_plasticityInstance, &
    phase_Noutput, &
@@ -124,6 +121,10 @@ subroutine plastic_kinehardening_init
    PLASTICITY_kinehardening_ID, &
    material_phase, &
    plasticState
+#ifdef DEBUG
+ use material, only: &
+   phasememberAt
+#endif
  use config, only: &
    config_phase
  use lattice

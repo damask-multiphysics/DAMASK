@@ -444,8 +444,6 @@ J2_plasticBehavior:
 grid_all_example:
   stage: example
   script: grid_all_example/test.py
-  only:
-    - development
 
 ###################################################################################################
 SpectralRuntime:
