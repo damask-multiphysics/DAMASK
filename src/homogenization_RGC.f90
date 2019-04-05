@@ -8,8 +8,7 @@
 !--------------------------------------------------------------------------------------------------
 module homogenization_RGC
  use prec, only: &
-   pReal, &
-   pInt
+   pReal
 
  implicit none
  private
@@ -818,7 +817,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
       nVect = interfaceNormal(intFace,instance,of)
       iGNghb3 = iGrain3                                                                             ! identify the neighboring grain across the interface
       iGNghb3(abs(intFace(1))) = iGNghb3(abs(intFace(1))) &
-                               + int(real(intFace(1),pReal)/real(abs(intFace(1)),pReal),pInt)
+                               + int(real(intFace(1),pReal)/real(abs(intFace(1)),pReal))
       where(iGNghb3 < 1)    iGNghb3 = nGDim
       where(iGNghb3 >nGDim) iGNghb3 = 1
       iGNghb  = grain3to1(iGNghb3,prm%Nconstituents)                                                ! get the ID of the neighboring grain
