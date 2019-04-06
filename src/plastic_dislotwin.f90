@@ -1064,7 +1064,8 @@ end function plastic_dislotwin_postResults
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_dislotwin_results(instance,group)
 #if defined(PETSc) || defined(DAMASK_HDF5)
-  use results
+  use results, only: &
+    results_writeDataset
 
   implicit none
   integer, intent(in) :: instance
