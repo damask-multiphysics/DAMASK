@@ -50,8 +50,7 @@ subroutine constitutive_init
    IO_write_jobFile
  use config, only: &
    material_Nphase, &
-   phase_name, &
-   config_deallocate
+   phase_name
  use material, only: &
    material_phase, &
    phase_plasticity, &
@@ -148,8 +147,6 @@ subroutine constitutive_init
  if (any(phase_kinematics == KINEMATICS_cleavage_opening_ID))  call kinematics_cleavage_opening_init
  if (any(phase_kinematics == KINEMATICS_slipplane_opening_ID)) call kinematics_slipplane_opening_init
  if (any(phase_kinematics == KINEMATICS_thermal_expansion_ID)) call kinematics_thermal_expansion_init
-
- call config_deallocate('material.config/phase')
 
  write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'
 
@@ -1077,7 +1074,7 @@ end function constitutive_postResults
 !--------------------------------------------------------------------------------------------------
 !> @brief writes constitutive results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_results()
+subroutine constitutive_results
   use material, only: &
     PLASTICITY_ISOTROPIC_ID, &
     PLASTICITY_PHENOPOWERLAW_ID, &

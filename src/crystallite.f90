@@ -10,7 +10,8 @@
 
 module crystallite
   use prec, only: &
-    pReal
+    pReal, &
+    pStringLen
   use rotations, only: &
     rotation
   use FEsolving, only:  &
@@ -103,6 +104,8 @@ module crystallite
   end enum
   integer(kind(undefined_ID)),dimension(:,:),   allocatable,          private :: &
     crystallite_outputID                                                                            !< ID of each post result output
+  character(len=pStringLen),  dimension(:),     allocatable,          private :: &
+    constituent_output
   procedure(), pointer :: integrateState
  
   public :: &
@@ -111,7 +114,8 @@ module crystallite
     crystallite_stressTangent, &
     crystallite_orientations, &
     crystallite_push33ToRef, &
-    crystallite_postResults
+    crystallite_postResults, &
+    crystallite_results
   private :: &
     integrateStress, &
     integrateState, &
@@ -156,6 +160,7 @@ subroutine crystallite_init
   use config, only: &
    config_deallocate, &
    config_crystallite, &
+   config_phase, &
    crystallite_name
   use constitutive, only: &
     constitutive_initialFi, &
@@ -296,6 +301,21 @@ subroutine crystallite_init
       end select outputName
     enddo
   enddo
+  
+  allocate(constituent_output(size(config_phase)))
+  do c = 1, size(config_phase)
+#if defined(__GFORTRAN__)
+    str = ['GfortranBug86277']
+    str = config_crystallite(c)%getStrings('(output)',defaultVal=str)
+    if (str(1) == 'GfortranBug86277') str = [character(len=65536)::]
+#else
+    str = config_crystallite(c)%getStrings('(output)',defaultVal=[character(len=65536)::])
+#endif
+    constituent_output(c) = '+'
+    do o = 1, size(str)
+      constituent_output(c) = trim(constituent_output(c))//trim(str(o))//'+'
+    enddo
+  enddo
 
 
   do r = 1,size(config_crystallite)
@@ -340,6 +360,7 @@ subroutine crystallite_init
     close(FILEUNIT)
   endif
  
+  call config_deallocate('material.config/phase')
   call config_deallocate('material.config/crystallite')
 
 !--------------------------------------------------------------------------------------------------
@@ -1051,6 +1072,55 @@ function crystallite_postResults(ipc, ip, el)
                                ipc, ip, el)
 
 end function crystallite_postResults
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes constitutive results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine crystallite_results
+#if defined(PETSc) || defined(DAMASK_HDF5)
+  use results
+  use HDF5_utilities
+  use config, only: &
+    config_name_phase => phase_name                                                                  ! anticipate logical name
+   
+  use material, only: &
+    material_phaseAt, &
+    phase_plasticityInstance, &
+    material_phase_plasticity_type => phase_plasticity
+        
+  implicit none
+  integer :: p
+  real(pReal), allocatable, dimension(:,:,:) :: packe
+  character(len=256) :: group
+  character(len=16)  :: i
+  
+  call HDF5_closeGroup(results_addGroup('current/constituent'))   
+                                             
+  do p=1,size(config_name_phase)
+    write(i,('(i2.2)')) p                                                                           ! allow 99 groups
+    group = trim('current/constituent')//'/'//trim(i)//'_'//trim(config_name_phase(p))
+    if (index(constituent_output(p),'+f+') /= 0) then
+       print*, 'f'
+    endif
+    if (index(constituent_output(p),'+p+') /= 0) then
+      print*, 'p'
+    endif
+ enddo
+ 
+ contains
+ 
+ function packed(res)
+ 
+   real(pReal), dimension(:,:,:,:,:), intent(in) :: res
+   real(pReal), allocatable, dimension(:,:,:) :: packed
+   
+ 
+ end function packed
+#endif
+
+
+end subroutine crystallite_results
 
 
 !--------------------------------------------------------------------------------------------------
