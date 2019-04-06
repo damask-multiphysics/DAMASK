@@ -104,8 +104,13 @@ module crystallite
   end enum
   integer(kind(undefined_ID)),dimension(:,:),   allocatable,          private :: &
     crystallite_outputID                                                                            !< ID of each post result output
-  character(len=pStringLen),  dimension(:),     allocatable,          private :: &
-    constituent_output
+    
+  type, private :: tOutput                                                                          !< new requested output (per phase)
+    character(len=65536), allocatable, dimension(:) :: &
+      label
+  end type tOutput
+  type(tOutput), allocatable, dimension(:), private :: output_constituent
+  
   procedure(), pointer :: integrateState
  
   public :: &
@@ -302,19 +307,16 @@ subroutine crystallite_init
     enddo
   enddo
   
-  allocate(constituent_output(size(config_phase)))
+  allocate(output_constituent(size(config_phase)))
   do c = 1, size(config_phase)
 #if defined(__GFORTRAN__)
-    str = ['GfortranBug86277']
-    str = config_crystallite(c)%getStrings('(output)',defaultVal=str)
-    if (str(1) == 'GfortranBug86277') str = [character(len=65536)::]
+    allocate(output_constituent(c)%label(1)) 
+    output_constituent(c)%label(1)= 'GfortranBug86277'
+    output_constituent(c)%label  = config_phase(c)%getStrings('(output)',defaultVal=output_constituent(c)%label )
+    if (output_constituent(c)%label (1) == 'GfortranBug86277') output_constituent(c)%label  = [character(len=pStringLen)::]
 #else
-    str = config_crystallite(c)%getStrings('(output)',defaultVal=[character(len=65536)::])
+    output_constituent(c)%label  = config_phase(c)%getStrings('(output)',defaultVal=[character(len=pStringLen)::])
 #endif
-    constituent_output(c) = '+'
-    do o = 1, size(str)
-      constituent_output(c) = trim(constituent_output(c))//trim(str(o))//'+'
-    enddo
   enddo
 
 
@@ -1085,35 +1087,85 @@ subroutine crystallite_results
     config_name_phase => phase_name                                                                  ! anticipate logical name
    
   use material, only: &
-    material_phaseAt, &
-    phase_plasticityInstance, &
     material_phase_plasticity_type => phase_plasticity
         
   implicit none
-  integer :: p
-  real(pReal), allocatable, dimension(:,:,:) :: packe
+  integer :: p,o
+  real(pReal), allocatable, dimension(:,:,:) :: selected
   character(len=256) :: group
-  character(len=16)  :: i
+  character(len=16)  :: j
   
   call HDF5_closeGroup(results_addGroup('current/constituent'))   
                                              
   do p=1,size(config_name_phase)
-    write(i,('(i2.2)')) p                                                                           ! allow 99 groups
-    group = trim('current/constituent')//'/'//trim(i)//'_'//trim(config_name_phase(p))
-    if (index(constituent_output(p),'+f+') /= 0) then
-       print*, 'f'
-    endif
-    if (index(constituent_output(p),'+p+') /= 0) then
-      print*, 'p'
-    endif
+    write(j,('(i2.2)')) p                                                                           ! allow 99 groups
+    group = trim('current/constituent')//'/'//trim(j)//'_'//trim(config_name_phase(p))
+    call HDF5_closeGroup(results_addGroup(group))
+    do o = 1, size(output_constituent(p)%label)
+      select case (output_constituent(p)%label(o))
+        case('f')
+          selected = packed(crystallite_partionedF,p)
+          call results_writeDataset(group,selected,'F',&
+                                   'deformation gradient','1')
+        case('fe')
+          selected = packed(crystallite_Fe,p)
+          call results_writeDataset(group,selected,'Fe',&
+                                   'elastic deformation gradient','1')
+        case('fp')
+          selected = packed(crystallite_Fp,p)
+          call results_writeDataset(group,selected,'Fp',&
+                                   'plastic deformation gradient','1')
+        case('fi')
+          selected = packed(crystallite_Fi,p)
+          call results_writeDataset(group,selected,'Fi',&
+                                   'inelastic deformation gradient','1')
+        case('lp')
+          selected = packed(crystallite_Lp,p)
+          call results_writeDataset(group,selected,'Lp',&
+                                   'plastic velocity gradient','1/s')
+        case('li')
+          selected = packed(crystallite_Li,p)
+          call results_writeDataset(group,selected,'Li',&
+                                   'inelastic velocity gradient','1/s')
+        case('p')
+          selected = packed(crystallite_P,p)
+          call results_writeDataset(group,selected,'P',&
+                                   '1st Piola-Kirchoff stress','Pa')
+        case('s')
+          selected = packed(crystallite_S,p)
+          call results_writeDataset(group,selected,'S',&
+                                   '2nd Piola-Kirchoff stress','Pa')         
+      end select
+    enddo
  enddo
  
  contains
  
- function packed(res)
+ function packed(res,instance)
  
+    use material, only: &
+    homogenization_maxNgrains, &
+    material_phaseAt
+ 
+   integer, intent(in) :: instance
    real(pReal), dimension(:,:,:,:,:), intent(in) :: res
    real(pReal), allocatable, dimension(:,:,:) :: packed
+   integer :: e,i,c,j
+    
+   allocate(packed(3,3,count(material_phaseAt==instance)*homogenization_maxNgrains))
+!---------------------------------------------------------------------------------------------------
+! expand phaseAt to consider IPs (is not stored per IP)
+   j=1
+   do e = 1, size(material_phaseAt,2)
+     do i = 1, homogenization_maxNgrains
+       do c = 1, size(material_phaseAt,1)
+          if (material_phaseAt(c,e) == instance) then
+             packed(1:3,1:3,j) = res(1:3,1:3,c,i,e)
+             j = j + 1
+          endif
+       enddo
+    enddo
+  enddo
    
  
  end function packed
