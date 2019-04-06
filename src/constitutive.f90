@@ -1126,22 +1126,22 @@ subroutine constitutive_results()
     select case(material_phase_plasticity_type(p))
     
       case(PLASTICITY_ISOTROPIC_ID)
-      call plastic_isotropic_results(phase_plasticityInstance(p),group) 
+        call plastic_isotropic_results(phase_plasticityInstance(p),group) 
         
       case(PLASTICITY_PHENOPOWERLAW_ID)
-      call plastic_phenopowerlaw_results(phase_plasticityInstance(p),group) 
+        call plastic_phenopowerlaw_results(phase_plasticityInstance(p),group) 
          
       case(PLASTICITY_KINEHARDENING_ID)
-      call plastic_kinehardening_results(phase_plasticityInstance(p),group) 
+        call plastic_kinehardening_results(phase_plasticityInstance(p),group) 
 
       case(PLASTICITY_DISLOTWIN_ID)
-      call plastic_dislotwin_results(phase_plasticityInstance(p),group) 
+        call plastic_dislotwin_results(phase_plasticityInstance(p),group) 
       
       case(PLASTICITY_DISLOUCLA_ID)
-      call plastic_disloUCLA_results(phase_plasticityInstance(p),group) 
+        call plastic_disloUCLA_results(phase_plasticityInstance(p),group) 
        
       case(PLASTICITY_NONLOCAL_ID)
-      call plastic_nonlocal_results(phase_plasticityInstance(p),group) 
+        call plastic_nonlocal_results(phase_plasticityInstance(p),group) 
     end select
   
  enddo   
