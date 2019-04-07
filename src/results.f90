@@ -16,11 +16,16 @@ module results
   integer(HID_T), private :: resultsFile, currentIncID, plist_id
 
   interface results_writeDataset
+  
     module procedure results_writeTensorDataset_real
-    module procedure results_writeTensorDataset_int
     module procedure results_writeVectorDataset_real
-    module procedure results_writeVectorDataset_int
     module procedure results_writeScalarDataset_real
+    
+    module procedure results_writeTensorDataset_int
+    module procedure results_writeVectorDataset_int
+    
+    module procedure results_writeScalarDataset_rotation
+    
   end interface results_writeDataset
 
   public :: &
@@ -305,6 +310,35 @@ subroutine results_writeTensorDataset_int(group,dataset,label,description,SIunit
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeTensorDataset_int
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief stores a vector dataset in a group
+!--------------------------------------------------------------------------------------------------
+subroutine results_writeScalarDataset_rotation(group,dataset,label,description,SIunit)
+  use rotations, only: &
+    rotation
+
+  implicit none
+  character(len=*), intent(in)                  :: label,group,description
+  character(len=*), intent(in), optional        :: lattice_structure
+  type(rotation),   intent(inout), dimension(:) :: dataset
+  
+  integer(HID_T) :: groupHandle
+ 
+  groupHandle = results_openGroup(group)
+  
+#ifdef PETSc
+  call HDF5_write(groupHandle,dataset,label,.true.)
+#endif
+  
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Description',description,label)
+  if (HDF5_objectExists(groupHandle,label) .and. present(lattice_structure)) &
+    call HDF5_addAttribute(groupHandle,'Lattice',lattice_structure,label)
+  call HDF5_closeGroup(groupHandle)
+
+end subroutine results_writeScalarDataset_rotation
 
 
 !--------------------------------------------------------------------------------------------------
