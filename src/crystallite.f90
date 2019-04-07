@@ -1083,6 +1083,7 @@ subroutine crystallite_results
 #if defined(PETSc) || defined(DAMASK_HDF5)
   use results
   use HDF5_utilities
+  use rotations
   use config, only: &
     config_name_phase => phase_name                                                                  ! anticipate logical name
    
@@ -1091,76 +1092,81 @@ subroutine crystallite_results
         
   implicit none
   integer :: p,o
-  real(pReal), allocatable, dimension(:,:,:) :: selected
+  real(pReal),    allocatable, dimension(:,:,:) :: selected_tensors
+  type(rotation), allocatable, dimension(:)     :: selected_rotations
   character(len=256) :: group
-  character(len=16)  :: j
   
   call HDF5_closeGroup(results_addGroup('current/constituent'))   
                                              
   do p=1,size(config_name_phase)
-    write(j,('(i2.2)')) p                                                                           ! allow 99 groups
-    group = trim('current/constituent')//'/'//trim(j)//'_'//trim(config_name_phase(p))
+    group = trim('current/constituent')//'/'//trim(config_name_phase(p))
     call HDF5_closeGroup(results_addGroup(group))
     do o = 1, size(output_constituent(p)%label)
       select case (output_constituent(p)%label(o))
         case('f')
-          selected = packed(crystallite_partionedF,p)
-          call results_writeDataset(group,selected,'F',&
+          selected_tensors = select_tensors(crystallite_partionedF,p)
+          call results_writeDataset(group,selected_tensors,'F',&
                                    'deformation gradient','1')
         case('fe')
-          selected = packed(crystallite_Fe,p)
-          call results_writeDataset(group,selected,'Fe',&
+          selected_tensors = select_tensors(crystallite_Fe,p)
+          call results_writeDataset(group,selected_tensors,'Fe',&
                                    'elastic deformation gradient','1')
         case('fp')
-          selected = packed(crystallite_Fp,p)
-          call results_writeDataset(group,selected,'Fp',&
+          selected_tensors = select_tensors(crystallite_Fp,p)
+          call results_writeDataset(group,selected_tensors,'Fp',&
                                    'plastic deformation gradient','1')
         case('fi')
-          selected = packed(crystallite_Fi,p)
-          call results_writeDataset(group,selected,'Fi',&
+          selected_tensors = select_tensors(crystallite_Fi,p)
+          call results_writeDataset(group,selected_tensors,'Fi',&
                                    'inelastic deformation gradient','1')
         case('lp')
-          selected = packed(crystallite_Lp,p)
-          call results_writeDataset(group,selected,'Lp',&
+          selected_tensors = select_tensors(crystallite_Lp,p)
+          call results_writeDataset(group,selected_tensors,'Lp',&
                                    'plastic velocity gradient','1/s')
         case('li')
-          selected = packed(crystallite_Li,p)
-          call results_writeDataset(group,selected,'Li',&
+          selected_tensors = select_tensors(crystallite_Li,p)
+          call results_writeDataset(group,selected_tensors,'Li',&
                                    'inelastic velocity gradient','1/s')
         case('p')
-          selected = packed(crystallite_P,p)
-          call results_writeDataset(group,selected,'P',&
+          selected_tensors = select_tensors(crystallite_P,p)
+          call results_writeDataset(group,selected_tensors,'P',&
                                    '1st Piola-Kirchoff stress','Pa')
         case('s')
-          selected = packed(crystallite_S,p)
-          call results_writeDataset(group,selected,'S',&
-                                   '2nd Piola-Kirchoff stress','Pa')         
+          selected_tensors = select_tensors(crystallite_S,p)
+          call results_writeDataset(group,selected_tensors,'S',&
+                                   '2nd Piola-Kirchoff stress','Pa')
+        case('orientation')
+          selected_rotations = select_rotations(crystallite_orientation,p)
+          call results_writeDataset(group,selected_rotations,'orientation',&
+                                   'crystal orientation as quaternion','1')       
       end select
     enddo
  enddo
  
  contains
- 
- function packed(res,instance)
+
+!--------------------------------------------------------------------------------------------------
+!> @brief select tensors for output
+!--------------------------------------------------------------------------------------------------
+ function select_tensors(dataset,instance)
  
     use material, only: &
     homogenization_maxNgrains, &
     material_phaseAt
  
    integer, intent(in) :: instance
-   real(pReal), dimension(:,:,:,:,:), intent(in) :: res
-   real(pReal), allocatable, dimension(:,:,:) :: packed
+   real(pReal), dimension(:,:,:,:,:), intent(in) :: dataset
+   real(pReal), allocatable, dimension(:,:,:) :: select_tensors
    integer :: e,i,c,j
     
-   allocate(packed(3,3,count(material_phaseAt==instance)*homogenization_maxNgrains))
-!---------------------------------------------------------------------------------------------------
-! expand phaseAt to consider IPs (is not stored per IP)
+   allocate(select_tensors(3,3,count(material_phaseAt==instance)*homogenization_maxNgrains))
+
    j=1
    do e = 1, size(material_phaseAt,2)
-     do i = 1, homogenization_maxNgrains
+     do i = 1, homogenization_maxNgrains                                                            !ToDo: this needs to be changed for varying Ngrains
        do c = 1, size(material_phaseAt,1)
           if (material_phaseAt(c,e) == instance) then
-             packed(1:3,1:3,j) = res(1:3,1:3,c,i,e)
+             select_tensors(1:3,1:3,j) = dataset(1:3,1:3,c,i,e)
              j = j + 1
           endif
        enddo
@@ -1168,7 +1174,39 @@ subroutine crystallite_results
   enddo
    
  
- end function packed
+ end function select_tensors
+ 
+ 
+!--------------------------------------------------------------------------------------------------
+!> @brief select rotations for output
+!-------------------------------------------------------------------------------------------------- 
+ function select_rotations(dataset,instance)
+ 
+    use material, only: &
+    homogenization_maxNgrains, &
+    material_phaseAt
+ 
+   integer, intent(in) :: instance
+   type(rotation), dimension(:,:,:), intent(in) :: dataset
+   type(rotation), allocatable, dimension(:) :: select_rotations
+   integer :: e,i,c,j
+    
+   allocate(select_rotations(count(material_phaseAt==instance)*homogenization_maxNgrains))
+
+   j=1
+   do e = 1, size(material_phaseAt,2)
+     do i = 1, homogenization_maxNgrains                                                            !ToDo: this needs to be changed for varying Ngrains
+       do c = 1, size(material_phaseAt,1)
+          if (material_phaseAt(c,e) == instance) then
+             select_rotations(j) = dataset(c,i,e)
+             j = j + 1
+          endif
+       enddo
+    enddo
+  enddo
+   
+ 
+ end function select_rotations
 #endif
 
 

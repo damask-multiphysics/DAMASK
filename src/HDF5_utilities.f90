@@ -208,7 +208,7 @@ integer(HID_T) function HDF5_addGroup(fileHandle,groupName)
   call h5gcreate_f(fileHandle, trim(groupName), HDF5_addGroup, hdferr, OBJECT_NAMELEN_DEFAULT_F,gapl_id = aplist_id)
   if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_addGroup: h5gcreate_f ('//trim(groupName)//')')
 
-  call h5pclose_f(aplist_id)
+  call h5pclose_f(aplist_id,hdferr)
 
 end function HDF5_addGroup
 
@@ -244,7 +244,7 @@ integer(HID_T) function HDF5_openGroup(fileHandle,groupName)
   call h5gopen_f(fileHandle, trim(groupName), HDF5_openGroup, hdferr, gapl_id = aplist_id)
   if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup: h5gopen_f ('//trim(groupName)//')')
 
-  call h5pclose_f(aplist_id)
+  call h5pclose_f(aplist_id,hdferr)
 
 end function HDF5_openGroup
 
