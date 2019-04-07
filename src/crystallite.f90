@@ -1081,6 +1081,7 @@ end function crystallite_postResults
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_results
 #if defined(PETSc) || defined(DAMASK_HDF5)
+  use lattice
   use results
   use HDF5_utilities
   use rotations
@@ -1094,7 +1095,7 @@ subroutine crystallite_results
   integer :: p,o
   real(pReal),    allocatable, dimension(:,:,:) :: selected_tensors
   type(rotation), allocatable, dimension(:)     :: selected_rotations
-  character(len=256) :: group
+  character(len=256) :: group,lattice_label
   
   call HDF5_closeGroup(results_addGroup('current/constituent'))   
                                              
@@ -1136,9 +1137,23 @@ subroutine crystallite_results
           call results_writeDataset(group,selected_tensors,'S',&
                                    '2nd Piola-Kirchoff stress','Pa')
         case('orientation')
+          select case(lattice_structure(p))
+            case(LATTICE_iso_ID)
+              lattice_label = 'iso'
+            case(LATTICE_fcc_ID)
+              lattice_label = 'fcc'
+            case(LATTICE_bcc_ID)
+              lattice_label = 'bcc'
+            case(LATTICE_bct_ID)
+              lattice_label = 'bct'
+            case(LATTICE_hex_ID)
+              lattice_label = 'hex'
+            case(LATTICE_ort_ID)
+              lattice_label = 'ort'
+          end select
           selected_rotations = select_rotations(crystallite_orientation,p)
           call results_writeDataset(group,selected_rotations,'orientation',&
-                                   'crystal orientation as quaternion','1')       
+                                   'crystal orientation as quaternion',lattice_label)
       end select
     enddo
  enddo

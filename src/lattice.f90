@@ -507,10 +507,12 @@ module lattice
  public :: &
   lattice_init, &
   lattice_qDisorientation, &
+  LATTICE_iso_ID, &
   LATTICE_fcc_ID, &
   LATTICE_bcc_ID, &
   LATTICE_bct_ID, &
   LATTICE_hex_ID, &
+  LATTICE_ort_ID, &
   lattice_SchmidMatrix_slip, &
   lattice_SchmidMatrix_twin, &
   lattice_SchmidMatrix_trans, &
@@ -581,18 +583,18 @@ subroutine lattice_init
 
  do p = 1, size(config_phase)
    tag = config_phase(p)%getString('lattice_structure')
-   select case(trim(tag))
-     case('iso','isotropic')
+   select case(trim(tag(1:3)))
+     case('iso')
        lattice_structure(p) = LATTICE_iso_ID
      case('fcc')
        lattice_structure(p) = LATTICE_fcc_ID
      case('bcc')
        lattice_structure(p) = LATTICE_bcc_ID
-     case('hex','hexagonal')
+     case('hex')
        lattice_structure(p) = LATTICE_hex_ID
      case('bct')
        lattice_structure(p) = LATTICE_bct_ID
-     case('ort','orthorhombic')
+     case('ort')
        lattice_structure(p) = LATTICE_ort_ID
    end select
 
