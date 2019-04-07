@@ -47,7 +47,6 @@ subroutine results_init
   use DAMASK_interface, only: &
     getSolverJobName
 
-  implicit none
   character(len=pStringLen) :: commandLine
 
   write(6,'(/,a)') ' <<<+-  results init  -+>>>'
@@ -76,7 +75,6 @@ subroutine results_openJobFile
   use DAMASK_interface, only: &
     getSolverJobName
 
-  implicit none
 
   resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','a',.true.)
  
@@ -87,7 +85,6 @@ end subroutine results_openJobFile
 !> @brief closes the results file
 !--------------------------------------------------------------------------------------------------
 subroutine results_closeJobFile
-  implicit none
 
   call HDF5_closeFile(resultsFile)
 
@@ -99,7 +96,6 @@ end subroutine results_closeJobFile
 !--------------------------------------------------------------------------------------------------
 subroutine results_addIncrement(inc,time)
  
-  implicit none
   integer(pInt), intent(in) :: inc
   real(pReal),   intent(in) :: time
   character(len=pStringLen) :: incChar
@@ -116,7 +112,6 @@ end subroutine results_addIncrement
 !--------------------------------------------------------------------------------------------------
 integer(HID_T) function results_openGroup(groupName)
 
-  implicit none
   character(len=*), intent(in) :: groupName
   
   results_openGroup = HDF5_openGroup(resultsFile,groupName)
@@ -129,7 +124,6 @@ end function results_openGroup
 !--------------------------------------------------------------------------------------------------
 integer(HID_T) function results_addGroup(groupName)
 
-  implicit none
   character(len=*), intent(in) :: groupName
   
   results_addGroup = HDF5_addGroup(resultsFile,groupName)
@@ -142,7 +136,6 @@ end function results_addGroup
 !--------------------------------------------------------------------------------------------------
 subroutine results_setLink(path,link)
 
-  implicit none
   character(len=*), intent(in) :: path, link
 
   call HDF5_setLink(resultsFile,path,link)
@@ -155,7 +148,6 @@ end subroutine results_setLink
 !--------------------------------------------------------------------------------------------------
 subroutine results_addAttribute(attrLabel,attrValue,path)
 
-  implicit none
   character(len=*), intent(in)  :: attrLabel, attrValue, path
 
   call HDF5_addAttribute_str(resultsFile,attrLabel, attrValue, path)
@@ -168,7 +160,6 @@ end subroutine results_addAttribute
 !--------------------------------------------------------------------------------------------------
 subroutine results_removeLink(link)
 
-  implicit none
   character(len=*), intent(in) :: link
   integer                      :: hdferr
 
@@ -183,7 +174,6 @@ end subroutine results_removeLink
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeScalarDataset_real(group,dataset,label,description,SIunit)
 
-  implicit none
   character(len=*), intent(in)                  :: label,group,description
   character(len=*), intent(in),    optional     :: SIunit
   real(pReal),      intent(inout), dimension(:) :: dataset
@@ -209,7 +199,6 @@ end subroutine results_writeScalarDataset_real
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeVectorDataset_real(group,dataset,label,description,SIunit)
 
-  implicit none
   character(len=*), intent(in)                    :: label,group,description
   character(len=*), intent(in),    optional       :: SIunit
   real(pReal),      intent(inout), dimension(:,:) :: dataset
@@ -236,7 +225,6 @@ end subroutine results_writeVectorDataset_real
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeTensorDataset_real(group,dataset,label,description,SIunit)
 
-  implicit none
   character(len=*), intent(in)                      :: label,group,description
   character(len=*), intent(in), optional            :: SIunit
   real(pReal),      intent(inout), dimension(:,:,:) :: dataset
@@ -263,7 +251,6 @@ end subroutine results_writeTensorDataset_real
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeVectorDataset_int(group,dataset,label,description,SIunit)
 
-  implicit none
   character(len=*), intent(in)                :: label,group,description
   character(len=*), intent(in), optional      :: SIunit
   integer,      intent(inout), dimension(:,:) :: dataset
@@ -290,7 +277,6 @@ end subroutine results_writeVectorDataset_int
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeTensorDataset_int(group,dataset,label,description,SIunit)
 
-  implicit none
   character(len=*), intent(in)                  :: label,group,description
   character(len=*), intent(in), optional        :: SIunit
   integer,      intent(inout), dimension(:,:,:) :: dataset
@@ -315,11 +301,10 @@ end subroutine results_writeTensorDataset_int
 !--------------------------------------------------------------------------------------------------
 !> @brief stores a vector dataset in a group
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeScalarDataset_rotation(group,dataset,label,description,SIunit)
+subroutine results_writeScalarDataset_rotation(group,dataset,label,description,lattice_structure)
   use rotations, only: &
     rotation
 
-  implicit none
   character(len=*), intent(in)                  :: label,group,description
   character(len=*), intent(in), optional        :: lattice_structure
   type(rotation),   intent(inout), dimension(:) :: dataset
@@ -413,30 +398,30 @@ subroutine results_mapping_constituent(phaseAt,memberAt,label)
 !--------------------------------------------------------------------------------------------------
 ! MPI settings and communication
 #ifdef PETSc
- call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, ierr)
- if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5pset_dxpl_mpio_f')
- 
- call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)         ! get output at each process
- if (ierr /= 0) call IO_error(894,ext_msg='results_mapping_constituent: MPI_allreduce/writeSize')
- 
- call MPI_allreduce(MPI_IN_PLACE,memberOffset,size(memberOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr) ! get offset at each process
- if (ierr /= 0) call IO_error(894,ext_msg='results_mapping_constituent: MPI_allreduce/memberOffset')
+  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, ierr)
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5pset_dxpl_mpio_f')
+  
+  call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)        ! get output at each process
+  if (ierr /= 0) call IO_error(894,ext_msg='results_mapping_constituent: MPI_allreduce/writeSize')
+  
+  call MPI_allreduce(MPI_IN_PLACE,memberOffset,size(memberOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)! get offset at each process
+  if (ierr /= 0) call IO_error(894,ext_msg='results_mapping_constituent: MPI_allreduce/memberOffset')
 #endif
 
- myShape    = int([size(phaseAt,1),writeSize(worldrank)],  HSIZE_T)
- myOffset   = int([0,sum(writeSize(0:worldrank-1))],       HSIZE_T)
- totalShape = int([size(phaseAt,1),sum(writeSize)],        HSIZE_T)
+  myShape    = int([size(phaseAt,1),writeSize(worldrank)],  HSIZE_T)
+  myOffset   = int([0,sum(writeSize(0:worldrank-1))],       HSIZE_T)
+  totalShape = int([size(phaseAt,1),sum(writeSize)],        HSIZE_T)
   
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape = hyperslab) and in file (global shape)
- call h5screate_simple_f(2,myShape,memspace_id,ierr,myShape)
- if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5screate_simple_f/memspace_id')
- 
- call h5screate_simple_f(2,totalShape,filespace_id,ierr,totalShape)
- if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5screate_simple_f/filespace_id')
- 
- call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myOffset, myShape, ierr)
- if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5sselect_hyperslab_f')
+  call h5screate_simple_f(2,myShape,memspace_id,ierr,myShape)
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5screate_simple_f/memspace_id')
+  
+  call h5screate_simple_f(2,totalShape,filespace_id,ierr,totalShape)
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5screate_simple_f/filespace_id')
+  
+  call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myOffset, myShape, ierr)
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5sselect_hyperslab_f')
 
 !---------------------------------------------------------------------------------------------------
 ! expand phaseAt to consider IPs (is not stored per IP)
@@ -452,29 +437,29 @@ subroutine results_mapping_constituent(phaseAt,memberAt,label)
 
 !--------------------------------------------------------------------------------------------------
 ! write the components of the compound type individually
- call h5pset_preserve_f(plist_id, .TRUE., ierr)
- 
- loc_id = results_openGroup('/mapping/cellResults')
- call h5dcreate_f(loc_id, 'constituent', dtype_id, filespace_id, dset_id, ierr)
- if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5dcreate_f')
- 
- call h5dwrite_f(dset_id, name_id, reshape(label(pack(phaseAt_perIP,.true.)),myShape), &
-                 myShape, ierr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
- if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5dwrite_f/name_id')
- call h5dwrite_f(dset_id, position_id, reshape(pack(memberAt_total,.true.),myShape), &
-                 myShape, ierr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
- if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5dwrite_f/position_id')
+  call h5pset_preserve_f(plist_id, .TRUE., ierr)
+  
+  loc_id = results_openGroup('/mapping/cellResults')
+  call h5dcreate_f(loc_id, 'constituent', dtype_id, filespace_id, dset_id, ierr)
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5dcreate_f')
+  
+  call h5dwrite_f(dset_id, name_id, reshape(label(pack(phaseAt_perIP,.true.)),myShape), &
+                  myShape, ierr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5dwrite_f/name_id')
+  call h5dwrite_f(dset_id, position_id, reshape(pack(memberAt_total,.true.),myShape), &
+                  myShape, ierr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5dwrite_f/position_id')
 
 !--------------------------------------------------------------------------------------------------
 ! close all
- call HDF5_closeGroup(loc_id)
- call h5pclose_f(plist_id, ierr)
- call h5sclose_f(filespace_id, ierr)
- call h5sclose_f(memspace_id, ierr)
- call h5dclose_f(dset_id, ierr)
- call h5tclose_f(dtype_id, ierr)
- call h5tclose_f(name_id, ierr)
- call h5tclose_f(position_id, ierr)
+  call HDF5_closeGroup(loc_id)
+  call h5pclose_f(plist_id, ierr)
+  call h5sclose_f(filespace_id, ierr)
+  call h5sclose_f(memspace_id, ierr)
+  call h5dclose_f(dset_id, ierr)
+  call h5tclose_f(dtype_id, ierr)
+  call h5tclose_f(name_id, ierr)
+  call h5tclose_f(position_id, ierr)
 
 end subroutine results_mapping_constituent
 
@@ -551,30 +536,30 @@ subroutine results_mapping_materialpoint(homogenizationAt,memberAt,label)
 !--------------------------------------------------------------------------------------------------
 ! MPI settings and communication
 #ifdef PETSc
- call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, ierr)
- if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5pset_dxpl_mpio_f')
- 
- call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)         ! get output at each process
- if (ierr /= 0) call IO_error(894,ext_msg='results_mapping_materialpoint: MPI_allreduce/writeSize')
- 
- call MPI_allreduce(MPI_IN_PLACE,memberOffset,size(memberOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr) ! get offset at each process
- if (ierr /= 0) call IO_error(894,ext_msg='results_mapping_materialpoint: MPI_allreduce/memberOffset')
+  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, ierr)
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5pset_dxpl_mpio_f')
+  
+  call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)        ! get output at each process
+  if (ierr /= 0) call IO_error(894,ext_msg='results_mapping_materialpoint: MPI_allreduce/writeSize')
+  
+  call MPI_allreduce(MPI_IN_PLACE,memberOffset,size(memberOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)! get offset at each process
+  if (ierr /= 0) call IO_error(894,ext_msg='results_mapping_materialpoint: MPI_allreduce/memberOffset')
 #endif
 
- myShape    = int([writeSize(worldrank)],          HSIZE_T)
- myOffset   = int([sum(writeSize(0:worldrank-1))], HSIZE_T)
- totalShape = int([sum(writeSize)],                HSIZE_T)
+  myShape    = int([writeSize(worldrank)],          HSIZE_T)
+  myOffset   = int([sum(writeSize(0:worldrank-1))], HSIZE_T)
+  totalShape = int([sum(writeSize)],                HSIZE_T)
   
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape = hyperslab) and in file (global shape)
- call h5screate_simple_f(1,myShape,memspace_id,ierr,myShape)
- if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5screate_simple_f/memspace_id')
- 
- call h5screate_simple_f(1,totalShape,filespace_id,ierr,totalShape)
- if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5screate_simple_f/filespace_id')
- 
- call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myOffset, myShape, ierr)
- if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5sselect_hyperslab_f')
+  call h5screate_simple_f(1,myShape,memspace_id,ierr,myShape)
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5screate_simple_f/memspace_id')
+  
+  call h5screate_simple_f(1,totalShape,filespace_id,ierr,totalShape)
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5screate_simple_f/filespace_id')
+  
+  call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myOffset, myShape, ierr)
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5sselect_hyperslab_f')
 
 !---------------------------------------------------------------------------------------------------
 ! expand phaseAt to consider IPs (is not stored per IP)
@@ -590,29 +575,29 @@ subroutine results_mapping_materialpoint(homogenizationAt,memberAt,label)
 
 !--------------------------------------------------------------------------------------------------
 ! write the components of the compound type individually
- call h5pset_preserve_f(plist_id, .TRUE., ierr)
- 
- loc_id = results_openGroup('/mapping/cellResults')
- call h5dcreate_f(loc_id, 'materialpoint', dtype_id, filespace_id, dset_id, ierr)
- if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5dcreate_f')
- 
- call h5dwrite_f(dset_id, name_id, reshape(label(pack(homogenizationAt_perIP,.true.)),myShape), &
-                 myShape, ierr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
- if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5dwrite_f/name_id')
- call h5dwrite_f(dset_id, position_id, reshape(pack(memberAt_total,.true.),myShape), &
-                 myShape, ierr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
- if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5dwrite_f/position_id')
+  call h5pset_preserve_f(plist_id, .TRUE., ierr)
+  
+  loc_id = results_openGroup('/mapping/cellResults')
+  call h5dcreate_f(loc_id, 'materialpoint', dtype_id, filespace_id, dset_id, ierr)
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5dcreate_f')
+  
+  call h5dwrite_f(dset_id, name_id, reshape(label(pack(homogenizationAt_perIP,.true.)),myShape), &
+                  myShape, ierr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5dwrite_f/name_id')
+  call h5dwrite_f(dset_id, position_id, reshape(pack(memberAt_total,.true.),myShape), &
+                  myShape, ierr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5dwrite_f/position_id')
 
 !--------------------------------------------------------------------------------------------------
 ! close all
- call HDF5_closeGroup(loc_id)
- call h5pclose_f(plist_id, ierr)
- call h5sclose_f(filespace_id, ierr)
- call h5sclose_f(memspace_id, ierr)
- call h5dclose_f(dset_id, ierr)
- call h5tclose_f(dtype_id, ierr)
- call h5tclose_f(name_id, ierr)
- call h5tclose_f(position_id, ierr)
+  call HDF5_closeGroup(loc_id)
+  call h5pclose_f(plist_id, ierr)
+  call h5sclose_f(filespace_id, ierr)
+  call h5sclose_f(memspace_id, ierr)
+  call h5dclose_f(dset_id, ierr)
+  call h5tclose_f(dtype_id, ierr)
+  call h5tclose_f(name_id, ierr)
+  call h5tclose_f(position_id, ierr)
 
 end subroutine results_mapping_materialpoint
 
@@ -623,7 +608,6 @@ end subroutine results_mapping_materialpoint
 !subroutine HDF5_backwardMappingPhase(material_phase,phasememberat,phase_name,dataspace_size,mpiOffset,mpiOffset_phase)
 ! use hdf5
 
-! implicit none
 ! integer(pInt),    intent(in), dimension(:,:,:) :: material_phase, phasememberat
 ! character(len=*), intent(in), dimension(:)     :: phase_name
 ! integer(pInt),    intent(in), dimension(:)     :: dataspace_size, mpiOffset_phase
@@ -738,7 +722,6 @@ end subroutine results_mapping_materialpoint
 !subroutine HDF5_backwardMappingHomog(material_homog,homogmemberat,homogenization_name,dataspace_size,mpiOffset,mpiOffset_homog)
 ! use hdf5
 
-! implicit none
 ! integer(pInt),    intent(in), dimension(:,:) :: material_homog, homogmemberat
 ! character(len=*), intent(in), dimension(:)   :: homogenization_name
 ! integer(pInt),    intent(in), dimension(:)   :: dataspace_size, mpiOffset_homog
@@ -846,7 +829,6 @@ end subroutine results_mapping_materialpoint
 !subroutine HDF5_mappingCells(mapping)
 ! use hdf5
 
-! implicit none
 ! integer(pInt), intent(in), dimension(:) :: mapping
 
 ! integer        :: hdferr, Nnodes
