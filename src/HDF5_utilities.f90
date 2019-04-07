@@ -58,6 +58,8 @@ module HDF5_utilities
     module procedure HDF5_write_int5
     module procedure HDF5_write_int6
     module procedure HDF5_write_int7
+    
+    module procedure HDF5_write_rotation
  
   end interface HDF5_write
  
@@ -1619,6 +1621,86 @@ subroutine HDF5_write_int7(loc_id,dataset,datasetName,parallel)
  call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
 end subroutine HDF5_write_int7
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes a scalar orientation dataset
+! ToDo: It might be possible to write the dataset as a whole
+! ToDo: We could add the crystal structure as an attribute
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_write_rotation(loc_id,dataset,datasetName,parallel)
+  use rotations
+  use numerics, only: &
+    worldrank, &
+    worldsize
+
+ implicit none
+ type(rotation),   intent(in), dimension(:) :: dataset
+ integer(HID_T),   intent(in) :: loc_id                                                             !< file or group handle
+ character(len=*), intent(in) :: datasetName                                                        !< name of the dataset in the file
+ logical,          intent(in), optional :: parallel
+
+ integer :: hdferr
+ real(pReal),      dimension(4,size(dataset)) :: dataset_asArray
+ integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id,dtype_id,w_id,x_id,y_id,z_id
+ integer(HSIZE_T), dimension(size(shape(dataset))) :: &
+   myStart, &
+   myShape, &                                                                                       !< shape of the dataset (this process)
+   totalShape                                                                                       !< shape of the dataset (all processes)
+  integer(SIZE_T) :: type_size_real
+  integer :: i
+
+  do i = 1, size(dataset)
+    dataset_asArray(1:4,i) = dataset(i)%asQuaternion()
+  enddo
+
+!---------------------------------------------------------------------------------------------------
+! determine shape of dataset
+  myShape = int(shape(dataset),HSIZE_T)
+  
+!---------------------------------------------------------------------------------------------------
+! compound type: name of phase section + position/index within results array
+  call h5tget_size_f(H5T_NATIVE_DOUBLE, type_size_real, hdferr)
+  
+  call h5tcreate_f(H5T_COMPOUND_F, type_size_real*4_SIZE_T, dtype_id, hdferr)
+  call h5tinsert_f(dtype_id, "w",  type_size_real*0_SIZE_T, H5T_NATIVE_DOUBLE, hdferr)
+  call h5tinsert_f(dtype_id, "x",  type_size_real*1_SIZE_T, H5T_NATIVE_DOUBLE, hdferr)
+  call h5tinsert_f(dtype_id, "y",  type_size_real*2_SIZE_T, H5T_NATIVE_DOUBLE, hdferr)
+  call h5tinsert_f(dtype_id, "z",  type_size_real*3_SIZE_T, H5T_NATIVE_DOUBLE, hdferr)
+  
+  if (present(parallel)) then
+    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
+                          myStart, totalShape, loc_id,myShape,datasetName,dtype_id,parallel)
+  else
+   call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
+                          myStart, totalShape, loc_id,myShape,datasetName,dtype_id,.false.)
+ endif
+ call h5pset_preserve_f(plist_id, .TRUE., hdferr)
+ 
+  if (product(totalShape) /= 0) then
+    call h5tcreate_f(H5T_COMPOUND_F, type_size_real, x_id, hdferr)
+    call h5tinsert_f(x_id, "x", 0_SIZE_T, H5T_NATIVE_DOUBLE, hdferr)
+    call h5tcreate_f(H5T_COMPOUND_F, type_size_real, w_id, hdferr)
+    call h5tinsert_f(w_id, "w", 0_SIZE_T, H5T_NATIVE_DOUBLE, hdferr)
+    call h5tcreate_f(H5T_COMPOUND_F, type_size_real, y_id, hdferr)
+    call h5tinsert_f(y_id, "y", 0_SIZE_T, H5T_NATIVE_DOUBLE, hdferr)
+    call h5tcreate_f(H5T_COMPOUND_F, type_size_real, z_id, hdferr)
+    call h5tinsert_f(z_id, "z", 0_SIZE_T, H5T_NATIVE_DOUBLE, hdferr)
+    
+   call h5dwrite_f(dset_id, w_id,dataset_asArray(1,:),int(totalShape,HSIZE_T), hdferr,&
+                  file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+   call h5dwrite_f(dset_id, x_id,dataset_asArray(2,:),int(totalShape,HSIZE_T), hdferr,&
+                  file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+   call h5dwrite_f(dset_id, y_id,dataset_asArray(3,:),int(totalShape,HSIZE_T), hdferr,&
+                  file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+   call h5dwrite_f(dset_id, z_id,dataset_asArray(4,:),int(totalShape,HSIZE_T), hdferr,&
+                  file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+   if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_write_rotation: h5dwrite_f')
+ endif
+
+ call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
+
+end subroutine HDF5_write_rotation
 
 
 !--------------------------------------------------------------------------------------------------
