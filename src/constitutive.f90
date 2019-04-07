@@ -1105,16 +1105,13 @@ subroutine constitutive_results
   use plastic_nonlocal, only: &
     plastic_nonlocal_results 
         
-  implicit none
   integer :: p
   character(len=256) :: group
-  character(len=16)  :: i
   
   call HDF5_closeGroup(results_addGroup('current/constitutive'))   
                                              
   do p=1,size(config_name_phase)
-    write(i,('(i2.2)')) p                                                                           ! allow 99 groups
-    group = trim('current/constitutive')//'/'//trim(i)//'_'//trim(config_name_phase(p))
+    group = trim('current/constitutive')//'/'//trim(config_name_phase(p))
     call HDF5_closeGroup(results_addGroup(group))
     
     group = trim(group)//'/'//'plastic'
