@@ -754,8 +754,8 @@ class Lattice:
     
     
   # Kurdjomov--Sachs orientation relationship for fcc <-> bcc transformation
-  # from S. Morito et al./Journal of Alloys and Compounds 5775 (2013) S587-S592
-  # also see K. Kitahara et al./Acta Materialia 54 (2006) 1279-1288
+  # from S. Morito et al. Journal of Alloys and Compounds 577 (2013) 587-S592
+  # also see K. Kitahara et al. Acta Materialia 54 (2006) 1279-1288
   KS = {'mapping':{'fcc':0,'bcc':1},
       'planes': np.array([
       [[  1,  1,  1],[  0,  1,  1]],
@@ -809,7 +809,7 @@ class Lattice:
       [[  1,  0,  1],[ -1,  1, -1]]],dtype='float')}
       
   # Greninger--Troiano orientation relationship for fcc <-> bcc transformation
-  # from Y. He et al./Journal of Applied Crystallography (2006). 39, 72-81
+  # from Y. He et al. Journal of Applied Crystallography 39 (2006) 72-81
   GT = {'mapping':{'fcc':0,'bcc':1},
       'planes': np.array([
       [[  1,  1,  1],[  1,  0,  1]],
@@ -863,7 +863,7 @@ class Lattice:
       [[-17,-12,  5],[-17,  7, 17]]],dtype='float')}
  
   # Greninger--Troiano' orientation relationship for fcc <-> bcc transformation
-  # from Y. He et al./Journal of Applied Crystallography (2006). 39, 72-81
+  # from Y. He et al. Journal of Applied Crystallography 39 (2006) 72-81
   GTdash = {'mapping':{'fcc':0,'bcc':1},
       'planes': np.array([
       [[  7, 17, 17],[ 12,  5, 17]],
@@ -917,7 +917,7 @@ class Lattice:
       [[  1,  1,  0],[  1,  1, -1]]],dtype='float')}
     
   # Nishiyama--Wassermann orientation relationship for fcc <-> bcc transformation
-  # from H. Kitahara et al./Materials Characterization 54 (2005) 378-386
+  # from H. Kitahara et al. Materials Characterization 54 (2005) 378-386
   NW = {'mapping':{'fcc':0,'bcc':1},
       'planes': np.array([
       [[  1,  1,  1],[  0,  1,  1]],
@@ -947,7 +947,7 @@ class Lattice:
       [[ -1, -1, -2],[  0, -1,  1]]],dtype='float')}
                
   # Pitsch orientation relationship for fcc <-> bcc transformation              
-  # from Y. He et al./Acta Materialia 53 (2005) 1179-1190               
+  # from Y. He et al. Acta Materialia 53 (2005) 1179-1190               
   Pitsch = {'mapping':{'fcc':0,'bcc':1},
       'planes': np.array([
       [[  0,  1,  0],[ -1,  0,  1]],
@@ -977,7 +977,7 @@ class Lattice:
       [[  1,  1,  0],[  1,  1, -1]]],dtype='float')}
                               
   # Bain orientation relationship for fcc <-> bcc transformation                        
-  # from Y. He et al./Journal of Applied Crystallography (2006). 39, 72-81
+  # from Y. He et al. Journal of Applied Crystallography 39 (2006) 72-81
   Bain = {'mapping':{'fcc':0,'bcc':1},
       'planes': np.array([
       [[  1,  0,  0],[  1,  0,  0]],
