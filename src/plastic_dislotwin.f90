@@ -148,7 +148,7 @@ module plastic_dislotwin
  type(tDislotwinState),          allocatable, dimension(:), private :: &
    dotState, &
    state
- type(tDislotwinMicrostructure), allocatable, dimension(:), private :: microstructure
+ type(tDislotwinMicrostructure), allocatable, dimension(:), private :: dependentState
 
  public :: &
    plastic_dislotwin_init, &
@@ -241,14 +241,14 @@ subroutine plastic_dislotwin_init
  allocate(param(Ninstance))
  allocate(state(Ninstance))
  allocate(dotState(Ninstance))
- allocate(microstructure(Ninstance))
+ allocate(dependentState(Ninstance))
 
  do p = 1, size(phase_plasticity)
    if (phase_plasticity(p) /= PLASTICITY_DISLOTWIN_ID) cycle
    associate(prm => param(phase_plasticityInstance(p)), &
              dot => dotState(phase_plasticityInstance(p)), &
              stt => state(phase_plasticityInstance(p)), &
-             dst => microstructure(phase_plasticityInstance(p)), &
+             dst => dependentState(phase_plasticityInstance(p)), &
              config   => config_phase(p))
 
    prm%aTol_rho  = config%getFloat('atol_rho',       defaultVal=0.0_pReal)
@@ -801,7 +801,7 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
    dot_gamma_tr
 
  associate(prm => param(instance),    stt => state(instance), &
-           dot => dotstate(instance), dst => microstructure(instance))
+           dot => dotstate(instance), dst => dependentState(instance))
 
  f_unrotated = 1.0_pReal &
              - sum(stt%f_tw(1:prm%sum_N_tw,of)) &
@@ -897,7 +897,7 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
 
  associate(prm => param(instance),&
            stt => state(instance),&
-           dst => microstructure(instance))
+           dst => dependentState(instance))
 
  sumf_twin  = sum(stt%f_tw(1:prm%sum_N_tw,of))
  sumf_trans = sum(stt%f_tr(1:prm%sum_N_tr,of))
@@ -1002,7 +1002,7 @@ function plastic_dislotwin_postResults(Mp,T,instance,of) result(postResults)
  integer :: &
    o,c,j
 
- associate(prm => param(instance), stt => state(instance), dst => microstructure(instance))
+ associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
  
  c = 0
 
@@ -1063,20 +1063,53 @@ end function plastic_dislotwin_postResults
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_dislotwin_results(instance,group)
-#if defined(PETSc) || defined(DAMASKHDF5)
-  use results
+#if defined(PETSc) || defined(DAMASK_HDF5)
+  use results, only: &
+    results_writeDataset
 
   implicit none
   integer, intent(in) :: instance
   character(len=*) :: group
   integer :: o
 
-  associate(prm => param(instance), stt => state(instance))
+  associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
   outputsLoop: do o = 1,size(prm%outputID)
     select case(prm%outputID(o))
+
+      case (rho_mob_ID)
+        call results_writeDataset(group,stt%rho_mob,'rho_mob',&
+                                  'mobile dislocation density','1/m²')
+      case (rho_dip_ID)
+        call results_writeDataset(group,stt%rho_dip,'rho_dip',&
+                                  'dislocation dipole density''1/m²')
+      case (dot_gamma_sl_ID)
+        call results_writeDataset(group,stt%gamma_sl,'dot_gamma_sl',&
+                                  'plastic shear','1')
+      case (Lambda_sl_ID)
+        call results_writeDataset(group,dst%Lambda_sl,'Lambda_sl',&
+                                  'mean free path for slip','m')
+      case (threshold_stress_slip_ID)
+        call results_writeDataset(group,dst%tau_pass,'tau_pass',&
+                                  'passing stress for slip','Pa')
+
+      case (f_tw_ID)
+        call results_writeDataset(group,stt%f_tw,'f_tw',&
+                                 'twinned volume fraction','m³/m³')
+      case (Lambda_tw_ID)
+        call results_writeDataset(group,dst%Lambda_tw,'Lambda_tw',&
+                                  'mean free path for twinning','m')   
+      case (tau_hat_tw_ID)
+        call results_writeDataset(group,dst%tau_hat_tw,'tau_hat_tw',&
+                                  'threshold stress for twinning','Pa')
+
+      case (f_tr_ID)
+        call results_writeDataset(group,stt%f_tr,'f_tr',&
+                                 'martensite volume fraction','m³/m³')
+                                 
     end select
   enddo outputsLoop
   end associate
+  
 #else
   integer, intent(in) :: instance
   character(len=*) :: group
@@ -1130,7 +1163,7 @@ pure subroutine kinetics_slip(Mp,T,instance,of, &
    tau_eff                                                                                          !< effective resolved stress
  integer :: i 
  
- associate(prm => param(instance), stt => state(instance), dst => microstructure(instance))
+ associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
 
  do i = 1, prm%sum_N_sl
    tau(i) = math_mul33xx33(Mp,prm%P_sl(1:3,1:3,i))
@@ -1203,7 +1236,7 @@ pure subroutine kinetics_twin(Mp,T,dot_gamma_sl,instance,of,&
 
  integer :: i,s1,s2
  
- associate(prm => param(instance), stt => state(instance), dst => microstructure(instance))
+ associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
 
  do i = 1, prm%sum_N_tw
    tau(i) = math_mul33xx33(Mp,prm%P_tw(1:3,1:3,i))
@@ -1275,7 +1308,7 @@ pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,instance,of,&
 
  integer :: i,s1,s2
  
- associate(prm => param(instance), stt => state(instance), dst => microstructure(instance))
+ associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
 
  do i = 1, prm%sum_N_tr
    tau(i) = math_mul33xx33(Mp,prm%P_tr(1:3,1:3,i))

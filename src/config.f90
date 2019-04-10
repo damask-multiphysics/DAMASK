@@ -231,15 +231,21 @@ end function read_materialConfig
 !--------------------------------------------------------------------------------------------------
 subroutine parse_materialConfig(sectionNames,part,line, &
                                 fileContent)
+  use prec, only: &
+    pStringLen
+  use IO, only: &
+    IO_intOut
+
   implicit none
   character(len=64),            allocatable, dimension(:), intent(out)   :: sectionNames
   type(tPartitionedStringList), allocatable, dimension(:), intent(inout) :: part
   character(len=pStringLen),                               intent(inout) :: line
   character(len=pStringLen),                 dimension(:), intent(in)    :: fileContent
 
-  integer,                allocatable, dimension(:)                :: partPosition                  ! position of [] tags + last line in section
-  integer        :: i, j
-  logical              :: echo
+  integer, allocatable, dimension(:) :: partPosition                                                !< position of [] tags + last line in section
+  integer :: i, j
+  logical :: echo
+  character(len=pStringLen) :: section_ID
 
   echo = .false. 
 
@@ -263,7 +269,8 @@ subroutine parse_materialConfig(sectionNames,part,line, &
   partPosition = [partPosition, i]                                                                  ! needed when actually storing content
 
   do i = 1, size(partPosition) -1
-    sectionNames(i) = trim(adjustl(IO_getTag(fileContent(partPosition(i)),'[',']')))
+    write(section_ID,'('//IO_intOut(size(partPosition))//')') i
+    sectionNames(i) = trim(section_ID)//'_'//trim(adjustl(IO_getTag(fileContent(partPosition(i)),'[',']')))
     do j = partPosition(i) + 1,  partPosition(i+1) -1
       call part(i)%add(trim(adjustl(fileContent(j))))
     enddo

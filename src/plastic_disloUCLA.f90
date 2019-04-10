@@ -560,23 +560,41 @@ end function plastic_disloUCLA_postResults
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_disloUCLA_results(instance,group)
-#if defined(PETSc) || defined(DAMASKHDF5)
-  use results
+#if defined(PETSc) || defined(DAMASK_HDF5)
+  use results, only: &
+    results_writeDataset
 
   implicit none
-  integer, intent(in) :: instance
-  character(len=*) :: group
+  integer,          intent(in) :: instance
+  character(len=*), intent(in) :: group
+  
   integer :: o
 
-  associate(prm => param(instance), stt => state(instance))
+  associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
   outputsLoop: do o = 1,size(prm%outputID)
     select case(prm%outputID(o))
+      case (rho_mob_ID)
+        call results_writeDataset(group,stt%rho_mob,'rho_mob',&
+                                 'mobile dislocation density','1/m²')
+      case (rho_dip_ID)
+        call results_writeDataset(group,stt%rho_dip,'rho_dip',&
+                                  'dislocation dipole density''1/m²')
+      case (dot_gamma_sl_ID)
+        call results_writeDataset(group,stt%gamma_sl,'dot_gamma_sl',&
+                                  'plastic shear','1')
+      case (Lambda_sl_ID)
+        call results_writeDataset(group,dst%Lambda_sl,'Lambda_sl',&
+                                  'mean free path for slip','m')
+      case (thresholdstress_ID)
+        call results_writeDataset(group,dst%threshold_stress,'threshold_stress',&
+                                  'threshold stress for slip','Pa')
     end select
   enddo outputsLoop
   end associate
+  
 #else
-  integer, intent(in) :: instance
-  character(len=*) :: group
+  integer,          intent(in) :: instance
+  character(len=*), intent(in) :: group
 #endif
 
 end subroutine plastic_disloUCLA_results

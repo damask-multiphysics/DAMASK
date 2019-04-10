@@ -10,7 +10,8 @@
 
 module crystallite
   use prec, only: &
-    pReal
+    pReal, &
+    pStringLen
   use rotations, only: &
     rotation
   use FEsolving, only:  &
@@ -103,6 +104,13 @@ module crystallite
   end enum
   integer(kind(undefined_ID)),dimension(:,:),   allocatable,          private :: &
     crystallite_outputID                                                                            !< ID of each post result output
+    
+  type, private :: tOutput                                                                          !< new requested output (per phase)
+    character(len=65536), allocatable, dimension(:) :: &
+      label
+  end type tOutput
+  type(tOutput), allocatable, dimension(:), private :: output_constituent
+  
   procedure(), pointer :: integrateState
  
   public :: &
@@ -111,7 +119,8 @@ module crystallite
     crystallite_stressTangent, &
     crystallite_orientations, &
     crystallite_push33ToRef, &
-    crystallite_postResults
+    crystallite_postResults, &
+    crystallite_results
   private :: &
     integrateStress, &
     integrateState, &
@@ -156,6 +165,7 @@ subroutine crystallite_init
   use config, only: &
    config_deallocate, &
    config_crystallite, &
+   config_phase, &
    crystallite_name
   use constitutive, only: &
     constitutive_initialFi, &
@@ -296,6 +306,18 @@ subroutine crystallite_init
       end select outputName
     enddo
   enddo
+  
+  allocate(output_constituent(size(config_phase)))
+  do c = 1, size(config_phase)
+#if defined(__GFORTRAN__)
+    allocate(output_constituent(c)%label(1)) 
+    output_constituent(c)%label(1)= 'GfortranBug86277'
+    output_constituent(c)%label  = config_phase(c)%getStrings('(output)',defaultVal=output_constituent(c)%label )
+    if (output_constituent(c)%label (1) == 'GfortranBug86277') output_constituent(c)%label  = [character(len=pStringLen)::]
+#else
+    output_constituent(c)%label  = config_phase(c)%getStrings('(output)',defaultVal=[character(len=pStringLen)::])
+#endif
+  enddo
 
 
   do r = 1,size(config_crystallite)
@@ -340,6 +362,7 @@ subroutine crystallite_init
     close(FILEUNIT)
   endif
  
+  call config_deallocate('material.config/phase')
   call config_deallocate('material.config/crystallite')
 
 !--------------------------------------------------------------------------------------------------
@@ -1051,6 +1074,158 @@ function crystallite_postResults(ipc, ip, el)
                                ipc, ip, el)
 
 end function crystallite_postResults
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes constitutive results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine crystallite_results
+#if defined(PETSc) || defined(DAMASK_HDF5)
+  use lattice
+  use results
+  use HDF5_utilities
+  use rotations
+  use config, only: &
+    config_name_phase => phase_name                                                                  ! anticipate logical name
+   
+  use material, only: &
+    material_phase_plasticity_type => phase_plasticity
+        
+  implicit none
+  integer :: p,o
+  real(pReal),    allocatable, dimension(:,:,:) :: selected_tensors
+  type(rotation), allocatable, dimension(:)     :: selected_rotations
+  character(len=256) :: group,lattice_label
+  
+  call HDF5_closeGroup(results_addGroup('current/constituent'))   
+                                             
+  do p=1,size(config_name_phase)
+    group = trim('current/constituent')//'/'//trim(config_name_phase(p))
+    call HDF5_closeGroup(results_addGroup(group))
+    do o = 1, size(output_constituent(p)%label)
+      select case (output_constituent(p)%label(o))
+        case('f')
+          selected_tensors = select_tensors(crystallite_partionedF,p)
+          call results_writeDataset(group,selected_tensors,'F',&
+                                   'deformation gradient','1')
+        case('fe')
+          selected_tensors = select_tensors(crystallite_Fe,p)
+          call results_writeDataset(group,selected_tensors,'Fe',&
+                                   'elastic deformation gradient','1')
+        case('fp')
+          selected_tensors = select_tensors(crystallite_Fp,p)
+          call results_writeDataset(group,selected_tensors,'Fp',&
+                                   'plastic deformation gradient','1')
+        case('fi')
+          selected_tensors = select_tensors(crystallite_Fi,p)
+          call results_writeDataset(group,selected_tensors,'Fi',&
+                                   'inelastic deformation gradient','1')
+        case('lp')
+          selected_tensors = select_tensors(crystallite_Lp,p)
+          call results_writeDataset(group,selected_tensors,'Lp',&
+                                   'plastic velocity gradient','1/s')
+        case('li')
+          selected_tensors = select_tensors(crystallite_Li,p)
+          call results_writeDataset(group,selected_tensors,'Li',&
+                                   'inelastic velocity gradient','1/s')
+        case('p')
+          selected_tensors = select_tensors(crystallite_P,p)
+          call results_writeDataset(group,selected_tensors,'P',&
+                                   '1st Piola-Kirchoff stress','Pa')
+        case('s')
+          selected_tensors = select_tensors(crystallite_S,p)
+          call results_writeDataset(group,selected_tensors,'S',&
+                                   '2nd Piola-Kirchoff stress','Pa')
+        case('orientation')
+          select case(lattice_structure(p))
+            case(LATTICE_iso_ID)
+              lattice_label = 'iso'
+            case(LATTICE_fcc_ID)
+              lattice_label = 'fcc'
+            case(LATTICE_bcc_ID)
+              lattice_label = 'bcc'
+            case(LATTICE_bct_ID)
+              lattice_label = 'bct'
+            case(LATTICE_hex_ID)
+              lattice_label = 'hex'
+            case(LATTICE_ort_ID)
+              lattice_label = 'ort'
+          end select
+          selected_rotations = select_rotations(crystallite_orientation,p)
+          call results_writeDataset(group,selected_rotations,'orientation',&
+                                   'crystal orientation as quaternion',lattice_label)
+      end select
+    enddo
+ enddo
+ 
+ contains
+
+!--------------------------------------------------------------------------------------------------
+!> @brief select tensors for output
+!--------------------------------------------------------------------------------------------------
+ function select_tensors(dataset,instance)
+ 
+    use material, only: &
+    homogenization_maxNgrains, &
+    material_phaseAt
+ 
+   integer, intent(in) :: instance
+   real(pReal), dimension(:,:,:,:,:), intent(in) :: dataset
+   real(pReal), allocatable, dimension(:,:,:) :: select_tensors
+   integer :: e,i,c,j
+    
+   allocate(select_tensors(3,3,count(material_phaseAt==instance)*homogenization_maxNgrains))
+
+   j=1
+   do e = 1, size(material_phaseAt,2)
+     do i = 1, homogenization_maxNgrains                                                            !ToDo: this needs to be changed for varying Ngrains
+       do c = 1, size(material_phaseAt,1)
+          if (material_phaseAt(c,e) == instance) then
+             select_tensors(1:3,1:3,j) = dataset(1:3,1:3,c,i,e)
+             j = j + 1
+          endif
+       enddo
+    enddo
+  enddo
+   
+ 
+ end function select_tensors
+ 
+ 
+!--------------------------------------------------------------------------------------------------
+!> @brief select rotations for output
+!-------------------------------------------------------------------------------------------------- 
+ function select_rotations(dataset,instance)
+ 
+    use material, only: &
+    homogenization_maxNgrains, &
+    material_phaseAt
+ 
+   integer, intent(in) :: instance
+   type(rotation), dimension(:,:,:), intent(in) :: dataset
+   type(rotation), allocatable, dimension(:) :: select_rotations
+   integer :: e,i,c,j
+    
+   allocate(select_rotations(count(material_phaseAt==instance)*homogenization_maxNgrains))
+
+   j=1
+   do e = 1, size(material_phaseAt,2)
+     do i = 1, homogenization_maxNgrains                                                            !ToDo: this needs to be changed for varying Ngrains
+       do c = 1, size(material_phaseAt,1)
+          if (material_phaseAt(c,e) == instance) then
+             select_rotations(j) = dataset(c,i,e)
+             j = j + 1
+          endif
+       enddo
+    enddo
+  enddo
+   
+ 
+ end function select_rotations
+#endif
+
+
+end subroutine crystallite_results
 
 
 !--------------------------------------------------------------------------------------------------
