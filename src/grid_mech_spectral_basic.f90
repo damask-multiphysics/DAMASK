@@ -7,6 +7,8 @@
 module grid_mech_spectral_basic
 #include <petsc/finclude/petscsnes.h>
 #include <petsc/finclude/petscdmda.h>
+  use DAMASK_interface
+  use HDF5_utilities
   use PETScdmda
   use PETScsnes
   use prec, only: &
@@ -114,8 +116,9 @@ subroutine grid_mech_spectral_basic_init
  
   PetscErrorCode :: ierr
   PetscScalar, pointer, dimension(:,:,:,:) :: &
-   F                                                                                                ! pointer to solution data
+    F                                                                                               ! pointer to solution data
   PetscInt, dimension(worldsize) :: localK  
+  integer(HID_T) :: fileHandle
   integer :: fileUnit
   character(len=1024) :: rankStr
  
@@ -174,19 +177,13 @@ subroutine grid_mech_spectral_basic_init
   restart: if (restartInc > 0) then                                                     
     write(6,'(/,a,'//IO_intOut(restartInc)//',a)') ' reading values of increment ', restartInc, ' from file'
 
-    fileUnit = IO_open_jobFile_binary('F_aim')
-    read(fileUnit) F_aim; close(fileUnit)
-    fileUnit = IO_open_jobFile_binary('F_aim_lastInc')
-    read(fileUnit) F_aim_lastInc; close(fileUnit)
-    fileUnit = IO_open_jobFile_binary('F_aimDot')
-    read(fileUnit) F_aimDot; close(fileUnit)
- 
     write(rankStr,'(a1,i0)')'_',worldrank
- 
-    fileUnit = IO_open_jobFile_binary('F'//trim(rankStr))
-    read(fileUnit) F; close (fileUnit)
-    fileUnit = IO_open_jobFile_binary('F_lastInc'//trim(rankStr))
-    read(fileUnit) F_lastInc; close (fileUnit)
+    fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
+    call HDF5_read(fileHandle,F_aim,        'F_aim')
+    call HDF5_read(fileHandle,F_aim_lastInc,'F_aim_lastInc')
+    call HDF5_read(fileHandle,F_aimDot,     'F_aimDot')
+    call HDF5_read(fileHandle,F,            'F')
+    call HDF5_read(fileHandle,F_lastInc,    'F_lastInc')
  
   elseif (restartInc == 0) then restart
     F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                         ! initialize to identity
@@ -203,10 +200,10 @@ subroutine grid_mech_spectral_basic_init
  
   restartRead: if (restartInc > 0) then
     write(6,'(/,a,'//IO_intOut(restartInc)//',a)') 'reading more values of increment ', restartInc, ' from file'
-    fileUnit = IO_open_jobFile_binary('C_volAvg')
-    read(fileUnit) C_volAvg; close(fileUnit)
-    fileUnit = IO_open_jobFile_binary('C_volAvgLastInv')
-    read(fileUnit) C_volAvgLastInc; close(fileUnit)
+    call HDF5_read(fileHandle,C_volAvg,       'C_volAvg')
+    call HDF5_read(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
+    call HDF5_closeFile(fileHandle)
+
     fileUnit = IO_open_jobFile_binary('C_ref')
     read(fileUnit) C_minMaxAvg; close(fileUnit)
   endif restartRead
@@ -321,7 +318,7 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
   PetscErrorCode :: ierr
   PetscScalar, dimension(:,:,:,:), pointer :: F
   
-  integer :: fileUnit
+  integer(HID_T) :: fileHandle
   character(len=32) :: rankStr
 
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
@@ -331,29 +328,24 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
     C_minMaxAvg = C_minMaxAvgLastInc                                                               ! QUESTION: where is this required?
   else
   !--------------------------------------------------------------------------------------------------
-    ! restart information for spectral solver
+  ! restart information for spectral solver
     if (restartWrite) then                                                                           ! QUESTION: where is this logical properly set?
-      write(6,'(/,a)') ' writing converged results for restart'
-      flush(6)
-
-      if (worldrank == 0) then
-        fileUnit = IO_open_jobFile_binary('C_volAvg','w')
-        write(fileUnit) C_volAvg; close(fileUnit)
-        fileUnit = IO_open_jobFile_binary('C_volAvgLastInv','w')
-        write(fileUnit) C_volAvgLastInc; close(fileUnit)
-        fileUnit = IO_open_jobFile_binary('F_aim','w')
-        write(fileUnit) F_aim; close(fileUnit)
-        fileUnit = IO_open_jobFile_binary('F_aim_lastInc','w')
-        write(fileUnit) F_aim_lastInc; close(fileUnit)
-        fileUnit = IO_open_jobFile_binary('F_aimDot','w')
-        write(fileUnit) F_aimDot; close(fileUnit)
-      endif
-
+      write(6,'(/,a)') ' writing converged results for restart';flush(6)
+      
       write(rankStr,'(a1,i0)')'_',worldrank
-      fileUnit = IO_open_jobFile_binary('F'//trim(rankStr),'w')
-      write(fileUnit) F; close (fileUnit)
-      fileUnit = IO_open_jobFile_binary('F_lastInc'//trim(rankStr),'w')
-      write(fileUnit) F_lastInc; close (fileUnit)
+      fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
+      
+      print*, trim(getSolverJobName())//trim(rankStr)//'.hdf5';flush(6)
+      call HDF5_write(fileHandle,F_aim,        'F_aim')
+      call HDF5_write(fileHandle,F_aim_lastInc,'F_aim_lastInc')
+      call HDF5_write(fileHandle,F_aimDot,     'F_aimDot')
+      call HDF5_write(fileHandle,F,            'F')
+      call HDF5_write(fileHandle,F_lastInc,    'F_lastInc')
+
+      call HDF5_write(fileHandle,C_volAvg,       'C_volAvg')
+      call HDF5_write(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
+      call HDF5_write(fileHandle,C_minMaxAvg,    'C_minMaxAvg')
+      call HDF5_closeFile(fileHandle)
     endif
 
     call CPFEM_age                                                                                  ! age state and kinematics
