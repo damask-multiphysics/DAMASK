@@ -110,7 +110,11 @@ module crystallite
   end type tOutput
   type(tOutput), allocatable, dimension(:), private :: output_constituent
   
-  type, private :: tNumerics                                                                        
+  type, private :: tNumerics
+    integer :: &
+      iJacoLpresiduum, &                                                                            !< frequency of Jacobian update of residuum in Lp
+      nState, &                                                                                     !< state loop limit
+      nStress                                                                                       !< stress loop limit                                                                   
     real(pReal) :: &
       subStepMinCryst, &                                                                            !< minimum (relative) size of sub-step allowed during cutback
       subStepSizeCryst, &                                                                           !< size of first substep when cutback
@@ -255,23 +259,37 @@ subroutine crystallite_init
   allocate(crystallite_sizePostResult(maxval(crystallite_Noutput), &
                                       size(config_crystallite)), source=0)
                                       
-  num%subStepMinCryst        = config_numerics%getFloat('subStepMinCryst',       defaultVal=1.0e-3_pReal)
-  num%subStepSizeCryst       = config_numerics%getFloat('subStepSizeCryst',      defaultVal=0.25_pReal)
-  num%subStepSizeLp          = config_numerics%getFloat('subStepSizeLp',         defaultVal=0.5_pReal)
-  num%subStepSizeLi          = config_numerics%getFloat('subStepSizeLi',         defaultVal=0.5_pReal)
-  num%stepIncreaseCryst      = config_numerics%getFloat('stepIncreaseCryst',     defaultVal=1.5_pReal)
-  num%rTol_crystalliteState  = config_numerics%getFloat('rTol_crystalliteState', defaultVal=1.0e-6_pReal)
-  num%rTol_crystalliteStress = config_numerics%getFloat('rTol_crystalliteStress',defaultVal=1.0e-6_pReal)
-  num%aTol_crystalliteStress = config_numerics%getFloat('aTol_crystalliteStress',defaultVal=1.0e-8_pReal)
+  num%subStepMinCryst        = config_numerics%getFloat('substepmincryst',       defaultVal=1.0e-3_pReal)
+  num%subStepSizeCryst       = config_numerics%getFloat('substepsizecryst',      defaultVal=0.25_pReal)
+  num%stepIncreaseCryst      = config_numerics%getFloat('stepincreasecryst',     defaultVal=1.5_pReal)
   
-  if(num%subStepMinCryst <= 0.0_pReal)         call IO_error(301,ext_msg='subStepMinCryst')
-  if(num%subStepSizeCryst <= 0.0_pReal)        call IO_error(301,ext_msg='subStepSizeCryst')
-  if(num%stepIncreaseCryst <= 0.0_pReal)       call IO_error(301,ext_msg='stepIncreaseCryst')
-  if(num%subStepSizeLp <= 0.0_pReal)           call IO_error(301,ext_msg='subStepSizeLp')
-  if(num%subStepSizeLi <= 0.0_pReal)           call IO_error(301,ext_msg='subStepSizeLi')
-  if(num%rTol_crystalliteState <= 0.0_pReal)   call IO_error(301,ext_msg='rTol_crystalliteState')
-  if(num%rTol_crystalliteStress <= 0.0_pReal)  call IO_error(301,ext_msg='rTol_crystalliteStress')
-  if(num%aTol_crystalliteStress <= 0.0_pReal)  call IO_error(301,ext_msg='aTol_crystalliteStress')
+  num%subStepSizeLp          = config_numerics%getFloat('substepsizelp',         defaultVal=0.5_pReal)
+  num%subStepSizeLi          = config_numerics%getFloat('substepsizeli',         defaultVal=0.5_pReal)
+
+  num%rTol_crystalliteState  = config_numerics%getFloat('rtol_crystallitestate', defaultVal=1.0e-6_pReal)
+  num%rTol_crystalliteStress = config_numerics%getFloat('rtol_crystallitestress',defaultVal=1.0e-6_pReal)
+  num%aTol_crystalliteStress = config_numerics%getFloat('atol_crystallitestress',defaultVal=1.0e-8_pReal)
+  
+  num%iJacoLpresiduum        = config_numerics%getInt  ('ijacolpresiduum',       defaultVal=1)
+  
+  num%nState                 = config_numerics%getInt  ('nstate',                defaultVal=20)
+  num%nStress                = config_numerics%getInt  ('nstress',               defaultVal=40)
+  
+  if(num%subStepMinCryst   <= 0.0_pReal)      call IO_error(301,ext_msg='subStepMinCryst')
+  if(num%subStepSizeCryst  <= 0.0_pReal)      call IO_error(301,ext_msg='subStepSizeCryst')
+  if(num%stepIncreaseCryst <= 0.0_pReal)      call IO_error(301,ext_msg='stepIncreaseCryst')
+
+  if(num%subStepSizeLp <= 0.0_pReal)          call IO_error(301,ext_msg='subStepSizeLp')
+  if(num%subStepSizeLi <= 0.0_pReal)          call IO_error(301,ext_msg='subStepSizeLi')
+
+  if(num%rTol_crystalliteState  <= 0.0_pReal) call IO_error(301,ext_msg='rTol_crystalliteState')
+  if(num%rTol_crystalliteStress <= 0.0_pReal) call IO_error(301,ext_msg='rTol_crystalliteStress')
+  if(num%aTol_crystalliteStress <= 0.0_pReal) call IO_error(301,ext_msg='aTol_crystalliteStress')
+  
+  if(num%iJacoLpresiduum < 1)                 call IO_error(301,ext_msg='iJacoLpresiduum')
+  
+  if(num%nState < 1)                          call IO_error(301,ext_msg='nState')
+  if(num%nStress< 1)                          call IO_error(301,ext_msg='nStress')
  
   select case(numerics_integrator)
     case(1)
@@ -727,7 +745,7 @@ end function crystallite_stress
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate tangent (dPdF)
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_stressTangent()
+subroutine crystallite_stressTangent
   use prec, only: &
     tol_math_check, &
     dNeq0
@@ -1257,8 +1275,6 @@ logical function integrateStress(ipc,ip,el,timeFraction)
     IEEE_arithmetic
   use prec, only:         tol_math_check, &
                           dEq0
-  use numerics, only:     nStress, &
-                          iJacoLpresiduum
 #ifdef DEBUG
   use debug, only:        debug_level, &
                           debug_e, &
@@ -1401,10 +1417,10 @@ logical function integrateStress(ipc,ip,el,timeFraction)
  
   LiLoop: do
     NiterationStressLi = NiterationStressLi + 1
-    LiLoopLimit: if (NiterationStressLi > nStress) then
+    LiLoopLimit: if (NiterationStressLi > num%nStress) then
 #ifdef DEBUG
       if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0) &
-        write(6,'(a,i3,a,i8,1x,i2,1x,i3,/)') '<< CRYST integrateStress >> reached Li loop limit',nStress, &
+        write(6,'(a,i3,a,i8,1x,i2,1x,i3,/)') '<< CRYST integrateStress >> reached Li loop limit',num%nStress, &
                                             ' at el ip ipc ', el,ip,ipc
 #endif
       return
@@ -1423,10 +1439,10 @@ logical function integrateStress(ipc,ip,el,timeFraction)
  
     LpLoop: do
       NiterationStressLp = NiterationStressLp + 1
-      LpLoopLimit: if (NiterationStressLp > nStress) then
+      LpLoopLimit: if (NiterationStressLp > num%nStress) then
 #ifdef DEBUG
         if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0) &
-           write(6,'(a,i3,a,i8,1x,i2,1x,i3,/)') '<< CRYST integrateStress >> reached Lp loop limit',nStress, &
+           write(6,'(a,i3,a,i8,1x,i2,1x,i3,/)') '<< CRYST integrateStress >> reached Lp loop limit',num%nStress, &
                                                 ' at el ip ipc ', el,ip,ipc
 #endif
         return
@@ -1492,7 +1508,7 @@ logical function integrateStress(ipc,ip,el,timeFraction)
 
 
      !* calculate Jacobian for correction term
-      if (mod(jacoCounterLp, iJacoLpresiduum) == 0) then
+      if (mod(jacoCounterLp, num%iJacoLpresiduum) == 0) then
         do o=1,3; do p=1,3
           dFe_dLp(o,1:3,p,1:3) = A(o,p)*transpose(invFi_new)                                        ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
         enddo; enddo
@@ -1582,7 +1598,7 @@ logical function integrateStress(ipc,ip,el,timeFraction)
     endif
  
     !* calculate Jacobian for correction term
-    if (mod(jacoCounterLi, iJacoLpresiduum) == 0) then
+    if (mod(jacoCounterLi, num%iJacoLpresiduum) == 0) then
       temp_33     = matmul(matmul(A,B),invFi_current)
       do o=1,3; do p=1,3
         dFe_dLi(1:3,o,1:3,p) = -dt*math_I3(o,p)*temp_33                                             ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
@@ -1691,8 +1707,6 @@ subroutine integrateStateFPI
                          debug_levelExtensive, &
                          debug_levelSelective
 #endif
- use numerics, only: &
-   nState
  use mesh, only: &
    mesh_element
  use material, only: &
@@ -1729,7 +1743,7 @@ subroutine integrateStateFPI
 
  NiterationState = 0
  doneWithIntegration = .false.
- crystalliteLooping: do while (.not. doneWithIntegration .and. NiterationState < nState)
+ crystalliteLooping: do while (.not. doneWithIntegration .and. NiterationState < num%nState)
    NiterationState = NiterationState + 1
 
 #ifdef DEBUG
@@ -1890,7 +1904,7 @@ end subroutine integrateStateFPI
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate state with 1st order explicit Euler method
 !--------------------------------------------------------------------------------------------------
-subroutine integrateStateEuler()
+subroutine integrateStateEuler
  use material, only: &
    plasticState
 
@@ -1908,7 +1922,7 @@ end subroutine integrateStateEuler
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate stress, state with 1st order Euler method with adaptive step size
 !--------------------------------------------------------------------------------------------------
-subroutine integrateStateAdaptiveEuler()
+subroutine integrateStateAdaptiveEuler
  use mesh, only: &
    theMesh, &
    mesh_element
@@ -2014,7 +2028,7 @@ end subroutine integrateStateAdaptiveEuler
 !> @brief integrate stress, state with 4th order explicit Runge Kutta method
 ! ToDo: This is totally BROKEN: RK4dotState is never used!!!
 !--------------------------------------------------------------------------------------------------
-subroutine integrateStateRK4()
+subroutine integrateStateRK4
  use mesh, only: &
    mesh_element
  use material, only: &
@@ -2081,7 +2095,7 @@ end subroutine integrateStateRK4
 !> @brief integrate stress, state with 5th order Runge-Kutta Cash-Karp method with
 !> adaptive step size  (use 5th order solution to advance = "local extrapolation")
 !--------------------------------------------------------------------------------------------------
-subroutine integrateStateRKCK45()
+subroutine integrateStateRKCK45
  use mesh, only: &
    mesh_element, &
    theMesh
@@ -2349,7 +2363,7 @@ end subroutine update_stress
 !--------------------------------------------------------------------------------------------------
 !> @brief tbd
 !--------------------------------------------------------------------------------------------------
-subroutine update_dependentState()
+subroutine update_dependentState
  use mesh, only: &
    mesh_element
  use constitutive, only: &

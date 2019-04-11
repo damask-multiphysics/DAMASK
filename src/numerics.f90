@@ -13,11 +13,7 @@ module numerics
 
  integer(pInt), protected, public :: &
    iJacoStiffness             =  1_pInt, &                                                          !< frequency of stiffness update
-   iJacoLpresiduum            =  1_pInt, &                                                          !< frequency of Jacobian update of residuum in Lp
    nMPstate                   = 10_pInt, &                                                          !< materialpoint state loop limit
-   nCryst                     = 20_pInt, &                                                          !< crystallite loop limit (only for debugging info, loop limit is determined by "subStepMinCryst")
-   nState                     = 10_pInt, &                                                          !< state loop limit
-   nStress                    = 40_pInt, &                                                          !< stress loop limit
    randomSeed                 =  0_pInt, &                                                          !< fixed seeding for pseudo-random number generator, Default 0: use random seed
    worldrank                  =  0_pInt, &                                                          !< MPI worldrank (/=0 for MPI simulations only)
    worldsize                  =  1_pInt, &                                                          !< MPI worldsize (/=1 for MPI simulations only)
@@ -186,30 +182,14 @@ subroutine numerics_init
          defgradTolerance = IO_floatValue(line,chunkPos,2_pInt)
        case ('ijacostiffness')
          iJacoStiffness = IO_intValue(line,chunkPos,2_pInt)
-       case ('ijacolpresiduum')
-         iJacoLpresiduum = IO_intValue(line,chunkPos,2_pInt)
        case ('nmpstate')
          nMPstate = IO_intValue(line,chunkPos,2_pInt)
-       case ('ncryst')
-         nCryst = IO_intValue(line,chunkPos,2_pInt)
-       case ('nstate')
-         nState = IO_intValue(line,chunkPos,2_pInt)
-       case ('nstress')
-         nStress = IO_intValue(line,chunkPos,2_pInt)
-       case ('substepmincryst')
-       case ('substepsizecryst')
-       case ('stepincreasecryst')
-       case ('substepsizelp')
-       case ('substepsizeli')
        case ('substepminhomog')
          subStepMinHomog = IO_floatValue(line,chunkPos,2_pInt)
        case ('substepsizehomog')
          subStepSizeHomog = IO_floatValue(line,chunkPos,2_pInt)
        case ('stepincreasehomog')
          stepIncreaseHomog = IO_floatValue(line,chunkPos,2_pInt)
-       case ('rtol_crystallitestate')
-       case ('rtol_crystallitestress')
-       case ('atol_crystallitestress')
        case ('integrator')
          numerics_integrator = IO_intValue(line,chunkPos,2_pInt)
        case ('usepingpong')
@@ -332,10 +312,6 @@ subroutine numerics_init
 ! writing parameters to output
  write(6,'(a24,1x,es8.1)')  ' defgradTolerance:       ',defgradTolerance
  write(6,'(a24,1x,i8)')     ' iJacoStiffness:         ',iJacoStiffness
- write(6,'(a24,1x,i8)')     ' iJacoLpresiduum:        ',iJacoLpresiduum
- write(6,'(a24,1x,i8)')     ' nCryst:                 ',nCryst
- write(6,'(a24,1x,i8)')     ' nState:                 ',nState
- write(6,'(a24,1x,i8)')     ' nStress:                ',nStress
  write(6,'(a24,1x,i8)')     ' integrator:             ',numerics_integrator
  write(6,'(a24,1x,L8)')     ' use ping pong scheme:   ',usepingpong
  write(6,'(a24,1x,es8.1,/)')' unitlength:             ',numerics_unitlength
@@ -417,11 +393,7 @@ subroutine numerics_init
 ! sanity checks
  if (defgradTolerance <= 0.0_pReal)        call IO_error(301_pInt,ext_msg='defgradTolerance')
  if (iJacoStiffness < 1_pInt)              call IO_error(301_pInt,ext_msg='iJacoStiffness')
- if (iJacoLpresiduum < 1_pInt)             call IO_error(301_pInt,ext_msg='iJacoLpresiduum')
  if (nMPstate < 1_pInt)                    call IO_error(301_pInt,ext_msg='nMPstate')
- if (nCryst < 1_pInt)                      call IO_error(301_pInt,ext_msg='nCryst')
- if (nState < 1_pInt)                      call IO_error(301_pInt,ext_msg='nState')
- if (nStress < 1_pInt)                     call IO_error(301_pInt,ext_msg='nStress')
  if (subStepMinHomog <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='subStepMinHomog')
  if (subStepSizeHomog <= 0.0_pReal)        call IO_error(301_pInt,ext_msg='subStepSizeHomog')
  if (stepIncreaseHomog <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='stepIncreaseHomog')
