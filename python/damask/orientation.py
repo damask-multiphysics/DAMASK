@@ -35,14 +35,6 @@ class Quaternion:
       """Components"""
       return iter(self.asList())
 
-    def asArray(self):
-      """As numpy array"""
-      return np.array((self.q,self.p[0],self.p[1],self.p[2]))
- 
-    def asList(self):
-      return [self.q]+list(self.p)
-
-
     def __repr__(self):
       """Readable string"""
       return 'Quaternion: (real={q:+.6f}, imag=<{p[0]:+.6f}, {p[1]:+.6f}, {p[2]:+.6f}>)'.format(q=self.q,p=self.p)
@@ -116,7 +108,7 @@ class Quaternion:
         return self
       else:
         return NotImplemented
-      
+
 
     def __truediv__(self, other):
       """Divsion with quaternion or scalar"""
@@ -180,6 +172,17 @@ class Quaternion:
       return not self.__eq__(other)
 
 
+    def asM(self):
+      """Intermediate representation useful for quaternion averaging (see F. Landis Markley et al.)"""
+      return np.outer(self.asArray(),self.asArray())
+
+    def asArray(self):
+      """As numpy array"""
+      return np.array((self.q,self.p[0],self.p[1],self.p[2]))
+ 
+    def asList(self):
+      return [self.q]+list(self.p)
+
     def normalize(self):
       d = self.magnitude()
       if d > 0.0:
@@ -190,7 +193,7 @@ class Quaternion:
     def normalized(self):
       return self.copy().normalize()
 
-
+  
     def conjugate(self):
       self.p = -self.p
       return self
@@ -293,6 +296,10 @@ class Rotation:
          
     def asCubochoric(self):
       return qu2cu(self.quaternion.asArray())
+      
+    def asM(self):
+      """Intermediate representation useful fro quaternion averaging (see F. Landis Markley et al.)"""
+      return self.quaternion.asM()
       
 
     ################################################################################################
@@ -503,7 +510,7 @@ class Symmetry:
     otherOrder = Symmetry.lattices.index(other.lattice)
     return (myOrder > otherOrder) - (myOrder < otherOrder)
 
-  def symmetryOperations(self):
+  def symmetryOperations(self,who=[]):
     """List of symmetry operations as quaternions."""
     if self.lattice == 'cubic':
       symQuats =  [
@@ -570,7 +577,8 @@ class Symmetry:
                     [ 1.0,0.0,0.0,0.0 ],
                   ]
 
-    return [Rotation(q) for q in symQuats]
+    return list(map(Rotation,
+                    np.array(symQuats)[np.atleast_1d(np.array(who)) if who != [] else range(len(symQuats))]))
     
 
   def inFZ(self,R):
@@ -579,6 +587,8 @@ class Symmetry:
     
     Fundamental zone in Rodrigues space is point symmetric around origin.
     """
+    if np.any(R == np.inf): return False
+
     Rabs = abs(R[0:3]*R[3])
 
     if self.lattice == 'cubic':
@@ -1050,7 +1060,8 @@ class Orientation:
       
   def disorientation(self,
                      other,
-                     SST = True):
+                     SST = True,
+                     symmetries = False):
     """
     Disorientation between myself and given other orientation.
 
@@ -1076,15 +1087,18 @@ class Orientation:
         if breaker: break
       if breaker: break
 
-    return r
+    return (r, i,j, k == 1) if symmetries else r                                                    # disorientation ...
+                                                                                                    # ... own sym, other sym,
+                                                                                                    # self-->other: True, self<--other: False
+
 
   def inFZ(self):
     return self.lattice.symmetry.inFZ(self.rotation.asRodrigues())
   
-  def equivalentOrientations(self):
+  def equivalentOrientations(self, who=[]):
     """List of orientations which are symmetrically equivalent"""
     return [self.__class__(q*self.rotation,self.lattice) \
-                                  for q in self.lattice.symmetry.symmetryOperations()]
+                                  for q in self.lattice.symmetry.symmetryOperations(who)]
     
   def relatedOrientations(self,model):
     """List of orientations related by the given orientation relationship"""
@@ -1125,37 +1139,39 @@ class Orientation:
     return color                                                                        
 
 
-  # @classmethod
-  # def average(cls,
-              # orientations,
-              # multiplicity = []):
-    # """
-    # Average orientation
+  @classmethod
+  def average(cls,
+              orientations,
+              multiplicity = []):
+    """
+    Average orientation
 
-    # ref: F. Landis Markley, Yang Cheng, John Lucas Crassidis, and Yaakov Oshman.
-         # Averaging Quaternions,
-         # Journal of Guidance, Control, and Dynamics, Vol. 30, No. 4 (2007), pp. 1193-1197.
-         # doi: 10.2514/1.28949
-    # usage:
-         # a = Orientation(Eulers=np.radians([10, 10, 0]), symmetry='hexagonal')
-         # b = Orientation(Eulers=np.radians([20, 0, 0]),  symmetry='hexagonal')
-         # avg = Orientation.average([a,b])
-    # """
-    # if not all(isinstance(item, Orientation) for item in orientations):
-      # raise TypeError("Only instances of Orientation can be averaged.")
+    ref: F. Landis Markley, Yang Cheng, John Lucas Crassidis, and Yaakov Oshman.
+         Averaging Quaternions,
+         Journal of Guidance, Control, and Dynamics, Vol. 30, No. 4 (2007), pp. 1193-1197.
+         doi: 10.2514/1.28949
+    usage:
+         a = Orientation(Eulers=np.radians([10, 10, 0]), symmetry='hexagonal')
+         b = Orientation(Eulers=np.radians([20, 0, 0]),  symmetry='hexagonal')
+         avg = Orientation.average([a,b])
+    """
+    if not all(isinstance(item, Orientation) for item in orientations):
+      print('got a list of {}'.format(orientations))
+      raise TypeError("Only instances of Orientation can be averaged.")
 
-    # N = len(orientations)
-    # if multiplicity == [] or not multiplicity:
-      # multiplicity = np.ones(N,dtype='i')
+    N = len(orientations)
+    if multiplicity == [] or not multiplicity:
+      multiplicity = np.ones(N,dtype='i')
 
-    # reference = orientations[0]                                                                     # take first as reference
-    # for i,(o,n) in enumerate(zip(orientations,multiplicity)):
-      # closest = o.equivalentOrientations(reference.disorientation(o,SST = False)[2])[0]             # select sym orientation with lowest misorientation
-      # M = closest.quaternion.asM() * n if i == 0 else M + closest.quaternion.asM() * n              # noqa add (multiples) of this orientation to average noqa
-    # eig, vec = np.linalg.eig(M/N)
+    ref = orientations[0]                                                                           # take first as reference
+    for i,(o,n) in enumerate(zip(orientations,multiplicity)):
+      closest = o.equivalentOrientations(ref.disorientation(o,SST=False,symmetries=True)[2])[0]     # select sym orientation with lowest misorientation
+      M =          closest.rotation.asM() * n if i == 0 \
+          else M + closest.rotation.asM() * n                                                       # noqa add (multiples) of this orientation to average noqa
+    eig, vec = np.linalg.eig(M/N)
 
-    # return Orientation(quaternion = Quaternion(quat = np.real(vec.T[eig.argmax()])),
-                       # symmetry = reference.symmetry.lattice)
+    return Orientation(Rotation.fromQuaternion(np.real(vec.T[eig.argmax()]),acceptHomomorph = True),
+                       ref.lattice)
 
 
 ####################################################################################################
