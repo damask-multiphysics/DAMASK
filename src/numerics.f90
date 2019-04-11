@@ -18,7 +18,6 @@ module numerics
    nCryst                     = 20_pInt, &                                                          !< crystallite loop limit (only for debugging info, loop limit is determined by "subStepMinCryst")
    nState                     = 10_pInt, &                                                          !< state loop limit
    nStress                    = 40_pInt, &                                                          !< stress loop limit
-   pert_method                =  1_pInt, &                                                          !< method used in perturbation technique for tangent
    randomSeed                 =  0_pInt, &                                                          !< fixed seeding for pseudo-random number generator, Default 0: use random seed
    worldrank                  =  0_pInt, &                                                          !< MPI worldrank (/=0 for MPI simulations only)
    worldsize                  =  1_pInt, &                                                          !< MPI worldsize (/=1 for MPI simulations only)
@@ -26,9 +25,7 @@ module numerics
  integer(4), protected, public :: &
    DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
  real(pReal), protected, public :: &
-   relevantStrain             =  1.0e-7_pReal, &                                                    !< strain increment considered significant (used by crystallite to determine whether strain inc is considered significant)
    defgradTolerance           =  1.0e-7_pReal, &                                                    !< deviation of deformation gradient that is still allowed (used by CPFEM to determine outdated ffn1)
-   pert_Fg                    =  1.0e-7_pReal, &                                                    !< strain perturbation for FEM Jacobi
    subStepMinCryst            =  1.0e-3_pReal, &                                                    !< minimum (relative) size of sub-step allowed during cutback in crystallite
    subStepMinHomog            =  1.0e-3_pReal, &                                                    !< minimum (relative) size of sub-step allowed during cutback in homogenization
    subStepSizeCryst           =  0.25_pReal, &                                                      !< size of first substep when cutback in crystallite
@@ -57,8 +54,7 @@ module numerics
    charLength                 =  1.0_pReal, &                                                       !< characteristic length scale for gradient problems
    residualStiffness          =  1.0e-6_pReal                                                       !< non-zero residual damage   
  logical, protected, public :: &                                                   
-   usePingPong                = .true., & 
-   numerics_timeSyncing       = .false.                                                             !< flag indicating if time synchronization in crystallite is used for nonlocal plasticity
+   usePingPong                = .true.
 
 !--------------------------------------------------------------------------------------------------
 ! field parameters:
@@ -194,18 +190,12 @@ subroutine numerics_init
      tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                              ! extract key
 
      select case(tag)
-       case ('relevantstrain')
-         relevantStrain = IO_floatValue(line,chunkPos,2_pInt)
        case ('defgradtolerance')
          defgradTolerance = IO_floatValue(line,chunkPos,2_pInt)
        case ('ijacostiffness')
          iJacoStiffness = IO_intValue(line,chunkPos,2_pInt)
        case ('ijacolpresiduum')
          iJacoLpresiduum = IO_intValue(line,chunkPos,2_pInt)
-       case ('pert_fg')
-         pert_Fg = IO_floatValue(line,chunkPos,2_pInt)
-       case ('pert_method')
-         pert_method = IO_intValue(line,chunkPos,2_pInt)
        case ('nmpstate')
          nMPstate = IO_intValue(line,chunkPos,2_pInt)
        case ('ncryst')
@@ -356,12 +346,9 @@ subroutine numerics_init
 
 !--------------------------------------------------------------------------------------------------
 ! writing parameters to output
- write(6,'(a24,1x,es8.1)')  ' relevantStrain:         ',relevantStrain
  write(6,'(a24,1x,es8.1)')  ' defgradTolerance:       ',defgradTolerance
  write(6,'(a24,1x,i8)')     ' iJacoStiffness:         ',iJacoStiffness
  write(6,'(a24,1x,i8)')     ' iJacoLpresiduum:        ',iJacoLpresiduum
- write(6,'(a24,1x,es8.1)')  ' pert_Fg:                ',pert_Fg
- write(6,'(a24,1x,i8)')     ' pert_method:            ',pert_method
  write(6,'(a24,1x,i8)')     ' nCryst:                 ',nCryst
  write(6,'(a24,1x,es8.1)')  ' subStepMinCryst:        ',subStepMinCryst
  write(6,'(a24,1x,es8.1)')  ' subStepSizeCryst:       ',subStepSizeCryst
@@ -452,13 +439,9 @@ subroutine numerics_init
 
 !--------------------------------------------------------------------------------------------------
 ! sanity checks
- if (relevantStrain <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='relevantStrain')
  if (defgradTolerance <= 0.0_pReal)        call IO_error(301_pInt,ext_msg='defgradTolerance')
  if (iJacoStiffness < 1_pInt)              call IO_error(301_pInt,ext_msg='iJacoStiffness')
  if (iJacoLpresiduum < 1_pInt)             call IO_error(301_pInt,ext_msg='iJacoLpresiduum')
- if (pert_Fg <= 0.0_pReal)                 call IO_error(301_pInt,ext_msg='pert_Fg')
- if (pert_method <= 0_pInt .or. pert_method >= 4_pInt) &
-                                           call IO_error(301_pInt,ext_msg='pert_method')
  if (nMPstate < 1_pInt)                    call IO_error(301_pInt,ext_msg='nMPstate')
  if (nCryst < 1_pInt)                      call IO_error(301_pInt,ext_msg='nCryst')
  if (nState < 1_pInt)                      call IO_error(301_pInt,ext_msg='nState')
