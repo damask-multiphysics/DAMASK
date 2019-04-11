@@ -111,6 +111,20 @@ module crystallite
   end type tOutput
   type(tOutput), allocatable, dimension(:), private :: output_constituent
   
+  type, private :: tNumerics                                                                        
+    real(pReal) :: &
+      subStepMinCryst, &                                                                            !< minimum (relative) size of sub-step allowed during cutback
+      subStepSizeCryst, &                                                                           !< size of first substep when cutback
+      subStepSizeLp, &                                                                              !< size of first substep when cutback in Lp calculation
+      subStepSizeLi, &                                                                              !< size of first substep when cutback in Li calculation
+      stepIncreaseCryst, &                                                                          !< increase of next substep size when previous substep converged
+      rTol_crystalliteState, &                                                                      !< relative tolerance in state loop 
+      rTol_crystalliteStress, &                                                                     !< relative tolerance in stress loop
+      aTol_crystalliteStress                                                                        !< absolute tolerance in stress loop
+  end type tNumerics
+  
+  type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
+  
   procedure(), pointer :: integrateState
  
   public :: &
@@ -165,6 +179,7 @@ subroutine crystallite_init
   use config, only: &
    config_deallocate, &
    config_crystallite, &
+   config_numerics, &
    config_phase, &
    crystallite_name
   use constitutive, only: &
@@ -242,6 +257,24 @@ subroutine crystallite_init
   allocate(crystallite_sizePostResults(size(config_crystallite)),source=0)
   allocate(crystallite_sizePostResult(maxval(crystallite_Noutput), &
                                       size(config_crystallite)), source=0)
+                                      
+  num%subStepMinCryst        = config_numerics%getFloat('subStepMinCryst',       defaultVal=1.0e-3_pReal)
+  num%subStepSizeCryst       = config_numerics%getFloat('subStepSizeCryst',      defaultVal=0.25_pReal)
+  num%subStepSizeLp          = config_numerics%getFloat('subStepSizeLp',         defaultVal=0.5_pReal)
+  num%subStepSizeLi          = config_numerics%getFloat('subStepSizeLi',         defaultVal=0.5_pReal)
+  num%stepIncreaseCryst      = config_numerics%getFloat('stepIncreaseCryst',     defaultVal=1.5_pReal)
+  num%rTol_crystalliteState  = config_numerics%getFloat('rTol_crystalliteState', defaultVal=1.0e-6_pReal)
+  num%rTol_crystalliteStress = config_numerics%getFloat('rTol_crystalliteStress',defaultVal=1.0e-6_pReal)
+  num%aTol_crystalliteStress = config_numerics%getFloat('aTol_crystalliteStress',defaultVal=1.0e-8_pReal)
+  
+  if(num%subStepMinCryst <= 0.0_pReal)         call IO_error(301,ext_msg='subStepMinCryst')
+  if(num%subStepSizeCryst <= 0.0_pReal)        call IO_error(301,ext_msg='subStepSizeCryst')
+  if(num%stepIncreaseCryst <= 0.0_pReal)       call IO_error(301,ext_msg='stepIncreaseCryst')
+  if(num%subStepSizeLp <= 0.0_pReal)           call IO_error(301,ext_msg='subStepSizeLp')
+  if(num%subStepSizeLi <= 0.0_pReal)           call IO_error(301,ext_msg='subStepSizeLi')
+  if(num%rTol_crystalliteState <= 0.0_pReal)   call IO_error(301,ext_msg='rTol_crystalliteState')
+  if(num%rTol_crystalliteStress <= 0.0_pReal)  call IO_error(301,ext_msg='rTol_crystalliteStress')
+  if(num%aTol_crystalliteStress <= 0.0_pReal)  call IO_error(301,ext_msg='aTol_crystalliteStress')
  
   select case(numerics_integrator)
     case(1)
@@ -433,10 +466,6 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
   use prec, only: &
     tol_math_check, &
     dNeq0
-  use numerics, only: &
-    subStepMinCryst, &
-    subStepSizeCryst, &
-    stepIncreaseCryst
 #ifdef DEBUG
   use debug, only: &
     debug_level, &
@@ -519,7 +548,7 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
         crystallite_subF0(1:3,1:3,c,i,e)  = crystallite_partionedF0(1:3,1:3,c,i,e)
         crystallite_subS0(1:3,1:3,c,i,e)  = crystallite_partionedS0(1:3,1:3,c,i,e)
         crystallite_subFrac(c,i,e) = 0.0_pReal
-        crystallite_subStep(c,i,e) = 1.0_pReal/subStepSizeCryst
+        crystallite_subStep(c,i,e) = 1.0_pReal/num%subStepSizeCryst
         crystallite_todo(c,i,e) = .true.
         crystallite_converged(c,i,e) = .false.                                                      ! pretend failed step of 1/subStepSizeCryst
       endif homogenizationRequestsCalculation
@@ -554,7 +583,7 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
             formerSubStep = crystallite_subStep(c,i,e)
             crystallite_subFrac(c,i,e) = crystallite_subFrac(c,i,e) + crystallite_subStep(c,i,e)
             crystallite_subStep(c,i,e) = min(1.0_pReal - crystallite_subFrac(c,i,e), &
-                                             stepIncreaseCryst * crystallite_subStep(c,i,e))
+                                             num%stepIncreaseCryst * crystallite_subStep(c,i,e))
 
             crystallite_todo(c,i,e) = crystallite_subStep(c,i,e) > 0.0_pReal                        ! still time left to integrate on?
             if (crystallite_todo(c,i,e)) then
@@ -584,7 +613,7 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
 !--------------------------------------------------------------------------------------------------
 !  cut back (reduced time and restore)
           else
-            crystallite_subStep(c,i,e)       = subStepSizeCryst * crystallite_subStep(c,i,e)
+            crystallite_subStep(c,i,e)       = num%subStepSizeCryst * crystallite_subStep(c,i,e)
             crystallite_Fp   (1:3,1:3,c,i,e) =            crystallite_subFp0(1:3,1:3,c,i,e)
             crystallite_invFp(1:3,1:3,c,i,e) = math_inv33(crystallite_Fp    (1:3,1:3,c,i,e))
             crystallite_Fi   (1:3,1:3,c,i,e) =            crystallite_subFi0(1:3,1:3,c,i,e)
@@ -602,7 +631,7 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
             enddo
 
                                                                                                     ! cant restore dotState here, since not yet calculated in first cutback after initialization
-            crystallite_todo(c,i,e) = crystallite_subStep(c,i,e) > subStepMinCryst                  ! still on track or already done (beyond repair)
+            crystallite_todo(c,i,e) = crystallite_subStep(c,i,e) > num%subStepMinCryst              ! still on track or already done (beyond repair)
 #ifdef DEBUG
             if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0 &
                .and. ((e == debug_e .and. i == debug_i .and. c == debug_g) &
@@ -652,7 +681,7 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
 !--------------------------------------------------------------------------------------------------
 !  integrate --- requires fully defined state array (basic + dependent state)
     if (any(crystallite_todo)) call integrateState                                                  ! TODO: unroll into proper elementloop to avoid N^2 for single point evaluation
-    where(.not. crystallite_converged .and. crystallite_subStep > subStepMinCryst) &                ! do not try non-converged but fully cutbacked any further
+    where(.not. crystallite_converged .and. crystallite_subStep > num%subStepMinCryst) &            ! do not try non-converged but fully cutbacked any further
       crystallite_todo = .true.                                                                     ! TODO: again unroll this into proper elementloop to avoid N^2 for single point evaluation
 
 
@@ -1238,11 +1267,7 @@ logical function integrateStress(ipc,ip,el,timeFraction)
   use prec, only:         tol_math_check, &
                           dEq0
   use numerics, only:     nStress, &
-                          aTol_crystalliteStress, &
-                          rTol_crystalliteStress, &
-                          iJacoLpresiduum, &
-                          subStepSizeLp, &
-                          subStepSizeLi
+                          iJacoLpresiduum
 #ifdef DEBUG
   use debug, only:        debug_level, &
                           debug_e, &
@@ -1442,8 +1467,8 @@ logical function integrateStress(ipc,ip,el,timeFraction)
 #endif
 
       !* update current residuum and check for convergence of loop
-      aTolLp = max(rTol_crystalliteStress * max(norm2(Lpguess),norm2(Lp_constitutive)), &           ! absolute tolerance from largest acceptable relative error
-                   aTol_crystalliteStress)                                                          ! minimum lower cutoff
+      aTolLp = max(num%rTol_crystalliteStress * max(norm2(Lpguess),norm2(Lp_constitutive)), &       ! absolute tolerance from largest acceptable relative error
+                   num%aTol_crystalliteStress)                                                      ! minimum lower cutoff
       residuumLp = Lpguess - Lp_constitutive
  
       if (any(IEEE_is_NaN(residuumLp))) then
@@ -1463,7 +1488,7 @@ logical function integrateStress(ipc,ip,el,timeFraction)
         Lpguess_old    = Lpguess
         steplengthLp   = 1.0_pReal                                                                  ! ...proceed with normal step length (calculate new search direction)
       else                                                                                          ! not converged and residuum not improved...
-        steplengthLp = subStepSizeLp * steplengthLp                                                 ! ...try with smaller step length in same direction
+        steplengthLp = num%subStepSizeLp * steplengthLp                                             ! ...try with smaller step length in same direction
         Lpguess      = Lpguess_old + steplengthLp * deltaLp
 #ifdef DEBUG
         if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0 &
@@ -1541,8 +1566,8 @@ logical function integrateStress(ipc,ip,el,timeFraction)
 #endif
 
     !* update current residuum and check for convergence of loop
-    aTolLi = max(rTol_crystalliteStress * max(norm2(Liguess),norm2(Li_constitutive)), &             ! absolute tolerance from largest acceptable relative error
-                 aTol_crystalliteStress)                                                            ! minimum lower cutoff
+    aTolLi = max(num%rTol_crystalliteStress * max(norm2(Liguess),norm2(Li_constitutive)), &         ! absolute tolerance from largest acceptable relative error
+                 num%aTol_crystalliteStress)                                                        ! minimum lower cutoff
     residuumLi = Liguess - Li_constitutive
     if (any(IEEE_is_NaN(residuumLi))) then                                                          ! NaN in residuum...
 #ifdef DEBUG
@@ -1561,7 +1586,7 @@ logical function integrateStress(ipc,ip,el,timeFraction)
       Liguess_old    = Liguess
       steplengthLi   = 1.0_pReal                                                                    ! ...proceed with normal step length (calculate new search direction)
     else                                                                                            ! not converged and residuum not improved...
-      steplengthLi   = subStepSizeLi * steplengthLi                                                 ! ...try with smaller step length in same direction
+      steplengthLi   = num%subStepSizeLi * steplengthLi                                             ! ...try with smaller step length in same direction
       Liguess        = Liguess_old + steplengthLi * deltaLi
       cycle LiLoop
     endif
@@ -2295,14 +2320,14 @@ end subroutine setConvergenceFlag
  !> @brief determines whether a point is converged
  !--------------------------------------------------------------------------------------------------
  logical pure function converged(residuum,state,aTol)
-  use prec, only: &
-    dEq0
-  use numerics, only: &
-    rTol => rTol_crystalliteState
     
   implicit none
   real(pReal), intent(in), dimension(:) ::&
     residuum, state, aTol
+  real(pReal) :: &
+    rTol
+
+  rTol = num%rTol_crystalliteState
 
   converged = all(abs(residuum) <= max(aTol, rTol*abs(state)))
 
