@@ -27,6 +27,17 @@ module results
     module procedure results_writeScalarDataset_rotation
     
   end interface results_writeDataset
+  
+  interface results_addAttribute
+  
+    module procedure results_addAttribute_real
+    module procedure results_addAttribute_int
+    module procedure results_addAttribute_str
+    
+    module procedure results_addAttribute_int_array
+    module procedure results_addAttribute_real_array
+    
+  end interface results_addAttribute
 
   public :: &
     results_init, &
@@ -144,15 +155,67 @@ end subroutine results_setLink
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds an attribute to an object
+!> @brief adds a string attribute to an object in the results file
 !--------------------------------------------------------------------------------------------------
-subroutine results_addAttribute(attrLabel,attrValue,path)
+subroutine results_addAttribute_str(attrLabel,attrValue,path)
 
-  character(len=*), intent(in)  :: attrLabel, attrValue, path
+  character(len=*), intent(in) :: attrLabel, attrValue, path
 
-  call HDF5_addAttribute_str(resultsFile,attrLabel, attrValue, path)
+  call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
 
-end subroutine results_addAttribute
+end subroutine results_addAttribute_str
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief adds an integer attribute an object in the results file
+!--------------------------------------------------------------------------------------------------
+subroutine results_addAttribute_int(attrLabel,attrValue,path)
+
+  character(len=*), intent(in) :: attrLabel, path
+  integer,          intent(in) :: attrValue
+
+  call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+
+end subroutine results_addAttribute_int
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief adds a real attribute an object in the results file
+!--------------------------------------------------------------------------------------------------
+subroutine results_addAttribute_real(attrLabel,attrValue,path)
+
+  character(len=*), intent(in) :: attrLabel, path
+  real(pReal),      intent(in) :: attrValue
+
+  call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+
+end subroutine results_addAttribute_real
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief adds an integer array attribute an object in the results file
+!--------------------------------------------------------------------------------------------------
+subroutine results_addAttribute_int_array(attrLabel,attrValue,path)
+
+  character(len=*), intent(in)               :: attrLabel, path
+  integer,          intent(in), dimension(:) :: attrValue
+
+  call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+
+end subroutine results_addAttribute_int_array
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief adds a real array attribute an object in the results file
+!--------------------------------------------------------------------------------------------------
+subroutine results_addAttribute_real_array(attrLabel,attrValue,path)
+
+  character(len=*), intent(in)               :: attrLabel, path
+  real(pReal),      intent(in), dimension(:) :: attrValue
+
+  call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+
+end subroutine results_addAttribute_real_array
 
 
 !--------------------------------------------------------------------------------------------------
