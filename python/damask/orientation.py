@@ -286,9 +286,9 @@ class Rotation:
       """Rotation matrix"""
       return qu2om(self.quaternion.asArray())
 
-    def asRodrigues(self):
+    def asRodrigues(self,vector=False):
       """Rodrigues-Frank vector: ([n_1, n_2, n_3], tan(ω/2))"""
-      return qu2ro(self.quaternion.asArray())
+      return qu2ro(self.quaternion.asArray(),vector)
   
     def asHomochoric(self):
       """Homochoric vector: (h_1, h_2, h_3)"""
@@ -1072,15 +1072,16 @@ class Orientation:
     #if self.lattice.symmetry != other.lattice.symmetry:
     #  raise NotImplementedError('disorientation between different symmetry classes not supported yet.')
 
-    mis = other.rotation*self.rotation.inversed()
-    mySymEqs    =  self.equivalentOrientations() if SST else self.equivalentOrientations()[:1]      # take all or only first sym operation
+    mySymEqs    =  self.equivalentOrientations() if SST else self.equivalentOrientations([0])     # take all or only first sym operation
     otherSymEqs = other.equivalentOrientations()
     
     for i,sA in enumerate(mySymEqs):
+      aInv = sA.rotation.inversed()
       for j,sB in enumerate(otherSymEqs):
-        r = sB.rotation*mis*sA.rotation.inversed()
+        b = sB.rotation
+        r = b*aInv
         for k in range(2):
-          r.inversed()
+          r.inverse()
           breaker = self.lattice.symmetry.inFZ(r.asRodrigues()) \
                     and (not SST or other.lattice.symmetry.inDisorientationSST(r.asRodrigues()))
           if breaker: break
@@ -1211,94 +1212,7 @@ def isone(a):
 def iszero(a):
   return np.isclose(a,0.0,atol=1.0e-12,rtol=0.0)
   
-  
-def eu2om(eu):
-  """Euler angles to orientation matrix"""
-  c = np.cos(eu)
-  s = np.sin(eu)
-
-  om = np.array([[+c[0]*c[2]-s[0]*s[2]*c[1], +s[0]*c[2]+c[0]*s[2]*c[1], +s[2]*s[1]],
-                 [-c[0]*s[2]-s[0]*c[2]*c[1], -s[0]*s[2]+c[0]*c[2]*c[1], +c[2]*s[1]],
-                 [+s[0]*s[1],                -c[0]*s[1],                +c[1]     ]])
-
-  om[np.where(iszero(om))] = 0.0
-  return om
-
-
-def eu2ax(eu):
-  """Euler angles to axis angle""" 
-  t = np.tan(eu[1]*0.5)
-  sigma = 0.5*(eu[0]+eu[2])
-  delta = 0.5*(eu[0]-eu[2])
-  tau   = np.linalg.norm([t,np.sin(sigma)])
-  alpha = np.pi if iszero(np.cos(sigma)) else \
-          2.0*np.arctan(tau/np.cos(sigma))
-  
-  if iszero(alpha):
-    ax = np.array([ 0.0, 0.0, 1.0, 0.0 ])
-  else:
-    ax = -P/tau * np.array([ t*np.cos(delta), t*np.sin(delta), np.sin(sigma) ])                     # passive axis-angle pair so a minus sign in front
-    ax = np.append(ax,alpha) 
-    if alpha < 0.0: ax *= -1.0                                                                      # ensure alpha is positive
-  
-  return ax
-
-
-def eu2ro(eu):
-  """Euler angles to Rodrigues vector"""
-  ro = eu2ax(eu)                                                                                    # convert to axis angle representation
-  if ro[3] >= np.pi:                                                                                # Differs from original implementation. check convention 5
-    ro[3] = np.inf
-  elif iszero(ro[3]):
-    ro = np.array([ 0.0, 0.0, P, 0.0 ])
-  else:
-    ro[3] = np.tan(ro[3]*0.5)
-  
-  return ro
-
-
-def eu2qu(eu):
-  """Euler angles to quaternion"""
-  ee = 0.5*eu
-  cPhi = np.cos(ee[1])
-  sPhi = np.sin(ee[1])
-  qu = np.array([     cPhi*np.cos(ee[0]+ee[2]),
-                   -P*sPhi*np.cos(ee[0]-ee[2]),
-                   -P*sPhi*np.sin(ee[0]-ee[2]),
-                   -P*cPhi*np.sin(ee[0]+ee[2]) ])
-  #if qu[0] < 0.0: qu.homomorph()                                                                   !ToDo: Check with original
-  return qu
-
-
-def om2eu(om):
-  """Euler angles to orientation matrix"""
-  if isone(om[2,2]**2):
-    eu = np.array([np.arctan2( om[0,1],om[0,0]), np.pi*0.5*(1-om[2,2]),0.0])                        # following the paper, not the reference implementation
-  else:
-    zeta = 1.0/np.sqrt(1.0-om[2,2]**2)
-    eu = np.array([np.arctan2(om[2,0]*zeta,-om[2,1]*zeta),
-                   np.arccos(om[2,2]),
-                   np.arctan2(om[0,2]*zeta, om[1,2]*zeta)])
-  
-  # reduce Euler angles to definition range, i.e a lower limit of 0.0
-  eu = np.where(eu<0, (eu+2.0*np.pi)%np.array([2.0*np.pi,np.pi,2.0*np.pi]),eu)
-  return eu
-
-
-def ax2om(ax):
-  """Axis angle to orientation matrix"""
-  c = np.cos(ax[3])
-  s = np.sin(ax[3])
-  omc = 1.0-c
-  om=np.diag(ax[0:3]**2*omc + c)
-
-  for idx in [[0,1,2],[1,2,0],[2,0,1]]:
-    q = omc*ax[idx[0]] * ax[idx[1]]
-    om[idx[0],idx[1]] = q + s*ax[idx[2]]
-    om[idx[1],idx[0]] = q - s*ax[idx[2]]
-
-  return om if P < 0.0 else om.T
-
+#---------- quaternion ----------
 
 def qu2eu(qu):
   """Quaternion to Euler angles""" 
@@ -1317,113 +1231,6 @@ def qu2eu(qu):
   # reduce Euler angles to definition range, i.e a lower limit of 0.0
   eu = np.where(eu<0, (eu+2.0*np.pi)%np.array([2.0*np.pi,np.pi,2.0*np.pi]),eu)
   return eu
-
-
-def ax2ho(ax):
-  """Axis angle to homochoric""" 
-  f = (0.75 * ( ax[3] - np.sin(ax[3]) ))**(1.0/3.0)
-  ho = ax[0:3] * f
-  return ho
-
-
-def ho2ax(ho):
-  """Homochoric to axis angle"""
-  tfit = np.array([+1.0000000000018852,      -0.5000000002194847,
-                   -0.024999992127593126,    -0.003928701544781374,
-                   -0.0008152701535450438,   -0.0002009500426119712,
-                   -0.00002397986776071756,  -0.00008202868926605841,
-                   +0.00012448715042090092,  -0.0001749114214822577,
-                   +0.0001703481934140054,   -0.00012062065004116828,
-                   +0.000059719705868660826, -0.00001980756723965647,
-                   +0.000003953714684212874, -0.00000036555001439719544])
-  # normalize h and store the magnitude
-  hmag_squared = np.sum(ho**2.)
-  if iszero(hmag_squared):
-    ax = np.array([ 0.0, 0.0, 1.0, 0.0 ])
-  else:
-    hm = hmag_squared
-  
-  # convert the magnitude to the rotation angle
-    s = tfit[0] + tfit[1] * hmag_squared
-    for i in range(2,16):
-      hm *= hmag_squared
-      s  += tfit[i] * hm
-    ax = np.append(ho/np.sqrt(hmag_squared),2.0*np.arccos(np.clip(s,-1.0,1.0)))
-  return ax
-
-
-def om2ax(om):
-  """Orientation matrix to axis angle"""
-  ax=np.empty(4)
-
-  # first get the rotation angle
-  t = 0.5*(om.trace() -1.0)
-  ax[3] = np.arccos(np.clip(t,-1.0,1.0))
-  
-  if iszero(ax[3]):
-    ax = [ 0.0, 0.0, 1.0, 0.0]
-  else:
-    w,vr = np.linalg.eig(om)
-  # next, find the eigenvalue (1,0j)
-    i = np.where(np.isclose(w,1.0+0.0j))[0][0]
-    ax[0:3] = np.real(vr[0:3,i])
-    diagDelta = np.array([om[1,2]-om[2,1],om[2,0]-om[0,2],om[0,1]-om[1,0]])
-    ax[0:3] = np.where(iszero(diagDelta), ax[0:3],np.abs(ax[0:3])*np.sign(-P*diagDelta))
-  
-  return np.array(ax)
-
-
-def ro2ax(ro):
-  """Rodrigues vector to axis angle"""
-  ta = ro[3]
-  
-  if iszero(ta):
-    ax = [ 0.0, 0.0, 1.0, 0.0 ]
-  elif not np.isfinite(ta):
-    ax = [ ro[0], ro[1], ro[2], np.pi ]
-  else:
-    angle = 2.0*np.arctan(ta)
-    ta = 1.0/np.linalg.norm(ro[0:3])
-    ax = [ ro[0]/ta, ro[1]/ta, ro[2]/ta, angle ]
-
-  return np.array(ax)
-
-
-def ax2ro(ax):
-  """Axis angle to Rodrigues vector""" 
-  if iszero(ax[3]):
-    ro = [ 0.0, 0.0, P, 0.0 ]
-  else:
-    ro = [ax[0], ax[1], ax[2]]
-    # 180 degree case
-    ro += [np.inf] if np.isclose(ax[3],np.pi,atol=1.0e-15,rtol=0.0) else \
-          [np.tan(ax[3]*0.5)]
-
-  return np.array(ro)
-
-
-def ax2qu(ax):
-  """Axis angle to quaternion"""
-  if iszero(ax[3]):
-    qu = np.array([ 1.0, 0.0, 0.0, 0.0 ])
-  else:
-    c = np.cos(ax[3]*0.5)
-    s = np.sin(ax[3]*0.5)
-    qu = np.array([ c, ax[0]*s, ax[1]*s, ax[2]*s ])
-  
-  return qu
-
-
-def ro2ho(ro):
-  """Rodrigues vector to homochoric""" 
-  if iszero(np.sum(ro[0:3]**2.0)):
-    ho = [ 0.0, 0.0, 0.0 ]
-  else:
-    f = 2.0*np.arctan(ro[3]) -np.sin(2.0*np.arctan(ro[3])) if np.isfinite(ro[3]) else np.pi
-    ho = ro[0:3] * (0.75*f)**(1.0/3.0)
-
-  return np.array(ho)
-
 
 def qu2om(qu):
   """Quaternion to orientation matrix"""
@@ -1457,7 +1264,7 @@ def qu2ax(qu):
   return np.array(ax)
 
 
-def qu2ro(qu):
+def qu2ro(qu,vector=False):
   """Quaternion to Rodrigues vector"""
   if iszero(qu[0]):
     ro = [qu[1], qu[2], qu[3], np.inf]
@@ -1466,7 +1273,7 @@ def qu2ro(qu):
     ro = [0.0,0.0,P,0.0] if iszero(s) else \
          [ qu[1]/s,  qu[2]/s,  qu[3]/s, np.tan(np.arccos(np.clip(qu[0],-1.0,1.0)))]                # avoid numerical difficulties
  
-  return np.array(ro)
+  return np.array(ro[:3])*ro[3] if vector else np.array(ro)
 
 
 def qu2ho(qu):
@@ -1483,19 +1290,120 @@ def qu2ho(qu):
   return ho
 
 
-def ho2cu(ho):
-  """Homochoric to cubochoric"""
-  return  Lambert.BallToCube(ho)
+def qu2cu(qu):
+  """Quaternion to cubochoric"""
+  return ho2cu(qu2ho(qu))
 
 
-def cu2ho(cu):
-  """Cubochoric to homochoric"""
-  return  Lambert.CubeToBall(cu)
+#---------- orientation matrix ----------
 
 
-def ro2eu(ro):
-  """Rodrigues vector to orientation matrix"""
-  return om2eu(ro2om(ro))
+def om2eu(om):
+  """Euler angles to orientation matrix"""
+  if isone(om[2,2]**2):
+    eu = np.array([np.arctan2( om[0,1],om[0,0]), np.pi*0.5*(1-om[2,2]),0.0])                        # following the paper, not the reference implementation
+  else:
+    zeta = 1.0/np.sqrt(1.0-om[2,2]**2)
+    eu = np.array([np.arctan2(om[2,0]*zeta,-om[2,1]*zeta),
+                   np.arccos(om[2,2]),
+                   np.arctan2(om[0,2]*zeta, om[1,2]*zeta)])
+  
+  # reduce Euler angles to definition range, i.e a lower limit of 0.0
+  eu = np.where(eu<0, (eu+2.0*np.pi)%np.array([2.0*np.pi,np.pi,2.0*np.pi]),eu)
+  return eu
+
+
+def om2ax(om):
+  """Orientation matrix to axis angle"""
+  ax=np.empty(4)
+
+  # first get the rotation angle
+  t = 0.5*(om.trace() -1.0)
+  ax[3] = np.arccos(np.clip(t,-1.0,1.0))
+  
+  if iszero(ax[3]):
+    ax = [ 0.0, 0.0, 1.0, 0.0]
+  else:
+    w,vr = np.linalg.eig(om)
+  # next, find the eigenvalue (1,0j)
+    i = np.where(np.isclose(w,1.0+0.0j))[0][0]
+    ax[0:3] = np.real(vr[0:3,i])
+    diagDelta = np.array([om[1,2]-om[2,1],om[2,0]-om[0,2],om[0,1]-om[1,0]])
+    ax[0:3] = np.where(iszero(diagDelta), ax[0:3],np.abs(ax[0:3])*np.sign(-P*diagDelta))
+  
+  return np.array(ax)
+
+
+def om2qu(om):
+  """
+  Orientation matrix to quaternion
+  
+  The original formulation (direct conversion) had numerical issues
+  """
+  return ax2qu(om2ax(om))
+  
+
+def om2ro(om,vector=False):
+  """Orientation matrix to Rodriques vector"""
+  return eu2ro(om2eu(om,vector))
+
+
+def om2cu(om):
+  """Orientation matrix to cubochoric"""
+  return ho2cu(om2ho(om))
+  
+
+def om2ho(om):
+  """Orientation matrix to homochoric"""
+  return ax2ho(om2ax(om))
+
+
+#---------- Euler angles ----------
+
+ 
+def eu2om(eu):
+  """Euler angles to orientation matrix"""
+  c = np.cos(eu)
+  s = np.sin(eu)
+
+  om = np.array([[+c[0]*c[2]-s[0]*s[2]*c[1], +s[0]*c[2]+c[0]*s[2]*c[1], +s[2]*s[1]],
+                 [-c[0]*s[2]-s[0]*c[2]*c[1], -s[0]*s[2]+c[0]*c[2]*c[1], +c[2]*s[1]],
+                 [+s[0]*s[1],                -c[0]*s[1],                +c[1]     ]])
+
+  om[np.where(iszero(om))] = 0.0
+  return om
+
+
+def eu2ax(eu):
+  """Euler angles to axis angle""" 
+  t = np.tan(eu[1]*0.5)
+  sigma = 0.5*(eu[0]+eu[2])
+  delta = 0.5*(eu[0]-eu[2])
+  tau   = np.linalg.norm([t,np.sin(sigma)])
+  alpha = np.pi if iszero(np.cos(sigma)) else \
+          2.0*np.arctan(tau/np.cos(sigma))
+  
+  if iszero(alpha):
+    ax = np.array([ 0.0, 0.0, 1.0, 0.0 ])
+  else:
+    ax = -P/tau * np.array([ t*np.cos(delta), t*np.sin(delta), np.sin(sigma) ])                     # passive axis-angle pair so a minus sign in front
+    ax = np.append(ax,alpha) 
+    if alpha < 0.0: ax *= -1.0                                                                      # ensure alpha is positive
+  
+  return ax
+
+
+def eu2ro(eu,vector=False):
+  """Euler angles to Rodrigues vector"""
+  ro = eu2ax(eu)                                                                                    # convert to axis angle representation
+  if ro[3] >= np.pi:                                                                                # Differs from original implementation. check convention 5
+    ro[3] = np.inf
+  elif iszero(ro[3]):
+    ro = np.array([ 0.0, 0.0, P, 0.0 ])
+  else:
+    ro[3] = np.tan(ro[3]*0.5)
+  
+  return ro[:3] * ro[3] if vector else ro
 
 
 def eu2ho(eu):
@@ -1503,19 +1411,106 @@ def eu2ho(eu):
   return ax2ho(eu2ax(eu))
 
 
-def om2ro(om):
-  """Orientation matrix to Rodriques vector"""
-  return eu2ro(om2eu(om))
+def eu2qu(eu):
+  """Euler angles to quaternion"""
+  ee = 0.5*eu
+  cPhi = np.cos(ee[1])
+  sPhi = np.sin(ee[1])
+  qu = np.array([     cPhi*np.cos(ee[0]+ee[2]),
+                   -P*sPhi*np.cos(ee[0]-ee[2]),
+                   -P*sPhi*np.sin(ee[0]-ee[2]),
+                   -P*cPhi*np.sin(ee[0]+ee[2]) ])
+  #if qu[0] < 0.0: qu.homomorph()                                                                   !ToDo: Check with original
+  return qu
 
 
-def om2ho(om):
-  """Orientation matrix to homochoric"""
-  return ax2ho(om2ax(om))
+def eu2cu(eu):
+  """Euler angles to cubochoric"""
+  return ho2cu(eu2ho(eu))
 
 
+#---------- axis angle ----------
+
+ 
 def ax2eu(ax):
   """Orientation matrix to Euler angles"""
   return om2eu(ax2om(ax))
+
+
+def ax2om(ax):
+  """Axis angle to orientation matrix"""
+  c = np.cos(ax[3])
+  s = np.sin(ax[3])
+  omc = 1.0-c
+  om=np.diag(ax[0:3]**2*omc + c)
+
+  for idx in [[0,1,2],[1,2,0],[2,0,1]]:
+    q = omc*ax[idx[0]] * ax[idx[1]]
+    om[idx[0],idx[1]] = q + s*ax[idx[2]]
+    om[idx[1],idx[0]] = q - s*ax[idx[2]]
+
+  return om if P < 0.0 else om.T
+
+
+def ax2ro(ax,vector=False):
+  """Axis angle to Rodrigues vector""" 
+  if iszero(ax[3]):
+    ro = [ 0.0, 0.0, P, 0.0 ]
+  else:
+    ro = [ax[0], ax[1], ax[2]]
+    # 180 degree case
+    ro += [np.inf] if np.isclose(ax[3],np.pi,atol=1.0e-15,rtol=0.0) else \
+          [np.tan(ax[3]*0.5)]
+
+  return np.array(ro[:3])*ro[3] if vector else np.array(ro)
+
+
+def ax2qu(ax):
+  """Axis angle to quaternion"""
+  if iszero(ax[3]):
+    qu = np.array([ 1.0, 0.0, 0.0, 0.0 ])
+  else:
+    c = np.cos(ax[3]*0.5)
+    s = np.sin(ax[3]*0.5)
+    qu = np.array([ c, ax[0]*s, ax[1]*s, ax[2]*s ])
+  
+  return qu
+
+
+def ax2ho(ax):
+  """Axis angle to homochoric""" 
+  f = (0.75 * ( ax[3] - np.sin(ax[3]) ))**(1.0/3.0)
+  ho = ax[0:3] * f
+  return ho
+
+
+def ax2cu(ax):
+  """Axis angle to cubochoric"""
+  return ho2cu(ax2ho(ax))
+
+
+#---------- Rodrigues--Frank ----------
+
+ 
+def ro2ax(ro):
+  """Rodrigues vector to axis angle"""
+  ta = ro[3]
+  
+  if iszero(ta):
+    ax = [ 0.0, 0.0, 1.0, 0.0 ]
+  elif not np.isfinite(ta):
+    ax = [ ro[0], ro[1], ro[2], np.pi ]
+  else:
+    angle = 2.0*np.arctan(ta)
+    ta = 1.0/np.linalg.norm(ro[0:3])
+    ax = [ ro[0]/ta, ro[1]/ta, ro[2]/ta, angle ]
+
+  return np.array(ax)
+
+
+def ro2eu(ro):
+  """Rodrigues vector to orientation matrix"""
+  return om2eu(ro2om(ro))
 
 
 def ro2om(ro):
@@ -1528,6 +1523,56 @@ def ro2qu(ro):
   return ax2qu(ro2ax(ro))
 
 
+def ro2ho(ro):
+  """Rodrigues vector to homochoric""" 
+  if iszero(np.sum(ro[0:3]**2.0)):
+    ho = [ 0.0, 0.0, 0.0 ]
+  else:
+    f = 2.0*np.arctan(ro[3]) -np.sin(2.0*np.arctan(ro[3])) if np.isfinite(ro[3]) else np.pi
+    ho = ro[0:3] * (0.75*f)**(1.0/3.0)
+
+  return np.array(ho)
+
+
+def ro2cu(ro):
+  """Rodrigues vector to cubochoric"""
+  return ho2cu(ro2ho(ro))
+
+
+#---------- homochoric ----------
+
+ 
+def ho2ax(ho):
+  """Homochoric to axis angle"""
+  tfit = np.array([+1.0000000000018852,      -0.5000000002194847,
+                   -0.024999992127593126,    -0.003928701544781374,
+                   -0.0008152701535450438,   -0.0002009500426119712,
+                   -0.00002397986776071756,  -0.00008202868926605841,
+                   +0.00012448715042090092,  -0.0001749114214822577,
+                   +0.0001703481934140054,   -0.00012062065004116828,
+                   +0.000059719705868660826, -0.00001980756723965647,
+                   +0.000003953714684212874, -0.00000036555001439719544])
+  # normalize h and store the magnitude
+  hmag_squared = np.sum(ho**2.)
+  if iszero(hmag_squared):
+    ax = np.array([ 0.0, 0.0, 1.0, 0.0 ])
+  else:
+    hm = hmag_squared
+  
+  # convert the magnitude to the rotation angle
+    s = tfit[0] + tfit[1] * hmag_squared
+    for i in range(2,16):
+      hm *= hmag_squared
+      s  += tfit[i] * hm
+    ax = np.append(ho/np.sqrt(hmag_squared),2.0*np.arccos(np.clip(s,-1.0,1.0)))
+  return ax
+
+
+def ho2cu(ho):
+  """Homochoric to cubochoric"""
+  return  Lambert.BallToCube(ho)
+
+
 def ho2eu(ho):
   """Homochoric to Euler angles"""
   return ax2eu(ho2ax(ho))
@@ -1538,48 +1583,14 @@ def ho2om(ho):
   return ax2om(ho2ax(ho))
 
 
-def ho2ro(ho):
+def ho2ro(ho,vector=False):
   """Axis angle to Rodriques vector"""
-  return ax2ro(ho2ax(ho))
+  return ax2ro(ho2ax(ho,vector))
 
 
 def ho2qu(ho):
   """Homochoric to quaternion"""
   return ax2qu(ho2ax(ho))
-
-
-def eu2cu(eu):
-  """Euler angles to cubochoric"""
-  return ho2cu(eu2ho(eu))
-
-
-def om2cu(om):
-  """Orientation matrix to cubochoric"""
-  return ho2cu(om2ho(om))
-  
-
-def om2qu(om):
-  """
-  Orientation matrix to quaternion
-  
-  The original formulation (direct conversion) had numerical issues
-  """
-  return ax2qu(om2ax(om))
-  
-
-def ax2cu(ax):
-  """Axis angle to cubochoric"""
-  return ho2cu(ax2ho(ax))
-
-
-def ro2cu(ro):
-  """Rodrigues vector to cubochoric"""
-  return ho2cu(ro2ho(ro))
-
-
-def qu2cu(qu):
-  """Quaternion to cubochoric"""
-  return ho2cu(qu2ho(qu))
 
 
 def cu2eu(cu):
@@ -1597,11 +1608,18 @@ def cu2ax(cu):
   return ho2ax(cu2ho(cu))
 
 
-def cu2ro(cu):
+def cu2ro(cu,vector=False):
   """Cubochoric to Rodrigues vector"""
-  return ho2ro(cu2ho(cu))
+  return ho2ro(cu2ho(cu,vector))
 
 
 def cu2qu(cu):
   """Cubochoric to quaternion"""
   return ho2qu(cu2ho(cu))
+
+
+def cu2ho(cu):
+  """Cubochoric to homochoric"""
+  return  Lambert.CubeToBall(cu)
+
+
