@@ -197,23 +197,6 @@ subroutine grid_mech_spectral_polarisation_init
    call HDF5_read(fileHandle,F_tau,        'F_tau')
    call HDF5_read(fileHandle,F_tau_lastInc,    'F_tau_lastInc')
    
-  ! fileUnit = IO_open_jobFile_binary('F_aim')
-  ! read(fileUnit) F_aim; close(fileUnit)
-  ! fileUnit = IO_open_jobFile_binary('F_aim_lastInc')
-  ! read(fileUnit) F_aim_lastInc; close(fileUnit)
-  ! fileUnit = IO_open_jobFile_binary('F_aimDot')
-  ! read(fileUnit) F_aimDot; close(fileUnit)
-
-  ! write(rankStr,'(a1,i0)')'_',worldrank
-
-  ! fileUnit = IO_open_jobFile_binary('F'//trim(rankStr))
-  ! read(fileUnit) F; close (fileUnit)
-  ! fileUnit = IO_open_jobFile_binary('F_lastInc'//trim(rankStr))
-  ! read(fileUnit) F_lastInc; close (fileUnit)
-  ! fileUnit = IO_open_jobFile_binary('F_tau'//trim(rankStr))
-  ! read(fileUnit) F_tau; close (fileUnit)
-  ! fileUnit = IO_open_jobFile_binary('F_tau_lastInc'//trim(rankStr))
-  ! read(fileUnit) F_tau_lastInc; close (fileUnit)
 
  elseif (restartInc == 0) then restart
    F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                          ! initialize to identity
@@ -234,12 +217,7 @@ subroutine grid_mech_spectral_polarisation_init
    write(6,'(/,a,'//IO_intOut(restartInc)//',a)') ' reading more values of increment ', restartInc, ' from file'
    call HDF5_read(fileHandle,C_volAvg,       'C_volAvg')
    call HDF5_read(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
-   !call HDF5_read(fileHandle,C_minMaxAvg,'C_ref')
    call HDF5_closeFile(fileHandle)
-  ! fileUnit = IO_open_jobFile_binary('C_volAvg')
-  ! read(fileUnit) C_volAvg; close(fileUnit)
-  ! fileUnit = IO_open_jobFile_binary('C_volAvgLastInv')
-  ! read(fileUnit) C_volAvgLastInc; close(fileUnit)
    fileUnit = IO_open_jobFile_binary('C_ref')
    read(fileUnit) C_minMaxAvg; close(fileUnit)
  endif restartRead
@@ -391,17 +369,6 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
         call HDF5_write(fileHandle,F_aim,          'F_aim')
         call HDF5_write(fileHandle,F_aimDot,     'F_aimDot')
         call HDF5_write(fileHandle,F_aim_lastInc,    'F_aim_lastInc')
-       ! fileUnit = IO_open_jobFile_binary('C_volAvg','w')
-       ! write(fileUnit) C_volAvg; close(fileUnit)
-       ! fileUnit = IO_open_jobFile_binary('C_volAvgLastInv','w')
-       ! write(fileUnit) C_volAvgLastInc; close(fileUnit)
-       ! fileUnit = IO_open_jobFile_binary('F_aim','w')
-       ! write(fileUnit) F_aim; close(fileUnit)
-       ! fileUnit = IO_open_jobFile_binary('F_aim_lastInc','w')
-       ! write(fileUnit) F_aim_lastInc; close(fileUnit)
-       ! fileUnit = IO_open_jobFile_binary('F_aimDot','w')
-       ! call HDF5_closeFile(fileHandle)
-       ! write(fileUnit) F_aimDot; close(fileUnit) 
       endif
 
       write(rankStr,'(a1,i0)')'_',worldrank
@@ -411,14 +378,6 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
       call HDF5_write(fileHandle,F_tau_lastInc,        'F_tau_lastInc')
       call HDF5_closeFile(fileHandle)
       
-      !fileUnit = IO_open_jobFile_binary('F'//trim(rankStr),'w')
-      !write(fileUnit) F; close (fileUnit)
-      !fileUnit = IO_open_jobFile_binary('F_lastInc'//trim(rankStr),'w')
-      !write(fileUnit) F_lastInc; close (fileUnit)
-      !fileUnit = IO_open_jobFile_binary('F_tau'//trim(rankStr),'w')
-      !write(fileUnit) F_tau; close (fileUnit)
-      !fileUnit = IO_open_jobFile_binary('F_tau_lastInc'//trim(rankStr),'w')
-      !write(fileUnit) F_tau_lastInc; close (fileUnit)
     endif
 
     call CPFEM_age                                                                                  ! age state and kinematics
