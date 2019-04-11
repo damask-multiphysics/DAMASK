@@ -21,8 +21,7 @@ module crystallite
     homogenization_Ngrains
   use future
  
-  implicit none
- 
+  implicit none 
   private
   character(len=64),         dimension(:,:),          allocatable, private :: &
     crystallite_output                                                                              !< name of each post result output
@@ -185,8 +184,6 @@ subroutine crystallite_init
   use constitutive, only: &
     constitutive_initialFi, &
     constitutive_microstructure                                                                     ! derived (shortcut) quantities of given state
- 
-  implicit none
  
   integer, parameter :: FILEUNIT=434
   logical, dimension(:,:), allocatable :: devNull
@@ -492,7 +489,6 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
     phase_Nsources, &
     phaseAt, phasememberAt
  
-  implicit none
   logical, dimension(theMesh%elem%nIPs,theMesh%Nelems) :: crystallite_stress
   real(pReal), intent(in), optional :: &
     dummyArgumentToPreventInternalCompilerErrorWithGCC
@@ -757,7 +753,6 @@ subroutine crystallite_stressTangent()
     constitutive_LpAndItsTangents, &
     constitutive_LiAndItsTangents
 
-  implicit none
   integer :: &
     c, &                                                                                            !< counter in integration point component loop
     i, &                                                                                            !< counter in integration point loop
@@ -911,7 +906,6 @@ subroutine crystallite_orientations
   use plastic_nonlocal, only: &
     plastic_nonlocal_updateCompatibility
  
-  implicit none
   integer &
     c, &                                                                                            !< counter in integration point component loop
     i, &                                                                                            !< counter in integration point loop
@@ -948,7 +942,6 @@ function crystallite_push33ToRef(ipc,ip,el, tensor33)
   use material, only: &
    material_EulerAngles                                                                             ! ToDo: Why stored? We also have crystallite_orientation0
  
-  implicit none
   real(pReal), dimension(3,3) :: crystallite_push33ToRef
   real(pReal), dimension(3,3), intent(in) :: tensor33
   real(pReal), dimension(3,3)             :: T
@@ -993,7 +986,6 @@ function crystallite_postResults(ipc, ip, el)
  use rotations, only: &
    rotation
 
- implicit none
  integer, intent(in):: &
    el, &                         !< element index
    ip, &                         !< integration point index
@@ -1120,7 +1112,6 @@ subroutine crystallite_results
   use material, only: &
     material_phase_plasticity_type => phase_plasticity
         
-  implicit none
   integer :: p,o
   real(pReal),    allocatable, dimension(:,:,:) :: selected_tensors
   type(rotation), allocatable, dimension(:)     :: selected_rotations
@@ -1292,7 +1283,6 @@ logical function integrateStress(ipc,ip,el,timeFraction)
                           math_33to9, &
                           math_9to33
  
-  implicit none
   integer, intent(in)::         el, &                                                               ! element index
                                       ip, &                                                         ! integration point index
                                       ipc                                                           ! grain index
@@ -1690,7 +1680,7 @@ end function integrateStress
 !> @brief integrate stress, state with adaptive 1st order explicit Euler method
 !> using Fixed Point Iteration to adapt the stepsize
 !--------------------------------------------------------------------------------------------------
-subroutine integrateStateFPI()
+subroutine integrateStateFPI
 #ifdef DEBUG
  use debug, only:        debug_level, &
                          debug_e, &
@@ -1714,8 +1704,6 @@ subroutine integrateStateFPI()
  use constitutive, only: &
    constitutive_plasticity_maxSizeDotState, &
    constitutive_source_maxSizeDotState
-
- implicit none
 
  integer :: &
    NiterationState, &                                                                               !< number of iterations in state loop
@@ -1881,7 +1869,6 @@ subroutine integrateStateFPI()
  !--------------------------------------------------------------------------------------------------
  real(pReal) pure function damper(current,previous,previous2)
  
- implicit none
  real(pReal), dimension(:), intent(in) ::&
    current, previous, previous2
  
@@ -1906,8 +1893,6 @@ end subroutine integrateStateFPI
 subroutine integrateStateEuler()
  use material, only: &
    plasticState
-
- implicit none
 
  call update_dotState(1.0_pReal)
  call update_state(1.0_pReal)
@@ -1938,7 +1923,6 @@ subroutine integrateStateAdaptiveEuler()
    constitutive_plasticity_maxSizeDotState, &
    constitutive_source_maxSizeDotState
 
- implicit none
  integer :: &
    e, &                                                                                             ! element index in element loop
    i, &                                                                                             ! integration point index in ip loop
@@ -2040,7 +2024,6 @@ subroutine integrateStateRK4()
    phase_Nsources, &
    phaseAt, phasememberAt
 
- implicit none
  real(pReal), dimension(4), parameter :: &
    TIMESTEPFRACTION = [0.5_pReal, 0.5_pReal, 1.0_pReal, 1.0_pReal]                                   ! factor giving the fraction of the original timestep used for Runge Kutta Integration
  real(pReal), dimension(4), parameter :: &
@@ -2113,7 +2096,6 @@ subroutine integrateStateRKCK45()
    constitutive_plasticity_maxSizeDotState, &
    constitutive_source_maxSizeDotState
 
- implicit none
  real(pReal), dimension(5,5), parameter :: &
    A = reshape([&
      .2_pReal, .075_pReal,   .3_pReal, -11.0_pReal/54.0_pReal,  1631.0_pReal/55296.0_pReal, &
@@ -2281,9 +2263,7 @@ end subroutine integrateStateRKCK45
 !> @brief sets convergence flag for nonlocal calculations
 !> @detail one non-converged nonlocal sets all other nonlocals to non-converged to trigger cut back
 !--------------------------------------------------------------------------------------------------
-subroutine nonlocalConvergenceCheck()
-
- implicit none
+subroutine nonlocalConvergenceCheck
  
  if (any(.not. crystallite_converged .and. .not. crystallite_localPlasticity)) &                    ! any non-local not yet converged (or broken)...
    where( .not. crystallite_localPlasticity) crystallite_converged = .false.
@@ -2296,10 +2276,10 @@ end subroutine nonlocalConvergenceCheck
 ! still .true. is considered as converged
 !> @details: For explicitEuler, RK4 and RKCK45, adaptive Euler and FPI have their on criteria
 !--------------------------------------------------------------------------------------------------
-subroutine setConvergenceFlag()
+subroutine setConvergenceFlag
  use mesh, only: &
    mesh_element
- implicit none
+
  integer :: &
    e, &                                                                                             !< element index in element loop
    i, &                                                                                             !< integration point index in ip loop
@@ -2321,7 +2301,6 @@ end subroutine setConvergenceFlag
  !--------------------------------------------------------------------------------------------------
  logical pure function converged(residuum,state,aTol)
     
-  implicit none
   real(pReal), intent(in), dimension(:) ::&
     residuum, state, aTol
   real(pReal) :: &
@@ -2340,7 +2319,7 @@ end subroutine setConvergenceFlag
 subroutine update_stress(timeFraction)
  use mesh, only: &
    mesh_element
- implicit none
+
  real(pReal), intent(in) :: &
    timeFraction
  integer :: &
@@ -2376,7 +2355,6 @@ subroutine update_dependentState()
  use constitutive, only: &
    constitutive_dependentState => constitutive_microstructure
 
- implicit none
  integer ::                                    e, &                                                  ! element index in element loop
                                                i, &                                                  ! integration point index in ip loop
                                                g                                                     ! grain index in grain loop
@@ -2407,7 +2385,6 @@ subroutine update_state(timeFraction)
  use mesh, only: &
    mesh_element
 
- implicit none
  real(pReal), intent(in) :: &
    timeFraction
  integer :: &
@@ -2460,7 +2437,6 @@ subroutine update_dotState(timeFraction)
  use constitutive, only: &
    constitutive_collectDotState
 
- implicit none
  real(pReal), intent(in) :: &
    timeFraction
  integer :: &
@@ -2519,7 +2495,6 @@ subroutine update_deltaState
    phaseAt, phasememberAt
  use constitutive, only: &
    constitutive_collectDeltaState
- implicit none
  integer :: &
    e, &                                                                                             !< element index in element loop
    i, &                                                                                             !< integration point index in ip loop
@@ -2608,7 +2583,6 @@ logical function stateJump(ipc,ip,el)
  use constitutive, only: &
    constitutive_collectDeltaState
 
- implicit none
  integer, intent(in):: &
    el, &                       ! element index
    ip, &                       ! integration point index
