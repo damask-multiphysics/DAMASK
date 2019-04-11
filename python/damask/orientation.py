@@ -510,7 +510,7 @@ class Symmetry:
     otherOrder = Symmetry.lattices.index(other.lattice)
     return (myOrder > otherOrder) - (myOrder < otherOrder)
 
-  def symmetryOperations(self,who=[]):
+  def symmetryOperations(self,members=[]):
     """List of symmetry operations as quaternions."""
     if self.lattice == 'cubic':
       symQuats =  [
@@ -577,8 +577,14 @@ class Symmetry:
                     [ 1.0,0.0,0.0,0.0 ],
                   ]
 
-    return list(map(Rotation,
-                    np.array(symQuats)[np.atleast_1d(np.array(who)) if who != [] else range(len(symQuats))]))
+    symOps = list(map(Rotation,
+                  np.array(symQuats)[np.atleast_1d(members) if members != [] else range(len(symQuats))]))
+    try:
+        iter(members)                                                                               # asking for (even empty) list of members?
+    except TypeError:
+        return symOps[0]                                                                            # no, return rotation object
+    else:
+        return symOps                                                                               # yes, return list of rotations
     
 
   def inFZ(self,R):
@@ -1096,10 +1102,15 @@ class Orientation:
   def inFZ(self):
     return self.lattice.symmetry.inFZ(self.rotation.asRodrigues())
   
-  def equivalentOrientations(self, who=[]):
+  def equivalentOrientations(self,members=[]):
     """List of orientations which are symmetrically equivalent"""
-    return [self.__class__(q*self.rotation,self.lattice) \
-                                  for q in self.lattice.symmetry.symmetryOperations(who)]
+    try:
+      iter(members)                                                                                 # asking for (even empty) list of members?
+    except TypeError:
+      return self.__class__(self.lattice.symmetry.symmetryOperations(members)*self.rotation,self.lattice) # no, return rotation object
+    else:
+      return [self.__class__(q*self.rotation,self.lattice) \
+                                    for q in self.lattice.symmetry.symmetryOperations(members)]           # yes, return list of rotations
     
   def relatedOrientations(self,model):
     """List of orientations related by the given orientation relationship"""
