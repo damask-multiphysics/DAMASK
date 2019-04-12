@@ -382,13 +382,6 @@ Phenopowerlaw_singleSlip:
     - master
     - release
 
-TextureComponents:
-  stage: grid
-  script: TextureComponents/test.py
-  except:
-    - master
-    - release
-
 
 ###################################################################################################
 Marc_compileIfort2018_1:
