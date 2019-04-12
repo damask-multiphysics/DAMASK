@@ -134,7 +134,6 @@ subroutine plastic_disloUCLA_init()
     config_phase
   use lattice
  
-  implicit none
   integer :: &
     Ninstance, &
     p, i, &
@@ -208,9 +207,9 @@ subroutine plastic_disloUCLA_init()
         prm%nonSchmid_neg  = prm%Schmid
       endif
  
-      prm%h_sl_sl     = transpose(lattice_interaction_SlipBySlip(prm%N_sl, &
+      prm%h_sl_sl     = lattice_interaction_SlipBySlip(prm%N_sl, &
                                                        config%getFloats('interaction_slipslip'), &
-                                                       config%getString('lattice_structure')))
+                                                       config%getString('lattice_structure'))
       prm%forestProjectionEdge = lattice_forestProjection(prm%N_sl,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
  
@@ -361,7 +360,6 @@ end subroutine plastic_disloUCLA_init
 !--------------------------------------------------------------------------------------------------
 pure subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp, &
                                                   Mp,T,instance,of)
-  implicit none
   real(pReal), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
   real(pReal), dimension(3,3,3,3), intent(out) :: &
@@ -411,7 +409,6 @@ subroutine plastic_disloUCLA_dotState(Mp,T,instance,of)
     PI, &
     math_clip
  
-  implicit none
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                               !< Mandel stress
   real(pReal),                  intent(in) :: &
@@ -472,7 +469,6 @@ end subroutine plastic_disloUCLA_dotState
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_disloUCLA_dependentState(instance,of)
  
-  implicit none
   integer,      intent(in) :: &
     instance, &
     of
@@ -507,7 +503,6 @@ function plastic_disloUCLA_postResults(Mp,T,instance,of) result(postResults)
     PI, &
     math_mul33xx33
  
-  implicit none
   real(pReal), dimension(3,3), intent(in) :: &
     Mp                                                                                              !< Mandel stress
   real(pReal),                 intent(in) :: &
@@ -616,7 +611,6 @@ pure subroutine kinetics(Mp,T,instance,of, &
     PI, &
     math_mul33xx33
  
-  implicit none
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   real(pReal),                  intent(in) :: &

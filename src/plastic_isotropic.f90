@@ -108,7 +108,6 @@ subroutine plastic_isotropic_init
     config_phase
   use lattice
  
-  implicit none
   integer :: &
     Ninstance, &
     p, i, &
@@ -259,7 +258,6 @@ subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
     math_deviatoric33, &
     math_mul33xx33
  
-  implicit none
   real(pReal), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
   real(pReal), dimension(3,3,3,3), intent(out) :: &
@@ -326,7 +324,6 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,instance,of)
     math_spherical33, &
     math_mul33xx33
  
-  implicit none
   real(pReal), dimension(3,3), intent(out) :: &
     Li                                                                                              !< inleastic velocity gradient
   real(pReal), dimension(3,3,3,3), intent(out)  :: &
@@ -383,7 +380,6 @@ subroutine plastic_isotropic_dotState(Mp,instance,of)
     math_mul33xx33, &
     math_deviatoric33
  
-  implicit none
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
@@ -436,7 +432,6 @@ function plastic_isotropic_postResults(Mp,instance,of) result(postResults)
     math_mul33xx33, &
     math_deviatoric33
  
-  implicit none
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
