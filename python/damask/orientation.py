@@ -260,6 +260,63 @@ class Rotation:
             'Bunge Eulers / deg: {}'.format('\t'.join(list(map(str,self.asEulers(degrees=True)))) ),
               ])
               
+    def __mul__(self, other):
+      """
+      Multiplication
+      
+      Rotation: Details needed (active/passive), rotation of (3,3,3,3)-matrix should be considered
+      """
+      if isinstance(other, Rotation):                                                               # rotate a rotation
+        return self.__class__((self.quaternion * other.quaternion).asArray())
+      elif isinstance(other, np.ndarray):
+        if other.shape == (3,):                                                                     # rotate a single (3)-vector
+          ( x, y, z) = self.quaternion.p
+          (Vx,Vy,Vz) = other[0:3]
+          A = self.quaternion.q*self.quaternion.q - np.dot(self.quaternion.p,self.quaternion.p)
+          B = 2.0 * (x*Vx + y*Vy + z*Vz)
+          C = 2.0 * P*self.quaternion.q
+
+          return np.array([
+            A*Vx + B*x + C*(y*Vz - z*Vy),
+            A*Vy + B*y + C*(z*Vx - x*Vz),
+            A*Vz + B*z + C*(x*Vy - y*Vx),
+            ])
+        elif other.shape == (3,3,):                                                                 # rotate a single (3x3)-matrix
+           return np.dot(self.asMatrix(),np.dot(other,self.asMatrix().T))
+        elif other.shape == (3,3,3,3):
+          raise NotImplementedError
+        else:
+          return NotImplemented
+      elif isinstance(other, tuple):                                                                # used to rotate a meshgrid-tuple
+          ( x, y, z) = self.quaternion.p
+          (Vx,Vy,Vz) = other[0:3]
+          A = self.quaternion.q*self.quaternion.q - np.dot(self.quaternion.p,self.quaternion.p)
+          B = 2.0 * (x*Vx + y*Vy + z*Vz)
+          C = 2.0 * P*self.quaternion.q
+
+          return np.array([
+            A*Vx + B*x + C*(y*Vz - z*Vy),
+            A*Vy + B*y + C*(z*Vx - x*Vz),
+            A*Vz + B*z + C*(x*Vy - y*Vx),
+            ])
+      else:
+        return NotImplemented
+        
+    
+    def inverse(self):
+      """In-place inverse rotation/backward rotation"""
+      self.quaternion.conjugate()
+      return self
+      
+    def inversed(self):
+      """Inverse rotation/backward rotation"""
+      return self.__class__(self.quaternion.conjugated())
+
+
+    def misorientation(self,other):
+      """Misorientation"""
+      return self.__class__(other.quaternion*self.quaternion.conjugated())
+      
 
     ################################################################################################
     # convert to different orientation representations (numpy arrays)
@@ -288,7 +345,8 @@ class Rotation:
 
     def asRodrigues(self,vector=False):
       """Rodrigues-Frank vector: ([n_1, n_2, n_3], tan(ω/2))"""
-      return qu2ro(self.quaternion.asArray(),vector)
+      ro = qu2ro(self.quaternion.asArray())
+      return ro[:3]*ro[3] if vector else ro
   
     def asHomochoric(self):
       """Homochoric vector: (h_1, h_2, h_3)"""
@@ -298,7 +356,7 @@ class Rotation:
       return qu2cu(self.quaternion.asArray())
       
     def asM(self):
-      """Intermediate representation useful fro quaternion averaging (see F. Landis Markley et al.)"""
+      """Intermediate representation supporting quaternion averaging (see F. Landis Markley et al.)"""
       return self.quaternion.asM()
       
 
@@ -409,63 +467,32 @@ class Rotation:
       return cls(ho2qu(ho))
 
 
-    def __mul__(self, other):
+    @classmethod
+    def average(cls,
+                rotations,
+                weights = []):
       """
-      Multiplication
-      
-      Rotation: Details needed (active/passive), rotation of (3,3,3,3)-matrix should be considered
+      Average rotation
+
+      ref: F. Landis Markley, Yang Cheng, John Lucas Crassidis, and Yaakov Oshman.
+           Averaging Quaternions,
+           Journal of Guidance, Control, and Dynamics, Vol. 30, No. 4 (2007), pp. 1193-1197.
+           doi: 10.2514/1.28949
       """
-      if isinstance(other, Rotation):                                                               # rotate a rotation
-        return self.__class__((self.quaternion * other.quaternion).asArray())
-      elif isinstance(other, np.ndarray):
-        if other.shape == (3,):                                                                     # rotate a single (3)-vector
-          ( x, y, z) = self.quaternion.p
-          (Vx,Vy,Vz) = other[0:3]
-          A = self.quaternion.q*self.quaternion.q - np.dot(self.quaternion.p,self.quaternion.p)
-          B = 2.0 * (x*Vx + y*Vy + z*Vz)
-          C = 2.0 * P*self.quaternion.q
+      if not all(isinstance(item, Rotation) for item in rotations):
+        raise TypeError("Only instances of Rotation can be averaged.")
 
-          return np.array([
-            A*Vx + B*x + C*(y*Vz - z*Vy),
-            A*Vy + B*y + C*(z*Vx - x*Vz),
-            A*Vz + B*z + C*(x*Vy - y*Vx),
-            ])
-        elif other.shape == (3,3,):                                                                 # rotate a single (3x3)-matrix
-           return np.dot(self.asMatrix(),np.dot(other,self.asMatrix().T))
-        elif other.shape == (3,3,3,3):
-          raise NotImplementedError
-        else:
-          return NotImplemented
-      elif isinstance(other, tuple):                                                                # used to rotate a meshgrid-tuple
-          ( x, y, z) = self.quaternion.p
-          (Vx,Vy,Vz) = other[0:3]
-          A = self.quaternion.q*self.quaternion.q - np.dot(self.quaternion.p,self.quaternion.p)
-          B = 2.0 * (x*Vx + y*Vy + z*Vz)
-          C = 2.0 * P*self.quaternion.q
+      N = len(rotations)
+      if weights == [] or not weights:
+        weights = np.ones(N,dtype='i')
 
-          return np.array([
-            A*Vx + B*x + C*(y*Vz - z*Vy),
-            A*Vy + B*y + C*(z*Vx - x*Vz),
-            A*Vz + B*z + C*(x*Vy - y*Vx),
-            ])
-      else:
-        return NotImplemented
-        
-    
-    def inverse(self):
-      """Inverse rotation/backward rotation"""
-      self.quaternion.conjugate()
-      return self
-      
-    def inversed(self):
-      """In-place inverse rotation/backward rotation"""
-      return self.__class__(self.quaternion.conjugated())
+      for i,(r,n) in enumerate(zip(rotations,weights)):
+        M =          r.asM() * n if i == 0 \
+            else M + r.asM() * n                                                                      # noqa add (multiples) of this rotation to average noqa
+      eig, vec = np.linalg.eig(M/N)
 
+      return Rotation.fromQuaternion(np.real(vec.T[eig.argmax()]),acceptHomomorph = True)
 
-    def misorientation(self,other):
-      """Misorientation"""
-      return self.__class__(other.quaternion*self.quaternion.conjugated())
-      
 
 # ******************************************************************************************
 class Symmetry:
@@ -511,7 +538,7 @@ class Symmetry:
     return (myOrder > otherOrder) - (myOrder < otherOrder)
 
   def symmetryOperations(self,members=[]):
-    """List of symmetry operations as quaternions."""
+    """List (or single element) of symmetry operations as rotations."""
     if self.lattice == 'cubic':
       symQuats =  [
                     [ 1.0,              0.0,              0.0,              0.0              ],
@@ -880,7 +907,7 @@ class Lattice:
  
   # Greninger--Troiano' orientation relationship for fcc <-> bcc transformation
   # from Y. He et al./Journal of Applied Crystallography (2006). 39, 72-81
-  GTdash = {'mapping':{'fcc':0,'bcc':1},
+  GTprime = {'mapping':{'fcc':0,'bcc':1},
       'planes': np.array([
       [[  7, 17, 17],[ 12,  5, 17]],
       [[ 17,  7, 17],[ 17, 12,  5]],
@@ -1006,7 +1033,7 @@ class Lattice:
   
   def relationOperations(self,model):
     
-    models={'KS':self.KS, 'GT':self.GT, "GT'":self.GTdash, 
+    models={'KS':self.KS, 'GT':self.GT, "GT'":self.GTprime, 
             'NW':self.NW, 'Pitsch': self.Pitsch, 'Bain':self.Bain}
     try:
       relationship = models[model]
@@ -1154,7 +1181,7 @@ class Orientation:
   @classmethod
   def average(cls,
               orientations,
-              multiplicity = []):
+              weights = []):
     """
     Average orientation
 
@@ -1168,22 +1195,17 @@ class Orientation:
          avg = Orientation.average([a,b])
     """
     if not all(isinstance(item, Orientation) for item in orientations):
-      print('got a list of {}'.format(orientations))
       raise TypeError("Only instances of Orientation can be averaged.")
 
-    N = len(orientations)
-    if multiplicity == [] or not multiplicity:
-      multiplicity = np.ones(N,dtype='i')
+    closest = []
+    ref = orientations[0]
+    for o in orientations:
+      closest.append(o.equivalentOrientations(
+                    ref.disorientation(o,
+                                       SST = False,                                                 # select (o[ther]'s) sym orientation
+                                       symmetries = True)[2]).rotation)                             # with lowest misorientation
 
-    ref = orientations[0]                                                                           # take first as reference
-    for i,(o,n) in enumerate(zip(orientations,multiplicity)):
-      closest = o.equivalentOrientations(ref.disorientation(o,SST=False,symmetries=True)[2])[0]     # select sym orientation with lowest misorientation
-      M =          closest.rotation.asM() * n if i == 0 \
-          else M + closest.rotation.asM() * n                                                       # noqa add (multiples) of this orientation to average noqa
-    eig, vec = np.linalg.eig(M/N)
-
-    return Orientation(Rotation.fromQuaternion(np.real(vec.T[eig.argmax()]),acceptHomomorph = True),
-                       ref.lattice)
+    return Orientation(Rotation.average(closest,weights),ref.lattice)
 
 
 ####################################################################################################
@@ -1275,7 +1297,7 @@ def qu2ax(qu):
   return np.array(ax)
 
 
-def qu2ro(qu,vector=False):
+def qu2ro(qu):
   """Quaternion to Rodrigues vector"""
   if iszero(qu[0]):
     ro = [qu[1], qu[2], qu[3], np.inf]
@@ -1284,7 +1306,7 @@ def qu2ro(qu,vector=False):
     ro = [0.0,0.0,P,0.0] if iszero(s) else \
          [ qu[1]/s,  qu[2]/s,  qu[3]/s, np.tan(np.arccos(np.clip(qu[0],-1.0,1.0)))]                # avoid numerical difficulties
  
-  return np.array(ro[:3])*ro[3] if vector else np.array(ro)
+  return np.array(ro)
 
 
 def qu2ho(qu):
@@ -1354,9 +1376,9 @@ def om2qu(om):
   return ax2qu(om2ax(om))
   
 
-def om2ro(om,vector=False):
+def om2ro(om):
   """Orientation matrix to Rodriques vector"""
-  return eu2ro(om2eu(om,vector))
+  return eu2ro(om2eu(om))
 
 
 def om2cu(om):
@@ -1404,7 +1426,7 @@ def eu2ax(eu):
   return ax
 
 
-def eu2ro(eu,vector=False):
+def eu2ro(eu):
   """Euler angles to Rodrigues vector"""
   ro = eu2ax(eu)                                                                                    # convert to axis angle representation
   if ro[3] >= np.pi:                                                                                # Differs from original implementation. check convention 5
@@ -1414,7 +1436,7 @@ def eu2ro(eu,vector=False):
   else:
     ro[3] = np.tan(ro[3]*0.5)
   
-  return ro[:3] * ro[3] if vector else ro
+  return ro
 
 
 def eu2ho(eu):
@@ -1463,7 +1485,7 @@ def ax2om(ax):
   return om if P < 0.0 else om.T
 
 
-def ax2ro(ax,vector=False):
+def ax2ro(ax):
   """Axis angle to Rodrigues vector""" 
   if iszero(ax[3]):
     ro = [ 0.0, 0.0, P, 0.0 ]
@@ -1473,7 +1495,7 @@ def ax2ro(ax,vector=False):
     ro += [np.inf] if np.isclose(ax[3],np.pi,atol=1.0e-15,rtol=0.0) else \
           [np.tan(ax[3]*0.5)]
 
-  return np.array(ro[:3])*ro[3] if vector else np.array(ro)
+  return np.array(ro)
 
 
 def ax2qu(ax):
@@ -1594,9 +1616,9 @@ def ho2om(ho):
   return ax2om(ho2ax(ho))
 
 
-def ho2ro(ho,vector=False):
+def ho2ro(ho):
   """Axis angle to Rodriques vector"""
-  return ax2ro(ho2ax(ho,vector))
+  return ax2ro(ho2ax(ho))
 
 
 def ho2qu(ho):
@@ -1619,9 +1641,9 @@ def cu2ax(cu):
   return ho2ax(cu2ho(cu))
 
 
-def cu2ro(cu,vector=False):
+def cu2ro(cu):
   """Cubochoric to Rodrigues vector"""
-  return ho2ro(cu2ho(cu,vector))
+  return ho2ro(cu2ho(cu))
 
 
 def cu2qu(cu):
