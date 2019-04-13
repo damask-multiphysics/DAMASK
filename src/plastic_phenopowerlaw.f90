@@ -563,7 +563,6 @@ subroutine plastic_phenopowerlaw_results(instance,group)
   use results, only: &
     results_writeDataset
 
-  implicit none
   integer,          intent(in) :: instance
   character(len=*), intent(in) :: group
   

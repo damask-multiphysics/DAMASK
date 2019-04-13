@@ -2396,7 +2396,6 @@ subroutine plastic_nonlocal_results(instance,group)
   use results, only: &
     results_writeDataset
 
-  implicit none
   integer, intent(in) :: instance
   character(len=*) :: group
   integer :: o

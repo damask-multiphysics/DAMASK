@@ -31,7 +31,6 @@ subroutine plastic_none_init
    material_phase, &
    plasticState
 
- implicit none
  integer :: &
    Ninstance, &
    p, &
