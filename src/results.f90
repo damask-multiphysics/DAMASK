@@ -115,6 +115,9 @@ subroutine results_addIncrement(inc,time)
   call HDF5_closeGroup(results_addGroup(trim('inc'//trim(adjustl(incChar)))))
   call results_setLink(trim('inc'//trim(adjustl(incChar))),'current')
   call HDF5_addAttribute(resultsFile,'time/s',time,trim('inc'//trim(adjustl(incChar))))
+  
+  call HDF5_closeGroup(results_addGroup('current/constituent'))
+  call HDF5_closeGroup(results_addGroup('current/materialpoint'))
 
 end subroutine results_addIncrement
 
@@ -253,6 +256,8 @@ subroutine results_writeScalarDataset_real(group,dataset,label,description,SIuni
     call HDF5_addAttribute(groupHandle,'Description',description,label)
   if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
     call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeScalarDataset_real
@@ -278,6 +283,8 @@ subroutine results_writeVectorDataset_real(group,dataset,label,description,SIuni
     call HDF5_addAttribute(groupHandle,'Description',description,label)
   if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
     call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeVectorDataset_real
@@ -304,6 +311,8 @@ subroutine results_writeTensorDataset_real(group,dataset,label,description,SIuni
     call HDF5_addAttribute(groupHandle,'Description',description,label)
   if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
     call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeTensorDataset_real
@@ -330,6 +339,8 @@ subroutine results_writeVectorDataset_int(group,dataset,label,description,SIunit
     call HDF5_addAttribute(groupHandle,'Description',description,label)
   if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
     call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeVectorDataset_int
@@ -356,6 +367,8 @@ subroutine results_writeTensorDataset_int(group,dataset,label,description,SIunit
     call HDF5_addAttribute(groupHandle,'Description',description,label)
   if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
     call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeTensorDataset_int
@@ -384,6 +397,8 @@ subroutine results_writeScalarDataset_rotation(group,dataset,label,description,l
     call HDF5_addAttribute(groupHandle,'Description',description,label)
   if (HDF5_objectExists(groupHandle,label) .and. present(lattice_structure)) &
     call HDF5_addAttribute(groupHandle,'Lattice',lattice_structure,label)
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeScalarDataset_rotation

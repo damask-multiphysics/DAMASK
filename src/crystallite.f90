@@ -1077,7 +1077,7 @@ end function crystallite_postResults
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief writes constitutive results to HDF5 output file
+!> @brief writes crystallite results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_results
 #if defined(PETSc) || defined(DAMASK_HDF5)
@@ -1096,12 +1096,10 @@ subroutine crystallite_results
   real(pReal),    allocatable, dimension(:,:,:) :: selected_tensors
   type(rotation), allocatable, dimension(:)     :: selected_rotations
   character(len=256) :: group,lattice_label
-  
-  call HDF5_closeGroup(results_addGroup('current/constituent'))   
                                              
   do p=1,size(config_name_phase)
     group = trim('current/constituent')//'/'//trim(config_name_phase(p))
-    call HDF5_closeGroup(results_addGroup(group))
+
     do o = 1, size(output_constituent(p)%label)
       select case (output_constituent(p)%label(o))
         case('f')
