@@ -208,6 +208,7 @@ subroutine grid_mech_FEM_init
 
    write(rankStr,'(a1,i0)')'_',worldrank
    fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
+   
    call HDF5_read(fileHandle,F_aim,        'F_aim')
    call HDF5_read(fileHandle,F_aim_lastInc,'F_aim_lastInc')
    call HDF5_read(fileHandle,F_aimDot,     'F_aimDot')
@@ -221,8 +222,8 @@ subroutine grid_mech_FEM_init
    F         = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)
  endif restart
  materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                            ! set starting condition for materialpoint_stressAndItsTangent
- call Utilities_updateIPcoords(F)
- call Utilities_constitutiveResponse(P_current,temp33_Real,C_volAvg,devNull, &                      ! stress field, stress avg, global average of stiffness and (min+max)/2
+ call utilities_updateIPcoords(F)
+ call utilities_constitutiveResponse(P_current,temp33_Real,C_volAvg,devNull, &                      ! stress field, stress avg, global average of stiffness and (min+max)/2
                                      F, &                                                           ! target F
                                      0.0_pReal, &                                                   ! time increment
                                      math_I3)                                                       ! no rotation of boundary condition
@@ -255,7 +256,6 @@ function grid_mech_FEM_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation
    terminallyIll
 
  implicit none
-
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
  character(len=*),            intent(in) :: &
@@ -268,7 +268,6 @@ function grid_mech_FEM_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation
  real(pReal), dimension(3,3), intent(in) :: rotation_BC
  type(tSolutionState)                    :: &
    solution
- 
 !--------------------------------------------------------------------------------------------------
 ! PETSc Data
  PetscErrorCode :: ierr
@@ -278,7 +277,7 @@ function grid_mech_FEM_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation
 
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
- S = Utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
+ S = utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
 !--------------------------------------------------------------------------------------------------
 ! set module wide available data 
  params%stress_mask = stress_BC%maskFloat
@@ -357,27 +356,26 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
  !--------------------------------------------------------------------------------------------------
  ! restart information for spectral solver
      if (restartWrite) then                                                                           ! QUESTION: where is this logical properly set?
-      write(6,'(/,a)') ' writing converged results for restart'
-      flush(6)
+      write(6,'(/,a)') ' writing converged results for restart';flush(6)
       
       write(rankStr,'(a1,i0)')'_',worldrank
       fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
 
-      if (worldrank == 0) then
-        call HDF5_write(fileHandle,C_volAvg,       'C_volAvg')
-        call HDF5_write(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
-        call HDF5_write(fileHandle,F_aim,          'F_aim')
-        call HDF5_write(fileHandle,F_aim_lastInc,  'F_aim_lastInc')
-        call HDF5_write(fileHandle,F_aimDot,       'F_aimDot')
-        call HDF5_write(fileHandle,F,              'F')
-        call HDF5_write(fileHandle,F_lastInc,      'F_lastInc')
-        call HDF5_write(fileHandle,u_current,      'u')
-        call HDF5_write(fileHandle,u_lastInc,      'u_lastInc')
-        call HDF5_closeFile(fileHandle)
-      endif
+      call HDF5_write(fileHandle,F_aim,          'F_aim')
+      call HDF5_write(fileHandle,F_aim_lastInc,  'F_aim_lastInc')
+      call HDF5_write(fileHandle,F_aimDot,       'F_aimDot')
+      call HDF5_write(fileHandle,F,              'F')
+      call HDF5_write(fileHandle,F_lastInc,      'F_lastInc')
+      call HDF5_write(fileHandle,u_current,      'u')
+      call HDF5_write(fileHandle,u_lastInc,      'u_lastInc')
+
+      call HDF5_write(fileHandle,C_volAvg,       'C_volAvg')
+      call HDF5_write(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
+
+      call HDF5_closeFile(fileHandle)
 
     endif
-    call CPFEM_age()                                                                                 ! age state and kinematics
+    call CPFEM_age                                                                                   ! age state and kinematics
     call utilities_updateIPcoords(F)
 
     C_volAvgLastInc    = C_volAvg
@@ -429,9 +427,9 @@ end subroutine grid_mech_FEM_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief convergence check
 !--------------------------------------------------------------------------------------------------
-subroutine converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
-use mesh
-use spectral_utilities
+subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dummy,ierr)
+ use mesh
+ use spectral_utilities
  use numerics, only: &
    itmax, &
    itmin, &
@@ -444,11 +442,11 @@ use spectral_utilities
 
  implicit none
  SNES :: snes_local
- PetscInt :: PETScIter
- PetscReal :: &
-   xnorm, &                                                                                         ! not used
-   snorm, &                                                                                         ! not used
-   fnorm
+  PetscInt,  intent(in) :: PETScIter
+  PetscReal, intent(in) :: &
+    devNull1, &
+    devNull2, &
+    devNull3 
  SNESConvergedReason :: reason
  PetscObject :: dummy
  PetscErrorCode :: ierr
@@ -460,7 +458,6 @@ use spectral_utilities
  err_div = fnorm*sqrt(wgt)*geomSize(1)/scaledGeomSize(1)/detJ
  divTol = max(maxval(abs(P_av))*err_div_tolRel   ,err_div_tolAbs)
  BCTol  = max(maxval(abs(P_av))*err_stress_tolRel,err_stress_tolAbs)
-
 
  if ((totalIter >= itmin .and. &
                            all([ err_div/divTol, &
@@ -489,7 +486,8 @@ end subroutine converged
 !--------------------------------------------------------------------------------------------------
 !> @brief forms the residual vector
 !--------------------------------------------------------------------------------------------------
-subroutine formResidual(da_local,x_local,f_local,dummy,ierr)
+subroutine formResidual(da_local,x_local, &
+                        f_local,dummy,ierr)
  use numerics, only: &
    itmax, &
    itmin

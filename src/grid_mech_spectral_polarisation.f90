@@ -125,7 +125,6 @@ subroutine grid_mech_spectral_polarisation_init
     F_tau                                                                                           ! specific (sub)pointer
   PetscInt, dimension(worldsize) :: localK 
   integer(HID_T) :: fileHandle
-  integer :: fileUnit
   character(len=1024) :: rankStr
   
   write(6,'(/,a)') ' <<<+-  grid_mech_spectral_polarisation init  -+>>>'
@@ -216,11 +215,9 @@ subroutine grid_mech_spectral_polarisation_init
     call HDF5_read(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
     call HDF5_closeFile(fileHandle)
 
-    fileUnit = IO_open_jobFile_binary('C_ref')
-    read(fileUnit) C_minMaxAvg; close(fileUnit)
   endif restartRead
  
-  call Utilities_updateGamma(C_minMaxAvg,.true.)
+  call utilities_updateGamma(C_minMaxAvg,.true.)
   C_scale = C_minMaxAvg
   S_scale = math_invSym3333(C_minMaxAvg)
  
@@ -495,7 +492,7 @@ end subroutine converged
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief forms the polarisation residual vector
+!> @brief forms the residual vector
 !--------------------------------------------------------------------------------------------------
 subroutine formResidual(in, FandF_tau, &
                         residuum, dummy,ierr)
