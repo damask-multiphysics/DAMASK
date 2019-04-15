@@ -107,7 +107,6 @@ subroutine grid_mech_spectral_basic_init
   use math, only: &
     math_invSym3333
     
-  implicit none
   real(pReal), dimension(3,3,grid(1),grid(2),grid3) :: P
   real(pReal), dimension(3,3) :: &
     temp33_Real = 0.0_pReal
@@ -221,7 +220,6 @@ function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_
     restartWrite, &
     terminallyIll
  
-  implicit none
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
   character(len=*),            intent(in) :: &
@@ -298,7 +296,6 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
   use FEsolving, only: &
     restartWrite
 
-  implicit none
   logical,                     intent(in) :: &
     guess
   real(pReal),                 intent(in) :: &
@@ -397,7 +394,6 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
   use FEsolving, only: &
     terminallyIll
 
-  implicit none
   SNES :: snes_local
   PetscInt,  intent(in) :: PETScIter
   PetscReal, intent(in) :: &
@@ -468,7 +464,6 @@ subroutine formResidual(in, F, &
   use FEsolving, only: &
     terminallyIll
 
-  implicit none
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: in                                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
   PetscScalar, dimension(3,3,XG_RANGE,YG_RANGE,ZG_RANGE), &
     intent(in) :: F                                                                                 !< deformation gradient field
