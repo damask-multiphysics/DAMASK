@@ -335,7 +335,6 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
       write(rankStr,'(a1,i0)')'_',worldrank
       fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
       
-      print*, trim(getSolverJobName())//trim(rankStr)//'.hdf5';flush(6)
       call HDF5_write(fileHandle,F_aim,        'F_aim')
       call HDF5_write(fileHandle,F_aim_lastInc,'F_aim_lastInc')
       call HDF5_write(fileHandle,F_aimDot,     'F_aimDot')

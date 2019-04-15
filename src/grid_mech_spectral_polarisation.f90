@@ -107,8 +107,7 @@ subroutine grid_mech_spectral_polarisation_init
  use spectral_utilities, only: &
    utilities_constitutiveResponse, &
    utilities_updateGamma, &
-   utilities_updateIPcoords, &
-   wgt
+   utilities_updateIPcoords
  use mesh, only: &
    grid, &
    grid3
@@ -196,7 +195,6 @@ subroutine grid_mech_spectral_polarisation_init
    call HDF5_read(fileHandle,F_lastInc,    'F_lastInc')
    call HDF5_read(fileHandle,F_tau,        'F_tau')
    call HDF5_read(fileHandle,F_tau_lastInc,    'F_tau_lastInc')
-   
 
  elseif (restartInc == 0) then restart
    F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                          ! initialize to identity
@@ -343,7 +341,6 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
   integer :: i, j, k
   real(pReal), dimension(3,3) :: F_lambda33
 
-  integer :: fileUnit
   integer(HID_T) :: fileHandle
   character(len=32) :: rankStr
 
@@ -363,15 +360,13 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
       write(rankStr,'(a1,i0)')'_',worldrank
       fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
       
-      if (worldrank == 0) then
-        call HDF5_write(fileHandle,C_volAvg,       'C_volAvg')
-        call HDF5_write(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
-        call HDF5_write(fileHandle,F_aim,          'F_aim')
-        call HDF5_write(fileHandle,F_aimDot,     'F_aimDot')
-        call HDF5_write(fileHandle,F_aim_lastInc,    'F_aim_lastInc')
-      endif
+      call HDF5_write(fileHandle,C_volAvg,       'C_volAvg')
+      call HDF5_write(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
+      call HDF5_write(fileHandle,F_aim,          'F_aim')
+      call HDF5_write(fileHandle,F_aimDot,       'F_aimDot')
+      call HDF5_write(fileHandle,F_aim_lastInc,  'F_aim_lastInc')
 
-      write(rankStr,'(a1,i0)')'_',worldrank
+
       call HDF5_write(fileHandle,F,            'F')
       call HDF5_write(fileHandle,F_lastInc,    'F_lastInc')
       call HDF5_write(fileHandle,F_tau,        'F_tau')
