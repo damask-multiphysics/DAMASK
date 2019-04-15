@@ -27,8 +27,7 @@ module grid_mech_spectral_basic
   type(tSolutionParams), private :: params
   
   type, private :: tNumerics
-    logical :: &
-      update_gamma !< update gamma operator with current stiffness
+    logical :: update_gamma                                                                         !< update gamma operator with current stiffness
   end type tNumerics
   
   type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
@@ -42,8 +41,8 @@ module grid_mech_spectral_basic
 !--------------------------------------------------------------------------------------------------
 ! common pointwise data
   real(pReal), private, dimension(:,:,:,:,:), allocatable ::  &
-    F_lastInc, &
-    Fdot
+    F_lastInc, &                                                                                    !< field of previous compatible deformation gradients
+    Fdot                                                                                            !< field of assumed rate of compatible deformation gradient
 
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
@@ -101,8 +100,7 @@ subroutine grid_mech_spectral_basic_init
   use spectral_utilities, only: &
     utilities_constitutiveResponse, &
     utilities_updateGamma, &
-    utilities_updateIPcoords, &
-    wgt
+    utilities_updateIPcoords
   use mesh, only: &
     grid, &
     grid3
@@ -179,6 +177,7 @@ subroutine grid_mech_spectral_basic_init
 
     write(rankStr,'(a1,i0)')'_',worldrank
     fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
+ 
     call HDF5_read(fileHandle,F_aim,        'F_aim')
     call HDF5_read(fileHandle,F_aim_lastInc,'F_aim_lastInc')
     call HDF5_read(fileHandle,F_aimDot,     'F_aimDot')
@@ -226,7 +225,6 @@ function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_
     terminallyIll
  
   implicit none
-
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
   character(len=*),            intent(in) :: &
@@ -248,8 +246,8 @@ function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_
 
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
-  S = Utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
-  if (num%update_gamma) call Utilities_updateGamma(C_minMaxAvg,restartWrite)
+  S = utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
+  if (num%update_gamma) call utilities_updateGamma(C_minMaxAvg,restartWrite)
  
 !--------------------------------------------------------------------------------------------------
 ! set module wide available data 
@@ -329,7 +327,7 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
   else
   !--------------------------------------------------------------------------------------------------
   ! restart information for spectral solver
-    if (restartWrite) then                                                                           ! QUESTION: where is this logical properly set?
+    if (restartWrite) then
       write(6,'(/,a)') ' writing converged results for restart';flush(6)
       
       write(rankStr,'(a1,i0)')'_',worldrank
@@ -344,6 +342,7 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
       call HDF5_write(fileHandle,C_volAvg,       'C_volAvg')
       call HDF5_write(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
       call HDF5_write(fileHandle,C_minMaxAvg,    'C_minMaxAvg')
+
       call HDF5_closeFile(fileHandle)
     endif
 
@@ -390,7 +389,7 @@ end subroutine grid_mech_spectral_basic_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief convergence check
 !--------------------------------------------------------------------------------------------------
-subroutine converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
+subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dummy,ierr)
   use numerics, only: &
     itmax, &
     itmin, &
@@ -403,11 +402,11 @@ subroutine converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
 
   implicit none
   SNES :: snes_local
-  PetscInt :: PETScIter
-  PetscReal :: &
-    xnorm, &                                                                                        ! not used
-    snorm, &                                                                                        ! not used
-    fnorm                                                                                           ! not used
+  PetscInt,  intent(in) :: PETScIter
+  PetscReal, intent(in) :: &
+    devNull1, &
+    devNull2, &
+    devNull3 
   SNESConvergedReason :: reason
   PetscObject :: dummy
   PetscErrorCode :: ierr
@@ -506,7 +505,7 @@ subroutine formResidual(in, F, &
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
-  call Utilities_constitutiveResponse(residuum, &                                                   ! "residuum" gets field of first PK stress (to save memory)
+  call utilities_constitutiveResponse(residuum, &                                                   ! "residuum" gets field of first PK stress (to save memory)
                                       P_av,C_volAvg,C_minMaxAvg, &
                                       F,params%timeinc,params%rotation_BC)
   call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
