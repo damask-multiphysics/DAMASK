@@ -12,7 +12,6 @@ module grid_mech_FEM
  use PETScdmda
  use PETScsnes
  use prec, only: &
-   pInt, &
    pReal
  use math, only: &
    math_I3
@@ -61,8 +60,8 @@ module grid_mech_FEM
  real(pReal), private :: &
    err_BC                                                                                           !< deviation from stress BC
 
- integer(pInt), private :: &
-   totalIter = 0_pInt                                                                               !< total iteration in current increment
+ integer, private :: &
+   totalIter = 0                                                                                    !< total iteration in current increment
 
  public :: &
    grid_mech_FEM_init, &
@@ -115,8 +114,7 @@ subroutine grid_mech_FEM_init
                       1.0_pReal,-1.0_pReal,-1.0_pReal,-1.0_pReal, &
                       1.0_pReal, 1.0_pReal, 1.0_pReal, 1.0_pReal], [4,8])
  PetscErrorCode :: ierr
- integer(pInt) :: rank
- integer :: fileUnit
+ integer :: rank
  integer(HID_T) :: fileHandle
  character(len=1024) :: rankStr
  real(pReal), dimension(3,3,3,3) :: devNull
@@ -232,7 +230,7 @@ subroutine grid_mech_FEM_init
  call DMDAVecRestoreArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr)
  CHKERRQ(ierr)
 
- restartRead: if (restartInc > 0_pInt) then
+ restartRead: if (restartInc > 0) then
    write(6,'(/,a,'//IO_intOut(restartInc)//',a)') 'reading more values of increment ', restartInc, ' from file'
    call HDF5_read(fileHandle,C_volAvg,       'C_volAvg')
    call HDF5_read(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
@@ -342,7 +340,6 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
     rotation_BC
   PetscErrorCode :: ierr
     integer(HID_T) :: fileHandle
-    integer :: fileUnit
   character(len=32) :: rankStr
     PetscScalar, pointer, dimension(:,:,:,:) :: &
   u_current,u_lastInc
@@ -530,12 +527,12 @@ subroutine formResidual(da_local,x_local, &
  call SNESGetNumberFunctionEvals(mech_snes,nfuncs,ierr); CHKERRQ(ierr)
  call SNESGetIterationNumber(mech_snes,PETScIter,ierr); CHKERRQ(ierr)
 
- if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1_pInt                                            ! new increment
+ if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1                                               ! new increment
 
 !--------------------------------------------------------------------------------------------------
 ! begin of new iteration
  newIteration: if (totalIter <= PETScIter) then
-   totalIter = totalIter + 1_pInt
+   totalIter = totalIter + 1
    write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') &
            trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter+1, '≤', itmax
    if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
