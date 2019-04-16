@@ -116,6 +116,7 @@ subroutine grid_mech_spectral_basic_init
     F                                                                                               ! pointer to solution data
   PetscInt, dimension(worldsize) :: localK  
   integer(HID_T) :: fileHandle
+  integer :: fileUnit
   character(len=1024) :: rankStr
  
   write(6,'(/,a)') ' <<<+-  grid_mech_spectral_basic init  -+>>>'
@@ -201,6 +202,8 @@ subroutine grid_mech_spectral_basic_init
     call HDF5_read(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
     call HDF5_closeFile(fileHandle)
 
+    fileUnit = IO_open_jobFile_binary('C_ref')
+    read(fileUnit) C_minMaxAvg; close(fileUnit)
   endif restartRead
 
   call utilities_updateGamma(C_minMaxAvg,.true.)
