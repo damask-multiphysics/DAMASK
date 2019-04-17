@@ -1132,14 +1132,14 @@ def om2qu(om):
 
 
 def om2eu(om):
-  """Euler angles to orientation matrix"""
-  if isone(om[2,2]**2):
-    eu = np.array([np.arctan2( om[0,1],om[0,0]), np.pi*0.5*(1-om[2,2]),0.0])                        # following the paper, not the reference implementation
-  else:
+  """Orientation matrix to Euler angles"""
+  if abs(om[2,2]) < 1.0:
     zeta = 1.0/np.sqrt(1.0-om[2,2]**2)
     eu = np.array([np.arctan2(om[2,0]*zeta,-om[2,1]*zeta),
                    np.arccos(om[2,2]),
                    np.arctan2(om[0,2]*zeta, om[1,2]*zeta)])
+  else:
+    eu = np.array([np.arctan2( om[0,1],om[0,0]), np.pi*0.5*(1-om[2,2]),0.0])                        # following the paper, not the reference implementation
   
   # reduce Euler angles to definition range, i.e a lower limit of 0.0
   eu = np.where(eu<0, (eu+2.0*np.pi)%np.array([2.0*np.pi,np.pi,2.0*np.pi]),eu)

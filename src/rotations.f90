@@ -422,14 +422,15 @@ pure function om2eu(om) result(eu)
   real(pReal),             dimension(3)   :: eu
   real(pReal)                             :: zeta
   
-  if (abs(om(3,3))>1.0_pReal) then
-    eu = [ atan2( om(1,2),om(1,1)), 0.5*PI*(1-om(3,3)),0.0_pReal ]
-  else 
+  if (abs(om(3,3)) < 1.0_pReal) then
     zeta = 1.0_pReal/sqrt(1.0_pReal-om(3,3)**2.0_pReal)
     eu = [atan2(om(3,1)*zeta,-om(3,2)*zeta), &
           acos(om(3,3)), &
           atan2(om(1,3)*zeta, om(2,3)*zeta)]
+  else 
+    eu = [ atan2( om(1,2),om(1,1)), 0.5*PI*(1-om(3,3)),0.0_pReal ]
   end if
+
   where(eu<0.0_pReal) eu = mod(eu+2.0_pReal*PI,[2.0_pReal*PI,PI,2.0_pReal*PI])
  
 end function om2eu
