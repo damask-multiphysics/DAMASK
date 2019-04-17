@@ -110,6 +110,11 @@ class Rotation:
     def misorientation(self,other):
       """Misorientation"""
       return self.__class__(other.quaternion*self.quaternion.conjugated())
+
+
+    def average(self,other):
+      """Calculate the average rotation"""
+      return Rotation.fromAverage([self,other])
       
 
     ################################################################################################
@@ -262,9 +267,9 @@ class Rotation:
 
 
     @classmethod
-    def average(cls,
-                rotations,
-                weights = []):
+    def fromAverage(cls,
+                    rotations,
+                    weights = []):
       """
       Average rotation
 
@@ -272,6 +277,8 @@ class Rotation:
            Averaging Quaternions,
            Journal of Guidance, Control, and Dynamics, Vol. 30, No. 4 (2007), pp. 1193-1197.
            doi: 10.2514/1.28949
+           
+      usage: input a list of rotations and optional weights
       """
       if not all(isinstance(item, Rotation) for item in rotations):
         raise TypeError("Only instances of Rotation can be averaged.")
@@ -335,56 +342,56 @@ class Symmetry:
     """List (or single element) of symmetry operations as rotations."""
     if self.lattice == 'cubic':
       symQuats =  [
-                    [ 1.0,              0.0,              0.0,              0.0              ],
-                    [ 0.0,              1.0,              0.0,              0.0              ],
-                    [ 0.0,              0.0,              1.0,              0.0              ],
-                    [ 0.0,              0.0,              0.0,              1.0              ],
-                    [ 0.0,              0.0,              0.5*math.sqrt(2), 0.5*math.sqrt(2) ],
-                    [ 0.0,              0.0,              0.5*math.sqrt(2),-0.5*math.sqrt(2) ],
-                    [ 0.0,              0.5*math.sqrt(2), 0.0,              0.5*math.sqrt(2) ],
-                    [ 0.0,              0.5*math.sqrt(2), 0.0,             -0.5*math.sqrt(2) ],
-                    [ 0.0,              0.5*math.sqrt(2),-0.5*math.sqrt(2), 0.0              ],
-                    [ 0.0,             -0.5*math.sqrt(2),-0.5*math.sqrt(2), 0.0              ],
-                    [ 0.5,              0.5,              0.5,              0.5              ],
-                    [-0.5,              0.5,              0.5,              0.5              ],
-                    [-0.5,              0.5,              0.5,             -0.5              ],
-                    [-0.5,              0.5,             -0.5,              0.5              ],
-                    [-0.5,             -0.5,              0.5,              0.5              ],
-                    [-0.5,             -0.5,              0.5,             -0.5              ],
-                    [-0.5,             -0.5,             -0.5,              0.5              ],
-                    [-0.5,              0.5,             -0.5,             -0.5              ],
-                    [-0.5*math.sqrt(2), 0.0,              0.0,              0.5*math.sqrt(2) ],
-                    [ 0.5*math.sqrt(2), 0.0,              0.0,              0.5*math.sqrt(2) ],
-                    [-0.5*math.sqrt(2), 0.0,              0.5*math.sqrt(2), 0.0              ],
-                    [-0.5*math.sqrt(2), 0.0,             -0.5*math.sqrt(2), 0.0              ],
-                    [-0.5*math.sqrt(2), 0.5*math.sqrt(2), 0.0,              0.0              ],
-                    [-0.5*math.sqrt(2),-0.5*math.sqrt(2), 0.0,              0.0              ],
+                    [ 1.0,            0.0,            0.0,            0.0            ],
+                    [ 0.0,            1.0,            0.0,            0.0            ],
+                    [ 0.0,            0.0,            1.0,            0.0            ],
+                    [ 0.0,            0.0,            0.0,            1.0            ],
+                    [ 0.0,            0.0,            0.5*np.sqrt(2), 0.5*np.sqrt(2) ],
+                    [ 0.0,            0.0,            0.5*np.sqrt(2),-0.5*np.sqrt(2) ],
+                    [ 0.0,            0.5*np.sqrt(2), 0.0,            0.5*np.sqrt(2) ],
+                    [ 0.0,            0.5*np.sqrt(2), 0.0,           -0.5*np.sqrt(2) ],
+                    [ 0.0,            0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0            ],
+                    [ 0.0,           -0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0            ],
+                    [ 0.5,            0.5,            0.5,            0.5            ],
+                    [-0.5,            0.5,            0.5,            0.5            ],
+                    [-0.5,            0.5,            0.5,           -0.5            ],
+                    [-0.5,            0.5,           -0.5,            0.5            ],
+                    [-0.5,           -0.5,            0.5,            0.5            ],
+                    [-0.5,           -0.5,            0.5,           -0.5            ],
+                    [-0.5,           -0.5,           -0.5,            0.5            ],
+                    [-0.5,            0.5,           -0.5,           -0.5            ],
+                    [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
+                    [ 0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
+                    [-0.5*np.sqrt(2), 0.0,            0.5*np.sqrt(2), 0.0            ],
+                    [-0.5*np.sqrt(2), 0.0,           -0.5*np.sqrt(2), 0.0            ],
+                    [-0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0,            0.0            ],
+                    [-0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0,            0.0            ],
                   ]
     elif self.lattice == 'hexagonal':
       symQuats =  [
-                    [ 1.0,0.0,0.0,0.0 ],
-                    [-0.5*math.sqrt(3), 0.0, 0.0,-0.5 ],
-                    [ 0.5, 0.0, 0.0, 0.5*math.sqrt(3) ],
-                    [ 0.0,0.0,0.0,1.0 ],
-                    [-0.5, 0.0, 0.0, 0.5*math.sqrt(3) ],
-                    [-0.5*math.sqrt(3), 0.0, 0.0, 0.5 ],
-                    [ 0.0,1.0,0.0,0.0 ],
-                    [ 0.0,-0.5*math.sqrt(3), 0.5, 0.0 ],
-                    [ 0.0, 0.5,-0.5*math.sqrt(3), 0.0 ],
-                    [ 0.0,0.0,1.0,0.0 ],
-                    [ 0.0,-0.5,-0.5*math.sqrt(3), 0.0 ],
-                    [ 0.0, 0.5*math.sqrt(3), 0.5, 0.0 ],
+                    [ 1.0,            0.0,            0.0,            0.0            ],
+                    [-0.5*np.sqrt(3), 0.0,            0.0,           -0.5            ],
+                    [ 0.5,            0.0,            0.0,            0.5*np.sqrt(3) ],
+                    [ 0.0,            0.0,            0.0,            1.0            ],
+                    [-0.5,            0.0,            0.0,            0.5*np.sqrt(3) ],
+                    [-0.5*np.sqrt(3), 0.0,            0.0,            0.5            ],
+                    [ 0.0,            1.0,            0.0,            0.0            ],
+                    [ 0.0,           -0.5*np.sqrt(3), 0.5,            0.0            ],
+                    [ 0.0,            0.5,           -0.5*np.sqrt(3), 0.0            ],
+                    [ 0.0,            0.0,            1.0,            0.0            ],
+                    [ 0.0,           -0.5,           -0.5*np.sqrt(3), 0.0            ],
+                    [ 0.0,            0.5*np.sqrt(3), 0.5,            0.0            ],
                   ]
     elif self.lattice == 'tetragonal':
       symQuats =  [
-                    [ 1.0,0.0,0.0,0.0 ],
-                    [ 0.0,1.0,0.0,0.0 ],
-                    [ 0.0,0.0,1.0,0.0 ],
-                    [ 0.0,0.0,0.0,1.0 ],
-                    [ 0.0, 0.5*math.sqrt(2), 0.5*math.sqrt(2), 0.0 ],
-                    [ 0.0,-0.5*math.sqrt(2), 0.5*math.sqrt(2), 0.0 ],
-                    [ 0.5*math.sqrt(2), 0.0, 0.0, 0.5*math.sqrt(2) ],
-                    [-0.5*math.sqrt(2), 0.0, 0.0, 0.5*math.sqrt(2) ],
+                    [ 1.0,            0.0,            0.0,            0.0            ],
+                    [ 0.0,            1.0,            0.0,            0.0            ],
+                    [ 0.0,            0.0,            1.0,            0.0            ],
+                    [ 0.0,            0.0,            0.0,            1.0            ],
+                    [ 0.0,            0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0            ],
+                    [ 0.0,           -0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0            ],
+                    [ 0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
+                    [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
                   ]
     elif self.lattice == 'orthorhombic':
       symQuats =  [
@@ -447,6 +454,8 @@ class Symmetry:
     Acta Cryst. (1991). A47, 780-789
     """
     R = rodrigues
+    if (len(R) != 3):
+      raise ValueError('Input is not a Rodriques-Frank vector.\n')
 
     epsilon = 0.0
     if self.lattice == 'cubic':
@@ -967,21 +976,10 @@ class Orientation:
 
 
   @classmethod
-  def average(cls,
-              orientations,
-              weights = []):
-    """
-    Average orientation
-
-    ref: F. Landis Markley, Yang Cheng, John Lucas Crassidis, and Yaakov Oshman.
-         Averaging Quaternions,
-         Journal of Guidance, Control, and Dynamics, Vol. 30, No. 4 (2007), pp. 1193-1197.
-         doi: 10.2514/1.28949
-    usage:
-         a = Orientation(Eulers=np.radians([10, 10, 0]), symmetry='hexagonal')
-         b = Orientation(Eulers=np.radians([20, 0, 0]),  symmetry='hexagonal')
-         avg = Orientation.average([a,b])
-    """
+  def fromAverage(cls,
+                  orientations,
+                  weights = []):
+    """Create orientation from average of list of orientations"""
     if not all(isinstance(item, Orientation) for item in orientations):
       raise TypeError("Only instances of Orientation can be averaged.")
 
@@ -993,7 +991,12 @@ class Orientation:
                                        SST = False,                                                 # select (o[ther]'s) sym orientation
                                        symmetries = True)[2]).rotation)                             # with lowest misorientation
 
-    return Orientation(Rotation.average(closest,weights),ref.lattice)
+    return Orientation(Rotation.fromAverage(closest,weights),ref.lattice)
+
+
+  def average(self,other):
+    """Calculate the average rotation"""
+    return Orientation.fromAverage([self,other])
 
 
 ####################################################################################################
