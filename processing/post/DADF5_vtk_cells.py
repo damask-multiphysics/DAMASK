@@ -5,6 +5,7 @@ import os,vtk
 import numpy as np
 import argparse
 import damask
+from vtk.util import numpy_support
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -36,7 +37,7 @@ for filename in options.filenames:
                   vtk.vtkDoubleArray(),
                  ]
 
-    rGrid.SetDimensions(*data.grid)
+    rGrid.SetDimensions(*(data.grid+1))
     for dim in [0,1,2]:
       for c in np.linspace(0,data.size[dim],1+data.grid[dim]):
         coordArray[dim].InsertNextValue(c)
@@ -47,8 +48,11 @@ for filename in options.filenames:
 
 
   for i,inc in enumerate(data.increments):
-    if not inc['active']: pass
-    
+    data.active['increments'] = [inc]
+    x = data.get_dataset_location('xi_sl')[0]
+    VTKarray = numpy_support.numpy_to_vtk(num_array=data.read_dataset(x,0),deep=True,array_type= vtk.VTK_DOUBLE)
+    VTKarray.SetName('xi_sl')
+    rGrid.GetCellData().AddArray(VTKarray)
     if data.structured:
       writer = vtk.vtkXMLRectilinearGridWriter()
 
