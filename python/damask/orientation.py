@@ -1077,11 +1077,11 @@ def qu2ax(qu):
   
   Modified version of the original formulation, should be numerically more stable
   """
-  if isone(abs(qu[0])):                                                                             # set axis to [001] if the angle is 0/360
+  if iszero(qu[1]**2+qu[2]**2+qu[3]**2):                                                            # set axis to [001] if the angle is 0/360
     ax = [ 0.0, 0.0, 1.0, 0.0 ]
   elif not iszero(qu[0]):
-    omega = 2.0 * np.arccos(qu[0])
     s = np.sign(qu[0])/np.sqrt(qu[1]**2+qu[2]**2+qu[3]**2)
+    omega = 2.0 * np.arccos(np.clip(qu[0],-1.0,1.0))
     ax = [ qu[1]*s, qu[2]*s, qu[3]*s, omega ]
   else:
     ax = [ qu[1], qu[2], qu[3], np.pi]
@@ -1126,9 +1126,9 @@ def om2qu(om):
   """
   Orientation matrix to quaternion
   
-  The original formulation (direct conversion) had numerical issues
+  The original formulation (direct conversion) had (numerical?) issues
   """
-  return ax2qu(om2ax(om))
+  return eu2qu(om2eu(om))
 
 
 def om2eu(om):

@@ -306,12 +306,11 @@ pure function qu2ax(qu) result(ax)
   
   real(pReal)                               :: omega, s
 
-  omega = 2.0 * acos(math_clip(qu%w,-1.0_pReal,1.0_pReal))
-  ! if the angle equals zero, then we return the rotation axis as [001]
-  if (dEq0(omega)) then
-    ax = [ 0.0, 0.0, 1.0, 0.0 ]
+  if (dEq0(qu%x**2+qu%y**2+qu%z**2)) then
+    ax = [ 0.0_pReal, 0.0_pReal, 1.0_pReal, 0.0_pReal ]                                             ! axis = [001]
   elseif (dNeq0(qu%w)) then
     s =  sign(1.0_pReal,qu%w)/sqrt(qu%x**2+qu%y**2+qu%z**2)
+    omega = 2.0_pReal * acos(math_clip(qu%w,-1.0_pReal,1.0_pReal))
     ax = [ qu%x*s, qu%y*s, qu%z*s, omega ]
   else
     ax = [ qu%x, qu%y, qu%z, PI ]
@@ -397,37 +396,16 @@ end function qu2cu
 
 
 !---------------------------------------------------------------------------------------------------
-!> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert rotation matrix to a unit quaternion
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief convert rotation matrix to cubochoric
+!> @details the original formulation (direct conversion) had (numerical?) issues
 !---------------------------------------------------------------------------------------------------
 function om2qu(om) result(qu)
-  use prec, only: &
-    dEq
 
-  real(pReal),      intent(in), dimension(3,3) :: om
-  type(quaternion)                             :: qu
-  
-  real(pReal),                  dimension(4)   :: qu_A
-  real(pReal),                  dimension(4)   :: s
+  real(pReal), intent(in), dimension(3,3) :: om
+  type(quaternion)                        :: qu
 
-  s = [+om(1,1) +om(2,2) +om(3,3) +1.0_pReal, &
-       +om(1,1) -om(2,2) -om(3,3) +1.0_pReal, &
-       -om(1,1) +om(2,2) -om(3,3) +1.0_pReal, &
-       -om(1,1) -om(2,2) +om(3,3) +1.0_pReal]
-
-  qu_A = sqrt(max(s,0.0_pReal))*0.5_pReal*[1.0_pReal,P,P,P]
-  qu_A = qu_A/norm2(qu_A)
-
-  if(any(dEq(abs(qu_A),1.0_pReal,1.0e-15_pReal))) &
-    where (.not.(dEq(abs(qu_A),1.0_pReal,1.0e-15_pReal))) qu_A = 0.0_pReal
-
-  if (om(3,2) < om(2,3)) qu_A(2) = -qu_A(2)
-  if (om(1,3) < om(3,1)) qu_A(3) = -qu_A(3)
-  if (om(2,1) < om(1,2)) qu_A(4) = -qu_A(4)
-  
-  qu = quaternion(qu_A)
-  !qu_A = om2ax(om)
-  !if(any(qu_A(1:3) * [qu%x,qu%y,qu%z] < 0.0)) print*, 'sign error' 
+  qu = eu2qu(om2eu(om))
 
 end function om2qu
 
