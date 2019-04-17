@@ -446,13 +446,7 @@ class Symmetry:
     Representation of Orientation and Disorientation Data for Cubic, Hexagonal, Tetragonal and Orthorhombic Crystals
     Acta Cryst. (1991). A47, 780-789
     """
-    if isinstance(rodrigues, Quaternion):
-      R = rodrigues.asRodrigues()                                                                   # translate accidentially passed quaternion
-    else:
-      R = rodrigues
-    
-    if R.shape[0]==4: # transition old (length not stored separately) to new
-      R = (R[0:3]*R[3])
+    R = rodrigues
 
     epsilon = 0.0
     if self.lattice == 'cubic':
@@ -910,7 +904,7 @@ class Orientation:
         for k in range(2):
           r.inverse()
           breaker = self.lattice.symmetry.inFZ(r.asRodrigues()) \
-                    and (not SST or other.lattice.symmetry.inDisorientationSST(r.asRodrigues()))
+                    and (not SST or other.lattice.symmetry.inDisorientationSST(r.asRodrigues(vector=True)))
           if breaker: break
         if breaker: break
       if breaker: break
