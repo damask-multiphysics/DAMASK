@@ -899,8 +899,8 @@ class Orientation:
     (Currently requires same symmetry for both orientations.
      Look into A. Heinz and P. Neumann 1991 for cases with differing sym.)
     """
-    #if self.lattice.symmetry != other.lattice.symmetry:
-    #  raise NotImplementedError('disorientation between different symmetry classes not supported yet.')
+    if self.lattice.symmetry != other.lattice.symmetry:
+      raise NotImplementedError('disorientation between different symmetry classes not supported yet.')
 
     mySymEqs    =  self.equivalentOrientations() if SST else self.equivalentOrientations([0])     # take all or only first sym operation
     otherSymEqs = other.equivalentOrientations()
@@ -918,7 +918,7 @@ class Orientation:
         if breaker: break
       if breaker: break
 
-    return (r, i,j, k == 1) if symmetries else r                                                    # disorientation ...
+    return (Orientation(r,self.lattice), i,j, k == 1) if symmetries else Orientation(r,self.lattice)# disorientation ...
                                                                                                     # ... own sym, other sym,
                                                                                                     # self-->other: True, self<--other: False
 
