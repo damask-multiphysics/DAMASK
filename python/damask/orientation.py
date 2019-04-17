@@ -3,8 +3,8 @@
 import math
 import numpy as np
 from . import Lambert
-from quaternion import Quaternion
-from quaternion import P as P
+from .quaternion import Quaternion
+from .quaternion import P
 
 
 ####################################################################################################
