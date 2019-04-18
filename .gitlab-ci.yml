@@ -213,6 +213,14 @@ Post_OrientationConversion:
     - master
     - release
 
+Post_OrientationAverageMisorientation:
+  stage: postprocessing
+  script:
+    - OrientationAverageMisorientation/test.py
+  except:
+    - master
+    - release
+
 ###################################################################################################
 grid_mech_compile_Intel:
   stage: compilePETSc
