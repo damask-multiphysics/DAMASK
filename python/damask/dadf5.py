@@ -2,7 +2,6 @@
 import h5py
 import re
 import numpy as np
-import os
 
 # ------------------------------------------------------------------
 class DADF5():
@@ -96,7 +95,6 @@ class DADF5():
   def read_dataset(self,path,c):
     """
     Dataset for all points/cells
-    
     
     If more than one path is given, the dataset is composed of the individual contributions
     """
