@@ -10,15 +10,15 @@ class Quaternion:
     Quaternion with basic operations
     
     q is the real part, p = (x, y, z) are the imaginary parts.
-    Defintion of multiplication depends on variable P, P ∈ {-1,1}.
+    Definition of multiplication depends on variable P, P ∈ {-1,1}.
     """                                                                              
 
     def __init__(self,
                  q    = 0.0,
                  p    = np.zeros(3,dtype=float)):
       """Initializes to identity unless specified"""
-      self.q = q
-      self.p = np.array(p)
+      self.q = float(q)
+      self.p = np.array(p,dtype=float)
 
 
     def __copy__(self):
@@ -102,7 +102,8 @@ class Quaternion:
         self.p = self.q*other.p + other.q*self.p + P * np.cross(self.p,other.p)
         return self
       elif isinstance(other, (int, float)):
-        self *= other
+        self.q *= other
+        self.p *= other
         return self
       else:
         return NotImplemented
@@ -115,9 +116,8 @@ class Quaternion:
         return self.__class__(q=self.q * s,
                               p=self.p * s)
       elif isinstance(other, (int, float)):
-        self.q /= other
-        self.p /= other
-        return self
+        return self.__class__(q=self.q / other,
+                              p=self.p / other)
       else:
         return NotImplemented
 
@@ -129,6 +129,7 @@ class Quaternion:
         return self
       elif isinstance(other, (int, float)):
         self.q /= other
+        self.p /= other
         return self
       else:
         return NotImplemented
@@ -149,6 +150,7 @@ class Quaternion:
         omega = np.acos(self.q)
         self.q  = np.cos(exponent*omega)
         self.p *= np.sin(exponent*omega)/np.sin(omega)
+        return self
       else:
         return NotImplemented
       
@@ -179,31 +181,34 @@ class Quaternion:
       return np.array((self.q,self.p[0],self.p[1],self.p[2]))
  
     def asList(self):
+      """As list"""
       return [self.q]+list(self.p)
 
+
     def normalize(self):
+      """Normalizes in-place (no return value)"""
       d = self.magnitude()
-      if d > 0.0:
-          self.q /= d
-          self.p /= d
-      return self
+      if d > 0.0: self /= d
       
     def normalized(self):
+      """Returns normalized copy"""
       return self.copy().normalize()
 
-  
+
     def conjugate(self):
+      """Conjugates in-place (no return value)"""
       self.p = -self.p
-      return self
       
     def conjugated(self):
+      """Returns conjugated copy"""
       return self.copy().conjugate()
 
 
     def homomorph(self):
+      """Homomorphs in-place (no return value)"""
       self.q = -self.q
       self.p = -self.p
-      return self
       
     def homomorphed(self):
+      """Returns homomorphed copy"""
       return self.copy().homomorph()
