@@ -45,6 +45,7 @@ class Rotation:
       else:
         self.quaternion = Quaternion(q=quaternion[0],p=quaternion[1:4])
 
+
     def __repr__(self):
       """Value in selected representation"""
       return '\n'.join([
@@ -60,7 +61,7 @@ class Rotation:
       Rotation: Details needed (active/passive), rotation of (3,3,3,3)-matrix should be considered
       """
       if isinstance(other, Rotation):                                                               # rotate a rotation
-        return self.__class__((self.quaternion * other.quaternion).asArray())
+        return self.__class__((self.quaternion * other.quaternion).homomorph())
       elif isinstance(other, np.ndarray):
         if other.shape == (3,):                                                                     # rotate a single (3)-vector
           ( x, y, z) = self.quaternion.p
@@ -108,7 +109,7 @@ class Rotation:
 
     def misorientation(self,other):
       """Misorientation"""
-      return self.__class__((other.quaternion*self.quaternion.conjugated()).homomorph())
+      return other*self.inversed()
 
 
     def average(self,other):
@@ -1192,7 +1193,7 @@ def eu2qu(eu):
                    -P*sPhi*np.cos(ee[0]-ee[2]),
                    -P*sPhi*np.sin(ee[0]-ee[2]),
                    -P*cPhi*np.sin(ee[0]+ee[2]) ])
-  #if qu[0] < 0.0: qu.homomorph()                                                                   !ToDo: Check with original
+  if qu[0] < 0.0: qu*=-1
   return qu
 
 
