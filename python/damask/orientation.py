@@ -44,7 +44,6 @@ class Rotation:
         self.quaternion = quaternion.copy()
       else:
         self.quaternion = Quaternion(q=quaternion[0],p=quaternion[1:4])
-        self.quaternion.homomorph() # ToDo: Needed?
 
     def __repr__(self):
       """Value in selected representation"""
