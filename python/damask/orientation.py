@@ -109,6 +109,15 @@ class Rotation:
       return self.__class__(self.quaternion.conjugated())
 
 
+    def standardize(self):
+      """Ensure quaternion representation with positive q"""
+      if self.quaternion.q < 0.0: self.quaternion.homomorph() 
+
+    def standardized(self):
+      """Ensure quaternion representation with positive q"""
+      return self.__class__(self.quaternion.homomorphed() if self.quaternion.q < 0.0 else self.quaternion)
+
+
     def misorientation(self,other):
       """Misorientation"""
       return other*self.inversed()
@@ -920,7 +929,7 @@ class Orientation:
         if breaker: break
       if breaker: break
 
-    return (r, i,j, k == 1) if symmetries else r                                                    # disorientation ...
+    return (Orientation(r,self.symmetry), i,j, k == 1) if symmetries else r                         # disorientation ...
                                                                                                     # ... own sym, other sym,
                                                                                                     # self-->other: True, self<--other: False
 
