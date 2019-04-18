@@ -528,8 +528,11 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 ! restore...
            crystallite_Fp(1:3,1:3,1:myNgrains,i,e) = &
              crystallite_partionedFp0(1:3,1:3,1:myNgrains,i,e)                                      ! ...plastic def grads
+           if(materialpoint_subStep(i,e) < 1.0_pReal) then
            crystallite_Lp(1:3,1:3,1:myNgrains,i,e) = &
-             crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e)                                      ! ...plastic velocity grads
+             crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e)                               
+           endif
+       ! ...plastic velocity grads
            crystallite_Fi(1:3,1:3,1:myNgrains,i,e) = &
              crystallite_partionedFi0(1:3,1:3,1:myNgrains,i,e)                                      ! ...intermediate def grads
            crystallite_Li(1:3,1:3,1:myNgrains,i,e) = &
