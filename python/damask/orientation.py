@@ -918,7 +918,7 @@ class Orientation:
         if breaker: break
       if breaker: break
 
-    return (Orientation(r,self.lattice), i,j, k == 1) if symmetries else Orientation(r,self.lattice)# disorientation ...
+    return (r, i,j, k == 1) if symmetries else r                                                    # disorientation ...
                                                                                                     # ... own sym, other sym,
                                                                                                     # self-->other: True, self<--other: False
 
