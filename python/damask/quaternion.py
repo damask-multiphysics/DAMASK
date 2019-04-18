@@ -201,9 +201,8 @@ class Quaternion:
 
 
     def homomorph(self):
-      if self.q < 0.0:
-        self.q = -self.q
-        self.p = -self.p
+      self.q = -self.q
+      self.p = -self.p
       return self
       
     def homomorphed(self):

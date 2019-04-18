@@ -61,7 +61,9 @@ class Rotation:
       Rotation: Details needed (active/passive), rotation of (3,3,3,3)-matrix should be considered
       """
       if isinstance(other, Rotation):                                                               # rotate a rotation
-        return self.__class__((self.quaternion * other.quaternion).homomorph())
+        qu = self.quaternion * other.quaternion
+        if qu.q < 0: qu.homomorph()
+        return self.__class__(qu)
       elif isinstance(other, np.ndarray):
         if other.shape == (3,):                                                                     # rotate a single (3)-vector
           ( x, y, z) = self.quaternion.p
