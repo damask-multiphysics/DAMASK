@@ -1112,7 +1112,7 @@ subroutine constitutive_results
     group = trim('current/constituent')//'/'//trim(config_name_phase(p))
     call HDF5_closeGroup(results_addGroup(group))
     
-    group = trim(group)//'/'//'plastic'
+    group = trim(group)//'/plastic'
     
     call HDF5_closeGroup(results_addGroup(group))  
     select case(material_phase_plasticity_type(p))

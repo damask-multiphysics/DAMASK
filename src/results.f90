@@ -510,7 +510,7 @@ subroutine results_mapping_constituent(phaseAt,memberAt,label)
 !---------------------------------------------------------------------------------------------------
 ! renumber member from my process to all processes
   do i = 1, size(label)
-    where(phaseAt_perIP == i) memberAt_total = memberAt + sum(memberOffset(i,0:worldrank-1))
+    where(phaseAt_perIP == i) memberAt_total = memberAt + sum(memberOffset(i,0:worldrank-1)) -1     ! convert to 0-based
   enddo
 
 !--------------------------------------------------------------------------------------------------
@@ -648,7 +648,7 @@ subroutine results_mapping_materialpoint(homogenizationAt,memberAt,label)
 !---------------------------------------------------------------------------------------------------
 ! renumber member from my process to all processes
   do i = 1, size(label)
-    where(homogenizationAt_perIP == i) memberAt_total = memberAt + sum(memberOffset(i,0:worldrank-1))
+    where(homogenizationAt_perIP == i) memberAt_total = memberAt + sum(memberOffset(i,0:worldrank-1)) - 1  ! convert to 0-based
   enddo
 
 !--------------------------------------------------------------------------------------------------

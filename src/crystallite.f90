@@ -1098,7 +1098,9 @@ subroutine crystallite_results
   character(len=256) :: group,lattice_label
                                              
   do p=1,size(config_name_phase)
-    group = trim('current/constituent')//'/'//trim(config_name_phase(p))
+    group = trim('current/constituent')//'/'//trim(config_name_phase(p))//'/generic'
+    
+    call HDF5_closeGroup(results_addGroup(group))  
 
     do o = 1, size(output_constituent(p)%label)
       select case (output_constituent(p)%label(o))
