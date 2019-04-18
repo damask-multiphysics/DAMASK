@@ -91,18 +91,7 @@ subroutine plastic_isotropic_init
     debug_levelBasic
   use IO, only: &
     IO_error
-  use material, only: &
-#ifdef DEBUG
-    phasememberAt, &
-#endif
-    phase_plasticity, &
-    phase_plasticityInstance, &
-    phase_Noutput, &
-    material_allocatePlasticState, &
-    PLASTICITY_ISOTROPIC_label, &
-    PLASTICITY_ISOTROPIC_ID, &
-    material_phase, &
-    plasticState
+  use material
   use config, only: &
     config_phase
   use lattice

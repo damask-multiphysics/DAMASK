@@ -248,15 +248,7 @@ subroutine plastic_nonlocal_init
     debug_levelBasic
   use mesh, only: &
     theMesh
-  use material, only: &
-    phase_plasticity, &
-    phase_plasticityInstance, &
-    phase_Noutput, &
-    PLASTICITY_NONLOCAL_label, &
-    PLASTICITY_NONLOCAL_ID, &
-    plasticState, &
-    material_phase, &
-    material_allocatePlasticState
+  use material
   use config
   use lattice
 
