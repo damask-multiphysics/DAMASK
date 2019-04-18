@@ -44,6 +44,12 @@ class Rotation:
         self.quaternion = quaternion.copy()
       else:
         self.quaternion = Quaternion(q=quaternion[0],p=quaternion[1:4])
+        
+    def __copy__(self):
+      """Copy"""
+      return self.__class__(self.quaternion)
+      
+    copy = __copy__
 
 
     def __repr__(self):
@@ -61,9 +67,9 @@ class Rotation:
       Rotation: Details needed (active/passive), rotation of (3,3,3,3)-matrix should be considered
       """
       if isinstance(other, Rotation):                                                               # rotate a rotation
-        qu = self.quaternion * other.quaternion
-        if qu.q < 0: qu.homomorph()
-        return self.__class__(qu)
+        qu = self.__class__(self.quaternion * other.quaternion)
+        qu.standardize()
+        return qu
       elif isinstance(other, np.ndarray):
         if other.shape == (3,):                                                                     # rotate a single (3)-vector
           ( x, y, z) = self.quaternion.p
@@ -102,11 +108,12 @@ class Rotation:
     def inverse(self):
       """In-place inverse rotation/backward rotation"""
       self.quaternion.conjugate()
-      return self
       
     def inversed(self):
       """Inverse rotation/backward rotation"""
-      return self.__class__(self.quaternion.conjugated())
+      c = self.copy()
+      c.inverse()
+      return c
 
 
     def standardize(self):
@@ -115,7 +122,9 @@ class Rotation:
 
     def standardized(self):
       """Ensure quaternion representation with positive q"""
-      return self.__class__(self.quaternion.homomorphed() if self.quaternion.q < 0.0 else self.quaternion)
+      c = self.copy()
+      c.standardize()
+      return c
 
 
     def misorientation(self,other):
@@ -929,7 +938,7 @@ class Orientation:
         if breaker: break
       if breaker: break
 
-    return (Orientation(r,self.symmetry), i,j, k == 1) if symmetries else r                         # disorientation ...
+    return (Orientation(r,self.lattice), i,j, k == 1) if symmetries else r                          # disorientation ...
                                                                                                     # ... own sym, other sym,
                                                                                                     # self-->other: True, self<--other: False
 
