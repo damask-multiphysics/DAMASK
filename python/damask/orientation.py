@@ -109,7 +109,7 @@ class Rotation:
 
     def misorientation(self,other):
       """Misorientation"""
-      return self.__class__(other.quaternion*self.quaternion.conjugated())
+      return self.__class__((other.quaternion*self.quaternion.conjugated()).homomorph())
 
 
     def average(self,other):
