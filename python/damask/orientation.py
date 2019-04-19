@@ -976,7 +976,7 @@ class Orientation:
   def reduced(self):
     """Transform orientation to fall into fundamental zone according to symmetry"""
     for me in self.equivalentOrientations():
-      if self.lattice.symmetry.inFZ(me.rotation.asRodrigues()): break
+      if self.lattice.symmetry.inFZ(me.rotation.asRodrigues(vector=True)): break
 
     return self.__class__(me.rotation,self.lattice)
     
