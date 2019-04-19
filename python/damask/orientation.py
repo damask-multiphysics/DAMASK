@@ -108,23 +108,21 @@ class Rotation:
     def inverse(self):
       """In-place inverse rotation/backward rotation"""
       self.quaternion.conjugate()
+      return self
       
     def inversed(self):
       """Inverse rotation/backward rotation"""
-      c = self.copy()
-      c.inverse()
-      return c
+      return self.copy.inverse()
 
 
     def standardize(self):
-      """Ensure quaternion representation with positive q"""
-      if self.quaternion.q < 0.0: self.quaternion.homomorph() 
+      """In-place quaternion representation with positive q"""
+      if self.quaternion.q < 0.0: self.quaternion.homomorph()
+      return self
 
     def standardized(self):
-      """Ensure quaternion representation with positive q"""
-      c = self.copy()
-      c.standardize()
-      return c
+      """Quaternion representation with positive q"""
+      return self.copy.standardize()
 
 
     def misorientation(self,other):

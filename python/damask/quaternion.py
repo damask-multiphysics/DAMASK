@@ -2,7 +2,7 @@
 
 import numpy as np
 
-P = -1                                                                                              # convention (sed DOI:10.1088/0965-0393/23/8/083501)
+P = -1                                                                                              # convention (see DOI:10.1088/0965-0393/23/8/083501)
 
 ####################################################################################################
 class Quaternion:
@@ -186,35 +186,32 @@ class Quaternion:
 
 
     def normalize(self):
-      """Normalizes in-place (no return value)"""
+      """Normalizes in-place"""
       d = self.magnitude()
       if d > 0.0: self /= d
+      return self
       
     def normalized(self):
       """Returns normalized copy"""
-      c = self.copy()
-      c.normalize()
-      return c
+      return self.copy.normalize()
 
 
     def conjugate(self):
-      """Conjugates in-place (no return value)"""
+      """Conjugates in-place"""
       self.p = -self.p
+      return self
       
     def conjugated(self):
       """Returns conjugated copy"""
-      c = self.copy()
-      c.conjugate() 
-      return c
+      return self.copy.conjugate()
 
 
     def homomorph(self):
-      """Homomorphs in-place (no return value)"""
+      """Homomorphs in-place"""
       self.q = -self.q
       self.p = -self.p
+      return self
       
     def homomorphed(self):
       """Returns homomorphed copy"""
-      c = self.copy()
-      c.homomorph()
-      return c
+      return self.copy.homomorph()
