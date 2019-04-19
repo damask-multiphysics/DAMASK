@@ -67,9 +67,7 @@ class Rotation:
       Rotation: Details needed (active/passive), rotation of (3,3,3,3)-matrix should be considered
       """
       if isinstance(other, Rotation):                                                               # rotate a rotation
-        qu = self.__class__(self.quaternion * other.quaternion)
-        qu.standardize()
-        return qu
+        return self.__class__(self.quaternion * other.quaternion).standardize()
       elif isinstance(other, np.ndarray):
         if other.shape == (3,):                                                                     # rotate a single (3)-vector
           ( x, y, z) = self.quaternion.p
@@ -112,7 +110,7 @@ class Rotation:
       
     def inversed(self):
       """Inverse rotation/backward rotation"""
-      return self.copy.inverse()
+      return self.copy().inverse()
 
 
     def standardize(self):
@@ -122,7 +120,7 @@ class Rotation:
 
     def standardized(self):
       """Quaternion representation with positive q"""
-      return self.copy.standardize()
+      return self.copy().standardize()
 
 
     def misorientation(self,other):
@@ -310,7 +308,20 @@ class Rotation:
             else M + r.asM() * n                                                                    # noqa add (multiples) of this rotation to average noqa
       eig, vec = np.linalg.eig(M/N)
 
-      return Rotation.fromQuaternion(np.real(vec.T[eig.argmax()]),acceptHomomorph = True)
+      return cls.fromQuaternion(np.real(vec.T[eig.argmax()]),acceptHomomorph = True)
+
+
+    @classmethod
+    def fromRandom(cls):
+      r = np.random.random(3) 
+      A = np.sqrt(r[2]) 
+      B = np.sqrt(1.0-r[2]) 
+      w = np.cos(2.0*np.pi*r[0])*A 
+      x = np.sin(2.0*np.pi*r[1])*B 
+      y = np.cos(2.0*np.pi*r[1])*B 
+      z = np.sin(2.0*np.pi*r[0])*A 
+      return cls.fromQuaternion([w,x,y,z],acceptHomomorph=True) 
+
 
 
 # ******************************************************************************************
@@ -433,15 +444,18 @@ class Symmetry:
         return symOps                                                                               # yes, return list of rotations
     
 
-  def inFZ(self,R):
+  def inFZ(self,rodrigues):
     """
     Check whether given Rodrigues vector falls into fundamental zone of own symmetry.
     
     Fundamental zone in Rodrigues space is point symmetric around origin.
     """
-    if np.any(R == np.inf): return False
+    if (len(rodrigues) != 3):
+      raise ValueError('Input is not a Rodriques-Frank vector.\n')
+    
+    if np.any(rodrigues == np.inf): return False
 
-    Rabs = abs(R[0:3]*R[3])
+    Rabs = abs(rodrigues)
 
     if self.lattice == 'cubic':
       return     math.sqrt(2.0)-1.0 >= Rabs[0] \
@@ -471,10 +485,10 @@ class Symmetry:
     Representation of Orientation and Disorientation Data for Cubic, Hexagonal, Tetragonal and Orthorhombic Crystals
     Acta Cryst. (1991). A47, 780-789
     """
-    R = rodrigues
-    if (len(R) != 3):
+    if (len(rodrigues) != 3):
       raise ValueError('Input is not a Rodriques-Frank vector.\n')
-
+    R = rodrigues
+    
     epsilon = 0.0
     if self.lattice == 'cubic':
       return R[0] >= R[1]+epsilon                and R[1] >= R[2]+epsilon    and R[2] >= epsilon
@@ -930,7 +944,7 @@ class Orientation:
         r = b*aInv
         for k in range(2):
           r.inverse()
-          breaker = self.lattice.symmetry.inFZ(r.asRodrigues()) \
+          breaker = self.lattice.symmetry.inFZ(r.asRodrigues(vector=True)) \
                     and (not SST or other.lattice.symmetry.inDisorientationSST(r.asRodrigues(vector=True)))
           if breaker: break
         if breaker: break
@@ -942,7 +956,7 @@ class Orientation:
 
 
   def inFZ(self):
-    return self.lattice.symmetry.inFZ(self.rotation.asRodrigues())
+    return self.lattice.symmetry.inFZ(self.rotation.asRodrigues(vector=True))
   
   def equivalentOrientations(self,members=[]):
     """List of orientations which are symmetrically equivalent"""

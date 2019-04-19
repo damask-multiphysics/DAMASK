@@ -193,7 +193,7 @@ class Quaternion:
       
     def normalized(self):
       """Returns normalized copy"""
-      return self.copy.normalize()
+      return self.copy().normalize()
 
 
     def conjugate(self):
@@ -203,7 +203,7 @@ class Quaternion:
       
     def conjugated(self):
       """Returns conjugated copy"""
-      return self.copy.conjugate()
+      return self.copy().conjugate()
 
 
     def homomorph(self):
@@ -214,4 +214,4 @@ class Quaternion:
       
     def homomorphed(self):
       """Returns homomorphed copy"""
-      return self.copy.homomorph()
+      return self.copy().homomorph()
