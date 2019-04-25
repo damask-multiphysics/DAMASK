@@ -14,7 +14,7 @@ list(FILTER sources EXCLUDE REGEX ".*mesh_abaqus.*\\.f90")
 list(FILTER sources EXCLUDE REGEX ".*commercialFEM_fileList.*\\.f90")
 
 
-if (PROJECT_NAME STREQUAL "DAMASK_grid")
+if (PROJECT_NAME STREQUAL "damask-grid")
 
       # probably we should have subfolders for FEM and spectral
       list(FILTER sources EXCLUDE REGEX ".*DAMASK_FEM.*\\.f90")
@@ -29,7 +29,7 @@ if (PROJECT_NAME STREQUAL "DAMASK_grid")
         add_library(DAMASK_spectral OBJECT ${sources})
       endif()
 
-elseif (PROJECT_NAME STREQUAL "DAMASK_FEM")
+elseif (PROJECT_NAME STREQUAL "damask-mesh")
       
       # probably we should have subfolders for FEM and spectral
       list(FILTER sources EXCLUDE REGEX ".*DAMASK_grid.*\\.f90")
