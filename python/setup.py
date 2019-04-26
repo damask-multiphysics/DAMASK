@@ -1,11 +1,11 @@
 import setuptools
 
 setuptools.setup(
-    name="xxx",
+    name="damask",
     version="0.0.1",
     author="The DAMASK team",
     author_email="damask@mpie.de",
-    description="A small example package",
+    description="Python library for DAMASK",
     long_description='test',
     long_description_content_type="text/markdown",
     url="https://github.com/pypa/sampleproject",
