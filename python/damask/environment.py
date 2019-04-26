@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 no BOM -*-
 
-import os,subprocess,shlex,re
+import os,re
 
 class Environment():
   __slots__ = [ \

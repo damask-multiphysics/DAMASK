@@ -7,7 +7,7 @@ import damask
 
 damaskEnv = damask.Environment()
 baseDir = damaskEnv.relPath('processing/')
-binDir = damaskEnv.options['DAMASK_BIN']
+binDir  = damaskEnv.relPath('bin/')
 
 if not os.path.isdir(binDir):
   os.mkdir(binDir)
