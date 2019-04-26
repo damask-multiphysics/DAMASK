@@ -467,17 +467,4 @@ message ("Fortran Linker Command:\n${CMAKE_Fortran_LINK_EXECUTABLE}\n")
 
 # location of code
 add_subdirectory (src)
-
-# INSTALL BUILT BINARIES
-if (CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
-   exec_program (mktemp OUTPUT_VARIABLE nothing)
-   exec_program (mktemp ARGS -d OUTPUT_VARIABLE black_hole)
-   install (PROGRAMS ${nothing} DESTINATION ${black_hole})
-else ()
-   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-   if (PROJECT_NAME STREQUAL "damask-grid")
-       install (TARGETS DAMASK_spectral RUNTIME)
-   elseif (PROJECT_NAME STREQUAL "damask-mesh")
-       install (TARGETS DAMASK_FEM RUNTIME)
-   endif ()
-endif ()
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)

@@ -25,8 +25,12 @@ if (PROJECT_NAME STREQUAL "damask-grid")
 
       if(NOT CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
         add_executable(DAMASK_spectral ${sources})
+        install (TARGETS DAMASK_spectral RUNTIME)
       else()
         add_library(DAMASK_spectral OBJECT ${sources})
+        exec_program (mktemp OUTPUT_VARIABLE nothing)
+        exec_program (mktemp ARGS -d OUTPUT_VARIABLE black_hole)
+        install (PROGRAMS ${nothing} DESTINATION ${black_hole})
       endif()
 
 elseif (PROJECT_NAME STREQUAL "damask-mesh")
@@ -42,5 +46,6 @@ elseif (PROJECT_NAME STREQUAL "damask-mesh")
       list(FILTER sources EXCLUDE REGEX ".*mesh_grid.*\\.f90")
 
       add_executable(DAMASK_FEM ${sources})
+      install (TARGETS DAMASK_FEM RUNTIME)
       
 endif()
