@@ -476,9 +476,9 @@ if (CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
 else ()
    if (PROJECT_NAME STREQUAL "damask-grid")
        install (PROGRAMS    ${PROJECT_BINARY_DIR}/src/DAMASK_spectral
-                DESTINATION ${CMAKE_INSTALL_PREFIX})
+                DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
    elseif (PROJECT_NAME STREQUAL "damask-mesh")
        install (PROGRAMS    ${PROJECT_BINARY_DIR}/src/DAMASK_FEM
-                DESTINATION ${CMAKE_INSTALL_PREFIX})
+                DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
    endif ()
 endif ()
