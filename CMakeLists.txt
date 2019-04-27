@@ -171,7 +171,7 @@ set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} ${PETSC_INCLUDES}")
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
-  include(Compiler-Intel.cmake)
+  include(Compiler-Intel)
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
   include(Compiler-GNU)
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "PGI")
