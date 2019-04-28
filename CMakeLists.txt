@@ -105,11 +105,12 @@ set (CMAKE_C_COMPILER       "${PETSC_MPICC}")
 # Now start to care about DAMASK
 
 # DAMASK solver defines project to build
-if (DAMASK_SOLVER STREQUAL "GRID")
+string(TOLOWER ${DAMASK_SOLVER} DAMASK_SOLVER)
+if (DAMASK_SOLVER STREQUAL "grid")
     project (damask-grid Fortran C)
     add_definitions (-DGrid)
     message ("Building Grid Solver\n")
-elseif (DAMASK_SOLVER STREQUAL "FEM")
+elseif (DAMASK_SOLVER STREQUAL "fem" OR DAMASK_SOLVER STREQUAL "mesh")
     project (damask-mesh Fortran C)
     add_definitions (-DFEM)
     message ("Building FEM Solver\n")
