@@ -138,14 +138,14 @@ elseif (CMAKE_BUILD_TYPE STREQUAL "PERFORMANCE")
 endif ()
 
 # $OPTIMIZATION takes precedence over $BUILD_TYPE defaults
-if (OPTIMIZATION STREQUAL "")
+if (OPTIMIZATION STREQUAL "" OR NOT DEFINED OPTIMIZATION)
     set (OPTIMIZATION "${OPTI}")
 else ()
     set (OPTIMIZATION "${OPTIMIZATION}")
 endif ()
 
 # $OPENMP takes precedence over $BUILD_TYPE defaults
-if (OPENMP STREQUAL "")
+if (OPENMP STREQUAL "" OR NOT DEFINED OPENMP)
     set (OPENMP "${PARALLEL}")
 else ()
     set(OPENMP "${OPENMP}")
