@@ -9,15 +9,20 @@ setuptools.setup(
     version=version,
     author="The DAMASK team",
     author_email="damask@mpie.de",
-    description="Python library for DAMASK",
-    long_description='test',
-    #long_description_content_type="text/markdown",
+    description="DAMASK library",
+    long_description="Python library for pre and post processing of DAMASK simulations",
     url="https://damask.mpie.de",
     packages=setuptools.find_packages(),
     include_package_data=True,
-    classifiers=[
+    install_requires = [
+        "scipy",
+        "h5py",
+        "vtk"
+    ],
+    license = 'GPL3',
+    classifiers = [
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: GLPv3",
+        "License :: OSI Approved :: GPL3",
         "Operating System :: OS Independent",
     ],
 )
