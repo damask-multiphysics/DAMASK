@@ -27,6 +27,17 @@ module results
     module procedure results_writeScalarDataset_rotation
     
   end interface results_writeDataset
+  
+  interface results_addAttribute
+  
+    module procedure results_addAttribute_real
+    module procedure results_addAttribute_int
+    module procedure results_addAttribute_str
+    
+    module procedure results_addAttribute_int_array
+    module procedure results_addAttribute_real_array
+    
+  end interface results_addAttribute
 
   public :: &
     results_init, &
@@ -104,6 +115,9 @@ subroutine results_addIncrement(inc,time)
   call HDF5_closeGroup(results_addGroup(trim('inc'//trim(adjustl(incChar)))))
   call results_setLink(trim('inc'//trim(adjustl(incChar))),'current')
   call HDF5_addAttribute(resultsFile,'time/s',time,trim('inc'//trim(adjustl(incChar))))
+  
+  call HDF5_closeGroup(results_addGroup('current/constituent'))
+  call HDF5_closeGroup(results_addGroup('current/materialpoint'))
 
 end subroutine results_addIncrement
 
@@ -144,15 +158,67 @@ end subroutine results_setLink
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds an attribute to an object
+!> @brief adds a string attribute to an object in the results file
 !--------------------------------------------------------------------------------------------------
-subroutine results_addAttribute(attrLabel,attrValue,path)
+subroutine results_addAttribute_str(attrLabel,attrValue,path)
 
-  character(len=*), intent(in)  :: attrLabel, attrValue, path
+  character(len=*), intent(in) :: attrLabel, attrValue, path
 
-  call HDF5_addAttribute_str(resultsFile,attrLabel, attrValue, path)
+  call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
 
-end subroutine results_addAttribute
+end subroutine results_addAttribute_str
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief adds an integer attribute an object in the results file
+!--------------------------------------------------------------------------------------------------
+subroutine results_addAttribute_int(attrLabel,attrValue,path)
+
+  character(len=*), intent(in) :: attrLabel, path
+  integer,          intent(in) :: attrValue
+
+  call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+
+end subroutine results_addAttribute_int
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief adds a real attribute an object in the results file
+!--------------------------------------------------------------------------------------------------
+subroutine results_addAttribute_real(attrLabel,attrValue,path)
+
+  character(len=*), intent(in) :: attrLabel, path
+  real(pReal),      intent(in) :: attrValue
+
+  call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+
+end subroutine results_addAttribute_real
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief adds an integer array attribute an object in the results file
+!--------------------------------------------------------------------------------------------------
+subroutine results_addAttribute_int_array(attrLabel,attrValue,path)
+
+  character(len=*), intent(in)               :: attrLabel, path
+  integer,          intent(in), dimension(:) :: attrValue
+
+  call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+
+end subroutine results_addAttribute_int_array
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief adds a real array attribute an object in the results file
+!--------------------------------------------------------------------------------------------------
+subroutine results_addAttribute_real_array(attrLabel,attrValue,path)
+
+  character(len=*), intent(in)               :: attrLabel, path
+  real(pReal),      intent(in), dimension(:) :: attrValue
+
+  call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+
+end subroutine results_addAttribute_real_array
 
 
 !--------------------------------------------------------------------------------------------------
@@ -190,6 +256,8 @@ subroutine results_writeScalarDataset_real(group,dataset,label,description,SIuni
     call HDF5_addAttribute(groupHandle,'Description',description,label)
   if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
     call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeScalarDataset_real
@@ -215,6 +283,8 @@ subroutine results_writeVectorDataset_real(group,dataset,label,description,SIuni
     call HDF5_addAttribute(groupHandle,'Description',description,label)
   if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
     call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeVectorDataset_real
@@ -241,6 +311,8 @@ subroutine results_writeTensorDataset_real(group,dataset,label,description,SIuni
     call HDF5_addAttribute(groupHandle,'Description',description,label)
   if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
     call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeTensorDataset_real
@@ -267,6 +339,8 @@ subroutine results_writeVectorDataset_int(group,dataset,label,description,SIunit
     call HDF5_addAttribute(groupHandle,'Description',description,label)
   if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
     call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeVectorDataset_int
@@ -293,6 +367,8 @@ subroutine results_writeTensorDataset_int(group,dataset,label,description,SIunit
     call HDF5_addAttribute(groupHandle,'Description',description,label)
   if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
     call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeTensorDataset_int
@@ -321,6 +397,8 @@ subroutine results_writeScalarDataset_rotation(group,dataset,label,description,l
     call HDF5_addAttribute(groupHandle,'Description',description,label)
   if (HDF5_objectExists(groupHandle,label) .and. present(lattice_structure)) &
     call HDF5_addAttribute(groupHandle,'Lattice',lattice_structure,label)
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeScalarDataset_rotation
@@ -432,7 +510,7 @@ subroutine results_mapping_constituent(phaseAt,memberAt,label)
 !---------------------------------------------------------------------------------------------------
 ! renumber member from my process to all processes
   do i = 1, size(label)
-    where(phaseAt_perIP == i) memberAt_total = memberAt + sum(memberOffset(i,0:worldrank-1))
+    where(phaseAt_perIP == i) memberAt_total = memberAt + sum(memberOffset(i,0:worldrank-1)) -1     ! convert to 0-based
   enddo
 
 !--------------------------------------------------------------------------------------------------
@@ -570,7 +648,7 @@ subroutine results_mapping_materialpoint(homogenizationAt,memberAt,label)
 !---------------------------------------------------------------------------------------------------
 ! renumber member from my process to all processes
   do i = 1, size(label)
-    where(homogenizationAt_perIP == i) memberAt_total = memberAt + sum(memberOffset(i,0:worldrank-1))
+    where(homogenizationAt_perIP == i) memberAt_total = memberAt + sum(memberOffset(i,0:worldrank-1)) - 1  ! convert to 0-based
   enddo
 
 !--------------------------------------------------------------------------------------------------
