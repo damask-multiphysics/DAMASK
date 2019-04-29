@@ -1107,14 +1107,12 @@ subroutine constitutive_results
         
   integer :: p
   character(len=256) :: group
-  
-  call HDF5_closeGroup(results_addGroup('current/constitutive'))   
                                              
   do p=1,size(config_name_phase)
-    group = trim('current/constitutive')//'/'//trim(config_name_phase(p))
+    group = trim('current/constituent')//'/'//trim(config_name_phase(p))
     call HDF5_closeGroup(results_addGroup(group))
     
-    group = trim(group)//'/'//'plastic'
+    group = trim(group)//'/plastic'
     
     call HDF5_closeGroup(results_addGroup(group))  
     select case(material_phase_plasticity_type(p))
