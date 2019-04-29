@@ -8,13 +8,13 @@ all: grid mesh processing
 
 .PHONY: grid
 grid: build/grid
-	@(cd build/grid;make -j4 --no-print-directory -ws all install;)
+	@(cd build/grid;make -j4 all install;)
 .PHONY: spectral
 spectral: grid
 
 .PHONY: mesh
 mesh: build/mesh
-	@(cd build/mesh; make -j4 --no-print-directory -ws all install;)
+	@(cd build/mesh; make -j4 all install;)
 .PHONY: FEM
 FEM: mesh
 
