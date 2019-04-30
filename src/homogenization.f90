@@ -66,7 +66,8 @@ module homogenization
  public ::  &
    homogenization_init, &
    materialpoint_stressAndItsTangent, &
-   materialpoint_postResults
+   materialpoint_postResults, &
+   homogenization_results
  private :: &
    partitionDeformation, &
    updateState, &
@@ -291,7 +292,6 @@ subroutine homogenization_init
    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_requested:        ', shape(materialpoint_requested)
    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_converged:        ', shape(materialpoint_converged)
    write(6,'(a32,1x,7(i8,1x),/)') 'materialpoint_doneAndHappy:     ', shape(materialpoint_doneAndHappy)
-   write(6,'(a32,1x,7(i8,1x))')   'maxSizePostResults: ', homogenization_maxSizePostResults
  endif
  flush(6)
 
@@ -968,5 +968,40 @@ function postResults(ip,el)
  end select chosenDamage
 
 end function postResults
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes homogenization results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine homogenization_results
+#if defined(PETSc) || defined(DAMASK_HDF5)
+  use results
+  use HDF5_utilities
+  use config, only: &
+    config_name_homogenization => homogenization_name                                               ! anticipate logical name
+   
+  use material, only: &
+    homogenization_typeInstance, &
+    material_homogenization_type => homogenization_type
+    
+  integer :: p
+  character(len=256) :: group
+                                             
+  do p=1,size(config_name_homogenization)
+    group = trim('current/materialpoint')//'/'//trim(config_name_homogenization(p))
+    call HDF5_closeGroup(results_addGroup(group))
+    
+    group = trim(group)//'/mech'
+    
+    call HDF5_closeGroup(results_addGroup(group))  
+    select case(material_homogenization_type(p))
+    
+    end select
+  
+ enddo   
+#endif
+
+
+end subroutine homogenization_results
 
 end module homogenization

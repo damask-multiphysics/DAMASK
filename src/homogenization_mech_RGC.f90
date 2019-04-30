@@ -1110,6 +1110,36 @@ end function homogenization_RGC_postResults
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief writes results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine mech_RGC_results(instance,group)
+#if defined(PETSc) || defined(DAMASK_HDF5)
+  use results, only: &
+    results_writeDataset
+
+  integer, intent(in) :: instance
+  character(len=*) :: group
+  integer :: o
+  
+  associate(stt => state(instance), dst => dependentState(instance), prm => param(instance))
+
+  outputsLoop: do o = 1,size(prm%outputID)
+    select case(prm%outputID(o))
+
+
+    end select
+  enddo outputsLoop
+  end associate
+  
+#else
+  integer, intent(in) :: instance
+  character(len=*) :: group
+#endif
+
+end subroutine mech_RGC_results
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief collect relaxation vectors of an interface
 !--------------------------------------------------------------------------------------------------
 pure function relaxationVector(intFace,instance,of)
