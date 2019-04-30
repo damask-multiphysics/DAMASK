@@ -1125,7 +1125,16 @@ subroutine mech_RGC_results(instance,group)
 
   outputsLoop: do o = 1,size(prm%outputID)
     select case(prm%outputID(o))
-
+    
+      case (constitutivework_ID)
+        call results_writeDataset(group,stt%work,'W',&
+                                  'work density','J/m³')
+      case (magnitudemismatch_ID)
+        call results_writeDataset(group,dst%mismatch,'M',&
+                                  'average mismatch tensor','tbd')
+      case (penaltyenergy_ID)
+        call results_writeDataset(group,stt%penaltyEnergy,'R',&
+                                  'mismatch penalty density','tbd')
 
     end select
   enddo outputsLoop
