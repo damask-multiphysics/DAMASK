@@ -913,6 +913,7 @@ end function postResults
 subroutine homogenization_results
 #if defined(PETSc) || defined(DAMASK_HDF5)
   use results
+  use homogenization_mech_RGC
   use HDF5_utilities
   use config, only: &
     config_name_homogenization => homogenization_name                                               ! anticipate logical name
@@ -932,7 +933,8 @@ subroutine homogenization_results
     
     call HDF5_closeGroup(results_addGroup(group))  
     select case(material_homogenization_type(p))
-    
+      case(HOMOGENIZATION_rgc_ID)
+        call mech_RGC_results(homogenization_typeInstance(p),group)
     end select
   
  enddo   

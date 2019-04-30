@@ -76,7 +76,8 @@ module homogenization_mech_RGC
    homogenization_RGC_partitionDeformation, &
    homogenization_RGC_averageStressAndItsTangent, &
    homogenization_RGC_updateState, &
-   homogenization_RGC_postResults
+   homogenization_RGC_postResults, &
+   mech_RGC_results ! name suited for planned submodule situation
  private :: &
    relaxationVector, &
    interfaceNormal, &
