@@ -9,6 +9,7 @@
 module homogenization_mech_RGC
  use prec, only: &
    pReal
+ use material
 
  implicit none
  private
@@ -104,18 +105,6 @@ subroutine homogenization_RGC_init()
    INRAD
  use IO, only: &
    IO_error
- use material, only: &
-#ifdef DEBUG
-   mappingHomogenization, &
-#endif
-   homogenization_type, &
-   material_homogenizationAt, &
-   homogState, &
-   HOMOGENIZATION_RGC_ID, &
-   HOMOGENIZATION_RGC_LABEL, &
-   homogenization_typeInstance, &
-   homogenization_Noutput, &
-   homogenization_Ngrains
  use config, only: &
    config_homogenization
 
@@ -322,10 +311,6 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 #endif
  use math, only: &
    math_invert2
- use material, only: &
-   material_homogenizationAt, &
-   homogenization_typeInstance, &
-   mappingHomogenization
  use numerics, only: &
    absTol_RGC, &
    relTol_RGC, &

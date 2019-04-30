@@ -7,6 +7,7 @@
 module homogenization
  use prec, only: &
    pReal
+ use material
 
 !--------------------------------------------------------------------------------------------------
 ! General variables for the homogenization at a  material point
@@ -101,7 +102,6 @@ subroutine homogenization_init
   config_deallocate, &
   config_homogenization, &
   homogenization_name
- use material
  use homogenization_mech_RGC
  use thermal_isothermal
  use thermal_adiabatic
@@ -316,17 +316,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    terminallyIll
  use mesh, only: &
    mesh_element
- use material, only: &
-   plasticState, &
-   sourceState, &
-   homogState, &
-   thermalState, &
-   damageState, &
-   phase_Nsources, &
-   material_homogenizationAt, &
-   mappingHomogenization, &
-   phaseAt, phasememberAt, &
-   homogenization_Ngrains
  use crystallite, only: &
    crystallite_F0, &
    crystallite_Fp0, &
@@ -658,16 +647,6 @@ subroutine materialpoint_postResults
    FEsolving_execIP
  use mesh, only: &
    mesh_element
- use material, only: &
-   material_homogenizationAt, &
-   homogState, &
-   thermalState, &
-   damageState, &
-   plasticState, &
-   sourceState, &
-   material_phase, &
-   homogenization_Ngrains, &
-   microstructure_crystallite
  use crystallite, only: &
    crystallite_sizePostResults, &
    crystallite_postResults
@@ -723,12 +702,6 @@ end subroutine materialpoint_postResults
 subroutine partitionDeformation(ip,el)
  use mesh, only: &
    mesh_element
- use material, only: &
-   homogenization_type, &
-   homogenization_Ngrains, &
-   HOMOGENIZATION_NONE_ID, &
-   HOMOGENIZATION_ISOSTRAIN_ID, &
-   HOMOGENIZATION_RGC_ID
  use crystallite, only: &
    crystallite_partionedF
  use homogenization_mech_RGC, only: &
@@ -767,14 +740,6 @@ end subroutine partitionDeformation
 function updateState(ip,el)
  use mesh, only: &
    mesh_element
- use material, only: &
-   homogenization_type, &
-   thermal_type, &
-   damage_type, &
-   homogenization_Ngrains, &
-   HOMOGENIZATION_RGC_ID, &
-   THERMAL_adiabatic_ID, &
-   DAMAGE_local_ID
  use crystallite, only: &
    crystallite_P, &
    crystallite_dPdF, &
@@ -835,13 +800,6 @@ end function updateState
 subroutine averageStressAndItsTangent(ip,el)
  use mesh, only: &
    mesh_element
- use material, only: &
-   homogenization_type, &
-   homogenization_typeInstance, &
-   homogenization_Ngrains, &
-   HOMOGENIZATION_NONE_ID, &
-   HOMOGENIZATION_ISOSTRAIN_ID, &
-   HOMOGENIZATION_RGC_ID
  use crystallite, only: &
    crystallite_P,crystallite_dPdF
  use homogenization_mech_RGC, only: &
@@ -884,27 +842,6 @@ end subroutine averageStressAndItsTangent
 function postResults(ip,el)
  use mesh, only: &
    mesh_element
- use material, only: &
-   thermalMapping, &
-   thermal_typeInstance, &
-   material_homogenizationAt, &
-   homogenization_typeInstance,&
-   mappingHomogenization, &
-   homogState, &
-   thermalState, &
-   damageState, &
-   homogenization_type, &
-   thermal_type, &
-   damage_type, &
-   HOMOGENIZATION_NONE_ID, &
-   HOMOGENIZATION_ISOSTRAIN_ID, &
-   HOMOGENIZATION_RGC_ID, &
-   THERMAL_isothermal_ID, &
-   THERMAL_adiabatic_ID, &
-   THERMAL_conduction_ID, &
-   DAMAGE_none_ID, &
-   DAMAGE_local_ID, &
-   DAMAGE_nonlocal_ID
  use homogenization_mech_RGC, only: &
    homogenization_RGC_postResults
  use thermal_adiabatic, only: &
