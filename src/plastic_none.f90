@@ -31,7 +31,6 @@ subroutine plastic_none_init
    material_phase, &
    plasticState
 
- implicit none
  integer :: &
    Ninstance, &
    p, &
@@ -46,8 +45,6 @@ subroutine plastic_none_init
  do p = 1, size(phase_plasticity)
    if (phase_plasticity(p) /= PLASTICITY_NONE_ID) cycle
 
-!--------------------------------------------------------------------------------------------------
-! allocate state arrays
    NipcMyPhase = count(material_phase == p)
    call material_allocatePlasticState(p,NipcMyPhase,0,0,0, &
                                       0,0,0)

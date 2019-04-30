@@ -260,7 +260,6 @@ subroutine plastic_nonlocal_init
   use config
   use lattice
 
-  implicit none
   character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
   integer,                dimension(0), parameter :: emptyIntArray    = [integer::]
   real(pReal),            dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
@@ -751,7 +750,6 @@ subroutine plastic_nonlocal_init
      material_phase, &
      phase_plasticityInstance, &
      phasememberAt
-      implicit none
       
    integer,intent(in) ::&
      phase, &
@@ -867,7 +865,6 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
     LATTICE_fcc_ID, &
     lattice_structure
   
-  implicit none
   integer, intent(in) :: &
     ip, &
     el
@@ -1090,7 +1087,6 @@ end subroutine plastic_nonlocal_dependentState
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, &
                                      tauThreshold, c, Temperature, instance, of)
-  implicit none
   integer, intent(in) :: &
     c, &                                                                                            !< dislocation character (1:edge, 2:screw)
     instance, of
@@ -1239,7 +1235,6 @@ subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
     phaseAt, phasememberAt, &
     phase_plasticityInstance
 
-  implicit none
   integer, intent(in) :: &
     ip, &                                                                                           !< current integration point
     el                                                                                              !< current element number
@@ -1392,7 +1387,6 @@ subroutine plastic_nonlocal_deltaState(Mp,ip,el)
     phaseAt, phasememberAt, &
     phase_plasticityInstance
   
-  implicit none
   integer, intent(in) :: &
     ip, &
     el
@@ -1553,7 +1547,6 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
     LATTICE_bcc_ID, & 
     LATTICE_fcc_ID
   
-  implicit none
   integer, intent(in) :: &
     ip, &                                                                                           !< current integration point
     el                                                                                              !< current element number
@@ -2027,7 +2020,6 @@ subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
   use lattice, only: &
     lattice_qDisorientation
   
-  implicit none
   integer, intent(in) :: &
     i, &
     e
@@ -2175,7 +2167,6 @@ function plastic_nonlocal_postResults(ph,instance,of) result(postResults)
  use material, only: &
    plasticState
 
- implicit none
  integer, intent(in) :: &
    ph, &
    instance, &
@@ -2316,7 +2307,7 @@ outputsLoop: do o = 1,size(param(instance)%outputID)
     
     case (rho_dot_ann_ath_ID)
       postResults(cs+1:cs+ns) = results(instance)%rhoDotAthermalAnnihilation(1:ns,1,of) & 
-                                   + results(instance)%rhoDotAthermalAnnihilation(1:ns,2,of)
+                              + results(instance)%rhoDotAthermalAnnihilation(1:ns,2,of)
       cs = cs + ns
 
     case (rho_dot_ann_the_edge_ID) 
@@ -2378,7 +2369,6 @@ end function plastic_nonlocal_postResults
 function getRho(instance,of,ip,el)
   use mesh
   
-  implicit none
   integer, intent(in) :: instance, of,ip,el
   real(pReal), dimension(param(instance)%totalNslip,10) :: getRho
   
@@ -2402,10 +2392,10 @@ end function getRho
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_results(instance,group)
-#if defined(PETSc) || defined(DAMASKHDF5)
-  use results
+#if defined(PETSc) || defined(DAMASK_HDF5)
+  use results, only: &
+    results_writeDataset
 
-  implicit none
   integer, intent(in) :: instance
   character(len=*) :: group
   integer :: o
@@ -2413,6 +2403,39 @@ subroutine plastic_nonlocal_results(instance,group)
   associate(prm => param(instance), stt => state(instance))
   outputsLoop: do o = 1,size(prm%outputID)
     select case(prm%outputID(o))
+      case (rho_sgl_mob_edg_pos_ID)
+        call results_writeDataset(group,stt%rho_sgl_mob_edg_pos, 'rho_sgl_mob_edg_pos', &
+                                  'positive mobile edge density','1/m²')
+      case (rho_sgl_imm_edg_pos_ID)
+        call results_writeDataset(group,stt%rho_sgl_imm_edg_pos, 'rho_sgl_imm_edg_pos',&
+                                  'positive immobile edge density','1/m²')
+      case (rho_sgl_mob_edg_neg_ID)
+        call results_writeDataset(group,stt%rho_sgl_mob_edg_neg, 'rho_sgl_mob_edg_neg',&
+                                  'negative mobile edge density','1/m²')
+      case (rho_sgl_imm_edg_neg_ID)
+        call results_writeDataset(group,stt%rho_sgl_imm_edg_neg, 'rho_sgl_imm_edg_neg',&
+                                  'negative immobile edge density','1/m²')
+      case (rho_dip_edg_ID)
+        call results_writeDataset(group,stt%rho_dip_edg, 'rho_dip_edg',&
+                                  'edge dipole density','1/m²')
+      case (rho_sgl_mob_scr_pos_ID)
+        call results_writeDataset(group,stt%rho_sgl_mob_scr_pos, 'rho_sgl_mob_scr_pos',&
+                                  'positive mobile screw density','1/m²')
+      case (rho_sgl_imm_scr_pos_ID)
+        call results_writeDataset(group,stt%rho_sgl_imm_scr_pos, 'rho_sgl_imm_scr_pos',&
+                                  'positive immobile screw density','1/m²')
+      case (rho_sgl_mob_scr_neg_ID)
+        call results_writeDataset(group,stt%rho_sgl_mob_scr_neg, 'rho_sgl_mob_scr_neg',&
+                                  'negative mobile screw density','1/m²')
+      case (rho_sgl_imm_scr_neg_ID)
+        call results_writeDataset(group,stt%rho_sgl_imm_scr_neg, 'rho_sgl_imm_scr_neg',&
+                                  'negative immobile screw density','1/m²')
+      case (rho_dip_scr_ID)
+        call results_writeDataset(group,stt%rho_dip_scr, 'rho_dip_scr',&
+                                  'screw dipole density','1/m²')
+      case (rho_forest_ID)
+        call results_writeDataset(group,stt%rho_forest, 'rho_forest',&
+                                  'forest density','1/m²')
     end select
   enddo outputsLoop
   end associate

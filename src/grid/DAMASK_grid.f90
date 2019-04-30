@@ -358,6 +358,11 @@ program DAMASK_spectral
  enddo
  close(fileUnit)
 
+ call results_openJobFile
+ call results_addAttribute('grid',grid,'mapping')
+ call results_addAttribute('size',geomSize,'mapping')
+ call results_closeJobFile
+
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
  call Utilities_init()

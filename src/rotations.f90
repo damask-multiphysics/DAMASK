@@ -777,12 +777,12 @@ pure function qu2ax(qu) result(ax)
   
   real(pReal)                               :: omega, s
 
-  omega = 2.0 * acos(math_clip(qu%w,-1.0_pReal,1.0_pReal))
   ! if the angle equals zero, then we return the rotation axis as [001]
-  if (dEq0(omega)) then
-    ax = [ 0.0, 0.0, 1.0, 0.0 ]
+  if (dEq0(sqrt(qu%x**2+qu%y**2+qu%z**2))) then
+    ax = [ 0.0_pReal, 0.0_pReal, 1.0_pReal, 0.0_pReal ]
   elseif (dNeq0(qu%w)) then
     s =  sign(1.0_pReal,qu%w)/sqrt(qu%x**2+qu%y**2+qu%z**2)
+    omega = 2.0_pReal * acos(math_clip(qu%w,-1.0_pReal,1.0_pReal))
     ax = [ qu%x*s, qu%y*s, qu%z*s, omega ]
   else
     ax = [ qu%x, qu%y, qu%z, PI ]

@@ -9,10 +9,6 @@
 #include "list.f90"
 #include "future.f90"
 #include "config.f90"
-#ifdef DAMASKHDF5
-#include "HDF5_utilities.f90"
-#include "results.f90"
-#endif
 #include "math.f90"
 #include "quaternions.f90"
 #include "Lambert.f90"
@@ -25,6 +21,10 @@
 #endif
 #ifdef Marc4DAMASK
 #include "mesh_marc.f90"
+#endif
+#ifdef DAMASK_HDF5
+#include "HDF5_utilities.f90"
+#include "results.f90"
 #endif
 #include "material.f90"
 #include "lattice.f90"

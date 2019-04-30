@@ -21,7 +21,7 @@ module numerics
    pert_method                =  1_pInt, &                                                          !< method used in perturbation technique for tangent
    randomSeed                 =  0_pInt, &                                                          !< fixed seeding for pseudo-random number generator, Default 0: use random seed
    worldrank                  =  0_pInt, &                                                          !< MPI worldrank (/=0 for MPI simulations only)
-   worldsize                  =  0_pInt, &                                                          !< MPI worldsize (/=0 for MPI simulations only)
+   worldsize                  =  1_pInt, &                                                          !< MPI worldsize (/=1 for MPI simulations only)
    numerics_integrator        =  1_pInt                                                             !< method used for state integration Default 1: fix-point iteration
  integer(4), protected, public :: &
    DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive

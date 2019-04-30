@@ -147,16 +147,14 @@ module material
    damage_initialPhi                                                                                !< initial damage per each homogenization
 
 ! NEW MAPPINGS 
- integer(pInt), dimension(:), allocatable, public, protected :: &
-   material_homogenizationAt, &                                                                     !< homogenization ID of each element (copy of mesh_homogenizationAt)
-   material_homogenizationMemberAt, &                                                               !< position of the element within its homogenization instance
-   material_aggregateAt, &                                                                          !< aggregate ID of each element FUTURE USE FOR OUTPUT
-   material_aggregatMemberAt                                                                        !< position of the element within its aggregate instance FUTURE USE FOR OUTPUT
- integer(pInt), dimension(:,:), allocatable, public, protected :: &
-   material_phaseAt, &                                                                              !< phase ID of each element
-   material_phaseMemberAt, &                                                                        !< position of the element within its phase instance
-   material_crystalliteAt, &                                                                        !< crystallite ID of each element CURRENTLY NOT PER CONSTITUTENT
-   material_crystalliteMemberAt                                                                     !< position of the element within its crystallite instance CURRENTLY NOT PER CONSTITUTENT
+ integer, dimension(:),     allocatable, public, protected :: &                                     ! (elem)
+   material_homogenizationAt                                                                        !< homogenization ID of each element (copy of mesh_homogenizationAt)
+ integer, dimension(:,:),   allocatable, public, protected :: &                                     ! (ip,elem)
+   material_homogenizationMemberAt                                                                  !< position of the element within its homogenization instance
+ integer, dimension(:,:), allocatable, public, protected :: &                                       ! (constituent,elem)
+   material_phaseAt                                                                                 !< phase ID of each element
+ integer, dimension(:,:,:), allocatable, public, protected :: &                                     ! (constituent,ip,elem)
+   material_phaseMemberAt                                                                           !< position of the element within its phase instance
 ! END NEW MAPPINGS
  
 ! DEPRECATED: use material_phaseAt
@@ -275,7 +273,10 @@ contains
 !> @details figures out if solverJobName.materialConfig is present, if not looks for
 !> material.config
 !--------------------------------------------------------------------------------------------------
-subroutine material_init()
+subroutine material_init
+#if defined(PETSc) || defined(DAMASK_HDF5)
+ use results
+#endif
  use IO, only: &
    IO_error
  use debug, only: &
@@ -382,21 +383,57 @@ subroutine material_init()
  endif debugOut
 
  call material_populateGrains
+ 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! new mappings
+ allocate(material_homogenizationAt,source=theMesh%homogenizationAt)
+ allocate(material_homogenizationMemberAt(theMesh%elem%nIPs,theMesh%Nelems),source=0)
 
+ allocate(CounterHomogenization(size(config_homogenization)),source=0)
+ do e = 1, theMesh%Nelems
+   do i = 1, theMesh%elem%nIPs
+     CounterHomogenization(material_homogenizationAt(e)) = &
+     CounterHomogenization(material_homogenizationAt(e)) + 1
+     material_homogenizationMemberAt(i,e) = CounterHomogenization(material_homogenizationAt(e))
+   enddo
+ enddo
+
+
+ allocate(material_phaseAt(homogenization_maxNgrains,theMesh%Nelems), source=material_phase(:,1,:))
+ allocate(material_phaseMemberAt(homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),source=0)
+ 
+ allocate(CounterPhase(size(config_phase)),source=0)
+ do e = 1, theMesh%Nelems
+   do i = 1, theMesh%elem%nIPs
+     do c = 1, homogenization_maxNgrains
+       CounterPhase(material_phaseAt(c,e)) = &
+       CounterPhase(material_phaseAt(c,e)) + 1
+       material_phaseMemberAt(c,i,e) = CounterPhase(material_phaseAt(c,e))
+     enddo
+   enddo
+ enddo
+ 
+#if defined(PETSc) || defined(DAMASK_HDF5)
+ call results_openJobFile
+ call results_mapping_constituent(material_phaseAt,material_phaseMemberAt,phase_name)
+ call results_mapping_materialpoint(material_homogenizationAt,material_homogenizationMemberAt,homogenization_name)
+ call results_closeJobFile
+#endif
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! BEGIN DEPRECATED
  allocate(phaseAt                   (  homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),source=0_pInt)
  allocate(phasememberAt             (  homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),source=0_pInt)
  allocate(mappingHomogenization     (2,                          theMesh%elem%nIPs,theMesh%Nelems),source=0_pInt)
  allocate(mappingHomogenizationConst(                            theMesh%elem%nIPs,theMesh%Nelems),source=1_pInt)
-! END DEPRECATED
-
- allocate(material_homogenizationAt,source=theMesh%homogenizationAt)
- allocate(material_AggregateAt,     source=theMesh%homogenizationAt)
  
- allocate(CounterPhase         (size(config_phase)),         source=0_pInt)
- allocate(CounterHomogenization(size(config_homogenization)),source=0_pInt)
+ CounterHomogenization=0
+ CounterPhase         =0
 
-! BEGIN DEPRECATED
+
  do e = 1_pInt,theMesh%Nelems
  myHomog = theMesh%homogenizationAt(e)
    do i = 1_pInt, theMesh%elem%nIPs
@@ -819,34 +856,9 @@ subroutine material_parseTexture
      if(dNeq(math_det33(texture_transformation(1:3,1:3,t)),1.0_pReal)) call IO_error(157_pInt,t)
    endif
 
-   if (config_texture(t)%keyExists('symmetry')) then
-     select case (config_texture(t)%getString('symmetry'))
-       case('orthotropic')
-         texture_symmetry(t) = 4_pInt
-       case('monoclinic')
-         texture_symmetry(t) = 2_pInt
-       case default
-         texture_symmetry(t) = 1_pInt
-     end select
-   endif
-
-   if (config_texture(t)%keyExists('(random)')) then
-     strings = config_texture(t)%getStrings('(random)',raw=.true.)
-     do i = 1_pInt, size(strings)
-       gauss = gauss + 1_pInt
-       texture_Gauss(1:3,gauss,t) = math_sampleRandomOri()
-       chunkPos = IO_stringPos(strings(i))
-       do j = 1_pInt,3_pInt,2_pInt
-         select case (IO_stringValue(strings(i),chunkPos,j))
-           case('scatter')
-             texture_Gauss(4,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)*inRad
-           case('fraction')
-             texture_Gauss(5,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)
-         end select
-       enddo
-     enddo
-   endif
-
+   if (config_texture(t)%keyExists('symmetry')) call IO_error(147,ext_msg='symmetry')
+   if (config_texture(t)%keyExists('(random)')) call IO_error(147,ext_msg='(random)')
+   if (config_texture(t)%keyExists('(fiber)'))  call IO_error(147,ext_msg='(fiber)')
    
    if (config_texture(t)%keyExists('(gauss)')) then
      gauss = gauss + 1_pInt
@@ -867,31 +879,6 @@ subroutine material_parseTexture
                  texture_Gauss(5,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)
           end select
       enddo
-     enddo
-   endif
-    
-    
-   if (config_texture(t)%keyExists('(fiber)')) then
-     fiber = fiber + 1_pInt
-     strings = config_texture(t)%getStrings('(fiber)',raw= .true.)
-     do i = 1_pInt, size(strings)
-       chunkPos = IO_stringPos(strings(i))
-       do j = 1_pInt,11_pInt,2_pInt
-         select case (IO_stringValue(strings(i),chunkPos,j))
-             case('alpha1')
-                 texture_Fiber(1,fiber,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)*inRad
-             case('alpha2')
-                 texture_Fiber(2,fiber,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)*inRad
-             case('beta1')
-                 texture_Fiber(3,fiber,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)*inRad
-             case('beta2')
-                 texture_Fiber(4,fiber,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)*inRad
-             case('scatter')
-                 texture_Fiber(5,fiber,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)*inRad
-             case('fraction')
-                 texture_Fiber(6,fiber,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)
-          end select
-       enddo
      enddo
    endif
  enddo    
@@ -1003,11 +990,7 @@ subroutine material_populateGrains
    math_RtoEuler, &
    math_EulerToR, &
    math_mul33x33, &
-   math_range, &
-   math_sampleRandomOri, &
-   math_sampleGaussOri, &
-   math_sampleFiberOri, &
-   math_symmetricEulers
+   math_range
  use mesh, only: &
    theMesh, &
    mesh_ipVolume
@@ -1189,28 +1172,12 @@ subroutine material_populateGrains
 ! has texture components
          gauss: do t = 1_pInt,texture_Ngauss(textureID)                                             ! loop over Gauss components
            do g = 1_pInt,int(real(myNorientations,pReal)*texture_Gauss(5,t,textureID),pInt)         ! loop over required grain count
-             orientationOfGrain(:,grain+constituentGrain+g) = &
-               math_sampleGaussOri(texture_Gauss(1:3,t,textureID),&
-                                   texture_Gauss(  4,t,textureID))
+             orientationOfGrain(:,grain+constituentGrain+g) = texture_Gauss(1:3,t,textureID)
            enddo
            constituentGrain = &
            constituentGrain + int(real(myNorientations,pReal)*texture_Gauss(5,t,textureID))         ! advance counter for grains of current constituent
          enddo gauss
 
-         fiber: do t = 1_pInt,texture_Nfiber(textureID)                                             ! loop over fiber components
-           do g = 1_pInt,int(real(myNorientations,pReal)*texture_Fiber(6,t,textureID),pInt)         ! loop over required grain count
-             orientationOfGrain(:,grain+constituentGrain+g) = &
-               math_sampleFiberOri(texture_Fiber(1:2,t,textureID),&
-                                   texture_Fiber(3:4,t,textureID),&
-                                   texture_Fiber(  5,t,textureID))
-           enddo
-           constituentGrain = &
-           constituentGrain + int(real(myNorientations,pReal)*texture_fiber(6,t,textureID),pInt)    ! advance counter for grains of current constituent
-         enddo fiber
-
-         random: do constituentGrain = constituentGrain+1_pInt,myNorientations                      ! fill remainder with random
-            orientationOfGrain(:,grain+constituentGrain) = math_sampleRandomOri()
-         enddo random
 
 !--------------------------------------------------------------------------------------------------
 ! ...texture transformation
@@ -1223,25 +1190,6 @@ subroutine material_populateGrains
                                              ) &
                                              )
          enddo
-
-!--------------------------------------------------------------------------------------------------
-! ...sample symmetry
-
-         symExtension = texture_symmetry(textureID) - 1_pInt
-         if (symExtension > 0_pInt) then                                                            ! sample symmetry (number of additional equivalent orientations)
-           constituentGrain = myNorientations                                                       ! start right after "real" orientations
-           do j = 1_pInt,myNorientations                                                            ! loop over each "real" orientation
-             symOrientation = math_symmetricEulers(texture_symmetry(textureID), &
-                                                   orientationOfGrain(1:3,grain+j))                 ! get symmetric equivalents
-             e = min(symExtension,NgrainsOfConstituent(i)-constituentGrain)                         ! do not overshoot end of constituent grain array
-             if (e > 0_pInt) then
-               orientationOfGrain(1:3,grain+constituentGrain+1:   &
-                                      grain+constituentGrain+e) = &
-                 symOrientation(1:3,1:e)
-               constituentGrain = constituentGrain + e                                              ! remainder shrinks by e
-             endif
-           enddo
-         endif
 
 !--------------------------------------------------------------------------------------------------
 ! shuffle grains within current constituent

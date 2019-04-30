@@ -33,8 +33,7 @@ unset -f set
 # add BRANCH if DAMASK_ROOT is a git repository
 cd $DAMASK_ROOT >/dev/null; BRANCH=$(git branch 2>/dev/null| grep -E '^\* '); cd - >/dev/null
 
-# add DAMASK_BIN if present
-[ "x$DAMASK_BIN" != "x" ] && PATH=$DAMASK_BIN:$PATH
+PATH=${DAMASK_ROOT}/bin:$PATH
 
 SOLVER=$(type -p DAMASK_spectral || true 2>/dev/null)
 [ "x$SOLVER" == "x" ] && SOLVER=$(blink 'Not found!')

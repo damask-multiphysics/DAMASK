@@ -708,6 +708,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
    msg = 'too many systems requested'
  case (146_pInt)
    msg = 'number of values does not match'
+ case (147_pInt)
+   msg = 'not supported anymore'
 
 !--------------------------------------------------------------------------------------------------
 ! material error messages and related messages in mesh

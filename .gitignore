@@ -1,8 +1,5 @@
 *.pyc
-*.mod
-*.o
 *.hdf5
-*.exe
 *.bak
 *~
 bin
