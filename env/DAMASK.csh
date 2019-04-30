@@ -13,9 +13,7 @@ set BRANCH = `git branch 2>/dev/null| grep -E '^\* ')`
 cd - >/dev/null
 
 # if DAMASK_BIN is present
-if ( $?DAMASK_BIN) then
-  set path = ($DAMASK_BIN $path)
-endif
+set path = ($DAMASK_ROOT/bin $path)
 
 set SOLVER=`which DAMASK_spectral`                                                          
 set PROCESSING=`which postResults`                                                          

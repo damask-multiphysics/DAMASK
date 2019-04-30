@@ -40,9 +40,10 @@ def displacementAvgFFT(F,grid,size,nodal=False,transformed=False):
                           np.linspace(0,size[0],1+grid[0]),
                           indexing = 'ij')
   else:
-    x, y, z = np.meshgrid(np.linspace(0,size[2],grid[2],endpoint=False),
-                          np.linspace(0,size[1],grid[1],endpoint=False),
-                          np.linspace(0,size[0],grid[0],endpoint=False),
+    delta = size/grid*0.5
+    x, y, z = np.meshgrid(np.linspace(delta[2],size[2]-delta[2],grid[2]),
+                          np.linspace(delta[1],size[1]-delta[1],grid[1]),
+                          np.linspace(delta[0],size[0]-delta[0],grid[0]),
                           indexing = 'ij')
 
   origCoords = np.concatenate((z[:,:,:,None],y[:,:,:,None],x[:,:,:,None]),axis = 3) 

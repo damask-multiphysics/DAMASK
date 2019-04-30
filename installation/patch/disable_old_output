@@ -1,0 +1,178 @@
+From 6dbd904a4cfc28add3c39bb2a4ec9e2dbb2442b6 Mon Sep 17 00:00:00 2001
+From: Martin Diehl <m.diehl@mpie.de>
+Date: Thu, 18 Apr 2019 18:25:32 +0200
+Subject: [PATCH] to create patch
+
+---
+ src/DAMASK_grid.f90    | 81 +-----------------------------------------
+ src/homogenization.f90 |  2 ++
+ 2 files changed, 3 insertions(+), 80 deletions(-)
+
+diff --git a/src/DAMASK_grid.f90 b/src/DAMASK_grid.f90
+index f2f52bb2..a7543f4d 100644
+--- a/src/DAMASK_grid.f90
++++ b/src/DAMASK_grid.f90
+@@ -18,7 +18,6 @@ program DAMASK_spectral
+  use DAMASK_interface, only: &
+    DAMASK_interface_init, &
+    loadCaseFile, &
+-   geometryFile, &
+    getSolverJobName, &
+    interface_restartInc
+  use IO, only: &
+@@ -49,14 +48,9 @@ program DAMASK_spectral
+    restartInc
+  use numerics, only: &
+    worldrank, &
+-   worldsize, &
+    stagItMax, &
+    maxCutBack, &
+    continueCalculation
+- use homogenization, only: &
+-   materialpoint_sizeResults, &
+-   materialpoint_results, &
+-   materialpoint_postResults
+  use material, only: &
+    thermal_type, &
+    damage_type, &
+@@ -131,12 +125,6 @@ program DAMASK_spectral
+  type(tLoadCase), allocatable, dimension(:) :: loadCases                                            !< array of all load cases
+  type(tLoadCase) :: newLoadCase
+  type(tSolutionState), allocatable, dimension(:) :: solres
+- integer(MPI_OFFSET_KIND) :: fileOffset
+- integer(MPI_OFFSET_KIND), dimension(:), allocatable :: outputSize
+- integer(pInt), parameter :: maxByteOut = 2147483647-4096                                           !< limit of one file output write https://trac.mpich.org/projects/mpich/ticket/1742
+- integer(pInt), parameter :: maxRealOut = maxByteOut/pReal
+- integer(pLongInt), dimension(2) :: outputIndex
+- PetscErrorCode :: ierr
+  procedure(grid_mech_spectral_basic_init), pointer :: &
+    mech_init
+  procedure(grid_mech_spectral_basic_forward), pointer :: &
+@@ -384,22 +372,6 @@ program DAMASK_spectral
+ ! write header of output file
+  if (worldrank == 0) then
+    writeHeader: if (interface_restartInc < 1_pInt) then
+-     open(newunit=fileUnit,file=trim(getSolverJobName())//&
+-                                 '.spectralOut',form='UNFORMATTED',status='REPLACE')
+-     write(fileUnit) 'load:',       trim(loadCaseFile)                                               ! ... and write header
+-     write(fileUnit) 'workingdir:', 'n/a'
+-     write(fileUnit) 'geometry:',   trim(geometryFile)
+-     write(fileUnit) 'grid:',       grid
+-     write(fileUnit) 'size:',       geomSize
+-     write(fileUnit) 'materialpoint_sizeResults:', materialpoint_sizeResults
+-     write(fileUnit) 'loadcases:',  size(loadCases)
+-     write(fileUnit) 'frequencies:', loadCases%outputfrequency                                       ! one entry per LoadCase
+-     write(fileUnit) 'times:',      loadCases%time                                                   ! one entry per LoadCase
+-     write(fileUnit) 'logscales:',  loadCases%logscale
+-     write(fileUnit) 'increments:', loadCases%incs                                                   ! one entry per LoadCase
+-     write(fileUnit) 'startingIncrement:', restartInc                                                ! start with writing out the previous inc
+-     write(fileUnit) 'eoh'
+-     close(fileUnit)                                                                                 ! end of header
+      open(newunit=statUnit,file=trim(getSolverJobName())//&
+                                  '.sta',form='FORMATTED',status='REPLACE')
+      write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                 ! statistics file
+@@ -412,39 +384,6 @@ program DAMASK_spectral
+    endif writeHeader
+  endif
+ 
+-!--------------------------------------------------------------------------------------------------
+-! prepare MPI parallel out (including opening of file)
+- allocate(outputSize(worldsize), source = 0_MPI_OFFSET_KIND)
+- outputSize(worldrank+1) = size(materialpoint_results,kind=MPI_OFFSET_KIND)*int(pReal,MPI_OFFSET_KIND)
+- call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+- if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_allreduce')
+- call MPI_file_open(PETSC_COMM_WORLD, trim(getSolverJobName())//'.spectralOut', &
+-                    MPI_MODE_WRONLY + MPI_MODE_APPEND, &
+-                    MPI_INFO_NULL, &
+-                    fileUnit, &
+-                    ierr)
+- if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_file_open')
+- call MPI_file_get_position(fileUnit,fileOffset,ierr)                                                ! get offset from header
+- if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_file_get_position')
+- fileOffset = fileOffset + sum(outputSize(1:worldrank))                                             ! offset of my process in file (header + processes before me)
+- call MPI_file_seek (fileUnit,fileOffset,MPI_SEEK_SET,ierr)
+- if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_file_seek')
+-
+- writeUndeformed: if (interface_restartInc < 1_pInt) then
+-   write(6,'(1/,a)') ' ... writing initial configuration to file ........................'
+-   call CPFEM_results(0_pInt,0.0_pReal)
+-   do i = 1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1         ! slice the output of my process in chunks not exceeding the limit for one output
+-     outputIndex = int([(i-1_pInt)*((maxRealOut)/materialpoint_sizeResults)+1_pInt, &               ! QUESTION: why not starting i at 0 instead of murky 1?
+-                             min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
+-     call MPI_file_write(fileUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)), &
+-                                 [(outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)]), &
+-                         int((outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)), &
+-                         MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
+-     if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_file_write')
+-   enddo
+-   fileOffset = fileOffset + sum(outputSize)                                                        ! forward to current file position
+- endif writeUndeformed
+-
+ 
+  loadCaseLooping: do currentLoadCase = 1_pInt, size(loadCases)
+    time0 = time                                                                                     ! load case start time
+@@ -574,7 +513,6 @@ program DAMASK_spectral
+            write(6,'(/,a)') ' cutting back '
+          else                                                                                       ! no more options to continue
+            call IO_warning(850_pInt)
+-           call MPI_file_close(fileUnit,ierr)
+            close(statUnit)
+            call quit(-1_pInt*(lastRestartWritten+1_pInt))                                           ! quit and provide information about last restart inc written
+          endif
+@@ -593,24 +531,8 @@ program DAMASK_spectral
+                                    ' increment ', totalIncsCounter, ' NOT converged'
+        endif; flush(6)
+ 
+-       if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0_pInt) then                      ! at output frequency
+-         write(6,'(1/,a)') ' ... writing results to file ......................................'
+-         flush(6)
+-         call materialpoint_postResults()
+-         call MPI_file_seek (fileUnit,fileOffset,MPI_SEEK_SET,ierr)
+-         if (ierr /= 0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_seek')
+-         do i=1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1     ! slice the output of my process in chunks not exceeding the limit for one output
+-           outputIndex=int([(i-1_pInt)*((maxRealOut)/materialpoint_sizeResults)+1_pInt, &
+-                      min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
+-           call MPI_file_write(fileUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)),&
+-                                       [(outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)]), &
+-                               int((outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)),&
+-                               MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
+-           if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_write')
+-         enddo
+-         fileOffset = fileOffset + sum(outputSize)                                                  ! forward to current file position
++       if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0_pInt) &                         ! at output frequency
+          call CPFEM_results(totalIncsCounter,time)
+-       endif
+        if (              loadCases(currentLoadCase)%restartFrequency > 0_pInt &                     ! writing of restart info requested ...
+            .and. mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0_pInt) then               ! ... and at frequency of writing restart information
+          restartWrite = .true.                                                                      ! set restart parameter for FEsolving
+@@ -633,7 +555,6 @@ program DAMASK_spectral
+    real(convergedCounter, pReal)/&
+    real(notConvergedCounter + convergedCounter,pReal)*100.0_pReal, ' %) increments converged!'
+  flush(6)
+- call MPI_file_close(fileUnit,ierr)
+  close(statUnit)
+ 
+  if (notConvergedCounter > 0_pInt) call quit(2_pInt)                                                ! error if some are not converged
+diff --git a/src/homogenization.f90 b/src/homogenization.f90
+index 06da6ab2..0743d545 100644
+--- a/src/homogenization.f90
++++ b/src/homogenization.f90
+@@ -269,6 +269,7 @@ subroutine homogenization_init
+                            + homogenization_maxNgrains * (1 + crystallite_maxSizePostResults &      ! crystallite size & crystallite results
+                                                         + 1 + constitutive_plasticity_maxSizePostResults &     ! constitutive size & constitutive results
+                                                             + constitutive_source_maxSizePostResults)
++ materialpoint_sizeResults = 0
+  allocate(materialpoint_results(materialpoint_sizeResults,theMesh%elem%nIPs,theMesh%nElems))
+ 
+  write(6,'(/,a)')   ' <<<+-  homogenization init  -+>>>'
+@@ -682,6 +683,7 @@ subroutine materialpoint_postResults
+    i, &                                                                                             !< integration point number
+    e                                                                                                !< element number
+ 
++ return
+  !$OMP PARALLEL DO PRIVATE(myNgrains,myCrystallite,thePos,theSize)
+    elementLooping: do e = FEsolving_execElem(1),FEsolving_execElem(2)
+      myNgrains = homogenization_Ngrains(mesh_element(3,e))
+-- 
+2.21.0
+

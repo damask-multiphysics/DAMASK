@@ -198,7 +198,6 @@ subroutine plastic_dislotwin_init
    config_phase
  use lattice
 
- implicit none
  integer :: &
    Ninstance, &
    p, i, &
@@ -268,9 +267,9 @@ subroutine plastic_dislotwin_init
    slipActive: if (prm%sum_N_sl > 0) then
      prm%P_sl          = lattice_SchmidMatrix_slip(prm%N_sl,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
-     prm%h_sl_sl = transpose(lattice_interaction_SlipBySlip(prm%N_sl, &
+     prm%h_sl_sl = lattice_interaction_SlipBySlip(prm%N_sl, &
                                                   config%getFloats('interaction_slipslip'), &
-                                                  config%getString('lattice_structure')))
+                                                  config%getString('lattice_structure'))
      prm%forestProjection     = lattice_forestProjection (prm%N_sl,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
 
@@ -332,9 +331,9 @@ subroutine plastic_dislotwin_init
    if (prm%sum_N_tw > 0) then
      prm%P_tw  = lattice_SchmidMatrix_twin(prm%N_tw,config%getString('lattice_structure'),&
                                                   config%getFloat('c/a',defaultVal=0.0_pReal))
-     prm%h_tw_tw      = transpose(lattice_interaction_TwinByTwin(prm%N_tw,&
+     prm%h_tw_tw      = lattice_interaction_TwinByTwin(prm%N_tw,&
                                                        config%getFloats('interaction_twintwin'), &
-                                                       config%getString('lattice_structure')))
+                                                       config%getString('lattice_structure'))
 
      prm%b_tw         = config%getFloats('twinburgers',  requiredSize=size(prm%N_tw))
      prm%t_tw         = config%getFloats('twinsize',     requiredSize=size(prm%N_tw))
@@ -374,15 +373,15 @@ subroutine plastic_dislotwin_init
      prm%b_tr = config%getFloats('transburgers')
      prm%b_tr = math_expand(prm%b_tr,prm%N_tr)
      
-     prm%h                = config%getFloat('transstackheight', defaultVal=0.0_pReal) ! ToDo: How to handle that???
-     prm%i_tr             = config%getFloat('cmfptrans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
-     prm%gamma_fcc_hex    = config%getFloat('deltag')
-     prm%xc_trans         = config%getFloat('xc_trans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
-     prm%L_tr             = config%getFloat('l0_trans')
+     prm%h             = config%getFloat('transstackheight', defaultVal=0.0_pReal) ! ToDo: How to handle that???
+     prm%i_tr          = config%getFloat('cmfptrans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
+     prm%gamma_fcc_hex = config%getFloat('deltag')
+     prm%xc_trans      = config%getFloat('xc_trans', defaultVal=0.0_pReal) ! ToDo: How to handle that???
+     prm%L_tr          = config%getFloat('l0_trans')
 
-     prm%h_tr_tr = transpose(lattice_interaction_TransByTrans(prm%N_tr,&
-                                                                   config%getFloats('interaction_transtrans'), &
-                                                                   config%getString('lattice_structure')))
+     prm%h_tr_tr       = lattice_interaction_TransByTrans(prm%N_tr,&
+                                                          config%getFloats('interaction_transtrans'), &
+                                                          config%getString('lattice_structure'))
                                                              
      prm%C66_tr        = lattice_C66_trans(prm%N_tr,prm%C66, &
                                   config%getString('trans_lattice_structure'), &
@@ -390,7 +389,7 @@ subroutine plastic_dislotwin_init
                                   config%getFloat('a_bcc', defaultVal=0.0_pReal), &
                                   config%getFloat('a_fcc', defaultVal=0.0_pReal))
                                   
-      prm%P_tr        = lattice_SchmidMatrix_trans(prm%N_tr, &
+      prm%P_tr         = lattice_SchmidMatrix_trans(prm%N_tr, &
                                   config%getString('trans_lattice_structure'), &
                                   0.0_pReal, &
                                   config%getFloat('a_bcc', defaultVal=0.0_pReal), &
@@ -416,16 +415,16 @@ subroutine plastic_dislotwin_init
    endif
    
    if (prm%sum_N_sl > 0 .and. prm%sum_N_tw > 0) then
-     prm%h_sl_tw = transpose(lattice_interaction_SlipByTwin(prm%N_sl,prm%N_tw,&
+     prm%h_sl_tw = lattice_interaction_SlipByTwin(prm%N_sl,prm%N_tw,&
                                                   config%getFloats('interaction_sliptwin'), &
-                                                  config%getString('lattice_structure')))
+                                                  config%getString('lattice_structure'))
      if (prm%fccTwinTransNucleation .and. prm%sum_N_tw > 12) write(6,*) 'mist' ! ToDo: implement better test. The model will fail also if N_tw is [6,6]
    endif    
 
    if (prm%sum_N_sl > 0 .and. prm%sum_N_tr > 0) then  
-     prm%h_sl_tr = transpose(lattice_interaction_SlipByTrans(prm%N_sl,prm%N_tr,&
+     prm%h_sl_tr = lattice_interaction_SlipByTrans(prm%N_sl,prm%N_tr,&
                                                                  config%getFloats('interaction_sliptrans'), &
-                                                                 config%getString('lattice_structure')))
+                                                                 config%getString('lattice_structure'))
      if (prm%fccTwinTransNucleation .and. prm%sum_N_tr > 12) write(6,*) 'mist' ! ToDo: implement better test. The model will fail also if N_tr is [6,6]
    endif  
   
@@ -605,7 +604,6 @@ function plastic_dislotwin_homogenizedC(ipc,ip,el) result(homogenizedC)
   phase_plasticityInstance, &
   phasememberAt
  
- implicit none
  real(pReal), dimension(6,6) :: &
    homogenizedC
  integer,     intent(in) :: &
@@ -653,7 +651,6 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
    math_symmetric33, &
    math_mul33xx33
  
- implicit none
  real(pReal), dimension(3,3),     intent(out) :: Lp
  real(pReal), dimension(3,3,3,3), intent(out) :: dLp_dMp
  real(pReal), dimension(3,3),     intent(in)  :: Mp
@@ -776,7 +773,6 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
    math_mul33xx33, &
    PI 
 
- implicit none
  real(pReal), dimension(3,3),  intent(in):: &
    Mp                                                                                               !< Mandel stress
  real(pReal),                  intent(in) :: &
@@ -869,7 +865,6 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
  use math, only: &
    PI
 
- implicit none
  integer,       intent(in) :: &
    instance, &
    of
@@ -987,7 +982,6 @@ function plastic_dislotwin_postResults(Mp,T,instance,of) result(postResults)
    PI, &
    math_mul33xx33
 
- implicit none
  real(pReal), dimension(3,3),intent(in) :: &
    Mp                                                                                               !< 2nd Piola Kirchhoff stress tensor in Mandel notation
  real(pReal),                intent(in) :: &
@@ -1067,7 +1061,6 @@ subroutine plastic_dislotwin_results(instance,group)
   use results, only: &
     results_writeDataset
 
-  implicit none
   integer, intent(in) :: instance
   character(len=*) :: group
   integer :: o
@@ -1133,7 +1126,6 @@ pure subroutine kinetics_slip(Mp,T,instance,of, &
  use math, only: &
    math_mul33xx33
 
- implicit none
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
  real(pReal),                  intent(in) :: &
@@ -1212,7 +1204,6 @@ pure subroutine kinetics_twin(Mp,T,dot_gamma_sl,instance,of,&
  use math, only: &
    math_mul33xx33
 
- implicit none
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
  real(pReal),                  intent(in) :: &
@@ -1284,7 +1275,6 @@ pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,instance,of,&
  use math, only: &
    math_mul33xx33
 
- implicit none
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
  real(pReal),                  intent(in) :: &

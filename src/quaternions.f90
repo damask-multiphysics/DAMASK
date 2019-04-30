@@ -77,11 +77,11 @@ module quaternions
    procedure, private :: pow_scal__
    generic,   public  :: operator(**) => pow_quat__, pow_scal__
 
-   procedure, private :: abs__
-   procedure, private :: dot_product__
-   procedure, private :: conjg__
-   procedure, private :: exp__
-   procedure, private :: log__
+   procedure, public  :: abs__
+   procedure, public  :: dot_product__
+   procedure, public  :: conjg__
+   procedure, public  :: exp__
+   procedure, public  :: log__
 
    procedure, public  :: homomorphed => quat_homomorphed
 
@@ -124,7 +124,6 @@ contains
 !---------------------------------------------------------------------------------------------------
 type(quaternion) pure function init__(array)
 
- implicit none
  real(pReal), intent(in), dimension(4) :: array
     
  init__%w=array(1)
@@ -140,7 +139,6 @@ end function init__
 !---------------------------------------------------------------------------------------------------
 elemental subroutine assign_quat__(self,other)
 
- implicit none
  type(quaternion), intent(out) :: self
  type(quaternion), intent(in)  :: other
     
@@ -157,7 +155,6 @@ end subroutine assign_quat__
 !---------------------------------------------------------------------------------------------------
 pure subroutine assign_vec__(self,other)
 
- implicit none
  type(quaternion), intent(out)                :: self
  real(pReal),       intent(in), dimension(4)  :: other
     
@@ -174,7 +171,6 @@ end subroutine assign_vec__
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental function add__(self,other)
 
- implicit none
  class(quaternion), intent(in) :: self,other
     
  add__%w = self%w + other%w
@@ -190,7 +186,6 @@ end function add__
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental function pos__(self)
 
- implicit none
  class(quaternion), intent(in) :: self
     
  pos__%w = self%w 
@@ -206,7 +201,6 @@ end function pos__
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental function sub__(self,other)
 
- implicit none
  class(quaternion), intent(in) :: self,other
     
  sub__%w = self%w - other%w
@@ -222,7 +216,6 @@ end function sub__
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental function neg__(self)
 
- implicit none
  class(quaternion), intent(in) :: self
     
  neg__%w = -self%w 
@@ -238,7 +231,6 @@ end function neg__
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental function mul_quat__(self,other)
 
- implicit none
  class(quaternion), intent(in) :: self, other
 
  mul_quat__%w = self%w*other%w - self%x*other%x -      self%y*other%y - self%z*other%z
@@ -254,7 +246,6 @@ end function mul_quat__
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental function mul_scal__(self,scal)
 
- implicit none
  class(quaternion), intent(in) :: self
  real(pReal), intent(in) :: scal
 
@@ -271,7 +262,6 @@ end function mul_scal__
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental function div_quat__(self,other)
 
- implicit none
  class(quaternion), intent(in) :: self, other
 
  div_quat__ = self * (conjg(other)/(abs(other)**2.0_pReal))
@@ -284,7 +274,6 @@ end function div_quat__
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental function div_scal__(self,scal)
 
- implicit none
  class(quaternion), intent(in) :: self
  real(pReal), intent(in) :: scal
 
@@ -300,7 +289,6 @@ logical elemental function eq__(self,other)
  use prec, only: &
    dEq
 
- implicit none
  class(quaternion), intent(in) :: self,other
 
  eq__ = all(dEq([ self%w, self%x, self%y, self%z], &
@@ -314,7 +302,6 @@ end function eq__
 !---------------------------------------------------------------------------------------------------
 logical elemental function neq__(self,other)
 
- implicit none
  class(quaternion), intent(in) :: self,other
 
  neq__ = .not. self%eq__(other)
@@ -327,7 +314,6 @@ end function neq__
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental function pow_scal__(self,expon)
 
- implicit none
  class(quaternion), intent(in) :: self
  real(pReal), intent(in) :: expon
  
@@ -341,7 +327,6 @@ end function pow_scal__
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental function pow_quat__(self,expon)
 
- implicit none
  class(quaternion), intent(in) :: self
  type(quaternion),  intent(in) :: expon
  
@@ -356,7 +341,6 @@ end function pow_quat__
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental function exp__(self)
 
- implicit none
  class(quaternion), intent(in) :: self
  real(pReal)                   :: absImag
 
@@ -376,7 +360,6 @@ end function exp__
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental function log__(self)
 
- implicit none
  class(quaternion), intent(in) :: self
  real(pReal)                     :: absImag
 
@@ -395,7 +378,6 @@ end function log__
 !---------------------------------------------------------------------------------------------------
 real(pReal) elemental function abs__(a)
 
- implicit none
  class(quaternion), intent(in) :: a
 
  abs__ = norm2([a%w,a%x,a%y,a%z])
@@ -408,7 +390,6 @@ end function abs__
 !---------------------------------------------------------------------------------------------------
 real(pReal) elemental function dot_product__(a,b)
 
- implicit none
  class(quaternion), intent(in) :: a,b
 
  dot_product__ = a%w*b%w + a%x*b%x + a%y*b%y + a%z*b%z
@@ -421,7 +402,6 @@ end function dot_product__
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental function conjg__(a)
 
- implicit none
  class(quaternion), intent(in) :: a
 
  conjg__ = quaternion([a%w, -a%x, -a%y, -a%z])
@@ -434,7 +414,6 @@ end function conjg__
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental function quat_homomorphed(a)
 
- implicit none
  class(quaternion), intent(in) :: a
 
  quat_homomorphed = quaternion(-[a%w,a%x,a%y,a%z])

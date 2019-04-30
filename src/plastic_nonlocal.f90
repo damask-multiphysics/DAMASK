@@ -260,7 +260,6 @@ subroutine plastic_nonlocal_init
   use config
   use lattice
 
-  implicit none
   character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
   integer,                dimension(0), parameter :: emptyIntArray    = [integer::]
   real(pReal),            dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
@@ -751,7 +750,6 @@ subroutine plastic_nonlocal_init
      material_phase, &
      phase_plasticityInstance, &
      phasememberAt
-      implicit none
       
    integer,intent(in) ::&
      phase, &
@@ -867,7 +865,6 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
     LATTICE_fcc_ID, &
     lattice_structure
   
-  implicit none
   integer, intent(in) :: &
     ip, &
     el
@@ -1090,7 +1087,6 @@ end subroutine plastic_nonlocal_dependentState
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, &
                                      tauThreshold, c, Temperature, instance, of)
-  implicit none
   integer, intent(in) :: &
     c, &                                                                                            !< dislocation character (1:edge, 2:screw)
     instance, of
@@ -1239,7 +1235,6 @@ subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
     phaseAt, phasememberAt, &
     phase_plasticityInstance
 
-  implicit none
   integer, intent(in) :: &
     ip, &                                                                                           !< current integration point
     el                                                                                              !< current element number
@@ -1392,7 +1387,6 @@ subroutine plastic_nonlocal_deltaState(Mp,ip,el)
     phaseAt, phasememberAt, &
     phase_plasticityInstance
   
-  implicit none
   integer, intent(in) :: &
     ip, &
     el
@@ -1553,7 +1547,6 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
     LATTICE_bcc_ID, & 
     LATTICE_fcc_ID
   
-  implicit none
   integer, intent(in) :: &
     ip, &                                                                                           !< current integration point
     el                                                                                              !< current element number
@@ -2027,7 +2020,6 @@ subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
   use lattice, only: &
     lattice_qDisorientation
   
-  implicit none
   integer, intent(in) :: &
     i, &
     e
@@ -2175,7 +2167,6 @@ function plastic_nonlocal_postResults(ph,instance,of) result(postResults)
  use material, only: &
    plasticState
 
- implicit none
  integer, intent(in) :: &
    ph, &
    instance, &
@@ -2378,7 +2369,6 @@ end function plastic_nonlocal_postResults
 function getRho(instance,of,ip,el)
   use mesh
   
-  implicit none
   integer, intent(in) :: instance, of,ip,el
   real(pReal), dimension(param(instance)%totalNslip,10) :: getRho
   
@@ -2406,7 +2396,6 @@ subroutine plastic_nonlocal_results(instance,group)
   use results, only: &
     results_writeDataset
 
-  implicit none
   integer, intent(in) :: instance
   character(len=*) :: group
   integer :: o
