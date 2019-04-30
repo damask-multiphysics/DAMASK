@@ -64,7 +64,6 @@ subroutine grid_damage_spectral_init
     worldsize, &
     petsc_options
     
-  implicit none
   PetscInt, dimension(worldsize) :: localK  
   integer :: i, j, k, cell
   DM :: damage_grid
@@ -164,7 +163,6 @@ function grid_damage_spectral_solution(timeinc,timeinc_old,loadCaseTime) result(
   use damage_nonlocal, only: &
     damage_nonlocal_putNonLocalDamage
  
-  implicit none
   real(pReal), intent(in) :: &
     timeinc, &                                                                                      !< increment in time for current solution
     timeinc_old, &                                                                                  !< increment in time of last increment
@@ -236,7 +234,6 @@ subroutine grid_damage_spectral_forward
     damage_nonlocal_getDiffusion33, &
     damage_nonlocal_getMobility
     
-  implicit none
   integer                               :: i, j, k, cell
   DM :: dm_local
   PetscScalar,  dimension(:,:,:), pointer     :: x_scal
@@ -301,7 +298,6 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
     damage_nonlocal_getDiffusion33, &
     damage_nonlocal_getMobility
  
-  implicit none
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
     in
   PetscScalar, dimension( &

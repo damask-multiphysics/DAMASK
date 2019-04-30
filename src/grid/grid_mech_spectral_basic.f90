@@ -7,6 +7,8 @@
 module grid_mech_spectral_basic
 #include <petsc/finclude/petscsnes.h>
 #include <petsc/finclude/petscdmda.h>
+  use DAMASK_interface
+  use HDF5_utilities
   use PETScdmda
   use PETScsnes
   use prec, only: &
@@ -25,8 +27,7 @@ module grid_mech_spectral_basic
   type(tSolutionParams), private :: params
   
   type, private :: tNumerics
-    logical :: &
-      update_gamma !< update gamma operator with current stiffness
+    logical :: update_gamma                                                                         !< update gamma operator with current stiffness
   end type tNumerics
   
   type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
@@ -40,8 +41,8 @@ module grid_mech_spectral_basic
 !--------------------------------------------------------------------------------------------------
 ! common pointwise data
   real(pReal), private, dimension(:,:,:,:,:), allocatable ::  &
-    F_lastInc, &
-    Fdot
+    F_lastInc, &                                                                                    !< field of previous compatible deformation gradients
+    Fdot                                                                                            !< field of assumed rate of compatible deformation gradient
 
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
@@ -99,23 +100,22 @@ subroutine grid_mech_spectral_basic_init
   use spectral_utilities, only: &
     utilities_constitutiveResponse, &
     utilities_updateGamma, &
-    utilities_updateIPcoords, &
-    wgt
+    utilities_updateIPcoords
   use mesh, only: &
     grid, &
     grid3
   use math, only: &
     math_invSym3333
     
-  implicit none
   real(pReal), dimension(3,3,grid(1),grid(2),grid3) :: P
   real(pReal), dimension(3,3) :: &
     temp33_Real = 0.0_pReal
  
   PetscErrorCode :: ierr
   PetscScalar, pointer, dimension(:,:,:,:) :: &
-   F                                                                                                ! pointer to solution data
+    F                                                                                               ! pointer to solution data
   PetscInt, dimension(worldsize) :: localK  
+  integer(HID_T) :: fileHandle
   integer :: fileUnit
   character(len=1024) :: rankStr
  
@@ -163,7 +163,7 @@ subroutine grid_mech_spectral_basic_init
   call DMcreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                                    ! global solution vector (grid x 9, i.e. every def grad tensor)
   call DMDASNESsetFunctionLocal(da,INSERT_VALUES,formResidual,PETSC_NULL_SNES,ierr)                 ! residual vector of same shape as solution vector
   CHKERRQ(ierr) 
-  call SNESsetConvergenceTest(snes,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr)! specify custom convergence check function "converged"
+  call SNESsetConvergenceTest(snes,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr)              ! specify custom convergence check function "converged"
   CHKERRQ(ierr)
   call SNESsetFromOptions(snes,ierr); CHKERRQ(ierr)                                                 ! pull it all together with additional CLI arguments
 
@@ -174,19 +174,14 @@ subroutine grid_mech_spectral_basic_init
   restart: if (restartInc > 0) then                                                     
     write(6,'(/,a,'//IO_intOut(restartInc)//',a)') ' reading values of increment ', restartInc, ' from file'
 
-    fileUnit = IO_open_jobFile_binary('F_aim')
-    read(fileUnit) F_aim; close(fileUnit)
-    fileUnit = IO_open_jobFile_binary('F_aim_lastInc')
-    read(fileUnit) F_aim_lastInc; close(fileUnit)
-    fileUnit = IO_open_jobFile_binary('F_aimDot')
-    read(fileUnit) F_aimDot; close(fileUnit)
- 
     write(rankStr,'(a1,i0)')'_',worldrank
+    fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
  
-    fileUnit = IO_open_jobFile_binary('F'//trim(rankStr))
-    read(fileUnit) F; close (fileUnit)
-    fileUnit = IO_open_jobFile_binary('F_lastInc'//trim(rankStr))
-    read(fileUnit) F_lastInc; close (fileUnit)
+    call HDF5_read(fileHandle,F_aim,        'F_aim')
+    call HDF5_read(fileHandle,F_aim_lastInc,'F_aim_lastInc')
+    call HDF5_read(fileHandle,F_aimDot,     'F_aimDot')
+    call HDF5_read(fileHandle,F,            'F')
+    call HDF5_read(fileHandle,F_lastInc,    'F_lastInc')
  
   elseif (restartInc == 0) then restart
     F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                         ! initialize to identity
@@ -203,15 +198,15 @@ subroutine grid_mech_spectral_basic_init
  
   restartRead: if (restartInc > 0) then
     write(6,'(/,a,'//IO_intOut(restartInc)//',a)') 'reading more values of increment ', restartInc, ' from file'
-    fileUnit = IO_open_jobFile_binary('C_volAvg')
-    read(fileUnit) C_volAvg; close(fileUnit)
-    fileUnit = IO_open_jobFile_binary('C_volAvgLastInv')
-    read(fileUnit) C_volAvgLastInc; close(fileUnit)
+    call HDF5_read(fileHandle,C_volAvg,       'C_volAvg')
+    call HDF5_read(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
+    call HDF5_closeFile(fileHandle)
+
     fileUnit = IO_open_jobFile_binary('C_ref')
     read(fileUnit) C_minMaxAvg; close(fileUnit)
   endif restartRead
 
- call Utilities_updateGamma(C_minMaxAvg,.true.)
+  call utilities_updateGamma(C_minMaxAvg,.true.)
 
 end subroutine grid_mech_spectral_basic_init
 
@@ -228,8 +223,6 @@ function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_
     restartWrite, &
     terminallyIll
  
-  implicit none
-
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
   character(len=*),            intent(in) :: &
@@ -251,8 +244,8 @@ function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_
 
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
-  S = Utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
-  if (num%update_gamma) call Utilities_updateGamma(C_minMaxAvg,restartWrite)
+  S = utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
+  if (num%update_gamma) call utilities_updateGamma(C_minMaxAvg,restartWrite)
  
 !--------------------------------------------------------------------------------------------------
 ! set module wide available data 
@@ -306,7 +299,6 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
   use FEsolving, only: &
     restartWrite
 
-  implicit none
   logical,                     intent(in) :: &
     guess
   real(pReal),                 intent(in) :: &
@@ -321,7 +313,7 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
   PetscErrorCode :: ierr
   PetscScalar, dimension(:,:,:,:), pointer :: F
   
-  integer :: fileUnit
+  integer(HID_T) :: fileHandle
   character(len=32) :: rankStr
 
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
@@ -331,29 +323,24 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
     C_minMaxAvg = C_minMaxAvgLastInc                                                               ! QUESTION: where is this required?
   else
   !--------------------------------------------------------------------------------------------------
-    ! restart information for spectral solver
-    if (restartWrite) then                                                                           ! QUESTION: where is this logical properly set?
-      write(6,'(/,a)') ' writing converged results for restart'
-      flush(6)
-
-      if (worldrank == 0) then
-        fileUnit = IO_open_jobFile_binary('C_volAvg','w')
-        write(fileUnit) C_volAvg; close(fileUnit)
-        fileUnit = IO_open_jobFile_binary('C_volAvgLastInv','w')
-        write(fileUnit) C_volAvgLastInc; close(fileUnit)
-        fileUnit = IO_open_jobFile_binary('F_aim','w')
-        write(fileUnit) F_aim; close(fileUnit)
-        fileUnit = IO_open_jobFile_binary('F_aim_lastInc','w')
-        write(fileUnit) F_aim_lastInc; close(fileUnit)
-        fileUnit = IO_open_jobFile_binary('F_aimDot','w')
-        write(fileUnit) F_aimDot; close(fileUnit)
-      endif
-
+  ! restart information for spectral solver
+    if (restartWrite) then
+      write(6,'(/,a)') ' writing converged results for restart';flush(6)
+      
       write(rankStr,'(a1,i0)')'_',worldrank
-      fileUnit = IO_open_jobFile_binary('F'//trim(rankStr),'w')
-      write(fileUnit) F; close (fileUnit)
-      fileUnit = IO_open_jobFile_binary('F_lastInc'//trim(rankStr),'w')
-      write(fileUnit) F_lastInc; close (fileUnit)
+      fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
+      
+      call HDF5_write(fileHandle,F_aim,        'F_aim')
+      call HDF5_write(fileHandle,F_aim_lastInc,'F_aim_lastInc')
+      call HDF5_write(fileHandle,F_aimDot,     'F_aimDot')
+      call HDF5_write(fileHandle,F,            'F')
+      call HDF5_write(fileHandle,F_lastInc,    'F_lastInc')
+
+      call HDF5_write(fileHandle,C_volAvg,       'C_volAvg')
+      call HDF5_write(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
+      call HDF5_write(fileHandle,C_minMaxAvg,    'C_minMaxAvg')
+
+      call HDF5_closeFile(fileHandle)
     endif
 
     call CPFEM_age                                                                                  ! age state and kinematics
@@ -399,7 +386,7 @@ end subroutine grid_mech_spectral_basic_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief convergence check
 !--------------------------------------------------------------------------------------------------
-subroutine converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
+subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dummy,ierr)
   use numerics, only: &
     itmax, &
     itmin, &
@@ -410,13 +397,12 @@ subroutine converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
   use FEsolving, only: &
     terminallyIll
 
-  implicit none
   SNES :: snes_local
-  PetscInt :: PETScIter
-  PetscReal :: &
-    xnorm, &                                                                                        ! not used
-    snorm, &                                                                                        ! not used
-    fnorm                                                                                           ! not used
+  PetscInt,  intent(in) :: PETScIter
+  PetscReal, intent(in) :: &
+    devNull1, &
+    devNull2, &
+    devNull3 
   SNESConvergedReason :: reason
   PetscObject :: dummy
   PetscErrorCode :: ierr
@@ -452,7 +438,7 @@ end subroutine converged
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief forms the basic residual vector
+!> @brief forms the residual vector
 !--------------------------------------------------------------------------------------------------
 subroutine formResidual(in, F, &
                         residuum, dummy, ierr)
@@ -481,7 +467,6 @@ subroutine formResidual(in, F, &
   use FEsolving, only: &
     terminallyIll
 
-  implicit none
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: in                                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
   PetscScalar, dimension(3,3,XG_RANGE,YG_RANGE,ZG_RANGE), &
     intent(in) :: F                                                                                 !< deformation gradient field
@@ -515,7 +500,7 @@ subroutine formResidual(in, F, &
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
-  call Utilities_constitutiveResponse(residuum, &                                                   ! "residuum" gets field of first PK stress (to save memory)
+  call utilities_constitutiveResponse(residuum, &                                                   ! "residuum" gets field of first PK stress (to save memory)
                                       P_av,C_volAvg,C_minMaxAvg, &
                                       F,params%timeinc,params%rotation_BC)
   call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
