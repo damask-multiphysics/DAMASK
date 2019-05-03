@@ -77,6 +77,7 @@ program DAMASK_spectral
  use grid_mech_FEM
  use grid_damage_spectral
  use grid_thermal_spectral
+ use HDF5_utilities
  use results
 
  implicit none
@@ -155,8 +156,6 @@ program DAMASK_spectral
  write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, 2019'
  write(6,'(a)')   ' https://doi.org/10.1007/978-981-10-6855-3_80'
 
- call results_openJobFile()
- call results_closeJobFile()
 !--------------------------------------------------------------------------------------------------
 ! initialize field solver information
  nActiveFields = 1
@@ -301,7 +300,7 @@ program DAMASK_spectral
 
    reportAndCheck: if (worldrank == 0) then
      write (loadcase_string, '(i6)' ) currentLoadCase
-     write(6,'(1x,a,i6)') 'load case: ', currentLoadCase
+     write(6,'(/,1x,a,i6)') 'load case: ', currentLoadCase
      if (.not. newLoadCase%followFormerTrajectory) write(6,'(2x,a)') 'drop guessing along trajectory'
      if (newLoadCase%deformation%myType == 'l') then
        do j = 1_pInt, 3_pInt
@@ -348,10 +347,10 @@ program DAMASK_spectral
      if (newLoadCase%time < 0.0_pReal) errorID = 834_pInt                                           ! negative time increment
      write(6,'(2x,a,f12.6)') 'time:       ', newLoadCase%time
      if (newLoadCase%incs < 1_pInt)    errorID = 835_pInt                                           ! non-positive incs count
-     write(6,'(2x,a,i5)')    'increments: ', newLoadCase%incs
+     write(6,'(2x,a,i5)')  'increments: ', newLoadCase%incs
      if (newLoadCase%outputfrequency < 1_pInt)  errorID = 836_pInt                                  ! non-positive result frequency
-     write(6,'(2x,a,i5)')    'output  frequency:  ', newLoadCase%outputfrequency
-     write(6,'(2x,a,i5,/)')  'restart frequency:  ', newLoadCase%restartfrequency
+     write(6,'(2x,a,i5)')  'output  frequency:  ', newLoadCase%outputfrequency
+     write(6,'(2x,a,i5)')  'restart frequency:  ', newLoadCase%restartfrequency
      if (errorID > 0_pInt) call IO_error(error_ID = errorID, ext_msg = loadcase_string)             ! exit with error message
    endif reportAndCheck
    loadCases = [loadCases,newLoadCase]                                                              ! load case is ok, append it
@@ -359,8 +358,9 @@ program DAMASK_spectral
  close(fileUnit)
 
  call results_openJobFile
- call results_addAttribute('grid',grid,'mapping')
- call results_addAttribute('size',geomSize,'mapping')
+ call HDF5_closeGroup(results_addGroup('geometry'))
+ call results_addAttribute('grid',grid,'geometry')
+ call results_addAttribute('size',geomSize,'geometry')
  call results_closeJobFile
 
 !--------------------------------------------------------------------------------------------------

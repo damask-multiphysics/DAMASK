@@ -20,14 +20,14 @@ class DADF5():
       
     with h5py.File(filename,'r') as f:
       
-      if f.attrs['DADF5-major'] != 0 or f.attrs['DADF5-minor'] != 1:
+      if f.attrs['DADF5-major'] != 0 or f.attrs['DADF5-minor'] != 2:
         raise TypeError('Unsupported DADF5 version {} '.format(f.attrs['DADF5-version']))
     
-      self.structured = 'grid' in f['mapping'].attrs.keys()
+      self.structured = 'grid' in f['geometry'].attrs.keys()
     
       if self.structured:
-        self.grid = f['mapping'].attrs['grid']
-        self.size = f['mapping'].attrs['size']
+        self.grid = f['geometry'].attrs['grid']
+        self.size = f['geometry'].attrs['size']
         
       r=re.compile('inc[0-9]+')
       self.increments = [{'inc':  int(u[3:]),
