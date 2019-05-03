@@ -45,7 +45,7 @@ contains
 !> @brief initializes the solver by interpreting the command line arguments. Also writes
 !! information on computation to screen
 !--------------------------------------------------------------------------------------------------
-subroutine DAMASK_interface_init()
+subroutine DAMASK_interface_init
   use, intrinsic :: &
     iso_fortran_env
   use, intrinsic :: &
@@ -134,7 +134,7 @@ subroutine DAMASK_interface_init()
     call quit(1)
   endif
 #endif
-  call PETScInitialize(PETSC_NULL_CHARACTER,petsc_err)                                              ! according to PETSc manual, that should be the first line in the code
+  call PETScInitializeNoArguments(petsc_err)                                                        ! according to PETSc manual, that should be the first line in the code
   CHKERRQ(petsc_err)                                                                                ! this is a macro definition, it is case sensitive
 
   call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,mpi_err)
