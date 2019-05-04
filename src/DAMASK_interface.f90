@@ -130,7 +130,7 @@ subroutine DAMASK_interface_init
   call MPI_Init_Thread(MPI_THREAD_FUNNELED,threadLevel,mpi_err)
   if (mpi_err /= 0) call quit(1)
   if (threadLevel<MPI_THREAD_FUNNELED) then
-    write(6,'(a)') ' MPI library does not support OpenMP'
+    write(6,'(/,a)') ' ERROR: MPI library does not support OpenMP'
     call quit(1)
   endif
 #endif
@@ -144,11 +144,11 @@ subroutine DAMASK_interface_init
 
   mainProcess: if (worldrank == 0) then
     if (output_unit /= 6) then
-      write(output_unit,'(a)') ' STDOUT != 6'
+      write(output_unit,'(/,a)') ' ERROR: STDOUT != 6'
       call quit(1)
     endif
     if (error_unit /= 0) then
-      write(output_unit,'(a)') ' STDERR != 0'
+      write(output_unit,'(/,a)') ' ERROR: STDERR != 0'
       call quit(1)
     endif
   else mainProcess
@@ -254,14 +254,14 @@ subroutine DAMASK_interface_init
         call get_command_argument(i+1,arg)
         read(arg,*,iostat=stat) interface_restartInc
         if (interface_restartInc < 0 .or. stat /=0) then
-          write(6,'(a)') ' Could not parse restart increment: '//trim(arg)
+          write(6,'(/,a)') ' ERROR: Could not parse restart increment: '//trim(arg)
           call quit(1)
         endif
     end select
   enddo
 
   if (len_trim(loadcaseArg) == 0 .or. len_trim(geometryArg) == 0) then
-    write(6,'(a)') ' Please specify geometry AND load case (-h for help)'
+    write(6,'(/,a)') ' ERROR: Please specify geometry AND load case (-h for help)'
     call quit(1)
   endif
 
@@ -324,7 +324,7 @@ subroutine setWorkingDirectory(workingDirectoryArg)
   workingDirectory = trim(rectifyPath(workingDirectory))
   error = setCWD(trim(workingDirectory))
   if(error) then
-    write(6,'(a20,a,a16)') ' Working directory "',trim(workingDirectory),'" does not exist'
+    write(6,'(/,a)') ' ERROR: Working directory "'//trim(workingDirectory)//'" does not exist'
     call quit(1)
   endif
 
@@ -374,7 +374,7 @@ character(len=1024) function getGeometryFile(geometryParameter)
 
   inquire(file=trim(getGeometryFile), exist=file_exists)
   if (.not. file_exists) then
-    write(6,'(a)') ' Geometry file does not exists ('//trim(getGeometryFile)//')'
+    write(6,'(/,a)') ' ERROR: Geometry file does not exists ('//trim(getGeometryFile)//')'
     call quit(1)
   endif
 
@@ -399,7 +399,7 @@ character(len=1024) function getLoadCaseFile(loadCaseParameter)
 
   inquire(file=trim(getLoadCaseFile), exist=file_exists)
   if (.not. file_exists) then
-    write(6,'(a)') ' Load case file does not exists ('//trim(getLoadCaseFile)//')'
+    write(6,'(/,a)') ' ERROR: Load case file does not exists ('//trim(getLoadCaseFile)//')'
     call quit(1)
   endif
 
