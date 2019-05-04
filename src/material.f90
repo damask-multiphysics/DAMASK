@@ -183,14 +183,11 @@ module material
 
  integer(pInt), private :: &
    microstructure_maxNconstituents, &                                                               !< max number of constituents in any phase
-   texture_maxNgauss, &                                                                             !< max number of Gauss components in any texture
-   texture_maxNfiber                                                                                !< max number of Fiber components in any texture
+   texture_maxNgauss                                                                                !< max number of Gauss components in any texture
 
  integer(pInt), dimension(:), allocatable, private :: &
    microstructure_Nconstituents, &                                                                  !< number of constituents in each microstructure
-   texture_symmetry, &                                                                              !< number of symmetric orientations per texture
-   texture_Ngauss, &                                                                                !< number of Gauss components per texture
-   texture_Nfiber                                                                                   !< number of Fiber components per texture
+   texture_Ngauss                                                                                   !< number of Gauss components per texture
 
  integer(pInt), dimension(:,:), allocatable, private :: &
    microstructure_phase, &                                                                          !< phase IDs of each microstructure
@@ -202,7 +199,6 @@ module material
  real(pReal), dimension(:,:,:), allocatable, private :: &
    material_volume, &                                                                               !< volume of each grain,IP,element
    texture_Gauss, &                                                                                 !< data of each Gauss component
-   texture_Fiber, &                                                                                 !< data of each Fiber component
    texture_transformation                                                                           !< transformation for each texture
 
  logical, dimension(:), allocatable, private :: &
@@ -807,31 +803,27 @@ subroutine material_parseTexture
    math_det33
 
  implicit none
- integer(pInt) :: section, gauss, fiber, j, t, i
+ integer(pInt) :: section, gauss, j, t, i
  character(len=65536), dimension(:), allocatable ::  strings                                     ! Values for given key in material config 
  integer(pInt), dimension(:), allocatable :: chunkPos
 
- allocate(texture_symmetry(size(config_texture)), source=1_pInt)
  allocate(texture_Ngauss(size(config_texture)),   source=0_pInt)
- allocate(texture_Nfiber(size(config_texture)),   source=0_pInt)
 
  do t=1_pInt, size(config_texture)
-   texture_Ngauss(t) =  config_texture(t)%countKeys('(gauss)') &
-                     +  config_texture(t)%countKeys('(random)')
-   texture_Nfiber(t) =  config_texture(t)%countKeys('(fiber)')
+   texture_Ngauss(t) =  config_texture(t)%countKeys('(gauss)')
+   if (config_texture(t)%keyExists('symmetry')) call IO_error(147,ext_msg='symmetry')
+   if (config_texture(t)%keyExists('(random)')) call IO_error(147,ext_msg='(random)')
+   if (config_texture(t)%keyExists('(fiber)'))  call IO_error(147,ext_msg='(fiber)')
  enddo
 
  texture_maxNgauss = maxval(texture_Ngauss)
- texture_maxNfiber = maxval(texture_Nfiber)
  allocate(texture_Gauss (5,texture_maxNgauss,size(config_texture)), source=0.0_pReal)
- allocate(texture_Fiber (6,texture_maxNfiber,size(config_texture)), source=0.0_pReal)
  allocate(texture_transformation(3,3,size(config_texture)),         source=0.0_pReal)
           texture_transformation = spread(math_I3,3,size(config_texture))
 
  do t=1_pInt, size(config_texture)
    section = t
    gauss = 0_pInt
-   fiber = 0_pInt
    
    if (config_texture(t)%keyExists('axes')) then
      strings = config_texture(t)%getStrings('axes')
@@ -856,10 +848,6 @@ subroutine material_parseTexture
      if(dNeq(math_det33(texture_transformation(1:3,1:3,t)),1.0_pReal)) call IO_error(157_pInt,t)
    endif
 
-   if (config_texture(t)%keyExists('symmetry')) call IO_error(147,ext_msg='symmetry')
-   if (config_texture(t)%keyExists('(random)')) call IO_error(147,ext_msg='(random)')
-   if (config_texture(t)%keyExists('(fiber)'))  call IO_error(147,ext_msg='(fiber)')
-   
    if (config_texture(t)%keyExists('(gauss)')) then
      gauss = gauss + 1_pInt
      strings = config_texture(t)%getStrings('(gauss)',raw= .true.)
@@ -1018,11 +1006,10 @@ subroutine material_populateGrains
  real(pReal), dimension (:),     allocatable :: volumeOfGrain
  real(pReal), dimension (:,:),   allocatable :: orientationOfGrain
  real(pReal), dimension (3)                  :: orientation
- real(pReal), dimension (3,3)                :: symOrientation
  integer(pInt), dimension (:),   allocatable :: phaseOfGrain, textureOfGrain
  integer(pInt) :: t,e,i,g,j,m,c,r,homog,micro,sgn,hme, myDebug, &
                   phaseID,textureID,dGrains,myNgrains,myNorientations,myNconstituents, &
-                  grain,constituentGrain,ipGrain,symExtension, ip
+                  grain,constituentGrain,ipGrain,ip
  real(pReal) :: deviation,extreme,rnd
  integer(pInt),         dimension (:,:), allocatable :: Nelems                                      ! counts number of elements in homog, micro array
  type(group_int), dimension (:,:), allocatable :: elemsOfHomogMicro                                 ! lists element number in homog, micro array
@@ -1165,8 +1152,7 @@ subroutine material_populateGrains
          phaseOfGrain  (grain+1_pInt:grain+NgrainsOfConstituent(i)) = phaseID                       ! assign resp. phase
          textureOfGrain(grain+1_pInt:grain+NgrainsOfConstituent(i)) = textureID                     ! assign resp. texture
 
-         myNorientations = ceiling(real(NgrainsOfConstituent(i),pReal)/&
-                                   real(texture_symmetry(textureID),pReal),pInt)                    ! max number of unique orientations (excl. symmetry)
+         myNorientations = ceiling(real(NgrainsOfConstituent(i),pReal)/1.0,pInt)                    ! max number of unique orientations (excl. symmetry)
 
 !--------------------------------------------------------------------------------------------------
 ! has texture components
@@ -1196,7 +1182,7 @@ subroutine material_populateGrains
 
          do j = 1_pInt,NgrainsOfConstituent(i)-1_pInt                                               ! walk thru grains of current constituent
            call random_number(rnd)
-           t = nint(rnd*real(NgrainsOfConstituent(i)-j,pReal)+real(j,pReal)+0.5_pReal,pInt)       ! select a grain in remaining list
+           t = nint(rnd*real(NgrainsOfConstituent(i)-j,pReal)+real(j,pReal)+0.5_pReal,pInt)         ! select a grain in remaining list
            m                               = phaseOfGrain(grain+t)                                  ! exchange current with random
            phaseOfGrain(grain+t)           = phaseOfGrain(grain+j)
            phaseOfGrain(grain+j)           = m
@@ -1275,7 +1261,7 @@ subroutine material_populateGrains
  enddo homogenizationLoop
 
  deallocate(texture_transformation)
- deallocate(elemsOfHomogMicro)
+
  call config_deallocate('material.config/microstructure')
 
 end subroutine material_populateGrains
