@@ -860,10 +860,6 @@ subroutine material_parseTexture
                  texture_Gauss(2,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)*inRad
              case('phi2')
                  texture_Gauss(3,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)*inRad
-             case('scatter')
-                 texture_Gauss(4,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)*inRad
-             case('fraction')
-                 texture_Gauss(5,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)
           end select
       enddo
      enddo
@@ -1012,6 +1008,25 @@ subroutine material_populateGrains
  allocate(Nelems (size(config_homogenization),size(config_microstructure)),            source=0_pInt)
 
 
+  do e = 1, theMesh%Nelems
+    do i = 1, theMesh%elem%nIPs
+      homog = theMesh%homogenizationAt(e)
+      micro = theMesh%microstructureAt(e)
+      do c = 1, homogenization_Ngrains(homog)
+        material_phase(c,i,e)   = microstructure_phase(c,micro)
+        material_texture(c,i,e) = microstructure_texture(c,micro)
+        material_EulerAngles(1:3,c,i,e) = texture_Gauss(1:3,1,material_texture(c,i,e))
+        material_EulerAngles(1:3,c,i,e) = math_RtoEuler( &                                       ! translate back to Euler angles
+                                             math_mul33x33( &                                       ! pre-multiply
+                                               math_EulertoR(material_EulerAngles(1:3,c,i,e)), &    ! face-value orientation
+                                               texture_transformation(1:3,1:3,material_texture(c,i,e)) &          ! and transformation matrix
+                                             ) &
+                                             )
+      enddo
+    enddo
+  enddo
+
+ return
 !--------------------------------------------------------------------------------------------------
 ! precounting of elements for each homog/micro pair
  do e = 1_pInt, theMesh%Nelems
