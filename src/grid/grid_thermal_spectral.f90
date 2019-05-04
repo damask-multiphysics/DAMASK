@@ -69,7 +69,6 @@ subroutine grid_thermal_spectral_init
     worldsize, &
     petsc_options
 
-  implicit none
   PetscInt, dimension(worldsize) :: localK  
   integer :: i, j, k, cell
   DM :: thermal_grid
@@ -167,7 +166,6 @@ function grid_thermal_spectral_solution(timeinc,timeinc_old,loadCaseTime) result
   use thermal_conduction, only: &
     thermal_conduction_putTemperatureAndItsRate
  
-  implicit none
   real(pReal), intent(in) :: &
     timeinc, &                                                                                      !< increment in time for current solution
     timeinc_old, &                                                                                  !< increment in time of last increment
@@ -242,7 +240,6 @@ subroutine grid_thermal_spectral_forward
     thermal_conduction_getMassDensity, &
     thermal_conduction_getSpecificHeat
     
-  implicit none
   integer :: i, j, k, cell
   DM :: dm_local
   PetscScalar,  dimension(:,:,:), pointer :: x_scal
@@ -311,7 +308,6 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
     thermal_conduction_getMassDensity, &
     thermal_conduction_getSpecificHeat
  
-  implicit none
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
     in
   PetscScalar, dimension( &
