@@ -971,11 +971,9 @@ end subroutine material_allocateSourceState
 !! calculates the volume of the grains and deals with texture components
 !--------------------------------------------------------------------------------------------------
 subroutine material_populateGrains
- use prec, only: &
-   dEq
  use math, only: &
+   math_EulertoR, &
    math_RtoEuler, &
-   math_EulerToR, &
    math_mul33x33, &
    math_range
  use mesh, only: &
@@ -986,10 +984,6 @@ subroutine material_populateGrains
    config_deallocate
  use IO, only: &
    IO_error
- use debug, only: &
-   debug_level, &
-   debug_material, &
-   debug_levelBasic
 
  implicit none
  integer(pInt), dimension (:,:), allocatable :: Ngrains
@@ -1002,14 +996,13 @@ subroutine material_populateGrains
  real(pReal), dimension (:,:),   allocatable :: orientationOfGrain
  real(pReal), dimension (3)                  :: orientation
  integer(pInt), dimension (:),   allocatable :: phaseOfGrain, textureOfGrain
- integer(pInt) :: t,e,i,g,j,m,c,r,homog,micro,sgn,hme, myDebug, &
+ integer(pInt) :: t,e,i,g,j,m,c,r,homog,micro,sgn,hme, &
                   phaseID,textureID,dGrains,myNgrains,myNorientations,myNconstituents, &
                   grain,constituentGrain,ipGrain,ip
  real(pReal) :: deviation,extreme,rnd
  integer(pInt),         dimension (:,:), allocatable :: Nelems                                      ! counts number of elements in homog, micro array
  type(group_int), dimension (:,:), allocatable :: elemsOfHomogMicro                                 ! lists element number in homog, micro array
 
- myDebug = debug_level(debug_material)
 
  allocate(material_phase(homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),        source=0_pInt)
  allocate(material_texture(homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),      source=0_pInt)
@@ -1060,10 +1053,7 @@ subroutine material_populateGrains
  allocate(textureOfGrain(maxval(Ngrains)),      source=0_pInt)                                      ! reserve memory for maximum case
  allocate(orientationOfGrain(3,maxval(Ngrains)),source=0.0_pReal)                                   ! reserve memory for maximum case
 
- if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
-     write(6,'(/,a/)') ' MATERIAL grain population'
-     write(6,'(a32,1x,a32,1x,a6)') 'homogenization_name','microstructure_name','grain#'
- endif
+
  homogenizationLoop: do homog = 1_pInt,size(config_homogenization)
    dGrains = homogenization_Ngrains(homog)                                                          ! grain number per material point
    microstructureLoop: do micro = 1_pInt,size(config_microstructure)                                ! all pairs of homog and micro
