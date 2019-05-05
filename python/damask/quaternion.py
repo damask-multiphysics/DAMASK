@@ -78,10 +78,8 @@ class Quaternion:
         return NotImplemented
         
     def __neg__(self):                                                                      
-      """Unary positive operator"""  
-      self.q *= -1.0
-      self.p *= -1.0                                                                     
-      return self
+      """Unary negative operator"""  
+      return self * -1.0
       
       
     def __mul__(self, other):
@@ -208,8 +206,7 @@ class Quaternion:
 
     def homomorph(self):
       """Homomorphs in-place"""
-      self.q = -self.q
-      self.p = -self.p
+      self *= -1.0
       return self
       
     def homomorphed(self):

@@ -83,7 +83,7 @@ class Rotation:
             ])
         elif other.shape == (3,3,):                                                                 # rotate a single (3x3)-matrix
            return np.dot(self.asMatrix(),np.dot(other,self.asMatrix().T))
-        elif other.shape == (3,3,3,3):
+        elif other.shape == (3,3,3,3,):
           raise NotImplementedError
         else:
           return NotImplemented
