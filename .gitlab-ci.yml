@@ -390,13 +390,6 @@ Phenopowerlaw_singleSlip:
     - master
     - release
 
-TextureComponents:
-  stage: grid
-  script: TextureComponents/test.py
-  except:
-    - master
-    - release
-
 
 ###################################################################################################
 Marc_compileIfort2018_1:
@@ -452,8 +445,6 @@ J2_plasticBehavior:
 grid_all_example:
   stage: example
   script: grid_all_example/test.py
-  only:
-    - development
 
 ###################################################################################################
 SpectralRuntime:
@@ -515,7 +506,7 @@ Processing:
     - rm abq_addUserOutput.py marc_addUserOutput.py
     - $DAMASKROOT/PRIVATE/documenting/scriptHelpToWiki.py --debug *.py
     - cd $DAMASKROOT/processing/post
-    - rm marc_to_vtk.py vtk2ang.py
+    - rm marc_to_vtk.py vtk2ang.py DAD*.py
     - $DAMASKROOT/PRIVATE/documenting/scriptHelpToWiki.py --debug *.py
   except:
     - master

@@ -117,7 +117,6 @@ subroutine plastic_kinehardening_init
    config_phase
  use lattice
 
- implicit none
  integer :: &
    Ninstance, &
    p, i, o, &
@@ -192,9 +191,9 @@ subroutine plastic_kinehardening_init
        prm%nonSchmid_pos  = prm%Schmid
        prm%nonSchmid_neg  = prm%Schmid
      endif
-     prm%interaction_SlipSlip = transpose(lattice_interaction_SlipBySlip(prm%Nslip, &
+     prm%interaction_SlipSlip = lattice_interaction_SlipBySlip(prm%Nslip, &
                                                                config%getFloats('interaction_slipslip'), &
-                                                               config%getString('lattice_structure')))
+                                                               config%getString('lattice_structure'))
 
      prm%crss0    = config%getFloats('crss0',    requiredSize=size(prm%Nslip))
      prm%tau1     = config%getFloats('tau1',     requiredSize=size(prm%Nslip))
@@ -335,7 +334,6 @@ end subroutine plastic_kinehardening_init
 !--------------------------------------------------------------------------------------------------
 pure subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
- implicit none
  real(pReal), dimension(3,3),     intent(out) :: &
    Lp                                                                                               !< plastic velocity gradient
  real(pReal), dimension(3,3,3,3), intent(out) :: &
@@ -378,7 +376,6 @@ end subroutine plastic_kinehardening_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_kinehardening_dotState(Mp,instance,of)
 
- implicit none
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
  integer,                      intent(in) :: &
@@ -431,7 +428,6 @@ subroutine plastic_kinehardening_deltaState(Mp,instance,of)
    debug_levelSelective
 #endif
 
- implicit none
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
  integer,                      intent(in) :: &
@@ -482,7 +478,6 @@ function plastic_kinehardening_postResults(Mp,instance,of) result(postResults)
  use math, only: &
    math_mul33xx33
 
- implicit none
  real(pReal), dimension(3,3), intent(in) :: &
    Mp                                                                                               !< Mandel stress
  integer,               intent(in) :: &
@@ -539,10 +534,10 @@ end function plastic_kinehardening_postResults
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_kinehardening_results(instance,group)
-#if defined(PETSc) || defined(DAMASKHDF5)
-  use results
+#if defined(PETSc) || defined(DAMASK_HDF5)
+  use results, only: &
+    results_writeDataset
 
-  implicit none
   integer, intent(in) :: instance
   character(len=*) :: group
   integer :: o
@@ -550,6 +545,27 @@ subroutine plastic_kinehardening_results(instance,group)
   associate(prm => param(instance), stt => state(instance))
   outputsLoop: do o = 1,size(prm%outputID)
     select case(prm%outputID(o))
+     case (crss_ID)
+       call results_writeDataset(group,stt%crss,'xi_sl', &
+                                'resistance against plastic slip','Pa')
+
+     case(crss_back_ID)
+       call results_writeDataset(group,stt%crss_back,'tau_back', &
+                                'back stress against plastic slip','Pa')
+                                
+     case (sense_ID)
+       call results_writeDataset(group,stt%sense,'sense_of_shear','tbd','1')
+
+     case (chi0_ID)
+       call results_writeDataset(group,stt%chi0,'chi0','tbd','Pa')
+       
+     case (gamma0_ID)
+       call results_writeDataset(group,stt%gamma0,'gamma0','tbd','1')
+       
+     case (accshear_ID)
+       call results_writeDataset(group,stt%accshear,'gamma_sl', &
+                                  'plastic shear','1')
+       
     end select
   enddo outputsLoop
   end associate
@@ -574,7 +590,6 @@ pure subroutine kinetics(Mp,instance,of, &
  use math, only: &
    math_mul33xx33
 
- implicit none
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
  integer,                intent(in) :: &

@@ -102,7 +102,7 @@ fi
 if test "$DAMASK_HDF5" = "ON";then
   H5FC="$(h5fc -shlib -show)"
   HDF5_LIB=${H5FC//ifort/}
-  FCOMP="$H5FC -DDAMASKHDF5"
+  FCOMP="$H5FC -DDAMASK_HDF5"
   echo $FCOMP
 else
   FCOMP=ifort

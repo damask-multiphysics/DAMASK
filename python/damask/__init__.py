@@ -3,8 +3,8 @@
 """Main aggregator"""
 import os
 
-with open(os.path.join(os.path.dirname(__file__),'../../VERSION')) as f:
-  version = f.readline()[:-1]
+with open(os.path.join(os.path.dirname(__file__),'VERSION')) as f:
+  version = f.readline()[1:-1]
 
 name = 'damask'
 
@@ -14,6 +14,7 @@ from .asciitable  import ASCIItable       # noqa
 from .config      import Material         # noqa
 from .colormaps   import Colormap, Color  # noqa
 from .orientation import Symmetry, Lattice, Rotation, Orientation # noqa
+from .dadf5       import DADF5 # noqa
 
 #from .block       import Block           # only one class
 from .result      import Result           # noqa

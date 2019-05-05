@@ -72,9 +72,9 @@ subroutine CPFEM_initAll()
  call FE_init
  call mesh_init
  call lattice_init
- call material_init
  call HDF5_utilities_init
  call results_init
+ call material_init
  call constitutive_init
  call crystallite_init
  call homogenization_init
@@ -257,7 +257,7 @@ subroutine CPFEM_age()
      write(6,'(a)') '<< CPFEM >> writing restart variables of last converged step to hdf5 file'
    
    write(rankStr,'(a1,i0)')'_',worldrank
-   fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
+   fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','a')
    
    call HDF5_write(fileHandle,material_phase,      'recordedPhase')
    call HDF5_write(fileHandle,crystallite_F0,      'convergedF')
@@ -300,6 +300,8 @@ subroutine CPFEM_results(inc,time)
  use HDF5_utilities
  use constitutive, only: &
    constitutive_results
+ use crystallite, only: &
+   crystallite_results
 
  implicit none
  integer(pInt), intent(in) :: inc
@@ -307,7 +309,8 @@ subroutine CPFEM_results(inc,time)
 
  call results_openJobFile
  call results_addIncrement(inc,time)
- call constitutive_results()
+ call constitutive_results
+ call crystallite_results
  call results_removeLink('current') ! ToDo: put this into closeJobFile
  call results_closeJobFile
 

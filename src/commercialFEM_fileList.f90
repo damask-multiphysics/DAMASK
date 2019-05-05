@@ -9,10 +9,6 @@
 #include "list.f90"
 #include "future.f90"
 #include "config.f90"
-#ifdef DAMASKHDF5
-#include "HDF5_utilities.f90"
-#include "results.f90"
-#endif
 #include "math.f90"
 #include "quaternions.f90"
 #include "Lambert.f90"
@@ -25,6 +21,10 @@
 #endif
 #ifdef Marc4DAMASK
 #include "mesh_marc.f90"
+#endif
+#ifdef DAMASK_HDF5
+#include "HDF5_utilities.f90"
+#include "results.f90"
 #endif
 #include "material.f90"
 #include "lattice.f90"
@@ -46,9 +46,7 @@
 #include "plastic_nonlocal.f90"
 #include "constitutive.f90"
 #include "crystallite.f90"
-#include "homogenization_none.f90"
-#include "homogenization_isostrain.f90"
-#include "homogenization_RGC.f90"
+#include "homogenization_mech_RGC.f90"
 #include "thermal_isothermal.f90"
 #include "thermal_adiabatic.f90"
 #include "thermal_conduction.f90"
@@ -56,4 +54,6 @@
 #include "damage_local.f90"
 #include "damage_nonlocal.f90"
 #include "homogenization.f90"
+#include "homogenization_mech_none.f90"
+#include "homogenization_mech_isostrain.f90"
 #include "CPFEM.f90"

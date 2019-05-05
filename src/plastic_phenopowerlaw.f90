@@ -121,7 +121,6 @@ subroutine plastic_phenopowerlaw_init
    config_phase
  use lattice
 
- implicit none
  integer :: &
    Ninstance, &
    p, i, &
@@ -195,9 +194,9 @@ subroutine plastic_phenopowerlaw_init
        prm%nonSchmid_pos  = prm%Schmid_slip
        prm%nonSchmid_neg  = prm%Schmid_slip
      endif
-     prm%interaction_SlipSlip = transpose(lattice_interaction_SlipBySlip(prm%Nslip, &
+     prm%interaction_SlipSlip = lattice_interaction_SlipBySlip(prm%Nslip, &
                                                                config%getFloats('interaction_slipslip'), &
-                                                               config%getString('lattice_structure')))
+                                                               config%getString('lattice_structure'))
 
      prm%xi_slip_0   = config%getFloats('tau0_slip',   requiredSize=size(prm%Nslip))
      prm%xi_slip_sat = config%getFloats('tausat_slip', requiredSize=size(prm%Nslip))
@@ -232,9 +231,9 @@ subroutine plastic_phenopowerlaw_init
    twinActive: if (prm%totalNtwin > 0) then
      prm%Schmid_twin          = lattice_SchmidMatrix_twin(prm%Ntwin,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
-     prm%interaction_TwinTwin = transpose(lattice_interaction_TwinByTwin(prm%Ntwin,&
+     prm%interaction_TwinTwin = lattice_interaction_TwinByTwin(prm%Ntwin,&
                                                                config%getFloats('interaction_twintwin'), &
-                                                               config%getString('lattice_structure')))
+                                                               config%getString('lattice_structure'))
      prm%gamma_twin_char      = lattice_characteristicShear_twin(prm%Ntwin,config%getString('lattice_structure'),&
                                                             config%getFloat('c/a'))
 
@@ -260,12 +259,12 @@ subroutine plastic_phenopowerlaw_init
 !--------------------------------------------------------------------------------------------------
 ! slip-twin related parameters
    slipAndTwinActive: if (prm%totalNslip > 0 .and. prm%totalNtwin > 0) then
-     prm%interaction_SlipTwin = transpose(lattice_interaction_SlipByTwin(prm%Nslip,prm%Ntwin,&
+     prm%interaction_SlipTwin = lattice_interaction_SlipByTwin(prm%Nslip,prm%Ntwin,&
                                                                config%getFloats('interaction_sliptwin'), &
-                                                               config%getString('lattice_structure')))
-     prm%interaction_TwinSlip = transpose(lattice_interaction_TwinBySlip(prm%Ntwin,prm%Nslip,&
+                                                               config%getString('lattice_structure'))
+     prm%interaction_TwinSlip = lattice_interaction_TwinBySlip(prm%Ntwin,prm%Nslip,&
                                                                config%getFloats('interaction_twinslip'), &
-                                                               config%getString('lattice_structure')))
+                                                               config%getString('lattice_structure'))
    else slipAndTwinActive
      allocate(prm%interaction_SlipTwin(prm%TotalNslip,prm%TotalNtwin))                              ! at least one dimension is 0
      allocate(prm%interaction_TwinSlip(prm%TotalNtwin,prm%TotalNslip))                              ! at least one dimension is 0
@@ -379,7 +378,6 @@ end subroutine plastic_phenopowerlaw_init
 !--------------------------------------------------------------------------------------------------
 pure subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
- implicit none
  real(pReal), dimension(3,3),     intent(out) :: &
    Lp                                                                                               !< plastic velocity gradient
  real(pReal), dimension(3,3,3,3), intent(out) :: &
@@ -431,7 +429,6 @@ end subroutine plastic_phenopowerlaw_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
 
- implicit none
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
  integer,                      intent(in) :: &
@@ -490,7 +487,6 @@ function plastic_phenopowerlaw_postResults(Mp,instance,of) result(postResults)
  use math, only: &
    math_mul33xx33
 
- implicit none
  real(pReal), dimension(3,3), intent(in) :: &
    Mp                                                                                               !< Mandel stress
  integer,                     intent(in) :: &
@@ -555,28 +551,42 @@ end function plastic_phenopowerlaw_postResults
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_phenopowerlaw_results(instance,group)
-#if defined(PETSc) || defined(DAMASKHDF5)
- use results
+#if defined(PETSc) || defined(DAMASK_HDF5)
+  use results, only: &
+    results_writeDataset
 
- implicit none
- integer, intent(in) :: instance
- character(len=*) :: group
- integer :: o
+  integer,          intent(in) :: instance
+  character(len=*), intent(in) :: group
+  
+  integer :: o
 
- associate(prm => param(instance), stt => state(instance))
- outputsLoop: do o = 1,size(prm%outputID)
-   select case(prm%outputID(o))
-     case (resistance_slip_ID)
-       call results_writeVectorDataset(group,stt%xi_slip,'xi_slip','Pa')
-     case (accumulatedshear_slip_ID)
-       call results_writeVectorDataset(group,stt%gamma_slip,'gamma_slip','-')
-   end select
- enddo outputsLoop
- end associate
+  associate(prm => param(instance), stt => state(instance))
+  outputsLoop: do o = 1,size(prm%outputID)
+    select case(prm%outputID(o))
+
+      case (resistance_slip_ID)
+        call results_writeDataset(group,stt%xi_slip,   'xi_sl', &
+                                  'resistance against plastic slip','Pa')
+      case (accumulatedshear_slip_ID)
+        call results_writeDataset(group,stt%gamma_slip,'gamma_sl', &
+                                  'plastic shear','1')
+                                  
+      case (resistance_twin_ID)
+        call results_writeDataset(group,stt%xi_twin,   'xi_tw', &
+                                  'resistance against twinning','Pa')
+      case (accumulatedshear_twin_ID)
+        call results_writeDataset(group,stt%gamma_twin,'gamma_tw', &
+                                  'twinning shear','1')
+        
+    end select
+  enddo outputsLoop
+  end associate
+  
 #else
- integer, intent(in) :: instance
- character(len=*) :: group
+  integer,          intent(in) :: instance
+  character(len=*), intent(in) :: group
 #endif
+
 end subroutine plastic_phenopowerlaw_results
 
 
@@ -593,7 +603,6 @@ pure subroutine kinetics_slip(Mp,instance,of, &
  use math, only: &
    math_mul33xx33
 
- implicit none
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
  integer,                      intent(in) :: &
@@ -670,7 +679,6 @@ pure subroutine kinetics_twin(Mp,instance,of,&
  use math, only: &
    math_mul33xx33
 
- implicit none
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
  integer,                      intent(in) :: &
