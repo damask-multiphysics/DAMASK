@@ -16,6 +16,7 @@
 !> @details  Marc subroutines used:
 !> @details   - hypela2
 !> @details   - plotv
+!> @details   - uedinc
 !> @details   - flux
 !> @details   - quit
 !> @details  Marc common blocks included:
@@ -273,26 +274,20 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
        outdatedByNewInc = .false.                                                                   ! no aging of state
        calcMode = .false.                                                                           ! pretend last step was collection
        lastLovl = lovl                                                                              ! pretend that this is NOT the first after a lovl change
-       !$OMP CRITICAL (write2out)
-         write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> start of analysis..! ',m(1),nn
-         flush(6)
-       !$OMP END CRITICAL (write2out)
+       write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> start of analysis..! ',m(1),nn
+       flush(6)
      else if (inc - theInc > 1) then                                                                ! >> restart of broken analysis <<
        lastIncConverged = .false.                                                                   ! no Jacobian backup
        outdatedByNewInc = .false.                                                                   ! no aging of state
        calcMode = .true.                                                                            ! pretend last step was calculation
-       !$OMP CRITICAL (write2out)
-         write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> restart of analysis..! ',m(1),nn
-         flush(6)
-       !$OMP END CRITICAL (write2out)
+       write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> restart of analysis..! ',m(1),nn
+       flush(6)
      else                                                                                           ! >> just the next inc <<
        lastIncConverged = .true.                                                                    ! request Jacobian backup
        outdatedByNewInc = .true.                                                                    ! request aging of state
        calcMode = .true.                                                                            ! assure last step was calculation
-       !$OMP CRITICAL (write2out)
-         write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> new increment..! ',m(1),nn
-         flush(6)
-       !$OMP END CRITICAL (write2out)
+       write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> new increment..! ',m(1),nn
+       flush(6)
      endif
    else if ( timinc < theDelta ) then                                                               ! >> cutBack <<
      lastIncConverged = .false.                                                                     ! no Jacobian backup
@@ -300,10 +295,8 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
      terminallyIll = .false.
      cycleCounter = -1                                                                              ! first calc step increments this to cycle = 0
      calcMode = .true.                                                                              ! pretend last step was calculation
-     !$OMP CRITICAL (write2out)
-       write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> cutback detected..! ',m(1),nn
-       flush(6)
-     !$OMP END CRITICAL (write2out)
+     write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> cutback detected..! ',m(1),nn
+     flush(6)
    endif                                                                                            ! convergence treatment end
 
 
@@ -365,7 +358,6 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
  lastLovl = lovl                                                                                    ! record lovl
 
  call CPFEM_general(computationMode,usePingPong,ffn,ffn1,t(1),timinc,m(1),nn,stress,ddsdde)
-
 !     Mandel: 11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
 !     Marc:   11, 22, 33, 12, 23, 13
 !     Marc:   11, 22, 33, 12
@@ -405,6 +397,26 @@ subroutine flux(f,ts,n,time)
  call thermal_conduction_getSourceAndItsTangent(f(1), f(2), ts(3), n(3),mesh_FEasCP('elem',n(1)))
 
  end subroutine flux
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief sets user defined output variables for Marc
+!> @details select a variable contour plotting (user subroutine).
+!--------------------------------------------------------------------------------------------------
+subroutine uedinc(inc,incsub)
+  use prec, only: &
+    pReal, &
+    pInt
+  use CPFEM, only: &
+    CPFEM_results
+
+  implicit none
+  integer, intent(in) :: inc, incsub
+#include QUOTE(PASTE(./MarcInclude/creeps,Marc4DAMASK))                                             ! creeps is needed for timinc (time increment)
+
+  call CPFEM_results(inc,cptim)
+
+end subroutine uedinc
 
 
 !--------------------------------------------------------------------------------------------------
