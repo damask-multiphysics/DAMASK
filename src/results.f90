@@ -250,6 +250,8 @@ subroutine results_writeScalarDataset_real(group,dataset,label,description,SIuni
   
 #ifdef PETSc
   call HDF5_write(groupHandle,dataset,label,.true.)
+#else
+  call HDF5_write(groupHandle,dataset,label,.false.)
 #endif
   
   if (HDF5_objectExists(groupHandle,label)) &
@@ -277,6 +279,8 @@ subroutine results_writeVectorDataset_real(group,dataset,label,description,SIuni
   
 #ifdef PETSc
   call HDF5_write(groupHandle,dataset,label,.true.)
+#else
+  call HDF5_write(groupHandle,dataset,label,.false.)
 #endif
   
   if (HDF5_objectExists(groupHandle,label)) &
@@ -305,6 +309,8 @@ subroutine results_writeTensorDataset_real(group,dataset,label,description,SIuni
   
 #ifdef PETSc
   call HDF5_write(groupHandle,dataset,label,.true.)
+#else
+  call HDF5_write(groupHandle,dataset,label,.false.)
 #endif
   
   if (HDF5_objectExists(groupHandle,label)) &
@@ -333,6 +339,8 @@ subroutine results_writeVectorDataset_int(group,dataset,label,description,SIunit
   
 #ifdef PETSc
   call HDF5_write(groupHandle,dataset,label,.true.)
+#else
+  call HDF5_write(groupHandle,dataset,label,.false.)
 #endif
   
   if (HDF5_objectExists(groupHandle,label)) &
@@ -361,6 +369,8 @@ subroutine results_writeTensorDataset_int(group,dataset,label,description,SIunit
   
 #ifdef PETSc
   call HDF5_write(groupHandle,dataset,label,.true.)
+#else
+  call HDF5_write(groupHandle,dataset,label,.false.)
 #endif
   
   if (HDF5_objectExists(groupHandle,label)) &
@@ -391,6 +401,8 @@ subroutine results_writeScalarDataset_rotation(group,dataset,label,description,l
   
 #ifdef PETSc
   call HDF5_write(groupHandle,dataset,label,.true.)
+#else
+  call HDF5_write(groupHandle,dataset,label,.false.)
 #endif
   
   if (HDF5_objectExists(groupHandle,label)) &
