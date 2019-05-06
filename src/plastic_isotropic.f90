@@ -91,19 +91,7 @@ subroutine plastic_isotropic_init
     debug_levelBasic
   use IO, only: &
     IO_error
-  use material, only: &
-    phase_plasticity, &
-    phase_plasticityInstance, &
-    phase_Noutput, &
-    material_allocatePlasticState, &
-    PLASTICITY_ISOTROPIC_label, &
-    PLASTICITY_ISOTROPIC_ID, &
-    material_phase, &
-    plasticState
-#ifdef DEBUG
-  use material, only: &
-    phasememberAt
-#endif
+  use material
   use config, only: &
     config_phase
   use lattice
@@ -464,7 +452,7 @@ function plastic_isotropic_postResults(Mp,instance,of) result(postResults)
         c = c + 1
       case (dot_gamma_ID)
         postResults(c+1) = prm%dot_gamma_0 &
-                         * (sqrt(1.5_pReal) * norm_Mp /(prm%M * stt%xi(of)))**prm%n
+                              * (sqrt(1.5_pReal) * norm_Mp /(prm%M * stt%xi(of)))**prm%n
         c = c + 1
  
     end select
@@ -479,11 +467,10 @@ end function plastic_isotropic_postResults
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_isotropic_results(instance,group)
-#if defined(PETSc) || defined(DAMASK_HDF5)
-  use results, only: &
-    results_writeDataset
+#if defined(PETSc) || defined(DAMASKHDF5)
+  use results
 
-  integer,          intent(in) :: instance
+  integer, intent(in) :: instance
   character(len=*), intent(in) :: group
   
   integer :: o
@@ -496,10 +483,9 @@ subroutine plastic_isotropic_results(instance,group)
     end select
   enddo outputsLoop
   end associate
-  
 #else
-  integer,          intent(in) :: instance
-  character(len=*), intent(in) :: group
+  integer, intent(in) :: instance
+  character(len=*) :: group
 #endif
 
 end subroutine plastic_isotropic_results
