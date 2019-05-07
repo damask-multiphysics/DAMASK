@@ -20,6 +20,8 @@ parser = argparse.ArgumentParser()
 #parser.add_argument('--version', action='version', version='%(prog)s {}'.format(scriptID))
 parser.add_argument('filenames', nargs='+',
                     help='DADF5 files')
+parser.add_argument('-d','--dir', dest='dir',default='postProc',metavar='string',
+                    help='name of subdirectory to hold output')
 
 options = parser.parse_args()
 
@@ -54,7 +56,13 @@ for filename in options.filenames:
     data = np.concatenate((data,coords),1)
     header+=' 1_pos 2_pos 3_pos'
     
-    np.savetxt('{}_inc{}.txt'.format(filename.split('.')[0],i),data,header=header,comments='')
+    dirname  = os.path.abspath(os.path.join(os.path.dirname(filename),options.dir))
+    try:
+      os.mkdir(dirname)
+    except FileExistsError:
+      pass
+    file_out = '{}_inc{:04d}.txt'.format(filename.split('.')[0],i)
+    np.savetxt(os.path.join(dirname,file_out),data,header=header,comments='')
     
     results.active['increments'] = [inc]
     for label in options.labels:

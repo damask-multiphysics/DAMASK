@@ -21,6 +21,8 @@ parser = argparse.ArgumentParser()
 #parser.add_argument('--version', action='version', version='%(prog)s {}'.format(scriptID))
 parser.add_argument('filenames', nargs='+',
                     help='DADF5 files')
+parser.add_argument('-d','--dir', dest='dir',default='postProc',metavar='string',
+                    help='name of subdirectory to hold output')
 
 options = parser.parse_args()
 
@@ -80,12 +82,17 @@ for filename in options.filenames:
     if results.structured:
       writer = vtk.vtkXMLRectilinearGridWriter()
 
+
+    dirname  = os.path.abspath(os.path.join(os.path.dirname(filename),options.dir))
+    try:
+      os.mkdir(dirname)
+    except FileExistsError:
+      pass
+    file_out = '{}_inc{:04d}.{}'.format(filename.split('.')[0],i,writer.GetDefaultFileExtension())
+    
     writer.SetCompressorTypeToZLib()
     writer.SetDataModeToBinary()
-    writer.SetFileName(os.path.join(os.path.split(filename)[0],
-                                    os.path.splitext(os.path.split(filename)[1])[0] +
-                                    '_inc{:04d}'.format(i) +                                        # ToDo: adjust to length of increments
-                                    '.' + writer.GetDefaultFileExtension()))
+    writer.SetFileName(os.path.join(dirname,file_out))
     if results.structured:
       writer.SetInputData(rGrid)
     
