@@ -55,15 +55,7 @@ for filename in options.filenames:
     coords = coords.reshape([np.product(results.grid),3])
     data = np.concatenate((data,coords),1)
     header+=' 1_pos 2_pos 3_pos'
-    
-    dirname  = os.path.abspath(os.path.join(os.path.dirname(filename),options.dir))
-    try:
-      os.mkdir(dirname)
-    except FileExistsError:
-      pass
-    file_out = '{}_inc{:04d}.txt'.format(filename.split('.')[0],i)
-    np.savetxt(os.path.join(dirname,file_out),data,header=header,comments='')
-    
+        
     results.active['increments'] = [inc]
     for label in options.labels:
       for o in results.c_output_types:
@@ -73,4 +65,19 @@ for filename in options.filenames:
           x = results.get_dataset_location(label)
           if len(x) == 0:
             continue
+          label = x[0].split('/')[-1]
           array = results.read_dataset(x,0)
+          d = np.product(np.shape(array)[1:])
+          array = np.reshape(array,[np.product(results.grid),d])
+          data = np.concatenate((data,array),1)
+          
+          header+= ''.join([' {}_{}'.format(j+1,label) for j in range(d)])
+
+
+    dirname  = os.path.abspath(os.path.join(os.path.dirname(filename),options.dir))
+    try:
+      os.mkdir(dirname)
+    except FileExistsError:
+      pass
+    file_out = '{}_inc{:04d}.txt'.format(filename.split('.')[0],i)
+    np.savetxt(os.path.join(dirname,file_out),data,header=header,comments='')
