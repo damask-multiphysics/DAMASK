@@ -88,7 +88,7 @@ for filename in options.filenames:
       os.mkdir(dirname)
     except FileExistsError:
       pass
-    file_out = '{}_inc{:04d}.{}'.format(filename.split('.')[0],i,writer.GetDefaultFileExtension())
+    file_out = '{}_inc{:04d}.{}'.format(filename.split('.')[0],inc['inc'],writer.GetDefaultFileExtension())
     
     writer.SetCompressorTypeToZLib()
     writer.SetDataModeToBinary()

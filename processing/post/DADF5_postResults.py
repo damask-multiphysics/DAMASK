@@ -79,5 +79,5 @@ for filename in options.filenames:
       os.mkdir(dirname)
     except FileExistsError:
       pass
-    file_out = '{}_inc{:04d}.txt'.format(filename.split('.')[0],i)
+    file_out = '{}_inc{:04d}.txt'.format(filename.split('.')[0],inc['inc'])
     np.savetxt(os.path.join(dirname,file_out),data,header=header,comments='')
