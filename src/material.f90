@@ -183,14 +183,11 @@ module material
 
  integer(pInt), private :: &
    microstructure_maxNconstituents, &                                                               !< max number of constituents in any phase
-   texture_maxNgauss, &                                                                             !< max number of Gauss components in any texture
-   texture_maxNfiber                                                                                !< max number of Fiber components in any texture
+   texture_maxNgauss                                                                                !< max number of Gauss components in any texture
 
  integer(pInt), dimension(:), allocatable, private :: &
    microstructure_Nconstituents, &                                                                  !< number of constituents in each microstructure
-   texture_symmetry, &                                                                              !< number of symmetric orientations per texture
-   texture_Ngauss, &                                                                                !< number of Gauss components per texture
-   texture_Nfiber                                                                                   !< number of Fiber components per texture
+   texture_Ngauss                                                                                   !< number of Gauss components per texture
 
  integer(pInt), dimension(:,:), allocatable, private :: &
    microstructure_phase, &                                                                          !< phase IDs of each microstructure
@@ -200,9 +197,7 @@ module material
    microstructure_fraction                                                                          !< vol fraction of each constituent in microstructure
 
  real(pReal), dimension(:,:,:), allocatable, private :: &
-   material_volume, &                                                                               !< volume of each grain,IP,element
    texture_Gauss, &                                                                                 !< data of each Gauss component
-   texture_Fiber, &                                                                                 !< data of each Fiber component
    texture_transformation                                                                           !< transformation for each texture
 
  logical, dimension(:), allocatable, private :: &
@@ -807,31 +802,27 @@ subroutine material_parseTexture
    math_det33
 
  implicit none
- integer(pInt) :: section, gauss, fiber, j, t, i
+ integer(pInt) :: section, gauss, j, t, i
  character(len=65536), dimension(:), allocatable ::  strings                                     ! Values for given key in material config 
  integer(pInt), dimension(:), allocatable :: chunkPos
 
- allocate(texture_symmetry(size(config_texture)), source=1_pInt)
  allocate(texture_Ngauss(size(config_texture)),   source=0_pInt)
- allocate(texture_Nfiber(size(config_texture)),   source=0_pInt)
 
  do t=1_pInt, size(config_texture)
-   texture_Ngauss(t) =  config_texture(t)%countKeys('(gauss)') &
-                     +  config_texture(t)%countKeys('(random)')
-   texture_Nfiber(t) =  config_texture(t)%countKeys('(fiber)')
+   texture_Ngauss(t) =  config_texture(t)%countKeys('(gauss)')
+   if (config_texture(t)%keyExists('symmetry')) call IO_error(147,ext_msg='symmetry')
+   if (config_texture(t)%keyExists('(random)')) call IO_error(147,ext_msg='(random)')
+   if (config_texture(t)%keyExists('(fiber)'))  call IO_error(147,ext_msg='(fiber)')
  enddo
 
  texture_maxNgauss = maxval(texture_Ngauss)
- texture_maxNfiber = maxval(texture_Nfiber)
  allocate(texture_Gauss (5,texture_maxNgauss,size(config_texture)), source=0.0_pReal)
- allocate(texture_Fiber (6,texture_maxNfiber,size(config_texture)), source=0.0_pReal)
  allocate(texture_transformation(3,3,size(config_texture)),         source=0.0_pReal)
           texture_transformation = spread(math_I3,3,size(config_texture))
 
  do t=1_pInt, size(config_texture)
    section = t
    gauss = 0_pInt
-   fiber = 0_pInt
    
    if (config_texture(t)%keyExists('axes')) then
      strings = config_texture(t)%getStrings('axes')
@@ -856,10 +847,6 @@ subroutine material_parseTexture
      if(dNeq(math_det33(texture_transformation(1:3,1:3,t)),1.0_pReal)) call IO_error(157_pInt,t)
    endif
 
-   if (config_texture(t)%keyExists('symmetry')) call IO_error(147,ext_msg='symmetry')
-   if (config_texture(t)%keyExists('(random)')) call IO_error(147,ext_msg='(random)')
-   if (config_texture(t)%keyExists('(fiber)'))  call IO_error(147,ext_msg='(fiber)')
-   
    if (config_texture(t)%keyExists('(gauss)')) then
      gauss = gauss + 1_pInt
      strings = config_texture(t)%getStrings('(gauss)',raw= .true.)
@@ -873,10 +860,6 @@ subroutine material_parseTexture
                  texture_Gauss(2,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)*inRad
              case('phi2')
                  texture_Gauss(3,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)*inRad
-             case('scatter')
-                 texture_Gauss(4,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)*inRad
-             case('fraction')
-                 texture_Gauss(5,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1_pInt)
           end select
       enddo
      enddo
@@ -984,28 +967,19 @@ end subroutine material_allocateSourceState
 !! calculates the volume of the grains and deals with texture components
 !--------------------------------------------------------------------------------------------------
 subroutine material_populateGrains
- use prec, only: &
-   dEq
  use math, only: &
+   math_EulertoR, &
    math_RtoEuler, &
-   math_EulerToR, &
    math_mul33x33, &
    math_range
  use mesh, only: &
-   theMesh, &
-   mesh_ipVolume
+   theMesh
  use config, only: &
    config_homogenization, &
    config_microstructure, &
-   config_deallocate, &
-   homogenization_name, &
-   microstructure_name 
+   config_deallocate
  use IO, only: &
    IO_error
- use debug, only: &
-   debug_level, &
-   debug_material, &
-   debug_levelBasic
 
  implicit none
  integer(pInt), dimension (:,:), allocatable :: Ngrains
@@ -1015,21 +989,17 @@ subroutine material_populateGrains
    randomOrder
  real(pReal), dimension (microstructure_maxNconstituents)  :: &
    rndArray
- real(pReal), dimension (:),     allocatable :: volumeOfGrain
  real(pReal), dimension (:,:),   allocatable :: orientationOfGrain
  real(pReal), dimension (3)                  :: orientation
- real(pReal), dimension (3,3)                :: symOrientation
  integer(pInt), dimension (:),   allocatable :: phaseOfGrain, textureOfGrain
- integer(pInt) :: t,e,i,g,j,m,c,r,homog,micro,sgn,hme, myDebug, &
+ integer(pInt) :: t,e,i,g,j,m,c,r,homog,micro,sgn,hme, &
                   phaseID,textureID,dGrains,myNgrains,myNorientations,myNconstituents, &
-                  grain,constituentGrain,ipGrain,symExtension, ip
+                  grain,constituentGrain,ipGrain,ip
  real(pReal) :: deviation,extreme,rnd
  integer(pInt),         dimension (:,:), allocatable :: Nelems                                      ! counts number of elements in homog, micro array
  type(group_int), dimension (:,:), allocatable :: elemsOfHomogMicro                                 ! lists element number in homog, micro array
 
- myDebug = debug_level(debug_material)
 
- allocate(material_volume(homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),       source=0.0_pReal)
  allocate(material_phase(homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),        source=0_pInt)
  allocate(material_texture(homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),      source=0_pInt)
  allocate(material_EulerAngles(3,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),source=0.0_pReal)
@@ -1038,6 +1008,25 @@ subroutine material_populateGrains
  allocate(Nelems (size(config_homogenization),size(config_microstructure)),            source=0_pInt)
 
 
+  do e = 1, theMesh%Nelems
+    do i = 1, theMesh%elem%nIPs
+      homog = theMesh%homogenizationAt(e)
+      micro = theMesh%microstructureAt(e)
+      do c = 1, homogenization_Ngrains(homog)
+        material_phase(c,i,e)   = microstructure_phase(c,micro)
+        material_texture(c,i,e) = microstructure_texture(c,micro)
+        material_EulerAngles(1:3,c,i,e) = texture_Gauss(1:3,1,material_texture(c,i,e))
+        material_EulerAngles(1:3,c,i,e) = math_RtoEuler( &                                       ! translate back to Euler angles
+                                             math_mul33x33( &                                       ! pre-multiply
+                                               math_EulertoR(material_EulerAngles(1:3,c,i,e)), &    ! face-value orientation
+                                               texture_transformation(1:3,1:3,material_texture(c,i,e)) &          ! and transformation matrix
+                                             ) &
+                                             )
+      enddo
+    enddo
+  enddo
+
+ return
 !--------------------------------------------------------------------------------------------------
 ! precounting of elements for each homog/micro pair
  do e = 1_pInt, theMesh%Nelems
@@ -1075,47 +1064,17 @@ subroutine material_populateGrains
    elemsOfHomogMicro(homog,micro)%p(Nelems(homog,micro)) = e                                        ! remember elements active in this homog/micro pair
  enddo elementLooping
 
- allocate(volumeOfGrain(maxval(Ngrains)),       source=0.0_pReal)                                   ! reserve memory for maximum case
  allocate(phaseOfGrain(maxval(Ngrains)),        source=0_pInt)                                      ! reserve memory for maximum case
  allocate(textureOfGrain(maxval(Ngrains)),      source=0_pInt)                                      ! reserve memory for maximum case
  allocate(orientationOfGrain(3,maxval(Ngrains)),source=0.0_pReal)                                   ! reserve memory for maximum case
 
- if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
-     write(6,'(/,a/)') ' MATERIAL grain population'
-     write(6,'(a32,1x,a32,1x,a6)') 'homogenization_name','microstructure_name','grain#'
- endif
+
  homogenizationLoop: do homog = 1_pInt,size(config_homogenization)
    dGrains = homogenization_Ngrains(homog)                                                          ! grain number per material point
-   microstructureLoop: do micro = 1_pInt,size(config_microstructure)                                                       ! all pairs of homog and micro
+   microstructureLoop: do micro = 1_pInt,size(config_microstructure)                                ! all pairs of homog and micro
      activePair: if (Ngrains(homog,micro) > 0_pInt) then
        myNgrains = Ngrains(homog,micro)                                                             ! assign short name for total number of grains to populate
        myNconstituents = microstructure_Nconstituents(micro)                                        ! assign short name for number of constituents
-       if (iand(myDebug,debug_levelBasic) /= 0_pInt) &
-         write(6,'(/,a32,1x,a32,1x,i6)') homogenization_name(homog),microstructure_name(micro),myNgrains
-
-
-!--------------------------------------------------------------------------------------------------
-! calculate volume of each grain
-
-       volumeOfGrain = 0.0_pReal
-       grain = 0_pInt
-
-       do hme = 1_pInt, Nelems(homog,micro)
-         e = elemsOfHomogMicro(homog,micro)%p(hme)                                                  ! my combination of homog and micro, only perform calculations for elements with homog, micro combinations which is indexed in cpElemsindex
-         if (microstructure_elemhomo(micro)) then                                                   ! homogeneous distribution of grains over each element's IPs
-           volumeOfGrain(grain+1_pInt:grain+dGrains) = sum(mesh_ipVolume(1:theMesh%elem%nIPs,e))/&
-                                                                         real(dGrains,pReal)        ! each grain combines size of all IPs in that element
-           grain = grain + dGrains                                                                  ! wind forward by Ngrains@IP
-         else
-           forall (i = 1_pInt:theMesh%elem%nIPs) &                                                   ! loop over IPs
-             volumeOfGrain(grain+(i-1)*dGrains+1_pInt:grain+i*dGrains) = &
-               mesh_ipVolume(i,e)/real(dGrains,pReal)                                               ! assign IPvolume/Ngrains@IP to all grains of IP
-           grain = grain + theMesh%elem%nIPs * dGrains                                               ! wind forward by Nips*Ngrains@IP
-         endif
-       enddo
-
-       if (grain /= myNgrains) &
-         call IO_error(0,el = homog,ip = micro,ext_msg = 'inconsistent grain count after volume calc')
 
 !--------------------------------------------------------------------------------------------------
 ! divide myNgrains as best over constituents
@@ -1165,8 +1124,7 @@ subroutine material_populateGrains
          phaseOfGrain  (grain+1_pInt:grain+NgrainsOfConstituent(i)) = phaseID                       ! assign resp. phase
          textureOfGrain(grain+1_pInt:grain+NgrainsOfConstituent(i)) = textureID                     ! assign resp. texture
 
-         myNorientations = ceiling(real(NgrainsOfConstituent(i),pReal)/&
-                                   real(texture_symmetry(textureID),pReal),pInt)                    ! max number of unique orientations (excl. symmetry)
+         myNorientations = ceiling(real(NgrainsOfConstituent(i),pReal)/1.0,pInt)                    ! max number of unique orientations (excl. symmetry)
 
 !--------------------------------------------------------------------------------------------------
 ! has texture components
@@ -1196,7 +1154,7 @@ subroutine material_populateGrains
 
          do j = 1_pInt,NgrainsOfConstituent(i)-1_pInt                                               ! walk thru grains of current constituent
            call random_number(rnd)
-           t = nint(rnd*real(NgrainsOfConstituent(i)-j,pReal)+real(j,pReal)+0.5_pReal,pInt)       ! select a grain in remaining list
+           t = nint(rnd*real(NgrainsOfConstituent(i)-j,pReal)+real(j,pReal)+0.5_pReal,pInt)         ! select a grain in remaining list
            m                               = phaseOfGrain(grain+t)                                  ! exchange current with random
            phaseOfGrain(grain+t)           = phaseOfGrain(grain+j)
            phaseOfGrain(grain+j)           = m
@@ -1244,7 +1202,6 @@ subroutine material_populateGrains
                                          currentGrainOfConstituent(c)))
                ipGrain = ipGrain + 1_pInt                                                           ! advance IP grain counter
                currentGrainOfConstituent(c)  = currentGrainOfConstituent(c) + 1_pInt                ! advance index of grain population for constituent c
-               material_volume(ipGrain,i,e)  = volumeOfGrain(grain+currentGrainOfConstituent(c))    ! assign properties
                material_phase(ipGrain,i,e)   = phaseOfGrain(grain+currentGrainOfConstituent(c))
                material_texture(ipGrain,i,e) = textureOfGrain(grain+currentGrainOfConstituent(c))
                material_EulerAngles(1:3,ipGrain,i,e) = orientationOfGrain(1:3,grain+currentGrainOfConstituent(c))
@@ -1254,7 +1211,6 @@ subroutine material_populateGrains
            grain = sum(NgrainsOfConstituent(1:c-1_pInt))                                            ! figure out actual starting index in overall/consecutive grain population
            do ipGrain = ipGrain + 1_pInt, dGrains                                                   ! ensure last constituent fills up to dGrains
              currentGrainOfConstituent(c)  = currentGrainOfConstituent(c) + 1_pInt
-             material_volume(ipGrain,i,e)  = volumeOfGrain(grain+currentGrainOfConstituent(c))
              material_phase(ipGrain,i,e)   = phaseOfGrain(grain+currentGrainOfConstituent(c))
              material_texture(ipGrain,i,e) = textureOfGrain(grain+currentGrainOfConstituent(c))
              material_EulerAngles(1:3,ipGrain,i,e) = orientationOfGrain(1:3,grain+currentGrainOfConstituent(c))
@@ -1263,7 +1219,6 @@ subroutine material_populateGrains
          enddo
 
          do i = i, theMesh%elem%nIPs                                                                 ! loop over IPs to (possibly) distribute copies from first IP
-           material_volume (1_pInt:dGrains,i,e) = material_volume (1_pInt:dGrains,1,e)
            material_phase  (1_pInt:dGrains,i,e) = material_phase  (1_pInt:dGrains,1,e)
            material_texture(1_pInt:dGrains,i,e) = material_texture(1_pInt:dGrains,1,e)
            material_EulerAngles(1:3,1_pInt:dGrains,i,e) = material_EulerAngles(1:3,1_pInt:dGrains,1,e)
@@ -1275,7 +1230,7 @@ subroutine material_populateGrains
  enddo homogenizationLoop
 
  deallocate(texture_transformation)
- deallocate(elemsOfHomogMicro)
+
  call config_deallocate('material.config/microstructure')
 
 end subroutine material_populateGrains
