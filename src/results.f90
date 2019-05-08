@@ -355,7 +355,7 @@ end subroutine results_writeVectorDataset_int
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief stores a vector dataset in a group
+!> @brief stores a tensor dataset in a group
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeTensorDataset_int(group,dataset,label,description,SIunit)
 
@@ -385,7 +385,7 @@ end subroutine results_writeTensorDataset_int
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief stores a vector dataset in a group
+!> @brief stores a scalar dataset in a group
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeScalarDataset_rotation(group,dataset,label,description,lattice_structure)
   use rotations, only: &
