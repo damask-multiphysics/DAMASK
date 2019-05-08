@@ -96,10 +96,6 @@ module math
    math_mul33xx33, &
    math_mul3333xx33, &
    math_mul3333xx3333, &
-   math_mul33x33, &
-   math_mul33x3, &
-   math_mul33x3_complex, &
-   math_mul66x6 , &
    math_exp33 , &
    math_transpose33, &
    math_inv33, &
@@ -134,20 +130,13 @@ module math
    math_RtoEuler, &
    math_RtoQ, &
    math_EulerToR, &
-   math_EulerToQ, &
-   math_EulerAxisAngleToR, &
    math_axisAngleToR, &
    math_EulerAxisAngleToQ, &
    math_axisAngleToQ, &
    math_qToRodrig, &
    math_qToEuler, &
-   math_qToEulerAxisAngle, &
    math_qToAxisAngle, &
-   math_qToR, &
    math_EulerMisorientation, &
-   math_sampleRandomOri, &
-   math_sampleGaussOri, &
-   math_sampleFiberOri, &
    math_sampleGaussVar, &
    math_symmetricEulers, &
    math_eigenvectorBasisSym33, &
@@ -226,7 +215,7 @@ subroutine math_check
  character(len=64) :: error_msg
 
  real(pReal), dimension(3,3) :: R,R2
- real(pReal), dimension(3) ::   Eulers,v
+ real(pReal), dimension(3) ::   Eulers
  real(pReal), dimension(4) ::   q,q2,axisangle
 
  ! --- check rotation dictionary ---
@@ -243,40 +232,12 @@ subroutine math_check
    call IO_error(401,ext_msg=error_msg)
  endif
 
- ! +++ q -> R -> q  +++
- R = math_qToR(q)
- q2 = math_RtoQ(R)
- if ( any(abs( q-q2) > tol_math_check) .and. &
-      any(abs(-q-q2) > tol_math_check) ) then
-   write (error_msg, '(a,e14.6)' ) &
-          'quat -> R -> quat maximum deviation ',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
-   call IO_error(401,ext_msg=error_msg)
- endif
-
- ! +++ q -> euler -> q  +++
- Eulers = math_qToEuler(q)
- q2 = math_EulerToQ(Eulers)
- if ( any(abs( q-q2) > tol_math_check) .and. &
-      any(abs(-q-q2) > tol_math_check) ) then
-   write (error_msg, '(a,e14.6)' ) &
-          'quat -> euler -> quat maximum deviation ',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
-   call IO_error(401,ext_msg=error_msg)
- endif
-
  ! +++ R -> euler -> R  +++
  Eulers = math_RtoEuler(R)
  R2 = math_EulerToR(Eulers)
  if ( any(abs( R-R2) > tol_math_check) ) then
    write (error_msg, '(a,e14.6)' ) &
           'R -> euler -> R maximum deviation ',maxval(abs( R-R2))
-   call IO_error(401,ext_msg=error_msg)
- endif
-
- ! +++ check rotation sense of q and R +++
- v = halton([2,8,5])     ! random vector
- R = math_qToR(q)
- if (any(abs(matmul(R,v) - math_qRot(q,v)) > tol_math_check)) then
-   write (error_msg, '(a)' ) 'R(q)*v has different sense than q*v'
    call IO_error(401,ext_msg=error_msg)
  endif
 
@@ -1487,35 +1448,6 @@ end function math_EulerToR
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief quaternion (w+ix+jy+kz) from Bunge-Euler (3-1-3) angles (in radians)
-!> @details rotation matrix is meant to represent a PASSIVE rotation, composed of INTRINSIC
-!> @details rotations around the axes of the details rotating reference frame.
-!> @details similar to eu2qu from "D Rowenhorst et al. Consistent representations of and
-!> @details conversions between 3D rotations, Model. Simul. Mater. Sci. Eng. 23-8 (2015)", but
-!> @details Q is conjucated and Q is not reversed for Q(0) < 0.
-!--------------------------------------------------------------------------------------------------
-pure function math_EulerToQ(eulerangles)
-
- implicit none
- real(pReal), dimension(3), intent(in) :: eulerangles
- real(pReal), dimension(4) :: math_EulerToQ
- real(pReal) :: c, s, sigma, delta
-
- c = cos(0.5_pReal * eulerangles(2))
- s = sin(0.5_pReal * eulerangles(2))
- sigma = 0.5_pReal * (eulerangles(1)+eulerangles(3))
- delta = 0.5_pReal * (eulerangles(1)-eulerangles(3))
- 
- math_EulerToQ= [c * cos(sigma), &
-                 s * cos(delta), &
-                 s * sin(delta), &
-                 c * sin(sigma) ]
- math_EulerToQ = math_qConj(math_EulerToQ)                                                          ! convert to passive rotation
-
-end function math_EulerToQ
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief rotation matrix from axis and angle (in radians)
 !> @details rotation matrix is meant to represent a ACTIVE rotation
 !> @details (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
@@ -1556,25 +1488,6 @@ pure function math_axisAngleToR(axis,omega)
  endif wellDefined
  
 end function math_axisAngleToR
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief rotation matrix from axis and angle (in radians)
-!> @details rotation matrix is meant to represent a PASSIVE rotation
-!> @details (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
-!> @details eq-uivalent to eu2qu (P=+1) from "D Rowenhorst et al. Consistent representations of and
-!> @details conversions between 3D rotations, Model. Simul. Mater. Sci. Eng. 23-8 (2015)"
-!--------------------------------------------------------------------------------------------------
-pure function math_EulerAxisAngleToR(axis,omega)
-
- implicit none
- real(pReal), dimension(3,3) :: math_EulerAxisAngleToR
- real(pReal), dimension(3), intent(in) :: axis
- real(pReal), intent(in) :: omega
-
- math_EulerAxisAngleToR = transpose(math_axisAngleToR(axis,omega))                                  ! convert to passive rotation
-
-end function math_EulerAxisAngleToR
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1623,30 +1536,6 @@ pure function math_axisAngleToQ(axis,omega)
  endif wellDefined
 
 end function math_axisAngleToQ
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief orientation matrix from quaternion (w+ix+jy+kz)
-!> @details taken from http://arxiv.org/pdf/math/0701759v1.pdf
-!> @details see also http://en.wikipedia.org/wiki/Rotation_formalisms_in_three_dimensions
-!--------------------------------------------------------------------------------------------------
-pure function math_qToR(q)
-
- implicit none
- real(pReal), dimension(4), intent(in) :: q
- real(pReal), dimension(3,3) :: math_qToR, T,S
- integer :: i, j
-
- forall(i = 1:3, j = 1:3) T(i,j) = q(i+1) * q(j+1)
-
- S = reshape( [0.0_pReal,     -q(4),      q(3), &
-                    q(4), 0.0_pReal,     -q(2), &
-                   -q(3),      q(2), 0.0_pReal],[3,3])                                              ! notation is transposed
-
- math_qToR = (2.0_pReal * q(1)*q(1) - 1.0_pReal) * math_I3 &
-           + 2.0_pReal * T - 2.0_pReal * q(1) * S
-
-end function math_qToR
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1708,24 +1597,6 @@ end function math_qToAxisAngle
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Euler axis-angle (x, y, z, ang in radians) from quaternion (w+ix+jy+kz)
-!> @details quaternion is meant to represent a PASSIVE rotation
-!> @details (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
-!--------------------------------------------------------------------------------------------------
-pure function math_qToEulerAxisAngle(qPassive)
-
- implicit none
- real(pReal), dimension(4), intent(in) :: qPassive
- real(pReal), dimension(4) :: q
- real(pReal), dimension(4) :: math_qToEulerAxisAngle
-
- q = math_qConj(qPassive)                        ! convert to active rotation
- math_qToEulerAxisAngle = math_qToAxisAngle(q)
- 
-end function math_qToEulerAxisAngle
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief Rodrigues vector (x, y, z) from unit quaternion (w+ix+jy+kz)
 !--------------------------------------------------------------------------------------------------
 pure function math_qToRodrig(Q)
@@ -1758,118 +1629,6 @@ real(pReal) pure function math_EulerMisorientation(EulerA,EulerB)
  math_EulerMisorientation = acos(math_clip(cosTheta,-1.0_pReal,1.0_pReal))
 
 end function math_EulerMisorientation
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief draw a random sample from Euler space
-!--------------------------------------------------------------------------------------------------
-function math_sampleRandomOri()
-
- implicit none
- real(pReal), dimension(3) :: math_sampleRandomOri, rnd
-
- rnd = halton([1,7,3])
- math_sampleRandomOri  = [rnd(1)*2.0_pReal*PI, &
-                          acos(2.0_pReal*rnd(2)-1.0_pReal), &
-                          rnd(3)*2.0_pReal*PI]
-
-end function math_sampleRandomOri
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief draw a sample from an Gaussian distribution around given orientation and Full Width
-! at Half Maximum (FWHM)
-!> @details: A uniform misorientation (limited to 2*FWHM) is sampled followed by convolution with 
-! a Gausian distribution
-!--------------------------------------------------------------------------------------------------
-function math_sampleGaussOri(center,FWHM)
-
- implicit none
- real(pReal), intent(in) :: FWHM
- real(pReal), dimension(3), intent(in) :: center 
- real(pReal) :: angle
- real(pReal), dimension(3)   :: math_sampleGaussOri, axis
- real(pReal), dimension(4)   :: rnd
- real(pReal), dimension(3,3) :: R
-
- if (FWHM < 0.1_pReal*INRAD) then
-   math_sampleGaussOri = center
- else
-   GaussConvolution: do
-     rnd = halton([8,3,6,11])
-     axis(1)    = rnd(1)*2.0_pReal-1.0_pReal                                                        ! uniform on [-1,1]
-     axis(2:3)  = [sqrt(1.0-axis(1)**2.0_pReal)*cos(rnd(2)*2.0*PI),&
-                   sqrt(1.0-axis(1)**2.0_pReal)*sin(rnd(2)*2.0*PI)]                                 ! random axis
-     angle = (rnd(3)-0.5_pReal)*4.0_pReal*FWHM                                                      ! rotation by [0, +-2 FWHM]
-     R = math_axisAngleToR(axis,angle)
-     angle = math_EulerMisorientation([0.0_pReal,0.0_pReal,0.0_pReal],math_RtoEuler(R))
-     if (rnd(4) <= exp(-4.0_pReal*log(2.0_pReal)*(angle/FWHM)**2_pReal)) exit                       ! rejection sampling (Gaussian)
-   enddo GaussConvolution
-   math_sampleGaussOri = math_RtoEuler(matmul(R,math_EulerToR(center)))
- endif
-
-end function math_sampleGaussOri
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief draw a sample from an Gaussian distribution around given fiber texture and Full Width
-! at Half Maximum (FWHM)
-!-------------------------------------------------------------------------------------------------
-function math_sampleFiberOri(alpha,beta,FWHM)
-
- implicit none
- real(pReal), dimension(2), intent(in) :: alpha,beta
- real(pReal), intent(in) :: FWHM
- real(pReal), dimension(3) :: math_sampleFiberOri,  &
-   fInC,&                                                                                           !< fiber axis in crystal coordinate system
-   fInS,&                                                                                           !< fiber axis in sample coordinate system
-   u
- real(pReal), dimension(3) :: rnd
- real(pReal), dimension(:),allocatable :: a                                                         !< 2D vector to tilt
- integer, dimension(:),allocatable :: idx                                                           !< components of 2D vector
- real(pReal), dimension(3,3) :: R                                                                   !< Rotation matrix (composed of three components)
- real(pReal):: angle,c
- integer:: j,&                                                                                      !< index of smallest component
-   i
-
- allocate(a(0))
- allocate(idx(0))
- fInC = [sin(alpha(1))*cos(alpha(2)), sin(alpha(1))*sin(alpha(2)), cos(alpha(1))]
- fInS = [sin(beta(1))*cos(beta(2)),   sin(beta(1))*sin(beta(2)),   cos(beta(1))]
-
- R = math_EulerAxisAngleToR(math_crossproduct(fInC,fInS),-acos(dot_product(fInC,fInS)))             !< rotation to align fiber axis in crystal and sample system
-
- rnd = halton([7,10,3])
- R = matmul(R,math_EulerAxisAngleToR(fInS,rnd(1)*2.0_pReal*PI))                              !< additional rotation (0..360deg) perpendicular to fiber axis
-
- if (FWHM > 0.1_pReal*INRAD) then
-   reducedTo2D: do i=1,3
-     if (i /= minloc(abs(fInS),1)) then
-       a=[a,fInS(i)]
-       idx=[idx,i]
-     else
-       j = i
-     endif
-   enddo reducedTo2D
-   GaussConvolution: do
-     angle = (rnd(2)-0.5_pReal)*4.0_pReal*FWHM                                                      ! rotation by [0, +-2 FWHM]
-     ! solve cos(angle) = dot_product(fInS,u) under the assumption that their smallest component is the same
-     c = cos(angle)-fInS(j)**2
-     u(idx(2)) = -(2.0_pReal*c*a(2) + sqrt(4*((c*a(2))**2-sum(a**2)*(c**2-a(1)**2*(1-fInS(j)**2)))))/&
-                                                                                      (2*sum(a**2))
-     u(idx(1)) = sqrt(1-u(idx(2))**2-fInS(j)**2)
-     u(j)    = fInS(j)
-
-     rejectionSampling: if (rnd(3) <= exp(-4.0_pReal*log(2.0_pReal)*(angle/FWHM)**2_pReal)) then
-       R = matmul(R,math_EulerAxisAngleToR(math_crossproduct(u,fInS),angle))                 ! tilt around direction of smallest component
-       exit
-     endif rejectionSampling
-     rnd = halton([7,10,3])
-   enddo GaussConvolution
- endif
- math_sampleFiberOri = math_RtoEuler(R)
-
-end function math_sampleFiberOri
 
 
 !--------------------------------------------------------------------------------------------------

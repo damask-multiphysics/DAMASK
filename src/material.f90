@@ -940,7 +940,7 @@ subroutine material_populateGrains
         material_texture(c,i,e) = microstructure_texture(c,micro)
         material_EulerAngles(1:3,c,i,e) = texture_Gauss(1:3,1,material_texture(c,i,e))
         material_EulerAngles(1:3,c,i,e) = math_RtoEuler( &                                       ! translate back to Euler angles
-                                             math_mul33x33( &                                       ! pre-multiply
+                                             matmul( &                                       ! pre-multiply
                                                math_EulertoR(material_EulerAngles(1:3,c,i,e)), &    ! face-value orientation
                                                texture_transformation(1:3,1:3,material_texture(c,i,e)) &          ! and transformation matrix
                                              ) &
