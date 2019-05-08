@@ -103,7 +103,7 @@ end subroutine results_closeJobFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief closes the results file
+!> @brief creates the group of increment and adds time as attribute to the file
 !--------------------------------------------------------------------------------------------------
 subroutine results_addIncrement(inc,time)
  
