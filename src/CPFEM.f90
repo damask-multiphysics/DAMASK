@@ -47,7 +47,8 @@ module CPFEM
 
  public :: &
    CPFEM_general, &
-   CPFEM_initAll
+   CPFEM_initAll, &
+   CPFEM_results
 
 contains
 
@@ -632,5 +633,36 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
  endif
 
 end subroutine CPFEM_general
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief triggers writing of the results
+!--------------------------------------------------------------------------------------------------
+subroutine CPFEM_results(inc,time)
+ use prec, only: &
+   pInt
+#ifdef DAMASK_HDF5
+ use results
+ use HDF5_utilities
+#endif
+ use constitutive, only: &
+   constitutive_results
+ use crystallite, only: &
+   crystallite_results
+
+ implicit none
+ integer(pInt), intent(in) :: inc
+ real(pReal),   intent(in) :: time
+
+#ifdef DAMASK_HDF5
+ call results_openJobFile
+ call results_addIncrement(inc,time)
+ call constitutive_results
+ call crystallite_results
+ call results_removeLink('current') ! ToDo: put this into closeJobFile
+ call results_closeJobFile
+#endif
+
+end subroutine CPFEM_results
 
 end module CPFEM

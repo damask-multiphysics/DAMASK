@@ -66,9 +66,9 @@ subroutine results_init
   write(6,'(a)')   ' https://doi.org/10.1007/s40192-018-0118-7'
 
   resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','w',.true.)
-  call HDF5_addAttribute(resultsFile,'DADF5-version',0.1)
+  call HDF5_addAttribute(resultsFile,'DADF5-version',0.2)
   call HDF5_addAttribute(resultsFile,'DADF5-major',0)
-  call HDF5_addAttribute(resultsFile,'DADF5-minor',1)
+  call HDF5_addAttribute(resultsFile,'DADF5-minor',2)
   call HDF5_addAttribute(resultsFile,'DAMASK',DAMASKVERSION)
   call get_command(commandLine)
   call HDF5_addAttribute(resultsFile,'call',trim(commandLine))
@@ -103,7 +103,7 @@ end subroutine results_closeJobFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief closes the results file
+!> @brief creates the group of increment and adds time as attribute to the file
 !--------------------------------------------------------------------------------------------------
 subroutine results_addIncrement(inc,time)
  
@@ -250,6 +250,8 @@ subroutine results_writeScalarDataset_real(group,dataset,label,description,SIuni
   
 #ifdef PETSc
   call HDF5_write(groupHandle,dataset,label,.true.)
+#else
+  call HDF5_write(groupHandle,dataset,label,.false.)
 #endif
   
   if (HDF5_objectExists(groupHandle,label)) &
@@ -277,6 +279,8 @@ subroutine results_writeVectorDataset_real(group,dataset,label,description,SIuni
   
 #ifdef PETSc
   call HDF5_write(groupHandle,dataset,label,.true.)
+#else
+  call HDF5_write(groupHandle,dataset,label,.false.)
 #endif
   
   if (HDF5_objectExists(groupHandle,label)) &
@@ -305,6 +309,8 @@ subroutine results_writeTensorDataset_real(group,dataset,label,description,SIuni
   
 #ifdef PETSc
   call HDF5_write(groupHandle,dataset,label,.true.)
+#else
+  call HDF5_write(groupHandle,dataset,label,.false.)
 #endif
   
   if (HDF5_objectExists(groupHandle,label)) &
@@ -333,6 +339,8 @@ subroutine results_writeVectorDataset_int(group,dataset,label,description,SIunit
   
 #ifdef PETSc
   call HDF5_write(groupHandle,dataset,label,.true.)
+#else
+  call HDF5_write(groupHandle,dataset,label,.false.)
 #endif
   
   if (HDF5_objectExists(groupHandle,label)) &
@@ -347,7 +355,7 @@ end subroutine results_writeVectorDataset_int
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief stores a vector dataset in a group
+!> @brief stores a tensor dataset in a group
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeTensorDataset_int(group,dataset,label,description,SIunit)
 
@@ -361,6 +369,8 @@ subroutine results_writeTensorDataset_int(group,dataset,label,description,SIunit
   
 #ifdef PETSc
   call HDF5_write(groupHandle,dataset,label,.true.)
+#else
+  call HDF5_write(groupHandle,dataset,label,.false.)
 #endif
   
   if (HDF5_objectExists(groupHandle,label)) &
@@ -375,7 +385,7 @@ end subroutine results_writeTensorDataset_int
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief stores a vector dataset in a group
+!> @brief stores a scalar dataset in a group
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeScalarDataset_rotation(group,dataset,label,description,lattice_structure)
   use rotations, only: &
@@ -391,6 +401,8 @@ subroutine results_writeScalarDataset_rotation(group,dataset,label,description,l
   
 #ifdef PETSc
   call HDF5_write(groupHandle,dataset,label,.true.)
+#else
+  call HDF5_write(groupHandle,dataset,label,.false.)
 #endif
   
   if (HDF5_objectExists(groupHandle,label)) &
