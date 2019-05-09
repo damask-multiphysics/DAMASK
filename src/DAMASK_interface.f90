@@ -337,20 +337,16 @@ end subroutine setWorkingDirectory
 character(len=1024) function getSolverJobName()
 
   integer :: posExt,posSep
-  character(len=1024) :: tempString
 
+  posExt = scan(geometryFile,'.',back=.true.)
+  posSep = scan(geometryFile,'/',back=.true.)
 
-  tempString = geometryFile
-  posExt = scan(tempString,'.',back=.true.)
-  posSep = scan(tempString,'/',back=.true.)
+  getSolverJobName = geometryFile(posSep+1:posExt-1)
 
-  getSolverJobName = tempString(posSep+1:posExt-1)
+  posExt = scan(loadCaseFile,'.',back=.true.)
+  posSep = scan(loadCaseFile,'/',back=.true.)
 
-  tempString = loadCaseFile
-  posExt = scan(tempString,'.',back=.true.)
-  posSep = scan(tempString,'/',back=.true.)
-
-  getSolverJobName = trim(getSolverJobName)//'_'//tempString(posSep+1:posExt-1)
+  getSolverJobName = trim(getSolverJobName)//'_'//loadCaseFile(posSep+1:posExt-1)
 
 end function getSolverJobName
 
