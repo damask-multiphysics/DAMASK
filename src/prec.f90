@@ -102,7 +102,6 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine prec_init
 
-  implicit none
   integer, allocatable, dimension(:) :: realloc_lhs_test
 
   external :: &
@@ -131,7 +130,6 @@ end subroutine prec_init
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dEq(a,b,tol)
 
-  implicit none
   real(pReal), intent(in)           :: a,b
   real(pReal), intent(in), optional :: tol
   real(pReal)                       :: eps
@@ -155,7 +153,6 @@ end function dEq
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dNeq(a,b,tol)
 
-  implicit none
   real(pReal), intent(in)           :: a,b
   real(pReal), intent(in), optional :: tol
   real(pReal)                       :: eps
@@ -179,7 +176,6 @@ end function dNeq
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dEq0(a,tol)
 
-  implicit none
   real(pReal), intent(in)           :: a
   real(pReal), intent(in), optional :: tol
   real(pReal)                       :: eps
@@ -203,7 +199,6 @@ end function dEq0
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dNeq0(a,tol)
 
-  implicit none
   real(pReal), intent(in)           :: a
   real(pReal), intent(in), optional :: tol
   real(pReal)                       :: eps
@@ -228,7 +223,6 @@ end function dNeq0
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function cEq(a,b,tol)
 
-  implicit none
   complex(pReal), intent(in)           :: a,b
   real(pReal),    intent(in), optional :: tol
   real(pReal)                          :: eps
@@ -253,7 +247,6 @@ end function cEq
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function cNeq(a,b,tol)
 
-  implicit none
   complex(pReal), intent(in)           :: a,b
   real(pReal),    intent(in), optional :: tol
   real(pReal)                          :: eps

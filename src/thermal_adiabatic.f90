@@ -57,7 +57,6 @@ subroutine thermal_adiabatic_init
   use config, only: &
     config_homogenization
  
-  implicit none
   integer :: maxNinstance,section,instance,i,sizeState,NofMyHomog   
   character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
   character(len=65536), dimension(:), allocatable :: outputs
@@ -124,7 +123,6 @@ function thermal_adiabatic_updateState(subdt, ip, el)
     temperatureRate, &
     thermalMapping
   
-  implicit none
   integer,     intent(in) :: &
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
@@ -181,7 +179,6 @@ subroutine thermal_adiabatic_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
     crystallite_S, &
     crystallite_Lp  
  
-  implicit none
   integer,     intent(in) :: &
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
@@ -246,7 +243,6 @@ function thermal_adiabatic_getSpecificHeat(ip,el)
   use mesh, only: &
     mesh_element
  
-  implicit none
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
@@ -282,7 +278,6 @@ function thermal_adiabatic_getMassDensity(ip,el)
   use mesh, only: &
     mesh_element
     
-  implicit none
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
@@ -312,7 +307,6 @@ function thermal_adiabatic_postResults(homog,instance,of) result(postResults)
   use material, only: &
     temperature
  
-  implicit none
   integer, intent(in) :: &
     homog, &
     instance, &

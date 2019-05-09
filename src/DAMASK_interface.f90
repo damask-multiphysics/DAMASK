@@ -15,6 +15,7 @@
 #define PETSC_MINOR_MIN 10
 #define PETSC_MINOR_MAX 11
 module DAMASK_interface
+
   implicit none
   private
   logical, public, protected :: &
@@ -39,6 +40,7 @@ module DAMASK_interface
     getLoadCaseFile, &
     rectifyPath, &
     makeRelativePath
+
 contains
 
 !--------------------------------------------------------------------------------------------------
@@ -96,7 +98,6 @@ subroutine DAMASK_interface_init
 ===================================================================================================
 #endif
 
-  implicit none
   character(len=1024) :: &
     commandLine, &                                                                                  !< command line call as string
     arg, &                                                                                          !< individual argument
@@ -308,7 +309,6 @@ subroutine setWorkingDirectory(workingDirectoryArg)
     getCWD, &
     setCWD
 
-  implicit none
   character(len=*),  intent(in) :: workingDirectoryArg                                              !< working directory argument
   character(len=1024)           :: workingDirectory                                                 !< working directory argument
   logical                       :: error
@@ -336,7 +336,6 @@ end subroutine setWorkingDirectory
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getSolverJobName()
 
-  implicit none
   integer :: posExt,posSep
   character(len=1024) :: tempString
 
@@ -363,7 +362,6 @@ character(len=1024) function getGeometryFile(geometryParameter)
   use system_routines, only: &
     getCWD
 
-  implicit none
   character(len=1024), intent(in) :: geometryParameter
   logical                         :: file_exists
   external                        :: quit
@@ -388,7 +386,6 @@ character(len=1024) function getLoadCaseFile(loadCaseParameter)
   use system_routines, only: &
     getCWD
 
-  implicit none
   character(len=1024), intent(in) :: loadCaseParameter
   logical                         :: file_exists
   external                        :: quit
@@ -412,7 +409,6 @@ end function getLoadCaseFile
 !--------------------------------------------------------------------------------------------------
 function rectifyPath(path)
 
-  implicit none
   character(len=*)    :: path
   character(len=1024) :: rectifyPath
   integer :: i,j,k,l
@@ -457,7 +453,6 @@ end function rectifyPath
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function makeRelativePath(a,b)
 
-  implicit none
   character (len=*), intent(in) :: a,b
   character (len=1024)          :: a_cleaned,b_cleaned
   integer :: i,posLastCommonSlash,remainingSlashes
@@ -486,7 +481,6 @@ end function makeRelativePath
 subroutine catchSIGTERM(signal) bind(C)
   use :: iso_c_binding
 
-  implicit none
   integer(C_INT), value :: signal
   SIGTERM = .true.
 
@@ -500,7 +494,6 @@ end subroutine catchSIGTERM
 !--------------------------------------------------------------------------------------------------
 subroutine setSIGTERM(state)
 
-  implicit none
   logical, intent(in) :: state
   SIGTERM = state
 
@@ -513,7 +506,6 @@ end subroutine setSIGTERM
 subroutine catchSIGUSR1(signal) bind(C)
   use :: iso_c_binding
 
-  implicit none
   integer(C_INT), value :: signal
   SIGUSR1 = .true.
 
@@ -527,7 +519,6 @@ end subroutine catchSIGUSR1
 !--------------------------------------------------------------------------------------------------
 subroutine setSIGUSR1(state)
 
-  implicit none
   logical, intent(in) :: state
   SIGUSR1 = state
 
@@ -540,7 +531,6 @@ end subroutine setSIGUSR1
 subroutine catchSIGUSR2(signal) bind(C)
   use :: iso_c_binding
 
-  implicit none
   integer(C_INT), value :: signal
   SIGUSR2 = .true.
 
@@ -554,7 +544,6 @@ end subroutine catchSIGUSR2
 !--------------------------------------------------------------------------------------------------
 subroutine setSIGUSR2(state)
 
-  implicit none
   logical, intent(in) :: state
   SIGUSR2 = state
 

@@ -81,7 +81,6 @@ contains
 !--------------------------------------------------------------------------------------------------
 logical function isDirectory(path)
 
- implicit none
  character(len=*), intent(in) :: path
  character(kind=C_CHAR), dimension(1024) :: strFixedLength                                         ! C string as array
  integer :: i 
@@ -100,7 +99,6 @@ end function isDirectory
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getCWD()
 
- implicit none
  character(kind=C_CHAR), dimension(1024) :: charArray                                               ! C string is an array
  integer(C_INT) :: stat
  integer :: i
@@ -126,7 +124,7 @@ end function getCWD
 !> @brief gets the current host name
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getHostName()
- implicit none
+
  character(kind=C_CHAR), dimension(1024) :: charArray                                              ! C string is an array
  integer(C_INT) :: stat
  integer :: i
@@ -152,7 +150,7 @@ end function getHostName
 !> @brief changes the current working directory
 !--------------------------------------------------------------------------------------------------
 logical function setCWD(path)
- implicit none
+
  character(len=*), intent(in) :: path
  character(kind=C_CHAR), dimension(1024) :: strFixedLength                                          ! C string is an array
  integer :: i

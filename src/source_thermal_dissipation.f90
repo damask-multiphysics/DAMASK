@@ -56,7 +56,6 @@ subroutine source_thermal_dissipation_init
     config_phase, &
     material_Nphase
  
-  implicit none
   integer :: Ninstance,instance,source,sourceOffset
   integer :: NofMyPhase,p   
  
@@ -103,7 +102,6 @@ end subroutine source_thermal_dissipation_init
 !--------------------------------------------------------------------------------------------------
 subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDOT_dT, Tstar, Lp, phase)
 
-  implicit none
   integer, intent(in) :: &
     phase
   real(pReal),  intent(in), dimension(3,3) :: &

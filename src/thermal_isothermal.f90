@@ -22,7 +22,6 @@ subroutine thermal_isothermal_init()
    material_Nhomogenization
  use material
  
- implicit none
  integer :: &
    homog, &
    NofMyHomog
