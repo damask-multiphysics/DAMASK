@@ -192,7 +192,6 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
    debug_reset, &
    debug_info
  use math, only: &
-   math_transpose33, &
    math_rotate_forward33, &
    math_det33
  use FEsolving, only: &
