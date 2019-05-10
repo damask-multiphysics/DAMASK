@@ -121,24 +121,16 @@ module math
    math_sym3333to66, &
    math_66toSym3333, &
    math_Voigt66to3333, &
-   math_qRand, &
    math_qMul, &
-   math_qDot, &
    math_qConj, &
-   math_qInv, &
    math_qRot, &
    math_RtoEuler, &
    math_RtoQ, &
    math_EulerToR, &
    math_axisAngleToR, &
-   math_EulerAxisAngleToQ, &
-   math_axisAngleToQ, &
    math_qToRodrig, &
-   math_qToEuler, &
-   math_qToAxisAngle, &
    math_EulerMisorientation, &
    math_sampleGaussVar, &
-   math_symmetricEulers, &
    math_eigenvectorBasisSym33, &
    math_eigenvectorBasisSym33_log, &
    math_eigenvectorBasisSym, &
@@ -213,33 +205,6 @@ subroutine math_check
 
  implicit none
  character(len=64) :: error_msg
-
- real(pReal), dimension(3,3) :: R,R2
- real(pReal), dimension(3) ::   Eulers
- real(pReal), dimension(4) ::   q,q2,axisangle
-
- ! --- check rotation dictionary ---
-
- q = math_qRand()          ! random quaternion
- 
- ! +++ q -> a -> q  +++
- axisangle = math_qToAxisAngle(q)
- q2 = math_axisAngleToQ(axisangle(1:3),axisangle(4))
- if ( any(abs( q-q2) > tol_math_check) .and. &
-      any(abs(-q-q2) > tol_math_check) ) then
-   write (error_msg, '(a,e14.6)' ) &
-          'quat -> axisAngle -> quat maximum deviation ',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
-   call IO_error(401,ext_msg=error_msg)
- endif
-
- ! +++ R -> euler -> R  +++
- Eulers = math_RtoEuler(R)
- R2 = math_EulerToR(Eulers)
- if ( any(abs( R-R2) > tol_math_check) ) then
-   write (error_msg, '(a,e14.6)' ) &
-          'R -> euler -> R maximum deviation ',maxval(abs( R-R2))
-   call IO_error(401,ext_msg=error_msg)
- endif
 
  ! +++ check vector expansion +++
  if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal,3.0_pReal,3.0_pReal,3.0_pReal] - &
@@ -1196,27 +1161,6 @@ end function math_Voigt66to3333
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief random quaternion
-! http://math.stackexchange.com/questions/131336/uniform-random-quaternion-in-a-restricted-angle-range
-! K. Shoemake. Uniform random rotations. In D. Kirk, editor, Graphics Gems III, pages 124-132. 
-! Academic, New York, 1992.
-!--------------------------------------------------------------------------------------------------
-function math_qRand()
-
- implicit none
- real(pReal), dimension(4) :: math_qRand
- real(pReal), dimension(3) :: rnd
-
- rnd = halton([8,4,9])
- math_qRand = [cos(2.0_pReal*PI*rnd(1))*sqrt(rnd(3)), &
-               sin(2.0_pReal*PI*rnd(2))*sqrt(1.0_pReal-rnd(3)), &
-               cos(2.0_pReal*PI*rnd(2))*sqrt(1.0_pReal-rnd(3)), &
-               sin(2.0_pReal*PI*rnd(1))*sqrt(rnd(3))]
-
-end function math_qRand
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief quaternion multiplication q1xq2 = q12
 !--------------------------------------------------------------------------------------------------
 pure function math_qMul(A,B)
@@ -1234,19 +1178,6 @@ end function math_qMul
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief quaternion dotproduct
-!--------------------------------------------------------------------------------------------------
-real(pReal) pure function math_qDot(A,B)
-
- implicit none
- real(pReal), dimension(4), intent(in) :: A, B
-
- math_qDot = sum(A*B)
-
-end function math_qDot
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief quaternion conjugation
 !--------------------------------------------------------------------------------------------------
 pure function math_qConj(Q)
@@ -1258,39 +1189,6 @@ pure function math_qConj(Q)
  math_qConj = [Q(1), -Q(2:4)]
 
 end function math_qConj
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief quaternion norm
-!--------------------------------------------------------------------------------------------------
-real(pReal) pure function math_qNorm(Q)
-
- implicit none
- real(pReal), dimension(4), intent(in) ::  Q
-
- math_qNorm = norm2(Q)
-
-end function math_qNorm
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief quaternion inversion
-!--------------------------------------------------------------------------------------------------
-pure function math_qInv(Q)
- use prec, only: &
-   dNeq0
-
- implicit none
- real(pReal), dimension(4), intent(in) ::  Q
- real(pReal), dimension(4) ::  math_qInv
- real(pReal) :: squareNorm
-
- math_qInv = 0.0_pReal
-
- squareNorm = math_qDot(Q,Q)
- if (dNeq0(squareNorm)) math_qInv = math_qConj(Q) / squareNorm
-
-end function math_qInv
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1491,112 +1389,6 @@ end function math_axisAngleToR
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief quaternion (w+ix+jy+kz) from Euler axis and angle (in radians)
-!> @details quaternion is meant to represent a PASSIVE rotation
-!> @details (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
-!> @details formula for active rotation taken from 
-!> @details http://en.wikipedia.org/wiki/Rotation_representation_%28mathematics%29#Rodrigues_parameters
-!--------------------------------------------------------------------------------------------------
-pure function math_EulerAxisAngleToQ(axis,omega)
-
- implicit none
- real(pReal), dimension(4) :: math_EulerAxisAngleToQ
- real(pReal), dimension(3), intent(in) :: axis
- real(pReal), intent(in) :: omega
-
- math_EulerAxisAngleToQ = math_qConj(math_axisAngleToQ(axis,omega))                                 ! convert to passive rotation
-
-end function math_EulerAxisAngleToQ
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief quaternion (w+ix+jy+kz) from axis and angle (in radians)
-!> @details quaternion is meant to represent an ACTIVE rotation
-!> @details (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
-!> @details formula for active rotation taken from
-!> @details http://en.wikipedia.org/wiki/Rotation_representation_%28mathematics%29#Rodrigues_parameters
-!> @details equivalent to eu2qu (P=+1) from "D Rowenhorst et al. Consistent representations of and
-!> @details conversions between 3D rotations, Model. Simul. Mater. Sci. Eng. 23-8 (2015)"
-!--------------------------------------------------------------------------------------------------
-pure function math_axisAngleToQ(axis,omega)
-
- implicit none
- real(pReal), dimension(4) :: math_axisAngleToQ
- real(pReal), dimension(3), intent(in) :: axis
- real(pReal), intent(in) :: omega
- real(pReal), dimension(3) :: axisNrm
- real(pReal) :: norm
-
- norm = norm2(axis)
- wellDefined: if (norm > 1.0e-8_pReal) then
-   axisNrm = axis/norm                                                                              ! normalize axis to be sure
-   math_axisAngleToQ = [cos(0.5_pReal*omega), sin(0.5_pReal*omega) * axisNrm(1:3)]
- else wellDefined
-   math_axisAngleToQ = [1.0_pReal,0.0_pReal,0.0_pReal,0.0_pReal]
- endif wellDefined
-
-end function math_axisAngleToQ
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief 3-1-3 Euler angles (in radians) from quaternion (w+ix+jy+kz)
-!> @details quaternion is meant to represent a PASSIVE rotation, 
-!> @details composed of INTRINSIC rotations around the axes of the 
-!> @details rotating reference frame 
-!> @details (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
-!--------------------------------------------------------------------------------------------------
-pure function math_qToEuler(qPassive)
-
- implicit none
- real(pReal), dimension(4), intent(in) :: qPassive
- real(pReal), dimension(4) :: q
- real(pReal), dimension(3) :: math_qToEuler
-
- q = math_qConj(qPassive)    ! convert to active rotation, since formulas are defined for active rotations
-
- math_qToEuler(2) = acos(1.0_pReal-2.0_pReal*(q(2)**2+q(3)**2))
-
- if (abs(math_qToEuler(2)) < 1.0e-6_pReal) then
-   math_qToEuler(1) = sign(2.0_pReal*acos(math_clip(q(1),-1.0_pReal, 1.0_pReal)),q(4))
-   math_qToEuler(3) = 0.0_pReal
- else
-   math_qToEuler(1) = atan2(+q(1)*q(3)+q(2)*q(4), q(1)*q(2)-q(3)*q(4))
-   math_qToEuler(3) = atan2(-q(1)*q(3)+q(2)*q(4), q(1)*q(2)+q(3)*q(4))
- endif
-
- math_qToEuler = merge(math_qToEuler + [2.0_pReal*PI, PI, 2.0_pReal*PI], &                          ! ensure correct range
-                       math_qToEuler,                                    math_qToEuler<0.0_pReal)
-
-end function math_qToEuler
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief axis-angle (x, y, z, ang in radians) from quaternion (w+ix+jy+kz)
-!> @details quaternion is meant to represent an ACTIVE rotation
-!> @details (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
-!> @details formula for active rotation taken from 
-!> @details http://en.wikipedia.org/wiki/Rotation_representation_%28mathematics%29#Rodrigues_parameters
-!--------------------------------------------------------------------------------------------------
-pure function math_qToAxisAngle(Q)
-
- implicit none
- real(pReal), dimension(4), intent(in) :: Q
- real(pReal) :: halfAngle, sinHalfAngle
- real(pReal), dimension(4) :: math_qToAxisAngle
-
- halfAngle = acos(math_clip(Q(1),-1.0_pReal,1.0_pReal))
- sinHalfAngle = sin(halfAngle)
-
- smallRotation: if (sinHalfAngle <= 1.0e-4_pReal) then
-   math_qToAxisAngle = 0.0_pReal
- else smallRotation
-   math_qToAxisAngle= [ Q(2:4)/sinHalfAngle, halfAngle*2.0_pReal] 
- endif smallRotation
-
-end function math_qToAxisAngle
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief Rodrigues vector (x, y, z) from unit quaternion (w+ix+jy+kz)
 !--------------------------------------------------------------------------------------------------
 pure function math_qToRodrig(Q)
@@ -1661,36 +1453,6 @@ real(pReal) function math_sampleGaussVar(meanvalue, stddev, width)
  endif
 
 end function math_sampleGaussVar
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief symmetrically equivalent Euler angles for given sample symmetry 
-!> @detail 1 (equivalent to != 2 and !=4):triclinic, 2:monoclinic, 4:orthotropic
-!--------------------------------------------------------------------------------------------------
-pure function math_symmetricEulers(sym,Euler)
-
- implicit none
- integer, intent(in) :: sym                                                                         !< symmetry Class
- real(pReal), dimension(3), intent(in) :: Euler
- real(pReal), dimension(3,3) :: math_symmetricEulers
-
- math_symmetricEulers = transpose(reshape([PI+Euler(1), PI-Euler(1), 2.0_pReal*PI-Euler(1), &
-                                              Euler(2), PI-Euler(2), PI          -Euler(2), &
-                                              Euler(3), PI+Euler(3), PI          +Euler(3)],[3,3])) ! transpose is needed to have symbolic notation instead of column-major
-
- math_symmetricEulers = modulo(math_symmetricEulers,2.0_pReal*pi)
-
- select case (sym)
-   case (4)                                                                                         ! orthotropic: all done
-
-   case (2)                                                                                         ! monoclinic: return only first
-     math_symmetricEulers(1:3,2:3) = 0.0_pReal
-
-   case default                                                                                     ! triclinic: return blank
-     math_symmetricEulers = 0.0_pReal
- end select
-
-end function math_symmetricEulers
 
 
 !--------------------------------------------------------------------------------------------------
