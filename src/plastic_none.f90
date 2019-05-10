@@ -23,13 +23,7 @@ subroutine plastic_none_init
    debug_level, &
    debug_constitutive, &
    debug_levelBasic
- use material, only: &
-   phase_plasticity, &
-   material_allocatePlasticState, &
-   PLASTICITY_NONE_label, &
-   PLASTICITY_NONE_ID, &
-   material_phase, &
-   plasticState
+ use material
 
  integer :: &
    Ninstance, &

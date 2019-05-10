@@ -257,7 +257,7 @@ subroutine CPFEM_age()
      write(6,'(a)') '<< CPFEM >> writing restart variables of last converged step to hdf5 file'
    
    write(rankStr,'(a1,i0)')'_',worldrank
-   fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
+   fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','a')
    
    call HDF5_write(fileHandle,material_phase,      'recordedPhase')
    call HDF5_write(fileHandle,crystallite_F0,      'convergedF')
@@ -289,6 +289,7 @@ subroutine CPFEM_age()
    write(6,'(a)') '<< CPFEM >> done aging states'
 
 end subroutine CPFEM_age
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief triggers writing of the results
