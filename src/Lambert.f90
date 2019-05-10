@@ -44,6 +44,7 @@ module Lambert
     PI
   use future
 
+  implicit none
   private
   real(pReal), parameter, private :: &
     SPI  = sqrt(PI), &
