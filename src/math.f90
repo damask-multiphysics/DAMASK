@@ -69,15 +69,11 @@ module math
      
 !--------------------------------------------------------------------------------------------------
 ! Provide deprecated name for compatibility
- interface math_crossproduct
-   module procedure math_cross
- end interface math_crossproduct
  interface math_mul3x3
    module procedure math_inner
  end interface math_mul3x3
  public :: &
-   math_mul3x3, &
-   math_crossproduct
+   math_mul3x3
 !---------------------------------------------------------------------------------------------------
 
 
@@ -1438,7 +1434,7 @@ subroutine math_eigenValuesVectorsSym33(m,values,vectors)
  vectors(1:3,2) = vectors(1:3, 2) / norm
 
 ! Calculate third eigenvector according to  v[2] = v[0] x v[1]
- vectors(1:3,3) = math_crossproduct(vectors(1:3,1),vectors(1:3,2))
+ vectors(1:3,3) = math_cross(vectors(1:3,1),vectors(1:3,2))
 
 end subroutine math_eigenValuesVectorsSym33
 
@@ -1761,7 +1757,7 @@ real(pReal) pure function math_areaTriangle(v1,v2,v3)
 
  real(pReal), dimension (3), intent(in) :: v1,v2,v3
 
- math_areaTriangle = 0.5_pReal * norm2(math_crossproduct(v1-v2,v1-v3))
+ math_areaTriangle = 0.5_pReal * norm2(math_cross(v1-v2,v1-v3))
 
 end function math_areaTriangle
 
