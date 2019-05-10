@@ -97,7 +97,6 @@ module math
    math_mul3333xx33, &
    math_mul3333xx3333, &
    math_exp33 , &
-   math_transpose33, &
    math_inv33, &
    math_invert33, &
    math_invSym3333, &
@@ -629,21 +628,6 @@ pure function math_exp33(A,n)
  enddo
 
 end function math_exp33
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief transposition of a 33 matrix
-!--------------------------------------------------------------------------------------------------
-pure function math_transpose33(A)
-
- implicit none 
- real(pReal),dimension(3,3) :: math_transpose33
- real(pReal),dimension(3,3),intent(in)  :: A
- integer :: i,j
-
- forall(i=1:3, j=1:3) math_transpose33(i,j) = A(j,i)
-
-end function math_transpose33
 
 
 !--------------------------------------------------------------------------------------------------
