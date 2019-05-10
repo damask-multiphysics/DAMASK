@@ -158,7 +158,6 @@ subroutine math_init
  use numerics, only: &
    randomSeed
 
- implicit none
  integer :: i
  real(pReal), dimension(4) :: randTest
  integer :: randSize
@@ -200,7 +199,6 @@ subroutine math_check
  use prec,     only: tol_math_check
  use IO,       only: IO_error
 
- implicit none
  character(len=64) :: error_msg
 
  ! +++ check vector expansion +++
@@ -230,7 +228,6 @@ end subroutine math_check
 !--------------------------------------------------------------------------------------------------
 recursive subroutine math_sort(a, istart, iend, sortDim)
 
- implicit none
  integer, dimension(:,:), intent(inout) :: a
  integer, intent(in),optional :: istart,iend, sortDim
  integer :: ipivot,s,e,d
@@ -267,7 +264,6 @@ recursive subroutine math_sort(a, istart, iend, sortDim)
  !-------------------------------------------------------------------------------------------------
  integer function qsort_partition(a, istart, iend, sort)
  
-   implicit none
    integer, dimension(:,:), intent(inout) :: a
    integer,                 intent(in)    :: istart,iend,sort
    integer, dimension(size(a,1))          :: tmp
@@ -307,7 +303,6 @@ end subroutine math_sort
 !--------------------------------------------------------------------------------------------------
 pure function math_expand(what,how)
 
- implicit none
  real(pReal),   dimension(:), intent(in) :: what
  integer, dimension(:), intent(in) :: how
  real(pReal), dimension(sum(how)) ::  math_expand
@@ -328,7 +323,6 @@ end function math_expand
 !--------------------------------------------------------------------------------------------------
 pure function math_range(N)
 
- implicit none
  integer, intent(in) :: N                                                                           !< length of range
  integer :: i
  integer, dimension(N) :: math_range
@@ -343,7 +337,6 @@ end function math_range
 !--------------------------------------------------------------------------------------------------
 pure function math_identity2nd(dimen)
 
- implicit none
  integer, intent(in) :: dimen                                                                       !< tensor dimension
  integer :: i
  real(pReal), dimension(dimen,dimen) :: math_identity2nd
@@ -359,7 +352,6 @@ end function math_identity2nd
 !--------------------------------------------------------------------------------------------------
 pure function math_identity4th(dimen)
 
- implicit none
  integer, intent(in) :: dimen                                                                       !< tensor dimension
  integer :: i,j,k,l
  real(pReal), dimension(dimen,dimen,dimen,dimen) ::  math_identity4th
@@ -380,7 +372,6 @@ end function math_identity4th
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_civita(i,j,k)
 
- implicit none
  integer, intent(in) :: i,j,k
 
  math_civita = 0.0_pReal
@@ -402,7 +393,6 @@ end function math_civita
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_delta(i,j)
 
- implicit none
  integer, intent (in) :: i,j
 
  math_delta = merge(0.0_pReal, 1.0_pReal, i /= j)
@@ -415,7 +405,6 @@ end function math_delta
 !--------------------------------------------------------------------------------------------------
 pure function math_cross(A,B)
 
- implicit none
  real(pReal), dimension(3), intent(in) ::  A,B
  real(pReal), dimension(3) :: math_cross
 
@@ -431,7 +420,6 @@ end function math_cross
 !--------------------------------------------------------------------------------------------------
 pure function math_outer(A,B)
 
- implicit none
  real(pReal), dimension(:), intent(in) ::  A,B
  real(pReal), dimension(size(A,1),size(B,1)) ::  math_outer
  integer :: i,j
@@ -446,7 +434,6 @@ end function math_outer
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_inner(A,B)
 
- implicit none
  real(pReal), dimension(:),         intent(in) :: A
  real(pReal), dimension(size(A,1)), intent(in) :: B
 
@@ -460,7 +447,6 @@ end function math_inner
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_mul33xx33(A,B)
 
- implicit none
  real(pReal), dimension(3,3), intent(in) ::  A,B
  integer :: i,j
  real(pReal), dimension(3,3) ::              C
@@ -476,7 +462,6 @@ end function math_mul33xx33
 !--------------------------------------------------------------------------------------------------
 pure function math_mul3333xx33(A,B)
 
- implicit none
  real(pReal), dimension(3,3) :: math_mul3333xx33
  real(pReal), dimension(3,3,3,3), intent(in) ::  A
  real(pReal), dimension(3,3), intent(in) ::  B
@@ -492,7 +477,6 @@ end function math_mul3333xx33
 !--------------------------------------------------------------------------------------------------
 pure function math_mul3333xx3333(A,B)
 
- implicit none
  integer :: i,j,k,l
  real(pReal), dimension(3,3,3,3), intent(in) ::  A
  real(pReal), dimension(3,3,3,3), intent(in) ::  B
@@ -509,7 +493,6 @@ end function math_mul3333xx3333
 !--------------------------------------------------------------------------------------------------
 pure function math_mul33x33(A,B)
 
- implicit none
  real(pReal), dimension(3,3) ::  math_mul33x33
  real(pReal), dimension(3,3), intent(in) ::  A,B
  integer :: i,j
@@ -524,7 +507,6 @@ end function math_mul33x33
 !--------------------------------------------------------------------------------------------------
 pure function math_mul66x66(A,B)
 
- implicit none
  real(pReal), dimension(6,6) ::  math_mul66x66
  real(pReal), dimension(6,6), intent(in) ::  A,B
  integer :: i,j
@@ -541,7 +523,6 @@ end function math_mul66x66
 !--------------------------------------------------------------------------------------------------
 pure function math_mul99x99(A,B)
 
- implicit none
  real(pReal), dimension(9,9) ::  math_mul99x99
  real(pReal), dimension(9,9), intent(in) ::  A,B
  integer  i,j
@@ -559,7 +540,6 @@ end function math_mul99x99
 !--------------------------------------------------------------------------------------------------
 pure function math_mul33x3(A,B)
 
- implicit none
  real(pReal), dimension(3) ::  math_mul33x3
  real(pReal), dimension(3,3), intent(in) ::  A
  real(pReal), dimension(3),   intent(in) ::  B
@@ -575,7 +555,6 @@ end function math_mul33x3
 !--------------------------------------------------------------------------------------------------
 pure function math_mul33x3_complex(A,B)
 
- implicit none
  complex(pReal), dimension(3) ::  math_mul33x3_complex
  complex(pReal), dimension(3,3), intent(in) ::  A
  real(pReal),    dimension(3),   intent(in) ::  B
@@ -591,7 +570,6 @@ end function math_mul33x3_complex
 !--------------------------------------------------------------------------------------------------
 pure function math_mul66x6(A,B)
 
- implicit none
  real(pReal), dimension(6) ::  math_mul66x6
  real(pReal), dimension(6,6), intent(in) ::  A
  real(pReal), dimension(6),   intent(in) ::  B
@@ -608,7 +586,6 @@ end function math_mul66x6
 !--------------------------------------------------------------------------------------------------
 pure function math_exp33(A,n)
 
- implicit none
  integer :: i
  integer, intent(in), optional :: n
  real(pReal), dimension(3,3), intent(in) :: A
@@ -637,7 +614,6 @@ pure function math_inv33(A)
  use prec, only: &
    dNeq0
 
- implicit none
  real(pReal),dimension(3,3),intent(in)  :: A
  real(pReal) :: DetA
  real(pReal),dimension(3,3) :: math_inv33
@@ -675,7 +651,6 @@ pure subroutine math_invert33(A, InvA, DetA, error)
  use prec, only: &
    dEq0
 
- implicit none
  logical, intent(out) :: error
  real(pReal),dimension(3,3),intent(in)  :: A
  real(pReal),dimension(3,3),intent(out) :: InvA
@@ -713,7 +688,6 @@ function math_invSym3333(A)
  use IO, only: &
    IO_error
 
- implicit none
  real(pReal),dimension(3,3,3,3)            :: math_invSym3333
 
  real(pReal),dimension(3,3,3,3),intent(in) :: A
@@ -744,7 +718,6 @@ end function math_invSym3333
 !--------------------------------------------------------------------------------------------------
 subroutine math_invert2(InvA, error, A)
 
- implicit none
  real(pReal), dimension(:,:), intent(in)  :: A
  
  real(pReal), dimension(size(A,1),size(A,1)), intent(out) :: invA
@@ -762,7 +735,6 @@ end subroutine math_invert2
 !--------------------------------------------------------------------------------------------------
 subroutine math_invert(myDim,A, InvA, error)
 
- implicit none
  integer, intent(in)  :: myDim
  real(pReal), dimension(myDim,myDim), intent(in)  :: A
 
@@ -790,7 +762,6 @@ end subroutine math_invert
 !--------------------------------------------------------------------------------------------------
 pure function math_symmetric33(m)
 
- implicit none
  real(pReal), dimension(3,3) :: math_symmetric33
  real(pReal), dimension(3,3), intent(in) :: m
  
@@ -804,7 +775,6 @@ end function math_symmetric33
 !--------------------------------------------------------------------------------------------------
 pure function math_symmetric66(m)
 
- implicit none
  real(pReal), dimension(6,6) :: math_symmetric66
  real(pReal), dimension(6,6), intent(in) :: m
 
@@ -818,7 +788,6 @@ end function math_symmetric66
 !--------------------------------------------------------------------------------------------------
 pure function math_skew33(m)
 
- implicit none
  real(pReal), dimension(3,3) :: math_skew33
  real(pReal), dimension(3,3), intent(in) :: m
 
@@ -831,7 +800,6 @@ end function math_skew33
 !--------------------------------------------------------------------------------------------------
 pure function math_spherical33(m)
 
- implicit none
  real(pReal), dimension(3,3) :: math_spherical33
  real(pReal), dimension(3,3), intent(in) :: m
 
@@ -845,7 +813,6 @@ end function math_spherical33
 !--------------------------------------------------------------------------------------------------
 pure function math_deviatoric33(m)
 
- implicit none
  real(pReal), dimension(3,3) :: math_deviatoric33
  real(pReal), dimension(3,3), intent(in) :: m
 
@@ -859,7 +826,6 @@ end function math_deviatoric33
 !--------------------------------------------------------------------------------------------------
 pure function math_equivStrain33(m)
 
- implicit none
  real(pReal), dimension(3,3), intent(in) :: m
  real(pReal), dimension(3) :: e,s
  real(pReal) :: math_equivStrain33
@@ -880,7 +846,6 @@ end function math_equivStrain33
 !--------------------------------------------------------------------------------------------------
 pure function math_equivStress33(m)
 
- implicit none
  real(pReal), dimension(3,3), intent(in) :: m
  real(pReal) :: math_equivStress33
 
@@ -902,7 +867,6 @@ end function math_equivStress33
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_trace33(m)
 
- implicit none
  real(pReal), dimension(3,3), intent(in) :: m
 
  math_trace33 = m(1,1) + m(2,2) + m(3,3)
@@ -915,7 +879,6 @@ end function math_trace33
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_det33(m)
 
- implicit none
  real(pReal), dimension(3,3), intent(in) :: m
  
  math_det33 = m(1,1)* (m(2,2)*m(3,3)-m(2,3)*m(3,2)) &
@@ -930,7 +893,6 @@ end function math_det33
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_detSym33(m)
 
- implicit none
  real(pReal), dimension(3,3), intent(in) :: m
  
   math_detSym33 = -(m(1,1)*m(2,3)**2 + m(2,2)*m(1,3)**2 + m(3,3)*m(1,2)**2) &
@@ -944,7 +906,6 @@ end function  math_detSym33
 !--------------------------------------------------------------------------------------------------
 pure function math_33to9(m33)
 
- implicit none
  real(pReal), dimension(9)               :: math_33to9
  real(pReal), dimension(3,3), intent(in) :: m33
  
@@ -960,7 +921,6 @@ end function math_33to9
 !--------------------------------------------------------------------------------------------------
 pure function math_9to33(v9)
 
- implicit none
  real(pReal), dimension(3,3)           :: math_9to33
  real(pReal), dimension(9), intent(in) :: v9
  
@@ -979,7 +939,6 @@ end function math_9to33
 !--------------------------------------------------------------------------------------------------
 pure function math_sym33to6(m33,weighted)
 
- implicit none
  real(pReal), dimension(6)               :: math_sym33to6
  real(pReal), dimension(3,3), intent(in) :: m33
  logical,     optional,       intent(in) :: weighted
@@ -1006,7 +965,6 @@ end function math_sym33to6
 !--------------------------------------------------------------------------------------------------
 pure function math_6toSym33(v6,weighted)
 
- implicit none
  real(pReal), dimension(3,3)           :: math_6toSym33
  real(pReal), dimension(6), intent(in) :: v6
  logical,     optional,     intent(in) :: weighted
@@ -1033,7 +991,6 @@ end function math_6toSym33
 !--------------------------------------------------------------------------------------------------
 pure function math_3333to99(m3333)
 
- implicit none
  real(pReal), dimension(9,9)                 :: math_3333to99
  real(pReal), dimension(3,3,3,3), intent(in) :: m3333
 
@@ -1050,7 +1007,6 @@ end function math_3333to99
 !--------------------------------------------------------------------------------------------------
 pure function math_99to3333(m99)
 
- implicit none
  real(pReal), dimension(3,3,3,3)         :: math_99to3333
  real(pReal), dimension(9,9), intent(in) :: m99
 
@@ -1070,7 +1026,6 @@ end function math_99to3333
 !--------------------------------------------------------------------------------------------------
 pure function math_sym3333to66(m3333,weighted)
 
- implicit none
  real(pReal), dimension(6,6)                 :: math_sym3333to66
  real(pReal), dimension(3,3,3,3), intent(in) :: m3333
  logical,     optional,           intent(in) :: weighted
@@ -1098,7 +1053,6 @@ end function math_sym3333to66
 !--------------------------------------------------------------------------------------------------
 pure function math_66toSym3333(m66,weighted)
 
- implicit none
  real(pReal), dimension(3,3,3,3)            :: math_66toSym3333
  real(pReal), dimension(6,6),    intent(in) :: m66
  logical,     optional,          intent(in) :: weighted
@@ -1127,7 +1081,6 @@ end function math_66toSym3333
 !--------------------------------------------------------------------------------------------------
 pure function math_Voigt66to3333(m66)
 
- implicit none
  real(pReal), dimension(3,3,3,3) :: math_Voigt66to3333
  real(pReal), dimension(6,6), intent(in) :: m66
  integer :: i,j
@@ -1147,7 +1100,6 @@ end function math_Voigt66to3333
 !--------------------------------------------------------------------------------------------------
 pure function math_qMul(A,B)
 
- implicit none
  real(pReal), dimension(4) ::  math_qMul
  real(pReal), dimension(4), intent(in) ::  A, B
 
@@ -1164,7 +1116,6 @@ end function math_qMul
 !--------------------------------------------------------------------------------------------------
 pure function math_qConj(Q)
 
- implicit none
  real(pReal), dimension(4) ::  math_qConj
  real(pReal), dimension(4), intent(in) ::  Q
 
@@ -1178,7 +1129,6 @@ end function math_qConj
 !--------------------------------------------------------------------------------------------------
 pure function math_qRot(Q,v)
 
- implicit none
  real(pReal), dimension(4), intent(in) :: Q
  real(pReal), dimension(3), intent(in) :: v
  real(pReal), dimension(3) :: math_qRot
@@ -1209,7 +1159,6 @@ end function math_qRot
 !--------------------------------------------------------------------------------------------------
 pure function math_RtoEuler(R)
 
- implicit none
  real(pReal), dimension (3,3), intent(in) :: R
  real(pReal), dimension(3) :: math_RtoEuler
  real(pReal) :: sqhkl, squvw, sqhk
@@ -1241,7 +1190,6 @@ end function math_RtoEuler
 !--------------------------------------------------------------------------------------------------
 pure function math_RtoQ(R)
 
- implicit none
  real(pReal), dimension(3,3), intent(in) :: R
  real(pReal), dimension(4)   :: absQ, math_RtoQ
  real(pReal) :: max_absQ
@@ -1298,7 +1246,6 @@ end function math_RtoQ
 !--------------------------------------------------------------------------------------------------
 pure function math_EulerToR(Euler)
 
- implicit none
  real(pReal), dimension(3), intent(in) :: Euler
  real(pReal), dimension(3,3) :: math_EulerToR
  real(pReal) :: c1, C, c2, s1, S, s2
@@ -1337,7 +1284,6 @@ end function math_EulerToR
 !--------------------------------------------------------------------------------------------------
 pure function math_axisAngleToR(axis,omega)
 
- implicit none
  real(pReal), dimension(3,3) :: math_axisAngleToR
  real(pReal), dimension(3), intent(in) :: axis
  real(pReal), intent(in) :: omega
@@ -1379,7 +1325,6 @@ pure function math_qToRodrig(Q)
  use prec, only: &
    tol_math_check
 
- implicit none
  real(pReal), dimension(4), intent(in) :: Q
  real(pReal), dimension(3) :: math_qToRodrig
 
@@ -1395,7 +1340,6 @@ real(pReal) function math_sampleGaussVar(meanvalue, stddev, width)
  use prec, only: &
    tol_math_check
 
- implicit none
  real(pReal), intent(in) ::            meanvalue, &                                                 ! meanvalue of gauss distribution
                                        stddev                                                       ! standard deviation of gauss distribution
  real(pReal), intent(in), optional ::  width                                                        ! width of considered values as multiples of standard deviation
@@ -1426,7 +1370,6 @@ end function math_sampleGaussVar
 !--------------------------------------------------------------------------------------------------
 subroutine math_eigenValuesVectorsSym(m,values,vectors,error)
 
- implicit none
  real(pReal), dimension(:,:),                  intent(in)  :: m
  real(pReal), dimension(size(m,1)),            intent(out) :: values
  real(pReal), dimension(size(m,1),size(m,1)),  intent(out) :: vectors
@@ -1453,7 +1396,6 @@ end subroutine math_eigenValuesVectorsSym
 !--------------------------------------------------------------------------------------------------
 subroutine math_eigenValuesVectorsSym33(m,values,vectors)
  
- implicit none
  real(pReal), dimension(3,3),intent(in)  :: m
  real(pReal), dimension(3),  intent(out) :: values
  real(pReal), dimension(3,3),intent(out) :: vectors
@@ -1506,7 +1448,6 @@ end subroutine math_eigenValuesVectorsSym33
 !--------------------------------------------------------------------------------------------------
 function math_eigenvectorBasisSym(m)
 
- implicit none
  real(pReal), dimension(:,:),      intent(in)  :: m
  real(pReal), dimension(size(m,1))             :: values
  real(pReal), dimension(size(m,1),size(m,1))   :: vectors
@@ -1531,7 +1472,6 @@ end function math_eigenvectorBasisSym
 !--------------------------------------------------------------------------------------------------
 pure function math_eigenvectorBasisSym33(m)
 
- implicit none
  real(pReal), dimension(3,3)              :: math_eigenvectorBasisSym33
  real(pReal), dimension(3)                :: invariants, values
  real(pReal), dimension(3,3), intent(in) :: m
@@ -1596,7 +1536,6 @@ end function math_eigenvectorBasisSym33
 !--------------------------------------------------------------------------------------------------
 pure function math_eigenvectorBasisSym33_log(m)
 
- implicit none
  real(pReal), dimension(3,3)              :: math_eigenvectorBasisSym33_log
  real(pReal), dimension(3)                :: invariants, values
  real(pReal), dimension(3,3), intent(in) :: m
@@ -1665,7 +1604,6 @@ function math_rotationalPart33(m)
  use IO, only: &
    IO_warning
 
- implicit none
  real(pReal), intent(in), dimension(3,3) :: m
  real(pReal), dimension(3,3) :: math_rotationalPart33
  real(pReal), dimension(3,3) :: U , Uinv
@@ -1691,7 +1629,6 @@ function math_eigenvaluesSym(m)
  use, intrinsic :: &
    IEEE_arithmetic
  
- implicit none
  real(pReal), dimension(:,:),                  intent(in)  :: m
  real(pReal), dimension(size(m,1))                         :: math_eigenvaluesSym
  real(pReal), dimension(size(m,1),size(m,1))               :: vectors
@@ -1716,7 +1653,6 @@ end function math_eigenvaluesSym
 !--------------------------------------------------------------------------------------------------
 function math_eigenvaluesSym33(m)
 
- implicit none
  real(pReal), intent(in), dimension(3,3) :: m
  real(pReal), dimension(3) :: math_eigenvaluesSym33,invariants
  real(pReal) :: P, Q, rho, phi
@@ -1747,7 +1683,6 @@ end function math_eigenvaluesSym33
 !--------------------------------------------------------------------------------------------------
 pure function math_invariantsSym33(m)
 
- implicit none
  real(pReal), dimension(3,3), intent(in) :: m
  real(pReal), dimension(3) :: math_invariantsSym33
 
@@ -1764,7 +1699,6 @@ end function math_invariantsSym33
 !--------------------------------------------------------------------------------------------------
 integer pure function math_factorial(n)
 
- implicit none
  integer, intent(in) :: n
  integer :: i
  
@@ -1778,7 +1712,6 @@ end function math_factorial
 !--------------------------------------------------------------------------------------------------
 integer pure function math_binomial(n,k)
 
- implicit none
  integer, intent(in) :: n, k
  integer :: i, j
  
@@ -1793,7 +1726,6 @@ end function math_binomial
 !--------------------------------------------------------------------------------------------------
 integer pure function math_multinomial(alpha)
 
- implicit none
  integer, intent(in), dimension(:) :: alpha
  integer :: i
  
@@ -1810,7 +1742,6 @@ end function math_multinomial
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_volTetrahedron(v1,v2,v3,v4)
 
- implicit none
  real(pReal), dimension (3), intent(in) :: v1,v2,v3,v4
  real(pReal), dimension (3,3) :: m
 
@@ -1828,7 +1759,6 @@ end function math_volTetrahedron
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_areaTriangle(v1,v2,v3)
 
- implicit none
  real(pReal), dimension (3), intent(in) :: v1,v2,v3
 
  math_areaTriangle = 0.5_pReal * norm2(math_crossproduct(v1-v2,v1-v3))
@@ -1841,7 +1771,6 @@ end function math_areaTriangle
 !--------------------------------------------------------------------------------------------------
 pure function math_rotate_forward33(tensor,rot_tensor)
 
- implicit none
 
  real(pReal), dimension(3,3) ::  math_rotate_forward33
  real(pReal), dimension(3,3), intent(in) :: tensor, rot_tensor
@@ -1856,7 +1785,6 @@ end function math_rotate_forward33
 !--------------------------------------------------------------------------------------------------
 pure function math_rotate_backward33(tensor,rot_tensor)
 
- implicit none
  real(pReal), dimension(3,3) ::  math_rotate_backward33
  real(pReal), dimension(3,3), intent(in) :: tensor, rot_tensor
 
@@ -1870,7 +1798,6 @@ end function math_rotate_backward33
 !--------------------------------------------------------------------------------------------------
 pure function math_rotate_forward3333(tensor,rot_tensor)
 
- implicit none
  real(pReal), dimension(3,3,3,3) ::  math_rotate_forward3333
  real(pReal), dimension(3,3), intent(in) :: rot_tensor
  real(pReal), dimension(3,3,3,3), intent(in) :: tensor
@@ -1895,7 +1822,6 @@ real(pReal) pure elemental function math_clip(a, left, right)
  use, intrinsic :: &
    IEEE_arithmetic
 
- implicit none
  real(pReal), intent(in) :: a
  real(pReal), intent(in), optional :: left, right
 

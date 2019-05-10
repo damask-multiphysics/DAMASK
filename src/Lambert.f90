@@ -44,7 +44,6 @@ module Lambert
     PI
   use future
 
-  implicit none
   private
   real(pReal), parameter, private :: &
     SPI  = sqrt(PI), &
@@ -77,7 +76,6 @@ function LambertCubeToBall(cube) result(ball)
   use prec, only: &
     dEq0
  
-  implicit none
   real(pReal), intent(in), dimension(3) :: cube
   real(pReal),             dimension(3) :: ball, LamXYZ, XYZ
   real(pReal),             dimension(2) :: T
@@ -141,7 +139,6 @@ pure function LambertBallToCube(xyz) result(cube)
    use math, only: &
     math_clip
  
-  implicit none
   real(pReal), intent(in), dimension(3) :: xyz
   real(pReal),             dimension(3) :: cube, xyz1, xyz3
   real(pReal),             dimension(2) :: Tinv, xyz2
@@ -196,7 +193,6 @@ end function LambertBallToCube
 !--------------------------------------------------------------------------
 pure function GetPyramidOrder(xyz)
 
-  implicit none
   real(pReal),intent(in),dimension(3) :: xyz
   integer,               dimension(3) :: GetPyramidOrder
  
