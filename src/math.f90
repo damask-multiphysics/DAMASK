@@ -83,7 +83,7 @@ module math
 
  public :: &
    math_init, &
-   math_qsort, &
+   math_sort, &
    math_expand, &
    math_range, &
    math_identity2nd, &
@@ -228,7 +228,7 @@ end subroutine math_check
 ! Sorting is done with respect to array(sort,:) and keeps array(/=sort,:) linked to it.
 ! default: sort=1
 !--------------------------------------------------------------------------------------------------
-recursive subroutine math_qsort(a, istart, iend, sortDim)
+recursive subroutine math_sort(a, istart, iend, sortDim)
 
  implicit none
  integer, dimension(:,:), intent(inout) :: a
@@ -255,8 +255,8 @@ recursive subroutine math_qsort(a, istart, iend, sortDim)
   
  if (s < e) then
    ipivot = qsort_partition(a,s, e, d)
-   call math_qsort(a, s, ipivot-1, d)
-   call math_qsort(a, ipivot+1, e, d)
+   call math_sort(a, s, ipivot-1, d)
+   call math_sort(a, ipivot+1, e, d)
  endif
 
 !--------------------------------------------------------------------------------------------------
@@ -297,7 +297,7 @@ recursive subroutine math_qsort(a, istart, iend, sortDim)
  
  end function qsort_partition
 
-end subroutine math_qsort
+end subroutine math_sort
 
 
 !--------------------------------------------------------------------------------------------------

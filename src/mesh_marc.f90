@@ -640,7 +640,7 @@ subroutine mesh_marc_map_elementSets(nameElemSet,mapElemSet,fileUnit)
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,nElems,fileUnit)
 
- use math, only: math_qsort
+ use math, only: math_sort
  use IO,   only: IO_lc, &
                  IO_intValue, &
                  IO_stringValue, &
@@ -701,7 +701,7 @@ subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,nElems,fileU
       mesh_mapFEtoCPelem(2,cpElem) = cpElem
     enddo
  
-call math_qsort(mesh_mapFEtoCPelem,1_pInt,int(size(mesh_mapFEtoCPelem,2_pInt),pInt))                ! should be mesh_NcpElems
+call math_sort(mesh_mapFEtoCPelem,1_pInt,int(size(mesh_mapFEtoCPelem,2_pInt),pInt))                ! should be mesh_NcpElems
 
 end subroutine mesh_marc_map_elements
 
@@ -711,7 +711,7 @@ end subroutine mesh_marc_map_elements
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_map_nodes(nNodes,fileUnit)
 
- use math, only: math_qsort
+ use math, only: math_sort
  use IO,   only: IO_lc, &
                  IO_stringValue, &
                  IO_stringPos, &
@@ -743,7 +743,7 @@ subroutine mesh_marc_map_nodes(nNodes,fileUnit)
    endif
  enddo
 
-650 call math_qsort(mesh_mapFEtoCPnode,1_pInt,int(size(mesh_mapFEtoCPnode,2_pInt),pInt))
+650 call math_sort(mesh_mapFEtoCPnode,1_pInt,int(size(mesh_mapFEtoCPnode,2_pInt),pInt))
 
 end subroutine mesh_marc_map_nodes
 
