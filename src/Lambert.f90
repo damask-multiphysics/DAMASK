@@ -38,11 +38,7 @@
 !> Modeling and Simulations in Materials Science and Engineering 22, 075013 (2014).
 !--------------------------------------------------------------------------
 module Lambert
-  use prec, only: &
-    pReal
-  use math, only: &
-    PI
-  use future
+  use math
 
   implicit none
   private
@@ -73,9 +69,6 @@ contains
 !> @brief map from 3D cubic grid to 3D ball 
 !--------------------------------------------------------------------------
 function LambertCubeToBall(cube) result(ball)
-  use, intrinsic :: IEEE_ARITHMETIC
-  use prec, only: &
-    dEq0
  
   real(pReal), intent(in), dimension(3) :: cube
   real(pReal),             dimension(3) :: ball, LamXYZ, XYZ
@@ -132,13 +125,6 @@ end function LambertCubeToBall
 !> @brief map from 3D ball to 3D cubic grid  
 !--------------------------------------------------------------------------
 pure function LambertBallToCube(xyz) result(cube)
-  use, intrinsic :: IEEE_ARITHMETIC, only:&
-    IEEE_positive_inf, &
-    IEEE_value
-  use prec, only: &
-    dEq0
-   use math, only: &
-    math_clip
  
   real(pReal), intent(in), dimension(3) :: xyz
   real(pReal),             dimension(3) :: cube, xyz1, xyz3

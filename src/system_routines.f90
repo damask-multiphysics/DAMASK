@@ -6,7 +6,6 @@ module system_routines
   use, intrinsic :: ISO_C_Binding
  
   implicit none
-  private
   
   public :: &
     signalterm_C, &

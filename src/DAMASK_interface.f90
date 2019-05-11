@@ -15,7 +15,9 @@
 #define PETSC_MINOR_MIN 10
 #define PETSC_MINOR_MAX 11
 module DAMASK_interface
-
+  use prec
+  use system_routines
+  
   implicit none
   private
   logical, public, protected :: &
@@ -48,18 +50,8 @@ contains
 !! information on computation to screen
 !--------------------------------------------------------------------------------------------------
 subroutine DAMASK_interface_init
-  use, intrinsic :: &
-    iso_fortran_env
-  use, intrinsic :: &
-    iso_c_binding
+  use, intrinsic :: iso_fortran_env
   use PETScSys
-  use prec, only: &
-    pReal
-  use system_routines, only: &
-    signalusr1_C, &
-    signalusr2_C, &
-    getHostName, &
-    getCWD
 
 #include <petsc/finclude/petscsys.h>
 #if defined(__GFORTRAN__) &&  __GNUC__<GCC_MIN
@@ -305,9 +297,6 @@ end subroutine DAMASK_interface_init
 !!        possibly converting relative arguments to absolut path
 !--------------------------------------------------------------------------------------------------
 subroutine setWorkingDirectory(workingDirectoryArg)
-  use system_routines, only: &
-    getCWD, &
-    setCWD
 
   character(len=*),  intent(in) :: workingDirectoryArg                                              !< working directory argument
   character(len=1024)           :: workingDirectory                                                 !< working directory argument
@@ -355,8 +344,6 @@ end function getSolverJobName
 !> @brief basename of geometry file with extension from command line arguments
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getGeometryFile(geometryParameter)
-  use system_routines, only: &
-    getCWD
 
   character(len=1024), intent(in) :: geometryParameter
   logical                         :: file_exists
@@ -379,8 +366,6 @@ end function getGeometryFile
 !> @brief relative path of loadcase from command line arguments
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getLoadCaseFile(loadCaseParameter)
-  use system_routines, only: &
-    getCWD
 
   character(len=1024), intent(in) :: loadCaseParameter
   logical                         :: file_exists
@@ -475,7 +460,6 @@ end function makeRelativePath
 !> @brief sets global variable SIGTERM to .true.
 !--------------------------------------------------------------------------------------------------
 subroutine catchSIGTERM(signal) bind(C)
-  use :: iso_c_binding
 
   integer(C_INT), value :: signal
   SIGTERM = .true.
@@ -500,7 +484,6 @@ end subroutine setSIGTERM
 !> @brief sets global variable SIGUSR1 to .true.
 !--------------------------------------------------------------------------------------------------
 subroutine catchSIGUSR1(signal) bind(C)
-  use :: iso_c_binding
 
   integer(C_INT), value :: signal
   SIGUSR1 = .true.
@@ -525,7 +508,6 @@ end subroutine setSIGUSR1
 !> @brief sets global variable SIGUSR2 to .true. if program receives SIGUSR2
 !--------------------------------------------------------------------------------------------------
 subroutine catchSIGUSR2(signal) bind(C)
-  use :: iso_c_binding
 
   integer(C_INT), value :: signal
   SIGUSR2 = .true.
