@@ -1097,6 +1097,7 @@ end function homogenization_RGC_postResults
 
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
+! ToDo: check wheter units are correct
 !--------------------------------------------------------------------------------------------------
 subroutine mech_RGC_results(instance,group)
 #if defined(PETSc) || defined(DAMASK_HDF5)
@@ -1116,12 +1117,20 @@ subroutine mech_RGC_results(instance,group)
         call results_writeDataset(group,stt%work,'W',&
                                   'work density','J/m³')
       case (magnitudemismatch_ID)
-        call results_writeDataset(group,dst%mismatch,'M',&
-                                  'average mismatch tensor','tbd')
+        call results_writeDataset(group,dst%mismatch,'N',&
+                                  'average mismatch tensor','m')
       case (penaltyenergy_ID)
         call results_writeDataset(group,stt%penaltyEnergy,'R',&
-                                  'mismatch penalty density','tbd')
-
+                                  'mismatch penalty density','J/m³')
+      case (volumediscrepancy_ID)
+        call results_writeDataset(group,dst%volumeDiscrepancy,'Delta_V',&
+                                  'volume discrepancy','m³')
+      case (maximumrelaxrate_ID)
+        call results_writeDataset(group,dst%relaxationrate_max,'max_alpha_dot',&
+                                  'maximum relaxation rate','m/s')
+      case (averagerelaxrate_ID)
+        call results_writeDataset(group,dst%relaxationrate_avg,'avg_alpha_dot',&
+                                  'average relaxation rate','m/s')
     end select
   enddo outputsLoop
   end associate
