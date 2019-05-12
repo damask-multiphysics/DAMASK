@@ -34,7 +34,7 @@ module mesh
  real(pReal), public, protected :: &
    mesh_unitlength                                                                                  !< physical length of one unit in mesh
 
- real(pReal), dimension(:,:), allocatable, public :: &
+ real(pReal), dimension(:,:), allocatable, private :: &
    mesh_node, &                                                                                     !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!)
    mesh_cellnode                                                                                    !< cell node x,y,z coordinates (after deformation! ONLY FOR MARC!!!)
 
