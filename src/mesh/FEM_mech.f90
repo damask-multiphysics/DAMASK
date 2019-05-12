@@ -55,8 +55,7 @@ module FEM_mech
  public :: &
    FEM_mech_init, &
    FEM_mech_solution ,&
-   FEM_mech_forward, &
-   FEM_mech_destroy
+   FEM_mech_forward
 contains
 
 !--------------------------------------------------------------------------------------------------
@@ -583,6 +582,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
 
 end subroutine FEM_mech_formJacobian
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief forwarding routine
 !--------------------------------------------------------------------------------------------------
@@ -655,7 +655,6 @@ end subroutine FEM_mech_forward
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_mech_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
  use numerics, only: &
-   worldrank, &
    err_struct_tolAbs, &
    err_struct_tolRel
  use IO, only: &
@@ -677,30 +676,13 @@ subroutine FEM_mech_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dumm
  call SNESConvergedDefault(snes_local,PETScIter,xnorm,snorm,fnorm/divTol,reason,dummy,ierr)
  CHKERRQ(ierr)
  if (terminallyIll) reason = SNES_DIVERGED_FUNCTION_DOMAIN
- if (worldrank == 0) then 
-   write(6,'(1/,1x,a,a,i0,a,i0,f0.3)') trim(incInfo), &
-                   ' @ Iteration ',PETScIter,' mechanical residual norm = ', &
-                                                   int(fnorm/divTol),fnorm/divTol-int(fnorm/divTol)
-   write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress / MPa =',&
+ write(6,'(1/,1x,a,a,i0,a,i0,f0.3)') trim(incInfo), &
+                 ' @ Iteration ',PETScIter,' mechanical residual norm = ', &
+                                                 int(fnorm/divTol),fnorm/divTol-int(fnorm/divTol)
+ write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress / MPa =',&
                                                        transpose(P_av)*1.e-6_pReal
-   flush(6) 
- endif
+ flush(6)
  
 end subroutine FEM_mech_converged
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief destroy routine
-!--------------------------------------------------------------------------------------------------
-subroutine FEM_mech_destroy()
-
- implicit none
- PetscErrorCode :: ierr
-
- call VecDestroy(solution,ierr); CHKERRQ(ierr)
- call VecDestroy(solution_rate,ierr); CHKERRQ(ierr)
- call SNESDestroy(mech_snes,ierr); CHKERRQ(ierr)
-
-end subroutine FEM_mech_destroy
 
 end module FEM_mech

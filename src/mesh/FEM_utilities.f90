@@ -23,7 +23,6 @@ use PETScis
 !--------------------------------------------------------------------------------------------------
 ! grid related information information
  real(pReal),   public                :: wgt                                                        !< weighting factor 1/Nelems
- real(pReal),   public                :: wgtDof                                                     !< weighting factor 1/Nelems
   
 !--------------------------------------------------------------------------------------------------
 ! output data
@@ -35,33 +34,18 @@ use PETScis
 
  enum, bind(c)
    enumerator :: FIELD_UNDEFINED_ID, &
-                 FIELD_MECH_ID, &
-                 FIELD_THERMAL_ID, &
-                 FIELD_DAMAGE_ID, &
-                 FIELD_SOLUTE_ID, &
-                 FIELD_MGTWIN_ID
+                 FIELD_MECH_ID
  end enum
  enum, bind(c)
    enumerator :: COMPONENT_UNDEFINED_ID, &
                  COMPONENT_MECH_X_ID, &
                  COMPONENT_MECH_Y_ID, &
-                 COMPONENT_MECH_Z_ID, &
-                 COMPONENT_THERMAL_T_ID, &
-                 COMPONENT_DAMAGE_PHI_ID, &
-                 COMPONENT_SOLUTE_CV_ID, &
-                 COMPONENT_SOLUTE_CVPOT_ID, &
-                 COMPONENT_SOLUTE_CH_ID, &
-                 COMPONENT_SOLUTE_CHPOT_ID, &
-                 COMPONENT_SOLUTE_CVaH_ID, &
-                 COMPONENT_SOLUTE_CVaHPOT_ID, &
-                 COMPONENT_MGTWIN_PHI_ID
+                 COMPONENT_MECH_Z_ID
  end enum
  
 !--------------------------------------------------------------------------------------------------
 ! variables controlling debugging
  logical, private :: &
-   debugGeneral, &                                                                                  !< general debugging of FEM solver
-   debugRotation, &                                                                                 !< also printing out results in lab frame
    debugPETSc                                                                                       !< use some in debug defined options for more verbose PETSc solution
 
 !--------------------------------------------------------------------------------------------------
@@ -111,36 +95,26 @@ use PETScis
  public :: &
    utilities_init, &
    utilities_constitutiveResponse, &
-   utilities_indexBoundaryDofs, &
    utilities_projectBCValues, &
-   utilities_indexActiveSet, &
-   utilities_destroy, &
    FIELD_MECH_ID, &
    COMPONENT_MECH_X_ID, &
    COMPONENT_MECH_Y_ID, &
-   COMPONENT_MECH_Z_ID, &
-   COMPONENT_THERMAL_T_ID
+   COMPONENT_MECH_Z_ID
 
 contains 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields, sets debug flags
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_init()
+subroutine utilities_init
  use numerics, only: &                        
    structOrder, &
-   integrationOrder, &
-   worldsize, & 
-   worldrank, &
    petsc_defaultOptions, &
    petsc_options
  use debug, only: &
    debug_level, &
    debug_SPECTRAL, &
-   debug_LEVELBASIC, &
-   debug_SPECTRALPETSC, &
-   debug_SPECTRALROTATION
- use debug, only: &
+   debug_SPECTRALPETSC,&
    PETSCDEBUG
  use math                                                                                           ! must use the whole module for use of FFTW
  use mesh, only: &
@@ -151,16 +125,12 @@ subroutine utilities_init()
  implicit none
 
  character(len=1024)                :: petsc_optionsPhysics
- integer(pInt)                      :: dimPlex
- PetscInt                           :: dim
  PetscErrorCode                     :: ierr
 
  write(6,'(/,a)')   ' <<<+-  DAMASK_FEM_utilities init  -+>>>'
  
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters
- debugGeneral    = iand(debug_level(debug_SPECTRAL),debug_LEVELBASIC)         /= 0
- debugRotation   = iand(debug_level(debug_SPECTRAL),debug_SPECTRALROTATION)   /= 0
  debugPETSc      = iand(debug_level(debug_SPECTRAL),debug_SPECTRALPETSC)      /= 0
  if(debugPETSc) write(6,'(3(/,a),/)') &
                 ' Initializing PETSc with debug options: ', &
@@ -180,7 +150,6 @@ subroutine utilities_init()
  
  wgt = 1.0/real(mesh_maxNips*mesh_NcpElemsGlobal,pReal)
 
- call DMGetDimension(geomMesh,dimPlex,ierr); CHKERRQ(ierr) 
 
 end subroutine utilities_init
 
@@ -188,20 +157,13 @@ end subroutine utilities_init
 !> @brief calculates constitutive response
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
- use debug, only: &
-   debug_reset, &
-   debug_info
  use math, only: &
-   math_rotate_forward33, &
    math_det33
  use FEsolving, only: &
    restartWrite
  use homogenization, only: &
-   materialpoint_F, &
    materialpoint_P, &
    materialpoint_stressAndItsTangent
- use mesh, only: &
-   mesh_NcpElems  
  
  implicit none
  real(pReal), intent(in)                                         :: timeinc                         !< loading time
@@ -212,9 +174,6 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
  logical :: &
    age
 
- integer(pInt) :: &
-   j
- real(pReal)   :: defgradDetMin, defgradDetMax, defgradDet
  PetscErrorCode :: ierr
 
  write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
@@ -226,27 +185,9 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
  if (cutBack) then                                                                                  ! restore saved variables
    age = .False.
  endif
- call debug_reset()
-
-!--------------------------------------------------------------------------------------------------
-! calculate bounds of det(F) and report
- if(debugGeneral) then
-   defgradDetMax = -huge(1.0_pReal)
-   defgradDetMin = +huge(1.0_pReal)
-   do j = 1_pInt, mesh_NcpElems
-     defgradDet = math_det33(materialpoint_F(1:3,1:3,1,j))
-     defgradDetMax = max(defgradDetMax,defgradDet)
-     defgradDetMin = min(defgradDetMin,defgradDet) 
-   end do
-   write(6,'(a,1x,es11.4)') ' max determinant of deformation =', defgradDetMax
-   write(6,'(a,1x,es11.4)') ' min determinant of deformation =', defgradDetMin
-   flush(6)
- endif
   
  call materialpoint_stressAndItsTangent(.true.,timeinc)                                             ! calculate P field
 
- call debug_info()
- 
  restartWrite = .false.                                                                             ! reset restartWrite status
  cutBack = .false.                                                                                  ! reset cutBack status
  
@@ -254,97 +195,6 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
  call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
 
 end subroutine utilities_constitutiveResponse
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Create index sets of boundary dofs (in local and global numbering)
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_indexBoundaryDofs(dm_local,nFaceSets,numFields,local2global,section,localIS,globalIS)
-
- implicit none
- 
- DM                                    :: dm_local
- ISLocalToGlobalMapping                :: local2global
- PetscSection                          :: section
- PetscInt                              :: nFaceSets, numFields, nDof
- IS,    dimension(nFaceSets,numFields) :: localIS, globalIS
- PetscInt                              :: field, faceSet, point, dof, offset
- PetscInt                              :: localSize, storageSize, ISSize
- PetscInt, dimension(:)  , allocatable :: localIndices
- IS                                    :: faceSetIS, BC_IS, dummyIS
- PetscInt, dimension(:)  ,     pointer :: pFaceSets, pBCvertex, pBCvertexlc
- DMLabel                               :: BCLabel
- PetscErrorCode                        :: ierr
-
- call DMGetLabel(dm_local,'Face Sets',BCLabel,ierr); CHKERRQ(ierr)
- call DMPlexLabelComplete(dm_local,BCLabel,ierr); CHKERRQ(ierr)
- call PetscSectionGetStorageSize(section,storageSize,ierr); CHKERRQ(ierr)
- call DMGetLabelIdIS(dm_local,'Face Sets',faceSetIS,ierr); CHKERRQ(ierr)
- call ISGetIndicesF90(faceSetIS,pFaceSets,ierr); CHKERRQ(ierr)
- allocate(localIndices (storageSize))
- do faceSet = 1, nFaceSets
-   call DMGetStratumSize(dm_local,'Face Sets',pFaceSets(faceSet),ISSize,ierr)
-   CHKERRQ(ierr)
-   call DMGetStratumIS(dm_local,'Face Sets',pFaceSets(faceSet),BC_IS,ierr)
-   CHKERRQ(ierr)
-   if (ISSize > 0) call ISGetIndicesF90(BC_IS,pBCvertex,ierr)
-   do field = 1, numFields
-     localSize  = 0
-     do point = 1, ISSize
-       call PetscSectionGetFieldDof(section,pBCvertex(point),field-1,nDof,ierr)
-       CHKERRQ(ierr)
-       call PetscSectionGetFieldOffset(section,pBCvertex(point),field-1,offset,ierr)
-       CHKERRQ(ierr)
-       do dof = 1, nDof
-         localSize = localSize + 1
-         localIndices(localSize) = offset + dof - 1
-       enddo  
-     enddo
-     call ISCreateGeneral(PETSC_COMM_SELF,localSize,localIndices,PETSC_COPY_VALUES, &
-                          localIS(faceSet,field),ierr)
-     CHKERRQ(ierr)
-     call ISLocalToGlobalMappingApplyIS(local2global,localIS(faceSet,field), &
-                                        globalIS(faceSet,field),ierr)
-     CHKERRQ(ierr)
-   enddo
-   if (ISSize > 0) call ISRestoreIndicesF90(BC_IS,pBCvertex,ierr)
-   call ISDestroy(BC_IS,ierr); CHKERRQ(ierr)
- enddo  
- call ISRestoreIndicesF90(faceSetIS,pFaceSets,ierr); CHKERRQ(ierr)
- call ISDestroy(faceSetIS,ierr); CHKERRQ(ierr)
- 
- do faceSet = 1, nFaceSets; do field = 1, numFields
-   call ISGetSize(globalIS(faceSet,field),ISSize,ierr); CHKERRQ(ierr)
-   if (ISSize > 0) then
-     call ISGetIndicesF90(localIS(faceSet,field),pBCvertexlc,ierr); CHKERRQ(ierr)
-     call ISGetIndicesF90(globalIS(faceSet,field),pBCvertex,ierr); CHKERRQ(ierr)
-   endif  
-   localSize = 0
-   do point = 1, ISSize
-     if (pBCvertex(point) >= 0) then
-       localSize = localSize + 1
-       localIndices(localSize) = pBCvertexlc(point)
-     endif  
-   enddo
-   if (ISSize > 0) then
-     call ISRestoreIndicesF90(localIS(faceSet,field),pBCvertexlc,ierr); CHKERRQ(ierr)
-     call ISRestoreIndicesF90(globalIS(faceSet,field),pBCvertex,ierr); CHKERRQ(ierr)
-   endif  
-   call ISDestroy(globalIS(faceSet,field),ierr); CHKERRQ(ierr) 
-   call ISCreateGeneral(PETSC_COMM_SELF,localSize,localIndices,PETSC_COPY_VALUES, &
-                        globalIS(faceSet,field),ierr) 
-   CHKERRQ(ierr)
-   if (ISSize > 0) then
-     call ISDuplicate(localIS(faceSet,field),dummyIS,ierr); CHKERRQ(ierr)
-     call ISDestroy(localIS(faceSet,field),ierr); CHKERRQ(ierr)
-     call ISDifference(dummyIS,globalIS(faceSet,field),localIS(faceSet,field),ierr)
-     CHKERRQ(ierr)
-     call ISDestroy(dummyIS,ierr); CHKERRQ(ierr)
-   endif
- enddo; enddo                       
- deallocate(localIndices)
- 
-end subroutine utilities_indexBoundaryDofs
 
 
 !--------------------------------------------------------------------------------------------------
@@ -382,105 +232,5 @@ subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCVa
  if (nBcPoints > 0) call ISRestoreIndicesF90(bcPointsIS,bcPoints,ierr)
  
 end subroutine utilities_projectBCValues
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Create index sets of boundary dofs (in local and global numbering)
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_indexActiveSet(field,section,x_local,f_local,localIS,globalIS)
- use mesh, only: &
-   geomMesh
-
- implicit none
- 
- ISLocalToGlobalMapping                   :: local2global
- PetscSection                             :: section
- Vec                                      :: x_local, f_local
- PetscInt                                 :: field
- IS                                       :: localIS, globalIS, dummyIS
- PetscScalar, dimension(:)  ,     pointer :: x_scal, f_scal
- PetscInt                                 :: ISSize
- PetscInt                                 :: chart, chartStart, chartEnd, nDof, dof, offset
- PetscInt                                 :: localSize
- PetscInt,    dimension(:)  , allocatable :: localIndices
- PetscInt,    dimension(:)  ,     pointer :: pBCvertex, pBCvertexlc
- PetscErrorCode                           :: ierr
-
- call DMGetLocalToGlobalMapping(geomMesh,local2global,ierr)
- CHKERRQ(ierr)
- call DMPlexGetChart(geomMesh,chartStart,chartEnd,ierr)
- CHKERRQ(ierr)
- call VecGetArrayF90(x_local,x_scal,ierr); CHKERRQ(ierr)
- call VecGetArrayF90(f_local,f_scal,ierr); CHKERRQ(ierr)
- localSize = 0
- do chart = chartStart, chartEnd-1
-   call PetscSectionGetFieldDof(section,chart,field-1,nDof,ierr); CHKERRQ(ierr)
-   call PetscSectionGetFieldOffset(section,chart,field-1,offset,ierr); CHKERRQ(ierr)
-   do dof = offset+1, offset+nDof
-     if (((x_scal(dof) <       1.0e-8) .and. (f_scal(dof) > 0.0)) .or. &
-         ((x_scal(dof) > 1.0 - 1.0e-8) .and. (f_scal(dof) < 0.0))) localSize = localSize + 1
-   enddo
- enddo
- allocate(localIndices(localSize))        
- localSize = 0
- do chart = chartStart, chartEnd-1
-   call PetscSectionGetFieldDof(section,chart,field-1,nDof,ierr); CHKERRQ(ierr)
-   call PetscSectionGetFieldOffset(section,chart,field-1,offset,ierr); CHKERRQ(ierr)
-   do dof = offset+1, offset+nDof
-     if (((x_scal(dof) <       1.0e-8) .and. (f_scal(dof) > 0.0)) .or. &
-         ((x_scal(dof) > 1.0 - 1.0e-8) .and. (f_scal(dof) < 0.0))) then
-       localSize = localSize + 1
-       localIndices(localSize) = dof-1
-     endif  
-   enddo
- enddo
- call VecRestoreArrayF90(x_local,x_scal,ierr); CHKERRQ(ierr)
- call VecRestoreArrayF90(f_local,f_scal,ierr); CHKERRQ(ierr)
- call ISCreateGeneral(PETSC_COMM_SELF,localSize,localIndices,PETSC_COPY_VALUES,localIS,ierr)
- CHKERRQ(ierr)
- call ISLocalToGlobalMappingApplyIS(local2global,localIS,globalIS,ierr)
- CHKERRQ(ierr)
- call ISGetSize(globalIS,ISSize,ierr); CHKERRQ(ierr)
- if (ISSize > 0) then
-   call ISGetIndicesF90(localIS,pBCvertexlc,ierr); CHKERRQ(ierr)
-   call ISGetIndicesF90(globalIS,pBCvertex,ierr); CHKERRQ(ierr)
- endif  
- localSize = 0
- do chart = 1, ISSize
-   if (pBCvertex(chart) >= 0) then
-     localSize = localSize + 1
-     localIndices(localSize) = pBCvertexlc(chart)
-   endif  
- enddo
- if (ISSize > 0) then
-   call ISRestoreIndicesF90(localIS,pBCvertexlc,ierr); CHKERRQ(ierr)
-   call ISRestoreIndicesF90(globalIS,pBCvertex,ierr); CHKERRQ(ierr)
- endif  
- call ISDestroy(globalIS,ierr); CHKERRQ(ierr) 
- call ISCreateGeneral(PETSC_COMM_SELF,localSize,localIndices,PETSC_COPY_VALUES,globalIS,ierr) 
- CHKERRQ(ierr)
- if (ISSize > 0) then
-   call ISDuplicate(localIS,dummyIS,ierr); CHKERRQ(ierr)
-   call ISDestroy(localIS,ierr); CHKERRQ(ierr)
-   call ISDifference(dummyIS,globalIS,localIS,ierr)
-   CHKERRQ(ierr)
-   call ISDestroy(dummyIS,ierr); CHKERRQ(ierr)
- endif                      
- 
-end subroutine utilities_indexActiveSet
-
-!--------------------------------------------------------------------------------------------------
-!> @brief cleans up
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_destroy()
-
- !implicit none
- !PetscInt       :: homog, cryst, grain, phase 
- !PetscErrorCode :: ierr
-
- !call VecDestroy(coordinatesVec,ierr); CHKERRQ(ierr)
- !call PetscViewerDestroy(resUnit, ierr); CHKERRQ(ierr)
-
-end subroutine utilities_destroy
-
 
 end module FEM_utilities
