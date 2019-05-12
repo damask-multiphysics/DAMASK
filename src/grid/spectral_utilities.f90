@@ -942,9 +942,6 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
     IO_error
   use numerics, only: &
     worldrank
-  use debug, only: &
-    debug_reset, &
-    debug_info
   use math, only: &
     math_rotate_forward33, &
     math_det33
@@ -977,7 +974,6 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   
   materialpoint_F  = reshape(F,[3,3,1,product(grid(1:2))*grid3])                                    ! set materialpoint target F to estimated field
   
-  call debug_reset()                                                                                ! this has no effect on rank >0
   call materialpoint_stressAndItsTangent(.true.,timeinc)                                            ! calculate P field
  
   P = reshape(materialpoint_P, [3,3,grid(1),grid(2),grid3])
@@ -1023,8 +1019,7 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   C_volAvg = sum(sum(materialpoint_dPdF,dim=6),dim=5)
   call MPI_Allreduce(MPI_IN_PLACE,C_volAvg,81,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
   C_volAvg = C_volAvg * wgt
- 
-  call debug_info()                                                                                 ! this has no effect on rank >0
+
 
 end subroutine utilities_constitutiveResponse
 
