@@ -24,9 +24,7 @@ use PETScis
 ! grid related information information
  real(pReal),   public                :: wgt                                                        !< weighting factor 1/Nelems
   
-!--------------------------------------------------------------------------------------------------
-! output data
- Vec,                            public :: coordinatesVec
+
 !--------------------------------------------------------------------------------------------------
 ! field labels information
  character(len=*),                         parameter,            public :: &
@@ -53,7 +51,6 @@ use PETScis
  type, public :: tSolutionState                                                                     !< return type of solution from FEM solver variants
    logical       :: converged         = .true.   
    logical       :: stagConverged     = .true.   
-   logical       :: regrid            = .false.   
    integer(pInt) :: iterationsNeeded  = 0_pInt
  end type tSolutionState
 
@@ -79,18 +76,6 @@ use PETScis
    integer(pInt),        allocatable :: faceID(:)
    type(tFieldBC),       allocatable :: fieldBC(:)
  end type tLoadCase
-
- type, public :: tFEMInterpolation
-   integer(pInt)                                :: n                             
-   real(pReal),   dimension(:,:)  , allocatable :: shapeFunc, shapeDerivReal, geomShapeDerivIso
-   real(pReal),   dimension(:,:,:), allocatable :: shapeDerivIso
- end type tFEMInterpolation
- 
- type, public :: tQuadrature
-   integer(pInt)                            :: n
-   real(pReal), dimension(:)  , allocatable :: Weights
-   real(pReal), dimension(:,:), allocatable :: Points
- end type tQuadrature   
  
  public :: &
    utilities_init, &
