@@ -1118,7 +1118,7 @@ subroutine mech_RGC_results(instance,group)
                                   'work density','J/m³')
       case (magnitudemismatch_ID)
         call results_writeDataset(group,dst%mismatch,'N',&
-                                  'average mismatch tensor','m')
+                                  'average mismatch tensor','1')
       case (penaltyenergy_ID)
         call results_writeDataset(group,stt%penaltyEnergy,'R',&
                                   'mismatch penalty density','J/m³')
