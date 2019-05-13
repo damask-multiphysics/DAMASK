@@ -20,13 +20,7 @@ module subroutine mech_none_init
     debug_levelBasic
   use config, only: &
     config_homogenization
-  use material, only: &
-    homogenization_type, &
-    material_homogenizationAt, &
-    homogState, &
-    HOMOGENIZATION_NONE_LABEL, &
-    HOMOGENIZATION_NONE_ID
- 
+
   implicit none
   integer :: &
     Ninstance, &

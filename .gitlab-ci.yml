@@ -506,7 +506,7 @@ Processing:
     - rm abq_addUserOutput.py marc_addUserOutput.py
     - $DAMASKROOT/PRIVATE/documenting/scriptHelpToWiki.py --debug *.py
     - cd $DAMASKROOT/processing/post
-    - rm marc_to_vtk.py vtk2ang.py DAD*.py
+    - rm vtk2ang.py DAD*.py
     - $DAMASKROOT/PRIVATE/documenting/scriptHelpToWiki.py --debug *.py
   except:
     - master

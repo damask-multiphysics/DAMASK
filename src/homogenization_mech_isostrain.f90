@@ -36,13 +36,6 @@ module subroutine mech_isostrain_init
     debug_levelBasic
   use IO, only: &
     IO_error
-  use material, only: &
-    homogenization_type, &
-    material_homogenizationAt, &
-    homogState, &
-    HOMOGENIZATION_ISOSTRAIN_ID, &
-    HOMOGENIZATION_ISOSTRAIN_LABEL, &
-    homogenization_typeInstance
   use config, only: &
     config_homogenization
   

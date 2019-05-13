@@ -53,55 +53,35 @@ module material
 
  enum, bind(c)
    enumerator :: ELASTICITY_undefined_ID, &
-                 ELASTICITY_hooke_ID
- end enum
- enum, bind(c)
-   enumerator :: PLASTICITY_undefined_ID, &
+                 ELASTICITY_hooke_ID, &
+                 PLASTICITY_undefined_ID, &
                  PLASTICITY_none_ID, &
                  PLASTICITY_isotropic_ID, &
                  PLASTICITY_phenopowerlaw_ID, &
                  PLASTICITY_kinehardening_ID, &
                  PLASTICITY_dislotwin_ID, &
                  PLASTICITY_disloucla_ID, &
-                 PLASTICITY_nonlocal_ID
- end enum
-
- enum, bind(c)
-   enumerator :: SOURCE_undefined_ID, &
+                 PLASTICITY_nonlocal_ID, &
+                 SOURCE_undefined_ID, &
                  SOURCE_thermal_dissipation_ID, &
                  SOURCE_thermal_externalheat_ID, &
                  SOURCE_damage_isoBrittle_ID, &
                  SOURCE_damage_isoDuctile_ID, &
                  SOURCE_damage_anisoBrittle_ID, &
-                 SOURCE_damage_anisoDuctile_ID
- end enum
-
- enum, bind(c)
-   enumerator :: KINEMATICS_undefined_ID, &
+                 SOURCE_damage_anisoDuctile_ID, &
+                 KINEMATICS_undefined_ID, &
                  KINEMATICS_cleavage_opening_ID, &
                  KINEMATICS_slipplane_opening_ID, &
-                 KINEMATICS_thermal_expansion_ID
- end enum
-
- enum, bind(c)
-   enumerator :: STIFFNESS_DEGRADATION_undefined_ID, &
-                 STIFFNESS_DEGRADATION_damage_ID
- end enum
-
- enum, bind(c)
-   enumerator :: THERMAL_isothermal_ID, &
+                 KINEMATICS_thermal_expansion_ID, &
+                 STIFFNESS_DEGRADATION_undefined_ID, &
+                 STIFFNESS_DEGRADATION_damage_ID, &
+                 THERMAL_isothermal_ID, &
                  THERMAL_adiabatic_ID, &
-                 THERMAL_conduction_ID
- end enum
-
- enum, bind(c)
-   enumerator :: DAMAGE_none_ID, &
+                 THERMAL_conduction_ID, &
+                 DAMAGE_none_ID, &
                  DAMAGE_local_ID, &
-                 DAMAGE_nonlocal_ID
- end enum
-
- enum, bind(c)
-   enumerator :: HOMOGENIZATION_undefined_ID, &
+                 DAMAGE_nonlocal_ID, &
+                 HOMOGENIZATION_undefined_ID, &
                  HOMOGENIZATION_none_ID, &
                  HOMOGENIZATION_isostrain_ID, &
                  HOMOGENIZATION_rgc_ID
