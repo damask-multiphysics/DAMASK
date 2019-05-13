@@ -69,8 +69,6 @@ integer(pInt), dimension(:,:), allocatable, private :: &
  integer(pInt), parameter, private :: &
    FE_Ngeomtypes = 10_pInt, &
    FE_Ncelltypes = 4_pInt, &
-   FE_maxNmatchingNodesPerFace = 4_pInt, &
-   FE_maxNfaces = 6_pInt, &
    FE_maxNcellnodesPerCell = 8_pInt, &
    FE_maxNcellfaces = 6_pInt, &
    FE_maxNcellnodesPerCellface = 4_pInt
@@ -116,8 +114,7 @@ integer(pInt), dimension(:,:), allocatable, private :: &
    size3offset                                                                                      !< (local) size offset in 3rd direction
 
  public :: &
-   mesh_init, &
-   mesh_cellCenterCoordinates
+   mesh_init
 
  private :: &
    mesh_build_cellconnectivity, &
@@ -460,12 +457,8 @@ end subroutine mesh_spectral_build_nodes
 !--------------------------------------------------------------------------------------------------
 !> @brief Store FEid, type, material, texture, and node list per element.
 !! Allocates global array 'mesh_element'
-!> @todo does the IO_error makes sense?
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_spectral_build_elements()
- use IO, only: &
-   IO_error
- implicit none
  integer(pInt) :: &
    e, &
    elemOffset
@@ -474,11 +467,9 @@ subroutine mesh_spectral_build_elements()
  allocate(mesh_element    (4_pInt+8_pInt,theMesh%nElems), source = 0_pInt)
 
  elemOffset = product(grid(1:2))*grid3Offset
- e = 0_pInt
- do while (e < theMesh%nElems)                                                                      ! fill expected number of elements, stop at end of data
-   e = e+1_pInt                                                                                     ! valid element entry
+ do e=1, theMesh%nElems
    mesh_element( 1,e) = -1_pInt                                                                     ! DEPRECATED
-   mesh_element( 2,e) = 10_pInt
+   mesh_element( 2,e) = -1_pInt                                                                     ! DEPRECATED
    mesh_element( 3,e) = mesh_homogenizationAt(e)
    mesh_element( 4,e) = microGlobal(e+elemOffset)                                                   ! microstructure
    mesh_element( 5,e) = e + (e-1_pInt)/grid(1) + &
@@ -491,8 +482,6 @@ subroutine mesh_spectral_build_elements()
    mesh_element(11,e) = mesh_element(9,e) + grid(1) + 2_pInt
    mesh_element(12,e) = mesh_element(9,e) + grid(1) + 1_pInt
  enddo
-
- if (e /= theMesh%nElems) call IO_error(880_pInt,e)
 
 end subroutine mesh_spectral_build_elements
 
@@ -801,27 +790,6 @@ subroutine mesh_build_ipCoordinates
  !$OMP END PARALLEL DO
 
 end subroutine mesh_build_ipCoordinates
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Calculates cell center coordinates.
-!--------------------------------------------------------------------------------------------------
-pure function mesh_cellCenterCoordinates(ip,el)
-
- implicit none
- integer(pInt), intent(in) :: el, &                                                                  !< element number
-                              ip                                                                     !< integration point number
- real(pReal), dimension(3) :: mesh_cellCenterCoordinates                                             !< x,y,z coordinates of the cell center of the requested IP cell
- integer(pInt) :: c,n
-
- c = theMesh%elem%cellType
- mesh_cellCenterCoordinates = 0.0_pReal
- do n = 1_pInt,FE_NcellnodesPerCell(c)                                                               ! loop over cell nodes in this cell
-   mesh_cellCenterCoordinates = mesh_cellCenterCoordinates + mesh_cellnode(1:3,mesh_cell(n,ip,el))
- enddo
- mesh_cellCenterCoordinates = mesh_cellCenterCoordinates / real(FE_NcellnodesPerCell(c),pReal)
-
-end function mesh_cellCenterCoordinates
 
 
 !--------------------------------------------------------------------------------------------------
