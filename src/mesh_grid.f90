@@ -221,7 +221,8 @@ subroutine mesh_init(ip,el)
 
  mesh_Nnodes  = product(grid(1:2) + 1_pInt)*(grid3 + 1_pInt)
 
- call mesh_spectral_build_nodes()
+ mesh_node0 = mesh_spectral_build_nodes()
+ mesh_node  = mesh_node0
  if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
 
  call theMesh%init(mesh_node)
@@ -429,29 +430,22 @@ end subroutine mesh_spectral_read_grid
 !> @brief Store x,y,z coordinates of all nodes in mesh.
 !! Allocates global arrays 'mesh_node0' and 'mesh_node'
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_build_nodes()
+pure function mesh_spectral_build_nodes()
 
- implicit none
- integer(pInt) :: n
+  real(pReal), dimension(3,mesh_Nnodes) :: mesh_spectral_build_nodes
+  integer :: n,a,b,c
 
- allocate (mesh_node0 (3,mesh_Nnodes), source = 0.0_pReal)
+  n = 0
+  do c = 0, grid3
+    do b = 0, grid(2)
+      do a = 0, grid(1)
+         n = n + 1
+         mesh_spectral_build_nodes(1:3,n) = geomSize/real(grid,pReal) * real([a,b,grid3Offset+c],pReal)
+      enddo
+    enddo
+  enddo
 
- forall (n = 0_pInt:mesh_Nnodes-1_pInt)
-   mesh_node0(1,n+1_pInt) = mesh_unitlength * &
-           geomSize(1)*real(mod(n,(grid(1)+1_pInt) ),pReal) &
-                                                  / real(grid(1),pReal)
-   mesh_node0(2,n+1_pInt) = mesh_unitlength * &
-           geomSize(2)*real(mod(n/(grid(1)+1_pInt),(grid(2)+1_pInt)),pReal) &
-                                                  / real(grid(2),pReal)
-   mesh_node0(3,n+1_pInt) = mesh_unitlength * &
-           size3*real(mod(n/(grid(1)+1_pInt)/(grid(2)+1_pInt),(grid3+1_pInt)),pReal) &
-                                                  / real(grid3,pReal) + &
-           size3offset
- end forall
-
- mesh_node = mesh_node0
-
-end subroutine mesh_spectral_build_nodes
+end function mesh_spectral_build_nodes
 
 
 !--------------------------------------------------------------------------------------------------
