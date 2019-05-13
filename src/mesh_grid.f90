@@ -239,7 +239,7 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Built cell connectivity'; flush(6)
  mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)
  if (myDebug) write(6,'(a)') ' Built cell nodes'; flush(6)
- call mesh_build_ipCoordinates
+ mesh_ipCoordinates = mesh_build_ipCoordinates()
  if (myDebug) write(6,'(a)') ' Built IP coordinates'; flush(6)
  allocate(mesh_ipVolume(1,theMesh%nElems),source=product([geomSize(1:2),size3]/real([grid(1:2),grid3])))
  if (myDebug) write(6,'(a)') ' Built IP volumes'; flush(6)
@@ -391,7 +391,7 @@ subroutine mesh_spectral_read_grid()
   allocate(mesh_homogenizationAt(product(grid)), source = h)                                        ! too large in case of MPI (shrink later, not very elegant)
      
 !--------------------------------------------------------------------------------------------------
-! read and interprete content
+! read and interpret content
   e = 1_pInt
   do while (startPos < len(rawData))
     endPos = startPos + index(rawData(startPos:),new_line('')) - 1_pInt
@@ -426,10 +426,9 @@ subroutine mesh_spectral_read_grid()
 end subroutine mesh_spectral_read_grid
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief Store x,y,z coordinates of all nodes in mesh.
-!! Allocates global arrays 'mesh_node0' and 'mesh_node'
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
+!> @brief Calculates position of nodes (pretend to be an element)
+!---------------------------------------------------------------------------------------------------
 pure function mesh_spectral_build_nodes()
 
   real(pReal), dimension(3,mesh_Nnodes) :: mesh_spectral_build_nodes
@@ -446,6 +445,27 @@ pure function mesh_spectral_build_nodes()
   enddo
 
 end function mesh_spectral_build_nodes
+
+
+!---------------------------------------------------------------------------------------------------
+!> @brief Calculates position of IPs/cell centres (pretend to be an element)
+!---------------------------------------------------------------------------------------------------
+function mesh_build_ipCoordinates()
+
+  real(pReal), dimension(3,1,theMesh%nElems) :: mesh_build_ipCoordinates
+  integer :: n,a,b,c
+ 
+  n = 0
+  do c = 1, grid3
+    do b = 1, grid(2)
+      do a = 1, grid(1)
+         n = n + 1
+         mesh_build_ipCoordinates(1:3,1,n) = geomSize/real(grid,pReal) * (real([a,b,grid3Offset+c],pReal) -0.5_pReal)
+      enddo
+    enddo
+  enddo
+
+end function mesh_build_ipCoordinates
 
 
 !--------------------------------------------------------------------------------------------------
@@ -544,7 +564,6 @@ function mesh_nodesAroundCentres(gDim,Favg,centres) result(nodes)
    debug_level, &
    debug_levelBasic
 
- implicit none
  real(pReal), intent(in), dimension(:,:,:,:) :: &
    centres
  real(pReal),             dimension(3,size(centres,2)+1,size(centres,3)+1,size(centres,4)+1) :: &
@@ -621,16 +640,6 @@ function mesh_nodesAroundCentres(gDim,Favg,centres) result(nodes)
  nodes = nodes/8.0_pReal
 
 end function mesh_nodesAroundCentres
-
-
-!#################################################################################################################
-!#################################################################################################################
-!#################################################################################################################
-! The following routines are not solver specific and should be included in mesh_base (most likely in modified form)
-!#################################################################################################################
-!#################################################################################################################
-!#################################################################################################################
-
 
 
 !--------------------------------------------------------------------------------------------------
@@ -762,28 +771,6 @@ end function mesh_build_cellnodes
 ! HAS TO BE CHANGED IN A LATER VERSION.
 ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_build_ipCoordinates
-
- implicit none
- integer(pInt) :: e,c,i,n
- real(pReal), dimension(3) :: myCoords
-
- allocate(mesh_ipCoordinates(3,theMesh%elem%nIPs,theMesh%nElems),source=0.0_pReal)
-
- !$OMP PARALLEL DO PRIVATE(c,myCoords)
- do e = 1_pInt,theMesh%nElems                                                                        ! loop over cpElems
-   c = theMesh%elem%cellType
-   do i = 1_pInt,theMesh%elem%nIPs                                                                         ! loop over ips=cells in this element
-     myCoords = 0.0_pReal
-     do n = 1_pInt,FE_NcellnodesPerCell(c)                                                          ! loop over cell nodes in this cell
-       myCoords = myCoords + mesh_cellnode(1:3,mesh_cell(n,i,e))
-     enddo
-     mesh_ipCoordinates(1:3,i,e) = myCoords / real(FE_NcellnodesPerCell(c),pReal)
-   enddo
- enddo
- !$OMP END PARALLEL DO
-
-end subroutine mesh_build_ipCoordinates
 
 
 !--------------------------------------------------------------------------------------------------
@@ -806,32 +793,7 @@ subroutine mesh_build_ipAreas
      c = theMesh%elem%cellType
      select case (c)
 
-       case (1_pInt,2_pInt)                                                                         ! 2D 3 or 4 node
-         do i = 1_pInt,theMesh%elem%nIPs                                                                   ! loop over ips=cells in this element
-           do f = 1_pInt,FE_NipNeighbors(c)                                                         ! loop over cell faces
-             forall(n = 1_pInt:FE_NcellnodesPerCellface(c)) &
-               nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(FE_cellface(n,f,c),i,e))
-             normal(1) =   nodePos(2,2) - nodePos(2,1)                                              ! x_normal =  y_connectingVector
-             normal(2) = -(nodePos(1,2) - nodePos(1,1))                                             ! y_normal = -x_connectingVector
-             normal(3) = 0.0_pReal
-             mesh_ipArea(f,i,e) = norm2(normal)
-             mesh_ipAreaNormal(1:3,f,i,e) = normal / norm2(normal)                             ! ensure unit length of area normal
-           enddo
-         enddo
-
-       case (3_pInt)                                                                                ! 3D 4node
-         do i = 1_pInt,theMesh%elem%nIPs                                                                   ! loop over ips=cells in this element
-           do f = 1_pInt,FE_NipNeighbors(c)                                                         ! loop over cell faces
-             forall(n = 1_pInt:FE_NcellnodesPerCellface(c)) &
-               nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(FE_cellface(n,f,c),i,e))
-             normal = math_crossproduct(nodePos(1:3,2) - nodePos(1:3,1), &
-                                         nodePos(1:3,3) - nodePos(1:3,1))
-             mesh_ipArea(f,i,e) = norm2(normal)
-             mesh_ipAreaNormal(1:3,f,i,e) = normal / norm2(normal)                             ! ensure unit length of area normal
-           enddo
-         enddo
-
-       case (4_pInt)                                                                                ! 3D 8node
+       case (4_pInt)
          ! for this cell type we get the normal of the quadrilateral face as an average of
          ! four normals of triangular subfaces; since the face consists only of two triangles,
          ! the sum has to be divided by two; this whole prcedure tries to compensate for
