@@ -35,7 +35,7 @@ module mesh
    mesh_unitlength                                                                                  !< physical length of one unit in mesh
 
  real(pReal), dimension(:,:), allocatable, private :: &
-   mesh_node                                                                                    !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!)
+   mesh_node                                                                                        !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!)
 
 
  real(pReal), dimension(:,:), allocatable, public, protected :: &
@@ -54,14 +54,7 @@ module mesh
  logical, dimension(3), public, parameter :: mesh_periodicSurface = .true.                          !< flag indicating periodic outer surfaces (used for fluxes)
 
 
- integer(pInt),dimension(:,:,:), allocatable, private :: &
-   mesh_cell                                                                                        !< cell connectivity for each element,ip/cell
-
- integer(pInt), parameter, private :: &
-   FE_Ngeomtypes = 10_pInt, &
-   FE_Ncelltypes = 4_pInt, &
-   FE_maxNcellnodesPerCell = 8_pInt
-
+! grid specific
  integer(pInt), dimension(3), public, protected :: &
    grid                                                                                             !< (global) grid
  integer(pInt), public, protected :: &
@@ -79,6 +72,7 @@ module mesh
 
  private :: &
    mesh_build_ipAreas, &
+   mesh_build_ipNormals, &
    mesh_spectral_build_nodes, &
    mesh_spectral_build_elements, &
    mesh_spectral_build_ipNeighborhood, &
@@ -198,8 +192,8 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Built IP coordinates'; flush(6)
  allocate(mesh_ipVolume(1,theMesh%nElems),source=product([geomSize(1:2),size3]/real([grid(1:2),grid3])))
  if (myDebug) write(6,'(a)') ' Built IP volumes'; flush(6)
- mesh_ipArea = mesh_build_ipAreas()
- call mesh_build_ipAreas2
+ mesh_ipArea       = mesh_build_ipAreas()
+ mesh_ipAreaNormal = mesh_build_ipNormals()
  if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
 
  call mesh_spectral_build_ipNeighborhood
@@ -220,7 +214,7 @@ subroutine mesh_init(ip,el)
  theMesh%homogenizationAt  = mesh_element(3,:)
  theMesh%microstructureAt  = mesh_element(4,:)
 !!!!!!!!!!!!!!!!!!!!!!!!
- deallocate(mesh_cell)
+
 end subroutine mesh_init
 
 
@@ -612,18 +606,18 @@ end function mesh_build_ipAreas
 !--------------------------------------------------------------------------------------------------
 !> @brief calculation of IP interface areas, allocate globals '_ipArea', and '_ipAreaNormal'
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_build_ipAreas2
+pure function mesh_build_ipNormals()
 
- allocate(mesh_ipAreaNormal(3,6,1,theMesh%nElems), source=0.0_pReal)
+  real, dimension(3,6,1,theMesh%nElems) :: mesh_build_ipNormals
 
-  mesh_ipAreaNormal(1:3,1,1,:) = spread([+1.0_pReal, 0.0_pReal, 0.0_pReal],2,theMesh%nElems)
-  mesh_ipAreaNormal(1:3,2,1,:) = spread([-1.0_pReal, 0.0_pReal, 0.0_pReal],2,theMesh%nElems)
-  mesh_ipAreaNormal(1:3,3,1,:) = spread([ 0.0_pReal,+1.0_pReal, 0.0_pReal],2,theMesh%nElems)
-  mesh_ipAreaNormal(1:3,4,1,:) = spread([ 0.0_pReal,-1.0_pReal, 0.0_pReal],2,theMesh%nElems)
-  mesh_ipAreaNormal(1:3,5,1,:) = spread([ 0.0_pReal, 0.0_pReal,+1.0_pReal],2,theMesh%nElems)
-  mesh_ipAreaNormal(1:3,6,1,:) = spread([ 0.0_pReal, 0.0_pReal,-1.0_pReal],2,theMesh%nElems)
+  mesh_build_ipNormals(1:3,1,1,:) = spread([+1.0_pReal, 0.0_pReal, 0.0_pReal],2,theMesh%nElems)
+  mesh_build_ipNormals(1:3,2,1,:) = spread([-1.0_pReal, 0.0_pReal, 0.0_pReal],2,theMesh%nElems)
+  mesh_build_ipNormals(1:3,3,1,:) = spread([ 0.0_pReal,+1.0_pReal, 0.0_pReal],2,theMesh%nElems)
+  mesh_build_ipNormals(1:3,4,1,:) = spread([ 0.0_pReal,-1.0_pReal, 0.0_pReal],2,theMesh%nElems)
+  mesh_build_ipNormals(1:3,5,1,:) = spread([ 0.0_pReal, 0.0_pReal,+1.0_pReal],2,theMesh%nElems)
+  mesh_build_ipNormals(1:3,6,1,:) = spread([ 0.0_pReal, 0.0_pReal,-1.0_pReal],2,theMesh%nElems)
   
-end subroutine mesh_build_ipAreas2
+end function mesh_build_ipNormals
 
 
 end module mesh
