@@ -227,12 +227,17 @@ class Rotation:
       return cls(ax2qu(ax))
       
     @classmethod
-    def fromMatrix(cls,
-                   matrix,
-                   containsStretch = False):                                 #ToDo: better name?
+    def fromBasis(cls,
+                  basis,
+                  orthonormal = True,
+                  reciprocal = False,
+                 ):
       
-      om = matrix if isinstance(matrix, np.ndarray) else np.array(matrix).reshape((3,3))            # ToDo: Reshape here or require explicit?
-      if containsStretch:
+      om = basis if isinstance(basis, np.ndarray) else np.array(basis).reshape((3,3))
+      if reciprocal:
+        om = np.linalg.inv(om.T/np.pi)                                                              # transform reciprocal basis set
+        orthonormal = False                                                                         # contains stretch
+      if not orthonormal:
         (U,S,Vh) = np.linalg.svd(om)                                                                # singular value decomposition
         om = np.dot(U,Vh)     
       if not np.isclose(np.linalg.det(om),1.0):
@@ -243,6 +248,13 @@ class Rotation:
         raise ValueError('matrix is not orthogonal.\n{}'.format(om))
 
       return cls(om2qu(om))
+      
+    @classmethod
+    def fromMatrix(cls,
+                   om,
+                  ):
+      
+      return cls.fromBasis(om)
       
     @classmethod
     def fromRodrigues(cls,
