@@ -70,7 +70,6 @@ subroutine add(this,string)
     IO_lc, &
     IO_stringPos
 
-  implicit none
   class(tPartitionedStringList),  target, intent(in) :: this
   character(len=*),                       intent(in) :: string
   type(tPartitionedStringList),   pointer            :: new, temp
@@ -95,7 +94,6 @@ end subroutine add
 !--------------------------------------------------------------------------------------------------
 subroutine show(this)
 
-  implicit none
   class(tPartitionedStringList), target, intent(in) :: this
   type(tPartitionedStringList),  pointer            :: item
 
@@ -114,7 +112,6 @@ end subroutine show
 !--------------------------------------------------------------------------------------------------
 subroutine free(this)
 
-  implicit none
   class(tPartitionedStringList),  intent(inout) :: this
 
   if(associated(this%next)) deallocate(this%next)
@@ -128,7 +125,6 @@ end subroutine free
 !--------------------------------------------------------------------------------------------------
 recursive subroutine finalize(this)
 
-  implicit none
   type(tPartitionedStringList),  intent(inout) :: this
 
   if(associated(this%next)) deallocate(this%next)
@@ -142,7 +138,6 @@ end subroutine finalize
 !--------------------------------------------------------------------------------------------------
 subroutine finalizeArray(this)
 
-  implicit none
   integer :: i
   type(tPartitionedStringList),  intent(inout), dimension(:) :: this
   type(tPartitionedStringList),  pointer :: temp ! bug in Gfortran?
@@ -165,7 +160,6 @@ logical function keyExists(this,key)
   use IO, only: &
     IO_stringValue
 
-  implicit none
   class(tPartitionedStringList), target, intent(in) :: this
   character(len=*),                      intent(in) :: key
   type(tPartitionedStringList),  pointer            :: item
@@ -188,8 +182,6 @@ end function keyExists
 integer function countKeys(this,key)
   use IO, only: &
     IO_stringValue
-
-  implicit none
 
   class(tPartitionedStringList), target, intent(in) :: this
   character(len=*),                      intent(in) :: key
@@ -218,7 +210,6 @@ real(pReal) function getFloat(this,key,defaultVal)
     IO_stringValue, &
     IO_FloatValue
 
-  implicit none
   class(tPartitionedStringList), target, intent(in)           :: this
   character(len=*),                      intent(in)           :: key
   real(pReal),                           intent(in), optional :: defaultVal
@@ -255,7 +246,6 @@ integer function getInt(this,key,defaultVal)
     IO_stringValue, &
     IO_IntValue
 
-  implicit none
   class(tPartitionedStringList), target, intent(in)           :: this
   character(len=*),                      intent(in)           :: key
   integer,                               intent(in), optional :: defaultVal
@@ -292,7 +282,6 @@ character(len=65536) function getString(this,key,defaultVal,raw)
     IO_error, &
     IO_stringValue
  
-  implicit none
   class(tPartitionedStringList), target, intent(in)           :: this
   character(len=*),                      intent(in)           :: key
   character(len=*),                      intent(in), optional :: defaultVal
@@ -343,7 +332,6 @@ function getFloats(this,key,defaultVal,requiredSize)
     IO_stringValue, &
     IO_FloatValue
  
-  implicit none
   real(pReal),     dimension(:), allocatable          :: getFloats
   class(tPartitionedStringList), target, intent(in)   :: this
   character(len=*),              intent(in)           :: key
@@ -393,7 +381,6 @@ function getInts(this,key,defaultVal,requiredSize)
     IO_stringValue, &
     IO_IntValue
  
-  implicit none
   integer, dimension(:), allocatable                          :: getInts
   class(tPartitionedStringList), target, intent(in)           :: this
   character(len=*),                      intent(in)           :: key
@@ -443,7 +430,6 @@ function getStrings(this,key,defaultVal,raw)
     IO_error, &
     IO_StringValue
  
-  implicit none
   character(len=65536),dimension(:), allocatable             :: getStrings
   class(tPartitionedStringList),target, intent(in)           :: this
   character(len=*),                     intent(in)           :: key

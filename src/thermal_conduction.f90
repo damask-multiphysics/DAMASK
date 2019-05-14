@@ -58,7 +58,6 @@ subroutine thermal_conduction_init
   use config, only: &
     config_homogenization
  
-  implicit none
   integer :: maxNinstance,section,instance,i
   integer :: sizeState
   integer :: NofMyHomog   
@@ -135,7 +134,6 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
     crystallite_S, &
     crystallite_Lp  
  
-  implicit none
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
@@ -205,7 +203,6 @@ function thermal_conduction_getConductivity33(ip,el)
   use crystallite, only: &
     crystallite_push33ToRef
  
-  implicit none
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
@@ -239,7 +236,6 @@ function thermal_conduction_getSpecificHeat(ip,el)
   use mesh, only: &
     mesh_element
  
-  implicit none
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
@@ -273,7 +269,6 @@ function thermal_conduction_getMassDensity(ip,el)
   use mesh, only: &
     mesh_element
  
-  implicit none
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
@@ -306,7 +301,6 @@ subroutine thermal_conduction_putTemperatureAndItsRate(T,Tdot,ip,el)
     temperatureRate, &
     thermalMapping
 
-  implicit none
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
@@ -332,7 +326,6 @@ function thermal_conduction_postResults(homog,instance,of) result(postResults)
   use material, only: &
     temperature
  
-  implicit none
   integer,              intent(in) :: &
     homog, &
     instance, &

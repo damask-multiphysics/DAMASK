@@ -940,8 +940,6 @@ end function crystallite_push33ToRef
 !--------------------------------------------------------------------------------------------------
 function crystallite_postResults(ipc, ip, el)
  use math, only: &
-   math_qToEuler, &
-   math_qToEulerAxisAngle, &
    math_det33, &
    math_I3, &
    inDeg

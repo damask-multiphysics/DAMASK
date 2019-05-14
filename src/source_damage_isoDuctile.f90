@@ -74,7 +74,6 @@ subroutine source_damage_isoDuctile_init
    config_phase, &
    material_Nphase
 
- implicit none
 
  integer(pInt) :: Ninstance,phase,instance,source,sourceOffset
  integer(pInt) :: NofMyPhase,p,i
@@ -177,7 +176,6 @@ subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
    damage, &
    damageMapping
 
- implicit none
  integer(pInt), intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -206,7 +204,6 @@ subroutine source_damage_isoDuctile_getRateAndItsTangent(localphiDot, dLocalphiD
  use material, only: &
    sourceState
 
- implicit none
  integer(pInt), intent(in) :: &
    phase, &
    constituent
@@ -234,7 +231,6 @@ function source_damage_isoDuctile_postResults(phase, constituent)
  use material, only: &
    sourceState
 
- implicit none
  integer(pInt), intent(in) :: &
    phase, &
    constituent

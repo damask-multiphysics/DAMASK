@@ -4,8 +4,7 @@
 !> @brief elasticity, plasticity, internal microstructure state
 !--------------------------------------------------------------------------------------------------
 module constitutive
- use prec, only: &
-   pInt
+ use math
 
  implicit none
  private
@@ -38,8 +37,6 @@ contains
 !> @brief allocates arrays pointing to array of the various constitutive modules
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_init
- use prec, only: &
-   pReal
  use debug, only: &
    debug_constitutive, &
    debug_levelBasic
@@ -109,7 +106,6 @@ subroutine constitutive_init
  use kinematics_slipplane_opening
  use kinematics_thermal_expansion
 
- implicit none
  integer, parameter :: FILEUNIT = 204
  integer :: &
    o, &                                                                                             !< counter in output loop
@@ -285,8 +281,6 @@ end subroutine constitutive_init
 !> ToDo: homogenizedC66 would be more consistent
 !--------------------------------------------------------------------------------------------------
 function constitutive_homogenizedC(ipc,ip,el)
- use prec, only: &
-   pReal
  use material, only: &
    phase_plasticity, &
    material_phase, &
@@ -297,7 +291,6 @@ function constitutive_homogenizedC(ipc,ip,el)
  use lattice, only: &
    lattice_C66
 
- implicit none
  real(pReal), dimension(6,6) :: constitutive_homogenizedC
  integer, intent(in) :: &
    ipc, &                                                                                            !< component-ID of integration point
@@ -317,8 +310,6 @@ end function constitutive_homogenizedC
 !> @brief calls microstructure function of the different constitutive models
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_microstructure(Fe, Fp, ipc, ip, el)
- use prec, only: &
-   pReal
  use material, only: &
    phasememberAt, &
    phase_plasticity, &
@@ -337,7 +328,6 @@ subroutine constitutive_microstructure(Fe, Fp, ipc, ip, el)
  use plastic_disloUCLA, only: &
    plastic_disloUCLA_dependentState
 
- implicit none
  integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -376,8 +366,6 @@ end subroutine constitutive_microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
                                          S, Fi, ipc, ip, el)
- use prec, only: &
-   pReal
  use material, only: &
    phasememberAt, &
    phase_plasticity, &
@@ -408,7 +396,6 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
  use plastic_nonlocal, only: &
    plastic_nonlocal_LpAndItsTangent
 
- implicit none
  integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -488,12 +475,6 @@ end subroutine constitutive_LpAndItsTangents
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
                                          S, Fi, ipc, ip, el)
- use prec, only: &
-   pReal
- use math, only: &
-   math_I3, &
-   math_inv33, &
-   math_det33
  use material, only: &
    phasememberAt, &
    phase_plasticity, &
@@ -515,7 +496,6 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
  use kinematics_thermal_expansion, only: &
    kinematics_thermal_expansion_LiAndItsTangent
 
- implicit none
  integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -593,10 +573,6 @@ end subroutine constitutive_LiAndItsTangents
 !> @brief  collects initial intermediate deformation gradient
 !--------------------------------------------------------------------------------------------------
 pure function constitutive_initialFi(ipc, ip, el)
- use prec, only: &
-   pReal
- use math, only: &
-   math_I3
  use material, only: &
    material_phase, &
    material_homogenizationAt, &
@@ -608,7 +584,6 @@ pure function constitutive_initialFi(ipc, ip, el)
  use kinematics_thermal_expansion, only: &
    kinematics_thermal_expansion_initialStrain
 
- implicit none
  integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -643,10 +618,7 @@ end function constitutive_initialFi
 !! (so far no case switch because only Hooke is implemented)
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_SandItsTangents(S, dS_dFe, dS_dFi, Fe, Fi, ipc, ip, el)
- use prec, only: &
-   pReal
 
- implicit none
  integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -672,12 +644,6 @@ end subroutine constitutive_SandItsTangents
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
                                               Fe, Fi, ipc, ip, el)
- use prec, only: &
-   pReal
- use math, only : &
-   math_mul3333xx33, &
-   math_66toSym3333, &
-   math_I3
  use material, only: &
    material_phase, &
    material_homogenizationAt, &
@@ -687,7 +653,6 @@ subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
    damageMapping, &
    STIFFNESS_DEGRADATION_damage_ID
 
- implicit none
  integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -735,8 +700,6 @@ end subroutine constitutive_hooke_SandItsTangents
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_collectDotState(S, FeArray, Fi, FpArray, subdt, ipc, ip, el)
- use prec, only: &
-   pReal
  use debug, only: &
    debug_level, &
    debug_constitutive, &
@@ -786,7 +749,6 @@ subroutine constitutive_collectDotState(S, FeArray, Fi, FpArray, subdt, ipc, ip,
  use source_thermal_externalheat, only: &
    source_thermal_externalheat_dotState
 
- implicit none
  integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -873,8 +835,6 @@ end subroutine constitutive_collectDotState
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_collectDeltaState(S, Fe, Fi, ipc, ip, el)
- use prec, only: &
-   pReal
  use debug, only: &
    debug_level, &
    debug_constitutive, &
@@ -896,7 +856,6 @@ subroutine constitutive_collectDeltaState(S, Fe, Fi, ipc, ip, el)
  use source_damage_isoBrittle, only: &
    source_damage_isoBrittle_deltaState
 
- implicit none
  integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -944,8 +903,6 @@ end subroutine constitutive_collectDeltaState
 !> @brief returns array of constitutive results
 !--------------------------------------------------------------------------------------------------
 function constitutive_postResults(S, Fi, ipc, ip, el)
- use prec, only: &
-   pReal
  use material, only: &
    phasememberAt, &
    phase_plasticityInstance, &
@@ -990,7 +947,6 @@ function constitutive_postResults(S, Fi, ipc, ip, el)
  use source_damage_anisoDuctile, only: &
    source_damage_anisoDuctile_postResults
 
- implicit none
  integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point

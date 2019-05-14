@@ -82,7 +82,6 @@ subroutine source_damage_anisoDuctile_init
    config_phase
 
    
- implicit none
  integer(pInt) :: Ninstance,phase,instance,source,sourceOffset
  integer(pInt) :: NofMyPhase,p ,i
 
@@ -194,7 +193,6 @@ subroutine source_damage_anisoDuctile_dotState(ipc, ip, el)
    damage, &
    damageMapping
 
- implicit none
  integer(pInt), intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -231,7 +229,6 @@ subroutine source_damage_anisoDuctile_getRateAndItsTangent(localphiDot, dLocalph
  use material, only: &
    sourceState
 
- implicit none
  integer(pInt), intent(in) :: &
    phase, &
    constituent
@@ -259,7 +256,6 @@ function source_damage_anisoDuctile_postResults(phase, constituent)
  use material, only: &
    sourceState
 
- implicit none
  integer(pInt), intent(in) :: &
    phase, &
    constituent
