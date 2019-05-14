@@ -5,10 +5,8 @@
 !> @todo Descriptions for public variables needed
 !--------------------------------------------------------------------------------------------------
 module FEsolving
- use prec, only: &
-   pInt, &
-   pReal
- 
+ use prec
+  
  implicit none
  private
  integer, public :: &
@@ -59,7 +57,6 @@ subroutine FE_init
    IO_warning
  use DAMASK_interface
  
- implicit none
 #if defined(Marc4DAMASK) || defined(Abaqus)
  integer, parameter :: &
    FILEUNIT = 222

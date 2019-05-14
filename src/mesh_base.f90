@@ -9,12 +9,8 @@
 module mesh_base
 
   use, intrinsic :: iso_c_binding
-  use prec, only: &
-    pStringLen, &
-    pReal, &
-    pInt
-  use element, only: &
-   tElement
+  use prec
+  use element
   use future 
 
   implicit none
@@ -54,7 +50,6 @@ module mesh_base
 contains
 subroutine tMesh_base_init(self,meshType,elemType,nodes)
  
- implicit none
  class(tMesh) :: self
  character(len=*), intent(in) :: meshType
  integer(pInt), intent(in) :: elemType
@@ -74,8 +69,7 @@ end subroutine tMesh_base_init
 
 
 subroutine tMesh_base_setNelems(self,Nelems)
- 
-  implicit none
+  
   class(tMesh) :: self
   integer(pInt), intent(in) :: Nelems
 

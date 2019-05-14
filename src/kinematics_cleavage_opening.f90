@@ -68,7 +68,6 @@ subroutine kinematics_cleavage_opening_init()
    lattice_maxNcleavageFamily, &
    lattice_NcleavageSystem
 
- implicit none
  integer, allocatable, dimension(:) :: tempInt
  real(pReal), allocatable, dimension(:) :: tempFloat
 
@@ -140,7 +139,6 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, i
    lattice_maxNcleavageFamily, &
    lattice_NcleavageSystem
  
- implicit none
  integer, intent(in) :: &
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number

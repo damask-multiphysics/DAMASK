@@ -26,8 +26,7 @@ subroutine damage_none_init()
     damageState, &
     DAMAGE_NONE_LABEL, &
     DAMAGE_NONE_ID
- 
-  implicit none
+  
   integer :: &
     homog, &
     NofMyHomog

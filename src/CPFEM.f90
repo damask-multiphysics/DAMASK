@@ -4,9 +4,7 @@
 !> @brief CPFEM engine
 !--------------------------------------------------------------------------------------------------
 module CPFEM
- use prec, only: &
-   pReal, &
-   pInt
+ use prec
 
  implicit none
  private
@@ -57,8 +55,6 @@ contains
 !> @brief call (thread safe) all module initializations
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_initAll(el,ip)
- use prec, only: &
-   prec_init
  use numerics, only: &
    numerics_init
  use debug, only: &
@@ -91,7 +87,6 @@ subroutine CPFEM_initAll(el,ip)
    IO_init
  use DAMASK_interface
 
- implicit none
  integer(pInt), intent(in) ::                        el, &                                          !< FE el number
                                                      ip                                             !< FE integration point number
 
@@ -155,7 +150,6 @@ subroutine CPFEM_init
    crystallite_Li0, &
    crystallite_S0
 
- implicit none
  integer :: k,l,m,ph,homog
 
  write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
@@ -325,7 +319,6 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
    IO_warning
  use DAMASK_interface
 
- implicit none
  integer(pInt), intent(in) ::                        elFE, &                                        !< FE element number
                                                      ip                                             !< integration point number
  real(pReal), intent(in) ::                          dt                                             !< time increment
@@ -639,8 +632,6 @@ end subroutine CPFEM_general
 !> @brief triggers writing of the results
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_results(inc,time)
- use prec, only: &
-   pInt
 #ifdef DAMASK_HDF5
  use results
  use HDF5_utilities
@@ -650,7 +641,6 @@ subroutine CPFEM_results(inc,time)
  use crystallite, only: &
    crystallite_results
 
- implicit none
  integer(pInt), intent(in) :: inc
  real(pReal),   intent(in) :: time
 

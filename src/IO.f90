@@ -8,7 +8,7 @@
 module IO
  use prec
  use DAMASK_interface
-
+ 
  implicit none
  private
  character(len=5), parameter, public :: &
@@ -63,8 +63,6 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine IO_init
  
-  implicit none
- 
   write(6,'(/,a)')   ' <<<+-  IO init  -+>>>'
  
 end subroutine IO_init
@@ -75,7 +73,6 @@ end subroutine IO_init
 !--------------------------------------------------------------------------------------------------
 function IO_read(fileUnit) result(line)
  
-  implicit none
   integer, intent(in) :: fileUnit                                                                   !< file unit
  
   character(len=pStringLen) :: line
@@ -91,7 +88,6 @@ function IO_read(fileUnit) result(line)
 !--------------------------------------------------------------------------------------------------
 function IO_read_ASCII(fileName) result(fileContent)
 
-  implicit none
   character(len=*),          intent(in)                :: fileName
 
   character(len=pStringLen), dimension(:), allocatable :: fileContent                                      !< file content, separated per lines
@@ -160,7 +156,6 @@ end function IO_read_ASCII
 !--------------------------------------------------------------------------------------------------
 subroutine IO_open_file(fileUnit,path)
  
-  implicit none
   integer,            intent(in) :: fileUnit                                                        !< file unit
   character(len=*),   intent(in) :: path                                                            !< relative path from working directory
  
@@ -178,7 +173,6 @@ end subroutine IO_open_file
 !--------------------------------------------------------------------------------------------------
 integer function IO_open_jobFile_binary(extension,mode)
 
-  implicit none
   character(len=*), intent(in)           :: extension
   character,        intent(in), optional :: mode
  
@@ -197,7 +191,6 @@ end function IO_open_jobFile_binary
 !--------------------------------------------------------------------------------------------------
 integer function IO_open_binary(fileName,mode)
 
-  implicit none
   character(len=*), intent(in)           :: fileName
   character,        intent(in), optional :: mode
  
@@ -231,7 +224,6 @@ end function IO_open_binary
 !--------------------------------------------------------------------------------------------------
 subroutine IO_open_inputFile(fileUnit,modelName)
 
- implicit none
  integer,          intent(in) :: fileUnit                                                           !< file unit
  character(len=*), intent(in) :: modelName                                                          !< model name, in case of restart not solver job name
 
@@ -264,7 +256,6 @@ subroutine IO_open_inputFile(fileUnit,modelName)
 !--------------------------------------------------------------------------------------------------
 recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
 
- implicit none
  integer, intent(in)                :: unit1, &
                                        unit2
 
@@ -323,7 +314,6 @@ end subroutine IO_open_inputFile
 !--------------------------------------------------------------------------------------------------
 subroutine IO_open_logFile(fileUnit)
 
- implicit none
  integer,      intent(in) :: fileUnit                                                                 !< file unit
 
  integer                  :: myStat
@@ -343,7 +333,6 @@ end subroutine IO_open_logFile
 !--------------------------------------------------------------------------------------------------
 subroutine IO_write_jobFile(fileUnit,ext)
 
- implicit none
  integer,          intent(in) :: fileUnit                                                           !< file unit
  character(len=*), intent(in) :: ext                                                                !< extension of file
 
@@ -362,7 +351,6 @@ end subroutine IO_write_jobFile
 !--------------------------------------------------------------------------------------------------
 logical pure function IO_isBlank(string)
 
- implicit none
  character(len=*), intent(in) :: string                                                             !< string to check for content
 
  character(len=*),  parameter :: blankChar = achar(32)//achar(9)//achar(10)//achar(13)              ! whitespaces
@@ -382,7 +370,6 @@ end function IO_isBlank
 !--------------------------------------------------------------------------------------------------
 pure function IO_getTag(string,openChar,closeChar)
 
- implicit none
  character(len=*), intent(in)  :: string                                                            !< string to check for tag
  character(len=len_trim(string)) :: IO_getTag
 
@@ -417,7 +404,6 @@ end function IO_getTag
 !--------------------------------------------------------------------------------------------------
 pure function IO_stringPos(string)
 
- implicit none
  integer, dimension(:), allocatable            :: IO_stringPos
  character(len=*),                  intent(in) :: string                                            !< string in which chunk positions are searched for
 
@@ -447,7 +433,6 @@ end function IO_stringPos
 !--------------------------------------------------------------------------------------------------
 function IO_stringValue(string,chunkPos,myChunk,silent)
 
- implicit none
  integer,   dimension(:),                intent(in) :: chunkPos                                     !< positions of start and end of each tag/chunk in given string
  integer,                                intent(in) :: myChunk                                      !< position number of desired chunk
  character(len=*),                       intent(in) :: string                                       !< raw input with known start and end of each chunk
@@ -479,7 +464,6 @@ end function IO_stringValue
 !--------------------------------------------------------------------------------------------------
 real(pReal) function IO_floatValue (string,chunkPos,myChunk)
 
- implicit none
  integer,   dimension(:),        intent(in) :: chunkPos                                             !< positions of start and end of each tag/chunk in given string
  integer,                        intent(in) :: myChunk                                              !< position number of desired chunk
  character(len=*),               intent(in) :: string                                               !< raw input with known start and end of each chunk
@@ -504,7 +488,6 @@ end function IO_floatValue
 !--------------------------------------------------------------------------------------------------
 integer function IO_intValue(string,chunkPos,myChunk)
 
- implicit none
  character(len=*),      intent(in) :: string                                                        !< raw input with known start and end of each chunk
  integer,               intent(in) :: myChunk                                                       !< position number of desired chunk
  integer, dimension(:), intent(in) :: chunkPos                                                      !< positions of start and end of each tag/chunk in given string
@@ -529,7 +512,6 @@ end function IO_intValue
 !--------------------------------------------------------------------------------------------------
 real(pReal) function IO_fixedNoEFloatValue (string,ends,myChunk)
 
- implicit none
  character(len=*),      intent(in) :: string                                                        !< raw input with known ends of each chunk
  integer,               intent(in) :: myChunk                                                       !< position number of desired chunk
  integer, dimension(:), intent(in) :: ends                                                          !< positions of end of each tag/chunk in given string
@@ -562,7 +544,6 @@ end function IO_fixedNoEFloatValue
 !--------------------------------------------------------------------------------------------------
 integer function IO_fixedIntValue(string,ends,myChunk)
 
- implicit none
  character(len=*),      intent(in) :: string                                                        !< raw input with known ends of each chunk
  integer,               intent(in) :: myChunk                                                       !< position number of desired chunk
  integer, dimension(:), intent(in) :: ends                                                          !< positions of end of each tag/chunk in given string
@@ -581,7 +562,6 @@ end function IO_fixedIntValue
 !--------------------------------------------------------------------------------------------------
 pure function IO_lc(string)
 
- implicit none
  character(len=*), intent(in) :: string                                                             !< string to convert
  character(len=len(string))   :: IO_lc
 
@@ -604,7 +584,6 @@ end function IO_lc
 !--------------------------------------------------------------------------------------------------
 pure function IO_intOut(intToPrint)
 
-  implicit none
   integer, intent(in) :: intToPrint
   character(len=41)   :: IO_intOut
   integer             :: N_digits
@@ -625,7 +604,6 @@ end function IO_intOut
 !--------------------------------------------------------------------------------------------------
 subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 
- implicit none
  integer,                    intent(in) :: error_ID
  integer,          optional, intent(in) :: el,ip,g,instance
  character(len=*), optional, intent(in) :: ext_msg
@@ -891,7 +869,6 @@ end subroutine IO_error
 !--------------------------------------------------------------------------------------------------
 subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
 
- implicit none
  integer,                    intent(in) :: warning_ID
  integer,          optional, intent(in) :: el,ip,g
  character(len=*), optional, intent(in) :: ext_msg
@@ -981,7 +958,6 @@ end subroutine IO_warning
 !--------------------------------------------------------------------------------------------------
 character(len=300) pure function IO_extractValue(pair,key)
 
- implicit none
  character(len=*), intent(in) :: pair, &                                                            !< key=value pair
                                  key                                                                !< key to be expected
 
@@ -1002,7 +978,6 @@ end function IO_extractValue
 !--------------------------------------------------------------------------------------------------
 integer function IO_countDataLines(fileUnit)
 
- implicit none
  integer, intent(in)                :: fileUnit                                                     !< file handle
 
 
@@ -1035,7 +1010,6 @@ end function IO_countDataLines
 !--------------------------------------------------------------------------------------------------
 integer function IO_countNumericalDataLines(fileUnit)
 
- implicit none
  integer, intent(in)                :: fileUnit                                                     !< file handle
 
 
@@ -1066,7 +1040,6 @@ end function IO_countNumericalDataLines
 !--------------------------------------------------------------------------------------------------
 subroutine IO_skipChunks(fileUnit,N)
 
- implicit none
  integer, intent(in)  :: fileUnit, &                                                                !< file handle
                          N                                                                          !< minimum number of chunks to skip
 
@@ -1091,7 +1064,6 @@ end subroutine IO_skipChunks
 !--------------------------------------------------------------------------------------------------
 integer function IO_countContinuousIntValues(fileUnit)
 
- implicit none
  integer, intent(in) :: fileUnit
 
 #ifdef Abaqus
@@ -1149,7 +1121,6 @@ end function IO_countContinuousIntValues
 !--------------------------------------------------------------------------------------------------
 function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
 
- implicit none
  integer,                           intent(in) :: maxN
  integer,           dimension(1+maxN)          :: IO_continuousIntValues
 
@@ -1258,7 +1229,6 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
 !--------------------------------------------------------------------------------------------------
 integer function IO_verifyIntValue (string,validChars,myName)
  
-  implicit none
   character(len=*), intent(in) :: string, &                                                         !< string for conversion to int value. Must not contain spaces!
                                   validChars, &                                                     !< valid characters in string
                                   myName                                                            !< name of caller function (for debugging)
@@ -1286,7 +1256,6 @@ end function IO_verifyIntValue
 !--------------------------------------------------------------------------------------------------
 real(pReal) function IO_verifyFloatValue (string,validChars,myName)
  
-  implicit none
   character(len=*), intent(in) :: string, &                                                         !< string for conversion to int value. Must not contain spaces!
                                   validChars, &                                                     !< valid characters in string
                                   myName                                                            !< name of caller function (for debugging)

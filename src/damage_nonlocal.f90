@@ -60,7 +60,6 @@ subroutine damage_nonlocal_init
  use config, only: &
    config_homogenization
 
- implicit none
 
  integer :: maxNinstance,homog,instance,o,i
  integer :: sizeState
@@ -152,7 +151,6 @@ subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip,
  use source_damage_anisoDuctile, only: &
    source_damage_anisoductile_getRateAndItsTangent
  
- implicit none
  integer, intent(in) :: &
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
@@ -215,7 +213,6 @@ function damage_nonlocal_getDiffusion33(ip,el)
  use crystallite, only: &
    crystallite_push33ToRef
 
- implicit none
  integer, intent(in) :: &
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
@@ -249,7 +246,6 @@ real(pReal) function damage_nonlocal_getMobility(ip,el)
    material_phase, &
    homogenization_Ngrains
 
- implicit none
  integer, intent(in) :: &
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
@@ -276,7 +272,6 @@ subroutine damage_nonlocal_putNonLocalDamage(phi,ip,el)
    damageMapping, &
    damage
 
- implicit none
  integer, intent(in) :: &
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
@@ -302,7 +297,6 @@ function damage_nonlocal_postResults(ip,el)
    damageMapping, &
    damage
 
- implicit none
  integer,              intent(in) :: &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element

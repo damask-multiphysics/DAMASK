@@ -6,7 +6,7 @@
 !> @brief Sets up the mesh for the solver MSC.Marc
 !--------------------------------------------------------------------------------------------------
 module mesh
- use prec, only: pReal, pInt
+ use prec
  use mesh_base
 
  implicit none
@@ -265,7 +265,7 @@ contains
 
 subroutine tMesh_marc_init(self,elemType,nodes)
  
- implicit none
+ 
  class(tMesh_marc) :: self
  real(pReal), dimension(:,:), intent(in) :: nodes
  integer, intent(in) :: elemType
@@ -299,7 +299,7 @@ subroutine mesh_init(ip,el)
    FEsolving_execElem, &
    FEsolving_execIP
 
- implicit none
+ 
  integer, intent(in) :: el, ip
   
  integer, parameter  :: FILEUNIT = 222
@@ -420,7 +420,7 @@ integer function mesh_marc_get_fileFormat(fileUnit)
    IO_stringValue, &
    IO_stringPos
 
- implicit none
+ 
  integer, intent(in) :: fileUnit
 
  integer, allocatable, dimension(:) :: chunkPos
@@ -451,7 +451,7 @@ subroutine mesh_marc_get_tableStyles(initialcond, hypoelastic,fileUnit)
    IO_stringValue, &
    IO_stringPos
 
- implicit none
+ 
  integer, intent(out) :: initialcond, hypoelastic
  integer, intent(in)  :: fileUnit
 
@@ -486,7 +486,7 @@ function mesh_marc_get_matNumber(fileUnit,tableStyle)
    IO_stringValue, &
    IO_stringPos
 
- implicit none
+ 
  integer, intent(in) :: fileUnit, tableStyle
  integer, dimension(:), allocatable :: mesh_marc_get_matNumber
 
@@ -534,7 +534,7 @@ subroutine mesh_marc_count_nodesAndElements(nNodes, nElems, fileUnit)
    IO_stringPos, &
    IO_IntValue
 
- implicit none
+ 
  integer, intent(in)  :: fileUnit
  integer, intent(out) :: nNodes, nElems
  
@@ -572,7 +572,7 @@ subroutine mesh_marc_count_nodesAndElements(nNodes, nElems, fileUnit)
    IO_stringPos, &
    IO_countContinuousIntValues
 
- implicit none
+ 
  integer, intent(in) :: fileUnit
  integer, intent(out) :: nElemSets, maxNelemInSet
 
@@ -607,7 +607,7 @@ subroutine mesh_marc_map_elementSets(nameElemSet,mapElemSet,fileUnit)
                  IO_stringPos, &
                  IO_continuousIntValues
 
- implicit none
+ 
  integer, intent(in) :: fileUnit
  character(len=64), dimension(:), intent(out) :: &
    nameElemSet
@@ -647,7 +647,7 @@ subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,nElems,fileU
                  IO_stringPos, &
                  IO_continuousIntValues
 
- implicit none
+ 
  integer, intent(in) :: fileUnit,tableStyle,nElems
  character(len=64), intent(in), dimension(:) :: nameElemSet
  integer, dimension(:,:), intent(in) :: &
@@ -717,7 +717,7 @@ subroutine mesh_marc_map_nodes(nNodes,fileUnit)
                  IO_stringPos, &
                  IO_fixedIntValue
 
- implicit none
+ 
  integer, intent(in) :: fileUnit, nNodes
 
  integer, allocatable, dimension(:) :: chunkPos
@@ -760,7 +760,7 @@ subroutine mesh_marc_build_nodes(fileUnit)
    IO_fixedIntValue, &
    IO_fixedNoEFloatValue
 
- implicit none
+ 
  integer, intent(in) :: fileUnit
 
  integer, dimension(5), parameter :: node_ends = int([0,10,30,50,70],pInt)
@@ -807,7 +807,7 @@ integer function mesh_marc_count_cpSizes(fileUnit)
                  IO_skipChunks
  use element
 
- implicit none
+ 
  integer, intent(in) :: fileUnit
 
  type(tElement) :: tempEl
@@ -857,7 +857,7 @@ subroutine mesh_marc_build_elements(fileUnit)
                  IO_continuousIntValues, &
                  IO_error
 
- implicit none
+ 
  integer, intent(in) :: fileUnit
 
  integer, allocatable, dimension(:) :: chunkPos
@@ -955,7 +955,7 @@ use IO, only: &
   IO_stringValue, &
   IO_stringPos
 
- implicit none
+ 
  integer, intent(in) :: fileUnit
 
  integer, allocatable, dimension(:) :: chunkPos
@@ -997,7 +997,7 @@ end subroutine mesh_get_damaskOptions
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_cellconnectivity
 
- implicit none
+ 
  integer, dimension(:), allocatable :: &
    matchingNode2cellnode
  integer, dimension(:,:), allocatable :: &
@@ -1063,7 +1063,7 @@ end subroutine mesh_build_cellconnectivity
 !--------------------------------------------------------------------------------------------------
 function mesh_build_cellnodes(nodes,Ncellnodes)
 
- implicit none
+ 
  integer,                         intent(in) :: Ncellnodes                                    !< requested number of cellnodes
  real(pReal), dimension(3,mesh_Nnodes), intent(in) :: nodes
  real(pReal), dimension(3,Ncellnodes) :: mesh_build_cellnodes
@@ -1105,7 +1105,7 @@ subroutine mesh_build_ipVolumes
    math_volTetrahedron, &
    math_areaTriangle
 
- implicit none
+ 
  integer ::                                e,t,g,c,i,m,f,n
  real(pReal), dimension(FE_maxNcellnodesPerCellface,FE_maxNcellfaces) :: subvolume
 
@@ -1174,7 +1174,7 @@ end subroutine mesh_build_ipVolumes
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_ipCoordinates
 
- implicit none
+ 
  integer :: e,t,g,c,i,n
  real(pReal), dimension(3) :: myCoords
 
@@ -1204,7 +1204,7 @@ end subroutine mesh_build_ipCoordinates
 !--------------------------------------------------------------------------------------------------
 pure function mesh_cellCenterCoordinates(ip,el)
 
- implicit none
+ 
  integer, intent(in) :: el, &                                                                  !< element number
                               ip                                                                     !< integration point number
  real(pReal), dimension(3) :: mesh_cellCenterCoordinates                                             !< x,y,z coordinates of the cell center of the requested IP cell
@@ -1232,7 +1232,7 @@ subroutine mesh_build_ipAreas
  use math, only: &
    math_cross
 
- implicit none
+ 
  integer :: e,t,g,c,i,f,n,m
  real(pReal), dimension (3,FE_maxNcellnodesPerCellface) :: nodePos, normals
  real(pReal), dimension(3) :: normal
@@ -1304,7 +1304,7 @@ end subroutine mesh_build_ipAreas
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_nodeTwins
 
- implicit none
+ 
  integer dir, &      ! direction of periodicity
                node, &
                minimumNode, &
@@ -1375,7 +1375,7 @@ end subroutine mesh_build_nodeTwins
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_sharedElems
 
- implicit none
+ 
  integer(pint)   e, &                                                                                ! element index
                  g, &                                                                                ! element type
                  node, &                                                                             ! CP node index
@@ -1440,7 +1440,7 @@ subroutine mesh_build_ipNeighborhood
  use math, only: &
    math_mul3x3
 
- implicit none
+ 
  integer      ::           myElem, &                                                           ! my CP element index
                                  myIP, &
                                  myType, &                                                           ! my element type
@@ -1606,7 +1606,7 @@ subroutine mesh_build_ipNeighborhood
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_faceMatch(elem, face ,matchingElem, matchingFace)
 
-implicit none
+
 integer, intent(out) ::     matchingElem, &                                                   ! matching CP element ID
                                   matchingFace                                                      ! matching face ID
 integer, intent(in) ::      face, &                                                           ! face ID
@@ -1696,7 +1696,7 @@ end subroutine mesh_build_ipNeighborhood
 integer function FE_mapElemtype(what)
  use IO, only: IO_lc, IO_error
 
- implicit none
+ 
  character(len=*), intent(in) :: what
 
  select case (IO_lc(what))
@@ -1742,7 +1742,7 @@ end function FE_mapElemtype
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_FEdata
 
- implicit none
+ 
  integer :: me
  allocate(FE_cellface(FE_maxNcellnodesPerCellface,FE_maxNcellfaces,FE_Ncelltypes),  source=0)
 
@@ -1798,7 +1798,7 @@ integer function mesh_FEasCP(what,myID)
  use IO, only: &
    IO_lc
 
- implicit none
+ 
  character(len=*), intent(in) :: what
  integer,    intent(in) :: myID
 

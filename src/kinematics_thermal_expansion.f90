@@ -4,9 +4,7 @@
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
 module kinematics_thermal_expansion
-  use prec, only: &
-    pReal, &
-    pInt
+  use prec
 
   implicit none
   private
@@ -42,7 +40,6 @@ subroutine kinematics_thermal_expansion_init()
   use config, only: &
     config_phase
  
-  implicit none
   integer(pInt) :: &
     Ninstance, &
     p, i
@@ -87,7 +84,6 @@ pure function kinematics_thermal_expansion_initialStrain(homog,phase,offset)
     lattice_thermalExpansion33, &
     lattice_referenceTemperature
   
-  implicit none
   integer(pInt), intent(in) :: &
     phase, &
     homog, offset
@@ -120,7 +116,6 @@ subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ipc, ip,
     lattice_thermalExpansion33, &
     lattice_referenceTemperature
   
-  implicit none
   integer(pInt), intent(in) :: &
     ipc, &                                                                                           !< grain number
     ip, &                                                                                            !< integration point number

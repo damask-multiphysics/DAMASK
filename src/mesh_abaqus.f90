@@ -6,7 +6,7 @@
 !> @brief Sets up the mesh for the solvers MSC.Marc, Abaqus and the spectral solver
 !--------------------------------------------------------------------------------------------------
 module mesh
- use prec, only: pReal, pInt
+ use prec
  use mesh_base
 
  implicit none
@@ -405,7 +405,7 @@ contains
 
 subroutine tMesh_abaqus_init(self,elemType,nodes)
  
- implicit none
+ 
  class(tMesh_abaqus) :: self
  real(pReal), dimension(:,:), intent(in) :: nodes
  integer, intent(in) :: elemType
@@ -438,7 +438,7 @@ subroutine mesh_init(ip,el)
    calcMode, &   FEsolving_execElem, &
    FEsolving_execIP
 
- implicit none
+ 
  integer, parameter :: FILEUNIT = 222
  integer, intent(in), optional :: el, ip
  integer :: j
@@ -530,7 +530,7 @@ logical function hasNoPart(fileUnit)
    IO_stringValue, &
    IO_lc
  
- implicit none
+ 
  integer,    intent(in)                :: fileUnit
 
  integer, allocatable, dimension(:)    :: chunkPos
@@ -571,7 +571,7 @@ subroutine mesh_abaqus_count_nodesAndElements(fileUnit)
                  IO_countDataLines, &
                  IO_error
 
- implicit none
+ 
  integer, intent(in) :: fileUnit
 
  integer, allocatable, dimension(:) :: chunkPos
@@ -631,7 +631,7 @@ subroutine mesh_abaqus_count_elementSets(fileUnit)
                  IO_stringPos, &
                  IO_error
 
- implicit none
+ 
  integer, intent(in) :: fileUnit
 
  integer, allocatable, dimension(:) :: chunkPos
@@ -673,7 +673,7 @@ subroutine mesh_abaqus_count_materials(fileUnit)
                  IO_stringPos, &
                  IO_error
 
- implicit none
+ 
  integer, intent(in) :: fileUnit
 
  integer, allocatable, dimension(:) :: chunkPos
@@ -718,7 +718,7 @@ subroutine mesh_abaqus_map_elementSets(fileUnit)
                  IO_continuousIntValues, &
                  IO_error
 
- implicit none
+ 
  integer, intent(in) :: fileUnit
 
  integer, allocatable, dimension(:) :: chunkPos
@@ -770,7 +770,7 @@ subroutine mesh_abaqus_map_materials(fileUnit)
                  IO_extractValue, &
                  IO_error
 
- implicit none
+ 
  integer, intent(in) :: fileUnit
 
  integer, allocatable, dimension(:) :: chunkPos
@@ -835,7 +835,7 @@ subroutine mesh_abaqus_count_cpElements(fileUnit)
                  IO_error, &
                  IO_extractValue
 
- implicit none
+ 
  integer, intent(in) :: fileUnit
 
  integer, allocatable, dimension(:) :: chunkPos
@@ -890,7 +890,7 @@ subroutine mesh_abaqus_map_elements(fileUnit)
                  IO_extractValue, &
                  IO_error
 
- implicit none
+ 
  integer, intent(in) :: fileUnit
 
  integer, allocatable, dimension(:) :: chunkPos
@@ -955,7 +955,7 @@ subroutine mesh_abaqus_map_nodes(fileUnit)
                  IO_intValue, &
                  IO_error
 
- implicit none
+ 
  integer, intent(in) :: fileUnit
 
  integer, allocatable, dimension(:) :: chunkPos
@@ -1019,7 +1019,7 @@ subroutine mesh_abaqus_build_nodes(fileUnit)
    IO_countDataLines, &
    IO_intValue
 
- implicit none
+ 
  integer, intent(in) :: fileUnit
 
  integer, allocatable, dimension(:) :: chunkPos
@@ -1084,7 +1084,7 @@ subroutine mesh_abaqus_count_cpSizes(fileUnit)
                  IO_countDataLines, &
                  IO_intValue
 
- implicit none
+ 
  integer, intent(in) :: fileUnit
 
  integer, allocatable, dimension(:) :: chunkPos
@@ -1143,7 +1143,7 @@ subroutine mesh_abaqus_build_elements(fileUnit)
                  IO_countDataLines, &
                  IO_error
 
- implicit none
+ 
  integer, intent(in) :: fileUnit
 
  integer, allocatable, dimension(:) :: chunkPos
@@ -1260,7 +1260,7 @@ use IO, only: &
   IO_stringValue, &
   IO_stringPos
 
- implicit none
+ 
  integer, intent(in) :: fileUnit
 
  integer, allocatable, dimension(:) :: chunkPos
@@ -1303,7 +1303,7 @@ end subroutine mesh_get_damaskOptions
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_cellconnectivity
 
- implicit none
+ 
  integer, dimension(:), allocatable :: &
    matchingNode2cellnode
  integer, dimension(:,:), allocatable :: &
@@ -1371,7 +1371,7 @@ end subroutine mesh_build_cellconnectivity
 !--------------------------------------------------------------------------------------------------
 function mesh_build_cellnodes(nodes,Ncellnodes)
 
- implicit none
+ 
  integer,                         intent(in) :: Ncellnodes                                    !< requested number of cellnodes
  real(pReal), dimension(3,mesh_Nnodes), intent(in) :: nodes
  real(pReal), dimension(3,Ncellnodes) :: mesh_build_cellnodes
@@ -1414,7 +1414,7 @@ subroutine mesh_build_ipVolumes
    math_volTetrahedron, &
    math_areaTriangle
 
- implicit none
+ 
  integer ::                                e,t,g,c,i,m,f,n
  real(pReal), dimension(FE_maxNcellnodesPerCellface,FE_maxNcellfaces) :: subvolume
 
@@ -1483,7 +1483,7 @@ end subroutine mesh_build_ipVolumes
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_ipCoordinates
 
- implicit none
+ 
  integer :: e,t,g,c,i,n
  real(pReal), dimension(3) :: myCoords
 
@@ -1513,7 +1513,7 @@ end subroutine mesh_build_ipCoordinates
 !--------------------------------------------------------------------------------------------------
 pure function mesh_cellCenterCoordinates(ip,el)
 
- implicit none
+ 
  integer, intent(in) :: el, &                                                                  !< element number
                               ip                                                                     !< integration point number
  real(pReal), dimension(3) :: mesh_cellCenterCoordinates                                             !< x,y,z coordinates of the cell center of the requested IP cell
@@ -1542,7 +1542,7 @@ subroutine mesh_build_ipAreas
  use math, only: &
    math_cross
 
- implicit none
+ 
  integer :: e,t,g,c,i,f,n,m
  real(pReal), dimension (3,FE_maxNcellnodesPerCellface) :: nodePos, normals
  real(pReal), dimension(3) :: normal
@@ -1614,7 +1614,7 @@ end subroutine mesh_build_ipAreas
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_nodeTwins
 
- implicit none
+ 
  integer dir, &      ! direction of periodicity
                node, &
                minimumNode, &
@@ -1685,7 +1685,7 @@ end subroutine mesh_build_nodeTwins
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_sharedElems
 
- implicit none
+ 
  integer(pint)   e, &                                                                                ! element index
                  g, &                                                                                ! element type
                  node, &                                                                             ! CP node index
@@ -1750,7 +1750,7 @@ subroutine mesh_build_ipNeighborhood
  use math, only: &
    math_mul3x3
 
- implicit none
+ 
  integer      ::           myElem, &                                                           ! my CP element index
                                  myIP, &
                                  myType, &                                                           ! my element type
@@ -1915,7 +1915,7 @@ subroutine mesh_build_ipNeighborhood
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_faceMatch(elem, face ,matchingElem, matchingFace)
 
-implicit none
+
 integer, intent(out) ::     matchingElem, &                                                   ! matching CP element ID
                                   matchingFace                                                      ! matching face ID
 integer, intent(in) ::      face, &                                                           ! face ID
@@ -2005,7 +2005,7 @@ end subroutine mesh_build_ipNeighborhood
 integer function FE_mapElemtype(what)
  use IO, only: IO_lc, IO_error
 
- implicit none
+ 
  character(len=*), intent(in) :: what
 
  select case (IO_lc(what))
@@ -2049,7 +2049,7 @@ end function FE_mapElemtype
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_FEdata
 
- implicit none
+ 
  integer :: me
  allocate(FE_nodesAtIP(FE_maxmaxNnodesAtIP,FE_maxNips,FE_Ngeomtypes), source=0)
  allocate(FE_ipNeighbor(FE_maxNipNeighbors,FE_maxNips,FE_Ngeomtypes), source=0)
@@ -2769,7 +2769,6 @@ integer function mesh_FEasCP(what,myID)
  use IO, only: &
    IO_lc
 
- implicit none
  character(len=*), intent(in) :: what
  integer,    intent(in) :: myID
 

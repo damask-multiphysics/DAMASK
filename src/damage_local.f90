@@ -3,9 +3,7 @@
 !> @brief material subroutine for locally evolving damage field
 !--------------------------------------------------------------------------------------------------
 module damage_local
- use prec, only: &
-   pReal, &
-   pInt
+ use prec
 
  implicit none
  private
@@ -62,7 +60,6 @@ subroutine damage_local_init
  use config, only: &
    config_homogenization
  
- implicit none
 
  integer :: maxNinstance,homog,instance,o,i
  integer :: sizeState
@@ -147,7 +144,6 @@ function damage_local_updateState(subdt, ip, el)
    mappingHomogenization, &
    damageState
  
- implicit none
  integer, intent(in) :: &
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
@@ -201,7 +197,6 @@ subroutine damage_local_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el
  use source_damage_anisoDuctile, only: &
    source_damage_anisoductile_getRateAndItsTangent
  
- implicit none
  integer, intent(in) :: &
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
@@ -259,7 +254,6 @@ function damage_local_postResults(ip,el)
    damageMapping, &
    damage
 
- implicit none
  integer,              intent(in) :: &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
