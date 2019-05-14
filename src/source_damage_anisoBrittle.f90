@@ -91,8 +91,6 @@ subroutine source_damage_anisoBrittle_init
    lattice_SchmidMatrix_cleavage, &
    lattice_maxNcleavageFamily
 
- implicit none
-
  integer(pInt) :: Ninstance,phase,instance,source,sourceOffset
  integer(pInt) :: NofMyPhase,p   ,i
  integer(pInt),          dimension(0), parameter :: emptyIntArray    = [integer(pInt)::]
@@ -219,7 +217,6 @@ subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
    lattice_maxNcleavageFamily, &
    lattice_NcleavageSystem
 
- implicit none
  integer(pInt), intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -279,7 +276,6 @@ subroutine source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalph
  use material, only: &
    sourceState
 
- implicit none
  integer(pInt), intent(in) :: &
    phase, &
    constituent
@@ -307,7 +303,6 @@ function source_damage_anisoBrittle_postResults(phase, constituent)
  use material, only: &
    sourceState
 
- implicit none
  integer(pInt), intent(in) :: &
    phase, &
    constituent

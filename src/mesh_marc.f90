@@ -640,7 +640,7 @@ subroutine mesh_marc_map_elementSets(nameElemSet,mapElemSet,fileUnit)
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,nElems,fileUnit)
 
- use math, only: math_qsort
+ use math, only: math_sort
  use IO,   only: IO_lc, &
                  IO_intValue, &
                  IO_stringValue, &
@@ -701,7 +701,7 @@ subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,nElems,fileU
       mesh_mapFEtoCPelem(2,cpElem) = cpElem
     enddo
  
-call math_qsort(mesh_mapFEtoCPelem,1_pInt,int(size(mesh_mapFEtoCPelem,2_pInt),pInt))                ! should be mesh_NcpElems
+call math_sort(mesh_mapFEtoCPelem,1_pInt,int(size(mesh_mapFEtoCPelem,2_pInt),pInt))                ! should be mesh_NcpElems
 
 end subroutine mesh_marc_map_elements
 
@@ -711,7 +711,7 @@ end subroutine mesh_marc_map_elements
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_map_nodes(nNodes,fileUnit)
 
- use math, only: math_qsort
+ use math, only: math_sort
  use IO,   only: IO_lc, &
                  IO_stringValue, &
                  IO_stringPos, &
@@ -743,7 +743,7 @@ subroutine mesh_marc_map_nodes(nNodes,fileUnit)
    endif
  enddo
 
-650 call math_qsort(mesh_mapFEtoCPnode,1_pInt,int(size(mesh_mapFEtoCPnode,2_pInt),pInt))
+650 call math_sort(mesh_mapFEtoCPnode,1_pInt,int(size(mesh_mapFEtoCPnode,2_pInt),pInt))
 
 end subroutine mesh_marc_map_nodes
 
@@ -1230,7 +1230,7 @@ pure function mesh_cellCenterCoordinates(ip,el)
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_ipAreas
  use math, only: &
-   math_crossproduct
+   math_cross
 
  implicit none
  integer(pInt) :: e,t,g,c,i,f,n,m
@@ -1265,7 +1265,7 @@ subroutine mesh_build_ipAreas
            do f = 1_pInt,FE_NipNeighbors(c)                                                         ! loop over cell faces
              forall(n = 1_pInt:FE_NcellnodesPerCellface(c)) &
                nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(FE_cellface(n,f,c),i,e))
-             normal = math_crossproduct(nodePos(1:3,2) - nodePos(1:3,1), &
+             normal = math_cross(nodePos(1:3,2) - nodePos(1:3,1), &
                                          nodePos(1:3,3) - nodePos(1:3,1))
              mesh_ipArea(f,i,e) = norm2(normal)
              mesh_ipAreaNormal(1:3,f,i,e) = normal / norm2(normal)                             ! ensure unit length of area normal
@@ -1284,7 +1284,7 @@ subroutine mesh_build_ipAreas
                nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(FE_cellface(n,f,c),i,e))
              forall(n = 1_pInt:FE_NcellnodesPerCellface(c)) &
                normals(1:3,n) = 0.5_pReal &
-                              * math_crossproduct(nodePos(1:3,1+mod(n  ,m)) - nodePos(1:3,n), &
+                              * math_cross(nodePos(1:3,1+mod(n  ,m)) - nodePos(1:3,n), &
                                                    nodePos(1:3,1+mod(n+1,m)) - nodePos(1:3,n))
              normal = 0.5_pReal * sum(normals,2)
              mesh_ipArea(f,i,e) = norm2(normal)

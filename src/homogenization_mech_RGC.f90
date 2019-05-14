@@ -9,6 +9,7 @@
 module homogenization_mech_RGC
  use prec, only: &
    pReal
+ use material
 
  implicit none
  private
@@ -75,7 +76,8 @@ module homogenization_mech_RGC
    homogenization_RGC_partitionDeformation, &
    homogenization_RGC_averageStressAndItsTangent, &
    homogenization_RGC_updateState, &
-   homogenization_RGC_postResults
+   homogenization_RGC_postResults, &
+   mech_RGC_results ! name suited for planned submodule situation
  private :: &
    relaxationVector, &
    interfaceNormal, &
@@ -104,18 +106,6 @@ subroutine homogenization_RGC_init()
    INRAD
  use IO, only: &
    IO_error
- use material, only: &
-#ifdef DEBUG
-   mappingHomogenization, &
-#endif
-   homogenization_type, &
-   material_homogenizationAt, &
-   homogState, &
-   HOMOGENIZATION_RGC_ID, &
-   HOMOGENIZATION_RGC_LABEL, &
-   homogenization_typeInstance, &
-   homogenization_Noutput, &
-   homogenization_Ngrains
  use config, only: &
    config_homogenization
 
@@ -322,10 +312,6 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 #endif
  use math, only: &
    math_invert2
- use material, only: &
-   material_homogenizationAt, &
-   homogenization_typeInstance, &
-   mappingHomogenization
  use numerics, only: &
    absTol_RGC, &
    relTol_RGC, &
@@ -1107,6 +1093,54 @@ pure function homogenization_RGC_postResults(instance,of) result(postResults)
  end associate
  
 end function homogenization_RGC_postResults
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes results to HDF5 output file
+! ToDo: check wheter units are correct
+!--------------------------------------------------------------------------------------------------
+subroutine mech_RGC_results(instance,group)
+#if defined(PETSc) || defined(DAMASK_HDF5)
+  use results, only: &
+    results_writeDataset
+
+  integer, intent(in) :: instance
+  character(len=*) :: group
+  integer :: o
+  
+  associate(stt => state(instance), dst => dependentState(instance), prm => param(instance))
+
+  outputsLoop: do o = 1,size(prm%outputID)
+    select case(prm%outputID(o))
+    
+      case (constitutivework_ID)
+        call results_writeDataset(group,stt%work,'W',&
+                                  'work density','J/m³')
+      case (magnitudemismatch_ID)
+        call results_writeDataset(group,dst%mismatch,'N',&
+                                  'average mismatch tensor','1')
+      case (penaltyenergy_ID)
+        call results_writeDataset(group,stt%penaltyEnergy,'R',&
+                                  'mismatch penalty density','J/m³')
+      case (volumediscrepancy_ID)
+        call results_writeDataset(group,dst%volumeDiscrepancy,'Delta_V',&
+                                  'volume discrepancy','m³')
+      case (maximumrelaxrate_ID)
+        call results_writeDataset(group,dst%relaxationrate_max,'max_alpha_dot',&
+                                  'maximum relaxation rate','m/s')
+      case (averagerelaxrate_ID)
+        call results_writeDataset(group,dst%relaxationrate_avg,'avg_alpha_dot',&
+                                  'average relaxation rate','m/s')
+    end select
+  enddo outputsLoop
+  end associate
+  
+#else
+  integer, intent(in) :: instance
+  character(len=*) :: group
+#endif
+
+end subroutine mech_RGC_results
 
 
 !--------------------------------------------------------------------------------------------------

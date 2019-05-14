@@ -15,6 +15,9 @@
 #define PETSC_MINOR_MIN 10
 #define PETSC_MINOR_MAX 11
 module DAMASK_interface
+  use prec
+  use system_routines
+  
   implicit none
   private
   logical, public, protected :: &
@@ -39,6 +42,7 @@ module DAMASK_interface
     getLoadCaseFile, &
     rectifyPath, &
     makeRelativePath
+
 contains
 
 !--------------------------------------------------------------------------------------------------
@@ -46,18 +50,8 @@ contains
 !! information on computation to screen
 !--------------------------------------------------------------------------------------------------
 subroutine DAMASK_interface_init
-  use, intrinsic :: &
-    iso_fortran_env
-  use, intrinsic :: &
-    iso_c_binding
+  use, intrinsic :: iso_fortran_env
   use PETScSys
-  use prec, only: &
-    pReal
-  use system_routines, only: &
-    signalusr1_C, &
-    signalusr2_C, &
-    getHostName, &
-    getCWD
 
 #include <petsc/finclude/petscsys.h>
 #if defined(__GFORTRAN__) &&  __GNUC__<GCC_MIN
@@ -96,7 +90,6 @@ subroutine DAMASK_interface_init
 ===================================================================================================
 #endif
 
-  implicit none
   character(len=1024) :: &
     commandLine, &                                                                                  !< command line call as string
     arg, &                                                                                          !< individual argument
@@ -304,11 +297,7 @@ end subroutine DAMASK_interface_init
 !!        possibly converting relative arguments to absolut path
 !--------------------------------------------------------------------------------------------------
 subroutine setWorkingDirectory(workingDirectoryArg)
-  use system_routines, only: &
-    getCWD, &
-    setCWD
 
-  implicit none
   character(len=*),  intent(in) :: workingDirectoryArg                                              !< working directory argument
   character(len=1024)           :: workingDirectory                                                 !< working directory argument
   logical                       :: error
@@ -336,22 +325,17 @@ end subroutine setWorkingDirectory
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getSolverJobName()
 
-  implicit none
   integer :: posExt,posSep
-  character(len=1024) :: tempString
 
+  posExt = scan(geometryFile,'.',back=.true.)
+  posSep = scan(geometryFile,'/',back=.true.)
 
-  tempString = geometryFile
-  posExt = scan(tempString,'.',back=.true.)
-  posSep = scan(tempString,'/',back=.true.)
+  getSolverJobName = geometryFile(posSep+1:posExt-1)
 
-  getSolverJobName = tempString(posSep+1:posExt-1)
+  posExt = scan(loadCaseFile,'.',back=.true.)
+  posSep = scan(loadCaseFile,'/',back=.true.)
 
-  tempString = loadCaseFile
-  posExt = scan(tempString,'.',back=.true.)
-  posSep = scan(tempString,'/',back=.true.)
-
-  getSolverJobName = trim(getSolverJobName)//'_'//tempString(posSep+1:posExt-1)
+  getSolverJobName = trim(getSolverJobName)//'_'//loadCaseFile(posSep+1:posExt-1)
 
 end function getSolverJobName
 
@@ -360,10 +344,7 @@ end function getSolverJobName
 !> @brief basename of geometry file with extension from command line arguments
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getGeometryFile(geometryParameter)
-  use system_routines, only: &
-    getCWD
 
-  implicit none
   character(len=1024), intent(in) :: geometryParameter
   logical                         :: file_exists
   external                        :: quit
@@ -385,10 +366,7 @@ end function getGeometryFile
 !> @brief relative path of loadcase from command line arguments
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getLoadCaseFile(loadCaseParameter)
-  use system_routines, only: &
-    getCWD
 
-  implicit none
   character(len=1024), intent(in) :: loadCaseParameter
   logical                         :: file_exists
   external                        :: quit
@@ -412,7 +390,6 @@ end function getLoadCaseFile
 !--------------------------------------------------------------------------------------------------
 function rectifyPath(path)
 
-  implicit none
   character(len=*)    :: path
   character(len=1024) :: rectifyPath
   integer :: i,j,k,l
@@ -457,7 +434,6 @@ end function rectifyPath
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function makeRelativePath(a,b)
 
-  implicit none
   character (len=*), intent(in) :: a,b
   character (len=1024)          :: a_cleaned,b_cleaned
   integer :: i,posLastCommonSlash,remainingSlashes
@@ -484,9 +460,7 @@ end function makeRelativePath
 !> @brief sets global variable SIGTERM to .true.
 !--------------------------------------------------------------------------------------------------
 subroutine catchSIGTERM(signal) bind(C)
-  use :: iso_c_binding
 
-  implicit none
   integer(C_INT), value :: signal
   SIGTERM = .true.
 
@@ -500,7 +474,6 @@ end subroutine catchSIGTERM
 !--------------------------------------------------------------------------------------------------
 subroutine setSIGTERM(state)
 
-  implicit none
   logical, intent(in) :: state
   SIGTERM = state
 
@@ -511,9 +484,7 @@ end subroutine setSIGTERM
 !> @brief sets global variable SIGUSR1 to .true.
 !--------------------------------------------------------------------------------------------------
 subroutine catchSIGUSR1(signal) bind(C)
-  use :: iso_c_binding
 
-  implicit none
   integer(C_INT), value :: signal
   SIGUSR1 = .true.
 
@@ -527,7 +498,6 @@ end subroutine catchSIGUSR1
 !--------------------------------------------------------------------------------------------------
 subroutine setSIGUSR1(state)
 
-  implicit none
   logical, intent(in) :: state
   SIGUSR1 = state
 
@@ -538,9 +508,7 @@ end subroutine setSIGUSR1
 !> @brief sets global variable SIGUSR2 to .true. if program receives SIGUSR2
 !--------------------------------------------------------------------------------------------------
 subroutine catchSIGUSR2(signal) bind(C)
-  use :: iso_c_binding
 
-  implicit none
   integer(C_INT), value :: signal
   SIGUSR2 = .true.
 
@@ -554,7 +522,6 @@ end subroutine catchSIGUSR2
 !--------------------------------------------------------------------------------------------------
 subroutine setSIGUSR2(state)
 
-  implicit none
   logical, intent(in) :: state
   SIGUSR2 = state
 

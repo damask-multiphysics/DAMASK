@@ -63,7 +63,6 @@ subroutine source_thermal_externalheat_init
     config_phase, &
     material_Nphase
  
-  implicit none
  
   integer :: maxNinstance,instance,source,sourceOffset,NofMyPhase,p   
  
@@ -120,7 +119,6 @@ subroutine source_thermal_externalheat_dotState(phase, of)
   use material, only: &
     sourceState
  
-  implicit none
   integer, intent(in) :: &
     phase, &
     of
@@ -140,7 +138,6 @@ subroutine source_thermal_externalheat_getRateAndItsTangent(TDot, dTDot_dT, phas
   use material, only: &
     sourceState
  
-  implicit none
   integer, intent(in) :: &
     phase, &
     of
