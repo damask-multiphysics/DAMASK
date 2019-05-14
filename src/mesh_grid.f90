@@ -13,12 +13,7 @@ module mesh
  implicit none
  private
  integer(pInt), public, protected :: &
-   mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
-   mesh_Ncellnodes, &                                                                               !< total number of cell nodes in mesh (including duplicates)
-   mesh_Ncells, &                                                                                   !< total number of cells in mesh
-   mesh_maxNipNeighbors, &                                                                          !< max number of IP neighbors in any CP element
-   mesh_maxNsharedElems                                                                             !< max number of CP elements sharing a node
-
+   mesh_Nnodes
 
  integer(pInt), dimension(:), allocatable, private :: &
    microGlobal
@@ -138,9 +133,8 @@ subroutine mesh_init(ip,el)
  implicit none
  include 'fftw3-mpi.f03'
  integer(C_INTPTR_T) :: devNull, local_K, local_K_offset
- integer :: ierr, worldsize, i
+ integer :: ierr, worldsize, j
  integer(pInt), intent(in), optional :: el, ip
- integer(pInt) :: j
  logical :: myDebug
 
  write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
@@ -179,10 +173,10 @@ subroutine mesh_init(ip,el)
 
  call theMesh%init(mesh_node)
  call theMesh%setNelems(product(grid(1:2))*grid3)
- mesh_homogenizationAt = mesh_homogenizationAt(product(grid(1:2))*grid3)                            ! reallocate/shrink in case of MPI
- mesh_maxNipNeighbors = theMesh%elem%nIPneighbors
- 
  call mesh_spectral_build_elements()
+ mesh_homogenizationAt = mesh_homogenizationAt(product(grid(1:2))*grid3Offset+1: &
+                                               product(grid(1:2))*(grid3Offset+grid3))              ! reallocate/shrink in case of MPI
+ 
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
  
  

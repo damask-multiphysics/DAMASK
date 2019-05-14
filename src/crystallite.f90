@@ -299,7 +299,7 @@ subroutine crystallite_init
        case ('neighboringelement') outputName                                                       ! ToDo: this is not a result, it is static. Should be written out by mesh
          crystallite_outputID(o,c) = neighboringelement_ID
        case default outputName
-         call IO_error(105,ext_msg=trim(str(o))//' (Crystallite)')
+         !call IO_error(105,ext_msg=trim(str(o))//' (Crystallite)')
       end select outputName
     enddo
   enddo
