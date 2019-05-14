@@ -7,7 +7,8 @@
 !--------------------------------------------------------------------------------------------------
 module mesh
  use, intrinsic :: iso_c_binding
- use prec, only: pReal, pInt
+ use prec
+ use geometry_plastic_nonlocal
  use mesh_base
 
  implicit none
@@ -191,6 +192,7 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
 
  call mesh_spectral_build_ipNeighborhood
+ call geometry_plastic_nonlocal_set_IPneighborhood(mesh_ipNeighborhood)
 
  if (myDebug) write(6,'(a)') ' Built IP neighborhood'; flush(6)
 

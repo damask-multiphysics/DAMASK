@@ -14,6 +14,7 @@
 #include "Lambert.f90"
 #include "rotations.f90"
 #include "FEsolving.f90"
+#include "geometry_plastic_nonlocal.f90"
 #include "element.f90"
 #include "mesh_base.f90"
 #ifdef Abaqus
@@ -28,7 +29,6 @@
 #endif
 #include "material.f90"
 #include "lattice.f90"
-#include "geometry_plastic_nonlocal.f90"
 #include "source_thermal_dissipation.f90"
 #include "source_thermal_externalheat.f90"
 #include "source_damage_isoBrittle.f90"

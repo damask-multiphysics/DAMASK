@@ -24,5 +24,29 @@ module geometry_plastic_nonlocal
 
   real(pReal),dimension(:,:,:,:), allocatable, public, protected :: &
     geometry_plastic_nonlocal_IPareaNormal                                                          !< area normal of interface to neighboring IP (initially!)
+    
+  public :: &
+    geometry_plastic_nonlocal_set_IPneighborhood, &
+    geometry_plastic_nonlocal_set_IPvolume
+    
+  contains
+  
+subroutine geometry_plastic_nonlocal_set_IPneighborhood(IPneighborhood)
+
+  integer, dimension(:,:,:,:), intent(in) :: IPneighborhood
+
+  geometry_plastic_nonlocal_IPneighborhood = IPneighborhood
+
+end subroutine geometry_plastic_nonlocal_set_IPneighborhood
+
+
+subroutine geometry_plastic_nonlocal_set_IPvolume(IPvolume)
+
+  real(pReal), dimension(:,:), intent(in) :: IPvolume
+
+  geometry_plastic_nonlocal_IPvolume = IPvolume
+
+end subroutine geometry_plastic_nonlocal_set_IPvolume
+
 
 end module geometry_plastic_nonlocal
