@@ -526,17 +526,16 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
 !--------------------------------------------------------------------------------------------------
 ! restore...
+           if (materialpoint_subStep(i,e) < 1.0_pReal) then                                         ! protect against fake cutback from \Delta t = 2 to 1. Maybe that "trick" is not necessary anymore at all? I.e. start with \Delta t = 1
+             crystallite_Lp(1:3,1:3,1:myNgrains,i,e) = &
+               crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e)                                    ! ...plastic velocity grads
+             crystallite_Li(1:3,1:3,1:myNgrains,i,e) = &
+               crystallite_partionedLi0(1:3,1:3,1:myNgrains,i,e)                                    ! ...intermediate velocity grads
+           endif                                                                                    ! maybe protecting everything from overwriting (not only L) makes even more sense
            crystallite_Fp(1:3,1:3,1:myNgrains,i,e) = &
              crystallite_partionedFp0(1:3,1:3,1:myNgrains,i,e)                                      ! ...plastic def grads
-           if(materialpoint_subStep(i,e) < 1.0_pReal) then
-           crystallite_Lp(1:3,1:3,1:myNgrains,i,e) = &
-             crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e)                               
-           endif
-       ! ...plastic velocity grads
            crystallite_Fi(1:3,1:3,1:myNgrains,i,e) = &
              crystallite_partionedFi0(1:3,1:3,1:myNgrains,i,e)                                      ! ...intermediate def grads
-           crystallite_Li(1:3,1:3,1:myNgrains,i,e) = &
-             crystallite_partionedLi0(1:3,1:3,1:myNgrains,i,e)                                      ! ...intermediate velocity grads
            crystallite_S(1:3,1:3,1:myNgrains,i,e) = &
               crystallite_partionedS0(1:3,1:3,1:myNgrains,i,e)                                      ! ...2nd PK stress
            do g = 1, myNgrains
