@@ -9,13 +9,13 @@ module damage_local
 
  implicit none
  private
- integer(pInt),                       dimension(:,:),         allocatable, target, public :: &
+ integer,                       dimension(:,:),         allocatable, target, public :: &
    damage_local_sizePostResult                                                            !< size of each post result output
 
- character(len=64),                   dimension(:,:),         allocatable, target, public :: &
+ character(len=64),             dimension(:,:),         allocatable, target, public :: &
    damage_local_output                                                                    !< name of each post result output
    
- integer(pInt),                       dimension(:),           allocatable, target, public :: &
+ integer,                       dimension(:),           allocatable, target, public :: &
    damage_local_Noutput                                                                   !< number of outputs per instance of this damage 
 
  enum, bind(c) 
@@ -64,9 +64,9 @@ subroutine damage_local_init
  
  implicit none
 
- integer(pInt) :: maxNinstance,homog,instance,o,i
- integer(pInt) :: sizeState
- integer(pInt) :: NofMyHomog, h
+ integer :: maxNinstance,homog,instance,o,i
+ integer :: sizeState
+ integer :: NofMyHomog, h
   integer(kind(undefined_ID)) :: &
    outputID
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
@@ -76,13 +76,13 @@ subroutine damage_local_init
  write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_local_label//' init  -+>>>'
 
  maxNinstance = int(count(damage_type == DAMAGE_local_ID),pInt)
- if (maxNinstance == 0_pInt) return
+ if (maxNinstance == 0) return
  
- allocate(damage_local_sizePostResult (maxval(homogenization_Noutput),maxNinstance),source=0_pInt)
+ allocate(damage_local_sizePostResult (maxval(homogenization_Noutput),maxNinstance),source=0)
  allocate(damage_local_output         (maxval(homogenization_Noutput),maxNinstance))
           damage_local_output = ''
  allocate(damage_local_outputID       (maxval(homogenization_Noutput),maxNinstance),source=undefined_ID)
- allocate(damage_local_Noutput        (maxNinstance),                               source=0_pInt) 
+ allocate(damage_local_Noutput        (maxNinstance),                               source=0) 
  
  allocate(param(maxNinstance))
   
@@ -116,7 +116,7 @@ subroutine damage_local_init
 
 
 ! allocate state arrays
-     sizeState = 1_pInt
+     sizeState = 1
      damageState(homog)%sizeState = sizeState
      damageState(homog)%sizePostResults = sum(damage_local_sizePostResult(:,instance))
      allocate(damageState(homog)%state0   (sizeState,NofMyHomog), source=damage_initialPhi(homog))
@@ -148,14 +148,14 @@ function damage_local_updateState(subdt, ip, el)
    damageState
  
  implicit none
- integer(pInt), intent(in) :: &
+ integer, intent(in) :: &
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
  real(pReal),   intent(in) :: &
    subdt
- logical,                    dimension(2)  :: &
+ logical,    dimension(2)  :: &
    damage_local_updateState
- integer(pInt) :: &
+ integer :: &
    homog, &
    offset
  real(pReal) :: &
@@ -202,12 +202,12 @@ subroutine damage_local_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el
    source_damage_anisoductile_getRateAndItsTangent
  
  implicit none
- integer(pInt), intent(in) :: &
+ integer, intent(in) :: &
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
  real(pReal),   intent(in) :: &
    phi
- integer(pInt) :: &
+ integer :: &
    phase, &
    grain, &
    source, &
@@ -260,26 +260,26 @@ function damage_local_postResults(ip,el)
    damage
 
  implicit none
- integer(pInt),              intent(in) :: &
+ integer,              intent(in) :: &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
  real(pReal), dimension(sum(damage_local_sizePostResult(:,damage_typeInstance(material_homogenizationAt(el))))) :: &
    damage_local_postResults
 
- integer(pInt) :: &
+ integer :: &
    instance, homog, offset, o, c
    
  homog     = material_homogenizationAt(el)
  offset    = damageMapping(homog)%p(ip,el)
  instance  = damage_typeInstance(homog)
  associate(prm => param(instance))
- c = 0_pInt
+ c = 0
 
- outputsLoop: do o = 1_pInt,size(prm%outputID)
+ outputsLoop: do o = 1,size(prm%outputID)
    select case(prm%outputID(o))
  
       case (damage_ID)
-        damage_local_postResults(c+1_pInt) = damage(homog)%p(offset)
+        damage_local_postResults(c+1) = damage(homog)%p(offset)
         c = c + 1
     end select
  enddo outputsLoop

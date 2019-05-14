@@ -5,20 +5,18 @@
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
 module source_damage_isoDuctile
- use prec, only: &
-   pReal, &
-   pInt
+ use prec
 
  implicit none
  private
- integer(pInt),                       dimension(:),           allocatable,         public, protected :: &
+ integer,                       dimension(:),           allocatable,         public, protected :: &
    source_damage_isoDuctile_offset, &                                                                 !< which source is my current damage mechanism?
    source_damage_isoDuctile_instance                                                                  !< instance of damage source mechanism
 
- integer(pInt),                       dimension(:,:),         allocatable, target, public :: &
+ integer,                       dimension(:,:),         allocatable, target, public :: &
    source_damage_isoDuctile_sizePostResult                                                            !< size of each post result output
 
- character(len=64),                   dimension(:,:),         allocatable, target, public :: &
+ character(len=64),             dimension(:,:),         allocatable, target, public :: &
    source_damage_isoDuctile_output                                                                    !< name of each post result output
 
 
@@ -53,8 +51,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_isoDuctile_init
- use prec, only: &
-   pStringLen
  use debug, only: &
    debug_level,&
    debug_constitutive,&
@@ -75,8 +71,8 @@ subroutine source_damage_isoDuctile_init
    material_Nphase
 
 
- integer(pInt) :: Ninstance,phase,instance,source,sourceOffset
- integer(pInt) :: NofMyPhase,p,i
+ integer :: Ninstance,phase,instance,source,sourceOffset
+ integer :: NofMyPhase,p,i
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
  integer(kind(undefined_ID)) :: &
    outputID
@@ -89,13 +85,13 @@ subroutine source_damage_isoDuctile_init
  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_DAMAGE_ISODUCTILE_LABEL//' init  -+>>>'
 
  Ninstance = count(phase_source == SOURCE_damage_isoDuctile_ID)
- if (Ninstance == 0_pInt) return
+ if (Ninstance == 0) return
  
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
  
- allocate(source_damage_isoDuctile_offset(material_Nphase), source=0_pInt)
- allocate(source_damage_isoDuctile_instance(material_Nphase), source=0_pInt)
+ allocate(source_damage_isoDuctile_offset(material_Nphase), source=0)
+ allocate(source_damage_isoDuctile_instance(material_Nphase), source=0)
  do phase = 1, material_Nphase
    source_damage_isoDuctile_instance(phase) = count(phase_source(:,1:phase) == source_damage_isoDuctile_ID)
    do source = 1, phase_Nsources(phase)
@@ -104,7 +100,7 @@ subroutine source_damage_isoDuctile_init
    enddo    
  enddo
    
- allocate(source_damage_isoDuctile_sizePostResult(maxval(phase_Noutput),Ninstance),source=0_pInt)
+ allocate(source_damage_isoDuctile_sizePostResult(maxval(phase_Noutput),Ninstance),source=0)
  allocate(source_damage_isoDuctile_output(maxval(phase_Noutput),Ninstance))
           source_damage_isoDuctile_output = ''
 
@@ -129,18 +125,18 @@ subroutine source_damage_isoDuctile_init
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
    if (extmsg /= '') &
-     call IO_error(211_pInt,ext_msg=trim(extmsg)//'('//SOURCE_DAMAGE_ISODUCTILE_LABEL//')')
+     call IO_error(211,ext_msg=trim(extmsg)//'('//SOURCE_DAMAGE_ISODUCTILE_LABEL//')')
 
 !--------------------------------------------------------------------------------------------------
 !  output pararameters
    outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
    allocate(prm%outputID(0))
-   do i=1_pInt, size(outputs)
+   do i=1, size(outputs)
      outputID = undefined_ID
      select case(outputs(i))
      
        case ('isoductile_drivingforce')
-         source_damage_isoDuctile_sizePostResult(i,source_damage_isoDuctile_instance(p)) = 1_pInt
+         source_damage_isoDuctile_sizePostResult(i,source_damage_isoDuctile_instance(p)) = 1
          source_damage_isoDuctile_output(i,source_damage_isoDuctile_instance(p)) = outputs(i)
          prm%outputID = [prm%outputID, damage_drivingforce_ID]
 
@@ -155,7 +151,7 @@ subroutine source_damage_isoDuctile_init
    instance = source_damage_isoDuctile_instance(phase)
    sourceOffset = source_damage_isoDuctile_offset(phase)
 
-   call material_allocateSourceState(phase,sourceOffset,NofMyPhase,1_pInt,1_pInt,0_pInt)
+   call material_allocateSourceState(phase,sourceOffset,NofMyPhase,1,1,0)
    sourceState(phase)%p(sourceOffset)%sizePostResults = sum(source_damage_isoDuctile_sizePostResult(:,instance))
    sourceState(phase)%p(sourceOffset)%aTolState=param(instance)%aTol
               
@@ -176,11 +172,11 @@ subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
    damage, &
    damageMapping
 
- integer(pInt), intent(in) :: &
+ integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- integer(pInt) :: &
+ integer :: &
    phase, constituent, instance, homog, sourceOffset, damageOffset
 
  phase = phaseAt(ipc,ip,el)
@@ -204,7 +200,7 @@ subroutine source_damage_isoDuctile_getRateAndItsTangent(localphiDot, dLocalphiD
  use material, only: &
    sourceState
 
- integer(pInt), intent(in) :: &
+ integer, intent(in) :: &
    phase, &
    constituent
  real(pReal),  intent(in) :: &
@@ -212,7 +208,7 @@ subroutine source_damage_isoDuctile_getRateAndItsTangent(localphiDot, dLocalphiD
  real(pReal),  intent(out) :: &
    localphiDot, &
    dLocalphiDot_dPhi
- integer(pInt) :: &
+ integer :: &
    sourceOffset
 
  sourceOffset = source_damage_isoDuctile_offset(phase)
@@ -231,25 +227,25 @@ function source_damage_isoDuctile_postResults(phase, constituent)
  use material, only: &
    sourceState
 
- integer(pInt), intent(in) :: &
+ integer, intent(in) :: &
    phase, &
    constituent
  real(pReal), dimension(sum(source_damage_isoDuctile_sizePostResult(:, &
                           source_damage_isoDuctile_instance(phase)))) :: &
    source_damage_isoDuctile_postResults
 
- integer(pInt) :: &
+ integer :: &
    instance, sourceOffset, o, c
    
  instance = source_damage_isoDuctile_instance(phase)
  sourceOffset = source_damage_isoDuctile_offset(phase)
 
- c = 0_pInt
+ c = 0
 
- do o = 1_pInt,size(param(instance)%outputID)
+ do o = 1,size(param(instance)%outputID)
     select case(param(instance)%outputID(o))
       case (damage_drivingforce_ID)
-        source_damage_isoDuctile_postResults(c+1_pInt) = sourceState(phase)%p(sourceOffset)%state(1,constituent)
+        source_damage_isoDuctile_postResults(c+1) = sourceState(phase)%p(sourceOffset)%state(1,constituent)
         c = c + 1
 
     end select
