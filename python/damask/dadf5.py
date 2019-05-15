@@ -82,7 +82,6 @@ class DADF5():
           except:
             pass
       for m in self.active['materialpoints']:
-        print('\n'+m)
         group_materialpoint = group_inc+'/materialpoint/'+m
         for t in self.active['m_output_types']:
           print('  {}'.format(t))
@@ -108,6 +107,14 @@ class DADF5():
               path.append(group_constituent+'/'+t+'/'+label)
             except:
               pass
+        for m in self.active['materialpoints']:
+          group_materialpoint = group_inc+'/materialpoint/'+m
+          for t in self.active['m_output_types']:
+            try:
+              f[group_materialpoint+'/'+t+'/'+label]
+              path.append(group_materialpoint+'/'+t+'/'+label)
+            except:
+              pass
     return path
     
     
@@ -122,10 +129,19 @@ class DADF5():
       dataset = np.full(shape,np.nan)
       for pa in path:
         label   = pa.split('/')[2]
-        p = np.where(f['mapping/cellResults/constituent'][:,c]['Name'] == str.encode(label))[0]
-        u = (f['mapping/cellResults/constituent'][p,c]['Position'])
-        dataset[p,:] = f[pa][u,:]                                                    
-    
+        try:
+          p = np.where(f['mapping/cellResults/constituent'][:,c]['Name'] == str.encode(label))[0]
+          u = (f['mapping/cellResults/constituent'][p,c]['Position'])
+          dataset[p,:] = f[pa][u,:] # does not work for scalar datasets
+        except:
+          pass
+        try:
+          p = np.where(f['mapping/cellResults/materialpoint']['Name'] == str.encode(label))[0]
+          u = (f['mapping/cellResults/materialpoint'][p.tolist()]['Position'])
+          dataset[p,:] = f[pa][u,:] # does not work for scalar datasets
+        except:
+          pass
+
     return dataset
         
       

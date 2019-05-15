@@ -22,10 +22,15 @@ parser.add_argument('filenames', nargs='+',
                     help='DADF5 files')
 parser.add_argument('-d','--dir', dest='dir',default='postProc',metavar='string',
                     help='name of subdirectory to hold output')
+parser.add_argument('--mat', nargs='+',
+                    help='labels for materialpoint/homogenization',dest='mat')
+parser.add_argument('--con', nargs='+',
+                    help='labels for constituent/crystallite/constitutive',dest='con')
 
 options = parser.parse_args()
 
-options.labels = ['Fe','Fp','xi_sl']
+if options.mat is None: options.mat=[]
+if options.con is None: options.con=[]
 
 # --- loop over input files ------------------------------------------------------------------------
 
@@ -57,7 +62,7 @@ for filename in options.filenames:
     header+=' 1_pos 2_pos 3_pos'
         
     results.active['increments'] = [inc]
-    for label in options.labels:
+    for label in options.con:
       for o in results.c_output_types:
         results.active['c_output_types'] = [o]
         for c in results.constituents:
@@ -67,12 +72,27 @@ for filename in options.filenames:
             continue
           label = x[0].split('/')[-1]
           array = results.read_dataset(x,0)
-          d = np.product(np.shape(array)[1:])
+          d = int(np.product(np.shape(array)[1:]))
           array = np.reshape(array,[np.product(results.grid),d])
           data = np.concatenate((data,array),1)
           
           header+= ''.join([' {}_{}'.format(j+1,label) for j in range(d)])
-
+    
+    for label in options.mat:     
+      for o in results.m_output_types:
+        results.active['m_output_types'] = [o]
+        for m in results.materialpoints:
+          results.active['materialpoints'] = [m]
+          x = results.get_dataset_location(label)
+          if len(x) == 0:
+            continue
+          label = x[0].split('/')[-1]
+          array = results.read_dataset(x,0)
+          d = int(np.product(np.shape(array)[1:]))
+          array = np.reshape(array,[np.product(results.grid),d])
+          data = np.concatenate((data,array),1)
+          
+          header+= ''.join([' {}_{}'.format(j+1,label) for j in range(d)])
 
     dirname  = os.path.abspath(os.path.join(os.path.dirname(filename),options.dir))
     try:
