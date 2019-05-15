@@ -5,14 +5,12 @@
 !> @todo Descriptions for public variables needed
 !--------------------------------------------------------------------------------------------------
 module FEsolving
- use prec, only: &
-   pInt, &
-   pReal
- 
+ use prec
+  
  implicit none
  private
- integer(pInt), public :: &
-   restartInc   =  1_pInt                                                                           !< needs description
+ integer, public :: &
+   restartInc   =  1                                                                                !< needs description
 
  logical, public :: & 
    symmetricSolver   = .false., &                                                                   !< use a symmetric FEM solver
@@ -20,10 +18,10 @@ module FEsolving
    restartRead       = .false., &                                                                   !< restart information to continue calculation from saved state
    terminallyIll     = .false.                                                                      !< at least one material point is terminally ill
 
- integer(pInt), dimension(:,:), allocatable, public :: &
+ integer, dimension(:,:), allocatable, public :: &
    FEsolving_execIP                                                                                 !< for ping-pong scheme always range to max IP, otherwise one specific IP
    
- integer(pInt), dimension(2), public :: &
+ integer, dimension(2), public :: &
    FEsolving_execElem                                                                               !< for ping-pong scheme always whole range, otherwise one specific element
    
  character(len=1024), public :: &
@@ -59,13 +57,12 @@ subroutine FE_init
    IO_warning
  use DAMASK_interface
  
- implicit none
 #if defined(Marc4DAMASK) || defined(Abaqus)
- integer(pInt), parameter :: &
-   FILEUNIT = 222_pInt
- integer(pInt) :: j
+ integer, parameter :: &
+   FILEUNIT = 222
+ integer :: j
  character(len=65536) :: tag, line
- integer(pInt), allocatable, dimension(:) :: chunkPos
+ integer, allocatable, dimension(:) :: chunkPos
 #endif
 
  write(6,'(/,a)')   ' <<<+-  FEsolving init  -+>>>'
@@ -75,35 +72,35 @@ subroutine FE_init
 #if defined(Grid) || defined(FEM)
  restartInc = interface_RestartInc
 
- if(restartInc < 0_pInt) then
-   call IO_warning(warning_ID=34_pInt)
-   restartInc = 0_pInt
+ if(restartInc < 0) then
+   call IO_warning(warning_ID=34)
+   restartInc = 0
  endif
- restartRead = restartInc > 0_pInt                                                                  ! only read in if "true" restart requested
+ restartRead = restartInc > 0                                                                       ! only read in if "true" restart requested
 #else
  call IO_open_inputFile(FILEUNIT,modelName)
  rewind(FILEUNIT)
  do
    read (FILEUNIT,'(a1024)',END=100) line
    chunkPos = IO_stringPos(line)
-   tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                               ! extract key
+   tag = IO_lc(IO_stringValue(line,chunkPos,1))                                                     ! extract key
    select case(tag)
      case ('solver')
        read (FILEUNIT,'(a1024)',END=100) line                                                       ! next line
        chunkPos = IO_stringPos(line)
-       symmetricSolver = (IO_intValue(line,chunkPos,2_pInt) /= 1_pInt)
+       symmetricSolver = (IO_intValue(line,chunkPos,2) /= 1)
      case ('restart')
        read (FILEUNIT,'(a1024)',END=100) line                                                       ! next line
        chunkPos = IO_stringPos(line)
-       restartWrite = iand(IO_intValue(line,chunkPos,1_pInt),1_pInt) > 0_pInt
-       restartRead  = iand(IO_intValue(line,chunkPos,1_pInt),2_pInt) > 0_pInt
+       restartWrite = iand(IO_intValue(line,chunkPos,1),1) > 0
+       restartRead  = iand(IO_intValue(line,chunkPos,1),2) > 0
      case ('*restart')
-       do j=2_pInt,chunkPos(1)
+       do j=2,chunkPos(1)
          restartWrite = (IO_lc(IO_StringValue(line,chunkPos,j)) == 'write') .or. restartWrite
          restartRead  = (IO_lc(IO_StringValue(line,chunkPos,j)) == 'read')  .or. restartRead
        enddo
        if(restartWrite) then
-         do j=2_pInt,chunkPos(1)
+         do j=2,chunkPos(1)
            restartWrite = (IO_lc(IO_StringValue(line,chunkPos,j)) /= 'frequency=0') .and. restartWrite
          enddo
        endif
@@ -118,11 +115,11 @@ subroutine FE_init
    do
      read (FILEUNIT,'(a1024)',END=200) line
      chunkPos = IO_stringPos(line)
-     if (   IO_lc(IO_stringValue(line,chunkPos,1_pInt)) == 'restart' &
-      .and. IO_lc(IO_stringValue(line,chunkPos,2_pInt)) == 'file'    &
-      .and. IO_lc(IO_stringValue(line,chunkPos,3_pInt)) == 'job'     &
-      .and. IO_lc(IO_stringValue(line,chunkPos,4_pInt)) == 'id' )    &
-        modelName = IO_StringValue(line,chunkPos,6_pInt)
+     if (   IO_lc(IO_stringValue(line,chunkPos,1)) == 'restart' &
+      .and. IO_lc(IO_stringValue(line,chunkPos,2)) == 'file'    &
+      .and. IO_lc(IO_stringValue(line,chunkPos,3)) == 'job'     &
+      .and. IO_lc(IO_stringValue(line,chunkPos,4)) == 'id' )    &
+        modelName = IO_StringValue(line,chunkPos,6)
    enddo
 #else                                                                                               ! QUESTION: is this meaningful for the spectral/FEM case?
    call IO_open_inputFile(FILEUNIT,modelName)
@@ -130,10 +127,10 @@ subroutine FE_init
    do
      read (FILEUNIT,'(a1024)',END=200) line
      chunkPos = IO_stringPos(line)
-     if (IO_lc(IO_stringValue(line,chunkPos,1_pInt))=='*heading') then
+     if (IO_lc(IO_stringValue(line,chunkPos,1))=='*heading') then
        read (FILEUNIT,'(a1024)',END=200) line
        chunkPos = IO_stringPos(line)
-       modelName = IO_StringValue(line,chunkPos,1_pInt)
+       modelName = IO_StringValue(line,chunkPos,1)
      endif
    enddo
 #endif
@@ -141,7 +138,7 @@ subroutine FE_init
  endif
 
 #endif
- if (iand(debug_level(debug_FEsolving),debug_levelBasic) /= 0_pInt) then
+ if (iand(debug_level(debug_FEsolving),debug_levelBasic) /= 0) then
    write(6,'(a21,l1)') ' restart writing:    ', restartWrite
    write(6,'(a21,l1)') ' restart reading:    ', restartRead
    if (restartRead) write(6,'(a,/)') ' restart Job:        '//trim(modelName)

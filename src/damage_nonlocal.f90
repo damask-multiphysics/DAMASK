@@ -4,19 +4,17 @@
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
 module damage_nonlocal
- use prec, only: &
-   pReal, &
-   pInt
+ use prec
 
  implicit none
  private
- integer(pInt),                       dimension(:,:),         allocatable, target, public :: &
+ integer,                       dimension(:,:),  allocatable, target, public :: &
    damage_nonlocal_sizePostResult                                                            !< size of each post result output
 
- character(len=64),                   dimension(:,:),         allocatable, target, public :: &
+ character(len=64),             dimension(:,:),   allocatable, target, public :: &
    damage_nonlocal_output                                                                    !< name of each post result output
    
- integer(pInt),                       dimension(:),           allocatable, target, public :: &
+ integer,                       dimension(:),     allocatable, target, public :: &
    damage_nonlocal_Noutput                                                                   !< number of outputs per instance of this damage 
 
  enum, bind(c) 
@@ -62,12 +60,11 @@ subroutine damage_nonlocal_init
  use config, only: &
    config_homogenization
 
- implicit none
 
- integer(pInt) :: maxNinstance,homog,instance,o,i
- integer(pInt) :: sizeState
- integer(pInt) :: NofMyHomog, h
-  integer(kind(undefined_ID)) :: &
+ integer :: maxNinstance,homog,instance,o,i
+ integer :: sizeState
+ integer :: NofMyHomog, h
+ integer(kind(undefined_ID)) :: &
    outputID
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
   character(len=65536), dimension(:), allocatable :: &
@@ -75,13 +72,13 @@ subroutine damage_nonlocal_init
 
  write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_nonlocal_label//' init  -+>>>'
  
- maxNinstance = int(count(damage_type == DAMAGE_nonlocal_ID),pInt)
- if (maxNinstance == 0_pInt) return
+ maxNinstance = int(count(damage_type == DAMAGE_nonlocal_ID))
+ if (maxNinstance == 0) return
  
- allocate(damage_nonlocal_sizePostResult (maxval(homogenization_Noutput),maxNinstance),source=0_pInt)
+ allocate(damage_nonlocal_sizePostResult (maxval(homogenization_Noutput),maxNinstance),source=0)
  allocate(damage_nonlocal_output         (maxval(homogenization_Noutput),maxNinstance))
           damage_nonlocal_output = ''
- allocate(damage_nonlocal_Noutput        (maxNinstance),                               source=0_pInt) 
+ allocate(damage_nonlocal_Noutput        (maxNinstance),                               source=0) 
 
  allocate(param(maxNinstance))
   
@@ -114,7 +111,7 @@ subroutine damage_nonlocal_init
 
 
 ! allocate state arrays
-     sizeState = 1_pInt
+     sizeState = 1
      damageState(homog)%sizeState = sizeState
      damageState(homog)%sizePostResults = sum(damage_nonlocal_sizePostResult(:,instance))
      allocate(damageState(homog)%state0   (sizeState,NofMyHomog), source=damage_initialPhi(homog))
@@ -154,13 +151,12 @@ subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip,
  use source_damage_anisoDuctile, only: &
    source_damage_anisoductile_getRateAndItsTangent
  
- implicit none
- integer(pInt), intent(in) :: &
+ integer, intent(in) :: &
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
  real(pReal),   intent(in) :: &
    phi
- integer(pInt) :: &
+ integer :: &
    phase, &
    grain, &
    source, &
@@ -217,13 +213,12 @@ function damage_nonlocal_getDiffusion33(ip,el)
  use crystallite, only: &
    crystallite_push33ToRef
 
- implicit none
- integer(pInt), intent(in) :: &
+ integer, intent(in) :: &
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
  real(pReal), dimension(3,3) :: &
    damage_nonlocal_getDiffusion33
- integer(pInt) :: &
+ integer :: &
    homog, &
    grain
    
@@ -235,7 +230,7 @@ function damage_nonlocal_getDiffusion33(ip,el)
  enddo
 
  damage_nonlocal_getDiffusion33 = &
-   charLength**2_pInt*damage_nonlocal_getDiffusion33/real(homogenization_Ngrains(homog),pReal)
+   charLength**2*damage_nonlocal_getDiffusion33/real(homogenization_Ngrains(homog),pReal)
  
 end function damage_nonlocal_getDiffusion33
  
@@ -251,11 +246,10 @@ real(pReal) function damage_nonlocal_getMobility(ip,el)
    material_phase, &
    homogenization_Ngrains
 
- implicit none
- integer(pInt), intent(in) :: &
+ integer, intent(in) :: &
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- integer(pInt) :: &
+ integer :: &
    ipc
  
  damage_nonlocal_getMobility = 0.0_pReal
@@ -278,13 +272,12 @@ subroutine damage_nonlocal_putNonLocalDamage(phi,ip,el)
    damageMapping, &
    damage
 
- implicit none
- integer(pInt), intent(in) :: &
+ integer, intent(in) :: &
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
  real(pReal),   intent(in) :: &
    phi
- integer(pInt) :: &
+ integer :: &
    homog, &
    offset
  
@@ -304,27 +297,26 @@ function damage_nonlocal_postResults(ip,el)
    damageMapping, &
    damage
 
- implicit none
- integer(pInt),              intent(in) :: &
+ integer,              intent(in) :: &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
  real(pReal), dimension(sum(damage_nonlocal_sizePostResult(:,damage_typeInstance(material_homogenizationAt(el))))) :: &
    damage_nonlocal_postResults
 
- integer(pInt) :: &
+ integer :: &
    instance, homog, offset, o, c
    
  homog     = material_homogenizationAt(el)
  offset    = damageMapping(homog)%p(ip,el)
  instance  = damage_typeInstance(homog)
  associate(prm => param(instance))
- c = 0_pInt
+ c = 0
 
- outputsLoop: do o = 1_pInt,size(prm%outputID)
+ outputsLoop: do o = 1,size(prm%outputID)
    select case(prm%outputID(o))
  
       case (damage_ID)
-        damage_nonlocal_postResults(c+1_pInt) = damage(homog)%p(offset)
+        damage_nonlocal_postResults(c+1) = damage(homog)%p(offset)
         c = c + 1
     end select
  enddo outputsLoop

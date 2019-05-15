@@ -21,7 +21,6 @@ module subroutine mech_none_init
   use config, only: &
     config_homogenization
 
-  implicit none
   integer :: &
     Ninstance, &
     h, &

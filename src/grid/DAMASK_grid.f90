@@ -9,69 +9,19 @@
 program DAMASK_spectral
 #include <petsc/finclude/petscsys.h>
  use PETScsys
- use prec, only: &
-   pInt, &
-   pLongInt, &
-   pReal, &
-   tol_math_check, &
-   dNeq
- use DAMASK_interface, only: &
-   DAMASK_interface_init, &
-   loadCaseFile, &
-   geometryFile, &
-   getSolverJobName, &
-   interface_restartInc
- use IO, only: &
-   IO_isBlank, &
-   IO_stringPos, &
-   IO_stringValue, &
-   IO_floatValue, &
-   IO_intValue, &
-   IO_error, &
-   IO_lc, &
-   IO_intOut, &
-   IO_warning
- use config, only: &
-   config_numerics
- use debug, only: &
-   debug_level, &
-   debug_spectral, &
-   debug_levelBasic
- use math                                                                                           ! need to include the whole module for FFTW
- use mesh, only: &
-   grid, &
-   geomSize
- use CPFEM2, only: &
-   CPFEM_initAll, &
-   CPFEM_results
- use FEsolving, only: &
-   restartWrite, &
-   restartInc
- use numerics, only: &
-   worldrank, &
-   worldsize, &
-   stagItMax, &
-   maxCutBack, &
-   continueCalculation
- use homogenization, only: &
-   materialpoint_sizeResults, &
-   materialpoint_results, &
-   materialpoint_postResults
- use material, only: &
-   thermal_type, &
-   damage_type, &
-   THERMAL_conduction_ID, &
-   DAMAGE_nonlocal_ID
- use spectral_utilities, only: &
-   utilities_init, &
-   tSolutionState, &
-   tLoadCase, &
-   cutBack, &
-   nActiveFields, &
-   FIELD_UNDEFINED_ID, &
-   FIELD_MECH_ID, &
-   FIELD_THERMAL_ID, &
-   FIELD_DAMAGE_ID
+ use prec
+ use DAMASK_interface
+ use IO
+ use config
+ use debug
+ use math
+ use mesh
+ use CPFEM2
+ use FEsolving
+ use numerics
+ use homogenization
+ use material
+ use spectral_utilities
  use grid_mech_spectral_basic
  use grid_mech_spectral_polarisation
  use grid_mech_FEM
@@ -86,11 +36,11 @@ program DAMASK_spectral
 ! variables related to information from load case and geom file
  real(pReal), dimension(9) :: temp_valueVector = 0.0_pReal                                          !< temporarily from loadcase file when reading in tensors (initialize to 0.0)
  logical,     dimension(9) :: temp_maskVector  = .false.                                            !< temporarily from loadcase file when reading in tensors
- integer(pInt), allocatable, dimension(:) :: chunkPos
- integer(pInt) :: &
-   N_t   = 0_pInt, &                                                                                !< # of time indicators found in load case file
-   N_n   = 0_pInt, &                                                                                !< # of increment specifiers found in load case file
-   N_def = 0_pInt                                                                                   !< # of rate of deformation specifiers found in load case file
+ integer, allocatable, dimension(:) :: chunkPos
+ integer :: &
+   N_t   = 0, &                                                                                     !< # of time indicators found in load case file
+   N_n   = 0, &                                                                                     !< # of increment specifiers found in load case file
+   N_def = 0                                                                                        !< # of rate of deformation specifiers found in load case file
  character(len=65536) :: &
    line
 
@@ -99,8 +49,8 @@ program DAMASK_spectral
  real(pReal), dimension(3,3), parameter :: &
    ones  = 1.0_pReal, &
    zeros = 0.0_pReal
- integer(pInt), parameter :: &
-   subStepFactor = 2_pInt                                                                           !< for each substep, divide the last time increment by 2.0
+ integer, parameter :: &
+   subStepFactor = 2                                                                                !< for each substep, divide the last time increment by 2.0
  real(pReal) :: &
    time = 0.0_pReal, &                                                                              !< elapsed time
    time0 = 0.0_pReal, &                                                                             !< begin of interval
@@ -110,21 +60,21 @@ program DAMASK_spectral
  logical :: &
    guess, &                                                                                         !< guess along former trajectory
    stagIterate
- integer(pInt) :: &
+ integer :: &
    i, j, k, l, field, &
-   errorID = 0_pInt, &
-   cutBackLevel = 0_pInt, &                                                                         !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
-   stepFraction = 0_pInt                                                                            !< fraction of current time interval
- integer(pInt) :: &
-   currentLoadcase = 0_pInt, &                                                                      !< current load case
+   errorID = 0, &
+   cutBackLevel = 0, &                                                                              !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
+   stepFraction = 0                                                                                 !< fraction of current time interval
+ integer :: &
+   currentLoadcase = 0, &                                                                           !< current load case
    inc, &                                                                                           !< current increment in current load case
-   totalIncsCounter = 0_pInt, &                                                                     !< total # of increments
-   convergedCounter = 0_pInt, &                                                                     !< # of converged increments
-   notConvergedCounter = 0_pInt, &                                                                  !< # of non-converged increments
-   fileUnit = 0_pInt, &                                                                             !< file unit for reading load case and writing results
+   totalIncsCounter = 0, &                                                                          !< total # of increments
+   convergedCounter = 0, &                                                                          !< # of converged increments
+   notConvergedCounter = 0, &                                                                       !< # of non-converged increments
+   fileUnit = 0, &                                                                                  !< file unit for reading load case and writing results
    myStat, &
-   statUnit = 0_pInt, &                                                                             !< file unit for statistics output
-   lastRestartWritten = 0_pInt, &                                                                   !< total increment # at which last restart information was written
+   statUnit = 0, &                                                                                  !< file unit for statistics output
+   lastRestartWritten = 0, &                                                                        !< total increment # at which last restart information was written
    stagIter
  character(len=6)  :: loadcase_string
  character(len=1024) :: &
@@ -134,8 +84,8 @@ program DAMASK_spectral
  type(tSolutionState), allocatable, dimension(:) :: solres
  integer(MPI_OFFSET_KIND) :: fileOffset
  integer(MPI_OFFSET_KIND), dimension(:), allocatable :: outputSize
- integer(pInt), parameter :: maxByteOut = 2147483647-4096                                           !< limit of one file output write https://trac.mpich.org/projects/mpich/ticket/1742
- integer(pInt), parameter :: maxRealOut = maxByteOut/pReal
+ integer, parameter :: maxByteOut = 2147483647-4096                                                !< limit of one file output write https://trac.mpich.org/projects/mpich/ticket/1742
+ integer, parameter :: maxRealOut = maxByteOut/pReal
  integer(pLongInt), dimension(2) :: outputIndex
  PetscErrorCode :: ierr
  procedure(grid_mech_spectral_basic_init), pointer :: &
@@ -174,20 +124,20 @@ program DAMASK_spectral
 
    case ('polarisation')
      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
-       call IO_warning(42_pInt, ext_msg='debug Divergence')
+       call IO_warning(42, ext_msg='debug Divergence')
      mech_init     => grid_mech_spectral_polarisation_init
      mech_forward  => grid_mech_spectral_polarisation_forward
      mech_solution => grid_mech_spectral_polarisation_solution
      
    case ('fem')
      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
-       call IO_warning(42_pInt, ext_msg='debug Divergence')
+       call IO_warning(42, ext_msg='debug Divergence')
      mech_init     => grid_mech_FEM_init
      mech_forward  => grid_mech_FEM_forward
      mech_solution => grid_mech_FEM_solution
 
    case default
-     call IO_error(error_ID = 891_pInt, ext_msg = config_numerics%getString('spectral_solver'))
+     call IO_error(error_ID = 891, ext_msg = config_numerics%getString('spectral_solver'))
 
  end select
 
@@ -195,27 +145,27 @@ program DAMASK_spectral
 ! reading information from load case file and to sanity checks 
  allocate (loadCases(0))                                                                            ! array of load cases
  open(newunit=fileunit,iostat=myStat,file=trim(loadCaseFile),action='read')
- if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=trim(loadCaseFile))
+ if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=trim(loadCaseFile))
  do
    read(fileUnit, '(A)', iostat=myStat) line
-   if ( myStat /= 0_pInt) exit
+   if ( myStat /= 0) exit
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
 
-   currentLoadCase = currentLoadCase + 1_pInt
+   currentLoadCase = currentLoadCase + 1
 
    chunkPos = IO_stringPos(line)
-   do i = 1_pInt, chunkPos(1)                                                                       ! reading compulsory parameters for loadcase
+   do i = 1, chunkPos(1)                                                                            ! reading compulsory parameters for loadcase
      select case (IO_lc(IO_stringValue(line,chunkPos,i)))
        case('l','velocitygrad','velgrad','velocitygradient','fdot','dotf','f')
-         N_def = N_def + 1_pInt
+         N_def = N_def + 1
        case('t','time','delta')
-         N_t = N_t + 1_pInt
+         N_t = N_t + 1
        case('n','incs','increments','steps','logincs','logincrements','logsteps')
-         N_n = N_n + 1_pInt
+         N_n = N_n + 1
      end select
    enddo
-   if ((N_def /= N_n) .or. (N_n /= N_t) .or. N_n < 1_pInt) &                                        ! sanity check
-     call IO_error(error_ID=837_pInt,el=currentLoadCase,ext_msg = trim(loadCaseFile))               ! error message for incomplete loadcase
+   if ((N_def /= N_n) .or. (N_n /= N_t) .or. N_n < 1) &                                             ! sanity check
+     call IO_error(error_ID=837,el=currentLoadCase,ext_msg = trim(loadCaseFile))                    ! error message for incomplete loadcase
 
    newLoadCase%stress%myType='stress'
    field = 1
@@ -229,7 +179,7 @@ program DAMASK_spectral
      newLoadCase%ID(field) = FIELD_DAMAGE_ID
    endif damageActive
 
-   readIn: do i = 1_pInt, chunkPos(1)
+   readIn: do i = 1, chunkPos(1)
      select case (IO_lc(IO_stringValue(line,chunkPos,i)))
        case('fdot','dotf','l','velocitygrad','velgrad','velocitygradient','f')                      ! assign values for the deformation BC matrix
          temp_valueVector = 0.0_pReal
@@ -241,7 +191,7 @@ program DAMASK_spectral
          else
            newLoadCase%deformation%myType = 'l'
          endif
-         do j = 1_pInt, 9_pInt
+         do j = 1, 9
            temp_maskVector(j) = IO_stringValue(line,chunkPos,i+j) /= '*'                            ! true if not a *
            if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)           ! read value where applicable
          enddo
@@ -250,7 +200,7 @@ program DAMASK_spectral
          newLoadCase%deformation%values      = math_9to33(temp_valueVector)                         ! values in 3x3 notation
        case('p','pk1','piolakirchhoff','stress', 's')
          temp_valueVector = 0.0_pReal
-         do j = 1_pInt, 9_pInt
+         do j = 1, 9
            temp_maskVector(j) = IO_stringValue(line,chunkPos,i+j) /= '*'                            ! true if not an asterisk
            if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)           ! read value where applicable
          enddo
@@ -258,54 +208,54 @@ program DAMASK_spectral
          newLoadCase%stress%maskFloat   = merge(ones,zeros,newLoadCase%stress%maskLogical)
          newLoadCase%stress%values      = math_9to33(temp_valueVector)
        case('t','time','delta')                                                                     ! increment time
-         newLoadCase%time = IO_floatValue(line,chunkPos,i+1_pInt)
+         newLoadCase%time = IO_floatValue(line,chunkPos,i+1)
        case('n','incs','increments','steps')                                                        ! number of increments
-         newLoadCase%incs = IO_intValue(line,chunkPos,i+1_pInt)
+         newLoadCase%incs = IO_intValue(line,chunkPos,i+1)
        case('logincs','logincrements','logsteps')                                                   ! number of increments (switch to log time scaling)
-         newLoadCase%incs = IO_intValue(line,chunkPos,i+1_pInt)
-         newLoadCase%logscale = 1_pInt
+         newLoadCase%incs = IO_intValue(line,chunkPos,i+1)
+         newLoadCase%logscale = 1
        case('freq','frequency','outputfreq')                                                        ! frequency of result writings
-         newLoadCase%outputfrequency = IO_intValue(line,chunkPos,i+1_pInt)
+         newLoadCase%outputfrequency = IO_intValue(line,chunkPos,i+1)
        case('r','restart','restartwrite')                                                           ! frequency of writing restart information
          newLoadCase%restartfrequency = &
-               max(0_pInt,IO_intValue(line,chunkPos,i+1_pInt))
+               max(0,IO_intValue(line,chunkPos,i+1))
        case('guessreset','dropguessing')
          newLoadCase%followFormerTrajectory = .false.                                               ! do not continue to predict deformation along former trajectory
        case('euler')                                                                                ! rotation of load case given in euler angles
          temp_valueVector = 0.0_pReal
-         l = 1_pInt                                                                                 ! assuming values given in degrees
-         k = 1_pInt                                                                                 ! assuming keyword indicating degree/radians present
-         select case (IO_lc(IO_stringValue(line,chunkPos,i+1_pInt)))
+         l = 1                                                                                      ! assuming values given in degrees
+         k = 1                                                                                      ! assuming keyword indicating degree/radians present
+         select case (IO_lc(IO_stringValue(line,chunkPos,i+1)))
            case('deg','degree')
            case('rad','radian')                                                                     ! don't convert from degree to radian
-             l = 0_pInt
+             l = 0
            case default
-             k = 0_pInt
+             k = 0
          end select
-         do j = 1_pInt, 3_pInt
+         do j = 1, 3
            temp_valueVector(j) = IO_floatValue(line,chunkPos,i+k+j)
          enddo
-         if (l == 1_pInt) temp_valueVector(1:3) = temp_valueVector(1:3) * inRad                     ! convert to rad
+         if (l == 1) temp_valueVector(1:3) = temp_valueVector(1:3) * INRAD                          ! convert to rad
          newLoadCase%rotation = math_EulerToR(temp_valueVector(1:3))                                ! convert rad Eulers to rotation matrix
        case('rotation','rot')                                                                       ! assign values for the rotation  matrix
          temp_valueVector = 0.0_pReal
-         do j = 1_pInt, 9_pInt
+         do j = 1, 9
            temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)
          enddo
          newLoadCase%rotation = math_9to33(temp_valueVector)
      end select
    enddo readIn
 
-   newLoadCase%followFormerTrajectory = merge(.true.,.false.,currentLoadCase > 1_pInt)              ! by default, guess from previous load case
+   newLoadCase%followFormerTrajectory = merge(.true.,.false.,currentLoadCase > 1)                   ! by default, guess from previous load case
 
    reportAndCheck: if (worldrank == 0) then
      write (loadcase_string, '(i6)' ) currentLoadCase
      write(6,'(/,1x,a,i6)') 'load case: ', currentLoadCase
      if (.not. newLoadCase%followFormerTrajectory) write(6,'(2x,a)') 'drop guessing along trajectory'
      if (newLoadCase%deformation%myType == 'l') then
-       do j = 1_pInt, 3_pInt
+       do j = 1, 3
          if (any(newLoadCase%deformation%maskLogical(j,1:3) .eqv. .true.) .and. &
-             any(newLoadCase%deformation%maskLogical(j,1:3) .eqv. .false.)) errorID = 832_pInt      ! each row should be either fully or not at all defined
+             any(newLoadCase%deformation%maskLogical(j,1:3) .eqv. .false.)) errorID = 832           ! each row should be either fully or not at all defined
        enddo
        write(6,'(2x,a)') 'velocity gradient:'
      else if (newLoadCase%deformation%myType == 'f') then
@@ -313,7 +263,7 @@ program DAMASK_spectral
      else
        write(6,'(2x,a)') 'deformation gradient rate:'
      endif
-     do i = 1_pInt, 3_pInt; do j = 1_pInt, 3_pInt
+     do i = 1, 3; do j = 1, 3
        if(newLoadCase%deformation%maskLogical(i,j)) then
          write(6,'(2x,f12.7)',advance='no') newLoadCase%deformation%values(i,j)
        else
@@ -322,13 +272,13 @@ program DAMASK_spectral
        enddo; write(6,'(/)',advance='no')
      enddo
      if (any(newLoadCase%stress%maskLogical .eqv. &
-             newLoadCase%deformation%maskLogical)) errorID = 831_pInt                               ! exclusive or masking only
+             newLoadCase%deformation%maskLogical)) errorID = 831                                    ! exclusive or masking only
      if (any(newLoadCase%stress%maskLogical .and. &
              transpose(newLoadCase%stress%maskLogical) .and. &
              reshape([ .false.,.true.,.true.,.true.,.false.,.true.,.true.,.true.,.false.],[ 3,3]))) &
-             errorID = 838_pInt                                                                     ! no rotation is allowed by stress BC
+             errorID = 838                                                                          ! no rotation is allowed by stress BC
      write(6,'(2x,a)') 'stress / GPa:'
-     do i = 1_pInt, 3_pInt; do j = 1_pInt, 3_pInt
+     do i = 1, 3; do j = 1, 3
        if(newLoadCase%stress%maskLogical(i,j)) then
          write(6,'(2x,f12.7)',advance='no') newLoadCase%stress%values(i,j)*1e-9_pReal
        else
@@ -340,18 +290,18 @@ program DAMASK_spectral
                 transpose(newLoadCase%rotation))-math_I3) > &
                 reshape(spread(tol_math_check,1,9),[ 3,3]))&
                 .or. abs(math_det33(newLoadCase%rotation)) > &
-                1.0_pReal + tol_math_check) errorID = 846_pInt                                      ! given rotation matrix contains strain
+                1.0_pReal + tol_math_check) errorID = 846                                           ! given rotation matrix contains strain
      if (any(dNeq(newLoadCase%rotation, math_I3))) &
        write(6,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'rotation of loadframe:',&
                 transpose(newLoadCase%rotation)
-     if (newLoadCase%time < 0.0_pReal) errorID = 834_pInt                                           ! negative time increment
+     if (newLoadCase%time < 0.0_pReal) errorID = 834                                                ! negative time increment
      write(6,'(2x,a,f12.6)') 'time:       ', newLoadCase%time
-     if (newLoadCase%incs < 1_pInt)    errorID = 835_pInt                                           ! non-positive incs count
+     if (newLoadCase%incs < 1)    errorID = 835                                                     ! non-positive incs count
      write(6,'(2x,a,i5)')  'increments: ', newLoadCase%incs
-     if (newLoadCase%outputfrequency < 1_pInt)  errorID = 836_pInt                                  ! non-positive result frequency
+     if (newLoadCase%outputfrequency < 1)  errorID = 836                                            ! non-positive result frequency
      write(6,'(2x,a,i5)')  'output  frequency:  ', newLoadCase%outputfrequency
      write(6,'(2x,a,i5)')  'restart frequency:  ', newLoadCase%restartfrequency
-     if (errorID > 0_pInt) call IO_error(error_ID = errorID, ext_msg = loadcase_string)             ! exit with error message
+     if (errorID > 0) call IO_error(error_ID = errorID, ext_msg = loadcase_string)                  ! exit with error message
    endif reportAndCheck
    loadCases = [loadCases,newLoadCase]                                                              ! load case is ok, append it
  enddo
@@ -383,7 +333,7 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! write header of output file
  if (worldrank == 0) then
-   writeHeader: if (interface_restartInc < 1_pInt) then
+   writeHeader: if (interface_restartInc < 1) then
      open(newunit=fileUnit,file=trim(getSolverJobName())//&
                                  '.spectralOut',form='UNFORMATTED',status='REPLACE')
      write(fileUnit) 'load:',       trim(loadCaseFile)                                               ! ... and write header
@@ -417,59 +367,59 @@ program DAMASK_spectral
  allocate(outputSize(worldsize), source = 0_MPI_OFFSET_KIND)
  outputSize(worldrank+1) = size(materialpoint_results,kind=MPI_OFFSET_KIND)*int(pReal,MPI_OFFSET_KIND)
  call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
- if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_allreduce')
+ if (ierr /= 0) call IO_error(error_ID=894, ext_msg='MPI_allreduce')
  call MPI_file_open(PETSC_COMM_WORLD, trim(getSolverJobName())//'.spectralOut', &
                     MPI_MODE_WRONLY + MPI_MODE_APPEND, &
                     MPI_INFO_NULL, &
                     fileUnit, &
                     ierr)
- if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_file_open')
- call MPI_file_get_position(fileUnit,fileOffset,ierr)                                                ! get offset from header
- if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_file_get_position')
+ if (ierr /= 0) call IO_error(error_ID=894, ext_msg='MPI_file_open')
+ call MPI_file_get_position(fileUnit,fileOffset,ierr)                                               ! get offset from header
+ if (ierr /= 0) call IO_error(error_ID=894, ext_msg='MPI_file_get_position')
  fileOffset = fileOffset + sum(outputSize(1:worldrank))                                             ! offset of my process in file (header + processes before me)
  call MPI_file_seek (fileUnit,fileOffset,MPI_SEEK_SET,ierr)
- if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_file_seek')
+ if (ierr /= 0) call IO_error(error_ID=894, ext_msg='MPI_file_seek')
 
- writeUndeformed: if (interface_restartInc < 1_pInt) then
+ writeUndeformed: if (interface_restartInc < 1) then
    write(6,'(1/,a)') ' ... writing initial configuration to file ........................'
-   call CPFEM_results(0_pInt,0.0_pReal)
+   call CPFEM_results(0,0.0_pReal)
    do i = 1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1         ! slice the output of my process in chunks not exceeding the limit for one output
-     outputIndex = int([(i-1_pInt)*((maxRealOut)/materialpoint_sizeResults)+1_pInt, &               ! QUESTION: why not starting i at 0 instead of murky 1?
+     outputIndex = int([(i-1)*((maxRealOut)/materialpoint_sizeResults)+1, &
                              min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
      call MPI_file_write(fileUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)), &
                                  [(outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)]), &
                          int((outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)), &
                          MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
-     if (ierr /= 0_pInt) call IO_error(error_ID=894_pInt, ext_msg='MPI_file_write')
+     if (ierr /= 0) call IO_error(error_ID=894, ext_msg='MPI_file_write')
    enddo
    fileOffset = fileOffset + sum(outputSize)                                                        ! forward to current file position
  endif writeUndeformed
 
 
- loadCaseLooping: do currentLoadCase = 1_pInt, size(loadCases)
+ loadCaseLooping: do currentLoadCase = 1, size(loadCases)
    time0 = time                                                                                     ! load case start time
    guess = loadCases(currentLoadCase)%followFormerTrajectory                                        ! change of load case? homogeneous guess for the first inc
 
-   incLooping: do inc = 1_pInt, loadCases(currentLoadCase)%incs
-     totalIncsCounter = totalIncsCounter + 1_pInt
+   incLooping: do inc = 1, loadCases(currentLoadCase)%incs
+     totalIncsCounter = totalIncsCounter + 1
 
 !--------------------------------------------------------------------------------------------------
 ! forwarding time
      timeIncOld = timeinc                                                                           ! last timeinc that brought former inc to an end
-     if (loadCases(currentLoadCase)%logscale == 0_pInt) then                                        ! linear scale
+     if (loadCases(currentLoadCase)%logscale == 0) then                                             ! linear scale
        timeinc = loadCases(currentLoadCase)%time/real(loadCases(currentLoadCase)%incs,pReal)
      else
-       if (currentLoadCase == 1_pInt) then                                                          ! 1st load case of logarithmic scale
-         if (inc == 1_pInt) then                                                                    ! 1st inc of 1st load case of logarithmic scale
-           timeinc = loadCases(1)%time*(2.0_pReal**real(    1_pInt-loadCases(1)%incs ,pReal))       ! assume 1st inc is equal to 2nd
+       if (currentLoadCase == 1) then                                                               ! 1st load case of logarithmic scale
+         if (inc == 1) then                                                                         ! 1st inc of 1st load case of logarithmic scale
+           timeinc = loadCases(1)%time*(2.0_pReal**real(    1-loadCases(1)%incs ,pReal))            ! assume 1st inc is equal to 2nd
          else                                                                                       ! not-1st inc of 1st load case of logarithmic scale
-           timeinc = loadCases(1)%time*(2.0_pReal**real(inc-1_pInt-loadCases(1)%incs ,pReal))
+           timeinc = loadCases(1)%time*(2.0_pReal**real(inc-1-loadCases(1)%incs ,pReal))
          endif
        else                                                                                         ! not-1st load case of logarithmic scale
          timeinc = time0 * &
               ( (1.0_pReal + loadCases(currentLoadCase)%time/time0 )**(real( inc         ,pReal)/&
                                                     real(loadCases(currentLoadCase)%incs ,pReal))&
-               -(1.0_pReal + loadCases(currentLoadCase)%time/time0 )**(real( inc-1_pInt  ,pReal)/&
+               -(1.0_pReal + loadCases(currentLoadCase)%time/time0 )**(real( inc-1  ,pReal)/&
                                                     real(loadCases(currentLoadCase)%incs ,pReal)))
        endif
      endif
@@ -479,12 +429,12 @@ program DAMASK_spectral
        time = time + timeinc                                                                        ! just advance time, skip already performed calculation
        guess = .true.                                                                               ! QUESTION:why forced guessing instead of inheriting loadcase preference
      else skipping
-       stepFraction = 0_pInt                                                                        ! fraction scaled by stepFactor**cutLevel
+       stepFraction = 0                                                                             ! fraction scaled by stepFactor**cutLevel
 
        subStepLooping: do while (stepFraction < subStepFactor**cutBackLevel)
          remainingLoadCaseTime = loadCases(currentLoadCase)%time+time0 - time
          time = time + timeinc                                                                      ! forward target time
-         stepFraction = stepFraction + 1_pInt                                                       ! count step
+         stepFraction = stepFraction + 1                                                            ! count step
 
 !--------------------------------------------------------------------------------------------------
 ! report begin of new step
@@ -524,7 +474,7 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! solve fields
-         stagIter = 0_pInt
+         stagIter = 0
          stagIterate = .true.
          do while (stagIterate)
            do field = 1, nActiveFields
@@ -546,7 +496,7 @@ program DAMASK_spectral
              if (.not. solres(field)%converged) exit                                                ! no solution found
 
            enddo
-           stagIter = stagIter + 1_pInt
+           stagIter = stagIter + 1
            stagIterate =            stagIter < stagItMax &
                         .and.       all(solres(:)%converged) &
                         .and. .not. all(solres(:)%stagConverged)                                    ! stationary with respect to staggered iteration
@@ -567,52 +517,52 @@ program DAMASK_spectral
            endif
          elseif (cutBackLevel < maxCutBack) then                                                    ! further cutbacking tolerated?
            cutBack = .true.
-           stepFraction = (stepFraction - 1_pInt) * subStepFactor                                   ! adjust to new denominator
-           cutBackLevel = cutBackLevel + 1_pInt
+           stepFraction = (stepFraction - 1) * subStepFactor                                        ! adjust to new denominator
+           cutBackLevel = cutBackLevel + 1
            time    = time - timeinc                                                                 ! rewind time
            timeinc = timeinc/real(subStepFactor,pReal)                                              ! cut timestep
            write(6,'(/,a)') ' cutting back '
          else                                                                                       ! no more options to continue
-           call IO_warning(850_pInt)
+           call IO_warning(850)
            call MPI_file_close(fileUnit,ierr)
            close(statUnit)
-           call quit(-1_pInt*(lastRestartWritten+1_pInt))                                           ! quit and provide information about last restart inc written
+           call quit(-1*(lastRestartWritten+1))                                                     ! quit and provide information about last restart inc written
          endif
 
        enddo subStepLooping
 
-       cutBackLevel = max(0_pInt, cutBackLevel - 1_pInt)                                            ! try half number of subincs next inc
+       cutBackLevel = max(0, cutBackLevel - 1)                                                      ! try half number of subincs next inc
 
        if (all(solres(:)%converged)) then
-         convergedCounter = convergedCounter + 1_pInt
+         convergedCounter = convergedCounter + 1
          write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                     ! report converged inc
                                    ' increment ', totalIncsCounter, ' converged'
        else
-         notConvergedCounter = notConvergedCounter + 1_pInt
+         notConvergedCounter = notConvergedCounter + 1
          write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                     ! report non-converged inc
                                    ' increment ', totalIncsCounter, ' NOT converged'
        endif; flush(6)
 
-       if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0_pInt) then                      ! at output frequency
+       if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0) then                           ! at output frequency
          write(6,'(1/,a)') ' ... writing results to file ......................................'
          flush(6)
          call materialpoint_postResults()
          call MPI_file_seek (fileUnit,fileOffset,MPI_SEEK_SET,ierr)
-         if (ierr /= 0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_seek')
+         if (ierr /= 0) call IO_error(894, ext_msg='MPI_file_seek')
          do i=1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1     ! slice the output of my process in chunks not exceeding the limit for one output
-           outputIndex=int([(i-1_pInt)*((maxRealOut)/materialpoint_sizeResults)+1_pInt, &
+           outputIndex=int([(i-1)*((maxRealOut)/materialpoint_sizeResults)+1, &
                       min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
            call MPI_file_write(fileUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)),&
                                        [(outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)]), &
                                int((outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)),&
                                MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
-           if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_file_write')
+           if(ierr /=0) call IO_error(894, ext_msg='MPI_file_write')
          enddo
          fileOffset = fileOffset + sum(outputSize)                                                  ! forward to current file position
          call CPFEM_results(totalIncsCounter,time)
        endif
-       if (              loadCases(currentLoadCase)%restartFrequency > 0_pInt &                     ! writing of restart info requested ...
-           .and. mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0_pInt) then               ! ... and at frequency of writing restart information
+       if (              loadCases(currentLoadCase)%restartFrequency > 0 &                          ! writing of restart info requested ...
+           .and. mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0) then                    ! ... and at frequency of writing restart information
          restartWrite = .true.                                                                      ! set restart parameter for FEsolving
          lastRestartWritten = inc                                                                   ! QUESTION: first call to CPFEM_general will write?
        endif
@@ -636,7 +586,7 @@ program DAMASK_spectral
  call MPI_file_close(fileUnit,ierr)
  close(statUnit)
 
- if (notConvergedCounter > 0_pInt) call quit(2_pInt)                                                ! error if some are not converged
- call quit(0_pInt)                                                                                  ! no complains ;)
+ if (notConvergedCounter > 0) call quit(2)                                                          ! error if some are not converged
+ call quit(0)                                                                                       ! no complains ;)
 
 end program DAMASK_spectral

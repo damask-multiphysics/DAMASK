@@ -6,13 +6,11 @@
 !! parts 'homogenization', 'crystallite', 'phase', 'texture', and 'microstucture'
 !--------------------------------------------------------------------------------------------------
 module config
-  use prec, only: &
-    pReal
-  use list, only: &
-    tPartitionedStringList
+  use prec
+  use list
 
   implicit none
-
+  private
   type(tPartitionedStringList), public, protected, allocatable, dimension(:) :: &
     config_phase, &
     config_microstructure, &
@@ -47,8 +45,6 @@ contains
 !> @brief reads material.config and stores its content per part
 !--------------------------------------------------------------------------------------------------
 subroutine config_init
-  use prec, only: &
-    pStringLen
   use DAMASK_interface, only: &
     getSolverJobName
   use IO, only: &
@@ -61,7 +57,6 @@ subroutine config_init
     debug_material, &
     debug_levelBasic
 
-  implicit none
   integer :: myDebug,i
 
   character(len=pStringLen) :: &
@@ -149,7 +144,6 @@ recursive function read_materialConfig(fileName,cnt) result(fileContent)
   use IO, only: &
     IO_warning
 
-  implicit none
   character(len=*),          intent(in)                :: fileName
   integer,                   intent(in), optional      :: cnt                                       !< recursion counter
   character(len=pStringLen), dimension(:), allocatable :: fileContent                               !< file content, separated per lines
@@ -231,12 +225,10 @@ end function read_materialConfig
 !--------------------------------------------------------------------------------------------------
 subroutine parse_materialConfig(sectionNames,part,line, &
                                 fileContent)
-  use prec, only: &
-    pStringLen
+
   use IO, only: &
     IO_intOut
 
-  implicit none
   character(len=64),            allocatable, dimension(:), intent(out)   :: sectionNames
   type(tPartitionedStringList), allocatable, dimension(:), intent(inout) :: part
   character(len=pStringLen),                               intent(inout) :: line
@@ -288,7 +280,7 @@ end subroutine parse_materialConfig
 !--------------------------------------------------------------------------------------------------
 subroutine parse_debugAndNumericsConfig(config_list, &
                                         fileContent)
-  implicit none
+
   type(tPartitionedStringList),              intent(out) :: config_list
   character(len=pStringLen),   dimension(:), intent(in)  :: fileContent
   integer :: i
@@ -309,7 +301,6 @@ subroutine config_deallocate(what)
   use IO, only: &
     IO_error
 
-  implicit none
   character(len=*), intent(in) :: what
 
   select case(trim(what))

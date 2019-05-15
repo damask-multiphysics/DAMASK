@@ -5,8 +5,7 @@
 !> @brief homogenization manager, organizing deformation partitioning and stress homogenization
 !--------------------------------------------------------------------------------------------------
 module homogenization
- use prec, only: &
-   pReal
+ use prec
  use material
 
 !--------------------------------------------------------------------------------------------------
@@ -113,7 +112,6 @@ subroutine homogenization_init
  use numerics, only: &
    worldrank
 
- implicit none
  integer, parameter :: FILEUNIT = 200
  integer :: e,i,p
  integer, dimension(:,:), pointer :: thisSize
@@ -351,7 +349,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    debug_i
 #endif
 
- implicit none
  real(pReal), intent(in) :: dt                                                                      !< time increment
  logical,     intent(in) :: updateJaco                                                              !< initiating Jacobian update
  integer :: &
@@ -653,7 +650,6 @@ subroutine materialpoint_postResults
    crystallite_sizePostResults, &
    crystallite_postResults
 
- implicit none
  integer :: &
    thePos, &
    theSize, &
@@ -709,7 +705,6 @@ subroutine partitionDeformation(ip,el)
  use homogenization_mech_RGC, only: &
    homogenization_RGC_partitionDeformation
 
- implicit none
  integer, intent(in) :: &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element number
@@ -754,7 +749,6 @@ function updateState(ip,el)
  use damage_local, only: &
    damage_local_updateState
 
- implicit none
  integer, intent(in) :: &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element number
@@ -807,7 +801,6 @@ subroutine averageStressAndItsTangent(ip,el)
  use homogenization_mech_RGC, only: &
    homogenization_RGC_averageStressAndItsTangent
 
- implicit none
  integer, intent(in) :: &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element number
@@ -855,7 +848,6 @@ function postResults(ip,el)
  use damage_nonlocal, only: &
    damage_nonlocal_postResults
 
- implicit none
  integer, intent(in) :: &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element number

@@ -7,8 +7,7 @@
 !> Nconstituents is defined as p x q x r (cluster)
 !--------------------------------------------------------------------------------------------------
 module homogenization_mech_RGC
- use prec, only: &
-   pReal
+ use prec
  use material
 
  implicit none
@@ -109,7 +108,6 @@ subroutine homogenization_RGC_init()
  use config, only: &
    config_homogenization
 
- implicit none
  integer :: &
    Ninstance, &
    h, i, &
@@ -251,7 +249,6 @@ subroutine homogenization_RGC_partitionDeformation(F,avgF,instance,of)
    debug_levelExtensive
 #endif
 
- implicit none
  real(pReal),   dimension (:,:,:), intent(out) :: F                                                 !< partioned F  per grain
  
  real(pReal),   dimension (:,:),   intent(in)  :: avgF                                              !< averaged F
@@ -302,8 +299,6 @@ end subroutine homogenization_RGC_partitionDeformation
 ! "happy" with result
 !--------------------------------------------------------------------------------------------------
 function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
- use prec, only: &
-   dEq0
 #ifdef DEBUG
  use debug, only: &
    debug_level, &
@@ -322,8 +317,6 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
    viscPower_RGC, &
    viscModus_RGC, &
    refRelaxRate_RGC
-
- implicit none
 
  real(pReal), dimension(:,:,:),     intent(in)    :: & 
    P,&                                                                                              !< array of P
@@ -747,8 +740,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
     math_civita
   use numerics, only: &
     xSmoo_RGC
-  
-  implicit none
+
   real(pReal),   dimension (:,:,:), intent(out) :: rPen                                             !< stress-like penalty
   real(pReal),   dimension (:,:),   intent(out) :: nMis                                             !< total amount of mismatch
   
@@ -868,7 +860,6 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
     volDiscrMod_RGC,&
     volDiscrPow_RGC
  
-  implicit none
   real(pReal), dimension (:,:,:), intent(out) :: vPen                                               ! stress-like penalty due to volume
   real(pReal),                    intent(out) :: vDiscrep                                           ! total volume discrepancy
   
@@ -919,7 +910,6 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
   use math, only: &
     math_invert33
   
-  implicit none
   real(pReal), dimension(3)               :: surfaceCorrection
 
   real(pReal), dimension(3,3), intent(in) :: avgF                                                    !< average F
@@ -953,7 +943,6 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
   use constitutive, only: &
     constitutive_homogenizedC
  
-  implicit none
   real(pReal), dimension(2)    :: equivalentModuli
 
   integer, intent(in)    :: &
@@ -989,7 +978,6 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  !--------------------------------------------------------------------------------------------------
  subroutine grainDeformation(F, avgF, instance, of)
   
-  implicit none
   real(pReal),   dimension(:,:,:), intent(out) :: F                                                  !< partioned F  per grain
  
   real(pReal),   dimension(:,:),   intent(in)  :: avgF                                               !< averaged F
@@ -1032,7 +1020,6 @@ end function homogenization_RGC_updateState
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,instance)
 
- implicit none
  real(pReal), dimension (3,3),        intent(out) :: avgP                                           !< average stress at material point
  real(pReal), dimension (3,3,3,3),    intent(out) :: dAvgPdAvgF                                     !< average stiffness at material point
 
@@ -1051,7 +1038,6 @@ end subroutine homogenization_RGC_averageStressAndItsTangent
 !--------------------------------------------------------------------------------------------------
 pure function homogenization_RGC_postResults(instance,of) result(postResults)
 
- implicit none
  integer, intent(in) :: &
    instance, &
    of
@@ -1148,7 +1134,6 @@ end subroutine mech_RGC_results
 !--------------------------------------------------------------------------------------------------
 pure function relaxationVector(intFace,instance,of)
 
- implicit none
  real(pReal), dimension (3)            :: relaxationVector
 
  integer,                   intent(in) :: instance,of
@@ -1176,7 +1161,6 @@ end function relaxationVector
 !--------------------------------------------------------------------------------------------------
 pure function interfaceNormal(intFace,instance,of)
  
- implicit none
  real(pReal), dimension(3)             :: interfaceNormal
 
  integer,     dimension(4), intent(in) :: intFace                                                   !< interface ID in 4D array (normal and position)
@@ -1202,7 +1186,6 @@ end function interfaceNormal
 !--------------------------------------------------------------------------------------------------
 pure function getInterface(iFace,iGrain3)
 
- implicit none
  integer, dimension(4)             :: getInterface
 
  integer, dimension(3), intent(in) :: iGrain3                                                       !< grain ID in 3D array
@@ -1227,7 +1210,6 @@ end function getInterface
 !--------------------------------------------------------------------------------------------------
 pure function grain1to3(grain1,nGDim)
  
- implicit none
  integer, dimension(3)             :: grain1to3
 
  integer,               intent(in) :: grain1                                                        !< grain ID in 1D array
@@ -1245,7 +1227,6 @@ end function grain1to3
 !--------------------------------------------------------------------------------------------------
 integer pure function grain3to1(grain3,nGDim)
 
- implicit none
  integer, dimension(3), intent(in) :: grain3                                                        !< grain ID in 3D array (pos.x,pos.y,pos.z)
  integer, dimension(3), intent(in) :: nGDim
 
@@ -1261,7 +1242,6 @@ end function grain3to1
 !--------------------------------------------------------------------------------------------------
 integer pure function interface4to1(iFace4D, nGDim)
  
- implicit none
  integer, dimension(4), intent(in) :: iFace4D                                                       !< interface ID in 4D array (n.dir,pos.x,pos.y,pos.z)
  integer, dimension(3), intent(in) :: nGDim
 
@@ -1308,7 +1288,6 @@ end function interface4to1
 !--------------------------------------------------------------------------------------------------
 pure function interface1to4(iFace1D, nGDim)
  
- implicit none
  integer, dimension(4)             :: interface1to4
 
  integer,               intent(in) :: iFace1D                                                       !< interface ID in 1D array

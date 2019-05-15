@@ -4,9 +4,7 @@
 !> @brief Managing of parameters related to numerics
 !--------------------------------------------------------------------------------------------------
 module numerics
- use prec, only: &
-   pInt, &
-   pReal
+ use prec
 
  implicit none
  private
@@ -115,8 +113,6 @@ contains
 ! a sanity check
 !--------------------------------------------------------------------------------------------------
 subroutine numerics_init
- use prec, only: &
-   pStringLen
  use IO, only: &
    IO_read_ASCII, &
    IO_error, &
@@ -132,7 +128,6 @@ subroutine numerics_init
    use petscsys
 #endif
 !$ use OMP_LIB, only: omp_set_num_threads
- implicit none
 !$ integer ::                                gotDAMASK_NUM_THREADS = 1
  integer :: i,j, ierr                                                                                 ! no pInt
  integer(pInt), allocatable, dimension(:) :: chunkPos

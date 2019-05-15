@@ -3,8 +3,7 @@
 !> @author Christoph Koords, Max-Planck-Institut für Eisenforschung GmbH
 !--------------------------------------------------------------------------------------------------
 module element
-  use prec, only: &
-    pReal
+  use prec
  
   implicit none
   private 
@@ -802,7 +801,6 @@ module element
    use IO, only: &
      IO_error
 
-   implicit none
    class(tElement) :: self
    integer, intent(in) :: elemType
    self%elemType = elemType
