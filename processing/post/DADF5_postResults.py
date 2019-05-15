@@ -53,9 +53,6 @@ for filename in options.filenames:
     
     data = np.array([inc['inc'] for j in range(np.product(results.grid))]).reshape([np.product(results.grid),1])
     header+= 'inc'
-    
-    data = np.concatenate((data,np.array([j+1 for j in range(np.product(results.grid))]).reshape([np.product(results.grid),1])),1)
-    header+=' node'
 
     coords = coords.reshape([np.product(results.grid),3])
     data = np.concatenate((data,coords),1)
