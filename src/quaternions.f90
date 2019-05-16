@@ -34,8 +34,7 @@
 !> @details  w is the real part, (x, y, z) are the imaginary parts.
 !---------------------------------------------------------------------------------------------------
 module quaternions
- use prec, only: &
-   pReal
+ use prec
  use future
 
  implicit none
@@ -286,8 +285,6 @@ end function div_scal__
 !> equality of two quaternions
 !---------------------------------------------------------------------------------------------------
 logical elemental function eq__(self,other)
- use prec, only: &
-   dEq
 
  class(quaternion), intent(in) :: self,other
 

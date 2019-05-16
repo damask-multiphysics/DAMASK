@@ -5,6 +5,8 @@
 !> @brief Dummy plasticity for purely elastic material
 !--------------------------------------------------------------------------------------------------
 module plastic_none
+ use material
+ use debug
 
  implicit none
  private
@@ -19,11 +21,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_none_init
- use debug, only: &
-   debug_level, &
-   debug_constitutive, &
-   debug_levelBasic
- use material
 
  integer :: &
    Ninstance, &

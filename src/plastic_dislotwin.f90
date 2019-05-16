@@ -8,17 +8,26 @@
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
 module plastic_dislotwin
- use prec, only: &
-   pReal
+  use prec
+  use debug
+  use math
+  use IO
+  use material
+  use config
+  use lattice
+#if defined(PETSc) || defined(DAMASK_HDF5)
+  use results
+#endif
 
  implicit none
  private
+ 
  integer,                       dimension(:,:),  allocatable, target, public :: &
    plastic_dislotwin_sizePostResult                                                                 !< size of each post result output
  character(len=64),             dimension(:,:),  allocatable, target, public :: &
    plastic_dislotwin_output                                                                         !< name of each post result output
 
- real(pReal),                                    parameter,           private :: &
+ real(pReal),                                    parameter :: &
    kB = 1.38e-23_pReal                                                                              !< Boltzmann constant in J/Kelvin
 
  enum, bind(c)
@@ -39,7 +48,7 @@ module plastic_dislotwin
      f_tr_ID
  end enum
 
- type, private :: tParameters
+ type :: tParameters
    real(pReal) :: &
      mu, &
      nu, &
@@ -119,7 +128,7 @@ module plastic_dislotwin
      dipoleFormation                                                                                !< flag indicating consideration of dipole formation
  end type                                                                                           !< container type for internal constitutive parameters
 
- type, private :: tDislotwinState
+ type :: tDislotwinState
    real(pReal),                  dimension(:,:),   pointer :: &
      rho_mob, &
      rho_dip, &
@@ -128,7 +137,7 @@ module plastic_dislotwin
      f_tr
  end type tDislotwinState
 
- type, private :: tDislotwinMicrostructure
+ type :: tDislotwinMicrostructure
    real(pReal),                  dimension(:,:),   allocatable :: &
      Lambda_sl, & !* mean free path between 2 obstacles seen by a moving dislocation
      Lambda_tw, &  !* mean free path between 2 obstacles seen by a growing twin
@@ -144,11 +153,11 @@ module plastic_dislotwin
 
 !--------------------------------------------------------------------------------------------------
 ! containers for parameters and state
- type(tParameters),              allocatable, dimension(:), private :: param
- type(tDislotwinState),          allocatable, dimension(:), private :: &
+ type(tParameters),              allocatable, dimension(:) :: param
+ type(tDislotwinState),          allocatable, dimension(:) :: &
    dotState, &
    state
- type(tDislotwinMicrostructure), allocatable, dimension(:), private :: dependentState
+ type(tDislotwinMicrostructure), allocatable, dimension(:) :: dependentState
 
  public :: &
    plastic_dislotwin_init, &
@@ -158,10 +167,6 @@ module plastic_dislotwin
    plastic_dislotwin_dotState, &
    plastic_dislotwin_postResults, &
    plastic_dislotwin_results
- private :: &
-   kinetics_slip, &
-   kinetics_twin, &
-   kinetics_trans
 
 contains
 
@@ -171,24 +176,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_dislotwin_init
- use prec, only: &
-   pStringLen, &
-   dEq0, &
-   dNeq0, &
-   dNeq
- use debug, only: &
-   debug_level,&
-   debug_constitutive,&
-   debug_levelBasic
- use math, only: &
-   math_expand,&
-   PI
- use IO, only: &
-   IO_error
- use material
- use config, only: &
-   config_phase
- use lattice
 
  integer :: &
    Ninstance, &
@@ -591,10 +578,6 @@ end subroutine plastic_dislotwin_init
 !> @brief returns the homogenized elasticity matrix
 !--------------------------------------------------------------------------------------------------
 function plastic_dislotwin_homogenizedC(ipc,ip,el) result(homogenizedC)
- use material, only: &
-  material_phase, &
-  phase_plasticityInstance, &
-  phasememberAt
  
  real(pReal), dimension(6,6) :: &
    homogenizedC
@@ -634,14 +617,6 @@ end function plastic_dislotwin_homogenizedC
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
- use prec, only: &
-   tol_math_check, &
-   dNeq0
- use math, only: &
-   math_eigenValuesVectorsSym, &
-   math_outer, &
-   math_symmetric33, &
-   math_mul33xx33
  
  real(pReal), dimension(3,3),     intent(out) :: Lp
  real(pReal), dimension(3,3,3,3), intent(out) :: dLp_dMp
@@ -757,13 +732,6 @@ end subroutine plastic_dislotwin_LpAndItsTangent
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
- use prec, only: &
-   tol_math_check, &
-   dEq0
- use math, only: &
-   math_clip, &
-   math_mul33xx33, &
-   PI 
 
  real(pReal), dimension(3,3),  intent(in):: &
    Mp                                                                                               !< Mandel stress
@@ -854,8 +822,6 @@ end subroutine plastic_dislotwin_dotState
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_dislotwin_dependentState(T,instance,of)
- use math, only: &
-   PI
 
  integer,       intent(in) :: &
    instance, &
@@ -868,13 +834,13 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
  real(pReal) :: &
    sumf_twin,SFE,sumf_trans
  real(pReal), dimension(param(instance)%sum_N_sl) :: &
-   inv_lambda_sl_sl, & !* 1/mean free distance between 2 forest dislocations seen by a moving dislocation
-   inv_lambda_sl_tw, & !* 1/mean free distance between 2 twin stacks from different systems seen by a moving dislocation
-   inv_lambda_sl_tr    !* 1/mean free distance between 2 martensite lamellar from different systems seen by a moving dislocation
+   inv_lambda_sl_sl, & !< 1/mean free distance between 2 forest dislocations seen by a moving dislocation
+   inv_lambda_sl_tw, & !< 1/mean free distance between 2 twin stacks from different systems seen by a moving dislocation
+   inv_lambda_sl_tr    !< 1/mean free distance between 2 martensite lamellar from different systems seen by a moving dislocation
  real(pReal), dimension(param(instance)%sum_N_tw) :: &
-   inv_lambda_tw_tw  !* 1/mean free distance between 2 twin stacks from different systems seen by a growing twin
+   inv_lambda_tw_tw    !< 1/mean free distance between 2 twin stacks from different systems seen by a growing twin
   real(pReal), dimension(param(instance)%sum_N_tr) :: &
-   inv_lambda_tr_tr  !* 1/mean free distance between 2 martensite stacks from different systems seen by a growing martensite (1/lambda_trans)
+   inv_lambda_tr_tr    !< 1/mean free distance between 2 martensite stacks from different systems seen by a growing martensite
 
  real(pReal), dimension(:), allocatable :: &
    x0, &
@@ -967,12 +933,6 @@ end subroutine plastic_dislotwin_dependentState
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
 function plastic_dislotwin_postResults(Mp,T,instance,of) result(postResults)
- use prec, only: &
-   tol_math_check, &
-   dEq0
- use math, only: &
-   PI, &
-   math_mul33xx33
 
  real(pReal), dimension(3,3),intent(in) :: &
    Mp                                                                                               !< 2nd Piola Kirchhoff stress tensor in Mandel notation
@@ -1050,8 +1010,6 @@ end function plastic_dislotwin_postResults
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_dislotwin_results(instance,group)
 #if defined(PETSc) || defined(DAMASK_HDF5)
-  use results, only: &
-    results_writeDataset
 
   integer, intent(in) :: instance
   character(len=*) :: group
@@ -1112,11 +1070,6 @@ end subroutine plastic_dislotwin_results
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_slip(Mp,T,instance,of, &
                               dot_gamma_sl,ddot_gamma_dtau_slip,tau_slip)
- use prec, only: &
-  tol_math_check, &
-  dNeq0
- use math, only: &
-   math_mul33xx33
 
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
@@ -1190,11 +1143,6 @@ end subroutine kinetics_slip
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_twin(Mp,T,dot_gamma_sl,instance,of,&
                               dot_gamma_twin,ddot_gamma_dtau_twin)
- use prec, only: &
-   tol_math_check, &
-   dNeq0
- use math, only: &
-   math_mul33xx33
 
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
@@ -1261,11 +1209,6 @@ end subroutine kinetics_twin
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,instance,of,&
                               dot_gamma_tr,ddot_gamma_dtau_trans)
- use prec, only: &
-   tol_math_check, &
-   dNeq0
- use math, only: &
-   math_mul33xx33
 
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress

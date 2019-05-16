@@ -9,36 +9,43 @@
 !--------------------------------------------------------------------------------------------------
 
 module crystallite
-  use prec, only: &
-    pReal, &
-    pStringLen
-  use rotations, only: &
-    rotation
-  use FEsolving, only:  &
-    FEsolving_execElem, &
-    FEsolving_execIP
-  use material, only: &
-    homogenization_Ngrains
+  use prec
+  use IO
+  use config
+  use debug
+  use numerics
+  use rotations
+  use math
+  use mesh
+  use FEsolving
+  use material
+  use constitutive
+  use lattice
   use future
+  use plastic_nonlocal
+#if defined(PETSc) || defined(DAMASK_HDF5)
+  use HDF5_utilities
+  use results
+#endif
  
   implicit none 
   private
-  character(len=64),         dimension(:,:),          allocatable, private :: &
+  character(len=64),         dimension(:,:),          allocatable :: &
     crystallite_output                                                                              !< name of each post result output
   integer,                                                         public, protected :: &
     crystallite_maxSizePostResults                                                                  !< description not available
   integer,                   dimension(:),            allocatable, public, protected :: &
     crystallite_sizePostResults                                                                     !< description not available
-  integer,                   dimension(:,:),          allocatable, private :: &
+  integer,                   dimension(:,:),          allocatable :: &
     crystallite_sizePostResult                                                                      !< description not available
  
   real(pReal),               dimension(:,:,:),        allocatable, public :: &
     crystallite_dt                                                                                  !< requested time increment of each grain
-  real(pReal),               dimension(:,:,:),        allocatable, private :: &
+  real(pReal),               dimension(:,:,:),        allocatable :: &
     crystallite_subdt, &                                                                            !< substepped time increment of each grain
     crystallite_subFrac, &                                                                          !< already calculated fraction of increment
     crystallite_subStep                                                                             !< size of next integration step
-  type(rotation),            dimension(:,:,:),        allocatable, private :: &
+  type(rotation),            dimension(:,:,:),        allocatable :: &
     crystallite_orientation, &                                                                      !< orientation 
     crystallite_orientation0                                                                        !< initial orientation
   real(pReal),               dimension(:,:,:,:,:),    allocatable, public, protected :: &
@@ -63,7 +70,7 @@ module crystallite
     crystallite_Li, &                                                                               !< current intermediate velocitiy grad (end of converged time step)
     crystallite_Li0, &                                                                              !< intermediate velocitiy grad at start of FE inc
     crystallite_partionedLi0                                                                        !< intermediate velocity grad at start of homog inc
-  real(pReal),                dimension(:,:,:,:,:),    allocatable, private :: &
+  real(pReal),                dimension(:,:,:,:,:),    allocatable :: &
     crystallite_subS0, &                                                                            !< 2nd Piola-Kirchhoff stress vector at start of crystallite inc
     crystallite_invFp, &                                                                            !< inverse of current plastic def grad (end of converged time step)
     crystallite_subFp0,&                                                                            !< plastic def grad at start of crystallite inc
@@ -77,7 +84,7 @@ module crystallite
     crystallite_dPdF                                                                                !< current individual dPdF per grain (end of converged time step)
   logical,                    dimension(:,:,:),         allocatable, public :: &
     crystallite_requested                                                                           !< used by upper level (homogenization) to request crystallite calculation
-  logical,                    dimension(:,:,:),         allocatable, private :: &
+  logical,                    dimension(:,:,:),         allocatable :: &
     crystallite_converged, &                                                                        !< convergence flag
     crystallite_todo, &                                                                             !< flag to indicate need for further computation
     crystallite_localPlasticity                                                                     !< indicates this grain to have purely local constitutive law
@@ -101,16 +108,16 @@ module crystallite
                   neighboringip_ID, &
                   neighboringelement_ID
   end enum
-  integer(kind(undefined_ID)),dimension(:,:),   allocatable,          private :: &
+  integer(kind(undefined_ID)),dimension(:,:),   allocatable :: &
     crystallite_outputID                                                                            !< ID of each post result output
     
-  type, private :: tOutput                                                                          !< new requested output (per phase)
+  type :: tOutput                                                                                   !< new requested output (per phase)
     character(len=65536), allocatable, dimension(:) :: &
       label
   end type tOutput
-  type(tOutput), allocatable, dimension(:), private :: output_constituent
+  type(tOutput), allocatable, dimension(:) :: output_constituent
   
-  type, private :: tNumerics
+  type :: tNumerics
     integer :: &
       iJacoLpresiduum, &                                                                            !< frequency of Jacobian update of residuum in Lp
       nState, &                                                                                     !< state loop limit
@@ -138,15 +145,6 @@ module crystallite
     crystallite_push33ToRef, &
     crystallite_postResults, &
     crystallite_results
-  private :: &
-    integrateStress, &
-    integrateState, &
-    integrateStateFPI, &
-    integrateStateEuler, &
-    integrateStateAdaptiveEuler, &
-    integrateStateRK4, &
-    integrateStateRKCK45, &
-    stateJump
 
 contains
 
@@ -155,39 +153,6 @@ contains
 !> @brief allocates and initialize per grain variables
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_init
-#ifdef DEBUG
-  use debug, only: &
-    debug_info, &
-    debug_reset, &
-    debug_level, &
-    debug_crystallite, &
-    debug_levelBasic
-#endif
-  use numerics, only: &
-    numerics_integrator, &
-    worldrank, &
-    usePingPong
-  use math, only: &
-    math_I3, &
-    math_EulerToR, &
-    math_inv33
-  use mesh, only: &
-    theMesh, &
-    mesh_element
-  use IO, only: &
-    IO_stringValue, &
-    IO_write_jobFile, &
-    IO_error
-  use material
-  use config, only: &
-   config_deallocate, &
-   config_crystallite, &
-   config_numerics, &
-   config_phase, &
-   crystallite_name
-  use constitutive, only: &
-    constitutive_initialFi, &
-    constitutive_microstructure                                                                     ! derived (shortcut) quantities of given state
  
   integer, parameter :: FILEUNIT=434
   logical, dimension(:,:), allocatable :: devNull
@@ -478,34 +443,6 @@ end subroutine crystallite_init
 !> @brief calculate stress (P)
 !--------------------------------------------------------------------------------------------------
 function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
-  use prec, only: &
-    tol_math_check, &
-    dNeq0
-#ifdef DEBUG
-  use debug, only: &
-    debug_level, &
-    debug_crystallite, &
-    debug_levelBasic, &
-    debug_levelExtensive, &
-    debug_levelSelective, &
-    debug_e, &
-    debug_i, &
-    debug_g
-#endif
-  use IO, only: &
-    IO_warning, &
-    IO_error
-  use math, only: &
-    math_inv33
-  use mesh, only: &
-    theMesh, &
-    mesh_element
-  use material, only: &
-    homogenization_Ngrains, &
-    plasticState, &
-    sourceState, &
-    phase_Nsources, &
-    phaseAt, phasememberAt
  
   logical, dimension(theMesh%elem%nIPs,theMesh%Nelems) :: crystallite_stress
   real(pReal), intent(in), optional :: &
@@ -746,30 +683,6 @@ end function crystallite_stress
 !> @brief calculate tangent (dPdF)
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_stressTangent
-  use prec, only: &
-    tol_math_check, &
-    dNeq0
-  use IO, only: &
-    IO_warning, &
-    IO_error
-  use math, only: &
-    math_inv33, &
-    math_identity2nd, &
-    math_3333to99, &
-    math_99to3333, &
-    math_I3, &
-    math_mul3333xx3333, &
-    math_mul33xx33, &
-    math_invert2, &
-    math_det33
-  use mesh, only: &
-    mesh_element
-  use material, only: &
-    homogenization_Ngrains
-  use constitutive, only:  &
-    constitutive_SandItsTangents, &
-    constitutive_LpAndItsTangents, &
-    constitutive_LiAndItsTangents
 
   integer :: &
     c, &                                                                                            !< counter in integration point component loop
@@ -910,19 +823,6 @@ end subroutine crystallite_stressTangent
 !> @brief calculates orientations
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_orientations
-  use math, only: &
-    math_rotationalPart33, &
-    math_RtoQ
-  use material, only: &
-    plasticState, &
-    material_phase, &
-    homogenization_Ngrains
-  use mesh, only: &
-    mesh_element
-  use lattice, only: &
-    lattice_qDisorientation
-  use plastic_nonlocal, only: &
-    plastic_nonlocal_updateCompatibility
  
   integer &
     c, &                                                                                            !< counter in integration point component loop
@@ -979,28 +879,6 @@ end function crystallite_push33ToRef
 !> @brief return results of particular grain
 !--------------------------------------------------------------------------------------------------
 function crystallite_postResults(ipc, ip, el)
- use math, only: &
-   math_det33, &
-   math_I3, &
-   inDeg
- use mesh, only: &
-   theMesh, &
-   mesh_element, &
-   mesh_ipVolume, &
-   mesh_ipNeighborhood
- use material, only: &
-   plasticState, &
-   sourceState, &
-   microstructure_crystallite, &
-   crystallite_Noutput, &
-   material_phase, &
-   material_texture, &
-   homogenization_Ngrains
- use constitutive, only: &
-   constitutive_homogenizedC, &
-   constitutive_postResults
- use rotations, only: &
-   rotation
 
  integer, intent(in):: &
    el, &                         !< element index
@@ -1118,10 +996,6 @@ end function crystallite_postResults
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_results
 #if defined(PETSc) || defined(DAMASK_HDF5)
-  use lattice
-  use results
-  use HDF5_utilities
-  use rotations
   use config, only: &
     config_name_phase => phase_name                                                                  ! anticipate logical name
    
@@ -1264,33 +1138,6 @@ end subroutine crystallite_results
 !> intermediate acceleration of the Newton-Raphson correction
 !--------------------------------------------------------------------------------------------------
 logical function integrateStress(ipc,ip,el,timeFraction)
-  use, intrinsic :: &
-    IEEE_arithmetic
-  use prec, only:         tol_math_check, &
-                          dEq0
-#ifdef DEBUG
-  use debug, only:        debug_level, &
-                          debug_e, &
-                          debug_i, &
-                          debug_g, &
-                          debug_crystallite, &
-                          debug_levelBasic, &
-                          debug_levelExtensive, &
-                          debug_levelSelective
-#endif
-
-  use constitutive, only: constitutive_LpAndItsTangents, &
-                          constitutive_LiAndItsTangents, &
-                          constitutive_SandItsTangents
-  use math, only:         math_mul33xx33, &
-                          math_mul3333xx3333, &
-                          math_inv33, &
-                          math_det33, &
-                          math_I3, &
-                          math_identity2nd, &
-                          math_3333to99, &
-                          math_33to9, &
-                          math_9to33
  
   integer, intent(in)::         el, &                                                               ! element index
                                       ip, &                                                         ! integration point index
@@ -1690,27 +1537,6 @@ end function integrateStress
 !> using Fixed Point Iteration to adapt the stepsize
 !--------------------------------------------------------------------------------------------------
 subroutine integrateStateFPI
-#ifdef DEBUG
- use debug, only:        debug_level, &
-                         debug_e, &
-                         debug_i, &
-                         debug_g, &
-                         debug_crystallite, &
-                         debug_levelBasic, &
-                         debug_levelExtensive, &
-                         debug_levelSelective
-#endif
- use mesh, only: &
-   mesh_element
- use material, only: &
-   plasticState, &
-   sourceState, &
-   phaseAt, phasememberAt, &
-   phase_Nsources, &
-   homogenization_Ngrains
- use constitutive, only: &
-   constitutive_plasticity_maxSizeDotState, &
-   constitutive_source_maxSizeDotState
 
  integer :: &
    NiterationState, &                                                                               !< number of iterations in state loop
@@ -1898,8 +1724,6 @@ end subroutine integrateStateFPI
 !> @brief integrate state with 1st order explicit Euler method
 !--------------------------------------------------------------------------------------------------
 subroutine integrateStateEuler
- use material, only: &
-   plasticState
 
  call update_dotState(1.0_pReal)
  call update_state(1.0_pReal)
@@ -1916,19 +1740,6 @@ end subroutine integrateStateEuler
 !> @brief integrate stress, state with 1st order Euler method with adaptive step size
 !--------------------------------------------------------------------------------------------------
 subroutine integrateStateAdaptiveEuler
- use mesh, only: &
-   theMesh, &
-   mesh_element
- use material, only: &
-   homogenization_Ngrains, &
-   plasticState, &
-   sourceState, &
-   phaseAt, phasememberAt, &
-   phase_Nsources, &
-   homogenization_maxNgrains
- use constitutive, only: &
-   constitutive_plasticity_maxSizeDotState, &
-   constitutive_source_maxSizeDotState
 
  integer :: &
    e, &                                                                                             ! element index in element loop
@@ -2022,14 +1833,6 @@ end subroutine integrateStateAdaptiveEuler
 ! ToDo: This is totally BROKEN: RK4dotState is never used!!!
 !--------------------------------------------------------------------------------------------------
 subroutine integrateStateRK4
- use mesh, only: &
-   mesh_element
- use material, only: &
-   homogenization_Ngrains, &
-   plasticState, &
-   sourceState, &
-   phase_Nsources, &
-   phaseAt, phasememberAt
 
  real(pReal), dimension(4), parameter :: &
    TIMESTEPFRACTION = [0.5_pReal, 0.5_pReal, 1.0_pReal, 1.0_pReal]                                   ! factor giving the fraction of the original timestep used for Runge Kutta Integration
@@ -2089,19 +1892,6 @@ end subroutine integrateStateRK4
 !> adaptive step size  (use 5th order solution to advance = "local extrapolation")
 !--------------------------------------------------------------------------------------------------
 subroutine integrateStateRKCK45
- use mesh, only: &
-   mesh_element, &
-   theMesh
- use material, only: &
-   homogenization_Ngrains, &
-   plasticState, &
-   sourceState, &
-   phase_Nsources, &
-   phaseAt, phasememberAt, &
-   homogenization_maxNgrains
- use constitutive, only: &
-   constitutive_plasticity_maxSizeDotState, &
-   constitutive_source_maxSizeDotState
 
  real(pReal), dimension(5,5), parameter :: &
    A = reshape([&
@@ -2284,8 +2074,6 @@ end subroutine nonlocalConvergenceCheck
 !> @details: For explicitEuler, RK4 and RKCK45, adaptive Euler and FPI have their on criteria
 !--------------------------------------------------------------------------------------------------
 subroutine setConvergenceFlag
- use mesh, only: &
-   mesh_element
 
  integer :: &
    e, &                                                                                             !< element index in element loop
@@ -2324,8 +2112,6 @@ end subroutine setConvergenceFlag
 !> @brief Standard forwarding of state as state = state0 + dotState * (delta t)
 !--------------------------------------------------------------------------------------------------
 subroutine update_stress(timeFraction)
- use mesh, only: &
-   mesh_element
 
  real(pReal), intent(in) :: &
    timeFraction
@@ -2357,8 +2143,6 @@ end subroutine update_stress
 !> @brief tbd
 !--------------------------------------------------------------------------------------------------
 subroutine update_dependentState
- use mesh, only: &
-   mesh_element
  use constitutive, only: &
    constitutive_dependentState => constitutive_microstructure
 
@@ -2384,13 +2168,6 @@ end subroutine update_dependentState
 !> @brief Standard forwarding of state as state = state0 + dotState * (delta t)
 !--------------------------------------------------------------------------------------------------
 subroutine update_state(timeFraction)
- use material, only: &
-   plasticState, &
-   sourceState, &
-   phase_Nsources, &
-   phaseAt, phasememberAt
- use mesh, only: &
-   mesh_element
 
  real(pReal), intent(in) :: &
    timeFraction
@@ -2432,17 +2209,6 @@ end subroutine update_state
 !> if NaN occurs, crystallite_todo is set to FALSE. Any NaN in a nonlocal propagates to all others
 !--------------------------------------------------------------------------------------------------
 subroutine update_dotState(timeFraction)
- use, intrinsic :: &
-   IEEE_arithmetic
- use material, only: &
-   plasticState, &
-   sourceState, &
-   phaseAt, phasememberAt, &
-   phase_Nsources
- use mesh, only: &
-   mesh_element
- use constitutive, only: &
-   constitutive_collectDotState
 
  real(pReal), intent(in) :: &
    timeFraction
@@ -2489,19 +2255,7 @@ end subroutine update_DotState
 
 
 subroutine update_deltaState
- use, intrinsic :: &
-   IEEE_arithmetic
- use prec, only: &
-   dNeq0
- use mesh, only: &
-   mesh_element
- use material, only: &
-   plasticState, &
-   sourceState, &
-   phase_Nsources, &
-   phaseAt, phasememberAt
- use constitutive, only: &
-   constitutive_collectDeltaState
+
  integer :: &
    e, &                                                                                             !< element index in element loop
    i, &                                                                                             !< integration point index in ip loop
@@ -2566,27 +2320,6 @@ end subroutine update_deltaState
 !> returns true, if state jump was successfull or not needed. false indicates NaN in delta state
 !--------------------------------------------------------------------------------------------------
 logical function stateJump(ipc,ip,el)
- use, intrinsic :: &
-   IEEE_arithmetic
- use prec, only: &
-   dNeq0
-#ifdef DEBUG
- use debug, only: &
-   debug_e, &
-   debug_i, &
-   debug_g, &
-   debug_level, &
-   debug_crystallite, &
-   debug_levelExtensive, &
-   debug_levelSelective
-#endif
- use material, only: &
-   plasticState, &
-   sourceState, &
-   phase_Nsources, &
-   phaseAt, phasememberAt
- use constitutive, only: &
-   constitutive_collectDeltaState
 
  integer, intent(in):: &
    el, &                       ! element index
