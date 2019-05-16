@@ -323,43 +323,46 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 ! initialize restoration points of ...
  do e = FEsolving_execElem(1),FEsolving_execElem(2)
    myNgrains = homogenization_Ngrains(mesh_element(3,e))
-   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e); do g = 1,myNgrains
+   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e);
+     do g = 1,myNgrains
 
-     plasticState    (phaseAt(g,i,e))%partionedState0(:,phasememberAt(g,i,e)) = &
-     plasticState    (phaseAt(g,i,e))%state0(         :,phasememberAt(g,i,e))
-     do mySource = 1, phase_Nsources(phaseAt(g,i,e))
-       sourceState(phaseAt(g,i,e))%p(mySource)%partionedState0(:,phasememberAt(g,i,e)) = &
-       sourceState(phaseAt(g,i,e))%p(mySource)%state0(         :,phasememberAt(g,i,e))
+       plasticState    (phaseAt(g,i,e))%partionedState0(:,phasememberAt(g,i,e)) = &
+       plasticState    (phaseAt(g,i,e))%state0(         :,phasememberAt(g,i,e))
+       do mySource = 1, phase_Nsources(phaseAt(g,i,e))
+         sourceState(phaseAt(g,i,e))%p(mySource)%partionedState0(:,phasememberAt(g,i,e)) = &
+         sourceState(phaseAt(g,i,e))%p(mySource)%state0(         :,phasememberAt(g,i,e))
+       enddo
+
+       crystallite_partionedFp0(1:3,1:3,g,i,e) = crystallite_Fp0(1:3,1:3,g,i,e)
+       crystallite_partionedLp0(1:3,1:3,g,i,e) = crystallite_Lp0(1:3,1:3,g,i,e)
+       crystallite_partionedFi0(1:3,1:3,g,i,e) = crystallite_Fi0(1:3,1:3,g,i,e)
+       crystallite_partionedLi0(1:3,1:3,g,i,e) = crystallite_Li0(1:3,1:3,g,i,e)
+       crystallite_partionedF0(1:3,1:3,g,i,e)  = crystallite_F0(1:3,1:3,g,i,e)
+       crystallite_partionedS0(1:3,1:3,g,i,e)  = crystallite_S0(1:3,1:3,g,i,e)
+
      enddo
 
-     crystallite_partionedFp0(1:3,1:3,g,i,e) = crystallite_Fp0(1:3,1:3,g,i,e)                       ! ...plastic def grads
-     crystallite_partionedLp0(1:3,1:3,g,i,e) = crystallite_Lp0(1:3,1:3,g,i,e)                       ! ...plastic velocity grads
-     crystallite_partionedFi0(1:3,1:3,g,i,e) = crystallite_Fi0(1:3,1:3,g,i,e)                       ! ...intermediate def grads
-     crystallite_partionedLi0(1:3,1:3,g,i,e) = crystallite_Li0(1:3,1:3,g,i,e)                       ! ...intermediate velocity grads
-     crystallite_partionedF0(1:3,1:3,g,i,e)  = crystallite_F0(1:3,1:3,g,i,e)                        ! ...def grads
-     crystallite_partionedS0(1:3,1:3,g,i,e)  = crystallite_S0(1:3,1:3,g,i,e)                        ! ...2nd PK stress
 
-   enddo; enddo
-   forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e))
-     materialpoint_subF0(1:3,1:3,i,e) = materialpoint_F0(1:3,1:3,i,e)                               ! ...def grad
+     materialpoint_subF0(1:3,1:3,i,e) = materialpoint_F0(1:3,1:3,i,e)
      materialpoint_subFrac(i,e) = 0.0_pReal
      materialpoint_subStep(i,e) = 1.0_pReal/subStepSizeHomog                                        ! <<added to adopt flexibility in cutback size>>
      materialpoint_converged(i,e) = .false.                                                         ! pretend failed step of twice the required size
      materialpoint_requested(i,e) = .true.                                                          ! everybody requires calculation
-   endforall
-   forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
-     homogState(material_homogenizationAt(e))%sizeState > 0) &
-       homogState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e)) = &
-       homogState(material_homogenizationAt(e))%State0(   :,mappingHomogenization(1,i,e))           ! ...internal homogenization state
-   forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
-     thermalState(material_homogenizationAt(e))%sizeState > 0) &
-       thermalState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e)) = &
-       thermalState(material_homogenizationAt(e))%State0(   :,mappingHomogenization(1,i,e))         ! ...internal thermal state
-   forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
-     damageState(material_homogenizationAt(e))%sizeState > 0) &
-       damageState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e)) = &
-       damageState(material_homogenizationAt(e))%State0(   :,mappingHomogenization(1,i,e))          ! ...internal damage state
+   
+     if (homogState(material_homogenizationAt(e))%sizeState > 0) &
+         homogState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e)) = &
+         homogState(material_homogenizationAt(e))%State0(   :,mappingHomogenization(1,i,e))           ! ...internal homogenization state
+
+     if (thermalState(material_homogenizationAt(e))%sizeState > 0) &
+         thermalState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e)) = &
+         thermalState(material_homogenizationAt(e))%State0(   :,mappingHomogenization(1,i,e))         ! ...internal thermal state
+       
+     if (damageState(material_homogenizationAt(e))%sizeState > 0) &
+         damageState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e)) = &
+         damageState(material_homogenizationAt(e))%State0(   :,mappingHomogenization(1,i,e))          ! ...internal damage state
+   enddo
  enddo
+ 
  NiterationHomog = 0
 
  cutBackLooping: do while (.not. terminallyIll .and. &
@@ -370,7 +373,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
      myNgrains = homogenization_Ngrains(mesh_element(3,e))
      IpLooping1: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
 
-       converged: if ( materialpoint_converged(i,e) ) then
+       converged: if (materialpoint_converged(i,e)) then
 #ifdef DEBUG
          if (iand(debug_level(debug_homogenization), debug_levelExtensive) /= 0 &
             .and. ((e == debug_e .and. i == debug_i) &
@@ -391,22 +394,22 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
            ! wind forward grain starting point of...
            crystallite_partionedF0  (1:3,1:3,1:myNgrains,i,e) =  &
-              crystallite_partionedF(1:3,1:3,1:myNgrains,i,e)                                       ! ...def grads
+              crystallite_partionedF(1:3,1:3,1:myNgrains,i,e)
 
            crystallite_partionedFp0 (1:3,1:3,1:myNgrains,i,e) = &
-             crystallite_Fp         (1:3,1:3,1:myNgrains,i,e)                                       ! ...plastic def grads
+             crystallite_Fp         (1:3,1:3,1:myNgrains,i,e)
 
            crystallite_partionedLp0 (1:3,1:3,1:myNgrains,i,e) = &
-             crystallite_Lp         (1:3,1:3,1:myNgrains,i,e)                                       ! ...plastic velocity grads
+             crystallite_Lp         (1:3,1:3,1:myNgrains,i,e)
 
            crystallite_partionedFi0 (1:3,1:3,1:myNgrains,i,e) = &
-             crystallite_Fi         (1:3,1:3,1:myNgrains,i,e)                                       ! ...intermediate def grads
+             crystallite_Fi         (1:3,1:3,1:myNgrains,i,e)
 
            crystallite_partionedLi0 (1:3,1:3,1:myNgrains,i,e) = &
-             crystallite_Li         (1:3,1:3,1:myNgrains,i,e)                                       ! ...intermediate velocity grads
+             crystallite_Li         (1:3,1:3,1:myNgrains,i,e)
 
            crystallite_partionedS0  (1:3,1:3,1:myNgrains,i,e) = &
-             crystallite_S          (1:3,1:3,1:myNgrains,i,e)                                       ! ...2nd PK stress
+             crystallite_S          (1:3,1:3,1:myNgrains,i,e)
 
            do g = 1,myNgrains
              plasticState    (phaseAt(g,i,e))%partionedState0(:,phasememberAt(g,i,e)) = &
@@ -417,23 +420,22 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
              enddo
            enddo
 
-           forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
-             homogState(material_homogenizationAt(e))%sizeState > 0) &
+           if(homogState(material_homogenizationAt(e))%sizeState > 0) &
                homogState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e)) = &
-               homogState(material_homogenizationAt(e))%State    (:,mappingHomogenization(1,i,e))   ! ...internal homogenization state
-           forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
-             thermalState(material_homogenizationAt(e))%sizeState > 0) &
+               homogState(material_homogenizationAt(e))%State    (:,mappingHomogenization(1,i,e))
+           if(thermalState(material_homogenizationAt(e))%sizeState > 0) &
                thermalState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e)) = &
-               thermalState(material_homogenizationAt(e))%State    (:,mappingHomogenization(1,i,e)) ! ...internal thermal state
-           forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
-             damageState(material_homogenizationAt(e))%sizeState > 0) &
+               thermalState(material_homogenizationAt(e))%State    (:,mappingHomogenization(1,i,e))
+           if(damageState(material_homogenizationAt(e))%sizeState > 0) &
                damageState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e)) = &
-               damageState(material_homogenizationAt(e))%State    (:,mappingHomogenization(1,i,e))  ! ...internal damage state
-           materialpoint_subF0(1:3,1:3,i,e) = materialpoint_subF(1:3,1:3,i,e)                       ! ...def grad
+               damageState(material_homogenizationAt(e))%State    (:,mappingHomogenization(1,i,e))
+               
+           materialpoint_subF0(1:3,1:3,i,e) = materialpoint_subF(1:3,1:3,i,e)
+
          endif steppingNeeded
 
        else converged
-         if ( (myNgrains == 1 .and. materialpoint_subStep(i,e) <= 1.0 ) .or. &                 ! single grain already tried internal subStepping in crystallite
+         if ( (myNgrains == 1 .and. materialpoint_subStep(i,e) <= 1.0 ) .or. &                      ! single grain already tried internal subStepping in crystallite
               subStepSizeHomog * materialpoint_subStep(i,e) <=  subStepMinHomog ) then              ! would require too small subStep
                                                                                                     ! cutback makes no sense
            !$OMP FLUSH(terminallyIll)
@@ -462,16 +464,16 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 ! restore...
            if (materialpoint_subStep(i,e) < 1.0_pReal) then                                         ! protect against fake cutback from \Delta t = 2 to 1. Maybe that "trick" is not necessary anymore at all? I.e. start with \Delta t = 1
              crystallite_Lp(1:3,1:3,1:myNgrains,i,e) = &
-               crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e)                                    ! ...plastic velocity grads
+               crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e)
              crystallite_Li(1:3,1:3,1:myNgrains,i,e) = &
-               crystallite_partionedLi0(1:3,1:3,1:myNgrains,i,e)                                    ! ...intermediate velocity grads
+               crystallite_partionedLi0(1:3,1:3,1:myNgrains,i,e)
            endif                                                                                    ! maybe protecting everything from overwriting (not only L) makes even more sense
            crystallite_Fp(1:3,1:3,1:myNgrains,i,e) = &
-             crystallite_partionedFp0(1:3,1:3,1:myNgrains,i,e)                                      ! ...plastic def grads
+             crystallite_partionedFp0(1:3,1:3,1:myNgrains,i,e)
            crystallite_Fi(1:3,1:3,1:myNgrains,i,e) = &
-             crystallite_partionedFi0(1:3,1:3,1:myNgrains,i,e)                                      ! ...intermediate def grads
+             crystallite_partionedFi0(1:3,1:3,1:myNgrains,i,e)
            crystallite_S(1:3,1:3,1:myNgrains,i,e) = &
-              crystallite_partionedS0(1:3,1:3,1:myNgrains,i,e)                                      ! ...2nd PK stress
+              crystallite_partionedS0(1:3,1:3,1:myNgrains,i,e)
            do g = 1, myNgrains
              plasticState    (phaseAt(g,i,e))%state(          :,phasememberAt(g,i,e)) = &
              plasticState    (phaseAt(g,i,e))%partionedState0(:,phasememberAt(g,i,e))
@@ -480,18 +482,15 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
                sourceState(phaseAt(g,i,e))%p(mySource)%partionedState0(:,phasememberAt(g,i,e))
              enddo
            enddo
-           forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
-             homogState(material_homogenizationAt(e))%sizeState > 0) &
+           if(homogState(material_homogenizationAt(e))%sizeState > 0) &
                homogState(material_homogenizationAt(e))%State(    :,mappingHomogenization(1,i,e)) = &
-               homogState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e))   ! ...internal homogenization state
-           forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
-             thermalState(material_homogenizationAt(e))%sizeState > 0) &
+               homogState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e))
+           if(thermalState(material_homogenizationAt(e))%sizeState > 0) &
                thermalState(material_homogenizationAt(e))%State(    :,mappingHomogenization(1,i,e)) = &
-               thermalState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e)) ! ...internal thermal state
-           forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
-             damageState(material_homogenizationAt(e))%sizeState > 0) &
+               thermalState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e))
+           if(damageState(material_homogenizationAt(e))%sizeState > 0) &
                damageState(material_homogenizationAt(e))%State(    :,mappingHomogenization(1,i,e)) = &
-               damageState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e))  ! ...internal damage state
+               damageState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e))
          endif
        endif converged
 
