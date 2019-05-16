@@ -73,8 +73,11 @@ for filename in options.filenames:
           array = np.reshape(array,[np.product(results.grid),d])
           data = np.concatenate((data,array),1)
           
-          header+= ''.join([' {}_{}'.format(j+1,label) for j in range(d)])
-    
+          if d>1:
+            header+= ''.join([' {}_{}'.format(j+1,label) for j in range(d)])
+          else:
+            header+=' '+label
+            
     for label in options.mat:     
       for o in results.m_output_types:
         results.active['m_output_types'] = [o]
@@ -89,7 +92,10 @@ for filename in options.filenames:
           array = np.reshape(array,[np.product(results.grid),d])
           data = np.concatenate((data,array),1)
           
-          header+= ''.join([' {}_{}'.format(j+1,label) for j in range(d)])
+          if d>1:
+            header+= ''.join([' {}_{}'.format(j+1,label) for j in range(d)])
+          else:
+            header+=' '+label
 
     dirname  = os.path.abspath(os.path.join(os.path.dirname(filename),options.dir))
     try:

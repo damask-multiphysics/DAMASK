@@ -126,19 +126,26 @@ class DADF5():
     """
     with h5py.File(self.filename,'r') as f:
       shape = (self.Nmaterialpoints,) + np.shape(f[path[0]])[1:]
+      if len(shape) == 1: shape = shape +(1,)
       dataset = np.full(shape,np.nan)
       for pa in path:
         label   = pa.split('/')[2]
         try:
           p = np.where(f['mapping/cellResults/constituent'][:,c]['Name'] == str.encode(label))[0]
           u = (f['mapping/cellResults/constituent'][p,c]['Position'])
-          dataset[p,:] = f[pa][u,:] # does not work for scalar datasets
+          a = np.array(f[pa])
+          if len(a.shape) == 1:
+            a=a.reshape([a.shape[0],1])
+          dataset
         except:
           pass
         try:
           p = np.where(f['mapping/cellResults/materialpoint']['Name'] == str.encode(label))[0]
           u = (f['mapping/cellResults/materialpoint'][p.tolist()]['Position'])
-          dataset[p,:] = f[pa][u,:] # does not work for scalar datasets
+          a = np.array(f[pa])
+          if len(a.shape) == 1:
+            a=a.reshape([a.shape[0],1])
+          dataset[p,:] = a[u,:]
         except:
           pass
 
