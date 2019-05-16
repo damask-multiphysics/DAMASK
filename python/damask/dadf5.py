@@ -109,7 +109,7 @@ class DADF5():
             except Exception as e:
               print('unable to locate constituents dataset: '+ str(e))
        
-        for m in []: #self.active['materialpoints']:
+        for m in self.active['materialpoints']:
           group_materialpoint = group_inc+'/materialpoint/'+m
           for t in self.active['m_output_types']:
             try:
