@@ -61,7 +61,7 @@ subroutine damage_local_init
    config_homogenization
  
 
- integer :: maxNinstance,homog,instance,o,i
+ integer :: maxNinstance,homog,instance,i
  integer :: sizeState
  integer :: NofMyHomog, h
   integer(kind(undefined_ID)) :: &

@@ -71,7 +71,7 @@ subroutine kinematics_cleavage_opening_init()
  integer, allocatable, dimension(:) :: tempInt
  real(pReal), allocatable, dimension(:) :: tempFloat
 
- integer :: maxNinstance,p,instance,kinematics
+ integer :: maxNinstance,p,instance
 
  write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_cleavage_opening_LABEL//' init  -+>>>'
 

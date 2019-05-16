@@ -163,7 +163,6 @@ subroutine thermal_adiabatic_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
   use material, only: &
     homogenization_Ngrains, &
     material_homogenizationAt, &
-    mappingHomogenization, &
     phaseAt, &
     phasememberAt, &
     thermal_typeInstance, &

@@ -57,7 +57,7 @@ subroutine kinematics_slipplane_opening_init()
  use lattice
 
 
- integer :: maxNinstance,p,instance,kinematics
+ integer :: maxNinstance,p,instance
 
  write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_slipplane_opening_LABEL//' init  -+>>>'
 

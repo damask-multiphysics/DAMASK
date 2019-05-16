@@ -1125,9 +1125,6 @@ subroutine crystallite_results
   use config, only: &
     config_name_phase => phase_name                                                                  ! anticipate logical name
    
-  use material, only: &
-    material_phase_plasticity_type => phase_plasticity
-        
   integer :: p,o
   real(pReal),    allocatable, dimension(:,:,:) :: selected_tensors
   type(rotation), allocatable, dimension(:)     :: selected_rotations
@@ -2588,8 +2585,6 @@ logical function stateJump(ipc,ip,el)
    sourceState, &
    phase_Nsources, &
    phaseAt, phasememberAt
- use mesh, only: &
-   mesh_element
  use constitutive, only: &
    constitutive_collectDeltaState
 
