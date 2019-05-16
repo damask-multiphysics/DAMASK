@@ -138,9 +138,23 @@ subroutine homogenization_init
    call IO_write_jobFile(FILEUNIT,'outputHomogenization')
    do p = 1,size(config_homogenization)
      if (any(material_homogenizationAt == p)) then
+       i = homogenization_typeInstance(p)                                                               ! which instance of this homogenization type
+       valid = .true.                                                                                   ! assume valid
+       select case(homogenization_type(p))                                                              ! split per homogenization type
+         case (HOMOGENIZATION_NONE_ID)
+           outputName = HOMOGENIZATION_NONE_label
+         case (HOMOGENIZATION_ISOSTRAIN_ID)
+           outputName = HOMOGENIZATION_ISOSTRAIN_label
+         case (HOMOGENIZATION_RGC_ID)
+           outputName = HOMOGENIZATION_RGC_label
+         case default
+           valid = .false.
+       end select
        write(FILEUNIT,'(/,a,/)')  '['//trim(homogenization_name(p))//']'
-       write(FILEUNIT,'(a,i4)') '(ngrains)'//char(9),homogenization_Ngrains(p)
-
+       if (valid) then
+         write(FILEUNIT,'(a)') '(type)'//char(9)//trim(outputName)
+         write(FILEUNIT,'(a,i4)') '(ngrains)'//char(9),homogenization_Ngrains(p)
+       endif
        i = thermal_typeInstance(p)                                                                      ! which instance of this thermal type
        valid = .true.                                                                                   ! assume valid
        select case(thermal_type(p))                                                                     ! split per thermal type
