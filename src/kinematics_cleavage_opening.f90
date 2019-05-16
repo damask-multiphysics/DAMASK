@@ -5,13 +5,20 @@
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
 module kinematics_cleavage_opening
- use prec
+  use prec
+  use IO
+  use config
+  use debug
+  use math
+  use lattice
+  use material
 
  implicit none
  private
- integer, dimension(:), allocatable, private :: kinematics_cleavage_opening_instance
 
- type, private :: tParameters                                                                       !< container type for internal constitutive parameters
+ integer, dimension(:), allocatable :: kinematics_cleavage_opening_instance
+
+ type :: tParameters                                                                                !< container type for internal constitutive parameters
    integer :: &
      totalNcleavage
    integer, dimension(:),   allocatable :: &
@@ -25,17 +32,17 @@ module kinematics_cleavage_opening
  end type
 
 ! Begin Deprecated
- integer,                       dimension(:),           allocatable,         private :: &
+ integer,                       dimension(:),           allocatable :: &
    kinematics_cleavage_opening_totalNcleavage                                                       !< total number of cleavage systems
    
- integer,                       dimension(:,:),         allocatable,         private :: &
+ integer,                       dimension(:,:),         allocatable :: &
    kinematics_cleavage_opening_Ncleavage                                                            !< number of cleavage systems per family
    
- real(pReal),                   dimension(:),           allocatable,         private :: &
+ real(pReal),                   dimension(:),           allocatable :: &
    kinematics_cleavage_opening_sdot_0, &
    kinematics_cleavage_opening_N
 
- real(pReal),                   dimension(:,:),         allocatable,         private :: &
+ real(pReal),                   dimension(:,:),         allocatable :: &
    kinematics_cleavage_opening_critDisp, &
    kinematics_cleavage_opening_critLoad
 ! End Deprecated
@@ -51,22 +58,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine kinematics_cleavage_opening_init()
- use debug, only: &
-   debug_level,&
-   debug_constitutive,&
-   debug_levelBasic
- use config, only: &
-   config_phase
- use IO, only: &
-   IO_error
- use material, only: &
-   phase_kinematics, &
-   KINEMATICS_cleavage_opening_label, &
-   KINEMATICS_cleavage_opening_ID
- use lattice, only: &
-   lattice_maxNcleavageFamily, &
-   lattice_NcleavageSystem
+subroutine kinematics_cleavage_opening_init
 
  integer, allocatable, dimension(:) :: tempInt
  real(pReal), allocatable, dimension(:) :: tempFloat
@@ -75,7 +67,7 @@ subroutine kinematics_cleavage_opening_init()
 
  write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_cleavage_opening_LABEL//' init  -+>>>'
 
- maxNinstance = int(count(phase_kinematics == KINEMATICS_cleavage_opening_ID))
+ maxNinstance = count(phase_kinematics == KINEMATICS_cleavage_opening_ID)
  if (maxNinstance == 0) return
  
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
@@ -127,17 +119,6 @@ end subroutine kinematics_cleavage_opening_init
 !> @brief  contains the constitutive equation for calculating the velocity gradient  
 !--------------------------------------------------------------------------------------------------
 subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, ip, el)
- use math, only: &
-   math_mul33xx33
- use material, only: &
-   material_phase, &
-   material_homogenizationAt, &
-   damage, &
-   damageMapping
- use lattice, only: &
-   lattice_Scleavage, &
-   lattice_maxNcleavageFamily, &
-   lattice_NcleavageSystem
  
  integer, intent(in) :: &
    ipc, &                                                                                           !< grain number

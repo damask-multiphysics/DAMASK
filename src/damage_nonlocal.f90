@@ -5,9 +5,16 @@
 !--------------------------------------------------------------------------------------------------
 module damage_nonlocal
  use prec
+ use material
+ use numerics
+ use config
+ use crystallite
+ use lattice
+ use mesh
 
  implicit none
  private
+ 
  integer,                       dimension(:,:),  allocatable, target, public :: &
    damage_nonlocal_sizePostResult                                                            !< size of each post result output
 
@@ -22,12 +29,12 @@ module damage_nonlocal
                  damage_ID
  end enum
 
- type, private :: tParameters
+ type :: tParameters
    integer(kind(undefined_ID)),         dimension(:),   allocatable   :: &
      outputID
  end type tParameters
  
- type(tparameters),          dimension(:), allocatable, private :: &
+ type(tparameters),          dimension(:), allocatable :: &
    param
 
  public :: &
@@ -45,21 +52,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine damage_nonlocal_init
- use material, only: &
-   damage_type, &
-   damage_typeInstance, &
-   homogenization_Noutput, &
-   DAMAGE_nonlocal_label, &
-   DAMAGE_nonlocal_ID, &
-   material_homogenizationAt, & 
-   mappingHomogenization, & 
-   damageState, &
-   damageMapping, &
-   damage, &
-   damage_initialPhi
- use config, only: &
-   config_homogenization
-
 
  integer :: maxNinstance,homog,instance,o,i
  integer :: sizeState
@@ -72,7 +64,7 @@ subroutine damage_nonlocal_init
 
  write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_nonlocal_label//' init  -+>>>'
  
- maxNinstance = int(count(damage_type == DAMAGE_nonlocal_ID))
+ maxNinstance = count(damage_type == DAMAGE_nonlocal_ID)
  if (maxNinstance == 0) return
  
  allocate(damage_nonlocal_sizePostResult (maxval(homogenization_Noutput),maxNinstance),source=0)
@@ -131,17 +123,6 @@ end subroutine damage_nonlocal_init
 !> @brief  calculates homogenized damage driving forces  
 !--------------------------------------------------------------------------------------------------
 subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el)
- use material, only: &
-   homogenization_Ngrains, &
-   material_homogenizationAt, &
-   phaseAt, &
-   phasememberAt, &
-   phase_source, &
-   phase_Nsources, &
-   SOURCE_damage_isoBrittle_ID, &
-   SOURCE_damage_isoDuctile_ID, &
-   SOURCE_damage_anisoBrittle_ID, &
-   SOURCE_damage_anisoDuctile_ID
  use source_damage_isoBrittle, only: &
    source_damage_isobrittle_getRateAndItsTangent
  use source_damage_isoDuctile, only: &
@@ -198,20 +179,11 @@ subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip,
  
 end subroutine damage_nonlocal_getSourceAndItsTangent
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief returns homogenized non local damage diffusion tensor in reference configuration
 !--------------------------------------------------------------------------------------------------
 function damage_nonlocal_getDiffusion33(ip,el)
- use numerics, only: &
-   charLength
- use lattice, only: &
-   lattice_DamageDiffusion33
- use material, only: &
-   homogenization_Ngrains, &
-   material_phase, &
-   material_homogenizationAt
- use crystallite, only: &
-   crystallite_push33ToRef
 
  integer, intent(in) :: &
    ip, &                                                                                            !< integration point number
@@ -234,17 +206,11 @@ function damage_nonlocal_getDiffusion33(ip,el)
  
 end function damage_nonlocal_getDiffusion33
  
+ 
 !--------------------------------------------------------------------------------------------------
 !> @brief Returns homogenized nonlocal damage mobility 
 !--------------------------------------------------------------------------------------------------
 real(pReal) function damage_nonlocal_getMobility(ip,el)
- use mesh, only: &
-   mesh_element
- use lattice, only: &
-   lattice_damageMobility
- use material, only: &
-   material_phase, &
-   homogenization_Ngrains
 
  integer, intent(in) :: &
    ip, &                                                                                            !< integration point number
@@ -263,14 +229,11 @@ real(pReal) function damage_nonlocal_getMobility(ip,el)
 
 end function damage_nonlocal_getMobility
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief updated nonlocal damage field with solution from damage phase field PDE
 !--------------------------------------------------------------------------------------------------
 subroutine damage_nonlocal_putNonLocalDamage(phi,ip,el)
- use material, only: &
-   material_homogenizationAt, &
-   damageMapping, &
-   damage
 
  integer, intent(in) :: &
    ip, &                                                                                            !< integration point number
@@ -286,16 +249,12 @@ subroutine damage_nonlocal_putNonLocalDamage(phi,ip,el)
  damage(homog)%p(offset) = phi
 
 end subroutine damage_nonlocal_putNonLocalDamage
- 
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of damage results
 !--------------------------------------------------------------------------------------------------
 function damage_nonlocal_postResults(ip,el)
- use material, only: &
-   material_homogenizationAt, &
-   damage_typeInstance, &
-   damageMapping, &
-   damage
 
  integer,              intent(in) :: &
    ip, &                                                                                            !< integration point

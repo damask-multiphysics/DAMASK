@@ -6,12 +6,19 @@
 !--------------------------------------------------------------------------------------------------
 module kinematics_slipplane_opening
  use prec
+ use config
+ use IO
+ use debug
+ use math
+ use lattice
+ use material
 
  implicit none
  private
- integer, dimension(:), allocatable, private :: kinematics_slipplane_opening_instance
+ 
+ integer, dimension(:), allocatable :: kinematics_slipplane_opening_instance
    
- type, private :: tParameters                                                                       !< container type for internal constitutive parameters
+ type :: tParameters                                                                                !< container type for internal constitutive parameters
    integer :: &
      totalNslip
    integer, dimension(:),   allocatable :: &
@@ -19,7 +26,7 @@ module kinematics_slipplane_opening
    real(pReal) :: &
      sdot0, &
      n
-   real(pReal),   dimension(:),   allocatable :: &
+   real(pReal), dimension(:),   allocatable :: &
      critLoad
    real(pReal), dimension(:,:), allocatable     :: &
     slip_direction, &
@@ -27,7 +34,8 @@ module kinematics_slipplane_opening
     slip_transverse
  end type tParameters
 
-     type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
+ type(tParameters), dimension(:), allocatable :: param                                            !< containers of constitutive parameters (len Ninstance)
+ 
  public :: &
    kinematics_slipplane_opening_init, &
    kinematics_slipplane_opening_LiAndItsTangent
@@ -39,23 +47,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine kinematics_slipplane_opening_init()
- use debug, only: &
-   debug_level,&
-   debug_constitutive,&
-   debug_levelBasic
- use config, only: &
-   config_phase
- use IO, only: &
-   IO_error
- use math, only: &
-   math_expand
- use material, only: &
-   phase_kinematics, &
-   KINEMATICS_slipplane_opening_label, &
-   KINEMATICS_slipplane_opening_ID
- use lattice
-
+subroutine kinematics_slipplane_opening_init
 
  integer :: maxNinstance,p,instance
 
@@ -111,14 +103,6 @@ end subroutine kinematics_slipplane_opening_init
 !> @brief  contains the constitutive equation for calculating the velocity gradient  
 !--------------------------------------------------------------------------------------------------
 subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, ip, el)
- use math, only: &
-   math_mul33xx33, &
-   math_outer
- use material, only: &
-   material_phase, &
-   material_homogenizationAt, &
-   damage, &
-   damageMapping
 
  integer, intent(in) :: &
    ipc, &                                                                                           !< grain number
