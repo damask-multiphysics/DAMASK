@@ -78,7 +78,7 @@ for filename in options.filenames:
           else:
             header+=' '+label
             
-    for label in options.mat:     
+    for label in options.mat:
       for o in results.m_output_types:
         results.active['m_output_types'] = [o]
         for m in results.materialpoints:

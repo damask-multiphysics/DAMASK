@@ -99,22 +99,25 @@ class DADF5():
     with h5py.File(self.filename,'r') as f:
       for i in self.active['increments']:
         group_inc = 'inc{:05}'.format(i['inc'])
+        
         for c in self.active['constituents']:
           group_constituent = group_inc+'/constituent/'+c
           for t in self.active['c_output_types']:
             try:
               f[group_constituent+'/'+t+'/'+label]
               path.append(group_constituent+'/'+t+'/'+label)
-            except:
-              pass
-        for m in self.active['materialpoints']:
+            except Exception as e:
+              print('unable to locate constituents dataset: '+ str(e))
+       
+        for m in []: #self.active['materialpoints']:
           group_materialpoint = group_inc+'/materialpoint/'+m
           for t in self.active['m_output_types']:
             try:
               f[group_materialpoint+'/'+t+'/'+label]
               path.append(group_materialpoint+'/'+t+'/'+label)
-            except:
-              pass
+            except Exception as e:
+              print('unable to locate materialpoints dataset: '+ str(e))
+              
     return path
     
     
@@ -136,9 +139,9 @@ class DADF5():
           a = np.array(f[pa])
           if len(a.shape) == 1:
             a=a.reshape([a.shape[0],1])
-          dataset
-        except:
-          pass
+          dataset[p,:] = a[u,:]
+        except Exception as e:
+          print('unable to read constituent: '+ str(e))
         try:
           p = np.where(f['mapping/cellResults/materialpoint']['Name'] == str.encode(label))[0]
           u = (f['mapping/cellResults/materialpoint'][p.tolist()]['Position'])
@@ -146,8 +149,8 @@ class DADF5():
           if len(a.shape) == 1:
             a=a.reshape([a.shape[0],1])
           dataset[p,:] = a[u,:]
-        except:
-          pass
+        except Exception as e:
+          print('unable to read materialpoint: '+ str(e))
 
     return dataset
         

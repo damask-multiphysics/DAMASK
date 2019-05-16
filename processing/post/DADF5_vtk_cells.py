@@ -59,7 +59,9 @@ for filename in options.filenames:
     print('Output step {}/{}'.format(i+1,len(results.increments)))
     vtk_data = []
     results.active['increments'] = [inc]
+    
     for label in options.con:
+      
       for o in results.c_output_types:
         results.active['c_output_types'] = [o]
         if o != 'generic':
