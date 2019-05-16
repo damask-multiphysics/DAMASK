@@ -12,10 +12,6 @@ module homogenization_mech_RGC
 
  implicit none
  private
- integer,           dimension(:,:),     allocatable,target, public :: &
-   homogenization_RGC_sizePostResult
- character(len=64), dimension(:,:),     allocatable,target, public :: &
-   homogenization_RGC_output                                                                        ! name of each post result output
 
  enum, bind(c) 
    enumerator :: &
@@ -28,7 +24,7 @@ module homogenization_mech_RGC
      magnitudemismatch_ID
  end enum
  
- type, private :: tParameters
+ type :: tParameters
    integer, dimension(:), allocatable :: &
      Nconstituents
    real(pReal) :: &
@@ -43,7 +39,7 @@ module homogenization_mech_RGC
      outputID
  end type tParameters
 
- type, private :: tRGCstate
+ type :: tRGCstate
    real(pReal), pointer,     dimension(:) :: &
      work, &
      penaltyEnergy
@@ -51,7 +47,7 @@ module homogenization_mech_RGC
      relaxationVector
  end type tRGCstate
 
- type, private :: tRGCdependentState
+ type :: tRGCdependentState
    real(pReal), allocatable,     dimension(:) :: &
      volumeDiscrepancy, &
      relaxationRate_avg, &
@@ -62,12 +58,12 @@ module homogenization_mech_RGC
      orientation
  end type tRGCdependentState
 
- type(tparameters),          dimension(:), allocatable, private :: &
+ type(tparameters),          dimension(:), allocatable :: &
    param
- type(tRGCstate),            dimension(:), allocatable, private :: &
+ type(tRGCstate),            dimension(:), allocatable :: &
    state, &
    state0
- type(tRGCdependentState),   dimension(:), allocatable, private :: &
+ type(tRGCdependentState),   dimension(:), allocatable :: &
    dependentState
 
  public :: &
@@ -75,16 +71,7 @@ module homogenization_mech_RGC
    homogenization_RGC_partitionDeformation, &
    homogenization_RGC_averageStressAndItsTangent, &
    homogenization_RGC_updateState, &
-   homogenization_RGC_postResults, &
    mech_RGC_results ! name suited for planned submodule situation
- private :: &
-   relaxationVector, &
-   interfaceNormal, &
-   getInterface, &
-   grain1to3, &
-   grain3to1, &
-   interface4to1, &
-   interface1to4
 
 contains
 
@@ -111,7 +98,7 @@ subroutine homogenization_RGC_init()
  integer :: &
    Ninstance, &
    h, i, &
-   NofMyHomog, outputSize, &
+   NofMyHomog, &
    sizeState, nIntFaceTot
 
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
@@ -139,9 +126,6 @@ subroutine homogenization_RGC_init()
  allocate(state0(Ninstance))
  allocate(dependentState(Ninstance))
  
- allocate(homogenization_RGC_sizePostResult(maxval(homogenization_Noutput),Ninstance),source=0)
- allocate(homogenization_RGC_output(maxval(homogenization_Noutput),Ninstance))
-          homogenization_RGC_output=''
 
  do h = 1, size(homogenization_type)
    if (homogenization_type(h) /= HOMOGENIZATION_RGC_ID) cycle
@@ -176,28 +160,20 @@ subroutine homogenization_RGC_init()
      
        case('constitutivework')
          outputID = constitutivework_ID
-         outputSize = 1
        case('penaltyenergy')
          outputID = penaltyenergy_ID
-         outputSize = 1
        case('volumediscrepancy')
          outputID = volumediscrepancy_ID
-         outputSize = 1
        case('averagerelaxrate')
          outputID = averagerelaxrate_ID
-         outputSize = 1
        case('maximumrelaxrate')
          outputID = maximumrelaxrate_ID
-         outputSize = 1
        case('magnitudemismatch')
          outputID = magnitudemismatch_ID
-         outputSize = 3
 
      end select
      
      if (outputID /= undefined_ID) then
-       homogenization_RGC_output(i,homogenization_typeInstance(h)) = outputs(i)
-       homogenization_RGC_sizePostResult(i,homogenization_typeInstance(h)) = outputSize
        prm%outputID = [prm%outputID , outputID]
      endif
      
@@ -211,7 +187,7 @@ subroutine homogenization_RGC_init()
              + size(['avg constitutive work ','average penalty energy'])
 
    homogState(h)%sizeState = sizeState
-   homogState(h)%sizePostResults = sum(homogenization_RGC_sizePostResult(:,homogenization_typeInstance(h)))
+   homogState(h)%sizePostResults = 0
    allocate(homogState(h)%state0   (sizeState,NofMyHomog), source=0.0_pReal)
    allocate(homogState(h)%subState0(sizeState,NofMyHomog), source=0.0_pReal)
    allocate(homogState(h)%state    (sizeState,NofMyHomog), source=0.0_pReal)
@@ -1031,54 +1007,6 @@ subroutine homogenization_RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,
  dAvgPdAvgF = sum(dPdF,5)/real(product(param(instance)%Nconstituents),pReal)
 
 end subroutine homogenization_RGC_averageStressAndItsTangent
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return array of homogenization results for post file inclusion 
-!--------------------------------------------------------------------------------------------------
-pure function homogenization_RGC_postResults(instance,of) result(postResults)
-
- integer, intent(in) :: &
-   instance, &
-   of
-   
- integer :: &
-   o,c
- real(pReal), dimension(sum(homogenization_RGC_sizePostResult(:,instance))) :: &
-   postResults
-
- associate(stt => state(instance), dst => dependentState(instance), prm => param(instance))
-
- c = 0
-
- outputsLoop: do o = 1,size(prm%outputID)
-   select case(prm%outputID(o))
-   
-     case (constitutivework_ID)
-       postResults(c+1) = stt%work(of)
-       c = c + 1
-     case (magnitudemismatch_ID)
-       postResults(c+1:c+3) = dst%mismatch(1:3,of)
-       c = c + 3
-     case (penaltyenergy_ID)
-       postResults(c+1) = stt%penaltyEnergy(of)
-       c = c + 1
-     case (volumediscrepancy_ID)
-       postResults(c+1) = dst%volumeDiscrepancy(of)
-       c = c + 1
-     case (averagerelaxrate_ID)
-       postResults(c+1) = dst%relaxationrate_avg(of)
-       c = c + 1
-     case (maximumrelaxrate_ID)
-       postResults(c+1) = dst%relaxationrate_max(of)
-       c = c + 1
-   end select
-   
- enddo outputsLoop
- 
- end associate
- 
-end function homogenization_RGC_postResults
 
 
 !--------------------------------------------------------------------------------------------------

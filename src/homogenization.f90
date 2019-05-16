@@ -120,7 +120,6 @@ subroutine homogenization_init
  character(len=32) :: outputName                                                                    !< name of output, intermediate fix until HDF5 output is ready
  logical :: valid
 
-
  if (any(homogenization_type == HOMOGENIZATION_NONE_ID))      call mech_none_init
  if (any(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)) call mech_isostrain_init
  if (any(homogenization_type == HOMOGENIZATION_RGC_ID))       call homogenization_RGC_init
@@ -139,35 +138,9 @@ subroutine homogenization_init
    call IO_write_jobFile(FILEUNIT,'outputHomogenization')
    do p = 1,size(config_homogenization)
      if (any(material_homogenizationAt == p)) then
-       i = homogenization_typeInstance(p)                                                               ! which instance of this homogenization type
-       valid = .true.                                                                                   ! assume valid
-       select case(homogenization_type(p))                                                              ! split per homogenization type
-         case (HOMOGENIZATION_NONE_ID)
-           outputName = HOMOGENIZATION_NONE_label
-           thisOutput => null()
-           thisSize   => null()
-         case (HOMOGENIZATION_ISOSTRAIN_ID)
-           outputName = HOMOGENIZATION_ISOSTRAIN_label
-           thisOutput => null()
-           thisSize   => null()
-         case (HOMOGENIZATION_RGC_ID)
-           outputName = HOMOGENIZATION_RGC_label
-           thisOutput => homogenization_RGC_output
-           thisSize   => homogenization_RGC_sizePostResult
-         case default
-           valid = .false.
-       end select
        write(FILEUNIT,'(/,a,/)')  '['//trim(homogenization_name(p))//']'
-       if (valid) then
-         write(FILEUNIT,'(a)') '(type)'//char(9)//trim(outputName)
-         write(FILEUNIT,'(a,i4)') '(ngrains)'//char(9),homogenization_Ngrains(p)
-         if (homogenization_type(p) /= HOMOGENIZATION_NONE_ID .and. &
-             homogenization_type(p) /= HOMOGENIZATION_ISOSTRAIN_ID) then
-           do e = 1,size(thisOutput(:,i))
-             write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
-           enddo
-         endif
-       endif
+       write(FILEUNIT,'(a,i4)') '(ngrains)'//char(9),homogenization_Ngrains(p)
+
        i = thermal_typeInstance(p)                                                                      ! which instance of this thermal type
        valid = .true.                                                                                   ! assume valid
        select case(thermal_type(p))                                                                     ! split per thermal type
@@ -837,8 +810,6 @@ end subroutine averageStressAndItsTangent
 function postResults(ip,el)
  use mesh, only: &
    mesh_element
- use homogenization_mech_RGC, only: &
-   homogenization_RGC_postResults
  use thermal_adiabatic, only: &
    thermal_adiabatic_postResults
  use thermal_conduction, only: &
@@ -861,17 +832,6 @@ function postResults(ip,el)
 
 
  postResults = 0.0_pReal
- startPos = 1
- endPos   = homogState(material_homogenizationAt(el))%sizePostResults
- chosenHomogenization: select case (homogenization_type(mesh_element(3,el)))
-
-   case (HOMOGENIZATION_RGC_ID) chosenHomogenization
-     instance = homogenization_typeInstance(material_homogenizationAt(el))
-     of = mappingHomogenization(1,ip,el)
-     postResults(startPos:endPos) = homogenization_RGC_postResults(instance,of)
-     
- end select chosenHomogenization
-
  startPos = endPos + 1
  endPos   = endPos + thermalState(material_homogenizationAt(el))%sizePostResults
  chosenThermal: select case (thermal_type(mesh_element(3,el)))
