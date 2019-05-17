@@ -8,6 +8,7 @@
 module mesh
  use IO
  use prec
+ use math
  use mesh_base
 
  implicit none
@@ -714,14 +715,6 @@ end subroutine mesh_marc_map_nodes
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_build_nodes(fileUnit)
 
- use IO, only: &
-   IO_lc, &
-   IO_stringValue, &
-   IO_stringPos, &
-   IO_fixedIntValue, &
-   IO_fixedNoEFloatValue
-
- 
  integer, intent(in) :: fileUnit
 
  integer, dimension(5), parameter :: node_ends = int([0,10,30,50,70],pInt)
@@ -808,16 +801,6 @@ integer function mesh_marc_count_cpSizes(fileUnit)
 !! Allocates global array 'mesh_element'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_build_elements(fileUnit)
-
- use IO,   only: IO_lc, &
-                 IO_stringValue, &
-                 IO_fixedNoEFloatValue, &
-                 IO_skipChunks, &
-                 IO_stringPos, &
-                 IO_intValue, &
-                 IO_continuousIntValues, &
-                 IO_error
-
  
  integer, intent(in) :: fileUnit
 
@@ -911,12 +894,6 @@ subroutine mesh_marc_build_elements(fileUnit)
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_get_damaskOptions(periodic_surface,fileUnit)
 
-use IO, only: &
-  IO_lc, &
-  IO_stringValue, &
-  IO_stringPos
-
- 
  integer, intent(in) :: fileUnit
 
  integer, allocatable, dimension(:) :: chunkPos
@@ -949,6 +926,145 @@ use IO, only: &
 
 end subroutine mesh_get_damaskOptions
 
+
+subroutine calcCells(thisMesh,connectivity_elem)
+
+  class(tMesh) :: thisMesh
+  integer(pInt),dimension(:,:), intent(inout) :: connectivity_elem
+  integer(pInt),dimension(:,:), allocatable :: con_elem,temp,con,parentsAndWeights,candidates_global
+  integer(pInt),dimension(:), allocatable :: l, nodes, candidates_local
+  integer(pInt),dimension(:,:,:), allocatable :: con_cell,connectivity_cell
+    integer(pInt),dimension(:,:), allocatable :: sorted,test
+  real(pReal), dimension(:,:), allocatable :: coordinates,nodes5
+  integer(pInt) :: e, n, c, p, s,u,i,m,j,nParentNodes,nCellNode,ierr
+
+  !nodes5 = thisMesh%node_0
+!---------------------------------------------------------------------------------------------------
+! initialize global connectivity to negative local connectivity
+  allocate(connectivity_cell(thisMesh%elem%NcellNodesPerCell,thisMesh%elem%nIPs,thisMesh%Nelems))
+  connectivity_cell = -spread(thisMesh%elem%cell,3,thisMesh%Nelems)                                         ! local cell node ID
+  
+!---------------------------------------------------------------------------------------------------
+! set connectivity of cell nodes that conincide with FE nodes (defined by 1 parent node)
+! change to global node ID
+  do e = 1, thisMesh%Nelems
+    do c = 1, thisMesh%elem%NcellNodes
+      realNode: if (count(thisMesh%elem%cellNodeParentNodeWeights(:,c) /= 0_pInt) == 1_pInt) then
+        where(connectivity_cell(:,:,e) == -c)
+          connectivity_cell(:,:,e) = connectivity_elem(c,e)
+        end where
+      endif realNode
+    enddo
+  enddo
+  nCellNode = thisMesh%nNodes
+  
+
+  do nParentNodes = 2, thisMesh%elem%nNodes
+  
+   ! get IDs of local cell nodes that are defined by the current number of parent nodes
+   candidates_local = [integer(pInt)::]
+   do c = 1, thisMesh%elem%NcellNodes
+     if (count(thisMesh%elem%cellNodeParentNodeWeights(:,c) /= 0_pInt) == nParentNodes) &
+       candidates_local = [candidates_local,c]
+   enddo
+   s = size(candidates_local)
+   
+   if (allocated(candidates_global)) deallocate(candidates_global)
+   allocate(candidates_global(nParentNodes*2_pInt+2_pInt,s*thisMesh%Nelems))
+   
+   parentsAndWeights = reshape([(0_pInt, i = 1_pInt,2_pInt*nParentNodes)],[nParentNodes,2])
+   do e = 1_pInt, thisMesh%Nelems
+     do i = 1_pInt, s
+       c = candidates_local(i)
+       m = 0_pInt
+       do p = 1_pInt, size(thisMesh%elem%cellNodeParentNodeWeights(:,c))
+         if (thisMesh%elem%cellNodeParentNodeWeights(p,c) /= 0_pInt) then                               ! real node 'c' partly defines cell node 'n'
+           m = m + 1_pInt
+           parentsAndWeights(m,1:2) = [connectivity_elem(p,e),thisMesh%elem%cellNodeParentNodeWeights(p,c)]
+         endif
+       enddo
+       ! store (and order) real nodes and their weights together with the element number and local ID
+       do p = 1_pInt, nParentNodes
+         m = maxloc(parentsAndWeights(:,1),1)
+         candidates_global(p,      (e-1)*s+i) = parentsAndWeights(m,1)
+         parentsAndWeights(m,1) = -huge(i)                                   ! out of the competition
+         candidates_global(p+nParentNodes,(e-1)*s+i) = parentsAndWeights(m,2)
+         candidates_global(nParentNodes*2+1:nParentNodes*2+2,(e-1)*s+i) = [e,c]
+       enddo
+     enddo
+   enddo
+
+   ! sort according to real node IDs (from left to right)
+   call math_sort(candidates_global,sortDim=1)
+   do p = 2, nParentNodes-1
+     n = 1
+     do while(n <= s*thisMesh%Nelems)
+      j=0
+      do while (n+j<= s*thisMesh%Nelems)
+        if (candidates_global(p-1,n+j)/=candidates_global(p-1,n)) exit
+        j = j + 1
+      enddo
+      e = n+j-1
+      if (any(candidates_global(p,n:e)/=candidates_global(p,n))) then
+          call math_sort(candidates_global(:,n:e),sortDim=p)
+      endif
+      n = e+1
+     enddo
+   enddo
+   
+   
+   ! find duplicates (trivial for sorted IDs)
+     i = 0
+     n = 1
+     do while(n <= s*thisMesh%Nelems)
+      j=0
+      do while (n+j<= s*thisMesh%Nelems)
+        if (any(candidates_global(1:2*nParentNodes,n+j)/=candidates_global(1:2*nParentNodes,n))) exit
+        j = j + 1
+      enddo
+      i=i+1
+      n = n+j
+     enddo
+     
+   p = i ! ToDo: Hack
+   
+   ! calculate coordinates of cell nodes and insert their ID into the cell conectivity
+   coordinates  = reshape([(0.0_pReal,i = 1, 3*s*thisMesh%Nelems)], [3,i])
+   
+     i = 0
+     n = 1
+     do while(n <= s*thisMesh%Nelems)
+      j=0
+      parentsAndWeights(:,1) = candidates_global(1:nParentNodes,n+j)
+      parentsAndWeights(:,2) = candidates_global(nParentNodes+1:nParentNodes*2,n+j)
+      e = candidates_global(nParentNodes*2+1,n+j)
+      c = candidates_global(nParentNodes*2+2,n+j)
+      do m = 1, nParentNodes
+        coordinates(:,i+1) = coordinates(:,i+1) &
+                           + thisMesh%node_0(:,parentsAndWeights(m,1)) * real(parentsAndWeights(m,2),pReal)
+      enddo
+      coordinates(:,i+1) =  coordinates(:,i+1)/real(sum(parentsAndWeights(:,2)),pReal)
+
+      do while (n+j<= s*thisMesh%Nelems)
+        if (any(candidates_global(1:2*nParentNodes,n+j)/=candidates_global(1:2*nParentNodes,n))) exit
+        where (connectivity_cell(:,:,candidates_global(nParentNodes*2+1,n+j)) == -candidates_global(nParentNodes*2+2,n+j))
+          connectivity_cell(:,:,candidates_global(nParentNodes*2+1,n+j)) = i+1+nCellNode
+        end where
+        
+         j = j + 1
+      enddo
+      i=i+1
+      n = n+j
+
+     enddo
+     nCellNode = nCellNode + p
+     if (p/=0) nodes5 = reshape([nodes5,coordinates],[3,nCellNode])
+  enddo
+  thisMesh%node_0 = nodes5
+
+  
+end subroutine calcCells
+
 !--------------------------------------------------------------------------------------------------
 !> @brief Split CP elements into cells.
 !> @details Build a mapping between cells and the corresponding cell nodes ('mesh_cell').
@@ -958,7 +1074,6 @@ end subroutine mesh_get_damaskOptions
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_cellconnectivity
 
- 
  integer, dimension(:), allocatable :: &
    matchingNode2cellnode
  integer, dimension(:,:), allocatable :: &

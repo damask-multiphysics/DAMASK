@@ -27,7 +27,7 @@ module element
       NnodeAtIP, &
       IPneighbor, &
       cellFace
-    real(pReal), dimension(:,:), allocatable :: &
+    integer, dimension(:,:), allocatable :: &
       ! center of gravity of the weighted nodes gives the position of the cell node.
       ! example: face-centered cell node with face nodes 1,2,5,6 to be used in,
       !          e.g., an 8 node element, would be encoded: 1, 1, 0, 0, 1, 1, 0, 0
