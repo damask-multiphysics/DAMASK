@@ -38,6 +38,7 @@
 !> Modeling and Simulations in Materials Science and Engineering 22, 075013 (2014).
 !--------------------------------------------------------------------------
 module Lambert
+  use prec
   use math
 
   implicit none
