@@ -274,6 +274,7 @@ pure function math_identity2nd(dimen)
 
 end function math_identity2nd
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief symmetric fourth rank identity tensor of specified dimension
 !  from http://en.wikipedia.org/wiki/Tensor_derivative_(continuum_mechanics)#Derivative_of_a_second-order_tensor_with_respect_to_itself
@@ -625,6 +626,7 @@ pure function math_skew33(m)
   math_skew33 = m - math_symmetric33(m)
 
 end function math_skew33
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief hydrostatic part of a 33 matrix
