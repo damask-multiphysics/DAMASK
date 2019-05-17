@@ -6,6 +6,7 @@
 !> @brief Sets up the mesh for the solver MSC.Marc
 !--------------------------------------------------------------------------------------------------
 module mesh
+ use IO
  use prec
  use mesh_base
 
@@ -414,12 +415,6 @@ end subroutine mesh_init
 !> @brief Figures out version of Marc input file format
 !--------------------------------------------------------------------------------------------------
 integer function mesh_marc_get_fileFormat(fileUnit)
- use IO, only: &
-   IO_lc, &
-   IO_intValue, &
-   IO_stringValue, &
-   IO_stringPos
-
  
  integer, intent(in) :: fileUnit
 
@@ -445,12 +440,6 @@ integer function mesh_marc_get_fileFormat(fileUnit)
 !> @brief Figures out table styles for initial cond and hypoelastic
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_get_tableStyles(initialcond, hypoelastic,fileUnit)
- use IO, only: &
-   IO_lc, &
-   IO_intValue, &
-   IO_stringValue, &
-   IO_stringPos
-
  
  integer, intent(out) :: initialcond, hypoelastic
  integer, intent(in)  :: fileUnit
@@ -480,24 +469,16 @@ subroutine mesh_marc_get_tableStyles(initialcond, hypoelastic,fileUnit)
 !> @brief Figures out material number of hypoelastic material
 !--------------------------------------------------------------------------------------------------
 function mesh_marc_get_matNumber(fileUnit,tableStyle)
- use IO, only: &
-   IO_lc, &
-   IO_intValue, &
-   IO_stringValue, &
-   IO_stringPos
-
  
- integer, intent(in) :: fileUnit, tableStyle
+ integer, intent(in)                :: fileUnit, tableStyle
  integer, dimension(:), allocatable :: mesh_marc_get_matNumber
 
  integer, allocatable, dimension(:) :: chunkPos
  integer :: i, j, data_blocks
- character(len=300) line
-
-
- rewind(fileUnit)
+ character(len=300) :: line
 
  data_blocks = 1
+ rewind(fileUnit)
  do
   read (fileUnit,'(A300)',END=620) line
   chunkPos = IO_stringPos(line)
@@ -528,18 +509,12 @@ function mesh_marc_get_matNumber(fileUnit,tableStyle)
 !> @brief Count overall number of nodes and elements
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_count_nodesAndElements(nNodes, nElems, fileUnit)
- use IO, only: &
-   IO_lc, &
-   IO_stringValue, &
-   IO_stringPos, &
-   IO_IntValue
-
  
  integer, intent(in)  :: fileUnit
  integer, intent(out) :: nNodes, nElems
  
  integer, allocatable, dimension(:) :: chunkPos
- character(len=300) line
+ character(len=300) :: line
 
  nNodes = 0
  nElems = 0
@@ -565,15 +540,9 @@ subroutine mesh_marc_count_nodesAndElements(nNodes, nElems, fileUnit)
 !--------------------------------------------------------------------------------------------------
 !> @brief Count overall number of element sets in mesh.
 !--------------------------------------------------------------------------------------------------
- subroutine mesh_marc_count_elementSets(nElemSets,maxNelemInSet,fileUnit)
- use IO, only: &
-   IO_lc, &
-   IO_stringValue, &
-   IO_stringPos, &
-   IO_countContinuousIntValues
-
+subroutine mesh_marc_count_elementSets(nElemSets,maxNelemInSet,fileUnit)
  
- integer, intent(in) :: fileUnit
+ integer, intent(in)  :: fileUnit
  integer, intent(out) :: nElemSets, maxNelemInSet
 
  integer, allocatable, dimension(:) :: chunkPos
@@ -601,18 +570,10 @@ subroutine mesh_marc_count_nodesAndElements(nNodes, nElems, fileUnit)
 !> @brief map element sets
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_map_elementSets(nameElemSet,mapElemSet,fileUnit)
-
- use IO,   only: IO_lc, &
-                 IO_stringValue, &
-                 IO_stringPos, &
-                 IO_continuousIntValues
-
  
- integer, intent(in) :: fileUnit
- character(len=64), dimension(:), intent(out) :: &
-   nameElemSet
- integer, dimension(:,:), intent(out) :: &
-   mapElemSet
+ integer, intent(in)                          :: fileUnit
+ character(len=64), dimension(:), intent(out) :: nameElemSet
+ integer, dimension(:,:), intent(out)         :: mapElemSet
 
  integer, allocatable, dimension(:) :: chunkPos
  character(len=300) :: line
@@ -668,7 +629,7 @@ subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,nElems,fileU
    chunkPos = IO_stringPos(line)
    if (MarcVersion < 13) then                                                                       ! Marc 2016 or earlier
      if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'hypoelastic' ) then
-       do i=1,3+TableStyle                                                                ! skip three (or four if new table style!) lines
+       do i=1,3+TableStyle                                                                          ! skip three (or four if new table style!) lines
          read (fileUnit,'(A300)') line
        enddo
        contInts = IO_continuousIntValues(fileUnit,nElems,nameElemSet,&
