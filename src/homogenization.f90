@@ -134,27 +134,14 @@ subroutine homogenization_init
 
 !--------------------------------------------------------------------------------------------------
 ! write description file for homogenization output
- mainProcess2: if (worldrank == 0) then
+ mainProcess: if (worldrank == 0) then
    call IO_write_jobFile(FILEUNIT,'outputHomogenization')
    do p = 1,size(config_homogenization)
      if (any(material_homogenizationAt == p)) then
-       i = homogenization_typeInstance(p)                                                               ! which instance of this homogenization type
-       valid = .true.                                                                                   ! assume valid
-       select case(homogenization_type(p))                                                              ! split per homogenization type
-         case (HOMOGENIZATION_NONE_ID)
-           outputName = HOMOGENIZATION_NONE_label
-         case (HOMOGENIZATION_ISOSTRAIN_ID)
-           outputName = HOMOGENIZATION_ISOSTRAIN_label
-         case (HOMOGENIZATION_RGC_ID)
-           outputName = HOMOGENIZATION_RGC_label
-         case default
-           valid = .false.
-       end select
        write(FILEUNIT,'(/,a,/)')  '['//trim(homogenization_name(p))//']'
-       if (valid) then
-         write(FILEUNIT,'(a)') '(type)'//char(9)//trim(outputName)
-         write(FILEUNIT,'(a,i4)') '(ngrains)'//char(9),homogenization_Ngrains(p)
-       endif
+       write(FILEUNIT,'(a)') '(type) n/a'
+       write(FILEUNIT,'(a,i4)') '(ngrains)'//char(9),homogenization_Ngrains(p)
+       
        i = thermal_typeInstance(p)                                                                      ! which instance of this thermal type
        valid = .true.                                                                                   ! assume valid
        select case(thermal_type(p))                                                                     ! split per thermal type
@@ -184,6 +171,7 @@ subroutine homogenization_init
            enddo
          endif
        endif
+       
        i = damage_typeInstance(p)                                                                       ! which instance of this damage type
        valid = .true.                                                                                   ! assume valid
        select case(damage_type(p))                                                                      ! split per damage type
@@ -216,7 +204,7 @@ subroutine homogenization_init
      endif
    enddo
    close(FILEUNIT)
- endif mainProcess2
+ endif mainProcess
 
  call config_deallocate('material.config/homogenization')
 
@@ -842,12 +830,12 @@ function postResults(ip,el)
    postResults
  integer :: &
    startPos, endPos ,&
-   of, instance, homog
+   homog
 
 
  postResults = 0.0_pReal
- startPos = endPos + 1
- endPos   = endPos + thermalState(material_homogenizationAt(el))%sizePostResults
+ startPos = 1
+ endPos   = thermalState(material_homogenizationAt(el))%sizePostResults
  chosenThermal: select case (thermal_type(mesh_element(3,el)))
 
    case (THERMAL_adiabatic_ID) chosenThermal
