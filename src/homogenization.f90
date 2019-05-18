@@ -35,7 +35,6 @@ module homogenization
    materialpoint_results                                                                            !< results array of material point
  integer,                                            public, protected  :: &
    materialpoint_sizeResults, &
-   homogenization_maxSizePostResults, &
    thermal_maxSizePostResults, &
    damage_maxSizePostResults
 
@@ -98,25 +97,25 @@ module homogenization
    
    
    module function mech_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
-logical, dimension(2) :: mech_RGC_updateState
- real(pReal), dimension(:,:,:),     intent(in)    :: & 
-   P,&                                                                                              !< array of P
-   F,&                                                                                              !< array of F
-   F0                                                                                               !< array of initial F
- real(pReal), dimension(:,:,:,:,:), intent(in) :: dPdF                                              !< array of current grain stiffness
- real(pReal), dimension(3,3),       intent(in) :: avgF                                              !< average F
- real(pReal),                       intent(in) :: dt                                                !< time increment
- integer,                           intent(in) :: &
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
-   end function
-   
-  module subroutine mech_RGC_results(instance,group)
+     logical, dimension(2) :: mech_RGC_updateState
+     real(pReal), dimension(:,:,:),     intent(in)    :: & 
+       P,&                                                                                          !< partitioned stresses
+       F,&                                                                                          !< partitioned deformation gradients
+       F0                                                                                           !< partitioned initial deformation gradients
+    real(pReal), dimension(:,:,:,:,:), intent(in) :: dPdF                                           !< partitioned stiffnesses
+    real(pReal), dimension(3,3),       intent(in) :: avgF                                           !< average F
+    real(pReal),                       intent(in) :: dt                                             !< time increment
+    integer,                           intent(in) :: &
+     ip, &                                                                                          !< integration point number
+     el                                                                                             !< element number
+   end function mech_RGC_updateState
 
 
-  integer,          intent(in) :: instance
-  character(len=*), intent(in) :: group
-  end subroutine
+   module subroutine mech_RGC_results(instance,group)
+     integer,          intent(in) :: instance                                                       !< homogenization instance
+     character(len=*), intent(in) :: group                                                          !< group name in HDF5 file
+   end subroutine mech_RGC_results
+  
  end interface
 
  public ::  &
@@ -124,11 +123,6 @@ logical, dimension(2) :: mech_RGC_updateState
    materialpoint_stressAndItsTangent, &
    materialpoint_postResults, &
    homogenization_results
- private :: &
-   partitionDeformation, &
-   updateState, &
-   averageStressAndItsTangent, &
-   postResults
 
 contains
 
@@ -137,7 +131,6 @@ contains
 !> @brief module initialization
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_init
- use homogenization_mech_RGC
  use thermal_isothermal
  use thermal_adiabatic
  use thermal_conduction
@@ -245,7 +238,7 @@ subroutine homogenization_init
 ! allocate and initialize global variables
  allocate(materialpoint_dPdF(3,3,3,3,theMesh%elem%nIPs,theMesh%nElems),       source=0.0_pReal)
  allocate(materialpoint_F0(3,3,theMesh%elem%nIPs,theMesh%nElems),             source=0.0_pReal)
- materialpoint_F0 = spread(spread(math_I3,3,theMesh%elem%nIPs),4,theMesh%nElems)                          ! initialize to identity
+ materialpoint_F0 = spread(spread(math_I3,3,theMesh%elem%nIPs),4,theMesh%nElems)                    ! initialize to identity
  allocate(materialpoint_F(3,3,theMesh%elem%nIPs,theMesh%nElems),              source=0.0_pReal)
  materialpoint_F = materialpoint_F0                                                                 ! initialize to identity
  allocate(materialpoint_subF0(3,3,theMesh%elem%nIPs,theMesh%nElems),          source=0.0_pReal)
@@ -260,18 +253,15 @@ subroutine homogenization_init
 
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global state and postresutls variables
- homogenization_maxSizePostResults = 0
  thermal_maxSizePostResults        = 0
  damage_maxSizePostResults         = 0
  do p = 1,size(config_homogenization)
-   homogenization_maxSizePostResults = max(homogenization_maxSizePostResults,homogState       (p)%sizePostResults)
    thermal_maxSizePostResults        = max(thermal_maxSizePostResults,       thermalState     (p)%sizePostResults)
    damage_maxSizePostResults         = max(damage_maxSizePostResults        ,damageState      (p)%sizePostResults)
  enddo
 
  materialpoint_sizeResults = 1 &                                                                    ! grain count
-                           + 1 + homogenization_maxSizePostResults &                                ! homogSize & homogResult
-                               + thermal_maxSizePostResults        &
+                           + 1 + thermal_maxSizePostResults        &
                                + damage_maxSizePostResults         &
                            + homogenization_maxNgrains * (1 + crystallite_maxSizePostResults &      ! crystallite size & crystallite results
                                                         + 1 + constitutive_plasticity_maxSizePostResults &     ! constitutive size & constitutive results
@@ -281,11 +271,6 @@ subroutine homogenization_init
  write(6,'(/,a)')   ' <<<+-  homogenization init  -+>>>'
 
  if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0) then
-#ifdef TODO
-   write(6,'(a32,1x,7(i8,1x))')   'homogenization_state0:          ', shape(homogenization_state0)
-   write(6,'(a32,1x,7(i8,1x))')   'homogenization_subState0:       ', shape(homogenization_subState0)
-   write(6,'(a32,1x,7(i8,1x))')   'homogenization_state:           ', shape(homogenization_state)
-#endif
    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_dPdF:             ', shape(materialpoint_dPdF)
    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_F0:               ', shape(materialpoint_F0)
    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_F:                ', shape(materialpoint_F)

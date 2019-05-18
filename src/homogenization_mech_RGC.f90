@@ -30,7 +30,7 @@ submodule(homogenization) homogenization_mech_RGC
      angles
    integer :: &
      of_debug = 0
-   integer(kind(undefined_ID)),         dimension(:),   allocatable   :: &
+   integer(kind(undefined_ID)),  dimension(:),   allocatable   :: &
      outputID
  end type tParameters
 
@@ -945,7 +945,7 @@ end subroutine mech_RGC_averageStressAndItsTangent
 !> @brief writes results to HDF5 output file
 ! ToDo: check wheter units are correct
 !--------------------------------------------------------------------------------------------------
-subroutine mech_RGC_results(instance,group)
+module subroutine mech_RGC_results(instance,group)
 #if defined(PETSc) || defined(DAMASK_HDF5)
 
   integer,          intent(in) :: instance
@@ -981,8 +981,8 @@ subroutine mech_RGC_results(instance,group)
   end associate
   
 #else
-  integer, intent(in) :: instance
-  character(len=*) :: group
+  integer,          intent(in) :: instance
+  character(len=*), intent(in) :: group
 #endif
 
 end subroutine mech_RGC_results
