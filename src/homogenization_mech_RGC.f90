@@ -241,18 +241,7 @@ end subroutine mech_RGC_partitionDeformation
 !> @brief update the internal state of the homogenization scheme and tell whether "done" and 
 ! "happy" with result
 !--------------------------------------------------------------------------------------------------
-module function mech_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
-
- real(pReal), dimension(:,:,:),     intent(in)    :: & 
-   P,&                                                                                              !< array of P
-   F,&                                                                                              !< array of F
-   F0                                                                                               !< array of initial F
- real(pReal), dimension(:,:,:,:,:), intent(in) :: dPdF                                              !< array of current grain stiffness
- real(pReal), dimension(3,3),       intent(in) :: avgF                                              !< average F
- real(pReal),                       intent(in) :: dt                                                !< time increment
- integer,                           intent(in) :: &
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
+module procedure mech_RGC_updateState
 
  integer, dimension(4) :: intFaceN,intFaceP,faceID
  integer, dimension(3) :: nGDim,iGr3N,iGr3P
@@ -579,9 +568,10 @@ module function mech_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 !--------------------------------------------------------------------------------------------------
 ! ... of the numerical viscosity traction "rmatrix"
  allocate(rmatrix(3*nIntFaceTot,3*nIntFaceTot),source=0.0_pReal)
- forall (i=1:3*nIntFaceTot) &
+ do i=1,3*nIntFaceTot
    rmatrix(i,i) = viscModus_RGC*viscPower_RGC/(refRelaxRate_RGC*dt)* &                              ! tangent due to numerical viscosity traction appears
                   (abs(drelax(i))/(refRelaxRate_RGC*dt))**(viscPower_RGC - 1.0_pReal)               ! only in the main diagonal term 
+ enddo
                                                                         
 #ifdef DEBUG
  if (iand(debug_level(debug_homogenization), debug_levelExtensive) /= 0) then
@@ -920,7 +910,7 @@ module function mech_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
   
  end subroutine grainDeformation
  
-end function mech_RGC_updateState
+end procedure mech_RGC_updateState
 
 
 !--------------------------------------------------------------------------------------------------
