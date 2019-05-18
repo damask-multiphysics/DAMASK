@@ -13,10 +13,11 @@ module mesh
 
  implicit none
  private
- integer, public, protected :: &
+ integer, public,protected :: &
+   mesh_Ncellnodes                                                                                  !< total number of cell nodes in mesh (including duplicates)
+ integer :: &
    mesh_elemType, &                                                                                 !< Element type of the mesh (only support homogeneous meshes)
    mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
-   mesh_Ncellnodes, &                                                                               !< total number of cell nodes in mesh (including duplicates)
    mesh_Ncells, &                                                                                   !< total number of cells in mesh
    mesh_maxNsharedElems                                                                             !< max number of CP elements sharing a node
 
@@ -76,21 +77,6 @@ integer, dimension(:,:), allocatable, private :: &
    FE_maxNcellnodesPerCell = 8, &
    FE_maxNcellfaces = 6, &
    FE_maxNcellnodesPerCellface = 4
-
-
- integer, dimension(FE_Ngeomtypes), parameter, private :: FE_Nfaces = &                        !< number of faces of a specific type of element geometry
- int([ &
-      3, & ! element   6 (2D 3node 1ip)
-      3, & ! element 125 (2D 6node 3ip)
-      4, & ! element  11 (2D 4node 4ip)
-      4, & ! element  27 (2D 8node 9ip)
-      4, & ! element 134 (3D 4node 1ip)
-      4, & ! element 127 (3D 10node 4ip)
-      5, & ! element 136 (3D 6node 6ip)
-      6, & ! element 117 (3D 8node 1ip)
-      6, & ! element   7 (3D 8node 8ip)
-      6  & ! element  21 (3D 20node 27ip)
-  ],pInt)
 
  integer, dimension(FE_Ngeomtypes), parameter, private :: FE_NmatchingNodes = &               !< number of nodes that are needed for face matching in a specific type of element geometry
  int([ &
