@@ -8,10 +8,18 @@
 !--------------------------------------------------------------------------------------------------
 module homogenization_mech_RGC
  use prec
+ use IO
+ use config
+ use debug
+ use math
  use material
+ use numerics
+ use constitutive
+#if defined(PETSc) || defined(DAMASK_HDF5)
+ use results
+#endif
 
  implicit none
- private
 
  enum, bind(c) 
    enumerator :: &
@@ -66,34 +74,12 @@ module homogenization_mech_RGC
  type(tRGCdependentState),   dimension(:), allocatable :: &
    dependentState
 
- public :: &
-   homogenization_RGC_init, &
-   homogenization_RGC_partitionDeformation, &
-   homogenization_RGC_averageStressAndItsTangent, &
-   homogenization_RGC_updateState, &
-   mech_RGC_results ! name suited for planned submodule situation
-
 contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all necessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_RGC_init()
- use debug, only: &
-#ifdef DEBUG
-   debug_i, &
-   debug_e, &
-#endif
-   debug_level, &
-   debug_homogenization, &
-   debug_levelBasic
- use math, only: &
-   math_EulerToR, &
-   INRAD
- use IO, only: &
-   IO_error
- use config, only: &
-   config_homogenization
+subroutine homogenization_RGC_init
 
  integer :: &
    Ninstance, &
@@ -218,12 +204,6 @@ end subroutine homogenization_RGC_init
 !> @brief partitions the deformation gradient onto the constituents
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_RGC_partitionDeformation(F,avgF,instance,of)
-#ifdef DEBUG
- use debug, only: &
-   debug_level, &
-   debug_homogenization, &
-   debug_levelExtensive
-#endif
 
  real(pReal),   dimension (:,:,:), intent(out) :: F                                                 !< partioned F  per grain
  
@@ -275,24 +255,6 @@ end subroutine homogenization_RGC_partitionDeformation
 ! "happy" with result
 !--------------------------------------------------------------------------------------------------
 function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
-#ifdef DEBUG
- use debug, only: &
-   debug_level, &
-   debug_homogenization,&
-   debug_levelExtensive
-#endif
- use math, only: &
-   math_invert2
- use numerics, only: &
-   absTol_RGC, &
-   relTol_RGC, &
-   absMax_RGC, &
-   relMax_RGC, &
-   pPert_RGC, &
-   maxdRelax_RGC, &
-   viscPower_RGC, &
-   viscModus_RGC, &
-   refRelaxRate_RGC
 
  real(pReal), dimension(:,:,:),     intent(in)    :: & 
    P,&                                                                                              !< array of P
@@ -712,10 +674,6 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  !> @brief calculate stress-like penalty due to deformation mismatch
  !--------------------------------------------------------------------------------------------------
  subroutine stressPenalty(rPen,nMis,avgF,fDef,ip,el,instance,of)
-  use math, only: &
-    math_civita
-  use numerics, only: &
-    xSmoo_RGC
 
   real(pReal),   dimension (:,:,:), intent(out) :: rPen                                             !< stress-like penalty
   real(pReal),   dimension (:,:),   intent(out) :: nMis                                             !< total amount of mismatch
@@ -828,13 +786,6 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  !> @brief calculate stress-like penalty due to volume discrepancy 
  !--------------------------------------------------------------------------------------------------
  subroutine volumePenalty(vPen,vDiscrep,fAvg,fDef,nGrain,instance,of)
-  use math, only: &
-    math_det33, &
-    math_inv33
-  use numerics, only: &
-    maxVolDiscr_RGC,&
-    volDiscrMod_RGC,&
-    volDiscrPow_RGC
  
   real(pReal), dimension (:,:,:), intent(out) :: vPen                                               ! stress-like penalty due to volume
   real(pReal),                    intent(out) :: vDiscrep                                           ! total volume discrepancy
@@ -883,8 +834,6 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  ! deformation
  !--------------------------------------------------------------------------------------------------
  function surfaceCorrection(avgF,instance,of)
-  use math, only: &
-    math_invert33
   
   real(pReal), dimension(3)               :: surfaceCorrection
 
@@ -916,8 +865,6 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  !> @brief compute the equivalent shear and bulk moduli from the elasticity tensor
  !--------------------------------------------------------------------------------------------------
  function equivalentModuli(grainID,ip,el)
-  use constitutive, only: &
-    constitutive_homogenizedC
  
   real(pReal), dimension(2)    :: equivalentModuli
 
@@ -1015,8 +962,6 @@ end subroutine homogenization_RGC_averageStressAndItsTangent
 !--------------------------------------------------------------------------------------------------
 subroutine mech_RGC_results(instance,group)
 #if defined(PETSc) || defined(DAMASK_HDF5)
-  use results, only: &
-    results_writeDataset
 
   integer, intent(in) :: instance
   character(len=*) :: group

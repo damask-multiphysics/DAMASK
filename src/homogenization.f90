@@ -6,7 +6,20 @@
 !--------------------------------------------------------------------------------------------------
 module homogenization
  use prec
+ use IO
+ use config
+ use debug
+ use math
  use material
+ use numerics
+ use constitutive
+ use crystallite
+ use mesh
+ use FEsolving
+#if defined(PETSc) || defined(DAMASK_HDF5)
+ use results
+ use HDF5_utilities
+#endif
 
 !--------------------------------------------------------------------------------------------------
 ! General variables for the homogenization at a  material point
@@ -81,26 +94,6 @@ contains
 !> @brief module initialization
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_init
- use math, only: &
-   math_I3
- use debug, only: &
-   debug_level, &
-   debug_homogenization, &
-   debug_levelBasic, &
-   debug_e, &
-   debug_g
- use mesh, only: &
-   theMesh, &
-   mesh_element
- use constitutive, only: &
-   constitutive_plasticity_maxSizePostResults, &
-   constitutive_source_maxSizePostResults
- use crystallite, only: &
-   crystallite_maxSizePostResults
- use config, only: &
-  config_deallocate, &
-  config_homogenization, &
-  homogenization_name
  use homogenization_mech_RGC
  use thermal_isothermal
  use thermal_adiabatic
@@ -108,9 +101,6 @@ subroutine homogenization_init
  use damage_none
  use damage_local
  use damage_nonlocal
- use IO
- use numerics, only: &
-   worldrank
 
  integer, parameter :: FILEUNIT = 200
  integer :: e,i,p
@@ -278,51 +268,6 @@ end subroutine homogenization_init
 !> @brief  parallelized calculation of stress and corresponding tangent at material points
 !--------------------------------------------------------------------------------------------------
 subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
- use numerics, only: &
-   subStepMinHomog, &
-   subStepSizeHomog, &
-   stepIncreaseHomog, &
-   nMPstate
- use FEsolving, only: &
-   FEsolving_execElem, &
-   FEsolving_execIP, &
-   terminallyIll
- use mesh, only: &
-   mesh_element
- use crystallite, only: &
-   crystallite_F0, &
-   crystallite_Fp0, &
-   crystallite_Fp, &
-   crystallite_Fi0, &
-   crystallite_Fi, &
-   crystallite_Lp0, &
-   crystallite_Lp, &
-   crystallite_Li0, &
-   crystallite_Li, &
-   crystallite_S0, &
-   crystallite_S, &
-   crystallite_partionedF0, &
-   crystallite_partionedF, &
-   crystallite_partionedFp0, &
-   crystallite_partionedLp0, &
-   crystallite_partionedFi0, &
-   crystallite_partionedLi0, &
-   crystallite_partionedS0, &
-   crystallite_dt, &
-   crystallite_requested, &
-   crystallite_stress, &
-   crystallite_stressTangent, &
-   crystallite_orientations
-#ifdef DEBUG
- use debug, only: &
-   debug_level, &
-   debug_homogenization, &
-   debug_levelBasic, &
-   debug_levelExtensive, &
-   debug_levelSelective, &
-   debug_e, &
-   debug_i
-#endif
 
  real(pReal), intent(in) :: dt                                                                      !< time increment
  logical,     intent(in) :: updateJaco                                                              !< initiating Jacobian update
@@ -616,14 +561,6 @@ end subroutine materialpoint_stressAndItsTangent
 !> @brief parallelized calculation of result array at material points
 !--------------------------------------------------------------------------------------------------
 subroutine materialpoint_postResults
- use FEsolving, only: &
-   FEsolving_execElem, &
-   FEsolving_execIP
- use mesh, only: &
-   mesh_element
- use crystallite, only: &
-   crystallite_sizePostResults, &
-   crystallite_postResults
 
  integer :: &
    thePos, &
@@ -673,10 +610,6 @@ end subroutine materialpoint_postResults
 !> @brief  partition material point def grad onto constituents
 !--------------------------------------------------------------------------------------------------
 subroutine partitionDeformation(ip,el)
- use mesh, only: &
-   mesh_element
- use crystallite, only: &
-   crystallite_partionedF
  use homogenization_mech_RGC, only: &
    homogenization_RGC_partitionDeformation
 
@@ -710,13 +643,6 @@ end subroutine partitionDeformation
 !> "happy" with result
 !--------------------------------------------------------------------------------------------------
 function updateState(ip,el)
- use mesh, only: &
-   mesh_element
- use crystallite, only: &
-   crystallite_P, &
-   crystallite_dPdF, &
-   crystallite_partionedF,&
-   crystallite_partionedF0
  use homogenization_mech_RGC, only: &
    homogenization_RGC_updateState
  use thermal_adiabatic, only: &
@@ -769,10 +695,6 @@ end function updateState
 !> @brief derive average stress and stiffness from constituent quantities
 !--------------------------------------------------------------------------------------------------
 subroutine averageStressAndItsTangent(ip,el)
- use mesh, only: &
-   mesh_element
- use crystallite, only: &
-   crystallite_P,crystallite_dPdF
  use homogenization_mech_RGC, only: &
    homogenization_RGC_averageStressAndItsTangent
 
@@ -810,8 +732,6 @@ end subroutine averageStressAndItsTangent
 !> if homogenization_sizePostResults(i,e) > 0 !!
 !--------------------------------------------------------------------------------------------------
 function postResults(ip,el)
- use mesh, only: &
-   mesh_element
  use thermal_adiabatic, only: &
    thermal_adiabatic_postResults
  use thermal_conduction, only: &
@@ -868,14 +788,9 @@ end function postResults
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_results
 #if defined(PETSc) || defined(DAMASK_HDF5)
-  use results
-  use homogenization_mech_RGC
-  use HDF5_utilities
   use config, only: &
     config_name_homogenization => homogenization_name                                               ! anticipate logical name
-   
   use material, only: &
-    homogenization_typeInstance, &
     material_homogenization_type => homogenization_type
     
   integer :: p

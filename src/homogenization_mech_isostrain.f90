@@ -5,7 +5,10 @@
 !> @brief Isostrain (full constraint Taylor assuption) homogenization scheme
 !--------------------------------------------------------------------------------------------------
 submodule(homogenization) homogenization_mech_isostrain
-
+  use config
+  use debug
+  use IO
+  
   implicit none
 
   enum, bind(c) 
@@ -30,14 +33,6 @@ contains
 !> @brief allocates all neccessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
 module subroutine mech_isostrain_init
-  use debug, only: &
-    debug_HOMOGENIZATION, &
-    debug_level, &
-    debug_levelBasic
-  use IO, only: &
-    IO_error
-  use config, only: &
-    config_homogenization
 
   integer :: &
     Ninstance, &

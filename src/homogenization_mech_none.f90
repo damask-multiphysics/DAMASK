@@ -5,6 +5,8 @@
 !> @brief dummy homogenization homogenization scheme for 1 constituent per material point
 !--------------------------------------------------------------------------------------------------
 submodule(homogenization) homogenization_mech_none
+  use config
+  use debug
 
   implicit none
 
@@ -14,12 +16,6 @@ contains
 !> @brief allocates all neccessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
 module subroutine mech_none_init
-  use debug, only: &
-    debug_HOMOGENIZATION, &
-    debug_level, &
-    debug_levelBasic
-  use config, only: &
-    config_homogenization
 
   integer :: &
     Ninstance, &
