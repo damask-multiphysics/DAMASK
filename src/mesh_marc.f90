@@ -360,7 +360,7 @@ subroutine mesh_init(ip,el)
  call mesh_build_FEdata                                                                             ! get properties of the different types of elements
  call mesh_build_cellconnectivity
  if (myDebug) write(6,'(a)') ' Built cell connectivity'; flush(6)
- mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)
+ mesh_cellnode = mesh_build_cellnodes()
  if (myDebug) write(6,'(a)') ' Built cell nodes'; flush(6)
  call mesh_build_ipCoordinates
  if (myDebug) write(6,'(a)') ' Built IP coordinates'; flush(6)
@@ -1123,12 +1123,10 @@ end subroutine mesh_build_cellconnectivity
 !> Build list of cellnodes' coordinates.
 !> Cellnode coordinates are calculated from a weighted sum of node coordinates.
 !--------------------------------------------------------------------------------------------------
-function mesh_build_cellnodes(nodes,Ncellnodes)
+function mesh_build_cellnodes()
 
  
- integer,                         intent(in) :: Ncellnodes                                    !< requested number of cellnodes
- real(pReal), dimension(3,mesh_Nnodes), intent(in) :: nodes
- real(pReal), dimension(3,Ncellnodes) :: mesh_build_cellnodes
+ real(pReal), dimension(3,mesh_Ncellnodes) :: mesh_build_cellnodes
 
  integer :: &
    e,n,m, &
@@ -1138,12 +1136,12 @@ function mesh_build_cellnodes(nodes,Ncellnodes)
 
  mesh_build_cellnodes = 0.0_pReal
 !$OMP PARALLEL DO PRIVATE(e,localCellnodeID,myCoords)
- do n = 1,Ncellnodes                                                                           ! loop over cell nodes
+ do n = 1,mesh_Ncellnodes                                                                           ! loop over cell nodes
    e = mesh_cellnodeParent(1,n)
    localCellnodeID = mesh_cellnodeParent(2,n)
    myCoords = 0.0_pReal
    do m = 1,theMesh%elem%nNodes
-     myCoords = myCoords + nodes(1:3,mesh_element(4+m,e)) &
+     myCoords = myCoords + mesh_node(1:3,mesh_element(4+m,e)) &
                          * theMesh%elem%cellNodeParentNodeWeights(m,localCellnodeID)
    enddo
    mesh_build_cellnodes(1:3,n) = myCoords / sum(theMesh%elem%cellNodeParentNodeWeights(:,localCellnodeID))
