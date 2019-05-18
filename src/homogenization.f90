@@ -60,10 +60,23 @@ module homogenization
    module subroutine mech_isostrain_init
    end subroutine mech_isostrain_init
    
+   module subroutine mech_RGC_init
+   end subroutine mech_RGC_init
+   
+   
    module subroutine mech_isostrain_partitionDeformation(F,avgF)
      real(pReal),   dimension (:,:,:), intent(out) :: F                                             !< partitioned deformation gradient
      real(pReal),   dimension (3,3),   intent(in)  :: avgF                                          !< average deformation gradient at material point
    end subroutine mech_isostrain_partitionDeformation
+   
+   module subroutine mech_RGC_partitionDeformation(F,avgF,instance,of)
+     real(pReal),   dimension (:,:,:), intent(out) :: F                                             !< partitioned deformation gradient
+     real(pReal),   dimension (3,3),   intent(in)  :: avgF                                          !< average deformation gradient at material point
+     integer,                          intent(in)  :: &
+       instance, &
+       of
+   end subroutine mech_RGC_partitionDeformation
+   
    
    module subroutine mech_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,instance)
      real(pReal),   dimension (3,3),       intent(out) :: avgP                                      !< average stress at material point
@@ -73,7 +86,37 @@ module homogenization
      real(pReal),   dimension (:,:,:,:,:), intent(in)  :: dPdF                                      !< partitioned stiffnesses
      integer,                              intent(in)  :: instance 
    end subroutine mech_isostrain_averageStressAndItsTangent
+   
+   module subroutine mech_RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,instance)
+     real(pReal),   dimension (3,3),       intent(out) :: avgP                                      !< average stress at material point
+     real(pReal),   dimension (3,3,3,3),   intent(out) :: dAvgPdAvgF                                !< average stiffness at material point
+ 
+     real(pReal),   dimension (:,:,:),     intent(in)  :: P                                         !< partitioned stresses
+     real(pReal),   dimension (:,:,:,:,:), intent(in)  :: dPdF                                      !< partitioned stiffnesses
+     integer,                              intent(in)  :: instance 
+   end subroutine mech_RGC_averageStressAndItsTangent
+   
+   
+   module function mech_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
+logical, dimension(2) :: mech_RGC_updateState
+ real(pReal), dimension(:,:,:),     intent(in)    :: & 
+   P,&                                                                                              !< array of P
+   F,&                                                                                              !< array of F
+   F0                                                                                               !< array of initial F
+ real(pReal), dimension(:,:,:,:,:), intent(in) :: dPdF                                              !< array of current grain stiffness
+ real(pReal), dimension(3,3),       intent(in) :: avgF                                              !< average F
+ real(pReal),                       intent(in) :: dt                                                !< time increment
+ integer,                           intent(in) :: &
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+   end function
+   
+  module subroutine mech_RGC_results(instance,group)
 
+
+  integer,          intent(in) :: instance
+  character(len=*), intent(in) :: group
+  end subroutine
  end interface
 
  public ::  &
@@ -112,7 +155,7 @@ subroutine homogenization_init
 
  if (any(homogenization_type == HOMOGENIZATION_NONE_ID))      call mech_none_init
  if (any(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)) call mech_isostrain_init
- if (any(homogenization_type == HOMOGENIZATION_RGC_ID))       call homogenization_RGC_init
+ if (any(homogenization_type == HOMOGENIZATION_RGC_ID))       call mech_RGC_init
 
  if (any(thermal_type == THERMAL_isothermal_ID)) call thermal_isothermal_init
  if (any(thermal_type == THERMAL_adiabatic_ID))  call thermal_adiabatic_init
@@ -610,8 +653,6 @@ end subroutine materialpoint_postResults
 !> @brief  partition material point def grad onto constituents
 !--------------------------------------------------------------------------------------------------
 subroutine partitionDeformation(ip,el)
- use homogenization_mech_RGC, only: &
-   homogenization_RGC_partitionDeformation
 
  integer, intent(in) :: &
    ip, &                                                                                            !< integration point
@@ -628,7 +669,7 @@ subroutine partitionDeformation(ip,el)
                           materialpoint_subF(1:3,1:3,ip,el))
 
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
-     call homogenization_RGC_partitionDeformation(&
+     call mech_RGC_partitionDeformation(&
                          crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
                          materialpoint_subF(1:3,1:3,ip,el),&
                          ip, &
@@ -643,8 +684,6 @@ end subroutine partitionDeformation
 !> "happy" with result
 !--------------------------------------------------------------------------------------------------
 function updateState(ip,el)
- use homogenization_mech_RGC, only: &
-   homogenization_RGC_updateState
  use thermal_adiabatic, only: &
    thermal_adiabatic_updateState
  use damage_local, only: &
@@ -660,14 +699,14 @@ function updateState(ip,el)
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
      updateState = &
        updateState .and. &
-        homogenization_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
-                                       crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
-                                       crystallite_partionedF0(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el),&
-                                       materialpoint_subF(1:3,1:3,ip,el),&
-                                       materialpoint_subdt(ip,el), &
-                                       crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
-                                       ip, &
-                                       el)
+        mech_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
+                             crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
+                             crystallite_partionedF0(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el),&
+                             materialpoint_subF(1:3,1:3,ip,el),&
+                             materialpoint_subdt(ip,el), &
+                             crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
+                             ip, &
+                             el)
  end select chosenHomogenization
 
  chosenThermal: select case (thermal_type(mesh_element(3,el)))
@@ -695,8 +734,6 @@ end function updateState
 !> @brief derive average stress and stiffness from constituent quantities
 !--------------------------------------------------------------------------------------------------
 subroutine averageStressAndItsTangent(ip,el)
- use homogenization_mech_RGC, only: &
-   homogenization_RGC_averageStressAndItsTangent
 
  integer, intent(in) :: &
    ip, &                                                                                            !< integration point
@@ -716,7 +753,7 @@ subroutine averageStressAndItsTangent(ip,el)
        homogenization_typeInstance(mesh_element(3,el)))
 
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
-     call homogenization_RGC_averageStressAndItsTangent(&
+     call mech_RGC_averageStressAndItsTangent(&
        materialpoint_P(1:3,1:3,ip,el), &
        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
        crystallite_P(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &

@@ -5,11 +5,6 @@
 !> @brief Isostrain (full constraint Taylor assuption) homogenization scheme
 !--------------------------------------------------------------------------------------------------
 submodule(homogenization) homogenization_mech_isostrain
-  use config
-  use debug
-  use IO
-  
-  implicit none
 
   enum, bind(c) 
     enumerator :: &

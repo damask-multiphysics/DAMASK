@@ -5,10 +5,6 @@
 !> @brief dummy homogenization homogenization scheme for 1 constituent per material point
 !--------------------------------------------------------------------------------------------------
 submodule(homogenization) homogenization_mech_none
-  use config
-  use debug
-
-  implicit none
 
 contains
 
@@ -23,7 +19,7 @@ module subroutine mech_none_init
     NofMyHomog
  
   write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_NONE_label//' init  -+>>>'
- 
+
   Ninstance = count(homogenization_type == HOMOGENIZATION_NONE_ID)
   if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0) &
     write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
