@@ -215,7 +215,6 @@ integer, dimension(:,:), allocatable, private :: &
    mesh_build_cellnodes, &
    mesh_build_ipVolumes, &
    mesh_build_ipCoordinates, &
-   mesh_cellCenterCoordinates, &
    mesh_FEasCP
 
 
@@ -1257,32 +1256,6 @@ subroutine mesh_build_ipCoordinates
  !$OMP END PARALLEL DO
 
 end subroutine mesh_build_ipCoordinates
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Calculates cell center coordinates.
-!--------------------------------------------------------------------------------------------------
-pure function mesh_cellCenterCoordinates(ip,el)
-
- 
- integer, intent(in) :: el, &                                                                  !< element number
-                              ip                                                                     !< integration point number
- real(pReal), dimension(3) :: mesh_cellCenterCoordinates                                             !< x,y,z coordinates of the cell center of the requested IP cell
- integer :: t,g,c,n
-
- t = mesh_element(2,el)                                                                         ! get element type
- g = theMesh%elem%geomType
- c = theMesh%elem%cellType
- mesh_cellCenterCoordinates = 0.0_pReal
- do n = 1,theMesh%elem%nCellnodesPerCell
-   mesh_cellCenterCoordinates = mesh_cellCenterCoordinates + mesh_cellnode(1:3,mesh_cell(n,ip,el))
- enddo
- mesh_cellCenterCoordinates = mesh_cellCenterCoordinates / real(theMesh%elem%nCellnodesPerCell,pReal)
-
- end function mesh_cellCenterCoordinates
-
-
-
 
 
 !--------------------------------------------------------------------------------------------------
