@@ -1067,7 +1067,7 @@ subroutine plastic_dislotwin_results(instance,group)
       case (rho_dip_ID)
         call results_writeDataset(group,stt%rho_dip,'rho_dip',&
                                   'dislocation dipole density''1/m²')
-      case (dot_gamma_sl_ID)
+      case (gamma_sl_ID)
         call results_writeDataset(group,stt%gamma_sl,'gamma_sl',&
                                   'plastic shear','1')
       case (Lambda_sl_ID)
