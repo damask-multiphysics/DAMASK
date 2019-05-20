@@ -2,6 +2,8 @@
 import h5py
 import re
 import numpy as np
+from queue import Queue
+from . import util
 
 # ------------------------------------------------------------------
 class DADF5():
@@ -15,6 +17,7 @@ class DADF5():
     
     if mode not in ['a','r']:
       print('Invalid file access mode')
+    else:
       with h5py.File(filename,mode):
         pass
       
@@ -64,7 +67,32 @@ class DADF5():
 
     self.filename   = filename
     self.mode       = mode
+    
+  def get_candidates(self,l):
+    groups = []
+    if type(l) is not list:
+      print('mist')
+    with h5py.File(self.filename,'r') as f:
+      for g in self.get_active_groups():
+        if set(l).issubset(f[g].keys()): groups.append(g)
+    return groups
 
+
+  def get_active_groups(self):
+    groups = []
+    for i,x in enumerate(self.active['increments']):
+      group_inc = 'inc{:05}'.format(self.active['increments'][i]['inc'])
+      for c in self.active['constituents']:
+        group_constituent = group_inc+'/constituent/'+c
+        for t in self.active['c_output_types']:
+          group_output_types = group_constituent+'/'+t
+          groups.append(group_output_types)
+      for m in self.active['materialpoints']:
+        group_materialpoint = group_inc+'/materialpoint/'+m
+        for t in self.active['m_output_types']:
+          group_output_types = group_materialpoint+'/'+t
+          groups.append(group_output_types)
+    return groups  
 
   def list_data(self):
     """Shows information on all datasets in the file"""
@@ -153,5 +181,106 @@ class DADF5():
           print('unable to read materialpoint: '+ str(e))
 
     return dataset
+    
+    
+  def add_Cauchy(self,PK2='P',F='F'):
+    
+    def Cauchy(F,P):
+      return 1.0/np.linalg.det(F)*np.dot(P,F.T)
+      
+    args   = [{'label':F,  'shape':[3,3],'unit':'-'},
+              {'label':PK2,'shape':[3,3],'unit':'Pa'} ]
+    result = {'label':'Cauchy','unit':'Pa'}
+    
+    self.add_generic_pointwise(Cauchy,args,result)
+
+    
+  def add_Mises_stress(self,stress='Cauchy'):
+    
+    def Mises_stress(stress):
+      dev = stress - np.trace(stress)/3.0*np.eye(3)
+      symdev = 0.5*(dev+dev.T)
+      return np.sqrt(np.sum(symdev*symdev.T)*3.0/2.0)
+      
+    args   = [{'label':stress,'shape':[3,3],'unit':'Pa'}]
+    result = {'label':'Mises({})'.format(stress),'unit':'Pa'}
+    
+    self.add_generic_pointwise(Mises_stress,args,result)
+
+  def get_fitting(self,data):
+    groups = []
+    if type(data) is not list:
+      print('mist')
+    with h5py.File(self.filename,'r') as f:
+      for g in self.get_candidates([l['label'] for l in data]):
+        print(g)
+        fits = True
+        for d in data:
+          fits = fits and np.all(np.array(f[g+'/'+d['label']].shape[1:]) == np.array(d['shape']))   # ToDo: allow here shape none and check for unit
+        if fits: groups.append(g)
+    return groups
+
+    
+  def add_generic_pointwise(self,func,args,result):
+    """
+    Ggeneral function to add pointwise data
+    
+    function 'func' first needs to have data arguments before other arguments
+    """
+    groups = self.get_fitting(args)
+    
+    def job(args):
+      out         = args['out']
+      datasets_in = args['dat']
+      func        = args['fun']
+      # calling the function per point might be performance-wise not optimal
+      # could be worth to investigate the performance for vectorized add_XXX functions that do the
+      # loops internally
+      for i in range(out.shape[0]):
+        arg = tuple([d[i,] for d in datasets_in]) 
+        out[i,] = func(*arg)
+      args['results'].put({'out':out,'group':args['group']})
+    
+    Nthreads = 4 # ToDo: should be a parameter
+    results  = Queue(Nthreads+1)
+    
+    todo = []
+    
+    for g in groups:
+      with h5py.File(self.filename,'r') as f:
+        datasets_in = [f[g+'/'+u['label']][()] for u in args]
+        
+      # figure out dimension of results
+      testArg = tuple([d[0,] for d in datasets_in])                                                 # to call function with first point
+      out = np.empty([datasets_in[0].shape[0]] + list(func(*testArg).shape))                        # shape is Npoints x shape of the results for one point
+      todo.append({'dat':datasets_in,'fun':func,'out':out,'group':g,'results':results})
+    
+    # Instantiate a thread pool with worker threads
+    pool = util.ThreadPool(Nthreads)
+    missingResults = len(todo)
+
+
+    # Add the jobs in bulk to the thread pool. Alternatively you could use
+    # `pool.add_task` to add single jobs. The code will block here, which
+    # makes it possible to cancel the thread pool with an exception when
+    # the currently running batch of workers is finished.
+
+    pool.map(job, todo[:Nthreads+1])
+    i = 0
+    while missingResults > 0:    
+        r=results.get() # noqa
+        print(r['group'])
+        with h5py.File(self.filename,'r+') as f:
+           dataset_out = f[r['group']].create_dataset(result['label'],data=r['out'])
+           dataset_out.attrs['unit'] = result['unit']
+        missingResults-=1
+        try:
+          pool.add_task(job,todo[Nthreads+1+i])
+        except:
+          pass
+        i+=1   
+
+    pool.wait_completion()
+
         
       
