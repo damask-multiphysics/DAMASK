@@ -184,7 +184,7 @@ class DADF5():
     
     
   def add_Cauchy(self,P='P',F='F'):
-    
+    """Adds Cauchy stress calculated from 1st Piola-Kirchhoff stress and deformation gradient"""
     def Cauchy(F,P):
       return 1.0/np.linalg.det(F)*np.dot(P,F.T)
       
@@ -197,8 +197,8 @@ class DADF5():
     self.add_generic_pointwise(Cauchy,args,result)
 
     
-  def add_Mises_stress(self,stress='Cauchy'):
-    
+  def add_Mises_stress(self,stress='sigma'):
+    """Adds equivalent von Mises stress"""
     def Mises_stress(stress):
       dev = stress - np.trace(stress)/3.0*np.eye(3)
       symdev = 0.5*(dev+dev.T)
@@ -211,7 +211,9 @@ class DADF5():
     
     self.add_generic_pointwise(Mises_stress,args,result)
     
+    
   def add_norm(self,x,ord=None):
+    """Adds norm of vector or tensor or magnitude of a scalar."""
     # ToDo: The output unit should be the input unit
     args   = [{'label':x,'shape':None,'unit':None}]
     result = {'label':'norm_{}({})'.format(str(ord),x),
@@ -219,15 +221,18 @@ class DADF5():
               'Description': 'Norm of vector or tensor or magnitude of a scalar. See numpy.linalg.norm manual for details'}
     
     self.add_generic_pointwise(np.linalg.norm,args,result)
-    
+  
+  
   def add_determinant(self,a):
+    """Adds the determinan of a tensor"""
     # ToDo: The output unit should be the input unit
     args   = [{'label':a,'shape':[3,3],'unit':None}]
     result = {'label':'det({})'.format(a),
               'unit':'n/a',
-              'Description': 'Determinan of a tensor'}
+              'Description': 'Determinant of a tensor'}
     
     self.add_generic_pointwise(np.linalg.det,args,result)
+    
 
   def get_fitting(self,data):
     groups = []
