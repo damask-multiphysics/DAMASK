@@ -183,14 +183,16 @@ class DADF5():
     return dataset
     
     
-  def add_Cauchy(self,PK2='P',F='F'):
+  def add_Cauchy(self,P='P',F='F'):
     
     def Cauchy(F,P):
       return 1.0/np.linalg.det(F)*np.dot(P,F.T)
       
-    args   = [{'label':F,  'shape':[3,3],'unit':'-'},
-              {'label':PK2,'shape':[3,3],'unit':'Pa'} ]
-    result = {'label':'Cauchy','unit':'Pa'}
+    args   = [{'label':F,'shape':[3,3],'unit':'-'},
+              {'label':P,'shape':[3,3],'unit':'Pa'} ]
+    result = {'label':'sigma',
+              'unit':'Pa',
+              'Description': 'Cauchy stress calculated from 1st Piola-Kirchhoff stress and deformation gradient'}
     
     self.add_generic_pointwise(Cauchy,args,result)
 
@@ -203,9 +205,29 @@ class DADF5():
       return np.sqrt(np.sum(symdev*symdev.T)*3.0/2.0)
       
     args   = [{'label':stress,'shape':[3,3],'unit':'Pa'}]
-    result = {'label':'Mises({})'.format(stress),'unit':'Pa'}
+    result = {'label':'Mises({})'.format(stress),
+              'unit':'Pa',
+              'Description': 'Equivalent Mises stress'}
     
     self.add_generic_pointwise(Mises_stress,args,result)
+    
+  def add_norm(self,x,ord=None):
+    # ToDo: The output unit should be the input unit
+    args   = [{'label':x,'shape':None,'unit':None}]
+    result = {'label':'norm_{}({})'.format(str(ord),x),
+              'unit':'n/a',
+              'Description': 'Norm of vector or tensor or magnitude of a scalar. See numpy.linalg.norm manual for details'}
+    
+    self.add_generic_pointwise(np.linalg.norm,args,result)
+    
+  def add_determinant(self,a):
+    # ToDo: The output unit should be the input unit
+    args   = [{'label':a,'shape':[3,3],'unit':None}]
+    result = {'label':'det({})'.format(a),
+              'unit':'n/a',
+              'Description': 'Determinan of a tensor'}
+    
+    self.add_generic_pointwise(np.linalg.det,args,result)
 
   def get_fitting(self,data):
     groups = []
@@ -215,8 +237,9 @@ class DADF5():
       for g in self.get_candidates([l['label'] for l in data]):
         print(g)
         fits = True
-        for d in data:
-          fits = fits and np.all(np.array(f[g+'/'+d['label']].shape[1:]) == np.array(d['shape']))   # ToDo: allow here shape none and check for unit
+        for d in data:    # ToDo: check for unit
+          if d['shape'] is not None:
+            fits = fits and np.all(np.array(f[g+'/'+d['label']].shape[1:]) == np.array(d['shape']))
         if fits: groups.append(g)
     return groups
 
@@ -263,7 +286,7 @@ class DADF5():
     # Add the jobs in bulk to the thread pool. Alternatively you could use
     # `pool.add_task` to add single jobs. The code will block here, which
     # makes it possible to cancel the thread pool with an exception when
-    # the currently running batch of workers is finished.
+    # the currently running batch of workers is finishnumpy.linalg.normed.
 
     pool.map(job, todo[:Nthreads+1])
     i = 0
@@ -272,7 +295,9 @@ class DADF5():
         print(r['group'])
         with h5py.File(self.filename,'r+') as f:
            dataset_out = f[r['group']].create_dataset(result['label'],data=r['out'])
-           dataset_out.attrs['unit'] = result['unit']
+           dataset_out.attrs['Unit'] = result['unit']
+           dataset_out.attrs['Description'] = result['Description']
+           dataset_out.attrs['Creator'] = 'dadf5.py v{}'.format('n/a')
         missingResults-=1
         try:
           pool.add_task(job,todo[Nthreads+1+i])
