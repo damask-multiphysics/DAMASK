@@ -43,9 +43,15 @@ parser.add_option('-f', '--fill',
                   dest = 'fill',
                   type = 'int', metavar = 'int',
                   help = 'background grain index. "0" selects maximum microstructure index + 1 [%default]')
+parser.add_option('--float',
+                  dest = 'float',
+                  action = 'store_true',
+                  help = 'use float input')
 
 parser.set_defaults(degrees = False,
-                    fill = 0)
+                    fill = 0,
+                    float = False,
+                   )
 
 (options, filenames) = parser.parse_args()
 
@@ -60,6 +66,8 @@ if options.matrix is not None:
   eulers = damask.Rotation.fromMatrix(np.array(options.Matrix)).asEulers(degrees=True)
 if options.eulers is not None:
   eulers = damask.Rotation.fromEulers(np.array(options.eulers),degrees=True).asEulers(degrees=True)
+
+datatype = 'f' if options.float else 'i'
 
 # --- loop over input files -------------------------------------------------------------------------
 
@@ -77,13 +85,7 @@ for name in filenames:
 
   table.head_read()
   info,extra_header = table.head_getGeom()
-
-  damask.util.croak(['grid     a b c:  {}'.format(' x '.join(map(str,info['grid']))),
-                     'size     x y z:  {}'.format(' x '.join(map(str,info['size']))),
-                     'origin   x y z:  {}'.format(' : '.join(map(str,info['origin']))),
-                     'homogenization:  {}'.format(info['homogenization']),
-                     'microstructures: {}'.format(info['microstructures']),
-                    ])
+  damask.util.report_geom(info)
 
   errors = []
   if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
@@ -95,9 +97,9 @@ for name in filenames:
 
 # --- read data ------------------------------------------------------------------------------------
 
-  microstructure = table.microstructure_read(info['grid']).reshape(info['grid'],order='F')                    # read microstructure
+  microstructure = table.microstructure_read(info['grid'],datatype).reshape(info['grid'],order='F')                  # read microstructure
 
-  newGrainID = options.fill if options.fill != 0 else microstructure.max()+1
+  newGrainID = options.fill if options.fill != 0 else np.nanmax(microstructure)+1
   microstructure = ndimage.rotate(microstructure,eulers[2],(0,1),order=0,prefilter=False,output=int,cval=newGrainID) # rotation around Z
   microstructure = ndimage.rotate(microstructure,eulers[1],(1,2),order=0,prefilter=False,output=int,cval=newGrainID) # rotation around X
   microstructure = ndimage.rotate(microstructure,eulers[0],(0,1),order=0,prefilter=False,output=int,cval=newGrainID) # rotation around Z
@@ -107,19 +109,18 @@ for name in filenames:
   newInfo = {
              'size':   microstructure.shape*info['size']/info['grid'],
              'grid':   microstructure.shape,
-             'microstructures': microstructure.max(),
+             'microstructures': len(np.unique(microstructure)),
             }
-
 
 # --- report ---------------------------------------------------------------------------------------
 
   remarks = []
   if (any(newInfo['grid']            != info['grid'])):
-    remarks.append('--> grid    a b c:  %s'%(' x '.join(map(str,newInfo['grid']))))
+    remarks.append('--> grid    a b c:  {}'.format(' x '.join(map(str,newInfo['grid']))))
   if (any(newInfo['size']            != info['size'])):
-    remarks.append('--> size    x y z:  %s'%(' x '.join(map(str,newInfo['size']))))
+    remarks.append('--> size    x y z:  {}'.format(' x '.join(map(str,newInfo['size']))))
   if (    newInfo['microstructures'] != info['microstructures']): 
-    remarks.append('--> microstructures: %i'%newInfo['microstructures'])
+    remarks.append('--> microstructures: {}'.format(newInfo['microstructures']))
   if remarks != []: damask.util.croak(remarks)
 
 # --- write header ---------------------------------------------------------------------------------
@@ -138,9 +139,9 @@ for name in filenames:
 
 # --- write microstructure information ------------------------------------------------------------
 
-  formatwidth = int(math.floor(math.log10(microstructure.max())+1))
+  format = '%g' if options.float else '%{}i'.format(int(math.floor(math.log10(np.nanmax(microstructure))+1)))
   table.data = microstructure.reshape((newInfo['grid'][0],np.prod(newInfo['grid'][1:])),order='F').transpose()
-  table.data_writeArray('%%%ii'%(formatwidth),delimiter = ' ')
+  table.data_writeArray(format,delimiter=' ')
 
 # --- output finalization --------------------------------------------------------------------------
 

@@ -35,7 +35,7 @@ parser.add_option('-f',
                   type = 'float', metavar = 'float',
                   help = '(background) canvas grain index. "0" selects maximum microstructure index + 1 [%default]')
 parser.add_option('--float',
-                  dest = 'real',
+                  dest = 'float',
                   action = 'store_true',
                   help = 'use float input')
 parser.add_option('--blank',
@@ -45,13 +45,13 @@ parser.add_option('--blank',
 
 parser.set_defaults(grid = ['0','0','0'],
                     offset = (0,0,0),
-                    fill = 0,
-                    real = False,
+                    fill = 0.0,
+                    float = False,
                    )
 
 (options, filenames) = parser.parse_args()
 
-datatype = 'f' if options.real else 'i'
+datatype = 'f' if options.float else 'i'
 options.grid = ['1','1','1'] if options.blank and options.grid == ['0','0','0'] else options.grid
 options.fill = 1 if options.blank and options.fill == 0 else options.fill
 
@@ -107,7 +107,7 @@ for name in filenames:
   newInfo['grid'] = np.where(newInfo['grid'] > 0, newInfo['grid'],info['grid'])
 
   microstructure_cropped = np.zeros(newInfo['grid'],datatype)
-  microstructure_cropped.fill(options.fill if options.real or options.fill > 0 else microstructure.max()+1)
+  microstructure_cropped.fill(options.fill if options.float or options.fill > 0 else np.nanmax(microstructure)+1)
   
   if not options.blank:
     xindex = np.arange(max(options.offset[0],0),min(options.offset[0]+newInfo['grid'][0],info['grid'][0]))
@@ -130,7 +130,7 @@ for name in filenames:
   newInfo['size']   = info['size']/info['grid']*newInfo['grid'] if np.all(info['grid'] > 0) else newInfo['grid']
   newInfo['origin'] = info['origin']+(info['size']/info['grid'] if np.all(info['grid'] > 0) \
                               else newInfo['size']/newInfo['grid'])*options.offset
-  newInfo['microstructures'] = microstructure_cropped.max()
+  newInfo['microstructures'] = len(np.unique(microstructure_cropped))
 
 # --- report ---------------------------------------------------------------------------------------
 
@@ -172,7 +172,7 @@ for name in filenames:
 
 # --- write microstructure information ------------------------------------------------------------
 
-  format = '%g' if options.real else '%{}i'.format(int(math.floor(math.log10(microstructure_cropped.max())+1)))
+  format = '%g' if options.float else '%{}i'.format(int(math.floor(math.log10(np.nanmax(microstructure_cropped))+1)))
   table.data = microstructure_cropped.reshape((newInfo['grid'][0],newInfo['grid'][1]*newInfo['grid'][2]),order='F').transpose()
   table.data_writeArray(format,delimiter=' ')
     
