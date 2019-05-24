@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
+import os
+import sys
 import numpy as np
 import damask
+from io import StringIO
 from scipy import ndimage
 from optparse import OptionParser
 
@@ -42,15 +44,9 @@ parser.add_option('-q', '--quaternion',
 parser.add_option('-f', '--fill',
                   dest = 'fill',
                   type = 'int', metavar = 'int',
-                  help = 'background grain index. "0" selects maximum microstructure index + 1 [%default]')
-parser.add_option('--float',
-                  dest = 'float',
-                  action = 'store_true',
-                  help = 'use float input')
+                  help = 'background grain index, defaults to max + 1')
 
 parser.set_defaults(degrees = False,
-                    fill = 0,
-                    float = False,
                    )
 
 (options, filenames) = parser.parse_args()
@@ -67,82 +63,38 @@ if options.matrix is not None:
 if options.eulers is not None:
   eulers = damask.Rotation.fromEulers(np.array(options.eulers),degrees=True).asEulers(degrees=True)
 
-datatype = 'f' if options.float else 'i'
-
 # --- loop over input files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False,
-                              labeled = False)
-  except: continue
+  if name is None:
+    virt_file = StringIO(''.join(sys.stdin.read()))
+    geom = damask.Geom.from_file(virt_file)
+  else:
+    try: # really needed? Why not simply fail if file does not exists etc.
+      geom = damask.Geom.from_file(name)
+    except: continue
   damask.util.report(scriptName,name)
 
-# --- interpret header ----------------------------------------------------------------------------
+  microstructure = geom.microstructure
+  spacing = geom.get_size()/geom.get_grid()
 
-  table.head_read()
-  info,extra_header = table.head_getGeom()
-  damask.util.report_geom(info)
-
-  errors = []
-  if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
-  if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
-  if errors != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# --- read data ------------------------------------------------------------------------------------
-
-  microstructure = table.microstructure_read(info['grid'],datatype).reshape(info['grid'],order='F')                  # read microstructure
-
-  newGrainID = options.fill if options.fill != 0 else np.nanmax(microstructure)+1
-  microstructure = ndimage.rotate(microstructure,eulers[2],(0,1),order=0,prefilter=False,output=int,cval=newGrainID) # rotation around Z
-  microstructure = ndimage.rotate(microstructure,eulers[1],(1,2),order=0,prefilter=False,output=int,cval=newGrainID) # rotation around X
-  microstructure = ndimage.rotate(microstructure,eulers[0],(0,1),order=0,prefilter=False,output=int,cval=newGrainID) # rotation around Z
-
-# --- do work ------------------------------------------------------------------------------------
-
-  newInfo = {
-             'size':   microstructure.shape*info['size']/info['grid'],
-             'grid':   microstructure.shape,
-             'microstructures': len(np.unique(microstructure)),
-            }
-
-# --- report ---------------------------------------------------------------------------------------
-
-  remarks = []
-  if (any(newInfo['grid']            != info['grid'])):
-    remarks.append('--> grid    a b c:  {}'.format(' x '.join(map(str,newInfo['grid']))))
-  if (any(newInfo['size']            != info['size'])):
-    remarks.append('--> size    x y z:  {}'.format(' x '.join(map(str,newInfo['size']))))
-  if (    newInfo['microstructures'] != info['microstructures']): 
-    remarks.append('--> microstructures: {}'.format(newInfo['microstructures']))
-  if remarks != []: damask.util.croak(remarks)
-
-# --- write header ---------------------------------------------------------------------------------
-
-  table.labels_clear()
-  table.info_clear()
-  table.info_append(extra_header+[
-    scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=newInfo['grid']),
-    "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=newInfo['size']),
-    "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=info['origin']),
-    "homogenization\t{homog}".format(homog=info['homogenization']),
-    "microstructures\t{microstructures}".format(microstructures=newInfo['microstructures']),
-    ])
-  table.head_write()
-
-# --- write microstructure information ------------------------------------------------------------
-
-  format = '%g' if options.float else '%{}i'.format(int(math.floor(math.log10(np.nanmax(microstructure))+1)))
-  table.data = microstructure.reshape((newInfo['grid'][0],np.prod(newInfo['grid'][1:])),order='F').transpose()
-  table.data_writeArray(format,delimiter=' ')
-
-# --- output finalization --------------------------------------------------------------------------
-
-  table.close()                                                                                     # close ASCII table
+  newGrainID = options.fill if options.fill is not None else np.nanmax(microstructure)+1
+  microstructure = ndimage.rotate(microstructure,eulers[2],(0,1),order=0,
+                                  prefilter=False,output=microstructure.dtype,cval=newGrainID) # rotation around Z
+  microstructure = ndimage.rotate(microstructure,eulers[1],(1,2),order=0,
+                                  prefilter=False,output=microstructure.dtype,cval=newGrainID) # rotation around X
+  microstructure = ndimage.rotate(microstructure,eulers[0],(0,1),order=0,
+                                  prefilter=False,output=microstructure.dtype,cval=newGrainID) # rotation around Z
+  
+  geom.microstructure = microstructure
+  geom.set_size(microstructure.shape*spacing)
+  geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
+  
+  damask.util.croak('\n'.join(geom.info()))
+  
+  if name is None:
+    sys.stdout.write(str(geom))
+  else:
+    geom.to_file(name)

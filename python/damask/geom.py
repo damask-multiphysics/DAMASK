@@ -4,10 +4,9 @@ from io import StringIO
 import io
 
 class Geom():
+  """Geometry definition for grid solvers"""
 
   def __init__(self,size,microstructure,homogenization=1,comments=[]):
-    """Geometry definition for grid solvers"""
-
     if len(size) != 3 or any(np.array(size)<=0):
       raise ValueError('invalid size')
     else:
@@ -29,6 +28,7 @@ class Geom():
       self.comments = [str(comment) for comment in comments]
 
   def __repr__(self): 
+    """Readable string"""
     f=StringIO()
     self.to_file(f)
     f.seek(0)
