@@ -1,0 +1,133 @@
+import numpy as np
+import math
+from io import StringIO
+import io
+
+class Geom():
+
+  def __init__(self,size,microstructure,homogenization=1,comments=[]):
+    """Geometry definition for grid solvers"""
+
+    if len(size) != 3 or any(np.array(size)<=0):
+      raise ValueError('invalid size')
+    else:
+      self.size = np.array(size)
+
+    if len(microstructure.shape) != 3:
+      raise ValueError('invalid microstructure')
+    else:
+      self.microstructure = microstructure
+
+    if not isinstance(homogenization,int) or homogenization < 1:
+      raise ValueError('invalid homogenization')
+    else:
+      self.homogenization = homogenization
+
+    if not isinstance(comments,list):
+      self.comments = [str(comments)]
+    else:
+      self.comments = [str(comment) for comment in comments]
+
+  def __repr__(self): 
+    f=StringIO()
+    self.to_file(f)
+    f.seek(0)
+    return ''.join(f.readlines())
+    
+  def add_comment(self,comment):
+    if not isinstance(comment,list):
+      self.comments += [str(comment)]
+    else:
+      self.comments += [str(c) for c in comment]
+
+  def set_size(self,size):
+    self.size = np.array(size)
+    
+  def get_size(self):
+    return self.size
+
+  def get_grid(self):
+    return np.array(self.microstructure.shape)
+
+  def get_homogenization(self):
+    return self.homogenization
+
+  @classmethod
+  def from_file(cls,fname):
+    if isinstance(fname,str):
+      with open(fname) as f:
+        header_length = int(f.readline().split()[0])
+        comments_old = [f.readline() for i in range(header_length)]
+    else:
+      fname.seek(0)
+      header_length = int(fname.readline().split()[0])
+      comments_old = [fname.readline() for i in range(header_length)]
+
+    comments = [] 
+    for i,line in enumerate(comments_old):
+      if line.lower().strip().startswith('grid'):
+        grid = np.array([int(line.split()[j]) for j in [2,4,6]])         # assume correct order (a,b,c)
+      elif line.lower().strip().startswith('size'):
+        size = np.array([float(line.split()[j]) for j in [2,4,6]])       # assume correct order (x,y,z)
+      elif line.lower().strip().startswith('homogenization'):
+        homogenization = int(line.split()[1])
+      else:
+        comments.append(line[:-1])
+
+    try:
+      if isinstance(fname,io.TextIOWrapper) or isinstance(fname,io.StringIO):
+        fname.seek(0)
+      microstructure = np.loadtxt(fname,skiprows=header_length+1)
+      if np.any(np.mod(microstructure.flatten(),1)!=0.0):
+        pass
+      else:
+        microstructure = microstructure.astype('int')
+    except:                                                             # has 'to' and 'of' compression
+      if isinstance(fname,str):
+        with open(fname) as f:
+          raw = f.readlines()[header_length+1:]
+      else:
+        fname.seek(0)
+        raw = fname.readlines()[header_length+1:]
+
+      microstructure = np.empty(grid.prod())                                                         # initialize as flat array
+      i = 0
+      
+      for line in raw:
+        items = line.split()
+        if len(items) == 3:
+          if   items[1].lower() == 'of':
+            items = np.ones(int(items[0]))*int(items[2])
+          elif items[1].lower() == 'to':
+            items = np.linspace(int(items[0]),int(items[2]),
+                                abs(int(items[2])-int(items[0]))+1,dtype=int)
+          else:                          items = list(map(int,items))
+        else:                            items = list(map(int,items))
+
+        microstructure[i:i+len(items)] = items
+        i += len(items)
+    microstructure = microstructure.reshape(grid,order='F')
+
+    return cls(size,microstructure.reshape(grid),homogenization,comments)
+
+  def to_file(self,fname):
+    grid = self.get_grid()
+    header =  ['{} header'.format(len(self.comments)+3)]
+    header += self.comments
+    header.append('grid a {} b {} c {}'.format(*grid))
+    header.append('size a {} b {} c {}'.format(*self.get_size()))
+    header.append('homogenization {}'.format(self.get_homogenization()))
+    if self.microstructure.dtype == 'int':
+      format_string='%{}i'.format(int(math.floor(math.log10(self.microstructure.max())+1)))
+    else:
+      format_string='%.18e'
+    np.savetxt(fname, self.microstructure.reshape([np.prod(grid[1:]),grid[0]],order='F'),
+               header='\n'.join(header), fmt=format_string, comments='')
+               
+  def info(self):
+    return ['grid     a b c:      {}'.format(' x '.join(map(str,self.get_grid()))),
+                      'size     x y z:      {}'.format(' x '.join(map(str,self.get_size()))),
+                      'homogenization:      {}'.format(self.get_homogenization()),
+                      '# microstructures:   {}'.format(len(np.unique(self.microstructure))),
+                      'max microstructures: {}'.format(np.max(self.microstructure)),
+            ]
