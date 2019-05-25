@@ -6,6 +6,7 @@ class Geom():
   """Geometry definition for grid solvers"""
 
   def __init__(self,size,microstructure,homogenization=1,comments=[]):
+    """New geometry definition from array of microstructures and size"""
     if len(size) != 3 or any(np.array(size)<=0):
       raise ValueError('invalid size')
     else:
@@ -26,12 +27,13 @@ class Geom():
     else:
       self.comments = [str(comment) for comment in comments]
 
-  def __repr__(self): 
-    """Readable string"""
-    f=StringIO()
-    self.to_file(f)
-    f.seek(0)
-    return ''.join(f.readlines())
+  def __repr__(self):
+    """Basic information on geometry definition"""
+    return 'grid     a b c:      {}\n'.format(' x '.join(map(str,self.get_grid()))) + \
+           'size     x y z:      {}\n'.format(' x '.join(map(str,self.get_size()))) + \
+           'homogenization:      {}\n'.format(self.get_homogenization())            + \
+           '# microstructures:   {}\n'.format(len(np.unique(self.microstructure)))  + \
+           'max microstructures: {}\n'.format(np.max(self.microstructure))
     
   def add_comment(self,comment):
     if not isinstance(comment,list):
@@ -119,10 +121,8 @@ class Geom():
     np.savetxt(fname, self.microstructure.reshape([grid[0],np.prod(grid[1:])],order='F').T,
                header='\n'.join(header), fmt=format_string, comments='')
                
-  def info(self):
-    return ['grid     a b c:      {}'.format(' x '.join(map(str,self.get_grid()))),
-                      'size     x y z:      {}'.format(' x '.join(map(str,self.get_size()))),
-                      'homogenization:      {}'.format(self.get_homogenization()),
-                      '# microstructures:   {}'.format(len(np.unique(self.microstructure))),
-                      'max microstructures: {}'.format(np.max(self.microstructure)),
-            ]
+  def show(self):
+    f=StringIO()
+    self.to_file(f)
+    f.seek(0)
+    return ''.join(f.readlines())

@@ -65,14 +65,13 @@ options.trigger = np.array(options.trigger, dtype=int)
 if filenames == []: filenames = [None]
 
 for name in filenames:
+  damask.util.report(scriptName,name)
+  
   if name is None:
     virt_file = StringIO(''.join(sys.stdin.read()))
     geom = damask.Geom.from_file(virt_file)
   else:
     geom = damask.Geom.from_file(name)
-
-  damask.util.report(scriptName,name)
-
   microstructure = geom.microstructure
 
   if options.offset == 0: options.offset = microstructure.max()
@@ -87,9 +86,8 @@ for name in filenames:
   geom.microstructure = microstructure
   geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
   
-  damask.util.croak('\n'.join(geom.info()))
-  
+  damask.util.croak(geom)
   if name is None:
-    sys.stdout.write(str(geom))
+    sys.stdout.write(str(geom.show()))
   else:
     geom.to_file(name)

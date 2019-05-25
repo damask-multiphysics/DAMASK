@@ -57,26 +57,26 @@ if sum(x is not None for x in [options.rotation,options.eulers,options.matrix,op
 if options.quaternion is not None:
   eulers = damask.Rotation.fromQuaternion(np.array(options.quaternion)).asEulers(degrees=True)
 if options.rotation is not None:
-  eulers = damask.Rotation.fromAxisAngle(np.array(options.rotation,degrees=True)).asEulers(degrees=True)
+  eulers = damask.Rotation.fromAxisAngle(np.array(options.rotation,degrees=options.degrees)).asEulers(degrees=True)
 if options.matrix is not None:
   eulers = damask.Rotation.fromMatrix(np.array(options.Matrix)).asEulers(degrees=True)
 if options.eulers is not None:
-  eulers = damask.Rotation.fromEulers(np.array(options.eulers),degrees=True).asEulers(degrees=True)
+  eulers = damask.Rotation.fromEulers(np.array(options.eulers),degrees=options.degrees).asEulers(degrees=True)
 
 # --- loop over input files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
+  damask.util.report(scriptName,name)
+  
   if name is None:
     virt_file = StringIO(''.join(sys.stdin.read()))
     geom = damask.Geom.from_file(virt_file)
   else:
     geom = damask.Geom.from_file(name)
-
-  damask.util.report(scriptName,name)
-
   microstructure = geom.microstructure
+  
   spacing = geom.get_size()/geom.get_grid()
 
   newGrainID = options.fill if options.fill is not None else np.nanmax(microstructure)+1
@@ -91,9 +91,8 @@ for name in filenames:
   geom.set_size(microstructure.shape*spacing)
   geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
   
-  damask.util.croak('\n'.join(geom.info()))
-  
+  damask.util.croak(geom)
   if name is None:
-    sys.stdout.write(str(geom))
+    sys.stdout.write(str(geom.show()))
   else:
     geom.to_file(name)

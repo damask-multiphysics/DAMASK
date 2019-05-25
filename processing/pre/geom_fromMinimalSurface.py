@@ -73,7 +73,6 @@ parser.set_defaults(type = minimal_surfaces[0],
 if filenames == []: filenames = [None]
 
 for name in filenames:
-
   damask.util.report(scriptName,name)
 
   X = options.periods*2.0*math.pi*(np.arange(options.grid[0])+0.5)/options.grid[0]
@@ -89,9 +88,8 @@ for name in filenames:
   geom=damask.Geom(options.size,microstructure,options.homogenization,
                    comments=[scriptID + ' ' + ' '.join(sys.argv[1:])])
 
-  damask.util.croak('\n'.join(geom.info()))
-  
+  damask.util.croak(geom)
   if name is None:
-    sys.stdout.write(str(geom))
+    sys.stdout.write(str(geom.show()))
   else:
     geom.to_file(name)
