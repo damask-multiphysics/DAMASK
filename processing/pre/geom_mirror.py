@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
+import os
+import sys
 import numpy as np
 import damask
 from optparse import OptionParser
@@ -23,13 +24,6 @@ parser.add_option('-d','--direction',
                   dest = 'directions',
                   action = 'extend', metavar = '<string LIST>',
                   help = "directions in which to mirror {'x','y','z'}")
-parser.add_option('--float',
-                  dest = 'float',
-                  action = 'store_true',
-                  help = 'use float input')
-
-parser.set_defaults(float = False,
-                   )
 
 (options, filenames) = parser.parse_args()
 
@@ -38,83 +32,39 @@ if options.directions is None:
 if not set(options.directions).issubset(validDirections):
   invalidDirections = [str(e) for e in set(options.directions).difference(validDirections)]
   parser.error('invalid directions {}. '.format(*invalidDirections))
-
-datatype = 'f' if options.float else 'i'
+  
 
 # --- loop over input files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False,
-                              labeled = False)
-  except: continue
+  if name is None:
+    virt_file = StringIO(''.join(sys.stdin.read()))
+    geom = damask.Geom.from_file(virt_file)
+  else:
+    geom = damask.Geom.from_file(name)
+    
   damask.util.report(scriptName,name)
 
-# --- interpret header ----------------------------------------------------------------------------
-
-  table.head_read()
-  info,extra_header = table.head_getGeom()
-  damask.util.report_geom(info)
-
-  errors = []
-  if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
-  if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
-  if errors != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# --- read data ------------------------------------------------------------------------------------
-
-  microstructure = table.microstructure_read(info['grid'],datatype).reshape(info['grid'],order='F')  # read microstructure
+  microstructure = geom.microstructure
 
   if 'z' in options.directions:
     microstructure = np.concatenate([microstructure,microstructure[:,:,::-1]],2)
+    geom.set_size(geom.get_size()*np.array([1,1,2]))
   if 'y' in options.directions:
     microstructure = np.concatenate([microstructure,microstructure[:,::-1,:]],1)
+    geom.set_size(geom.get_size()*np.array([1,2,1]))
   if 'x' in options.directions:
     microstructure = np.concatenate([microstructure,microstructure[::-1,:,:]],0)
-
-# --- do work ------------------------------------------------------------------------------------
-
-  newInfo = {
-             'size':   microstructure.shape*info['size']/info['grid'],
-             'grid':   microstructure.shape,
-            }
-
-
-# --- report ---------------------------------------------------------------------------------------
-
-  remarks = []
-  if (any(newInfo['grid']            != info['grid'])):
-    remarks.append('--> grid    a b c:  %s'%(' x '.join(map(str,newInfo['grid']))))
-  if (any(newInfo['size']            != info['size'])):
-    remarks.append('--> size    x y z:  %s'%(' x '.join(map(str,newInfo['size']))))
-  if remarks != []: damask.util.croak(remarks)
-
-# --- write header ---------------------------------------------------------------------------------
-
-  table.labels_clear()
-  table.info_clear()
-  table.info_append(extra_header+[
-    scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=newInfo['grid']),
-    "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=newInfo['size']),
-    "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=info['origin']),
-    "homogenization\t{homog}".format(homog=info['homogenization']),
-    "microstructures\t{microstructures}".format(microstructures=info['microstructures']),
-    ])
-  table.head_write()
-
-# --- write microstructure information ------------------------------------------------------------
-
-  formatwidth = int(math.floor(math.log10(np.nanmax(microstructure))+1))
-  table.data = microstructure.reshape((newInfo['grid'][0],np.prod(newInfo['grid'][1:])),order='F').transpose()
-  table.data_writeArray('%{}i'.format(formatwidth),delimiter = ' ')
-
-# --- output finalization --------------------------------------------------------------------------
-
-  table.close()                                                                                     # close ASCII table
+    geom.set_size(geom.get_size()*np.array([2,1,1]))
+  
+  geom.microstructure = microstructure
+  geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
+  
+  damask.util.croak('\n'.join(geom.info()))
+  
+  if name is None:
+    sys.stdout.write(str(geom))
+  else:
+    geom.to_file(name)
