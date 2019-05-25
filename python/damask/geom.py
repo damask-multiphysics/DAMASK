@@ -74,40 +74,36 @@ class Geom():
       else:
         comments.append(line[:-1])
 
-    try:
-      if isinstance(fname,io.TextIOWrapper) or isinstance(fname,io.StringIO):
-        fname.seek(0)
-      microstructure = np.loadtxt(fname,skiprows=header_length+1)
-      if np.any(np.mod(microstructure.flatten(),1)!=0.0):
-        pass
-      else:
-        microstructure = microstructure.astype('int')
-    except:                                                             # has 'to' and 'of' compression
-      if isinstance(fname,str):
-        with open(fname) as f:
-          raw = f.readlines()[header_length+1:]
-      else:
-        fname.seek(0)
-        raw = fname.readlines()[header_length+1:]
+    if isinstance(fname,str):
+      with open(fname) as f:
+        raw = f.readlines()[header_length+1:]
+    else:
+      raw = fname.readlines()
 
-      microstructure = np.empty(grid.prod())                                                         # initialize as flat array
-      i = 0
+    microstructure = np.empty(grid.prod())                                                         # initialize as flat array
+    i = 0
       
-      for line in raw:
-        items = line.split()
-        if len(items) == 3:
-          if   items[1].lower() == 'of':
-            items = np.ones(int(items[0]))*int(items[2])
-          elif items[1].lower() == 'to':
-            items = np.linspace(int(items[0]),int(items[2]),
-                                abs(int(items[2])-int(items[0]))+1,dtype=int)
-          else:                          items = list(map(int,items))
-        else:                            items = list(map(int,items))
-
-        microstructure[i:i+len(items)] = items
-        i += len(items)
+    for line in raw:
+      items = line.split()
+      if len(items) == 3:
+        if   items[1].lower() == 'of':
+          items = np.ones(float(items[0]))*int(items[2])
+        elif items[1].lower() == 'to':
+          items = np.linspace(int(items[0]),int(items[2]),
+                              abs(int(items[2])-int(items[0]))+1,dtype=float)
+        else:                          items = list(map(float,items))
+      else:                            items = list(map(float,items))
+      
+      microstructure[i:i+len(items)] = items
+      i += len(items)
+    
     microstructure = microstructure.reshape(grid,order='F')
-
+    
+    if np.any(np.mod(microstructure.flatten(),1)!=0.0):
+      pass
+    else:
+      microstructure = microstructure.astype('int')
+    
     return cls(size,microstructure.reshape(grid),homogenization,comments)
 
   def to_file(self,fname):
@@ -115,13 +111,13 @@ class Geom():
     header =  ['{} header'.format(len(self.comments)+3)]
     header += self.comments
     header.append('grid a {} b {} c {}'.format(*grid))
-    header.append('size a {} b {} c {}'.format(*self.get_size()))
+    header.append('size x {} y {} z {}'.format(*self.get_size()))
     header.append('homogenization {}'.format(self.get_homogenization()))
     if self.microstructure.dtype == 'int':
       format_string='%{}i'.format(int(math.floor(math.log10(self.microstructure.max())+1)))
     else:
       format_string='%.18e'
-    np.savetxt(fname, self.microstructure.reshape([np.prod(grid[1:]),grid[0]],order='F'),
+    np.savetxt(fname, self.microstructure.reshape([grid[0],np.prod(grid[1:])],order='F').T,
                header='\n'.join(header), fmt=format_string, comments='')
                
   def info(self):
