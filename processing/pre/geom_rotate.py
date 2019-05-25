@@ -72,9 +72,8 @@ for name in filenames:
     virt_file = StringIO(''.join(sys.stdin.read()))
     geom = damask.Geom.from_file(virt_file)
   else:
-    try: # really needed? Why not simply fail if file does not exists etc.
-      geom = damask.Geom.from_file(name)
-    except: continue
+    geom = damask.Geom.from_file(name)
+
   damask.util.report(scriptName,name)
 
   microstructure = geom.microstructure
