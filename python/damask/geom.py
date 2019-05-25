@@ -73,7 +73,7 @@ class Geom():
       elif line.lower().strip().startswith('homogenization'):
         homogenization = int(line.split()[1])
       else:
-        comments.append(line[:-1])
+        comments.append(line.rstrip().strip())
 
     if isinstance(fname,str):
       with open(fname) as f:
@@ -114,6 +114,7 @@ class Geom():
     header.append('grid a {} b {} c {}'.format(*grid))
     header.append('size x {} y {} z {}'.format(*self.get_size()))
     header.append('homogenization {}'.format(self.get_homogenization()))
+
     if self.microstructure.dtype == 'int':
       format_string='%{}i'.format(int(math.floor(math.log10(self.microstructure.max())+1)))
     else:
