@@ -40,32 +40,30 @@ if not set(options.directions).issubset(validDirections):
 if filenames == []: filenames = [None]
 
 for name in filenames:
+  damask.util.report(scriptName,name)
+  
   if name is None:
     virt_file = StringIO(''.join(sys.stdin.read()))
     geom = damask.Geom.from_file(virt_file)
   else:
     geom = damask.Geom.from_file(name)
-    
-  damask.util.report(scriptName,name)
-
   microstructure = geom.microstructure
 
   if 'z' in options.directions:
-    microstructure = np.concatenate([microstructure,microstructure[:,:,::-1]],2)
+    microstructure = np.concatenate([microstructure,microstructure[:,:,::-1]],2) # better not double edges
     geom.set_size(geom.get_size()*np.array([1,1,2]))
   if 'y' in options.directions:
-    microstructure = np.concatenate([microstructure,microstructure[:,::-1,:]],1)
+    microstructure = np.concatenate([microstructure,microstructure[:,::-1,:]],1) # better not double edges
     geom.set_size(geom.get_size()*np.array([1,2,1]))
   if 'x' in options.directions:
-    microstructure = np.concatenate([microstructure,microstructure[::-1,:,:]],0)
+    microstructure = np.concatenate([microstructure,microstructure[::-1,:,:]],0) # better not double edges
     geom.set_size(geom.get_size()*np.array([2,1,1]))
   
   geom.microstructure = microstructure
   geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
   
-  damask.util.croak('\n'.join(geom.info()))
-  
+  damask.util.croak(geom)
   if name is None:
-    sys.stdout.write(str(geom))
+    sys.stdout.write(str(geom.show()))
   else:
     geom.to_file(name)
