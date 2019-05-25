@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
+import os
+import sys
 import numpy as np
 from scipy import ndimage
 from optparse import OptionParser
+from io import StringIO
 import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
@@ -63,35 +65,16 @@ options.trigger = np.array(options.trigger, dtype=int)
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False, labeled = False)
-  except: continue
+  if name is None:
+    virt_file = StringIO(''.join(sys.stdin.read()))
+    geom = damask.Geom.from_file(virt_file)
+  else:
+    try: # really needed? Why not simply fail if file does not exists etc.
+      geom = damask.Geom.from_file(name)
+    except: continue
   damask.util.report(scriptName,name)
 
-# --- interpret header ----------------------------------------------------------------------------
-
-  table.head_read()
-  info,extra_header = table.head_getGeom()
-  damask.util.report_geom(info)
-
-  errors = []
-  if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
-  if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
-  if errors != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# --- read data ------------------------------------------------------------------------------------
-
-  microstructure = table.microstructure_read(info['grid']).reshape(info['grid'],order='F')          # read microstructure
-
-# --- do work ------------------------------------------------------------------------------------
-
-  newInfo = {
-             'microstructures': 0,
-            }
+  microstructure = geom.microstructure
 
   if options.offset == 0: options.offset = microstructure.max()
 
@@ -102,33 +85,12 @@ for name in filenames:
                                                            extra_keywords={"trigger":options.trigger,"size":1+2*options.vicinity}),
                             microstructure + options.offset,microstructure)
 
-  newInfo['microstructures'] = len(np.unique(microstructure))
-
-# --- report ---------------------------------------------------------------------------------------
-
-  if (newInfo['microstructures'] != info['microstructures']):
-    damask.util.croak('--> microstructures: %i'%newInfo['microstructures'])
-
-# --- write header ---------------------------------------------------------------------------------
-
-  table.labels_clear()
-  table.info_clear()
-  table.info_append(extra_header+[
-    scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=info['grid']),
-    "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=info['size']),
-    "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=info['origin']),
-    "homogenization\t{homog}".format(homog=info['homogenization']),
-    "microstructures\t{microstructures}".format(microstructures=newInfo['microstructures']),
-    ])
-  table.head_write()
+  geom.microstructure = microstructure
+  geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
   
-# --- write microstructure information ------------------------------------------------------------
-
-  formatwidth = int(math.floor(math.log10(np.nanmax(microstructure))+1))
-  table.data = microstructure.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
-  table.data_writeArray('%{}i'.format(formatwidth),delimiter = ' ')
-    
-# --- output finalization --------------------------------------------------------------------------
-
-  table.close()                                                                                     # close ASCII table
+  damask.util.croak('\n'.join(geom.info()))
+  
+  if name is None:
+    sys.stdout.write(str(geom))
+  else:
+    geom.to_file(name)

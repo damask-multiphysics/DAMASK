@@ -1,7 +1,6 @@
 import numpy as np
 import math
 from io import StringIO
-import io
 
 class Geom():
   """Geometry definition for grid solvers"""
