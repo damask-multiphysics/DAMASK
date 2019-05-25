@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
+import os
+import sys
 import numpy as np
 from optparse import OptionParser
+from scipy import ndimage
 import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
@@ -27,137 +29,44 @@ parser.add_option('-s', '--size',
                   dest = 'size',
                   type = 'string', nargs = 3, metavar = 'string string string',
                   help = 'x,y,z size of hexahedral box [unchanged]')
-parser.add_option('-r', '--renumber',
-                  dest = 'renumber',
-                  action = 'store_true',
-                  help = 'renumber microstructure indices from 1..N [%default]')
-parser.add_option('--float',
-                  dest = 'float',
-                  action = 'store_true',
-                  help = 'use float input')
-
-parser.set_defaults(renumber = False,
-                    grid = ['0','0','0'],
-                    size  = ['0.0','0.0','0.0'],
-                    float = False,
-                   )
 
 (options, filenames) = parser.parse_args()
-
-datatype = 'f' if options.float else 'i'
 
 # --- loop over input files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False,
-                              labeled = False)
-  except: continue
   damask.util.report(scriptName,name)
-
-# --- interpret header ----------------------------------------------------------------------------
-
-  table.head_read()
-  info,extra_header = table.head_getGeom()
-  damask.util.report_geom(info)
-
-  errors = []
-  if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
-  if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
-  if errors != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# --- read data ------------------------------------------------------------------------------------
-
-  microstructure = table.microstructure_read(info['grid'],datatype)                                   # read microstructure
-
-# --- do work ------------------------------------------------------------------------------------
- 
-  newInfo = {
-             'grid':    np.zeros(3,'i'),
-             'origin':  np.zeros(3,'d'),
-             'microstructures': 0,
-            }
-
-  newInfo['grid'] = np.array([{True: round(o*float(n.lower().replace('x',''))),
-                               False:  round(float(n.lower().replace('x','')))}[n[-1].lower() == 'x']
-                                                  for o,n in zip(info['grid'],options.grid)],'i')
-  newInfo['size'] = np.array([{True:       o*float(n.lower().replace('x','')),
-                               False:        float(n.lower().replace('x',''))}[n[-1].lower() == 'x']
-                                                  for o,n in zip(info['size'],options.size)],'d')
-  newInfo['grid'] = np.where(newInfo['grid'] <= 0  , info['grid'],newInfo['grid'])
-  newInfo['size'] = np.where(newInfo['size'] <= 0.0, info['size'],newInfo['size'])
-
-  multiplicity = []
-  for j in range(3):
-    multiplicity.append([])
-    last = 0
-    for i in range(info['grid'][j]):
-      this = int((i+1)*float(newInfo['grid'][j])/info['grid'][j])
-      multiplicity[j].append(this-last)
-      last = this
-
-  microstructure = microstructure.reshape(info['grid'],order='F')
-  microstructure = np.repeat(np.repeat(np.repeat(microstructure,
-                   multiplicity[0], axis=0),multiplicity[1], axis=1),multiplicity[2], axis=2)
-# --- renumber to sequence 1...Ngrains if requested ------------------------------------------------
-#  http://stackoverflow.com/questions/10741346/np-frequency-counts-for-unique-values-in-an-array  
-
-  if options.renumber:
-    newID = 0
-    for microstructureID,count in enumerate(np.bincount(microstructure.reshape(newInfo['grid'].prod()))):
-      if count != 0:
-        newID += 1
-        microstructure = np.where(microstructure == microstructureID, newID,microstructure).reshape(microstructure.shape)
-
-  newInfo['microstructures'] = len(np.unique(microstructure))
-
-# --- report ---------------------------------------------------------------------------------------
-
-  remarks = []
-  errors  = []
-
-  if (any(newInfo['grid']            != info['grid'])):
-    remarks.append('--> grid     a b c:  %s'%(' x '.join(map(str,newInfo['grid']))))
-  if (any(newInfo['size']            != info['size'])):
-    remarks.append('--> size     x y z:  %s'%(' x '.join(map(str,newInfo['size']))))
-  if (    newInfo['microstructures'] != info['microstructures']):
-    remarks.append('--> microstructures: %i'%newInfo['microstructures'])
-
-  if np.any(newInfo['grid'] < 1):    errors.append('invalid new grid a b c.')
-  if np.any(newInfo['size'] <= 0.0): errors.append('invalid new size x y z.')
-
-  if remarks != []: damask.util.croak(remarks)
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# --- write header ---------------------------------------------------------------------------------
-
-  table.info_clear()
-  table.info_append(extra_header+[
-    scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=newInfo['grid']),
-    "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=newInfo['size']),
-    "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=info['origin']),
-    "homogenization\t{homog}".format(homog=info['homogenization']),
-    "microstructures\t{microstructures}".format(microstructures=newInfo['microstructures']),
-    ])
-  table.labels_clear()
-  table.head_write()
-  
-# --- write microstructure information ------------------------------------------------------------
-
-  format = '%g' if options.float else '%{}i'.format(int(math.floor(math.log10(np.nanmax(microstructure))+1)))
-  table.data = microstructure.reshape((newInfo['grid'][0],newInfo['grid'][1]*newInfo['grid'][2]),order='F').transpose()
-  table.data_writeArray(format,delimiter=' ')
     
-# --- output finalization --------------------------------------------------------------------------
+  if name is None:
+    virt_file = StringIO(''.join(sys.stdin.read()))
+    geom = damask.Geom.from_file(virt_file)
+  else:
+    geom = damask.Geom.from_file(name)
+  microstructure = geom.microstructure
 
-  table.close()                                                                                     # close ASCII table
+  scale = geom.get_grid().astype('float')
+  if options.grid is not None:
+    for i,g in enumerate(options.grid):
+      scale[i] = scale[i]*float(g.lower().replace('x','')) if g.lower().startswith('x') \
+            else float(options.grid[i])/scale[i]
+  
+  size = geom.get_size()
+  if options.size is not None:
+    for i,s in enumerate(options.size):
+      size[i] = size[i]*float(s.lower().replace('x','')) if s.lower().startswith('x') \
+           else options.size[i]
+
+  microstructure = ndimage.interpolation.zoom(microstructure, scale, output=microstructure.dtype,
+                                              order=0, mode='nearest', prefilter=False)
+
+  geom.microstructure = microstructure
+  geom.set_size(size)
+  geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
+  
+  damask.util.croak(geom)
+  if name is None:
+    sys.stdout.write(str(geom.show()))
+  else:
+    geom.to_file(name)
