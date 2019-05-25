@@ -58,7 +58,7 @@ for name in filenames:
     geom = damask.Geom.from_file(name)
   microstructure = geom.microstructure
   
-  for k, v in sub.items(): microstructure[geom.microstructure==k] = v                                  # substitute microstructure indices
+  for k, v in sub.items(): microstructure[geom.microstructure==k] = v                               # substitute microstructure indices
 
   microstructure += options.microstructure                                                          # shift microstructure indices
 
