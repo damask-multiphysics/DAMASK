@@ -86,7 +86,7 @@ class Geom():
       items = line.split()
       if len(items) == 3:
         if   items[1].lower() == 'of':
-          items = np.ones(float(items[0]))*int(items[2])
+          items = np.ones(int(items[0]))*float(items[2])
         elif items[1].lower() == 'to':
           items = np.linspace(int(items[0]),int(items[2]),
                               abs(int(items[2])-int(items[0]))+1,dtype=float)
