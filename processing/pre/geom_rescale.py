@@ -3,7 +3,7 @@
 
 import os
 import sys
-import numpy as np
+from io import StringIO
 from optparse import OptionParser
 from scipy import ndimage
 import damask
