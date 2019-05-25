@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
+import os
+import sys
 import numpy as np
-from optparse import OptionParser
 import damask
+from io import StringIO
+from optparse import OptionParser
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -12,18 +14,6 @@ scriptID   = ' '.join([scriptName,damask.version])
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
-identifiers = {
-        'grid':   ['a','b','c'],
-        'size':   ['x','y','z'],
-        'origin': ['x','y','z'],
-          }
-mappings = {
-        'grid':            lambda x: int(x),
-        'size':            lambda x: float(x),
-        'origin':          lambda x: float(x),
-        'homogenization':  lambda x: int(x),
-        'microstructures': lambda x: int(x),
-          }
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog option [geomfile(s)]', description = """
 Positions a geometric object within the (three-dimensional) canvas of a spectral geometry description.
@@ -63,9 +53,6 @@ parser.add_option(     '--realspace',  dest='realspace',
 parser.add_option(     '--invert',  dest='inside',
                   action='store_false',
                   help = 'invert the volume filled by the primitive (inside/outside)')
-parser.add_option('--float',        dest = 'float',
-                  action = 'store_true',
-                  help = 'use float input')
 parser.set_defaults(center = (.0,.0,.0),
                     fill = 0.0,
                     degrees = False,
@@ -73,7 +60,6 @@ parser.set_defaults(center = (.0,.0,.0),
                     periodic = True,
                     realspace = False,
                     inside = True,
-                    float = False,
                    )
 
 (options, filenames) = parser.parse_args()
@@ -86,8 +72,6 @@ elif options.quaternion is not None:
   rotation = damask.Rotation.fromQuaternion(options.quaternion)
 else:
   rotation = damask.Rotation()
-
-datatype = 'f' if options.float else 'i'
 
 options.center = np.array(options.center)
 options.dimension = np.array(options.dimension)
@@ -104,39 +88,32 @@ for name in filenames:
   except: continue
   damask.util.report(scriptName,name)
 
-# --- interpret header ----------------------------------------------------------------------------
+# --- loop over input files -------------------------------------------------------------------------
 
-  table.head_read()
-  info,extra_header = table.head_getGeom()
-  damask.util.report_geom(info)
+if filenames == []: filenames = [None]
 
-  errors = []
-  if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
-  if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
-  if errors != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-#--- read data ------------------------------------------------------------------------------------
-
-  microstructure = table.microstructure_read(info['grid'],datatype)                          # read microstructure
-
-# --- do work ------------------------------------------------------------------------------------
-
-  newInfo = {
-             'microstructures': 0,
-            }
+for name in filenames:
+  damask.util.report(scriptName,name)
+  
+  if name is None:
+    virt_file = StringIO(''.join(sys.stdin.read()))
+    geom = damask.Geom.from_file(virt_file)
+  else:
+    geom = damask.Geom.from_file(name)
+  microstructure = geom.microstructure
 
   options.fill = np.nanmax(microstructure)+1 if options.fill == 0 else options.fill
   
-  microstructure = microstructure.reshape(info['grid'],order='F')
+  origin = np.zeros(3)
+  for i,line in enumerate(geom.comments):
+    if line.lower().strip().startswith('origin'):
+      origin= np.array([float(line.split()[j]) for j in [2,4,6]])                                   # assume correct order (x,y,z)
   
   # coordinates given in real space (default) vs voxel space
   if options.realspace:
-    options.center    -= info['origin']
-    options.center    *= np.array(info['grid']) / np.array(info['size'])
-    options.dimension *= np.array(info['grid']) / np.array(info['size'])
+    options.center    -= origin
+    options.center    *= geom.get_grid() / geom.get_size()
+    options.dimension *= geom.get_grid() / geom.get_size()
 
   grid = microstructure.shape  
 
@@ -209,35 +186,11 @@ for name in filenames:
                               options.fill   if options.inside else microstructure,
                               microstructure if options.inside else options.fill)   
 
-  np.seterr(**old_settings) # Reset warnings to old state
-  newInfo['microstructures'] = len(np.unique(microstructure))
-
-# --- report ---------------------------------------------------------------------------------------
-  if (newInfo['microstructures'] != info['microstructures']):
-    damask.util.croak('--> microstructures: {}'.format(newInfo['microstructures']))
-
-
-#--- write header ---------------------------------------------------------------------------------
-
-  table.info_clear()
-  table.info_append(extra_header+[
-    scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta {}\tb {}\tc {}".format(*info['grid']),
-    "size\tx {}\ty {}\tz {}".format(*info['size']),
-    "origin\tx {}\ty {}\tz {}".format(*info['origin']),
-    "homogenization\t{}".format(info['homogenization']),
-    "microstructures\t{}".format(newInfo['microstructures']),
-    ])
-  table.labels_clear()
-  table.head_write()
-  table.output_flush()
-
-# --- write microstructure information ------------------------------------------------------------
-
-  format = '%g' if options.float else '%{}i'.format(int(math.floor(math.log10(np.nanmax(microstructure))+1)))
-  table.data = microstructure.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
-  table.data_writeArray(format,delimiter = ' ')
-
-#--- output finalization --------------------------------------------------------------------------
-
-  table.close()
+  geom.microstructure = microstructure
+  geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
+  
+  damask.util.croak(geom)
+  if name is None:
+    sys.stdout.write(str(geom.show()))
+  else:
+    geom.to_file(name)
