@@ -120,7 +120,7 @@ class Geom():
       comments_old = [f.readline() for i in range(int(header_length))]
     else:
       fname.seek(0)
-      header_length,keyword = f.readline().split()
+      header_length,keyword = fname.readline().split()
       if not keyword.startswith('head') or int(header_length) < 3:
         raise TypeError('Header length information missing or invalid')
       comments_old = [fname.readline() for i in range(int(header_length))]
