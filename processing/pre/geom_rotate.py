@@ -10,15 +10,17 @@ import numpy as np
 
 import damask
 
+
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
+
 
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [geomfile(s)]', description = """
-Rotates spectral geometry description.
+Rotates and embeddeds.
 
 """, version=scriptID)
 
@@ -33,7 +35,7 @@ parser.add_option('-e', '--eulers',
 parser.add_option('-d', '--degrees',
                   dest = 'degrees',
                   action = 'store_true',
-                  help = 'Euler angles are given in degrees [%default]')
+                  help = 'Angles (Euler angles/axis angle) are given in degrees [%default]')
 parser.add_option('-m', '--matrix',
                   dest = 'matrix',
                   type = 'float', nargs = 9, metavar = ' '.join(['float']*9),
@@ -47,8 +49,7 @@ parser.add_option('-f', '--fill',
                   type = 'int', metavar = 'int',
                   help = 'background grain index, defaults to max + 1')
 
-parser.set_defaults(degrees = False,
-                   )
+parser.set_defaults(degrees = False)
 
 (options, filenames) = parser.parse_args()
 
