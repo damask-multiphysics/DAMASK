@@ -1,6 +1,8 @@
-import numpy as np
 import math
 from io import StringIO
+
+import numpy as np
+
 
 class Geom():
   """Geometry definition for grid solvers"""
@@ -8,17 +10,19 @@ class Geom():
   def __init__(self,size,microstructure,homogenization=1,comments=[]):
     """New geometry definition from array of microstructures and size"""
     if len(size) != 3 or any(np.array(size)<=0):
-      raise ValueError('invalid size')
+      raise ValueError('Invalid size {}'.format(*size))
     else:
       self.size = np.array(size)
 
     if len(microstructure.shape) != 3:
-      raise ValueError('invalid microstructure')
+      raise ValueError('Invalid microstructure shape {}'.format(*microstructure.shape))
+    elif microstructure.dtype not in ['int','float']:
+      raise TypeError('Invalid data type {} for microstructure'.format(microstructure.dtype))
     else:
       self.microstructure = microstructure
 
     if not isinstance(homogenization,int) or homogenization < 1:
-      raise ValueError('invalid homogenization')
+      raise TypeError('Invalid homogenization {}'.format(homogenization))
     else:
       self.homogenization = homogenization
 
@@ -47,6 +51,7 @@ class Geom():
   def set_size(self,size):
     self.size = np.array(size)
     
+    
   def get_microstructure(self):
     return self.microstructure
 
@@ -59,37 +64,42 @@ class Geom():
   def get_homogenization(self):
     return self.homogenization
 
+
   @classmethod
   def from_file(cls,fname):
+    """Reads from *.geom file"""
     if isinstance(fname,str):
-      with open(fname) as f:
-        header_length = int(f.readline().split()[0])
-        comments_old = [f.readline() for i in range(header_length)]
+      f = open(fname)
+      header_length,keyword = f.readline().split()
+      if not keyword.startswith('head') or int(header_length) < 3:
+        raise TypeError('Header length information missing or invalid')
+      comments_old = [f.readline() for i in range(int(header_length))]
     else:
       fname.seek(0)
-      header_length = int(fname.readline().split()[0])
-      comments_old = [fname.readline() for i in range(header_length)]
+      header_length,keyword = f.readline().split()
+      if not keyword.startswith('head') or int(header_length) < 3:
+        raise TypeError('Header length information missing or invalid')
+      comments_old = [fname.readline() for i in range(int(header_length))]
 
     comments = [] 
     for i,line in enumerate(comments_old):
       if line.lower().strip().startswith('grid'):
-        grid = np.array([int(line.split()[j]) for j in [2,4,6]])         # assume correct order (a,b,c)
+        grid = np.array([int(line.split()[j]) for j in [2,4,6]])                                   # assume correct order (a,b,c)
       elif line.lower().strip().startswith('size'):
-        size = np.array([float(line.split()[j]) for j in [2,4,6]])       # assume correct order (x,y,z)
+        size = np.array([float(line.split()[j]) for j in [2,4,6]])                                 # assume correct order (x,y,z)
       elif line.lower().strip().startswith('homogenization'):
         homogenization = int(line.split()[1])
       else:
         comments.append(line.rstrip().strip())
 
     if isinstance(fname,str):
-      with open(fname) as f:
-        raw = f.readlines()[header_length+1:]
+      raw = f.readlines()
+      f.close()
     else:
       raw = fname.readlines()
 
-    microstructure = np.empty(grid.prod())                                                         # initialize as flat array
+    microstructure = np.empty(grid.prod())                                                          # initialize as flat array
     i = 0
-      
     for line in raw:
       items = line.split()
       if len(items) == 3:
@@ -104,6 +114,9 @@ class Geom():
       microstructure[i:i+len(items)] = items
       i += len(items)
     
+    if i != grid.prod():
+      raise TypeError('Invalid file: expected {} entries,found {}'.format(grid.prod(),i))
+    
     microstructure = microstructure.reshape(grid,order='F')
     
     if np.any(np.mod(microstructure.flatten(),1)!=0.0):
@@ -114,6 +127,7 @@ class Geom():
     return cls(size,microstructure.reshape(grid),homogenization,comments)
 
   def to_file(self,fname):
+    """Saves to file"""
     grid = self.get_grid()
     header =  ['{} header'.format(len(self.comments)+3)]
     header += self.comments
@@ -129,6 +143,7 @@ class Geom():
                header='\n'.join(header), fmt=format_string, comments='')
                
   def show(self):
+    """Show raw content (as in file)"""
     f=StringIO()
     self.to_file(f)
     f.seek(0)
