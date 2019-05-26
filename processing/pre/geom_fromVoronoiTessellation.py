@@ -3,7 +3,6 @@
 import os
 import sys 
 import multiprocessing
-from io import StringIO
 from optparse import OptionParser,OptionGroup
 
 import numpy as np
@@ -100,6 +99,7 @@ def laguerreTessellation(undeformed, coords, weights, grains, periodic = True, c
 
 # closestSeed is modulo number of original seed points (i.e. excluding periodic copies)
   return grains[closestSeeds%coords.shape[0]]                                                   
+
 
 # --------------------------------------------------------------------
 #                                MAIN

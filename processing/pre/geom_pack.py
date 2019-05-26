@@ -2,6 +2,7 @@
 
 import os
 import sys
+from io import StringIO
 from optparse import OptionParser
 
 import damask
@@ -49,7 +50,7 @@ for name in filenames:
       compressType = 'of'
       reps += 1
     else:
-      if   compressType == None:
+      if   compressType is None:
         out = []
       elif compressType == '.':
         out.append('{}\n'.format(former))

@@ -9,7 +9,6 @@ class Geom():
 
   def __init__(self,microstructure,size,homogenization=1,comments=[]):
     """New geometry definition from array of microstructures and size"""
-
     if len(microstructure.shape) != 3:
       raise ValueError('Invalid microstructure shape {}'.format(*microstructure.shape))
     elif microstructure.dtype not in [int,float]:
