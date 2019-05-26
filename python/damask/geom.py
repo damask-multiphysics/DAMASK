@@ -44,7 +44,7 @@ class Geom():
   def update(self,microstructure=None,size=None,rescale=False):
     """Updates microstructure and size"""
     grid_old    = self.get_grid()
-    size_old    = self.size
+    size_old    = self.get_size()
     unique_old  = len(np.unique(self.microstructure))
     max_old     = np.max(self.microstructure)
     
@@ -71,7 +71,7 @@ class Geom():
     message = ''
     if np.any(grid_old != self.get_grid()):
       message += 'grid     a b c:      {}\n'.format(' x '.join(map(str,self.get_grid())))
-    if np.any(size_old != self.get_size()):
+    if np.any(size_old != self.size):
       message += 'size     x y z:      {}\n'.format(' x '.join(map(str,self.size)))
     if unique_old != len(np.unique(self.microstructure)):
       message += '# microstructures:   {}\n'.format(len(np.unique(self.microstructure)))
@@ -88,17 +88,17 @@ class Geom():
       self.comments += [str(c) for c in comment]
 
   def set_microstructure(self,microstructure):
-    self.microstructure = microstructure
+    self.microstructure = np.copy(microstructure)
 
   def set_size(self,size):
     self.size = np.array(size)
     
     
   def get_microstructure(self):
-    return self.microstructure
+    return np.copy(self.microstructure)
 
   def get_size(self):
-    return self.size
+    return np.copy(self.size)
 
   def get_grid(self):
     return np.array(self.microstructure.shape)
