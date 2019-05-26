@@ -7,12 +7,8 @@ import numpy as np
 class Geom():
   """Geometry definition for grid solvers"""
 
-  def __init__(self,size,microstructure,homogenization=1,comments=[]):
+  def __init__(self,microstructure,size,homogenization=1,comments=[]):
     """New geometry definition from array of microstructures and size"""
-    if len(size) != 3 or any(np.array(size)<=0):
-      raise ValueError('Invalid size {}'.format(*size))
-    else:
-      self.size = np.array(size)
 
     if len(microstructure.shape) != 3:
       raise ValueError('Invalid microstructure shape {}'.format(*microstructure.shape))
@@ -20,7 +16,12 @@ class Geom():
       raise TypeError('Invalid data type {} for microstructure'.format(microstructure.dtype))
     else:
       self.microstructure = microstructure
-
+    
+    if len(size) != 3 or any(np.array(size)<=0):
+      raise ValueError('Invalid size {}'.format(*size))
+    else:
+      self.size = np.array(size)
+      
     if not isinstance(homogenization,int) or homogenization < 1:
       raise TypeError('Invalid homogenization {}'.format(homogenization))
     else:
@@ -34,11 +35,52 @@ class Geom():
   def __repr__(self):
     """Basic information on geometry definition"""
     return 'grid     a b c:      {}\n'.format(' x '.join(map(str,self.get_grid()))) + \
-           'size     x y z:      {}\n'.format(' x '.join(map(str,self.get_size()))) + \
-           'homogenization:      {}\n'.format(self.get_homogenization())            + \
+           'size     x y z:      {}\n'.format(' x '.join(map(str,self.size)))       + \
+           'homogenization:      {}\n'.format(self.homogenization)                  + \
            '# microstructures:   {}\n'.format(len(np.unique(self.microstructure)))  + \
            'max microstructures: {}\n'.format(np.max(self.microstructure))
+
+
+  def update(self,microstructure=None,size=None,rescale=False):
+    """Updates microstructure and size"""
+    grid_old    = self.get_grid()
+    size_old    = self.size
+    unique_old  = len(np.unique(self.microstructure))
+    max_old     = np.max(self.microstructure)
     
+    if size is not None and rescale:
+      raise ValueError('Either set size explicitly or rescale automatically')
+
+    if microstructure is not None:
+      if len(microstructure.shape) != 3:
+        raise ValueError('Invalid microstructure shape {}'.format(*microstructure.shape))
+      elif microstructure.dtype not in ['int','float']:
+        raise TypeError('Invalid data type {} for microstructure'.format(microstructure.dtype))
+      else:
+        self.microstructure = microstructure
+    
+    if size is not None:
+      if len(size) != 3 or any(np.array(size)<=0):
+        raise ValueError('Invalid size {}'.format(*size))
+      else:
+        self.size = np.array(size)
+    
+    if rescale:
+      self.size = self.size * self.get_grid()/grid_old
+    
+    message = ''
+    if np.any(grid_old != self.get_grid()):
+      message += 'grid     a b c:      {}\n'.format(' x '.join(map(str,self.get_grid())))
+    if np.any(size_old != self.get_size()):
+      message += 'size     x y z:      {}\n'.format(' x '.join(map(str,self.size)))
+    if unique_old != len(np.unique(self.microstructure)):
+      message += '# microstructures:   {}\n'.format(len(np.unique(self.microstructure)))
+    if max_old != np.max(self.microstructure):
+      message += 'max microstructures: {}\n'.format(np.max(self.microstructure))
+    
+    if message != '': return message
+
+
   def add_comment(self,comment):
     if not isinstance(comment,list):
       self.comments += [str(comment)]
@@ -124,7 +166,7 @@ class Geom():
     else:
       microstructure = microstructure.astype('int')
     
-    return cls(size,microstructure.reshape(grid),homogenization,comments)
+    return cls(microstructure.reshape(grid),size,homogenization,comments)
 
   def to_file(self,fname):
     """Saves to file"""
@@ -132,7 +174,7 @@ class Geom():
     header =  ['{} header'.format(len(self.comments)+3)]
     header += self.comments
     header.append('grid a {} b {} c {}'.format(*grid))
-    header.append('size x {} y {} z {}'.format(*self.get_size()))
+    header.append('size x {} y {} z {}'.format(*self.size))
     header.append('homogenization {}'.format(self.get_homogenization()))
 
     if self.microstructure.dtype == 'int':

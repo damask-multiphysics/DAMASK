@@ -1,22 +1,25 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
 import os
 import sys
 from io import StringIO
 from optparse import OptionParser
+
 from scipy import ndimage
+
 import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
+
 
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [geomfile(s)]', description = """
-Scales a geometry description independently in x, y, and z direction in terms of grid and/or size.
+Scales independently in x, y, and z direction in terms of grid and/or size.
 Either absolute values or relative factors (like "0.25x") can be used.
 
 """, version = scriptID)
@@ -24,15 +27,14 @@ Either absolute values or relative factors (like "0.25x") can be used.
 parser.add_option('-g', '--grid',
                   dest = 'grid',
                   type = 'string', nargs = 3, metavar = 'string string string',
-                  help = 'a,b,c grid of hexahedral box [unchanged]')
+                  help = 'a,b,c grid of hexahedral box')
 parser.add_option('-s', '--size',
                   dest = 'size',
                   type = 'string', nargs = 3, metavar = 'string string string',
-                  help = 'x,y,z size of hexahedral box [unchanged]')
+                  help = 'x,y,z size of hexahedral box')
 
 (options, filenames) = parser.parse_args()
 
-# --- loop over input files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
@@ -44,28 +46,27 @@ for name in filenames:
     geom = damask.Geom.from_file(virt_file)
   else:
     geom = damask.Geom.from_file(name)
-  microstructure = geom.microstructure
+  damask.util.croak(geom)
+  microstructure = geom.get_microstructure()
 
   scale = geom.get_grid().astype('float')
   if options.grid is not None:
     for i,g in enumerate(options.grid):
-      scale[i] = scale[i]*float(g.lower().replace('x','')) if g.lower().startswith('x') \
+      scale[i] = scale[i]*float(g.lower().replace('x','')) if g.lower().endswith('x') \
             else float(options.grid[i])/scale[i]
   
   size = geom.get_size()
   if options.size is not None:
     for i,s in enumerate(options.size):
-      size[i] = size[i]*float(s.lower().replace('x','')) if s.lower().startswith('x') \
+      size[i] = size[i]*float(s.lower().replace('x','')) if s.lower().endswith('x') \
            else options.size[i]
 
   microstructure = ndimage.interpolation.zoom(microstructure, scale, output=microstructure.dtype,
                                               order=0, mode='nearest', prefilter=False)
 
-  geom.microstructure = microstructure
-  geom.set_size(size)
+  damask.util.croak(geom.update(microstructure,size))
   geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
-  
-  damask.util.croak(geom)
+
   if name is None:
     sys.stdout.write(str(geom.show()))
   else:

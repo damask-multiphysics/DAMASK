@@ -44,7 +44,8 @@ def srepr(arg,glue = '\n'):
 # -----------------------------
 def croak(what, newline = True):
   """Writes formated to stderr"""
-  sys.stderr.write(srepr(what,glue = '\n') + ('\n' if newline else ''))
+  if what is not None:
+    sys.stderr.write(srepr(what,glue = '\n') + ('\n' if newline else ''))
   sys.stderr.flush()
 
 # -----------------------------
