@@ -12,7 +12,7 @@ class Geom():
 
     if len(microstructure.shape) != 3:
       raise ValueError('Invalid microstructure shape {}'.format(*microstructure.shape))
-    elif microstructure.dtype not in ['int','float']:
+    elif microstructure.dtype not in [int,float]:
       raise TypeError('Invalid data type {} for microstructure'.format(microstructure.dtype))
     else:
       self.microstructure = microstructure
