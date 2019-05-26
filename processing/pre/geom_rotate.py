@@ -52,7 +52,7 @@ parser.set_defaults(degrees = False,
 (options, filenames) = parser.parse_args()
 
 if sum(x is not None for x in [options.rotation,options.eulers,options.matrix,options.quaternion]) != 1:
-  parser.error('not exactly one rotation specified...')
+  parser.error('more than one rotation specified.')
 
 if options.quaternion is not None:
   eulers = damask.Rotation.fromQuaternion(np.array(options.quaternion)).asEulers(degrees=True)
