@@ -66,7 +66,7 @@ for name in filenames:
   
   microstructure += options.microstructure                                                          # constant shift
 
-  for i,line in enumerate(geom.comments):
+  for i,line in enumerate(geom.get_comments()):
     if line.lower().strip().startswith('origin'):
       origin= np.array([float(line.split()[j]) for j in [2,4,6]])                                   # assume correct order (x,y,z)
       origin += np.array(origin)
