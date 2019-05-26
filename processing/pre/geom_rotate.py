@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
 import os
 import sys
-import numpy as np
 from io import StringIO
-from scipy import ndimage
 from optparse import OptionParser
+
+from scipy import ndimage
+import numpy as np
+
 import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
@@ -51,8 +52,10 @@ parser.set_defaults(degrees = False,
 
 (options, filenames) = parser.parse_args()
 
-if sum(x is not None for x in [options.rotation,options.eulers,options.matrix,options.quaternion]) != 1:
+if [options.rotation,options.eulers,options.matrix,options.quaternion].count(None) < 3:
   parser.error('more than one rotation specified.')
+if [options.rotation,options.eulers,options.matrix,options.quaternion].count(None) > 3:
+  parser.error('no rotation specified.')
 
 if options.quaternion is not None:
   eulers = damask.Rotation.fromQuaternion(np.array(options.quaternion)).asEulers(degrees=True)
@@ -63,7 +66,6 @@ if options.matrix is not None:
 if options.eulers is not None:
   eulers = damask.Rotation.fromEulers(np.array(options.eulers),degrees=options.degrees).asEulers(degrees=True)
 
-# --- loop over input files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
@@ -75,20 +77,23 @@ for name in filenames:
     geom = damask.Geom.from_file(virt_file)
   else:
     geom = damask.Geom.from_file(name)
-  microstructure = geom.microstructure
+  microstructure = geom.get_microstructure()
+  
+
+  fill = options.fill if options.fill is not None else np.nanmax(microstructure)+1
+  
+  # These rotations are always applied in the reference coordinate system, i.e. (z,x,z) not (z,x',z'')
+  # this seems to be ok, see https://www.cs.utexas.edu/~theshark/courses/cs354/lectures/cs354-14.pdf
+  microstructure = ndimage.rotate(microstructure,eulers[2],(0,1),order=0,
+                                  prefilter=False,output=microstructure.dtype,cval=fill)            # rotation around z
+  microstructure = ndimage.rotate(microstructure,eulers[1],(1,2),order=0,
+                                  prefilter=False,output=microstructure.dtype,cval=fill)            # rotation around x
+  microstructure = ndimage.rotate(microstructure,eulers[0],(0,1),order=0,
+                                  prefilter=False,output=microstructure.dtype,cval=fill)            # rotation around z
   
   spacing = geom.get_size()/geom.get_grid()
-
-  newGrainID = options.fill if options.fill is not None else np.nanmax(microstructure)+1
-  microstructure = ndimage.rotate(microstructure,eulers[2],(0,1),order=0,
-                                  prefilter=False,output=microstructure.dtype,cval=newGrainID) # rotation around Z
-  microstructure = ndimage.rotate(microstructure,eulers[1],(1,2),order=0,
-                                  prefilter=False,output=microstructure.dtype,cval=newGrainID) # rotation around X
-  microstructure = ndimage.rotate(microstructure,eulers[0],(0,1),order=0,
-                                  prefilter=False,output=microstructure.dtype,cval=newGrainID) # rotation around Z
-  
-  geom.microstructure = microstructure
   geom.set_size(microstructure.shape*spacing)
+  geom.set_microstructure(microstructure)
   geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
   
   damask.util.croak(geom)

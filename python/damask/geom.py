@@ -41,9 +41,15 @@ class Geom():
     else:
       self.comments += [str(c) for c in comment]
 
+  def set_microstructure(self,microstructure):
+    self.microstructure = microstructure
+
   def set_size(self,size):
     self.size = np.array(size)
     
+  def get_microstructure(self):
+    return self.microstructure
+
   def get_size(self):
     return self.size
 
