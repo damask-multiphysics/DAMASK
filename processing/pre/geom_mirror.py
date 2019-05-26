@@ -1,23 +1,25 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
 import os
 import sys
-import numpy as np
-from optparse import OptionParser
 from io import StringIO
+from optparse import OptionParser
+
+import numpy as np
+
 import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
+
 
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-validDirections = ['x','y','z']
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [geomfile(s)]', description = """
-Mirrors spectral geometry description along given directions.
+Mirror along given directions.
 
 """, version=scriptID)
 
@@ -25,17 +27,23 @@ parser.add_option('-d','--direction',
                   dest = 'directions',
                   action = 'extend', metavar = '<string LIST>',
                   help = "directions in which to mirror {'x','y','z'}")
+parser.add_option(    '--double',
+                  dest = 'double',
+                  action = 'store_true',
+                  help = 'double the outer layers in mirror direction')             
 
 (options, filenames) = parser.parse_args()
 
 if options.directions is None:
   parser.error('no direction given.')
+
+validDirections = ['x','y','z']  
 if not set(options.directions).issubset(validDirections):
   invalidDirections = [str(e) for e in set(options.directions).difference(validDirections)]
   parser.error('invalid directions {}. '.format(*invalidDirections))
-  
 
-# --- loop over input files -------------------------------------------------------------------------
+limits = [-2,0] if not options.double else [None,None]
+
 
 if filenames == []: filenames = [None]
 
@@ -47,22 +55,19 @@ for name in filenames:
     geom = damask.Geom.from_file(virt_file)
   else:
     geom = damask.Geom.from_file(name)
+  damask.util.croak(geom)
   microstructure = geom.microstructure
 
   if 'z' in options.directions:
-    microstructure = np.concatenate([microstructure,microstructure[:,:,::-1]],2) # better not double edges
-    geom.set_size(geom.get_size()*np.array([1,1,2]))
+    microstructure = np.concatenate([microstructure,microstructure[:,:,limits[0]:limits[1]:-1]],2)
   if 'y' in options.directions:
-    microstructure = np.concatenate([microstructure,microstructure[:,::-1,:]],1) # better not double edges
-    geom.set_size(geom.get_size()*np.array([1,2,1]))
+    microstructure = np.concatenate([microstructure,microstructure[:,limits[0]:limits[1]:-1,:]],1)
   if 'x' in options.directions:
-    microstructure = np.concatenate([microstructure,microstructure[::-1,:,:]],0) # better not double edges
-    geom.set_size(geom.get_size()*np.array([2,1,1]))
+    microstructure = np.concatenate([microstructure,microstructure[limits[0]:limits[1]:-1,:,:]],0)
   
-  geom.microstructure = microstructure
+  damask.util.croak(geom.update(microstructure,rescale=True))
   geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
   
-  damask.util.croak(geom)
   if name is None:
     sys.stdout.write(str(geom.show()))
   else:

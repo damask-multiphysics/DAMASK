@@ -20,7 +20,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #--------------------------------------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [geomfile(s)]', description = """
-Rotates and embeddeds.
+Rotates original microstructure and embeddeds it into buffer material.
 
 """, version=scriptID)
 
@@ -46,8 +46,8 @@ parser.add_option('-q', '--quaternion',
                   help = 'rotation given as quaternion')
 parser.add_option('-f', '--fill',
                   dest = 'fill',
-                  type = 'int', metavar = 'int',
-                  help = 'background grain index, defaults to max + 1')
+                  type = 'float', metavar = 'int',
+                  help = 'background microstructure index, defaults to max microstructure index + 1')
 
 parser.set_defaults(degrees = False)
 
@@ -78,9 +78,9 @@ for name in filenames:
     geom = damask.Geom.from_file(virt_file)
   else:
     geom = damask.Geom.from_file(name)
+  damask.util.croak(geom)  
   microstructure = geom.get_microstructure()
   
-
   fill = options.fill if options.fill is not None else np.nanmax(microstructure)+1
   
   # These rotations are always applied in the reference coordinate system, i.e. (z,x,z) not (z,x',z'')
@@ -92,12 +92,10 @@ for name in filenames:
   microstructure = ndimage.rotate(microstructure,eulers[0],(0,1),order=0,
                                   prefilter=False,output=microstructure.dtype,cval=fill)            # rotation around z
   
-  spacing = geom.get_size()/geom.get_grid()
-  geom.set_size(microstructure.shape*spacing)
-  geom.set_microstructure(microstructure)
+
+  damask.util.croak(geom.update(microstructure,rescale=True))
   geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
   
-  damask.util.croak(geom)
   if name is None:
     sys.stdout.write(str(geom.show()))
   else:
