@@ -83,9 +83,9 @@ class Geom():
 
   def add_comment(self,comment):
     if not isinstance(comment,list):
-      self.comments += [str(comment)]
+      self.comments = [str(comment)] + self.comments
     else:
-      self.comments += [str(c) for c in comment]
+      self.comments = [str(c) for c in comment] + self.comments
 
   def set_microstructure(self,microstructure):
     self.microstructure = np.copy(microstructure)
@@ -106,6 +106,8 @@ class Geom():
   def get_homogenization(self):
     return self.homogenization
 
+  def get_comments(self):
+    return self.comments[:]
 
   @classmethod
   def from_file(cls,fname):
