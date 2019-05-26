@@ -18,7 +18,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [geomfile(s)]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [geomfile(s)]', description = """
 Renumber sorted microstructure indices to 1,...,N.
 
 """, version=scriptID)
@@ -36,16 +36,16 @@ for name in filenames:
     geom = damask.Geom.from_file(virt_file)
   else:
     geom = damask.Geom.from_file(name)
+  damask.util.croak(geom)    
   microstructure = geom.get_microstructure()
   
   renumbered = np.copy(microstructure)
   for i, oldID in enumerate(np.unique(microstructure)):
     renumbered = np.where(microstructure == oldID, i+1, renumbered)
 
-  geom.set_microstructure(renumbered)
+  damask.util.croak(geom.update(renumbered))
   geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
   
-  damask.util.croak(geom)
   if name is None:
     sys.stdout.write(str(geom.show()))
   else:

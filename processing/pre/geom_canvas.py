@@ -1,160 +1,83 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
-import numpy as np
+import os
+import sys
+from io import StringIO
 from optparse import OptionParser
+
+import numpy as np
+
 import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
+
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog option(s) [geomfile(s)]', description = """
-Changes the (three-dimensional) canvas of a spectral geometry description.
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [geomfile(s)]', description = """
+Increases or decreases the (three-dimensional) canvas.
 Grid can be given as absolute or relative values, e.g. 16 16 16 or 2x 0.5x 32.
 
 """, version = scriptID)
 
-parser.add_option('-g',
-                  '--grid',
+parser.add_option('-g','--grid',
                   dest = 'grid',
                   type = 'string', nargs = 3, metavar = ' '.join(['string']*3),
-                  help = 'a,b,c grid of hexahedral box. [auto]')
-parser.add_option('-o',
-                  '--offset',
+                  help = 'a,b,c grid of hexahedral box')
+parser.add_option('-o','--offset',
                   dest = 'offset',
                   type = 'int', nargs = 3, metavar = ' '.join(['int']*3),
                   help = 'a,b,c offset from old to new origin of grid [%default]')
-parser.add_option('-f',
-                  '--fill',
+parser.add_option('-f','--fill',
                   dest = 'fill',
-                  type = 'int', metavar = 'int',
-                  help = '(background) canvas grain index. "0" selects maximum microstructure index + 1 [%default]')
+                  type = 'float', metavar = 'int',
+                  help = 'background microstructure index, defaults to max microstructure index + 1')
 
-parser.set_defaults(grid = ('0','0','0'),
-                    offset = (0,0,0),
-                   )
+parser.set_defaults(offset = (0,0,0))
 
 (options, filenames) = parser.parse_args()
-
-datatype = 'i'
 
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try: table = damask.ASCIItable(name = name,
-                                 buffered = False,
-                                 labeled = False)
-  except: continue
   damask.util.report(scriptName,name)
-
-  if True:
-
-# --- interpret header ----------------------------------------------------------------------------
-
-    table.head_read()
-    info,extra_header = table.head_getGeom()
-    damask.util.report_geom(info)
-
-    errors = []
-    if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
-    if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
-    if errors != []:
-      damask.util.croak(errors)
-      table.close(dismiss = True)
-      continue
-
-# --- read data ------------------------------------------------------------------------------------
-
-    microstructure = table.microstructure_read(info['grid'],datatype).reshape(info['grid'],order='F')          # read microstructure
-
-# --- do work ------------------------------------------------------------------------------------
- 
-  newInfo = {
-             'grid':    np.zeros(3,'i'),
-             'origin':  np.zeros(3,'d'),
-             'microstructures': 0,
-            }
-
-  newInfo['grid'] = np.array([int(o*float(n.translate(None,'xX'))) if n[-1].lower() == 'x'\
-                                                                   else int(n) for o,n in zip(info['grid'],options.grid)],'i')
-  newInfo['grid'] = np.where(newInfo['grid'] > 0, newInfo['grid'],info['grid'])
-
-  microstructure_cropped = np.zeros(newInfo['grid'],datatype)
-  microstructure_cropped.fill(options.fill if options.fill is not None else np.nanmax(microstructure)+1)
   
-  if True:
-    xindex = np.arange(max(options.offset[0],0),min(options.offset[0]+newInfo['grid'][0],info['grid'][0]))
-    yindex = np.arange(max(options.offset[1],0),min(options.offset[1]+newInfo['grid'][1],info['grid'][1]))
-    zindex = np.arange(max(options.offset[2],0),min(options.offset[2]+newInfo['grid'][2],info['grid'][2]))
-    translate_x = [i - options.offset[0] for i in xindex]
-    translate_y = [i - options.offset[1] for i in yindex]
-    translate_z = [i - options.offset[2] for i in zindex]
-    if 0 in map(len,[xindex,yindex,zindex,translate_x,translate_y,translate_z]):
-      damask.util.croak('invaldid combination of grid and offset.')
-      table.close(dismiss = True)
-      continue
-    microstructure_cropped[min(translate_x):max(translate_x)+1,
-                           min(translate_y):max(translate_y)+1,
-                           min(translate_z):max(translate_z)+1] \
-          = microstructure[min(xindex):max(xindex)+1,
-                           min(yindex):max(yindex)+1,
-                           min(zindex):max(zindex)+1]
+  if name is None:
+    virt_file = StringIO(''.join(sys.stdin.read()))
+    geom = damask.Geom.from_file(virt_file)
+  else:
+    geom = damask.Geom.from_file(name)
+  damask.util.croak(geom)
+  microstructure = geom.get_microstructure()
+  
+  grid = geom.get_grid()
+  if options.grid is not None:
+    for i,g in enumerate(options.grid):
+      grid[i] = int(round(grid[i]*float(g.lower().replace('x','')))) if g.lower().endswith('x') \
+           else int(options.grid[i])
 
-  newInfo['size']   = info['size']/info['grid']*newInfo['grid'] if np.all(info['grid'] > 0) else newInfo['grid']
-  newInfo['origin'] = info['origin']+(info['size']/info['grid'] if np.all(info['grid'] > 0) \
-                              else newInfo['size']/newInfo['grid'])*options.offset
-  newInfo['microstructures'] = len(np.unique(microstructure_cropped))
+  new  = np.full(grid,options.fill if options.fill is not None else np.nanmax(microstructure)+1,
+                 microstructure.dtype)
+  
+  for x in range(microstructure.shape[0]):
+    X = x + options.offset[0]
+    if not 0 <= X < new.shape[0]: continue 
+    for y in range(microstructure.shape[1]):
+      Y = y + options.offset[1]
+      if not 0 <= Y < new.shape[1]: continue 
+      for z in range(microstructure.shape[2]):
+        Z = z + options.offset[2]
+        if not 0 <= Z < new.shape[2]: continue
+        new[X,Y,Z] = microstructure[x,y,z]
 
-# --- report ---------------------------------------------------------------------------------------
+  damask.util.croak(geom.update(new,rescale=True))
+  geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
 
-  remarks = []
-  errors = []
-
-  if (any(newInfo['grid']            != info['grid'])):
-    remarks.append('--> grid     a b c:  {}'.format(' x '.join(map(str,newInfo['grid']))))
-  if (any(newInfo['size']            != info['size'])):
-    remarks.append('--> size     x y z:  {}'.format(' x '.join(map(str,newInfo['size']))))
-  if (any(newInfo['origin']          != info['origin'])):
-    remarks.append('--> origin   x y z:  {}'.format(' : '.join(map(str,newInfo['origin']))))
-  if (    newInfo['microstructures'] != info['microstructures']):
-    remarks.append('--> microstructures: {}'.format(newInfo['microstructures']))
-
-  if np.any(newInfo['grid'] < 1):    errors.append('invalid new grid a b c.')
-  if np.any(newInfo['size'] <= 0.0): errors.append('invalid new size x y z.')
-
-  if remarks != []: damask.util.croak(remarks)
-  if errors != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# --- write header ---------------------------------------------------------------------------------
-
-  table.info_clear()
-  table.info_append(extra_header+[
-    scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta {}\tb {}\tc {}".format(*newInfo['grid']),
-    "size\tx {}\ty {}\tz {}".format(*newInfo['size']),
-    "origin\tx {}\ty {}\tz {}".format(*newInfo['origin']),
-    "homogenization\t{}".format(info['homogenization']),
-    "microstructures\t{}".format(newInfo['microstructures']),
-    ])
-  table.labels_clear()
-  table.head_write()
-  table.output_flush()
-
-# --- write microstructure information ------------------------------------------------------------
-
-  format = '%{}i'.format(int(math.floor(math.log10(np.nanmax(microstructure_cropped))+1)))
-  table.data = microstructure_cropped.reshape((newInfo['grid'][0],newInfo['grid'][1]*newInfo['grid'][2]),order='F').transpose()
-  table.data_writeArray(format,delimiter=' ')
-    
-# --- output finalization --------------------------------------------------------------------------
-
-  table.close()                                                                                     # close ASCII table
+  if name is None:
+    sys.stdout.write(str(geom.show()))
+  else:
+    geom.to_file(name)

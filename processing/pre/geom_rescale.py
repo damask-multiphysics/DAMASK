@@ -53,13 +53,13 @@ for name in filenames:
   if options.grid is not None:
     for i,g in enumerate(options.grid):
       scale[i] = scale[i]*float(g.lower().replace('x','')) if g.lower().endswith('x') \
-            else float(options.grid[i])/scale[i]
+          else   float(options.grid[i])/scale[i]
   
   size = geom.get_size()
   if options.size is not None:
     for i,s in enumerate(options.size):
       size[i] = size[i]*float(s.lower().replace('x','')) if s.lower().endswith('x') \
-           else options.size[i]
+        else    options.size[i]
 
   microstructure = ndimage.interpolation.zoom(microstructure, scale, output=microstructure.dtype,
                                               order=0, mode='nearest', prefilter=False)

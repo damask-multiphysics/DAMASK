@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
 import os
 import sys
-import numpy as np
-from scipy import ndimage
-from optparse import OptionParser
 from io import StringIO
+from optparse import OptionParser
+
+from scipy import ndimage
+import numpy as np
+
 import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
+
 
 def taintedNeighborhood(stencil,trigger=[],size=1):
 
@@ -23,11 +26,12 @@ def taintedNeighborhood(stencil,trigger=[],size=1):
     trigger = list(trigger)
   return np.any(np.in1d(stencil,np.array(trigger)))
 
+
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [geomfile(s)]', description = """
 Offset microstructure index for points which see a microstructure different from themselves
 (or listed as triggers) within a given (cubic) vicinity, i.e. within the region close to a grain/phase boundary.
 
@@ -40,10 +44,10 @@ parser.add_option('-v', '--vicinity',
 parser.add_option('-m', '--microstructureoffset',
                   dest='offset',
                   type = 'int', metavar = 'int',
-                  help = 'offset (positive or negative) for tagged microstructure indices. '+
-                         '"0" selects maximum microstructure index [%default]')
+                  help='offset (positive or negative) to tag microstructure indices, defaults to max microstructure index + 1')
 parser.add_option('-t', '--trigger',
-                  action = 'extend', dest = 'trigger', metavar = '<int LIST>',
+                  dest = 'trigger',
+                  action = 'extend', metavar = '<int LIST>',
                   help = 'list of microstructure indices triggering a change')
 parser.add_option('-n', '--nonperiodic',
                   dest = 'mode',
@@ -51,16 +55,14 @@ parser.add_option('-n', '--nonperiodic',
                   help = 'assume geometry to be non-periodic')
 
 parser.set_defaults(vicinity = 1,
-                    offset   = 0,
                     trigger  = [],
                     mode     = 'wrap',
                    )
 
 (options, filenames) = parser.parse_args()
+
 options.trigger = np.array(options.trigger, dtype=int)
 
-
-# --- loop over input files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
@@ -72,21 +74,21 @@ for name in filenames:
     geom = damask.Geom.from_file(virt_file)
   else:
     geom = damask.Geom.from_file(name)
-  microstructure = geom.microstructure
+  damask.util.croak(geom)  
+  microstructure = geom.get_microstructure()
 
-  if options.offset == 0: options.offset = microstructure.max()
+  offset = options.offset if options.offset is not None else np.nanmax(microstructure)
 
   microstructure = np.where(ndimage.filters.generic_filter(microstructure,
                                                            taintedNeighborhood,
                                                            size=1+2*options.vicinity,mode=options.mode,
                                                            extra_arguments=(),
                                                            extra_keywords={"trigger":options.trigger,"size":1+2*options.vicinity}),
-                            microstructure + options.offset,microstructure)
+                            microstructure + offset,microstructure)
 
-  geom.microstructure = microstructure
+  damask.util.croak(geom.update(microstructure))
   geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
   
-  damask.util.croak(geom)
   if name is None:
     sys.stdout.write(str(geom.show()))
   else:

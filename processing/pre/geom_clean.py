@@ -49,15 +49,15 @@ for name in filenames:
     geom = damask.Geom.from_file(virt_file)
   else:
     geom = damask.Geom.from_file(name)
+  damask.util.croak(geom)
   microstructure = geom.get_microstructure()
 
   microstructure = ndimage.filters.generic_filter(microstructure,mostFrequent,
                                                   size=(options.stencil,)*3).astype(microstructure.dtype)
 
-  geom.set_microstructure(microstructure)
+  damask.util.croak(geom.update(microstructure))
   geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
-  
-  damask.util.croak(geom)
+
   if name is None:
     sys.stdout.write(str(geom.show()))
   else:

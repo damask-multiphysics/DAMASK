@@ -1,60 +1,72 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
 import os
 import sys
-import numpy as np
-import damask
 from io import StringIO
 from optparse import OptionParser
 
+import numpy as np
+
+import damask
+
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
+
 
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog option [geomfile(s)]', description = """
-Positions a geometric object within the (three-dimensional) canvas of a spectral geometry description.
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [geomfile(s)]', description = """
+Inserts a primitive geometric object at a given position.
 Depending on the sign of the dimension parameters, these objects can be boxes, cylinders, or ellipsoids.
 
 """, version = scriptID)
 
-parser.add_option('-c', '--center',     dest='center', 
+parser.add_option('-c', '--center',
+                  dest='center', 
                   type='float', nargs = 3, metavar=' '.join(['float']*3),
                   help='a,b,c origin of primitive %default')
-parser.add_option('-d', '--dimension',  dest='dimension',
+parser.add_option('-d', '--dimension',
+                  dest='dimension',
                   type='float', nargs = 3, metavar=' '.join(['float']*3),
-                  help='a,b,c extension of hexahedral box; negative values are diameters')
-parser.add_option('-e', '--exponent',  dest='exponent',
+                  help='a,b,c extension of hexahedral box')
+parser.add_option('-e', '--exponent',
+                  dest='exponent',
                   type='float', nargs = 3, metavar=' '.join(['float']*3),
                   help='i,j,k exponents for axes - 0 gives octahedron (|x|^(2^0) + |y|^(2^0) + |z|^(2^0) < 1), \
                   1 gives a sphere (|x|^(2^1) + |y|^(2^1) + |z|^(2^1) < 1), \
-                  large values produce boxes, negative turns concave.')
-parser.add_option('-f', '--fill',       dest='fill',
-                  type='float', metavar = 'float',
-                  help='grain index to fill primitive. "0" selects maximum microstructure index + 1 [%default]')
-parser.add_option('-q', '--quaternion', dest='quaternion',
+                  large values produce boxes, negative turn concave.')
+parser.add_option('-f', '--fill',
+                  dest='fill',
+                  type='float', metavar = 'int',
+                  help='microstructure index to fill primitive, defaults to max microstructure index + 1')
+parser.add_option('-q', '--quaternion',
+                  dest='quaternion',
                   type='float', nargs = 4, metavar=' '.join(['float']*4),
                   help = 'rotation of primitive as quaternion')
-parser.add_option('-a', '--angleaxis',  dest='angleaxis', type=float,
-                  nargs = 4, metavar=' '.join(['float']*4),
+parser.add_option('-a', '--angleaxis',
+                  dest='angleaxis',
+                  type=float, nargs = 4, metavar=' '.join(['float']*4),
                   help = 'axis and angle to rotate primitive')
-parser.add_option(     '--degrees',     dest='degrees',
+parser.add_option(     '--degrees',
+                  dest='degrees',
                   action='store_true',
-                  help = 'angle is given in degrees [%default]')
-parser.add_option(     '--nonperiodic', dest='periodic',
+                  help = 'angle is given in degrees')
+parser.add_option(     '--nonperiodic',
+                  dest='periodic',
                   action='store_false',
-                  help = 'wrap around edges [%default]')
-parser.add_option(     '--realspace',  dest='realspace',
+                  help = 'wrap around edges')
+parser.add_option(     '--realspace',
+                  dest='realspace',
                   action='store_true',
                   help = '-c and -d span [origin,origin+size] instead of [0,grid] coordinates')
-parser.add_option(     '--invert',  dest='inside',
+parser.add_option(     '--invert',
+                  dest='inside',
                   action='store_false',
                   help = 'invert the volume filled by the primitive (inside/outside)')
+
 parser.set_defaults(center = (.0,.0,.0),
-                    fill = 0.0,
                     degrees = False,
                     exponent = (20,20,20), # box shape by default
                     periodic = True,
@@ -65,7 +77,10 @@ parser.set_defaults(center = (.0,.0,.0),
 (options, filenames) = parser.parse_args()
 
 if options.dimension is None:
-  parser.error('no dimension specified.')   
+  parser.error('no dimension specified.') 
+if [options.angleaxis,options.quaternion].count(None) == 2:
+  parser.error('more than one rotation specified.')
+
 if options.angleaxis is not None:
   rotation = damask.Rotation.fromAxisAngle(np.array(options.angleaxis),options.degrees,normalise=True)
 elif options.quaternion is not None:
@@ -73,22 +88,11 @@ elif options.quaternion is not None:
 else:
   rotation = damask.Rotation()
 
-options.center = np.array(options.center)
+options.center    = np.array(options.center)
 options.dimension = np.array(options.dimension)
 # undo logarithmic sense of exponent and generate ellipsoids for negative dimensions (backward compatibility)
-options.exponent = np.where(np.array(options.dimension) > 0, np.power(2,options.exponent), 2)
+options.exponent  = np.where(np.array(options.dimension) > 0, np.power(2,options.exponent), 2)
 
-# --- loop over input files -------------------------------------------------------------------------
-if filenames == []: filenames = [None]
-
-for name in filenames:
-  try:    table = damask.ASCIItable(name = name,
-                                    buffered = False,
-                                    labeled = False)
-  except: continue
-  damask.util.report(scriptName,name)
-
-# --- loop over input files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
@@ -100,9 +104,10 @@ for name in filenames:
     geom = damask.Geom.from_file(virt_file)
   else:
     geom = damask.Geom.from_file(name)
-  microstructure = geom.microstructure
+  damask.util.croak(geom)
+  microstructure = geom.get_microstructure()
 
-  options.fill = np.nanmax(microstructure)+1 if options.fill == 0 else options.fill
+  fill = options.fill if options.fill is not None else np.nanmax(microstructure)+1
   
   origin = np.zeros(3)
   for i,line in enumerate(geom.comments):
@@ -176,20 +181,19 @@ for name in filenames:
                          grid[2] * k : grid[2] * (k+1)])**options.exponent[2] <= 1.0)
     
     microstructure = np.where(inside,
-                              options.fill   if options.inside else microstructure,
-                              microstructure if options.inside else options.fill)   
+                              fill           if options.inside else microstructure,
+                              microstructure if options.inside else fill)   
 
   else: # nonperiodic, much lighter on resources
     microstructure = np.where(np.abs(X)**options.exponent[0] +
                               np.abs(Y)**options.exponent[1] +
                               np.abs(Z)**options.exponent[2] <= 1.0,
-                              options.fill   if options.inside else microstructure,
-                              microstructure if options.inside else options.fill)   
+                              fill           if options.inside else microstructure,
+                              microstructure if options.inside else fill)   
 
-  geom.microstructure = microstructure
+  damask.util.croak(geom.update(microstructure))
   geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
   
-  damask.util.croak(geom)
   if name is None:
     sys.stdout.write(str(geom.show()))
   else:
