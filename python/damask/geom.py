@@ -162,9 +162,9 @@ class Geom():
     
     microstructure = microstructure.reshape(grid,order='F')
     
-    if np.any(np.mod(microstructure.flatten(),1)!=0.0):
+    if '.' in raw[0]:                                                                               # contains float values
       pass
-    else:
+    else:                                                                                           # assume int values
       microstructure = microstructure.astype('int')
     
     return cls(microstructure.reshape(grid),size,homogenization,comments)
