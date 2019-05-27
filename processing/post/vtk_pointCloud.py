@@ -98,6 +98,6 @@ for name in filenames:
 
   writer.Write()
 
-  if name is None: sys.stdout.write(writer.GetOutputString()[:writer.GetOutputStringLength()])      # limiting of outputString is fix for vtk <7.0
+  if name is None: sys.stdout.write(writer.GetOutputString())
 
   table.close()
