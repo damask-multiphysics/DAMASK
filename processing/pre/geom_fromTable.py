@@ -166,7 +166,7 @@ for name in filenames:
     config_header += ['<texture>']
     for i,orientation in enumerate(orientations):
       config_header += ['[Grain%s]'%(str(i+1).zfill(formatwidth)),
-                        '(gauss)\tphi1 %g\tPhi %g\tphi2 %g\tscatter 0.0\tfraction 1.0'%tuple(orientation.asEulers(degrees = True)),
+                        '(gauss)\tphi1 %g\tPhi %g\tphi2 %g'%tuple(orientation.asEulers(degrees = True)),
                        ]
       if options.axes is not None: config_header += ['axes\t{} {} {}'.format(*options.axes)]
   

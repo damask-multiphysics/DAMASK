@@ -306,7 +306,7 @@ for name in filenames:
       for ID in grainIDs:
         eulerID = np.nonzero(grains == ID)[0][0]                                                    # find first occurrence of this grain id
         config_header += ['[Grain{}]'.format(str(ID).zfill(formatwidth)),
-                          '(gauss)\tphi1 {:g}\tPhi {:g}\tphi2 {:g}\tscatter 0.0\tfraction 1.0'.format(*eulers[eulerID])
+                          '(gauss)\tphi1 {:g}\tPhi {:g}\tphi2 {:g}'.format(*eulers[eulerID])
                          ] + theAxes
     config_header += ['<!skip>']
   
