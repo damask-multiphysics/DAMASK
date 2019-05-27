@@ -104,7 +104,6 @@ for name in filenames:
     geom = damask.Geom.from_file(virt_file)
   else:
     geom = damask.Geom.from_file(name)
-  damask.util.croak(geom)
   microstructure = geom.get_microstructure()
 
   fill = options.fill if options.fill is not None else np.nanmax(microstructure)+1

@@ -3,6 +3,8 @@ from io import StringIO
 
 import numpy as np
 
+from . import util
+
 
 class Geom():
   """Geometry definition for grid solvers"""
@@ -67,17 +69,29 @@ class Geom():
     if rescale:
       self.size = self.size * self.get_grid()/grid_old
     
-    message = ''
+    message = ['grid     a b c:      {}'.format(' x '.join(map(str,grid_old)))]
     if np.any(grid_old != self.get_grid()):
-      message += 'grid     a b c:      {}\n'.format(' x '.join(map(str,self.get_grid())))
+      message[-1] = util.bcolors.CROSSOUT+message[-1]+util.bcolors.ENDC
+      message.append('grid     a b c:      {}'.format(' x '.join(map(str,self.get_grid()))))
+
+    message.append('size     x y z:      {}'.format(' x '.join(map(str,size_old))))
     if np.any(size_old != self.size):
-      message += 'size     x y z:      {}\n'.format(' x '.join(map(str,self.size)))
+      message[-1] = util.bcolors.CROSSOUT+message[-1]+util.bcolors.ENDC
+      message.append('size     x y z:      {}'.format(' x '.join(map(str,self.size))))
+
+    message.append('homogenization:      {}'.format(self.homogenization))
+
+    message.append('# microstructures:   {}'.format(unique_old))
     if unique_old != len(np.unique(self.microstructure)):
-      message += '# microstructures:   {}\n'.format(len(np.unique(self.microstructure)))
+      message[-1] = util.bcolors.CROSSOUT+message[-1]+util.bcolors.ENDC
+      message.append('# microstructures:   {}'.format(len(np.unique(self.microstructure))))
+
+    message.append('max microstructures: {}'.format(max_old))
     if max_old != np.max(self.microstructure):
-      message += 'max microstructures: {}\n'.format(np.max(self.microstructure))
+      message[-1] = util.bcolors.CROSSOUT+message[-1]+util.bcolors.ENDC
+      message.append('max microstructures: {}'.format(np.max(self.microstructure)))
     
-    if message != '': return message
+    return '\n'.join(message)
 
 
   def add_comment(self,comment):

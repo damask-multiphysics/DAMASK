@@ -56,6 +56,7 @@ for name in filenames:
   zz =         np.repeat(z,grid[0]*grid[1])
 
 # ------------------------------------------ finalize output ---------------------------------------
+
   table = damask.ASCIItable(outname = os.path.splitext(name)[0]+'.txt' if name else name)
   table.info_append([scriptID + '\t' + ' '.join(sys.argv[1:])] + geom.get_comments())
   table.labels_append(['{}_{}'.format(1+i,'pos') for i in range(3)]+['microstructure'])

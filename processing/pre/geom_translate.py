@@ -58,7 +58,6 @@ for name in filenames:
     geom = damask.Geom.from_file(virt_file)
   else:
     geom = damask.Geom.from_file(name)
-  damask.util.croak(geom)  
   microstructure = geom.get_microstructure()
   new            = np.copy(microstructure)
   
