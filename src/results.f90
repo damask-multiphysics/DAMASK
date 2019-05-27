@@ -299,18 +299,26 @@ end subroutine results_writeVectorDataset_real
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeTensorDataset_real(group,dataset,label,description,SIunit)
 
-  character(len=*), intent(in)                      :: label,group,description
-  character(len=*), intent(in), optional            :: SIunit
-  real(pReal),      intent(inout), dimension(:,:,:) :: dataset
+  character(len=*), intent(in)                   :: label,group,description
+  character(len=*), intent(in), optional         :: SIunit
+  real(pReal),      intent(in), dimension(:,:,:) :: dataset
   
+  integer :: i 
   integer(HID_T) :: groupHandle
- 
+  real(pReal), dimension(:,:,:), allocatable :: dataset_transposed
+
+
+  allocate(dataset_transposed,mold=dataset)
+  do i=1,size(dataset,3)
+    dataset_transposed(1:3,1:3,i) = transpose(dataset(1:3,1:3,i))
+  enddo
+
   groupHandle = results_openGroup(group)
   
 #ifdef PETSc
-  call HDF5_write(groupHandle,dataset,label,.true.)
+  call HDF5_write(groupHandle,dataset_transposed,label,.true.)
 #else
-  call HDF5_write(groupHandle,dataset,label,.false.)
+  call HDF5_write(groupHandle,dataset_transposed,label,.false.)
 #endif
   
   if (HDF5_objectExists(groupHandle,label)) &

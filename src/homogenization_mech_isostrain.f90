@@ -6,8 +6,6 @@
 !--------------------------------------------------------------------------------------------------
 submodule(homogenization) homogenization_mech_isostrain
 
-  implicit none
-
   enum, bind(c) 
     enumerator :: &
       parallel_ID, &
@@ -30,14 +28,6 @@ contains
 !> @brief allocates all neccessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
 module subroutine mech_isostrain_init
-  use debug, only: &
-    debug_HOMOGENIZATION, &
-    debug_level, &
-    debug_levelBasic
-  use IO, only: &
-    IO_error
-  use config, only: &
-    config_homogenization
 
   integer :: &
     Ninstance, &
