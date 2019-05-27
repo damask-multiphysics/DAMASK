@@ -192,10 +192,6 @@ group.add_option('--homogenization',
                  dest = 'homogenization',
                  type = 'int', metavar = 'int',
                  help = 'homogenization index to be used [%default]')
-group.add_option('--crystallite',
-                 dest = 'crystallite',
-                 type = 'int', metavar = 'int',
-                 help = 'crystallite index to be used [%default]')
 group.add_option('--phase',
                  dest = 'phase',
                  type = 'int', metavar = 'int',
@@ -208,7 +204,6 @@ parser.set_defaults(pos            = 'pos',
                     microstructure = 'microstructure',
                     eulers         = 'euler',
                     homogenization = 1,
-                    crystallite    = 1,
                     phase          = 1,
                     cpus           = 2,
                     laguerre       = False,
@@ -245,14 +240,10 @@ for name in filenames:
   hasEulers  = table.label_dimension(options.eulers) == 3
   hasWeights = table.label_dimension(options.weight) == 1 and options.laguerre
 
-  if     np.any(np.array(info['grid']) < 1):   errors.append('invalid grid a b c.')
-  if     np.any(np.array(info['size']) <= 0.0) \
-     and np.all(np.array(info['grid']) < 1):   errors.append('invalid size x y z.')
-  else:
-    for i in range(3):
-      if info['size'][i] <= 0.0:                                                                      # any invalid size?
-        info['size'][i] = float(info['grid'][i])/max(info['grid'])                                    # normalize to grid
-        remarks.append('rescaling size {} to {}...'.format(['x','y','z'][i],info['size'][i]))
+  for i in range(3):
+    if info['size'][i] <= 0.0:                                                                        # any invalid size?
+      info['size'][i] = float(info['grid'][i])/max(info['grid'])                                      # normalize to grid
+      remarks.append('rescaling size {} to {}...'.format(['x','y','z'][i],info['size'][i]))
 
   if table.label_dimension(options.pos) != 3:
     errors.append('seed positions "{}" have dimension {}.'.format(options.pos,
@@ -306,7 +297,7 @@ for name in filenames:
     config_header += ['<microstructure>']
     for i,ID in enumerate(grainIDs):
       config_header += ['[Grain{}]'.format(str(ID).zfill(formatwidth)),
-                        'crystallite {}'.format(options.crystallite),
+                        'crystallite 1',
                         '(constituent)\tphase {}\ttexture {}\tfraction 1.0'.format(options.phase,str(ID).rjust(formatwidth)),
                        ]
     if hasEulers:
@@ -319,7 +310,8 @@ for name in filenames:
                          ] + theAxes
     config_header += ['<!skip>']
   
-  geom = damask.Geom(indices.reshape(info['grid'],order='F'),info['size'],options.homogenization,comments=config_header)
+  header = [scriptID + ' ' + ' '.join(sys.argv[1:])] + config_header + ['origin x {} y {} z {}'.format(*info['origin'])]
+  geom = damask.Geom(indices.reshape(info['grid'],order='F'),info['size'],options.homogenization,comments=header)
   damask.util.croak(geom)
   
   if name is None:
