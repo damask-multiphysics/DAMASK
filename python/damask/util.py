@@ -111,6 +111,19 @@ def coordGridAndSize(coordinates):
   grid   = np.array(list(map(len,coords)),'i')
   size   = grid/np.maximum(np.ones(dim,'d'), grid-1.0) * (maxcorner-mincorner)                      # size from edge to edge = dim * n/(n-1) 
   size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 equal to smallest among other ones
+  delta  = size/grid
+  
+  N = grid.prod()
+  
+  if  N != len(coordinates):
+    raise ValueError('Data count {} does not match grid {}.'.format(len(coordinates),' x '.join(map(repr,grid))))
+    
+  if   np.any(np.abs(np.log10((coords[0][1:]-coords[0][:-1])/delta[0])) > 0.01) \
+    or np.any(np.abs(np.log10((coords[1][1:]-coords[1][:-1])/delta[1])) > 0.01):
+    raise ValueError('regular grid spacing {} violated.'.format(' x '.join(map(repr,delta))))
+  if dim==3 and np.any(np.abs(np.log10((coords[2][1:]-coords[2][:-1])/delta[2])) > 0.01):
+    raise ValueError('regular grid spacing {} violated.'.format(' x '.join(map(repr,delta))))  
+  
   return grid,size
   
 # -----------------------------

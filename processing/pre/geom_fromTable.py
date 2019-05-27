@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
-import numpy as np
+import os
+import sys
 from optparse import OptionParser
+
+import numpy as np
+
 import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
-
 
 
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog option(s) [ASCIItable(s)]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Generate geometry description and material configuration from position, phase, and orientation (or microstructure) data.
 
 """, version = scriptID)
@@ -40,19 +42,13 @@ parser.add_option('--axes',
                   dest = 'axes',
                   type = 'string', nargs = 3, metavar = ' '.join(['string']*3),
                   help = 'orientation coordinate frame in terms of position coordinate frame [+x +y +z]')
-
 parser.add_option('--homogenization',
                   dest = 'homogenization',
                   type = 'int', metavar = 'int',
                   help = 'homogenization index to be used [%default]')
-parser.add_option('--crystallite',
-                  dest = 'crystallite',
-                  type = 'int', metavar = 'int',
-                  help = 'crystallite index to be used [%default]')
 
 
 parser.set_defaults(homogenization = 1,
-                    crystallite    = 1,
                     pos            = 'pos',
                    )
 
@@ -71,20 +67,12 @@ if options.axes is not None and not set(options.axes).issubset(set(['x','+x','-x
                          (options.microstructure,1,'microstructure'),
                         ][np.where(input)[0][0]]                                                    # select input label that was requested
 
-# --- loop over input files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              outname = os.path.splitext(name)[-2]+'.geom' if name else name,
-                              buffered = False)
-  except: continue
   damask.util.report(scriptName,name)
-
-# ------------------------------------------ read head ---------------------------------------  
-
+  table = damask.ASCIItable(name = name,readonly=True)
   table.head_read()                                                                                 # read ASCII header info
 
 # ------------------------------------------ sanity checks ---------------------------------------  
@@ -101,7 +89,6 @@ for name in filenames:
   
   if errors != []:
     damask.util.croak(errors)
-    table.close(dismiss = True)
     continue
 
   table.data_readArray([options.pos] \
@@ -113,30 +100,11 @@ for name in filenames:
   if options.phase is None:
     table.data = np.column_stack((table.data,np.ones(len(table.data))))                             # add single phase if no phase column given
 
-# --------------- figure out size and grid ---------------------------------------------------------
-
+  grid,size = damask.util.coordGridAndSize(table.data[:,0:3])
   coords = [np.unique(table.data[:,i]) for i in range(3)]
   mincorner = np.array(list(map(min,coords)))
-  maxcorner = np.array(list(map(max,coords)))
-  grid   = np.array(list(map(len,coords)),'i')
-  size   = grid/np.maximum(np.ones(3,'d'), grid-1.0) * (maxcorner-mincorner)                        # size from edge to edge = dim * n/(n-1) 
-  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 set to smallest among other spacings
-  delta  = size/np.maximum(np.ones(3,'d'), grid)
-  origin = mincorner - 0.5*delta                                                                    # shift from cell center to corner
+  origin = mincorner - 0.5*size/grid                                                                # shift from cell center to corner
 
-  N = grid.prod()
-
-  if  N != len(table.data):
-    errors.append('data count {} does not match grid {}.'.format(len(table.data),' x '.join(map(repr,grid))))
-  if   np.any(np.abs(np.log10((coords[0][1:]-coords[0][:-1])/delta[0])) > 0.01) \
-    or np.any(np.abs(np.log10((coords[1][1:]-coords[1][:-1])/delta[1])) > 0.01) \
-    or np.any(np.abs(np.log10((coords[2][1:]-coords[2][:-1])/delta[2])) > 0.01):
-    errors.append('regular grid spacing {} violated.'.format(' x '.join(map(repr,delta))))
-
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
   
 # ------------------------------------------ process data ------------------------------------------
 
@@ -151,7 +119,7 @@ for name in filenames:
 
     colPhase = -1                                                                                   # column of phase data comes last
     index  = np.lexsort((table.data[:,0],table.data[:,1],table.data[:,2]))                          # index of position when sorting x fast, z slow
-    grain = -np.ones(N,dtype = 'int32')                                                             # initialize empty microstructure
+    grain = -np.ones(grid.prod(),dtype = int)                                                       # initialize empty microstructure
     orientations = []                                                                               # orientations
     multiplicity = []                                                                               # orientation multiplicity (number of group members)
     phases       = []                                                                               # phase info
@@ -180,23 +148,10 @@ for name in filenames:
           myPos += 1
 
     
-    grain += 1                                                                                      # offset from starting index 0 to 1
-     
-# --- generate header ----------------------------------------------------------------------------
-
-  info = {
-          'grid':    grid,
-          'size':    size,
-          'origin':  origin,
-          'microstructures': nGrains,
-          'homogenization':  options.homogenization,
-         }
-
-  damask.util.report_geom(info)
+    grain += 1                                                                                    # offset from starting index 0 to 1
     
-# --- write header ---------------------------------------------------------------------------------
 
-  formatwidth = 1+int(math.log10(info['microstructures']))
+  formatwidth = 1+int(np.log10(nGrains))
 
   if inputtype == 'microstructure':
     config_header = []
@@ -204,29 +159,22 @@ for name in filenames:
     config_header = ['<microstructure>']
     for i,phase in enumerate(phases):
       config_header += ['[Grain%s]'%(str(i+1).zfill(formatwidth)),
-                        'crystallite %i'%options.crystallite,
+                        'crystallite 1',
                         '(constituent)\tphase %i\ttexture %s\tfraction 1.0'%(phase,str(i+1).rjust(formatwidth)),
                        ]
   
     config_header += ['<texture>']
     for i,orientation in enumerate(orientations):
       config_header += ['[Grain%s]'%(str(i+1).zfill(formatwidth)),
-                        'axes\t%s %s %s'%tuple(options.axes) if options.axes is not None else '',
                         '(gauss)\tphi1 %g\tPhi %g\tphi2 %g\tscatter 0.0\tfraction 1.0'%tuple(orientation.asEulers(degrees = True)),
                        ]
+      if options.axes is not None: config_header += ['axes\t{} {} {}'.format(*options.axes)]
   
-  table.labels_clear()
-  table.info_clear()
-  table.info_append([scriptID + ' ' + ' '.join(sys.argv[1:])])
-  table.head_putGeom(info)
-  table.info_append(config_header)
-  table.head_write()
+  header = [scriptID + ' ' + ' '.join(sys.argv[1:])] + config_header + ['origin x {} y {} z {}'.format(*origin)]
+  geom = damask.Geom(grain.reshape(grid,order='F'),size,options.homogenization,comments=header)
+  damask.util.croak(geom)
   
-# --- write microstructure information ------------------------------------------------------------
-
-  table.data = grain.reshape(info['grid'][1]*info['grid'][2],info['grid'][0])
-  table.data_writeArray('%{}i'.format(formatwidth),delimiter=' ')
-  
-#--- output finalization --------------------------------------------------------------------------
-
-  table.close()
+  if name is None:
+    sys.stdout.write(str(geom.show()))
+  else:
+    geom.to_file(os.path.splitext(name)[0]+'.geom')
