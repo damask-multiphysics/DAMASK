@@ -189,6 +189,17 @@ def progressBar(iteration, total, prefix='', bar_length=50):
 
   if iteration == total: sys.stderr.write('\n')
   sys.stderr.flush()
+ 
+
+class return_message():
+  """Object with formatted return message"""
+  
+  def __init__(self,message):
+    self.message = message
+  
+  def __repr__(self):
+    """Return message suitable for interactive shells"""
+    return srepr(self.message)
 
 
 def leastsqBound(func, x0, args=(), bounds=None, Dfun=None, full_output=0,

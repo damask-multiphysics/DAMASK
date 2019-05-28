@@ -70,7 +70,7 @@ class Geom():
       message[-1] = util.delete(message[-1])
       message.append('max microstructure:  {}'.format(np.nanmax(self.microstructure)))
     
-    return util.srepr(message)
+    return util.return_message(message)
 
   def set_comments(self,comments):
     self.comments = []
