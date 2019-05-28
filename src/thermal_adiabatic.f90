@@ -3,9 +3,16 @@
 !> @brief material subroutine for adiabatic temperature evolution
 !--------------------------------------------------------------------------------------------------
 module thermal_adiabatic
-  use prec, only: &
-    pReal
- 
+  use prec
+  use config
+  use numerics
+  use material
+  use source_thermal_dissipation
+  use source_thermal_externalheat
+  use crystallite
+  use lattice
+  use mesh
+
   implicit none
   private
  
@@ -21,7 +28,7 @@ module thermal_adiabatic
     enumerator :: undefined_ID, &
                   temperature_ID
   end enum
-  integer(kind(undefined_ID)),   dimension(:,:),  allocatable,          private :: & 
+  integer(kind(undefined_ID)),   dimension(:,:),  allocatable :: & 
     thermal_adiabatic_outputID                                                                      !< ID of each post result output
  
  
@@ -41,21 +48,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_adiabatic_init
-  use material, only: &
-    thermal_type, &
-    thermal_typeInstance, &
-    homogenization_Noutput, &
-    THERMAL_ADIABATIC_label, &
-    THERMAL_adiabatic_ID, &
-    material_homogenizationAt, & 
-    mappingHomogenization, & 
-    thermalState, &
-    thermalMapping, &
-    thermal_initialT, &
-    temperature, &
-    temperatureRate
-  use config, only: &
-    config_homogenization
  
   integer :: maxNinstance,section,instance,i,sizeState,NofMyHomog   
   character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
@@ -112,16 +104,6 @@ end subroutine thermal_adiabatic_init
 !> @brief  calculates adiabatic change in temperature based on local heat generation model  
 !--------------------------------------------------------------------------------------------------
 function thermal_adiabatic_updateState(subdt, ip, el)
-  use numerics, only: &
-    err_thermal_tolAbs, &
-    err_thermal_tolRel
-  use material, only: &
-    material_homogenizationAt, &
-    mappingHomogenization, &
-    thermalState, &
-    temperature, &
-    temperatureRate, &
-    thermalMapping
   
   integer,     intent(in) :: &
     ip, &                                                                                           !< integration point number
@@ -156,27 +138,11 @@ function thermal_adiabatic_updateState(subdt, ip, el)
   
 end function thermal_adiabatic_updateState
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief returns heat generation rate
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_adiabatic_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
-  use material, only: &
-    homogenization_Ngrains, &
-    material_homogenizationAt, &
-    phaseAt, &
-    phasememberAt, &
-    thermal_typeInstance, &
-    phase_Nsources, &
-    phase_source, &
-    SOURCE_thermal_dissipation_ID, &
-    SOURCE_thermal_externalheat_ID
-  use source_thermal_dissipation, only: &
-    source_thermal_dissipation_getRateAndItsTangent
-  use source_thermal_externalheat, only: &
-    source_thermal_externalheat_getRateAndItsTangent
-  use crystallite, only: &
-    crystallite_S, &
-    crystallite_Lp  
  
   integer,     intent(in) :: &
     ip, &                                                                                           !< integration point number
@@ -229,18 +195,12 @@ subroutine thermal_adiabatic_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
   dTdot_dT = dTdot_dT/real(homogenization_Ngrains(homog),pReal)
  
 end subroutine thermal_adiabatic_getSourceAndItsTangent
- 
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief returns homogenized specific heat capacity
 !--------------------------------------------------------------------------------------------------
 function thermal_adiabatic_getSpecificHeat(ip,el)
-  use lattice, only: &
-    lattice_specificHeat
-  use material, only: &
-    homogenization_Ngrains, &
-    material_phase
-  use mesh, only: &
-    mesh_element
  
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point number
@@ -269,13 +229,6 @@ end function thermal_adiabatic_getSpecificHeat
 !> @brief returns homogenized mass density
 !--------------------------------------------------------------------------------------------------
 function thermal_adiabatic_getMassDensity(ip,el)
-  use lattice, only: &
-    lattice_massDensity
-  use material, only: &
-    homogenization_Ngrains, &
-    material_phase
-  use mesh, only: &
-    mesh_element
     
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point number
@@ -303,8 +256,6 @@ end function thermal_adiabatic_getMassDensity
 !> @brief return array of thermal results
 !--------------------------------------------------------------------------------------------------
 function thermal_adiabatic_postResults(homog,instance,of) result(postResults)
-  use material, only: &
-    temperature
  
   integer, intent(in) :: &
     homog, &
