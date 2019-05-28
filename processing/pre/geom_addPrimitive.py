@@ -19,7 +19,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [geomfile(s)]', description = """
 Inserts a primitive geometric object at a given position.
-Depending on the sign of the dimension parameters, these objects can be boxes, cylinders, or ellipsoids.
+These objects can be boxes, cylinders, or ellipsoids.
 
 """, version = scriptID)
 
@@ -88,11 +88,6 @@ elif options.quaternion is not None:
 else:
   rotation = damask.Rotation()
 
-options.center    = np.array(options.center)
-options.dimension = np.array(options.dimension)
-# undo logarithmic sense of exponent and generate ellipsoids for negative dimensions (backward compatibility)
-options.exponent  = np.where(np.array(options.dimension) > 0, np.power(2,options.exponent), 2)
-
 
 if filenames == []: filenames = [None]
 
@@ -102,85 +97,38 @@ for name in filenames:
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
   grid = geom.get_grid()
   size = geom.get_size()
-  origin = geom.get_origin()
   microstructure = geom.get_microstructure()
 
-  # coordinates given in real space, not (default) voxel space
+  # scale to box of size [1.0,1.0,1.0]
   if options.realspace:
-    options.center    -= origin
-    options.center    *= grid / size
-    options.dimension *= grid / size
-  
-
-  # change to coordinate space where the primitive is the unit sphere/cube/etc
-  if options.periodic: # use padding to achieve periodicity
-    (X, Y, Z) = np.meshgrid(np.arange(-grid[0]/2, (3*grid[0])/2, dtype=np.float32), # 50% padding on each side 
-                            np.arange(-grid[1]/2, (3*grid[1])/2, dtype=np.float32), 
-                            np.arange(-grid[2]/2, (3*grid[2])/2, dtype=np.float32),
-                            indexing='ij')
-    # Padding handling
-    X = np.roll(np.roll(np.roll(X,
-            -grid[0]//2, axis=0), 
-            -grid[1]//2, axis=1), 
-            -grid[2]//2, axis=2)
-    Y = np.roll(np.roll(np.roll(Y,
-            -grid[0]//2, axis=0), 
-            -grid[1]//2, axis=1), 
-            -grid[2]//2, axis=2)
-    Z = np.roll(np.roll(np.roll(Z,
-            -grid[0]//2, axis=0), 
-            -grid[1]//2, axis=1), 
-            -grid[2]//2, axis=2)
-  else: # nonperiodic, much lighter on resources
-    # change to coordinate space where the primitive is the unit sphere/cube/etc
-    (X, Y, Z) = np.meshgrid(np.arange(0, grid[0], dtype=np.float32), 
-                            np.arange(0, grid[1], dtype=np.float32), 
-                            np.arange(0, grid[2], dtype=np.float32),
-                            indexing='ij')
+    center = (np.array(options.center) - geom.get_origin())/size
+    r = np.array(options.dimension)/size/2.0
+  else:
+    center = (np.array(options.center) + 0.5)/grid
+    r = np.array(options.dimension)/grid/2.0
     
-  # first by translating the center onto 0, 0.5 shifts the voxel origin onto the center of the voxel
-  X -= options.center[0] - 0.5
-  Y -= options.center[1] - 0.5
-  Z -= options.center[2] - 0.5
-  # and then by applying the rotation
-  (X, Y, Z) = rotation * (X, Y, Z)
-  # and finally by scaling (we don't worry about options.dimension being negative, np.abs occurs on the microstructure = np.where... line)
-  X /= options.dimension[0] * 0.5
-  Y /= options.dimension[1] * 0.5
-  Z /= options.dimension[2] * 0.5
-    
-  fill = np.nanmax(microstructure)+1 if options.fill is None else options.fill
+  if np.any(center<0.0) or np.any(center>=1.0): print('error')
 
- # High exponents can cause underflow & overflow - loss of precision is okay here, we just compare it to 1, so +infinity and 0 are fine
-  old_settings = np.seterr()
+  offset = np.ones(3)*0.5 if options.periodic else center
+  mask = np.full(grid,False)
+  # High exponents can cause underflow & overflow - okay here, just compare to 1, so +infinity and 0 are fine
   np.seterr(over='ignore', under='ignore')
-  
-  if options.periodic: # use padding to achieve periodicity
-    inside = np.zeros(grid, dtype=bool)
-    for i in range(2):
-      for j in range(2):
-        for k in range(2):
-          inside = inside | ( # Most of this is handling the padding
-                np.abs(X[grid[0] * i : grid[0] * (i+1),
-                         grid[1] * j : grid[1] * (j+1),
-                         grid[2] * k : grid[2] * (k+1)])**options.exponent[0] +
-                np.abs(Y[grid[0] * i : grid[0] * (i+1),
-                         grid[1] * j : grid[1] * (j+1),
-                         grid[2] * k : grid[2] * (k+1)])**options.exponent[1] +
-                np.abs(Z[grid[0] * i : grid[0] * (i+1),
-                         grid[1] * j : grid[1] * (j+1),
-                         grid[2] * k : grid[2] * (k+1)])**options.exponent[2] <= 1.0)
-    
-    microstructure = np.where(inside,
-                              fill           if options.inside else microstructure,
-                              microstructure if options.inside else fill)   
 
-  else: # nonperiodic, much lighter on resources
-    microstructure = np.where(np.abs(X)**options.exponent[0] +
-                              np.abs(Y)**options.exponent[1] +
-                              np.abs(Z)**options.exponent[2] <= 1.0,
-                              fill           if options.inside else microstructure,
-                              microstructure if options.inside else fill)   
+  e = np.array(options.exponent)
+  for x in range(grid[0]):
+    for y in range(grid[1]):
+      for z in range(grid[2]):
+        coords = np.array([x+0.5,y+0.5,z+0.5])/grid
+        mask[x,y,z] = np.sum(np.abs((rotation*(coords-offset))/r)**e) < 1
+        
+  if options.periodic:
+    shift = ((offset-center)*grid).astype(int)
+    mask = np.roll(mask,shift,(0,1,2))
+    
+    
+  if options.inside: mask = np.logical_not(mask)
+  fill = np.nanmax(microstructure)+1 if options.fill is None else options.fill
+  microstructure = np.where(mask,microstructure,fill)
 
   damask.util.croak(geom.update(microstructure))
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
