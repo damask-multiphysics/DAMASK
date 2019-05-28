@@ -86,6 +86,11 @@ def delete(what):
   return bcolors.DIM+srepr(what)+bcolors.ENDC
 
 # -----------------------------
+def strikeout(what):
+  """Dims string"""
+  return bcolors.CROSSOUT+srepr(what)+bcolors.ENDC
+
+# -----------------------------
 def execute(cmd,
             streamIn = None,
             wd = './'):

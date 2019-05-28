@@ -2,9 +2,10 @@
 
 import os
 import sys
+import numpy as np
+
 from io import StringIO
 from optparse import OptionParser
-
 from scipy import ndimage
 
 import damask
@@ -41,30 +42,25 @@ if filenames == []: filenames = [None]
 for name in filenames:
   damask.util.report(scriptName,name)
     
-  if name is None:
-    virt_file = StringIO(''.join(sys.stdin.read()))
-    geom = damask.Geom.from_file(virt_file)
-  else:
-    geom = damask.Geom.from_file(name)
+  geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
   microstructure = geom.get_microstructure()
-
-  scale = geom.get_grid().astype('float')
-  if options.grid is not None:
-    for i,g in enumerate(options.grid):
-      scale[i] = scale[i]*float(g.lower().replace('x','')) if g.lower().endswith('x') \
-          else   float(options.grid[i])/scale[i]
-  
+  grid = geom.get_grid()
   size = geom.get_size()
-  if options.size is not None:
-    for i,s in enumerate(options.size):
-      size[i] = size[i]*float(s.lower().replace('x','')) if s.lower().endswith('x') \
-        else    options.size[i]
 
-  microstructure = ndimage.interpolation.zoom(microstructure, scale, output=microstructure.dtype,
-                                              order=0, mode='nearest', prefilter=False)
+  new_grid = grid if options.grid is None else \
+             np.array([int(o*float(n.lower().replace('x',''))) if n.lower().endswith('x') \
+                  else int(n) for o,n in zip(grid,options.grid)],dtype=int)
 
-  damask.util.croak(geom.update(microstructure,size))
-  geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
+  new_size = size if options.size is None else \
+             np.array([o*float(n.lower().replace('x','')) if n.lower().endswith('x') \
+                  else float(n) for o,n in zip(size,options.size)],dtype=float)
+
+  if np.any(new_grid != grid):
+    microstructure = ndimage.interpolation.zoom(microstructure, new_grid/grid,output=microstructure.dtype,
+                                                order=0,mode='nearest', prefilter=False)
+
+  damask.util.croak(geom.update(microstructure,new_size))
+  geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
 
   if name is None:
     sys.stdout.write(str(geom.show()))

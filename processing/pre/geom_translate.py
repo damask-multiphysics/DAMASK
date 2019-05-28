@@ -43,36 +43,22 @@ parser.set_defaults(origin = (0.0,0.0,0.0),
 
 (options, filenames) = parser.parse_args()
 
-sub = {}
-for i in range(len(options.substitute)//2):                                                         # split substitution list into "from" -> "to"
-  sub[int(options.substitute[i*2])] = int(options.substitute[i*2+1])
-
+sub = list(map(int,options.substitute))
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
   damask.util.report(scriptName,name)
   
-  if name is None:
-    virt_file = StringIO(''.join(sys.stdin.read()))
-    geom = damask.Geom.from_file(virt_file)
-  else:
-    geom = damask.Geom.from_file(name)
+  geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
   microstructure = geom.get_microstructure()
-  new            = np.copy(microstructure)
+  substituted    = np.copy(microstructure)
   
-  for k, v in sub.items(): new[microstructure==k] = v                                               # substitute microstructure indices and shift
+  for old,new in zip(sub[0::2],sub[1::2]): substituted[microstructure==old] = new                   # substitute microstructure indices
+  substituted += options.microstructure                                                             # constant shift
   
-  microstructure += options.microstructure                                                          # constant shift
-
-  for i,line in enumerate(geom.get_comments()):
-    if line.lower().strip().startswith('origin'):
-      origin= np.array([float(line.split()[j]) for j in [2,4,6]])                                   # assume correct order (x,y,z)
-      origin += np.array(origin)
-      geom.comments[i] = 'origin x {} y {} z {}'.format(*origin)
-  
-  damask.util.croak(geom.update(microstructure))
-  geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
+  damask.util.croak(geom.update(substituted,origin=geom.get_origin()+options.origin))
+  geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
 
   if name is None:
     sys.stdout.write(str(geom.show()))

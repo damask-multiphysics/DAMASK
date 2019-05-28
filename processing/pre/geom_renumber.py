@@ -31,11 +31,7 @@ if filenames == []: filenames = [None]
 for name in filenames:
   damask.util.report(scriptName,name)
   
-  if name is None:
-    virt_file = StringIO(''.join(sys.stdin.read()))
-    geom = damask.Geom.from_file(virt_file)
-  else:
-    geom = damask.Geom.from_file(name)
+  geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
   microstructure = geom.get_microstructure()
   
   renumbered = np.copy(microstructure)
@@ -43,7 +39,7 @@ for name in filenames:
     renumbered = np.where(microstructure == oldID, i+1, renumbered)
 
   damask.util.croak(geom.update(renumbered))
-  geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
+  geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
   
   if name is None:
     sys.stdout.write(str(geom.show()))

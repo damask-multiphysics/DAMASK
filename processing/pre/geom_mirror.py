@@ -50,12 +50,8 @@ if filenames == []: filenames = [None]
 for name in filenames:
   damask.util.report(scriptName,name)
   
-  if name is None:
-    virt_file = StringIO(''.join(sys.stdin.read()))
-    geom = damask.Geom.from_file(virt_file)
-  else:
-    geom = damask.Geom.from_file(name)
-  microstructure = geom.microstructure
+  geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
+  microstructure = geom.get_microstructure()
 
   if 'z' in options.directions:
     microstructure = np.concatenate([microstructure,microstructure[:,:,limits[0]:limits[1]:-1]],2)
@@ -65,7 +61,7 @@ for name in filenames:
     microstructure = np.concatenate([microstructure,microstructure[limits[0]:limits[1]:-1,:,:]],0)
   
   damask.util.croak(geom.update(microstructure,rescale=True))
-  geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
+  geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
   
   if name is None:
     sys.stdout.write(str(geom.show()))

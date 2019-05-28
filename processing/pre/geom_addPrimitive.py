@@ -78,7 +78,7 @@ parser.set_defaults(center = (.0,.0,.0),
 
 if options.dimension is None:
   parser.error('no dimension specified.') 
-if [options.angleaxis,options.quaternion].count(None) == 2:
+if [options.angleaxis,options.quaternion].count(None) == 0:
   parser.error('more than one rotation specified.')
 
 if options.angleaxis is not None:
@@ -99,27 +99,18 @@ if filenames == []: filenames = [None]
 for name in filenames:
   damask.util.report(scriptName,name)
   
-  if name is None:
-    virt_file = StringIO(''.join(sys.stdin.read()))
-    geom = damask.Geom.from_file(virt_file)
-  else:
-    geom = damask.Geom.from_file(name)
+  geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
+  grid = geom.get_grid()
+  size = geom.get_size()
+  origin = geom.get_origin()
   microstructure = geom.get_microstructure()
 
-  fill = options.fill if options.fill is not None else np.nanmax(microstructure)+1
-  
-  origin = np.zeros(3)
-  for i,line in enumerate(geom.comments):
-    if line.lower().strip().startswith('origin'):
-      origin= np.array([float(line.split()[j]) for j in [2,4,6]])                                   # assume correct order (x,y,z)
-  
-  # coordinates given in real space (default) vs voxel space
+  # coordinates given in real space, not (default) voxel space
   if options.realspace:
     options.center    -= origin
-    options.center    *= geom.get_grid() / geom.get_size()
-    options.dimension *= geom.get_grid() / geom.get_size()
-
-  grid = microstructure.shape  
+    options.center    *= grid / size
+    options.dimension *= grid / size
+  
 
   # change to coordinate space where the primitive is the unit sphere/cube/etc
   if options.periodic: # use padding to achieve periodicity
@@ -158,6 +149,7 @@ for name in filenames:
   Y /= options.dimension[1] * 0.5
   Z /= options.dimension[2] * 0.5
     
+  fill = np.nanmax(microstructure)+1 if options.fill is None else options.fill
 
  # High exponents can cause underflow & overflow - loss of precision is okay here, we just compare it to 1, so +infinity and 0 are fine
   old_settings = np.seterr()
@@ -191,7 +183,7 @@ for name in filenames:
                               microstructure if options.inside else fill)   
 
   damask.util.croak(geom.update(microstructure))
-  geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
+  geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
   
   if name is None:
     sys.stdout.write(str(geom.show()))

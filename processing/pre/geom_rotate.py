@@ -27,7 +27,7 @@ Rotates original microstructure and embeddeds it into buffer material.
 parser.add_option('-r', '--rotation',
                   dest='rotation',
                   type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
-                  help = 'rotation given as angle and axis')
+                  help = 'rotation given as axis and angle')
 parser.add_option('-e', '--eulers',
                   dest = 'eulers',
                   type = 'float', nargs = 3, metavar = ' '.join(['float']*3),
@@ -59,41 +59,38 @@ if [options.rotation,options.eulers,options.matrix,options.quaternion].count(Non
   parser.error('no rotation specified.')
 
 if options.quaternion is not None:
-  eulers = damask.Rotation.fromQuaternion(np.array(options.quaternion)).asEulers(degrees=True)
+  rot = damask.Rotation.fromQuaternion(np.array(options.quaternion))                            # we might need P=+1 here, too...
 if options.rotation is not None:
-  eulers = damask.Rotation.fromAxisAngle(np.array(options.rotation,degrees=options.degrees)).asEulers(degrees=True)
+  rot = damask.Rotation.fromAxisAngle(np.array(options.rotation),degrees=options.degrees,P=+1)
 if options.matrix is not None:
-  eulers = damask.Rotation.fromMatrix(np.array(options.Matrix)).asEulers(degrees=True)
+  rot = damask.Rotation.fromMatrix(np.array(options.Matrix))
 if options.eulers is not None:
-  eulers = damask.Rotation.fromEulers(np.array(options.eulers),degrees=options.degrees).asEulers(degrees=True)
+  rot = damask.Rotation.fromEulers(np.array(options.eulers),degrees=options.degrees)
 
+eulers = rot.asEulers(degrees=True)
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
   damask.util.report(scriptName,name)
-  
-  if name is None:
-    virt_file = StringIO(''.join(sys.stdin.read()))
-    geom = damask.Geom.from_file(virt_file)
-  else:
-    geom = damask.Geom.from_file(name)
+
+  geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
   microstructure = geom.get_microstructure()
-  
-  fill = options.fill if options.fill is not None else np.nanmax(microstructure)+1
-  
+  fill = np.nanmax(microstructure)+1 if options.fill is None else options.fill
+  dtype = float if np.isnan(fill) or int(fill) != fill or microstructure.dtype==np.float else int
+
   # These rotations are always applied in the reference coordinate system, i.e. (z,x,z) not (z,x',z'')
   # this seems to be ok, see https://www.cs.utexas.edu/~theshark/courses/cs354/lectures/cs354-14.pdf
   microstructure = ndimage.rotate(microstructure,eulers[2],(0,1),order=0,
-                                  prefilter=False,output=microstructure.dtype,cval=fill)            # rotation around z
+                                  prefilter=False,output=dtype,cval=fill)            # rotation around z
   microstructure = ndimage.rotate(microstructure,eulers[1],(1,2),order=0,
-                                  prefilter=False,output=microstructure.dtype,cval=fill)            # rotation around x
+                                  prefilter=False,output=dtype,cval=fill)            # rotation around x
   microstructure = ndimage.rotate(microstructure,eulers[0],(0,1),order=0,
-                                  prefilter=False,output=microstructure.dtype,cval=fill)            # rotation around z
+                                  prefilter=False,output=dtype,cval=fill)            # rotation around z
   
 
   damask.util.croak(geom.update(microstructure,rescale=True))
-  geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
+  geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
   
   if name is None:
     sys.stdout.write(str(geom.show()))

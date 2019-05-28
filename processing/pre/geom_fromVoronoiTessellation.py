@@ -311,7 +311,8 @@ for name in filenames:
     config_header += ['<!skip>']
   
   header = [scriptID + ' ' + ' '.join(sys.argv[1:])] + config_header + ['origin x {} y {} z {}'.format(*info['origin'])]
-  geom = damask.Geom(indices.reshape(info['grid'],order='F'),info['size'],options.homogenization,comments=header)
+  geom = damask.Geom(indices.reshape(info['grid'],order='F'),info['size'],
+                     homogenization=options.homogenization,comments=header)
   damask.util.croak(geom)
   
   if name is None:

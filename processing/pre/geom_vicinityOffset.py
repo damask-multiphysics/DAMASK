@@ -41,10 +41,10 @@ parser.add_option('-v', '--vicinity',
                   dest = 'vicinity',
                   type = 'int', metavar = 'int',
                   help = 'voxel distance checked for presence of other microstructure [%default]')
-parser.add_option('-m', '--microstructureoffset',
+parser.add_option('-o', '--offset',
                   dest='offset',
                   type = 'int', metavar = 'int',
-                  help='offset (positive or negative) to tag microstructure indices, defaults to max microstructure index + 1')
+                  help='offset (positive or negative) to tag microstructure indices, defaults to max microstructure index')
 parser.add_option('-t', '--trigger',
                   dest = 'trigger',
                   action = 'extend', metavar = '<int LIST>',
@@ -69,14 +69,10 @@ if filenames == []: filenames = [None]
 for name in filenames:
   damask.util.report(scriptName,name)
   
-  if name is None:
-    virt_file = StringIO(''.join(sys.stdin.read()))
-    geom = damask.Geom.from_file(virt_file)
-  else:
-    geom = damask.Geom.from_file(name)
+  geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
   microstructure = geom.get_microstructure()
 
-  offset = options.offset if options.offset is not None else np.nanmax(microstructure)
+  offset = np.nanmax(microstructure) if options.offset is None else options.offset
 
   microstructure = np.where(ndimage.filters.generic_filter(microstructure,
                                                            taintedNeighborhood,
@@ -86,7 +82,7 @@ for name in filenames:
                             microstructure + offset,microstructure)
 
   damask.util.croak(geom.update(microstructure))
-  geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
+  geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
   
   if name is None:
     sys.stdout.write(str(geom.show()))

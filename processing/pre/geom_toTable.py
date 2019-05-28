@@ -31,20 +31,13 @@ if filenames == []: filenames = [None]
 for name in filenames:
   damask.util.report(scriptName,name)
   
-  if name is None:
-    virt_file = StringIO(''.join(sys.stdin.read()))
-    geom = damask.Geom.from_file(virt_file)
-  else:
-    geom = damask.Geom.from_file(name)
+  geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
   damask.util.croak(geom)  
   microstructure = geom.get_microstructure().flatten('F')
   grid           = geom.get_grid()
   size           = geom.get_size()
+  origin         = geom.get_origin()
   
-  for i,line in enumerate(geom.get_comments()):
-    if line.lower().strip().startswith('origin'):
-      origin= np.array([float(line.split()[j]) for j in [2,4,6]])                                    # assume correct order (x,y,z)
-
 #--- generate grid --------------------------------------------------------------------------------
 
   x = (0.5 + np.arange(grid[0],dtype=float))/grid[0]*size[0]+origin[0]
@@ -58,7 +51,7 @@ for name in filenames:
 # ------------------------------------------ finalize output ---------------------------------------
 
   table = damask.ASCIItable(outname = os.path.splitext(name)[0]+'.txt' if name else name)
-  table.info_append([scriptID + '\t' + ' '.join(sys.argv[1:])] + geom.get_comments())
+  table.info_append(geom.get_comments() + [scriptID + '\t' + ' '.join(sys.argv[1:])])
   table.labels_append(['{}_{}'.format(1+i,'pos') for i in range(3)]+['microstructure'])
   table.head_write()
   table.output_flush()

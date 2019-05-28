@@ -171,7 +171,8 @@ for name in filenames:
       if options.axes is not None: config_header += ['axes\t{} {} {}'.format(*options.axes)]
   
   header = [scriptID + ' ' + ' '.join(sys.argv[1:])] + config_header + ['origin x {} y {} z {}'.format(*origin)]
-  geom = damask.Geom(grain.reshape(grid,order='F'),size,options.homogenization,comments=header)
+  geom = damask.Geom(grain.reshape(grid,order='F'),size,
+                     homogenization=options.homogenization,comments=header)
   damask.util.croak(geom)
   
   if name is None:

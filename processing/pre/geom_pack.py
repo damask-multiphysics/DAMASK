@@ -29,14 +29,10 @@ if filenames == []: filenames = [None]
 for name in filenames:
   damask.util.report(scriptName,name)
 
-  if name is None:
-    virt_file = StringIO(''.join(sys.stdin.read()))
-    geom = damask.Geom.from_file(virt_file)
-  else:
-    geom = damask.Geom.from_file(name)
-  damask.util.croak(geom)
+  geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
   microstructure = geom.get_microstructure().flatten('F')
-
+  damask.util.croak(geom)
+  geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
   
   compressType = None
   former = start = -1
@@ -51,13 +47,13 @@ for name in filenames:
       reps += 1
     else:
       if   compressType is None:
-        out = []
+        out = geom.get_header()
       elif compressType == '.':
-        out.append('{}\n'.format(former))
+        out.append('{}'.format(former))
       elif compressType == 'to':
-        out.append('{} to {}\n'.format(start,former))
+        out.append('{} to {}'.format(start,former))
       elif compressType == 'of':
-        out.append('{} of {}\n'.format(reps,former))
+        out.append('{} of {}'.format(reps,former))
 
       compressType = '.'
       start = current
@@ -66,18 +62,18 @@ for name in filenames:
     former = current
    
   if compressType == '.':
-    out.append('{}\n'.format(former))
+    out.append('{}'.format(former))
   elif compressType == 'to':
-    out.append('{} to {}\n'.format(start,former))
+    out.append('{} to {}'.format(start,former))
   elif compressType == 'of':
-    out.append('{} of {}\n'.format(reps,former))
+    out.append('{} of {}'.format(reps,former))
  
-  geom.add_comment(scriptID + ' ' + ' '.join(sys.argv[1:]))
-  comments = geom.get_comments()
-  with open(name,'w') as f:
-    f.write('{} header\n'.format(3+len(comments)))
-    f.writelines(["{}\n".format(comment) for comment in comments])
-    f.write('grid a {} b {} c {}\n'.format(*geom.get_grid()))
-    f.write('size x {} y {} z {}\n'.format(*geom.get_size()))
-    f.write('homogenization {}\n'.format(geom.get_homogenization()))
-    f.writelines(out)
+  
+  if name is None:
+    sys.stdout.write('\n'.join(out)+'\n')
+  else:
+    with open(name,'w') as f:
+      f.write('\n'.join(out)+'\n')
+
+
+
