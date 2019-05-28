@@ -74,6 +74,3 @@ for name in filenames:
   else:
     with open(name,'w') as f:
       f.write('\n'.join(out)+'\n')
-
-
-
