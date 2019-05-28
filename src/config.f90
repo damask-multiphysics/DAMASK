@@ -15,7 +15,7 @@ module config
   implicit none
   private
 
-  type(tPartitionedStringList),  public, protected, allocatable, dimension(:) :: &
+  type(tPartitionedStringList), public, protected, allocatable, dimension(:) :: &
     config_phase, &
     config_microstructure, &
     config_homogenization, &
