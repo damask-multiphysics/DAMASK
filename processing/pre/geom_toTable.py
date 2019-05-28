@@ -20,15 +20,15 @@ Translate geom description into ASCIItable containing position and microstructur
 """, version = scriptID)
 
 parser.add_option('--float',
-                  dest = 'real',
+                  dest = 'float',
                   action = 'store_true',
                   help = 'use float input')
 
-parser.set_defaults(real = False,
+parser.set_defaults(float = False,
                    )
 (options, filenames) = parser.parse_args()
 
-datatype = 'f' if options.real else 'i'
+datatype = 'f' if options.float else 'i'
 
 # --- loop over input files -------------------------------------------------------------------------
 
@@ -47,13 +47,7 @@ for name in filenames:
 
   table.head_read()
   info,extra_header = table.head_getGeom()
-  
-  damask.util.croak(['grid     a b c:  {}'.format(' x '.join(list(map(str,info['grid'])))),
-                     'size     x y z:  {}'.format(' x '.join(list(map(str,info['size'])))),
-                     'origin   x y z:  {}'.format(' : '.join(list(map(str,info['origin'])))),
-                     'homogenization:  {}'.format(info['homogenization']),
-                     'microstructures: {}'.format(info['microstructures']),
-                    ])
+  damask.util.report_geom(info)
 
   errors = []
   if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')

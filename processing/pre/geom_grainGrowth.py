@@ -69,13 +69,7 @@ for name in filenames:
 
   table.head_read()
   info,extra_header = table.head_getGeom()
-  
-  damask.util.croak(['grid     a b c:  {}'.format(' x '.join(list(map(str,info['grid'])))),
-                     'size     x y z:  {}'.format(' x '.join(list(map(str,info['size'])))),
-                     'origin   x y z:  {}'.format(' : '.join(list(map(str,info['origin'])))),
-                     'homogenization:  {}'.format(info['homogenization']),
-                     'microstructures: {}'.format(info['microstructures']),
-                    ])
+  damask.util.report_geom(info)
 
   errors = []
   if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
@@ -200,8 +194,7 @@ for name in filenames:
         newID += 1
         microstructure = np.where(microstructure == microstructureID, newID, microstructure)
 
-  newInfo = {'microstructures': 0,}
-  newInfo['microstructures'] = microstructure.max()
+  newInfo = {'microstructures': len(np.unique(microstructure)),}
 
 # --- report --------------------------------------------------------------------------------------
 
@@ -226,7 +219,7 @@ for name in filenames:
 
 # --- write microstructure information ------------------------------------------------------------
 
-  formatwidth = int(math.floor(math.log10(microstructure.max())+1))
+  formatwidth = int(math.floor(math.log10(np.nanmax(microstructure))+1))
   table.data = microstructure[::1 if info['grid'][0]>1 else 2,
                               ::1 if info['grid'][1]>1 else 2,
                               ::1 if info['grid'][2]>1 else 2,].\
