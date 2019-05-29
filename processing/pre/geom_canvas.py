@@ -58,8 +58,8 @@ for name in filenames:
       grid[i] = int(round(grid[i]*float(g.lower().replace('x','')))) if g.lower().endswith('x') \
            else int(options.grid[i])
 
-  new  = np.full(grid,options.fill if options.fill is not None else np.nanmax(geom.microstructure)+1,
-                 geom.microstructure.dtype)
+  new  = np.full(grid,options.fill if options.fill is not None
+                 else np.nanmax(geom.microstructure)+1,geom.microstructure.dtype)
   
   for x in range(geom.microstructure.shape[0]):
     X = x + options.offset[0]
