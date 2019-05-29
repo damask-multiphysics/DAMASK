@@ -32,11 +32,10 @@ for name in filenames:
   damask.util.report(scriptName,name)
   
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-  microstructure = geom.get_microstructure()
   
-  renumbered = np.copy(microstructure)
-  for i, oldID in enumerate(np.unique(microstructure)):
-    renumbered = np.where(microstructure == oldID, i+1, renumbered)
+  renumbered = np.empty(geom.get_grid(),dtype=geom.microstructure.dtype)
+  for i, oldID in enumerate(np.unique(geom.microstructure)):
+    renumbered = np.where(geom.microstructure == oldID, i+1, renumbered)
 
   damask.util.croak(geom.update(renumbered))
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))

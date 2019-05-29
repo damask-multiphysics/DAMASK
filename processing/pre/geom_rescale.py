@@ -43,7 +43,6 @@ for name in filenames:
   damask.util.report(scriptName,name)
     
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-  microstructure = geom.get_microstructure()
   grid = geom.get_grid()
   size = geom.get_size()
 
@@ -55,11 +54,14 @@ for name in filenames:
              np.array([o*float(n.lower().replace('x','')) if n.lower().endswith('x') \
                   else float(n) for o,n in zip(size,options.size)],dtype=float)
 
-  if np.any(new_grid != grid):
-    microstructure = ndimage.interpolation.zoom(microstructure, new_grid/grid,output=microstructure.dtype,
-                                                order=0,mode='nearest', prefilter=False)
-
-  damask.util.croak(geom.update(microstructure,new_size))
+  damask.util.croak(geom.update(microstructure = 
+                                  ndimage.interpolation.zoom(
+                                    geom.microstructure,
+                                    new_grid/grid,output=geom.microstructure.dtype,
+                                    order=0,mode='nearest', prefilter=False\
+                                                            ) \
+                                 if np.any(new_grid != grid) else None,
+                                 size = new_size))
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
 
   if name is None:

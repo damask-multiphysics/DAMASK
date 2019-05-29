@@ -30,7 +30,6 @@ for name in filenames:
   damask.util.report(scriptName,name)
 
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-  microstructure = geom.get_microstructure().flatten('F')
   damask.util.croak(geom)
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
   
@@ -38,7 +37,12 @@ for name in filenames:
   former = start = -1
   reps = 0
 
-  for current in microstructure:
+  if name is None:
+    f = sys.stdout
+  else:
+    f= open(name,'w')
+
+  for current in geom.microstructure.flatten('F'):
     if abs(current - former) == 1 and (start - current) == reps*(former - current):
       compressType = 'to'
       reps += 1
@@ -47,13 +51,13 @@ for name in filenames:
       reps += 1
     else:
       if   compressType is None:
-        out = geom.get_header()
+        f.write('\n'.join(geom.get_header())+'\n')
       elif compressType == '.':
-        out.append('{}'.format(former))
+        f.write('{}\n'.format(former))
       elif compressType == 'to':
-        out.append('{} to {}'.format(start,former))
+        f.write('{} to {}\n'.format(start,former))
       elif compressType == 'of':
-        out.append('{} of {}'.format(reps,former))
+        f.write('{} of {}\n'.format(reps,former))
 
       compressType = '.'
       start = current
@@ -62,15 +66,8 @@ for name in filenames:
     former = current
    
   if compressType == '.':
-    out.append('{}'.format(former))
+    f.write('{}\n'.format(former))
   elif compressType == 'to':
-    out.append('{} to {}'.format(start,former))
+    f.write('{} to {}\n'.format(start,former))
   elif compressType == 'of':
-    out.append('{} of {}'.format(reps,former))
- 
-  
-  if name is None:
-    sys.stdout.write('\n'.join(out)+'\n')
-  else:
-    with open(name,'w') as f:
-      f.write('\n'.join(out)+'\n')
+    f.write('{} of {}\n'.format(reps,former))

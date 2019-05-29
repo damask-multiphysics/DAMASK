@@ -70,18 +70,16 @@ for name in filenames:
   damask.util.report(scriptName,name)
   
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-  microstructure = geom.get_microstructure()
 
-  offset = np.nanmax(microstructure) if options.offset is None else options.offset
+  offset = np.nanmax(geom.microstructure) if options.offset is None else options.offset
 
-  microstructure = np.where(ndimage.filters.generic_filter(microstructure,
-                                                           taintedNeighborhood,
-                                                           size=1+2*options.vicinity,mode=options.mode,
-                                                           extra_arguments=(),
-                                                           extra_keywords={"trigger":options.trigger,"size":1+2*options.vicinity}),
-                            microstructure + offset,microstructure)
-
-  damask.util.croak(geom.update(microstructure))
+  damask.util.croak(geom.update(np.where(ndimage.filters.generic_filter(
+                                           geom.microstructure,
+                                           taintedNeighborhood,
+                                           size=1+2*options.vicinity,mode=options.mode,
+                                           extra_arguments=(),
+                                           extra_keywords={"trigger":options.trigger,"size":1+2*options.vicinity}),
+                                           geom.microstructure + offset,geom.microstructure)))
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
   
   if name is None:

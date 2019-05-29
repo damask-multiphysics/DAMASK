@@ -60,11 +60,10 @@ for name in filenames:
   damask.util.report(scriptName,name)
   
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-  microstructure = geom.get_microstructure()
+  grid_original = geom.get_grid()
   damask.util.croak(geom)
   
-  grid_original = geom.get_grid()
-  microstructure = np.tile(geom.get_microstructure(),np.where(grid_original == 1, 2,1))           # make one copy along dimensions with grid == 1
+  microstructure = np.tile(geom.microstructure,np.where(grid_original == 1, 2,1))                # make one copy along dimensions with grid == 1
   grid = np.array(microstructure.shape)
 
 # --- initialize support data ---------------------------------------------------------------------

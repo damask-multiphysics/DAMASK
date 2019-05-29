@@ -45,12 +45,10 @@ for name in filenames:
   damask.util.report(scriptName,name)
   
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-  microstructure = geom.get_microstructure()
 
-  microstructure = ndimage.filters.generic_filter(microstructure,mostFrequent,
-                                                  size=(options.stencil,)*3).astype(microstructure.dtype)
-
-  damask.util.croak(geom.update(microstructure))
+  damask.util.croak(geom.update(ndimage.filters.generic_filter(
+                                  geom.microstructure,mostFrequent,
+                                  size=(options.stencil,)*3).astype(geom.microstructure.dtype)))
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
 
   if name is None:

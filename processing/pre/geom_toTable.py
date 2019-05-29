@@ -32,8 +32,7 @@ for name in filenames:
   damask.util.report(scriptName,name)
   
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-  damask.util.croak(geom)  
-  microstructure = geom.get_microstructure().flatten('F')
+  damask.util.croak(geom)
   grid           = geom.get_grid()
   size           = geom.get_size()
   origin         = geom.get_origin()
@@ -55,6 +54,6 @@ for name in filenames:
   table.labels_append(['{}_{}'.format(1+i,'pos') for i in range(3)]+['microstructure'])
   table.head_write()
   table.output_flush()
-  table.data = np.squeeze(np.dstack((xx,yy,zz,microstructure)),axis=0)
+  table.data = np.squeeze(np.dstack((xx,yy,zz,geom.microstructure.flatten('F'))),axis=0)
   table.data_writeArray()
   table.close()

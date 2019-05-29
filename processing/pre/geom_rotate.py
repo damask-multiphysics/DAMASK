@@ -88,7 +88,6 @@ for name in filenames:
   microstructure = ndimage.rotate(microstructure,eulers[0],(0,1),order=0,
                                   prefilter=False,output=dtype,cval=fill)            # rotation around z
   
-
   damask.util.croak(geom.update(microstructure,rescale=True))
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
   
