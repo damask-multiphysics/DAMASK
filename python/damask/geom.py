@@ -40,7 +40,7 @@ class Geom():
       raise ValueError('Either set size explicitly or rescale automatically')
 
     self.set_microstructure(microstructure)
-    self.set_size(self.get_grid()/grid_old if rescale else size)
+    self.set_size(self.get_grid()/grid_old*self.size if rescale else size)
     self.set_origin(origin)
    
     message = ['grid     a b c:      {}'.format(' x '.join(map(str,grid_old)))]
