@@ -20,13 +20,14 @@ class Geom():
 
   def __repr__(self):
     """Basic information on geometry definition"""
-    return 'grid     a b c:      {}\n'.format(' x '.join(map(str,self.get_grid  ()))) + \
-           'size     x y z:      {}\n'.format(' x '.join(map(str,self.get_size  ()))) + \
-           'origin   x y z:      {}\n'.format(' x '.join(map(str,self.get_origin()))) + \
-           'homogenization:      {}\n'.format(self.get_homogenization())            + \
-           '# microstructures:   {}\n'.format(len(np.unique(self.microstructure)))  + \
-           'max microstructures: {}\n'.format(np.nanmax(self.microstructure))
-
+    return util.srepr([
+           'grid     a b c:      {}'.format(' x '.join(map(str,self.get_grid  ()))),
+           'size     x y z:      {}'.format(' x '.join(map(str,self.get_size  ()))),
+           'origin   x y z:      {}'.format(' x '.join(map(str,self.get_origin()))),
+           'homogenization:      {}'.format(self.get_homogenization()),
+           '# microstructures:   {}'.format(len(np.unique(self.microstructure))),
+           'max microstructure:  {}'.format(np.nanmax(self.microstructure)),
+          ])
 
   def update(self,microstructure=None,size=None,origin=None,rescale=False):
     """Updates microstructure and size"""
