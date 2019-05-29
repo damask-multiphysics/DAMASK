@@ -78,24 +78,20 @@ parser.set_defaults(canal = 25e-6,
 name = None if filename == [] else filename[0]
 damask.util.report(scriptName,name)
 
-options.omega *= np.pi/180.0                                                                     # rescale ro radians
-rotation = np.array([[ np.cos(options.omega),np.sin(options.omega),],
-                     [-np.sin(options.omega),np.cos(options.omega),]],'d')
-
-box = np.dot(np.array([[options.canal,0.],[0.,options.aspect*options.canal]]).transpose(),rotation)
+omega = np.deg2rad(options.omega)
+rotation = np.array([[ np.cos(omega),np.sin(omega),],
+                     [-np.sin(omega),np.cos(omega),]])
 
 grid = np.array(options.grid,'i')
 size = np.array(options.size,'d')
 
-X0 = size[0]/grid[0]*\
-     (np.tile(np.arange(grid[0]),(grid[1],1))             - grid[0]/2 + 0.5)
-Y0 = size[1]/grid[1]*\
-     (np.tile(np.arange(grid[1]),(grid[0],1)).transpose() - grid[1]/2 + 0.5)
+X0,Y0 = np.meshgrid(size[0]/grid[0] * (np.arange(grid[0]) - grid[0]/2 + 0.5),
+                    size[1]/grid[0] * (np.arange(grid[1]) - grid[1]/2 + 0.5), indexing='ij')
 
 X = X0*rotation[0,0] + Y0*rotation[0,1]                                                             # rotate by omega
 Y = X0*rotation[1,0] + Y0*rotation[1,1]                                                             # rotate by omega
 
-radius = np.sqrt(X*X + Y*Y/options.aspect/options.aspect)
+radius = np.sqrt(X*X + Y*Y/options.aspect**2.0)
 alpha = np.degrees(np.arctan2(Y/options.aspect,X))
 beta  = options.amplitude*np.sin(2.0*np.pi*(radius-options.canal)/options.period)
 
@@ -111,12 +107,12 @@ alphaOfGrain = np.zeros(grid[0]*grid[1],'d')
 betaOfGrain  = np.zeros(grid[0]*grid[1],'d')
 
 i = 3
-for x in range(grid[0]):
-  for y in range(grid[1]):
-    if microstructure[y,x] == 0:   #ToDo: Wrong order (y and x are flipped)
-      microstructure[y,x] = i      #ToDo: Wrong order (y and x are flipped)
-      alphaOfGrain[i] = alpha[y,x]
-      betaOfGrain[ i] = beta[y,x]
+for y in range(grid[1]):
+  for x in range(grid[0]):
+    if microstructure[x,y] == 0:
+      microstructure[x,y] = i
+      alphaOfGrain[i] = alpha[x,y]
+      betaOfGrain[ i] = beta[x,y]
       i+=1 
 
 formatwidth = 1+int(np.floor(np.log10(np.nanmax(microstructure)-1)))
@@ -137,7 +133,7 @@ config_header.append('<texture>')
 config_header.append('[canal]')
 config_header.append('[interstitial]')
 for i in range(3,np.max(microstructure)):
-  config_header.append('[Grain%s]'%(str(i).zfill(formatwidth)))
+  config_header.append('[Point%s]'%(str(i-2).zfill(formatwidth)))
   config_header.append('(gauss)\tphi1 %g\tPhi %g\tphi2 0'%(alphaOfGrain[i],betaOfGrain[i]))
 
 header = [scriptID + ' ' + ' '.join(sys.argv[1:])] + config_header
