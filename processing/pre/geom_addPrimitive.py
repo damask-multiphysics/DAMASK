@@ -34,9 +34,10 @@ parser.add_option('-d', '--dimension',
 parser.add_option('-e', '--exponent',
                   dest='exponent',
                   type='float', nargs = 3, metavar=' '.join(['float']*3),
-                  help='i,j,k exponents for axes - 0 gives octahedron (|x|^(2^0) + |y|^(2^0) + |z|^(2^0) < 1), \
-                  1 gives a sphere (|x|^(2^1) + |y|^(2^1) + |z|^(2^1) < 1), \
-                  large values produce boxes, negative turn concave.')
+                  help='i,j,k exponents for axes: '+
+                  '0 gives octahedron (|x|^(2^0) + |y|^(2^0) + |z|^(2^0) < 1), '+
+                  '1 gives a sphere (|x|^(2^1) + |y|^(2^1) + |z|^(2^1) < 1), '+
+                  'large values produce boxes, negative turn concave.')
 parser.add_option('-f', '--fill',
                   dest='fill',
                   type='float', metavar = 'int',
@@ -97,7 +98,6 @@ for name in filenames:
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
   grid = geom.get_grid()
   size = geom.get_size()
-  microstructure = geom.get_microstructure()
 
   # scale to box of size [1.0,1.0,1.0]
   if options.realspace:
@@ -114,7 +114,7 @@ for name in filenames:
   # High exponents can cause underflow & overflow - okay here, just compare to 1, so +infinity and 0 are fine
   np.seterr(over='ignore', under='ignore')
 
-  e = np.array(options.exponent)
+  e = 2.0**np.array(options.exponent)
   for x in range(grid[0]):
     for y in range(grid[1]):
       for z in range(grid[2]):
@@ -124,13 +124,11 @@ for name in filenames:
   if options.periodic:
     shift = ((offset-center)*grid).astype(int)
     mask = np.roll(mask,shift,(0,1,2))
-    
-    
+        
   if options.inside: mask = np.logical_not(mask)
-  fill = np.nanmax(microstructure)+1 if options.fill is None else options.fill
-  microstructure = np.where(mask,microstructure,fill)
+  fill = np.nanmax(geom.microstructure)+1 if options.fill is None else options.fill
 
-  damask.util.croak(geom.update(microstructure))
+  damask.util.croak(geom.update(np.where(mask,geom.microstructure,fill)))
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
   
   if name is None:
