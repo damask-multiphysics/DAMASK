@@ -95,7 +95,7 @@ radius = np.sqrt(X*X + Y*Y/options.aspect**2.0)
 alpha = np.degrees(np.arctan2(Y/options.aspect,X))
 beta  = options.amplitude*np.sin(2.0*np.pi*(radius-options.canal)/options.period)
 
-microstructure = np.where(radius < float(options.canal), 1,0)\
+microstructure = np.where(radius < float(options.canal), 1,0) \
                + np.where(radius > float(options.osteon),2,0)
 
 # extend to 3D
@@ -103,16 +103,16 @@ size = np.append(size,np.min(size/grid))
 grid = np.append(grid,1)
 microstructure = microstructure.reshape(microstructure.shape+(1,))
 
-alphaOfGrain = np.zeros(grid[0]*grid[1],'d')
-betaOfGrain  = np.zeros(grid[0]*grid[1],'d')
+Alpha = np.zeros(grid[0]*grid[1],'d')
+Beta  = np.zeros(grid[0]*grid[1],'d')
 
 i = 3
 for y in range(grid[1]):
   for x in range(grid[0]):
     if microstructure[x,y] == 0:
       microstructure[x,y] = i
-      alphaOfGrain[i] = alpha[x,y]
-      betaOfGrain[ i] = beta[x,y]
+      Alpha[i] = alpha[x,y]
+      Beta[ i] = beta[x,y]
       i+=1 
 
 formatwidth = 1+int(np.floor(np.log10(np.nanmax(microstructure)-1)))
@@ -125,7 +125,7 @@ config_header.append('[interstitial]')
 config_header.append('crystallite 1')
 config_header.append('(constituent)\tphase 2\ttexture 2\tfraction 1.0')
 for i in range(3,np.max(microstructure)):
-  config_header.append('[Grain%s]'%(str(i).zfill(formatwidth)))
+  config_header.append('[Point%s]'%(str(i-2).zfill(formatwidth)))
   config_header.append('crystallite 1')
   config_header.append('(constituent)\tphase 3\ttexture %s\tfraction 1.0'%(str(i).rjust(formatwidth)))
 
@@ -134,7 +134,7 @@ config_header.append('[canal]')
 config_header.append('[interstitial]')
 for i in range(3,np.max(microstructure)):
   config_header.append('[Point%s]'%(str(i-2).zfill(formatwidth)))
-  config_header.append('(gauss)\tphi1 %g\tPhi %g\tphi2 0'%(alphaOfGrain[i],betaOfGrain[i]))
+  config_header.append('(gauss)\tphi1 %g\tPhi %g\tphi2 0'%(Alpha[i],Beta[i]))
 
 header = [scriptID + ' ' + ' '.join(sys.argv[1:])] + config_header
 geom = damask.Geom(microstructure.reshape(grid),
