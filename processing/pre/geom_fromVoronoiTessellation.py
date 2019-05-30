@@ -270,7 +270,7 @@ for name in filenames:
   y = (np.arange(info['grid'][1])+0.5)*info['size'][1]/info['grid'][1]
   z = (np.arange(info['grid'][2])+0.5)*info['size'][2]/info['grid'][2]
   X,Y,Z = np.meshgrid(x, y, z,indexing='ij')
-  grid = np.stack((X,Y,Z),axis=-1).reshape((info['grid'].prod(),3),order='F')
+  grid = np.stack((X,Y,Z),axis=-1).reshape((np.prod(info['grid']),3),order='F')
 
   damask.util.croak('tessellating...')
   indices = laguerreTessellation(grid, coords, weights, grains, options.periodic, options.cpus)
