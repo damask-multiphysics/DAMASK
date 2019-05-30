@@ -1,7 +1,11 @@
-# -*- coding: UTF-8 no BOM -*-
-import sys,time,os,subprocess,shlex
-import numpy as np
+import sys
+import time
+import os
+import subprocess
+import shlex
 from optparse import Option
+
+import numpy as np
 
 class bcolors:
     """

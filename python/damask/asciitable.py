@@ -1,6 +1,9 @@
-# -*- coding: UTF-8 no BOM -*-
+import os
+import sys
+import re
+import shlex
+from collections import Iterable
 
-import os, sys
 import numpy as np
 
 # ------------------------------------------------------------------
@@ -80,8 +83,6 @@ class ASCIItable():
   def _quote(self,
              what):
     """Quote empty or white space-containing output"""
-    import re
-    
     return '{quote}{content}{quote}'.format(
              quote   = ('"' if str(what)=='' or re.search(r"\s",str(what)) else ''),
              content = what)
@@ -147,8 +148,6 @@ class ASCIItable():
     by either reading the first row or,
     if keyword "head[*]" is present, the last line of the header
     """
-    import re,shlex
-
     try:
       self.__IO__['in'].seek(0)
     except IOError:
@@ -276,8 +275,6 @@ class ASCIItable():
     "x" for "1_x","2_x",... unless raw output is requested.
     operates on object tags or given list.
     """
-    from collections import Iterable
-    
     if tags is None: tags = self.tags
 
     if isinstance(tags, Iterable) and not raw:                                                    # check whether list of tags is requested
@@ -313,8 +310,6 @@ class ASCIItable():
     return numpy array if asked for list of labels.
     transparently deals with label positions implicitly given as numbers or their headings given as strings.
     """
-    from collections import Iterable
-
     if isinstance(labels, Iterable) and not isinstance(labels, str):                                # check whether list of labels is requested
       idx = []
       for label in labels:
@@ -354,8 +349,6 @@ class ASCIItable():
     return numpy array if asked for list of labels.
     transparently deals with label positions implicitly given as numbers or their headings given as strings.
     """
-    from collections import Iterable
-
     listOfLabels = isinstance(labels, Iterable) and not isinstance(labels, str)                   # check whether list of labels is requested
     if not listOfLabels: labels = [labels]
 
@@ -389,8 +382,6 @@ class ASCIItable():
     return numpy array if asked for list of labels.
     transparently deals with label positions implicitly given as numbers or their headings given as strings.
     """
-    from collections import Iterable
-
     start = self.label_index(labels)
     dim   = self.label_dimension(labels)
   
@@ -436,8 +427,6 @@ class ASCIItable():
                 advance = True,
                 respectLabels = True):
     """Read next line (possibly buffered) and parse it into data array"""
-    import shlex
-    
     self.line = self.__IO__['readBuffer'].pop(0) if len(self.__IO__['readBuffer']) > 0 \
            else self.__IO__['in'].readline().strip()                                                # take buffered content or get next data row from file
 
@@ -458,8 +447,6 @@ class ASCIItable():
   def data_readArray(self,
                      labels = []):
     """Read whole data of all (given) labels as numpy array"""
-    from collections import Iterable
-
     try:      self.data_rewind()                                                                    # try to wind back to start of data
     except:   pass                                                                                  # assume/hope we are at data start already...
 
