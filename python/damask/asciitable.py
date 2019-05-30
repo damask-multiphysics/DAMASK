@@ -245,17 +245,6 @@ class ASCIItable():
 
 
 # ------------------------------------------------------------------
-  def head_putGeom(self,info):
-    """Translate geometry description to header"""
-    self.info_append([
-      "grid\ta {}\tb {}\tc {}".format(*info['grid']),
-      "size\tx {}\ty {}\tz {}".format(*info['size']),
-      "origin\tx {}\ty {}\tz {}".format(*info['origin']),
-      "homogenization\t{}".format(info['homogenization']),
-      "microstructures\t{}".format(info['microstructures']),
-      ])
-    
-# ------------------------------------------------------------------
   def labels_append(self,
                     what,
                     reset = False):
