@@ -23,27 +23,29 @@ Mirror along given directions.
 
 """, version=scriptID)
 
+validDirections = ['x','y','z']  
+
 parser.add_option('-d','--direction',
                   dest = 'directions',
                   action = 'extend', metavar = '<string LIST>',
-                  help = "directions in which to mirror {'x','y','z'}")
-parser.add_option(    '--double',
-                  dest = 'double',
+                  help = "directions in which to mirror {{{}}}".format(','.join(validDirections)))
+parser.add_option(    '--periodic',
+                  dest = 'periodic',
                   action = 'store_true',
-                  help = 'double the outer layers in mirror direction')             
+                  help = 'omit periodic copies of outermost layers in mirror direction')             
+
+parser.set_defaults(periodic = False)
 
 (options, filenames) = parser.parse_args()
 
 if options.directions is None:
   parser.error('no direction given.')
 
-validDirections = ['x','y','z']  
 if not set(options.directions).issubset(validDirections):
   invalidDirections = [str(e) for e in set(options.directions).difference(validDirections)]
   parser.error('invalid directions {}. '.format(*invalidDirections))
 
-limits = [-2,0] if not options.double else [None,None]
-
+limits = [-2,0] if options.periodic else [None,None]
 
 if filenames == []: filenames = [None]
 
