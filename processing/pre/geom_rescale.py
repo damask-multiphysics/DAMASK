@@ -43,6 +43,7 @@ for name in filenames:
   damask.util.report(scriptName,name)
     
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
+
   grid = geom.get_grid()
   size = geom.get_size()
 

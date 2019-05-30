@@ -18,7 +18,8 @@ scriptID   = ' '.join([scriptName,damask.version])
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
-Generate geometry description and material configuration from position, phase, and orientation (or microstructure) data.
+Converts ASCII table. Input can be microstructure or orientation (as quaternion). For the latter, 
+phase information can be given additionally.
 
 """, version = scriptID)
 
