@@ -192,7 +192,7 @@ class Geom():
     """Writes to file"""
     header = self.get_header()
     grid   = self.get_grid()
-    format_string = '%{}i'.format(1+int(np.floor(np.log10(np.nanmax(self.microstructure)-1)))) if self.microstructure.dtype == int \
+    format_string = '%{}i'.format(1+int(np.floor(np.log10(np.nanmax(self.microstructure))))) if self.microstructure.dtype == int \
                else '%g'
     np.savetxt(fname,
                self.microstructure.reshape([grid[0],np.prod(grid[1:])],order='F').T,
