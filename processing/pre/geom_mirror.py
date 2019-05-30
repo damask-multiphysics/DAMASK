@@ -47,14 +47,15 @@ if not set(options.directions).issubset(validDirections):
 
 limits = [-2,0] if options.periodic else [None,None]
 
+
 if filenames == []: filenames = [None]
 
 for name in filenames:
   damask.util.report(scriptName,name)
   
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
+  
   microstructure = geom.get_microstructure()
-
   if 'z' in options.directions:
     microstructure = np.concatenate([microstructure,microstructure[:,:,limits[0]:limits[1]:-1]],2)
   if 'y' in options.directions:
