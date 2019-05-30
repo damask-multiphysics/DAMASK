@@ -70,30 +70,28 @@ parser.set_defaults(type = minimal_surfaces[0],
                     microstructure = (1,2),
                    )
 
-(options,filenames) = parser.parse_args()
+(options,filename) = parser.parse_args()
 
 
-if filenames == []: filenames = [None]
+name = None if filename == [] else filename[0]
+damask.util.report(scriptName,name)
 
-for name in filenames:
-  damask.util.report(scriptName,name)
+X = options.periods*2.0*np.pi*(np.arange(options.grid[0])+0.5)/options.grid[0]
+Y = options.periods*2.0*np.pi*(np.arange(options.grid[1])+0.5)/options.grid[1]
+Z = options.periods*2.0*np.pi*(np.arange(options.grid[2])+0.5)/options.grid[2]
 
-  X = options.periods*2.0*np.pi*(np.arange(options.grid[0])+0.5)/options.grid[0]
-  Y = options.periods*2.0*np.pi*(np.arange(options.grid[1])+0.5)/options.grid[1]
-  Z = options.periods*2.0*np.pi*(np.arange(options.grid[2])+0.5)/options.grid[2]
-
-  microstructure = np.empty(options.grid,dtype=int)
-  for x in range(options.grid[0]):
-    for y in range(options.grid[1]):
-      for z in range(options.grid[2]):
-        microstructure[x,y,z]=options.microstructure[int(options.threshold < surface[options.type](X[x],Y[y],Z[z]))]
+microstructure = np.empty(options.grid,dtype=int)
+for x in range(options.grid[0]):
+  for y in range(options.grid[1]):
+    for z in range(options.grid[2]):
+      microstructure[x,y,z]=options.microstructure[int(options.threshold < surface[options.type](X[x],Y[y],Z[z]))]
   
-  geom=damask.Geom(microstructure,options.size,
-                   homogenization=options.homogenization,
-                   comments=[scriptID + ' ' + ' '.join(sys.argv[1:])])
+geom=damask.Geom(microstructure,options.size,
+                 homogenization=options.homogenization,
+                 comments=[scriptID + ' ' + ' '.join(sys.argv[1:])])
 
-  damask.util.croak(geom)
-  if name is None:
-    sys.stdout.write(str(geom.show()))
-  else:
-    geom.to_file(name)
+damask.util.croak(geom)
+if name is None:
+  sys.stdout.write(str(geom.show()))
+else:
+  geom.to_file(name)

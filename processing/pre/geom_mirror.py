@@ -23,7 +23,7 @@ Mirror along given directions.
 
 """, version=scriptID)
 
-validDirections = ['x','y','z']  
+validDirections = ['x','y','z']
 
 parser.add_option('-d','--direction',
                   dest = 'directions',
