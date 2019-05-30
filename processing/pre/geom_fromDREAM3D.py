@@ -136,20 +136,19 @@ for name in filenames:
   if errors != []:
     damask.util.croak(errors)
     continue
-    
-  config_header = ['<microstructure>']
+
+  config_header = ['<texture>']
+  for i in range(np.nanmax(microstructure)):
+    config_header += ['[{}{}]'.format(label,i+1),
+                      '(gauss)\tphi1 {:.2f}\tPhi {:.2f}\tphi2 {:.2f}'.format(*rot[i].asEulers(degrees = True)),
+                     ]
+  config_header += ['<microstructure>']
   for i in range(np.nanmax(microstructure)):
     config_header += ['[{}{}]'.format(label,i+1),
                       'crystallite 1',
                       '(constituent)\tphase {}\ttexture {}\tfraction 1.0'.format(phase[i],i+1),
                       ]
-  
-  config_header += ['<texture>']
-  for i in range(np.nanmax(microstructure)):
-    config_header += ['[{}{}]'.format(label,i+1),
-                      '(gauss)\tphi1 {:.2f}\tPhi {:.2f}\tphi2 {:.2f}'.format(*rot[i].asEulers(degrees = True)),
-                     ]
-    
+                       
   header = [scriptID + ' ' + ' '.join(sys.argv[1:])]\
          + config_header
   geom = damask.Geom(microstructure,size,origin,

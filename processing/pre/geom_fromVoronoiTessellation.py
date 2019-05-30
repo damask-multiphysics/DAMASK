@@ -277,12 +277,7 @@ for name in filenames:
     
   config_header = []
   if options.config:
-    config_header += ['<microstructure>']
-    for ID in grainIDs:
-      config_header += ['[Grain{}]'.format(ID),
-                        'crystallite 1',
-                        '(constituent)\tphase {}\ttexture {}\tfraction 1.0'.format(options.phase,ID)
-                       ]
+    
     if hasEulers:
       config_header += ['<texture>']
       for ID in grainIDs:
@@ -291,6 +286,14 @@ for name in filenames:
                           '(gauss)\tphi1 {:.2f}\tPhi {:.2f}\tphi2 {:.2f}'.format(*eulers[eulerID])
                          ]
         if options.axes is not None: config_header += ['axes\t{} {} {}'.format(*options.axes)]
+        
+    config_header += ['<microstructure>']
+    for ID in grainIDs:
+      config_header += ['[Grain{}]'.format(ID),
+                        'crystallite 1',
+                        '(constituent)\tphase {}\ttexture {}\tfraction 1.0'.format(options.phase,ID)
+                       ]
+
     config_header += ['<!skip>']
   
   header = [scriptID + ' ' + ' '.join(sys.argv[1:])]\

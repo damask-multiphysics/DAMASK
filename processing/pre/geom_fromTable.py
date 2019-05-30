@@ -131,20 +131,20 @@ for name in filenames:
           microstructure[x,y,z] = unique_inverse[indices[i]]+1
           i+=1
     
-    config_header = ['<microstructure>']
-    for i,data in enumerate(unique):
-      config_header += ['[Grain{}]'.format(i+1),
-                        'crystallite 1',
-                        '(constituent)\tphase {}\ttexture {}\tfraction 1.0'.format(int(data[4]),i+1),
-                       ]
-  
-    config_header += ['<texture>']
+    config_header = ['<texture>']
     for i,data in enumerate(unique):
       ori = damask.Rotation(data[0:4])
       config_header += ['[Grain{}]'.format(i+1),
                         '(gauss)\tphi1 {:g}\tPhi {:g}\tphi2 {:g}'.format(*ori.asEulers(degrees = True)),
                        ]
-      if options.axes is not None: config_header += ['axes\t{} {} {}'.format(*options.axes)]
+      if options.axes is not None: config_header += ['axes\t{} {} {}'.format(*options.axes)]  
+    
+    config_header += ['<microstructure>']
+    for i,data in enumerate(unique):
+      config_header += ['[Grain{}]'.format(i+1),
+                        'crystallite 1',
+                        '(constituent)\tphase {}\ttexture {}\tfraction 1.0'.format(int(data[4]),i+1),
+                       ]
 
   header = [scriptID + ' ' + ' '.join(sys.argv[1:])]\
          + config_header
