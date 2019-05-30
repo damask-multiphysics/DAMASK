@@ -111,10 +111,9 @@ for y in range(grid[1]):
     if microstructure[x,y] == 0:
       microstructure[x,y] = i
       Alpha[i] = alpha[x,y]
-      Beta[ i] = beta[x,y]
+      Beta [i] = beta [x,y]
       i+=1 
 
-formatwidth = 1+int(np.floor(np.log10(np.nanmax(microstructure)-1)))
 config_header = []
 config_header.append('<microstructure>')
 config_header.append('[canal]')
@@ -124,16 +123,16 @@ config_header.append('[interstitial]')
 config_header.append('crystallite 1')
 config_header.append('(constituent)\tphase 2\ttexture 2\tfraction 1.0')
 for i in range(3,np.max(microstructure)):
-  config_header.append('[Point%s]'%(str(i-2).zfill(formatwidth)))
+  config_header.append('[Point{}]'.format(i-2))
   config_header.append('crystallite 1')
-  config_header.append('(constituent)\tphase 3\ttexture %s\tfraction 1.0'%(str(i).rjust(formatwidth)))
+  config_header.append('(constituent)\tphase 3\ttexture {}\tfraction 1.0'.format(i))
 
 config_header.append('<texture>')
 config_header.append('[canal]')
 config_header.append('[interstitial]')
 for i in range(3,np.max(microstructure)):
-  config_header.append('[Point%s]'%(str(i-2).zfill(formatwidth)))
-  config_header.append('(gauss)\tphi1 %g\tPhi %g\tphi2 0'%(Alpha[i],Beta[i]))
+  config_header.append('[Point{}]'.format(i-2))
+  config_header.append('(gauss)\tphi1 {:.2f}\tPhi {:.2f}\tphi2 0'.format(Alpha[i],Beta[i]))
 
 header = [scriptID + ' ' + ' '.join(sys.argv[1:])] + config_header
 geom = damask.Geom(microstructure.reshape(grid),
