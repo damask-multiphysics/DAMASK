@@ -48,16 +48,24 @@ class DADF5():
         for o in f['inc{:05}/constituent/{}'.format(self.increments[0]['inc'],c)].keys():
           self.c_output_types.append(o)
       self.c_output_types = list(set(self.c_output_types))                                          # make unique
+
+      self.m_output_types = []
+      for m in self.materialpoints:
+        for o in f['inc{:05}/materialpoint/{}'.format(self.increments[0]['inc'],m)].keys():
+          self.m_output_types.append(o)
+      self.m_output_types = list(set(self.m_output_types))                                          # make unique
       
     self.active= {'increments':     self.increments,
                   'constituents':   self.constituents,
                   'materialpoints': self.materialpoints,
                   'constituent':    self.Nconstituents,
-                  'c_output_types': self.c_output_types}
+                  'c_output_types': self.c_output_types,
+                  'm_output_types': self.m_output_types}
 
     self.filename   = filename
     self.mode       = mode
-    
+
+
   def list_data(self):
     """Shows information on all datasets in the file"""
     with h5py.File(self.filename,'r') as f:
@@ -73,6 +81,16 @@ class DADF5():
               print('    {} ({})'.format(x,f[group_output_types+'/'+x].attrs['Description'].decode()))
           except:
             pass
+      for m in self.active['materialpoints']:
+        group_materialpoint = group_inc+'/materialpoint/'+m
+        for t in self.active['m_output_types']:
+          print('  {}'.format(t))
+          group_output_types = group_materialpoint+'/'+t
+          try:
+            for x in f[group_output_types].keys():
+              print('    {} ({})'.format(x,f[group_output_types+'/'+x].attrs['Description'].decode()))
+          except:
+            pass
     
 
   def get_dataset_location(self,label):
@@ -81,14 +99,25 @@ class DADF5():
     with h5py.File(self.filename,'r') as f:
       for i in self.active['increments']:
         group_inc = 'inc{:05}'.format(i['inc'])
+        
         for c in self.active['constituents']:
           group_constituent = group_inc+'/constituent/'+c
           for t in self.active['c_output_types']:
             try:
               f[group_constituent+'/'+t+'/'+label]
               path.append(group_constituent+'/'+t+'/'+label)
-            except:
-              pass
+            except Exception as e:
+              print('unable to locate constituents dataset: '+ str(e))
+       
+        for m in self.active['materialpoints']:
+          group_materialpoint = group_inc+'/materialpoint/'+m
+          for t in self.active['m_output_types']:
+            try:
+              f[group_materialpoint+'/'+t+'/'+label]
+              path.append(group_materialpoint+'/'+t+'/'+label)
+            except Exception as e:
+              print('unable to locate materialpoints dataset: '+ str(e))
+              
     return path
     
     
@@ -100,13 +129,29 @@ class DADF5():
     """
     with h5py.File(self.filename,'r') as f:
       shape = (self.Nmaterialpoints,) + np.shape(f[path[0]])[1:]
+      if len(shape) == 1: shape = shape +(1,)
       dataset = np.full(shape,np.nan)
       for pa in path:
         label   = pa.split('/')[2]
-        p = np.where(f['mapping/cellResults/constituent'][:,c]['Name'] == str.encode(label))[0]
-        u = (f['mapping/cellResults/constituent'][p,c]['Position'])
-        dataset[p,:] = f[pa][u,:]                                                    
-    
+        try:
+          p = np.where(f['mapping/cellResults/constituent'][:,c]['Name'] == str.encode(label))[0]
+          u = (f['mapping/cellResults/constituent'][p,c]['Position'])
+          a = np.array(f[pa])
+          if len(a.shape) == 1:
+            a=a.reshape([a.shape[0],1])
+          dataset[p,:] = a[u,:]
+        except Exception as e:
+          print('unable to read constituent: '+ str(e))
+        try:
+          p = np.where(f['mapping/cellResults/materialpoint']['Name'] == str.encode(label))[0]
+          u = (f['mapping/cellResults/materialpoint'][p.tolist()]['Position'])
+          a = np.array(f[pa])
+          if len(a.shape) == 1:
+            a=a.reshape([a.shape[0],1])
+          dataset[p,:] = a[u,:]
+        except Exception as e:
+          print('unable to read materialpoint: '+ str(e))
+
     return dataset
         
       

@@ -192,12 +192,7 @@ for name in filenames:
           'homogenization':  options.homogenization,
          }
 
-  damask.util.croak(['grid     a b c:  {}'.format(' x '.join(map(str,info['grid']))),
-                     'size     x y z:  {}'.format(' x '.join(map(str,info['size']))),
-                     'origin   x y z:  {}'.format(' : '.join(map(str,info['origin']))),
-                     'homogenization:  {}'.format(info['homogenization']),
-                     'microstructures: {}'.format(info['microstructures']),
-                    ])
+  damask.util.report_geom(info)
     
 # --- write header ---------------------------------------------------------------------------------
 
@@ -230,7 +225,7 @@ for name in filenames:
 # --- write microstructure information ------------------------------------------------------------
 
   table.data = grain.reshape(info['grid'][1]*info['grid'][2],info['grid'][0])
-  table.data_writeArray('%%%ii'%(formatwidth),delimiter=' ')
+  table.data_writeArray('%{}i'.format(formatwidth),delimiter=' ')
   
 #--- output finalization --------------------------------------------------------------------------
 

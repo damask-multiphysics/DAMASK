@@ -23,6 +23,13 @@ parser.add_option('-d','--direction',
                   dest = 'directions',
                   action = 'extend', metavar = '<string LIST>',
                   help = "directions in which to mirror {'x','y','z'}")
+parser.add_option('--float',
+                  dest = 'float',
+                  action = 'store_true',
+                  help = 'use float input')
+
+parser.set_defaults(float = False,
+                   )
 
 (options, filenames) = parser.parse_args()
 
@@ -32,6 +39,8 @@ if not set(options.directions).issubset(validDirections):
   invalidDirections = [str(e) for e in set(options.directions).difference(validDirections)]
   parser.error('invalid directions {}. '.format(*invalidDirections))
 
+datatype = 'f' if options.float else 'i'
+
 # --- loop over input files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
@@ -39,7 +48,8 @@ if filenames == []: filenames = [None]
 for name in filenames:
   try:
     table = damask.ASCIItable(name = name,
-                              buffered = False, labeled = False)
+                              buffered = False,
+                              labeled = False)
   except: continue
   damask.util.report(scriptName,name)
 
@@ -47,13 +57,7 @@ for name in filenames:
 
   table.head_read()
   info,extra_header = table.head_getGeom()
-
-  damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
-                     'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
-                     'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
-                     'homogenization:  %i'%info['homogenization'],
-                     'microstructures: %i'%info['microstructures'],
-                    ])
+  damask.util.report_geom(info)
 
   errors = []
   if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
@@ -65,7 +69,7 @@ for name in filenames:
 
 # --- read data ------------------------------------------------------------------------------------
 
-  microstructure = table.microstructure_read(info['grid']).reshape(info['grid'],order='F')          # read microstructure
+  microstructure = table.microstructure_read(info['grid'],datatype).reshape(info['grid'],order='F')  # read microstructure
 
   if 'z' in options.directions:
     microstructure = np.concatenate([microstructure,microstructure[:,:,::-1]],2)
@@ -107,9 +111,9 @@ for name in filenames:
 
 # --- write microstructure information ------------------------------------------------------------
 
-  formatwidth = int(math.floor(math.log10(microstructure.max())+1))
+  formatwidth = int(math.floor(math.log10(np.nanmax(microstructure))+1))
   table.data = microstructure.reshape((newInfo['grid'][0],np.prod(newInfo['grid'][1:])),order='F').transpose()
-  table.data_writeArray('%%%ii'%(formatwidth),delimiter = ' ')
+  table.data_writeArray('%{}i'.format(formatwidth),delimiter = ' ')
 
 # --- output finalization --------------------------------------------------------------------------
 

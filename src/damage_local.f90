@@ -3,42 +3,43 @@
 !> @brief material subroutine for locally evolving damage field
 !--------------------------------------------------------------------------------------------------
 module damage_local
- use prec, only: &
-   pReal, &
-   pInt
+ use prec
+ use material
+ use numerics
+ use config
 
  implicit none
  private
- integer(pInt),                       dimension(:,:),         allocatable, target, public :: &
+ 
+ integer,                       dimension(:,:),         allocatable, target, public :: &
    damage_local_sizePostResult                                                            !< size of each post result output
 
- character(len=64),                   dimension(:,:),         allocatable, target, public :: &
+ character(len=64),             dimension(:,:),         allocatable, target, public :: &
    damage_local_output                                                                    !< name of each post result output
    
- integer(pInt),                       dimension(:),           allocatable, target, public :: &
+ integer,                       dimension(:),           allocatable, target, public :: &
    damage_local_Noutput                                                                   !< number of outputs per instance of this damage 
 
  enum, bind(c) 
    enumerator :: undefined_ID, &
                  damage_ID
  end enum
- integer(kind(undefined_ID)),         dimension(:,:),         allocatable,          private :: & 
+ integer(kind(undefined_ID)),         dimension(:,:),         allocatable :: & 
    damage_local_outputID                                                                  !< ID of each post result output
    
- type, private :: tParameters
+ type :: tParameters
    integer(kind(undefined_ID)),         dimension(:),   allocatable   :: &
      outputID
  end type tParameters
  
- type(tparameters),          dimension(:), allocatable, private :: &
+ type(tparameters),          dimension(:), allocatable :: &
    param
    
  public :: &
    damage_local_init, &
    damage_local_updateState, &
    damage_local_postResults
- private :: &
-   damage_local_getSourceAndItsTangent  
+
 
 contains
 
@@ -47,26 +48,10 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine damage_local_init
- use material, only: &
-   damage_type, &
-   damage_typeInstance, &
-   homogenization_Noutput, &
-   DAMAGE_local_label, &
-   DAMAGE_local_ID, &
-   material_homogenizationAt, & 
-   mappingHomogenization, & 
-   damageState, &
-   damageMapping, &
-   damage, &
-   damage_initialPhi
- use config, only: &
-   config_homogenization
- 
- implicit none
 
- integer(pInt) :: maxNinstance,homog,instance,o,i
- integer(pInt) :: sizeState
- integer(pInt) :: NofMyHomog, h
+ integer :: maxNinstance,homog,instance,i
+ integer :: sizeState
+ integer :: NofMyHomog, h
   integer(kind(undefined_ID)) :: &
    outputID
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
@@ -75,14 +60,14 @@ subroutine damage_local_init
  
  write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_local_label//' init  -+>>>'
 
- maxNinstance = int(count(damage_type == DAMAGE_local_ID),pInt)
- if (maxNinstance == 0_pInt) return
+ maxNinstance = count(damage_type == DAMAGE_local_ID)
+ if (maxNinstance == 0) return
  
- allocate(damage_local_sizePostResult (maxval(homogenization_Noutput),maxNinstance),source=0_pInt)
+ allocate(damage_local_sizePostResult (maxval(homogenization_Noutput),maxNinstance),source=0)
  allocate(damage_local_output         (maxval(homogenization_Noutput),maxNinstance))
           damage_local_output = ''
  allocate(damage_local_outputID       (maxval(homogenization_Noutput),maxNinstance),source=undefined_ID)
- allocate(damage_local_Noutput        (maxNinstance),                               source=0_pInt) 
+ allocate(damage_local_Noutput        (maxNinstance),                               source=0) 
  
  allocate(param(maxNinstance))
   
@@ -116,7 +101,7 @@ subroutine damage_local_init
 
 
 ! allocate state arrays
-     sizeState = 1_pInt
+     sizeState = 1
      damageState(homog)%sizeState = sizeState
      damageState(homog)%sizePostResults = sum(damage_local_sizePostResult(:,instance))
      allocate(damageState(homog)%state0   (sizeState,NofMyHomog), source=damage_initialPhi(homog))
@@ -138,24 +123,15 @@ end subroutine damage_local_init
 !> @brief  calculates local change in damage field   
 !--------------------------------------------------------------------------------------------------
 function damage_local_updateState(subdt, ip, el)
- use numerics, only: &
-   residualStiffness, &
-   err_damage_tolAbs, &
-   err_damage_tolRel
- use material, only: &
-   material_homogenizationAt, &
-   mappingHomogenization, &
-   damageState
  
- implicit none
- integer(pInt), intent(in) :: &
+ integer, intent(in) :: &
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
  real(pReal),   intent(in) :: &
    subdt
- logical,                    dimension(2)  :: &
+ logical,    dimension(2)  :: &
    damage_local_updateState
- integer(pInt) :: &
+ integer :: &
    homog, &
    offset
  real(pReal) :: &
@@ -181,17 +157,6 @@ end function damage_local_updateState
 !> @brief  calculates homogenized local damage driving forces  
 !--------------------------------------------------------------------------------------------------
 subroutine damage_local_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el)
- use material, only: &
-   homogenization_Ngrains, &
-   material_homogenizationAt, &
-   phaseAt, &
-   phasememberAt, &
-   phase_source, &
-   phase_Nsources, &
-   SOURCE_damage_isoBrittle_ID, &
-   SOURCE_damage_isoDuctile_ID, &
-   SOURCE_damage_anisoBrittle_ID, &
-   SOURCE_damage_anisoDuctile_ID
  use source_damage_isoBrittle, only: &
    source_damage_isobrittle_getRateAndItsTangent
  use source_damage_isoDuctile, only: &
@@ -201,13 +166,12 @@ subroutine damage_local_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el
  use source_damage_anisoDuctile, only: &
    source_damage_anisoductile_getRateAndItsTangent
  
- implicit none
- integer(pInt), intent(in) :: &
+ integer, intent(in) :: &
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
  real(pReal),   intent(in) :: &
    phi
- integer(pInt) :: &
+ integer :: &
    phase, &
    grain, &
    source, &
@@ -249,37 +213,32 @@ subroutine damage_local_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el
  
 end subroutine damage_local_getSourceAndItsTangent
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of damage results
 !--------------------------------------------------------------------------------------------------
 function damage_local_postResults(ip,el)
- use material, only: &
-   material_homogenizationAt, &
-   damage_typeInstance, &
-   damageMapping, &
-   damage
 
- implicit none
- integer(pInt),              intent(in) :: &
+ integer,              intent(in) :: &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
  real(pReal), dimension(sum(damage_local_sizePostResult(:,damage_typeInstance(material_homogenizationAt(el))))) :: &
    damage_local_postResults
 
- integer(pInt) :: &
+ integer :: &
    instance, homog, offset, o, c
    
  homog     = material_homogenizationAt(el)
  offset    = damageMapping(homog)%p(ip,el)
  instance  = damage_typeInstance(homog)
  associate(prm => param(instance))
- c = 0_pInt
+ c = 0
 
- outputsLoop: do o = 1_pInt,size(prm%outputID)
+ outputsLoop: do o = 1,size(prm%outputID)
    select case(prm%outputID(o))
  
       case (damage_ID)
-        damage_local_postResults(c+1_pInt) = damage(homog)%p(offset)
+        damage_local_postResults(c+1) = damage(homog)%p(offset)
         c = c + 1
     end select
  enddo outputsLoop

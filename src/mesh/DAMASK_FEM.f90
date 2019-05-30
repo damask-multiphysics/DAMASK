@@ -28,8 +28,7 @@ program DAMASK_FEM
    IO_intOut, &
    IO_warning
  use math                                                                                           ! need to include the whole module for FFTW
- use CPFEM2, only: &
-   CPFEM_initAll
+ use CPFEM2
  use FEsolving, only: &
    restartWrite, &
    restartInc
@@ -114,7 +113,7 @@ program DAMASK_FEM
  write(6,'(/,a)')   ' <<<+-  DAMASK_FEM init  -+>>>'
  
 ! reading basic information from load case file and allocate data structure containing load cases
- call DMGetDimension(geomMesh,dimPlex,ierr)! CHKERRQ(ierr)                                            !< dimension of mesh (2D or 3D)
+ call DMGetDimension(geomMesh,dimPlex,ierr); CHKERRA(ierr)                                            !< dimension of mesh (2D or 3D)
  nActiveFields = 1
  allocate(solres(nActiveFields))
 
@@ -394,8 +393,7 @@ program DAMASK_FEM
          cutBack = .False.                                                                   
          if(.not. all(solres(:)%converged .and. solres(:)%stagConverged)) then                      ! no solution found
            if (cutBackLevel < maxCutBack) then                                                   ! do cut back
-             if (worldrank == 0) &
-               write(6,'(/,a)') ' cut back detected'
+             write(6,'(/,a)') ' cut back detected'
              cutBack = .True.
              stepFraction = (stepFraction - 1_pInt) * subStepFactor                                 ! adjust to new denominator
              cutBackLevel = cutBackLevel + 1_pInt
@@ -403,7 +401,7 @@ program DAMASK_FEM
              timeinc = timeinc/2.0_pReal
            else                                                                                     ! default behavior, exit if spectral solver does not converge                                
              call IO_warning(850_pInt)
-             call quit(-1_pInt*(lastRestartWritten+1_pInt))                                         ! quit and provide information about last restart inc written (e.g. for regridding)                                                                                       ! continue from non-converged solution and start guessing after accepted (sub)inc
+             call quit(-1_pInt*(lastRestartWritten+1_pInt))                                         ! quit and provide information about last restart inc written
            endif
          else
            guess = .true.                                                                           ! start guessing after first converged (sub)inc
@@ -428,7 +426,8 @@ program DAMASK_FEM
        endif; flush(6)
 
        if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0_pInt) then                      ! at output frequency
-         write(6,'(1/,a)') ' ToDo: ... writing results to file ......................................'
+         write(6,'(1/,a)') ' ... writing results to file ......................................'
+         call CPFEM_results(totalIncsCounter,time)
        endif
        if (              loadCases(currentLoadCase)%restartFrequency > 0_pInt &                     ! writing of restart info requested ...
            .and. mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0_pInt) then               ! ... and at frequency of writing restart information
@@ -452,7 +451,6 @@ program DAMASK_FEM
    real(convergedCounter, pReal)/&
    real(notConvergedCounter + convergedCounter,pReal)*100.0_pReal, ' %) increments converged!'
  flush(6)
- call MPI_file_close(fileUnit,ierr)
  close(statUnit)
 
  if (notConvergedCounter > 0_pInt) call quit(2_pInt)                                                ! error if some are not converged

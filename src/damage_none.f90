@@ -3,6 +3,8 @@
 !> @brief material subroutine for constant damage field
 !--------------------------------------------------------------------------------------------------
 module damage_none
+  use config
+  use material
 
   implicit none
   private
@@ -15,19 +17,8 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine damage_none_init()
-  use config, only: &
-    config_homogenization
-  use material, only: &
-    damage_initialPhi, &
-    damage, &
-    damage_type, &
-    material_homogenizationAt, &
-    damageState, &
-    DAMAGE_NONE_LABEL, &
-    DAMAGE_NONE_ID
- 
-  implicit none
+subroutine damage_none_init
+
   integer :: &
     homog, &
     NofMyHomog

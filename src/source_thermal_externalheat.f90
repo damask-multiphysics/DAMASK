@@ -5,11 +5,14 @@
 !> @brief material subroutine for variable heat source
 !--------------------------------------------------------------------------------------------------
 module source_thermal_externalheat
-  use prec, only: &
-    pReal
+  use prec
+  use debug
+  use material
+  use config
 
   implicit none
   private
+
   integer,           dimension(:),   allocatable,         public, protected :: &
     source_thermal_externalheat_offset, &                                                                 !< which source is my current thermal dissipation mechanism?
     source_thermal_externalheat_instance                                                                  !< instance of thermal dissipation source mechanism
@@ -23,7 +26,7 @@ module source_thermal_externalheat
   integer,                       dimension(:),   allocatable, target, public :: &
     source_thermal_externalheat_Noutput                                                                   !< number of outputs per instance of this source 
 
-  type, private :: tParameters                                                                       !< container type for internal constitutive parameters
+  type  :: tParameters                                                                              !< container type for internal constitutive parameters
     real(pReal), dimension(:), allocatable :: &
       time, &
       heat_rate
@@ -31,7 +34,7 @@ module source_thermal_externalheat
      nIntervals
   end type tParameters
 
-  type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
+  type(tParameters), dimension(:), allocatable  :: param                                            !< containers of constitutive parameters (len Ninstance)
 
 
   public :: &
@@ -47,22 +50,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine source_thermal_externalheat_init
-  use debug, only: &
-    debug_level,&
-    debug_constitutive,&
-    debug_levelBasic
-  use material, only: &
-    material_allocateSourceState, &
-    material_phase, &
-    phase_source, &
-    phase_Nsources, &
-    phase_Noutput, &
-    SOURCE_thermal_externalheat_label, &
-    SOURCE_thermal_externalheat_ID
-  use config, only: &
-    config_phase, &
-    material_Nphase
- 
  
   integer :: maxNinstance,instance,source,sourceOffset,NofMyPhase,p   
  
@@ -116,8 +103,6 @@ end subroutine source_thermal_externalheat_init
 !> @details state only contains current time to linearly interpolate given heat powers
 !--------------------------------------------------------------------------------------------------
 subroutine source_thermal_externalheat_dotState(phase, of)
-  use material, only: &
-    sourceState
  
   integer, intent(in) :: &
     phase, &
@@ -135,8 +120,6 @@ end subroutine source_thermal_externalheat_dotState
 !> @brief returns local heat generation rate 
 !--------------------------------------------------------------------------------------------------
 subroutine source_thermal_externalheat_getRateAndItsTangent(TDot, dTDot_dT, phase, of)
-  use material, only: &
-    sourceState
  
   integer, intent(in) :: &
     phase, &

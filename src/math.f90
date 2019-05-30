@@ -10,12 +10,20 @@ module math
   use future
 
   implicit none
-  real(pReal),    parameter, public :: PI = acos(-1.0_pReal)                                        !< ratio of a circle's circumference to its diameter
-  real(pReal),    parameter, public :: INDEG = 180.0_pReal/PI                                       !< conversion from radian into degree
-  real(pReal),    parameter, public :: INRAD = PI/180.0_pReal                                       !< conversion from degree into radian
-  complex(pReal), parameter, public :: TWOPIIMG = cmplx(0.0_pReal,2.0_pReal*PI)                     !< Re(0.0), Im(2xPi)
+  public
+#if __INTEL_COMPILER >= 1900
+  ! do not make use associated entities available to other modules
+  private :: &
+    prec, &
+    future
+#endif
 
-  real(pReal), dimension(3,3), parameter, public :: &
+  real(pReal),    parameter :: PI = acos(-1.0_pReal)                                                !< ratio of a circle's circumference to its diameter
+  real(pReal),    parameter :: INDEG = 180.0_pReal/PI                                               !< conversion from radian into degree
+  real(pReal),    parameter :: INRAD = PI/180.0_pReal                                               !< conversion from degree into radian
+  complex(pReal), parameter :: TWOPIIMG = cmplx(0.0_pReal,2.0_pReal*PI)                             !< Re(0.0), Im(2xPi)
+
+  real(pReal), dimension(3,3), parameter :: &
     MATH_I3 = reshape([&
       1.0_pReal,0.0_pReal,0.0_pReal, &
       0.0_pReal,1.0_pReal,0.0_pReal, &
@@ -75,7 +83,7 @@ module math
 !---------------------------------------------------------------------------------------------------
 
  private :: &
-   math_check
+   unitTest
 
 contains
 
@@ -116,14 +124,15 @@ subroutine math_init
   write(6,'(a,4(/,26x,f17.14),/)') ' start of random sequence: ', randTest
 
   call random_seed(put = randInit)
-  call math_check
+  call unitTest
 
 end subroutine math_init
+
  
 !--------------------------------------------------------------------------------------------------
 !> @brief check correctness of (some) math functions
 !--------------------------------------------------------------------------------------------------
-subroutine math_check
+subroutine unitTest
   use IO, only: IO_error
 
   character(len=64) :: error_msg
@@ -145,7 +154,7 @@ subroutine math_check
     call IO_error(401,ext_msg=error_msg)
   endif
  
-end subroutine math_check
+end subroutine unitTest
 
 
 !--------------------------------------------------------------------------------------------------
@@ -273,6 +282,7 @@ pure function math_identity2nd(dimen)
   enddo
 
 end function math_identity2nd
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief symmetric fourth rank identity tensor of specified dimension
@@ -625,6 +635,7 @@ pure function math_skew33(m)
   math_skew33 = m - math_symmetric33(m)
 
 end function math_skew33
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief hydrostatic part of a 33 matrix

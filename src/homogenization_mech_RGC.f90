@@ -6,17 +6,7 @@
 !> @brief Relaxed grain cluster (RGC) homogenization scheme
 !> Nconstituents is defined as p x q x r (cluster)
 !--------------------------------------------------------------------------------------------------
-module homogenization_mech_RGC
- use prec, only: &
-   pReal
- use material
-
- implicit none
- private
- integer,           dimension(:,:),     allocatable,target, public :: &
-   homogenization_RGC_sizePostResult
- character(len=64), dimension(:,:),     allocatable,target, public :: &
-   homogenization_RGC_output                                                                        ! name of each post result output
+submodule(homogenization) homogenization_mech_RGC
 
  enum, bind(c) 
    enumerator :: &
@@ -29,7 +19,7 @@ module homogenization_mech_RGC
      magnitudemismatch_ID
  end enum
  
- type, private :: tParameters
+ type :: tParameters
    integer, dimension(:), allocatable :: &
      Nconstituents
    real(pReal) :: &
@@ -40,11 +30,11 @@ module homogenization_mech_RGC
      angles
    integer :: &
      of_debug = 0
-   integer(kind(undefined_ID)),         dimension(:),   allocatable   :: &
+   integer(kind(undefined_ID)),  dimension(:),   allocatable   :: &
      outputID
  end type tParameters
 
- type, private :: tRGCstate
+ type :: tRGCstate
    real(pReal), pointer,     dimension(:) :: &
      work, &
      penaltyEnergy
@@ -52,7 +42,7 @@ module homogenization_mech_RGC
      relaxationVector
  end type tRGCstate
 
- type, private :: tRGCdependentState
+ type :: tRGCdependentState
    real(pReal), allocatable,     dimension(:) :: &
      volumeDiscrepancy, &
      relaxationRate_avg, &
@@ -63,57 +53,25 @@ module homogenization_mech_RGC
      orientation
  end type tRGCdependentState
 
- type(tparameters),          dimension(:), allocatable, private :: &
+ type(tparameters),          dimension(:), allocatable :: &
    param
- type(tRGCstate),            dimension(:), allocatable, private :: &
+ type(tRGCstate),            dimension(:), allocatable :: &
    state, &
    state0
- type(tRGCdependentState),   dimension(:), allocatable, private :: &
+ type(tRGCdependentState),   dimension(:), allocatable :: &
    dependentState
-
- public :: &
-   homogenization_RGC_init, &
-   homogenization_RGC_partitionDeformation, &
-   homogenization_RGC_averageStressAndItsTangent, &
-   homogenization_RGC_updateState, &
-   homogenization_RGC_postResults, &
-   mech_RGC_results ! name suited for planned submodule situation
- private :: &
-   relaxationVector, &
-   interfaceNormal, &
-   getInterface, &
-   grain1to3, &
-   grain3to1, &
-   interface4to1, &
-   interface1to4
 
 contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all necessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_RGC_init()
- use debug, only: &
-#ifdef DEBUG
-   debug_i, &
-   debug_e, &
-#endif
-   debug_level, &
-   debug_homogenization, &
-   debug_levelBasic
- use math, only: &
-   math_EulerToR, &
-   INRAD
- use IO, only: &
-   IO_error
- use config, only: &
-   config_homogenization
+module subroutine mech_RGC_init
 
- implicit none
  integer :: &
    Ninstance, &
    h, i, &
-   NofMyHomog, outputSize, &
+   NofMyHomog, &
    sizeState, nIntFaceTot
 
  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
@@ -141,9 +99,6 @@ subroutine homogenization_RGC_init()
  allocate(state0(Ninstance))
  allocate(dependentState(Ninstance))
  
- allocate(homogenization_RGC_sizePostResult(maxval(homogenization_Noutput),Ninstance),source=0)
- allocate(homogenization_RGC_output(maxval(homogenization_Noutput),Ninstance))
-          homogenization_RGC_output=''
 
  do h = 1, size(homogenization_type)
    if (homogenization_type(h) /= HOMOGENIZATION_RGC_ID) cycle
@@ -178,28 +133,20 @@ subroutine homogenization_RGC_init()
      
        case('constitutivework')
          outputID = constitutivework_ID
-         outputSize = 1
        case('penaltyenergy')
          outputID = penaltyenergy_ID
-         outputSize = 1
        case('volumediscrepancy')
          outputID = volumediscrepancy_ID
-         outputSize = 1
        case('averagerelaxrate')
          outputID = averagerelaxrate_ID
-         outputSize = 1
        case('maximumrelaxrate')
          outputID = maximumrelaxrate_ID
-         outputSize = 1
        case('magnitudemismatch')
          outputID = magnitudemismatch_ID
-         outputSize = 3
 
      end select
      
      if (outputID /= undefined_ID) then
-       homogenization_RGC_output(i,homogenization_typeInstance(h)) = outputs(i)
-       homogenization_RGC_sizePostResult(i,homogenization_typeInstance(h)) = outputSize
        prm%outputID = [prm%outputID , outputID]
      endif
      
@@ -213,7 +160,7 @@ subroutine homogenization_RGC_init()
              + size(['avg constitutive work ','average penalty energy'])
 
    homogState(h)%sizeState = sizeState
-   homogState(h)%sizePostResults = sum(homogenization_RGC_sizePostResult(:,homogenization_typeInstance(h)))
+   homogState(h)%sizePostResults = 0
    allocate(homogState(h)%state0   (sizeState,NofMyHomog), source=0.0_pReal)
    allocate(homogState(h)%subState0(sizeState,NofMyHomog), source=0.0_pReal)
    allocate(homogState(h)%state    (sizeState,NofMyHomog), source=0.0_pReal)
@@ -237,24 +184,17 @@ subroutine homogenization_RGC_init()
    
  enddo  
  
-end subroutine homogenization_RGC_init
+end subroutine mech_RGC_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief partitions the deformation gradient onto the constituents
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_RGC_partitionDeformation(F,avgF,instance,of)
-#ifdef DEBUG
- use debug, only: &
-   debug_level, &
-   debug_homogenization, &
-   debug_levelExtensive
-#endif
+module subroutine mech_RGC_partitionDeformation(F,avgF,instance,of)
 
- implicit none
  real(pReal),   dimension (:,:,:), intent(out) :: F                                                 !< partioned F  per grain
  
- real(pReal),   dimension (:,:),   intent(in)  :: avgF                                              !< averaged F
+ real(pReal),   dimension (3,3),   intent(in)  :: avgF                                              !< averaged F
  integer,                          intent(in)  :: &
    instance, &
    of
@@ -294,49 +234,14 @@ subroutine homogenization_RGC_partitionDeformation(F,avgF,instance,of)
  
  end associate
 
-end subroutine homogenization_RGC_partitionDeformation
+end subroutine mech_RGC_partitionDeformation
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief update the internal state of the homogenization scheme and tell whether "done" and 
 ! "happy" with result
 !--------------------------------------------------------------------------------------------------
-function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
- use prec, only: &
-   dEq0
-#ifdef DEBUG
- use debug, only: &
-   debug_level, &
-   debug_homogenization,&
-   debug_levelExtensive
-#endif
- use math, only: &
-   math_invert2
- use numerics, only: &
-   absTol_RGC, &
-   relTol_RGC, &
-   absMax_RGC, &
-   relMax_RGC, &
-   pPert_RGC, &
-   maxdRelax_RGC, &
-   viscPower_RGC, &
-   viscModus_RGC, &
-   refRelaxRate_RGC
-
- implicit none
-
- real(pReal), dimension(:,:,:),     intent(in)    :: & 
-   P,&                                                                                              !< array of P
-   F,&                                                                                              !< array of F
-   F0                                                                                               !< array of initial F
- real(pReal), dimension(:,:,:,:,:), intent(in) :: dPdF                                              !< array of current grain stiffness
- real(pReal), dimension(3,3),       intent(in) :: avgF                                              !< average F
- real(pReal),                       intent(in) :: dt                                                !< time increment
- integer,                           intent(in) :: &
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
-
- logical, dimension(2) :: homogenization_RGC_updateState
+module procedure mech_RGC_updateState
 
  integer, dimension(4) :: intFaceN,intFaceP,faceID
  integer, dimension(3) :: nGDim,iGr3N,iGr3P
@@ -354,7 +259,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 #endif
  
  zeroTimeStep: if(dEq0(dt)) then
-   homogenization_RGC_updateState = .true.                                                          ! pretend everything is fine and return
+   mech_RGC_updateState = .true.                                                                    ! pretend everything is fine and return
    return                                                                    
  endif zeroTimeStep
 
@@ -473,12 +378,12 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  endif
 #endif
  
- homogenization_RGC_updateState = .false.
+ mech_RGC_updateState = .false.
  
 !--------------------------------------------------------------------------------------------------
 !  If convergence reached => done and happy
  if (residMax < relTol_RGC*stresMax .or. residMax < absTol_RGC) then 
-   homogenization_RGC_updateState = .true.
+   mech_RGC_updateState = .true.
 #ifdef DEBUG
     if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0 &
         .and. prm%of_debug == of) write(6,'(1x,a55,/)')'... done and happy'
@@ -520,7 +425,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 !--------------------------------------------------------------------------------------------------
 ! if residual blows-up => done but unhappy
  elseif (residMax > relMax_RGC*stresMax .or. residMax > absMax_RGC) then                            ! try to restart when residual blows up exceeding maximum bound
-   homogenization_RGC_updateState = [.true.,.false.]                                                ! with direct cut-back
+   mech_RGC_updateState = [.true.,.false.]                                                          ! with direct cut-back
    
 #ifdef DEBUG
    if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0 &
@@ -663,9 +568,10 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
 !--------------------------------------------------------------------------------------------------
 ! ... of the numerical viscosity traction "rmatrix"
  allocate(rmatrix(3*nIntFaceTot,3*nIntFaceTot),source=0.0_pReal)
- forall (i=1:3*nIntFaceTot) &
+ do i=1,3*nIntFaceTot
    rmatrix(i,i) = viscModus_RGC*viscPower_RGC/(refRelaxRate_RGC*dt)* &                              ! tangent due to numerical viscosity traction appears
                   (abs(drelax(i))/(refRelaxRate_RGC*dt))**(viscPower_RGC - 1.0_pReal)               ! only in the main diagonal term 
+ enddo
                                                                         
 #ifdef DEBUG
  if (iand(debug_level(debug_homogenization), debug_levelExtensive) /= 0) then
@@ -717,7 +623,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  enddo; enddo
  stt%relaxationVector(:,of) = relax + drelax                                                        ! Updateing the state variable for the next iteration
  if (any(abs(drelax) > maxdRelax_RGC)) then                                                         ! Forcing cutback when the incremental change of relaxation vector becomes too large
-   homogenization_RGC_updateState = [.true.,.false.]
+   mech_RGC_updateState = [.true.,.false.]
    !$OMP CRITICAL (write2out)
    write(6,'(1x,a,1x,i3,1x,a,1x,i3,1x,a)')'RGC_updateState: ip',ip,'| el',el,'enforces cutback'
    write(6,'(1x,a,1x,e15.8)')'due to large relaxation change =',maxval(abs(drelax))
@@ -743,12 +649,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  !> @brief calculate stress-like penalty due to deformation mismatch
  !--------------------------------------------------------------------------------------------------
  subroutine stressPenalty(rPen,nMis,avgF,fDef,ip,el,instance,of)
-  use math, only: &
-    math_civita
-  use numerics, only: &
-    xSmoo_RGC
-  
-  implicit none
+
   real(pReal),   dimension (:,:,:), intent(out) :: rPen                                             !< stress-like penalty
   real(pReal),   dimension (:,:),   intent(out) :: nMis                                             !< total amount of mismatch
   
@@ -860,15 +761,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  !> @brief calculate stress-like penalty due to volume discrepancy 
  !--------------------------------------------------------------------------------------------------
  subroutine volumePenalty(vPen,vDiscrep,fAvg,fDef,nGrain,instance,of)
-  use math, only: &
-    math_det33, &
-    math_inv33
-  use numerics, only: &
-    maxVolDiscr_RGC,&
-    volDiscrMod_RGC,&
-    volDiscrPow_RGC
  
-  implicit none
   real(pReal), dimension (:,:,:), intent(out) :: vPen                                               ! stress-like penalty due to volume
   real(pReal),                    intent(out) :: vDiscrep                                           ! total volume discrepancy
   
@@ -916,10 +809,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  ! deformation
  !--------------------------------------------------------------------------------------------------
  function surfaceCorrection(avgF,instance,of)
-  use math, only: &
-    math_invert33
   
-  implicit none
   real(pReal), dimension(3)               :: surfaceCorrection
 
   real(pReal), dimension(3,3), intent(in) :: avgF                                                    !< average F
@@ -950,10 +840,7 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  !> @brief compute the equivalent shear and bulk moduli from the elasticity tensor
  !--------------------------------------------------------------------------------------------------
  function equivalentModuli(grainID,ip,el)
-  use constitutive, only: &
-    constitutive_homogenizedC
  
-  implicit none
   real(pReal), dimension(2)    :: equivalentModuli
 
   integer, intent(in)    :: &
@@ -989,7 +876,6 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
  !--------------------------------------------------------------------------------------------------
  subroutine grainDeformation(F, avgF, instance, of)
   
-  implicit none
   real(pReal),   dimension(:,:,:), intent(out) :: F                                                  !< partioned F  per grain
  
   real(pReal),   dimension(:,:),   intent(in)  :: avgF                                               !< averaged F
@@ -1024,15 +910,14 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
   
  end subroutine grainDeformation
  
-end function homogenization_RGC_updateState
+end procedure mech_RGC_updateState
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief derive average stress and stiffness from constituent quantities 
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,instance)
+module subroutine mech_RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,instance)
 
- implicit none
  real(pReal), dimension (3,3),        intent(out) :: avgP                                           !< average stress at material point
  real(pReal), dimension (3,3,3,3),    intent(out) :: dAvgPdAvgF                                     !< average stiffness at material point
 
@@ -1043,69 +928,19 @@ subroutine homogenization_RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,
  avgP       = sum(P,3)   /real(product(param(instance)%Nconstituents),pReal)
  dAvgPdAvgF = sum(dPdF,5)/real(product(param(instance)%Nconstituents),pReal)
 
-end subroutine homogenization_RGC_averageStressAndItsTangent
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return array of homogenization results for post file inclusion 
-!--------------------------------------------------------------------------------------------------
-pure function homogenization_RGC_postResults(instance,of) result(postResults)
-
- implicit none
- integer, intent(in) :: &
-   instance, &
-   of
-   
- integer :: &
-   o,c
- real(pReal), dimension(sum(homogenization_RGC_sizePostResult(:,instance))) :: &
-   postResults
-
- associate(stt => state(instance), dst => dependentState(instance), prm => param(instance))
-
- c = 0
-
- outputsLoop: do o = 1,size(prm%outputID)
-   select case(prm%outputID(o))
-   
-     case (constitutivework_ID)
-       postResults(c+1) = stt%work(of)
-       c = c + 1
-     case (magnitudemismatch_ID)
-       postResults(c+1:c+3) = dst%mismatch(1:3,of)
-       c = c + 3
-     case (penaltyenergy_ID)
-       postResults(c+1) = stt%penaltyEnergy(of)
-       c = c + 1
-     case (volumediscrepancy_ID)
-       postResults(c+1) = dst%volumeDiscrepancy(of)
-       c = c + 1
-     case (averagerelaxrate_ID)
-       postResults(c+1) = dst%relaxationrate_avg(of)
-       c = c + 1
-     case (maximumrelaxrate_ID)
-       postResults(c+1) = dst%relaxationrate_max(of)
-       c = c + 1
-   end select
-   
- enddo outputsLoop
- 
- end associate
- 
-end function homogenization_RGC_postResults
+end subroutine mech_RGC_averageStressAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 ! ToDo: check wheter units are correct
 !--------------------------------------------------------------------------------------------------
-subroutine mech_RGC_results(instance,group)
+module subroutine mech_RGC_results(instance,group)
 #if defined(PETSc) || defined(DAMASK_HDF5)
-  use results, only: &
-    results_writeDataset
 
-  integer, intent(in) :: instance
-  character(len=*) :: group
+  integer,          intent(in) :: instance
+  character(len=*), intent(in) :: group
+  
   integer :: o
   
   associate(stt => state(instance), dst => dependentState(instance), prm => param(instance))
@@ -1136,8 +971,8 @@ subroutine mech_RGC_results(instance,group)
   end associate
   
 #else
-  integer, intent(in) :: instance
-  character(len=*) :: group
+  integer,          intent(in) :: instance
+  character(len=*), intent(in) :: group
 #endif
 
 end subroutine mech_RGC_results
@@ -1148,7 +983,6 @@ end subroutine mech_RGC_results
 !--------------------------------------------------------------------------------------------------
 pure function relaxationVector(intFace,instance,of)
 
- implicit none
  real(pReal), dimension (3)            :: relaxationVector
 
  integer,                   intent(in) :: instance,of
@@ -1176,7 +1010,6 @@ end function relaxationVector
 !--------------------------------------------------------------------------------------------------
 pure function interfaceNormal(intFace,instance,of)
  
- implicit none
  real(pReal), dimension(3)             :: interfaceNormal
 
  integer,     dimension(4), intent(in) :: intFace                                                   !< interface ID in 4D array (normal and position)
@@ -1202,7 +1035,6 @@ end function interfaceNormal
 !--------------------------------------------------------------------------------------------------
 pure function getInterface(iFace,iGrain3)
 
- implicit none
  integer, dimension(4)             :: getInterface
 
  integer, dimension(3), intent(in) :: iGrain3                                                       !< grain ID in 3D array
@@ -1227,7 +1059,6 @@ end function getInterface
 !--------------------------------------------------------------------------------------------------
 pure function grain1to3(grain1,nGDim)
  
- implicit none
  integer, dimension(3)             :: grain1to3
 
  integer,               intent(in) :: grain1                                                        !< grain ID in 1D array
@@ -1245,7 +1076,6 @@ end function grain1to3
 !--------------------------------------------------------------------------------------------------
 integer pure function grain3to1(grain3,nGDim)
 
- implicit none
  integer, dimension(3), intent(in) :: grain3                                                        !< grain ID in 3D array (pos.x,pos.y,pos.z)
  integer, dimension(3), intent(in) :: nGDim
 
@@ -1261,7 +1091,6 @@ end function grain3to1
 !--------------------------------------------------------------------------------------------------
 integer pure function interface4to1(iFace4D, nGDim)
  
- implicit none
  integer, dimension(4), intent(in) :: iFace4D                                                       !< interface ID in 4D array (n.dir,pos.x,pos.y,pos.z)
  integer, dimension(3), intent(in) :: nGDim
 
@@ -1282,7 +1111,7 @@ integer pure function interface4to1(iFace4D, nGDim)
      else
        interface4to1 = iFace4D(4) + nGDim(3)*(iFace4D(2)-1) &
                      + nGDim(3)*nGDim(1)*(iFace4D(3)-1) &
-                     + (nGDim(1)-1)*nGDim(2)*nGDim(3)                                               ! total number of interfaces normal //e1
+                     + (nGDim(1)-1)*nGDim(2)*nGDim(3)                                               ! total # of interfaces normal || e1
      endif
 
    case(3)
@@ -1291,8 +1120,8 @@ integer pure function interface4to1(iFace4D, nGDim)
      else
        interface4to1 = iFace4D(2) + nGDim(1)*(iFace4D(3)-1) &
                      + nGDim(1)*nGDim(2)*(iFace4D(4)-1) &
-                     + (nGDim(1)-1)*nGDim(2)*nGDim(3) &                                             ! total number of interfaces normal //e1
-                     + nGDim(1)*(nGDim(2)-1)*nGDim(3)                                               ! total number of interfaces normal //e2
+                     + (nGDim(1)-1)*nGDim(2)*nGDim(3) &                                             ! total # of interfaces normal || e1
+                     + nGDim(1)*(nGDim(2)-1)*nGDim(3)                                               ! total # of interfaces normal || e2
      endif
 
    case default
@@ -1308,7 +1137,6 @@ end function interface4to1
 !--------------------------------------------------------------------------------------------------
 pure function interface1to4(iFace1D, nGDim)
  
- implicit none
  integer, dimension(4)             :: interface1to4
 
  integer,               intent(in) :: iFace1D                                                       !< interface ID in 1D array
@@ -1317,23 +1145,23 @@ pure function interface1to4(iFace1D, nGDim)
 
 !--------------------------------------------------------------------------------------------------
 ! compute the total number of interfaces, which ...
- nIntFace = [(nGDim(1)-1)*nGDim(2)*nGDim(3), &                                                      ! ... normal //e1
-             nGDim(1)*(nGDim(2)-1)*nGDim(3), &                                                      ! ... normal //e2
-             nGDim(1)*nGDim(2)*(nGDim(3)-1)]                                                        ! ... normal //e3
+ nIntFace = [(nGDim(1)-1)*nGDim(2)*nGDim(3), &                                                      ! ... normal || e1
+             nGDim(1)*(nGDim(2)-1)*nGDim(3), &                                                      ! ... normal || e2
+             nGDim(1)*nGDim(2)*(nGDim(3)-1)]                                                        ! ... normal || e3
 
 !--------------------------------------------------------------------------------------------------
 ! get the corresponding interface ID in 4D (normal and local position)
- if (iFace1D > 0 .and. iFace1D <= nIntFace(1)) then                                                 ! interface with normal //e1
+ if (iFace1D > 0 .and. iFace1D <= nIntFace(1)) then                                                 ! interface with normal || e1
    interface1to4(1) = 1
    interface1to4(3) = mod((iFace1D-1),nGDim(2))+1
    interface1to4(4) = mod(int(real(iFace1D-1,pReal)/real(nGDim(2),pReal)),nGDim(3))+1
    interface1to4(2) = int(real(iFace1D-1,pReal)/real(nGDim(2),pReal)/real(nGDim(3),pReal))+1
- elseif (iFace1D > nIntFace(1) .and. iFace1D <= (nIntFace(2) + nIntFace(1))) then                   ! interface with normal //e2
+ elseif (iFace1D > nIntFace(1) .and. iFace1D <= (nIntFace(2) + nIntFace(1))) then                   ! interface with normal || e2
    interface1to4(1) = 2
    interface1to4(4) = mod((iFace1D-nIntFace(1)-1),nGDim(3))+1
    interface1to4(2) = mod(int(real(iFace1D-nIntFace(1)-1,pReal)/real(nGDim(3),pReal)),nGDim(1))+1
    interface1to4(3) = int(real(iFace1D-nIntFace(1)-1,pReal)/real(nGDim(3),pReal)/real(nGDim(1),pReal))+1
- elseif (iFace1D > nIntFace(2) + nIntFace(1) .and. iFace1D <= (nIntFace(3) + nIntFace(2) + nIntFace(1))) then ! interface with normal //e3
+ elseif (iFace1D > nIntFace(2) + nIntFace(1) .and. iFace1D <= (nIntFace(3) + nIntFace(2) + nIntFace(1))) then ! interface with normal || e3
    interface1to4(1) = 3
    interface1to4(2) = mod((iFace1D-nIntFace(2)-nIntFace(1)-1),nGDim(1))+1
    interface1to4(3) = mod(int(real(iFace1D-nIntFace(2)-nIntFace(1)-1,pReal)/real(nGDim(1),pReal)),nGDim(2))+1
@@ -1343,4 +1171,4 @@ pure function interface1to4(iFace1D, nGDim)
 end function interface1to4
 
 
-end module homogenization_mech_RGC
+end submodule homogenization_mech_RGC
