@@ -10,26 +10,9 @@ from scipy import spatial
 
 import damask
 
+
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
-
-
-def meshgrid2(*arrs):
-  """Code inspired by http://stackoverflow.com/questions/1827489/numpy-meshgrid-in-3d"""
-  arrs = tuple(reversed(arrs))
-  lens = np.array(list(map(len, arrs)))
-  dim = len(arrs)
-  ans = []
-  for i, arr in enumerate(arrs):
-    slc = np.ones(dim,'i')
-    slc[i] = lens[i]
-    arr2 = np.asarray(arr).reshape(slc)
-    for j, sz in enumerate(lens):
-      if j != i:
-        arr2 = arr2.repeat(sz, axis=j)
-   
-    ans.insert(0,arr2)
-  return tuple(ans)
 
 
 def laguerreTessellation(undeformed, coords, weights, grains, periodic = True, cpus = 2):
@@ -284,14 +267,14 @@ for name in filenames:
   x = (np.arange(info['grid'][0])+0.5)*info['size'][0]/info['grid'][0]
   y = (np.arange(info['grid'][1])+0.5)*info['size'][1]/info['grid'][1]
   z = (np.arange(info['grid'][2])+0.5)*info['size'][2]/info['grid'][2]
+  X,Y,Z = np.meshgrid(x, y, z,indexing='ij')
+  grid = np.stack((X,Y,Z),axis=-1).reshape((info['grid'].prod(),3),order='F')
   
   damask.util.croak('tessellating...')
-
-  grid = np.vstack(meshgrid2(x, y, z)).reshape(3,-1).T
   indices = laguerreTessellation(grid, coords, weights, grains, options.periodic, options.cpus)
     
   config_header = []
-  formatwidth = 1+int(np.log10(NgrainIDs))
+  formatwidth = 1+int(np.floor(np.log10(np.nanmax(NgrainIDs)-1)))
 
   if options.config:
     config_header += ['<microstructure>']
@@ -302,16 +285,17 @@ for name in filenames:
                        ]
     if hasEulers:
       config_header += ['<texture>']
-      theAxes = [] if options.axes is None else ['axes\t{} {} {}'.format(*options.axes)]
       for ID in grainIDs:
         eulerID = np.nonzero(grains == ID)[0][0]                                                    # find first occurrence of this grain id
         config_header += ['[Grain{}]'.format(str(ID).zfill(formatwidth)),
                           '(gauss)\tphi1 {:g}\tPhi {:g}\tphi2 {:g}'.format(*eulers[eulerID])
-                         ] + theAxes
+                         ]
+        if options.axes is not None: config_header += ['axes\t{} {} {}'.format(*options.axes)]
     config_header += ['<!skip>']
   
-  header = [scriptID + ' ' + ' '.join(sys.argv[1:])] + config_header + ['origin x {} y {} z {}'.format(*info['origin'])]
-  geom = damask.Geom(indices.reshape(info['grid'],order='F'),info['size'],
+  header = [scriptID + ' ' + ' '.join(sys.argv[1:])]\
+         + config_header
+  geom = damask.Geom(indices.reshape(info['grid'],order='F'),info['size'],info['origin'],
                      homogenization=options.homogenization,comments=header)
   damask.util.croak(geom)
   
