@@ -274,21 +274,19 @@ for name in filenames:
   indices = laguerreTessellation(grid, coords, weights, grains, options.periodic, options.cpus)
     
   config_header = []
-  formatwidth = 1+int(np.floor(np.log10(np.nanmax(NgrainIDs)-1)))
-
   if options.config:
     config_header += ['<microstructure>']
-    for i,ID in enumerate(grainIDs):
-      config_header += ['[Grain{}]'.format(str(ID).zfill(formatwidth)),
+    for ID in grainIDs:
+      config_header += ['[Grain{}]'.format(ID),
                         'crystallite 1',
-                        '(constituent)\tphase {}\ttexture {}\tfraction 1.0'.format(options.phase,str(ID).rjust(formatwidth)),
+                        '(constituent)\tphase {}\ttexture {}\tfraction 1.0'.format(options.phase,ID)
                        ]
     if hasEulers:
       config_header += ['<texture>']
       for ID in grainIDs:
         eulerID = np.nonzero(grains == ID)[0][0]                                                    # find first occurrence of this grain id
-        config_header += ['[Grain{}]'.format(str(ID).zfill(formatwidth)),
-                          '(gauss)\tphi1 {:g}\tPhi {:g}\tphi2 {:g}'.format(*eulers[eulerID])
+        config_header += ['[Grain{}]'.format(ID),
+                          '(gauss)\tphi1 {:.2f}\tPhi {:.2f}\tphi2 {:.2f}'.format(*eulers[eulerID])
                          ]
         if options.axes is not None: config_header += ['axes\t{} {} {}'.format(*options.axes)]
     config_header += ['<!skip>']
