@@ -6,8 +6,6 @@
 !--------------------------------------------------------------------------------------------------
 submodule(homogenization) homogenization_mech_isostrain
 
-  implicit none
-
   enum, bind(c) 
     enumerator :: &
       parallel_ID, &
@@ -30,23 +28,7 @@ contains
 !> @brief allocates all neccessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
 module subroutine mech_isostrain_init
-  use debug, only: &
-    debug_HOMOGENIZATION, &
-    debug_level, &
-    debug_levelBasic
-  use IO, only: &
-    IO_error
-  use material, only: &
-    homogenization_type, &
-    material_homogenizationAt, &
-    homogState, &
-    HOMOGENIZATION_ISOSTRAIN_ID, &
-    HOMOGENIZATION_ISOSTRAIN_LABEL, &
-    homogenization_typeInstance
-  use config, only: &
-    config_homogenization
-  
-  implicit none
+
   integer :: &
     Ninstance, &
     h, &
@@ -98,7 +80,6 @@ end subroutine mech_isostrain_init
 !--------------------------------------------------------------------------------------------------
 module subroutine mech_isostrain_partitionDeformation(F,avgF)
   
-  implicit none
   real(pReal),   dimension (:,:,:), intent(out) :: F                                                !< partitioned deformation gradient
   
   real(pReal),   dimension (3,3),   intent(in)  :: avgF                                             !< average deformation gradient at material point
@@ -112,8 +93,7 @@ end subroutine mech_isostrain_partitionDeformation
 !> @brief derive average stress and stiffness from constituent quantities 
 !--------------------------------------------------------------------------------------------------
 module subroutine mech_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,instance)
-  
-  implicit none
+   
   real(pReal),   dimension (3,3),       intent(out) :: avgP                                         !< average stress at material point
   real(pReal),   dimension (3,3,3,3),   intent(out) :: dAvgPdAvgF                                   !< average stiffness at material point
  

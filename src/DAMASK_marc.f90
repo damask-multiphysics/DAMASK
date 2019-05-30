@@ -96,14 +96,12 @@ end subroutine DAMASK_interface_init
 !> @brief solver job name (no extension) as combination of geometry and load case name
 !--------------------------------------------------------------------------------------------------
 function getSolverJobName()
- use prec, only: &
-   pReal, &
-   pInt
+ use prec
 
  implicit none
  character(1024) :: getSolverJobName, inputName
  character(len=*), parameter :: pathSep = achar(47)//achar(92)                                      ! forward and backward slash
- integer(pInt) :: extPos
+ integer :: extPos
 
  getSolverJobName=''
  inputName=''
@@ -133,9 +131,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
                    dispt,coord,ffn,frotn,strechn,eigvn,ffn1,frotn1, &
                    strechn1,eigvn1,ncrd,itel,ndeg,ndm,nnode, &
                    jtype,lclass,ifr,ifu)
- use prec, only: &
-   pReal, &
-   pInt
+ use prec
  use numerics, only: &
 !$ DAMASK_NumThreadsInt, &
    numerics_unitlength, &
@@ -180,7 +176,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
 
  implicit none
 !$ include "omp_lib.h"                                                                              ! the openMP function library
- integer(pInt),                         intent(in) :: &                                             ! according to MSC.Marc 2012 Manual D
+ integer,                               intent(in) :: &                                             ! according to MSC.Marc 2012 Manual D
    ngens, &                                                                                         !< size of stress-strain law
    nn, &                                                                                            !< integration point number
    ndi, &                                                                                           !< number of direct components
@@ -193,7 +189,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
    jtype, &                                                                                         !< element type
    ifr, &                                                                                           !< set to 1 if R has been calculated
    ifu                                                                                              !< set to 1 if stretch has been calculated
- integer(pInt), dimension(2),           intent(in) :: &                                             ! according to MSC.Marc 2012 Manual D
+ integer, dimension(2),                 intent(in) :: &                                             ! according to MSC.Marc 2012 Manual D
    m, &                                                                                             !< (1) user element number, (2) internal element number
    matus, &                                                                                         !< (1) user material identification number, (2) internal material identification number
    kcus, &                                                                                          !< (1) layer number, (2) internal layer number
@@ -236,10 +232,10 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
  logical :: cutBack
  real(pReal), dimension(6) ::   stress
  real(pReal), dimension(6,6) :: ddsdde
- integer(pInt) :: computationMode, i, cp_en, node, CPnodeID
+ integer :: computationMode, i, cp_en, node, CPnodeID
  !$ integer(4) :: defaultNumThreadsInt                                                              !< default value set by Marc
 
- if (iand(debug_level(debug_MARC),debug_LEVELBASIC) /= 0_pInt) then
+ if (iand(debug_level(debug_MARC),debug_LEVELBASIC) /= 0) then
    write(6,'(a,/,i8,i8,i2)') ' MSC.MARC information on shape of element(2), IP:', m, nn
    write(6,'(a,2(i1))')      ' Jacobian:                      ', ngens,ngens
    write(6,'(a,i1)')         ' Direct stress:                 ', ndi
@@ -260,7 +256,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
 
  !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                  ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
 
- computationMode = 0_pInt                                                                           ! save initialization value, since it does not result in any calculation
+ computationMode = 0                                                                                ! save initialization value, since it does not result in any calculation
  if (lovl == 4 ) then                                                                               ! jacobian requested by marc
    if (timinc < theDelta .and. theInc == inc .and. lastLovl /= lovl) &                              ! first after cutback
      computationMode = CPFEM_RESTOREJACOBIAN
@@ -307,7 +303,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
        if (lastLovl /= lovl) then                                                                   ! first after ping pong
          call debug_reset()                                                                         ! resets debugging
          outdatedFFN1  = .false.
-         cycleCounter  = cycleCounter + 1_pInt
+         cycleCounter  = cycleCounter + 1
          mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)                            ! update cell node coordinates
          call mesh_build_ipCoordinates()                                                            ! update ip coordinates
        endif
@@ -324,7 +320,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
          lastIncConverged = .false.                                                                 ! reset flag
        endif
        do node = 1,theMesh%elem%nNodes
-         CPnodeID = mesh_element(4_pInt+node,cp_en)
+         CPnodeID = mesh_element(4+node,cp_en)
          mesh_node(1:ndeg,CPnodeID) = mesh_node0(1:ndeg,CPnodeID) + numerics_unitlength * dispt(1:ndeg,node)
        enddo
      endif
@@ -336,7 +332,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
          call debug_info()                                                                          ! first reports (meaningful) debugging
        call debug_reset()                                                                           ! and resets debugging
        outdatedFFN1  = .false.
-       cycleCounter  = cycleCounter + 1_pInt
+       cycleCounter  = cycleCounter + 1
        mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)                              ! update cell node coordinates
        call mesh_build_ipCoordinates()                                                              ! update ip coordinates
      endif
@@ -376,22 +372,20 @@ end subroutine hypela2
 !> @brief calculate internal heat generated due to inelastic energy dissipation
 !--------------------------------------------------------------------------------------------------
 subroutine flux(f,ts,n,time)
- use prec, only: &
-   pReal, &
-   pInt
+ use prec
  use thermal_conduction, only: &
    thermal_conduction_getSourceAndItsTangent
  use mesh, only: &
    mesh_FEasCP
 
  implicit none
- real(pReal),   dimension(6),           intent(in) :: &
+ real(pReal), dimension(6),           intent(in) :: &
    ts
- integer(pInt), dimension(10),          intent(in) :: &
+ integer,     dimension(10),          intent(in) :: &
    n
- real(pReal),                           intent(in) :: &
+ real(pReal),                         intent(in) :: &
    time
- real(pReal),   dimension(2),           intent(out) :: &
+ real(pReal), dimension(2),           intent(out) :: &
    f
 
  call thermal_conduction_getSourceAndItsTangent(f(1), f(2), ts(3), n(3),mesh_FEasCP('elem',n(1)))
@@ -404,9 +398,7 @@ subroutine flux(f,ts,n,time)
 !> @details select a variable contour plotting (user subroutine).
 !--------------------------------------------------------------------------------------------------
 subroutine uedinc(inc,incsub)
-  use prec, only: &
-    pReal, &
-    pInt
+  use prec
   use CPFEM, only: &
     CPFEM_results
 
@@ -424,9 +416,7 @@ end subroutine uedinc
 !> @details select a variable contour plotting (user subroutine).
 !--------------------------------------------------------------------------------------------------
 subroutine plotv(v,s,sp,etot,eplas,ecreep,t,m,nn,layer,ndi,nshear,jpltcd)
- use prec, only: &
-   pReal, &
-   pInt
+ use prec
  use mesh, only: &
    mesh_FEasCP
  use IO, only: &
@@ -436,7 +426,7 @@ subroutine plotv(v,s,sp,etot,eplas,ecreep,t,m,nn,layer,ndi,nshear,jpltcd)
    materialpoint_sizeResults
 
  implicit none
- integer(pInt),               intent(in) :: &
+ integer,               intent(in) :: &
    m, &                                                                                             !< element number
    nn, &                                                                                            !< integration point number
    layer, &                                                                                         !< layer number
@@ -453,7 +443,7 @@ subroutine plotv(v,s,sp,etot,eplas,ecreep,t,m,nn,layer,ndi,nshear,jpltcd)
  real(pReal),                 intent(out) :: &
    v                                                                                                !< variable
 
- if (jpltcd > materialpoint_sizeResults) call IO_error(700_pInt,jpltcd)                             ! complain about out of bounds error
+ if (jpltcd > materialpoint_sizeResults) call IO_error(700,jpltcd)                                  ! complain about out of bounds error
  v = materialpoint_results(jpltcd,nn,mesh_FEasCP('elem', m))
 
 end subroutine plotv

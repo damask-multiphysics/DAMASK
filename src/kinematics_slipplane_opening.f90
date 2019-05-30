@@ -5,23 +5,28 @@
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
 module kinematics_slipplane_opening
- use prec, only: &
-   pReal, &
-   pInt
+ use prec
+ use config
+ use IO
+ use debug
+ use math
+ use lattice
+ use material
 
  implicit none
  private
- integer(pInt), dimension(:), allocatable, private :: kinematics_slipplane_opening_instance
+ 
+ integer, dimension(:), allocatable :: kinematics_slipplane_opening_instance
    
- type, private :: tParameters                                                                       !< container type for internal constitutive parameters
-   integer(pInt) :: &
+ type :: tParameters                                                                                !< container type for internal constitutive parameters
+   integer :: &
      totalNslip
-   integer(pInt), dimension(:),   allocatable :: &
+   integer, dimension(:),   allocatable :: &
      Nslip                                                                                          !< active number of slip systems per family
    real(pReal) :: &
      sdot0, &
      n
-   real(pReal),   dimension(:),   allocatable :: &
+   real(pReal), dimension(:),   allocatable :: &
      critLoad
    real(pReal), dimension(:,:), allocatable     :: &
     slip_direction, &
@@ -29,7 +34,8 @@ module kinematics_slipplane_opening
     slip_transverse
  end type tParameters
 
-     type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
+ type(tParameters), dimension(:), allocatable :: param                                            !< containers of constitutive parameters (len Ninstance)
+ 
  public :: &
    kinematics_slipplane_opening_init, &
    kinematics_slipplane_opening_LiAndItsTangent
@@ -41,43 +47,26 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine kinematics_slipplane_opening_init()
- use debug, only: &
-   debug_level,&
-   debug_constitutive,&
-   debug_levelBasic
- use config, only: &
-   config_phase
- use IO, only: &
-   IO_error
- use math, only: &
-   math_expand
- use material, only: &
-   phase_kinematics, &
-   KINEMATICS_slipplane_opening_label, &
-   KINEMATICS_slipplane_opening_ID
- use lattice
+subroutine kinematics_slipplane_opening_init
 
- implicit none
-
- integer(pInt) :: maxNinstance,p,instance,kinematics
+ integer :: maxNinstance,p,instance
 
  write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_slipplane_opening_LABEL//' init  -+>>>'
 
  maxNinstance = count(phase_kinematics == KINEMATICS_slipplane_opening_ID)
  if (maxNinstance == 0) return
  
- if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
+ if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
  
- allocate(kinematics_slipplane_opening_instance(size(config_phase)), source=0_pInt)
- do p = 1_pInt, size(config_phase)
+ allocate(kinematics_slipplane_opening_instance(size(config_phase)), source=0)
+ do p = 1, size(config_phase)
    kinematics_slipplane_opening_instance(p) = count(phase_kinematics(:,1:p) == kinematics_slipplane_opening_ID) ! ToDo: count correct?
  enddo
  
  allocate(param(maxNinstance))
  
- do p = 1_pInt, size(config_phase)
+ do p = 1, size(config_phase)
    if (all(phase_kinematics(:,p) /= KINEMATICS_slipplane_opening_ID)) cycle
    associate(prm => param(kinematics_slipplane_opening_instance(p)), &
             config => config_phase(p))
@@ -91,19 +80,19 @@ subroutine kinematics_slipplane_opening_init()
 
    prm%critLoad = math_expand(prm%critLoad, prm%Nslip)
       
-prm%slip_direction  = lattice_slip_direction  (prm%Nslip,config%getString('lattice_structure'),&
+   prm%slip_direction  = lattice_slip_direction  (prm%Nslip,config%getString('lattice_structure'),&
                                                     config%getFloat('c/a',defaultVal=0.0_pReal))
-      prm%slip_normal = lattice_slip_normal (prm%Nslip,config%getString('lattice_structure'),&
+   prm%slip_normal = lattice_slip_normal (prm%Nslip,config%getString('lattice_structure'),&
                                                     config%getFloat('c/a',defaultVal=0.0_pReal))
-      prm%slip_transverse     = lattice_slip_transverse(prm%Nslip,config%getString('lattice_structure'),&
+   prm%slip_transverse     = lattice_slip_transverse(prm%Nslip,config%getString('lattice_structure'),&
                                                     config%getFloat('c/a',defaultVal=0.0_pReal))
 
    !  if (kinematics_slipplane_opening_sdot_0(instance) <= 0.0_pReal) &
-   !    call IO_error(211_pInt,el=instance,ext_msg='sdot_0 ('//KINEMATICS_slipplane_opening_LABEL//')')
+   !    call IO_error(211,el=instance,ext_msg='sdot_0 ('//KINEMATICS_slipplane_opening_LABEL//')')
    !  if (any(kinematics_slipplane_opening_critPlasticStrain(:,instance) < 0.0_pReal)) &
-   !    call IO_error(211_pInt,el=instance,ext_msg='criticaPlasticStrain ('//KINEMATICS_slipplane_opening_LABEL//')')
+   !    call IO_error(211,el=instance,ext_msg='criticaPlasticStrain ('//KINEMATICS_slipplane_opening_LABEL//')')
    !  if (kinematics_slipplane_opening_N(instance) <= 0.0_pReal) &
-   !    call IO_error(211_pInt,el=instance,ext_msg='rate_sensitivity ('//KINEMATICS_slipplane_opening_LABEL//')')
+   !    call IO_error(211,el=instance,ext_msg='rate_sensitivity ('//KINEMATICS_slipplane_opening_LABEL//')')
  
    end associate
  enddo
@@ -114,18 +103,7 @@ end subroutine kinematics_slipplane_opening_init
 !> @brief  contains the constitutive equation for calculating the velocity gradient  
 !--------------------------------------------------------------------------------------------------
 subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, ip, el)
- use prec, only: &
-   tol_math_check
- use math, only: &
-   math_mul33xx33, &
-   math_outer
- use material, only: &
-   material_phase, &
-   material_homogenizationAt, &
-   damage, &
-   damageMapping
 
- implicit none
  integer, intent(in) :: &
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
@@ -173,7 +151,7 @@ subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, 
      if (abs(udotd) > tol_math_check) then
        Ld = Ld + udotd*projection_d
        dudotd_dt = udotd*prm%n/traction_d
-       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
+       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
          dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + &
            dudotd_dt*projection_d(k,l)*projection_d(m,n)
      endif                
@@ -185,7 +163,7 @@ subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, 
      if (abs(udott) > tol_math_check) then
        Ld = Ld + udott*projection_t
        dudott_dt = udott*prm%n/traction_t
-       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
+       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
          dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + &
            dudott_dt*projection_t(k,l)*projection_t(m,n)
      endif
@@ -197,7 +175,7 @@ subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, 
      if (abs(udotn) > tol_math_check) then
        Ld = Ld + udotn*projection_n
        dudotn_dt = udotn*prm%n/traction_n
-       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
+       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
          dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + &
            dudotn_dt*projection_n(k,l)*projection_n(m,n)
      endif 

@@ -5,11 +5,20 @@
 !> @brief  phenomenological crystal plasticity formulation using a powerlaw fitting
 !--------------------------------------------------------------------------------------------------
 module plastic_phenopowerlaw
- use prec, only: &
-   pReal
+ use prec
+ use debug
+ use math
+ use IO
+ use material
+ use config
+ use lattice
+#if defined(PETSc) || defined(DAMASK_HDF5)
+ use results
+#endif
 
  implicit none
  private
+ 
  integer,          dimension(:,:),   allocatable, target, public :: &
    plastic_phenopowerlaw_sizePostResult                                                             !< size of each post result output
  character(len=64), dimension(:,:),   allocatable, target, public :: &
@@ -28,7 +37,7 @@ module plastic_phenopowerlaw
      resolvedstress_twin_ID
  end enum
 
- type, private :: tParameters
+ type :: tParameters
    real(pReal) :: &
      gdot0_slip, &                                                                                  !< reference shear strain rate for slip
      gdot0_twin, &                                                                                  !< reference shear strain rate for twin
@@ -73,7 +82,7 @@ module plastic_phenopowerlaw
      outputID                                                                                       !< ID of each post result output
  end type tParameters
 
- type, private :: tPhenopowerlawState
+ type :: tPhenopowerlawState
    real(pReal), pointer, dimension(:,:) :: &
      xi_slip, &
      xi_twin, &
@@ -83,8 +92,8 @@ module plastic_phenopowerlaw
 
 !--------------------------------------------------------------------------------------------------
 ! containers for parameters and state
- type(tParameters),         allocatable, dimension(:), private :: param
- type(tPhenopowerlawState), allocatable, dimension(:), private :: &
+ type(tParameters),         allocatable, dimension(:) :: param
+ type(tPhenopowerlawState), allocatable, dimension(:) :: &
    dotState, &
    state
 
@@ -94,9 +103,6 @@ module plastic_phenopowerlaw
    plastic_phenopowerlaw_dotState, &
    plastic_phenopowerlaw_postResults, &
    plastic_phenopowerlaw_results
- private :: &
-   kinetics_slip, &
-   kinetics_twin
 
 contains
 
@@ -106,20 +112,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_phenopowerlaw_init
- use prec, only: &
-   pStringLen
- use debug, only: &
-   debug_level, &
-   debug_constitutive,&
-   debug_levelBasic
- use math, only: &
-   math_expand
- use IO, only: &
-   IO_error
- use material
- use config, only: &
-   config_phase
- use lattice
 
  integer :: &
    Ninstance, &
@@ -484,8 +476,6 @@ end subroutine plastic_phenopowerlaw_dotState
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
 function plastic_phenopowerlaw_postResults(Mp,instance,of) result(postResults)
- use math, only: &
-   math_mul33xx33
 
  real(pReal), dimension(3,3), intent(in) :: &
    Mp                                                                                               !< Mandel stress
@@ -552,8 +542,6 @@ end function plastic_phenopowerlaw_postResults
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_phenopowerlaw_results(instance,group)
 #if defined(PETSc) || defined(DAMASK_HDF5)
-  use results, only: &
-    results_writeDataset
 
   integer,          intent(in) :: instance
   character(len=*), intent(in) :: group
@@ -598,10 +586,6 @@ end subroutine plastic_phenopowerlaw_results
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_slip(Mp,instance,of, &
                               gdot_slip_pos,gdot_slip_neg,dgdot_dtau_slip_pos,dgdot_dtau_slip_neg)
- use prec, only: &
-   dNeq0
- use math, only: &
-   math_mul33xx33
 
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
@@ -674,10 +658,6 @@ end subroutine kinetics_slip
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_twin(Mp,instance,of,&
                               gdot_twin,dgdot_dtau_twin)
- use prec, only: &
-  dNeq0
- use math, only: &
-   math_mul33xx33
 
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress

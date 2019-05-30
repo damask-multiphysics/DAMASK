@@ -14,7 +14,11 @@
 #define PETSC_MAJOR 3
 #define PETSC_MINOR_MIN 10
 #define PETSC_MINOR_MAX 11
+
 module DAMASK_interface
+  use, intrinsic :: iso_fortran_env
+  use PETScSys
+
   use prec
   use system_routines
   
@@ -50,9 +54,6 @@ contains
 !! information on computation to screen
 !--------------------------------------------------------------------------------------------------
 subroutine DAMASK_interface_init
-  use, intrinsic :: iso_fortran_env
-  use PETScSys
-
 #include <petsc/finclude/petscsys.h>
 #if defined(__GFORTRAN__) &&  __GNUC__<GCC_MIN
 ===================================================================================================

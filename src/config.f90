@@ -6,12 +6,14 @@
 !! parts 'homogenization', 'crystallite', 'phase', 'texture', and 'microstucture'
 !--------------------------------------------------------------------------------------------------
 module config
-  use prec, only: &
-    pReal
-  use list, only: &
-    tPartitionedStringList
+  use prec
+  use DAMASK_interface
+  use IO
+  use debug
+  use list
 
   implicit none
+  private
 
   type(tPartitionedStringList), public, protected, allocatable, dimension(:) :: &
     config_phase, &
@@ -20,10 +22,11 @@ module config
     config_texture, &
     config_crystallite
    
-   type(tPartitionedStringList), public, protected :: &
+  type(tPartitionedStringList), public, protected :: &
     config_numerics, &
     config_debug
  
+  !ToDo: bad names (how should one know that those variables are defined in config?)
   character(len=64), dimension(:), allocatable, public, protected :: &
     phase_name, &                                                                                   !< name of each phase
     homogenization_name, &                                                                          !< name of each homogenization
@@ -47,22 +50,9 @@ contains
 !> @brief reads material.config and stores its content per part
 !--------------------------------------------------------------------------------------------------
 subroutine config_init
-  use prec, only: &
-    pStringLen
-  use DAMASK_interface, only: &
-    getSolverJobName
-  use IO, only: &
-    IO_read_ASCII, &
-    IO_error, &
-    IO_lc, &
-    IO_getTag
-  use debug, only: &
-    debug_level, &
-    debug_material, &
-    debug_levelBasic
 
-  implicit none
-  integer :: myDebug,i
+  integer :: i
+  logical :: verbose
 
   character(len=pStringLen) :: &
     line, &
@@ -72,7 +62,7 @@ subroutine config_init
 
   write(6,'(/,a)') ' <<<+-  config init  -+>>>'
 
-  myDebug = debug_level(debug_material)
+  verbose = iand(debug_level(debug_material),debug_levelBasic) /= 0
 
   inquire(file=trim(getSolverJobName())//'.materialConfig',exist=fileExists)
   if(fileExists) then
@@ -92,23 +82,23 @@ subroutine config_init
     
       case (trim('phase'))
         call parse_materialConfig(phase_name,config_phase,line,fileContent(i+1:))
-        if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Phase          parsed'; flush(6)
+        if (verbose) write(6,'(a)') ' Phase          parsed'; flush(6)
     
       case (trim('microstructure'))
         call parse_materialConfig(microstructure_name,config_microstructure,line,fileContent(i+1:))
-        if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Microstructure parsed'; flush(6)
+        if (verbose) write(6,'(a)') ' Microstructure parsed'; flush(6)
     
       case (trim('crystallite'))
         call parse_materialConfig(crystallite_name,config_crystallite,line,fileContent(i+1:))
-        if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Crystallite    parsed'; flush(6)
+        if (verbose) write(6,'(a)') ' Crystallite    parsed'; flush(6)
     
       case (trim('homogenization'))
         call parse_materialConfig(homogenization_name,config_homogenization,line,fileContent(i+1:))
-        if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Homogenization parsed'; flush(6)
+        if (verbose) write(6,'(a)') ' Homogenization parsed'; flush(6)
     
       case (trim('texture'))
         call parse_materialConfig(texture_name,config_texture,line,fileContent(i+1:))
-        if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Texture        parsed'; flush(6)
+        if (verbose) write(6,'(a)') ' Texture        parsed'; flush(6)
 
     end select
 
@@ -146,10 +136,7 @@ contains
 !!        Recursion is triggered by "{path/to/inputfile}" in a line
 !--------------------------------------------------------------------------------------------------
 recursive function read_materialConfig(fileName,cnt) result(fileContent)
-  use IO, only: &
-    IO_warning
 
-  implicit none
   character(len=*),          intent(in)                :: fileName
   integer,                   intent(in), optional      :: cnt                                       !< recursion counter
   character(len=pStringLen), dimension(:), allocatable :: fileContent                               !< file content, separated per lines
@@ -231,12 +218,7 @@ end function read_materialConfig
 !--------------------------------------------------------------------------------------------------
 subroutine parse_materialConfig(sectionNames,part,line, &
                                 fileContent)
-  use prec, only: &
-    pStringLen
-  use IO, only: &
-    IO_intOut
 
-  implicit none
   character(len=64),            allocatable, dimension(:), intent(out)   :: sectionNames
   type(tPartitionedStringList), allocatable, dimension(:), intent(inout) :: part
   character(len=pStringLen),                               intent(inout) :: line
@@ -288,7 +270,7 @@ end subroutine parse_materialConfig
 !--------------------------------------------------------------------------------------------------
 subroutine parse_debugAndNumericsConfig(config_list, &
                                         fileContent)
-  implicit none
+
   type(tPartitionedStringList),              intent(out) :: config_list
   character(len=pStringLen),   dimension(:), intent(in)  :: fileContent
   integer :: i
@@ -306,10 +288,7 @@ end subroutine config_init
 !> @brief deallocates the linked lists that store the content of the configuration files
 !--------------------------------------------------------------------------------------------------
 subroutine config_deallocate(what)
-  use IO, only: &
-    IO_error
 
-  implicit none
   character(len=*), intent(in) :: what
 
   select case(trim(what))

@@ -6,35 +6,20 @@
 !--------------------------------------------------------------------------------------------------
 submodule(homogenization) homogenization_mech_none
 
-  implicit none
-
 contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
 module subroutine mech_none_init
-  use debug, only: &
-    debug_HOMOGENIZATION, &
-    debug_level, &
-    debug_levelBasic
-  use config, only: &
-    config_homogenization
-  use material, only: &
-    homogenization_type, &
-    material_homogenizationAt, &
-    homogState, &
-    HOMOGENIZATION_NONE_LABEL, &
-    HOMOGENIZATION_NONE_ID
- 
-  implicit none
+
   integer :: &
     Ninstance, &
     h, &
     NofMyHomog
  
   write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_NONE_label//' init  -+>>>'
- 
+
   Ninstance = count(homogenization_type == HOMOGENIZATION_NONE_ID)
   if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0) &
     write(6,'(a16,1x,i5,/)') '# instances:',Ninstance

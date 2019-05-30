@@ -12,6 +12,7 @@ module CPFEM2
    CPFEM_age, &
    CPFEM_initAll, &
    CPFEM_results
+
 contains
 
 
@@ -20,7 +21,6 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_initAll()
  use prec, only: &
-   pInt, &
    prec_init
  use numerics, only: &
    numerics_init
@@ -57,8 +57,6 @@ subroutine CPFEM_initAll()
    FEM_Zoo_init
 #endif
 
- implicit none
-
  call DAMASK_interface_init                                                                         ! Spectral and FEM interface to commandline
  call prec_init
  call IO_init
@@ -87,8 +85,6 @@ end subroutine CPFEM_initAll
 !> @brief allocate the arrays defined in module CPFEM and initialize them
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_init
- use prec, only: &
-   pInt, pReal
  use IO, only: &
    IO_error
  use numerics, only: &
@@ -124,8 +120,8 @@ subroutine CPFEM_init
  use DAMASK_interface, only: &
    getSolverJobName
 
- implicit none
- integer(pInt) :: ph,homog
+ 
+ integer :: ph,homog
  character(len=1024) :: rankStr, PlasticItem, HomogItem
  integer(HID_T) :: fileHandle, groupPlasticID, groupHomogID
 
@@ -134,7 +130,7 @@ subroutine CPFEM_init
 
  ! *** restore the last converged values of each essential variable from the binary file
  if (restartRead) then
-   if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) then
+   if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0) then
      write(6,'(a)') '<< CPFEM >> restored state variables of last converged step from hdf5 file'
      flush(6)
    endif
@@ -152,14 +148,14 @@ subroutine CPFEM_init
    call HDF5_read(fileHandle,crystallite_S0,      'convergedS')
    
    groupPlasticID = HDF5_openGroup(fileHandle,'PlasticPhases')
-   do ph = 1_pInt,size(phase_plasticity)
+   do ph = 1,size(phase_plasticity)
     write(PlasticItem,*) ph,'_'
     call HDF5_read(groupPlasticID,plasticState(ph)%state0,trim(PlasticItem)//'convergedStateConst')
    enddo
    call HDF5_closeGroup(groupPlasticID)
    
    groupHomogID = HDF5_openGroup(fileHandle,'HomogStates')
-   do homog = 1_pInt, material_Nhomogenization
+   do homog = 1, material_Nhomogenization
     write(HomogItem,*) homog,'_'
     call HDF5_read(groupHomogID,homogState(homog)%state0, trim(HomogItem)//'convergedStateHomog')
    enddo
@@ -178,8 +174,7 @@ end subroutine CPFEM_init
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_age()
  use prec, only: &
-   pReal, &
-   pInt
+   pReal
  use numerics, only: &
    worldrank
  use debug, only: &
@@ -223,13 +218,12 @@ subroutine CPFEM_age()
  use hdf5
  use DAMASK_interface, only: &
    getSolverJobName
-
- implicit none
- integer(pInt)    ::  i, ph, homog, mySource
+ 
+ integer    ::  i, ph, homog, mySource
  character(len=32) :: rankStr, PlasticItem, HomogItem
  integer(HID_T) :: fileHandle, groupPlastic, groupHomog
 
- if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
+ if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) &
    write(6,'(a)') '<< CPFEM >> aging states'
 
  crystallite_F0  = crystallite_partionedF
@@ -246,14 +240,14 @@ subroutine CPFEM_age()
    do mySource = 1,phase_Nsources(i)
      sourceState(i)%p(mySource)%state0 = sourceState(i)%p(mySource)%state
  enddo; enddo
- do homog = 1_pInt, material_Nhomogenization
+ do homog = 1, material_Nhomogenization
    homogState       (homog)%state0 =  homogState       (homog)%state
    thermalState     (homog)%state0 =  thermalState     (homog)%state
    damageState      (homog)%state0 =  damageState      (homog)%state
  enddo
 
  if (restartWrite) then
-   if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
+   if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) &
      write(6,'(a)') '<< CPFEM >> writing restart variables of last converged step to hdf5 file'
    
    write(rankStr,'(a1,i0)')'_',worldrank
@@ -268,14 +262,14 @@ subroutine CPFEM_age()
    call HDF5_write(fileHandle,crystallite_S0,      'convergedS')
    
    groupPlastic = HDF5_addGroup(fileHandle,'PlasticPhases')
-   do ph = 1_pInt,size(phase_plasticity)
+   do ph = 1,size(phase_plasticity)
      write(PlasticItem,*) ph,'_'
      call HDF5_write(groupPlastic,plasticState(ph)%state0,trim(PlasticItem)//'convergedStateConst')
    enddo
    call HDF5_closeGroup(groupPlastic)
 
    groupHomog = HDF5_addGroup(fileHandle,'HomogStates')
-   do homog = 1_pInt, material_Nhomogenization
+   do homog = 1, material_Nhomogenization
      write(HomogItem,*) homog,'_'
      call HDF5_write(groupHomog,homogState(homog)%state0,trim(HomogItem)//'convergedStateHomog')
    enddo
@@ -285,7 +279,7 @@ subroutine CPFEM_age()
    restartWrite = .false.
  endif
 
- if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
+ if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) &
    write(6,'(a)') '<< CPFEM >> done aging states'
 
 end subroutine CPFEM_age
@@ -295,23 +289,23 @@ end subroutine CPFEM_age
 !> @brief triggers writing of the results
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_results(inc,time)
- use prec, only: &
-   pInt
  use results
  use HDF5_utilities
+  use homogenization, only: &
+   homogenization_results
  use constitutive, only: &
    constitutive_results
  use crystallite, only: &
    crystallite_results
-
- implicit none
- integer(pInt), intent(in) :: inc
+ 
+ integer, intent(in) :: inc
  real(pReal),   intent(in) :: time
 
  call results_openJobFile
  call results_addIncrement(inc,time)
  call constitutive_results
  call crystallite_results
+ call homogenization_results
  call results_removeLink('current') ! ToDo: put this into closeJobFile
  call results_closeJobFile
 
