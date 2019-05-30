@@ -83,7 +83,7 @@ class Geom():
     if microstructure is not None:
       if len(microstructure.shape) != 3:
         raise ValueError('Invalid microstructure shape {}'.format(*microstructure.shape))
-      elif microstructure.dtype not in [int,float]:
+      elif microstructure.dtype not in np.sctypes['float'] + np.sctypes['int']:
         raise TypeError('Invalid data type {} for microstructure'.format(microstructure.dtype))
       else:
         self.microstructure = np.copy(microstructure)
