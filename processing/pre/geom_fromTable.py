@@ -54,12 +54,14 @@ parser.set_defaults(homogenization = 1,
 
 (options,filenames) = parser.parse_args()
 
-input = [ options.quaternion is not None,
+input = [options.quaternion     is not None,
          options.microstructure is not None,
         ]
 
 if np.sum(input) != 1:
-  parser.error('need either microstructure label or exactly one orientation input format.')
+  parser.error('need either microstructure or quaternion (and optionally phase) as input.')
+if options.microstructure is not None and options.phase is not None:
+  parser.error('need either microstructure or phase (and mandatory quaternion) as input.')
 if options.axes is not None and not set(options.axes).issubset(set(['x','+x','-x','y','+y','-y','z','+z','-z'])):
   parser.error('invalid axes {} {} {}.'.format(*options.axes))
 
@@ -105,73 +107,47 @@ for name in filenames:
   mincorner = np.array(list(map(min,coords)))
   origin = mincorner - 0.5*size/grid                                                                # shift from cell center to corner
 
-  
-# ------------------------------------------ process data ------------------------------------------
 
-  colOri = table.label_index(label)+(3-coordDim)                                                    # column(s) of orientation data followed by 3 coordinates
-
+  indices  = np.lexsort((table.data[:,0],table.data[:,1],table.data[:,2]))                          # indices of position when sorting x fast, z slow
+  microstructure = np.empty(grid,dtype = int)                                                       # initialize empty microstructure
+  i = 0
+   
   if inputtype == 'microstructure':
-
-    grain = table.data[:,colOri]
-    nGrains = len(np.unique(grain))
-
-  elif inputtype == 'quaternion':
-
-    colPhase = -1                                                                                   # column of phase data comes last
-    index  = np.lexsort((table.data[:,0],table.data[:,1],table.data[:,2]))                          # index of position when sorting x fast, z slow
-    grain = -np.ones(grid.prod(),dtype = int)                                                       # initialize empty microstructure
-    orientations = []                                                                               # orientations
-    multiplicity = []                                                                               # orientation multiplicity (number of group members)
-    phases       = []                                                                               # phase info
-    nGrains = 0                                                                                     # counter for detected grains
-    existingGrains = np.arange(nGrains)
-    myPos   = 0                                                                                     # position (in list) of current grid point
-
-
     for z in range(grid[2]):
       for y in range(grid[1]):
         for x in range(grid[0]):
+          microstructure[x,y,z] = table.data[indices[i],3]
+          i+=1
 
-
-          myData = table.data[index[myPos]]                                                         # read data for current grid point
-          myPhase = int(myData[colPhase])
-         
-          o = damask.Rotation(myData[colOri:colOri+4])
-          
-          grain[myPos] = nGrains                                                                  # assign new grain to me ...
-          nGrains += 1                                                                            # ... and update counter
-          orientations.append(o)                                                                  # store new orientation for future comparison
-          multiplicity.append(1)                                                                  # having single occurrence so far
-          phases.append(myPhase)                                                                  # store phase info for future reporting
-          existingGrains = np.arange(nGrains)                                                     # update list of existing grains
-
-          myPos += 1
-
-    
-    grain += 1                                                                                    # offset from starting index 0 to 1
-    
-
-  formatwidth = 1+int(np.log10(nGrains))
-
-  if inputtype == 'microstructure':
     config_header = []
-  else:
+
+  elif inputtype == 'quaternion':
+    unique,unique_inverse = np.unique(table.data[:,3:8],return_inverse=True,axis=0)
+    
+    for z in range(grid[2]):
+      for y in range(grid[1]):
+        for x in range(grid[0]):
+          microstructure[x,y,z] = unique_inverse[indices[i]]+1
+          i+=1
+    
     config_header = ['<microstructure>']
-    for i,phase in enumerate(phases):
-      config_header += ['[Grain%s]'%(str(i+1).zfill(formatwidth)),
+    for i,data in enumerate(unique):
+      config_header += ['[Grain{}]'.format(i+1),
                         'crystallite 1',
-                        '(constituent)\tphase %i\ttexture %s\tfraction 1.0'%(phase,str(i+1).rjust(formatwidth)),
+                        '(constituent)\tphase {}\ttexture {}\tfraction 1.0'.format(int(data[4]),i+1),
                        ]
   
     config_header += ['<texture>']
-    for i,orientation in enumerate(orientations):
-      config_header += ['[Grain%s]'%(str(i+1).zfill(formatwidth)),
-                        '(gauss)\tphi1 %g\tPhi %g\tphi2 %g'%tuple(orientation.asEulers(degrees = True)),
+    for i,data in enumerate(unique):
+      ori = damask.Rotation(data[0:4])
+      config_header += ['[Grain{}]'.format(i+1),
+                        '(gauss)\tphi1 {:g}\tPhi {:g}\tphi2 {:g}'.format(*ori.asEulers(degrees = True)),
                        ]
       if options.axes is not None: config_header += ['axes\t{} {} {}'.format(*options.axes)]
-  
-  header = [scriptID + ' ' + ' '.join(sys.argv[1:])] + config_header + ['origin x {} y {} z {}'.format(*origin)]
-  geom = damask.Geom(grain.reshape(grid,order='F'),size,
+
+  header = [scriptID + ' ' + ' '.join(sys.argv[1:])]\
+         + config_header
+  geom = damask.Geom(microstructure,size,origin,
                      homogenization=options.homogenization,comments=header)
   damask.util.croak(geom)
   
