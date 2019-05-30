@@ -63,7 +63,7 @@ geom = damask.Geom(microstructure=np.full(options.grid,options.fill,dtype=dtype)
                    homogenization=options.homogenization,
                    comments=scriptID + ' ' + ' '.join(sys.argv[1:]))
 damask.util.croak(geom)
-  
+
 if name is None:
   sys.stdout.write(str(geom.show()))
 else:

@@ -76,7 +76,7 @@ for name in filenames:
   damask.util.report(scriptName,name)
 
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-  
+
   microstructure = geom.get_microstructure()
   fill = np.nanmax(microstructure)+1 if options.fill is None else options.fill
   dtype = float if np.isnan(fill) or int(fill) != fill or microstructure.dtype==np.float else int
@@ -89,10 +89,10 @@ for name in filenames:
                                   prefilter=False,output=dtype,cval=fill)            # rotation around x
   microstructure = ndimage.rotate(microstructure,eulers[0],(0,1),order=0,
                                   prefilter=False,output=dtype,cval=fill)            # rotation around z
-  
+
   damask.util.croak(geom.update(microstructure,rescale=True))
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
-  
+
   if name is None:
     sys.stdout.write(str(geom.show()))
   else:

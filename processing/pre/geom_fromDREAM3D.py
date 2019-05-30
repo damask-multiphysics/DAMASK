@@ -78,7 +78,7 @@ for name in filenames:
   damask.util.report(scriptName,name)
 
   errors = []
-  
+
   inFile = h5py.File(name, 'r')
   group_geom = os.path.join(rootDir,options.basegroup,'_SIMPL_GEOMETRY')
   try:
@@ -88,8 +88,8 @@ for name in filenames:
     origin = inFile[os.path.join(group_geom,'ORIGIN')][...]
   except:
     errors.append('Geometry data ({}) not found'.format(group_geom))
-    
-    
+
+
   group_pointwise = os.path.join(rootDir,options.basegroup,options.pointwise)
   if options.average is None:
     label = 'Point'
@@ -100,33 +100,33 @@ for name in filenames:
       rot   = [damask.Rotation.fromQuaternion(q,True,P=+1) for q in quats]
     except:
       errors.append('Pointwise orientation (quaternion) data ({}) not readable'.format(dataset))
-      
+
     dataset = os.path.join(group_pointwise,options.phase)
     try:
       phase = np.reshape(inFile[dataset][...],(np.product(grid)))
     except:
       errors.append('Pointwise phase data ({}) not readable'.format(dataset))
-    
+
     microstructure = np.arange(1,np.product(grid)+1,dtype=int).reshape(grid,order='F')
 
-    
+
   else:
     label = 'Grain'
-    
+
     dataset = os.path.join(group_pointwise,options.microstructure)
     try:
       microstructure = np.transpose(inFile[dataset][...].reshape(grid[::-1]),(2,1,0))               # convert from C ordering
     except:
       errors.append('Link between pointwise and grain average data ({}) not readable'.format(dataset))
-    
+
     group_average = os.path.join(rootDir,options.basegroup,options.average)
-    
+
     dataset = os.path.join(group_average,options.quaternion)
     try:
       rot = [damask.Rotation.fromQuaternion(q,True,P=+1) for q in inFile[dataset][...][1:]]         # skip first entry (unindexed)
     except:
       errors.append('Average orientation data ({}) not readable'.format(dataset))
-      
+
     dataset = os.path.join(group_average,options.phase)
     try:
       phase = [i[0] for i in inFile[dataset][...]][1:]                                              # skip first entry (unindexed)
@@ -148,7 +148,7 @@ for name in filenames:
                       'crystallite 1',
                       '(constituent)\tphase {}\ttexture {}\tfraction 1.0'.format(phase[i],i+1),
                       ]
-                       
+
   header = [scriptID + ' ' + ' '.join(sys.argv[1:])]\
          + config_header
   geom = damask.Geom(microstructure,size,origin,

@@ -52,7 +52,7 @@ parser.add_option(      '--aspect',
                   dest='aspect',
                   type='float', metavar = 'float',
                   help='vertical/horizontal osteon aspect ratio [%default]')
-parser.add_option('-w', '--omega', 
+parser.add_option('-w', '--omega',
                   dest='omega',
                   type='float', metavar = 'float',
                   help='rotation angle around normal of osteon [%default]')
@@ -112,7 +112,7 @@ for y in range(grid[1]):
       microstructure[x,y] = i
       Alpha[i] = alpha[x,y]
       Beta [i] = beta [x,y]
-      i+=1 
+      i+=1
 
 config_header = ['<texture>',
                  '[canal]',
@@ -122,7 +122,7 @@ for i in range(3,np.max(microstructure)):
   config_header += ['[Point{}]'.format(i-2),
                     '(gauss)\tphi1 {:.2f}\tPhi {:.2f}\tphi2 0'.format(Alpha[i],Beta[i])
                    ]
-  
+
 config_header = ['<microstructure>',
                  '[canal]',
                  'crystallite 1',
@@ -143,7 +143,7 @@ geom = damask.Geom(microstructure.reshape(grid),
                    size,-size/2,
                    homogenization=options.homogenization,comments=header)
 damask.util.croak(geom)
-  
+
 if name is None:
   sys.stdout.write(str(geom.show()))
 else:

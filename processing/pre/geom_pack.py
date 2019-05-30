@@ -33,7 +33,7 @@ for name in filenames:
 
   damask.util.croak(geom)
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
-  
+
   compressType = None
   former = start = -1
   reps = 0
@@ -65,7 +65,7 @@ for name in filenames:
       reps = 1
 
     former = current
-   
+
   if compressType == '.':
     f.write('{}\n'.format(former))
   elif compressType == 'to':

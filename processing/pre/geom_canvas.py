@@ -45,7 +45,7 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
   damask.util.report(scriptName,name)
-  
+
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
   grid = geom.get_grid()
@@ -56,13 +56,13 @@ for name in filenames:
 
   new = np.full(grid,options.fill if options.fill is not None
                 else np.nanmax(geom.microstructure)+1,geom.microstructure.dtype)
-  
+
   for x in range(geom.microstructure.shape[0]):
     X = x + options.offset[0]
-    if not 0 <= X < new.shape[0]: continue 
+    if not 0 <= X < new.shape[0]: continue
     for y in range(geom.microstructure.shape[1]):
       Y = y + options.offset[1]
-      if not 0 <= Y < new.shape[1]: continue 
+      if not 0 <= Y < new.shape[1]: continue
       for z in range(geom.microstructure.shape[2]):
         Z = z + options.offset[2]
         if not 0 <= Z < new.shape[2]: continue

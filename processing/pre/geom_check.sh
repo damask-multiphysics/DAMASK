@@ -5,7 +5,7 @@ if [[ "$1" == "-f" || "$1" == "--float" ]]; then
   arg='--float'
 else
   arg=''
-fi 
+fi
 
 for geom in "$@"
 do

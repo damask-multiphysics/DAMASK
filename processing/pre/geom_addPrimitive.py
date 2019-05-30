@@ -24,7 +24,7 @@ These objects can be boxes, cylinders, or ellipsoids.
 """, version = scriptID)
 
 parser.add_option('-c', '--center',
-                  dest='center', 
+                  dest='center',
                   type='float', nargs = 3, metavar=' '.join(['float']*3),
                   help='a,b,c origin of primitive %default')
 parser.add_option('-d', '--dimension',
@@ -78,7 +78,7 @@ parser.set_defaults(center = (.0,.0,.0),
 (options, filenames) = parser.parse_args()
 
 if options.dimension is None:
-  parser.error('no dimension specified.') 
+  parser.error('no dimension specified.')
 if [options.angleaxis,options.quaternion].count(None) == 0:
   parser.error('more than one rotation specified.')
 
@@ -94,7 +94,7 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
   damask.util.report(scriptName,name)
-  
+
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
   grid = geom.get_grid()
   size = geom.get_size()
@@ -106,7 +106,7 @@ for name in filenames:
   else:
     center = (np.array(options.center) + 0.5)/grid
     r = np.array(options.dimension)/grid/2.0
-    
+
   if np.any(center<0.0) or np.any(center>=1.0): print('error')
 
   offset = np.ones(3)*0.5 if options.periodic else center
@@ -120,17 +120,17 @@ for name in filenames:
       for z in range(grid[2]):
         coords = np.array([x+0.5,y+0.5,z+0.5])/grid
         mask[x,y,z] = np.sum(np.abs((rotation*(coords-offset))/r)**e) < 1
-        
+
   if options.periodic:
     shift = ((offset-center)*grid).astype(int)
     mask = np.roll(mask,shift,(0,1,2))
-        
+
   if options.inside: mask = np.logical_not(mask)
   fill = np.nanmax(geom.microstructure)+1 if options.fill is None else options.fill
 
   damask.util.croak(geom.update(np.where(mask,geom.microstructure,fill)))
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
-  
+
   if name is None:
     sys.stdout.write(str(geom.show()))
   else:

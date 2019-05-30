@@ -30,17 +30,17 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
   damask.util.report(scriptName,name)
-  
+
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-  
+
   damask.util.croak(geom)
-    
+
 # --- generate grid --------------------------------------------------------------------------------
 
   grid   = geom.get_grid()
   size   = geom.get_size()
   origin = geom.get_origin()
-  
+
   x = (0.5 + np.arange(grid[0],dtype=float))/grid[0]*size[0]+origin[0]
   y = (0.5 + np.arange(grid[1],dtype=float))/grid[1]*size[1]+origin[1]
   z = (0.5 + np.arange(grid[2],dtype=float))/grid[2]*size[2]+origin[2]

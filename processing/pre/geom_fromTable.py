@@ -18,7 +18,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
-Converts ASCII table. Input can be microstructure or orientation (as quaternion). For the latter, 
+Converts ASCII table. Input can be microstructure or orientation (as quaternion). For the latter,
 phase information can be given additionally.
 
 """, version = scriptID)
@@ -78,7 +78,7 @@ for name in filenames:
   table = damask.ASCIItable(name = name,readonly=True)
   table.head_read()                                                                                 # read ASCII header info
 
-# ------------------------------------------ sanity checks ---------------------------------------  
+# ------------------------------------------ sanity checks ---------------------------------------
 
   coordDim = table.label_dimension(options.pos)
 
@@ -89,7 +89,7 @@ for name in filenames:
     errors.append('input "{}" needs to have dimension {}.'.format(label,dim))
   if options.phase and table.label_dimension(options.phase) != 1:
     errors.append('phase column "{}" is not scalar.'.format(options.phase))
-  
+
   if errors != []:
     damask.util.croak(errors)
     continue
@@ -97,7 +97,7 @@ for name in filenames:
   table.data_readArray([options.pos] \
                        + (label if isinstance(label, list) else [label]) \
                        + ([options.phase] if options.phase else []))
-  
+
   if coordDim == 2:
     table.data = np.insert(table.data,2,np.zeros(len(table.data)),axis=1)                           # add zero z coordinate for two-dimensional input
   if options.phase is None:
@@ -112,7 +112,7 @@ for name in filenames:
   indices  = np.lexsort((table.data[:,0],table.data[:,1],table.data[:,2]))                          # indices of position when sorting x fast, z slow
   microstructure = np.empty(grid,dtype = int)                                                       # initialize empty microstructure
   i = 0
-   
+
   if inputtype == 'microstructure':
     for z in range(grid[2]):
       for y in range(grid[1]):
@@ -124,21 +124,21 @@ for name in filenames:
 
   elif inputtype == 'quaternion':
     unique,unique_inverse = np.unique(table.data[:,3:8],return_inverse=True,axis=0)
-    
+
     for z in range(grid[2]):
       for y in range(grid[1]):
         for x in range(grid[0]):
           microstructure[x,y,z] = unique_inverse[indices[i]]+1
           i+=1
-    
+
     config_header = ['<texture>']
     for i,data in enumerate(unique):
       ori = damask.Rotation(data[0:4])
       config_header += ['[Grain{}]'.format(i+1),
                         '(gauss)\tphi1 {:g}\tPhi {:g}\tphi2 {:g}'.format(*ori.asEulers(degrees = True)),
                        ]
-      if options.axes is not None: config_header += ['axes\t{} {} {}'.format(*options.axes)]  
-    
+      if options.axes is not None: config_header += ['axes\t{} {} {}'.format(*options.axes)]
+
     config_header += ['<microstructure>']
     for i,data in enumerate(unique):
       config_header += ['[Grain{}]'.format(i+1),
@@ -151,7 +151,7 @@ for name in filenames:
   geom = damask.Geom(microstructure,size,origin,
                      homogenization=options.homogenization,comments=header)
   damask.util.croak(geom)
-  
+
   if name is None:
     sys.stdout.write(str(geom.show()))
   else:

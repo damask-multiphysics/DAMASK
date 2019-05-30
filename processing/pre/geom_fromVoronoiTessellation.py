@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import os
-import sys 
+import sys
 import multiprocessing
 from optparse import OptionParser,OptionGroup
 
@@ -22,7 +22,7 @@ def laguerreTessellation(undeformed, coords, weights, grains, periodic = True, c
     tmp = np.repeat(point.reshape(3,1), len(seeds), axis=1).T
     dist = np.sum((tmp - seeds)**2,axis=1) -myWeights
     return np.argmin(dist)                                                                          # seed point closest to point
-    
+
   copies = \
     np.array([
               [ -1,-1,-1 ],
@@ -60,7 +60,7 @@ def laguerreTessellation(undeformed, coords, weights, grains, periodic = True, c
   repeatweights = np.tile(weights,len(copies)).flatten(order='F')                                   # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
   for i,vec in enumerate(copies):                                                                   # periodic copies of seed points ...
     try: seeds = np.append(seeds, coords+vec, axis=0)                                               # ... (1+a,2+a,3+a,...,1+z,2+z,3+z)
-    except NameError: seeds = coords+vec   
+    except NameError: seeds = coords+vec
 
   if (repeatweights == 0.0).all():                                                                  # standard Voronoi (no weights, KD tree)
     myKDTree = spatial.cKDTree(seeds)
@@ -81,7 +81,7 @@ def laguerreTessellation(undeformed, coords, weights, grains, periodic = True, c
         closestSeeds[i] = findClosestSeed(arg)
 
 # closestSeed is modulo number of original seed points (i.e. excluding periodic copies)
-  return grains[closestSeeds%coords.shape[0]]                                                   
+  return grains[closestSeeds%coords.shape[0]]
 
 
 # --------------------------------------------------------------------
@@ -202,7 +202,7 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
   damask.util.report(scriptName,name)
-    
+
   table = damask.ASCIItable(name = name, readonly = True)
 
 
@@ -210,17 +210,17 @@ for name in filenames:
 
   table.head_read()
   info,extra_header = table.head_getGeom()
-  
+
   if options.grid   is not None: info['grid']   = options.grid
   if options.size   is not None: info['size']   = options.size
   if options.origin is not None: info['origin'] = options.origin
-  
-# ------------------------------------------ sanity checks ---------------------------------------  
+
+# ------------------------------------------ sanity checks ---------------------------------------
 
   remarks = []
   errors = []
   labels = []
-  
+
   hasGrains  = table.label_dimension(options.microstructure) == 1
   hasEulers  = table.label_dimension(options.eulers) == 3
   hasWeights = table.label_dimension(options.weight) == 1 and options.laguerre
@@ -250,8 +250,8 @@ for name in filenames:
     table.close(dismiss=True)
     continue
 
-# ------------------------------------------ read seeds ---------------------------------------  
-      
+# ------------------------------------------ read seeds ---------------------------------------
+
   table.data_readArray(labels)
   coords    = table.data[:,table.label_indexrange(options.pos)] * info['size'] if options.normalized \
         else  table.data[:,table.label_indexrange(options.pos)] - info['origin']
@@ -271,13 +271,13 @@ for name in filenames:
   z = (np.arange(info['grid'][2])+0.5)*info['size'][2]/info['grid'][2]
   X,Y,Z = np.meshgrid(x, y, z,indexing='ij')
   grid = np.stack((X,Y,Z),axis=-1).reshape((info['grid'].prod(),3),order='F')
-  
+
   damask.util.croak('tessellating...')
   indices = laguerreTessellation(grid, coords, weights, grains, options.periodic, options.cpus)
-    
+
   config_header = []
   if options.config:
-    
+
     if hasEulers:
       config_header += ['<texture>']
       for ID in grainIDs:
@@ -286,7 +286,7 @@ for name in filenames:
                           '(gauss)\tphi1 {:.2f}\tPhi {:.2f}\tphi2 {:.2f}'.format(*eulers[eulerID])
                          ]
         if options.axes is not None: config_header += ['axes\t{} {} {}'.format(*options.axes)]
-        
+
     config_header += ['<microstructure>']
     for ID in grainIDs:
       config_header += ['[Grain{}]'.format(ID),
@@ -295,13 +295,13 @@ for name in filenames:
                        ]
 
     config_header += ['<!skip>']
-  
+
   header = [scriptID + ' ' + ' '.join(sys.argv[1:])]\
          + config_header
   geom = damask.Geom(indices.reshape(info['grid'],order='F'),info['size'],info['origin'],
                      homogenization=options.homogenization,comments=header)
   damask.util.croak(geom)
-  
+
   if name is None:
     sys.stdout.write(str(geom.show()))
   else:

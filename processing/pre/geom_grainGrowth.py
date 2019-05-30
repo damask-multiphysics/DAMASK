@@ -60,9 +60,9 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
   damask.util.report(scriptName,name)
-  
+
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-  
+
   grid_original = geom.get_grid()
   damask.util.croak(geom)
   microstructure = np.tile(geom.microstructure,np.where(grid_original == 1, 2,1))                   # make one copy along dimensions with grid == 1
@@ -71,15 +71,15 @@ for name in filenames:
 # --- initialize support data ---------------------------------------------------------------------
 
 # store a copy the initial microstructure to find locations of immutable indices
-  microstructure_original = np.copy(microstructure)                                                 
+  microstructure_original = np.copy(microstructure)
 
   if not options.ndimage:
     X,Y,Z = np.mgrid[0:grid[0],0:grid[1],0:grid[2]]
-  
+
     # Calculates gaussian weights for simulating 3d diffusion
     gauss = np.exp(-(X*X + Y*Y + Z*Z)/(2.0*options.d*options.d),dtype=np.float32) \
             /np.power(2.0*np.pi*options.d*options.d,(3.0 - np.count_nonzero(grid_original == 1))/2.,dtype=np.float32)
-          
+
     gauss[:,:,:grid[2]//2:-1] = gauss[:,:,1:(grid[2]+1)//2]     # trying to cope with uneven (odd) grid size
     gauss[:,:grid[1]//2:-1,:] = gauss[:,1:(grid[1]+1)//2,:]
     gauss[:grid[0]//2:-1,:,:] = gauss[1:(grid[0]+1)//2,:,:]
@@ -102,7 +102,7 @@ for name in filenames:
                                                                 grid[2]//2:-grid[2]//2]
 
     # transform bulk volume (i.e. where interfacial energy remained zero), store index of closest boundary voxel
-    index = ndimage.morphology.distance_transform_edt(periodic_interfaceEnergy == 0.,                                            
+    index = ndimage.morphology.distance_transform_edt(periodic_interfaceEnergy == 0.,
                                                       return_distances = False,
                                                       return_indices = True)
 

@@ -32,7 +32,7 @@ parser.add_option('-d','--direction',
 parser.add_option(    '--periodic',
                   dest = 'periodic',
                   action = 'store_true',
-                  help = 'omit periodic copies of outermost layers in mirror direction')             
+                  help = 'omit periodic copies of outermost layers in mirror direction')
 
 parser.set_defaults(periodic = False)
 
@@ -52,9 +52,9 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
   damask.util.report(scriptName,name)
-  
+
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-  
+
   microstructure = geom.get_microstructure()
   if 'z' in options.directions:
     microstructure = np.concatenate([microstructure,microstructure[:,:,limits[0]:limits[1]:-1]],2)
@@ -62,10 +62,10 @@ for name in filenames:
     microstructure = np.concatenate([microstructure,microstructure[:,limits[0]:limits[1]:-1,:]],1)
   if 'x' in options.directions:
     microstructure = np.concatenate([microstructure,microstructure[limits[0]:limits[1]:-1,:,:]],0)
-  
+
   damask.util.croak(geom.update(microstructure,rescale=True))
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
-  
+
   if name is None:
     sys.stdout.write(str(geom.show()))
   else:

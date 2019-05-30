@@ -41,7 +41,7 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
   damask.util.report(scriptName,name)
-    
+
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
   grid = geom.get_grid()
@@ -55,7 +55,7 @@ for name in filenames:
              np.array([o*float(n.lower().replace('x','')) if n.lower().endswith('x') \
                   else float(n) for o,n in zip(size,options.size)],dtype=float)
 
-  damask.util.croak(geom.update(microstructure = 
+  damask.util.croak(geom.update(microstructure =
                                   ndimage.interpolation.zoom(
                                     geom.microstructure,
                                     new_grid/grid,output=geom.microstructure.dtype,

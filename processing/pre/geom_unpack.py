@@ -30,10 +30,10 @@ for name in filenames:
   damask.util.report(scriptName,name)
 
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
- 
+
   damask.util.croak(geom)
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
-  
+
   if name is None:
     sys.stdout.write(str(geom.show()))
   else:

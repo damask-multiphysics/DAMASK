@@ -43,7 +43,7 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
   damask.util.report(scriptName,name)
-  
+
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
   damask.util.croak(geom.update(ndimage.filters.generic_filter(

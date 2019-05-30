@@ -85,7 +85,7 @@ for x in range(options.grid[0]):
   for y in range(options.grid[1]):
     for z in range(options.grid[2]):
       microstructure[x,y,z]=options.microstructure[int(options.threshold < surface[options.type](X[x],Y[y],Z[z]))]
-  
+
 geom=damask.Geom(microstructure,options.size,
                  homogenization=options.homogenization,
                  comments=[scriptID + ' ' + ' '.join(sys.argv[1:])])
