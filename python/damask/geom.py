@@ -1,8 +1,12 @@
+import os
 from io import StringIO
 
 import numpy as np
+import vtk
+from vtk.util import numpy_support
 
 from . import util
+from . import version
 
 
 class Geom():
@@ -197,6 +201,61 @@ class Geom():
     np.savetxt(fname,
                self.microstructure.reshape([grid[0],np.prod(grid[1:])],order='F').T,
                header='\n'.join(header), fmt=format_string, comments='')
+
+
+               
+  def to_vtk(self,fname=None):
+    """Generates vtk file. If file name is given, stored in file otherwise returned as string"""
+    grid = self.get_grid() + np.ones(3,dtype=int)
+    size = self.get_size()
+    origin = self.get_origin()
+
+    coords = [
+              np.linspace(0,size[0],grid[0]) - origin[0],
+              np.linspace(0,size[1],grid[1]) - origin[1],
+              np.linspace(0,size[2],grid[2]) - origin[2]
+             ]
+    
+    rGrid = vtk.vtkRectilinearGrid()
+    coordArray = [vtk.vtkDoubleArray(),vtk.vtkDoubleArray(),vtk.vtkDoubleArray()]
+
+    rGrid.SetDimensions(*grid)
+    for d,coord in enumerate(coords):
+      for c in coord:
+        coordArray[d].InsertNextValue(c)
+
+    rGrid.SetXCoordinates(coordArray[0])
+    rGrid.SetYCoordinates(coordArray[1])
+    rGrid.SetZCoordinates(coordArray[2])
+    
+    ms = numpy_support.numpy_to_vtk(num_array=self.microstructure.flatten(order='F'),array_type=vtk.VTK_INT)
+    ms.SetName('microstructure')
+    rGrid.GetCellData().AddArray(ms)
+
+
+    if fname is not None:
+      writer = vtk.vtkXMLRectilinearGridWriter()
+      writer.SetCompressorTypeToZLib()
+      writer.SetDataModeToBinary()
+      
+      ext = os.path.splitext(fname)[1]
+      if ext == '':
+        name = fname + '.' + writer.GetDefaultFileExtension()
+      elif ext == writer.GetDefaultFileExtension():
+        name = fname
+      else:
+        raise ValueError("unknown extension {}".format(ext))
+      writer.SetFileName(name)
+    else:
+      writer = vtk.vtkDataSetWriter()
+      writer.SetHeader('damask.Geom '+version)
+      writer.WriteToOutputStringOn()
+  
+    writer.SetInputData(rGrid)
+    writer.Write()
+
+    if fname is None: return writer.GetOutputString()
+
                
   def show(self):
     """Show raw content (as in file)"""
