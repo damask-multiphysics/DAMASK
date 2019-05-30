@@ -194,15 +194,17 @@ parser.set_defaults(pos            = 'pos',
                     normalized     = True,
                     config         = True,
                   )
+
 (options,filenames) = parser.parse_args()
 
-# --- loop over input files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  table = damask.ASCIItable(name = name, readonly = True)
   damask.util.report(scriptName,name)
+    
+  table = damask.ASCIItable(name = name, readonly = True)
+
 
 # --- read header ----------------------------------------------------------------------------
 

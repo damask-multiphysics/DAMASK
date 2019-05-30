@@ -134,7 +134,8 @@ for i in range(3,np.max(microstructure)):
   config_header.append('[Point{}]'.format(i-2))
   config_header.append('(gauss)\tphi1 {:.2f}\tPhi {:.2f}\tphi2 0'.format(Alpha[i],Beta[i]))
 
-header = [scriptID + ' ' + ' '.join(sys.argv[1:])] + config_header
+header = [scriptID + ' ' + ' '.join(sys.argv[1:])]\
+       + config_header
 geom = damask.Geom(microstructure.reshape(grid),
                    size,-size/2,
                    homogenization=options.homogenization,comments=header)

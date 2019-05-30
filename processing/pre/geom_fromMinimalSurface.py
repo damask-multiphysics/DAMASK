@@ -89,8 +89,8 @@ for x in range(options.grid[0]):
 geom=damask.Geom(microstructure,options.size,
                  homogenization=options.homogenization,
                  comments=[scriptID + ' ' + ' '.join(sys.argv[1:])])
-
 damask.util.croak(geom)
+
 if name is None:
   sys.stdout.write(str(geom.show()))
 else:
