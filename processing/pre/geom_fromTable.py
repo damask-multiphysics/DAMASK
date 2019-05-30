@@ -135,7 +135,7 @@ for name in filenames:
     for i,data in enumerate(unique):
       ori = damask.Rotation(data[0:4])
       config_header += ['[Grain{}]'.format(i+1),
-                        '(gauss)\tphi1 {:g}\tPhi {:g}\tphi2 {:g}'.format(*ori.asEulers(degrees = True)),
+                        '(gauss)\tphi1 {:.2f}\tPhi {:.2f}\tphi2 {:.2f}'.format(*ori.asEulers(degrees = True)),
                        ]
       if options.axes is not None: config_header += ['axes\t{} {} {}'.format(*options.axes)]
 
