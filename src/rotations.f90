@@ -46,12 +46,15 @@
 !---------------------------------------------------------------------------------------------------
 
 module rotations
-  use prec, only: &
-    pReal
+  use prec
+  use IO
+  use math
+  use Lambert
   use quaternions
  
   implicit none
   private
+
   type, public :: rotation
     type(quaternion), private :: q
     contains
@@ -148,8 +151,6 @@ end subroutine
 !> @details: rotation is based on unit quaternion or rotation matrix (fallback)
 !---------------------------------------------------------------------------------------------------
 function rotVector(self,v,active)
-  use prec, only: &
-    dEq
     
   real(pReal),                 dimension(3) :: rotVector
   class(rotation), intent(in)               :: self
@@ -260,10 +261,6 @@ end function qu2om
 !> @brief convert unit quaternion to Euler angles
 !---------------------------------------------------------------------------------------------------
 pure function qu2eu(qu) result(eu)
-  use prec, only: &
-    dEq0
-  use math, only: &
-    PI
 
   type(quaternion), intent(in)              :: qu
   real(pReal),                 dimension(3) :: eu
@@ -294,12 +291,6 @@ end function qu2eu
 !> @brief convert unit quaternion to axis angle pair
 !---------------------------------------------------------------------------------------------------
 pure function qu2ax(qu) result(ax)
-  use prec, only: &
-    dEq0, &
-    dNeq0
-  use math, only: &
-    PI, &
-    math_clip
 
   type(quaternion), intent(in)              :: qu
   real(pReal),                 dimension(4) :: ax
@@ -324,13 +315,6 @@ end function qu2ax
 !> @brief convert unit quaternion to Rodrigues vector
 !---------------------------------------------------------------------------------------------------
 pure function qu2ro(qu) result(ro)
-  use, intrinsic :: IEEE_ARITHMETIC, only: &
-    IEEE_value, &
-    IEEE_positive_inf
-  use prec, only: &
-    dEq0
-  use math, only: &
-    math_clip
   
   type(quaternion), intent(in)              :: qu
   real(pReal),                 dimension(4) :: ro
@@ -358,10 +342,6 @@ end function qu2ro
 !> @brief convert unit quaternion to homochoric
 !---------------------------------------------------------------------------------------------------
 pure function qu2ho(qu) result(ho)
-  use prec, only: &
-    dEq0
-  use math, only: &
-    math_clip
 
   type(quaternion), intent(in)               :: qu
   real(pReal),                  dimension(3) :: ho
@@ -415,8 +395,6 @@ end function om2qu
 !> @brief orientation matrix to Euler angles
 !---------------------------------------------------------------------------------------------------
 pure function om2eu(om) result(eu)
-  use math, only: &
-    PI
 
   real(pReal), intent(in), dimension(3,3) :: om
   real(pReal),             dimension(3)   :: eu
@@ -441,15 +419,6 @@ end function om2eu
 !> @brief convert orientation matrix to axis angle pair
 !---------------------------------------------------------------------------------------------------
 function om2ax(om) result(ax)
-  use prec, only: &
-    dEq0, &
-    cEq, &
-    dNeq0
-  use IO, only: &
-    IO_error
-  use math, only: &
-    math_clip, &
-    math_trace33
 
   real(pReal), intent(in)     :: om(3,3)
   real(pReal)                 :: ax(4)
@@ -560,8 +529,6 @@ end function eu2qu
 !> @brief Euler angles to orientation matrix
 !---------------------------------------------------------------------------------------------------
 pure function eu2om(eu) result(om)
-  use prec, only: &
-    dEq0
   
   real(pReal), intent(in), dimension(3)   :: eu
   real(pReal),             dimension(3,3) :: om
@@ -591,11 +558,6 @@ end function eu2om
 !> @brief convert euler to axis angle
 !---------------------------------------------------------------------------------------------------
 pure function eu2ax(eu) result(ax)
-  use prec, only: &
-    dEq0, &
-    dEq
-  use math, only: &
-    PI
  
   real(pReal), intent(in), dimension(3) :: eu
   real(pReal),             dimension(4) :: ax
@@ -625,13 +587,6 @@ end function eu2ax
 !> @brief Euler angles to Rodrigues vector
 !---------------------------------------------------------------------------------------------------
 pure function eu2ro(eu) result(ro)
-  use prec, only: &
-    dEq0
-  use, intrinsic :: IEEE_ARITHMETIC, only: &
-    IEEE_value, &
-    IEEE_positive_inf
-  use math, only: &
-    PI
 
   real(pReal), intent(in), dimension(3) :: eu
   real(pReal),             dimension(4) :: ro
@@ -681,8 +636,6 @@ end function eu2cu
 !> @brief convert axis angle pair to quaternion
 !---------------------------------------------------------------------------------------------------
 pure function ax2qu(ax) result(qu)
-  use prec, only: &
-    dEq0
     
   real(pReal),      intent(in), dimension(4) :: ax
   type(quaternion)                           :: qu
@@ -755,13 +708,6 @@ end function ax2eu
 !> @brief convert axis angle pair to Rodrigues vector
 !---------------------------------------------------------------------------------------------------
 pure function ax2ro(ax) result(ro)
-  use, intrinsic :: IEEE_ARITHMETIC, only: &
-    IEEE_value, &
-    IEEE_positive_inf
-  use prec, only: &
-    dEq0
-  use math, only: &
-    PI
 
   real(pReal), intent(in), dimension(4) :: ax
   real(pReal),             dimension(4) :: ro
@@ -858,12 +804,6 @@ end function ro2eu
 !> @brief convert Rodrigues vector to axis angle pair
 !---------------------------------------------------------------------------------------------------
 pure function ro2ax(ro) result(ax)
-  use, intrinsic :: IEEE_ARITHMETIC, only: &
-    IEEE_is_finite
-  use prec, only: &
-    dEq0
-  use math, only: &
-    PI
 
   real(pReal), intent(in), dimension(4) :: ro
   real(pReal),             dimension(4) :: ax
@@ -890,12 +830,6 @@ end function ro2ax
 !> @brief convert Rodrigues vector to homochoric
 !---------------------------------------------------------------------------------------------------
 pure function ro2ho(ro) result(ho)
-  use, intrinsic :: IEEE_ARITHMETIC, only: &
-    IEEE_is_finite
-  use prec, only: &
-    dEq0
-  use math, only: &
-    PI
 
   real(pReal),        intent(in), dimension(4) :: ro
   real(pReal),                    dimension(3) :: ho
@@ -973,8 +907,6 @@ end function ho2eu
 !> @brief convert homochoric to axis angle pair
 !---------------------------------------------------------------------------------------------------
 pure function ho2ax(ho) result(ax)
-  use prec, only: &
-    dEq0
 
   real(pReal), intent(in), dimension(3) :: ho
   real(pReal),             dimension(4) :: ax
@@ -1029,13 +961,11 @@ end function ho2ro
 !> @brief convert homochoric to cubochoric
 !---------------------------------------------------------------------------------------------------
 function ho2cu(ho) result(cu)
-  use Lambert, only: &
-    LambertBallToCube
 
   real(pReal), intent(in), dimension(3) :: ho
   real(pReal),             dimension(3) :: cu
 
-  cu = LambertBallToCube(ho)
+  cu = Lambert_BallToCube(ho)
 
 end function ho2cu
 
@@ -1115,13 +1045,11 @@ end function cu2ro
 !> @brief convert cubochoric to homochoric
 !---------------------------------------------------------------------------------------------------
 function cu2ho(cu) result(ho)
-  use Lambert, only: &
-    LambertCubeToBall
 
   real(pReal), intent(in), dimension(3) :: cu
   real(pReal),             dimension(3) :: ho
 
-  ho = LambertCubeToBall(cu)
+  ho = Lambert_CubeToBall(cu)
 
 end function cu2ho
 

@@ -6,12 +6,12 @@
 !> @brief Reading in and interpretating the debugging settings for the various modules
 !--------------------------------------------------------------------------------------------------
 module debug
- use prec, only: &
-   pInt, &
-   pReal
+ use prec
+ use IO
 
  implicit none
  private
+
  integer(pInt), parameter, public :: &
    debug_LEVELSELECTIVE     = 2_pInt**0_pInt, &
    debug_LEVELBASIC         = 2_pInt**1_pInt, &
@@ -78,19 +78,7 @@ contains
 !> @brief reads in parameters from debug.config and allocates arrays
 !--------------------------------------------------------------------------------------------------
 subroutine debug_init
- use prec, only: &
-   pStringLen
- use IO, only: &
-   IO_read_ASCII, &
-   IO_error, &
-   IO_isBlank, &
-   IO_stringPos, &
-   IO_stringValue, &
-   IO_lc, &
-   IO_floatValue, &
-   IO_intValue
 
- implicit none
  character(len=pStringLen), dimension(:), allocatable :: fileContent
 
  integer                            :: i, what, j
@@ -253,8 +241,6 @@ end subroutine debug_init
 !--------------------------------------------------------------------------------------------------
 subroutine debug_reset
 
- implicit none
-
  debug_stressMaxLocation                   = 0_pInt
  debug_stressMinLocation                   = 0_pInt
  debug_jacobianMaxLocation                 = 0_pInt
@@ -272,8 +258,6 @@ end subroutine debug_reset
 !--------------------------------------------------------------------------------------------------
 subroutine debug_info
 
- implicit none
- 
  !$OMP CRITICAL (write2out)
    debugOutputCPFEM: if (iand(debug_level(debug_CPFEM),debug_LEVELBASIC) /= 0 &
                       .and. any(debug_stressMinLocation /= 0_pInt) &

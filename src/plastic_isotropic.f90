@@ -8,11 +8,19 @@
 !! untextured polycrystal
 !--------------------------------------------------------------------------------------------------
 module plastic_isotropic
-  use prec, only: &
-    pReal
+  use prec
+  use debug
+  use math
+  use IO
+  use material
+  use config
+#if defined(PETSc) || defined(DAMASK_HDF5)
+  use results
+#endif
  
   implicit none
   private
+  
   integer,           dimension(:,:),   allocatable, target, public :: &
     plastic_isotropic_sizePostResult                                                                !< size of each post result output
   character(len=64), dimension(:,:),   allocatable, target, public :: &
@@ -25,7 +33,7 @@ module plastic_isotropic
       dot_gamma_ID
   end enum
  
-  type, private :: tParameters
+  type :: tParameters
     real(pReal) :: &
       M, &                                                                                          !< Taylor factor
       xi_0, &                                                                                       !< initial critical stress
@@ -49,7 +57,7 @@ module plastic_isotropic
       dilatation
   end type tParameters
  
-  type, private :: tIsotropicState
+  type :: tIsotropicState
     real(pReal), pointer, dimension(:) :: &
       xi, &
       gamma
@@ -57,8 +65,8 @@ module plastic_isotropic
 
 !--------------------------------------------------------------------------------------------------
 ! containers for parameters and state
- type(tParameters),     allocatable, dimension(:), private :: param
- type(tIsotropicState), allocatable, dimension(:), private :: &
+ type(tParameters),     allocatable, dimension(:) :: param
+ type(tIsotropicState), allocatable, dimension(:) :: &
    dotState, &
    state
 
@@ -77,25 +85,7 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_isotropic_init
-  use prec, only: &
-    pStringLen
-  use debug, only: &
-#ifdef DEBUG
-    debug_e, &
-    debug_i, &
-    debug_g, &
-    debug_levelExtensive, &
-#endif
-    debug_level, &
-    debug_constitutive, &
-    debug_levelBasic
-  use IO, only: &
-    IO_error
-  use material
-  use config, only: &
-    config_phase
-  use lattice
- 
+
   integer :: &
     Ninstance, &
     p, i, &
@@ -235,16 +225,6 @@ end subroutine plastic_isotropic_init
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
-#ifdef DEBUG
-  use debug, only: &
-    debug_level, &
-    debug_constitutive,&
-    debug_levelExtensive, &
-    debug_levelSelective
-#endif
-  use math, only: &
-    math_deviatoric33, &
-    math_mul33xx33
  
   real(pReal), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
@@ -307,10 +287,6 @@ end subroutine plastic_isotropic_LpAndItsTangent
 ! ToDo: Rename Tstar to Mi?
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,instance,of)
-  use math, only: &
-    math_I3, &
-    math_spherical33, &
-    math_mul33xx33
  
   real(pReal), dimension(3,3), intent(out) :: &
     Li                                                                                              !< inleastic velocity gradient
@@ -362,11 +338,6 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,instance,of)
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_isotropic_dotState(Mp,instance,of)
-  use prec, only: &
-    dEq0
-  use math, only: &
-    math_mul33xx33, &
-    math_deviatoric33
  
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
@@ -416,9 +387,6 @@ end subroutine plastic_isotropic_dotState
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
 function plastic_isotropic_postResults(Mp,instance,of) result(postResults)
-  use math, only: &
-    math_mul33xx33, &
-    math_deviatoric33
  
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
@@ -468,7 +436,6 @@ end function plastic_isotropic_postResults
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_isotropic_results(instance,group)
 #if defined(PETSc) || defined(DAMASKHDF5)
-  use results
 
   integer, intent(in) :: instance
   character(len=*), intent(in) :: group

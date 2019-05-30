@@ -5,27 +5,30 @@
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
 module source_thermal_dissipation
-  use prec, only: &
-    pReal
+  use prec
+  use debug
+  use material
+  use config
  
   implicit none
   private
+
   integer,           dimension(:),   allocatable,         public, protected :: &
-    source_thermal_dissipation_offset, &                                                                 !< which source is my current thermal dissipation mechanism?
-    source_thermal_dissipation_instance                                                                  !< instance of thermal dissipation source mechanism
+    source_thermal_dissipation_offset, &                                                            !< which source is my current thermal dissipation mechanism?
+    source_thermal_dissipation_instance                                                             !< instance of thermal dissipation source mechanism
  
   integer,           dimension(:,:), allocatable, target, public :: &
-    source_thermal_dissipation_sizePostResult                                                            !< size of each post result output
+    source_thermal_dissipation_sizePostResult                                                       !< size of each post result output
  
   character(len=64), dimension(:,:), allocatable, target, public :: &
-    source_thermal_dissipation_output                                                                    !< name of each post result output
+    source_thermal_dissipation_output                                                               !< name of each post result output
  
-  type, private :: tParameters                                                                       !< container type for internal constitutive parameters
+  type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
       kappa
   end type tParameters
  
-  type(tParameters), dimension(:),   allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
+  type(tParameters), dimension(:),   allocatable :: param                                           !< containers of constitutive parameters (len Ninstance)
  
  
   public :: &
@@ -40,21 +43,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine source_thermal_dissipation_init
-  use debug, only: &
-    debug_level,&
-    debug_constitutive,&
-    debug_levelBasic
-  use material, only: &
-    material_allocateSourceState, &
-    phase_source, &
-    phase_Nsources, &
-    phase_Noutput, &
-    SOURCE_thermal_dissipation_label, &
-    SOURCE_thermal_dissipation_ID, &
-    material_phase
-  use config, only: &
-    config_phase, &
-    material_Nphase
  
   integer :: Ninstance,instance,source,sourceOffset
   integer :: NofMyPhase,p   
