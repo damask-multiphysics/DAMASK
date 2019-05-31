@@ -3,8 +3,8 @@
 !> @brief linked list
 !--------------------------------------------------------------------------------------------------
 module list
-  use prec, only: &
-    pReal
+  use prec
+  use IO
  
   implicit none
   private 
@@ -65,10 +65,6 @@ contains
 !! to lower case. The data is not stored in the new element but in the current.
 !--------------------------------------------------------------------------------------------------
 subroutine add(this,string)
-  use IO, only: &
-    IO_isBlank, &
-    IO_lc, &
-    IO_stringPos
 
   class(tPartitionedStringList),  target, intent(in) :: this
   character(len=*),                       intent(in) :: string
@@ -157,8 +153,6 @@ end subroutine finalizeArray
 !> @brief reports wether a given key (string value at first position) exists in the list
 !--------------------------------------------------------------------------------------------------
 logical function keyExists(this,key)
-  use IO, only: &
-    IO_stringValue
 
   class(tPartitionedStringList), target, intent(in) :: this
   character(len=*),                      intent(in) :: key
@@ -180,8 +174,6 @@ end function keyExists
 !> @details traverses list and counts each occurrence of specified key
 !--------------------------------------------------------------------------------------------------
 integer function countKeys(this,key)
-  use IO, only: &
-    IO_stringValue
 
   class(tPartitionedStringList), target, intent(in) :: this
   character(len=*),                      intent(in) :: key
@@ -205,10 +197,6 @@ end function countKeys
 !! error unless default is given
 !--------------------------------------------------------------------------------------------------
 real(pReal) function getFloat(this,key,defaultVal)
-  use IO, only : &
-    IO_error, &
-    IO_stringValue, &
-    IO_FloatValue
 
   class(tPartitionedStringList), target, intent(in)           :: this
   character(len=*),                      intent(in)           :: key
@@ -241,10 +229,6 @@ end function getFloat
 !! error unless default is given
 !--------------------------------------------------------------------------------------------------
 integer function getInt(this,key,defaultVal)
-  use IO, only: &
-    IO_error, &
-    IO_stringValue, &
-    IO_IntValue
 
   class(tPartitionedStringList), target, intent(in)           :: this
   character(len=*),                      intent(in)           :: key
@@ -278,9 +262,6 @@ end function getInt
 !! the individual chunks are returned
 !--------------------------------------------------------------------------------------------------
 character(len=65536) function getString(this,key,defaultVal,raw)
-  use IO, only: &
-    IO_error, &
-    IO_stringValue
  
   class(tPartitionedStringList), target, intent(in)           :: this
   character(len=*),                      intent(in)           :: key
@@ -327,10 +308,6 @@ end function getString
 !! values from the last occurrence. If key is not found exits with error unless default is given.
 !--------------------------------------------------------------------------------------------------
 function getFloats(this,key,defaultVal,requiredSize)
-  use IO, only: &
-    IO_error, &
-    IO_stringValue, &
-    IO_FloatValue
  
   real(pReal),     dimension(:), allocatable          :: getFloats
   class(tPartitionedStringList), target, intent(in)   :: this
@@ -376,10 +353,6 @@ end function getFloats
 !! values from the last occurrence. If key is not found exits with error unless default is given.
 !--------------------------------------------------------------------------------------------------
 function getInts(this,key,defaultVal,requiredSize)
-  use IO, only: &
-    IO_error, &
-    IO_stringValue, &
-    IO_IntValue
  
   integer, dimension(:), allocatable                          :: getInts
   class(tPartitionedStringList), target, intent(in)           :: this
@@ -426,9 +399,6 @@ end function getInts
 !! If raw is true, the the complete string is returned, otherwise the individual chunks are returned
 !--------------------------------------------------------------------------------------------------
 function getStrings(this,key,defaultVal,raw)
-  use IO, only: &
-    IO_error, &
-    IO_StringValue
  
   character(len=65536),dimension(:), allocatable             :: getStrings
   class(tPartitionedStringList),target, intent(in)           :: this

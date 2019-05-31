@@ -84,7 +84,7 @@ subroutine source_damage_isoBrittle_init
  
  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_DAMAGE_ISOBRITTLE_LABEL//' init  -+>>>'
 
- Ninstance = int(count(phase_source == SOURCE_damage_isoBrittle_ID))
+ Ninstance = count(phase_source == SOURCE_damage_isoBrittle_ID)
  if (Ninstance == 0) return
  
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &

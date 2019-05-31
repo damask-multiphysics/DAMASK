@@ -50,13 +50,7 @@ for name in filenames:
 
   table.head_read()
   info,extra_header = table.head_getGeom()
-
-  damask.util.croak(['grid     a b c:  {}'.format(' x '.join(map(str,info['grid']))),
-                     'size     x y z:  {}'.format(' x '.join(map(str,info['size']))),
-                     'origin   x y z:  {}'.format(' : '.join(map(str,info['origin']))),
-                     'homogenization:  {}'.format(info['homogenization']),
-                     'microstructures: {}'.format(info['microstructures']),
-                    ])
+  damask.util.report_geom(info)
 
   errors = []
   if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
@@ -73,7 +67,7 @@ for name in filenames:
 # --- do work ------------------------------------------------------------------------------------
 
   microstructure = ndimage.filters.generic_filter(microstructure,mostFrequent,size=(options.stencil,)*3).astype('int_')
-  newInfo = {'microstructures': microstructure.max()}
+  newInfo = {'microstructures': len(np.unique(microstructure))}
 
 # --- report ---------------------------------------------------------------------------------------
   if (    newInfo['microstructures'] != info['microstructures']):
@@ -91,9 +85,9 @@ for name in filenames:
 
 # --- write microstructure information ------------------------------------------------------------
 
-  formatwidth = int(math.floor(math.log10(microstructure.max())+1))
+  formatwidth = int(math.floor(math.log10(np.nanmax(microstructure))+1))
   table.data = microstructure.reshape((info['grid'][0],np.prod(info['grid'][1:])),order='F').transpose()
-  table.data_writeArray('%%%ii'%(formatwidth),delimiter = ' ')
+  table.data_writeArray('%{}i'.format(formatwidth),delimiter = ' ')
 
 # --- output finalization --------------------------------------------------------------------------
 

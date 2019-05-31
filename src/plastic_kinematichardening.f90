@@ -6,11 +6,20 @@
 !! and a Voce-type kinematic hardening rule
 !--------------------------------------------------------------------------------------------------
 module plastic_kinehardening
- use prec, only: &
-   pReal
+ use prec
+ use debug
+ use math
+ use IO
+ use material
+ use config
+ use lattice
+#if defined(PETSc) || defined(DAMASK_HDF5)
+ use results
+#endif
 
  implicit none
  private
+
  integer,           dimension(:,:),   allocatable, target, public :: &
    plastic_kinehardening_sizePostResult                                                             !< size of each post result output
  character(len=64), dimension(:,:),   allocatable, target, public :: &
@@ -29,7 +38,7 @@ module plastic_kinehardening
      resolvedstress_ID
  end enum
 
- type, private :: tParameters
+ type :: tParameters
    real(pReal) :: &
      gdot0, &                                                                                       !< reference shear strain rate for slip
      n, &                                                                                           !< stress exponent for slip
@@ -59,7 +68,7 @@ module plastic_kinehardening
      outputID                                                                                       !< ID of each post result output
  end type tParameters
 
- type, private :: tKinehardeningState
+ type :: tKinehardeningState
    real(pReal), pointer, dimension(:,:) :: &                                                        !< vectors along NipcMyInstance
      crss, &                                                                                        !< critical resolved stress
      crss_back, &                                                                                   !< critical resolved back stress
@@ -71,8 +80,8 @@ module plastic_kinehardening
 
 !--------------------------------------------------------------------------------------------------
 ! containers for parameters and state
- type(tParameters),         allocatable, dimension(:), private :: param
- type(tKinehardeningState), allocatable, dimension(:), private :: &
+ type(tParameters),         allocatable, dimension(:) :: param
+ type(tKinehardeningState), allocatable, dimension(:) :: &
    dotState, &
    deltaState, &
    state
@@ -84,8 +93,6 @@ module plastic_kinehardening
    plastic_kinehardening_deltaState, &
    plastic_kinehardening_postResults, &
    plastic_kinehardening_results
- private :: &
-   kinetics
 
 contains
 
@@ -95,27 +102,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_kinehardening_init
- use prec, only: &
-   dEq0, &
-   pStringLen
- use debug, only: &
-#ifdef DEBUG
-   debug_e, &
-   debug_i, &
-   debug_g, &
-   debug_levelExtensive, &
-#endif
-   debug_level, &
-   debug_constitutive,&
-   debug_levelBasic
- use math, only: &
-   math_expand
- use IO, only: &
-   IO_error
- use material
- use config, only: &
-   config_phase
- use lattice
 
  integer :: &
    Ninstance, &
@@ -417,16 +403,6 @@ end subroutine plastic_kinehardening_dotState
 !> @brief calculates (instantaneous) incremental change of microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_kinehardening_deltaState(Mp,instance,of)
- use prec, only: &
-   dNeq, &
-   dEq0
-#ifdef DEBUG
- use debug, only: &
-   debug_level, &
-   debug_constitutive,&
-   debug_levelExtensive, &
-   debug_levelSelective
-#endif
 
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
@@ -475,8 +451,6 @@ end subroutine plastic_kinehardening_deltaState
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
 function plastic_kinehardening_postResults(Mp,instance,of) result(postResults)
- use math, only: &
-   math_mul33xx33
 
  real(pReal), dimension(3,3), intent(in) :: &
    Mp                                                                                               !< Mandel stress
@@ -535,8 +509,6 @@ end function plastic_kinehardening_postResults
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_kinehardening_results(instance,group)
 #if defined(PETSc) || defined(DAMASK_HDF5)
-  use results, only: &
-    results_writeDataset
 
   integer, intent(in) :: instance
   character(len=*) :: group
@@ -585,10 +557,6 @@ end subroutine plastic_kinehardening_results
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics(Mp,instance,of, &
                          gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_dtau_neg)
- use prec, only: &
-   dNeq0
- use math, only: &
-   math_mul33xx33
 
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress

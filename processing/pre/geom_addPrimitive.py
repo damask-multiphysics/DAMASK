@@ -43,7 +43,7 @@ parser.add_option('-e', '--exponent',  dest='exponent',
                   1 gives a sphere (|x|^(2^1) + |y|^(2^1) + |z|^(2^1) < 1), \
                   large values produce boxes, negative turns concave.')
 parser.add_option('-f', '--fill',       dest='fill',
-                  type='int', metavar = 'int',
+                  type='float', metavar = 'float',
                   help='grain index to fill primitive. "0" selects maximum microstructure index + 1 [%default]')
 parser.add_option('-q', '--quaternion', dest='quaternion',
                   type='float', nargs = 4, metavar=' '.join(['float']*4),
@@ -60,15 +60,24 @@ parser.add_option(     '--nonperiodic', dest='periodic',
 parser.add_option(     '--realspace',  dest='realspace',
                   action='store_true',
                   help = '-c and -d span [origin,origin+size] instead of [0,grid] coordinates')
+parser.add_option(     '--invert',  dest='inside',
+                  action='store_false',
+                  help = 'invert the volume filled by the primitive (inside/outside)')
+parser.add_option('--float',        dest = 'float',
+                  action = 'store_true',
+                  help = 'use float input')
 parser.set_defaults(center = (.0,.0,.0),
-                    fill = 0,
+                    fill = 0.0,
                     degrees = False,
                     exponent = (20,20,20), # box shape by default
                     periodic = True,
                     realspace = False,
+                    inside = True,
+                    float = False,
                    )
 
 (options, filenames) = parser.parse_args()
+
 if options.dimension is None:
   parser.error('no dimension specified.')   
 if options.angleaxis is not None:
@@ -77,6 +86,8 @@ elif options.quaternion is not None:
   rotation = damask.Rotation.fromQuaternion(options.quaternion)
 else:
   rotation = damask.Rotation()
+
+datatype = 'f' if options.float else 'i'
 
 options.center = np.array(options.center)
 options.dimension = np.array(options.dimension)
@@ -97,13 +108,7 @@ for name in filenames:
 
   table.head_read()
   info,extra_header = table.head_getGeom()
-
-  damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
-                     'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
-                     'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
-                     'homogenization:  %i'%info['homogenization'],
-                     'microstructures: %i'%info['microstructures'],
-              ])
+  damask.util.report_geom(info)
 
   errors = []
   if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
@@ -115,7 +120,7 @@ for name in filenames:
 
 #--- read data ------------------------------------------------------------------------------------
 
-  microstructure = table.microstructure_read(info['grid'])                                          # read microstructure
+  microstructure = table.microstructure_read(info['grid'],datatype)                          # read microstructure
 
 # --- do work ------------------------------------------------------------------------------------
 
@@ -123,7 +128,7 @@ for name in filenames:
              'microstructures': 0,
             }
 
-  options.fill = microstructure.max()+1 if options.fill == 0 else options.fill
+  options.fill = np.nanmax(microstructure)+1 if options.fill == 0 else options.fill
   
   microstructure = microstructure.reshape(info['grid'],order='F')
   
@@ -193,19 +198,23 @@ for name in filenames:
                          grid[1] * j : grid[1] * (j+1),
                          grid[2] * k : grid[2] * (k+1)])**options.exponent[2] <= 1.0)
     
-    microstructure = np.where(inside, options.fill, microstructure)   
+    microstructure = np.where(inside,
+                              options.fill   if options.inside else microstructure,
+                              microstructure if options.inside else options.fill)   
 
   else: # nonperiodic, much lighter on resources
     microstructure = np.where(np.abs(X)**options.exponent[0] +
                               np.abs(Y)**options.exponent[1] +
-                              np.abs(Z)**options.exponent[2] <= 1.0, options.fill, microstructure)
+                              np.abs(Z)**options.exponent[2] <= 1.0,
+                              options.fill   if options.inside else microstructure,
+                              microstructure if options.inside else options.fill)   
 
   np.seterr(**old_settings) # Reset warnings to old state
-  newInfo['microstructures'] = microstructure.max()
+  newInfo['microstructures'] = len(np.unique(microstructure))
 
 # --- report ---------------------------------------------------------------------------------------
   if (newInfo['microstructures'] != info['microstructures']):
-    damask.util.croak('--> microstructures: %i'%newInfo['microstructures'])
+    damask.util.croak('--> microstructures: {}'.format(newInfo['microstructures']))
 
 
 #--- write header ---------------------------------------------------------------------------------
@@ -225,9 +234,9 @@ for name in filenames:
 
 # --- write microstructure information ------------------------------------------------------------
 
-  formatwidth = int(math.floor(math.log10(microstructure.max())+1))
+  format = '%g' if options.float else '%{}i'.format(int(math.floor(math.log10(np.nanmax(microstructure))+1)))
   table.data = microstructure.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
-  table.data_writeArray('%%%ii'%(formatwidth),delimiter = ' ')
+  table.data_writeArray(format,delimiter = ' ')
 
 #--- output finalization --------------------------------------------------------------------------
 

@@ -31,19 +31,19 @@ parser.add_option('-s', '--substitute',
                   action = 'extend', metavar = '<string LIST>',
                   help = 'substitutions of microstructure indices from,to,from,to,...')
 parser.add_option('--float',
-                  dest = 'real',
+                  dest = 'float',
                   action = 'store_true',
                   help = 'use float input')
 
 parser.set_defaults(origin = (0.0,0.0,0.0),
                     microstructure = 0,
                     substitute = [],
-                    real = False,
+                    float = False,
                    )
 
 (options, filenames) = parser.parse_args()
 
-datatype = 'f' if options.real else 'i'
+datatype = 'f' if options.float else 'i'
 
 sub = {}
 for i in range(len(options.substitute)//2):                                                         # split substitution list into "from" -> "to"
@@ -64,13 +64,7 @@ for name in filenames:
 
   table.head_read()
   info,extra_header = table.head_getGeom()
-
-  damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
-               'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
-               'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
-               'homogenization:  %i'%info['homogenization'],
-               'microstructures: %i'%info['microstructures'],
-              ])
+  damask.util.report_geom(info)
 
   errors = []
   if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
@@ -92,7 +86,7 @@ for name in filenames:
             }
 
   substituted = np.copy(microstructure)
-  for k, v in sub.items(): substituted[microstructure==k] = v                                   # substitute microstructure indices
+  for k, v in sub.items(): substituted[microstructure==k] = v                                       # substitute microstructure indices
 
   substituted += options.microstructure                                                             # shift microstructure indices
 
@@ -103,9 +97,9 @@ for name in filenames:
 
   remarks = []
   if (any(newInfo['origin']          != info['origin'])):
-    remarks.append('--> origin   x y z:  %s'%(' : '.join(map(str,newInfo['origin']))))
+    remarks.append('--> origin   x y z:  {}'.format(' : '.join(map(str,newInfo['origin']))))
   if (    newInfo['microstructures'] != info['microstructures']):
-    remarks.append('--> microstructures: %i'%newInfo['microstructures'])
+    remarks.append('--> microstructures: {}'.format(newInfo['microstructures']))
   if remarks != []: damask.util.croak(remarks)
 
 # --- write header -------------------------------------------------------------------------------
@@ -124,7 +118,7 @@ for name in filenames:
 
 # --- write microstructure information -----------------------------------------------------------
 
-  format = '%g' if options.real else '%{}i'.format(int(math.floor(math.log10(microstructure.max())+1)))
+  format = '%g' if options.float else '%{}i'.format(int(math.floor(math.log10(np.nanmax(substituted))+1)))
   table.data = substituted.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
   table.data_writeArray(format,delimiter = ' ')
 

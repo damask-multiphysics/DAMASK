@@ -4,9 +4,13 @@
 !--------------------------------------------------------------------------------------------------
 module damage_local
  use prec
+ use material
+ use numerics
+ use config
 
  implicit none
  private
+ 
  integer,                       dimension(:,:),         allocatable, target, public :: &
    damage_local_sizePostResult                                                            !< size of each post result output
 
@@ -20,23 +24,22 @@ module damage_local
    enumerator :: undefined_ID, &
                  damage_ID
  end enum
- integer(kind(undefined_ID)),         dimension(:,:),         allocatable,          private :: & 
+ integer(kind(undefined_ID)),         dimension(:,:),         allocatable :: & 
    damage_local_outputID                                                                  !< ID of each post result output
    
- type, private :: tParameters
+ type :: tParameters
    integer(kind(undefined_ID)),         dimension(:),   allocatable   :: &
      outputID
  end type tParameters
  
- type(tparameters),          dimension(:), allocatable, private :: &
+ type(tparameters),          dimension(:), allocatable :: &
    param
    
  public :: &
    damage_local_init, &
    damage_local_updateState, &
    damage_local_postResults
- private :: &
-   damage_local_getSourceAndItsTangent  
+
 
 contains
 
@@ -45,23 +48,8 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine damage_local_init
- use material, only: &
-   damage_type, &
-   damage_typeInstance, &
-   homogenization_Noutput, &
-   DAMAGE_local_label, &
-   DAMAGE_local_ID, &
-   material_homogenizationAt, & 
-   mappingHomogenization, & 
-   damageState, &
-   damageMapping, &
-   damage, &
-   damage_initialPhi
- use config, only: &
-   config_homogenization
- 
 
- integer :: maxNinstance,homog,instance,o,i
+ integer :: maxNinstance,homog,instance,i
  integer :: sizeState
  integer :: NofMyHomog, h
   integer(kind(undefined_ID)) :: &
@@ -72,7 +60,7 @@ subroutine damage_local_init
  
  write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_local_label//' init  -+>>>'
 
- maxNinstance = int(count(damage_type == DAMAGE_local_ID),pInt)
+ maxNinstance = count(damage_type == DAMAGE_local_ID)
  if (maxNinstance == 0) return
  
  allocate(damage_local_sizePostResult (maxval(homogenization_Noutput),maxNinstance),source=0)
@@ -135,14 +123,6 @@ end subroutine damage_local_init
 !> @brief  calculates local change in damage field   
 !--------------------------------------------------------------------------------------------------
 function damage_local_updateState(subdt, ip, el)
- use numerics, only: &
-   residualStiffness, &
-   err_damage_tolAbs, &
-   err_damage_tolRel
- use material, only: &
-   material_homogenizationAt, &
-   mappingHomogenization, &
-   damageState
  
  integer, intent(in) :: &
    ip, &                                                                                            !< integration point number
@@ -177,17 +157,6 @@ end function damage_local_updateState
 !> @brief  calculates homogenized local damage driving forces  
 !--------------------------------------------------------------------------------------------------
 subroutine damage_local_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el)
- use material, only: &
-   homogenization_Ngrains, &
-   material_homogenizationAt, &
-   phaseAt, &
-   phasememberAt, &
-   phase_source, &
-   phase_Nsources, &
-   SOURCE_damage_isoBrittle_ID, &
-   SOURCE_damage_isoDuctile_ID, &
-   SOURCE_damage_anisoBrittle_ID, &
-   SOURCE_damage_anisoDuctile_ID
  use source_damage_isoBrittle, only: &
    source_damage_isobrittle_getRateAndItsTangent
  use source_damage_isoDuctile, only: &
@@ -244,15 +213,11 @@ subroutine damage_local_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el
  
 end subroutine damage_local_getSourceAndItsTangent
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of damage results
 !--------------------------------------------------------------------------------------------------
 function damage_local_postResults(ip,el)
- use material, only: &
-   material_homogenizationAt, &
-   damage_typeInstance, &
-   damageMapping, &
-   damage
 
  integer,              intent(in) :: &
    ip, &                                                                                            !< integration point

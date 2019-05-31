@@ -24,9 +24,7 @@ use PETScis
 ! grid related information information
  real(pReal),   public                :: wgt                                                        !< weighting factor 1/Nelems
   
-!--------------------------------------------------------------------------------------------------
-! output data
- Vec,                            public :: coordinatesVec
+
 !--------------------------------------------------------------------------------------------------
 ! field labels information
  character(len=*),                         parameter,            public :: &
@@ -53,7 +51,6 @@ use PETScis
  type, public :: tSolutionState                                                                     !< return type of solution from FEM solver variants
    logical       :: converged         = .true.   
    logical       :: stagConverged     = .true.   
-   logical       :: regrid            = .false.   
    integer(pInt) :: iterationsNeeded  = 0_pInt
  end type tSolutionState
 
@@ -79,18 +76,6 @@ use PETScis
    integer(pInt),        allocatable :: faceID(:)
    type(tFieldBC),       allocatable :: fieldBC(:)
  end type tLoadCase
-
- type, public :: tFEMInterpolation
-   integer(pInt)                                :: n                             
-   real(pReal),   dimension(:,:)  , allocatable :: shapeFunc, shapeDerivReal, geomShapeDerivIso
-   real(pReal),   dimension(:,:,:), allocatable :: shapeDerivIso
- end type tFEMInterpolation
- 
- type, public :: tQuadrature
-   integer(pInt)                            :: n
-   real(pReal), dimension(:)  , allocatable :: Weights
-   real(pReal), dimension(:,:), allocatable :: Points
- end type tQuadrature   
  
  public :: &
    utilities_init, &
@@ -119,11 +104,8 @@ subroutine utilities_init
  use math                                                                                           ! must use the whole module for use of FFTW
  use mesh, only: &
    mesh_NcpElemsGlobal, &
-   mesh_maxNips, &
-   geomMesh
-
- implicit none
-
+   mesh_maxNips
+   
  character(len=1024)                :: petsc_optionsPhysics
  PetscErrorCode                     :: ierr
 
@@ -157,35 +139,21 @@ end subroutine utilities_init
 !> @brief calculates constitutive response
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
- use math, only: &
-   math_det33
  use FEsolving, only: &
    restartWrite
  use homogenization, only: &
    materialpoint_P, &
    materialpoint_stressAndItsTangent
  
- implicit none
  real(pReal), intent(in)                                         :: timeinc                         !< loading time
  logical,     intent(in)                                         :: forwardData                     !< age results
  
  real(pReal),intent(out), dimension(3,3)                         :: P_av                            !< average PK stress
  
- logical :: &
-   age
-
  PetscErrorCode :: ierr
 
  write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
 
- age = .False.
- if (forwardData) then                                                                              ! aging results
-   age = .True.
- endif
- if (cutBack) then                                                                                  ! restore saved variables
-   age = .False.
- endif
-  
  call materialpoint_stressAndItsTangent(.true.,timeinc)                                             ! calculate P field
 
  restartWrite = .false.                                                                             ! reset restartWrite status
@@ -202,8 +170,6 @@ end subroutine utilities_constitutiveResponse
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCValue,BCDotValue,timeinc)
 
- implicit none
- 
  Vec                  :: localVec
  PetscInt             :: field, comp, nBcPoints, point, dof, numDof, numComp, offset
  PetscSection         :: section
