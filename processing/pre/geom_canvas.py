@@ -9,6 +9,7 @@ import numpy as np
 
 import damask
 
+
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
@@ -49,6 +50,7 @@ for name in filenames:
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
   grid = geom.get_grid()
+  offset = np.array(options.offset)
   if options.grid is not None:
     grid = np.array([int(o*float(n.lower().replace('x',''))) if n.lower().endswith('x') \
                      else int(n) for o,n in zip(grid,options.grid)],dtype=int)
@@ -56,17 +58,15 @@ for name in filenames:
 
   new = np.full(grid,options.fill if options.fill is not None
                 else np.nanmax(geom.microstructure)+1,geom.microstructure.dtype)
+  
+  l = np.clip(          offset,0,geom.microstructure.shape)
+  r = np.clip(new.shape+offset,0,geom.microstructure.shape)
+  
+  L = np.clip(                         -offset,0,new.shape)
+  R = np.clip(geom.microstructure.shape-offset,0,new.shape)
+  
+  new[l[0]:r[0],l[1]:r[1],l[2]:r[2]] = geom.microstructure[L[0]:R[0],L[1]:R[1],L[2]:R[2]]
 
-  for x in range(geom.microstructure.shape[0]):
-    X = x + options.offset[0]
-    if not 0 <= X < new.shape[0]: continue
-    for y in range(geom.microstructure.shape[1]):
-      Y = y + options.offset[1]
-      if not 0 <= Y < new.shape[1]: continue
-      for z in range(geom.microstructure.shape[2]):
-        Z = z + options.offset[2]
-        if not 0 <= Z < new.shape[2]: continue
-        new[X,Y,Z] = geom.microstructure[x,y,z]
 
   damask.util.croak(geom.update(new,origin=(0,0,0),rescale=True))
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
