@@ -38,11 +38,13 @@
 !> Modeling and Simulations in Materials Science and Engineering 22, 075013 (2014).
 !--------------------------------------------------------------------------
 module Lambert
+  use prec
   use math
 
   implicit none
   private
-  real(pReal), parameter, private :: &
+  
+  real(pReal), parameter :: &
     SPI  = sqrt(PI), &
     PREF = sqrt(6.0_pReal/PI), &
     A    = PI**(5.0_pReal/6.0_pReal)/6.0_pReal**(1.0_pReal/6.0_pReal), &
@@ -55,10 +57,8 @@ module Lambert
     PREK = R1 * 2.0_pReal**(1.0_pReal/4.0_pReal)/BETA
  
   public :: &
-    LambertCubeToBall, &
-    LambertBallToCube
-  private :: &
-   GetPyramidOrder
+    Lambert_CubeToBall, &
+    Lambert_BallToCube
 
 contains
 
@@ -68,7 +68,7 @@ contains
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief map from 3D cubic grid to 3D ball 
 !--------------------------------------------------------------------------
-function LambertCubeToBall(cube) result(ball)
+function Lambert_CubeToBall(cube) result(ball)
  
   real(pReal), intent(in), dimension(3) :: cube
   real(pReal),             dimension(3) :: ball, LamXYZ, XYZ
@@ -116,7 +116,7 @@ function LambertCubeToBall(cube) result(ball)
  
   endif center
 
-end function LambertCubeToBall
+end function Lambert_CubeToBall
 
 
 !--------------------------------------------------------------------------
@@ -124,7 +124,7 @@ end function LambertCubeToBall
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief map from 3D ball to 3D cubic grid  
 !--------------------------------------------------------------------------
-pure function LambertBallToCube(xyz) result(cube)
+pure function Lambert_BallToCube(xyz) result(cube)
  
   real(pReal), intent(in), dimension(3) :: xyz
   real(pReal),             dimension(3) :: cube, xyz1, xyz3
@@ -170,7 +170,7 @@ pure function LambertBallToCube(xyz) result(cube)
  
   endif center
 
-end function LambertBallToCube
+end function Lambert_BallToCube
 
 
 !--------------------------------------------------------------------------

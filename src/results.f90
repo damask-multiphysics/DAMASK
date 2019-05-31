@@ -5,6 +5,9 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !--------------------------------------------------------------------------------------------------
 module results
+  use DAMASK_interface
+  use rotations
+  use numerics
   use HDF5_utilities
 #ifdef PETSc
   use PETSC
@@ -55,8 +58,6 @@ module results
 contains
 
 subroutine results_init
-  use DAMASK_interface, only: &
-    getSolverJobName
 
   character(len=pStringLen) :: commandLine
 
@@ -83,9 +84,6 @@ end subroutine results_init
 !> @brief opens the results file to append data
 !--------------------------------------------------------------------------------------------------
 subroutine results_openJobFile
-  use DAMASK_interface, only: &
-    getSolverJobName
-
 
   resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','a',.true.)
  
@@ -396,8 +394,6 @@ end subroutine results_writeTensorDataset_int
 !> @brief stores a scalar dataset in a group
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeScalarDataset_rotation(group,dataset,label,description,lattice_structure)
-  use rotations, only: &
-    rotation
 
   character(len=*), intent(in)                  :: label,group,description
   character(len=*), intent(in), optional        :: lattice_structure
@@ -428,9 +424,6 @@ end subroutine results_writeScalarDataset_rotation
 !> @brief adds the unique mapping from spatial position and constituent ID to results
 !--------------------------------------------------------------------------------------------------
 subroutine results_mapping_constituent(phaseAt,memberAt,label)
-  use numerics, only: &
-    worldrank, &
-    worldsize
     
   integer,           dimension(:,:),   intent(in)  :: phaseAt                                       !< phase section at (constituent,element)
   integer,           dimension(:,:,:), intent(in)  :: memberAt                                      !< phase member at (constituent,IP,element)
@@ -566,9 +559,6 @@ end subroutine results_mapping_constituent
 !> @brief adds the unique mapping from spatial position and constituent ID to results
 !--------------------------------------------------------------------------------------------------
 subroutine results_mapping_materialpoint(homogenizationAt,memberAt,label)
-  use numerics, only: &
-    worldrank, &
-    worldsize
     
   integer,           dimension(:),   intent(in)  :: homogenizationAt                                !< homogenization section at (element)
   integer,           dimension(:,:), intent(in)  :: memberAt                                        !< homogenization member at (IP,element)
