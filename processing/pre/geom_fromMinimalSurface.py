@@ -76,15 +76,13 @@ parser.set_defaults(type = minimal_surfaces[0],
 name = None if filename == [] else filename[0]
 damask.util.report(scriptName,name)
 
-X = options.periods*2.0*np.pi*(np.arange(options.grid[0])+0.5)/options.grid[0]
-Y = options.periods*2.0*np.pi*(np.arange(options.grid[1])+0.5)/options.grid[1]
-Z = options.periods*2.0*np.pi*(np.arange(options.grid[2])+0.5)/options.grid[2]
+x,y,z = np.meshgrid(options.periods*2.0*np.pi*(np.arange(options.grid[0])+0.5)/options.grid[0],
+                    options.periods*2.0*np.pi*(np.arange(options.grid[1])+0.5)/options.grid[1],
+                    options.periods*2.0*np.pi*(np.arange(options.grid[2])+0.5)/options.grid[2],
+                    indexing='xy',sparse=True)
 
-microstructure = np.empty(options.grid,dtype=int)
-for x in range(options.grid[0]):
-  for y in range(options.grid[1]):
-    for z in range(options.grid[2]):
-      microstructure[x,y,z]=options.microstructure[int(options.threshold < surface[options.type](X[x],Y[y],Z[z]))]
+microstructure = np.where(options.threshold < surface[options.type](x,y,z),
+                          options.microstructure[1],options.microstructure[0])
 
 geom=damask.Geom(microstructure,options.size,
                  homogenization=options.homogenization,
