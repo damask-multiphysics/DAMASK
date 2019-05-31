@@ -13,6 +13,7 @@ module mesh
 
  implicit none
  private
+
  integer, public, protected :: &
    mesh_Nnodes
 
@@ -99,7 +100,6 @@ contains
 
 subroutine tMesh_grid_init(self,nodes)
  
- implicit none
  class(tMesh_grid) :: self
  real(pReal), dimension(:,:), intent(in) :: nodes
  
@@ -131,7 +131,6 @@ subroutine mesh_init(ip,el)
    FEsolving_execElem, &
    FEsolving_execIP
 
- implicit none
  include 'fftw3-mpi.f03'
  integer(C_INTPTR_T) :: devNull, local_K, local_K_offset
  integer :: ierr, worldsize, j
@@ -230,7 +229,6 @@ subroutine mesh_spectral_read_grid()
  use DAMASK_interface, only: &
    geometryFile
 
-  implicit none
   character(len=:),            allocatable :: rawData
   character(len=65536)                     :: line
   integer, allocatable, dimension(:) :: chunkPos
@@ -449,7 +447,6 @@ end subroutine mesh_spectral_build_elements
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_spectral_build_ipNeighborhood
 
- implicit none
  integer :: &
   x,y,z, &
   e
