@@ -13,18 +13,18 @@ module mesh
 
  implicit none
  private
- integer(pInt), public, protected :: &
+ integer, public, protected :: &
    mesh_Nnodes
 
- integer(pInt), dimension(:), allocatable, private :: &
+ integer, dimension(:), allocatable, private :: &
    microGlobal
- integer(pInt), dimension(:), allocatable, private :: &
+ integer, dimension(:), allocatable, private :: &
    mesh_homogenizationAt
 
- integer(pInt), dimension(:,:), allocatable, public, protected :: &
+ integer, dimension(:,:), allocatable, public, protected :: &
    mesh_element                                                                                     !< entryCount and list of elements containing node
 
- integer(pInt), dimension(:,:,:,:), allocatable, public, protected :: &
+ integer, dimension(:,:,:,:), allocatable, public, protected :: &
    mesh_ipNeighborhood                                                                              !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
 
  real(pReal), public, protected :: &
@@ -51,9 +51,9 @@ module mesh
 
 
 ! grid specific
- integer(pInt), dimension(3), public, protected :: &
+ integer, dimension(3), public, protected :: &
    grid                                                                                             !< (global) grid
- integer(pInt), public, protected :: &
+ integer, public, protected :: &
    mesh_NcpElemsGlobal, &                                                                           !< total number of CP elements in global mesh
    grid3, &                                                                                         !< (local) grid in 3rd direction
    grid3Offset                                                                                      !< (local) grid offset in 3rd direction
@@ -76,9 +76,9 @@ module mesh
 
  type, public, extends(tMesh) :: tMesh_grid
  
-  integer(pInt), dimension(3), public :: &
+  integer, dimension(3), public :: &
    grid                                                                                             !< (global) grid
- integer(pInt), public :: &
+ integer, public :: &
    mesh_NcpElemsGlobal, &                                                                           !< total number of CP elements in global mesh
    grid3, &                                                                                         !< (local) grid in 3rd direction
    grid3Offset                                                                                      !< (local) grid offset in 3rd direction
@@ -135,7 +135,7 @@ subroutine mesh_init(ip,el)
  include 'fftw3-mpi.f03'
  integer(C_INTPTR_T) :: devNull, local_K, local_K_offset
  integer :: ierr, worldsize, j
- integer(pInt), intent(in), optional :: el, ip
+ integer, intent(in), optional :: el, ip
  logical :: myDebug
 
  write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
@@ -233,9 +233,9 @@ subroutine mesh_spectral_read_grid()
   implicit none
   character(len=:),            allocatable :: rawData
   character(len=65536)                     :: line
-  integer(pInt), allocatable, dimension(:) :: chunkPos
-  integer(pInt) :: h =- 1_pInt
-  integer(pInt) ::  &
+  integer, allocatable, dimension(:) :: chunkPos
+  integer :: h =- 1_pInt
+  integer ::  &
     headerLength = -1_pInt, &                                                                       !< length of header (in lines)
     fileLength, &                                                                                   !< length of the geom file (in characters)
     fileUnit, &
@@ -416,7 +416,7 @@ end function mesh_build_ipCoordinates
 !! Allocates global array 'mesh_element'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_spectral_build_elements()
- integer(pInt) :: &
+ integer :: &
    e, &
    elemOffset
 
@@ -450,7 +450,7 @@ end subroutine mesh_spectral_build_elements
 subroutine mesh_spectral_build_ipNeighborhood
 
  implicit none
- integer(pInt) :: &
+ integer :: &
   x,y,z, &
   e
  allocate(mesh_ipNeighborhood(3,6,1,theMesh%nElems),source=0_pInt)
@@ -518,16 +518,16 @@ function mesh_nodesAroundCentres(gDim,Favg,centres) result(nodes)
  real(pReal),             dimension(3,size(centres,2)+2,size(centres,3)+2,size(centres,4)+2) :: &
    wrappedCentres
 
- integer(pInt) :: &
+ integer :: &
    i,j,k,n
- integer(pInt),           dimension(3), parameter :: &
+ integer,           dimension(3), parameter :: &
    diag = 1_pInt
- integer(pInt),           dimension(3) :: &
+ integer,           dimension(3) :: &
    shift = 0_pInt, &
    lookup = 0_pInt, &
    me = 0_pInt, &
    iRes = 0_pInt
- integer(pInt),           dimension(3,8) :: &
+ integer,           dimension(3,8) :: &
    neighbor = reshape([ &
                        0_pInt, 0_pInt, 0_pInt, &
                        1_pInt, 0_pInt, 0_pInt, &
