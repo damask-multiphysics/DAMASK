@@ -196,7 +196,6 @@ subroutine utilities_init
     grid3Offset, &
     geomSize
  
-  implicit none
   PetscErrorCode :: ierr
   integer        :: i, j, k, &
     FFTW_planner_flag
@@ -425,7 +424,6 @@ subroutine utilities_updateGamma(C,saveReference)
     math_det33, &
     math_invert2
  
-  implicit none
   real(pReal), intent(in), dimension(3,3,3,3) :: C                                                  !< input stiffness to store as reference stiffness
   logical    , intent(in)                     :: saveReference                                      !< save reference stiffness to file for restart
   complex(pReal),              dimension(3,3) :: temp33_complex, xiDyad_cmplx
@@ -473,7 +471,6 @@ end subroutine utilities_updateGamma
 !> @details Does an unweighted filtered FFT transform from real to complex
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTtensorForward
-  implicit none
 
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
 
@@ -485,7 +482,6 @@ end subroutine utilities_FFTtensorForward
 !> @details Does an weighted inverse FFT transform from complex to real
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTtensorBackward
-  implicit none
 
   call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
   tensorField_real = tensorField_real * wgt                                                         ! normalize the result by number of elements
@@ -497,7 +493,6 @@ end subroutine utilities_FFTtensorBackward
 !> @details Does an unweighted filtered FFT transform from real to complex
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTscalarForward
-  implicit none
 
   call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
 
@@ -509,7 +504,6 @@ end subroutine utilities_FFTscalarForward
 !> @details Does an weighted inverse FFT transform from complex to real
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTscalarBackward
-  implicit none
 
   call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
   scalarField_real = scalarField_real * wgt                                                         ! normalize the result by number of elements
@@ -522,7 +516,6 @@ end subroutine utilities_FFTscalarBackward
 !> @details Does an unweighted filtered FFT transform from real to complex.
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTvectorForward
-  implicit none
 
   call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
 
@@ -534,7 +527,6 @@ end subroutine utilities_FFTvectorForward
 !> @details Does an weighted inverse FFT transform from complex to real
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTvectorBackward
-  implicit none
 
   call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
   vectorField_real = vectorField_real * wgt                                                         ! normalize the result by number of elements
@@ -554,7 +546,6 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
     grid, &
     grid3Offset
  
-  implicit none
   real(pReal), intent(in), dimension(3,3) :: fieldAim                                               !< desired average value of the field after convolution
   complex(pReal),          dimension(3,3) :: temp33_complex, xiDyad_cmplx
   real(pReal),             dimension(6,6) :: A, A_inv
@@ -615,7 +606,6 @@ subroutine utilities_fourierGreenConvolution(D_ref, mobility_ref, deltaT)
     grid, &
     grid3
  
-  implicit none
   real(pReal), dimension(3,3), intent(in) :: D_ref
   real(pReal),                 intent(in) :: mobility_ref, deltaT
   complex(pReal)                          :: GreenOp_hat
@@ -644,7 +634,6 @@ real(pReal) function utilities_divergenceRMS()
     grid, &
     grid3
 
-  implicit none
   integer :: i, j, k, ierr
   complex(pReal), dimension(3)   :: rescaledGeom
 
@@ -694,7 +683,6 @@ real(pReal) function utilities_curlRMS()
     grid, &
     grid3
  
-  implicit none
   integer  ::  i, j, k, l, ierr
   complex(pReal), dimension(3,3) :: curl_fourier
   complex(pReal), dimension(3)   :: rescaledGeom
@@ -766,7 +754,6 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
     math_rotate_forward33, &
     math_invert2
  
-  implicit none
   real(pReal),              dimension(3,3,3,3) :: utilities_maskedCompliance                        !< masked compliance
   real(pReal), intent(in) , dimension(3,3,3,3) :: C                                                 !< current average stiffness
   real(pReal), intent(in) , dimension(3,3)     :: rot_BC                                            !< rotation of load frame
@@ -861,7 +848,6 @@ subroutine utilities_fourierScalarGradient()
     grid3, &
     grid
  
-  implicit none
   integer :: i, j, k
  
   vectorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
@@ -879,7 +865,6 @@ subroutine utilities_fourierVectorDivergence()
     grid3, &
     grid
  
-  implicit none
   integer                :: i, j, k
  
   scalarField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
@@ -898,7 +883,6 @@ subroutine utilities_fourierVectorGradient()
     grid3, &
     grid
  
-  implicit none
   integer :: i, j, k, m, n
  
   tensorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
@@ -919,7 +903,6 @@ subroutine utilities_fourierTensorDivergence()
     grid3, &
     grid
  
-  implicit none
   integer :: i, j, k, m, n
  
   vectorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
@@ -954,7 +937,6 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
     materialpoint_dPdF, &
     materialpoint_stressAndItsTangent
  
-  implicit none
   real(pReal),intent(out), dimension(3,3,3,3)                     :: C_volAvg, C_minmaxAvg          !< average stiffness
   real(pReal),intent(out), dimension(3,3)                         :: P_av                           !< average PK stress
   real(pReal),intent(out), dimension(3,3,grid(1),grid(2),grid3)   :: P                              !< PK stress
@@ -1032,7 +1014,6 @@ pure function utilities_calculateRate(heterogeneous,field0,field,dt,avRate)
     grid3, &
     grid
  
-  implicit none
   real(pReal), intent(in), dimension(3,3) :: &
     avRate                                                                                          !< homogeneous addon
   real(pReal), intent(in) :: &
@@ -1063,7 +1044,6 @@ function utilities_forwardField(timeinc,field_lastInc,rate,aim)
     grid3, &
     grid
 
-  implicit none
   real(pReal), intent(in) :: &
     timeinc                                                                                         !< timeinc of current step
   real(pReal), intent(in),           dimension(3,3,grid(1),grid(2),grid3) :: &
@@ -1100,7 +1080,6 @@ pure function utilities_getFreqDerivative(k_s)
     geomSize, &
     grid
 
-  implicit none
   integer, intent(in),  dimension(3) :: k_s                                                         !< indices of frequency
   complex(pReal),       dimension(3) :: utilities_getFreqDerivative
 
@@ -1158,7 +1137,6 @@ subroutine utilities_updateIPcoords(F)
     grid3Offset, &
     geomSize, &
     mesh_ipCoordinates
-  implicit none
  
   real(pReal),   dimension(3,3,grid(1),grid(2),grid3), intent(in) :: F
   integer :: i, j, k, m, ierr

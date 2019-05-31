@@ -93,7 +93,6 @@ module crystallite
     enumerator :: undefined_ID, &
                   phase_ID, &
                   texture_ID, &
-                  volume_ID, &
                   orientation_ID, &
                   grainrotation_ID, &
                   defgrad_ID, &
@@ -286,8 +285,6 @@ subroutine crystallite_init
          crystallite_outputID(o,c) = phase_ID
        case ('texture') outputName
          crystallite_outputID(o,c) = texture_ID
-       case ('volume') outputName
-         crystallite_outputID(o,c) = volume_ID
        case ('orientation') outputName
          crystallite_outputID(o,c) = orientation_ID
        case ('grainrotation') outputName
@@ -336,7 +333,7 @@ subroutine crystallite_init
   do r = 1,size(config_crystallite)
     do o = 1,crystallite_Noutput(r)
       select case(crystallite_outputID(o,r))
-        case(phase_ID,texture_ID,volume_ID)
+        case(phase_ID,texture_ID)
           mySize = 1
         case(orientation_ID,grainrotation_ID)
           mySize = 4
@@ -914,11 +911,6 @@ function crystallite_postResults(ipc, ip, el)
      case (texture_ID)
        mySize = 1
        crystallite_postResults(c+1) = real(material_texture(ipc,ip,el),pReal)                       ! textureID of grain
-     case (volume_ID)
-       mySize = 1
-       detF = math_det33(crystallite_partionedF(1:3,1:3,ipc,ip,el))                                 ! V_current = det(F) * V_reference
-       crystallite_postResults(c+1) = detF * mesh_ipVolume(ip,el) &
-                                           / real(homogenization_Ngrains(mesh_element(3,el)),pReal) ! grain volume (not fraction but absolute)
      case (orientation_ID)
        mySize = 4
        crystallite_postResults(c+1:c+mySize) = crystallite_orientation(ipc,ip,el)%asQuaternion()

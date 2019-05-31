@@ -5,10 +5,15 @@
 !> @brief material subroutine for plasticity including dislocation flux
 !--------------------------------------------------------------------------------------------------
 module plastic_nonlocal
-  use prec, only: &
-    pReal
+  use prec
   use future
- 
+  use geometry_plastic_nonlocal, only: &
+    periodicSurface => geometry_plastic_nonlocal_periodicSurface, &
+    IPneighborhood  => geometry_plastic_nonlocal_IPneighborhood, &
+    IPvolume        => geometry_plastic_nonlocal_IPvolume, &
+    IParea          => geometry_plastic_nonlocal_IParea, &
+    IPareaNormal    => geometry_plastic_nonlocal_IPareaNormal
+    
   implicit none
   private
   real(pReal), parameter, private :: &
