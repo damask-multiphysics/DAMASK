@@ -50,7 +50,7 @@ for name in filenames:
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
   grid = geom.get_grid()
-  offset = np.array(options.offset)
+  offset = np.asarray(options.offset)
   if options.grid is not None:
     grid = np.array([int(o*float(n.lower().replace('x',''))) if n.lower().endswith('x') \
                      else int(n) for o,n in zip(grid,options.grid)],dtype=int)
@@ -58,13 +58,16 @@ for name in filenames:
 
   new = np.full(grid,options.fill if options.fill is not None
                 else np.nanmax(geom.microstructure)+1,geom.microstructure.dtype)
-  
-  l = np.clip(          offset,0,geom.microstructure.shape)
-  r = np.clip(new.shape+offset,0,geom.microstructure.shape)
-  
-  L = np.clip(                         -offset,0,new.shape)
-  R = np.clip(geom.microstructure.shape-offset,0,new.shape)
-  
+
+  n = np.asarray(new.shape)
+  o = np.asarray(geom.microstructure.shape)
+
+  l = np.clip( offset,  0,np.minimum(o  +offset,n))
+  r = np.clip( offset+o,0,np.minimum(o*2+offset,n))
+
+  L = np.clip(-offset,  0,np.minimum(n  -offset,o))
+  R = np.clip(-offset+n,0,np.minimum(n*2-offset,o))
+
   new[l[0]:r[0],l[1]:r[1],l[2]:r[2]] = geom.microstructure[L[0]:R[0],L[1]:R[1],L[2]:R[2]]
 
 
