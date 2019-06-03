@@ -14,9 +14,9 @@ class Geom():
 
   def __init__(self,microstructure,size,origin=[0.0,0.0,0.0],homogenization=1,comments=[]):
     """New geometry definition from array of microstructures and size"""
+    self.set_microstructure(microstructure)
     self.set_size(size)
     self.set_origin(origin)
-    self.set_microstructure(microstructure)
     self.set_homogenization(homogenization)
     self.set_comments(comments)
     
@@ -26,7 +26,7 @@ class Geom():
     return util.srepr([
            'grid     a b c:      {}'.format(' x '.join(map(str,self.get_grid  ()))),
            'size     x y z:      {}'.format(' x '.join(map(str,self.get_size  ()))),
-           'origin   x y z:      {}'.format(' x '.join(map(str,self.get_origin()))),
+           'origin   x y z:      {}'.format('   '.join(map(str,self.get_origin()))),
            'homogenization:      {}'.format(self.get_homogenization()),
            '# microstructures:   {}'.format(len(np.unique(self.microstructure))),
            'max microstructure:  {}'.format(np.nanmax(self.microstructure)),
@@ -57,10 +57,10 @@ class Geom():
       message[-1] = util.delete(message[-1])
       message.append('size     x y z:      {}'.format(' x '.join(map(str,self.get_size()))))
 
-    message.append('origin   x y z:      {}'.format(' x '.join(map(str,origin_old))))
+    message.append('origin   x y z:      {}'.format('   '.join(map(str,origin_old))))
     if np.any(origin_old != self.get_origin()):
       message[-1] = util.delete(message[-1])
-      message.append('origin   x y z:      {}'.format(' x '.join(map(str,self.get_origin()))))
+      message.append('origin   x y z:      {}'.format('   '.join(map(str,self.get_origin()))))
 
     message.append('homogenization:      {}'.format(self.get_homogenization()))
 
@@ -93,7 +93,10 @@ class Geom():
         self.microstructure = np.copy(microstructure)
 
   def set_size(self,size):
-    if size is not None:
+    if size is None:
+      grid = np.asarray(self.microstructure.shape)
+      self.size = grid/np.max(grid)
+    else:
       if len(size) != 3 or any(np.array(size)<=0):
         raise ValueError('Invalid size {}'.format(*size))
       else:
@@ -211,9 +214,9 @@ class Geom():
     origin = self.get_origin()
 
     coords = [
-              np.linspace(0,size[0],grid[0]) - origin[0],
-              np.linspace(0,size[1],grid[1]) - origin[1],
-              np.linspace(0,size[2],grid[2]) - origin[2]
+              np.linspace(0,size[0],grid[0]) + origin[0],
+              np.linspace(0,size[1],grid[1]) + origin[1],
+              np.linspace(0,size[2],grid[2]) + origin[2]
              ]
     
     rGrid = vtk.vtkRectilinearGrid()
@@ -228,12 +231,17 @@ class Geom():
     rGrid.SetYCoordinates(coordArray[1])
     rGrid.SetZCoordinates(coordArray[2])
     
-    ms = numpy_support.numpy_to_vtk(num_array=self.microstructure.flatten(order='F'),array_type=vtk.VTK_INT)
+    ms = numpy_support.numpy_to_vtk(num_array=self.microstructure.flatten(order='F'),
+                                    array_type=vtk.VTK_INT if self.microstructure.dtype == int else vtk.VTK_FLOAT)
     ms.SetName('microstructure')
     rGrid.GetCellData().AddArray(ms)
 
 
-    if fname is not None:
+    if fname is None:
+      writer = vtk.vtkDataSetWriter()
+      writer.SetHeader('damask.Geom '+version)
+      writer.WriteToOutputStringOn()
+    else:
       writer = vtk.vtkXMLRectilinearGridWriter()
       writer.SetCompressorTypeToZLib()
       writer.SetDataModeToBinary()
@@ -246,10 +254,6 @@ class Geom():
       else:
         raise ValueError("unknown extension {}".format(ext))
       writer.SetFileName(name)
-    else:
-      writer = vtk.vtkDataSetWriter()
-      writer.SetHeader('damask.Geom '+version)
-      writer.WriteToOutputStringOn()
   
     writer.SetInputData(rGrid)
     writer.Write()
