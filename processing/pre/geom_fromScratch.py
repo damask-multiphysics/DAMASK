@@ -29,7 +29,7 @@ parser.add_option('-g','--grid',
 parser.add_option('-s', '--size',
                   dest = 'size',
                   type = 'float', nargs = 3, metavar = ' '.join(['float']*3),
-                  help = 'x,y,z of geometry size %default')
+                  help = 'x,y,z of geometry size')
 parser.add_option('-o','--origin',
                   dest = 'origin',
                   type = 'float', nargs = 3, metavar = ' '.join(['float']*3),
@@ -44,7 +44,6 @@ parser.add_option('-f','--fill',
                   help = 'microstructure index [%default]')
 
 parser.set_defaults(grid = (16,16,16),
-                    size = (1.,1.,1.),
                     origin = (0.,0.,0.),
                     homogenization = 1,
                     fill = 1,
