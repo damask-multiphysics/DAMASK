@@ -29,12 +29,12 @@ parser.add_option('-d','--direction',
                   dest = 'directions',
                   action = 'extend', metavar = '<string LIST>',
                   help = "directions in which to mirror {{{}}}".format(','.join(validDirections)))
-parser.add_option(    '--periodic',
-                  dest = 'periodic',
+parser.add_option(    '--reflect',
+                  dest = 'reflect',
                   action = 'store_true',
-                  help = 'omit periodic copies of outermost layers in mirror direction')
+                  help = 'reflect (include) outermost layers')
 
-parser.set_defaults(periodic = False)
+parser.set_defaults(reflect = False)
 
 (options, filenames) = parser.parse_args()
 
@@ -45,7 +45,7 @@ if not set(options.directions).issubset(validDirections):
   invalidDirections = [str(e) for e in set(options.directions).difference(validDirections)]
   parser.error('invalid directions {}. '.format(*invalidDirections))
 
-limits = [-2,0] if options.periodic else [None,None]
+limits = [None,None] if options.reflect else [-2,0]
 
 
 if filenames == []: filenames = [None]
