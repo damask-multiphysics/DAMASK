@@ -56,12 +56,15 @@ for name in filenames:
                   else float(n) for o,n in zip(size,options.size)],dtype=float)
 
   damask.util.croak(geom.update(microstructure =
-                                  ndimage.interpolation.zoom(
+                                ndimage.interpolation.zoom(
                                     geom.microstructure,
-                                    new_grid/grid,output=geom.microstructure.dtype,
-                                    order=0,mode='nearest', prefilter=False\
-                                                            ) \
-                                 if np.any(new_grid != grid) else None,
+                                    new_grid/grid,
+                                    output=geom.microstructure.dtype,
+                                    order=0,
+                                    mode='nearest',
+                                    prefilter=False,
+                                 ) if np.any(new_grid != grid) \
+                                 else None,
                                  size = new_size))
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
 
