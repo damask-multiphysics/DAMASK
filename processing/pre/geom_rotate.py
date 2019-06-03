@@ -35,7 +35,7 @@ parser.add_option('-e', '--eulers',
 parser.add_option('-d', '--degrees',
                   dest = 'degrees',
                   action = 'store_true',
-                  help = 'Angles (Euler angles/axis angle) are given in degrees [%default]')
+                  help = 'Euler angles/axis angle are given in degrees')
 parser.add_option('-m', '--matrix',
                   dest = 'matrix',
                   type = 'float', nargs = 9, metavar = ' '.join(['float']*9),
@@ -61,7 +61,7 @@ if [options.rotation,options.eulers,options.matrix,options.quaternion].count(Non
 if options.quaternion is not None:
   rot = damask.Rotation.fromQuaternion(np.array(options.quaternion))                            # we might need P=+1 here, too...
 if options.rotation is not None:
-  rot = damask.Rotation.fromAxisAngle(np.array(options.rotation),degrees=options.degrees,P=+1)
+  rot = damask.Rotation.fromAxisAngle(np.array(options.rotation),degrees=options.degrees,normalise=True,P=+1)
 if options.matrix is not None:
   rot = damask.Rotation.fromMatrix(np.array(options.Matrix))
 if options.eulers is not None:
@@ -76,7 +76,9 @@ for name in filenames:
   damask.util.report(scriptName,name)
 
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-
+  size   = geom.get_size()
+  grid   = geom.get_grid()
+  origin = geom.get_origin()
   microstructure = geom.get_microstructure()
   fill = np.nanmax(microstructure)+1 if options.fill is None else options.fill
   dtype = float if np.isnan(fill) or int(fill) != fill or microstructure.dtype==np.float else int
@@ -90,7 +92,7 @@ for name in filenames:
   microstructure = ndimage.rotate(microstructure,eulers[0],(0,1),order=0,
                                   prefilter=False,output=dtype,cval=fill)            # rotation around z
 
-  damask.util.croak(geom.update(microstructure,rescale=True))
+  damask.util.croak(geom.update(microstructure,origin=origin-(np.asarray(microstructure.shape)-grid)/2*size/grid,rescale=True))
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
 
   if name is None:
