@@ -31,13 +31,20 @@ parser.add_option('-r', '--renumber',
                   dest = 'renumber',
                   action = 'store_true',
                   help = 'renumber microstructure indices from 1..N [%default]')
+parser.add_option('--float',
+                  dest = 'float',
+                  action = 'store_true',
+                  help = 'use float input')
 
 parser.set_defaults(renumber = False,
                     grid = ['0','0','0'],
                     size  = ['0.0','0.0','0.0'],
+                    float = False,
                    )
 
 (options, filenames) = parser.parse_args()
+
+datatype = 'f' if options.float else 'i'
 
 # --- loop over input files -------------------------------------------------------------------------
 
@@ -46,7 +53,8 @@ if filenames == []: filenames = [None]
 for name in filenames:
   try:
     table = damask.ASCIItable(name = name,
-                              buffered = False, labeled = False)
+                              buffered = False,
+                              labeled = False)
   except: continue
   damask.util.report(scriptName,name)
 
@@ -54,13 +62,7 @@ for name in filenames:
 
   table.head_read()
   info,extra_header = table.head_getGeom()
-  
-  damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
-               'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
-               'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
-               'homogenization:  %i'%info['homogenization'],
-               'microstructures: %i'%info['microstructures'],
-              ])
+  damask.util.report_geom(info)
 
   errors = []
   if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
@@ -72,7 +74,7 @@ for name in filenames:
 
 # --- read data ------------------------------------------------------------------------------------
 
-  microstructure = table.microstructure_read(info['grid'])                                          # read microstructure
+  microstructure = table.microstructure_read(info['grid'],datatype)                                   # read microstructure
 
 # --- do work ------------------------------------------------------------------------------------
  
@@ -113,7 +115,7 @@ for name in filenames:
         newID += 1
         microstructure = np.where(microstructure == microstructureID, newID,microstructure).reshape(microstructure.shape)
 
-  newInfo['microstructures'] = microstructure.max()
+  newInfo['microstructures'] = len(np.unique(microstructure))
 
 # --- report ---------------------------------------------------------------------------------------
 
@@ -152,9 +154,9 @@ for name in filenames:
   
 # --- write microstructure information ------------------------------------------------------------
 
-  formatwidth = int(math.floor(math.log10(microstructure.max())+1))
+  format = '%g' if options.float else '%{}i'.format(int(math.floor(math.log10(np.nanmax(microstructure))+1)))
   table.data = microstructure.reshape((newInfo['grid'][0],newInfo['grid'][1]*newInfo['grid'][2]),order='F').transpose()
-  table.data_writeArray('%%%ii'%(formatwidth),delimiter = ' ')
+  table.data_writeArray(format,delimiter=' ')
     
 # --- output finalization --------------------------------------------------------------------------
 

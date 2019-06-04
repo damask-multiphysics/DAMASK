@@ -23,10 +23,15 @@ parser.add_argument('filenames', nargs='+',
                     help='DADF5 files')
 parser.add_argument('-d','--dir', dest='dir',default='postProc',metavar='string',
                     help='name of subdirectory to hold output')
+parser.add_argument('--mat', nargs='+',
+                    help='labels for materialpoint/homogenization',dest='mat')
+parser.add_argument('--con', nargs='+',
+                    help='labels for constituent/crystallite/constitutive',dest='con')
 
 options = parser.parse_args()
 
-options.labels = ['Fe','Fp','xi_sl']
+if options.mat is None: options.mat=[]
+if options.con is None: options.con=[]
 
 # --- loop over input files ------------------------------------------------------------------------
 
@@ -54,7 +59,9 @@ for filename in options.filenames:
     print('Output step {}/{}'.format(i+1,len(results.increments)))
     vtk_data = []
     results.active['increments'] = [inc]
-    for label in options.labels:
+    
+    for label in options.con:
+      
       for o in results.c_output_types:
         results.active['c_output_types'] = [o]
         if o != 'generic':
