@@ -8,7 +8,6 @@ module plastic_nonlocal
   use prec
   use future
   use geometry_plastic_nonlocal, only: &
-    periodicSurface => geometry_plastic_nonlocal_periodicSurface, &
     IPneighborhood  => geometry_plastic_nonlocal_IPneighborhood, &
     IPvolume        => geometry_plastic_nonlocal_IPvolume, &
     IParea          => geometry_plastic_nonlocal_IParea, &

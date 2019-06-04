@@ -229,7 +229,6 @@ integer, dimension(:,:), allocatable, private :: &
 
 
  private :: &
-   mesh_get_damaskOptions, &
    mesh_build_cellconnectivity, &
    mesh_build_ipAreas, &
    FE_mapElemtype, &
@@ -341,8 +340,6 @@ subroutine mesh_init(ip,el)
  
  call mesh_marc_build_elements(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
- call mesh_get_damaskOptions(mesh_periodicSurface,FILEUNIT)
- if (myDebug) write(6,'(a)') ' Got DAMASK options'; flush(6)
  close (FILEUNIT)
   
  
@@ -808,8 +805,8 @@ subroutine mesh_marc_build_elements(fileUnit)
      exit
    endif
  enddo
-
 620 rewind(fileUnit)                                                                                ! just in case "initial state" appears before "connectivity"
+ call calcCells(theMesh,mesh_element(5:,:))
  read (fileUnit,'(A300)',END=630) line
  do
    chunkPos = IO_stringPos(line)
@@ -847,45 +844,6 @@ subroutine mesh_marc_build_elements(fileUnit)
 630 end subroutine mesh_marc_build_elements
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief get any additional damask options from input file, sets mesh_periodicSurface
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_get_damaskOptions(periodic_surface,fileUnit)
-
- integer, intent(in) :: fileUnit
-
- integer, allocatable, dimension(:) :: chunkPos
- character(len=300) :: line
- integer :: myStat
- integer :: chunk, Nchunks
- character(len=300) ::  v
- logical, dimension(3) :: periodic_surface
- 
-
- periodic_surface = .false.
- myStat = 0
- rewind(fileUnit)
- do while(myStat == 0)
-   read (fileUnit,'(a300)',iostat=myStat) line
-   chunkPos = IO_stringPos(line)
-   Nchunks = chunkPos(1)
-   if (IO_lc(IO_stringValue(line,chunkPos,1)) == '$damask' .and. Nchunks > 1) then        ! found keyword for damask option and there is at least one more chunk to read
-     select case(IO_lc(IO_stringValue(line,chunkPos,2)))
-       case('periodic')                                                                             ! damask Option that allows to specify periodic fluxes
-         do chunk = 3,Nchunks                                                                  ! loop through chunks (skipping the keyword)
-            v = IO_lc(IO_stringValue(line,chunkPos,chunk))                                          ! chunk matches keyvalues x,y, or z?
-            mesh_periodicSurface(1) = mesh_periodicSurface(1) .or. v == 'x'
-            mesh_periodicSurface(2) = mesh_periodicSurface(2) .or. v == 'y'
-            mesh_periodicSurface(3) = mesh_periodicSurface(3) .or. v == 'z'
-         enddo
-     endselect
-   endif
- enddo
-
-end subroutine mesh_get_damaskOptions
-
-
-
 subroutine calcCells(thisMesh,connectivity_elem)
 
   class(tMesh) :: thisMesh
@@ -893,11 +851,17 @@ subroutine calcCells(thisMesh,connectivity_elem)
   integer(pInt),dimension(:,:), allocatable :: con_elem,temp,con,parentsAndWeights,candidates_global
   integer(pInt),dimension(:), allocatable :: l, nodes, candidates_local
   integer(pInt),dimension(:,:,:), allocatable :: con_cell,connectivity_cell
-  integer(pInt),dimension(:,:), allocatable :: sorted,test
+  integer(pInt),dimension(:,:), allocatable :: sorted,test,connectivity_cell_reshape
   real(pReal), dimension(:,:), allocatable :: coordinates,nodes5
   integer(pInt) :: e, n, c, p, s,u,i,m,j,nParentNodes,nCellNode,ierr
 
-  !nodes5 = thisMesh%node_0
+#if defined(DAMASK_HDF5)
+ call results_openJobFile
+ call HDF5_closeGroup(results_addGroup('geometry'))
+ call results_writeDataset('geometry',connectivity_elem,'connectivity_element',&
+                           'connectivity of the elements','-')
+#endif
+
 !---------------------------------------------------------------------------------------------------
 ! initialize global connectivity to negative local connectivity
   allocate(connectivity_cell(thisMesh%elem%NcellNodesPerCell,thisMesh%elem%nIPs,thisMesh%Nelems))
@@ -1020,8 +984,13 @@ subroutine calcCells(thisMesh,connectivity_elem)
      if (p/=0) nodes5 = reshape([nodes5,coordinates],[3,nCellNode])
   enddo
   thisMesh%node_0 = nodes5
-
-  
+ connectivity_cell_reshape = reshape(connectivity_cell,[thisMesh%elem%NcellNodesPerCell,thisMesh%elem%nIPs*thisMesh%Nelems])
+ 
+#if defined(DAMASK_HDF5) 
+ call results_writeDataset('geometry',connectivity_cell_reshape,'connectivity_cell',&
+                           'connectivity of the cells','-')
+ call results_closeJobFile
+#endif  
 end subroutine calcCells
 
 !--------------------------------------------------------------------------------------------------

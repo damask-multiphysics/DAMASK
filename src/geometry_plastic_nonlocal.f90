@@ -10,8 +10,6 @@ module geometry_plastic_nonlocal
 
   implicit none
   private
-  logical,    dimension(3),                    public, parameter :: &
-    geometry_plastic_nonlocal_periodicSurface = .true.                                              !< flag indicating periodic outer surfaces (used for fluxes) NEEDED?
 
   integer,    dimension(:,:,:,:), allocatable, public, protected :: &
     geometry_plastic_nonlocal_IPneighborhood                                                        !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]

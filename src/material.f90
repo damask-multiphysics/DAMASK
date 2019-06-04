@@ -152,7 +152,6 @@ module material
 
  logical, dimension(:), allocatable, public, protected :: &
    microstructure_active, &
-   microstructure_elemhomo, &                                                                       !< flag to indicate homogeneous microstructure distribution over element's IPs
    phase_localPlasticity                                                                            !< flags phases with local constitutive law
 
  integer, private :: &
@@ -323,12 +322,11 @@ subroutine material_init
    do h = 1,size(config_homogenization)
      write(6,'(1x,a32,1x,a16,1x,i6)') homogenization_name(h),homogenization_type(h),homogenization_Ngrains(h)
    enddo
-   write(6,'(/,a14,18x,1x,a11,1x,a12,1x,a13)') 'microstructure','crystallite','constituents','homogeneous'
+   write(6,'(/,a14,18x,1x,a11,1x,a12,1x,a13)') 'microstructure','crystallite','constituents'
    do m = 1,size(config_microstructure)
-     write(6,'(1x,a32,1x,i11,1x,i12,1x,l13)') microstructure_name(m), &
-                                        microstructure_crystallite(m), &
-                                        microstructure_Nconstituents(m), &
-                                        microstructure_elemhomo(m)
+     write(6,'(1x,a32,1x,i11,1x,i12)') microstructure_name(m), &
+                                       microstructure_crystallite(m), &
+                                       microstructure_Nconstituents(m)
      if (microstructure_Nconstituents(m) > 0) then
        do c = 1,microstructure_Nconstituents(m)
          write(6,'(a1,1x,a32,1x,a32,1x,f7.4)') '>',phase_name(microstructure_phase(c,m)),&
@@ -538,7 +536,6 @@ subroutine material_parseMicrostructure
  allocate(microstructure_crystallite(size(config_microstructure)),          source=0)
  allocate(microstructure_Nconstituents(size(config_microstructure)),        source=0)
  allocate(microstructure_active(size(config_microstructure)),               source=.false.)
- allocate(microstructure_elemhomo(size(config_microstructure)),             source=.false.)
 
  if(any(theMesh%microstructureAt > size(config_microstructure))) &
   call IO_error(155,ext_msg='More microstructures in geometry than sections in material.config')
@@ -549,7 +546,6 @@ subroutine material_parseMicrostructure
  do m=1, size(config_microstructure)
    microstructure_Nconstituents(m) =  config_microstructure(m)%countKeys('(constituent)')
    microstructure_crystallite(m)   =  config_microstructure(m)%getInt('crystallite')
-   microstructure_elemhomo(m)      =  config_microstructure(m)%keyExists('/elementhomogeneous/')
  enddo
 
  microstructure_maxNconstituents = maxval(microstructure_Nconstituents)
