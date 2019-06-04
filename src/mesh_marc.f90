@@ -66,6 +66,7 @@ integer, dimension(:,:), allocatable, private :: &
    mesh_cellnodeParent                                                                              !< cellnode's parent element ID, cellnode's intra-element ID
 
  integer,dimension(:,:,:), allocatable, private :: &
+   mesh_cell2, &                                                                                        !< cell connectivity for each element,ip/cell
    mesh_cell                                                                                        !< cell connectivity for each element,ip/cell
 
  integer, dimension(:,:,:), allocatable, private :: &
@@ -984,6 +985,7 @@ subroutine calcCells(thisMesh,connectivity_elem)
      if (p/=0) nodes5 = reshape([nodes5,coordinates],[3,nCellNode])
   enddo
   thisMesh%node_0 = nodes5
+  mesh_cell2 = connectivity_cell
  connectivity_cell_reshape = reshape(connectivity_cell,[thisMesh%elem%NcellNodesPerCell,thisMesh%elem%nIPs*thisMesh%Nelems])
  
 #if defined(DAMASK_HDF5) 
@@ -1118,25 +1120,25 @@ subroutine mesh_build_ipVolumes
 
        case (1)                                                                                ! 2D 3node
          forall (i = 1:theMesh%elem%nIPs) &                                                           ! loop over ips=cells in this element
-           mesh_ipVolume(i,e) = math_areaTriangle(mesh_cellnode(1:3,mesh_cell(1,i,e)), &
-                                                  mesh_cellnode(1:3,mesh_cell(2,i,e)), &
-                                                  mesh_cellnode(1:3,mesh_cell(3,i,e)))
+           mesh_ipVolume(i,e) = math_areaTriangle(theMesh%node_0(1:3,mesh_cell2(1,i,e)), &
+                                                  theMesh%node_0(1:3,mesh_cell2(2,i,e)), &
+                                                  theMesh%node_0(1:3,mesh_cell2(3,i,e)))
 
        case (2)                                                                                ! 2D 4node
          forall (i = 1:theMesh%elem%nIPs) &                                                           ! loop over ips=cells in this element
-           mesh_ipVolume(i,e) = math_areaTriangle(mesh_cellnode(1:3,mesh_cell(1,i,e)), &            ! here we assume a planar shape, so division in two triangles suffices
-                                                  mesh_cellnode(1:3,mesh_cell(2,i,e)), &
-                                                  mesh_cellnode(1:3,mesh_cell(3,i,e))) &
-                              + math_areaTriangle(mesh_cellnode(1:3,mesh_cell(3,i,e)), &
-                                                  mesh_cellnode(1:3,mesh_cell(4,i,e)), &
-                                                  mesh_cellnode(1:3,mesh_cell(1,i,e)))
+           mesh_ipVolume(i,e) = math_areaTriangle(theMesh%node_0(1:3,mesh_cell2(1,i,e)), &            ! here we assume a planar shape, so division in two triangles suffices
+                                                  theMesh%node_0(1:3,mesh_cell2(2,i,e)), &
+                                                  theMesh%node_0(1:3,mesh_cell2(3,i,e))) &
+                              + math_areaTriangle(theMesh%node_0(1:3,mesh_cell2(3,i,e)), &
+                                                  theMesh%node_0(1:3,mesh_cell2(4,i,e)), &
+                                                  theMesh%node_0(1:3,mesh_cell2(1,i,e)))
 
        case (3)                                                                                ! 3D 4node
          forall (i = 1:theMesh%elem%nIPs) &                                                           ! loop over ips=cells in this element
-           mesh_ipVolume(i,e) = math_volTetrahedron(mesh_cellnode(1:3,mesh_cell(1,i,e)), &
-                                                    mesh_cellnode(1:3,mesh_cell(2,i,e)), &
-                                                    mesh_cellnode(1:3,mesh_cell(3,i,e)), &
-                                                    mesh_cellnode(1:3,mesh_cell(4,i,e)))
+           mesh_ipVolume(i,e) = math_volTetrahedron(theMesh%node_0(1:3,mesh_cell2(1,i,e)), &
+                                                    theMesh%node_0(1:3,mesh_cell2(2,i,e)), &
+                                                    theMesh%node_0(1:3,mesh_cell2(3,i,e)), &
+                                                    theMesh%node_0(1:3,mesh_cell2(4,i,e)))
 
        case (4)                                                                                ! 3D 8node
          m = FE_NcellnodesPerCellface(c)
