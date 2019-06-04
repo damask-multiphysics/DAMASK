@@ -491,7 +491,7 @@ module lattice
   end enum
  
   integer(kind(LATTICE_undefined_ID)),        dimension(:),       allocatable, public, protected :: &
-    lattice_structure, trans_lattice_structure
+    lattice_structure
  
   
   interface lattice_forestProjection ! DEPRECATED, use lattice_forestProjection_edge
@@ -557,7 +557,6 @@ subroutine lattice_init
   Nphases = size(config_phase)
  
   allocate(lattice_structure(Nphases),source = LATTICE_undefined_ID)
-  allocate(trans_lattice_structure(Nphases),source = LATTICE_undefined_ID)
   allocate(lattice_C66(6,6,Nphases),  source=0.0_pReal)
   allocate(lattice_C3333(3,3,3,3,Nphases),  source=0.0_pReal)
   
@@ -595,14 +594,6 @@ subroutine lattice_init
         lattice_structure(p) = LATTICE_ort_ID
     end select
  
-    tag = 'undefined'
-    tag = config_phase(p)%getString('trans_lattice_structure',defaultVal=tag)
-    select case(trim(tag))
-      case('bcc')
-         trans_lattice_structure(p) = LATTICE_bcc_ID
-      case('hex','hexagonal')
-         trans_lattice_structure(p) = LATTICE_hex_ID
-    end select
  
     lattice_C66(1,1,p) = config_phase(p)%getFloat('c11',defaultVal=0.0_pReal)
     lattice_C66(1,2,p) = config_phase(p)%getFloat('c12',defaultVal=0.0_pReal)
