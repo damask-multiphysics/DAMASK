@@ -438,6 +438,7 @@ subroutine mesh_spectral_build_ipNeighborhood
     do y = 0,grid(2)-1
       do x = 0,grid(1)-1
         e = e + 1
+          ! neigboring element
           mesh_ipNeighborhood(1,1,1,e) = z * grid(1) * grid(2) &
                                        + y * grid(1) &
                                        + modulo(x+1,grid(1)) &
@@ -462,7 +463,9 @@ subroutine mesh_spectral_build_ipNeighborhood
                                        + y * grid(1) &
                                        + x &
                                        + 1
+          ! neigboring IP
           mesh_ipNeighborhood(2,1:6,1,e) = 1
+          ! neigboring face
           mesh_ipNeighborhood(3,1,1,e) = 2
           mesh_ipNeighborhood(3,2,1,e) = 1
           mesh_ipNeighborhood(3,3,1,e) = 4
