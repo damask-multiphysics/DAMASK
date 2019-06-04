@@ -349,6 +349,8 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Built cell connectivity'; flush(6)
  mesh_cellnode = mesh_build_cellnodes()
  if (myDebug) write(6,'(a)') ' Built cell nodes'; flush(6)
+
+ allocate(mesh_ipCoordinates(3,theMesh%elem%nIPs,theMesh%nElems),source=0.0_pReal)
  call mesh_build_ipCoordinates
  if (myDebug) write(6,'(a)') ' Built IP coordinates'; flush(6)
  call mesh_build_ipVolumes
@@ -1160,6 +1162,14 @@ subroutine mesh_build_ipVolumes
 end subroutine mesh_build_ipVolumes
 
 
+subroutine IP_neighborhood2
+
+  integer, dimension(:,:,:,:), allocatable :: faces
+
+  allocate(faces(size(theMesh%elem%cellface,1),size(theMesh%elem%cellface,2),theMesh%elem%nIPs,theMesh%Nelems))
+
+end subroutine IP_neighborhood2
+
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculates IP Coordinates. Allocates global array 'mesh_ipCoordinates'
 ! Called by all solvers in mesh_init in order to initialize the ip coordinates.
@@ -1174,27 +1184,21 @@ end subroutine mesh_build_ipVolumes
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_ipCoordinates
 
- 
- integer :: e,t,g,c,i,n
- real(pReal), dimension(3) :: myCoords
+  integer :: e,i,n
+  real(pReal), dimension(3) :: myCoords
 
- if (.not. allocated(mesh_ipCoordinates)) &
-   allocate(mesh_ipCoordinates(3,theMesh%elem%nIPs,theMesh%nElems),source=0.0_pReal)
 
- !$OMP PARALLEL DO PRIVATE(t,g,c,myCoords)
- do e = 1,theMesh%nElems                                                                        ! loop over cpElems
-   t = mesh_element(2,e)                                                                       ! get element type
-   g = theMesh%elem%geomType
-   c = theMesh%elem%cellType
-   do i = 1,theMesh%elem%nIPs
-     myCoords = 0.0_pReal
-     do n = 1,theMesh%elem%nCellnodesPerCell
-       myCoords = myCoords + mesh_cellnode(1:3,mesh_cell(n,i,e))
-     enddo
-     mesh_ipCoordinates(1:3,i,e) = myCoords / real(theMesh%elem%nCellnodesPerCell,pReal)
-   enddo
- enddo
- !$OMP END PARALLEL DO
+  !$OMP PARALLEL DO PRIVATE(myCoords)
+  do e = 1,theMesh%nElems                                                                        ! loop over cpElems
+    do i = 1,theMesh%elem%nIPs
+      myCoords = 0.0_pReal
+      do n = 1,theMesh%elem%nCellnodesPerCell
+        myCoords = myCoords + mesh_cellnode(1:3,mesh_cell2(n,i,e))
+      enddo
+      mesh_ipCoordinates(1:3,i,e) = myCoords / real(theMesh%elem%nCellnodesPerCell,pReal)
+    enddo
+  enddo
+  !$OMP END PARALLEL DO
 
 end subroutine mesh_build_ipCoordinates
 
@@ -1203,10 +1207,7 @@ end subroutine mesh_build_ipCoordinates
 !> @brief calculation of IP interface areas, allocate globals '_ipArea', and '_ipAreaNormal'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_ipAreas
- use math, only: &
-   math_cross
 
- 
  integer :: e,t,g,c,i,f,n,m
  real(pReal), dimension (3,FE_maxNcellnodesPerCellface) :: nodePos, normals
  real(pReal), dimension(3) :: normal
