@@ -2,8 +2,8 @@
 
 import os
 import sys
-from optparse import OptionParser
 from io import StringIO
+from optparse import OptionParser
 
 import damask
 
@@ -17,7 +17,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #--------------------------------------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog [geomfile(s)]', description = """
-Unpack ranges "a to b" and/or "n of x" multiples (exclusively in one line).
+Writes vtk file for visualization.
 
 """, version = scriptID)
 
@@ -32,9 +32,8 @@ for name in filenames:
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
   damask.util.croak(geom)
-  geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
-
+  
   if name is None:
-    sys.stdout.write(str(geom.show()))
+    sys.stdout.write(geom.to_vtk())
   else:
-    geom.to_file(name)
+    geom.to_vtk(os.path.splitext(name)[0])

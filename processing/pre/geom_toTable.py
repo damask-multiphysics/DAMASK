@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys
-import numpy as np
+import os
+import sys
 from optparse import OptionParser
+from io import StringIO
+
+import numpy as np
+
 import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -19,70 +23,39 @@ Translate geom description into ASCIItable containing position and microstructur
 
 """, version = scriptID)
 
-parser.add_option('--float',
-                  dest = 'float',
-                  action = 'store_true',
-                  help = 'use float input')
-
-parser.set_defaults(float = False,
-                   )
 (options, filenames) = parser.parse_args()
 
-datatype = 'f' if options.float else 'i'
-
-# --- loop over input files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,
-                                    outname = os.path.splitext(name)[0]+'.txt' if name else name,
-                                    buffered = False,
-                                    labeled = False,
-                                   )
-  except: continue
   damask.util.report(scriptName,name)
 
-# --- interpret header ----------------------------------------------------------------------------
+  geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
-  table.head_read()
-  info,extra_header = table.head_getGeom()
-  damask.util.report_geom(info)
+  damask.util.croak(geom)
 
-  errors = []
-  if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
-  if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
-  if errors != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
+# --- generate grid --------------------------------------------------------------------------------
 
-# --- read data ------------------------------------------------------------------------------------
+  grid   = geom.get_grid()
+  size   = geom.get_size()
+  origin = geom.get_origin()
 
-  microstructure = table.microstructure_read(info['grid'],datatype)
+  x = (0.5 + np.arange(grid[0],dtype=float))/grid[0]*size[0]+origin[0]
+  y = (0.5 + np.arange(grid[1],dtype=float))/grid[1]*size[1]+origin[1]
+  z = (0.5 + np.arange(grid[2],dtype=float))/grid[2]*size[2]+origin[2]
 
-# ------------------------------------------ assemble header ---------------------------------------
+  xx = np.tile(          x,        grid[1]* grid[2])
+  yy = np.tile(np.repeat(y,grid[0]        ),grid[2])
+  zz =         np.repeat(z,grid[0]*grid[1])
 
-  table.info_clear()
-  table.info_append(extra_header + [scriptID + '\t' + ' '.join(sys.argv[1:])])
-  table.labels_clear()
+# ---  create ASCII table --------------------------------------------------------------------------
+
+  table = damask.ASCIItable(outname = os.path.splitext(name)[0]+'.txt' if name else name)
+  table.info_append(geom.get_comments() + [scriptID + '\t' + ' '.join(sys.argv[1:])])
   table.labels_append(['{}_{}'.format(1+i,'pos') for i in range(3)]+['microstructure'])
   table.head_write()
   table.output_flush()
-
-#--- generate grid --------------------------------------------------------------------------------
-
-  x = (0.5 + np.arange(info['grid'][0],dtype=float))/info['grid'][0]*info['size'][0]+info['origin'][0]
-  y = (0.5 + np.arange(info['grid'][1],dtype=float))/info['grid'][1]*info['size'][1]+info['origin'][1]
-  z = (0.5 + np.arange(info['grid'][2],dtype=float))/info['grid'][2]*info['size'][2]+info['origin'][2]
-
-  xx = np.tile(          x,                info['grid'][1]* info['grid'][2])
-  yy = np.tile(np.repeat(y,info['grid'][0]                ),info['grid'][2])
-  zz =         np.repeat(z,info['grid'][0]*info['grid'][1])
-
-  table.data = np.squeeze(np.dstack((xx,yy,zz,microstructure)),axis=0)
+  table.data = np.squeeze(np.dstack((xx,yy,zz,geom.microstructure.flatten('F'))),axis=0)
   table.data_writeArray()
-
-# ------------------------------------------ finalize output ---------------------------------------
-
   table.close()

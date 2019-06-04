@@ -1,28 +1,33 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
-import numpy as np
-import damask
-from scipy import ndimage
+import os
+import sys
+from io import StringIO
 from optparse import OptionParser
+
+from scipy import ndimage
+import numpy as np
+
+import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
+
 
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [geomfile(s)]', description = """
-Rotates spectral geometry description.
+Rotates original microstructure and embeddeds it into buffer material.
 
 """, version=scriptID)
 
 parser.add_option('-r', '--rotation',
                   dest='rotation',
                   type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
-                  help = 'rotation given as angle and axis')
+                  help = 'rotation given as axis and angle')
 parser.add_option('-e', '--eulers',
                   dest = 'eulers',
                   type = 'float', nargs = 3, metavar = ' '.join(['float']*3),
@@ -30,7 +35,7 @@ parser.add_option('-e', '--eulers',
 parser.add_option('-d', '--degrees',
                   dest = 'degrees',
                   action = 'store_true',
-                  help = 'Euler angles are given in degrees [%default]')
+                  help = 'Euler angles/axis angle are given in degrees')
 parser.add_option('-m', '--matrix',
                   dest = 'matrix',
                   type = 'float', nargs = 9, metavar = ' '.join(['float']*9),
@@ -41,108 +46,56 @@ parser.add_option('-q', '--quaternion',
                   help = 'rotation given as quaternion')
 parser.add_option('-f', '--fill',
                   dest = 'fill',
-                  type = 'int', metavar = 'int',
-                  help = 'background grain index. "0" selects maximum microstructure index + 1 [%default]')
-parser.add_option('--float',
-                  dest = 'float',
-                  action = 'store_true',
-                  help = 'use float input')
+                  type = 'float', metavar = 'int',
+                  help = 'background microstructure index, defaults to max microstructure index + 1')
 
-parser.set_defaults(degrees = False,
-                    fill = 0,
-                    float = False,
-                   )
+parser.set_defaults(degrees = False)
 
 (options, filenames) = parser.parse_args()
 
-if sum(x is not None for x in [options.rotation,options.eulers,options.matrix,options.quaternion]) != 1:
-  parser.error('not exactly one rotation specified...')
+if [options.rotation,options.eulers,options.matrix,options.quaternion].count(None) < 3:
+  parser.error('more than one rotation specified.')
+if [options.rotation,options.eulers,options.matrix,options.quaternion].count(None) > 3:
+  parser.error('no rotation specified.')
 
 if options.quaternion is not None:
-  eulers = damask.Rotation.fromQuaternion(np.array(options.quaternion)).asEulers(degrees=True)
+  rot = damask.Rotation.fromQuaternion(np.array(options.quaternion))                            # we might need P=+1 here, too...
 if options.rotation is not None:
-  eulers = damask.Rotation.fromAxisAngle(np.array(options.rotation,degrees=True)).asEulers(degrees=True)
+  rot = damask.Rotation.fromAxisAngle(np.array(options.rotation),degrees=options.degrees,normalise=True,P=+1)
 if options.matrix is not None:
-  eulers = damask.Rotation.fromMatrix(np.array(options.Matrix)).asEulers(degrees=True)
+  rot = damask.Rotation.fromMatrix(np.array(options.Matrix))
 if options.eulers is not None:
-  eulers = damask.Rotation.fromEulers(np.array(options.eulers),degrees=True).asEulers(degrees=True)
+  rot = damask.Rotation.fromEulers(np.array(options.eulers),degrees=options.degrees)
 
-datatype = 'f' if options.float else 'i'
+eulers = rot.asEulers(degrees=True)
 
-# --- loop over input files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False,
-                              labeled = False)
-  except: continue
   damask.util.report(scriptName,name)
 
-# --- interpret header ----------------------------------------------------------------------------
+  geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
+  size   = geom.get_size()
+  grid   = geom.get_grid()
+  origin = geom.get_origin()
+  microstructure = geom.get_microstructure()
+  fill = np.nanmax(microstructure)+1 if options.fill is None else options.fill
+  dtype = float if np.isnan(fill) or int(fill) != fill or microstructure.dtype==np.float else int
 
-  table.head_read()
-  info,extra_header = table.head_getGeom()
-  damask.util.report_geom(info)
+  # These rotations are always applied in the reference coordinate system, i.e. (z,x,z) not (z,x',z'')
+  # this seems to be ok, see https://www.cs.utexas.edu/~theshark/courses/cs354/lectures/cs354-14.pdf
+  microstructure = ndimage.rotate(microstructure,eulers[2],(0,1),order=0,
+                                  prefilter=False,output=dtype,cval=fill)            # rotation around z
+  microstructure = ndimage.rotate(microstructure,eulers[1],(1,2),order=0,
+                                  prefilter=False,output=dtype,cval=fill)            # rotation around x
+  microstructure = ndimage.rotate(microstructure,eulers[0],(0,1),order=0,
+                                  prefilter=False,output=dtype,cval=fill)            # rotation around z
 
-  errors = []
-  if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
-  if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
-  if errors != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
+  damask.util.croak(geom.update(microstructure,origin=origin-(np.asarray(microstructure.shape)-grid)/2*size/grid,rescale=True))
+  geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
 
-# --- read data ------------------------------------------------------------------------------------
-
-  microstructure = table.microstructure_read(info['grid'],datatype).reshape(info['grid'],order='F')                  # read microstructure
-
-  newGrainID = options.fill if options.fill != 0 else np.nanmax(microstructure)+1
-  microstructure = ndimage.rotate(microstructure,eulers[2],(0,1),order=0,prefilter=False,output=int,cval=newGrainID) # rotation around Z
-  microstructure = ndimage.rotate(microstructure,eulers[1],(1,2),order=0,prefilter=False,output=int,cval=newGrainID) # rotation around X
-  microstructure = ndimage.rotate(microstructure,eulers[0],(0,1),order=0,prefilter=False,output=int,cval=newGrainID) # rotation around Z
-
-# --- do work ------------------------------------------------------------------------------------
-
-  newInfo = {
-             'size':   microstructure.shape*info['size']/info['grid'],
-             'grid':   microstructure.shape,
-             'microstructures': len(np.unique(microstructure)),
-            }
-
-# --- report ---------------------------------------------------------------------------------------
-
-  remarks = []
-  if (any(newInfo['grid']            != info['grid'])):
-    remarks.append('--> grid    a b c:  {}'.format(' x '.join(map(str,newInfo['grid']))))
-  if (any(newInfo['size']            != info['size'])):
-    remarks.append('--> size    x y z:  {}'.format(' x '.join(map(str,newInfo['size']))))
-  if (    newInfo['microstructures'] != info['microstructures']): 
-    remarks.append('--> microstructures: {}'.format(newInfo['microstructures']))
-  if remarks != []: damask.util.croak(remarks)
-
-# --- write header ---------------------------------------------------------------------------------
-
-  table.labels_clear()
-  table.info_clear()
-  table.info_append(extra_header+[
-    scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=newInfo['grid']),
-    "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=newInfo['size']),
-    "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=info['origin']),
-    "homogenization\t{homog}".format(homog=info['homogenization']),
-    "microstructures\t{microstructures}".format(microstructures=newInfo['microstructures']),
-    ])
-  table.head_write()
-
-# --- write microstructure information ------------------------------------------------------------
-
-  format = '%g' if options.float else '%{}i'.format(int(math.floor(math.log10(np.nanmax(microstructure))+1)))
-  table.data = microstructure.reshape((newInfo['grid'][0],np.prod(newInfo['grid'][1:])),order='F').transpose()
-  table.data_writeArray(format,delimiter=' ')
-
-# --- output finalization --------------------------------------------------------------------------
-
-  table.close()                                                                                     # close ASCII table
+  if name is None:
+    sys.stdout.write(str(geom.show()))
+  else:
+    geom.to_file(name)
