@@ -16,6 +16,10 @@ module mesh
  use numerics
  use FEsolving
  use element
+#if defined(DAMASK_HDF5)
+ use HDF5_utilities
+ use results
+#endif
 
  implicit none
  private
@@ -881,6 +885,7 @@ subroutine mesh_get_damaskOptions(periodic_surface,fileUnit)
 end subroutine mesh_get_damaskOptions
 
 
+
 subroutine calcCells(thisMesh,connectivity_elem)
 
   class(tMesh) :: thisMesh
@@ -888,7 +893,7 @@ subroutine calcCells(thisMesh,connectivity_elem)
   integer(pInt),dimension(:,:), allocatable :: con_elem,temp,con,parentsAndWeights,candidates_global
   integer(pInt),dimension(:), allocatable :: l, nodes, candidates_local
   integer(pInt),dimension(:,:,:), allocatable :: con_cell,connectivity_cell
-    integer(pInt),dimension(:,:), allocatable :: sorted,test
+  integer(pInt),dimension(:,:), allocatable :: sorted,test
   real(pReal), dimension(:,:), allocatable :: coordinates,nodes5
   integer(pInt) :: e, n, c, p, s,u,i,m,j,nParentNodes,nCellNode,ierr
 

@@ -16,15 +16,15 @@
 #include "FEsolving.f90"
 #include "element.f90"
 #include "mesh_base.f90"
+#ifdef DAMASK_HDF5
+#include "HDF5_utilities.f90"
+#include "results.f90"
+#endif
 #ifdef Abaqus
 #include "mesh_abaqus.f90"
 #endif
 #ifdef Marc4DAMASK
 #include "mesh_marc.f90"
-#endif
-#ifdef DAMASK_HDF5
-#include "HDF5_utilities.f90"
-#include "results.f90"
 #endif
 #include "material.f90"
 #include "lattice.f90"

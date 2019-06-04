@@ -100,12 +100,12 @@ subroutine CPFEM_initAll(el,ip)
      call config_init
      call math_init
      call FE_init
-     call mesh_init(ip, el)
-     call lattice_init
 #ifdef DAMASK_HDF5
      call HDF5_utilities_init
      call results_init
 #endif
+     call mesh_init(ip, el)
+     call lattice_init
      call material_init
      call constitutive_init
      call crystallite_init
