@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
-import numpy as np
-import damask
+import os
+import sys
 from optparse import OptionParser
+from io import StringIO
+
+import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
+
 
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-translate microstructure indices (shift or substitute) and/or geometry origin.
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [geomfile(s)]', description = """
+Translate microstructure indices (shift or substitute) and/or geometry origin.
 
 """, version=scriptID)
 
@@ -25,103 +28,37 @@ parser.add_option('-o', '--origin',
 parser.add_option('-m', '--microstructure',
                   dest = 'microstructure',
                   type = 'int', metavar = 'int',
-                  help = 'offset from old to new microstructure indices')
+                  help = 'offset from old to new microstructure indices (after substitution)')
 parser.add_option('-s', '--substitute',
                   dest = 'substitute',
                   action = 'extend', metavar = '<string LIST>',
                   help = 'substitutions of microstructure indices from,to,from,to,...')
-parser.add_option('--float',
-                  dest = 'float',
-                  action = 'store_true',
-                  help = 'use float input')
 
 parser.set_defaults(origin = (0.0,0.0,0.0),
                     microstructure = 0,
-                    substitute = [],
-                    float = False,
+                    substitute = []
                    )
 
 (options, filenames) = parser.parse_args()
 
-datatype = 'f' if options.float else 'i'
+sub = list(map(int,options.substitute))
 
-sub = {}
-for i in range(len(options.substitute)//2):                                                         # split substitution list into "from" -> "to"
-  sub[int(options.substitute[i*2])] = int(options.substitute[i*2+1])
-
-# --- loop over input files ----------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,
-                                    buffered = False,
-                                    labeled = False)
-  except: continue
   damask.util.report(scriptName,name)
 
-# --- interpret header ---------------------------------------------------------------------------
+  geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
-  table.head_read()
-  info,extra_header = table.head_getGeom()
-  damask.util.report_geom(info)
+  substituted = geom.get_microstructure()
+  for old,new in zip(sub[0::2],sub[1::2]): substituted[substituted==old] = new                      # substitute microstructure indices
+  substituted += options.microstructure                                                             # constant shift
 
-  errors = []
-  if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
-  if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
-  if errors != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
+  damask.util.croak(geom.update(substituted,origin=geom.get_origin()+options.origin))
+  geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
 
-# --- read data ----------------------------------------------------------------------------------
-
-  microstructure = table.microstructure_read(info['grid'],datatype)                                 # read microstructure
-
-# --- do work ------------------------------------------------------------------------------------
-
-  newInfo = {
-             'origin':  np.zeros(3,'d'),
-             'microstructures': 0,
-            }
-
-  substituted = np.copy(microstructure)
-  for k, v in sub.items(): substituted[microstructure==k] = v                                       # substitute microstructure indices
-
-  substituted += options.microstructure                                                             # shift microstructure indices
-
-  newInfo['origin'] = info['origin'] + options.origin
-  newInfo['microstructures'] = len(np.unique(substituted))
-
-# --- report -------------------------------------------------------------------------------------
-
-  remarks = []
-  if (any(newInfo['origin']          != info['origin'])):
-    remarks.append('--> origin   x y z:  {}'.format(' : '.join(map(str,newInfo['origin']))))
-  if (    newInfo['microstructures'] != info['microstructures']):
-    remarks.append('--> microstructures: {}'.format(newInfo['microstructures']))
-  if remarks != []: damask.util.croak(remarks)
-
-# --- write header -------------------------------------------------------------------------------
-
-  table.labels_clear()
-  table.info_clear()
-  table.info_append(extra_header+[
-    scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=info['grid']),
-    "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=info['size']),
-    "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=newInfo['origin']),
-    "homogenization\t{homog}".format(homog=info['homogenization']),
-    "microstructures\t{microstructures}".format(microstructures=newInfo['microstructures']),
-    ])
-  table.head_write()
-
-# --- write microstructure information -----------------------------------------------------------
-
-  format = '%g' if options.float else '%{}i'.format(int(math.floor(math.log10(np.nanmax(substituted))+1)))
-  table.data = substituted.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
-  table.data_writeArray(format,delimiter = ' ')
-
-# --- output finalization ------------------------------------------------------------------------
-
-  table.close()                                                                                   # close ASCII table
+  if name is None:
+    sys.stdout.write(str(geom.show()))
+  else:
+    geom.to_file(name)

@@ -1,46 +1,66 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
-import numpy as np
+import os
+import sys
 from optparse import OptionParser
+
+import numpy as np
+
 import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
+
 
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog [option(s)] [geomfile]', description = """
-Generate a geometry file of an osteon enclosing the Harvesian canal and separated by interstitial tissue.
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [geomfile]', description = """
+Generate description of an osteon enclosing the Harvesian canal and separated by interstitial tissue.
 The osteon phase is lamellar with a twisted plywood structure.
 Its fiber orientation is oscillating by +/- amplitude within one period.
 
 """, version = scriptID)
 
 
-parser.add_option('-g', '--grid', dest='grid', type='int', nargs=2, metavar = 'int int',
+parser.add_option('-g', '--grid',
+                  dest='grid', type='int',
+                  nargs=2, metavar = 'int int',
                   help='a,b grid of hexahedral box [%default]')
-parser.add_option('-s', '--size', dest='size', type='float', nargs=2, metavar = 'float float',
+parser.add_option('-s', '--size',
+                  dest='size',
+                  type='float', nargs=2, metavar = 'float float',
                   help='x,y size of hexahedral box [%default]')
-parser.add_option('-c', '--canal',  dest='canal', type='float', metavar = 'float',
+parser.add_option('-c', '--canal',
+                  dest='canal',
+                  type='float', metavar = 'float',
                   help='Haversian canal radius [%default]')
-parser.add_option('-o', '--osteon', dest='osteon', type='float', metavar = 'float',
+parser.add_option('-o', '--osteon',
+                  dest='osteon',
+                  type='float', metavar = 'float',
                   help='horizontal osteon radius [%default]')
-parser.add_option('-l', '--lamella', dest='period', type='float', metavar = 'float',
+parser.add_option('-l', '--lamella',
+                  dest='period',
+                  type='float', metavar = 'float',
                   help='lamella width [%default]')
-parser.add_option('-a', '--amplitude', dest='amplitude', type='float', metavar = 'float',
+parser.add_option('-a', '--amplitude',
+                  dest='amplitude',
+                  type='float', metavar = 'float',
                   help='amplitude of twisted plywood wiggle in deg [%default]')
-parser.add_option(      '--aspect', dest='aspect', type='float', metavar = 'float',
+parser.add_option(      '--aspect',
+                  dest='aspect',
+                  type='float', metavar = 'float',
                   help='vertical/horizontal osteon aspect ratio [%default]')
-parser.add_option('-w', '--omega',  dest='omega', type='float', metavar = 'float',
+parser.add_option('-w', '--omega',
+                  dest='omega',
+                  type='float', metavar = 'float',
                   help='rotation angle around normal of osteon [%default]')
-parser.add_option('--homogenization', dest='homogenization', type='int', metavar = 'int',
+parser.add_option(      '--homogenization',
+                  dest='homogenization',
+                  type='int', metavar = 'int',
                   help='homogenization index to be used [%default]')
-parser.add_option('--crystallite',  dest='crystallite', type='int', metavar = 'int',
-                  help='crystallite index to be used [%default]')
 
 parser.set_defaults(canal = 25e-6,
                     osteon = 100e-6,
@@ -50,107 +70,82 @@ parser.set_defaults(canal = 25e-6,
                     amplitude = 60,
                     size = (300e-6,300e-6),
                     grid = (512,512),
-                    homogenization = 1,
-                    crystallite = 1)
+                    homogenization = 1)
 
 (options,filename) = parser.parse_args()
 
-if np.any(np.array(options.grid) < 2):
-  parser('invalid grid a b c.')
-if np.any(np.array(options.size) <= 0.0):
-  parser('invalid size x y z.')
 
-# --- open input files ----------------------------------------------------------------------------
+name = None if filename == [] else filename[0]
+damask.util.report(scriptName,name)
 
-if filename == []: filename = [None]
+omega = np.deg2rad(options.omega)
+rotation = np.array([[ np.cos(omega),np.sin(omega),],
+                     [-np.sin(omega),np.cos(omega),]])
 
-table = damask.ASCIItable(outname = filename[0],
-                          buffered = False, labeled=False)
+grid = np.array(options.grid,'i')
+size = np.array(options.size,'d')
 
-damask.util.report(scriptName,filename[0])
-
-options.omega  *= math.pi/180.0                                                                     # rescale ro radians
-rotation = np.array([[ math.cos(options.omega),math.sin(options.omega),],
-                     [-math.sin(options.omega),math.cos(options.omega),]],'d')
-
-box = np.dot(np.array([[options.canal,0.],[0.,options.aspect*options.canal]]).transpose(),rotation)
-
-
-info = {
-        'grid':   np.ones(3,'i'),
-        'size':   np.ones(3,'d'),
-        'origin': np.zeros(3,'d'),
-        'microstructures': 3,
-        'homogenization':  options.homogenization,
-       }
-
-info['grid'][:2] = np.array(options.grid,'i')
-info['size'][:2] = np.array(options.size,'d')
-info['size'][2]  = min(info['size'][0]/info['grid'][0],info['size'][1]/info['grid'][1])
-info['origin']   = -info['size']/2.0
-
-X0 = info['size'][0]/info['grid'][0]*\
-     (np.tile(np.arange(info['grid'][0]),(info['grid'][1],1))             - info['grid'][0]/2 + 0.5)
-Y0 = info['size'][1]/info['grid'][1]*\
-     (np.tile(np.arange(info['grid'][1]),(info['grid'][0],1)).transpose() - info['grid'][1]/2 + 0.5)
+X0,Y0 = np.meshgrid(size[0]/grid[0] * (np.arange(grid[0]) - grid[0]/2 + 0.5),
+                    size[1]/grid[0] * (np.arange(grid[1]) - grid[1]/2 + 0.5), indexing='ij')
 
 X = X0*rotation[0,0] + Y0*rotation[0,1]                                                             # rotate by omega
 Y = X0*rotation[1,0] + Y0*rotation[1,1]                                                             # rotate by omega
 
-radius = np.sqrt(X*X + Y*Y/options.aspect/options.aspect)
+radius = np.sqrt(X*X + Y*Y/options.aspect**2.0)
 alpha = np.degrees(np.arctan2(Y/options.aspect,X))
-beta = options.amplitude*np.sin(2.0*math.pi*(radius-options.canal)/options.period)
+beta  = options.amplitude*np.sin(2.0*np.pi*(radius-options.canal)/options.period)
 
-microstructure = np.where(radius < float(options.canal),1,0) + np.where(radius > float(options.osteon),2,0)
+microstructure = np.where(radius < float(options.canal), 1,0) \
+               + np.where(radius > float(options.osteon),2,0)
 
-alphaOfGrain = np.zeros(info['grid'][0]*info['grid'][1],'d')
-betaOfGrain  = np.zeros(info['grid'][0]*info['grid'][1],'d')
-for y in range(info['grid'][1]):
-  for x in range(info['grid'][0]):
-    if microstructure[y,x] == 0:
-      microstructure[y,x] = info['microstructures']
-      alphaOfGrain[info['microstructures']] = alpha[y,x]
-      betaOfGrain[ info['microstructures']] = beta[y,x]
-      info['microstructures'] += 1
+# extend to 3D
+size = np.append(size,np.min(size/grid))
+grid = np.append(grid,1)
+microstructure = microstructure.reshape(microstructure.shape+(1,))
 
-#--- report ---------------------------------------------------------------------------------------
-damask.util.report_geom(info,['grid','size','origin','homogenization','microstructures'])
+Alpha = np.zeros(grid[0]*grid[1],'d')
+Beta  = np.zeros(grid[0]*grid[1],'d')
 
-formatwidth = 1+int(math.floor(math.log10(info['microstructures']-1)))
-header = [scriptID + ' ' + ' '.join(sys.argv[1:])]
-header.append('<microstructure>')
-header.append('[canal]')
-header.append('crystallite %i'%options.crystallite)
-header.append('(constituent)\tphase 1\ttexture 1\tfraction 1.0')
-header.append('[interstitial]')
-header.append('crystallite %i'%options.crystallite)
-header.append('(constituent)\tphase 2\ttexture 2\tfraction 1.0')
-for i in range(3,info['microstructures']):
-  header.append('[Grain%s]'%(str(i).zfill(formatwidth)))
-  header.append('crystallite %i'%options.crystallite)
-  header.append('(constituent)\tphase 3\ttexture %s\tfraction 1.0'%(str(i).rjust(formatwidth)))
+i = 3
+for y in range(grid[1]):
+  for x in range(grid[0]):
+    if microstructure[x,y] == 0:
+      microstructure[x,y] = i
+      Alpha[i] = alpha[x,y]
+      Beta [i] = beta [x,y]
+      i+=1
 
-header.append('<texture>')
-header.append('[canal]')
-header.append('[interstitial]')
-for i in range(3,info['microstructures']):
-  header.append('[Grain%s]'%(str(i).zfill(formatwidth)))
-  header.append('(gauss)\tphi1 %g\tPhi %g\tphi2 0\tscatter 0.0\tfraction 1.0'\
-                                                          %(alphaOfGrain[i],betaOfGrain[i]))
-header.append([
-    "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=info['grid']),
-    "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=info['size']),
-    "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=info['origin']),
-    "homogenization\t{homog}".format(homog=info['homogenization']),
-    "microstructures\t{microstructures}".format(microstructures=info['microstructures'])])
-  
-table.info_append(header)
-table.head_write()
-      
-# --- write microstructure information ------------------------------------------------------------
+config_header = ['<texture>',
+                 '[canal]',
+                 '[interstitial]'
+                ]
+for i in range(3,np.max(microstructure)):
+  config_header += ['[Point{}]'.format(i-2),
+                    '(gauss)\tphi1 {:.2f}\tPhi {:.2f}\tphi2 0'.format(Alpha[i],Beta[i])
+                   ]
 
-table.data = microstructure.reshape(info['grid'][1]*info['grid'][2],info['grid'][0])
-table.data_writeArray('%%%ii'%(formatwidth),delimiter=' ')
-    
-#--- output finalization --------------------------------------------------------------------------
-table.close()  
+config_header = ['<microstructure>',
+                 '[canal]',
+                 'crystallite 1',
+                 '(constituent)\tphase 1\ttexture 1\tfraction 1.0',
+                 '[interstitial]',
+                 'crystallite 1',
+                 '(constituent)\tphase 2\ttexture 2\tfraction 1.0'
+                ]
+for i in range(3,np.max(microstructure)):
+  config_header += ['[Point{}]'.format(i-2),
+                    'crystallite 1',
+                    '(constituent)\tphase 3\ttexture {}\tfraction 1.0'.format(i)
+                   ]
+
+header = [scriptID + ' ' + ' '.join(sys.argv[1:])]\
+       + config_header
+geom = damask.Geom(microstructure.reshape(grid),
+                   size,-size/2,
+                   homogenization=options.homogenization,comments=header)
+damask.util.croak(geom)
+
+if name is None:
+  sys.stdout.write(str(geom.show()))
+else:
+  geom.to_file(name)

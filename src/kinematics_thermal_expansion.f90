@@ -5,11 +5,17 @@
 !--------------------------------------------------------------------------------------------------
 module kinematics_thermal_expansion
   use prec
-
+  use IO
+  use config
+  use debug
+  use math
+  use lattice
+  use material
+  
   implicit none
   private
  
-  type, private :: tParameters
+  type :: tParameters
     real(pReal), allocatable, dimension(:,:,:) :: &
       expansion
   end type tParameters
@@ -28,19 +34,9 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine kinematics_thermal_expansion_init()
-  use debug, only: &
-    debug_level,&
-    debug_constitutive,&
-    debug_levelBasic
-  use material, only: &
-    phase_kinematics, &
-    KINEMATICS_thermal_expansion_label, &
-    KINEMATICS_thermal_expansion_ID
-  use config, only: &
-    config_phase
+subroutine kinematics_thermal_expansion_init
  
-  integer(pInt) :: &
+  integer :: &
     Ninstance, &
     p, i
   real(pReal),  dimension(:), allocatable :: &
@@ -48,14 +44,14 @@ subroutine kinematics_thermal_expansion_init()
   
   write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_thermal_expansion_LABEL//' init  -+>>>'
  
-  Ninstance = int(count(phase_kinematics == KINEMATICS_thermal_expansion_ID),pInt)
+  Ninstance = count(phase_kinematics == KINEMATICS_thermal_expansion_ID)
   
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
+  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
     write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
   
   allocate(param(Ninstance))
   
-  do p = 1_pInt, size(phase_kinematics)
+  do p = 1, size(phase_kinematics)
     if (all(phase_kinematics(:,p) /= KINEMATICS_thermal_expansion_ID)) cycle
     
     ! ToDo: Here we need to decide how to extend the concept of instances to
@@ -78,13 +74,8 @@ end subroutine kinematics_thermal_expansion_init
 !> @brief  report initial thermal strain based on current temperature deviation from reference
 !--------------------------------------------------------------------------------------------------
 pure function kinematics_thermal_expansion_initialStrain(homog,phase,offset)
-  use material, only: &
-    temperature
-  use lattice, only: &
-    lattice_thermalExpansion33, &
-    lattice_referenceTemperature
   
-  integer(pInt), intent(in) :: &
+  integer, intent(in) :: &
     phase, &
     homog, offset
   real(pReal), dimension(3,3) :: &
@@ -106,17 +97,8 @@ end function kinematics_thermal_expansion_initialStrain
 !> @brief  contains the constitutive equation for calculating the velocity gradient  
 !--------------------------------------------------------------------------------------------------
 subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ipc, ip, el)
-  use material, only: &
-    material_phase, &
-   material_homogenizationAt, &
-    temperature, &
-    temperatureRate, &
-    thermalMapping
-  use lattice, only: &
-    lattice_thermalExpansion33, &
-    lattice_referenceTemperature
   
-  integer(pInt), intent(in) :: &
+  integer, intent(in) :: &
     ipc, &                                                                                           !< grain number
     ip, &                                                                                            !< integration point number
     el                                                                                               !< element number
@@ -124,7 +106,7 @@ subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ipc, ip,
     Li                                                                                               !< thermal velocity gradient
   real(pReal),   intent(out), dimension(3,3,3,3) :: &
     dLi_dTstar                                                                                       !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
-  integer(pInt) :: &
+  integer :: &
     phase, &
     homog, offset
   real(pReal) :: &

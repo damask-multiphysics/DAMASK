@@ -84,11 +84,9 @@ subroutine FEM_mech_init(fieldBC)
  PetscDS                                :: mechDS
  PetscDualSpace                         :: mechDualSpace
  DMLabel                                :: BCLabel
- PetscInt,  dimension(:),        allocatable, target :: numComp, numDoF, bcField
  PetscInt,  dimension(:),                     pointer :: pNumComp, pNumDof, pBcField, pBcPoint
  PetscInt                               :: numBC, bcSize, nc
  IS                                     :: bcPoint
- IS,                allocatable, target :: bcComps(:), bcPoints(:)
  IS,                            pointer :: pBcComps(:), pBcPoints(:)
  PetscSection                           :: section
  PetscInt                               :: field, faceSet, topologDim, nNodalPoints
@@ -98,7 +96,7 @@ subroutine FEM_mech_init(fieldBC)
  PetscScalar,                   pointer :: px_scal(:)
  PetscScalar,       allocatable, target ::  x_scal(:)
  PetscReal                              :: detJ
- PetscReal,         allocatable, target :: v0(:), cellJ(:), invcellJ(:), cellJMat(:,:)
+ PetscReal,         allocatable, target :: cellJMat(:,:)
  PetscReal,                     pointer :: pV0(:), pCellJ(:), pInvcellJ(:)
  PetscInt                               :: cellStart, cellEnd, cell, basis 
  character(len=7)                       :: prefix = 'mechFE_'
@@ -139,26 +137,26 @@ subroutine FEM_mech_init(fieldBC)
  call DMGetLabel(mech_mesh,'Face Sets',BCLabel,ierr); CHKERRQ(ierr)
  call DMPlexLabelComplete(mech_mesh,BCLabel,ierr); CHKERRQ(ierr)
  call DMGetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
- allocate(numComp(1), source=dimPlex); pNumComp => numComp
- allocate(numDof(dimPlex+1), source = 0); pNumDof  => numDof
+ allocate(pnumComp(1), source=dimPlex)
+ allocate(pnumDof(dimPlex+1), source = 0)
  do topologDim = 0, dimPlex
    call DMPlexGetDepthStratum(mech_mesh,topologDim,cellStart,cellEnd,ierr)
    CHKERRQ(ierr)
-   call PetscSectionGetDof(section,cellStart,numDof(topologDim+1),ierr)
+   call PetscSectionGetDof(section,cellStart,pnumDof(topologDim+1),ierr)
    CHKERRQ(ierr)
  enddo
  numBC = 0
  do field = 1, dimPlex; do faceSet = 1, mesh_Nboundaries
    if (fieldBC%componentBC(field)%Mask(faceSet)) numBC = numBC + 1
  enddo; enddo
- allocate(bcField(numBC), source=0); pBcField => bcField 
- allocate(bcComps(numBC)); pBcComps => bcComps
- allocate(bcPoints(numBC)); pBcPoints => bcPoints
+ allocate(pbcField(numBC), source=0)
+ allocate(pbcComps(numBC))
+ allocate(pbcPoints(numBC))
  numBC = 0
  do field = 1, dimPlex; do faceSet = 1, mesh_Nboundaries
    if (fieldBC%componentBC(field)%Mask(faceSet)) then
      numBC = numBC + 1
-     call ISCreateGeneral(PETSC_COMM_WORLD,1,[field-1],PETSC_COPY_VALUES,bcComps(numBC),ierr)
+     call ISCreateGeneral(PETSC_COMM_WORLD,1,[field-1],PETSC_COPY_VALUES,pbcComps(numBC),ierr)
      CHKERRQ(ierr)
      call DMGetStratumSize(mech_mesh,'Face Sets',mesh_boundaries(faceSet),bcSize,ierr)
      CHKERRQ(ierr)
@@ -166,12 +164,12 @@ subroutine FEM_mech_init(fieldBC)
        call DMGetStratumIS(mech_mesh,'Face Sets',mesh_boundaries(faceSet),bcPoint,ierr)
        CHKERRQ(ierr)
        call ISGetIndicesF90(bcPoint,pBcPoint,ierr); CHKERRQ(ierr)
-       call ISCreateGeneral(PETSC_COMM_WORLD,bcSize,pBcPoint,PETSC_COPY_VALUES,bcPoints(numBC),ierr)
+       call ISCreateGeneral(PETSC_COMM_WORLD,bcSize,pBcPoint,PETSC_COPY_VALUES,pbcPoints(numBC),ierr)
        CHKERRQ(ierr)
        call ISRestoreIndicesF90(bcPoint,pBcPoint,ierr); CHKERRQ(ierr)
        call ISDestroy(bcPoint,ierr); CHKERRQ(ierr)
      else
-       call ISCreateGeneral(PETSC_COMM_WORLD,0,[0],PETSC_COPY_VALUES,bcPoints(numBC),ierr)
+       call ISCreateGeneral(PETSC_COMM_WORLD,0,[0],PETSC_COPY_VALUES,pbcPoints(numBC),ierr)
        CHKERRQ(ierr)
      endif  
    endif  
@@ -182,7 +180,7 @@ subroutine FEM_mech_init(fieldBC)
  CHKERRQ(ierr)
  call DMSetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
  do faceSet = 1, numBC
-   call ISDestroy(bcPoints(faceSet),ierr); CHKERRQ(ierr)
+   call ISDestroy(pbcPoints(faceSet),ierr); CHKERRQ(ierr)
  enddo
  
 !--------------------------------------------------------------------------------------------------
@@ -213,13 +211,10 @@ subroutine FEM_mech_init(fieldBC)
  allocate(nodalWeights(1))
  nodalPointsP  => nodalPoints
  nodalWeightsP => nodalWeights
- allocate(v0(dimPlex))
- allocate(cellJ(dimPlex*dimPlex))
- allocate(invcellJ(dimPlex*dimPlex))
+ allocate(pv0(dimPlex))
+ allocate(pcellJ(dimPlex*dimPlex))
+ allocate(pinvcellJ(dimPlex*dimPlex))
  allocate(cellJMat(dimPlex,dimPlex))
- pV0 => v0
- pCellJ => cellJ
- pInvcellJ => invcellJ
  call DMGetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
  call DMGetDS(mech_mesh,mechDS,ierr); CHKERRQ(ierr)
  call PetscDSGetDiscretization(mechDS,0,mechFE,ierr)
@@ -325,22 +320,19 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
  PetscScalar, dimension(:), pointer :: x_scal, pf_scal
  PetscScalar,                target :: f_scal(cellDof) 
  PetscReal                          :: detJ, IcellJMat(dimPlex,dimPlex)
- PetscReal,                  target :: v0(dimPlex), cellJ(dimPlex*dimPlex), &
-                                                    invcellJ(dimPlex*dimPlex)
- PetscReal,                 pointer :: pV0(:), pCellJ(:), pInvcellJ(:)
- PetscReal,                 pointer :: basisField(:), basisFieldDer(:)
+ PetscReal,  pointer,dimension(:)   :: pV0, pCellJ, pInvcellJ, basisField, basisFieldDer
  PetscInt                           :: cellStart, cellEnd, cell, field, face, &
                                        qPt, basis, comp, cidx
  PetscReal                          :: detFAvg
  PetscReal                          :: BMat(dimPlex*dimPlex,cellDof)
- PetscObject                        :: dummy
+ PetscObject,intent(in)             :: dummy
  PetscInt                           :: bcSize
  IS                                 :: bcPoints
  PetscErrorCode                     :: ierr
  
- pV0 => v0
- pCellJ => cellJ
- pInvcellJ => invcellJ
+ allocate(pV0(dimPlex))
+ allocate(pcellJ(dimPlex**2))
+ allocate(pinvcellJ(dimPlex**2))
  call DMGetSection(dm_local,section,ierr); CHKERRQ(ierr)
  call DMGetDS(dm_local,prob,ierr); CHKERRQ(ierr)
  call PetscDSGetTabulation(prob,0,basisField,basisFieldDer,ierr)
@@ -460,13 +452,11 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
  Vec                                  :: x_local, xx_local
  Mat                                  :: Jac_pre, Jac
  PetscSection                         :: section, gSection
- PetscReal                            :: detJ, IcellJMat(dimPlex,dimPlex)
- PetscReal,                    target :: v0(dimPlex), cellJ(dimPlex*dimPlex), &
-                                                      invcellJ(dimPlex*dimPlex)
+ PetscReal                            :: detJ
  PetscReal,   dimension(:),   pointer :: basisField, basisFieldDer, &
                                          pV0, pCellJ, pInvcellJ
  PetscInt                             :: cellStart, cellEnd, cell, field, face, &
-                                         qPt, basis, comp, cidx
+                                         qPt, basis, comp, cidx,bcSize
  PetscScalar,dimension(cellDOF,cellDOF),  target :: K_e, &
                                          K_eA  , &  
                                          K_eB  
@@ -477,14 +467,14 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
                                          MatB   (1              ,cellDof)
  PetscScalar, dimension(:),   pointer :: pK_e, x_scal
  PetscReal,   dimension(3,3)          :: F, FAvg, FInv
- PetscObject                          :: dummy
- PetscInt                             :: bcSize
+ PetscObject, intent(in)                          :: dummy
  IS                                   :: bcPoints
  PetscErrorCode                       :: ierr
  
- pV0 => v0
- pCellJ => cellJ
- pInvcellJ => invcellJ
+ allocate(pV0(dimPlex))
+ allocate(pcellJ(dimPlex**2))
+ allocate(pinvcellJ(dimPlex**2))
+
  call MatSetOption(Jac,MAT_KEEP_NONZERO_PATTERN,PETSC_TRUE,ierr); CHKERRQ(ierr)
  call MatSetOption(Jac,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,ierr); CHKERRQ(ierr)
  call MatZeroEntries(Jac,ierr); CHKERRQ(ierr)
@@ -513,7 +503,6 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
    CHKERRQ(ierr)
    call  DMPlexComputeCellGeometryAffineFEM(dm_local,cell,pV0,pCellJ,pInvcellJ,detJ,ierr) 
    CHKERRQ(ierr)
-   IcellJMat = reshape(pInvcellJ, shape = [dimPlex,dimPlex])
    K_eA = 0.0
    K_eB = 0.0
    MatB = 0.0
@@ -525,7 +514,8 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
        do comp = 0, dimPlex-1
          cidx = basis*dimPlex+comp
          BMat(comp*dimPlex+1:(comp+1)*dimPlex,basis*dimPlex+comp+1) = &
-           matmul(IcellJMat,basisFieldDer((((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp  )*dimPlex+1: &
+           matmul( reshape(pInvcellJ, shape = [dimPlex,dimPlex]),&
+                            basisFieldDer((((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp  )*dimPlex+1: &
                                           (((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp+1)*dimPlex))
        enddo
      enddo

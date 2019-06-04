@@ -32,6 +32,8 @@
   # disables warnings ...
   set (COMPILE_FLAGS "${COMPILE_FLAGS} 5268")
   #   ... the text exceeds right hand column allowed on the line (we have only comments there)
+  set (COMPILE_FLAGS "${COMPILE_FLAGS},7624")
+  #   ... about deprecated forall (has nice syntax and most likely a performance advantage)
 
   set (COMPILE_FLAGS "${COMPILE_FLAGS} -warn")
   # enables warnings ...

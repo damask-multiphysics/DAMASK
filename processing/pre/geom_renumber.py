@@ -1,96 +1,46 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
-import numpy as np
-import damask
+import os
+import sys
+from io import StringIO
 from optparse import OptionParser
+
+import numpy as np
+
+import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
+
 
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog [file[s]]', description = """
-renumber sorted microstructure indices to 1,...,N.
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [geomfile(s)]', description = """
+Renumber sorted microstructure indices to 1,...,N.
 
 """, version=scriptID)
 
 (options, filenames) = parser.parse_args()
 
-# --- loop over input files ----------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,
-                                    buffered = False,
-                                    labeled = False)
-  except: continue
   damask.util.report(scriptName,name)
 
-# --- interpret header ---------------------------------------------------------------------------
+  geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
-  table.head_read()
-  info,extra_header = table.head_getGeom()
-  damask.util.report_geom(info)
+  renumbered = np.empty(geom.get_grid(),dtype=geom.microstructure.dtype)
+  for i, oldID in enumerate(np.unique(geom.microstructure)):
+    renumbered = np.where(geom.microstructure == oldID, i+1, renumbered)
 
-  errors = []
-  if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
-  if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
-  if errors != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
+  damask.util.croak(geom.update(renumbered))
+  geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
 
-# --- read data ----------------------------------------------------------------------------------
-
-  microstructure = table.microstructure_read(info['grid'])                                 # read microstructure
-
-# --- do work ------------------------------------------------------------------------------------
-
-  newInfo = {
-             'origin':  np.zeros(3,'d'),
-             'microstructures': 0,
-            }
-
-  grainIDs = np.unique(microstructure)
-  renumbered = np.copy(microstructure)
-  
-  for i, oldID in enumerate(grainIDs):
-    renumbered = np.where(microstructure == oldID, i+1, renumbered)
-
-  newInfo['microstructures'] = len(grainIDs)
-
-# --- report -------------------------------------------------------------------------------------
-
-  remarks = []
-  if (    newInfo['microstructures'] != info['microstructures']):
-    remarks.append('--> microstructures: %i'%newInfo['microstructures'])
-  if remarks != []: damask.util.croak(remarks)
-
-# --- write header -------------------------------------------------------------------------------
-
-  table.labels_clear()
-  table.info_clear()
-  table.info_append(extra_header+[
-    scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=info['grid']),
-    "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=info['size']),
-    "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=info['origin']),
-    "homogenization\t{homog}".format(homog=info['homogenization']),
-    "microstructures\t{microstructures}".format(microstructures=newInfo['microstructures']),
-    ])
-  table.head_write()
-
-# --- write microstructure information -----------------------------------------------------------
-
-  format = '%{}i'.format(int(math.floor(math.log10(np.nanmax(renumbered))+1)))
-  table.data = renumbered.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
-  table.data_writeArray(format,delimiter = ' ')
-
-# --- output finalization ------------------------------------------------------------------------
-
-  table.close()                                                                                   # close ASCII table
+  if name is None:
+    sys.stdout.write(str(geom.show()))
+  else:
+    geom.to_file(name)

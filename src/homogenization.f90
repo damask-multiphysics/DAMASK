@@ -16,6 +16,12 @@ module homogenization
  use crystallite
  use mesh
  use FEsolving
+ use thermal_isothermal
+ use thermal_adiabatic
+ use thermal_conduction
+ use damage_none
+ use damage_local
+ use damage_nonlocal
 #if defined(PETSc) || defined(DAMASK_HDF5)
  use results
  use HDF5_utilities
@@ -131,12 +137,6 @@ contains
 !> @brief module initialization
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_init
- use thermal_isothermal
- use thermal_adiabatic
- use thermal_conduction
- use damage_none
- use damage_local
- use damage_nonlocal
 
  integer, parameter :: FILEUNIT = 200
  integer :: e,i,p
@@ -668,10 +668,6 @@ end subroutine partitionDeformation
 !> "happy" with result
 !--------------------------------------------------------------------------------------------------
 function updateState(ip,el)
- use thermal_adiabatic, only: &
-   thermal_adiabatic_updateState
- use damage_local, only: &
-   damage_local_updateState
 
  integer, intent(in) :: &
    ip, &                                                                                            !< integration point
@@ -753,14 +749,6 @@ end subroutine averageStressAndItsTangent
 !> if homogenization_sizePostResults(i,e) > 0 !!
 !--------------------------------------------------------------------------------------------------
 function postResults(ip,el)
- use thermal_adiabatic, only: &
-   thermal_adiabatic_postResults
- use thermal_conduction, only: &
-   thermal_conduction_postResults
- use damage_local, only: &
-   damage_local_postResults
- use damage_nonlocal, only: &
-   damage_nonlocal_postResults
 
  integer, intent(in) :: &
    ip, &                                                                                            !< integration point

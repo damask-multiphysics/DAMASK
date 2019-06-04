@@ -1,85 +1,88 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
-import numpy as np
+import os
+import sys
+from io import StringIO
 from optparse import OptionParser
+
+import numpy as np
+
 import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
+
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
-identifiers = {
-        'grid':   ['a','b','c'],
-        'size':   ['x','y','z'],
-        'origin': ['x','y','z'],
-          }
-mappings = {
-        'grid':            lambda x: int(x),
-        'size':            lambda x: float(x),
-        'origin':          lambda x: float(x),
-        'homogenization':  lambda x: int(x),
-        'microstructures': lambda x: int(x),
-          }
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog option [geomfile(s)]', description = """
-Positions a geometric object within the (three-dimensional) canvas of a spectral geometry description.
-Depending on the sign of the dimension parameters, these objects can be boxes, cylinders, or ellipsoids.
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [geomfile(s)]', description = """
+Inserts a primitive geometric object at a given position.
+These objects can be boxes, cylinders, or ellipsoids.
 
 """, version = scriptID)
 
-parser.add_option('-c', '--center',     dest='center', 
+parser.add_option('-c', '--center',
+                  dest='center',
                   type='float', nargs = 3, metavar=' '.join(['float']*3),
                   help='a,b,c origin of primitive %default')
-parser.add_option('-d', '--dimension',  dest='dimension',
+parser.add_option('-d', '--dimension',
+                  dest='dimension',
                   type='float', nargs = 3, metavar=' '.join(['float']*3),
-                  help='a,b,c extension of hexahedral box; negative values are diameters')
-parser.add_option('-e', '--exponent',  dest='exponent',
+                  help='a,b,c extension of hexahedral box')
+parser.add_option('-e', '--exponent',
+                  dest='exponent',
                   type='float', nargs = 3, metavar=' '.join(['float']*3),
-                  help='i,j,k exponents for axes - 0 gives octahedron (|x|^(2^0) + |y|^(2^0) + |z|^(2^0) < 1), \
-                  1 gives a sphere (|x|^(2^1) + |y|^(2^1) + |z|^(2^1) < 1), \
-                  large values produce boxes, negative turns concave.')
-parser.add_option('-f', '--fill',       dest='fill',
-                  type='float', metavar = 'float',
-                  help='grain index to fill primitive. "0" selects maximum microstructure index + 1 [%default]')
-parser.add_option('-q', '--quaternion', dest='quaternion',
+                  help='i,j,k exponents for axes: '+
+                  '0 gives octahedron (|x|^(2^0) + |y|^(2^0) + |z|^(2^0) < 1), '+
+                  '1 gives a sphere (|x|^(2^1) + |y|^(2^1) + |z|^(2^1) < 1), '+
+                  'large values produce boxes, negative turn concave.')
+parser.add_option('-f', '--fill',
+                  dest='fill',
+                  type='float', metavar = 'int',
+                  help='microstructure index to fill primitive, defaults to max microstructure index + 1')
+parser.add_option('-q', '--quaternion',
+                  dest='quaternion',
                   type='float', nargs = 4, metavar=' '.join(['float']*4),
                   help = 'rotation of primitive as quaternion')
-parser.add_option('-a', '--angleaxis',  dest='angleaxis', type=float,
-                  nargs = 4, metavar=' '.join(['float']*4),
+parser.add_option('-a', '--angleaxis',
+                  dest='angleaxis',
+                  type=float, nargs = 4, metavar=' '.join(['float']*4),
                   help = 'axis and angle to rotate primitive')
-parser.add_option(     '--degrees',     dest='degrees',
+parser.add_option(     '--degrees',
+                  dest='degrees',
                   action='store_true',
-                  help = 'angle is given in degrees [%default]')
-parser.add_option(     '--nonperiodic', dest='periodic',
+                  help = 'angle is given in degrees')
+parser.add_option(     '--nonperiodic',
+                  dest='periodic',
                   action='store_false',
-                  help = 'wrap around edges [%default]')
-parser.add_option(     '--realspace',  dest='realspace',
+                  help = 'wrap around edges')
+parser.add_option(     '--realspace',
+                  dest='realspace',
                   action='store_true',
                   help = '-c and -d span [origin,origin+size] instead of [0,grid] coordinates')
-parser.add_option(     '--invert',  dest='inside',
+parser.add_option(     '--invert',
+                  dest='inside',
                   action='store_false',
                   help = 'invert the volume filled by the primitive (inside/outside)')
-parser.add_option('--float',        dest = 'float',
-                  action = 'store_true',
-                  help = 'use float input')
+
 parser.set_defaults(center = (.0,.0,.0),
-                    fill = 0.0,
                     degrees = False,
                     exponent = (20,20,20), # box shape by default
                     periodic = True,
                     realspace = False,
                     inside = True,
-                    float = False,
                    )
 
 (options, filenames) = parser.parse_args()
 
 if options.dimension is None:
-  parser.error('no dimension specified.')   
+  parser.error('no dimension specified.')
+if [options.angleaxis,options.quaternion].count(None) == 0:
+  parser.error('more than one rotation specified.')
+
 if options.angleaxis is not None:
   rotation = damask.Rotation.fromAxisAngle(np.array(options.angleaxis),options.degrees,normalise=True)
 elif options.quaternion is not None:
@@ -87,157 +90,49 @@ elif options.quaternion is not None:
 else:
   rotation = damask.Rotation()
 
-datatype = 'f' if options.float else 'i'
 
-options.center = np.array(options.center)
-options.dimension = np.array(options.dimension)
-# undo logarithmic sense of exponent and generate ellipsoids for negative dimensions (backward compatibility)
-options.exponent = np.where(np.array(options.dimension) > 0, np.power(2,options.exponent), 2)
-
-# --- loop over input files -------------------------------------------------------------------------
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,
-                                    buffered = False,
-                                    labeled = False)
-  except: continue
   damask.util.report(scriptName,name)
 
-# --- interpret header ----------------------------------------------------------------------------
+  geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
+  grid = geom.get_grid()
+  size = geom.get_size()
 
-  table.head_read()
-  info,extra_header = table.head_getGeom()
-  damask.util.report_geom(info)
-
-  errors = []
-  if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
-  if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
-  if errors != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-#--- read data ------------------------------------------------------------------------------------
-
-  microstructure = table.microstructure_read(info['grid'],datatype)                          # read microstructure
-
-# --- do work ------------------------------------------------------------------------------------
-
-  newInfo = {
-             'microstructures': 0,
-            }
-
-  options.fill = np.nanmax(microstructure)+1 if options.fill == 0 else options.fill
-  
-  microstructure = microstructure.reshape(info['grid'],order='F')
-  
-  # coordinates given in real space (default) vs voxel space
+  # scale to box of size [1.0,1.0,1.0]
   if options.realspace:
-    options.center    -= info['origin']
-    options.center    *= np.array(info['grid']) / np.array(info['size'])
-    options.dimension *= np.array(info['grid']) / np.array(info['size'])
+    center = (np.array(options.center) - geom.get_origin())/size
+    r = np.array(options.dimension)/size/2.0
+  else:
+    center = (np.array(options.center) + 0.5)/grid
+    r = np.array(options.dimension)/grid/2.0
 
-  grid = microstructure.shape  
+  if np.any(center<0.0) or np.any(center>=1.0): print('error')
 
-  # change to coordinate space where the primitive is the unit sphere/cube/etc
-  if options.periodic: # use padding to achieve periodicity
-    (X, Y, Z) = np.meshgrid(np.arange(-grid[0]/2, (3*grid[0])/2, dtype=np.float32), # 50% padding on each side 
-                            np.arange(-grid[1]/2, (3*grid[1])/2, dtype=np.float32), 
-                            np.arange(-grid[2]/2, (3*grid[2])/2, dtype=np.float32),
-                            indexing='ij')
-    # Padding handling
-    X = np.roll(np.roll(np.roll(X,
-            -grid[0]//2, axis=0), 
-            -grid[1]//2, axis=1), 
-            -grid[2]//2, axis=2)
-    Y = np.roll(np.roll(np.roll(Y,
-            -grid[0]//2, axis=0), 
-            -grid[1]//2, axis=1), 
-            -grid[2]//2, axis=2)
-    Z = np.roll(np.roll(np.roll(Z,
-            -grid[0]//2, axis=0), 
-            -grid[1]//2, axis=1), 
-            -grid[2]//2, axis=2)
-  else: # nonperiodic, much lighter on resources
-    # change to coordinate space where the primitive is the unit sphere/cube/etc
-    (X, Y, Z) = np.meshgrid(np.arange(0, grid[0], dtype=np.float32), 
-                            np.arange(0, grid[1], dtype=np.float32), 
-                            np.arange(0, grid[2], dtype=np.float32),
-                            indexing='ij')
-    
-  # first by translating the center onto 0, 0.5 shifts the voxel origin onto the center of the voxel
-  X -= options.center[0] - 0.5
-  Y -= options.center[1] - 0.5
-  Z -= options.center[2] - 0.5
-  # and then by applying the rotation
-  (X, Y, Z) = rotation * (X, Y, Z)
-  # and finally by scaling (we don't worry about options.dimension being negative, np.abs occurs on the microstructure = np.where... line)
-  X /= options.dimension[0] * 0.5
-  Y /= options.dimension[1] * 0.5
-  Z /= options.dimension[2] * 0.5
-    
-
- # High exponents can cause underflow & overflow - loss of precision is okay here, we just compare it to 1, so +infinity and 0 are fine
-  old_settings = np.seterr()
+  offset = np.ones(3)*0.5 if options.periodic else center
+  mask = np.full(grid,False)
+  # High exponents can cause underflow & overflow - okay here, just compare to 1, so +infinity and 0 are fine
   np.seterr(over='ignore', under='ignore')
-  
-  if options.periodic: # use padding to achieve periodicity
-    inside = np.zeros(grid, dtype=bool)
-    for i in range(2):
-      for j in range(2):
-        for k in range(2):
-          inside = inside | ( # Most of this is handling the padding
-                np.abs(X[grid[0] * i : grid[0] * (i+1),
-                         grid[1] * j : grid[1] * (j+1),
-                         grid[2] * k : grid[2] * (k+1)])**options.exponent[0] +
-                np.abs(Y[grid[0] * i : grid[0] * (i+1),
-                         grid[1] * j : grid[1] * (j+1),
-                         grid[2] * k : grid[2] * (k+1)])**options.exponent[1] +
-                np.abs(Z[grid[0] * i : grid[0] * (i+1),
-                         grid[1] * j : grid[1] * (j+1),
-                         grid[2] * k : grid[2] * (k+1)])**options.exponent[2] <= 1.0)
-    
-    microstructure = np.where(inside,
-                              options.fill   if options.inside else microstructure,
-                              microstructure if options.inside else options.fill)   
 
-  else: # nonperiodic, much lighter on resources
-    microstructure = np.where(np.abs(X)**options.exponent[0] +
-                              np.abs(Y)**options.exponent[1] +
-                              np.abs(Z)**options.exponent[2] <= 1.0,
-                              options.fill   if options.inside else microstructure,
-                              microstructure if options.inside else options.fill)   
+  e = 2.0**np.array(options.exponent)
+  for x in range(grid[0]):
+    for y in range(grid[1]):
+      for z in range(grid[2]):
+        coords = np.array([x+0.5,y+0.5,z+0.5])/grid
+        mask[x,y,z] = np.sum(np.abs((rotation*(coords-offset))/r)**e) < 1
 
-  np.seterr(**old_settings) # Reset warnings to old state
-  newInfo['microstructures'] = len(np.unique(microstructure))
+  if options.periodic:
+    shift = ((offset-center)*grid).astype(int)
+    mask = np.roll(mask,shift,(0,1,2))
 
-# --- report ---------------------------------------------------------------------------------------
-  if (newInfo['microstructures'] != info['microstructures']):
-    damask.util.croak('--> microstructures: {}'.format(newInfo['microstructures']))
+  if options.inside: mask = np.logical_not(mask)
+  fill = np.nanmax(geom.microstructure)+1 if options.fill is None else options.fill
 
+  damask.util.croak(geom.update(np.where(mask,geom.microstructure,fill)))
+  geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
 
-#--- write header ---------------------------------------------------------------------------------
-
-  table.info_clear()
-  table.info_append(extra_header+[
-    scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta {}\tb {}\tc {}".format(*info['grid']),
-    "size\tx {}\ty {}\tz {}".format(*info['size']),
-    "origin\tx {}\ty {}\tz {}".format(*info['origin']),
-    "homogenization\t{}".format(info['homogenization']),
-    "microstructures\t{}".format(newInfo['microstructures']),
-    ])
-  table.labels_clear()
-  table.head_write()
-  table.output_flush()
-
-# --- write microstructure information ------------------------------------------------------------
-
-  format = '%g' if options.float else '%{}i'.format(int(math.floor(math.log10(np.nanmax(microstructure))+1)))
-  table.data = microstructure.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
-  table.data_writeArray(format,delimiter = ' ')
-
-#--- output finalization --------------------------------------------------------------------------
-
-  table.close()
+  if name is None:
+    sys.stdout.write(str(geom.show()))
+  else:
+    geom.to_file(name)

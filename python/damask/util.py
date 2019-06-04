@@ -1,7 +1,11 @@
-# -*- coding: UTF-8 no BOM -*-
-import sys,time,os,subprocess,shlex
-import numpy as np
+import sys
+import time
+import os
+import subprocess
+import shlex
 from optparse import Option
+
+import numpy as np
 
 class bcolors:
     """
@@ -11,15 +15,16 @@ class bcolors:
     http://stackoverflow.com/questions/287871/print-in-terminal-with-colors-using-python
     """
 
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    DIM  = '\033[2m'
+    HEADER    = '\033[95m'
+    OKBLUE    = '\033[94m'
+    OKGREEN   = '\033[92m'
+    WARNING   = '\033[93m'
+    FAIL      = '\033[91m'
+    ENDC      = '\033[0m'
+    BOLD      = '\033[1m'
+    DIM       = '\033[2m'
     UNDERLINE = '\033[4m'
+    CROSSOUT  = '\033[9m'
 
     def disable(self):
         self.HEADER = ''
@@ -30,6 +35,7 @@ class bcolors:
         self.ENDC = ''
         self.BOLD = ''
         self.UNDERLINE = ''
+        self.CROSSOUT = ''
     
 
 # -----------------------------
@@ -44,14 +50,15 @@ def srepr(arg,glue = '\n'):
 # -----------------------------
 def croak(what, newline = True):
   """Writes formated to stderr"""
-  sys.stderr.write(srepr(what,glue = '\n') + ('\n' if newline else ''))
+  if what is not None:
+    sys.stderr.write(srepr(what,glue = '\n') + ('\n' if newline else ''))
   sys.stderr.flush()
 
 # -----------------------------
 def report(who = None,
            what = None):
   """Reports script and file name"""
-  croak( (emph(who)+': ' if who is not None else '') + (what if what is not None else '') )
+  croak( (emph(who)+': ' if who is not None else '') + (what if what is not None else '') + '\n' )
 
 
 # -----------------------------
@@ -83,6 +90,11 @@ def delete(what):
   return bcolors.DIM+srepr(what)+bcolors.ENDC
 
 # -----------------------------
+def strikeout(what):
+  """Dims string"""
+  return bcolors.CROSSOUT+srepr(what)+bcolors.ENDC
+
+# -----------------------------
 def execute(cmd,
             streamIn = None,
             wd = './'):
@@ -110,6 +122,19 @@ def coordGridAndSize(coordinates):
   grid   = np.array(list(map(len,coords)),'i')
   size   = grid/np.maximum(np.ones(dim,'d'), grid-1.0) * (maxcorner-mincorner)                      # size from edge to edge = dim * n/(n-1) 
   size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 equal to smallest among other ones
+  delta  = size/grid
+  
+  N = grid.prod()
+  
+  if  N != len(coordinates):
+    raise ValueError('Data count {} does not match grid {}.'.format(len(coordinates),' x '.join(map(repr,grid))))
+    
+  if   np.any(np.abs(np.log10((coords[0][1:]-coords[0][:-1])/delta[0])) > 0.01) \
+    or np.any(np.abs(np.log10((coords[1][1:]-coords[1][:-1])/delta[1])) > 0.01):
+    raise ValueError('regular grid spacing {} violated.'.format(' x '.join(map(repr,delta))))
+  if dim==3 and np.any(np.abs(np.log10((coords[2][1:]-coords[2][:-1])/delta[2])) > 0.01):
+    raise ValueError('regular grid spacing {} violated.'.format(' x '.join(map(repr,delta))))  
+  
   return grid,size
   
 # -----------------------------
@@ -168,6 +193,17 @@ def progressBar(iteration, total, prefix='', bar_length=50):
 
   if iteration == total: sys.stderr.write('\n')
   sys.stderr.flush()
+ 
+
+class return_message():
+  """Object with formatted return message"""
+  
+  def __init__(self,message):
+    self.message = message
+  
+  def __repr__(self):
+    """Return message suitable for interactive shells"""
+    return srepr(self.message)
 
 
 def leastsqBound(func, x0, args=(), bounds=None, Dfun=None, full_output=0,

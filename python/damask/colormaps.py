@@ -1,8 +1,6 @@
-# -*- coding: UTF-8 no BOM -*-
+import math
 
-import math,numpy as np
-
-### --- COLOR CLASS --------------------------------------------------
+import numpy as np
 
 class Color():
   """

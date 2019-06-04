@@ -8,6 +8,8 @@ module HDF5_utilities
   use prec
   use IO
   use HDF5
+  use rotations
+  use numerics
 #ifdef PETSc
   use PETSC
 #endif
@@ -1676,8 +1678,6 @@ end subroutine HDF5_write_int7
 ! ToDo: We could optionally write out other representations (axis angle, euler, ...)
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_rotation(loc_id,dataset,datasetName,parallel)
-  use rotations, only: &
-    rotation
 
   type(rotation),   intent(in), dimension(:) :: dataset
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
@@ -1754,9 +1754,6 @@ end subroutine HDF5_write_rotation
 subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
                            myStart, globalShape, &
                            loc_id,localShape,datasetName,parallel)
- use numerics, only: &
-   worldrank, &
-   worldsize
 
  integer(HID_T),    intent(in) :: loc_id                                                             !< file or group handle
  character(len=*),  intent(in) :: datasetName                                                        !< name of the dataset in the file
@@ -1850,9 +1847,6 @@ end subroutine finalize_read
 subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
                            myStart, totalShape, &
                            loc_id,myShape,datasetName,datatype,parallel)
- use numerics, only: &
-   worldrank, &
-   worldsize
 
  integer(HID_T),    intent(in) :: loc_id                                                             !< file or group handle
  character(len=*),  intent(in) :: datasetName                                                        !< name of the dataset in the file

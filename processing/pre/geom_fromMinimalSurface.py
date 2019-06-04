@@ -1,28 +1,33 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
-import numpy as np
+import os
+import sys
 from optparse import OptionParser
+
+import numpy as np
+
 import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
+
+
+minimal_surfaces = ['primitive','gyroid','diamond']
+
+surface = {
+            'primitive': lambda x,y,z: np.cos(x)+np.cos(y)+np.cos(z),
+            'gyroid':    lambda x,y,z: np.sin(x)*np.cos(y)+np.sin(y)*np.cos(z)+np.cos(x)*np.sin(z),
+            'diamond':   lambda x,y,z: np.cos(x-y)*np.cos(z)+np.sin(x+y)*np.sin(z),
+          }
+
 
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
 
-minimal_surfaces = ['primitive','gyroid','diamond',]
-
-surface = {
-            'primitive': lambda x,y,z: math.cos(x)+math.cos(y)+math.cos(z),
-            'gyroid':    lambda x,y,z: math.sin(x)*math.cos(y)+math.sin(y)*math.cos(z)+math.cos(x)*math.sin(z),
-            'diamond':   lambda x,y,z: math.cos(x-y)*math.cos(z)+math.sin(x+y)*math.sin(z),
-          }
-
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog [option(s)] [geomfile]', description = """
-Generate a geometry file of a bicontinuous structure of given type.
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [geomfile]', description = """
+Generate a bicontinuous structure of given type.
 
 """, version = scriptID)
 
@@ -55,6 +60,7 @@ parser.add_option('--m',
                   dest = 'microstructure',
                   type = 'int', nargs = 2, metavar = 'int int',
                   help = 'two microstructure indices to be used [%default]')
+
 parser.set_defaults(type = minimal_surfaces[0],
                     threshold = 0.0,
                     periods = 1,
@@ -64,67 +70,26 @@ parser.set_defaults(type = minimal_surfaces[0],
                     microstructure = (1,2),
                    )
 
-(options,filenames) = parser.parse_args()
-
-# --- loop over input files -------------------------------------------------------------------------
-
-if filenames == []: filenames = [None]
-
-for name in filenames:
-  try:
-    table = damask.ASCIItable(outname = name,
-                              buffered = False, labeled = False)
-  except: continue
-  damask.util.report(scriptName,name)
+(options,filename) = parser.parse_args()
 
 
-# ------------------------------------------ make grid -------------------------------------
+name = None if filename == [] else filename[0]
+damask.util.report(scriptName,name)
 
-  info = {
-          'grid':   np.array(options.grid),
-          'size':   np.array(options.size),
-          'origin': np.zeros(3,'d'),
-          'microstructures': max(options.microstructure),
-          'homogenization':  options.homogenization
-         }
+x,y,z = np.meshgrid(options.periods*2.0*np.pi*(np.arange(options.grid[0])+0.5)/options.grid[0],
+                    options.periods*2.0*np.pi*(np.arange(options.grid[1])+0.5)/options.grid[1],
+                    options.periods*2.0*np.pi*(np.arange(options.grid[2])+0.5)/options.grid[2],
+                    indexing='xy',sparse=True)
 
-#--- report ---------------------------------------------------------------------------------------
+microstructure = np.where(options.threshold < surface[options.type](x,y,z),
+                          options.microstructure[1],options.microstructure[0])
 
-  damask.util.report_geom(info)
+geom=damask.Geom(microstructure,options.size,
+                 homogenization=options.homogenization,
+                 comments=[scriptID + ' ' + ' '.join(sys.argv[1:])])
+damask.util.croak(geom)
 
-  errors = []
-  if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
-  if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
-  if errors != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-#--- write header ---------------------------------------------------------------------------------
-
-  table.labels_clear()
-  table.info_clear()
-  table.info_append([
-    scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=info['grid']),
-    "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=info['size']),
-    "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=info['origin']),
-    "homogenization\t{homog}".format(homog=info['homogenization']),
-    "microstructures\t{microstructures}".format(microstructures=info['microstructures']),
-    ])
-  table.head_write()
-  
-#--- write data -----------------------------------------------------------------------------------
-
-  X = options.periods*2.0*math.pi*(np.arange(options.grid[0])+0.5)/options.grid[0]
-  Y = options.periods*2.0*math.pi*(np.arange(options.grid[1])+0.5)/options.grid[1]
-  Z = options.periods*2.0*math.pi*(np.arange(options.grid[2])+0.5)/options.grid[2]
-
-  for z in range(options.grid[2]):
-    for y in range(options.grid[1]):
-      table.data_clear()
-      for x in range(options.grid[0]):
-        table.data_append(options.microstructure[options.threshold < surface[options.type](X[x],Y[y],Z[z])])
-      table.data_write()
-
-  table.close()
+if name is None:
+  sys.stdout.write(str(geom.show()))
+else:
+  geom.to_file(name)
