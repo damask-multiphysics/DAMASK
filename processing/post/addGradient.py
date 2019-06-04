@@ -52,7 +52,7 @@ def gradFFT(geomdim,field):
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog option [ASCIItable(s)]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
 Add column(s) containing gradient of requested column(s).
 Operates on periodic ordered three-dimensional data sets
 of vector and scalar fields.

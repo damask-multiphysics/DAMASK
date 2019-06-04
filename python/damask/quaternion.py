@@ -1,5 +1,3 @@
-# -*- coding: UTF-8 no BOM -*-
-
 import numpy as np
 
 P = -1                                                                                              # convention (see DOI:10.1088/0965-0393/23/8/083501)

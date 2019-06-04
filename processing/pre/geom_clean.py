@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
-import numpy as np
-import damask
-from scipy import ndimage
+import os
+import sys
+from io import StringIO
 from optparse import OptionParser
+
+from scipy import ndimage
+import numpy as np
+
+import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
+
 def mostFrequent(arr):
-  return np.argmax(np.bincount(arr.astype('int')))
+  unique, inverse = np.unique(arr, return_inverse=True)
+  return unique[np.argmax(np.bincount(inverse))]
 
 
 #--------------------------------------------------------------------------------------------------
@@ -19,76 +25,33 @@ def mostFrequent(arr):
 #--------------------------------------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [geomfile(s)]', description = """
-Smooth geometry by selecting most frequent microstructure index within given stencil at each location.
+Smooth microstructure by selecting most frequent index within given stencil at each location.
 
 """, version=scriptID)
-
 
 parser.add_option('-s','--stencil',
                   dest = 'stencil',
                   type = 'int', metavar = 'int',
                   help = 'size of smoothing stencil [%default]')
 
-parser.set_defaults(stencil = 3,
-                   )
+parser.set_defaults(stencil = 3)
 
 (options, filenames) = parser.parse_args()
 
 
-# --- loop over input files -------------------------------------------------------------------------
-
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:    table = damask.ASCIItable(name     = name,
-                                    buffered = False,
-                                    labeled  = False)
-  except: continue
   damask.util.report(scriptName,name)
 
-# --- interpret header ----------------------------------------------------------------------------
+  geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
-  table.head_read()
-  info,extra_header = table.head_getGeom()
-  damask.util.report_geom(info)
+  damask.util.croak(geom.update(ndimage.filters.generic_filter(
+                                  geom.microstructure,mostFrequent,
+                                  size=(options.stencil,)*3).astype(geom.microstructure.dtype)))
+  geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
 
-  errors = []
-  if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
-  if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
-  if errors != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# --- read data ------------------------------------------------------------------------------------
-
-  microstructure = table.microstructure_read(info['grid']).reshape(info['grid'],order='F')          # read microstructure
-
-# --- do work ------------------------------------------------------------------------------------
-
-  microstructure = ndimage.filters.generic_filter(microstructure,mostFrequent,size=(options.stencil,)*3).astype('int_')
-  newInfo = {'microstructures': len(np.unique(microstructure))}
-
-# --- report ---------------------------------------------------------------------------------------
-  if (    newInfo['microstructures'] != info['microstructures']):
-    damask.util.croak('--> microstructures: %i'%newInfo['microstructures'])
-    info['microstructures'] == newInfo['microstructures']
-
-# --- write header ---------------------------------------------------------------------------------
-
-  table.info_clear()
-  table.info_append([scriptID + ' ' + ' '.join(sys.argv[1:]),])
-  table.head_putGeom(info)
-  table.info_append([extra_header])
-  table.labels_clear()
-  table.head_write()
-
-# --- write microstructure information ------------------------------------------------------------
-
-  formatwidth = int(math.floor(math.log10(np.nanmax(microstructure))+1))
-  table.data = microstructure.reshape((info['grid'][0],np.prod(info['grid'][1:])),order='F').transpose()
-  table.data_writeArray('%{}i'.format(formatwidth),delimiter = ' ')
-
-# --- output finalization --------------------------------------------------------------------------
-
-  table.close()                                                                                     # close ASCII table
+  if name is None:
+    sys.stdout.write(str(geom.show()))
+  else:
+    geom.to_file(name)

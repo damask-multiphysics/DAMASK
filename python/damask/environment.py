@@ -1,6 +1,5 @@
-# -*- coding: UTF-8 no BOM -*-
-
-import os,re
+import os
+import re
 
 class Environment():
   __slots__ = [ \

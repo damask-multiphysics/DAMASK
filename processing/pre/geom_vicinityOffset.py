@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
-import numpy as np
-from scipy import ndimage
+import os
+import sys
+from io import StringIO
 from optparse import OptionParser
+
+from scipy import ndimage
+import numpy as np
+
 import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
+
 
 def taintedNeighborhood(stencil,trigger=[],size=1):
 
@@ -21,11 +26,12 @@ def taintedNeighborhood(stencil,trigger=[],size=1):
     trigger = list(trigger)
   return np.any(np.in1d(stencil,np.array(trigger)))
 
+
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [geomfile(s)]', description = """
 Offset microstructure index for points which see a microstructure different from themselves
 (or listed as triggers) within a given (cubic) vicinity, i.e. within the region close to a grain/phase boundary.
 
@@ -35,13 +41,13 @@ parser.add_option('-v', '--vicinity',
                   dest = 'vicinity',
                   type = 'int', metavar = 'int',
                   help = 'voxel distance checked for presence of other microstructure [%default]')
-parser.add_option('-m', '--microstructureoffset',
+parser.add_option('-o', '--offset',
                   dest='offset',
                   type = 'int', metavar = 'int',
-                  help = 'offset (positive or negative) for tagged microstructure indices. '+
-                         '"0" selects maximum microstructure index [%default]')
+                  help='offset (positive or negative) to tag microstructure indices, defaults to max microstructure index')
 parser.add_option('-t', '--trigger',
-                  action = 'extend', dest = 'trigger', metavar = '<int LIST>',
+                  dest = 'trigger',
+                  action = 'extend', metavar = '<int LIST>',
                   help = 'list of microstructure indices triggering a change')
 parser.add_option('-n', '--nonperiodic',
                   dest = 'mode',
@@ -49,86 +55,34 @@ parser.add_option('-n', '--nonperiodic',
                   help = 'assume geometry to be non-periodic')
 
 parser.set_defaults(vicinity = 1,
-                    offset   = 0,
                     trigger  = [],
                     mode     = 'wrap',
                    )
 
 (options, filenames) = parser.parse_args()
+
 options.trigger = np.array(options.trigger, dtype=int)
 
-
-# --- loop over input files -------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False, labeled = False)
-  except: continue
   damask.util.report(scriptName,name)
 
-# --- interpret header ----------------------------------------------------------------------------
+  geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
-  table.head_read()
-  info,extra_header = table.head_getGeom()
-  damask.util.report_geom(info)
+  offset = np.nanmax(geom.microstructure) if options.offset is None else options.offset
 
-  errors = []
-  if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
-  if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
-  if errors != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
+  damask.util.croak(geom.update(np.where(ndimage.filters.generic_filter(
+                                           geom.microstructure,
+                                           taintedNeighborhood,
+                                           size=1+2*options.vicinity,mode=options.mode,
+                                           extra_arguments=(),
+                                           extra_keywords={"trigger":options.trigger,"size":1+2*options.vicinity}),
+                                           geom.microstructure + offset,geom.microstructure)))
+  geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
 
-# --- read data ------------------------------------------------------------------------------------
-
-  microstructure = table.microstructure_read(info['grid']).reshape(info['grid'],order='F')          # read microstructure
-
-# --- do work ------------------------------------------------------------------------------------
-
-  newInfo = {
-             'microstructures': 0,
-            }
-
-  if options.offset == 0: options.offset = microstructure.max()
-
-  microstructure = np.where(ndimage.filters.generic_filter(microstructure,
-                                                           taintedNeighborhood,
-                                                           size=1+2*options.vicinity,mode=options.mode,
-                                                           extra_arguments=(),
-                                                           extra_keywords={"trigger":options.trigger,"size":1+2*options.vicinity}),
-                            microstructure + options.offset,microstructure)
-
-  newInfo['microstructures'] = len(np.unique(microstructure))
-
-# --- report ---------------------------------------------------------------------------------------
-
-  if (newInfo['microstructures'] != info['microstructures']):
-    damask.util.croak('--> microstructures: %i'%newInfo['microstructures'])
-
-# --- write header ---------------------------------------------------------------------------------
-
-  table.labels_clear()
-  table.info_clear()
-  table.info_append(extra_header+[
-    scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta {grid[0]}\tb {grid[1]}\tc {grid[2]}".format(grid=info['grid']),
-    "size\tx {size[0]}\ty {size[1]}\tz {size[2]}".format(size=info['size']),
-    "origin\tx {origin[0]}\ty {origin[1]}\tz {origin[2]}".format(origin=info['origin']),
-    "homogenization\t{homog}".format(homog=info['homogenization']),
-    "microstructures\t{microstructures}".format(microstructures=newInfo['microstructures']),
-    ])
-  table.head_write()
-  
-# --- write microstructure information ------------------------------------------------------------
-
-  formatwidth = int(math.floor(math.log10(np.nanmax(microstructure))+1))
-  table.data = microstructure.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
-  table.data_writeArray('%{}i'.format(formatwidth),delimiter = ' ')
-    
-# --- output finalization --------------------------------------------------------------------------
-
-  table.close()                                                                                     # close ASCII table
+  if name is None:
+    sys.stdout.write(str(geom.show()))
+  else:
+    geom.to_file(name)
