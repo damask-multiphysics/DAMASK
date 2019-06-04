@@ -10,6 +10,12 @@ module mesh
  use prec
  use math
  use mesh_base
+ use DAMASK_interface
+ use IO
+ use debug
+ use numerics
+ use FEsolving
+ use element
 
  implicit none
  private
@@ -266,27 +272,7 @@ end subroutine tMesh_marc_init
 !! Order and routines strongly depend on type of solver
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_init(ip,el)
- use DAMASK_interface
- use IO, only: &
-   IO_open_InputFile, &
-   IO_error
- use debug, only: &
-   debug_e, &
-   debug_i, &
-   debug_level, &
-   debug_mesh, &
-   debug_levelBasic
- use numerics, only: &
-   usePingPong, &
-   numerics_unitlength, &
-   worldrank
- use FEsolving, only: &
-   modelName, &
-   calcMode, &
-   FEsolving_execElem, &
-   FEsolving_execIP
 
- 
  integer, intent(in) :: el, ip
   
  integer, parameter  :: FILEUNIT = 222
@@ -586,14 +572,6 @@ subroutine mesh_marc_map_elementSets(nameElemSet,mapElemSet,fileUnit)
 !> @brief Maps elements from FE ID to internal (consecutive) representation.
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,nElems,fileUnit)
-
- use math, only: math_sort
- use IO,   only: IO_lc, &
-                 IO_intValue, &
-                 IO_stringValue, &
-                 IO_stringPos, &
-                 IO_continuousIntValues
-
  
  integer, intent(in) :: fileUnit,tableStyle,nElems
  character(len=64), intent(in), dimension(:) :: nameElemSet
@@ -738,15 +716,6 @@ end subroutine mesh_marc_build_nodes
 !--------------------------------------------------------------------------------------------------
 integer function mesh_marc_count_cpSizes(fileUnit)
 
- use IO,   only: IO_lc, &
-                 IO_error, &
-                 IO_stringValue, &
-                 IO_stringPos, &
-                 IO_intValue, &
-                 IO_skipChunks
- use element
-
- 
  integer, intent(in) :: fileUnit
 
  type(tElement) :: tempEl
@@ -1160,10 +1129,6 @@ end function mesh_build_cellnodes
 !> and one corner at the central ip.
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_ipVolumes
- use math, only: &
-   math_volTetrahedron, &
-   math_areaTriangle
-
  
  integer ::                                e,t,g,c,i,m,f,n
  real(pReal), dimension(FE_maxNcellnodesPerCellface,FE_maxNcellfaces) :: subvolume
@@ -1470,10 +1435,7 @@ end subroutine mesh_build_sharedElems
 !> @brief build up of IP neighborhood, allocate globals '_ipNeighborhood'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_ipNeighborhood
- use math, only: &
-   math_mul3x3
 
- 
  integer      ::           myElem, &                                                           ! my CP element index
                                  myIP, &
                                  myType, &                                                           ! my element type
@@ -1639,7 +1601,6 @@ subroutine mesh_build_ipNeighborhood
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_faceMatch(elem, face ,matchingElem, matchingFace)
 
-
 integer, intent(out) ::     matchingElem, &                                                   ! matching CP element ID
                                   matchingFace                                                      ! matching face ID
 integer, intent(in) ::      face, &                                                           ! face ID
@@ -1727,9 +1688,7 @@ end subroutine mesh_build_ipNeighborhood
 !> @brief mapping of FE element types to internal representation
 !--------------------------------------------------------------------------------------------------
 integer function FE_mapElemtype(what)
- use IO, only: IO_lc, IO_error
 
- 
  character(len=*), intent(in) :: what
 
  select case (IO_lc(what))
@@ -1828,10 +1787,7 @@ end subroutine mesh_build_FEdata
 !! valid questions (what) are 'elem', 'node'
 !--------------------------------------------------------------------------------------------------
 integer function mesh_FEasCP(what,myID)
- use IO, only: &
-   IO_lc
 
- 
  character(len=*), intent(in) :: what
  integer,    intent(in) :: myID
 
