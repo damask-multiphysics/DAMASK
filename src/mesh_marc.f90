@@ -364,6 +364,7 @@ subroutine mesh_init(ip,el)
  call mesh_build_sharedElems
  if (myDebug) write(6,'(a)') ' Built shared elements'; flush(6)
  call mesh_build_ipNeighborhood
+ call IP_neighborhood2
  if (myDebug) write(6,'(a)') ' Built IP neighborhood'; flush(6)
 
  if (usePingPong .and. (mesh_Nelems /= theMesh%nElems)) &
@@ -1108,16 +1109,15 @@ end function mesh_build_cellnodes
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_ipVolumes
  
- integer ::                                e,t,g,c,i,m,f,n
- real(pReal), dimension(FE_maxNcellnodesPerCellface,FE_maxNcellfaces) :: subvolume
+  integer :: e,i,c,m,f,n
+  real(pReal), dimension(FE_maxNcellnodesPerCellface,FE_maxNcellfaces) :: subvolume
 
   allocate(mesh_ipVolume(theMesh%elem%nIPs,theMesh%nElems),source=0.0_pReal)
+  c = theMesh%elem%cellType
+  m = FE_NcellnodesPerCellface(c)
 
- !$OMP PARALLEL DO PRIVATE(t,g,c,m,subvolume)
-   do e = 1,theMesh%nElems                                                                      ! loop over cpElems
-     t = mesh_element(2,e)                                                                     ! get element type
-     g = theMesh%elem%geomType
-     c = theMesh%elem%cellType
+ !$OMP PARALLEL DO PRIVATE(f,n,subvolume)
+   do e = 1,theMesh%nElems
      select case (c)
 
        case (1)                                                                                ! 2D 3node
@@ -1143,10 +1143,9 @@ subroutine mesh_build_ipVolumes
                                                     theMesh%node_0(1:3,mesh_cell2(4,i,e)))
 
        case (4)                                                                                ! 3D 8node
-         m = FE_NcellnodesPerCellface(c)
          do i = 1,theMesh%elem%nIPs                                                                   ! loop over ips=cells in this element
            subvolume = 0.0_pReal
-           forall(f = 1:FE_NipNeighbors(c), n = 1:FE_NcellnodesPerCellface(c)) &
+           forall(f = 1:FE_NipNeighbors(c), n = 1:m) &
              subvolume(n,f) = math_volTetrahedron(&
                                 mesh_cellnode(1:3,mesh_cell(FE_cellface(      n     ,f,c),i,e)), &
                                 mesh_cellnode(1:3,mesh_cell(FE_cellface(1+mod(n  ,m),f,c),i,e)), &
@@ -1164,9 +1163,27 @@ end subroutine mesh_build_ipVolumes
 
 subroutine IP_neighborhood2
 
-  integer, dimension(:,:,:,:), allocatable :: faces
+  integer, dimension(:,:,:,:,:,:), allocatable :: faces
+  integer :: e,i,f,c,m,n
+  allocate(faces(size(theMesh%elem%cellface,1),size(theMesh%elem%cellface,2),theMesh%elem%nIPs,theMesh%Nelems,1,1))
+  print*, shape(faces)
+  !allocate(connectivity_cell(thisMesh%elem%NcellNodesPerCell,thisMesh%elem%nIPs,thisMesh%Nelems))
 
-  allocate(faces(size(theMesh%elem%cellface,1),size(theMesh%elem%cellface,2),theMesh%elem%nIPs,theMesh%Nelems))
+  c = theMesh%elem%cellType
+  m = FE_NcellnodesPerCellface(c)
+  n = FE_NipNeighbors(c)
+  f = size(theMesh%elem%cellface,2)
+  
+  do e = 1,theMesh%nElems
+    do i = 1,theMesh%elem%nIPs
+      print*, 'e',e,'i',i
+      print*,  mesh_cell2(:,i,e)
+      print*, ''
+      do f = 1, size(theMesh%elem%cellface,2)
+      enddo
+    enddo
+  enddo
+  
 
 end subroutine IP_neighborhood2
 
@@ -1187,9 +1204,8 @@ subroutine mesh_build_ipCoordinates
   integer :: e,i,n
   real(pReal), dimension(3) :: myCoords
 
-
   !$OMP PARALLEL DO PRIVATE(myCoords)
-  do e = 1,theMesh%nElems                                                                        ! loop over cpElems
+  do e = 1,theMesh%nElems
     do i = 1,theMesh%elem%nIPs
       myCoords = 0.0_pReal
       do n = 1,theMesh%elem%nCellnodesPerCell
