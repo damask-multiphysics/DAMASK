@@ -295,7 +295,6 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Opened input file'; flush(6)
  
  fileFormatVersion = mesh_marc_get_fileFormat(FILEUNIT)
- fileFormatVersion  = MarcVersion
  if (myDebug) write(6,'(a)') ' Got input file format'; flush(6)
  
  call mesh_marc_get_tableStyles(initialcondTableStyle,hypoelasticTableStyle,FILEUNIT)
@@ -922,7 +921,7 @@ subroutine calcCells(thisMesh,connectivity_elem)
 
    ! sort according to real node IDs (from left to right)
    call math_sort(candidates_global,sortDim=1)
-   do p = 2, nParentNodes-1
+   do p = 2, nParentNodes-1 ! why -1?
      n = 1
      do while(n <= s*thisMesh%Nelems)
       j=0
@@ -1162,39 +1161,46 @@ end subroutine mesh_build_ipVolumes
 
 subroutine IP_neighborhood2
 
-  integer, dimension(:,:,:,:,:,:), allocatable :: faces
-  integer, dimension(:), allocatable :: cellnodes
-  integer :: e,i,f,c,m,n,j,k,l
-  allocate(faces(size(theMesh%elem%cellface,1),size(theMesh%elem%cellface,2),theMesh%elem%nIPs,theMesh%Nelems,1,1))
-  print*, 'faces',shape(faces)
-  print*, 'cell2',shape(mesh_cell2)
-  !allocate(connectivity_cell(thisMesh%elem%NcellNodesPerCell,thisMesh%elem%nIPs,thisMesh%Nelems))
-  
-  allocate(cellnodes(theMesh%elem%NcellnodesPerCell))
+  integer, dimension(:,:), allocatable :: faces
+  integer, dimension(:), allocatable :: face
+  integer :: e,i,f,c,m,n,j,k,l,p
+  allocate(faces(size(theMesh%elem%cellface,1)+2,size(theMesh%elem%cellface,2)*theMesh%elem%nIPs*theMesh%Nelems))
 
-  c = theMesh%elem%cellType
-  m = FE_NcellnodesPerCellface(c)
-  n = FE_NipNeighbors(c)
-  f = size(theMesh%elem%cellface,2)
-  
-      do i = 1,theMesh%elem%nIPs
-        do n = 1, theMesh%elem%nIPneighbors
-          write(6,*) theMesh%elem%cell(theMesh%elem%cellFace(:,n),i)
-          write(6,*) ''
-        enddo
-      enddo
-  
+  ! store the definition of each cell face
+  c = 0
+  f = 0
   do e = 1,theMesh%nElems
     do i = 1,theMesh%elem%nIPs
-      !print*, 'e',e,'i',i
-      !print*,  mesh_cell2(:,i,e)
-      !print*, ''
-      !do n = 1, FE_NipNeighbors(c)
-      !  print*, theMesh%elem%cell(:,n)
-      !enddo
+      c = c + 1
+      do n = 1, theMesh%elem%nIPneighbors
+        f = f + 1
+        face = mesh_cell2(theMesh%elem%cellFace(:,n),i,e)
+        do j = 1, size(face)
+          faces(j,f) = maxval(face)
+          face(maxloc(face)) = -huge(1)
+        enddo
+        faces(j,f)   = c
+        faces(j+1,f) = n
+      enddo
     enddo
   enddo
   
+  ! sort ..
+  call math_sort(faces,sortDim=1)
+  do p = 2, size(faces,1)-2
+     n = 1
+     do while(n <= size(faces,2))
+      j=0
+      do while (n+j<= size(faces,2))
+        if (faces(p-1,n+j)/=faces(p-1,n)) exit
+        j = j + 1
+      enddo
+      e = n+j-1
+      if (any(faces(p,n:e)/=faces(p,n))) call math_sort(faces(:,n:e),sortDim=p)
+      n = e+1
+     enddo
+  enddo
+
 
 end subroutine IP_neighborhood2
 
