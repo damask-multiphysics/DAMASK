@@ -8,12 +8,20 @@
 !! 'phase', 'texture', and 'microstucture'
 !--------------------------------------------------------------------------------------------------
 module material
- use prec
- use math
- use config
+  use prec
+  use math
+  use config
+#if defined(PETSc) || defined(DAMASK_HDF5)
+  use results
+#endif
+  use IO
+  use debug
+  use mesh
+  use numerics
 
  implicit none
  private
+
  character(len=*),                         parameter,            public :: &
    ELASTICITY_hooke_label               = 'hooke', &
    PLASTICITY_none_label                = 'none', &
@@ -242,18 +250,6 @@ contains
 !> material.config
 !--------------------------------------------------------------------------------------------------
 subroutine material_init
-#if defined(PETSc) || defined(DAMASK_HDF5)
- use results
-#endif
- use IO, only: &
-   IO_error
- use debug, only: &
-   debug_level, &
-   debug_material, &
-   debug_levelBasic, &
-   debug_levelExtensive
- use mesh, only: &
-   theMesh
 
  integer, parameter :: FILEUNIT = 210
  integer            :: m,c,h, myDebug, myPhase, myHomog
@@ -422,10 +418,6 @@ end subroutine material_init
 !> @brief parses the homogenization part from the material configuration
 !--------------------------------------------------------------------------------------------------
 subroutine material_parseHomogenization
- use mesh, only: &
-   theMesh
- use IO, only: &
-   IO_error
 
  integer              :: h
  character(len=65536) :: tag
@@ -517,14 +509,6 @@ end subroutine material_parseHomogenization
 !> @brief parses the microstructure part in the material configuration file
 !--------------------------------------------------------------------------------------------------
 subroutine material_parseMicrostructure
- use IO, only: &
-   IO_floatValue, &
-   IO_intValue, &
-   IO_stringValue, &
-   IO_stringPos, &
-   IO_error
- use mesh, only: &
-   theMesh
 
  character(len=65536), dimension(:), allocatable :: &
    strings
@@ -602,10 +586,6 @@ end subroutine material_parseCrystallite
 !> @brief parses the phase part in the material configuration file
 !--------------------------------------------------------------------------------------------------
 subroutine material_parsePhase
- use IO, only: &
-   IO_error, &
-   IO_getTag, &
-   IO_stringValue
 
  integer :: sourceCtr, kinematicsCtr, stiffDegradationCtr, p
  character(len=65536), dimension(:), allocatable ::  str 
@@ -729,11 +709,6 @@ end subroutine material_parsePhase
 !> @brief parses the texture part in the material configuration file
 !--------------------------------------------------------------------------------------------------
 subroutine material_parseTexture
- use IO, only: &
-   IO_error, &
-   IO_stringPos, &
-   IO_floatValue, &
-   IO_stringValue
 
  integer :: section, gauss, j, t, i
  character(len=65536), dimension(:), allocatable ::  strings                                     ! Values for given key in material config 
@@ -810,8 +785,6 @@ end subroutine material_parseTexture
 subroutine material_allocatePlasticState(phase,NofMyPhase,&
                                          sizeState,sizeDotState,sizeDeltaState,&
                                          Nslip,Ntwin,Ntrans)
- use numerics, only: &
-   numerics_integrator
 
  integer, intent(in) :: &
    phase, &
@@ -857,8 +830,6 @@ end subroutine material_allocatePlasticState
 !--------------------------------------------------------------------------------------------------
 subroutine material_allocateSourceState(phase,of,NofMyPhase,&
                                         sizeState,sizeDotState,sizeDeltaState)
- use numerics, only: &
-   numerics_integrator
 
  integer, intent(in) :: &
    phase, &
@@ -898,8 +869,6 @@ end subroutine material_allocateSourceState
 !! calculates the volume of the grains and deals with texture components
 !--------------------------------------------------------------------------------------------------
 subroutine material_populateGrains
- use mesh, only: &
-   theMesh
 
  integer :: e,i,c,homog,micro
 
