@@ -23,29 +23,25 @@ module mesh
 
  implicit none
  private
- integer, public,protected :: &
-   mesh_Ncellnodes                                                                                  !< total number of cell nodes in mesh (including duplicates)
- integer :: &
-   mesh_elemType, &                                                                                 !< Element type of the mesh (only support homogeneous meshes)
-   mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
-   mesh_Ncells, &                                                                                   !< total number of cells in mesh
-   mesh_maxNsharedElems                                                                             !< max number of CP elements sharing a node
 
+! -------------------------------------------------------------------------------------------------- 
+! public variables (DEPRECATED)
+ integer, public, protected :: &
+   mesh_Ncellnodes                                                                                  !< total number of cell nodes in mesh (including duplicates)
+   
  integer, dimension(:,:), allocatable, public, protected :: &
-   mesh_element, & !DEPRECATED
-   mesh_sharedElem, &                                                                               !< entryCount and list of elements containing node
-   mesh_nodeTwins                                                                                   !< node twins are surface nodes that lie exactly on opposite sides of the mesh (surfaces nodes with equal coordinate values in two dimensions)
+   mesh_element
 
  integer, dimension(:,:,:,:), allocatable, public, protected :: &
    mesh_ipNeighborhood                                                                              !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
-
+   
  real(pReal), public, protected :: &
    mesh_unitlength                                                                                  !< physical length of one unit in mesh
-
+   
  real(pReal), dimension(:,:), allocatable, public :: &
    mesh_node, &                                                                                     !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!)
    mesh_cellnode                                                                                    !< cell node x,y,z coordinates (after deformation! ONLY FOR MARC!!!)
-
+   
  real(pReal), dimension(:,:), allocatable, public, protected :: &
    mesh_ipVolume, &                                                                                 !< volume associated with IP (initially!)
    mesh_node0                                                                                       !< node x,y,z coordinates (initially!)
@@ -58,25 +54,48 @@ module mesh
 
  real(pReal),dimension(:,:,:,:), allocatable, public, protected :: &
    mesh_ipAreaNormal                                                                                !< area normal of interface to neighboring IP (initially!)
+! --------------------------------------------------------------------------------------------------
 
- logical, dimension(3), public, protected :: mesh_periodicSurface                                   !< flag indicating periodic outer surfaces (used for fluxes)
+type, public, extends(tMesh) :: tMesh_marc
+ 
+ contains 
+   procedure, pass(self) :: tMesh_marc_init
+   generic, public :: init => tMesh_marc_init
+end type tMesh_marc
+
+ type(tMesh_marc), public, protected :: theMesh
+ 
+! -------------------------------------------------------------------------------------------------- 
 
 
-integer, dimension(:,:), allocatable, private :: &
+ integer :: &
+   mesh_elemType, &                                                                                 !< Element type of the mesh (only support homogeneous meshes)
+   mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
+   mesh_Ncells, &                                                                                   !< total number of cells in mesh
+   mesh_maxNsharedElems                                                                             !< max number of CP elements sharing a node
+
+ integer, dimension(:,:), allocatable :: &
+   mesh_sharedElem, &                                                                               !< entryCount and list of elements containing node
+   mesh_nodeTwins                                                                                   !< node twins are surface nodes that lie exactly on opposite sides of the mesh (surfaces nodes with equal coordinate values in two dimensions)
+
+ logical, dimension(3) :: mesh_periodicSurface                                   !< flag indicating periodic outer surfaces (used for fluxes)
+
+
+integer, dimension(:,:), allocatable :: &
    mesh_cellnodeParent                                                                              !< cellnode's parent element ID, cellnode's intra-element ID
 
- integer,dimension(:,:,:), allocatable, private :: &
+ integer,dimension(:,:,:), allocatable :: &
    mesh_cell2, &                                                                                        !< cell connectivity for each element,ip/cell
    mesh_cell                                                                                        !< cell connectivity for each element,ip/cell
 
- integer, dimension(:,:,:), allocatable, private :: &
+ integer, dimension(:,:,:), allocatable :: &
    FE_cellface                                                                                      !< list of intra-cell cell node IDs that constitute the cell faces of a specific type of cell
 
 
 ! These definitions should actually reside in the FE-solver specific part (different for MARC/ABAQUS)
 ! Hence, I suggest to prefix with "FE_"
 
- integer, parameter, public :: &
+ integer, parameter :: &
    FE_Nelemtypes = 13, &
    FE_Ngeomtypes = 10, &
    FE_Ncelltypes = 4, &
@@ -89,7 +108,7 @@ integer, dimension(:,:), allocatable, private :: &
    FE_maxNcellfaces = 6, &
    FE_maxNcellnodesPerCellface = 4
 
- integer, dimension(FE_Ngeomtypes), parameter, private :: FE_NmatchingNodes = &               !< number of nodes that are needed for face matching in a specific type of element geometry
+ integer, dimension(FE_Ngeomtypes), parameter :: FE_NmatchingNodes = &               !< number of nodes that are needed for face matching in a specific type of element geometry
  int([ &
       3, & ! element   6 (2D 3node 1ip)
       3, & ! element 125 (2D 6node 3ip)
@@ -103,8 +122,7 @@ integer, dimension(:,:), allocatable, private :: &
       8  & ! element  21 (3D 20node 27ip)
   ],pInt)
 
- integer, dimension(FE_maxNfaces,FE_Ngeomtypes), parameter, private :: &
-                                                                       FE_NmatchingNodesPerFace = & !< number of matching nodes per face in a specific type of element geometry
+ integer, dimension(FE_maxNfaces,FE_Ngeomtypes), parameter ::  FE_NmatchingNodesPerFace = & !< number of matching nodes per face in a specific type of element geometry
  reshape(int([ &
   2,2,2,0,0,0, & ! element   6 (2D 3node 1ip)
   2,2,2,0,0,0, & ! element 125 (2D 6node 3ip)
@@ -118,8 +136,7 @@ integer, dimension(:,:), allocatable, private :: &
   4,4,4,4,4,4  & ! element  21 (3D 20node 27ip)
   ],pInt),[FE_maxNipNeighbors,FE_Ngeomtypes])
 
- integer, dimension(FE_maxNmatchingNodesPerFace,FE_maxNfaces,FE_Ngeomtypes), &
-                                                          parameter, private :: FE_face = &         !< List of node indices on each face of a specific type of element geometry
+ integer, dimension(FE_maxNmatchingNodesPerFace,FE_maxNfaces,FE_Ngeomtypes), parameter  :: FE_face = &         !< List of node indices on each face of a specific type of element geometry
  reshape(int([&
   1,2,0,0 , & ! element   6 (2D 3node 1ip)
   2,3,0,0 , &
@@ -184,7 +201,7 @@ integer, dimension(:,:), allocatable, private :: &
   ],pInt),[FE_maxNmatchingNodesPerFace,FE_maxNfaces,FE_Ngeomtypes])
 
 
- integer, dimension(FE_Ncelltypes), parameter, private :: FE_NcellnodesPerCellface = &        !< number of cell nodes per cell face in a specific cell type
+ integer, dimension(FE_Ncelltypes), parameter :: FE_NcellnodesPerCellface = &        !< number of cell nodes per cell face in a specific cell type
  int([&
       2, & ! (2D 3node)
       2, & ! (2D 4node)
@@ -192,7 +209,7 @@ integer, dimension(:,:), allocatable, private :: &
       4  & ! (3D 8node)
   ],pInt)
 
- integer, dimension(FE_Ncelltypes), parameter, private :: FE_NipNeighbors = &                  !< number of ip neighbors / cell faces in a specific cell type
+ integer, dimension(FE_Ncelltypes), parameter :: FE_NipNeighbors = &                  !< number of ip neighbors / cell faces in a specific cell type
  int([&
       3, & ! (2D 3node)
       4, & ! (2D 4node)
@@ -204,20 +221,20 @@ integer, dimension(:,:), allocatable, private :: &
  integer, private :: &
    mesh_Nelems, &                                                                                   !< total number of elements in mesh (including non-DAMASK elements)
    mesh_NelemSets
- character(len=64), dimension(:), allocatable, private :: &
+ character(len=64), dimension(:), allocatable :: &
    mesh_nameElemSet
    
- integer, dimension(:,:), allocatable, private :: &
+ integer, dimension(:,:), allocatable :: &
    mesh_mapElemSet                                                                                  !< list of elements in elementSet
- integer, dimension(:,:), allocatable, target, private :: &
+ integer, dimension(:,:), allocatable, target :: &
    mesh_mapFEtoCPelem, &                                                                            !< [sorted FEid, corresponding CPid]
    mesh_mapFEtoCPnode                                                                               !< [sorted FEid, corresponding CPid]
 
 
- integer, private :: &
+ integer :: &
    hypoelasticTableStyle, &                                                                         !< Table style (Marc only)
    initialcondTableStyle                                                                            !< Table style (Marc only)
- integer, dimension(:), allocatable, private :: &
+ integer, dimension(:), allocatable :: &
    Marc_matNumber                                                                                   !< array of material numbers for hypoelastic material (Marc only)
 
  public :: &
@@ -246,15 +263,6 @@ integer, dimension(:,:), allocatable, private :: &
    mesh_marc_map_nodes, &
    mesh_marc_build_nodes, &
    mesh_marc_build_elements
-
-type, public, extends(tMesh) :: tMesh_marc
- 
- contains 
-   procedure, pass(self) :: tMesh_marc_init
-   generic, public :: init => tMesh_marc_init
-end type tMesh_marc
-
- type(tMesh_marc), public, protected :: theMesh
  
  
 contains
