@@ -215,7 +215,6 @@ integer, dimension(:,:), allocatable, private :: &
 
 
  integer, private :: &
-   MarcVersion, &                                                                                   !< Version of input file format (Marc only)
    hypoelasticTableStyle, &                                                                         !< Table style (Marc only)
    initialcondTableStyle                                                                            !< Table style (Marc only)
  integer, dimension(:), allocatable, private :: &
@@ -295,7 +294,7 @@ subroutine mesh_init(ip,el)
  call IO_open_inputFile(FILEUNIT,modelName)                                                         ! parse info from input file...
  if (myDebug) write(6,'(a)') ' Opened input file'; flush(6)
  
- MarcVersion = mesh_marc_get_fileFormat(FILEUNIT)
+ fileFormatVersion = mesh_marc_get_fileFormat(FILEUNIT)
  fileFormatVersion  = MarcVersion
  if (myDebug) write(6,'(a)') ' Got input file format'; flush(6)
  
@@ -322,7 +321,7 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Counted CP elements'; flush(6)
  
  allocate (mesh_mapFEtoCPelem(2,mesh_NcpElems), source = 0)
- call mesh_marc_map_elements(hypoelasticTableStyle,mesh_nameElemSet,mesh_mapElemSet,mesh_NcpElems,FILEUNIT)
+ call mesh_marc_map_elements(hypoelasticTableStyle,mesh_nameElemSet,mesh_mapElemSet,mesh_NcpElems,fileFormatVersion,FILEUNIT)
  if (myDebug) write(6,'(a)') ' Mapped elements'; flush(6)
  
  allocate (mesh_mapFEtoCPnode(2,mesh_Nnodes),source=0)
@@ -576,9 +575,9 @@ subroutine mesh_marc_map_elementSets(nameElemSet,mapElemSet,fileUnit)
 !--------------------------------------------------------------------------------------------------
 !> @brief Maps elements from FE ID to internal (consecutive) representation.
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,nElems,fileUnit)
+subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,nElems,fileFormatVersion,fileUnit)
  
- integer, intent(in) :: fileUnit,tableStyle,nElems
+ integer, intent(in) :: fileUnit,tableStyle,nElems,fileFormatVersion
  character(len=64), intent(in), dimension(:) :: nameElemSet
  integer, dimension(:,:), intent(in) :: &
    mapElemSet
@@ -596,7 +595,7 @@ subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,nElems,fileU
  do
    read (fileUnit,'(A300)',END=660) line
    chunkPos = IO_stringPos(line)
-   if (MarcVersion < 13) then                                                                       ! Marc 2016 or earlier
+   if (fileFormatVersion < 13) then                                                                       ! Marc 2016 or earlier
      if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'hypoelastic' ) then
        do i=1,3+TableStyle                                                                          ! skip three (or four if new table style!) lines
          read (fileUnit,'(A300)') line
@@ -1164,23 +1163,35 @@ end subroutine mesh_build_ipVolumes
 subroutine IP_neighborhood2
 
   integer, dimension(:,:,:,:,:,:), allocatable :: faces
-  integer :: e,i,f,c,m,n
+  integer, dimension(:), allocatable :: cellnodes
+  integer :: e,i,f,c,m,n,j,k,l
   allocate(faces(size(theMesh%elem%cellface,1),size(theMesh%elem%cellface,2),theMesh%elem%nIPs,theMesh%Nelems,1,1))
-  print*, shape(faces)
+  print*, 'faces',shape(faces)
+  print*, 'cell2',shape(mesh_cell2)
   !allocate(connectivity_cell(thisMesh%elem%NcellNodesPerCell,thisMesh%elem%nIPs,thisMesh%Nelems))
+  
+  allocate(cellnodes(theMesh%elem%NcellnodesPerCell))
 
   c = theMesh%elem%cellType
   m = FE_NcellnodesPerCellface(c)
   n = FE_NipNeighbors(c)
   f = size(theMesh%elem%cellface,2)
   
+      do i = 1,theMesh%elem%nIPs
+        do n = 1, theMesh%elem%nIPneighbors
+          write(6,*) theMesh%elem%cell(theMesh%elem%cellFace(:,n),i)
+          write(6,*) ''
+        enddo
+      enddo
+  
   do e = 1,theMesh%nElems
     do i = 1,theMesh%elem%nIPs
-      print*, 'e',e,'i',i
-      print*,  mesh_cell2(:,i,e)
-      print*, ''
-      do f = 1, size(theMesh%elem%cellface,2)
-      enddo
+      !print*, 'e',e,'i',i
+      !print*,  mesh_cell2(:,i,e)
+      !print*, ''
+      !do n = 1, FE_NipNeighbors(c)
+      !  print*, theMesh%elem%cell(:,n)
+      !enddo
     enddo
   enddo
   
