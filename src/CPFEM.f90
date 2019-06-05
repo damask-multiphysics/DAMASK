@@ -16,6 +16,13 @@ module CPFEM
  use homogenization
  use IO
  use DAMASK_interface
+ use numerics
+#ifdef DAMASK_HDF5
+ use HDF5_utilities
+ use results
+#endif
+ use lattice
+ use constitutive
 
  implicit none
  private
@@ -67,38 +74,6 @@ contains
 !> @brief call (thread safe) all module initializations
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_initAll(el,ip)
- use numerics, only: &
-   numerics_init
- use debug, only: &
-   debug_init
- use config, only: &
-   config_init
- use FEsolving, only: &
-   FE_init
- use math, only: &
-   math_init
- use mesh, only: &
-   mesh_init
- use material, only: &
-   material_init
-#ifdef DAMASK_HDF5
- use HDF5_utilities, only: &
-   HDF5_utilities_init
- use results, only: &
-   results_init
-#endif
- use lattice, only: &
-   lattice_init
- use constitutive, only: &
-   constitutive_init
- use crystallite, only: &
-   crystallite_init
- use homogenization, only: &
-   homogenization_init
- use IO, only: &
-   IO_init
- use DAMASK_interface
-
  integer(pInt), intent(in) ::                        el, &                                          !< FE el number
                                                      ip                                             !< FE integration point number
 
@@ -134,33 +109,6 @@ end subroutine CPFEM_initAll
 !> @brief allocate the arrays defined in module CPFEM and initialize them
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_init
- use IO, only: &
-   IO_error
- use debug, only: &
-   debug_level, &
-   debug_CPFEM, &
-   debug_levelBasic, &
-   debug_levelExtensive
- use FEsolving, only: &
-   symmetricSolver, &
-   restartRead, &
-   modelName
- use mesh, only: &
-   theMesh
- use material, only: &
-   material_phase, &
-   homogState, &
-   phase_plasticity, &
-   plasticState
- use config, only: &
-   material_Nhomogenization
- use crystallite, only: &
-   crystallite_F0, &
-   crystallite_Fp0, &
-   crystallite_Lp0, &
-   crystallite_Fi0, &
-   crystallite_Li0, &
-   crystallite_S0
 
  integer :: k,l,m,ph,homog
 
@@ -554,14 +502,6 @@ end subroutine CPFEM_general
 !> @brief triggers writing of the results
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_results(inc,time)
-#ifdef DAMASK_HDF5
- use results
- use HDF5_utilities
-#endif
- use constitutive, only: &
-   constitutive_results
- use crystallite, only: &
-   crystallite_results
 
  integer(pInt), intent(in) :: inc
  real(pReal),   intent(in) :: time
