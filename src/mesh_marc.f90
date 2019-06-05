@@ -26,8 +26,6 @@ module mesh
 
 ! -------------------------------------------------------------------------------------------------- 
 ! public variables (DEPRECATED)
- integer, public, protected :: &
-   mesh_Ncellnodes                                                                                  !< total number of cell nodes in mesh (including duplicates)
    
  integer, dimension(:,:), allocatable, public, protected :: &
    mesh_element
@@ -68,7 +66,8 @@ end type tMesh_marc
 ! -------------------------------------------------------------------------------------------------- 
 
 
- integer :: &
+ integer:: &
+   mesh_Ncellnodes, &                                                                                  !< total number of cell nodes in mesh (including duplicates)
    mesh_elemType, &                                                                                 !< Element type of the mesh (only support homogeneous meshes)
    mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
    mesh_Ncells, &                                                                                   !< total number of cells in mesh
@@ -231,9 +230,7 @@ integer, dimension(:,:), allocatable :: &
    mesh_mapFEtoCPnode                                                                               !< [sorted FEid, corresponding CPid]
 
 
- integer :: &
-   hypoelasticTableStyle, &                                                                         !< Table style (Marc only)
-   initialcondTableStyle                                                                            !< Table style (Marc only)
+
  integer, dimension(:), allocatable :: &
    Marc_matNumber                                                                                   !< array of material numbers for hypoelastic material (Marc only)
 
@@ -243,26 +240,6 @@ integer, dimension(:,:), allocatable :: &
    mesh_build_ipVolumes, &
    mesh_build_ipCoordinates, &
    mesh_FEasCP
-
-
- private :: &
-   mesh_build_cellconnectivity, &
-   mesh_build_ipAreas, &
-   FE_mapElemtype, &
-   mesh_build_FEdata, &
-   mesh_build_nodeTwins, &
-   mesh_build_sharedElems, &
-   mesh_build_ipNeighborhood, &
-   mesh_marc_get_fileFormat, &
-   mesh_marc_get_tableStyles, &
-   mesh_marc_get_matNumber, &
-   mesh_marc_count_nodesAndElements, &
-   mesh_marc_count_elementSets, &
-   mesh_marc_map_elementSets, &
-   mesh_marc_map_Elements, &
-   mesh_marc_map_nodes, &
-   mesh_marc_build_nodes, &
-   mesh_marc_build_elements
  
  
 contains
@@ -287,10 +264,11 @@ subroutine mesh_init(ip,el)
  integer, intent(in) :: el, ip
   
  integer, parameter  :: FILEUNIT = 222
- integer :: j, fileFormatVersion, elemType
- integer :: &
+ integer :: j, fileFormatVersion, elemType, &
    mesh_maxNelemInSet, &
-   mesh_NcpElems
+   mesh_NcpElems, &
+   hypoelasticTableStyle, &
+   initialcondTableStyle
  logical :: myDebug
 
  write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
@@ -345,7 +323,7 @@ subroutine mesh_init(ip,el)
  call theMesh%init(elemType,mesh_node0)
  call theMesh%setNelems(mesh_NcpElems)
  
- call mesh_marc_build_elements(FILEUNIT)
+ call mesh_marc_build_elements(initialcondTableStyle,FILEUNIT)
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
  close (FILEUNIT)
   
@@ -647,13 +625,6 @@ end subroutine mesh_marc_map_elements
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_map_nodes(nNodes,fileUnit)
 
- use math, only: math_sort
- use IO,   only: IO_lc, &
-                 IO_stringValue, &
-                 IO_stringPos, &
-                 IO_fixedIntValue
-
- 
  integer, intent(in) :: fileUnit, nNodes
 
  integer, allocatable, dimension(:) :: chunkPos
@@ -765,9 +736,9 @@ integer function mesh_marc_count_cpSizes(fileUnit)
 !> @brief Store FEid, type, mat, tex, and node list per element.
 !! Allocates global array 'mesh_element'
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_build_elements(fileUnit)
+subroutine mesh_marc_build_elements(initialcondTableStyle,fileUnit)
  
- integer, intent(in) :: fileUnit
+ integer, intent(in) :: initialcondTableStyle,fileUnit
 
  integer, allocatable, dimension(:) :: chunkPos
  character(len=300) line
