@@ -319,13 +319,17 @@ subroutine mesh_init(ip,el)
  mesh_node = mesh_node0
  if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
  
- elemType = mesh_marc_count_cpSizes(FILEUNIT)
+ elemType = mesh_marc_getElemType(mesh_nElems,FILEUNIT)
  if (myDebug) write(6,'(a)') ' Counted CP sizes'; flush(6)
  
  call theMesh%init(elemType,mesh_node0)
  call theMesh%setNelems(mesh_NcpElems)
  
- call mesh_marc_build_elements(initialcondTableStyle,FILEUNIT)
+ allocate(mesh_element(4+theMesh%elem%nNodes,theMesh%nElems), source=0)
+ mesh_element(1,:) = -1 ! DEPRECATED
+ mesh_element(2,:) = elemType ! DEPRECATED
+
+ call mesh_marc_buildElements(initialcondTableStyle,FILEUNIT)
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
  close (FILEUNIT)
   
@@ -506,26 +510,26 @@ subroutine mesh_marc_count_nodesAndElements(nNodes, nElems, fileUnit)
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_count_elementSets(nElemSets,maxNelemInSet,fileUnit)
  
- integer, intent(in)  :: fileUnit
- integer, intent(out) :: nElemSets, maxNelemInSet
+  integer, intent(in)  :: fileUnit
+  integer, intent(out) :: nElemSets, maxNelemInSet
 
- integer, allocatable, dimension(:) :: chunkPos
- character(len=300) :: line
+  integer, allocatable, dimension(:) :: chunkPos
+  character(len=300) :: line
 
- nElemSets     = 0
- maxNelemInSet = 0
+  nElemSets     = 0
+  maxNelemInSet = 0
 
- rewind(fileUnit)
- do
-   read (fileUnit,'(A300)',END=620) line
-   chunkPos = IO_stringPos(line)
+  rewind(fileUnit)
+  do
+    read (fileUnit,'(A300)',END=620) line
+    chunkPos = IO_stringPos(line)
 
-   if ( IO_lc(IO_StringValue(line,chunkPos,1)) == 'define' .and. &
-        IO_lc(IO_StringValue(line,chunkPos,2)) == 'element' ) then
-     nElemSets = nElemSets + 1
-     maxNelemInSet = max(maxNelemInSet, IO_countContinuousIntValues(fileUnit))
-   endif
- enddo
+    if ( IO_lc(IO_StringValue(line,chunkPos,1)) == 'define' .and. &
+         IO_lc(IO_StringValue(line,chunkPos,2)) == 'element' ) then
+      nElemSets = nElemSets + 1
+      maxNelemInSet = max(maxNelemInSet, IO_countContinuousIntValues(fileUnit))
+    endif
+  enddo
 
 620 end subroutine mesh_marc_count_elementSets
 
@@ -535,29 +539,30 @@ subroutine mesh_marc_count_elementSets(nElemSets,maxNelemInSet,fileUnit)
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_map_elementSets(nameElemSet,mapElemSet,fileUnit)
  
- integer, intent(in)                          :: fileUnit
- character(len=64), dimension(:), intent(out) :: nameElemSet
- integer, dimension(:,:), intent(out)         :: mapElemSet
+  integer,                           intent(in)  :: fileUnit
+  character(len=64), dimension(:),   intent(out) :: nameElemSet
+  integer,           dimension(:,:), intent(out) :: mapElemSet
 
- integer, allocatable, dimension(:) :: chunkPos
- character(len=300) :: line
- integer :: elemSet
- 
- elemSet = 0
+  integer, allocatable, dimension(:) :: chunkPos
+  character(len=300) :: line
+  integer :: elemSet
+  
+  elemSet = 0
 
- rewind(fileUnit)
- do
-   read (fileUnit,'(A300)',END=640) line
-   chunkPos = IO_stringPos(line)
-   if( (IO_lc(IO_stringValue(line,chunkPos,1)) == 'define' ) .and. &
-       (IO_lc(IO_stringValue(line,chunkPos,2)) == 'element' ) ) then
-      elemSet = elemSet+1
-      nameElemSet(elemSet)  = trim(IO_stringValue(line,chunkPos,4))
-      mapElemSet(:,elemSet) = IO_continuousIntValues(fileUnit,size(mapElemSet,1)-1,nameElemSet,mapElemSet,size(nameElemSet))
-   endif
- enddo
+  rewind(fileUnit)
+  do
+    read (fileUnit,'(A300)',END=640) line
+    chunkPos = IO_stringPos(line)
+    if( (IO_lc(IO_stringValue(line,chunkPos,1)) == 'define' ) .and. &
+        (IO_lc(IO_stringValue(line,chunkPos,2)) == 'element' ) ) then
+       elemSet = elemSet+1
+       nameElemSet(elemSet)  = trim(IO_stringValue(line,chunkPos,4))
+       mapElemSet(:,elemSet) = IO_continuousIntValues(fileUnit,size(mapElemSet,1)-1,nameElemSet,mapElemSet,size(nameElemSet))
+    endif
+  enddo
 
 640 end subroutine mesh_marc_map_elementSets
+
 
 
 !--------------------------------------------------------------------------------------------------
@@ -665,7 +670,7 @@ subroutine mesh_marc_build_nodes(fileUnit)
 
  integer, intent(in) :: fileUnit
 
- integer, dimension(5), parameter :: node_ends = int([0,10,30,50,70],pInt)
+ integer, dimension(5), parameter   :: node_ends = [0,10,30,50,70]
  integer, allocatable, dimension(:) :: chunkPos
  character(len=300) :: line
  integer :: i,j,m
@@ -695,156 +700,196 @@ end subroutine mesh_marc_build_nodes
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Gets maximum count of nodes, IPs, IP neighbors, and cellnodes among cpElements.
-!! Sets global values 'mesh_maxNnodes', 'mesh_maxNips', 'mesh_maxNipNeighbors',
-!! and 'mesh_maxNcellnodes'
+!> @brief Gets element type (and checks if the whole mesh comprises of only one type)
 !--------------------------------------------------------------------------------------------------
-integer function mesh_marc_count_cpSizes(fileUnit)
+integer function mesh_marc_getElemType(nElem,fileUnit)
 
- integer, intent(in) :: fileUnit
+  integer, intent(in) :: &
+    nElem, &
+    fileUnit
 
- type(tElement) :: tempEl
- integer, allocatable, dimension(:) :: chunkPos
- character(len=300) :: line
- integer :: i,t,g,e,c
+  type(tElement) :: tempEl
+  integer, allocatable, dimension(:) :: chunkPos
+  character(len=300) :: line
+  integer :: i,t
 
- t = -1
+  t = -1
 
- rewind(fileUnit)
- do
-   read (fileUnit,'(A300)',END=630) line
-   chunkPos = IO_stringPos(line)
-   if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'connectivity' ) then
-     read (fileUnit,'(A300)') line                                                                  ! Garbage line
-     do i=1,mesh_Nelems                                                                        ! read all elements
-       read (fileUnit,'(A300)') line
-       chunkPos = IO_stringPos(line)                                                                ! limit to id and type
-       if (t == -1) then
-         t = FE_mapElemtype(IO_stringValue(line,chunkPos,2))
-         call tempEl%init(t)
-         mesh_marc_count_cpSizes = t
-       else
-         if (t /= FE_mapElemtype(IO_stringValue(line,chunkPos,2))) call IO_error(0)       !ToDo: error message
-       endif
-       call IO_skipChunks(fileUnit,tempEl%nNodes-(chunkPos(1)-2))
-     enddo
-     exit
-   endif
- enddo
+  rewind(fileUnit)
+  do
+    read (fileUnit,'(A300)',END=630) line
+    chunkPos = IO_stringPos(line)
+    if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'connectivity' ) then
+      read (fileUnit,'(A300)') line                                                                 ! Garbage line
+      do i=1,nElem                                                                                  ! read all elements
+        read (fileUnit,'(A300)') line
+        chunkPos = IO_stringPos(line)
+        if (t == -1) then
+          t = mapElemtype(IO_stringValue(line,chunkPos,2))
+          call tempEl%init(t)
+          mesh_marc_getElemType = t
+        else
+          if (t /= mapElemtype(IO_stringValue(line,chunkPos,2))) call IO_error(191,el=t,ip=i)
+        endif
+        call IO_skipChunks(fileUnit,tempEl%nNodes-(chunkPos(1)-2))
+      enddo
+      exit
+    endif
+  enddo
 
-630 end function mesh_marc_count_cpSizes
+contains 
+
+  !--------------------------------------------------------------------------------------------------
+  !> @brief mapping of Marc element types to internal representation
+  !--------------------------------------------------------------------------------------------------
+  integer function mapElemtype(what)
+  
+   character(len=*), intent(in) :: what
+  
+   select case (IO_lc(what))
+      case (   '6')
+        mapElemtype = 1            ! Two-dimensional Plane Strain Triangle
+      case ( '155', &
+             '125', &
+             '128')
+        mapElemtype = 2            ! Two-dimensional Plane Strain triangle (155: cubic shape function, 125/128: second order isoparametric)
+      case ( '11')
+        mapElemtype = 3            ! Arbitrary Quadrilateral Plane-strain
+      case ( '27')
+        mapElemtype = 4            ! Plane Strain, Eight-node Distorted Quadrilateral
+      case ( '54')
+        mapElemtype = 5            ! Plane Strain, Eight-node Distorted Quadrilateral with reduced integration
+      case ( '134')
+        mapElemtype = 6            ! Three-dimensional Four-node Tetrahedron
+      case ( '157')
+        mapElemtype = 7            ! Three-dimensional, Low-order, Tetrahedron, Herrmann Formulations
+      case ( '127')
+        mapElemtype = 8            ! Three-dimensional Ten-node Tetrahedron
+      case ( '136')
+        mapElemtype = 9            ! Three-dimensional Arbitrarily Distorted Pentahedral
+      case ( '117', &
+             '123')
+        mapElemtype = 10           ! Three-dimensional Arbitrarily Distorted linear hexahedral with reduced integration
+      case ( '7')
+        mapElemtype = 11           ! Three-dimensional Arbitrarily Distorted Brick
+      case ( '57')
+        mapElemtype = 12           ! Three-dimensional Arbitrarily Distorted quad hexahedral with reduced integration
+      case ( '21')
+        mapElemtype = 13           ! Three-dimensional Arbitrarily Distorted quadratic hexahedral
+      case default
+        call IO_error(error_ID=190,ext_msg=IO_lc(what))
+   end select
+
+end function mapElemtype
+
+
+630 end function mesh_marc_getElemType
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Store FEid, type, mat, tex, and node list per element.
-!! Allocates global array 'mesh_element'
+!> @brief Stores node IDs and homogenization and microstructure ID
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_build_elements(initialcondTableStyle,fileUnit)
+subroutine mesh_marc_buildElements(initialcondTableStyle,fileUnit)
  
- integer, intent(in) :: initialcondTableStyle,fileUnit
-
- integer, allocatable, dimension(:) :: chunkPos
- character(len=300) line
-
- integer, dimension(1+theMesh%nElems) :: contInts
- integer :: i,j,t,sv,myVal,e,nNodesAlreadyRead
-
- allocate(mesh_element(4+theMesh%elem%nNodes,theMesh%nElems), source=0)
- mesh_elemType = -1
-
-
- rewind(fileUnit)
- do
-   read (fileUnit,'(A300)',END=620) line
-   chunkPos = IO_stringPos(line)
-   if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'connectivity' ) then
-     read (fileUnit,'(A300)',END=620) line                                                               ! garbage line
-     do i = 1,mesh_Nelems
-       read (fileUnit,'(A300)',END=620) line
-       chunkPos = IO_stringPos(line)
-       e = mesh_FEasCP('elem',IO_intValue(line,chunkPos,1))
-       if (e /= 0) then                                                                        ! disregard non CP elems
-         mesh_element(1,e) = -1                                                                ! DEPRECATED
-         t = FE_mapElemtype(IO_StringValue(line,chunkPos,2))                                   ! elem type
-         if (mesh_elemType /= t .and. mesh_elemType /= -1) &
-           call IO_error(191,el=t,ip=mesh_elemType)
-         mesh_elemType = t
-         mesh_element(2,e) = t
-         nNodesAlreadyRead = 0
-         do j = 1,chunkPos(1)-2
-           mesh_element(4+j,e) = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j+2))          ! CP ids of nodes
-         enddo
-         nNodesAlreadyRead = chunkPos(1) - 2
-         do while(nNodesAlreadyRead < theMesh%elem%nNodes)                                                 ! read on if not all nodes in one line
-           read (fileUnit,'(A300)',END=620) line
-           chunkPos = IO_stringPos(line)
-           do j = 1,chunkPos(1)
-             mesh_element(4+nNodesAlreadyRead+j,e) &
-               = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j))                                      ! CP ids of nodes
-           enddo
-           nNodesAlreadyRead = nNodesAlreadyRead + chunkPos(1)
-         enddo
-       endif
-     enddo
-     exit
-   endif
- enddo
+  integer, intent(in) :: &
+    initialcondTableStyle, &
+    fileUnit
+ 
+  integer, allocatable, dimension(:) :: chunkPos
+  character(len=300) line
+ 
+  integer, dimension(1+theMesh%nElems) :: contInts
+  integer :: i,j,t,sv,myVal,e,nNodesAlreadyRead
+ 
+  rewind(fileUnit)
+  do
+    read (fileUnit,'(A300)',END=620) line
+    chunkPos = IO_stringPos(line)
+    if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'connectivity' ) then
+      read (fileUnit,'(A300)',END=620) line                                                         ! garbage line
+      do i = 1,mesh_Nelems
+        read (fileUnit,'(A300)',END=620) line
+        chunkPos = IO_stringPos(line)
+        e = mesh_FEasCP('elem',IO_intValue(line,chunkPos,1))
+        if (e /= 0) then                                                                            ! disregard non CP elems
+          nNodesAlreadyRead = 0
+          do j = 1,chunkPos(1)-2
+            mesh_element(4+j,e) = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j+2))                ! CP ids of nodes
+          enddo
+          nNodesAlreadyRead = chunkPos(1) - 2
+          do while(nNodesAlreadyRead < theMesh%elem%nNodes)                                         ! read on if not all nodes in one line
+            read (fileUnit,'(A300)',END=620) line
+            chunkPos = IO_stringPos(line)
+            do j = 1,chunkPos(1)
+              mesh_element(4+nNodesAlreadyRead+j,e) = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j)) ! CP ids of nodes
+            enddo
+            nNodesAlreadyRead = nNodesAlreadyRead + chunkPos(1)
+          enddo
+        endif
+      enddo
+      exit
+    endif
+  enddo
 620 rewind(fileUnit)                                                                                ! just in case "initial state" appears before "connectivity"
- call calcCells(theMesh,mesh_element(5:,:))
- read (fileUnit,'(A300)',END=630) line
- do
-   chunkPos = IO_stringPos(line)
-   if( (IO_lc(IO_stringValue(line,chunkPos,1)) == 'initial') .and. &
-       (IO_lc(IO_stringValue(line,chunkPos,2)) == 'state') ) then
-     if (initialcondTableStyle == 2) read (fileUnit,'(A300)',END=630) line                          ! read extra line for new style
-     read (fileUnit,'(A300)',END=630) line                                                               ! read line with index of state var
-     chunkPos = IO_stringPos(line)
-     sv = IO_IntValue(line,chunkPos,1)                                                            ! figure state variable index
-     if( (sv == 2).or.(sv == 3) ) then                                                    ! only state vars 2 and 3 of interest
-       read (fileUnit,'(A300)',END=630) line                                                             ! read line with value of state var
-       chunkPos = IO_stringPos(line)
-       do while (scan(IO_stringValue(line,chunkPos,1),'+-',back=.true.)>1)                        ! is noEfloat value?
-         myVal = nint(IO_fixedNoEFloatValue(line,[0,20],1),pInt)                     ! state var's value
-         if (initialcondTableStyle == 2) then
-           read (fileUnit,'(A300)',END=630) line                                                         ! read extra line
-           read (fileUnit,'(A300)',END=630) line                                                         ! read extra line
-         endif
-         contInts = IO_continuousIntValues&                                                         ! get affected elements
-                   (fileUnit,theMesh%nElems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
-         do i = 1,contInts(1)
-           e = mesh_FEasCP('elem',contInts(1+i))
-           mesh_element(1+sv,e) = myVal
-         enddo
-         if (initialcondTableStyle == 0) read (fileUnit,'(A300)',END=630) line                      ! ignore IP range for old table style
-         read (fileUnit,'(A300)',END=630) line
-         chunkPos = IO_stringPos(line)
-       enddo
-     endif
-   else
-     read (fileUnit,'(A300)',END=630) line
-   endif
- enddo
 
-630 end subroutine mesh_marc_build_elements
+#if defined(DAMASK_HDF5)
+  call results_openJobFile
+  call HDF5_closeGroup(results_addGroup('geometry'))
+  call results_writeDataset('geometry',mesh_element(5:,:),'C',&
+                            'connectivity of the elements','-')
+  call results_closeJobFile
+#endif
+ 
+  call calcCells(theMesh,theMesh%elem,mesh_element(5:,:))
+ 
+  read (fileUnit,'(A300)',END=630) line
+  do
+    chunkPos = IO_stringPos(line)
+    if( (IO_lc(IO_stringValue(line,chunkPos,1)) == 'initial') .and. &
+        (IO_lc(IO_stringValue(line,chunkPos,2)) == 'state') ) then
+      if (initialcondTableStyle == 2) read (fileUnit,'(A300)',END=630) line                         ! read extra line for new style
+      read (fileUnit,'(A300)',END=630) line                                                         ! read line with index of state var
+      chunkPos = IO_stringPos(line)
+      sv = IO_IntValue(line,chunkPos,1)                                                             ! figure state variable index
+      if( (sv == 2).or.(sv == 3) ) then                                                             ! only state vars 2 and 3 of interest
+        read (fileUnit,'(A300)',END=630) line                                                       ! read line with value of state var
+        chunkPos = IO_stringPos(line)
+        do while (scan(IO_stringValue(line,chunkPos,1),'+-',back=.true.)>1)                         ! is noEfloat value?
+          myVal = nint(IO_fixedNoEFloatValue(line,[0,20],1),pInt)                                   ! state var's value
+          if (initialcondTableStyle == 2) then
+            read (fileUnit,'(A300)',END=630) line                                                   ! read extra line
+            read (fileUnit,'(A300)',END=630) line                                                   ! read extra line
+          endif
+          contInts = IO_continuousIntValues&                                                        ! get affected elements
+                    (fileUnit,theMesh%nElems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
+          do i = 1,contInts(1)
+            e = mesh_FEasCP('elem',contInts(1+i))
+            mesh_element(1+sv,e) = myVal
+          enddo
+          if (initialcondTableStyle == 0) read (fileUnit,'(A300)',END=630) line                     ! ignore IP range for old table style
+          read (fileUnit,'(A300)',END=630) line
+          chunkPos = IO_stringPos(line)
+        enddo
+      endif
+    else
+      read (fileUnit,'(A300)',END=630) line
+    endif
+  enddo
+ 
+630 end subroutine mesh_marc_buildElements
 
 
-subroutine calcCells(thisMesh,connectivity_elem)
+subroutine calcCells(thisMesh,elem,connectivity_elem)
 
-  class(tMesh) :: thisMesh
-  integer(pInt),dimension(:,:), intent(inout) :: connectivity_elem
+  class(tMesh)    :: thisMesh
+  type(tElement)  :: elem
+  integer(pInt),dimension(:,:), intent(in) :: connectivity_elem
   integer(pInt),dimension(:,:), allocatable :: con_elem,temp,con,parentsAndWeights,candidates_global
   integer(pInt),dimension(:), allocatable :: l, nodes, candidates_local
   integer(pInt),dimension(:,:,:), allocatable :: con_cell,connectivity_cell
   integer(pInt),dimension(:,:), allocatable :: sorted,test,connectivity_cell_reshape
   real(pReal), dimension(:,:), allocatable :: coordinates,nodes5
   integer(pInt) :: e, n, c, p, s,u,i,m,j,nParentNodes,nCellNode,ierr
-
-#if defined(DAMASK_HDF5)
- call results_openJobFile
- call HDF5_closeGroup(results_addGroup('geometry'))
- call results_writeDataset('geometry',connectivity_elem,'connectivity_element',&
-                           'connectivity of the elements','-')
-#endif
 
 !---------------------------------------------------------------------------------------------------
 ! initialize global connectivity to negative local connectivity
@@ -971,7 +1016,8 @@ subroutine calcCells(thisMesh,connectivity_elem)
  connectivity_cell_reshape = reshape(connectivity_cell,[thisMesh%elem%NcellNodesPerCell,thisMesh%elem%nIPs*thisMesh%Nelems])
  
 #if defined(DAMASK_HDF5) 
- call results_writeDataset('geometry',connectivity_cell_reshape,'connectivity_cell',&
+ call results_openJobFile
+ call results_writeDataset('geometry',connectivity_cell_reshape,'c',&
                            'connectivity of the cells','-')
  call results_closeJobFile
 #endif  
@@ -1713,49 +1759,6 @@ end subroutine mesh_faceMatch
 
 end subroutine mesh_build_ipNeighborhood
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief mapping of FE element types to internal representation
-!--------------------------------------------------------------------------------------------------
-integer function FE_mapElemtype(what)
-
- character(len=*), intent(in) :: what
-
- select case (IO_lc(what))
-    case (   '6')
-      FE_mapElemtype = 1            ! Two-dimensional Plane Strain Triangle
-    case ( '155', &
-           '125', &
-           '128')
-      FE_mapElemtype = 2            ! Two-dimensional Plane Strain triangle (155: cubic shape function, 125/128: second order isoparametric)
-    case ( '11')
-      FE_mapElemtype = 3            ! Arbitrary Quadrilateral Plane-strain
-    case ( '27')
-      FE_mapElemtype = 4            ! Plane Strain, Eight-node Distorted Quadrilateral
-    case ( '54')
-      FE_mapElemtype = 5            ! Plane Strain, Eight-node Distorted Quadrilateral with reduced integration
-    case ( '134')
-      FE_mapElemtype = 6            ! Three-dimensional Four-node Tetrahedron
-    case ( '157')
-      FE_mapElemtype = 7            ! Three-dimensional, Low-order, Tetrahedron, Herrmann Formulations
-    case ( '127')
-      FE_mapElemtype = 8            ! Three-dimensional Ten-node Tetrahedron
-    case ( '136')
-      FE_mapElemtype = 9            ! Three-dimensional Arbitrarily Distorted Pentahedral
-    case ( '117', &
-           '123')
-      FE_mapElemtype = 10           ! Three-dimensional Arbitrarily Distorted linear hexahedral with reduced integration
-    case ( '7')
-      FE_mapElemtype = 11           ! Three-dimensional Arbitrarily Distorted Brick
-    case ( '57')
-      FE_mapElemtype = 12           ! Three-dimensional Arbitrarily Distorted quad hexahedral with reduced integration
-    case ( '21')
-      FE_mapElemtype = 13           ! Three-dimensional Arbitrarily Distorted quadratic hexahedral
-    case default
-      call IO_error(error_ID=190,ext_msg=IO_lc(what))
- end select
-
-end function FE_mapElemtype
 
 
 !--------------------------------------------------------------------------------------------------
