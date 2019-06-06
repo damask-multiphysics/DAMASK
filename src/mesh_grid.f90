@@ -197,7 +197,7 @@ subroutine mesh_init(ip,el)
  theMesh%homogenizationAt  = mesh_element(3,:)
  theMesh%microstructureAt  = mesh_element(4,:)
 !!!!!!!!!!!!!!!!!!!!!!!!
-  call discretization_init(product(grid), &
+  call discretization_init(mesh_element(3,:),mesh_element(4,:),&
                            reshape(mesh_ipCoordinates,[3,grid(1)*grid(2)*grid3]),&
                            mesh_node0)
 

@@ -13,9 +13,12 @@ module discretization
   integer, public, protected :: &
     discretization_nIP, &
     discretization_nElem
+    
+  integer,     dimension(:), allocatable :: &
+    discretization_homogenizationAt, &
+    discretization_microstructureAt   
 
-
-  real(pReal), dimension(:,:), allocatable :: &
+  real(pReal), dimension(:,:), allocatable :: & 
     discretization_IPcoords0, &
     discretization_NodeCoords0, &
     discretization_IPcoords, &
@@ -29,21 +32,26 @@ module discretization
 contains
   
 
-subroutine discretization_init(nElem,IPcoords0,NodeCoords0)
+subroutine discretization_init(homogenizationAt,microstructureAt,IPcoords0,NodeCoords0)
 
-  integer,                     intent(in) :: &
-    nElem
+  integer,     dimension(:), intent(in) :: &
+    homogenizationAt, &
+    microstructureAt
   real(pReal), dimension(:,:), intent(in) :: &
     IPcoords0, &
     NodeCoords0
 
   write(6,'(/,a)')   ' <<<+-  discretization init  -+>>>'
-   
-  discretization_nElem = nElem 
+
+  discretization_nElem = size(microstructureAt,1)
   discretization_nIP   = size(IPcoords0,2)
+
+  discretization_homogenizationAt = homogenizationAt
+  discretization_microstructureAt = microstructureAt  
 
   discretization_IPcoords0   = IPcoords0
   discretization_IPcoords    = IPcoords0
+
   discretization_NodeCoords0 = NodeCoords0
   discretization_NodeCoords  = NodeCoords0
   
@@ -51,7 +59,7 @@ end subroutine discretization_init
 
 
 subroutine discretization_results
-
+#if defined(PETSc) || defined(DAMASK_HDF5)
   real(pReal), dimension(:,:), allocatable :: u
   
   u =  discretization_NodeCoords -discretization_NodeCoords0
@@ -59,7 +67,7 @@ subroutine discretization_results
   
   u = discretization_IPcoords -discretization_IPcoords0
   call results_writeDataset('current',u,'u','IP displacements','m')
-
+#endif
 end subroutine discretization_results
 
 
