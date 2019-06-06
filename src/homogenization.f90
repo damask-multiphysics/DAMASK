@@ -14,8 +14,9 @@ module homogenization
  use numerics
  use constitutive
  use crystallite
- use mesh
  use FEsolving
+ use mesh
+ use discretization
  use thermal_isothermal
  use thermal_adiabatic
  use thermal_conduction
@@ -236,20 +237,20 @@ subroutine homogenization_init
 
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global variables
- allocate(materialpoint_dPdF(3,3,3,3,theMesh%elem%nIPs,theMesh%nElems),       source=0.0_pReal)
- allocate(materialpoint_F0(3,3,theMesh%elem%nIPs,theMesh%nElems),             source=0.0_pReal)
- materialpoint_F0 = spread(spread(math_I3,3,theMesh%elem%nIPs),4,theMesh%nElems)                    ! initialize to identity
- allocate(materialpoint_F(3,3,theMesh%elem%nIPs,theMesh%nElems),              source=0.0_pReal)
+ allocate(materialpoint_dPdF(3,3,3,3,discretization_nIP,discretization_nElem),       source=0.0_pReal)
+ allocate(materialpoint_F0(3,3,discretization_nIP,discretization_nElem),             source=0.0_pReal)
+ materialpoint_F0 = spread(spread(math_I3,3,discretization_nIP),4,discretization_nElem)                    ! initialize to identity
+ allocate(materialpoint_F(3,3,discretization_nIP,discretization_nElem),              source=0.0_pReal)
  materialpoint_F = materialpoint_F0                                                                 ! initialize to identity
- allocate(materialpoint_subF0(3,3,theMesh%elem%nIPs,theMesh%nElems),          source=0.0_pReal)
- allocate(materialpoint_subF(3,3,theMesh%elem%nIPs,theMesh%nElems),           source=0.0_pReal)
- allocate(materialpoint_P(3,3,theMesh%elem%nIPs,theMesh%nElems),              source=0.0_pReal)
- allocate(materialpoint_subFrac(theMesh%elem%nIPs,theMesh%nElems),            source=0.0_pReal)
- allocate(materialpoint_subStep(theMesh%elem%nIPs,theMesh%nElems),            source=0.0_pReal)
- allocate(materialpoint_subdt(theMesh%elem%nIPs,theMesh%nElems),              source=0.0_pReal)
- allocate(materialpoint_requested(theMesh%elem%nIPs,theMesh%nElems),          source=.false.)
- allocate(materialpoint_converged(theMesh%elem%nIPs,theMesh%nElems),          source=.true.)
- allocate(materialpoint_doneAndHappy(2,theMesh%elem%nIPs,theMesh%nElems),     source=.true.)
+ allocate(materialpoint_subF0(3,3,discretization_nIP,discretization_nElem),          source=0.0_pReal)
+ allocate(materialpoint_subF(3,3,discretization_nIP,discretization_nElem),           source=0.0_pReal)
+ allocate(materialpoint_P(3,3,discretization_nIP,discretization_nElem),              source=0.0_pReal)
+ allocate(materialpoint_subFrac(discretization_nIP,discretization_nElem),            source=0.0_pReal)
+ allocate(materialpoint_subStep(discretization_nIP,discretization_nElem),            source=0.0_pReal)
+ allocate(materialpoint_subdt(discretization_nIP,discretization_nElem),              source=0.0_pReal)
+ allocate(materialpoint_requested(discretization_nIP,discretization_nElem),          source=.false.)
+ allocate(materialpoint_converged(discretization_nIP,discretization_nElem),          source=.true.)
+ allocate(materialpoint_doneAndHappy(2,discretization_nIP,discretization_nElem),     source=.true.)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global state and postresutls variables
@@ -266,7 +267,7 @@ subroutine homogenization_init
                            + homogenization_maxNgrains * (1 + crystallite_maxSizePostResults &      ! crystallite size & crystallite results
                                                         + 1 + constitutive_plasticity_maxSizePostResults &     ! constitutive size & constitutive results
                                                             + constitutive_source_maxSizePostResults)
- allocate(materialpoint_results(materialpoint_sizeResults,theMesh%elem%nIPs,theMesh%nElems))
+ allocate(materialpoint_results(materialpoint_sizeResults,discretization_nIP,discretization_nElem))
 
  write(6,'(/,a)')   ' <<<+-  homogenization init  -+>>>'
 
@@ -286,7 +287,7 @@ subroutine homogenization_init
  endif
  flush(6)
 
- if (debug_g < 1 .or. debug_g > homogenization_Ngrains(mesh_element(3,debug_e))) &
+ if (debug_g < 1 .or. debug_g > homogenization_Ngrains(material_homogenizationAt(debug_e))) &
    call IO_error(602,ext_msg='constituent', el=debug_e, g=debug_g)
 
 end subroutine homogenization_init
@@ -601,7 +602,7 @@ subroutine materialpoint_postResults
  !$OMP PARALLEL DO PRIVATE(myNgrains,myCrystallite,thePos,theSize)
    elementLooping: do e = FEsolving_execElem(1),FEsolving_execElem(2)
      myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
-     myCrystallite = microstructure_crystallite(mesh_element(4,e))
+     myCrystallite = microstructure_crystallite(discretization_microstructureAt(e))
      IpLooping: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        thePos = 0
 

@@ -20,6 +20,7 @@ module crystallite
   use FEsolving
   use material
   use constitutive
+  use discretization
   use lattice
   use future
   use plastic_nonlocal
@@ -174,8 +175,8 @@ subroutine crystallite_init
   write(6,'(/,a)')   ' <<<+-  crystallite init  -+>>>'
  
   cMax = homogenization_maxNgrains
-  iMax = theMesh%elem%nIPs
-  eMax = theMesh%nElems
+  iMax = discretization_nIP
+  eMax = discretization_nElem
  
   allocate(crystallite_S0(3,3,cMax,iMax,eMax),                source=0.0_pReal)
   allocate(crystallite_partionedS0(3,3,cMax,iMax,eMax),       source=0.0_pReal)
@@ -426,7 +427,6 @@ subroutine crystallite_init
     write(6,'(a42,1x,i10)') '    # of elements:                       ', eMax
     write(6,'(a42,1x,i10)') 'max # of integration points/element:     ', iMax
     write(6,'(a42,1x,i10)') 'max # of constituents/integration point: ', cMax
-    write(6,'(a42,1x,i10)') 'max # of neigbours/integration point:    ', theMesh%elem%nIPneighbors
     write(6,'(a42,1x,i10)') '    # of nonlocal constituents:          ',count(.not. crystallite_localPlasticity)
     flush(6)
   endif
@@ -443,7 +443,7 @@ end subroutine crystallite_init
 !--------------------------------------------------------------------------------------------------
 function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
  
-  logical, dimension(theMesh%elem%nIPs,theMesh%Nelems) :: crystallite_stress
+  logical, dimension(discretization_nIP,discretization_nElem) :: crystallite_stress
   real(pReal), intent(in), optional :: &
     dummyArgumentToPreventInternalCompilerErrorWithGCC
   real(pReal) :: &
@@ -512,7 +512,7 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
     endIP   = startIP
   else singleRun
     startIP = 1
-    endIP = theMesh%elem%nIPs
+    endIP = discretization_nIP
   endif singleRun
 
   NiterationCrystallite = 0
@@ -1744,11 +1744,11 @@ subroutine integrateStateAdaptiveEuler
    
   ! ToDo: MD: once all constitutives use allocate state, attach residuum arrays to the state in case of adaptive Euler
  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,            &
-                        homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
+                        homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
    residuum_plastic
  real(pReal), dimension(constitutive_source_maxSizeDotState,&
                         maxval(phase_Nsources), &
-                        homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
+                        homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
    residuum_source
 
 !--------------------------------------------------------------------------------------------------
@@ -1919,11 +1919,11 @@ subroutine integrateStateRKCK45
    ! ToDo: MD: once all constitutives use allocate state, attach residuum arrays to the state in case of RKCK45
 
  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,            &
-                        homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
+                        homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
    residuum_plastic                                                                         ! relative residuum from evolution in microstructure
  real(pReal), dimension(constitutive_source_maxSizeDotState, &
                         maxval(phase_Nsources), &
-                        homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
+                        homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
    residuum_source                                                                   ! relative residuum from evolution in microstructure
 
 

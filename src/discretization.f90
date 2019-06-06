@@ -10,15 +10,15 @@ module discretization
   implicit none
   private
   
-  integer, public, protected :: &
+  integer,     public, protected :: &
     discretization_nIP, &
     discretization_nElem
     
-  integer,     dimension(:), allocatable :: &
+  integer,     public, protected, dimension(:),   allocatable :: &
     discretization_homogenizationAt, &
     discretization_microstructureAt   
 
-  real(pReal), dimension(:,:), allocatable :: & 
+  real(pReal), public, protected, dimension(:,:), allocatable :: & 
     discretization_IPcoords0, &
     discretization_NodeCoords0, &
     discretization_IPcoords, &
