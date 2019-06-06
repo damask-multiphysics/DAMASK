@@ -8,6 +8,7 @@
 module mesh
  use, intrinsic :: iso_c_binding
  use prec
+ use debug
  use geometry_plastic_nonlocal
  use mesh_base
 
@@ -23,9 +24,6 @@ module mesh
 
  integer(pInt), dimension(:,:), allocatable, public, protected :: &
    mesh_element                                                                                     !< entryCount and list of elements containing node
-
- integer(pInt), dimension(:,:,:,:), allocatable, public, protected :: &
-   mesh_ipNeighborhood                                                                              !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
 
  real(pReal), public, protected :: &
    mesh_unitlength                                                                                  !< physical length of one unit in mesh
@@ -192,7 +190,6 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
 
  call mesh_spectral_build_ipNeighborhood
- call geometry_plastic_nonlocal_set_IPneighborhood(mesh_ipNeighborhood)
 
  if (myDebug) write(6,'(a)') ' Built IP neighborhood'; flush(6)
 
@@ -416,10 +413,10 @@ end function mesh_build_ipCoordinates
 !! Allocates global array 'mesh_element'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_spectral_build_elements()
+
  integer(pInt) :: &
    e, &
    elemOffset
-
 
  allocate(mesh_element    (4_pInt+8_pInt,theMesh%nElems), source = 0_pInt)
 
@@ -449,51 +446,54 @@ end subroutine mesh_spectral_build_elements
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_spectral_build_ipNeighborhood
 
- implicit none
- integer(pInt) :: &
+ integer :: &
   x,y,z, &
   e
- allocate(mesh_ipNeighborhood(3,6,1,theMesh%nElems),source=0_pInt)
+ integer, dimension(:,:,:,:), allocatable :: &
+   ipNeighborhood                                                                                   !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
+ allocate(ipNeighborhood(3,6,1,theMesh%nElems),source=0)
 
  e = 0_pInt
  do z = 0_pInt,grid3-1_pInt
    do y = 0_pInt,grid(2)-1_pInt
      do x = 0_pInt,grid(1)-1_pInt
        e = e + 1_pInt
-         mesh_ipNeighborhood(1,1,1,e) = z * grid(1) * grid(2) &
+        ipNeighborhood(1,1,1,e) = z * grid(1) * grid(2) &
                                       + y * grid(1) &
                                       + modulo(x+1_pInt,grid(1)) &
                                       + 1_pInt
-         mesh_ipNeighborhood(1,2,1,e) = z * grid(1) * grid(2) &
+         ipNeighborhood(1,2,1,e) = z * grid(1) * grid(2) &
                                       + y * grid(1) &
                                       + modulo(x-1_pInt,grid(1)) &
                                       + 1_pInt
-         mesh_ipNeighborhood(1,3,1,e) = z * grid(1) * grid(2) &
+         ipNeighborhood(1,3,1,e) = z * grid(1) * grid(2) &
                                       + modulo(y+1_pInt,grid(2)) * grid(1) &
                                       + x &
                                       + 1_pInt
-         mesh_ipNeighborhood(1,4,1,e) = z * grid(1) * grid(2) &
+         ipNeighborhood(1,4,1,e) = z * grid(1) * grid(2) &
                                       + modulo(y-1_pInt,grid(2)) * grid(1) &
                                       + x &
                                       + 1_pInt
-         mesh_ipNeighborhood(1,5,1,e) = modulo(z+1_pInt,grid3) * grid(1) * grid(2) &
+         ipNeighborhood(1,5,1,e) = modulo(z+1_pInt,grid3) * grid(1) * grid(2) &
                                       + y * grid(1) &
                                       + x &
                                       + 1_pInt
-         mesh_ipNeighborhood(1,6,1,e) = modulo(z-1_pInt,grid3) * grid(1) * grid(2) &
+         ipNeighborhood(1,6,1,e) = modulo(z-1_pInt,grid3) * grid(1) * grid(2) &
                                       + y * grid(1) &
                                       + x &
                                       + 1_pInt
-         mesh_ipNeighborhood(2,1:6,1,e) = 1_pInt
-         mesh_ipNeighborhood(3,1,1,e) = 2_pInt
-         mesh_ipNeighborhood(3,2,1,e) = 1_pInt
-         mesh_ipNeighborhood(3,3,1,e) = 4_pInt
-         mesh_ipNeighborhood(3,4,1,e) = 3_pInt
-         mesh_ipNeighborhood(3,5,1,e) = 6_pInt
-         mesh_ipNeighborhood(3,6,1,e) = 5_pInt
+         ipNeighborhood(2,1:6,1,e) = 1_pInt
+         ipNeighborhood(3,1,1,e) = 2_pInt
+         ipNeighborhood(3,2,1,e) = 1_pInt
+         ipNeighborhood(3,3,1,e) = 4_pInt
+         ipNeighborhood(3,4,1,e) = 3_pInt
+         ipNeighborhood(3,5,1,e) = 6_pInt
+         ipNeighborhood(3,6,1,e) = 5_pInt
      enddo
    enddo
  enddo
+ 
+ call geometry_plastic_nonlocal_set_IPneighborhood(ipNeighborhood)
 
 end subroutine mesh_spectral_build_ipNeighborhood
 
@@ -502,10 +502,6 @@ end subroutine mesh_spectral_build_ipNeighborhood
 !> @brief builds mesh of (distorted) cubes for given coordinates (= center of the cubes)
 !--------------------------------------------------------------------------------------------------
 function mesh_nodesAroundCentres(gDim,Favg,centres) result(nodes)
- use debug, only: &
-   debug_mesh, &
-   debug_level, &
-   debug_levelBasic
 
  real(pReal), intent(in), dimension(:,:,:,:) :: &
    centres

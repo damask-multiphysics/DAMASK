@@ -23,6 +23,8 @@ module crystallite
   use lattice
   use future
   use plastic_nonlocal
+  use geometry_plastic_nonlocal, only: &
+    IPneighborhood  => geometry_plastic_nonlocal_IPneighborhood
 #if defined(PETSc) || defined(DAMASK_HDF5)
   use HDF5_utilities
   use results
@@ -963,12 +965,12 @@ function crystallite_postResults(ipc, ip, el)
        mySize = theMesh%elem%nIPneighbors
        crystallite_postResults(c+1:c+mySize) = 0.0_pReal
        forall (n = 1:mySize) &
-         crystallite_postResults(c+n) = real(mesh_ipNeighborhood(1,n,ip,el),pReal)
+         crystallite_postResults(c+n) = real(IPneighborhood(1,n,ip,el),pReal)
      case(neighboringip_ID)
        mySize = theMesh%elem%nIPneighbors
        crystallite_postResults(c+1:c+mySize) = 0.0_pReal
        forall (n = 1:mySize) &
-         crystallite_postResults(c+n) = real(mesh_ipNeighborhood(2,n,ip,el),pReal)
+         crystallite_postResults(c+n) = real(IPneighborhood(2,n,ip,el),pReal)
    end select
    c = c + mySize
  enddo
