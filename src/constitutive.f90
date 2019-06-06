@@ -21,6 +21,7 @@ module constitutive
  use plastic_dislotwin
  use plastic_disloucla
  use plastic_nonlocal
+ use geometry_plastic_nonlocal
  use source_thermal_dissipation
  use source_thermal_externalheat
  use source_damage_isoBrittle
@@ -349,7 +350,7 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
 
    case (PLASTICITY_NONLOCAL_ID) plasticityType
      call plastic_nonlocal_LpAndItsTangent        (Lp,dLp_dMp,Mp, &
-                                                   temperature(ho)%p(tme),mesh_ipVolume(ip,el),ip,el)
+                                                   temperature(ho)%p(tme),geometry_plastic_nonlocal_IPvolume0(ip,el),ip,el)
 
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
      of = phasememberAt(ipc,ip,el)

@@ -765,7 +765,7 @@ subroutine plastic_nonlocal_init
     ! get the total volume of the instance
     do e = 1,theMesh%nElems
       do i = 1,theMesh%elem%nIPs
-        if (material_phase(1,i,e) == phase) volume(phasememberAt(1,i,e)) = mesh_ipVolume(i,e)
+        if (material_phase(1,i,e) == phase) volume(phasememberAt(1,i,e)) = IPvolume(i,e)
       enddo
     enddo
     totalVolume = sum(volume)
@@ -925,7 +925,7 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
     rhoExcess(1,1:ns) = rho_edg_delta
     rhoExcess(2,1:ns) = rho_scr_delta
   
-    FVsize = mesh_ipVolume(ip,el) ** (1.0_pReal/3.0_pReal)
+    FVsize = IPvolume(ip,el) ** (1.0_pReal/3.0_pReal)
     
     !* loop through my neighborhood and get the connection vectors (in lattice frame) and the excess densities
     
@@ -953,7 +953,7 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
                                   - mesh_ipCoordinates(1:3,ip,el))
             normal_latticeConf = matmul(transpose(invFp), mesh_ipAreaNormal(1:3,n,ip,el))
             if (math_inner(normal_latticeConf,connection_latticeConf(1:3,n)) < 0.0_pReal) &        ! neighboring connection points in opposite direction to face normal: must be periodic image
-              connection_latticeConf(1:3,n) = normal_latticeConf * mesh_ipVolume(ip,el)/mesh_ipArea(n,ip,el) ! instead take the surface normal scaled with the diameter of the cell
+              connection_latticeConf(1:3,n) = normal_latticeConf * IPvolume(ip,el)/mesh_ipArea(n,ip,el) ! instead take the surface normal scaled with the diameter of the cell
         else
           ! local neighbor or different lattice structure or different constitution instance -> use central values instead
           connection_latticeConf(1:3,n) = 0.0_pReal
@@ -1596,14 +1596,14 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
     !*** check CFL (Courant-Friedrichs-Lewy) condition for flux
     if (any( abs(gdot) > 0.0_pReal &                                                                ! any active slip system ...
             .and. prm%CFLfactor * abs(v) * timestep &
-                > mesh_ipVolume(ip,el) / maxval(mesh_ipArea(:,ip,el)))) then                        ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
+                > IPvolume(ip,el) / maxval(mesh_ipArea(:,ip,el)))) then                        ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
 #ifdef DEBUG
     if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0) then 
       write(6,'(a,i5,a,i2)') '<< CONST >> CFL condition not fullfilled at el ',el,' ip ',ip
       write(6,'(a,e10.3,a,e10.3)') '<< CONST >> velocity is at  ', &
         maxval(abs(v), abs(gdot) > 0.0_pReal &
                        .and.  prm%CFLfactor * abs(v) * timestep &
-                             > mesh_ipVolume(ip,el) / maxval(mesh_ipArea(:,ip,el))), &
+                             > IPvolume(ip,el) / maxval(mesh_ipArea(:,ip,el))), &
         ' at a timestep of ',timestep
       write(6,'(a)') '<< CONST >> enforcing cutback !!!'
     endif
@@ -1672,7 +1672,7 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
                                                                                             0.0_pReal)
           endforall
   
-        where (neighbor_rhoSgl * mesh_ipVolume(neighbor_ip,neighbor_el) ** 0.667_pReal < prm%significantN &
+        where (neighbor_rhoSgl * IPvolume(neighbor_ip,neighbor_el) ** 0.667_pReal < prm%significantN &
           .or. neighbor_rhoSgl < prm%significantRho) &
           neighbor_rhoSgl = 0.0_pReal
         normal_neighbor2me_defConf = math_det33(Favg) * matmul(math_inv33(transpose(Favg)), &
@@ -1691,11 +1691,11 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
                          * math_inner(m(1:3,s,t), normal_neighbor2me) * area                       ! positive line length that wants to enter through this interface
               where (compatibility(c,1:ns,s,n,ip,el) > 0.0_pReal) &                                 ! positive compatibility...
                 rhoDotFlux(1:ns,t) = rhoDotFlux(1:ns,t) &
-                                   + lineLength / mesh_ipVolume(ip,el) &                            ! ... transferring to equally signed mobile dislocation type
+                                   + lineLength / IPvolume(ip,el) &                            ! ... transferring to equally signed mobile dislocation type
                                    * compatibility(c,1:ns,s,n,ip,el) ** 2.0_pReal
               where (compatibility(c,1:ns,s,n,ip,el) < 0.0_pReal) &                                 ! ..negative compatibility...
                 rhoDotFlux(1:ns,topp) = rhoDotFlux(1:ns,topp) &
-                                      + lineLength / mesh_ipVolume(ip,el) &                         ! ... transferring to opposite signed mobile dislocation type
+                                      + lineLength / IPvolume(ip,el) &                         ! ... transferring to opposite signed mobile dislocation type
                                       * compatibility(c,1:ns,s,n,ip,el) ** 2.0_pReal
             endif
           enddo
@@ -1739,9 +1739,9 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
               endif
               lineLength = my_rhoSgl(s,t) * my_v(s,t) &
                          * math_inner(m(1:3,s,t), normal_me2neighbor) * area                       ! positive line length of mobiles that wants to leave through this interface
-              rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / mesh_ipVolume(ip,el)                 ! subtract dislocation flux from current type
+              rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / IPvolume(ip,el)                 ! subtract dislocation flux from current type
               rhoDotFlux(s,t+4) = rhoDotFlux(s,t+4) &
-                                     + lineLength / mesh_ipVolume(ip,el) * (1.0_pReal - transmissivity) &
+                                     + lineLength / IPvolume(ip,el) * (1.0_pReal - transmissivity) &
                                      * sign(1.0_pReal, my_v(s,t))                                   ! dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point
             endif
           enddo
@@ -2238,7 +2238,7 @@ function getRho(instance,of,ip,el)
   getRho(:,mob) = max(getRho(:,mob),0.0_pReal)
   getRho(:,dip) = max(getRho(:,dip),0.0_pReal)
   
-  where(abs(getRho) < max(prm%significantN/mesh_ipVolume(ip,el)**(2.0_pReal/3.0_pReal),prm%significantRho)) &
+  where(abs(getRho) < max(prm%significantN/IPvolume(ip,el)**(2.0_pReal/3.0_pReal),prm%significantRho)) &
     getRho = 0.0_pReal
 
   end associate

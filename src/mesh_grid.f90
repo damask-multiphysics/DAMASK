@@ -27,9 +27,9 @@ module mesh
  integer(pInt), public, protected :: &
    mesh_Nnodes
 
- integer(pInt), dimension(:), allocatable, private :: &
+ integer(pInt), dimension(:), allocatable :: &
    microGlobal
- integer(pInt), dimension(:), allocatable, private :: &
+ integer(pInt), dimension(:), allocatable :: &
    mesh_homogenizationAt
 
  integer(pInt), dimension(:,:), allocatable, public, protected :: &
@@ -38,11 +38,11 @@ module mesh
  real(pReal), public, protected :: &
    mesh_unitlength                                                                                  !< physical length of one unit in mesh
 
- real(pReal), dimension(:,:), allocatable, private :: &
+ real(pReal), dimension(:,:), allocatable :: &
    mesh_node                                                                                        !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!)
 
 
- real(pReal), dimension(:,:), allocatable, public, protected :: &
+ real(pReal), dimension(:,:), allocatable :: &
    mesh_ipVolume, &                                                                                 !< volume associated with IP (initially!)
    mesh_node0                                                                                       !< node x,y,z coordinates (initially!)
 
