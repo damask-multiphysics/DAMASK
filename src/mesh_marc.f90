@@ -229,7 +229,8 @@ integer, dimension(:,:), allocatable :: &
    mesh_mapFEtoCPelem, &                                                                            !< [sorted FEid, corresponding CPid]
    mesh_mapFEtoCPnode                                                                               !< [sorted FEid, corresponding CPid]
 
-
+ integer, dimension(:,:,:,:), allocatable :: &
+   mesh_ipNeighborhood2                                                                              !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
 
  integer, dimension(:), allocatable :: &
    Marc_matNumber                                                                                   !< array of material numbers for hypoelastic material (Marc only)
@@ -349,6 +350,7 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Built shared elements'; flush(6)
  call mesh_build_ipNeighborhood
  call IP_neighborhood2
+ 
  if (myDebug) write(6,'(a)') ' Built IP neighborhood'; flush(6)
 
  if (usePingPong .and. (mesh_Nelems /= theMesh%nElems)) &
@@ -909,9 +911,8 @@ subroutine calcCells(thisMesh,connectivity_elem)
         j = j + 1
       enddo
       e = n+j-1
-      if (any(candidates_global(p,n:e)/=candidates_global(p,n))) then
-          call math_sort(candidates_global(:,n:e),sortDim=p)
-      endif
+      if (any(candidates_global(p,n:e)/=candidates_global(p,n))) &
+        call math_sort(candidates_global(:,n:e),sortDim=p)
       n = e+1
      enddo
    enddo
@@ -974,6 +975,7 @@ subroutine calcCells(thisMesh,connectivity_elem)
  call results_closeJobFile
 #endif  
 end subroutine calcCells
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Split CP elements into cells.
@@ -1142,24 +1144,22 @@ subroutine IP_neighborhood2
 
   integer, dimension(:,:), allocatable :: faces
   integer, dimension(:), allocatable :: face
-  integer :: e,i,f,c,m,n,j,k,l,p
-  allocate(faces(size(theMesh%elem%cellface,1)+2,size(theMesh%elem%cellface,2)*theMesh%elem%nIPs*theMesh%Nelems))
+  integer :: e,i,f,c,m,n,j,k,l,p, current, next,i2,e2,n2,k2
+  logical :: match
+  allocate(faces(size(theMesh%elem%cellface,1)+3,size(theMesh%elem%cellface,2)*theMesh%elem%nIPs*theMesh%Nelems))
 
-  ! store the definition of each cell face
-  c = 0
+  ! store cell face definitions
   f = 0
   do e = 1,theMesh%nElems
     do i = 1,theMesh%elem%nIPs
-      c = c + 1
       do n = 1, theMesh%elem%nIPneighbors
         f = f + 1
         face = mesh_cell2(theMesh%elem%cellFace(:,n),i,e)
-        do j = 1, size(face)
+        storeSorted: do j = 1, size(face)
           faces(j,f) = maxval(face)
           face(maxloc(face)) = -huge(1)
-        enddo
-        faces(j,f)   = c
-        faces(j+1,f) = n
+        enddo storeSorted
+        faces(j:j+2,f) = [e,i,n]
       enddo
     enddo
   enddo
@@ -1180,6 +1180,46 @@ subroutine IP_neighborhood2
      enddo
   enddo
 
+ allocate(mesh_ipNeighborhood2(3,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems),source=0)
+ 
+ ! find IP neighbors
+ f = 1
+ do while(f <= size(faces,2))
+   e = faces(size(theMesh%elem%cellface,1)+1,f)
+   i = faces(size(theMesh%elem%cellface,1)+2,f)
+   n = faces(size(theMesh%elem%cellface,1)+3,f)
+   
+   if (f < size(faces,2)) then
+     match = all(faces(1:size(theMesh%elem%cellface,1),f) == faces(1:size(theMesh%elem%cellface,1),f+1))
+     e2 = faces(size(theMesh%elem%cellface,1)+1,f+1)
+     i2 = faces(size(theMesh%elem%cellface,1)+2,f+1)
+     n2 = faces(size(theMesh%elem%cellface,1)+3,f+1)
+   else
+     match = .false.
+   endif
+   
+   if (match) then
+     if (e == e2) then ! same element. MD: I don't think that we need this (not even for other elements)
+       k  = theMesh%elem%IPneighbor(n, i)
+       k2 = theMesh%elem%IPneighbor(n2,i2)
+     endif
+     mesh_ipNeighborhood2(1:3,n, i, e)  = [e2,i2,n2]
+     mesh_ipNeighborhood2(1:3,n2,i2,e2) = [e, i, n]
+     f = f +1
+   endif
+   f = f +1 
+ enddo
+   
+
+  do e = 1,theMesh%nElems
+    do i = 1,theMesh%elem%nIPs
+      do n = 1, theMesh%elem%nIPneighbors
+      write(6,'(a,i1.1,x,i1.1,x,i1.1)') 'e,i,n ',e,i,n
+      write(6,'(i1.1,x,i1.1,x,i3.2)') mesh_ipNeighborhood(1:3,n,i,e)
+      write(6,'(i1.1,x,i1.1,x,i3.2)') mesh_ipNeighborhood2(1:3,n,i,e)
+      enddo
+    enddo
+  enddo
 
 end subroutine IP_neighborhood2
 
