@@ -6,14 +6,24 @@
 !> @brief Sets up the mesh for the solvers MSC.Marc, Abaqus and the spectral solver
 !--------------------------------------------------------------------------------------------------
 module mesh
+#include <petsc/finclude/petscsys.h>
  use, intrinsic :: iso_c_binding
  use prec
  use debug
+ use discretization
  use geometry_plastic_nonlocal
  use mesh_base
+ use DAMASK_interface
+ use PETScsys
+ use IO
+ use debug
+ use numerics
+ use FEsolving
+
 
  implicit none
  private
+
  integer(pInt), public, protected :: &
    mesh_Nnodes
 
@@ -97,7 +107,6 @@ contains
 
 subroutine tMesh_grid_init(self,nodes)
  
- implicit none
  class(tMesh_grid) :: self
  real(pReal), dimension(:,:), intent(in) :: nodes
  
@@ -111,25 +120,6 @@ end subroutine tMesh_grid_init
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_init(ip,el)
 
-#include <petsc/finclude/petscsys.h>
- use PETScsys
-
- use DAMASK_interface
- use IO, only: &
-   IO_error
- use debug, only: &
-   debug_e, &
-   debug_i, &
-   debug_level, &
-   debug_mesh, &
-   debug_levelBasic
- use numerics, only: &
-   numerics_unitlength
- use FEsolving, only: &
-   FEsolving_execElem, &
-   FEsolving_execIP
-
- implicit none
  include 'fftw3-mpi.f03'
  integer(C_INTPTR_T) :: devNull, local_K, local_K_offset
  integer :: ierr, worldsize, j
@@ -207,6 +197,7 @@ subroutine mesh_init(ip,el)
  theMesh%homogenizationAt  = mesh_element(3,:)
  theMesh%microstructureAt  = mesh_element(4,:)
 !!!!!!!!!!!!!!!!!!!!!!!!
+  call discretization_init(product(grid),product(grid),mesh_Nnodes)
 
 end subroutine mesh_init
 
@@ -217,17 +208,7 @@ end subroutine mesh_init
 ! supposed to be called only once!
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_spectral_read_grid()
- use IO, only: &
-   IO_stringPos, &
-   IO_lc, &
-   IO_stringValue, &
-   IO_intValue, &
-   IO_floatValue, &
-   IO_error
- use DAMASK_interface, only: &
-   geometryFile
 
-  implicit none
   character(len=:),            allocatable :: rawData
   character(len=65536)                     :: line
   integer(pInt), allocatable, dimension(:) :: chunkPos

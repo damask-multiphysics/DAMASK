@@ -4,14 +4,32 @@
 !> @brief needs a good name and description
 !--------------------------------------------------------------------------------------------------
 module CPFEM2
+  use prec
+  use numerics
+  use debug
+  use config
+  use FEsolving
+  use math
+  use mesh
+  use material
+  use lattice
+  use IO
+  use HDF5
+  use DAMASK_interface
+  use results
+  use discretization
+  use HDF5_utilities
+  use homogenization
+  use constitutive
+  use crystallite
 
- implicit none
- private
+  implicit none
+  private
 
- public :: &
-   CPFEM_age, &
-   CPFEM_initAll, &
-   CPFEM_results
+  public :: &
+    CPFEM_age, &
+    CPFEM_initAll, &
+    CPFEM_results
 
 contains
 
@@ -20,38 +38,6 @@ contains
 !> @brief call (thread safe) all module initializations
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_initAll()
- use prec, only: &
-   prec_init
- use numerics, only: &
-   numerics_init
- use debug, only: &
-   debug_init
- use config, only: &
-   config_init
- use FEsolving, only: &
-   FE_init
- use math, only: &
-   math_init
- use mesh, only: &
-   mesh_init
- use material, only: &
-   material_init
- use HDF5_utilities, only: &
-   HDF5_utilities_init
- use results, only: &
-   results_init
- use lattice, only: &
-   lattice_init
- use constitutive, only: &
-   constitutive_init
- use crystallite, only: &
-   crystallite_init
- use homogenization, only: &
-   homogenization_init, &
-   materialpoint_postResults
- use IO, only: &
-   IO_init
- use DAMASK_interface
 #ifdef FEM
  use FEM_Zoo, only: &
    FEM_Zoo_init
@@ -85,41 +71,6 @@ end subroutine CPFEM_initAll
 !> @brief allocate the arrays defined in module CPFEM and initialize them
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_init
- use IO, only: &
-   IO_error
- use numerics, only: &
-   worldrank
- use debug, only: &
-   debug_level, &
-   debug_CPFEM, &
-   debug_levelBasic, &
-   debug_levelExtensive
- use FEsolving, only: &
-   restartRead
- use material, only: &
-   material_phase, &
-   homogState, &
-   phase_plasticity, &
-   plasticState
- use config, only: &
-   material_Nhomogenization
- use crystallite, only: &
-   crystallite_F0, &
-   crystallite_Fp0, &
-   crystallite_Lp0, &
-   crystallite_Fi0, &
-   crystallite_Li0, &
-   crystallite_S0
- use hdf5
- use HDF5_utilities, only: &
-   HDF5_openFile, &
-   HDF5_closeFile, &
-   HDF5_openGroup, &
-   HDF5_closeGroup, &
-   HDF5_read
- use DAMASK_interface, only: &
-   getSolverJobName
-
  
  integer :: ph,homog
  character(len=1024) :: rankStr, PlasticItem, HomogItem
@@ -172,52 +123,7 @@ end subroutine CPFEM_init
 !--------------------------------------------------------------------------------------------------
 !> @brief forwards data after successful increment
 !--------------------------------------------------------------------------------------------------
-subroutine CPFEM_age()
- use prec, only: &
-   pReal
- use numerics, only: &
-   worldrank
- use debug, only: &
-   debug_level, &
-   debug_CPFEM, &
-   debug_levelBasic, &
-   debug_levelExtensive, &
-   debug_levelSelective
- use FEsolving, only: &
-   restartWrite
- use material, only: &
-   plasticState, &
-   sourceState, &
-   homogState, &
-   thermalState, &
-   damageState, &
-   material_phase, &
-   phase_plasticity, &
-   phase_Nsources
- use config, only: &
-   material_Nhomogenization
- use crystallite, only: &
-   crystallite_partionedF,&
-   crystallite_F0, &
-   crystallite_Fp0, &
-   crystallite_Fp, &
-   crystallite_Fi0, &
-   crystallite_Fi, &
-   crystallite_Lp0, &
-   crystallite_Lp, &
-   crystallite_Li0, &
-   crystallite_Li, &
-   crystallite_S0, &
-   crystallite_S
- use HDF5_utilities, only: &
-   HDF5_openFile, &
-   HDF5_closeFile, &
-   HDF5_addGroup, &
-   HDF5_closeGroup, &
-   HDF5_write
- use hdf5
- use DAMASK_interface, only: &
-   getSolverJobName
+subroutine CPFEM_age
  
  integer    ::  i, ph, homog, mySource
  character(len=32) :: rankStr, PlasticItem, HomogItem
@@ -289,14 +195,6 @@ end subroutine CPFEM_age
 !> @brief triggers writing of the results
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_results(inc,time)
- use results
- use HDF5_utilities
-  use homogenization, only: &
-   homogenization_results
- use constitutive, only: &
-   constitutive_results
- use crystallite, only: &
-   crystallite_results
  
  integer, intent(in) :: inc
  real(pReal),   intent(in) :: time
@@ -306,6 +204,7 @@ subroutine CPFEM_results(inc,time)
  call constitutive_results
  call crystallite_results
  call homogenization_results
+ call discretization_results
  call results_removeLink('current') ! ToDo: put this into closeJobFile
  call results_closeJobFile
 
