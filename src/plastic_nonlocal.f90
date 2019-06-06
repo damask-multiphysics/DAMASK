@@ -7,6 +7,15 @@
 module plastic_nonlocal
   use prec
   use future
+  use IO
+  use math
+  use debug
+  use mesh
+  use material
+  use lattice
+  use rotations
+  use config
+  use lattice
   use geometry_plastic_nonlocal, only: &
     IPneighborhood  => geometry_plastic_nonlocal_IPneighborhood, &
     IPvolume        => geometry_plastic_nonlocal_IPvolume, &
@@ -240,21 +249,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_init
-  use prec, only: &
-    dEq0, dNeq0, dEq
-  use math, only: &
-    math_expand, math_cross
-  use IO, only: &
-    IO_error
-  use debug, only: &
-    debug_level, &
-    debug_constitutive, &
-    debug_levelBasic
-  use mesh, only: &
-    theMesh
-  use material
-  use config
-  use lattice
 
   character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
   integer,                dimension(0), parameter :: emptyIntArray    = [integer::]
@@ -737,15 +731,6 @@ subroutine plastic_nonlocal_init
   !> @brief populates the initial dislocation density
   !--------------------------------------------------------------------------------------------------
   subroutine stateInit(phase,NofMyPhase)
-   use math, only: &
-     math_sampleGaussVar
-   use mesh, only: &
-     theMesh, &
-     mesh_ipVolume
-   use material, only: &
-     material_phase, &
-     phase_plasticityInstance, &
-     phasememberAt
       
    integer,intent(in) ::&
      phase, &
@@ -827,39 +812,6 @@ end subroutine plastic_nonlocal_init
 !> @brief calculates quantities characterizing the microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
-  use prec, only: &
-    dEq0
-  use IO, only: &
-    IO_error
-  use math, only: &
-    PI, &
-    math_inner, &
-    math_inv33
-#ifdef DEBUG
-  use debug, only: &
-    debug_level, &
-    debug_constitutive, &
-    debug_levelExtensive, &
-    debug_levelSelective, &
-    debug_i, &
-    debug_e
-#endif
-  use mesh, only: &
-    theMesh, &
-    mesh_ipNeighborhood, &
-    mesh_ipCoordinates, &
-    mesh_ipVolume, &
-    mesh_ipAreaNormal, &
-    mesh_ipArea
-  use material, only: &
-    material_phase, &
-    phase_localPlasticity, &
-    phaseAt, phasememberAt, &
-    phase_plasticityInstance
-  use lattice, only: &
-    LATTICE_bcc_ID, &
-    LATTICE_fcc_ID, &
-    lattice_structure
   
   integer, intent(in) :: &
     ip, &
@@ -1223,13 +1175,6 @@ end subroutine plastic_nonlocal_kinetics
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
                                             Mp, Temperature, volume, ip, el)
-  use math,     only: &
-    math_mul33xx33
-  use material, only: &
-    material_phase, &
-    plasticState, &
-    phaseAt, phasememberAt, &
-    phase_plasticityInstance
 
   integer, intent(in) :: &
     ip, &                                                                                           !< current integration point
@@ -1362,26 +1307,6 @@ end subroutine plastic_nonlocal_LpAndItsTangent
 !> @brief (instantaneous) incremental change of microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_deltaState(Mp,ip,el)
-  use prec, only: &
-    dNeq0
-#ifdef DEBUG
-  use debug, only: &
-    debug_level, &
-    debug_constitutive, &
-    debug_levelBasic, &
-    debug_levelExtensive, &
-    debug_levelSelective, &
-    debug_i, &
-    debug_e
-#endif
-  use math, only: &
-    PI, &
-    math_mul33xx33
-  use material, only: &
-    material_phase, &
-    plasticState, &
-    phaseAt, phasememberAt, &
-    phase_plasticityInstance
   
   integer, intent(in) :: &
     ip, &
@@ -1499,49 +1424,6 @@ end subroutine plastic_nonlocal_deltaState
 !---------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
                                      timestep,ip,el)
-  use, intrinsic :: &
-    IEEE_arithmetic
-  use prec, only: &
-    dNeq0, &
-    dNeq, &
-    dEq0
-  use IO, only: &
-    IO_error
-#ifdef DEBUG
-  use debug, only: &
-    debug_level, &
-    debug_constitutive, &
-    debug_levelBasic, &
-    debug_levelExtensive, &
-    debug_levelSelective, &
-    debug_i, &
-    debug_e
-#endif
-  use math, only: &
-    math_inner, &
-    math_mul33xx33, &
-    math_inv33, &
-    math_det33, &
-    PI
-  use mesh, only: &
-    theMesh, &
-    mesh_ipNeighborhood, &
-    mesh_ipVolume, &
-    mesh_ipArea, &
-    mesh_ipAreaNormal
-  use material, only: &
-    homogenization_maxNgrains, &
-    material_phase, &
-    phase_plasticityInstance, &
-    phase_localPlasticity, &
-    plasticState, &
-    phaseAt, phasememberAt, &
-    phase_plasticity ,&
-    PLASTICITY_NONLOCAL_ID
-  use lattice, only: &
-    lattice_structure, &
-    LATTICE_bcc_ID, & 
-    LATTICE_fcc_ID
   
   integer, intent(in) :: &
     ip, &                                                                                           !< current integration point
@@ -2000,21 +1882,6 @@ end subroutine plastic_nonlocal_dotState
 ! that sum up to a total of 1 are considered, all others are set to zero.
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_updateCompatibility(orientation,i,e) 
-  use math, only: &
-    math_inner, &
-    math_qRot
-  use rotations, only: &
-    rotation
-  use material, only: &
-    material_phase, &
-    material_texture, &
-    phase_localPlasticity, &
-    phase_plasticityInstance
-  use mesh, only: &
-    mesh_ipNeighborhood, &
-    theMesh
-  use lattice, only: &
-    lattice_qDisorientation
   
   integer, intent(in) :: &
     i, &
@@ -2158,10 +2025,6 @@ end subroutine plastic_nonlocal_updateCompatibility
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
 function plastic_nonlocal_postResults(ph,instance,of) result(postResults)
- use prec, only: &
-   dNeq0
- use material, only: &
-   plasticState
 
  integer, intent(in) :: &
    ph, &
@@ -2363,7 +2226,6 @@ end function plastic_nonlocal_postResults
 !> @details raw values is rectified
 !--------------------------------------------------------------------------------------------------
 function getRho(instance,of,ip,el)
-  use mesh
   
   integer, intent(in) :: instance, of,ip,el
   real(pReal), dimension(param(instance)%totalNslip,10) :: getRho
