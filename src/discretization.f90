@@ -3,7 +3,6 @@
 !--------------------------------------------------------------------------------------------------
 module discretization
 
-  use, intrinsic :: iso_c_binding
   use prec
   use results
 
@@ -44,7 +43,7 @@ subroutine discretization_init(homogenizationAt,microstructureAt,IPcoords0,NodeC
   write(6,'(/,a)')   ' <<<+-  discretization init  -+>>>'
 
   discretization_nElem = size(microstructureAt,1)
-  discretization_nIP   = size(IPcoords0,2)
+  discretization_nIP   = size(IPcoords0,2)/discretization_nElem
 
   discretization_homogenizationAt = homogenizationAt
   discretization_microstructureAt = microstructureAt  
