@@ -15,6 +15,8 @@ module results
 
   implicit none
   private
+  
+#if defined(PETSc) || defined(DAMASK_HDF5)
   integer(HID_T), public, protected :: tempCoordinates, tempResults
   integer(HID_T), private :: resultsFile, currentIncID, plist_id
 
@@ -951,5 +953,5 @@ end subroutine results_mapping_materialpoint
 
 !end subroutine HDF5_mappingCells
 
-
+#endif
 end module results

@@ -7,9 +7,11 @@
 module HDF5_utilities
   use prec
   use IO
-  use HDF5
   use rotations
   use numerics
+#if defined(PETSc) || defined(DAMASK_HDF5)
+  use HDF5
+#endif
 #ifdef PETSc
   use PETSC
 #endif
@@ -17,6 +19,7 @@ module HDF5_utilities
  implicit none
  public
 
+#if defined(PETSc) || defined(DAMASK_HDF5)
 !--------------------------------------------------------------------------------------------------
 !> @brief reads pInt or pReal data of defined shape from file                                       ! ToDo: order of arguments wrong
 !> @details for parallel IO, all dimension except for the last need to match
@@ -1925,5 +1928,5 @@ subroutine finalize_write(plist_id, dset_id, filespace_id, memspace_id)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='finalize_write: h5sclose_f/memspace_id')
 
 end subroutine finalize_write
-
+#endif
 end module HDF5_Utilities
