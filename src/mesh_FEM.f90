@@ -13,12 +13,21 @@ module mesh
 #include <petsc/finclude/petscdmda.h>
  use prec, only: pReal, pInt
  use mesh_base
-use PETScdmplex
-use PETScdmda
-use PETScis
-
+ use PETScdmplex
+ use PETScdmda
+ use PETScis
+ use DAMASK_interface
+ use IO
+ use debug
+ use math
+ use discretization
+ use numerics
+ use FEsolving
+ use FEM_Zoo
+ 
  implicit none
  private
+ 
  integer(pInt), public, parameter :: &
    mesh_ElemType=1_pInt                                                                             !< Element type of the mesh (only support homogeneous meshes)
 
@@ -119,30 +128,7 @@ subroutine tMesh_FEM_init(self,dimen,order,nodes)
 !! Order and routines strongly depend on type of solver
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_init()
- use DAMASK_interface
- use IO, only: &
-   IO_error, &
-   IO_open_file, &
-   IO_stringPos, &
-   IO_intValue, &
-   IO_EOF, &
-   IO_isBlank
- use debug, only: &
-   debug_e, &
-   debug_i
- use numerics, only: &
-   usePingPong, &
-   integrationOrder, &
-   worldrank, &
-   worldsize
- use FEsolving, only: &
-   FEsolving_execElem, &
-   FEsolving_execIP
- use FEM_Zoo, only: &
-   FEM_Zoo_nQuadrature, &
-   FEM_Zoo_QuadraturePoints
  
- implicit none
  integer(pInt), parameter :: FILEUNIT = 222_pInt
  integer(pInt) :: j
  integer(pInt), allocatable, dimension(:) :: chunkPos
@@ -263,6 +249,9 @@ subroutine mesh_init()
  theMesh%homogenizationAt  = mesh_element(3,:)
  theMesh%microstructureAt  = mesh_element(4,:)
  
+   call discretization_init(mesh_element(3,:),mesh_element(4,:),&
+                           reshape([0.0_pReal,0.0_pReal],[1,1]),reshape([0.0_pReal,0.0_pReal],[1,1]))
+ 
 end subroutine mesh_init
 
 
@@ -276,7 +265,7 @@ pure function mesh_cellCenterCoordinates(ip,el)
                               ip                                                                     !< integration point number
  real(pReal), dimension(3) :: mesh_cellCenterCoordinates                                             !< x,y,z coordinates of the cell center of the requested IP cell
 
- end function mesh_cellCenterCoordinates
+end function mesh_cellCenterCoordinates
 
 
 !--------------------------------------------------------------------------------------------------
@@ -289,11 +278,7 @@ pure function mesh_cellCenterCoordinates(ip,el)
 !> and one corner at the central ip.
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_FEM_build_ipVolumes(dimPlex)
- use math, only: &
-   math_I3, &
-   math_det33
  
- implicit none
  PetscInt           :: dimPlex
  PetscReal          :: vol
  PetscReal,  target :: cent(dimPlex), norm(dimPlex)
@@ -332,9 +317,9 @@ end subroutine mesh_FEM_build_ipVolumes
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
 
- implicit none
  PetscInt,      intent(in) :: dimPlex
  PetscReal,     intent(in) :: qPoints(mesh_maxNips*dimPlex)
+ 
  PetscReal,         target :: v0(dimPlex), cellJ(dimPlex*dimPlex), invcellJ(dimPlex*dimPlex)
  PetscReal,        pointer :: pV0(:), pCellJ(:), pInvcellJ(:)
  PetscReal                 :: detJ
