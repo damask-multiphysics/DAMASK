@@ -162,6 +162,10 @@ module element
        8  & ! 3D 8node
     ]                                                                                               !< number of cell nodes in a specific cell type
 
+
+
+! --------------------------------------------------------------------------------------------------
+! MD: probably not needed START
   integer, dimension(maxNnodeAtIP(1),nIP(1)), parameter, private :: NnodeAtIP1 = &
     reshape([&
       1,2,3 &
@@ -265,8 +269,7 @@ module element
       7,8, 0,0, &
       7,0, 0,0  &
     ],[maxNnodeAtIP(10),nIP(10)])
-
-
+  
   ! *** FE_ipNeighbor ***
   ! is a list of the neighborhood of each IP.
   ! It is sorted in (local) +x,-x, +y,-y, +z,-z direction.
@@ -376,7 +379,11 @@ module element
       27,25,-4,23,-6,17, &
       -3,26,-4,24,-6,18  &
      ],[nIPneighbor(cellType(10)),nIP(10)])
- 
+
+! MD: probably not needed END
+! --------------------------------------------------------------------------------------------------
+
+
  
   real(pReal), dimension(nNode(1),NcellNode(geomType(1))), parameter :: cellNodeParentNodeWeights1 = &
     reshape(real([&
