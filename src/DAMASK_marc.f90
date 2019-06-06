@@ -29,9 +29,11 @@
 #include "prec.f90"
 
 module DAMASK_interface
+ use prec
 
  implicit none
  private
+ 
  character(len=4), parameter, public :: InputFileExtension = '.dat'
  character(len=4), parameter, public :: LogFileExtension = '.log'
  
@@ -95,8 +97,7 @@ end subroutine DAMASK_interface_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solver job name (no extension) as combination of geometry and load case name
 !--------------------------------------------------------------------------------------------------
-function getSolverJobName()
- use prec
+function getSolverJobName
 
  implicit none
  character(1024) :: getSolverJobName, inputName
@@ -113,8 +114,6 @@ end function getSolverJobName
 
 
 end module DAMASK_interface
-
-
 
 
 #include "commercialFEM_fileList.f90"
@@ -320,7 +319,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
        endif
        do node = 1,theMesh%elem%nNodes
          CPnodeID = mesh_element(4+node,cp_en)
-         mesh_node(1:ndeg,CPnodeID) = mesh_node0(1:ndeg,CPnodeID) + numerics_unitlength * dispt(1:ndeg,node)
+         !mesh_node(1:ndeg,CPnodeID) = mesh_node0(1:ndeg,CPnodeID) + numerics_unitlength * dispt(1:ndeg,node)
        enddo
      endif
 
@@ -332,8 +331,8 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
        call debug_reset()                                                                           ! and resets debugging
        outdatedFFN1  = .false.
        cycleCounter  = cycleCounter + 1
-       mesh_cellnode = mesh_build_cellnodes()                                                       ! update cell node coordinates
-       call mesh_build_ipCoordinates()                                                              ! update ip coordinates
+       !mesh_cellnode = mesh_build_cellnodes()                                                       ! update cell node coordinates
+       !call mesh_build_ipCoordinates()                                                              ! update ip coordinates
      endif
      if (outdatedByNewInc) then
        computationMode = ior(computationMode,CPFEM_AGERESULTS)
