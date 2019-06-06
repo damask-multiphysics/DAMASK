@@ -8,6 +8,7 @@
 module mesh
  use prec
  use mesh_base
+ use geometry_plastic_nonlocal
 
  implicit none
  private
@@ -1908,6 +1909,8 @@ subroutine mesh_build_ipNeighborhood
      enddo
    enddo
  enddo
+ 
+  call geometry_plastic_nonlocal_set_IPneighborhood(mesh_ipNeighborhood)
  
  contains
  !--------------------------------------------------------------------------------------------------

@@ -16,6 +16,7 @@ module mesh
  use numerics
  use FEsolving
  use element
+ use geometry_plastic_nonlocal
 #if defined(DAMASK_HDF5)
  use HDF5_utilities
  use results
@@ -1209,7 +1210,7 @@ subroutine IP_neighborhood2
    endif
    f = f +1 
  enddo
-   
+ call geometry_plastic_nonlocal_set_IPneighborhood(mesh_ipNeighborhood2)
 
   do e = 1,theMesh%nElems
     do i = 1,theMesh%elem%nIPs

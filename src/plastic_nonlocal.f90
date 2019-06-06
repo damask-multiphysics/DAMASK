@@ -932,8 +932,8 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
     nRealNeighbors = 0.0_pReal
     neighbor_rhoTotal = 0.0_pReal
     do n = 1,theMesh%elem%nIPneighbors
-      neighbor_el = mesh_ipNeighborhood(1,n,ip,el)
-      neighbor_ip = mesh_ipNeighborhood(2,n,ip,el)
+      neighbor_el = IPneighborhood(1,n,ip,el)
+      neighbor_ip = IPneighborhood(2,n,ip,el)
       no = phasememberAt(1,neighbor_ip,neighbor_el)
       if (neighbor_el > 0 .and. neighbor_ip > 0) then
         neighbor_instance = phase_plasticityInstance(material_phase(1,neighbor_ip,neighbor_el))
@@ -1626,16 +1626,16 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
     
     neighbors: do n = 1,theMesh%elem%nIPneighbors
   
-      neighbor_el = mesh_ipNeighborhood(1,n,ip,el)
-      neighbor_ip = mesh_ipNeighborhood(2,n,ip,el)
-      neighbor_n  = mesh_ipNeighborhood(3,n,ip,el)
+      neighbor_el = IPneighborhood(1,n,ip,el)
+      neighbor_ip = IPneighborhood(2,n,ip,el)
+      neighbor_n  = IPneighborhood(3,n,ip,el)
       np = phaseAt(1,neighbor_ip,neighbor_el)
       no = phasememberAt(1,neighbor_ip,neighbor_el)
   
       opposite_neighbor = n + mod(n,2) - mod(n+1,2)
-      opposite_el = mesh_ipNeighborhood(1,opposite_neighbor,ip,el)
-      opposite_ip = mesh_ipNeighborhood(2,opposite_neighbor,ip,el)
-      opposite_n  = mesh_ipNeighborhood(3,opposite_neighbor,ip,el)
+      opposite_el = IPneighborhood(1,opposite_neighbor,ip,el)
+      opposite_ip = IPneighborhood(2,opposite_neighbor,ip,el)
+      opposite_n  = IPneighborhood(3,opposite_neighbor,ip,el)
     
       if (neighbor_n > 0) then                                                                      ! if neighbor exists, average deformation gradient
         neighbor_instance = phase_plasticityInstance(material_phase(1,neighbor_ip,neighbor_el))
@@ -1931,8 +1931,8 @@ subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
   !*** Loop thrugh neighbors and check whether there is any compatibility.
   
   neighbors: do n = 1,Nneighbors
-    neighbor_e = mesh_ipNeighborhood(1,n,i,e)
-    neighbor_i = mesh_ipNeighborhood(2,n,i,e)
+    neighbor_e = IPneighborhood(1,n,i,e)
+    neighbor_i = IPneighborhood(2,n,i,e)
     
     
     !* FREE SURFACE
