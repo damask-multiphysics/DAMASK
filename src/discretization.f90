@@ -45,8 +45,8 @@ end subroutine discretization_init
 
 subroutine discretization_results
 
-  call results_writeDataset('current',discretization_Centers_disp,'U','disp','m')
-  call results_writeDataset('current',discretization_Nodes_disp,'u','disp','m')
+  call results_writeDataset('current',discretization_Nodes_disp,'U',  'nodal displacements','m')
+  call results_writeDataset('current',discretization_Centers_disp,'u','IP displacements','m')
 
 end subroutine discretization_results
 
