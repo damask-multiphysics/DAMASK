@@ -217,12 +217,12 @@ real(pReal) function damage_nonlocal_getMobility(ip,el)
   
   damage_nonlocal_getMobility = 0.0_pReal
                                                  
-  do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+  do ipc = 1, homogenization_Ngrains(material_homogenizationAt(el))
     damage_nonlocal_getMobility = damage_nonlocal_getMobility + lattice_DamageMobility(material_phase(ipc,ip,el))
   enddo
 
   damage_nonlocal_getMobility = damage_nonlocal_getMobility/&
-                                real(homogenization_Ngrains(mesh_element(3,el)),pReal)
+                                real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
 
 end function damage_nonlocal_getMobility
 

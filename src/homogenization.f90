@@ -322,7 +322,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 !--------------------------------------------------------------------------------------------------
 ! initialize restoration points of ...
  do e = FEsolving_execElem(1),FEsolving_execElem(2)
-   myNgrains = homogenization_Ngrains(mesh_element(3,e))
+   myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e);
      do g = 1,myNgrains
 
@@ -370,7 +370,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
    !$OMP PARALLEL DO PRIVATE(myNgrains)
    elementLooping1: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     myNgrains = homogenization_Ngrains(mesh_element(3,e))
+     myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
      IpLooping1: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
 
        converged: if (materialpoint_converged(i,e)) then
@@ -521,7 +521,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 ! results in crystallite_partionedF
      !$OMP PARALLEL DO PRIVATE(myNgrains)
      elementLooping2: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-       myNgrains = homogenization_Ngrains(mesh_element(3,e))
+       myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
        IpLooping2: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
          if (      materialpoint_requested(i,e) .and. &                                             ! process requested but...
              .not. materialpoint_doneAndHappy(1,i,e)) then                                          ! ...not yet done material points
@@ -600,7 +600,7 @@ subroutine materialpoint_postResults
 
  !$OMP PARALLEL DO PRIVATE(myNgrains,myCrystallite,thePos,theSize)
    elementLooping: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     myNgrains = homogenization_Ngrains(mesh_element(3,e))
+     myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
      myCrystallite = microstructure_crystallite(mesh_element(4,e))
      IpLooping: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        thePos = 0
@@ -642,19 +642,19 @@ subroutine partitionDeformation(ip,el)
    ip, &                                                                                            !< integration point
    el                                                                                               !< element number
 
- chosenHomogenization: select case(homogenization_type(mesh_element(3,el)))
+ chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
 
    case (HOMOGENIZATION_NONE_ID) chosenHomogenization
      crystallite_partionedF(1:3,1:3,1,ip,el) = materialpoint_subF(1:3,1:3,ip,el)
 
    case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
      call mech_isostrain_partitionDeformation(&
-                          crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
+                          crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
                           materialpoint_subF(1:3,1:3,ip,el))
 
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
      call mech_RGC_partitionDeformation(&
-                         crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
+                         crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
                          materialpoint_subF(1:3,1:3,ip,el),&
                          ip, &
                          el)
@@ -675,21 +675,21 @@ function updateState(ip,el)
  logical, dimension(2) :: updateState
 
  updateState = .true.
- chosenHomogenization: select case(homogenization_type(mesh_element(3,el)))
+ chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
      updateState = &
        updateState .and. &
-        mech_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
-                             crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
-                             crystallite_partionedF0(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el),&
+        mech_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+                             crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+                             crystallite_partionedF0(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el),&
                              materialpoint_subF(1:3,1:3,ip,el),&
                              materialpoint_subdt(ip,el), &
-                             crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
+                             crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
                              ip, &
                              el)
  end select chosenHomogenization
 
- chosenThermal: select case (thermal_type(mesh_element(3,el)))
+ chosenThermal: select case (thermal_type(material_homogenizationAt(el)))
    case (THERMAL_adiabatic_ID) chosenThermal
      updateState = &
        updateState .and. &
@@ -698,7 +698,7 @@ function updateState(ip,el)
                                      el)
  end select chosenThermal
 
- chosenDamage: select case (damage_type(mesh_element(3,el)))
+ chosenDamage: select case (damage_type(material_homogenizationAt(el)))
    case (DAMAGE_local_ID) chosenDamage
      updateState = &
        updateState .and. &
@@ -719,7 +719,7 @@ subroutine averageStressAndItsTangent(ip,el)
    ip, &                                                                                            !< integration point
    el                                                                                               !< element number
 
- chosenHomogenization: select case(homogenization_type(mesh_element(3,el)))
+ chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
    case (HOMOGENIZATION_NONE_ID) chosenHomogenization
        materialpoint_P(1:3,1:3,ip,el)            = crystallite_P(1:3,1:3,1,ip,el)
        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el) = crystallite_dPdF(1:3,1:3,1:3,1:3,1,ip,el)
@@ -728,17 +728,17 @@ subroutine averageStressAndItsTangent(ip,el)
      call mech_isostrain_averageStressAndItsTangent(&
        materialpoint_P(1:3,1:3,ip,el), &
        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
-       crystallite_P(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
-       crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
-       homogenization_typeInstance(mesh_element(3,el)))
+       crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+       crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+       homogenization_typeInstance(material_homogenizationAt(el)))
 
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
      call mech_RGC_averageStressAndItsTangent(&
        materialpoint_P(1:3,1:3,ip,el), &
        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
-       crystallite_P(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
-       crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
-       homogenization_typeInstance(mesh_element(3,el)))
+       crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+       crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+       homogenization_typeInstance(material_homogenizationAt(el)))
  end select chosenHomogenization
 
 end subroutine averageStressAndItsTangent
@@ -765,7 +765,7 @@ function postResults(ip,el)
  postResults = 0.0_pReal
  startPos = 1
  endPos   = thermalState(material_homogenizationAt(el))%sizePostResults
- chosenThermal: select case (thermal_type(mesh_element(3,el)))
+ chosenThermal: select case (thermal_type(material_homogenizationAt(el)))
 
    case (THERMAL_adiabatic_ID) chosenThermal
      homog = material_homogenizationAt(el)
@@ -780,7 +780,7 @@ function postResults(ip,el)
 
  startPos = endPos + 1
  endPos   = endPos + damageState(material_homogenizationAt(el))%sizePostResults
- chosenDamage: select case (damage_type(mesh_element(3,el)))
+ chosenDamage: select case (damage_type(material_homogenizationAt(el)))
 
    case (DAMAGE_local_ID) chosenDamage
      postResults(startPos:endPos) = damage_local_postResults(ip, el)

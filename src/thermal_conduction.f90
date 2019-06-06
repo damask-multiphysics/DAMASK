@@ -3,8 +3,13 @@
 !> @brief material subroutine for temperature evolution from heat conduction
 !--------------------------------------------------------------------------------------------------
 module thermal_conduction
-  use prec, only: &
-    pReal
+  use prec
+  use material
+  use config
+  use lattice
+  use crystallite
+  use source_thermal_dissipation
+  use source_thermal_externalheat
  
   implicit none
   private
@@ -42,22 +47,8 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_conduction_init
-  use material, only: &
-    thermal_type, &
-    thermal_typeInstance, &
-    homogenization_Noutput, &
-    THERMAL_conduction_label, &
-    THERMAL_conduction_ID, &
-    material_homogenizationAt, & 
-    mappingHomogenization, & 
-    thermalState, &
-    thermalMapping, &
-    thermal_initialT, &
-    temperature, &
-    temperatureRate
-  use config, only: &
-    config_homogenization
- 
+
+  
   integer :: maxNinstance,section,instance,i
   integer :: sizeState
   integer :: NofMyHomog   
@@ -115,24 +106,6 @@ end subroutine thermal_conduction_init
 !> @brief returns heat generation rate
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
-  use material, only: &
-    material_homogenizationAt, &
-    homogenization_Ngrains, &
-    mappingHomogenization, &
-    phaseAt, &
-    phasememberAt, &
-    thermal_typeInstance, &
-    phase_Nsources, &
-    phase_source, &
-    SOURCE_thermal_dissipation_ID, &
-    SOURCE_thermal_externalheat_ID
-  use source_thermal_dissipation, only: &
-    source_thermal_dissipation_getRateAndItsTangent
-  use source_thermal_externalheat, only: &
-    source_thermal_externalheat_getRateAndItsTangent
-  use crystallite, only: &
-    crystallite_S, &
-    crystallite_Lp  
  
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point number
@@ -193,16 +166,7 @@ end subroutine thermal_conduction_getSourceAndItsTangent
 !> @brief returns homogenized thermal conductivity in reference configuration
 !--------------------------------------------------------------------------------------------------
 function thermal_conduction_getConductivity33(ip,el)
-  use lattice, only: &
-    lattice_thermalConductivity33
-  use material, only: &
-    homogenization_Ngrains, &
-    material_phase
-  use mesh, only: &
-    mesh_element
-  use crystallite, only: &
-    crystallite_push33ToRef
- 
+  
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
@@ -213,13 +177,13 @@ function thermal_conduction_getConductivity33(ip,el)
     
    
   thermal_conduction_getConductivity33 = 0.0_pReal
-  do grain = 1, homogenization_Ngrains(mesh_element(3,el))
+  do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
     thermal_conduction_getConductivity33 = thermal_conduction_getConductivity33 + &
      crystallite_push33ToRef(grain,ip,el,lattice_thermalConductivity33(:,:,material_phase(grain,ip,el)))
   enddo
  
   thermal_conduction_getConductivity33 = &
-    thermal_conduction_getConductivity33/real(homogenization_Ngrains(mesh_element(3,el)),pReal)
+    thermal_conduction_getConductivity33/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
  
 end function thermal_conduction_getConductivity33
 
@@ -228,14 +192,7 @@ end function thermal_conduction_getConductivity33
 !> @brief returns homogenized specific heat capacity
 !--------------------------------------------------------------------------------------------------
 function thermal_conduction_getSpecificHeat(ip,el)
-  use lattice, only: &
-    lattice_specificHeat
-  use material, only: &
-    homogenization_Ngrains, &
-    material_phase
-  use mesh, only: &
-    mesh_element
- 
+  
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
@@ -247,13 +204,13 @@ function thermal_conduction_getSpecificHeat(ip,el)
   thermal_conduction_getSpecificHeat = 0.0_pReal
   
    
-  do grain = 1, homogenization_Ngrains(mesh_element(3,el))
+  do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
     thermal_conduction_getSpecificHeat = thermal_conduction_getSpecificHeat + &
      lattice_specificHeat(material_phase(grain,ip,el))
   enddo
  
   thermal_conduction_getSpecificHeat = &
-    thermal_conduction_getSpecificHeat/real(homogenization_Ngrains(mesh_element(3,el)),pReal)
+    thermal_conduction_getSpecificHeat/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
  
 end function thermal_conduction_getSpecificHeat
  
@@ -261,14 +218,7 @@ end function thermal_conduction_getSpecificHeat
 !> @brief returns homogenized mass density
 !--------------------------------------------------------------------------------------------------
 function thermal_conduction_getMassDensity(ip,el)
-  use lattice, only: &
-    lattice_massDensity
-  use material, only: &
-    homogenization_Ngrains, &
-    material_phase
-  use mesh, only: &
-    mesh_element
- 
+
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
@@ -280,13 +230,13 @@ function thermal_conduction_getMassDensity(ip,el)
   thermal_conduction_getMassDensity = 0.0_pReal
   
    
-  do grain = 1, homogenization_Ngrains(mesh_element(3,el))
+  do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
     thermal_conduction_getMassDensity = thermal_conduction_getMassDensity &
                                       + lattice_massDensity(material_phase(grain,ip,el))
   enddo
  
   thermal_conduction_getMassDensity = &
-    thermal_conduction_getMassDensity/real(homogenization_Ngrains(mesh_element(3,el)),pReal)
+    thermal_conduction_getMassDensity/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
  
 end function thermal_conduction_getMassDensity
 
@@ -295,11 +245,6 @@ end function thermal_conduction_getMassDensity
 !> @brief updates thermal state with solution from heat conduction PDE
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_conduction_putTemperatureAndItsRate(T,Tdot,ip,el)
-  use material, only: &
-    material_homogenizationAt, &
-    temperature, &
-    temperatureRate, &
-    thermalMapping
 
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point number
@@ -323,8 +268,6 @@ end subroutine thermal_conduction_putTemperatureAndItsRate
 !> @brief return array of thermal results
 !--------------------------------------------------------------------------------------------------
 function thermal_conduction_postResults(homog,instance,of) result(postResults)
-  use material, only: &
-    temperature
  
   integer,              intent(in) :: &
     homog, &
