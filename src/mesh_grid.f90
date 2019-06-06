@@ -43,7 +43,6 @@ module mesh
 
 
  real(pReal), dimension(:,:), allocatable :: &
-   mesh_ipVolume, &                                                                                 !< volume associated with IP (initially!)
    mesh_node0                                                                                       !< node x,y,z coordinates (initially!)
 
  real(pReal), dimension(:,:,:), allocatable, public, protected :: &
@@ -74,45 +73,11 @@ module mesh
  public :: &
    mesh_init
 
- private :: &
-   mesh_build_ipAreas, &
-   mesh_build_ipNormals, &
-   mesh_spectral_build_nodes, &
-   mesh_spectral_build_elements, &
-   mesh_spectral_build_ipNeighborhood, &
-   mesh_build_ipCoordinates
-
- type, public, extends(tMesh) :: tMesh_grid
  
-  integer(pInt), dimension(3), public :: &
-   grid                                                                                             !< (global) grid
- integer(pInt), public :: &
-   mesh_NcpElemsGlobal, &                                                                           !< total number of CP elements in global mesh
-   grid3, &                                                                                         !< (local) grid in 3rd direction
-   grid3Offset                                                                                      !< (local) grid offset in 3rd direction
- real(pReal), dimension(3), public :: &
-   geomSize
- real(pReal), public :: &
-   size3, &                                                                                         !< (local) size in 3rd direction
-   size3offset
-   
-   contains
-   procedure, pass(self) :: tMesh_grid_init
-   generic, public :: init => tMesh_grid_init
- end type tMesh_grid
- 
- type(tMesh_grid), public, protected :: theMesh
+ type(tMesh), public, protected :: theMesh
  
 contains
 
-subroutine tMesh_grid_init(self,nodes)
- 
- class(tMesh_grid) :: self
- real(pReal), dimension(:,:), intent(in) :: nodes
- 
- call self%tMesh%init('grid',10_pInt,nodes)
- 
-end subroutine tMesh_grid_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief initializes the mesh by calling all necessary private routines the mesh module
@@ -121,9 +86,11 @@ end subroutine tMesh_grid_init
 subroutine mesh_init(ip,el)
 
  include 'fftw3-mpi.f03'
+ 
+ integer(pInt), intent(in), optional :: el, ip
  integer(C_INTPTR_T) :: devNull, local_K, local_K_offset
  integer :: ierr, worldsize, j
- integer(pInt), intent(in), optional :: el, ip
+ real(pReal), dimension(:,:), allocatable :: IPvolume 
  logical :: myDebug
 
  write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
@@ -160,27 +127,29 @@ subroutine mesh_init(ip,el)
  mesh_node  = mesh_node0
  if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
 
- call theMesh%init(mesh_node)
- call theMesh%setNelems(product(grid(1:2))*grid3)
+ call theMesh%init('grid',10,mesh_node)
+ call theMesh%setNelems(grid(1)*grid(2)*grid3)
  call mesh_spectral_build_elements()
  mesh_homogenizationAt = mesh_homogenizationAt(product(grid(1:2))*grid3Offset+1: &
                                                product(grid(1:2))*(grid3Offset+grid3))              ! reallocate/shrink in case of MPI
  
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
- 
- 
 
- if (myDebug) write(6,'(a)') ' Built cell nodes'; flush(6)
+ 
  mesh_ipCoordinates = mesh_build_ipCoordinates()
  if (myDebug) write(6,'(a)') ' Built IP coordinates'; flush(6)
- allocate(mesh_ipVolume(1,theMesh%nElems),source=product([geomSize(1:2),size3]/real([grid(1:2),grid3])))
+ 
+ allocate(IPvolume(1,theMesh%nElems),source=product([geomSize(1:2),size3]/real([grid(1:2),grid3])))
+ call geometry_plastic_nonlocal_set_IPvolume(IPvolume)
+
  if (myDebug) write(6,'(a)') ' Built IP volumes'; flush(6)
- mesh_ipArea       = mesh_build_ipAreas()
- mesh_ipAreaNormal = mesh_build_ipNormals()
+ 
+ mesh_ipArea       = mesh_build_ipAreas([geomSize(1:2),size3],[grid(1:2),grid3])
+ 
+ mesh_ipAreaNormal = mesh_build_ipNormals(grid(1)*grid(2)*grid3)
  if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
 
- call mesh_spectral_build_ipNeighborhood
-
+ call geometry_plastic_nonlocal_set_IPneighborhood(mesh_spectral_build_ipNeighborhood([grid(1:2),grid3]))
  if (myDebug) write(6,'(a)') ' Built IP neighborhood'; flush(6)
 
  if (debug_e < 1 .or. debug_e > theMesh%nElems) &
@@ -191,6 +160,8 @@ subroutine mesh_init(ip,el)
  FEsolving_execElem = [ 1_pInt,theMesh%nElems ]                                                     ! parallel loop bounds set to comprise all DAMASK elements
  allocate(FEsolving_execIP(2_pInt,theMesh%nElems), source=1_pInt)                                   ! parallel loop bounds set to comprise from first IP...
  forall (j = 1_pInt:theMesh%nElems) FEsolving_execIP(2,j) = theMesh%elem%nIPs                       ! ...up to own IP count for each element
+
+
 
 
 !!!! COMPATIBILITY HACK !!!!
@@ -427,58 +398,57 @@ end subroutine mesh_spectral_build_elements
 !> @brief build neighborhood relations for spectral
 !> @details assign globals: mesh_ipNeighborhood
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_build_ipNeighborhood
+pure function mesh_spectral_build_ipNeighborhood(grid) result(IPneighborhood)
 
+ integer, dimension(3), intent(in) :: grid                                                          ! grid (for this process!)
+ 
+ integer, dimension(3,6,1,product(grid)) :: IPneighborhood                                          !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
+ 
  integer :: &
   x,y,z, &
   e
- integer, dimension(:,:,:,:), allocatable :: &
-   ipNeighborhood                                                                                   !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
- allocate(ipNeighborhood(3,6,1,theMesh%nElems),source=0)
 
- e = 0_pInt
- do z = 0_pInt,grid3-1_pInt
-   do y = 0_pInt,grid(2)-1_pInt
-     do x = 0_pInt,grid(1)-1_pInt
-       e = e + 1_pInt
-        ipNeighborhood(1,1,1,e) = z * grid(1) * grid(2) &
+ e = 0
+ do z = 0,grid3-1
+   do y = 0,grid(2)-1
+     do x = 0,grid(1)-1
+       e = e + 1
+         IPneighborhood(1,1,1,e) = z * grid(1) * grid(2) &
                                       + y * grid(1) &
-                                      + modulo(x+1_pInt,grid(1)) &
-                                      + 1_pInt
-         ipNeighborhood(1,2,1,e) = z * grid(1) * grid(2) &
+                                      + modulo(x+1,grid(1)) &
+                                      + 1
+         IPneighborhood(1,2,1,e) = z * grid(1) * grid(2) &
                                       + y * grid(1) &
-                                      + modulo(x-1_pInt,grid(1)) &
-                                      + 1_pInt
-         ipNeighborhood(1,3,1,e) = z * grid(1) * grid(2) &
-                                      + modulo(y+1_pInt,grid(2)) * grid(1) &
+                                      + modulo(x-1,grid(1)) &
+                                      + 1
+         IPneighborhood(1,3,1,e) = z * grid(1) * grid(2) &
+                                      + modulo(y+1,grid(2)) * grid(1) &
                                       + x &
-                                      + 1_pInt
-         ipNeighborhood(1,4,1,e) = z * grid(1) * grid(2) &
-                                      + modulo(y-1_pInt,grid(2)) * grid(1) &
+                                      + 1
+         IPneighborhood(1,4,1,e) = z * grid(1) * grid(2) &
+                                      + modulo(y-1,grid(2)) * grid(1) &
                                       + x &
-                                      + 1_pInt
-         ipNeighborhood(1,5,1,e) = modulo(z+1_pInt,grid3) * grid(1) * grid(2) &
-                                      + y * grid(1) &
-                                      + x &
-                                      + 1_pInt
-         ipNeighborhood(1,6,1,e) = modulo(z-1_pInt,grid3) * grid(1) * grid(2) &
+                                      + 1
+         IPneighborhood(1,5,1,e) = modulo(z+1,grid3) * grid(1) * grid(2) &
                                       + y * grid(1) &
                                       + x &
-                                      + 1_pInt
-         ipNeighborhood(2,1:6,1,e) = 1_pInt
-         ipNeighborhood(3,1,1,e) = 2_pInt
-         ipNeighborhood(3,2,1,e) = 1_pInt
-         ipNeighborhood(3,3,1,e) = 4_pInt
-         ipNeighborhood(3,4,1,e) = 3_pInt
-         ipNeighborhood(3,5,1,e) = 6_pInt
-         ipNeighborhood(3,6,1,e) = 5_pInt
+                                      + 1
+         IPneighborhood(1,6,1,e) = modulo(z-1,grid3) * grid(1) * grid(2) &
+                                      + y * grid(1) &
+                                      + x &
+                                      + 1
+         IPneighborhood(2,1:6,1,e) = 1
+         IPneighborhood(3,1,1,e) = 2
+         IPneighborhood(3,2,1,e) = 1
+         IPneighborhood(3,3,1,e) = 4
+         IPneighborhood(3,4,1,e) = 3
+         IPneighborhood(3,5,1,e) = 6
+         IPneighborhood(3,6,1,e) = 5
      enddo
    enddo
  enddo
  
- call geometry_plastic_nonlocal_set_IPneighborhood(ipNeighborhood)
-
-end subroutine mesh_spectral_build_ipNeighborhood
+end function mesh_spectral_build_ipNeighborhood
 
 
 !--------------------------------------------------------------------------------------------------
@@ -524,14 +494,6 @@ function mesh_nodesAroundCentres(gDim,Favg,centres) result(nodes)
  wrappedCentres = 0.0_pReal
 
 !--------------------------------------------------------------------------------------------------
-! report
- if (iand(debug_level(debug_mesh),debug_levelBasic) /= 0_pInt) then
-   write(6,'(a)')          ' Meshing cubes around centroids'
-   write(6,'(a,3(e12.5))') ' Dimension: ', gDim
-   write(6,'(a,3(i5))')    ' Resolution:', iRes
- endif
-
-!--------------------------------------------------------------------------------------------------
 ! building wrappedCentres = centroids + ghosts
  wrappedCentres(1:3,2_pInt:iRes(1)+1_pInt,2_pInt:iRes(2)+1_pInt,2_pInt:iRes(3)+1_pInt) = centres
  do k = 0_pInt,iRes(3)+1_pInt
@@ -567,13 +529,16 @@ end function mesh_nodesAroundCentres
 !--------------------------------------------------------------------------------------------------
 !> @brief calculation of IP interface areas, allocate globals '_ipArea', and '_ipAreaNormal'
 !--------------------------------------------------------------------------------------------------
-pure function mesh_build_ipAreas()
+pure function mesh_build_ipAreas(geomSize,grid) result(IPareas)
+  
+  real(pReal), dimension(3), intent(in)     :: geomSize                                             ! size (for this process!)
+  integer,     dimension(3), intent(in)     :: grid                                                 ! grid (for this process!)
+  
+  real(pReal), dimension(6,1,product(grid)) :: IPareas
 
-  real(pReal), dimension(6,1,theMesh%nElems) :: mesh_build_ipAreas
-
-  mesh_build_ipAreas(1:2,1,:) = geomSize(2)/real(grid(2)) * geomSize(3)/real(grid(3))
-  mesh_build_ipAreas(3:4,1,:) = geomSize(3)/real(grid(3)) * geomSize(1)/real(grid(1))
-  mesh_build_ipAreas(5:6,1,:) = geomSize(1)/real(grid(1)) * geomSize(2)/real(grid(2))
+  IPareas(1:2,1,:) = geomSize(2)/real(grid(2)) * geomSize(3)/real(grid(3))
+  IPareas(3:4,1,:) = geomSize(3)/real(grid(3)) * geomSize(1)/real(grid(1))
+  IPareas(5:6,1,:) = geomSize(1)/real(grid(1)) * geomSize(2)/real(grid(2))
   
 end function mesh_build_ipAreas
 
@@ -581,16 +546,18 @@ end function mesh_build_ipAreas
 !--------------------------------------------------------------------------------------------------
 !> @brief calculation of IP interface areas, allocate globals '_ipArea', and '_ipAreaNormal'
 !--------------------------------------------------------------------------------------------------
-pure function mesh_build_ipNormals()
+pure function mesh_build_ipNormals(nElems) result(IPnormals)
 
-  real, dimension(3,6,1,theMesh%nElems) :: mesh_build_ipNormals
+  integer, intent(in) :: nElems
+  
+  real, dimension(3,6,1,nElems) :: IPnormals
 
-  mesh_build_ipNormals(1:3,1,1,:) = spread([+1.0_pReal, 0.0_pReal, 0.0_pReal],2,theMesh%nElems)
-  mesh_build_ipNormals(1:3,2,1,:) = spread([-1.0_pReal, 0.0_pReal, 0.0_pReal],2,theMesh%nElems)
-  mesh_build_ipNormals(1:3,3,1,:) = spread([ 0.0_pReal,+1.0_pReal, 0.0_pReal],2,theMesh%nElems)
-  mesh_build_ipNormals(1:3,4,1,:) = spread([ 0.0_pReal,-1.0_pReal, 0.0_pReal],2,theMesh%nElems)
-  mesh_build_ipNormals(1:3,5,1,:) = spread([ 0.0_pReal, 0.0_pReal,+1.0_pReal],2,theMesh%nElems)
-  mesh_build_ipNormals(1:3,6,1,:) = spread([ 0.0_pReal, 0.0_pReal,-1.0_pReal],2,theMesh%nElems)
+  IPnormals(1:3,1,1,:) = spread([+1.0_pReal, 0.0_pReal, 0.0_pReal],2,nElems)
+  IPnormals(1:3,2,1,:) = spread([-1.0_pReal, 0.0_pReal, 0.0_pReal],2,nElems)
+  IPnormals(1:3,3,1,:) = spread([ 0.0_pReal,+1.0_pReal, 0.0_pReal],2,nElems)
+  IPnormals(1:3,4,1,:) = spread([ 0.0_pReal,-1.0_pReal, 0.0_pReal],2,nElems)
+  IPnormals(1:3,5,1,:) = spread([ 0.0_pReal, 0.0_pReal,+1.0_pReal],2,nElems)
+  IPnormals(1:3,6,1,:) = spread([ 0.0_pReal, 0.0_pReal,-1.0_pReal],2,nElems)
   
 end function mesh_build_ipNormals
 
