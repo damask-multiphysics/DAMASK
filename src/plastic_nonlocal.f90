@@ -18,9 +18,9 @@ module plastic_nonlocal
   use lattice
   use geometry_plastic_nonlocal, only: &
     IPneighborhood  => geometry_plastic_nonlocal_IPneighborhood, &
-    IPvolume        => geometry_plastic_nonlocal_IPvolume, &
-    IParea          => geometry_plastic_nonlocal_IParea, &
-    IPareaNormal    => geometry_plastic_nonlocal_IPareaNormal
+    IPvolume        => geometry_plastic_nonlocal_IPvolume0, &
+    IParea          => geometry_plastic_nonlocal_IParea0, &
+    IPareaNormal    => geometry_plastic_nonlocal_IPareaNormal0
     
   implicit none
   private

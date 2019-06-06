@@ -888,8 +888,6 @@ function crystallite_postResults(ipc, ip, el)
                         1+plasticState(material_phase(ipc,ip,el))%sizePostResults + &
                           sum(sourceState(material_phase(ipc,ip,el))%p(:)%sizePostResults)) :: &
    crystallite_postResults
- real(pReal) :: &
-   detF
  integer :: &
    o, &
    c, &
