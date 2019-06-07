@@ -16,6 +16,7 @@ module material
   use debug
   use mesh
   use numerics
+  use rotations
   use discretization
 
  implicit none
@@ -706,24 +707,37 @@ end subroutine material_parsePhase
 !--------------------------------------------------------------------------------------------------
 subroutine material_parseTexture
 
-  integer :: section, j, t, i
+  integer :: j, t, i
   character(len=65536), dimension(:), allocatable ::  strings                                       ! Values for given key in material config 
   integer, dimension(:), allocatable :: chunkPos
   real(pReal), dimension(3,3)  :: texture_transformation                                            ! maps texture to microstructure coordinate system
 
-
   do t=1, size(config_texture)
-    if (config_texture(t)%countKeys('(gauss)') /= 1) call IO_error(147,ext_msg='count((gauss)) !=1')
+    if (config_texture(t)%countKeys('(gauss)') /= 1) call IO_error(147,ext_msg='count((gauss)) != 1')
     if (config_texture(t)%keyExists('symmetry'))     call IO_error(147,ext_msg='symmetry')
     if (config_texture(t)%keyExists('(random)'))     call IO_error(147,ext_msg='(random)')
     if (config_texture(t)%keyExists('(fiber)'))      call IO_error(147,ext_msg='(fiber)')
   enddo
 
-  allocate(texture_Gauss (5,size(config_texture)), source=0.0_pReal)
+  allocate(texture_Gauss (3,size(config_texture)), source=0.0_pReal)
 
   do t=1, size(config_texture)
-    section = t
     
+    strings = config_texture(t)%getStrings('(gauss)',raw= .true.)
+    do i = 1 , size(strings)
+      chunkPos = IO_stringPos(strings(i))
+      do j = 1,9,2
+        select case (IO_stringValue(strings(i),chunkPos,j))
+          case('phi1')
+            texture_Gauss(1,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
+          case('phi')
+            texture_Gauss(2,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
+          case('phi2')
+            texture_Gauss(3,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
+        end select
+      enddo
+    enddo
+
     if (config_texture(t)%keyExists('axes')) then
       strings = config_texture(t)%getStrings('axes')
       do j = 1, 3                                                                                   ! look for "x", "y", and "z" entries
@@ -745,26 +759,10 @@ subroutine material_parseTexture
         end select
       enddo
       if(dNeq(math_det33(texture_transformation),1.0_pReal)) call IO_error(157,t)
-    else
-      texture_transformation = math_I3
+      texture_Gauss(:,t) = math_RtoEuler(matmul(math_EulertoR(texture_Gauss(:,t)),texture_transformation))
     endif
-
-    strings = config_texture(t)%getStrings('(gauss)',raw= .true.)
-    do i = 1 , size(strings)
-      chunkPos = IO_stringPos(strings(i))
-      do j = 1,9,2
-        select case (IO_stringValue(strings(i),chunkPos,j))
-          case('phi1')
-            texture_Gauss(1,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
-          case('phi')
-            texture_Gauss(2,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
-          case('phi2')
-            texture_Gauss(3,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
-        end select
-      enddo
-    enddo
-    texture_Gauss(:,t) = math_RtoEuler(matmul(math_EulertoR(texture_Gauss(:,t)),texture_transformation))
-  enddo    
+    
+  enddo 
   
   call config_deallocate('material.config/texture')
 
