@@ -16,6 +16,7 @@ module plastic_nonlocal
   use rotations
   use config
   use lattice
+  use discretization
   use geometry_plastic_nonlocal, only: &
     IPneighborhood  => geometry_plastic_nonlocal_IPneighborhood, &
     IPvolume        => geometry_plastic_nonlocal_IPvolume0, &
@@ -665,8 +666,8 @@ subroutine plastic_nonlocal_init
 
   enddo
  
-  allocate(compatibility(2,maxval(totalNslip),maxval(totalNslip),theMesh%elem%nIPneighbors,discretization_nIP,discretization_nElem), &
-                                                                                  source=0.0_pReal)
+  allocate(compatibility(2,maxval(totalNslip),maxval(totalNslip),theMesh%elem%nIPneighbors,&
+                         discretization_nIP,discretization_nElem), source=0.0_pReal)
                                             
 ! BEGIN DEPRECATED----------------------------------------------------------------------------------
   allocate(iRhoU(maxval(totalNslip),4,maxNinstances), source=0)
