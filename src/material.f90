@@ -18,6 +18,7 @@ module material
   use debug
   use mesh
   use numerics
+  use discretization
 
  implicit none
  private
@@ -339,11 +340,11 @@ subroutine material_init
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! new mappings
  allocate(material_homogenizationAt,source=theMesh%homogenizationAt)
- allocate(material_homogenizationMemberAt(theMesh%elem%nIPs,theMesh%Nelems),source=0)
+ allocate(material_homogenizationMemberAt(discretization_nIP,discretization_nElem),source=0)
 
  allocate(CounterHomogenization(size(config_homogenization)),source=0)
- do e = 1, theMesh%Nelems
-   do i = 1, theMesh%elem%nIPs
+ do e = 1, discretization_nElem
+   do i = 1, discretization_nIP
      CounterHomogenization(material_homogenizationAt(e)) = &
      CounterHomogenization(material_homogenizationAt(e)) + 1
      material_homogenizationMemberAt(i,e) = CounterHomogenization(material_homogenizationAt(e))
@@ -351,12 +352,12 @@ subroutine material_init
  enddo
 
 
- allocate(material_phaseAt(homogenization_maxNgrains,theMesh%Nelems), source=material_phase(:,1,:))
- allocate(material_phaseMemberAt(homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),source=0)
+ allocate(material_phaseAt(homogenization_maxNgrains,discretization_nElem), source=material_phase(:,1,:))
+ allocate(material_phaseMemberAt(homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0)
  
  allocate(CounterPhase(size(config_phase)),source=0)
- do e = 1, theMesh%Nelems
-   do i = 1, theMesh%elem%nIPs
+ do e = 1, discretization_nElem
+   do i = 1, discretization_nIP
      do c = 1, homogenization_maxNgrains
        CounterPhase(material_phaseAt(c,e)) = &
        CounterPhase(material_phaseAt(c,e)) + 1
@@ -377,18 +378,18 @@ subroutine material_init
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! BEGIN DEPRECATED
- allocate(phaseAt                   (  homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),source=0)
- allocate(phasememberAt             (  homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),source=0)
- allocate(mappingHomogenization     (2,                          theMesh%elem%nIPs,theMesh%Nelems),source=0)
- allocate(mappingHomogenizationConst(                            theMesh%elem%nIPs,theMesh%Nelems),source=1)
+ allocate(phaseAt                   (  homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0)
+ allocate(phasememberAt             (  homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0)
+ allocate(mappingHomogenization     (2,                          discretization_nIP,discretization_nElem),source=0)
+ allocate(mappingHomogenizationConst(                            discretization_nIP,discretization_nElem),source=1)
  
  CounterHomogenization=0
  CounterPhase         =0
 
 
- do e = 1,theMesh%Nelems
+ do e = 1,discretization_nElem
  myHomog = theMesh%homogenizationAt(e)
-   do i = 1, theMesh%elem%nIPs
+   do i = 1, discretization_nIP
      CounterHomogenization(myHomog) = CounterHomogenization(myHomog) + 1
      mappingHomogenization(1:2,i,e) = [CounterHomogenization(myHomog),huge(1)]
      do g = 1,homogenization_Ngrains(myHomog)
@@ -524,7 +525,7 @@ subroutine material_parseMicrostructure
  if(any(theMesh%microstructureAt > size(config_microstructure))) &
   call IO_error(155,ext_msg='More microstructures in geometry than sections in material.config')
 
- forall (e = 1:theMesh%Nelems) &
+ forall (e = 1:discretization_nElem) &
    microstructure_active(theMesh%microstructureAt(e)) = .true.                                         ! current microstructure used in model? Elementwise view, maximum N operations for N elements
 
  do m=1, size(config_microstructure)
@@ -872,12 +873,12 @@ subroutine material_populateGrains
 
  integer :: e,i,c,homog,micro
 
- allocate(material_phase(homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),        source=0)
- allocate(material_texture(homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),      source=0)
- allocate(material_EulerAngles(3,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),source=0.0_pReal)
+ allocate(material_phase(homogenization_maxNgrains,discretization_nIP,discretization_nElem),        source=0)
+ allocate(material_texture(homogenization_maxNgrains,discretization_nIP,discretization_nElem),      source=0)
+ allocate(material_EulerAngles(3,homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0.0_pReal)
 
-  do e = 1, theMesh%Nelems
-    do i = 1, theMesh%elem%nIPs
+  do e = 1, discretization_nElem
+    do i = 1, discretization_nIP
       homog = theMesh%homogenizationAt(e)
       micro = theMesh%microstructureAt(e)
       do c = 1, homogenization_Ngrains(homog)

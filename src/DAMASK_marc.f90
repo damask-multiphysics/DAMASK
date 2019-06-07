@@ -30,6 +30,13 @@
 
 module DAMASK_interface
  use prec
+ #if __INTEL_COMPILER >= 1800
+ use, intrinsic :: iso_fortran_env, only: &
+   compiler_version, &
+   compiler_options
+#endif
+ use ifport, only: &
+   CHDIR
 
  implicit none
  private
@@ -47,15 +54,7 @@ contains
 !> @brief reports and sets working directory
 !--------------------------------------------------------------------------------------------------
 subroutine DAMASK_interface_init
-#if __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
- use ifport, only: &
-   CHDIR
 
- implicit none
  integer, dimension(8) :: &
    dateAndTime
  integer :: ierr
@@ -99,7 +98,6 @@ end subroutine DAMASK_interface_init
 !--------------------------------------------------------------------------------------------------
 function getSolverJobName()
 
- implicit none
  character(1024) :: getSolverJobName, inputName
  character(len=*), parameter :: pathSep = achar(47)//achar(92)                                      ! forward and backward slash
  integer :: extPos
@@ -131,46 +129,11 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
                    strechn1,eigvn1,ncrd,itel,ndeg,ndm,nnode, &
                    jtype,lclass,ifr,ifu)
  use prec
- use numerics, only: &
-!$ DAMASK_NumThreadsInt, &
-   numerics_unitlength, &
-   usePingPong
- use FEsolving, only: &
-   calcMode, &
-   terminallyIll, &
-   symmetricSolver
- use debug, only: &
-   debug_level, &
-   debug_LEVELBASIC, &
-   debug_MARC, &
-   debug_info, &
-   debug_reset
- use mesh, only: &
-   theMesh, &
-   mesh_FEasCP, &
-   mesh_element, &
-   mesh_node0, &
-   mesh_node, &
-   mesh_cellnode, &
-   mesh_build_cellnodes, &
-   mesh_build_ipCoordinates
- use CPFEM, only: &
-   CPFEM_general, &
-   CPFEM_init_done, &
-   CPFEM_initAll, &
-   CPFEM_CALCRESULTS, &
-   CPFEM_AGERESULTS, &
-   CPFEM_COLLECT, &
-   CPFEM_RESTOREJACOBIAN, &
-   CPFEM_BACKUPJACOBIAN, &
-   cycleCounter, &
-   theInc, &
-   theTime, &
-   theDelta, &
-   lastIncConverged, &
-   outdatedByNewInc, &
-   outdatedFFN1, &
-   lastLovl
+ use numerics
+ use FEsolving
+ use debug
+ use mesh
+ use CPFEM
 
  implicit none
 !$ include "omp_lib.h"                                                                              ! the openMP function library
@@ -318,7 +281,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
          lastIncConverged = .false.                                                                 ! reset flag
        endif
        do node = 1,theMesh%elem%nNodes
-         CPnodeID = mesh_element(4+node,cp_en)
+         !CPnodeID = mesh_element(4+node,cp_en)
          !mesh_node(1:ndeg,CPnodeID) = mesh_node0(1:ndeg,CPnodeID) + numerics_unitlength * dispt(1:ndeg,node)
        enddo
      endif
@@ -371,10 +334,8 @@ end subroutine hypela2
 !--------------------------------------------------------------------------------------------------
 subroutine flux(f,ts,n,time)
  use prec
- use thermal_conduction, only: &
-   thermal_conduction_getSourceAndItsTangent
- use mesh, only: &
-   mesh_FEasCP
+ use thermal_conduction
+ use mesh
 
  implicit none
  real(pReal), dimension(6),           intent(in) :: &
@@ -397,8 +358,7 @@ subroutine flux(f,ts,n,time)
 !--------------------------------------------------------------------------------------------------
 subroutine uedinc(inc,incsub)
   use prec
-  use CPFEM, only: &
-    CPFEM_results
+  use CPFEM
 
   implicit none
   integer, intent(in) :: inc, incsub
@@ -415,13 +375,9 @@ end subroutine uedinc
 !--------------------------------------------------------------------------------------------------
 subroutine plotv(v,s,sp,etot,eplas,ecreep,t,m,nn,layer,ndi,nshear,jpltcd)
  use prec
- use mesh, only: &
-   mesh_FEasCP
- use IO, only: &
-   IO_error
- use homogenization, only: &
-   materialpoint_results,&
-   materialpoint_sizeResults
+ use mesh
+ use IO
+ use homogenization
 
  implicit none
  integer,               intent(in) :: &

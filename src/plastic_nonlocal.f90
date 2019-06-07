@@ -665,7 +665,7 @@ subroutine plastic_nonlocal_init
 
   enddo
  
-  allocate(compatibility(2,maxval(totalNslip),maxval(totalNslip),theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), &
+  allocate(compatibility(2,maxval(totalNslip),maxval(totalNslip),theMesh%elem%nIPneighbors,discretization_nIP,discretization_nElem), &
                                                                                   source=0.0_pReal)
                                             
 ! BEGIN DEPRECATED----------------------------------------------------------------------------------
@@ -763,8 +763,8 @@ subroutine plastic_nonlocal_init
    if (prm%rhoSglRandom > 0.0_pReal) then
   
     ! get the total volume of the instance
-    do e = 1,theMesh%nElems
-      do i = 1,theMesh%elem%nIPs
+    do e = 1,discretization_nElem
+      do i = 1,discretization_nIP
         if (material_phase(1,i,e) == phase) volume(phasememberAt(1,i,e)) = IPvolume(i,e)
       enddo
     enddo
@@ -1433,7 +1433,7 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
     timestep                                                                                        !< substepped crystallite time increment
   real(pReal), dimension(3,3), intent(in) ::&
     Mp                                                                                              !< MandelStress
-  real(pReal), dimension(3,3,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), intent(in) :: &
+  real(pReal), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem), intent(in) :: &
     Fe, &                                                                                           !< elastic deformation gradient
     Fp                                                                                              !< plastic deformation gradient
   
@@ -1886,7 +1886,7 @@ subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
   integer, intent(in) :: &
     i, &
     e
-  type(rotation), dimension(1,theMesh%elem%nIPs,theMesh%nElems), intent(in) :: &
+  type(rotation), dimension(1,discretization_nIP,discretization_nElem), intent(in) :: &
     orientation                                                                                     ! crystal orientation in quaternions
                                               
   integer :: &

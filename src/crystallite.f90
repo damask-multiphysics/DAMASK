@@ -364,7 +364,7 @@ subroutine crystallite_init
     call IO_write_jobFile(FILEUNIT,'outputCrystallite')
  
     do r = 1,size(config_crystallite)
-      if (any(microstructure_crystallite(mesh_element(4,:)) == r)) then
+      if (any(microstructure_crystallite(material_microstructureAt(:)) == r)) then
         write(FILEUNIT,'(/,a,/)') '['//trim(crystallite_name(r))//']'
         do o = 1,crystallite_Noutput(r)
           write(FILEUNIT,'(a,i4)') trim(crystallite_output(o,r))//char(9),crystallite_sizePostResult(o,r)
@@ -884,7 +884,7 @@ function crystallite_postResults(ipc, ip, el)
    ip, &                         !< integration point index
    ipc                           !< grain index
 
- real(pReal), dimension(1+crystallite_sizePostResults(microstructure_crystallite(mesh_element(4,el))) + &
+ real(pReal), dimension(1+crystallite_sizePostResults(microstructure_crystallite(material_microstructureAt(el))) + &
                         1+plasticState(material_phase(ipc,ip,el))%sizePostResults + &
                           sum(sourceState(material_phase(ipc,ip,el))%p(:)%sizePostResults)) :: &
    crystallite_postResults
@@ -896,7 +896,7 @@ function crystallite_postResults(ipc, ip, el)
    n
  type(rotation) :: rot
 
- crystID = microstructure_crystallite(mesh_element(4,el))
+ crystID = microstructure_crystallite(material_microstructureAt(el))
 
  crystallite_postResults = 0.0_pReal
  crystallite_postResults(1) = real(crystallite_sizePostResults(crystID),pReal)                  ! header-like information (length)

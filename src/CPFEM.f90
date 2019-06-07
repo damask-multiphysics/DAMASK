@@ -344,7 +344,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
  !*   If no parallel execution is required, there is no need to collect FEM input
 
  if (.not. parallelExecution) then
-   chosenThermal1: select case (thermal_type(mesh_element(3,elCP)))
+   chosenThermal1: select case (thermal_type(material_homogenizationAt(elCP)))
      case (THERMAL_conduction_ID) chosenThermal1
        temperature(material_homogenizationAt(elCP))%p(thermalMapping(material_homogenizationAt(elCP))%p(ip,elCP)) = &
          temperature_inp
@@ -357,7 +357,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
    if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
    CPFEM_cs(1:6,ip,elCP) = rnd * CPFEM_odd_stress
    CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian * math_identity2nd(6)
-   chosenThermal2: select case (thermal_type(mesh_element(3,elCP)))
+   chosenThermal2: select case (thermal_type(material_homogenizationAt(elCP)))
      case (THERMAL_conduction_ID) chosenThermal2
        temperature(material_homogenizationAt(elCP))%p(thermalMapping(material_homogenizationAt(elCP))%p(ip,elCP)) = &
          temperature_inp
