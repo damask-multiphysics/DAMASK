@@ -10,6 +10,12 @@ module geometry_plastic_nonlocal
 
   implicit none
   private
+  
+  integer, public, protected :: &
+    geometry_plastic_nonlocal_nIPneighbors
+  
+  integer,     dimension(:,:,:,:), allocatable, public, protected :: &
+    geometry_plastic_nonlocal_IPneighborhood                                                        !< 6 or less neighboring IPs as [element ID, IP ID, face ID that point to me]
 
   real(pReal), dimension(:,:),     allocatable, public, protected :: &
     geometry_plastic_nonlocal_IPvolume0                                                             !< volume associated with IP (initially!)
@@ -20,25 +26,37 @@ module geometry_plastic_nonlocal
   real(pReal), dimension(:,:,:,:), allocatable, public, protected :: &
     geometry_plastic_nonlocal_IPareaNormal0                                                         !< area normal of interface to neighboring IP (initially!)
   
-  integer,     dimension(:,:,:,:), allocatable, public, protected :: &
-    geometry_plastic_nonlocal_IPneighborhood                                                        !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
-
 
   public :: &
     geometry_plastic_nonlocal_set_IPneighborhood, &
-    geometry_plastic_nonlocal_set_IPvolume
+    geometry_plastic_nonlocal_set_IPvolume, &
+    geometry_plastic_nonlocal_set_IParea, &
+    geometry_plastic_nonlocal_set_IPareaNormal
     
-  contains
-  
+contains
+
+!---------------------------------------------------------------------------------------------------
+!> @brief Set the integration point (IP) neighborhood
+!> @details: The IP neighborhood for element ID (last index), IP ID (second but last index) and
+!            face ID (second index) gives the element ID (1 @ first index), IP ID (2 @ first index)
+!            and face ID (3 @ first index).
+!            A triangle (2D) has 3 faces, a quadrilateral (2D) had 4 faces, a tetrahedron (3D) has
+!            4 faces, and a hexahedron (3D) has 6 faces.
+!---------------------------------------------------------------------------------------------------
 subroutine geometry_plastic_nonlocal_set_IPneighborhood(IPneighborhood)
 
   integer, dimension(:,:,:,:), intent(in) :: IPneighborhood
 
   geometry_plastic_nonlocal_IPneighborhood = IPneighborhood
+  geometry_plastic_nonlocal_nIPneighbors   = size(IPneighborhood,2)
+  
 
 end subroutine geometry_plastic_nonlocal_set_IPneighborhood
 
 
+!---------------------------------------------------------------------------------------------------
+!> @brief Set the initial volume associated with an integration point
+!---------------------------------------------------------------------------------------------------
 subroutine geometry_plastic_nonlocal_set_IPvolume(IPvolume)
 
   real(pReal), dimension(:,:), intent(in) :: IPvolume
@@ -46,6 +64,32 @@ subroutine geometry_plastic_nonlocal_set_IPvolume(IPvolume)
   geometry_plastic_nonlocal_IPvolume0 = IPvolume
 
 end subroutine geometry_plastic_nonlocal_set_IPvolume
+
+
+!---------------------------------------------------------------------------------------------------
+!> @brief Set the initial areas of the unit triangle/unit quadrilateral/tetrahedron/hexahedron
+!         encompassing an integration point
+!---------------------------------------------------------------------------------------------------
+subroutine geometry_plastic_nonlocal_set_IParea(IParea)
+
+  real(pReal), dimension(:,:,:), intent(in) :: IParea
+
+  geometry_plastic_nonlocal_IParea0 = IParea
+
+end subroutine geometry_plastic_nonlocal_set_IParea
+
+
+!---------------------------------------------------------------------------------------------------
+!> @brief Set the direction normal of the areas of the triangle/quadrilateral/tetrahedron/hexahedron
+!         encompassing an integration point
+!---------------------------------------------------------------------------------------------------
+subroutine geometry_plastic_nonlocal_set_IPareaNormal(IPareaNormal)
+
+  real(pReal), dimension(:,:,:,:), intent(in) :: IPareaNormal
+
+  geometry_plastic_nonlocal_IPareaNormal0 = IPareaNormal
+
+end subroutine geometry_plastic_nonlocal_set_IPareaNormal
 
 
 end module geometry_plastic_nonlocal
