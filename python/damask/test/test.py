@@ -267,7 +267,7 @@ class Test():
         logging.critical('Current2Current: Unable to copy file "{}"'.format(f))
         raise
 
-  def execute_inCurrentDir(self,cmd,streamIn=None):
+  def execute_inCurrentDir(self,cmd,streamIn=None,env=None):
 
     logging.info(cmd)
     out,error = damask.util.execute(cmd,streamIn,self.dirCurrent())

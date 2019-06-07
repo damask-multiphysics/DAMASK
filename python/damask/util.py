@@ -97,14 +97,17 @@ def strikeout(what):
 # -----------------------------
 def execute(cmd,
             streamIn = None,
-            wd = './'):
+            wd = './',
+            env = None):
   """Executes a command in given directory and returns stdout and stderr for optional stdin"""
   initialPath = os.getcwd()
   os.chdir(wd)
+  myEnv = os.environ if env is None else env
   process = subprocess.Popen(shlex.split(cmd),
                              stdout = subprocess.PIPE,
                              stderr = subprocess.PIPE,
-                             stdin  = subprocess.PIPE)
+                             stdin  = subprocess.PIPE,
+                             env = myEnv)
   out,error = [i for i in (process.communicate() if streamIn is None
                                                  else process.communicate(streamIn.read().encode('utf-8')))]
   out   = out.decode('utf-8').replace('\x08','')
