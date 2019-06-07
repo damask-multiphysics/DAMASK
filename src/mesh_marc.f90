@@ -16,11 +16,10 @@ module mesh
  use numerics
  use FEsolving
  use element
+ use discretization
  use geometry_plastic_nonlocal
-#if defined(DAMASK_HDF5)
  use HDF5_utilities
  use results
-#endif
 
  implicit none
  private
