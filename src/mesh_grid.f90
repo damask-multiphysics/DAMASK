@@ -1,83 +1,43 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
-!> @author Christoph Koords, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Sets up the mesh for the solvers MSC.Marc, Abaqus and the spectral solver
+!> @brief Parse geometry file to set up discretization and geometry for nonlocal model
 !--------------------------------------------------------------------------------------------------
 module mesh
 #include <petsc/finclude/petscsys.h>
- use, intrinsic :: iso_c_binding
- use prec
- use debug
- use discretization
- use geometry_plastic_nonlocal
- use mesh_base
- use DAMASK_interface
- use PETScsys
- use IO
- use debug
- use numerics
- use FEsolving
-
-
- implicit none
- private
-
- integer(pInt) :: &
-   mesh_Nnodes
-
- integer(pInt), dimension(:), allocatable :: &
-   microGlobal
- integer(pInt), dimension(:), allocatable :: &
-   mesh_homogenizationAt
-
- integer(pInt), dimension(:,:), allocatable :: &
-   mesh_element                                                                                     !< entryCount and list of elements containing node
-
- real(pReal), public, protected :: &
-   mesh_unitlength                                                                                  !< physical length of one unit in mesh
-
- real(pReal), dimension(:,:), allocatable :: &
-   mesh_node                                                                                        !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!)
-
-
- real(pReal), dimension(:,:), allocatable :: &
-   mesh_node0                                                                                       !< node x,y,z coordinates (initially!)
-
- real(pReal), dimension(:,:,:), allocatable, public, protected :: &
-   mesh_ipArea                                                                                      !< area of interface to neighboring IP (initially!)
-
- real(pReal), dimension(:,:,:), allocatable, public :: &
-   mesh_ipCoordinates                                                                               !< IP x,y,z coordinates (after deformation!)
-
- real(pReal),dimension(:,:,:,:), allocatable, public, protected :: &
-   mesh_ipAreaNormal                                                                                !< area normal of interface to neighboring IP (initially!)
-
- logical, dimension(3), public, parameter :: mesh_periodicSurface = .true.                          !< flag indicating periodic outer surfaces (used for fluxes)
-
-
- integer(pInt) :: &
-   mesh_NcpElemsGlobal                                                                           !< total number of CP elements in global mesh
-
-! grid specific
- integer(pInt), dimension(3), public, protected :: &
-   grid                                                                                             !< (global) grid
-
- integer(pInt), public, protected :: &                                                                         !< total number of CP elements in global mesh
-   grid3, &                                                                                         !< (local) grid in 3rd direction
-   grid3Offset                                                                                      !< (local) grid offset in 3rd direction
- real(pReal), dimension(3), public, protected :: &
-   geomSize
- real(pReal), public, protected :: &
-   size3, &                                                                                         !< (local) size in 3rd direction
-   size3offset                                                                                      !< (local) size offset in 3rd direction
-
- public :: &
-   mesh_init
-
+  use PETScsys
+  
+  use prec
+  use system_routines
+  use DAMASK_interface
+  use IO
+  use debug
+  use discretization
+  use geometry_plastic_nonlocal
+  use FEsolving
  
- type(tMesh) :: theMesh
+ 
+  implicit none
+  private
+ 
+  real(pReal), dimension(:,:,:), allocatable, public :: &
+    mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
+ 
+  integer,     dimension(3), public, protected :: &
+    grid                                                                                            !< (global) grid
+  integer,                   public, protected :: &
+    grid3, &                                                                                        !< (local) grid in 3rd direction
+    grid3Offset                                                                                     !< (local) grid offset in 3rd direction
+    
+  real(pReal), dimension(3), public, protected :: &
+    geomSize
+  real(pReal),               public, protected :: &
+    size3, &                                                                                        !< (local) size in 3rd direction
+    size3offset                                                                                     !< (local) size offset in 3rd direction
+ 
+  public :: &
+    mesh_init
  
 contains
 
@@ -88,87 +48,69 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_init(ip,el)
 
- include 'fftw3-mpi.f03'
- 
- integer(pInt), intent(in), optional :: el, ip
- integer(C_INTPTR_T) :: devNull, local_K, local_K_offset
- integer :: ierr, worldsize, j
- real(pReal), dimension(:,:), allocatable :: IPvolume 
- logical :: myDebug
+  integer, intent(in), optional :: el, ip
+  
+  include 'fftw3-mpi.f03'
+  integer(C_INTPTR_T) :: devNull, local_K, local_K_offset
+  integer :: ierr, worldsize, j
+  real(pReal), dimension(:,:), allocatable :: IPvolume
+  integer, dimension(:), allocatable :: &
+    microstructureAt, &
+    homogenizationAt
+  logical :: myDebug
 
- write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
-
- mesh_unitlength = numerics_unitlength                                                              ! set physical extent of a length unit in mesh
-
- myDebug = (iand(debug_level(debug_mesh),debug_levelBasic) /= 0_pInt)
-
- call fftw_mpi_init()
- call mesh_spectral_read_grid()
+  write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
 
 
- call MPI_comm_size(PETSC_COMM_WORLD, worldsize, ierr)
- if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_comm_size')
- if(worldsize>grid(3)) call IO_error(894_pInt, ext_msg='number of processes exceeds grid(3)')
+  myDebug = (iand(debug_level(debug_mesh),debug_levelBasic) /= 0_pInt)
 
 
- devNull = fftw_mpi_local_size_3d(int(grid(3),C_INTPTR_T), &
-                                  int(grid(2),C_INTPTR_T), &
-                                  int(grid(1),C_INTPTR_T)/2+1, &
-                                  PETSC_COMM_WORLD, &
-                                  local_K, &                                                        ! domain grid size along z
-                                  local_K_offset)                                                   ! domain grid offset along z
- grid3       = int(local_K,pInt)
- grid3Offset = int(local_K_offset,pInt)
- size3       = geomSize(3)*real(grid3,pReal)      /real(grid(3),pReal)
- size3Offset = geomSize(3)*real(grid3Offset,pReal)/real(grid(3),pReal)
+  call mesh_spectral_read_grid(grid,geomSize,microstructureAt,homogenizationAt)
 
- mesh_NcpElemsGlobal = product(grid)
+  call MPI_comm_size(PETSC_COMM_WORLD, worldsize, ierr)
+  if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_comm_size')
+  if(worldsize>grid(3)) call IO_error(894_pInt, ext_msg='number of processes exceeds grid(3)')
 
- mesh_Nnodes  = product(grid(1:2) + 1_pInt)*(grid3 + 1_pInt)
-
- mesh_node0 = mesh_spectral_build_nodes()
- mesh_node  = mesh_node0
- if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
-
- call theMesh%init('grid',10,mesh_node)
- call theMesh%setNelems(grid(1)*grid(2)*grid3)
- call mesh_spectral_build_elements()
- mesh_homogenizationAt = mesh_homogenizationAt(product(grid(1:2))*grid3Offset+1: &
-                                               product(grid(1:2))*(grid3Offset+grid3))              ! reallocate/shrink in case of MPI
- 
- if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
+  call fftw_mpi_init()
+  devNull = fftw_mpi_local_size_3d(int(grid(3),C_INTPTR_T), &
+                                   int(grid(2),C_INTPTR_T), &
+                                   int(grid(1),C_INTPTR_T)/2+1, &
+                                   PETSC_COMM_WORLD, &
+                                   local_K, &                                                       ! domain grid size along z
+                                   local_K_offset)                                                  ! domain grid offset along z
+  grid3       = int(local_K)
+  grid3Offset = int(local_K_offset)
+  size3       = geomSize(3)*real(grid3,pReal)      /real(grid(3),pReal)
+  size3Offset = geomSize(3)*real(grid3Offset,pReal)/real(grid(3),pReal)
+  
+  microstructureAt = microstructureAt(product(grid(1:2))*grid3Offset+1: &
+                                      product(grid(1:2))*(grid3Offset+grid3))                       ! reallocate/shrink in case of MPI
+  homogenizationAt = homogenizationAt(product(grid(1:2))*grid3Offset+1: &
+                                      product(grid(1:2))*(grid3Offset+grid3))                       ! reallocate/shrink in case of MPI
 
  
- mesh_ipCoordinates = mesh_build_ipCoordinates()
- if (myDebug) write(6,'(a)') ' Built IP coordinates'; flush(6)
+  mesh_ipCoordinates = mesh_build_ipCoordinates([grid(1:2),grid3],[geomSize(1:2),size3],grid3Offset)
+  if (myDebug) write(6,'(a)') ' Built IP coordinates'; flush(6)
  
- allocate(IPvolume(1,theMesh%nElems),source=product([geomSize(1:2),size3]/real([grid(1:2),grid3])))
- call geometry_plastic_nonlocal_setIPvolume(IPvolume)
+  allocate(IPvolume(1,grid(1)*grid(2)*grid3),source=product([geomSize(1:2),size3]/real([grid(1:2),grid3])))
+  call geometry_plastic_nonlocal_setIPvolume(IPvolume)
+  call geometry_plastic_nonlocal_setIParea(mesh_build_ipAreas([geomSize(1:2),size3],[grid(1:2),grid3]))
+  call geometry_plastic_nonlocal_setIPareaNormal(mesh_build_ipNormals(grid(1)*grid(2)*grid3))
+  call geometry_plastic_nonlocal_setIPneighborhood(mesh_spectral_build_ipNeighborhood([grid(1:2),grid3]))
+  if (myDebug) write(6,'(a)') ' Built nonlocal geometry'; flush(6)
 
- if (myDebug) write(6,'(a)') ' Built IP volumes'; flush(6)
- 
- mesh_ipArea       = mesh_build_ipAreas([geomSize(1:2),size3],[grid(1:2),grid3])
- call geometry_plastic_nonlocal_setIParea(mesh_IParea)
- 
- mesh_ipAreaNormal = mesh_build_ipNormals(grid(1)*grid(2)*grid3)
- call geometry_plastic_nonlocal_setIPareaNormal(mesh_ipAreaNormal)
- if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
+  if (debug_e < 1 .or. debug_e > grid(1)*grid(2)*grid3) &
+    call IO_error(602,ext_msg='element')                                                            ! selected element does not exist
+  if (debug_i /= 1) &
+    call IO_error(602,ext_msg='IP')                                                                 ! selected element does not have requested IP
 
- call geometry_plastic_nonlocal_setIPneighborhood(mesh_spectral_build_ipNeighborhood([grid(1:2),grid3]))
- if (myDebug) write(6,'(a)') ' Built IP neighborhood'; flush(6)
+  FEsolving_execElem = [1,grid(1)*grid(2)*grid3]                                                    ! parallel loop bounds set to comprise all DAMASK elements
+  allocate(FEsolving_execIP(2,grid(1)*grid(2)*grid3), source=1)                                     ! parallel loop bounds set to comprise from first IP...
+  forall (j = 1:grid(1)*grid(2)*grid3) FEsolving_execIP(2,j) = 1                                    ! ...up to own IP count for each element
 
- if (debug_e < 1 .or. debug_e > theMesh%nElems) &
-   call IO_error(602_pInt,ext_msg='element')                                                        ! selected element does not exist
- if (debug_i < 1 .or. debug_i > theMesh%elem%nIPs) &
-   call IO_error(602_pInt,ext_msg='IP')                                                             ! selected element does not have requested IP
-
- FEsolving_execElem = [ 1_pInt,theMesh%nElems ]                                                     ! parallel loop bounds set to comprise all DAMASK elements
- allocate(FEsolving_execIP(2_pInt,theMesh%nElems), source=1_pInt)                                   ! parallel loop bounds set to comprise from first IP...
- forall (j = 1_pInt:theMesh%nElems) FEsolving_execIP(2,j) = theMesh%elem%nIPs                       ! ...up to own IP count for each element
-
-  call discretization_init(mesh_element(1,:),mesh_element(2,:),&
+  call discretization_init(homogenizationAt,microstructureAt, &
                            reshape(mesh_ipCoordinates,[3,grid(1)*grid(2)*grid3]),&
-                           mesh_node0)
+                           mesh_spectral_build_nodes([grid(1:2),grid3],[geomSize(1:2),size3],grid3Offset))
 
 end subroutine mesh_init
 
@@ -178,8 +120,14 @@ end subroutine mesh_init
 !> @details important variables have an implicit "save" attribute. Therefore, this function is 
 ! supposed to be called only once!
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_read_grid()
+subroutine mesh_spectral_read_grid(grid,geomSize,microstructure,homogenization)
 
+  integer,     dimension(3), intent(out)              :: grid                                       ! grid (for all processes!)
+  real(pReal), dimension(3), intent(out)              :: geomSize                                   ! size (for all processes!)
+  integer,     dimension(:), intent(out), allocatable :: &
+   microstructure, &
+   homogenization
+   
   character(len=:),            allocatable :: rawData
   character(len=65536)                     :: line
   integer(pInt), allocatable, dimension(:) :: chunkPos
@@ -279,8 +227,8 @@ subroutine mesh_spectral_read_grid()
   if(any(geomSize < 0.0_pReal)) &
     call IO_error(error_ID = 842_pInt, ext_msg='size (mesh_spectral_read_grid)')
 
-  allocate(microGlobal(product(grid)), source = -1_pInt)
-  allocate(mesh_homogenizationAt(product(grid)), source = h)                                        ! too large in case of MPI (shrink later, not very elegant)
+  allocate(microstructure(product(grid)), source = -1)                                              ! too large in case of MPI (shrink later, not very elegant)
+  allocate(homogenization(product(grid)), source = h)                                               ! too large in case of MPI (shrink later, not very elegant)
      
 !--------------------------------------------------------------------------------------------------
 ! read and interpret content
@@ -295,18 +243,18 @@ subroutine mesh_spectral_read_grid()
     
     noCompression: if (chunkPos(1) /= 3) then
       c = chunkPos(1)
-      microGlobal(e:e+c-1_pInt) =  [(IO_intValue(line,chunkPos,i+1_pInt), i=0_pInt, c-1_pInt)]
+      microstructure(e:e+c-1_pInt) =  [(IO_intValue(line,chunkPos,i+1_pInt), i=0_pInt, c-1_pInt)]
     else noCompression
       compression: if (IO_lc(IO_stringValue(line,chunkPos,2))  == 'of') then
         c = IO_intValue(line,chunkPos,1)
-        microGlobal(e:e+c-1_pInt) = [(IO_intValue(line,chunkPos,3),i = 1_pInt,IO_intValue(line,chunkPos,1))]
+        microstructure(e:e+c-1_pInt) = [(IO_intValue(line,chunkPos,3),i = 1_pInt,IO_intValue(line,chunkPos,1))]
       else if (IO_lc(IO_stringValue(line,chunkPos,2))  == 'to') then compression
         c = abs(IO_intValue(line,chunkPos,3) - IO_intValue(line,chunkPos,1)) + 1_pInt
         o = merge(+1_pInt, -1_pInt, IO_intValue(line,chunkPos,3) > IO_intValue(line,chunkPos,1))
-        microGlobal(e:e+c-1_pInt) = [(i, i = IO_intValue(line,chunkPos,1),IO_intValue(line,chunkPos,3),o)]
+        microstructure(e:e+c-1_pInt) = [(i, i = IO_intValue(line,chunkPos,1),IO_intValue(line,chunkPos,3),o)]
       else compression
         c = chunkPos(1)
-        microGlobal(e:e+c-1_pInt) =  [(IO_intValue(line,chunkPos,i+1_pInt), i=0_pInt, c-1_pInt)]
+        microstructure(e:e+c-1_pInt) =  [(IO_intValue(line,chunkPos,i+1_pInt), i=0_pInt, c-1_pInt)]
       endif compression
     endif noCompression
 
@@ -321,9 +269,12 @@ end subroutine mesh_spectral_read_grid
 !---------------------------------------------------------------------------------------------------
 !> @brief Calculates position of nodes (pretend to be an element)
 !---------------------------------------------------------------------------------------------------
-pure function mesh_spectral_build_nodes()
+pure function mesh_spectral_build_nodes(grid,geomSize,grid3Offset) result(nodes)
 
-  real(pReal), dimension(3,mesh_Nnodes) :: mesh_spectral_build_nodes
+  integer,     dimension(3), intent(in)      :: grid                                                ! grid (for this process!)
+  real(pReal), dimension(3), intent(in)      :: geomSize                                            ! size (for this process!)
+  integer,                   intent(in)      :: grid3Offset                                         ! grid(3) offset
+  real(pReal), dimension(3,product(grid+1))  :: nodes
   integer :: n,a,b,c
 
   n = 0
@@ -331,7 +282,7 @@ pure function mesh_spectral_build_nodes()
     do b = 0, grid(2)
       do a = 0, grid(1)
          n = n + 1
-         mesh_spectral_build_nodes(1:3,n) = geomSize/real(grid,pReal) * real([a,b,grid3Offset+c],pReal)
+         nodes(1:3,n) = geomSize/real(grid,pReal) * real([a,b,grid3Offset+c],pReal)
       enddo
     enddo
   enddo
@@ -342,43 +293,25 @@ end function mesh_spectral_build_nodes
 !---------------------------------------------------------------------------------------------------
 !> @brief Calculates position of IPs/cell centres (pretend to be an element)
 !---------------------------------------------------------------------------------------------------
-function mesh_build_ipCoordinates()
+function mesh_build_ipCoordinates(grid,geomSize,grid3Offset) result(ipCoordinates)
 
-  real(pReal), dimension(3,1,theMesh%nElems) :: mesh_build_ipCoordinates
+  integer,     dimension(3), intent(in)      :: grid                                                ! grid (for this process!)
+  real(pReal), dimension(3), intent(in)      :: geomSize                                            ! size (for this process!)
+  integer,                   intent(in)      :: grid3Offset                                         ! grid(3) offset
+  real(pReal), dimension(3,1,product(grid))  :: ipCoordinates
   integer :: n,a,b,c
  
   n = 0
-  do c = 1, grid3
+  do c = 1, grid(3)
     do b = 1, grid(2)
       do a = 1, grid(1)
          n = n + 1
-         mesh_build_ipCoordinates(1:3,1,n) = geomSize/real(grid,pReal) * (real([a,b,grid3Offset+c],pReal) -0.5_pReal)
+         ipCoordinates(1:3,1,n) = geomSize/real(grid,pReal) * (real([a,b,grid3Offset+c],pReal) -0.5_pReal)
       enddo
     enddo
   enddo
 
 end function mesh_build_ipCoordinates
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Store FEid, type, material, texture, and node list per element.
-!! Allocates global array 'mesh_element'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_build_elements()
-
- integer(pInt) :: &
-   e, &
-   elemOffset
-
- allocate(mesh_element    (2,theMesh%nElems), source = 0_pInt)
-
- elemOffset = product(grid(1:2))*grid3Offset
- do e=1, theMesh%nElems
-   mesh_element( 1,e) = mesh_homogenizationAt(e)
-   mesh_element( 2,e) = microGlobal(e+elemOffset)
- enddo
-
-end subroutine mesh_spectral_build_elements
 
 
 !--------------------------------------------------------------------------------------------------
@@ -396,7 +329,7 @@ pure function mesh_spectral_build_ipNeighborhood(grid) result(IPneighborhood)
   e
 
  e = 0
- do z = 0,grid3-1
+ do z = 0,grid(3)-1
    do y = 0,grid(2)-1
      do x = 0,grid(1)-1
        e = e + 1
@@ -416,11 +349,11 @@ pure function mesh_spectral_build_ipNeighborhood(grid) result(IPneighborhood)
                                       + modulo(y-1,grid(2)) * grid(1) &
                                       + x &
                                       + 1
-         IPneighborhood(1,5,1,e) = modulo(z+1,grid3) * grid(1) * grid(2) &
+         IPneighborhood(1,5,1,e) = modulo(z+1,grid(3)) * grid(1) * grid(2) &
                                       + y * grid(1) &
                                       + x &
                                       + 1
-         IPneighborhood(1,6,1,e) = modulo(z-1,grid3) * grid(1) * grid(2) &
+         IPneighborhood(1,6,1,e) = modulo(z-1,grid(3)) * grid(1) * grid(2) &
                                       + y * grid(1) &
                                       + x &
                                       + 1
@@ -436,6 +369,44 @@ pure function mesh_spectral_build_ipNeighborhood(grid) result(IPneighborhood)
  enddo
  
 end function mesh_spectral_build_ipNeighborhood
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief calculation of IP interface areas
+!--------------------------------------------------------------------------------------------------
+pure function mesh_build_ipAreas(geomSize,grid) result(IPareas)
+  
+  real(pReal), dimension(3), intent(in)     :: geomSize                                             ! size (for this process!)
+  integer,     dimension(3), intent(in)     :: grid                                                 ! grid (for this process!)
+  
+  real(pReal), dimension(6,1,product(grid)) :: IPareas
+
+  IPareas(1:2,1,:) = geomSize(2)/real(grid(2)) * geomSize(3)/real(grid(3))
+  IPareas(3:4,1,:) = geomSize(3)/real(grid(3)) * geomSize(1)/real(grid(1))
+  IPareas(5:6,1,:) = geomSize(1)/real(grid(1)) * geomSize(2)/real(grid(2))
+  
+end function mesh_build_ipAreas
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief calculation of IP interface areas normals
+!--------------------------------------------------------------------------------------------------
+pure function mesh_build_ipNormals(nElems) result(IPnormals)
+
+  integer, intent(in) :: nElems
+  
+  real, dimension(3,6,1,nElems) :: IPnormals
+
+  IPnormals(1:3,1,1,:) = spread([+1.0_pReal, 0.0_pReal, 0.0_pReal],2,nElems)
+  IPnormals(1:3,2,1,:) = spread([-1.0_pReal, 0.0_pReal, 0.0_pReal],2,nElems)
+  IPnormals(1:3,3,1,:) = spread([ 0.0_pReal,+1.0_pReal, 0.0_pReal],2,nElems)
+  IPnormals(1:3,4,1,:) = spread([ 0.0_pReal,-1.0_pReal, 0.0_pReal],2,nElems)
+  IPnormals(1:3,5,1,:) = spread([ 0.0_pReal, 0.0_pReal,+1.0_pReal],2,nElems)
+  IPnormals(1:3,6,1,:) = spread([ 0.0_pReal, 0.0_pReal,-1.0_pReal],2,nElems)
+  
+end function mesh_build_ipNormals
+
+
 
 
 !--------------------------------------------------------------------------------------------------
@@ -511,42 +482,5 @@ function mesh_nodesAroundCentres(gDim,Favg,centres) result(nodes)
  nodes = nodes/8.0_pReal
 
 end function mesh_nodesAroundCentres
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculation of IP interface areas, allocate globals '_ipArea', and '_ipAreaNormal'
-!--------------------------------------------------------------------------------------------------
-pure function mesh_build_ipAreas(geomSize,grid) result(IPareas)
-  
-  real(pReal), dimension(3), intent(in)     :: geomSize                                             ! size (for this process!)
-  integer,     dimension(3), intent(in)     :: grid                                                 ! grid (for this process!)
-  
-  real(pReal), dimension(6,1,product(grid)) :: IPareas
-
-  IPareas(1:2,1,:) = geomSize(2)/real(grid(2)) * geomSize(3)/real(grid(3))
-  IPareas(3:4,1,:) = geomSize(3)/real(grid(3)) * geomSize(1)/real(grid(1))
-  IPareas(5:6,1,:) = geomSize(1)/real(grid(1)) * geomSize(2)/real(grid(2))
-  
-end function mesh_build_ipAreas
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculation of IP interface areas, allocate globals '_ipArea', and '_ipAreaNormal'
-!--------------------------------------------------------------------------------------------------
-pure function mesh_build_ipNormals(nElems) result(IPnormals)
-
-  integer, intent(in) :: nElems
-  
-  real, dimension(3,6,1,nElems) :: IPnormals
-
-  IPnormals(1:3,1,1,:) = spread([+1.0_pReal, 0.0_pReal, 0.0_pReal],2,nElems)
-  IPnormals(1:3,2,1,:) = spread([-1.0_pReal, 0.0_pReal, 0.0_pReal],2,nElems)
-  IPnormals(1:3,3,1,:) = spread([ 0.0_pReal,+1.0_pReal, 0.0_pReal],2,nElems)
-  IPnormals(1:3,4,1,:) = spread([ 0.0_pReal,-1.0_pReal, 0.0_pReal],2,nElems)
-  IPnormals(1:3,5,1,:) = spread([ 0.0_pReal, 0.0_pReal,+1.0_pReal],2,nElems)
-  IPnormals(1:3,6,1,:) = spread([ 0.0_pReal, 0.0_pReal,-1.0_pReal],2,nElems)
-  
-end function mesh_build_ipNormals
-
 
 end module mesh
