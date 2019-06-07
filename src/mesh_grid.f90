@@ -166,7 +166,7 @@ subroutine mesh_init(ip,el)
  allocate(FEsolving_execIP(2_pInt,theMesh%nElems), source=1_pInt)                                   ! parallel loop bounds set to comprise from first IP...
  forall (j = 1_pInt:theMesh%nElems) FEsolving_execIP(2,j) = theMesh%elem%nIPs                       ! ...up to own IP count for each element
 
-  call discretization_init(mesh_element(3,:),mesh_element(4,:),&
+  call discretization_init(mesh_element(1,:),mesh_element(2,:),&
                            reshape(mesh_ipCoordinates,[3,grid(1)*grid(2)*grid3]),&
                            mesh_node0)
 
@@ -370,23 +370,12 @@ subroutine mesh_spectral_build_elements()
    e, &
    elemOffset
 
- allocate(mesh_element    (4_pInt+8_pInt,theMesh%nElems), source = 0_pInt)
+ allocate(mesh_element    (2,theMesh%nElems), source = 0_pInt)
 
  elemOffset = product(grid(1:2))*grid3Offset
  do e=1, theMesh%nElems
-   mesh_element( 1,e) = -1_pInt                                                                     ! DEPRECATED
-   mesh_element( 2,e) = -1_pInt                                                                     ! DEPRECATED
-   mesh_element( 3,e) = mesh_homogenizationAt(e)
-   mesh_element( 4,e) = microGlobal(e+elemOffset)                                                   ! microstructure
-   mesh_element( 5,e) = e + (e-1_pInt)/grid(1) + &
-                                     ((e-1_pInt)/(grid(1)*grid(2)))*(grid(1)+1_pInt)                ! base node
-   mesh_element( 6,e) = mesh_element(5,e) + 1_pInt
-   mesh_element( 7,e) = mesh_element(5,e) + grid(1) + 2_pInt
-   mesh_element( 8,e) = mesh_element(5,e) + grid(1) + 1_pInt
-   mesh_element( 9,e) = mesh_element(5,e) +(grid(1) + 1_pInt) * (grid(2) + 1_pInt)                  ! second floor base node
-   mesh_element(10,e) = mesh_element(9,e) + 1_pInt
-   mesh_element(11,e) = mesh_element(9,e) + grid(1) + 2_pInt
-   mesh_element(12,e) = mesh_element(9,e) + grid(1) + 1_pInt
+   mesh_element( 1,e) = mesh_homogenizationAt(e)
+   mesh_element( 2,e) = microGlobal(e+elemOffset)
  enddo
 
 end subroutine mesh_spectral_build_elements
