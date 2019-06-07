@@ -172,10 +172,10 @@ module material
    microstructure_texture                                                                           !< texture IDs of each microstructure
 
  real(pReal), dimension(:,:), allocatable, private :: &
+   texture_Gauss, &                                                                                 !< data of each Gauss component
    microstructure_fraction                                                                          !< vol fraction of each constituent in microstructure
 
  real(pReal), dimension(:,:,:), allocatable, private :: &
-   texture_Gauss, &                                                                                 !< data of each Gauss component
    texture_transformation                                                                           !< transformation for each texture
 
  logical, dimension(:), allocatable, private :: &
@@ -707,69 +707,65 @@ end subroutine material_parsePhase
 !--------------------------------------------------------------------------------------------------
 subroutine material_parseTexture
 
- integer :: section, gauss, j, t, i
- character(len=65536), dimension(:), allocatable ::  strings                                     ! Values for given key in material config 
- integer, dimension(:), allocatable :: chunkPos
+  integer :: section, j, t, i
+  character(len=65536), dimension(:), allocatable ::  strings                                       ! Values for given key in material config 
+  integer, dimension(:), allocatable :: chunkPos
 
 
- do t=1, size(config_texture)
-   if (config_texture(t)%countKeys('(gauss)') /= 1) call IO_error(147,ext_msg='count((gauss)) !=1')
-   if (config_texture(t)%keyExists('symmetry'))     call IO_error(147,ext_msg='symmetry')
-   if (config_texture(t)%keyExists('(random)'))     call IO_error(147,ext_msg='(random)')
-   if (config_texture(t)%keyExists('(fiber)'))      call IO_error(147,ext_msg='(fiber)')
- enddo
+  do t=1, size(config_texture)
+    if (config_texture(t)%countKeys('(gauss)') /= 1) call IO_error(147,ext_msg='count((gauss)) !=1')
+    if (config_texture(t)%keyExists('symmetry'))     call IO_error(147,ext_msg='symmetry')
+    if (config_texture(t)%keyExists('(random)'))     call IO_error(147,ext_msg='(random)')
+    if (config_texture(t)%keyExists('(fiber)'))      call IO_error(147,ext_msg='(fiber)')
+  enddo
 
- allocate(texture_Gauss (5,1,size(config_texture)), source=0.0_pReal)
- allocate(texture_transformation(3,3,size(config_texture)),         source=0.0_pReal)
-          texture_transformation = spread(math_I3,3,size(config_texture))
+  allocate(texture_Gauss (5,size(config_texture)), source=0.0_pReal)
+  allocate(texture_transformation(3,3,size(config_texture)),         source=0.0_pReal)
+           texture_transformation = spread(math_I3,3,size(config_texture))
 
- do t=1, size(config_texture)
-   section = t
-   gauss = 0
-   
-   if (config_texture(t)%keyExists('axes')) then
-     strings = config_texture(t)%getStrings('axes')
-     do j = 1, 3                                                                                    ! look for "x", "y", and "z" entries
-       select case (strings(j))
-         case('x', '+x')
-           texture_transformation(j,1:3,t) = [ 1.0_pReal, 0.0_pReal, 0.0_pReal]                     ! original axis is now +x-axis
-         case('-x')
-           texture_transformation(j,1:3,t) = [-1.0_pReal, 0.0_pReal, 0.0_pReal]                     ! original axis is now -x-axis
-         case('y', '+y')
-           texture_transformation(j,1:3,t) = [ 0.0_pReal, 1.0_pReal, 0.0_pReal]                     ! original axis is now +y-axis
-         case('-y')
-           texture_transformation(j,1:3,t) = [ 0.0_pReal,-1.0_pReal, 0.0_pReal]                     ! original axis is now -y-axis
-         case('z', '+z')
-           texture_transformation(j,1:3,t) = [ 0.0_pReal, 0.0_pReal, 1.0_pReal]                     ! original axis is now +z-axis
-         case('-z')
-           texture_transformation(j,1:3,t) = [ 0.0_pReal, 0.0_pReal,-1.0_pReal]                     ! original axis is now -z-axis
-         case default
-           call IO_error(157,t)
-       end select
-     enddo
-     if(dNeq(math_det33(texture_transformation(1:3,1:3,t)),1.0_pReal)) call IO_error(157,t)
-   endif
-
-   if (config_texture(t)%keyExists('(gauss)')) then
-     gauss = gauss + 1
-     strings = config_texture(t)%getStrings('(gauss)',raw= .true.)
-     do i = 1 , size(strings)
-       chunkPos = IO_stringPos(strings(i))
-       do j = 1,9,2
-         select case (IO_stringValue(strings(i),chunkPos,j))
-             case('phi1')
-                 texture_Gauss(1,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
-             case('phi')
-                 texture_Gauss(2,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
-             case('phi2')
-                 texture_Gauss(3,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
-          end select
+  do t=1, size(config_texture)
+    section = t
+    
+    if (config_texture(t)%keyExists('axes')) then
+      strings = config_texture(t)%getStrings('axes')
+      do j = 1, 3                                                                                   ! look for "x", "y", and "z" entries
+        select case (strings(j))
+          case('x', '+x')
+            texture_transformation(j,1:3,t) = [ 1.0_pReal, 0.0_pReal, 0.0_pReal]                    ! original axis is now +x-axis
+          case('-x')
+            texture_transformation(j,1:3,t) = [-1.0_pReal, 0.0_pReal, 0.0_pReal]                    ! original axis is now -x-axis
+          case('y', '+y')
+            texture_transformation(j,1:3,t) = [ 0.0_pReal, 1.0_pReal, 0.0_pReal]                    ! original axis is now +y-axis
+          case('-y')
+            texture_transformation(j,1:3,t) = [ 0.0_pReal,-1.0_pReal, 0.0_pReal]                    ! original axis is now -y-axis
+          case('z', '+z')
+            texture_transformation(j,1:3,t) = [ 0.0_pReal, 0.0_pReal, 1.0_pReal]                    ! original axis is now +z-axis
+          case('-z')
+            texture_transformation(j,1:3,t) = [ 0.0_pReal, 0.0_pReal,-1.0_pReal]                    ! original axis is now -z-axis
+          case default
+            call IO_error(157,t)
+        end select
       enddo
-     enddo
-   endif
- enddo    
- 
- call config_deallocate('material.config/texture')
+      if(dNeq(math_det33(texture_transformation(1:3,1:3,t)),1.0_pReal)) call IO_error(157,t)
+    endif
+
+    strings = config_texture(t)%getStrings('(gauss)',raw= .true.)
+    do i = 1 , size(strings)
+      chunkPos = IO_stringPos(strings(i))
+      do j = 1,9,2
+        select case (IO_stringValue(strings(i),chunkPos,j))
+          case('phi1')
+            texture_Gauss(1,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
+          case('phi')
+            texture_Gauss(2,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
+          case('phi2')
+            texture_Gauss(3,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
+        end select
+      enddo
+    enddo
+  enddo    
+  
+  call config_deallocate('material.config/texture')
 
 end subroutine material_parseTexture
 
@@ -878,7 +874,7 @@ subroutine material_populateGrains
       do c = 1, homogenization_Ngrains(homog)
         material_phase(c,i,e)   = microstructure_phase(c,micro)
         material_texture(c,i,e) = microstructure_texture(c,micro)
-        material_EulerAngles(1:3,c,i,e) = texture_Gauss(1:3,1,material_texture(c,i,e))
+        material_EulerAngles(1:3,c,i,e) = texture_Gauss(1:3,material_texture(c,i,e))
         material_EulerAngles(1:3,c,i,e) = math_RtoEuler( &                                       ! translate back to Euler angles
                                              matmul( &                                       ! pre-multiply
                                                math_EulertoR(material_EulerAngles(1:3,c,i,e)), &    ! face-value orientation
