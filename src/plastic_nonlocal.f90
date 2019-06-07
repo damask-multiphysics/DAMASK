@@ -956,9 +956,9 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
             connection_latticeConf(1:3,n) = &
               matmul(invFe, mesh_ipCoordinates(1:3,neighbor_ip,neighbor_el) &
                                   - mesh_ipCoordinates(1:3,ip,el))
-            normal_latticeConf = matmul(transpose(invFp), mesh_ipAreaNormal(1:3,n,ip,el))
+            normal_latticeConf = matmul(transpose(invFp), IPareaNormal(1:3,n,ip,el))
             if (math_inner(normal_latticeConf,connection_latticeConf(1:3,n)) < 0.0_pReal) &        ! neighboring connection points in opposite direction to face normal: must be periodic image
-              connection_latticeConf(1:3,n) = normal_latticeConf * IPvolume(ip,el)/mesh_ipArea(n,ip,el) ! instead take the surface normal scaled with the diameter of the cell
+              connection_latticeConf(1:3,n) = normal_latticeConf * IPvolume(ip,el)/IParea(n,ip,el) ! instead take the surface normal scaled with the diameter of the cell
         else
           ! local neighbor or different lattice structure or different constitution instance -> use central values instead
           connection_latticeConf(1:3,n) = 0.0_pReal
@@ -1601,14 +1601,14 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
     !*** check CFL (Courant-Friedrichs-Lewy) condition for flux
     if (any( abs(gdot) > 0.0_pReal &                                                                ! any active slip system ...
             .and. prm%CFLfactor * abs(v) * timestep &
-                > IPvolume(ip,el) / maxval(mesh_ipArea(:,ip,el)))) then                        ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
+                > IPvolume(ip,el) / maxval(IParea(:,ip,el)))) then                                  ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
 #ifdef DEBUG
     if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0) then 
       write(6,'(a,i5,a,i2)') '<< CONST >> CFL condition not fullfilled at el ',el,' ip ',ip
       write(6,'(a,e10.3,a,e10.3)') '<< CONST >> velocity is at  ', &
         maxval(abs(v), abs(gdot) > 0.0_pReal &
                        .and.  prm%CFLfactor * abs(v) * timestep &
-                             > IPvolume(ip,el) / maxval(mesh_ipArea(:,ip,el))), &
+                             > IPvolume(ip,el) / maxval(IParea(:,ip,el))), &
         ' at a timestep of ',timestep
       write(6,'(a)') '<< CONST >> enforcing cutback !!!'
     endif
@@ -1681,26 +1681,26 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
           .or. neighbor_rhoSgl < prm%significantRho) &
           neighbor_rhoSgl = 0.0_pReal
         normal_neighbor2me_defConf = math_det33(Favg) * matmul(math_inv33(transpose(Favg)), &
-                                     mesh_ipAreaNormal(1:3,neighbor_n,neighbor_ip,neighbor_el))     ! calculate the normal of the interface in (average) deformed configuration (now pointing from my neighbor to me!!!)
+                                     IPareaNormal(1:3,neighbor_n,neighbor_ip,neighbor_el))          ! calculate the normal of the interface in (average) deformed configuration (now pointing from my neighbor to me!!!)
         normal_neighbor2me = matmul(transpose(neighbor_Fe), normal_neighbor2me_defConf) &
                            / math_det33(neighbor_Fe)                                                ! interface normal in the lattice configuration of my neighbor
-        area = mesh_ipArea(neighbor_n,neighbor_ip,neighbor_el) * norm2(normal_neighbor2me)
+        area = IParea(neighbor_n,neighbor_ip,neighbor_el) * norm2(normal_neighbor2me)
         normal_neighbor2me = normal_neighbor2me / norm2(normal_neighbor2me)                         ! normalize the surface normal to unit length
         do s = 1,ns
           do t = 1,4
             c = (t + 1) / 2
             topp = t + mod(t,2) - mod(t+1,2)
-            if (neighbor_v(s,t) * math_inner(m(1:3,s,t), normal_neighbor2me) > 0.0_pReal &         ! flux from my neighbor to me == entering flux for me
+            if (neighbor_v(s,t) * math_inner(m(1:3,s,t), normal_neighbor2me) > 0.0_pReal &          ! flux from my neighbor to me == entering flux for me
                 .and. v(s,t) * neighbor_v(s,t) >= 0.0_pReal ) then                                  ! ... only if no sign change in flux density  
               lineLength = neighbor_rhoSgl(s,t) * neighbor_v(s,t) &
-                         * math_inner(m(1:3,s,t), normal_neighbor2me) * area                       ! positive line length that wants to enter through this interface
+                         * math_inner(m(1:3,s,t), normal_neighbor2me) * area                        ! positive line length that wants to enter through this interface
               where (compatibility(c,1:ns,s,n,ip,el) > 0.0_pReal) &                                 ! positive compatibility...
                 rhoDotFlux(1:ns,t) = rhoDotFlux(1:ns,t) &
-                                   + lineLength / IPvolume(ip,el) &                            ! ... transferring to equally signed mobile dislocation type
+                                   + lineLength / IPvolume(ip,el) &                                 ! ... transferring to equally signed mobile dislocation type
                                    * compatibility(c,1:ns,s,n,ip,el) ** 2.0_pReal
               where (compatibility(c,1:ns,s,n,ip,el) < 0.0_pReal) &                                 ! ..negative compatibility...
                 rhoDotFlux(1:ns,topp) = rhoDotFlux(1:ns,topp) &
-                                      + lineLength / IPvolume(ip,el) &                         ! ... transferring to opposite signed mobile dislocation type
+                                      + lineLength / IPvolume(ip,el) &                              ! ... transferring to opposite signed mobile dislocation type
                                       * compatibility(c,1:ns,s,n,ip,el) ** 2.0_pReal
             endif
           enddo
@@ -1728,15 +1728,15 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
         
         normal_me2neighbor_defConf = math_det33(Favg) &
                                    * matmul(math_inv33(transpose(Favg)), & 
-                                                             mesh_ipAreaNormal(1:3,n,ip,el))        ! calculate the normal of the interface in (average) deformed configuration (pointing from me to my neighbor!!!)
+                                                             IPareaNormal(1:3,n,ip,el))             ! calculate the normal of the interface in (average) deformed configuration (pointing from me to my neighbor!!!)
         normal_me2neighbor = matmul(transpose(my_Fe), normal_me2neighbor_defConf) &
                            / math_det33(my_Fe)                                                      ! interface normal in my lattice configuration
-        area = mesh_ipArea(n,ip,el) * norm2(normal_me2neighbor)
+        area = IParea(n,ip,el) * norm2(normal_me2neighbor)
         normal_me2neighbor = normal_me2neighbor / norm2(normal_me2neighbor)                         ! normalize the surface normal to unit length    
         do s = 1,ns
           do t = 1,4
             c = (t + 1) / 2
-            if (my_v(s,t) * math_inner(m(1:3,s,t), normal_me2neighbor) > 0.0_pReal ) then          ! flux from me to my neighbor == leaving flux for me (might also be a pure flux from my mobile density to dead density if interface not at all transmissive)
+            if (my_v(s,t) * math_inner(m(1:3,s,t), normal_me2neighbor) > 0.0_pReal ) then           ! flux from me to my neighbor == leaving flux for me (might also be a pure flux from my mobile density to dead density if interface not at all transmissive)
               if (my_v(s,t) * neighbor_v(s,t) >= 0.0_pReal) then                                    ! no sign change in flux density
                 transmissivity = sum(compatibility(c,1:ns,s,n,ip,el)**2.0_pReal)                    ! overall transmissivity from this slip system to my neighbor
               else                                                                                  ! sign change in flux density means sign change in stress which does not allow for dislocations to arive at the neighbor
@@ -1744,7 +1744,7 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
               endif
               lineLength = my_rhoSgl(s,t) * my_v(s,t) &
                          * math_inner(m(1:3,s,t), normal_me2neighbor) * area                       ! positive line length of mobiles that wants to leave through this interface
-              rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / IPvolume(ip,el)                 ! subtract dislocation flux from current type
+              rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / IPvolume(ip,el)                     ! subtract dislocation flux from current type
               rhoDotFlux(s,t+4) = rhoDotFlux(s,t+4) &
                                      + lineLength / IPvolume(ip,el) * (1.0_pReal - transmissivity) &
                                      * sign(1.0_pReal, my_v(s,t))                                   ! dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point
