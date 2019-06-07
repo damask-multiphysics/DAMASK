@@ -131,7 +131,7 @@ module material
 
 ! NEW MAPPINGS 
  integer, dimension(:),     allocatable, public, protected :: &                                     ! (elem)
-   material_homogenizationAt                                                                        !< homogenization ID of each element (copy of mesh_homogenizationAt)
+   material_homogenizationAt                                                                        !< homogenization ID of each element (copy of discretization_homogenizationAt)
  integer, dimension(:,:),   allocatable, public, protected :: &                                     ! (ip,elem)
    material_homogenizationMemberAt                                                                  !< position of the element within its homogenization instance
  integer, dimension(:,:), allocatable, public, protected :: &                                       ! (constituent,elem)
