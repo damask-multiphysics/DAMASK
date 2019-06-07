@@ -152,7 +152,7 @@ module material
    damageState
 
  integer, dimension(:,:,:), allocatable, public, protected :: &
-   material_texture                                                                                 !< texture (index) of each grain,IP,element. Used only by plastic_nonlocal
+   material_texture                                                                                 !< texture (index) of each grain,IP,element. Only used by plastic_nonlocal
 
  real(pReal), dimension(:,:,:,:), allocatable, public, protected :: &
    material_EulerAngles                                                                             !< initial orientation of each grain,IP,element
@@ -174,9 +174,6 @@ module material
  real(pReal), dimension(:,:), allocatable, private :: &
    texture_Gauss, &                                                                                 !< data of each Gauss component
    microstructure_fraction                                                                          !< vol fraction of each constituent in microstructure
-
- real(pReal), dimension(:,:,:), allocatable, private :: &
-   texture_transformation                                                                           !< transformation for each texture
 
  logical, dimension(:), allocatable, private :: &
    homogenization_active
@@ -561,6 +558,8 @@ subroutine material_parseMicrostructure
      call IO_error(153,ext_msg=microstructure_name(m))
  enddo
  
+ call config_deallocate('material.config/microstructure')
+ 
 end subroutine material_parseMicrostructure
 
 
@@ -710,6 +709,7 @@ subroutine material_parseTexture
   integer :: section, j, t, i
   character(len=65536), dimension(:), allocatable ::  strings                                       ! Values for given key in material config 
   integer, dimension(:), allocatable :: chunkPos
+  real(pReal), dimension(3,3)  :: texture_transformation                                            ! maps texture to microstructure coordinate system
 
 
   do t=1, size(config_texture)
@@ -720,8 +720,6 @@ subroutine material_parseTexture
   enddo
 
   allocate(texture_Gauss (5,size(config_texture)), source=0.0_pReal)
-  allocate(texture_transformation(3,3,size(config_texture)),         source=0.0_pReal)
-           texture_transformation = spread(math_I3,3,size(config_texture))
 
   do t=1, size(config_texture)
     section = t
@@ -731,22 +729,24 @@ subroutine material_parseTexture
       do j = 1, 3                                                                                   ! look for "x", "y", and "z" entries
         select case (strings(j))
           case('x', '+x')
-            texture_transformation(j,1:3,t) = [ 1.0_pReal, 0.0_pReal, 0.0_pReal]                    ! original axis is now +x-axis
+            texture_transformation(j,1:3) = [ 1.0_pReal, 0.0_pReal, 0.0_pReal]                      ! original axis is now +x-axis
           case('-x')
-            texture_transformation(j,1:3,t) = [-1.0_pReal, 0.0_pReal, 0.0_pReal]                    ! original axis is now -x-axis
+            texture_transformation(j,1:3) = [-1.0_pReal, 0.0_pReal, 0.0_pReal]                      ! original axis is now -x-axis
           case('y', '+y')
-            texture_transformation(j,1:3,t) = [ 0.0_pReal, 1.0_pReal, 0.0_pReal]                    ! original axis is now +y-axis
+            texture_transformation(j,1:3) = [ 0.0_pReal, 1.0_pReal, 0.0_pReal]                      ! original axis is now +y-axis
           case('-y')
-            texture_transformation(j,1:3,t) = [ 0.0_pReal,-1.0_pReal, 0.0_pReal]                    ! original axis is now -y-axis
+            texture_transformation(j,1:3) = [ 0.0_pReal,-1.0_pReal, 0.0_pReal]                      ! original axis is now -y-axis
           case('z', '+z')
-            texture_transformation(j,1:3,t) = [ 0.0_pReal, 0.0_pReal, 1.0_pReal]                    ! original axis is now +z-axis
+            texture_transformation(j,1:3) = [ 0.0_pReal, 0.0_pReal, 1.0_pReal]                      ! original axis is now +z-axis
           case('-z')
-            texture_transformation(j,1:3,t) = [ 0.0_pReal, 0.0_pReal,-1.0_pReal]                    ! original axis is now -z-axis
+            texture_transformation(j,1:3) = [ 0.0_pReal, 0.0_pReal,-1.0_pReal]                      ! original axis is now -z-axis
           case default
             call IO_error(157,t)
         end select
       enddo
-      if(dNeq(math_det33(texture_transformation(1:3,1:3,t)),1.0_pReal)) call IO_error(157,t)
+      if(dNeq(math_det33(texture_transformation),1.0_pReal)) call IO_error(157,t)
+    else
+      texture_transformation = math_I3
     endif
 
     strings = config_texture(t)%getStrings('(gauss)',raw= .true.)
@@ -763,6 +763,7 @@ subroutine material_parseTexture
         end select
       enddo
     enddo
+    texture_Gauss(:,t) = math_RtoEuler(matmul(math_EulertoR(texture_Gauss(:,t)),texture_transformation))
   enddo    
   
   call config_deallocate('material.config/texture')
@@ -872,24 +873,15 @@ subroutine material_populateGrains
       homog = discretization_homogenizationAt(e)
       micro = discretization_microstructureAt(e)
       do c = 1, homogenization_Ngrains(homog)
-        material_phase(c,i,e)   = microstructure_phase(c,micro)
-        material_texture(c,i,e) = microstructure_texture(c,micro)
+        material_phase(c,i,e)           = microstructure_phase(c,micro)
+        material_texture(c,i,e)         = microstructure_texture(c,micro)
         material_EulerAngles(1:3,c,i,e) = texture_Gauss(1:3,material_texture(c,i,e))
-        material_EulerAngles(1:3,c,i,e) = math_RtoEuler( &                                       ! translate back to Euler angles
-                                             matmul( &                                       ! pre-multiply
-                                               math_EulertoR(material_EulerAngles(1:3,c,i,e)), &    ! face-value orientation
-                                               texture_transformation(1:3,1:3,material_texture(c,i,e)) &          ! and transformation matrix
-                                             ) &
-                                             )
       enddo
     enddo
   enddo
 
- deallocate(texture_transformation)
  deallocate(microstructure_phase)
  deallocate(microstructure_texture)
-
- call config_deallocate('material.config/microstructure')
 
 end subroutine material_populateGrains
 
