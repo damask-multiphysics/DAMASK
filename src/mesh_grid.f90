@@ -24,7 +24,7 @@ module mesh
  implicit none
  private
 
- integer(pInt), public, protected :: &
+ integer(pInt) :: &
    mesh_Nnodes
 
  integer(pInt), dimension(:), allocatable :: &
@@ -32,7 +32,7 @@ module mesh
  integer(pInt), dimension(:), allocatable :: &
    mesh_homogenizationAt
 
- integer(pInt), dimension(:,:), allocatable, public, protected :: &
+ integer(pInt), dimension(:,:), allocatable :: &
    mesh_element                                                                                     !< entryCount and list of elements containing node
 
  real(pReal), public, protected :: &
@@ -57,11 +57,14 @@ module mesh
  logical, dimension(3), public, parameter :: mesh_periodicSurface = .true.                          !< flag indicating periodic outer surfaces (used for fluxes)
 
 
+ integer(pInt) :: &
+   mesh_NcpElemsGlobal                                                                           !< total number of CP elements in global mesh
+
 ! grid specific
  integer(pInt), dimension(3), public, protected :: &
    grid                                                                                             !< (global) grid
- integer(pInt), public, protected :: &
-   mesh_NcpElemsGlobal, &                                                                           !< total number of CP elements in global mesh
+
+ integer(pInt), public, protected :: &                                                                         !< total number of CP elements in global mesh
    grid3, &                                                                                         !< (local) grid in 3rd direction
    grid3Offset                                                                                      !< (local) grid offset in 3rd direction
  real(pReal), dimension(3), public, protected :: &

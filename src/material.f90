@@ -339,7 +339,7 @@ subroutine material_init
  
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! new mappings
- allocate(material_homogenizationAt,source=theMesh%homogenizationAt)
+ allocate(material_homogenizationAt,source=discretization_homogenizationAt)
  allocate(material_homogenizationMemberAt(discretization_nIP,discretization_nElem),source=0)
 
  allocate(CounterHomogenization(size(config_homogenization)),source=0)
@@ -388,7 +388,7 @@ subroutine material_init
 
 
  do e = 1,discretization_nElem
- myHomog = theMesh%homogenizationAt(e)
+ myHomog = discretization_homogenizationAt(e)
    do i = 1, discretization_nIP
      CounterHomogenization(myHomog) = CounterHomogenization(myHomog) + 1
      mappingHomogenization(1:2,i,e) = [CounterHomogenization(myHomog),huge(1)]
@@ -436,7 +436,7 @@ subroutine material_parseHomogenization
  allocate(damage_initialPhi(size(config_homogenization)),             source=1.0_pReal)
 
  forall (h = 1:size(config_homogenization)) &
-   homogenization_active(h) = any(theMesh%homogenizationAt == h)
+   homogenization_active(h) = any(discretization_homogenizationAt == h)
 
 
  do h=1, size(config_homogenization)
@@ -522,11 +522,11 @@ subroutine material_parseMicrostructure
  allocate(microstructure_Nconstituents(size(config_microstructure)),        source=0)
  allocate(microstructure_active(size(config_microstructure)),               source=.false.)
 
- if(any(theMesh%microstructureAt > size(config_microstructure))) &
+ if(any(discretization_microstructureAt > size(config_microstructure))) &
   call IO_error(155,ext_msg='More microstructures in geometry than sections in material.config')
 
  forall (e = 1:discretization_nElem) &
-   microstructure_active(theMesh%microstructureAt(e)) = .true.                                         ! current microstructure used in model? Elementwise view, maximum N operations for N elements
+   microstructure_active(discretization_microstructureAt(e)) = .true.                                ! current microstructure used in model? Elementwise view, maximum N operations for N elements
 
  do m=1, size(config_microstructure)
    microstructure_Nconstituents(m) =  config_microstructure(m)%countKeys('(constituent)')
@@ -879,8 +879,8 @@ subroutine material_populateGrains
 
   do e = 1, discretization_nElem
     do i = 1, discretization_nIP
-      homog = theMesh%homogenizationAt(e)
-      micro = theMesh%microstructureAt(e)
+      homog = discretization_homogenizationAt(e)
+      micro = discretization_microstructureAt(e)
       do c = 1, homogenization_Ngrains(homog)
         material_phase(c,i,e)   = microstructure_phase(c,micro)
         material_texture(c,i,e) = microstructure_texture(c,micro)

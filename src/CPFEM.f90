@@ -15,12 +15,11 @@ module CPFEM
  use crystallite
  use homogenization
  use IO
+ use discretization
  use DAMASK_interface
  use numerics
-#ifdef DAMASK_HDF5
  use HDF5_utilities
  use results
-#endif
  use lattice
  use constitutive
 
@@ -115,9 +114,9 @@ subroutine CPFEM_init
  write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
  flush(6)
 
- allocate(CPFEM_cs(               6,theMesh%elem%nIPs,theMesh%Nelems), source= 0.0_pReal)
- allocate(CPFEM_dcsdE(          6,6,theMesh%elem%nIPs,theMesh%Nelems), source= 0.0_pReal)
- allocate(CPFEM_dcsdE_knownGood(6,6,theMesh%elem%nIPs,theMesh%Nelems), source= 0.0_pReal)
+ allocate(CPFEM_cs(               6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
+ allocate(CPFEM_dcsdE(          6,6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
+ allocate(CPFEM_dcsdE_knownGood(6,6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
 
  ! *** restore the last converged values of each essential variable from the binary file
  !if (restartRead) then
@@ -260,7 +259,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
    enddo; enddo
    if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) then
      write(6,'(a)') '<< CPFEM >> aging states'
-     if (debug_e <= theMesh%Nelems .and. debug_i <= theMesh%elem%nIPs) then
+     if (debug_e <= discretization_nElem .and. debug_i <=discretization_nIP) then
        write(6,'(a,1x,i8,1x,i2,1x,i4,/,(12x,6(e20.8,1x)),/)') &
              '<< CPFEM >> aged state of elFE ip grain',debug_e, debug_i, 1, &
               plasticState(phaseAt(1,debug_i,debug_e))%state(:,phasememberAt(1,debug_i,debug_e))

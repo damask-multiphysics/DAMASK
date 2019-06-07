@@ -14,6 +14,7 @@ module constitutive
  use HDF5_utilities
  use lattice
  use mesh
+ use discretization
  use plastic_none
  use plastic_isotropic
  use plastic_phenopowerlaw
@@ -573,7 +574,7 @@ subroutine constitutive_collectDotState(S, FeArray, Fi, FpArray, subdt, ipc, ip,
    el                                                                                               !< element
  real(pReal),  intent(in) :: &
    subdt                                                                                            !< timestep
- real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
+ real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
    FeArray, &                                                                                       !< elastic deformation gradient
    FpArray                                                                                          !< plastic deformation gradient
  real(pReal),  intent(in), dimension(3,3) :: &
