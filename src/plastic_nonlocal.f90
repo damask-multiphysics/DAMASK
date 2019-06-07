@@ -284,11 +284,8 @@ subroutine plastic_nonlocal_init
   write(6,'(a)')   ' http://publications.rwth-aachen.de/record/229993'
 
   maxNinstances = count(phase_plasticity == PLASTICITY_NONLOCAL_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) then
+  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
     write(6,'(a16,1x,i5,/)') '# instances:',maxNinstances
-  else
-    call geometry_plastic_nonlocal_disable
-  endif
 
   allocate(param(maxNinstances))
   allocate(state(maxNinstances))

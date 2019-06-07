@@ -87,8 +87,11 @@ subroutine constitutive_init
  if (any(phase_plasticity == PLASTICITY_KINEHARDENING_ID)) call plastic_kinehardening_init
  if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call plastic_dislotwin_init
  if (any(phase_plasticity == PLASTICITY_DISLOUCLA_ID))     call plastic_disloucla_init
- if (any(phase_plasticity == PLASTICITY_NONLOCAL_ID))      call plastic_nonlocal_init
-
+ if (any(phase_plasticity == PLASTICITY_NONLOCAL_ID)) then
+   call plastic_nonlocal_init
+ else
+   call geometry_plastic_nonlocal_disable
+ endif
 !--------------------------------------------------------------------------------------------------
 ! initialize source mechanisms
  if (any(phase_source == SOURCE_thermal_dissipation_ID))     call source_thermal_dissipation_init
