@@ -11,9 +11,7 @@ module material
   use prec
   use math
   use config
-#if defined(PETSc) || defined(DAMASK_HDF5)
   use results
-#endif
   use IO
   use debug
   use mesh
@@ -154,7 +152,7 @@ module material
    damageState
 
  integer, dimension(:,:,:), allocatable, public, protected :: &
-   material_texture                                                                                 !< texture (index) of each grain,IP,element
+   material_texture                                                                                 !< texture (index) of each grain,IP,element. Used only by plastic_nonlocal
 
  real(pReal), dimension(:,:,:,:), allocatable, public, protected :: &
    material_EulerAngles                                                                             !< initial orientation of each grain,IP,element
@@ -164,12 +162,10 @@ module material
    phase_localPlasticity                                                                            !< flags phases with local constitutive law
 
  integer, private :: &
-   microstructure_maxNconstituents, &                                                               !< max number of constituents in any phase
-   texture_maxNgauss                                                                                !< max number of Gauss components in any texture
+   microstructure_maxNconstituents                                                                  !< max number of constituents in any phase
 
  integer, dimension(:), allocatable, private :: &
-   microstructure_Nconstituents, &                                                                  !< number of constituents in each microstructure
-   texture_Ngauss                                                                                   !< number of Gauss components per texture
+   microstructure_Nconstituents                                                                     !< number of constituents in each microstructure
 
  integer, dimension(:,:), allocatable, private :: &
    microstructure_phase, &                                                                          !< phase IDs of each microstructure
@@ -715,17 +711,15 @@ subroutine material_parseTexture
  character(len=65536), dimension(:), allocatable ::  strings                                     ! Values for given key in material config 
  integer, dimension(:), allocatable :: chunkPos
 
- allocate(texture_Ngauss(size(config_texture)),   source=0)
 
  do t=1, size(config_texture)
-   texture_Ngauss(t) =  config_texture(t)%countKeys('(gauss)')
-   if (config_texture(t)%keyExists('symmetry')) call IO_error(147,ext_msg='symmetry')
-   if (config_texture(t)%keyExists('(random)')) call IO_error(147,ext_msg='(random)')
-   if (config_texture(t)%keyExists('(fiber)'))  call IO_error(147,ext_msg='(fiber)')
+   if (config_texture(t)%countKeys('(gauss)') /= 1) call IO_error(147,ext_msg='count((gauss)) !=1')
+   if (config_texture(t)%keyExists('symmetry'))     call IO_error(147,ext_msg='symmetry')
+   if (config_texture(t)%keyExists('(random)'))     call IO_error(147,ext_msg='(random)')
+   if (config_texture(t)%keyExists('(fiber)'))      call IO_error(147,ext_msg='(fiber)')
  enddo
 
- texture_maxNgauss = maxval(texture_Ngauss)
- allocate(texture_Gauss (5,texture_maxNgauss,size(config_texture)), source=0.0_pReal)
+ allocate(texture_Gauss (5,1,size(config_texture)), source=0.0_pReal)
  allocate(texture_transformation(3,3,size(config_texture)),         source=0.0_pReal)
           texture_transformation = spread(math_I3,3,size(config_texture))
 
@@ -896,6 +890,8 @@ subroutine material_populateGrains
   enddo
 
  deallocate(texture_transformation)
+ deallocate(microstructure_phase)
+ deallocate(microstructure_texture)
 
  call config_deallocate('material.config/microstructure')
 
