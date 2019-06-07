@@ -65,6 +65,7 @@ module rotations
       procedure, public :: asRotationMatrix
       !------------------------------------------
       procedure, public :: fromRotationMatrix
+      procedure, public :: fromEulerAngles
       !------------------------------------------
       procedure, public :: rotVector
       procedure, public :: rotTensor
@@ -143,7 +144,16 @@ subroutine fromRotationMatrix(self,om)
   self%q = om2qu(om)
 
 end subroutine
+!---------------------------------------------------------------------------------------------------
+subroutine fromEulerAngles(self,eu)
 
+  class(rotation), intent(out)          :: self
+  real(pReal), dimension(3), intent(in) :: eu
+ 
+  self%q = eu2qu(eu)
+
+end subroutine
+!---------------------------------------------------------------------------------------------------
 
 !---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
