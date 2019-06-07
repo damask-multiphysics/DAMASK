@@ -250,7 +250,8 @@ subroutine mesh_init()
  theMesh%microstructureAt  = mesh_element(4,:)
  
    call discretization_init(mesh_element(3,:),mesh_element(4,:),&
-                           reshape([0.0_pReal,0.0_pReal],[1,1]),reshape([0.0_pReal,0.0_pReal],[1,1]))
+                           reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]), &
+                           mesh_node0)
  
 end subroutine mesh_init
 
