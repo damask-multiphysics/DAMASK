@@ -18,6 +18,8 @@ module plastic_nonlocal
   use lattice
   use discretization
   use geometry_plastic_nonlocal, only: &
+    geometry_plastic_nonlocal_disable, &
+    nIPneighbors    => geometry_plastic_nonlocal_nIPneighbors, &
     IPneighborhood  => geometry_plastic_nonlocal_IPneighborhood, &
     IPvolume        => geometry_plastic_nonlocal_IPvolume0, &
     IParea          => geometry_plastic_nonlocal_IParea0, &
@@ -282,9 +284,11 @@ subroutine plastic_nonlocal_init
   write(6,'(a)')   ' http://publications.rwth-aachen.de/record/229993'
 
   maxNinstances = count(phase_plasticity == PLASTICITY_NONLOCAL_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
+  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) then
     write(6,'(a16,1x,i5,/)') '# instances:',maxNinstances
-
+  else
+    call geometry_plastic_nonlocal_disable
+  endif
 
   allocate(param(maxNinstances))
   allocate(state(maxNinstances))
@@ -666,7 +670,7 @@ subroutine plastic_nonlocal_init
 
   enddo
  
-  allocate(compatibility(2,maxval(totalNslip),maxval(totalNslip),theMesh%elem%nIPneighbors,&
+  allocate(compatibility(2,maxval(totalNslip),maxval(totalNslip),nIPneighbors,&
                          discretization_nIP,discretization_nElem), source=0.0_pReal)
                                             
 ! BEGIN DEPRECATED----------------------------------------------------------------------------------
@@ -852,7 +856,7 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
     invFp, &                                                                                        !< inverse of plastic deformation gradient
     connections, &
     invConnections
-  real(pReal), dimension(3,theMesh%elem%nIPneighbors) :: &
+  real(pReal), dimension(3,nIPneighbors) :: &
     connection_latticeConf
   real(pReal), dimension(2,totalNslip(phase_plasticityInstance(material_phase(1,ip,el)))) :: &
     rhoExcess
@@ -866,10 +870,10 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
                          totalNslip(phase_plasticityInstance(material_phase(1,ip,el)))) :: &
     myInteractionMatrix                                                                             ! corrected slip interaction matrix
                                   
-  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),theMesh%elem%nIPneighbors) :: &
+  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),nIPneighbors) :: &
     rho_edg_delta_neighbor, &
     rho_scr_delta_neighbor
-  real(pReal), dimension(2,maxval(totalNslip),theMesh%elem%nIPneighbors) :: &
+  real(pReal), dimension(2,maxval(totalNslip),nIPneighbors) :: &
     neighbor_rhoExcess, &                                                                           ! excess density at neighboring material point
     neighbor_rhoTotal                                                                               ! total density at neighboring material point
   real(pReal), dimension(3,totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),2) :: &
@@ -932,7 +936,7 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
     
     nRealNeighbors = 0.0_pReal
     neighbor_rhoTotal = 0.0_pReal
-    do n = 1,theMesh%elem%nIPneighbors
+    do n = 1,nIPneighbors
       neighbor_el = IPneighborhood(1,n,ip,el)
       neighbor_ip = IPneighborhood(2,n,ip,el)
       no = phasememberAt(1,neighbor_ip,neighbor_el)
@@ -1625,7 +1629,7 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
     my_Fe = Fe(1:3,1:3,1,ip,el)
     my_F = matmul(my_Fe, Fp(1:3,1:3,1,ip,el))
     
-    neighbors: do n = 1,theMesh%elem%nIPneighbors
+    neighbors: do n = 1,nIPneighbors
   
       neighbor_el = IPneighborhood(1,n,ip,el)
       neighbor_ip = IPneighborhood(2,n,ip,el)
@@ -1907,7 +1911,7 @@ subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
     absoluteMisorientation                                                                          ! absolute misorientation (without symmetry) between me and my neighbor
   real(pReal), dimension(2,totalNslip(phase_plasticityInstance(material_phase(1,i,e))),&
                            totalNslip(phase_plasticityInstance(material_phase(1,i,e))),&
-                           theMesh%elem%nIPneighbors) :: &  
+                           nIPneighbors) :: &  
     my_compatibility                                                                                ! my_compatibility for current element and ip  
   real(pReal) :: &
     my_compatibilitySum, &
@@ -1917,7 +1921,7 @@ subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
     belowThreshold
   type(rotation) :: rot
 
-  Nneighbors = theMesh%elem%nIPneighbors
+  Nneighbors = nIPneighbors
   ph = material_phase(1,i,e)
   textureID = material_texture(1,i,e)
   instance = phase_plasticityInstance(ph)

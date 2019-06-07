@@ -25,6 +25,7 @@ module crystallite
   use future
   use plastic_nonlocal
   use geometry_plastic_nonlocal, only: &
+    nIPneighbors    => geometry_plastic_nonlocal_nIPneighbors, &
     IPneighborhood  => geometry_plastic_nonlocal_IPneighborhood
 #if defined(PETSc) || defined(DAMASK_HDF5)
   use HDF5_utilities
@@ -345,7 +346,7 @@ subroutine crystallite_init
         case(elasmatrix_ID)
           mySize = 36
         case(neighboringip_ID,neighboringelement_ID)
-          mySize = theMesh%elem%nIPneighbors
+          mySize = nIPneighbors
         case default
           mySize = 0
       end select
@@ -960,12 +961,12 @@ function crystallite_postResults(ipc, ip, el)
        mySize = 36
        crystallite_postResults(c+1:c+mySize) = reshape(constitutive_homogenizedC(ipc,ip,el),[mySize])
      case(neighboringelement_ID)
-       mySize = theMesh%elem%nIPneighbors
+       mySize = nIPneighbors
        crystallite_postResults(c+1:c+mySize) = 0.0_pReal
        forall (n = 1:mySize) &
          crystallite_postResults(c+n) = real(IPneighborhood(1,n,ip,el),pReal)
      case(neighboringip_ID)
-       mySize = theMesh%elem%nIPneighbors
+       mySize = nIPneighbors
        crystallite_postResults(c+1:c+mySize) = 0.0_pReal
        forall (n = 1:mySize) &
          crystallite_postResults(c+n) = real(IPneighborhood(2,n,ip,el),pReal)

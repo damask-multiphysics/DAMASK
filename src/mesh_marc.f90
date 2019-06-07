@@ -375,11 +375,13 @@ subroutine mesh_init(ip,el)
  theMesh%homogenizationAt  = mesh_element(3,:)
  theMesh%microstructureAt  = mesh_element(4,:)
  
-   call discretization_init(mesh_element(3,:),mesh_element(4,:),&
-                           reshape(mesh_ipCoordinates,[3,theMesh%elem%nIPs*theMesh%nElems]),&
-                           mesh_node0)
- call geometry_plastic_nonlocal_set_IPvolume(mesh_ipVolume)
- call geometry_plastic_nonlocal_set_IPneighborhood(mesh_ipNeighborhood)
+ call discretization_init(mesh_element(3,:),mesh_element(4,:),&
+                          reshape(mesh_ipCoordinates,[3,theMesh%elem%nIPs*theMesh%nElems]),&
+                          mesh_node0)
+ call geometry_plastic_nonlocal_setIPvolume(mesh_ipVolume)
+ call geometry_plastic_nonlocal_setIPneighborhood(mesh_ipNeighborhood)
+ call geometry_plastic_nonlocal_setIParea(mesh_IParea)
+ call geometry_plastic_nonlocal_setIPareaNormal(mesh_IPareaNormal)
 
 end subroutine mesh_init
 
@@ -1261,7 +1263,7 @@ subroutine IP_neighborhood2
    endif
    f = f +1 
  enddo
- call geometry_plastic_nonlocal_set_IPneighborhood(mesh_ipNeighborhood2)
+ call geometry_plastic_nonlocal_setIPneighborhood(mesh_ipNeighborhood2)
 
   do e = 1,theMesh%nElems
     do i = 1,theMesh%elem%nIPs

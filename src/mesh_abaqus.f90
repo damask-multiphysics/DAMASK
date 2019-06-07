@@ -524,8 +524,10 @@ subroutine mesh_init(ip,el)
    call discretization_init(mesh_element(3,:),mesh_element(4,:),&
                             reshape(mesh_ipCoordinates,[3,theMesh%elem%nIPs*theMesh%nElems]),&
                             mesh_node0)
- call geometry_plastic_nonlocal_set_IPvolume(mesh_ipVolume)
- call geometry_plastic_nonlocal_set_IPneighborhood(mesh_ipNeighborhood)
+ call geometry_plastic_nonlocal_setIPvolume(mesh_ipVolume)
+ call geometry_plastic_nonlocal_setIPneighborhood(mesh_ipNeighborhood)
+ call geometry_plastic_nonlocal_setIParea(mesh_IParea)
+ call geometry_plastic_nonlocal_setIPareaNormal(mesh_IPareaNormal)
  
 contains
 

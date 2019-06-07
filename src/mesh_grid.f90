@@ -77,7 +77,7 @@ module mesh
    mesh_init
 
  
- type(tMesh), public, protected :: theMesh
+ type(tMesh) :: theMesh
  
 contains
 
@@ -143,16 +143,18 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Built IP coordinates'; flush(6)
  
  allocate(IPvolume(1,theMesh%nElems),source=product([geomSize(1:2),size3]/real([grid(1:2),grid3])))
- call geometry_plastic_nonlocal_set_IPvolume(IPvolume)
+ call geometry_plastic_nonlocal_setIPvolume(IPvolume)
 
  if (myDebug) write(6,'(a)') ' Built IP volumes'; flush(6)
  
  mesh_ipArea       = mesh_build_ipAreas([geomSize(1:2),size3],[grid(1:2),grid3])
+ call geometry_plastic_nonlocal_setIParea(mesh_IParea)
  
  mesh_ipAreaNormal = mesh_build_ipNormals(grid(1)*grid(2)*grid3)
+ call geometry_plastic_nonlocal_setIPareaNormal(mesh_ipAreaNormal)
  if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
 
- call geometry_plastic_nonlocal_set_IPneighborhood(mesh_spectral_build_ipNeighborhood([grid(1:2),grid3]))
+ call geometry_plastic_nonlocal_setIPneighborhood(mesh_spectral_build_ipNeighborhood([grid(1:2),grid3]))
  if (myDebug) write(6,'(a)') ' Built IP neighborhood'; flush(6)
 
  if (debug_e < 1 .or. debug_e > theMesh%nElems) &
@@ -164,13 +166,6 @@ subroutine mesh_init(ip,el)
  allocate(FEsolving_execIP(2_pInt,theMesh%nElems), source=1_pInt)                                   ! parallel loop bounds set to comprise from first IP...
  forall (j = 1_pInt:theMesh%nElems) FEsolving_execIP(2,j) = theMesh%elem%nIPs                       ! ...up to own IP count for each element
 
-
-
-
-!!!! COMPATIBILITY HACK !!!!
- theMesh%homogenizationAt  = mesh_element(3,:)
- theMesh%microstructureAt  = mesh_element(4,:)
-!!!!!!!!!!!!!!!!!!!!!!!!
   call discretization_init(mesh_element(3,:),mesh_element(4,:),&
                            reshape(mesh_ipCoordinates,[3,grid(1)*grid(2)*grid3]),&
                            mesh_node0)
