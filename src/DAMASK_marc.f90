@@ -30,7 +30,7 @@
 
 module DAMASK_interface
  use prec
- #if __INTEL_COMPILER >= 1800
+#if __INTEL_COMPILER >= 1800
  use, intrinsic :: iso_fortran_env, only: &
    compiler_version, &
    compiler_options
@@ -280,10 +280,10 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
          computationMode = ior(computationMode,CPFEM_BACKUPJACOBIAN)                                ! collect and backup Jacobian after convergence
          lastIncConverged = .false.                                                                 ! reset flag
        endif
-       do node = 1,theMesh%elem%nNodes
+       !do node = 1,theMesh%elem%nNodes
          !CPnodeID = mesh_element(4+node,cp_en)
          !mesh_node(1:ndeg,CPnodeID) = mesh_node0(1:ndeg,CPnodeID) + numerics_unitlength * dispt(1:ndeg,node)
-       enddo
+       !enddo
      endif
 
    else                                                                                             ! --- PLAIN MODE ---
