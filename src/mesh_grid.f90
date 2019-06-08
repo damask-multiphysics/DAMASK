@@ -7,16 +7,16 @@
 module mesh
 #include <petsc/finclude/petscsys.h>
   use PETScsys
-  
+
   use prec
   use system_routines
   use DAMASK_interface
   use IO
   use debug
+  use numerics
   use discretization
   use geometry_plastic_nonlocal
   use FEsolving
- 
  
   implicit none
   private
@@ -43,74 +43,76 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief initializes the mesh by calling all necessary private routines the mesh module
-!! Order and routines strongly depend on type of solver
+!> @brief reads the geometry file to obtain information on discretization
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_init(ip,el)
 
-  integer, intent(in), optional :: el, ip
+  integer, intent(in), optional :: el, ip                                                           ! for compatibility reasons
   
   include 'fftw3-mpi.f03'
-  integer(C_INTPTR_T) :: devNull, local_K, local_K_offset
-  integer :: ierr, worldsize, j
-  real(pReal), dimension(:,:), allocatable :: IPvolume
-  integer, dimension(:), allocatable :: &
+  real(pReal), dimension(3) :: &
+    mySize                                                                                          !< domain size of this process
+  integer,     dimension(3) :: &
+    myGrid                                                                                          !< domain grid of this process
+
+  integer,     dimension(:),   allocatable :: &
     microstructureAt, &
     homogenizationAt
+
   logical :: myDebug
+  integer :: j
+  integer(C_INTPTR_T) :: &
+    devNull, z, z_offset
 
   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
 
-
-  myDebug = (iand(debug_level(debug_mesh),debug_levelBasic) /= 0_pInt)
-
+  myDebug = iand(debug_level(debug_mesh),debug_levelBasic) /= 0
 
   call mesh_spectral_read_grid(grid,geomSize,microstructureAt,homogenizationAt)
 
-  call MPI_comm_size(PETSC_COMM_WORLD, worldsize, ierr)
-  if(ierr /=0_pInt) call IO_error(894_pInt, ext_msg='MPI_comm_size')
-  if(worldsize>grid(3)) call IO_error(894_pInt, ext_msg='number of processes exceeds grid(3)')
+  if(worldsize>grid(3)) call IO_error(894, ext_msg='number of processes exceeds grid(3)')
 
-  call fftw_mpi_init()
+  call fftw_mpi_init
   devNull = fftw_mpi_local_size_3d(int(grid(3),C_INTPTR_T), &
                                    int(grid(2),C_INTPTR_T), &
                                    int(grid(1),C_INTPTR_T)/2+1, &
                                    PETSC_COMM_WORLD, &
-                                   local_K, &                                                       ! domain grid size along z
-                                   local_K_offset)                                                  ! domain grid offset along z
-  grid3       = int(local_K)
-  grid3Offset = int(local_K_offset)
+                                   z, &                                                             ! domain grid size along z
+                                   z_offset)                                                        ! domain grid offset along z
+  grid3       = int(z)
+  grid3Offset = int(z_offset)
   size3       = geomSize(3)*real(grid3,pReal)      /real(grid(3),pReal)
   size3Offset = geomSize(3)*real(grid3Offset,pReal)/real(grid(3),pReal)
-  
+  myGrid = [grid(1:2),grid3]
+  mySize = [geomSize(1:2),size3]
+
   microstructureAt = microstructureAt(product(grid(1:2))*grid3Offset+1: &
                                       product(grid(1:2))*(grid3Offset+grid3))                       ! reallocate/shrink in case of MPI
   homogenizationAt = homogenizationAt(product(grid(1:2))*grid3Offset+1: &
                                       product(grid(1:2))*(grid3Offset+grid3))                       ! reallocate/shrink in case of MPI
 
  
-  mesh_ipCoordinates = mesh_build_ipCoordinates([grid(1:2),grid3],[geomSize(1:2),size3],grid3Offset)
+  mesh_ipCoordinates = mesh_build_ipCoordinates(myGrid,mySize,grid3Offset)
   if (myDebug) write(6,'(a)') ' Built IP coordinates'; flush(6)
- 
-  allocate(IPvolume(1,grid(1)*grid(2)*grid3),source=product([geomSize(1:2),size3]/real([grid(1:2),grid3])))
-  call geometry_plastic_nonlocal_setIPvolume(IPvolume)
-  call geometry_plastic_nonlocal_setIParea(mesh_build_ipAreas([geomSize(1:2),size3],[grid(1:2),grid3]))
-  call geometry_plastic_nonlocal_setIPareaNormal(mesh_build_ipNormals(grid(1)*grid(2)*grid3))
-  call geometry_plastic_nonlocal_setIPneighborhood(mesh_spectral_build_ipNeighborhood([grid(1:2),grid3]))
+
+  call geometry_plastic_nonlocal_setIPvolume( &
+    reshape([(product(mySize/real(myGrid,pReal)),j=1,product(myGrid))],[1,product(myGrid)]))
+  call geometry_plastic_nonlocal_setIParea(mesh_build_ipAreas(mySize,myGrid))
+  call geometry_plastic_nonlocal_setIPareaNormal(mesh_build_ipNormals(product(myGrid)))
+  call geometry_plastic_nonlocal_setIPneighborhood(mesh_spectral_build_ipNeighborhood(myGrid))
   if (myDebug) write(6,'(a)') ' Built nonlocal geometry'; flush(6)
 
-  if (debug_e < 1 .or. debug_e > grid(1)*grid(2)*grid3) &
+  if (debug_e < 1 .or. debug_e > product(myGrid)) &
     call IO_error(602,ext_msg='element')                                                            ! selected element does not exist
   if (debug_i /= 1) &
     call IO_error(602,ext_msg='IP')                                                                 ! selected element does not have requested IP
 
-  FEsolving_execElem = [1,grid(1)*grid(2)*grid3]                                                    ! parallel loop bounds set to comprise all DAMASK elements
-  allocate(FEsolving_execIP(2,grid(1)*grid(2)*grid3), source=1)                                     ! parallel loop bounds set to comprise from first IP...
-  forall (j = 1:grid(1)*grid(2)*grid3) FEsolving_execIP(2,j) = 1                                    ! ...up to own IP count for each element
+  FEsolving_execElem = [1,product(myGrid)]                                                          ! parallel loop bounds set to comprise all elements
+  allocate(FEsolving_execIP(2,product(myGrid)),source=1)                                            ! parallel loop bounds set to comprise the only IP
 
   call discretization_init(homogenizationAt,microstructureAt, &
-                           reshape(mesh_ipCoordinates,[3,grid(1)*grid(2)*grid3]),&
-                           mesh_spectral_build_nodes([grid(1:2),grid3],[geomSize(1:2),size3],grid3Offset))
+                           reshape(mesh_ipCoordinates,[3,product(myGrid)]), &
+                           mesh_spectral_build_nodes(myGrid,mySize,grid3Offset))
 
 end subroutine mesh_init
 
