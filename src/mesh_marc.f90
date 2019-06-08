@@ -23,48 +23,42 @@ module mesh
 
  implicit none
  private
-
-! -------------------------------------------------------------------------------------------------- 
-! public variables (DEPRECATED)
-   
- integer, dimension(:,:), allocatable, public, protected :: &
-   mesh_element
-
- integer, dimension(:,:,:,:), allocatable, public, protected :: &
-   mesh_ipNeighborhood                                                                              !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
    
  real(pReal), public, protected :: &
    mesh_unitlength                                                                                  !< physical length of one unit in mesh
-   
- real(pReal), dimension(:,:), allocatable, public :: &
-   mesh_node, &                                                                                     !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!)
-   mesh_cellnode                                                                                    !< cell node x,y,z coordinates (after deformation! ONLY FOR MARC!!!)
-   
- real(pReal), dimension(:,:), allocatable, public, protected :: &
-   mesh_ipVolume, &                                                                                 !< volume associated with IP (initially!)
-   mesh_node0                                                                                       !< node x,y,z coordinates (initially!)
 
- real(pReal), dimension(:,:,:), allocatable, public, protected :: &
-   mesh_ipArea                                                                                      !< area of interface to neighboring IP (initially!)
-
+!-------------------------------------------------------------------------------------------------- 
+! public variables (DEPRECATED)
+   
  real(pReal), dimension(:,:,:), allocatable, public :: &
    mesh_ipCoordinates                                                                               !< IP x,y,z coordinates (after deformation!)
 
- real(pReal),dimension(:,:,:,:), allocatable, public, protected :: &
+ real(pReal), dimension(:,:), allocatable, public :: &
+   mesh_cellnode                                                                                    !< cell node x,y,z coordinates (after deformation! ONLY FOR MARC!!!)
+!--------------------------------------------------------------------------------------------------
+
+ integer, dimension(:,:), allocatable :: &
+   mesh_element
+
+ integer, dimension(:,:,:,:), allocatable :: &
+   mesh_ipNeighborhood                                                                              !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
+   
+ real(pReal), dimension(:,:), allocatable :: &
+   mesh_node                                                                                        !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!
+   
+ real(pReal), dimension(:,:), allocatable :: &
+   mesh_ipVolume, &                                                                                 !< volume associated with IP (initially!)
+   mesh_node0                                                                                       !< node x,y,z coordinates (initially!)
+
+ real(pReal), dimension(:,:,:), allocatable:: &
+   mesh_ipArea                                                                                      !< area of interface to neighboring IP (initially!)
+
+ real(pReal),dimension(:,:,:,:), allocatable :: &
    mesh_ipAreaNormal                                                                                !< area normal of interface to neighboring IP (initially!)
-! --------------------------------------------------------------------------------------------------
-
-type, public, extends(tMesh) :: tMesh_marc
- 
- contains 
-   procedure, pass(self) :: tMesh_marc_init
-   generic, public :: init => tMesh_marc_init
-end type tMesh_marc
-
- type(tMesh_marc), public, protected :: theMesh
- 
 ! -------------------------------------------------------------------------------------------------- 
 
+ type(tMesh) :: theMesh
+ 
 
  integer:: &
    mesh_Ncellnodes, &                                                                                  !< total number of cell nodes in mesh (including duplicates)
@@ -238,23 +232,11 @@ integer, dimension(:,:), allocatable :: &
  public :: &
    mesh_init, &
    mesh_build_cellnodes, &
-   mesh_build_ipVolumes, &
    mesh_build_ipCoordinates, &
    mesh_FEasCP
  
  
 contains
-
-subroutine tMesh_marc_init(self,elemType,nodes)
- 
- 
- class(tMesh_marc) :: self
- real(pReal), dimension(:,:), intent(in) :: nodes
- integer, intent(in) :: elemType
- 
- call self%tMesh%init('mesh',elemType,nodes)
- 
-end subroutine tMesh_marc_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief initializes the mesh by calling all necessary private routines the mesh module
@@ -321,7 +303,7 @@ subroutine mesh_init(ip,el)
  elemType = mesh_marc_getElemType(mesh_nElems,FILEUNIT)
  if (myDebug) write(6,'(a)') ' Counted CP sizes'; flush(6)
  
- call theMesh%init(elemType,mesh_node0)
+ call theMesh%init('mesh',elemType,mesh_node0)
  call theMesh%setNelems(mesh_NcpElems)
  
  allocate(mesh_element(4+theMesh%elem%nNodes,theMesh%nElems), source=0)
