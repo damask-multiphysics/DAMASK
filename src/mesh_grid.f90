@@ -403,78 +403,78 @@ pure function IPneighborhood(grid)
 end function IPneighborhood
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief builds mesh of (distorted) cubes for given coordinates (= center of the cubes)
-!--------------------------------------------------------------------------------------------------
-function mesh_nodesAroundCentres(gDim,Favg,centres) result(nodes)
-
- real(pReal), intent(in), dimension(:,:,:,:) :: &
-   centres
- real(pReal),             dimension(3,size(centres,2)+1,size(centres,3)+1,size(centres,4)+1) :: &
-   nodes
- real(pReal), intent(in), dimension(3) :: &
-   gDim
- real(pReal), intent(in), dimension(3,3) :: &
-   Favg
- real(pReal),             dimension(3,size(centres,2)+2,size(centres,3)+2,size(centres,4)+2) :: &
-   wrappedCentres
-
- integer(pInt) :: &
-   i,j,k,n
- integer(pInt),           dimension(3), parameter :: &
-   diag = 1_pInt
- integer(pInt),           dimension(3) :: &
-   shift = 0_pInt, &
-   lookup = 0_pInt, &
-   me = 0_pInt, &
-   iRes = 0_pInt
- integer(pInt),           dimension(3,8) :: &
-   neighbor = reshape([ &
-                       0_pInt, 0_pInt, 0_pInt, &
-                       1_pInt, 0_pInt, 0_pInt, &
-                       1_pInt, 1_pInt, 0_pInt, &
-                       0_pInt, 1_pInt, 0_pInt, &
-                       0_pInt, 0_pInt, 1_pInt, &
-                       1_pInt, 0_pInt, 1_pInt, &
-                       1_pInt, 1_pInt, 1_pInt, &
-                       0_pInt, 1_pInt, 1_pInt  ], [3,8])
-
-!--------------------------------------------------------------------------------------------------
-! initializing variables
- iRes =  [size(centres,2),size(centres,3),size(centres,4)]
- nodes = 0.0_pReal
- wrappedCentres = 0.0_pReal
-
-!--------------------------------------------------------------------------------------------------
-! building wrappedCentres = centroids + ghosts
- wrappedCentres(1:3,2_pInt:iRes(1)+1_pInt,2_pInt:iRes(2)+1_pInt,2_pInt:iRes(3)+1_pInt) = centres
- do k = 0_pInt,iRes(3)+1_pInt
-   do j = 0_pInt,iRes(2)+1_pInt
-     do i = 0_pInt,iRes(1)+1_pInt
-       if (k==0_pInt .or. k==iRes(3)+1_pInt .or. &                                                  ! z skin
-           j==0_pInt .or. j==iRes(2)+1_pInt .or. &                                                  ! y skin
-           i==0_pInt .or. i==iRes(1)+1_pInt      ) then                                             ! x skin
-         me = [i,j,k]                                                                               ! me on skin
-         shift = sign(abs(iRes+diag-2_pInt*me)/(iRes+diag),iRes+diag-2_pInt*me)
-         lookup = me-diag+shift*iRes
-         wrappedCentres(1:3,i+1_pInt,        j+1_pInt,        k+1_pInt) = &
-                centres(1:3,lookup(1)+1_pInt,lookup(2)+1_pInt,lookup(3)+1_pInt) &
-                - matmul(Favg, real(shift,pReal)*gDim)
-       endif
- enddo; enddo; enddo
-
-!--------------------------------------------------------------------------------------------------
-! averaging
- do k = 0_pInt,iRes(3); do j = 0_pInt,iRes(2); do i = 0_pInt,iRes(1)
-   do n = 1_pInt,8_pInt
-    nodes(1:3,i+1_pInt,j+1_pInt,k+1_pInt) = &
-    nodes(1:3,i+1_pInt,j+1_pInt,k+1_pInt) + wrappedCentres(1:3,i+1_pInt+neighbor(1,n), &
-                                                               j+1_pInt+neighbor(2,n), &
-                                                               k+1_pInt+neighbor(3,n) )
-   enddo
- enddo; enddo; enddo
- nodes = nodes/8.0_pReal
-
-end function mesh_nodesAroundCentres
+!!--------------------------------------------------------------------------------------------------
+!!> @brief builds mesh of (distorted) cubes for given coordinates (= center of the cubes)
+!!--------------------------------------------------------------------------------------------------
+!function mesh_nodesAroundCentres(gDim,Favg,centres) result(nodes)
+!
+!  real(pReal), intent(in), dimension(:,:,:,:) :: &
+!    centres
+!  real(pReal),             dimension(3,size(centres,2)+1,size(centres,3)+1,size(centres,4)+1) :: &
+!    nodes
+!  real(pReal), intent(in), dimension(3) :: &
+!    gDim
+!  real(pReal), intent(in), dimension(3,3) :: &
+!    Favg
+!  real(pReal),             dimension(3,size(centres,2)+2,size(centres,3)+2,size(centres,4)+2) :: &
+!    wrappedCentres
+!
+!  integer :: &
+!    i,j,k,n
+!  integer,           dimension(3), parameter :: &
+!    diag = 1
+!  integer,           dimension(3) :: &
+!    shift = 0, &
+!    lookup = 0, &
+!    me = 0, &
+!    iRes = 0
+!  integer,           dimension(3,8) :: &
+!    neighbor = reshape([ &
+!                        0, 0, 0, &
+!                        1, 0, 0, &
+!                        1, 1, 0, &
+!                        0, 1, 0, &
+!                        0, 0, 1, &
+!                        1, 0, 1, &
+!                        1, 1, 1, &
+!                        0, 1, 1  ], [3,8])
+!
+!!--------------------------------------------------------------------------------------------------
+!! initializing variables
+! iRes =  [size(centres,2),size(centres,3),size(centres,4)]
+! nodes = 0.0_pReal
+! wrappedCentres = 0.0_pReal
+!
+!!--------------------------------------------------------------------------------------------------
+!! building wrappedCentres = centroids + ghosts
+!  wrappedCentres(1:3,2:iRes(1)+1,2:iRes(2)+1,2:iRes(3)+1) = centres
+!  do k = 0,iRes(3)+1
+!    do j = 0,iRes(2)+1
+!      do i = 0,iRes(1)+1
+!        if (k==0 .or. k==iRes(3)+1 .or. &                                                  ! z skin
+!            j==0 .or. j==iRes(2)+1 .or. &                                                  ! y skin
+!            i==0 .or. i==iRes(1)+1      ) then                                             ! x skin
+!          me = [i,j,k]                                                                               ! me on skin
+!          shift = sign(abs(iRes+diag-2*me)/(iRes+diag),iRes+diag-2*me)
+!          lookup = me-diag+shift*iRes
+!          wrappedCentres(1:3,i+1,        j+1,        k+1) = &
+!                 centres(1:3,lookup(1)+1,lookup(2)+1,lookup(3)+1) &
+!                 - matmul(Favg, real(shift,pReal)*gDim)
+!        endif
+!  enddo; enddo; enddo
+!
+!!--------------------------------------------------------------------------------------------------
+!! averaging
+!  do k = 0,iRes(3); do j = 0,iRes(2); do i = 0,iRes(1)
+!    do n = 1,8
+!     nodes(1:3,i+1,j+1,k+1) = &
+!     nodes(1:3,i+1,j+1,k+1) + wrappedCentres(1:3,i+1+neighbor(1,n), &
+!                                                                j+1+neighbor(2,n), &
+!                                                                k+1+neighbor(3,n) )
+!    enddo
+!  enddo; enddo; enddo
+!  nodes = nodes/8.0_pReal
+!
+!end function mesh_nodesAroundCentres
 
 end module mesh
