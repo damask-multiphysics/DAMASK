@@ -7,6 +7,7 @@ module spectral_utilities
   use, intrinsic :: iso_c_binding
 #include <petsc/finclude/petscsys.h>
   use PETScSys
+
   use prec
   use math
   use IO
@@ -584,12 +585,6 @@ end subroutine utilities_fourierGreenConvolution
 !> @brief calculate root mean square of divergence of field_fourier
 !--------------------------------------------------------------------------------------------------
 real(pReal) function utilities_divergenceRMS()
-  use IO, only: &
-    IO_error
-  use mesh, only: &
-    geomSize, &
-    grid, &
-    grid3
 
   integer :: i, j, k, ierr
   complex(pReal), dimension(3)   :: rescaledGeom
@@ -924,9 +919,6 @@ end subroutine utilities_constitutiveResponse
 !> @brief calculates forward rate, either guessing or just add delta/timeinc
 !--------------------------------------------------------------------------------------------------
 pure function utilities_calculateRate(heterogeneous,field0,field,dt,avRate)
-  use mesh, only: &
-    grid3, &
-    grid
  
   real(pReal), intent(in), dimension(3,3) :: &
     avRate                                                                                          !< homogeneous addon
@@ -954,9 +946,6 @@ end function utilities_calculateRate
 !> ensures that the average matches the aim
 !--------------------------------------------------------------------------------------------------
 function utilities_forwardField(timeinc,field_lastInc,rate,aim)
-  use mesh, only: &
-    grid3, &
-    grid
 
   real(pReal), intent(in) :: &
     timeinc                                                                                         !< timeinc of current step
@@ -988,11 +977,6 @@ end function utilities_forwardField
 ! standard approach
 !--------------------------------------------------------------------------------------------------
 pure function utilities_getFreqDerivative(k_s)
-  use math, only: &
-    PI
-  use mesh, only: &
-    geomSize, &
-    grid
 
   integer, intent(in),  dimension(3) :: k_s                                                         !< indices of frequency
   complex(pReal),       dimension(3) :: utilities_getFreqDerivative

@@ -27,10 +27,8 @@ module crystallite
   use geometry_plastic_nonlocal, only: &
     nIPneighbors    => geometry_plastic_nonlocal_nIPneighbors, &
     IPneighborhood  => geometry_plastic_nonlocal_IPneighborhood
-#if defined(PETSc) || defined(DAMASK_HDF5)
   use HDF5_utilities
   use results
-#endif
  
   implicit none 
   private
@@ -854,11 +852,6 @@ end subroutine crystallite_orientations
 !> @brief Map 2nd order tensor to reference config
 !--------------------------------------------------------------------------------------------------
 function crystallite_push33ToRef(ipc,ip,el, tensor33)
-  use math, only: &
-   math_inv33, &
-   math_EulerToR
-  use material, only: &
-   material_EulerAngles                                                                             ! ToDo: Why stored? We also have crystallite_orientation0
  
   real(pReal), dimension(3,3) :: crystallite_push33ToRef
   real(pReal), dimension(3,3), intent(in) :: tensor33
@@ -1065,10 +1058,6 @@ subroutine crystallite_results
 !--------------------------------------------------------------------------------------------------
   function select_tensors(dataset,instance)
  
-    use material, only: &
-    homogenization_maxNgrains, &
-    material_phaseAt
- 
     integer, intent(in) :: instance
     real(pReal), dimension(:,:,:,:,:), intent(in) :: dataset
     real(pReal), allocatable, dimension(:,:,:) :: select_tensors
@@ -1095,10 +1084,6 @@ subroutine crystallite_results
 !> @brief select rotations for output
 !-------------------------------------------------------------------------------------------------- 
   function select_rotations(dataset,instance)
- 
-    use material, only: &
-    homogenization_maxNgrains, &
-    material_phaseAt
  
     integer, intent(in) :: instance
     type(rotation), dimension(:,:,:), intent(in) :: dataset

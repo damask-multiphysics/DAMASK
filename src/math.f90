@@ -8,7 +8,9 @@
 module math
   use prec
   use future
-
+  use IO
+  use debug
+  use numerics
   implicit none
   public
 #if __INTEL_COMPILER >= 1900
@@ -91,8 +93,6 @@ contains
 !> @brief initialization of random seed generator and internal checks
 !--------------------------------------------------------------------------------------------------
 subroutine math_init
-  use numerics, only: &
-    randomSeed
 
   integer :: i
   real(pReal), dimension(4) :: randTest
@@ -133,7 +133,6 @@ end subroutine math_init
 !> @brief check correctness of (some) math functions
 !--------------------------------------------------------------------------------------------------
 subroutine unitTest
-  use IO, only: IO_error
 
   character(len=64) :: error_msg
 
@@ -526,8 +525,6 @@ end subroutine math_invert33
 !> @brief Inversion of symmetriced 3x3x3x3 tensor.
 !--------------------------------------------------------------------------------------------------
 function math_invSym3333(A)
-  use IO, only: &
-    IO_error
 
   real(pReal),dimension(3,3,3,3)            :: math_invSym3333
 
@@ -1443,8 +1440,6 @@ end function math_eigenvectorBasisSym33_log
 !> @brief rotational part from polar decomposition of 33 tensor m
 !--------------------------------------------------------------------------------------------------
 function math_rotationalPart33(m)
-  use IO, only: &
-    IO_warning
 
   real(pReal), intent(in), dimension(3,3) :: m
   real(pReal), dimension(3,3) :: math_rotationalPart33

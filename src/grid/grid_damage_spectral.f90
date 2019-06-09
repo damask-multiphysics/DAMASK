@@ -9,14 +9,17 @@ module grid_damage_spectral
 #include <petsc/finclude/petscdmda.h>
   use PETScdmda
   use PETScsnes
-  use prec, only: & 
-    pReal
-  use spectral_utilities, only: &
-    tSolutionState, &
-    tSolutionParams
+
+  use prec
+  use spectral_utilities
+  use mesh
+  use damage_nonlocal
+  use numerics
+  use damage_nonlocal
  
   implicit none
   private
+
 !--------------------------------------------------------------------------------------------------
 ! derived types
   type(tSolutionParams), private :: params
@@ -51,18 +54,6 @@ contains
 ! ToDo: Restart not implemented
 !--------------------------------------------------------------------------------------------------
 subroutine grid_damage_spectral_init
-  use spectral_utilities, only: &
-    wgt
-  use mesh, only: &
-    grid, &
-    grid3
-  use damage_nonlocal, only: &
-    damage_nonlocal_getDiffusion33, &
-    damage_nonlocal_getMobility
-  use numerics, only: &
-    worldrank, &
-    worldsize, &
-    petsc_options
     
   PetscInt, dimension(worldsize) :: localK  
   integer :: i, j, k, cell
@@ -153,15 +144,6 @@ end subroutine grid_damage_spectral_init
 !> @brief solution for the spectral damage scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
 function grid_damage_spectral_solution(timeinc,timeinc_old,loadCaseTime) result(solution)
-  use numerics, only: &
-    itmax, &
-    err_damage_tolAbs, &
-    err_damage_tolRel
-  use mesh, only: &
-    grid, &
-    grid3
-  use damage_nonlocal, only: &
-    damage_nonlocal_putNonLocalDamage
  
   real(pReal), intent(in) :: &
     timeinc, &                                                                                      !< increment in time for current solution
@@ -223,17 +205,7 @@ end function grid_damage_spectral_solution
 !> @brief spectral damage forwarding routine
 !--------------------------------------------------------------------------------------------------
 subroutine grid_damage_spectral_forward
-  use mesh, only: &
-    grid, &
-    grid3
-  use spectral_utilities, only: &
-    cutBack, &
-    wgt
-  use damage_nonlocal, only: &
-    damage_nonlocal_putNonLocalDamage, &
-    damage_nonlocal_getDiffusion33, &
-    damage_nonlocal_getMobility
-    
+   
   integer                               :: i, j, k, cell
   DM :: dm_local
   PetscScalar,  dimension(:,:,:), pointer     :: x_scal
@@ -278,25 +250,6 @@ end subroutine grid_damage_spectral_forward
 !> @brief forms the spectral damage residual vector
 !--------------------------------------------------------------------------------------------------
 subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
-  use numerics, only: &
-    residualStiffness
-  use mesh, only: &
-    grid, &
-    grid3
-  use spectral_utilities, only: &
-    scalarField_real, &
-    vectorField_real, &
-    utilities_FFTvectorForward, &
-    utilities_FFTvectorBackward, &
-    utilities_FFTscalarForward, &
-    utilities_FFTscalarBackward, &
-    utilities_fourierGreenConvolution, &
-    utilities_fourierScalarGradient, &
-    utilities_fourierVectorDivergence   
-  use damage_nonlocal, only: &
-    damage_nonlocal_getSourceAndItsTangent,&
-    damage_nonlocal_getDiffusion33, &
-    damage_nonlocal_getMobility
  
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
     in

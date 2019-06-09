@@ -6,6 +6,10 @@
 !--------------------------------------------------------------------------------------------------
 module source_damage_isoDuctile
  use prec
+ use debug
+ use IO
+ use material
+ use config
 
  implicit none
  private
@@ -51,25 +55,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_isoDuctile_init
- use debug, only: &
-   debug_level,&
-   debug_constitutive,&
-   debug_levelBasic
- use IO, only: &
-   IO_error
- use material, only: &
-   material_allocateSourceState, &
-   phase_source, &
-   phase_Nsources, &
-   phase_Noutput, &
-   SOURCE_damage_isoDuctile_label, &
-   SOURCE_damage_isoDuctile_ID, &
-   material_phase, &  
-   sourceState
- use config, only: &
-   config_phase, &
-   material_Nphase
-
 
  integer :: Ninstance,phase,instance,source,sourceOffset
  integer :: NofMyPhase,p,i
@@ -164,13 +149,6 @@ end subroutine source_damage_isoDuctile_init
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
- use material, only: &
-   phaseAt, phasememberAt, &
-   plasticState, &
-   sourceState, &
-   material_homogenizationAt, &
-   damage, &
-   damageMapping
 
  integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
@@ -197,8 +175,6 @@ end subroutine source_damage_isoDuctile_dotState
 !> @brief returns local part of nonlocal damage driving force
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_isoDuctile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
- use material, only: &
-   sourceState
 
  integer, intent(in) :: &
    phase, &
@@ -224,8 +200,6 @@ end subroutine source_damage_isoDuctile_getRateAndItsTangent
 !> @brief return array of local damage results
 !--------------------------------------------------------------------------------------------------
 function source_damage_isoDuctile_postResults(phase, constituent)
- use material, only: &
-   sourceState
 
  integer, intent(in) :: &
    phase, &
