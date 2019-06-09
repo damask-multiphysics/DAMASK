@@ -3,15 +3,12 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Driver controlling inner and outer load case looping of the FEM solver
-!> @details doing cutbacking, forwarding in case of restart, reporting statistics, writing
-!> results
 !--------------------------------------------------------------------------------------------------
 module mesh     
 #include <petsc/finclude/petscdmplex.h>
 #include <petsc/finclude/petscis.h>
 #include <petsc/finclude/petscdmda.h>
- use prec, only: pReal, pInt
+ use prec
  use mesh_base
  use PETScdmplex
  use PETScdmda
@@ -19,7 +16,6 @@ module mesh
  use DAMASK_interface
  use IO
  use debug
- use math
  use discretization
  use numerics
  use FEsolving
@@ -28,15 +24,12 @@ module mesh
  implicit none
  private
  
- integer(pInt), public, parameter :: &
-   mesh_ElemType=1_pInt                                                                             !< Element type of the mesh (only support homogeneous meshes)
-
  integer(pInt), public, protected :: &
    mesh_Nboundaries, &
    mesh_NcpElems, &                                                                                 !< total number of CP elements in mesh
    mesh_NcpElemsGlobal, &
-   mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
-   mesh_maxNipNeighbors
+   mesh_Nnodes                                                                                      !< total number of nodes in mesh
+
 !!!! BEGIN DEPRECATED !!!!!
  integer(pInt), public, protected :: &
    mesh_maxNips                                                                                     !< max number of IPs in any CP element
@@ -55,35 +48,12 @@ module mesh
  real(pReal), dimension(:,:,:), allocatable, public :: &
    mesh_ipCoordinates                                                                               !< IP x,y,z coordinates (after deformation!)
 
- real(pReal), dimension(:,:,:), allocatable, public, protected :: &
-   mesh_ipArea                                                                                      !< area of interface to neighboring IP (initially!)
-
- real(pReal),dimension(:,:,:,:), allocatable, public, protected :: & 
-   mesh_ipAreaNormal                                                                                !< area normal of interface to neighboring IP (initially!)
- 
- integer(pInt), dimension(:,:,:,:), allocatable, public, protected :: &
-   mesh_ipNeighborhood                                                                              !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
-
- logical, dimension(3), public, protected :: mesh_periodicSurface                                   !< flag indicating periodic outer surfaces (used for fluxes)
-
  DM, public :: geomMesh
  
  PetscInt, dimension(:), allocatable, public, protected :: &
    mesh_boundaries
 
-                      
- integer(pInt), dimension(1_pInt), parameter, public :: FE_geomtype = &                      !< geometry type of particular element type
- int([1],pInt)
-
- integer(pInt), dimension(1_pInt), parameter, public  :: FE_celltype = &                     !< cell type that is used by each geometry type
- int([1],pInt)
-
- integer(pInt), dimension(1_pInt),            public :: FE_Nips = &                          !< number of IPs in a specific type of element
- int([0],pInt)
-
- integer(pInt), dimension(1_pInt), parameter, public :: FE_NipNeighbors = &                  !< number of ip neighbors / cell faces in a specific cell type
- int([6],pInt)
- 
+                       
   type, public, extends(tMesh) :: tMesh_FEM
 
    
@@ -127,12 +97,19 @@ subroutine tMesh_FEM_init(self,dimen,order,nodes)
 !> @brief initializes the mesh by calling all necessary private routines the mesh module
 !! Order and routines strongly depend on type of solver
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_init()
+subroutine mesh_init
+
+ integer, dimension(1), parameter:: FE_geomtype = [1]                      !< geometry type of particular element type
+
+ integer, dimension(1) :: FE_Nips                         !< number of IPs in a specific type of element
+
  
  integer(pInt), parameter :: FILEUNIT = 222_pInt
  integer(pInt) :: j
  integer(pInt), allocatable, dimension(:) :: chunkPos
  integer :: dimPlex
+ integer(pInt), parameter :: &
+   mesh_ElemType=1_pInt                                                                             !< Element type of the mesh (only support homogeneous meshes)
  character(len=512) :: &
    line
  logical :: flag
