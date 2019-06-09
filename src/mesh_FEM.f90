@@ -24,18 +24,18 @@ module mesh
  implicit none
  private
  
- integer(pInt), public, protected :: &
+ integer, public, protected :: &
    mesh_Nboundaries, &
    mesh_NcpElems, &                                                                                 !< total number of CP elements in mesh
    mesh_NcpElemsGlobal, &
    mesh_Nnodes                                                                                      !< total number of nodes in mesh
 
 !!!! BEGIN DEPRECATED !!!!!
- integer(pInt), public, protected :: &
+ integer, public, protected :: &
    mesh_maxNips                                                                                     !< max number of IPs in any CP element
 !!!! BEGIN DEPRECATED !!!!!
 
- integer(pInt), dimension(:,:), allocatable, public, protected :: &
+ integer, dimension(:,:), allocatable, public, protected :: &
    mesh_element !DEPRECATED
 
  real(pReal), dimension(:,:), allocatable, public :: &
@@ -77,16 +77,16 @@ subroutine tMesh_FEM_init(self,dimen,order,nodes)
  
  implicit none
   integer, intent(in) :: dimen
- integer(pInt), intent(in) :: order
+ integer, intent(in) :: order
   real(pReal), intent(in), dimension(:,:) :: nodes
  class(tMesh_FEM) :: self
  
- if (dimen == 2_pInt) then
-   if (order == 1_pInt) call  self%tMesh%init('mesh',1_pInt,nodes)
-   if (order == 2_pInt) call  self%tMesh%init('mesh',2_pInt,nodes)
- elseif(dimen == 3_pInt) then
-   if (order == 1_pInt) call self%tMesh%init('mesh',6_pInt,nodes)
-   if (order == 2_pInt) call self%tMesh%init('mesh',8_pInt,nodes)
+ if (dimen == 2) then
+   if (order == 1) call  self%tMesh%init('mesh',1,nodes)
+   if (order == 2) call  self%tMesh%init('mesh',2,nodes)
+ elseif(dimen == 3) then
+   if (order == 1) call self%tMesh%init('mesh',6,nodes)
+   if (order == 2) call self%tMesh%init('mesh',8,nodes)
  endif
 
  end subroutine tMesh_FEM_init
@@ -104,12 +104,12 @@ subroutine mesh_init
  integer, dimension(1) :: FE_Nips                         !< number of IPs in a specific type of element
 
  
- integer(pInt), parameter :: FILEUNIT = 222_pInt
- integer(pInt) :: j
- integer(pInt), allocatable, dimension(:) :: chunkPos
+ integer, parameter :: FILEUNIT = 222
+ integer :: j
+ integer, allocatable, dimension(:) :: chunkPos
  integer :: dimPlex
- integer(pInt), parameter :: &
-   mesh_ElemType=1_pInt                                                                             !< Element type of the mesh (only support homogeneous meshes)
+ integer, parameter :: &
+   mesh_ElemType=1                                                                             !< Element type of the mesh (only support homogeneous meshes)
  character(len=512) :: &
    line
  logical :: flag
@@ -140,7 +140,7 @@ subroutine mesh_init
  call MPI_Bcast(mesh_NcpElemsGlobal,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
  call MPI_Bcast(dimPlex,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
 
- allocate(mesh_boundaries(mesh_Nboundaries), source = 0_pInt)
+ allocate(mesh_boundaries(mesh_Nboundaries), source = 0)
  call DMGetLabelSize(globalMesh,'Face Sets',nFaceSets,ierr)
  CHKERRQ(ierr)
  call DMGetLabelIdIS(globalMesh,'Face Sets',faceSetIS,ierr)
@@ -193,31 +193,31 @@ subroutine mesh_init
  call DMGetStratumSize(geomMesh,'depth',0,mesh_Nnodes,ierr)
  CHKERRQ(ierr)
 
- FE_Nips(FE_geomtype(1_pInt)) = FEM_Zoo_nQuadrature(dimPlex,integrationOrder)
- mesh_maxNips = FE_Nips(1_pInt)
+ FE_Nips(FE_geomtype(1)) = FEM_Zoo_nQuadrature(dimPlex,integrationOrder)
+ mesh_maxNips = FE_Nips(1)
  
  write(6,*) 'mesh_maxNips',mesh_maxNips
  call mesh_FEM_build_ipCoordinates(dimPlex,FEM_Zoo_QuadraturePoints(dimPlex,integrationOrder)%p)
  call mesh_FEM_build_ipVolumes(dimPlex)
  
- allocate (mesh_element (4_pInt,mesh_NcpElems)); mesh_element = 0_pInt
+ allocate (mesh_element (4,mesh_NcpElems)); mesh_element = 0
  do j = 1, mesh_NcpElems
-   mesh_element( 1,j) = -1_pInt                                                                     ! DEPRECATED
+   mesh_element( 1,j) = -1                                                                     ! DEPRECATED
    mesh_element( 2,j) = mesh_elemType                                                               ! elem type
-   mesh_element( 3,j) = 1_pInt                                                                      ! homogenization
+   mesh_element( 3,j) = 1                                                                      ! homogenization
    call DMGetLabelValue(geomMesh,'material',j-1,mesh_element(4,j),ierr)
    CHKERRQ(ierr)
  end do 
 
  if (debug_e < 1 .or. debug_e > mesh_NcpElems) &
-   call IO_error(602_pInt,ext_msg='element')                                                        ! selected element does not exist
- if (debug_i < 1 .or. debug_i > FE_Nips(FE_geomtype(mesh_element(2_pInt,debug_e)))) &
-   call IO_error(602_pInt,ext_msg='IP')                                                             ! selected element does not have requested IP
+   call IO_error(602,ext_msg='element')                                                        ! selected element does not exist
+ if (debug_i < 1 .or. debug_i > FE_Nips(FE_geomtype(mesh_element(2,debug_e)))) &
+   call IO_error(602,ext_msg='IP')                                                             ! selected element does not have requested IP
  
- FEsolving_execElem = [ 1_pInt,mesh_NcpElems ]                                                      ! parallel loop bounds set to comprise all DAMASK elements
+ FEsolving_execElem = [ 1,mesh_NcpElems ]                                                      ! parallel loop bounds set to comprise all DAMASK elements
  if (allocated(FEsolving_execIP)) deallocate(FEsolving_execIP)
- allocate(FEsolving_execIP(2_pInt,mesh_NcpElems)); FEsolving_execIP = 1_pInt                        ! parallel loop bounds set to comprise from first IP...
- forall (j = 1_pInt:mesh_NcpElems) FEsolving_execIP(2,j) = FE_Nips(FE_geomtype(mesh_element(2,j)))  ! ...up to own IP count for each element
+ allocate(FEsolving_execIP(2,mesh_NcpElems)); FEsolving_execIP = 1                        ! parallel loop bounds set to comprise from first IP...
+ forall (j = 1:mesh_NcpElems) FEsolving_execIP(2,j) = FE_Nips(FE_geomtype(mesh_element(2,j)))  ! ...up to own IP count for each element
  
  allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pReal)
  call theMesh%init(dimplex,integrationOrder,mesh_node0)
@@ -239,7 +239,7 @@ end subroutine mesh_init
 pure function mesh_cellCenterCoordinates(ip,el)
  
  implicit none
- integer(pInt), intent(in) :: el, &                                                                  !< element number
+ integer, intent(in) :: el, &                                                                  !< element number
                               ip                                                                     !< integration point number
  real(pReal), dimension(3) :: mesh_cellCenterCoordinates                                             !< x,y,z coordinates of the cell center of the requested IP cell
 
