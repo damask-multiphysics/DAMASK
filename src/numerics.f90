@@ -5,6 +5,13 @@
 !--------------------------------------------------------------------------------------------------
 module numerics
  use prec
+ use IO
+
+#ifdef PETSc
+#include <petsc/finclude/petscsys.h>
+   use petscsys
+#endif
+!$ use OMP_LIB
 
  implicit none
  private
@@ -113,21 +120,6 @@ contains
 ! a sanity check
 !--------------------------------------------------------------------------------------------------
 subroutine numerics_init
- use IO, only: &
-   IO_read_ASCII, &
-   IO_error, &
-   IO_isBlank, &
-   IO_stringPos, &
-   IO_stringValue, &
-   IO_lc, &
-   IO_floatValue, &
-   IO_intValue, &
-   IO_warning
-#ifdef PETSc
-#include <petsc/finclude/petscsys.h>
-   use petscsys
-#endif
-!$ use OMP_LIB, only: omp_set_num_threads
 !$ integer ::                                gotDAMASK_NUM_THREADS = 1
  integer :: i,j, ierr
  integer, allocatable, dimension(:) :: chunkPos

@@ -4,6 +4,7 @@
 !--------------------------------------------------------------------------------------------------
 module element
   use prec
+  use IO
  
   implicit none
   private 
@@ -805,8 +806,6 @@ module element
  contains
  
  subroutine tElement_init(self,elemType)
-   use IO, only: &
-     IO_error
 
    class(tElement) :: self
    integer, intent(in) :: elemType
