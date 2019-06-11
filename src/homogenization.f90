@@ -23,16 +23,15 @@ module homogenization
  use damage_none
  use damage_local
  use damage_nonlocal
-#if defined(PETSc) || defined(DAMASK_HDF5)
  use results
  use HDF5_utilities
-#endif
+
+ implicit none
+ private
 
 !--------------------------------------------------------------------------------------------------
 ! General variables for the homogenization at a  material point
- implicit none
- private
-   real(pReal),   dimension(:,:,:,:),   allocatable, public :: &
+ real(pReal),   dimension(:,:,:,:),   allocatable, public :: &
    materialpoint_F0, &                                                                              !< def grad of IP at start of FE increment
    materialpoint_F, &                                                                               !< def grad of IP to be reached at end of FE increment
    materialpoint_P                                                                                  !< first P--K stress of IP
@@ -45,17 +44,17 @@ module homogenization
    thermal_maxSizePostResults, &
    damage_maxSizePostResults
 
- real(pReal),   dimension(:,:,:,:),     allocatable, private :: &
+ real(pReal),   dimension(:,:,:,:),     allocatable :: &
    materialpoint_subF0, &                                                                           !< def grad of IP at beginning of homogenization increment
    materialpoint_subF                                                                               !< def grad of IP to be reached at end of homog inc
- real(pReal),   dimension(:,:),         allocatable, private :: &
+ real(pReal),   dimension(:,:),         allocatable :: &
    materialpoint_subFrac, &
    materialpoint_subStep, &
    materialpoint_subdt
- logical,       dimension(:,:),         allocatable, private :: &
+ logical,       dimension(:,:),         allocatable :: &
    materialpoint_requested, &
    materialpoint_converged
- logical,       dimension(:,:,:),       allocatable, private :: &
+ logical,       dimension(:,:,:),       allocatable :: &
    materialpoint_doneAndHappy
    
  interface

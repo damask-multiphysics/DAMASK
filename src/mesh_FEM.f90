@@ -75,10 +75,9 @@ contains
 
 subroutine tMesh_FEM_init(self,dimen,order,nodes)
  
- implicit none
-  integer, intent(in) :: dimen
+ integer, intent(in) :: dimen
  integer, intent(in) :: order
-  real(pReal), intent(in), dimension(:,:) :: nodes
+ real(pReal), intent(in), dimension(:,:) :: nodes
  class(tMesh_FEM) :: self
  
  if (dimen == 2) then
@@ -238,9 +237,8 @@ end subroutine mesh_init
 !--------------------------------------------------------------------------------------------------
 pure function mesh_cellCenterCoordinates(ip,el)
  
- implicit none
  integer, intent(in) :: el, &                                                                  !< element number
-                              ip                                                                     !< integration point number
+                        ip                                                                     !< integration point number
  real(pReal), dimension(3) :: mesh_cellCenterCoordinates                                             !< x,y,z coordinates of the cell center of the requested IP cell
 
 end function mesh_cellCenterCoordinates

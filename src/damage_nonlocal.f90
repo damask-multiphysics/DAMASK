@@ -19,26 +19,25 @@ module damage_nonlocal
   implicit none
   private
   
-  integer,                       dimension(:,:),  allocatable, target, public :: &
-    damage_nonlocal_sizePostResult                                                                  !< size of each post result output
-
-  character(len=64),             dimension(:,:),   allocatable, target, public :: &
-    damage_nonlocal_output                                                                          !< name of each post result output
-    
-  integer,                       dimension(:),     allocatable, target, public :: &
-    damage_nonlocal_Noutput                                                                         !< number of outputs per instance of this damage 
+  integer,                       dimension(:,:), allocatable, target, public :: &
+    damage_nonlocal_sizePostResult
+  character(len=64),             dimension(:,:), allocatable, target, public :: &
+    damage_nonlocal_output
+  integer,                       dimension(:),   allocatable, target, public :: &
+    damage_nonlocal_Noutput
 
   enum, bind(c) 
-    enumerator :: undefined_ID, &
-                  damage_ID
+    enumerator :: &
+      undefined_ID, &
+      damage_ID
   end enum
 
   type :: tParameters
-    integer(kind(undefined_ID)),         dimension(:),   allocatable   :: &
+    integer(kind(undefined_ID)), dimension(:), allocatable :: &
       outputID
   end type tParameters
   
-  type(tparameters),          dimension(:), allocatable :: &
+  type(tparameters),             dimension(:), allocatable :: &
     param
 
   public :: &

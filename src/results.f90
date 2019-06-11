@@ -107,7 +107,7 @@ end subroutine results_closeJobFile
 !--------------------------------------------------------------------------------------------------
 subroutine results_addIncrement(inc,time)
  
-  integer(pInt), intent(in) :: inc
+  integer,       intent(in) :: inc
   real(pReal),   intent(in) :: time
   character(len=pStringLen) :: incChar
 
