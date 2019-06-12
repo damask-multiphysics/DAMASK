@@ -1820,12 +1820,12 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
          + rhoDotAthermalAnnihilation &
          + rhoDotThermalAnnihilation 
   
-  results(instance)%rhoDotFlux(1:ns,1:8,o) = rhoDotFlux(1:ns,1:8)
-  results(instance)%rhoDotMultiplication(1:ns,1:2,o) = rhoDotMultiplication(1:ns,[1,3])
-  results(instance)%rhoDotSingle2DipoleGlide(1:ns,1:2,o) = rhoDotSingle2DipoleGlide(1:ns,9:10)
+  results(instance)%rhoDotFlux(1:ns,1:8,o)                 = rhoDotFlux(1:ns,1:8)
+  results(instance)%rhoDotMultiplication(1:ns,1:2,o)       = rhoDotMultiplication(1:ns,[1,3])
+  results(instance)%rhoDotSingle2DipoleGlide(1:ns,1:2,o)   = rhoDotSingle2DipoleGlide(1:ns,9:10)
   results(instance)%rhoDotAthermalAnnihilation(1:ns,1:2,o) = rhoDotAthermalAnnihilation(1:ns,9:10)
-  results(instance)%rhoDotThermalAnnihilation(1:ns,1:2,o) = rhoDotThermalAnnihilation(1:ns,9:10)
-  results(instance)%rhoDotEdgeJogs(1:ns,o) = 2.0_pReal * rhoDotThermalAnnihilation(1:ns,1)
+  results(instance)%rhoDotThermalAnnihilation(1:ns,1:2,o)  = rhoDotThermalAnnihilation(1:ns,9:10)
+  results(instance)%rhoDotEdgeJogs(1:ns,o)                 = 2.0_pReal * rhoDotThermalAnnihilation(1:ns,1)
 
 
 #ifdef DEBUG
