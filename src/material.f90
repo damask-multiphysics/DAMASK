@@ -360,6 +360,9 @@ subroutine material_init
    enddo
  enddo
  
+ call config_deallocate('material.config/microstructure')
+ call config_deallocate('material.config/texture')
+
 #if defined(PETSc) || defined(DAMASK_HDF5)
  call results_openJobFile
  call results_mapping_constituent(material_phaseAt,material_phaseMemberAt,phase_name)
@@ -552,14 +555,9 @@ subroutine material_parseMicrostructure
      
      enddo
    enddo
+   if (dNeq(sum(microstructure_fraction(:,m)),1.0_pReal)) call IO_error(153,ext_msg=microstructure_name(m))
  enddo
 
- do m = 1, size(config_microstructure)
-   if (dNeq(sum(microstructure_fraction(:,m)),1.0_pReal)) &
-     call IO_error(153,ext_msg=microstructure_name(m))
- enddo
- 
- call config_deallocate('material.config/microstructure')
  
 end subroutine material_parseMicrostructure
 
@@ -573,7 +571,7 @@ subroutine material_parseCrystallite
 
  allocate(crystallite_Noutput(size(config_crystallite)),source=0)
  do c=1, size(config_crystallite)
-   crystallite_Noutput(c) =  config_crystallite(c)%countKeys('(output)')
+   crystallite_Noutput(c) = config_crystallite(c)%countKeys('(output)')
  enddo
 
 end subroutine material_parseCrystallite
@@ -702,6 +700,7 @@ subroutine material_parsePhase
 
 end subroutine material_parsePhase
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the texture part in the material configuration file
 !--------------------------------------------------------------------------------------------------
@@ -766,7 +765,6 @@ subroutine material_parseTexture
     
   enddo 
   
-  call config_deallocate('material.config/texture')
 
 end subroutine material_parseTexture
 
