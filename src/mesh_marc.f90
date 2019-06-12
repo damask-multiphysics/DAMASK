@@ -6,26 +6,26 @@
 !> @brief Sets up the mesh for the solver MSC.Marc
 !--------------------------------------------------------------------------------------------------
 module mesh
- use IO
- use prec
- use math
- use mesh_base
- use DAMASK_interface
- use IO
- use debug
- use numerics
- use FEsolving
- use element
- use discretization
- use geometry_plastic_nonlocal
- use HDF5_utilities
- use results
+  use IO
+  use prec
+  use math
+  use mesh_base
+  use DAMASK_interface
+  use IO
+  use debug
+  use numerics
+  use FEsolving
+  use element
+  use discretization
+  use geometry_plastic_nonlocal
+  use HDF5_utilities
+  use results
 
- implicit none
- private
-   
- real(pReal), public, protected :: &
-   mesh_unitlength                                                                                  !< physical length of one unit in mesh
+  implicit none
+  private
+    
+  real(pReal), public, protected :: &
+    mesh_unitlength                                                                                  !< physical length of one unit in mesh
 
 !-------------------------------------------------------------------------------------------------- 
 ! public variables (DEPRECATED)
@@ -52,9 +52,9 @@ module mesh
 
  real(pReal), dimension(:,:,:), allocatable:: &
    mesh_ipArea                                                                                      !< area of interface to neighboring IP (initially!)
-
  real(pReal),dimension(:,:,:,:), allocatable :: &
    mesh_ipAreaNormal                                                                                !< area normal of interface to neighboring IP (initially!)
+
 ! -------------------------------------------------------------------------------------------------- 
 
  type(tMesh) :: theMesh
@@ -66,12 +66,6 @@ module mesh
    mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
    mesh_Ncells, &                                                                                   !< total number of cells in mesh
    mesh_maxNsharedElems                                                                             !< max number of CP elements sharing a node
-
- integer, dimension(:,:), allocatable :: &
-   mesh_sharedElem, &                                                                               !< entryCount and list of elements containing node
-   mesh_nodeTwins                                                                                   !< node twins are surface nodes that lie exactly on opposite sides of the mesh (surfaces nodes with equal coordinate values in two dimensions)
-
- logical, dimension(3) :: mesh_periodicSurface                                   !< flag indicating periodic outer surfaces (used for fluxes)
 
 
 integer, dimension(:,:), allocatable :: &
@@ -89,14 +83,8 @@ integer, dimension(:,:), allocatable :: &
 ! Hence, I suggest to prefix with "FE_"
 
  integer, parameter :: &
-   FE_Nelemtypes = 13, &
    FE_Ngeomtypes = 10, &
    FE_Ncelltypes = 4, &
-   FE_maxNipNeighbors = 6, &
-   FE_maxmaxNnodesAtIP = 8, &                                                                  !< max number of (equivalent) nodes attached to an IP
-   FE_maxNmatchingNodesPerFace = 4, &
-   FE_maxNfaces = 6, &
-   FE_maxNcellnodes = 64, &
    FE_maxNcellnodesPerCell = 8, &
    FE_maxNcellfaces = 6, &
    FE_maxNcellnodesPerCellface = 4
@@ -114,84 +102,6 @@ integer, dimension(:,:), allocatable :: &
       8, & ! element   7 (3D 8node 8ip)
       8  & ! element  21 (3D 20node 27ip)
   ],pInt)
-
- integer, dimension(FE_maxNfaces,FE_Ngeomtypes), parameter ::  FE_NmatchingNodesPerFace = & !< number of matching nodes per face in a specific type of element geometry
- reshape(int([ &
-  2,2,2,0,0,0, & ! element   6 (2D 3node 1ip)
-  2,2,2,0,0,0, & ! element 125 (2D 6node 3ip)
-  2,2,2,2,0,0, & ! element  11 (2D 4node 4ip)
-  2,2,2,2,0,0, & ! element  27 (2D 8node 9ip)
-  3,3,3,3,0,0, & ! element 134 (3D 4node 1ip)
-  3,3,3,3,0,0, & ! element 127 (3D 10node 4ip)
-  3,4,4,4,3,0, & ! element 136 (3D 6node 6ip)
-  4,4,4,4,4,4, & ! element 117 (3D 8node 1ip)
-  4,4,4,4,4,4, & ! element   7 (3D 8node 8ip)
-  4,4,4,4,4,4  & ! element  21 (3D 20node 27ip)
-  ],pInt),[FE_maxNipNeighbors,FE_Ngeomtypes])
-
- integer, dimension(FE_maxNmatchingNodesPerFace,FE_maxNfaces,FE_Ngeomtypes), parameter  :: FE_face = &         !< List of node indices on each face of a specific type of element geometry
- reshape(int([&
-  1,2,0,0 , & ! element   6 (2D 3node 1ip)
-  2,3,0,0 , &
-  3,1,0,0 , &
-  0,0,0,0 , &
-  0,0,0,0 , &
-  0,0,0,0 , &
-  1,2,0,0 , & ! element 125 (2D 6node 3ip)
-  2,3,0,0 , &
-  3,1,0,0 , &
-  0,0,0,0 , &
-  0,0,0,0 , &
-  0,0,0,0 , &
-  1,2,0,0 , & ! element  11 (2D 4node 4ip)
-  2,3,0,0 , &
-  3,4,0,0 , &
-  4,1,0,0 , &
-  0,0,0,0 , &
-  0,0,0,0 , &
-  1,2,0,0 , & ! element  27 (2D 8node 9ip)
-  2,3,0,0 , &
-  3,4,0,0 , &
-  4,1,0,0 , &
-  0,0,0,0 , &
-  0,0,0,0 , &
-  1,2,3,0 , & ! element 134 (3D 4node 1ip)
-  1,4,2,0 , &
-  2,3,4,0 , &
-  1,3,4,0 , &
-  0,0,0,0 , &
-  0,0,0,0 , &
-  1,2,3,0 , & ! element 127 (3D 10node 4ip)
-  1,4,2,0 , &
-  2,4,3,0 , &
-  1,3,4,0 , &
-  0,0,0,0 , &
-  0,0,0,0 , &
-  1,2,3,0 , & ! element 136 (3D 6node 6ip)
-  1,4,5,2 , &
-  2,5,6,3 , &
-  1,3,6,4 , &
-  4,6,5,0 , &
-  0,0,0,0 , &
-  1,2,3,4 , & ! element 117 (3D 8node 1ip)
-  2,1,5,6 , &
-  3,2,6,7 , &
-  4,3,7,8 , &
-  4,1,5,8 , &
-  8,7,6,5 , &
-  1,2,3,4 , & ! element   7 (3D 8node 8ip)
-  2,1,5,6 , &
-  3,2,6,7 , &
-  4,3,7,8 , &
-  4,1,5,8 , &
-  8,7,6,5 , &
-  1,2,3,4 , & ! element  21 (3D 20node 27ip)
-  2,1,5,6 , &
-  3,2,6,7 , &
-  4,3,7,8 , &
-  4,1,5,8 , &
-  8,7,6,5   &
-  ],pInt),[FE_maxNmatchingNodesPerFace,FE_maxNfaces,FE_Ngeomtypes])
 
 
  integer, dimension(FE_Ncelltypes), parameter :: FE_NcellnodesPerCellface = &        !< number of cell nodes per cell face in a specific cell type
@@ -244,126 +154,114 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_init(ip,el)
 
- integer, intent(in) :: el, ip
+  integer, intent(in) :: el, ip
+   
+  integer, parameter  :: FILEUNIT = 222
+  integer :: j, fileFormatVersion, elemType, &
+    mesh_maxNelemInSet, &
+    mesh_NcpElems, &
+    hypoelasticTableStyle, &
+    initialcondTableStyle
+  logical :: myDebug
+ 
+  write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
+ 
+  mesh_unitlength = numerics_unitlength                                                              ! set physical extent of a length unit in mesh
+ 
+  myDebug = (iand(debug_level(debug_mesh),debug_levelBasic) /= 0)
+ 
+  call IO_open_inputFile(FILEUNIT,modelName)
+  fileFormatVersion = mesh_marc_get_fileFormat(FILEUNIT)
+  if (myDebug) write(6,'(a)') ' Got input file format'; flush(6)
   
- integer, parameter  :: FILEUNIT = 222
- integer :: j, fileFormatVersion, elemType, &
-   mesh_maxNelemInSet, &
-   mesh_NcpElems, &
-   hypoelasticTableStyle, &
-   initialcondTableStyle
- logical :: myDebug
-
- write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
-
- mesh_unitlength = numerics_unitlength                                                              ! set physical extent of a length unit in mesh
-
- myDebug = (iand(debug_level(debug_mesh),debug_levelBasic) /= 0)
-
- call IO_open_inputFile(FILEUNIT,modelName)                                                         ! parse info from input file...
- if (myDebug) write(6,'(a)') ' Opened input file'; flush(6)
- 
- fileFormatVersion = mesh_marc_get_fileFormat(FILEUNIT)
- if (myDebug) write(6,'(a)') ' Got input file format'; flush(6)
- 
- call mesh_marc_get_tableStyles(initialcondTableStyle,hypoelasticTableStyle,FILEUNIT)
- if (myDebug) write(6,'(a)') ' Got table styles'; flush(6)
- 
- if (fileFormatVersion > 12) then
-   Marc_matNumber = mesh_marc_get_matNumber(FILEUNIT,hypoelasticTableStyle)
-   if (myDebug) write(6,'(a)') ' Got hypoleastic material number'; flush(6)
- endif
- 
- call mesh_marc_count_nodesAndElements(mesh_nNodes, mesh_nElems, FILEUNIT)
- if (myDebug) write(6,'(a)') ' Counted nodes/elements'; flush(6)
- 
- call mesh_marc_count_elementSets(mesh_NelemSets,mesh_maxNelemInSet,FILEUNIT)
- if (myDebug) write(6,'(a)') ' Counted element sets'; flush(6)
-
- allocate(mesh_nameElemSet(mesh_NelemSets)); mesh_nameElemSet = 'n/a'
- allocate(mesh_mapElemSet(1+mesh_maxNelemInSet,mesh_NelemSets),source=0)
- call mesh_marc_map_elementSets(mesh_nameElemSet,mesh_mapElemSet,FILEUNIT)
- if (myDebug) write(6,'(a)') ' Mapped element sets'; flush(6)
- 
- mesh_NcpElems =  mesh_nElems
- if (myDebug) write(6,'(a)') ' Counted CP elements'; flush(6)
- 
- allocate (mesh_mapFEtoCPelem(2,mesh_NcpElems), source = 0)
- call mesh_marc_map_elements(hypoelasticTableStyle,mesh_nameElemSet,mesh_mapElemSet,mesh_NcpElems,fileFormatVersion,FILEUNIT)
- if (myDebug) write(6,'(a)') ' Mapped elements'; flush(6)
- 
- allocate (mesh_mapFEtoCPnode(2,mesh_Nnodes),source=0)
- call mesh_marc_map_nodes(mesh_Nnodes,FILEUNIT)                                                                  !ToDo: don't work on global variables
- if (myDebug) write(6,'(a)') ' Mapped nodes'; flush(6)
- 
- call mesh_marc_build_nodes(FILEUNIT)                                                               !ToDo: don't work on global variables
- mesh_node = mesh_node0
- if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
- 
- elemType = mesh_marc_getElemType(mesh_nElems,FILEUNIT)
- if (myDebug) write(6,'(a)') ' Counted CP sizes'; flush(6)
- 
- call theMesh%init('mesh',elemType,mesh_node0)
- call theMesh%setNelems(mesh_NcpElems)
- 
- allocate(mesh_element(4+theMesh%elem%nNodes,theMesh%nElems), source=0)
- mesh_element(1,:) = -1 ! DEPRECATED
- mesh_element(2,:) = elemType ! DEPRECATED
-
- call mesh_marc_buildElements(initialcondTableStyle,FILEUNIT)
- if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
- close (FILEUNIT)
+  call mesh_marc_get_tableStyles(initialcondTableStyle,hypoelasticTableStyle,FILEUNIT)
+  if (myDebug) write(6,'(a)') ' Got table styles'; flush(6)
   
+  if (fileFormatVersion > 12) then
+    Marc_matNumber = mesh_marc_get_matNumber(FILEUNIT,hypoelasticTableStyle)
+    if (myDebug) write(6,'(a)') ' Got hypoleastic material number'; flush(6)
+  endif
+  
+  call mesh_marc_count_nodesAndElements(mesh_nNodes, mesh_nElems, FILEUNIT)
+  if (myDebug) write(6,'(a)') ' Counted nodes/elements'; flush(6)
+  
+  call mesh_marc_count_elementSets(mesh_NelemSets,mesh_maxNelemInSet,FILEUNIT)
+  if (myDebug) write(6,'(a)') ' Counted element sets'; flush(6)
  
- call mesh_build_FEdata                                                                             ! get properties of the different types of elements
- call mesh_build_cellconnectivity
- if (myDebug) write(6,'(a)') ' Built cell connectivity'; flush(6)
- mesh_cellnode = mesh_build_cellnodes()
- if (myDebug) write(6,'(a)') ' Built cell nodes'; flush(6)
-
- allocate(mesh_ipCoordinates(3,theMesh%elem%nIPs,theMesh%nElems),source=0.0_pReal)
- call mesh_build_ipCoordinates
- if (myDebug) write(6,'(a)') ' Built IP coordinates'; flush(6)
- call mesh_build_ipVolumes
- if (myDebug) write(6,'(a)') ' Built IP volumes'; flush(6)
- call mesh_build_ipAreas
- if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
-
-
- call mesh_build_nodeTwins
- if (myDebug) write(6,'(a)') ' Built node twins'; flush(6)
- call mesh_build_sharedElems
- if (myDebug) write(6,'(a)') ' Built shared elements'; flush(6)
- call mesh_build_ipNeighborhood
- call IP_neighborhood2
+  allocate(mesh_nameElemSet(mesh_NelemSets)); mesh_nameElemSet = 'n/a'
+  allocate(mesh_mapElemSet(1+mesh_maxNelemInSet,mesh_NelemSets),source=0)
+  call mesh_marc_map_elementSets(mesh_nameElemSet,mesh_mapElemSet,FILEUNIT)
+  if (myDebug) write(6,'(a)') ' Mapped element sets'; flush(6)
+  
+  mesh_NcpElems =  mesh_nElems
+  if (myDebug) write(6,'(a)') ' Counted CP elements'; flush(6)
+  
+  allocate (mesh_mapFEtoCPelem(2,mesh_NcpElems), source = 0)
+  call mesh_marc_map_elements(hypoelasticTableStyle,mesh_nameElemSet,mesh_mapElemSet,mesh_NcpElems,fileFormatVersion,FILEUNIT)
+  if (myDebug) write(6,'(a)') ' Mapped elements'; flush(6)
+  
+  allocate (mesh_mapFEtoCPnode(2,mesh_Nnodes),source=0)
+  call mesh_marc_map_nodes(mesh_Nnodes,FILEUNIT)                                                                  !ToDo: don't work on global variables
+  if (myDebug) write(6,'(a)') ' Mapped nodes'; flush(6)
+  
+  call mesh_marc_build_nodes(FILEUNIT)                                                               !ToDo: don't work on global variables
+  mesh_node = mesh_node0
+  if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
+  
+  elemType = mesh_marc_getElemType(mesh_nElems,FILEUNIT)
+  if (myDebug) write(6,'(a)') ' Counted CP sizes'; flush(6)
+  
+  call theMesh%init('mesh',elemType,mesh_node0)
+  call theMesh%setNelems(mesh_NcpElems)
+  
+  allocate(mesh_element(4+theMesh%elem%nNodes,theMesh%nElems), source=0)
+  mesh_element(1,:) = -1 ! DEPRECATED
+  mesh_element(2,:) = elemType ! DEPRECATED
  
- if (myDebug) write(6,'(a)') ' Built IP neighborhood'; flush(6)
-
- if (usePingPong .and. (mesh_Nelems /= theMesh%nElems)) &
-   call IO_error(600)                                                                          ! ping-pong must be disabled when having non-DAMASK elements
- if (debug_e < 1 .or. debug_e > theMesh%nElems) &
-   call IO_error(602,ext_msg='element')                                                        ! selected element does not exist
- if (debug_i < 1 .or. debug_i > theMesh%elem%nIPs) &
-   call IO_error(602,ext_msg='IP')                                                             ! selected element does not have requested IP
-
- FEsolving_execElem = [ 1,theMesh%nElems ]                                                      ! parallel loop bounds set to comprise all DAMASK elements
- allocate(FEsolving_execIP(2,theMesh%nElems), source=1)                                    ! parallel loop bounds set to comprise from first IP...
- FEsolving_execIP(2,:) = theMesh%elem%nIPs
-
- allocate(calcMode(theMesh%elem%nIPs,theMesh%nElems))
- calcMode = .false.                                                                                 ! pretend to have collected what first call is asking (F = I)
- calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                       ! first ip,el needs to be already pingponged to "calc"
-
- theMesh%homogenizationAt  = mesh_element(3,:)
- theMesh%microstructureAt  = mesh_element(4,:)
+  call mesh_marc_buildElements(initialcondTableStyle,FILEUNIT)
+  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
+  close (FILEUNIT)
+   
+  
+  call mesh_build_FEdata                                                                             ! get properties of the different types of elements
+  call mesh_build_cellconnectivity
+  if (myDebug) write(6,'(a)') ' Built cell connectivity'; flush(6)
+  mesh_cellnode = mesh_build_cellnodes()
+  if (myDebug) write(6,'(a)') ' Built cell nodes'; flush(6)
  
- call discretization_init(mesh_element(3,:),mesh_element(4,:),&
-                          reshape(mesh_ipCoordinates,[3,theMesh%elem%nIPs*theMesh%nElems]),&
-                          mesh_node0)
- call geometry_plastic_nonlocal_setIPvolume(mesh_ipVolume)
- call geometry_plastic_nonlocal_setIPneighborhood(mesh_ipNeighborhood)
- call geometry_plastic_nonlocal_setIParea(mesh_IParea)
- call geometry_plastic_nonlocal_setIPareaNormal(mesh_IPareaNormal)
+  allocate(mesh_ipCoordinates(3,theMesh%elem%nIPs,theMesh%nElems),source=0.0_pReal)
+  call mesh_build_ipCoordinates
+  if (myDebug) write(6,'(a)') ' Built IP coordinates'; flush(6)
+  call mesh_build_ipVolumes
+  if (myDebug) write(6,'(a)') ' Built IP volumes'; flush(6)
+  call mesh_build_ipAreas
+  if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
+ 
+  call IP_neighborhood2
+  if (myDebug) write(6,'(a)') ' Built IP neighborhood'; flush(6)
+ 
+  if (usePingPong .and. (mesh_Nelems /= theMesh%nElems)) &
+    call IO_error(600)                                                                          ! ping-pong must be disabled when having non-DAMASK elements
+  if (debug_e < 1 .or. debug_e > theMesh%nElems) &
+    call IO_error(602,ext_msg='element')                                                        ! selected element does not exist
+  if (debug_i < 1 .or. debug_i > theMesh%elem%nIPs) &
+    call IO_error(602,ext_msg='IP')                                                             ! selected element does not have requested IP
+ 
+  FEsolving_execElem = [ 1,theMesh%nElems ]                                                      ! parallel loop bounds set to comprise all DAMASK elements
+  allocate(FEsolving_execIP(2,theMesh%nElems), source=1)                                    ! parallel loop bounds set to comprise from first IP...
+  FEsolving_execIP(2,:) = theMesh%elem%nIPs
+ 
+  allocate(calcMode(theMesh%elem%nIPs,theMesh%nElems))
+  calcMode = .false.                                                                                 ! pretend to have collected what first call is asking (F = I)
+  calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                       ! first ip,el needs to be already pingponged to "calc"
+ 
+  call discretization_init(mesh_element(3,:),mesh_element(4,:),&
+                           reshape(mesh_ipCoordinates,[3,theMesh%elem%nIPs*theMesh%nElems]),&
+                           mesh_node0)
+  call geometry_plastic_nonlocal_setIPvolume(mesh_ipVolume)
+  call geometry_plastic_nonlocal_setIPneighborhood(mesh_ipNeighborhood2)
+  call geometry_plastic_nonlocal_setIParea(mesh_IParea)
+  call geometry_plastic_nonlocal_setIPareaNormal(mesh_IPareaNormal)
 
 end subroutine mesh_init
 
@@ -373,22 +271,22 @@ end subroutine mesh_init
 !--------------------------------------------------------------------------------------------------
 integer function mesh_marc_get_fileFormat(fileUnit)
  
- integer, intent(in) :: fileUnit
+  integer, intent(in) :: fileUnit
 
- integer, allocatable, dimension(:) :: chunkPos
- character(len=300) line
+  integer, allocatable, dimension(:) :: chunkPos
+  character(len=300) line
 
 
- rewind(fileUnit)
- do
-   read (fileUnit,'(A300)',END=620) line
-   chunkPos = IO_stringPos(line)
-   
-   if ( IO_lc(IO_stringValue(line,chunkPos,1)) == 'version') then
-     mesh_marc_get_fileFormat = IO_intValue(line,chunkPos,2)
-     exit
-   endif
- enddo
+  rewind(fileUnit)
+  do
+    read (fileUnit,'(A300)',END=620) line
+    chunkPos = IO_stringPos(line)
+    
+    if ( IO_lc(IO_stringValue(line,chunkPos,1)) == 'version') then
+      mesh_marc_get_fileFormat = IO_intValue(line,chunkPos,2)
+      exit
+    endif
+  enddo
 
 620 end function mesh_marc_get_fileFormat
 
@@ -396,28 +294,28 @@ integer function mesh_marc_get_fileFormat(fileUnit)
 !--------------------------------------------------------------------------------------------------
 !> @brief Figures out table styles for initial cond and hypoelastic
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_get_tableStyles(initialcond, hypoelastic,fileUnit)
+subroutine mesh_marc_get_tableStyles(initialcond,hypoelastic,fileUnit)
  
- integer, intent(out) :: initialcond, hypoelastic
- integer, intent(in)  :: fileUnit
+  integer, intent(out) :: initialcond, hypoelastic
+  integer, intent(in)  :: fileUnit
 
- integer, allocatable, dimension(:) :: chunkPos
- character(len=300) line
+  integer, allocatable, dimension(:) :: chunkPos
+  character(len=300) line
 
- initialcond = 0
- hypoelastic = 0
+  initialcond = 0
+  hypoelastic = 0
 
- rewind(fileUnit)
- do
-   read (fileUnit,'(A300)',END=620) line
-   chunkPos = IO_stringPos(line)
+  rewind(fileUnit)
+  do
+    read (fileUnit,'(A300)',END=620) line
+    chunkPos = IO_stringPos(line)
 
-   if ( IO_lc(IO_stringValue(line,chunkPos,1)) == 'table' .and. chunkPos(1) > 5) then
-     initialcond = IO_intValue(line,chunkPos,4)
-     hypoelastic = IO_intValue(line,chunkPos,5)
-     exit
-   endif
- enddo
+    if ( IO_lc(IO_stringValue(line,chunkPos,1)) == 'table' .and. chunkPos(1) > 5) then
+      initialcond = IO_intValue(line,chunkPos,4)
+      hypoelastic = IO_intValue(line,chunkPos,5)
+      exit
+    endif
+  enddo
 
 620 end subroutine mesh_marc_get_tableStyles
 
@@ -427,37 +325,37 @@ subroutine mesh_marc_get_tableStyles(initialcond, hypoelastic,fileUnit)
 !--------------------------------------------------------------------------------------------------
 function mesh_marc_get_matNumber(fileUnit,tableStyle)
  
- integer, intent(in)                :: fileUnit, tableStyle
- integer, dimension(:), allocatable :: mesh_marc_get_matNumber
+  integer, intent(in)                :: fileUnit, tableStyle
+  integer, dimension(:), allocatable :: mesh_marc_get_matNumber
 
- integer, allocatable, dimension(:) :: chunkPos
- integer :: i, j, data_blocks
- character(len=300) :: line
+  integer, allocatable, dimension(:) :: chunkPos
+  integer :: i, j, data_blocks
+  character(len=300) :: line
 
- data_blocks = 1
- rewind(fileUnit)
- do
-  read (fileUnit,'(A300)',END=620) line
-  chunkPos = IO_stringPos(line)
-  
-  if ( IO_lc(IO_stringValue(line,chunkPos,1)) == 'hypoelastic') then
-    read (fileUnit,'(A300)',END=620) line
-    if (len(trim(line))/=0) then
-      chunkPos = IO_stringPos(line)
-      data_blocks = IO_intValue(line,chunkPos,1)
-    endif
-    allocate(mesh_marc_get_matNumber(data_blocks), source = 0)
-    do i=1,data_blocks                                                                         ! read all data blocks
-      read (fileUnit,'(A300)',END=620) line
-      chunkPos = IO_stringPos(line)
-      mesh_marc_get_matNumber(i) = IO_intValue(line,chunkPos,1)
-      do j=1_pint,2 + tableStyle                                                               ! read 2 or 3 remaining lines of data block
-        read (fileUnit,'(A300)') line
-      enddo
-    enddo
-    exit
-  endif
- enddo
+  data_blocks = 1
+  rewind(fileUnit)
+  do
+   read (fileUnit,'(A300)',END=620) line
+   chunkPos = IO_stringPos(line)
+   
+   if ( IO_lc(IO_stringValue(line,chunkPos,1)) == 'hypoelastic') then
+     read (fileUnit,'(A300)',END=620) line
+     if (len(trim(line))/=0) then
+       chunkPos = IO_stringPos(line)
+       data_blocks = IO_intValue(line,chunkPos,1)
+     endif
+     allocate(mesh_marc_get_matNumber(data_blocks), source = 0)
+     do i=1,data_blocks                                                                             ! read all data blocks
+       read (fileUnit,'(A300)',END=620) line
+       chunkPos = IO_stringPos(line)
+       mesh_marc_get_matNumber(i) = IO_intValue(line,chunkPos,1)
+       do j=1_pint,2 + tableStyle                                                                   ! read 2 or 3 remaining lines of data block
+         read (fileUnit,'(A300)') line
+       enddo
+     enddo
+     exit
+   endif
+  enddo
 
 620 end function mesh_marc_get_matNumber
 
@@ -467,29 +365,29 @@ function mesh_marc_get_matNumber(fileUnit,tableStyle)
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_count_nodesAndElements(nNodes, nElems, fileUnit)
  
- integer, intent(in)  :: fileUnit
- integer, intent(out) :: nNodes, nElems
- 
- integer, allocatable, dimension(:) :: chunkPos
- character(len=300) :: line
+  integer, intent(in)  :: fileUnit
+  integer, intent(out) :: nNodes, nElems
+  
+  integer, allocatable, dimension(:) :: chunkPos
+  character(len=300) :: line
 
- nNodes = 0
- nElems = 0
+  nNodes = 0
+  nElems = 0
 
- rewind(fileUnit)
- do
-   read (fileUnit,'(A300)',END=620) line
-   chunkPos = IO_stringPos(line)
+  rewind(fileUnit)
+  do
+    read (fileUnit,'(A300)',END=620) line
+    chunkPos = IO_stringPos(line)
 
-   if ( IO_lc(IO_StringValue(line,chunkPos,1)) == 'sizing') &
-     nElems = IO_IntValue (line,chunkPos,3)
-   if ( IO_lc(IO_StringValue(line,chunkPos,1)) == 'coordinates') then
-     read (fileUnit,'(A300)') line
-     chunkPos = IO_stringPos(line)
-     nNodes = IO_IntValue (line,chunkPos,2)
-     exit                                                                                           ! assumes that "coordinates" comes later in file
-   endif
- enddo
+    if ( IO_lc(IO_StringValue(line,chunkPos,1)) == 'sizing') &
+      nElems = IO_IntValue (line,chunkPos,3)
+    if ( IO_lc(IO_StringValue(line,chunkPos,1)) == 'coordinates') then
+      read (fileUnit,'(A300)') line
+      chunkPos = IO_stringPos(line)
+      nNodes = IO_IntValue (line,chunkPos,2)
+      exit                                                                                          ! assumes that "coordinates" comes later in file
+    endif
+  enddo
 
 620 end subroutine mesh_marc_count_nodesAndElements
 
@@ -499,8 +397,8 @@ subroutine mesh_marc_count_nodesAndElements(nNodes, nElems, fileUnit)
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_count_elementSets(nElemSets,maxNelemInSet,fileUnit)
  
-  integer, intent(in)  :: fileUnit
   integer, intent(out) :: nElemSets, maxNelemInSet
+  integer, intent(in)  :: fileUnit
 
   integer, allocatable, dimension(:) :: chunkPos
   character(len=300) :: line
@@ -528,9 +426,9 @@ subroutine mesh_marc_count_elementSets(nElemSets,maxNelemInSet,fileUnit)
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_map_elementSets(nameElemSet,mapElemSet,fileUnit)
  
-  integer,                           intent(in)  :: fileUnit
   character(len=64), dimension(:),   intent(out) :: nameElemSet
   integer,           dimension(:,:), intent(out) :: mapElemSet
+  integer,                           intent(in)  :: fileUnit
 
   integer, allocatable, dimension(:) :: chunkPos
   character(len=300) :: line
@@ -622,30 +520,30 @@ end subroutine mesh_marc_map_elements
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_map_nodes(nNodes,fileUnit)
 
- integer, intent(in) :: fileUnit, nNodes
+  integer, intent(in) :: fileUnit, nNodes
 
- integer, allocatable, dimension(:) :: chunkPos
- character(len=300) line
+  integer, allocatable, dimension(:) :: chunkPos
+  character(len=300) line
 
- integer, dimension (nNodes) :: node_count
- integer :: i
+  integer, dimension (nNodes) :: node_count
+  integer :: i
 
- node_count = 0
+  node_count = 0
 
- rewind(fileUnit)
- do
-   read (fileUnit,'(A300)',END=650) line
-   chunkPos = IO_stringPos(line)
-   if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'coordinates' ) then
-     read (fileUnit,'(A300)') line                                                                  ! skip crap line
-     do i = 1,nNodes
-       read (fileUnit,'(A300)') line
-       mesh_mapFEtoCPnode(1,i) = IO_fixedIntValue (line,[0,10],1)
-       mesh_mapFEtoCPnode(2,i) = i
-     enddo
-     exit
-   endif
- enddo
+  rewind(fileUnit)
+  do
+    read (fileUnit,'(A300)',END=650) line
+    chunkPos = IO_stringPos(line)
+    if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'coordinates' ) then
+      read (fileUnit,'(A300)') line                                                                 ! skip crap line
+      do i = 1,nNodes
+        read (fileUnit,'(A300)') line
+        mesh_mapFEtoCPnode(1,i) = IO_fixedIntValue (line,[0,10],1)
+        mesh_mapFEtoCPnode(2,i) = i
+      enddo
+      exit
+    endif
+  enddo
 
 650 call math_sort(mesh_mapFEtoCPnode,1,int(size(mesh_mapFEtoCPnode,2),pInt))
 
@@ -657,31 +555,31 @@ end subroutine mesh_marc_map_nodes
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_build_nodes(fileUnit)
 
- integer, intent(in) :: fileUnit
+  integer, intent(in) :: fileUnit
 
- integer, dimension(5), parameter   :: node_ends = [0,10,30,50,70]
- integer, allocatable, dimension(:) :: chunkPos
- character(len=300) :: line
- integer :: i,j,m
+  integer, dimension(5), parameter   :: node_ends = [0,10,30,50,70]
+  integer, allocatable, dimension(:) :: chunkPos
+  character(len=300) :: line
+  integer :: i,j,m
 
- allocate ( mesh_node0 (3,mesh_Nnodes), source=0.0_pReal)
+  allocate ( mesh_node0 (3,mesh_Nnodes), source=0.0_pReal)
 
- rewind(fileUnit)
- do
-   read (fileUnit,'(A300)',END=670) line
-   chunkPos = IO_stringPos(line)
-   if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'coordinates' ) then
-     read (fileUnit,'(A300)') line                                                                  ! skip crap line
-     do i=1,mesh_Nnodes
-       read (fileUnit,'(A300)') line
-       m = mesh_FEasCP('node',IO_fixedIntValue(line,node_ends,1))
-       do j = 1,3
-         mesh_node0(j,m) = mesh_unitlength * IO_fixedNoEFloatValue(line,node_ends,j+1)
-       enddo
-     enddo
-     exit
-   endif
- enddo
+  rewind(fileUnit)
+  do
+    read (fileUnit,'(A300)',END=670) line
+    chunkPos = IO_stringPos(line)
+    if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'coordinates' ) then
+      read (fileUnit,'(A300)') line                                                                 ! skip crap line
+      do i=1,mesh_Nnodes
+        read (fileUnit,'(A300)') line
+        m = mesh_FEasCP('node',IO_fixedIntValue(line,node_ends,1))
+        do j = 1,3
+          mesh_node0(j,m) = mesh_unitlength * IO_fixedNoEFloatValue(line,node_ends,j+1)
+        enddo
+      enddo
+      exit
+    endif
+  enddo
 
 670 mesh_node = mesh_node0
 
@@ -877,8 +775,8 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
   integer,dimension(:), allocatable :: candidates_local
   integer,dimension(:,:,:), allocatable :: connectivity_cell
   integer,dimension(:,:), allocatable :: connectivity_cell_reshape
-  real(pReal), dimension(:,:), allocatable :: coordinates,nodes5
-  integer :: e, n, c, p, s,u,i,m,j,nParentNodes,nCellNode,ierr,Nelem,candidateID
+  real(pReal), dimension(:,:), allocatable :: nodes_new,nodes
+  integer :: e, n, c, p, s,i,m,j,nParentNodes,nCellNode,Nelem,candidateID
   
   Nelem = thisMesh%Nelems
 
@@ -976,7 +874,7 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
       
     
     ! calculate coordinates of cell nodes and insert their ID into the cell conectivity
-    coordinates = reshape([(0.0_pReal,j = 1, 3*i)], [3,i])
+    nodes_new = reshape([(0.0_pReal,j = 1, 3*i)], [3,i])
     
     i = 1
     n = 1
@@ -987,10 +885,10 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
      e = candidates_global(nParentNodes*2+1,n+j)
      c = candidates_global(nParentNodes*2+2,n+j)
      do m = 1, nParentNodes
-       coordinates(:,i) = coordinates(:,i) &
-                        + thisMesh%node_0(:,parentsAndWeights(m,1)) * real(parentsAndWeights(m,2),pReal)
+       nodes_new(:,i) = nodes_new(:,i) &
+                      + thisMesh%node_0(:,parentsAndWeights(m,1)) * real(parentsAndWeights(m,2),pReal)
      enddo
-     coordinates(:,i) =  coordinates(:,i)/real(sum(parentsAndWeights(:,2)),pReal)
+     nodes_new(:,i) =  nodes_new(:,i)/real(sum(parentsAndWeights(:,2)),pReal)
 
      do while (n+j<= size(candidates_local)*Nelem)
        if (any(candidates_global(1:2*nParentNodes,n+j)/=candidates_global(1:2*nParentNodes,n))) exit
@@ -1005,11 +903,11 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
 
     enddo
     nCellNode = nCellNode + i
-    if (i/=0) nodes5 = reshape([nodes5,coordinates],[3,nCellNode])
+    if (i/=0) nodes = reshape([nodes,nodes_new],[3,nCellNode])
    enddo
-   thisMesh%node_0 = nodes5
+   thisMesh%node_0 = nodes
    mesh_cell2 = connectivity_cell
- connectivity_cell_reshape = reshape(connectivity_cell,[elem%NcellNodesPerCell,elem%nIPs*thisMesh%Nelems])
+ connectivity_cell_reshape = reshape(connectivity_cell,[elem%NcellNodesPerCell,elem%nIPs*Nelem])
  
 #if defined(DAMASK_HDF5) 
  call results_openJobFile
@@ -1017,6 +915,7 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
                            'connectivity of the cells','-')
  call results_closeJobFile
 #endif  
+
 end subroutine buildCells
 
 
@@ -1252,17 +1151,6 @@ subroutine IP_neighborhood2
    endif
    f = f +1 
  enddo
- call geometry_plastic_nonlocal_setIPneighborhood(mesh_ipNeighborhood2)
-
-  do e = 1,theMesh%nElems
-    do i = 1,theMesh%elem%nIPs
-      do n = 1, theMesh%elem%nIPneighbors
-      write(6,'(a,i1.1,x,i1.1,x,i1.1)') 'e,i,n ',e,i,n
-      write(6,'(i1.1,x,i1.1,x,i3.2)') mesh_ipNeighborhood(1:3,n,i,e)
-      write(6,'(i1.1,x,i1.1,x,i3.2)') mesh_ipNeighborhood2(1:3,n,i,e)
-      enddo
-    enddo
-  enddo
 
 end subroutine IP_neighborhood2
 
@@ -1367,394 +1255,6 @@ subroutine mesh_build_ipAreas
  !$OMP END PARALLEL DO
 
 end subroutine mesh_build_ipAreas
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief assignment of twin nodes for each cp node, allocate globals '_nodeTwins'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_build_nodeTwins
-
- 
- integer dir, &      ! direction of periodicity
-               node, &
-               minimumNode, &
-               maximumNode, &
-               n1, &
-               n2
- integer, dimension(mesh_Nnodes+1) :: minimumNodes, maximumNodes                              ! list of surface nodes (minimum and maximum coordinate value) with first entry giving the number of nodes
- real(pReal)   minCoord, maxCoord, &                                                                ! extreme positions in one dimension
-               tolerance                                                                            ! tolerance below which positions are assumed identical
- real(pReal), dimension(3) ::  distance                                                             ! distance between two nodes in all three coordinates
- logical, dimension(mesh_Nnodes) :: unpaired
-
- allocate(mesh_nodeTwins(3,mesh_Nnodes))
- mesh_nodeTwins = 0
-
- tolerance = 0.001_pReal * minval(mesh_ipVolume) ** 0.333_pReal
-
- do dir = 1,3                                                                             ! check periodicity in directions of x,y,z
-   if (mesh_periodicSurface(dir)) then                                                              ! only if periodicity is requested
-
-
-     !*** find out which nodes sit on the surface
-     !*** and have a minimum or maximum position in this dimension
-
-     minimumNodes = 0
-     maximumNodes = 0
-     minCoord = minval(mesh_node0(dir,:))
-     maxCoord = maxval(mesh_node0(dir,:))
-     do node = 1,mesh_Nnodes                                                                   ! loop through all nodes and find surface nodes
-       if (abs(mesh_node0(dir,node) - minCoord) <= tolerance) then
-         minimumNodes(1) = minimumNodes(1) + 1
-         minimumNodes(minimumNodes(1)+1) = node
-       elseif (abs(mesh_node0(dir,node) - maxCoord) <= tolerance) then
-         maximumNodes(1) = maximumNodes(1) + 1
-         maximumNodes(maximumNodes(1)+1) = node
-       endif
-     enddo
-
-
-     !*** find the corresponding node on the other side with the same position in this dimension
-
-     unpaired = .true.
-     do n1 = 1,minimumNodes(1)
-       minimumNode = minimumNodes(n1+1)
-       if (unpaired(minimumNode)) then
-         do n2 = 1,maximumNodes(1)
-           maximumNode = maximumNodes(n2+1)
-           distance = abs(mesh_node0(:,minimumNode) - mesh_node0(:,maximumNode))
-           if (sum(distance) - distance(dir) <= tolerance) then                                     ! minimum possible distance (within tolerance)
-             mesh_nodeTwins(dir,minimumNode) = maximumNode
-             mesh_nodeTwins(dir,maximumNode) = minimumNode
-             unpaired(maximumNode) = .false.                                                        ! remember this node, we don't have to look for his partner again
-             exit
-           endif
-         enddo
-       endif
-     enddo
-
-   endif
- enddo
-
-end subroutine mesh_build_nodeTwins
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief  get maximum count of shared elements among cpElements and build list of elements shared
-!! by each node in mesh. Allocate globals '_maxNsharedElems' and '_sharedElem'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_build_sharedElems
-
- 
- integer(pint)   e, &                                                                                ! element index
-                 g, &                                                                                ! element type
-                 node, &                                                                             ! CP node index
-                 n, &                                                                                ! node index per element
-                 myDim, &                                                                            ! dimension index
-                 nodeTwin                                                                            ! node twin in the specified dimension
- integer, dimension (mesh_Nnodes) :: node_count
- integer, dimension(:), allocatable :: node_seen
-
- allocate(node_seen(maxval(FE_NmatchingNodes)))
-
- node_count = 0
-
- do e = 1,theMesh%nElems
-   g = theMesh%elem%geomType
-   node_seen = 0                                                                                ! reset node duplicates
-   do n = 1,FE_NmatchingNodes(g)                                                                ! check each node of element
-     node = mesh_element(4+n,e)
-     if (all(node_seen /= node)) then
-       node_count(node) = node_count(node) + 1                                                  ! if FE node not yet encountered -> count it
-       do myDim = 1,3                                                                      ! check in each dimension...
-         nodeTwin = mesh_nodeTwins(myDim,node)
-         if (nodeTwin > 0) &                                                                    ! if I am a twin of some node...
-           node_count(nodeTwin) = node_count(nodeTwin) + 1                                      ! -> count me again for the twin node
-       enddo
-     endif
-     node_seen(n) = node                                                                             ! remember this node to be counted already
-   enddo
- enddo
-
- mesh_maxNsharedElems = int(maxval(node_count),pInt)                                                 ! most shared node
-
- allocate(mesh_sharedElem(1+mesh_maxNsharedElems,mesh_Nnodes),source=0)
-
- do e = 1,theMesh%nElems
-   g = theMesh%elem%geomType
-   node_seen = 0
-   do n = 1,FE_NmatchingNodes(g)
-     node = mesh_element(4+n,e)
-     if (all(node_seen /= node)) then
-       mesh_sharedElem(1,node) = mesh_sharedElem(1,node) + 1                                    ! count for each node the connected elements
-       mesh_sharedElem(mesh_sharedElem(1,node)+1,node) = e                                      ! store the respective element id
-       do myDim = 1,3                                                                      ! check in each dimension...
-         nodeTwin = mesh_nodeTwins(myDim,node)
-         if (nodeTwin > 0) then                                                                 ! if i am a twin of some node...
-           mesh_sharedElem(1,nodeTwin) = mesh_sharedElem(1,nodeTwin) + 1                        ! ...count me again for the twin
-           mesh_sharedElem(mesh_sharedElem(1,nodeTwin)+1,nodeTwin) = e                               ! store the respective element id
-         endif
-       enddo
-     endif
-     node_seen(n) = node
-   enddo
- enddo
-
-end subroutine mesh_build_sharedElems
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief build up of IP neighborhood, allocate globals '_ipNeighborhood'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_build_ipNeighborhood
-
- integer      ::           myElem, &                                                           ! my CP element index
-                                 myIP, &
-                                 myType, &                                                           ! my element type
-                                 myFace, &
-                                 neighbor, &                                                         ! neighor index
-                                 neighboringIPkey, &                                                 ! positive integer indicating the neighboring IP (for intra-element) and negative integer indicating the face towards neighbor (for neighboring element)
-                                 candidateIP, &
-                                 neighboringType, &                                                  ! element type of neighbor
-                                 NlinkedNodes, &                                                     ! number of linked nodes
-                                 twin_of_linkedNode, &                                               ! node twin of a specific linkedNode
-                                 NmatchingNodes, &                                                   ! number of matching nodes
-                                 dir, &                                                              ! direction of periodicity
-                                 matchingElem, &                                                     ! CP elem number of matching element
-                                 matchingFace, &                                                     ! face ID of matching element
-                                 a, anchor, &
-                                 neighboringIP, &
-                                 neighboringElem, &
-                                 pointingToMe
- integer, dimension(FE_maxmaxNnodesAtIP) :: &
-                                 linkedNodes = 0, &
-                                 matchingNodes
- logical checkTwins
-
- allocate(mesh_ipNeighborhood(3,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems))
- mesh_ipNeighborhood = 0
-
-
- do myElem = 1,theMesh%nElems                                                                    ! loop over cpElems
-   myType = theMesh%elem%geomType
-   do myIP = 1,theMesh%elem%nIPs
-
-     do neighbor = 1,FE_NipNeighbors(theMesh%elem%cellType)                                       ! loop over neighbors of IP
-       neighboringIPkey = theMesh%elem%IPneighbor(neighbor,myIP)
-
-       !*** if the key is positive, the neighbor is inside the element
-       !*** that means, we have already found our neighboring IP
-
-       if (neighboringIPkey > 0) then
-         mesh_ipNeighborhood(1,neighbor,myIP,myElem) = myElem
-         mesh_ipNeighborhood(2,neighbor,myIP,myElem) = neighboringIPkey
-
-
-       !*** if the key is negative, the neighbor resides in a neighboring element
-       !*** that means, we have to look through the face indicated by the key and see which element is behind that face
-
-       elseif (neighboringIPkey < 0) then                                                       ! neighboring element's IP
-         myFace = -neighboringIPkey
-         call mesh_faceMatch(myElem, myFace, matchingElem, matchingFace)                             ! get face and CP elem id of face match
-         if (matchingElem > 0) then                                                             ! found match?
-           neighboringType = theMesh%elem%geomType
-
-           !*** trivial solution if neighbor has only one IP
-
-           if (theMesh%elem%nIPs == 1) then
-             mesh_ipNeighborhood(1,neighbor,myIP,myElem) = matchingElem
-             mesh_ipNeighborhood(2,neighbor,myIP,myElem) = 1
-             cycle
-           endif
-
-           !*** find those nodes which build the link to the neighbor
-
-           NlinkedNodes = 0
-           linkedNodes = 0
-           do a = 1,theMesh%elem%maxNnodeAtIP
-             anchor = theMesh%elem%NnodeAtIP(a,myIP)
-             if (anchor /= 0) then                                                              ! valid anchor node
-               if (any(FE_face(:,myFace,myType) == anchor)) then                                     ! ip anchor sits on face?
-                 NlinkedNodes = NlinkedNodes + 1
-                 linkedNodes(NlinkedNodes) = mesh_element(4+anchor,myElem)                      ! CP id of anchor node
-               else                                                                                  ! something went wrong with the linkage, since not all anchors sit on my face
-                 NlinkedNodes = 0
-                 linkedNodes = 0
-                 exit
-               endif
-             endif
-           enddo
-
-           !*** loop through the ips of my neighbor
-           !*** and try to find an ip with matching nodes
-           !*** also try to match with node twins
-
- checkCandidateIP: do candidateIP = 1,theMesh%elem%nIPs
-             NmatchingNodes = 0
-             matchingNodes = 0
-             do a = 1,theMesh%elem%maxNnodeAtIP
-               anchor = theMesh%elem%NnodeAtIP(a,candidateIP)
-               if (anchor /= 0) then                                                            ! valid anchor node
-                 if (any(FE_face(:,matchingFace,neighboringType) == anchor)) then                    ! sits on matching face?
-                   NmatchingNodes = NmatchingNodes + 1
-                   matchingNodes(NmatchingNodes) = mesh_element(4+anchor,matchingElem)               ! CP id of neighbor's anchor node
-                 else                                                                                ! no matching, because not all nodes sit on the matching face
-                   NmatchingNodes = 0
-                   matchingNodes = 0
-                   exit
-                 endif
-               endif
-             enddo
-
-             if (NmatchingNodes /= NlinkedNodes) &                                                   ! this ip has wrong count of anchors on face
-               cycle checkCandidateIP
-
-             !*** check "normal" nodes whether they match or not
-
-             checkTwins = .false.
-             do a = 1,NlinkedNodes
-               if (all(matchingNodes /= linkedNodes(a))) then                                        ! this linkedNode does not match any matchingNode
-                 checkTwins = .true.
-                 exit                                                                                ! no need to search further
-               endif
-             enddo
-
-             !*** if no match found, then also check node twins
-
-             if(checkTwins) then
-               dir = int(maxloc(abs(mesh_ipAreaNormal(1:3,neighbor,myIP,myElem)),1),pInt)            ! check for twins only in direction of the surface normal
-               do a = 1,NlinkedNodes
-                 twin_of_linkedNode = mesh_nodeTwins(dir,linkedNodes(a))
-                 if (twin_of_linkedNode == 0 .or. &                                             ! twin of linkedNode does not exist...
-                     all(matchingNodes /= twin_of_linkedNode)) then                                  ! ... or it does not match any matchingNode
-                   cycle checkCandidateIP                                                            ! ... then check next candidateIP
-                 endif
-               enddo
-             endif
-
-             !*** we found a match !!!
-
-             mesh_ipNeighborhood(1,neighbor,myIP,myElem) = matchingElem
-             mesh_ipNeighborhood(2,neighbor,myIP,myElem) = candidateIP
-             exit checkCandidateIP
-           enddo checkCandidateIP
-         endif                                                                                       ! end of valid external matching
-       endif                                                                                         ! end of internal/external matching
-     enddo
-   enddo
- enddo
- do myElem = 1,theMesh%nElems                                                                    ! loop over cpElems
-   myType = theMesh%elem%geomType
-   do myIP = 1,theMesh%elem%nIPs
-     do neighbor = 1,FE_NipNeighbors(theMesh%elem%cellType)                                       ! loop over neighbors of IP
-       neighboringElem = mesh_ipNeighborhood(1,neighbor,myIP,myElem)
-       neighboringIP   = mesh_ipNeighborhood(2,neighbor,myIP,myElem)
-       if (neighboringElem > 0 .and. neighboringIP > 0) then                               ! if neighbor exists ...
-         neighboringType = theMesh%elem%geomType
-         do pointingToMe = 1,FE_NipNeighbors(theMesh%elem%cellType)                      ! find neighboring index that points from my neighbor to myself
-           if (    myElem == mesh_ipNeighborhood(1,pointingToMe,neighboringIP,neighboringElem) &
-               .and. myIP == mesh_ipNeighborhood(2,pointingToMe,neighboringIP,neighboringElem)) then ! possible candidate
-             if (math_mul3x3(mesh_ipAreaNormal(1:3,neighbor,myIP,myElem),&
-                             mesh_ipAreaNormal(1:3,pointingToMe,neighboringIP,neighboringElem)) < 0.0_pReal) then ! area normals have opposite orientation (we have to check that because of special case for single element with two ips and periodicity. In this case the neighbor is identical in two different directions.)
-               mesh_ipNeighborhood(3,neighbor,myIP,myElem) = pointingToMe                            ! found match
-               exit                                                                                  ! so no need to search further
-             endif
-           endif
-         enddo
-       endif
-     enddo
-   enddo
- enddo
- 
- contains
- 
- !--------------------------------------------------------------------------------------------------
-!> @brief find face-matching element of same type
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_faceMatch(elem, face ,matchingElem, matchingFace)
-
-integer, intent(out) ::     matchingElem, &                                                   ! matching CP element ID
-                                  matchingFace                                                      ! matching face ID
-integer, intent(in) ::      face, &                                                           ! face ID
-                                  elem                                                              ! CP elem ID
-integer, dimension(FE_NmatchingNodesPerFace(face,theMesh%elem%geomType)) :: &
-                                  myFaceNodes                                                       ! global node ids on my face
-integer        ::           myType, &
-                                  candidateType, &
-                                  candidateElem, &
-                                  candidateFace, &
-                                  candidateFaceNode, &
-                                  minNsharedElems, &
-                                  NsharedElems, &
-                                  lonelyNode = 0, &
-                                  i, &
-                                  n, &
-                                  dir                                                               ! periodicity direction
-integer, dimension(:), allocatable :: element_seen
-logical checkTwins
-
-matchingElem = 0
-matchingFace = 0
-minNsharedElems = mesh_maxNsharedElems + 1                                                     ! init to worst case
-myType =theMesh%elem%geomType
-
-do n = 1,FE_NmatchingNodesPerFace(face,myType)                                                 ! loop over nodes on face
-  myFaceNodes(n) = mesh_element(4+FE_face(n,face,myType),elem)                                 ! CP id of face node
-  NsharedElems = mesh_sharedElem(1,myFaceNodes(n))                                             ! figure # shared elements for this node
-  if (NsharedElems < minNsharedElems) then
-    minNsharedElems = NsharedElems                                                                  ! remember min # shared elems
-    lonelyNode = n                                                                                  ! remember most lonely node
-  endif
-enddo
-
-allocate(element_seen(minNsharedElems))
-element_seen = 0
-
-checkCandidate: do i = 1,minNsharedElems                                                       ! iterate over lonelyNode's shared elements
-  candidateElem = mesh_sharedElem(1+i,myFaceNodes(lonelyNode))                                 ! present candidate elem
-  if (all(element_seen /= candidateElem)) then                                                      ! element seen for the first time?
-    element_seen(i) = candidateElem
-    candidateType = theMesh%elem%geomType
-checkCandidateFace: do candidateFace = 1,FE_maxNipNeighbors                                    ! check each face of candidate
-      if (FE_NmatchingNodesPerFace(candidateFace,candidateType) &
-          /= FE_NmatchingNodesPerFace(face,myType) &                                                ! incompatible face
-          .or. (candidateElem == elem .and. candidateFace == face)) then                            ! this is my face
-        cycle checkCandidateFace
-      endif
-      checkTwins = .false.
-      do n = 1,FE_NmatchingNodesPerFace(candidateFace,candidateType)                           ! loop through nodes on face
-        candidateFaceNode = mesh_element(4+FE_face(n,candidateFace,candidateType),candidateElem)
-        if (all(myFaceNodes /= candidateFaceNode)) then                                             ! candidate node does not match any of my face nodes
-          checkTwins = .true.                                                                       ! perhaps the twin nodes do match
-          exit
-        endif
-      enddo
-      if(checkTwins) then
-checkCandidateFaceTwins: do dir = 1,3
-          do n = 1,FE_NmatchingNodesPerFace(candidateFace,candidateType)                       ! loop through nodes on face
-            candidateFaceNode = mesh_element(4+FE_face(n,candidateFace,candidateType),candidateElem)
-            if (all(myFaceNodes /= mesh_nodeTwins(dir,candidateFaceNode))) then                     ! node twin does not match either
-              if (dir == 3) then
-                cycle checkCandidateFace
-              else
-                cycle checkCandidateFaceTwins                                                       ! try twins in next dimension
-              endif
-            endif
-          enddo
-          exit checkCandidateFaceTwins
-        enddo checkCandidateFaceTwins
-      endif
-      matchingFace = candidateFace
-      matchingElem = candidateElem
-      exit checkCandidate                                                                           ! found my matching candidate
-    enddo checkCandidateFace
-  endif
-enddo checkCandidate
-
-end subroutine mesh_faceMatch
-
-end subroutine mesh_build_ipNeighborhood
-
 
 
 !--------------------------------------------------------------------------------------------------
