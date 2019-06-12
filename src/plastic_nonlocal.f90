@@ -18,7 +18,6 @@ module plastic_nonlocal
   use lattice
   use discretization
   use geometry_plastic_nonlocal, only: &
-    geometry_plastic_nonlocal_disable, &
     nIPneighbors    => geometry_plastic_nonlocal_nIPneighbors, &
     IPneighborhood  => geometry_plastic_nonlocal_IPneighborhood, &
     IPvolume        => geometry_plastic_nonlocal_IPvolume0, &
