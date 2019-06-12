@@ -8,6 +8,7 @@ module source_damage_isoBrittle
   use prec
   use debug
   use IO
+  use math
   use material
   use config
 
