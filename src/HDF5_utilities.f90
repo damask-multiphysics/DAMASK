@@ -5,14 +5,17 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !--------------------------------------------------------------------------------------------------
 module HDF5_utilities
+#if defined(PETSc) || defined(DAMASK_HDF5)
+  use HDF5
+#endif
+#ifdef PETSc
+  use PETSC
+#endif
+
   use prec
   use IO
   use rotations
   use numerics
-  use HDF5
-#ifdef PETSc
-  use PETSC
-#endif
 
  implicit none
  public
