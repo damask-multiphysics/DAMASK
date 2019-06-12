@@ -829,7 +829,7 @@ subroutine mesh_marc_buildElements(initialcondTableStyle,fileUnit)
   call results_closeJobFile
 #endif
  
-  call calcCells(theMesh,theMesh%elem,mesh_element(5:,:))
+  call buildCells(theMesh,theMesh%elem,mesh_element(5:,:))
  
   read (fileUnit,'(A300)',END=630) line
   do
@@ -868,15 +868,15 @@ subroutine mesh_marc_buildElements(initialcondTableStyle,fileUnit)
 630 end subroutine mesh_marc_buildElements
 
 
-subroutine calcCells(thisMesh,elem,connectivity_elem)
+subroutine buildCells(thisMesh,elem,connectivity_elem)
 
   class(tMesh)    :: thisMesh
   type(tElement)  :: elem
   integer,dimension(:,:), intent(in) :: connectivity_elem
-  integer,dimension(:,:), allocatable :: con_elem,temp,con,parentsAndWeights,candidates_global
-  integer,dimension(:), allocatable :: l, nodes, candidates_local
-  integer,dimension(:,:,:), allocatable :: con_cell,connectivity_cell
-  integer,dimension(:,:), allocatable :: sorted,test,connectivity_cell_reshape
+  integer,dimension(:,:), allocatable :: parentsAndWeights,candidates_global
+  integer,dimension(:), allocatable :: candidates_local
+  integer,dimension(:,:,:), allocatable :: connectivity_cell
+  integer,dimension(:,:), allocatable :: connectivity_cell_reshape
   real(pReal), dimension(:,:), allocatable :: coordinates,nodes5
   integer :: e, n, c, p, s,u,i,m,j,nParentNodes,nCellNode,ierr,Nelem,candidateID
   
@@ -1017,7 +1017,7 @@ subroutine calcCells(thisMesh,elem,connectivity_elem)
                            'connectivity of the cells','-')
  call results_closeJobFile
 #endif  
-end subroutine calcCells
+end subroutine buildCells
 
 
 !--------------------------------------------------------------------------------------------------
