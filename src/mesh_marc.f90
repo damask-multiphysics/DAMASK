@@ -121,8 +121,7 @@ integer, dimension(:,:), allocatable :: &
   ],pInt)
 
 
- integer, private :: &
-   mesh_Nelems, &                                                                                   !< total number of elements in mesh (including non-DAMASK elements)
+ integer :: &
    mesh_NelemSets
  character(len=64), dimension(:), allocatable :: &
    mesh_nameElemSet
@@ -159,7 +158,7 @@ subroutine mesh_init(ip,el)
   integer, parameter  :: FILEUNIT = 222
   integer :: j, fileFormatVersion, elemType, &
     mesh_maxNelemInSet, &
-    mesh_NcpElems, &
+    mesh_nElems, &
     hypoelasticTableStyle, &
     initialcondTableStyle
   logical :: myDebug
@@ -193,11 +192,10 @@ subroutine mesh_init(ip,el)
   call mesh_marc_map_elementSets(mesh_nameElemSet,mesh_mapElemSet,FILEUNIT)
   if (myDebug) write(6,'(a)') ' Mapped element sets'; flush(6)
   
-  mesh_NcpElems =  mesh_nElems
   if (myDebug) write(6,'(a)') ' Counted CP elements'; flush(6)
   
-  allocate (mesh_mapFEtoCPelem(2,mesh_NcpElems), source = 0)
-  call mesh_marc_map_elements(hypoelasticTableStyle,mesh_nameElemSet,mesh_mapElemSet,mesh_NcpElems,fileFormatVersion,FILEUNIT)
+  allocate (mesh_mapFEtoCPelem(2,mesh_nElems), source = 0)
+  call mesh_marc_map_elements(hypoelasticTableStyle,mesh_nameElemSet,mesh_mapElemSet,mesh_nElems,fileFormatVersion,FILEUNIT)
   if (myDebug) write(6,'(a)') ' Mapped elements'; flush(6)
   
   allocate (mesh_mapFEtoCPnode(2,mesh_Nnodes),source=0)
@@ -212,13 +210,13 @@ subroutine mesh_init(ip,el)
   if (myDebug) write(6,'(a)') ' Counted CP sizes'; flush(6)
   
   call theMesh%init('mesh',elemType,mesh_node0)
-  call theMesh%setNelems(mesh_NcpElems)
+  call theMesh%setNelems(mesh_nElems)
   
   allocate(mesh_element(4+theMesh%elem%nNodes,theMesh%nElems), source=0)
   mesh_element(1,:) = -1 ! DEPRECATED
   mesh_element(2,:) = elemType ! DEPRECATED
  
-  call mesh_marc_buildElements(initialcondTableStyle,FILEUNIT)
+  call mesh_marc_buildElements(mesh_nElems,initialcondTableStyle,FILEUNIT)
   if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
   close (FILEUNIT)
    
@@ -349,7 +347,7 @@ function mesh_marc_get_matNumber(fileUnit,tableStyle)
        read (fileUnit,'(A300)',END=620) line
        chunkPos = IO_stringPos(line)
        mesh_marc_get_matNumber(i) = IO_intValue(line,chunkPos,1)
-       do j=1_pint,2 + tableStyle                                                                   ! read 2 or 3 remaining lines of data block
+       do j=1,2 + tableStyle                                                                        ! read 2 or 3 remaining lines of data block
          read (fileUnit,'(A300)') line
        enddo
      enddo
@@ -510,7 +508,7 @@ subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,nElems,fileF
       mesh_mapFEtoCPelem(2,cpElem) = cpElem
     enddo
  
-call math_sort(mesh_mapFEtoCPelem,1,int(size(mesh_mapFEtoCPelem,2),pInt))                ! should be mesh_NcpElems
+call math_sort(mesh_mapFEtoCPelem,1,size(mesh_mapFEtoCPelem,2))
 
 end subroutine mesh_marc_map_elements
 
@@ -676,16 +674,17 @@ end function mapElemtype
 !--------------------------------------------------------------------------------------------------
 !> @brief Stores node IDs and homogenization and microstructure ID
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_buildElements(initialcondTableStyle,fileUnit)
+subroutine mesh_marc_buildElements(nElem,initialcondTableStyle,fileUnit)
  
   integer, intent(in) :: &
+    nElem, &
     initialcondTableStyle, &
     fileUnit
  
   integer, allocatable, dimension(:) :: chunkPos
   character(len=300) line
  
-  integer, dimension(1+theMesh%nElems) :: contInts
+  integer, dimension(1+nElem) :: contInts
   integer :: i,j,t,sv,myVal,e,nNodesAlreadyRead
  
   rewind(fileUnit)
@@ -694,7 +693,7 @@ subroutine mesh_marc_buildElements(initialcondTableStyle,fileUnit)
     chunkPos = IO_stringPos(line)
     if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'connectivity' ) then
       read (fileUnit,'(A300)',END=620) line                                                         ! garbage line
-      do i = 1,mesh_Nelems
+      do i = 1,nElem
         read (fileUnit,'(A300)',END=620) line
         chunkPos = IO_stringPos(line)
         e = mesh_FEasCP('elem',IO_intValue(line,chunkPos,1))
@@ -813,13 +812,13 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
     s = size(candidates_local)
     
     if (allocated(candidates_global)) deallocate(candidates_global)
-    allocate(candidates_global(nParentNodes*2+2,s*Nelem))                     ! stores parent node ID + weight together with element ID and cellnode id (local)
-    parentsAndWeights = reshape([(0, i = 1,2*nParentNodes)],[nParentNodes,2]) ! allocate without deallocate
+    allocate(candidates_global(nParentNodes*2+2,s*Nelem))                                           ! stores parent node ID + weight together with element ID and cellnode id (local)
+    parentsAndWeights = reshape([(0, i = 1,2*nParentNodes)],[nParentNodes,2])                       ! (re)allocate
     
     do e = 1, Nelem
       do i = 1, size(candidates_local)
-        candidateID = (e-1)*size(candidates_local)+i           ! including duplicates (Nelem*size(candidates_local))
-        c = candidates_local(i)          ! c is local cellnode ID for connectivity
+        candidateID = (e-1)*size(candidates_local)+i                                                ! including duplicates, runs to (Nelem*size(candidates_local))
+        c = candidates_local(i)                                                                     ! c is local cellnode ID for connectivity
         p = 0
         do j = 1, size(elem%cellNodeParentNodeWeights(:,c))
           if (elem%cellNodeParentNodeWeights(j,c) /= 0) then                                        ! real node 'j' partly defines cell node 'c'
@@ -835,13 +834,13 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
           candidates_global(p+nParentNodes,                   candidateID) = parentsAndWeights(m,2)
           candidates_global(nParentNodes*2+1:nParentNodes*2+2,candidateID) = [e,c]
           
-          parentsAndWeights(m,1) = -huge(parentsAndWeights(m,1))                                   ! out of the competition
+          parentsAndWeights(m,1) = -huge(parentsAndWeights(m,1))                                    ! out of the competition
         enddo
       enddo
     enddo
 
     ! sort according to real node IDs + weight (from left to right)
-    call math_sort(candidates_global,sortDim=1) ! sort according to first column
+    call math_sort(candidates_global,sortDim=1)                                                     ! sort according to first column
     
     do p = 2, nParentNodes*2
       n = 1
@@ -858,19 +857,7 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
       enddo
     enddo
     
-    
-    ! count unique cell nodes (trivial for sorted IDs + weights)
-    i = 0 ! counts unique cell nodes (defined by current number of parents)
-    n = 1
-    do while(n <= size(candidates_local)*Nelem)
-      j=0
-      do while (n+j<= size(candidates_local)*Nelem)
-        if (any(candidates_global(1:2*nParentNodes,n+j)/=candidates_global(1:2*nParentNodes,n))) exit
-        j = j + 1
-      enddo
-      i = i+1
-      n = n+j
-    enddo
+    i = uniqueRows(candidates_global(1:2*nParentNodes,:))
       
     
     ! calculate coordinates of cell nodes and insert their ID into the cell conectivity
@@ -904,17 +891,45 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
     enddo
     nCellNode = nCellNode + i
     if (i/=0) nodes = reshape([nodes,nodes_new],[3,nCellNode])
-   enddo
-   thisMesh%node_0 = nodes
-   mesh_cell2 = connectivity_cell
- connectivity_cell_reshape = reshape(connectivity_cell,[elem%NcellNodesPerCell,elem%nIPs*Nelem])
+  enddo
+  thisMesh%node_0 = nodes
+  mesh_cell2 = connectivity_cell
+  connectivity_cell_reshape = reshape(connectivity_cell,[elem%NcellNodesPerCell,elem%nIPs*Nelem])
  
 #if defined(DAMASK_HDF5) 
- call results_openJobFile
- call results_writeDataset('geometry',connectivity_cell_reshape,'c',&
-                           'connectivity of the cells','-')
- call results_closeJobFile
+  call results_openJobFile
+  call results_writeDataset('geometry',connectivity_cell_reshape,'c',&
+                            'connectivity of the cells','-')
+  call results_closeJobFile
 #endif  
+
+contains
+
+  !--------------------------------------------------------------------------------------------------
+  !> @brief count unique rows (same rows need to be stored consequtively)
+  !--------------------------------------------------------------------------------------------------
+  pure function uniqueRows(A) result(u)
+    
+    integer, dimension(:,:), intent(in) :: A                                                        !< array, rows need to be sorted
+
+    integer :: &
+      u, &                                                                                          !< # of unique rows
+      r, &                                                                                          !< row counter
+      d                                                                                             !< duplicate counter
+
+    u = 0
+    r = 1
+    do while(r <= size(A,2))
+      d = 0
+      do while (r+d<= size(A,2))
+        if (any(A(:,r)/=A(:,r+d))) exit
+        d = d+1
+      enddo
+      u = u+1
+      r = r+d
+    enddo
+      
+  end function uniqueRows
 
 end subroutine buildCells
 
