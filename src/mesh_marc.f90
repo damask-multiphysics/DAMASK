@@ -881,9 +881,9 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
   enddo
   thisMesh%node_0 = nodes
   mesh_cell2 = connectivity_cell
-  connectivity_cell_reshape = reshape(connectivity_cell,[elem%NcellNodesPerCell,elem%nIPs*Nelem])
  
 #if defined(DAMASK_HDF5) 
+  connectivity_cell_reshape = reshape(connectivity_cell,[elem%NcellNodesPerCell,elem%nIPs*Nelem])
   call results_openJobFile
   call results_writeDataset('geometry',connectivity_cell_reshape,'c',&
                             'connectivity of the cells','-')
