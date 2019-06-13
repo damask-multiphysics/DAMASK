@@ -73,10 +73,6 @@ integer, dimension(:,:), allocatable :: &
    mesh_cell2, &                                                                                        !< cell connectivity for each element,ip/cell
    mesh_cell                                                                                        !< cell connectivity for each element,ip/cell
 
- integer, dimension(:,:,:), allocatable :: &
-   FE_cellface                                                                                      !< list of intra-cell cell node IDs that constitute the cell faces of a specific type of cell
-
-
 ! These definitions should actually reside in the FE-solver specific part (different for MARC/ABAQUS)
 ! Hence, I suggest to prefix with "FE_"
 
@@ -84,7 +80,6 @@ integer, dimension(:,:), allocatable :: &
    FE_Ngeomtypes = 10, &
    FE_Ncelltypes = 4, &
    FE_maxNcellnodesPerCell = 8, &
-   FE_maxNcellfaces = 6, &
    FE_maxNcellnodesPerCellface = 4
 
  integer, dimension(FE_Ngeomtypes), parameter :: FE_NmatchingNodes = &               !< number of nodes that are needed for face matching in a specific type of element geometry
@@ -1037,7 +1032,7 @@ end function mesh_build_cellnodes
 subroutine mesh_build_ipVolumes
  
   integer :: e,i,c,m,f,n
-  real(pReal), dimension(FE_maxNcellnodesPerCellface,FE_maxNcellfaces) :: subvolume
+  real(pReal), dimension(size(theMesh%elem%cellFace,1),size(theMesh%elem%cellFace,2)) :: subvolume
 
   allocate(mesh_ipVolume(theMesh%elem%nIPs,theMesh%nElems),source=0.0_pReal)
   c = theMesh%elem%cellType
@@ -1074,9 +1069,9 @@ subroutine mesh_build_ipVolumes
            subvolume = 0.0_pReal
            forall(f = 1:FE_NipNeighbors(c), n = 1:m) &
              subvolume(n,f) = math_volTetrahedron(&
-                                mesh_cellnode(1:3,mesh_cell(FE_cellface(      n     ,f,c),i,e)), &
-                                mesh_cellnode(1:3,mesh_cell(FE_cellface(1+mod(n  ,m),f,c),i,e)), &
-                                mesh_cellnode(1:3,mesh_cell(FE_cellface(1+mod(n+1,m),f,c),i,e)), &
+                                mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(      n     ,f),i,e)), &
+                                mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(1+mod(n  ,m),f),i,e)), &
+                                mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(1+mod(n+1,m),f),i,e)), &
                                 mesh_ipCoordinates(1:3,i,e))
            mesh_ipVolume(i,e) = 0.5_pReal * sum(subvolume)                                         ! each subvolume is based on four tetrahedrons, altough the face consists of only two triangles -> averaging factor two
          enddo
@@ -1215,7 +1210,7 @@ subroutine mesh_build_ipAreas
          do i = 1,theMesh%elem%nIPs
            do f = 1,FE_NipNeighbors(c)                                                         ! loop over cell faces
              forall(n = 1:FE_NcellnodesPerCellface(c)) &
-               nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(FE_cellface(n,f,c),i,e))
+               nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(n,f),i,e))
              normal(1) =   nodePos(2,2) - nodePos(2,1)                                              ! x_normal =  y_connectingVector
              normal(2) = -(nodePos(1,2) - nodePos(1,1))                                             ! y_normal = -x_connectingVector
              normal(3) = 0.0_pReal
@@ -1228,7 +1223,7 @@ subroutine mesh_build_ipAreas
          do i = 1,theMesh%elem%nIPs
            do f = 1,FE_NipNeighbors(c)                                                         ! loop over cell faces
              forall(n = 1:FE_NcellnodesPerCellface(c)) &
-               nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(FE_cellface(n,f,c),i,e))
+               nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(n,f),i,e))
              normal = math_cross(nodePos(1:3,2) - nodePos(1:3,1), &
                                          nodePos(1:3,3) - nodePos(1:3,1))
              mesh_ipArea(f,i,e) = norm2(normal)
@@ -1245,7 +1240,7 @@ subroutine mesh_build_ipAreas
          do i = 1,theMesh%elem%nIPs
            do f = 1,FE_NipNeighbors(c)                                                         ! loop over cell faces
              forall(n = 1:FE_NcellnodesPerCellface(c)) &
-               nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(FE_cellface(n,f,c),i,e))
+               nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(n,f),i,e))
              forall(n = 1:FE_NcellnodesPerCellface(c)) &
                normals(1:3,n) = 0.5_pReal &
                               * math_cross(nodePos(1:3,1+mod(n  ,m)) - nodePos(1:3,n), &
@@ -1261,60 +1256,6 @@ subroutine mesh_build_ipAreas
  !$OMP END PARALLEL DO
 
 end subroutine mesh_build_ipAreas
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief get properties of different types of finite elements
-!> @details assign globals       FE_cellface
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_build_FEdata
-
- 
- integer :: me
- allocate(FE_cellface(FE_maxNcellnodesPerCellface,FE_maxNcellfaces,FE_Ncelltypes),  source=0)
-
- ! *** FE_cellface ***
- me = 0
-
- me = me + 1
- FE_cellface(1:FE_NcellnodesPerCellface(me),1:FE_NipNeighbors(me),me) = &                           ! 2D 3node, VTK_TRIANGLE (5)
-    reshape(int([&
-    2,3,  &
-    3,1,  &
-    1,2   &
-    ],pInt),[FE_NcellnodesPerCellface(me),FE_NipNeighbors(me)])
-
- me = me + 1
- FE_cellface(1:FE_NcellnodesPerCellface(me),1:FE_NipNeighbors(me),me) = &                           ! 2D 4node, VTK_QUAD (9)
-    reshape(int([&
-    2,3,  &
-    4,1,  &
-    3,4,  &
-    1,2   &
-    ],pInt),[FE_NcellnodesPerCellface(me),FE_NipNeighbors(me)])
-
- me = me + 1
- FE_cellface(1:FE_NcellnodesPerCellface(me),1:FE_NipNeighbors(me),me) = &                           ! 3D 4node, VTK_TETRA (10)
-    reshape(int([&
-    1,3,2,  &
-    1,2,4,  &
-    2,3,4,  &
-    1,4,3   &
-    ],pInt),[FE_NcellnodesPerCellface(me),FE_NipNeighbors(me)])
-
- me = me + 1
- FE_cellface(1:FE_NcellnodesPerCellface(me),1:FE_NipNeighbors(me),me) = &                           ! 3D 8node, VTK_HEXAHEDRON (12)
-    reshape(int([&
-    2,3,7,6,  &
-    4,1,5,8,  &
-    3,4,8,7,  &
-    1,2,6,5,  &
-    5,6,7,8,  &
-    1,4,3,2   &
-    ],pInt),[FE_NcellnodesPerCellface(me),FE_NipNeighbors(me)])
-
-
-end subroutine mesh_build_FEdata
 
 
 !--------------------------------------------------------------------------------------------------

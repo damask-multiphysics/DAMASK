@@ -130,7 +130,7 @@ module element
        6  & ! 3D 8node
     ]                                                                                               !< number of ip neighbors / cell faces in a specific cell type 
 
-  !integer, dimension(maxval(cellType)), parameter, private :: NCELLNODESPERCELLFACE = &            
+  !integer, dimension(maxval(cellType)), parameter, private :: NCELLNODESPERCELLFACE = &            ! Intel 16.0 complains
   integer, dimension(4), parameter, private :: NCELLNODEPERCELLFACE = &
     [ &
        2, & ! 2D 3node
