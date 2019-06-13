@@ -44,9 +44,7 @@ module mesh
    mesh_ipNeighborhood                                                                              !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
    
  real(pReal), dimension(:,:), allocatable :: &
-   mesh_node                                                                                        !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!
-   
- real(pReal), dimension(:,:), allocatable :: &
+   mesh_node, &                                                                                     !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!
    mesh_ipVolume, &                                                                                 !< volume associated with IP (initially!)
    mesh_node0                                                                                       !< node x,y,z coordinates (initially!)
 
@@ -192,8 +190,6 @@ subroutine mesh_init(ip,el)
   call mesh_marc_map_elementSets(mesh_nameElemSet,mesh_mapElemSet,FILEUNIT)
   if (myDebug) write(6,'(a)') ' Mapped element sets'; flush(6)
   
-  if (myDebug) write(6,'(a)') ' Counted CP elements'; flush(6)
-  
   allocate (mesh_mapFEtoCPelem(2,mesh_nElems), source = 0)
   call mesh_marc_map_elements(hypoelasticTableStyle,mesh_nameElemSet,mesh_mapElemSet,mesh_nElems,fileFormatVersion,FILEUNIT)
   if (myDebug) write(6,'(a)') ' Mapped elements'; flush(6)
@@ -202,8 +198,8 @@ subroutine mesh_init(ip,el)
   call mesh_marc_map_nodes(mesh_Nnodes,FILEUNIT)                                                                  !ToDo: don't work on global variables
   if (myDebug) write(6,'(a)') ' Mapped nodes'; flush(6)
   
-  call mesh_marc_build_nodes(FILEUNIT)                                                               !ToDo: don't work on global variables
-  mesh_node = mesh_node0
+  mesh_node0 = mesh_marc_build_nodes(mesh_Nnodes,FILEUNIT)
+  mesh_node  = mesh_node0
   if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
   
   elemType = mesh_marc_getElemType(mesh_nElems,FILEUNIT)
@@ -543,7 +539,7 @@ subroutine mesh_marc_map_nodes(nNodes,fileUnit)
     endif
   enddo
 
-620 call math_sort(mesh_mapFEtoCPnode,1,int(size(mesh_mapFEtoCPnode,2),pInt))
+620 call math_sort(mesh_mapFEtoCPnode,1,size(mesh_mapFEtoCPnode,2))
 
 end subroutine mesh_marc_map_nodes
 
@@ -551,16 +547,14 @@ end subroutine mesh_marc_map_nodes
 !--------------------------------------------------------------------------------------------------
 !> @brief store x,y,z coordinates of all nodes in mesh.
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_build_nodes(fileUnit)
+function mesh_marc_build_nodes(nNode,fileUnit) result(nodes)
 
-  integer, intent(in) :: fileUnit
-
+  integer, intent(in)                :: nNode,fileUnit
+  real(pReal), dimension(3,nNode)    :: nodes 
   integer, dimension(5), parameter   :: node_ends = [0,10,30,50,70]
   integer, allocatable, dimension(:) :: chunkPos
   character(len=300) :: line
   integer :: i,j,m
-
-  allocate ( mesh_node0 (3,mesh_Nnodes), source=0.0_pReal)
 
   rewind(fileUnit)
   do
@@ -568,20 +562,18 @@ subroutine mesh_marc_build_nodes(fileUnit)
     chunkPos = IO_stringPos(line)
     if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'coordinates' ) then
       read (fileUnit,'(A300)') line                                                                 ! skip crap line
-      do i=1,mesh_Nnodes
+      do i=1,nNode
         read (fileUnit,'(A300)') line
         m = mesh_FEasCP('node',IO_fixedIntValue(line,node_ends,1))
         do j = 1,3
-          mesh_node0(j,m) = mesh_unitlength * IO_fixedNoEFloatValue(line,node_ends,j+1)
+          nodes(j,m) = mesh_unitlength * IO_fixedNoEFloatValue(line,node_ends,j+1)
         enddo
       enddo
       exit
     endif
   enddo
 
-620 mesh_node = mesh_node0
-
-end subroutine mesh_marc_build_nodes
+620 end function mesh_marc_build_nodes
 
 
 !--------------------------------------------------------------------------------------------------
@@ -939,7 +931,6 @@ end subroutine buildCells
 !> @details Build a mapping between cells and the corresponding cell nodes ('mesh_cell').
 !> Cell nodes that are also matching nodes are unique in the list of cell nodes,
 !> all others (currently) might be stored more than once.
-!> Also allocates the 'mesh_node' array.
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_cellconnectivity
 
