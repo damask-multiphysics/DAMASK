@@ -211,8 +211,6 @@ subroutine mesh_init(ip,el)
   if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
   close (FILEUNIT)
    
-  
-  call mesh_build_FEdata                                                                             ! get properties of the different types of elements
   call mesh_build_cellconnectivity
   if (myDebug) write(6,'(a)') ' Built cell connectivity'; flush(6)
   mesh_cellnode = mesh_build_cellnodes()
