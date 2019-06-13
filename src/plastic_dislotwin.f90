@@ -452,42 +452,33 @@ subroutine plastic_dislotwin_init
    do i= 1, size(outputs)
      outputID = undefined_ID
      select case(outputs(i))
-       case ('edge_density')
+       case ('rho_mob')
          outputID = merge(rho_mob_ID,undefined_ID,prm%sum_N_sl > 0)
          outputSize = prm%sum_N_sl
-       case ('dipole_density')
+       case ('rho_dip')
          outputID = merge(rho_dip_ID,undefined_ID,prm%sum_N_sl > 0)
          outputSize = prm%sum_N_sl
-       case ('shear_rate_slip','shearrate_slip')
-         outputID = merge(dot_gamma_sl_ID,undefined_ID,prm%sum_N_sl > 0)
-         outputSize = prm%sum_N_sl
-       case ('accumulated_shear_slip')
+       case ('gamma_sl')
          outputID = merge(gamma_sl_ID,undefined_ID,prm%sum_N_sl > 0)
          outputSize = prm%sum_N_sl
-       case ('mfp_slip')
+       case ('Lambda_sl')
          outputID = merge(Lambda_sl_ID,undefined_ID,prm%sum_N_sl > 0)
          outputSize = prm%sum_N_sl
-       case ('resolved_stress_slip')
-         outputID = merge(resolved_stress_slip_ID,undefined_ID,prm%sum_N_sl > 0)
-         outputSize = prm%sum_N_sl
-       case ('threshold_stress_slip')
+       case ('tau_pass')
          outputID= merge(threshold_stress_slip_ID,undefined_ID,prm%sum_N_sl > 0)
          outputSize = prm%sum_N_sl
 
-       case ('twin_fraction')
+       case ('f_tw')
          outputID = merge(f_tw_ID,undefined_ID,prm%sum_N_tw >0)
          outputSize = prm%sum_N_tw
-       case ('mfp_twin')
+       case ('Lambda_tw')
          outputID = merge(Lambda_tw_ID,undefined_ID,prm%sum_N_tw >0)
          outputSize = prm%sum_N_tw
-       case ('resolved_stress_twin')
-         outputID = merge(resolved_stress_twin_ID,undefined_ID,prm%sum_N_tw >0)
-         outputSize = prm%sum_N_tw
-       case ('threshold_stress_twin')
+       case ('tau_hat_tw')
          outputID = merge(tau_hat_tw_ID,undefined_ID,prm%sum_N_tw >0)
          outputSize = prm%sum_N_tw
          
-       case ('strain_trans_fraction')
+       case ('f_tr')
          outputID = f_tr_ID
          outputSize = prm%sum_N_tr
         
