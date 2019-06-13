@@ -436,7 +436,7 @@ subroutine mesh_marc_map_elementSets(nameElemSet,mapElemSet,fileUnit)
 
   rewind(fileUnit)
   do
-    read (fileUnit,'(A300)',END=640) line
+    read (fileUnit,'(A300)',END=620) line
     chunkPos = IO_stringPos(line)
     if( (IO_lc(IO_stringValue(line,chunkPos,1)) == 'define' ) .and. &
         (IO_lc(IO_stringValue(line,chunkPos,2)) == 'element' ) ) then
@@ -446,7 +446,7 @@ subroutine mesh_marc_map_elementSets(nameElemSet,mapElemSet,fileUnit)
     endif
   enddo
 
-640 end subroutine mesh_marc_map_elementSets
+620 end subroutine mesh_marc_map_elementSets
 
 
 
@@ -471,7 +471,7 @@ subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,nElems,fileF
  contInts = 0
  rewind(fileUnit)
  do
-   read (fileUnit,'(A300)',END=660) line
+   read (fileUnit,'(A300)',END=620) line
    chunkPos = IO_stringPos(line)
    if (fileFormatVersion < 13) then                                                                       ! Marc 2016 or earlier
      if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'hypoelastic' ) then
@@ -484,11 +484,11 @@ subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,nElems,fileF
      endif  
    else                                                                                             ! Marc2017 and later
      if ( IO_lc(IO_stringValue(line,chunkPos,1)) == 'connectivity') then
-       read (fileUnit,'(A300)',END=660) line
+       read (fileUnit,'(A300)',END=620) line
        chunkPos = IO_stringPos(line)
        if(any(Marc_matNumber==IO_intValue(line,chunkPos,6))) then
          do 
-           read (fileUnit,'(A300)',END=660) line
+           read (fileUnit,'(A300)',END=620) line
            chunkPos = IO_stringPos(line)
            tmp = IO_lc(IO_stringValue(line,chunkPos,1))
            if (verify(trim(tmp),"0123456789")/=0) then                                              ! found keyword
@@ -502,7 +502,7 @@ subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,nElems,fileF
      endif
    endif    
  enddo    
-660 do i = 1,contInts(1)
+620 do i = 1,contInts(1)
       cpElem = cpElem+1
       mesh_mapFEtoCPelem(1,cpElem) = contInts(1+i)
       mesh_mapFEtoCPelem(2,cpElem) = cpElem
@@ -530,7 +530,7 @@ subroutine mesh_marc_map_nodes(nNodes,fileUnit)
 
   rewind(fileUnit)
   do
-    read (fileUnit,'(A300)',END=650) line
+    read (fileUnit,'(A300)',END=620) line
     chunkPos = IO_stringPos(line)
     if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'coordinates' ) then
       read (fileUnit,'(A300)') line                                                                 ! skip crap line
@@ -543,7 +543,7 @@ subroutine mesh_marc_map_nodes(nNodes,fileUnit)
     endif
   enddo
 
-650 call math_sort(mesh_mapFEtoCPnode,1,int(size(mesh_mapFEtoCPnode,2),pInt))
+620 call math_sort(mesh_mapFEtoCPnode,1,int(size(mesh_mapFEtoCPnode,2),pInt))
 
 end subroutine mesh_marc_map_nodes
 
@@ -564,7 +564,7 @@ subroutine mesh_marc_build_nodes(fileUnit)
 
   rewind(fileUnit)
   do
-    read (fileUnit,'(A300)',END=670) line
+    read (fileUnit,'(A300)',END=620) line
     chunkPos = IO_stringPos(line)
     if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'coordinates' ) then
       read (fileUnit,'(A300)') line                                                                 ! skip crap line
@@ -579,7 +579,7 @@ subroutine mesh_marc_build_nodes(fileUnit)
     endif
   enddo
 
-670 mesh_node = mesh_node0
+620 mesh_node = mesh_node0
 
 end subroutine mesh_marc_build_nodes
 
@@ -602,7 +602,7 @@ integer function mesh_marc_getElemType(nElem,fileUnit)
 
   rewind(fileUnit)
   do
-    read (fileUnit,'(A300)',END=630) line
+    read (fileUnit,'(A300)',END=620) line
     chunkPos = IO_stringPos(line)
     if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'connectivity' ) then
       read (fileUnit,'(A300)') line                                                                 ! Garbage line
@@ -668,7 +668,7 @@ contains
 end function mapElemtype
 
 
-630 end function mesh_marc_getElemType
+620 end function mesh_marc_getElemType
 
 
 !--------------------------------------------------------------------------------------------------
