@@ -5,17 +5,24 @@
 !--------------------------------------------------------------------------------------------------
 module numerics
  use prec
+ use IO
+
+#ifdef PETSc
+#include <petsc/finclude/petscsys.h>
+   use petscsys
+#endif
+!$ use OMP_LIB
 
  implicit none
  private
 
- integer(pInt), protected, public :: &
-   iJacoStiffness             =  1_pInt, &                                                          !< frequency of stiffness update
-   nMPstate                   = 10_pInt, &                                                          !< materialpoint state loop limit
-   randomSeed                 =  0_pInt, &                                                          !< fixed seeding for pseudo-random number generator, Default 0: use random seed
-   worldrank                  =  0_pInt, &                                                          !< MPI worldrank (/=0 for MPI simulations only)
-   worldsize                  =  1_pInt, &                                                          !< MPI worldsize (/=1 for MPI simulations only)
-   numerics_integrator        =  1_pInt                                                             !< method used for state integration Default 1: fix-point iteration
+ integer, protected, public :: &
+   iJacoStiffness             =  1, &                                                              !< frequency of stiffness update
+   nMPstate                   = 10, &                                                              !< materialpoint state loop limit
+   randomSeed                 =  0, &                                                              !< fixed seeding for pseudo-random number generator, Default 0: use random seed
+   worldrank                  =  0, &                                                              !< MPI worldrank (/=0 for MPI simulations only)
+   worldsize                  =  1, &                                                              !< MPI worldsize (/=1 for MPI simulations only)
+   numerics_integrator        =  1                                                                 !< method used for state integration Default 1: fix-point iteration
  integer(4), protected, public :: &
    DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
  real(pReal), protected, public :: &
@@ -51,11 +58,11 @@ module numerics
    err_thermal_tolRel         =  1.0e-6_pReal, &                                                    !< relative tolerance for thermal equilibrium
    err_damage_tolAbs          =  1.0e-2_pReal, &                                                    !< absolute tolerance for damage evolution
    err_damage_tolRel          =  1.0e-6_pReal                                                       !< relative tolerance for damage evolution
- integer(pInt), protected, public :: &
-   itmax                      =  250_pInt, &                                                        !< maximum number of iterations
-   itmin                      =  1_pInt, &                                                          !< minimum number of iterations
-   stagItMax                  =  10_pInt, &                                                         !< max number of field level staggered iterations
-   maxCutBack                 =  3_pInt                                                             !< max number of cut backs
+ integer, protected, public :: &
+   itmax                      =  250, &                                                             !< maximum number of iterations
+   itmin                      =  1, &                                                               !< minimum number of iterations
+   stagItMax                  =  10, &                                                              !< max number of field level staggered iterations
+   maxCutBack                 =  3                                                                  !< max number of cut backs
 
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters:
@@ -83,9 +90,9 @@ module numerics
 !--------------------------------------------------------------------------------------------------
 ! FEM parameters:
 #ifdef FEM
- integer(pInt), protected, public :: &
-   integrationOrder           =  2_pInt, &                                                          !< order of quadrature rule required
-   structOrder                =  2_pInt                                                             !< order of displacement shape functions
+ integer, protected, public :: &
+   integrationOrder           =  2, &                                                              !< order of quadrature rule required
+   structOrder                =  2                                                                 !< order of displacement shape functions
  logical, protected, public :: & 
    BBarStabilisation          = .false.                                                  
  character(len=4096), protected, public :: &
@@ -113,24 +120,9 @@ contains
 ! a sanity check
 !--------------------------------------------------------------------------------------------------
 subroutine numerics_init
- use IO, only: &
-   IO_read_ASCII, &
-   IO_error, &
-   IO_isBlank, &
-   IO_stringPos, &
-   IO_stringValue, &
-   IO_lc, &
-   IO_floatValue, &
-   IO_intValue, &
-   IO_warning
-#ifdef PETSc
-#include <petsc/finclude/petscsys.h>
-   use petscsys
-#endif
-!$ use OMP_LIB, only: omp_set_num_threads
 !$ integer ::                                gotDAMASK_NUM_THREADS = 1
- integer :: i,j, ierr                                                                                 ! no pInt
- integer(pInt), allocatable, dimension(:) :: chunkPos
+ integer :: i,j, ierr
+ integer, allocatable, dimension(:) :: chunkPos
  character(len=pStringLen), dimension(:), allocatable :: fileContent
  character(len=pStringLen) :: &
    tag ,&
@@ -146,7 +138,7 @@ subroutine numerics_init
  
 !$ call GET_ENVIRONMENT_VARIABLE(NAME='DAMASK_NUM_THREADS',VALUE=DAMASK_NumThreadsString,STATUS=gotDAMASK_NUM_THREADS)   ! get environment variable DAMASK_NUM_THREADS...
 !$ if(gotDAMASK_NUM_THREADS /= 0) then                                                              ! could not get number of threads, set it to 1
-!$   call IO_warning(35_pInt,ext_msg='BEGIN:'//DAMASK_NumThreadsString//':END')
+!$   call IO_warning(35,ext_msg='BEGIN:'//DAMASK_NumThreadsString//':END')
 !$   DAMASK_NumThreadsInt = 1_4
 !$ else
 !$   read(DAMASK_NumThreadsString,'(i6)') DAMASK_NumThreadsInt                                      ! read as integer
@@ -170,128 +162,128 @@ subroutine numerics_init
      enddo
      if (IO_isBlank(line)) cycle                                                                    ! skip empty lines
      chunkPos = IO_stringPos(line)
-     tag = IO_lc(IO_stringValue(line,chunkPos,1_pInt))                                              ! extract key
+     tag = IO_lc(IO_stringValue(line,chunkPos,1))                                                   ! extract key
 
      select case(tag)
        case ('defgradtolerance')
-         defgradTolerance = IO_floatValue(line,chunkPos,2_pInt)
+         defgradTolerance = IO_floatValue(line,chunkPos,2)
        case ('ijacostiffness')
-         iJacoStiffness = IO_intValue(line,chunkPos,2_pInt)
+         iJacoStiffness = IO_intValue(line,chunkPos,2)
        case ('nmpstate')
-         nMPstate = IO_intValue(line,chunkPos,2_pInt)
+         nMPstate = IO_intValue(line,chunkPos,2)
        case ('substepminhomog')
-         subStepMinHomog = IO_floatValue(line,chunkPos,2_pInt)
+         subStepMinHomog = IO_floatValue(line,chunkPos,2)
        case ('substepsizehomog')
-         subStepSizeHomog = IO_floatValue(line,chunkPos,2_pInt)
+         subStepSizeHomog = IO_floatValue(line,chunkPos,2)
        case ('stepincreasehomog')
-         stepIncreaseHomog = IO_floatValue(line,chunkPos,2_pInt)
+         stepIncreaseHomog = IO_floatValue(line,chunkPos,2)
        case ('integrator')
-         numerics_integrator = IO_intValue(line,chunkPos,2_pInt)
+         numerics_integrator = IO_intValue(line,chunkPos,2)
        case ('usepingpong')
-         usepingpong = IO_intValue(line,chunkPos,2_pInt) > 0_pInt
+         usepingpong = IO_intValue(line,chunkPos,2) > 0
        case ('unitlength')
-         numerics_unitlength = IO_floatValue(line,chunkPos,2_pInt)
+         numerics_unitlength = IO_floatValue(line,chunkPos,2)
 
 !--------------------------------------------------------------------------------------------------
 ! RGC parameters
        case ('atol_rgc')
-         absTol_RGC = IO_floatValue(line,chunkPos,2_pInt)
+         absTol_RGC = IO_floatValue(line,chunkPos,2)
        case ('rtol_rgc')
-         relTol_RGC = IO_floatValue(line,chunkPos,2_pInt)
+         relTol_RGC = IO_floatValue(line,chunkPos,2)
        case ('amax_rgc')
-         absMax_RGC = IO_floatValue(line,chunkPos,2_pInt)
+         absMax_RGC = IO_floatValue(line,chunkPos,2)
        case ('rmax_rgc')
-         relMax_RGC = IO_floatValue(line,chunkPos,2_pInt)
+         relMax_RGC = IO_floatValue(line,chunkPos,2)
        case ('perturbpenalty_rgc')
-         pPert_RGC = IO_floatValue(line,chunkPos,2_pInt)
+         pPert_RGC = IO_floatValue(line,chunkPos,2)
        case ('relevantmismatch_rgc')
-         xSmoo_RGC = IO_floatValue(line,chunkPos,2_pInt)
+         xSmoo_RGC = IO_floatValue(line,chunkPos,2)
        case ('viscositypower_rgc')
-         viscPower_RGC = IO_floatValue(line,chunkPos,2_pInt)
+         viscPower_RGC = IO_floatValue(line,chunkPos,2)
        case ('viscositymodulus_rgc')
-         viscModus_RGC = IO_floatValue(line,chunkPos,2_pInt)
+         viscModus_RGC = IO_floatValue(line,chunkPos,2)
        case ('refrelaxationrate_rgc')
-         refRelaxRate_RGC = IO_floatValue(line,chunkPos,2_pInt)
+         refRelaxRate_RGC = IO_floatValue(line,chunkPos,2)
        case ('maxrelaxation_rgc')
-         maxdRelax_RGC = IO_floatValue(line,chunkPos,2_pInt)
+         maxdRelax_RGC = IO_floatValue(line,chunkPos,2)
        case ('maxvoldiscrepancy_rgc')
-         maxVolDiscr_RGC = IO_floatValue(line,chunkPos,2_pInt)
+         maxVolDiscr_RGC = IO_floatValue(line,chunkPos,2)
        case ('voldiscrepancymod_rgc')
-         volDiscrMod_RGC = IO_floatValue(line,chunkPos,2_pInt)
+         volDiscrMod_RGC = IO_floatValue(line,chunkPos,2)
        case ('discrepancypower_rgc')
-         volDiscrPow_RGC = IO_floatValue(line,chunkPos,2_pInt)
+         volDiscrPow_RGC = IO_floatValue(line,chunkPos,2)
 
 !--------------------------------------------------------------------------------------------------
 ! random seeding parameter
        case ('random_seed','fixed_seed')
-         randomSeed = IO_intValue(line,chunkPos,2_pInt)
+         randomSeed = IO_intValue(line,chunkPos,2)
 
 !--------------------------------------------------------------------------------------------------
 ! gradient parameter
        case ('charlength')
-         charLength = IO_floatValue(line,chunkPos,2_pInt)
+         charLength = IO_floatValue(line,chunkPos,2)
        case ('residualstiffness')
-         residualStiffness = IO_floatValue(line,chunkPos,2_pInt)
+         residualStiffness = IO_floatValue(line,chunkPos,2)
 
 !--------------------------------------------------------------------------------------------------
 ! field parameters
        case ('err_struct_tolabs')
-         err_struct_tolAbs = IO_floatValue(line,chunkPos,2_pInt)
+         err_struct_tolAbs = IO_floatValue(line,chunkPos,2)
        case ('err_struct_tolrel')
-         err_struct_tolRel = IO_floatValue(line,chunkPos,2_pInt)
+         err_struct_tolRel = IO_floatValue(line,chunkPos,2)
        case ('err_thermal_tolabs')
-         err_thermal_tolabs = IO_floatValue(line,chunkPos,2_pInt)
+         err_thermal_tolabs = IO_floatValue(line,chunkPos,2)
        case ('err_thermal_tolrel')
-         err_thermal_tolrel = IO_floatValue(line,chunkPos,2_pInt)
+         err_thermal_tolrel = IO_floatValue(line,chunkPos,2)
        case ('err_damage_tolabs')
-         err_damage_tolabs = IO_floatValue(line,chunkPos,2_pInt)
+         err_damage_tolabs = IO_floatValue(line,chunkPos,2)
        case ('err_damage_tolrel')
-         err_damage_tolrel = IO_floatValue(line,chunkPos,2_pInt)
+         err_damage_tolrel = IO_floatValue(line,chunkPos,2)
        case ('itmax')
-         itmax = IO_intValue(line,chunkPos,2_pInt)
+         itmax = IO_intValue(line,chunkPos,2)
        case ('itmin')
-         itmin = IO_intValue(line,chunkPos,2_pInt)
+         itmin = IO_intValue(line,chunkPos,2)
        case ('maxcutback')
-         maxCutBack = IO_intValue(line,chunkPos,2_pInt)
+         maxCutBack = IO_intValue(line,chunkPos,2)
        case ('maxstaggerediter')
-         stagItMax = IO_intValue(line,chunkPos,2_pInt)
+         stagItMax = IO_intValue(line,chunkPos,2)
 
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters
 #ifdef Grid
        case ('err_div_tolabs')
-         err_div_tolAbs = IO_floatValue(line,chunkPos,2_pInt)
+         err_div_tolAbs = IO_floatValue(line,chunkPos,2)
        case ('err_div_tolrel')
-         err_div_tolRel = IO_floatValue(line,chunkPos,2_pInt)
+         err_div_tolRel = IO_floatValue(line,chunkPos,2)
        case ('err_stress_tolrel')
-         err_stress_tolrel = IO_floatValue(line,chunkPos,2_pInt)
+         err_stress_tolrel = IO_floatValue(line,chunkPos,2)
        case ('err_stress_tolabs')
-         err_stress_tolabs = IO_floatValue(line,chunkPos,2_pInt)
+         err_stress_tolabs = IO_floatValue(line,chunkPos,2)
        case ('continuecalculation')
-         continueCalculation = IO_intValue(line,chunkPos,2_pInt) > 0_pInt
+         continueCalculation = IO_intValue(line,chunkPos,2) > 0
        case ('petsc_options')
          petsc_options = trim(line(chunkPos(4):))
        case ('err_curl_tolabs')
-         err_curl_tolAbs = IO_floatValue(line,chunkPos,2_pInt)
+         err_curl_tolAbs = IO_floatValue(line,chunkPos,2)
        case ('err_curl_tolrel')
-         err_curl_tolRel = IO_floatValue(line,chunkPos,2_pInt)
+         err_curl_tolRel = IO_floatValue(line,chunkPos,2)
        case ('polaralpha')
-         polarAlpha = IO_floatValue(line,chunkPos,2_pInt)
+         polarAlpha = IO_floatValue(line,chunkPos,2)
        case ('polarbeta')
-         polarBeta = IO_floatValue(line,chunkPos,2_pInt)
+         polarBeta = IO_floatValue(line,chunkPos,2)
 #endif
 
 !--------------------------------------------------------------------------------------------------
 ! FEM parameters
 #ifdef FEM
        case ('integrationorder')
-         integrationorder = IO_intValue(line,chunkPos,2_pInt)
+         integrationorder = IO_intValue(line,chunkPos,2)
        case ('structorder')
-         structorder = IO_intValue(line,chunkPos,2_pInt)
+         structorder = IO_intValue(line,chunkPos,2)
        case ('petsc_options')
          petsc_options = trim(line(chunkPos(4):))
        case ('bbarstabilisation')
-         BBarStabilisation = IO_intValue(line,chunkPos,2_pInt) > 0_pInt
+         BBarStabilisation = IO_intValue(line,chunkPos,2) > 0
 #endif
      end select
    enddo
@@ -334,7 +326,7 @@ subroutine numerics_init
 !--------------------------------------------------------------------------------------------------
 ! Random seeding parameter
  write(6,'(a16,1x,i16,/)')    ' random_seed:    ',randomSeed
- if (randomSeed <= 0_pInt) &
+ if (randomSeed <= 0) &
    write(6,'(a,/)')           ' random seed will be generated!'
 
 !--------------------------------------------------------------------------------------------------
@@ -386,50 +378,50 @@ subroutine numerics_init
 
 !--------------------------------------------------------------------------------------------------
 ! sanity checks
- if (defgradTolerance <= 0.0_pReal)        call IO_error(301_pInt,ext_msg='defgradTolerance')
- if (iJacoStiffness < 1_pInt)              call IO_error(301_pInt,ext_msg='iJacoStiffness')
- if (nMPstate < 1_pInt)                    call IO_error(301_pInt,ext_msg='nMPstate')
- if (subStepMinHomog <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='subStepMinHomog')
- if (subStepSizeHomog <= 0.0_pReal)        call IO_error(301_pInt,ext_msg='subStepSizeHomog')
- if (stepIncreaseHomog <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='stepIncreaseHomog')
- if (numerics_integrator <= 0_pInt .or. numerics_integrator >= 6_pInt) &
-                                           call IO_error(301_pInt,ext_msg='integrator')
- if (numerics_unitlength <= 0.0_pReal)     call IO_error(301_pInt,ext_msg='unitlength')
- if (absTol_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='absTol_RGC')
- if (relTol_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='relTol_RGC')
- if (absMax_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='absMax_RGC')
- if (relMax_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='relMax_RGC')
- if (pPert_RGC <= 0.0_pReal)               call IO_error(301_pInt,ext_msg='pPert_RGC')
- if (xSmoo_RGC <= 0.0_pReal)               call IO_error(301_pInt,ext_msg='xSmoo_RGC')
- if (viscPower_RGC < 0.0_pReal)            call IO_error(301_pInt,ext_msg='viscPower_RGC')
- if (viscModus_RGC < 0.0_pReal)            call IO_error(301_pInt,ext_msg='viscModus_RGC')
- if (refRelaxRate_RGC <= 0.0_pReal)        call IO_error(301_pInt,ext_msg='refRelaxRate_RGC')
- if (maxdRelax_RGC <= 0.0_pReal)           call IO_error(301_pInt,ext_msg='maxdRelax_RGC')
- if (maxVolDiscr_RGC <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='maxVolDiscr_RGC')
- if (volDiscrMod_RGC < 0.0_pReal)          call IO_error(301_pInt,ext_msg='volDiscrMod_RGC')
- if (volDiscrPow_RGC <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='volDiscrPw_RGC')
- if (residualStiffness < 0.0_pReal)        call IO_error(301_pInt,ext_msg='residualStiffness')
- if (itmax <= 1_pInt)                      call IO_error(301_pInt,ext_msg='itmax')
- if (itmin > itmax .or. itmin < 1_pInt)    call IO_error(301_pInt,ext_msg='itmin')
- if (maxCutBack < 0_pInt)                  call IO_error(301_pInt,ext_msg='maxCutBack')
- if (stagItMax < 0_pInt)                   call IO_error(301_pInt,ext_msg='maxStaggeredIter')
- if (err_struct_tolRel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_struct_tolRel')
- if (err_struct_tolAbs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_struct_tolAbs')
- if (err_thermal_tolabs <= 0.0_pReal)      call IO_error(301_pInt,ext_msg='err_thermal_tolabs')
- if (err_thermal_tolrel <= 0.0_pReal)      call IO_error(301_pInt,ext_msg='err_thermal_tolrel')
- if (err_damage_tolabs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_damage_tolabs')
- if (err_damage_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_damage_tolrel')
+ if (defgradTolerance <= 0.0_pReal)        call IO_error(301,ext_msg='defgradTolerance')
+ if (iJacoStiffness < 1)                   call IO_error(301,ext_msg='iJacoStiffness')
+ if (nMPstate < 1)                         call IO_error(301,ext_msg='nMPstate')
+ if (subStepMinHomog <= 0.0_pReal)         call IO_error(301,ext_msg='subStepMinHomog')
+ if (subStepSizeHomog <= 0.0_pReal)        call IO_error(301,ext_msg='subStepSizeHomog')
+ if (stepIncreaseHomog <= 0.0_pReal)       call IO_error(301,ext_msg='stepIncreaseHomog')
+ if (numerics_integrator <= 0 .or. numerics_integrator >= 6) &
+                                           call IO_error(301,ext_msg='integrator')
+ if (numerics_unitlength <= 0.0_pReal)     call IO_error(301,ext_msg='unitlength')
+ if (absTol_RGC <= 0.0_pReal)              call IO_error(301,ext_msg='absTol_RGC')
+ if (relTol_RGC <= 0.0_pReal)              call IO_error(301,ext_msg='relTol_RGC')
+ if (absMax_RGC <= 0.0_pReal)              call IO_error(301,ext_msg='absMax_RGC')
+ if (relMax_RGC <= 0.0_pReal)              call IO_error(301,ext_msg='relMax_RGC')
+ if (pPert_RGC <= 0.0_pReal)               call IO_error(301,ext_msg='pPert_RGC')
+ if (xSmoo_RGC <= 0.0_pReal)               call IO_error(301,ext_msg='xSmoo_RGC')
+ if (viscPower_RGC < 0.0_pReal)            call IO_error(301,ext_msg='viscPower_RGC')
+ if (viscModus_RGC < 0.0_pReal)            call IO_error(301,ext_msg='viscModus_RGC')
+ if (refRelaxRate_RGC <= 0.0_pReal)        call IO_error(301,ext_msg='refRelaxRate_RGC')
+ if (maxdRelax_RGC <= 0.0_pReal)           call IO_error(301,ext_msg='maxdRelax_RGC')
+ if (maxVolDiscr_RGC <= 0.0_pReal)         call IO_error(301,ext_msg='maxVolDiscr_RGC')
+ if (volDiscrMod_RGC < 0.0_pReal)          call IO_error(301,ext_msg='volDiscrMod_RGC')
+ if (volDiscrPow_RGC <= 0.0_pReal)         call IO_error(301,ext_msg='volDiscrPw_RGC')
+ if (residualStiffness < 0.0_pReal)        call IO_error(301,ext_msg='residualStiffness')
+ if (itmax <= 1)                           call IO_error(301,ext_msg='itmax')
+ if (itmin > itmax .or. itmin < 1)         call IO_error(301,ext_msg='itmin')
+ if (maxCutBack < 0)                       call IO_error(301,ext_msg='maxCutBack')
+ if (stagItMax < 0)                        call IO_error(301,ext_msg='maxStaggeredIter')
+ if (err_struct_tolRel <= 0.0_pReal)       call IO_error(301,ext_msg='err_struct_tolRel')
+ if (err_struct_tolAbs <= 0.0_pReal)       call IO_error(301,ext_msg='err_struct_tolAbs')
+ if (err_thermal_tolabs <= 0.0_pReal)      call IO_error(301,ext_msg='err_thermal_tolabs')
+ if (err_thermal_tolrel <= 0.0_pReal)      call IO_error(301,ext_msg='err_thermal_tolrel')
+ if (err_damage_tolabs <= 0.0_pReal)       call IO_error(301,ext_msg='err_damage_tolabs')
+ if (err_damage_tolrel <= 0.0_pReal)       call IO_error(301,ext_msg='err_damage_tolrel')
 #ifdef Grid
- if (err_stress_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolRel')
- if (err_stress_tolabs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolAbs')
- if (err_div_tolRel < 0.0_pReal)           call IO_error(301_pInt,ext_msg='err_div_tolRel')
- if (err_div_tolAbs <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_div_tolAbs')
- if (err_curl_tolRel < 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_curl_tolRel')
- if (err_curl_tolAbs <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='err_curl_tolAbs')
+ if (err_stress_tolrel <= 0.0_pReal)       call IO_error(301,ext_msg='err_stress_tolRel')
+ if (err_stress_tolabs <= 0.0_pReal)       call IO_error(301,ext_msg='err_stress_tolAbs')
+ if (err_div_tolRel < 0.0_pReal)           call IO_error(301,ext_msg='err_div_tolRel')
+ if (err_div_tolAbs <= 0.0_pReal)          call IO_error(301,ext_msg='err_div_tolAbs')
+ if (err_curl_tolRel < 0.0_pReal)          call IO_error(301,ext_msg='err_curl_tolRel')
+ if (err_curl_tolAbs <= 0.0_pReal)         call IO_error(301,ext_msg='err_curl_tolAbs')
  if (polarAlpha <= 0.0_pReal .or. &
-     polarAlpha >  2.0_pReal)              call IO_error(301_pInt,ext_msg='polarAlpha')
+     polarAlpha >  2.0_pReal)              call IO_error(301,ext_msg='polarAlpha')
  if (polarBeta < 0.0_pReal .or. &
-     polarBeta > 2.0_pReal)                call IO_error(301_pInt,ext_msg='polarBeta')
+     polarBeta > 2.0_pReal)                call IO_error(301,ext_msg='polarBeta')
 #endif
 
 end subroutine numerics_init

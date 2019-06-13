@@ -356,7 +356,7 @@ logical pure function IO_isBlank(string)
  character(len=*),  parameter :: blankChar = achar(32)//achar(9)//achar(10)//achar(13)              ! whitespaces
  character(len=*),  parameter :: comment = achar(35)                                                ! comment id '#'
 
- integer :: posNonBlank, posComment                                                                 ! no pInt
+ integer :: posNonBlank, posComment
 
  posNonBlank = verify(string,blankChar)
  posComment  = scan(string,comment)
@@ -377,7 +377,7 @@ pure function IO_getTag(string,openChar,closeChar)
                            closeChar                                                                !< indicates end of tag
 
  character(len=*), parameter   :: SEP=achar(32)//achar(9)//achar(10)//achar(13)                     ! whitespaces
- integer :: left,right                                                                              ! no pInt
+ integer :: left,right
 
  IO_getTag = ''
 
@@ -408,7 +408,7 @@ pure function IO_stringPos(string)
  character(len=*),                  intent(in) :: string                                            !< string in which chunk positions are searched for
 
  character(len=*), parameter  :: SEP=achar(44)//achar(32)//achar(9)//achar(10)//achar(13)           ! comma and whitespaces
- integer                      :: left, right                                                        ! no pInt (verify and scan return default integer)
+ integer                      :: left, right
 
  allocate(IO_stringPos(1), source=0)
  right = 0
@@ -417,7 +417,7 @@ pure function IO_stringPos(string)
    left  = right + verify(string(right+1:),SEP)
    right = left + scan(string(left:),SEP) - 2
    if ( string(left:left) == '#' ) exit
-   IO_stringPos = [IO_stringPos,int(left, pInt), int(right, pInt)]
+   IO_stringPos = [IO_stringPos,left, right]
    IO_stringPos(1) = IO_stringPos(1)+1
    endOfString: if (right < left) then
      IO_stringPos(IO_stringPos(1)*2+1) = len_trim(string)
@@ -568,7 +568,7 @@ pure function IO_lc(string)
  character(26), parameter :: LOWER = 'abcdefghijklmnopqrstuvwxyz'
  character(26), parameter :: UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
- integer                      :: i,n                                                                ! no pInt (len returns default integer)
+ integer                      :: i,n
 
  IO_lc = string
  do i=1,len(string)
@@ -590,7 +590,7 @@ pure function IO_intOut(intToPrint)
   character(len=19)   :: width                                                                      ! maximum digits for 64 bit integer
   character(len=20)   :: min_width                                                                  ! longer for negative values
 
-  N_digits =  1 + int(log10(real(max(abs(intToPrint),1))),pInt)
+  N_digits =  1 + int(log10(real(max(abs(intToPrint),1))))
   write(width, '(I19.19)') N_digits
   write(min_width, '(I20.20)') N_digits + merge(1,0,intToPrint < 0)
   IO_intOut = 'I'//trim(min_width)//'.'//trim(width)

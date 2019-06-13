@@ -7,18 +7,23 @@
 module grid_mech_spectral_basic
 #include <petsc/finclude/petscsnes.h>
 #include <petsc/finclude/petscdmda.h>
-  use DAMASK_interface
-  use HDF5_utilities
   use PETScdmda
   use PETScsnes
-  use prec, only: &
-    pReal
-  use math, only: &
-    math_I3
-  use spectral_utilities, only: &
-    tSolutionState, &
-    tSolutionParams
- 
+
+  use prec
+  use DAMASK_interface
+  use HDF5_utilities
+  use math
+  use spectral_utilities
+  use IO
+  use FEsolving
+  use config
+  use numerics
+  use homogenization
+  use mesh
+  use CPFEM2
+  use debug
+
   implicit none
   private
 
@@ -81,31 +86,6 @@ contains
 !> @brief allocates all necessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mech_spectral_basic_init
-  use IO, only: &
-    IO_intOut, &
-    IO_error, &
-    IO_open_jobFile_binary
-  use FEsolving, only: &
-    restartInc
-  use config, only :&
-    config_numerics
-  use numerics, only: &
-    worldrank, &
-    worldsize, &
-    petsc_options
-  use homogenization, only: &
-    materialpoint_F0
-  use DAMASK_interface, only: &
-    getSolverJobName
-  use spectral_utilities, only: &
-    utilities_constitutiveResponse, &
-    utilities_updateGamma, &
-    utilities_updateIPcoords
-  use mesh, only: &
-    grid, &
-    grid3
-  use math, only: &
-    math_invSym3333
     
   real(pReal), dimension(3,3,grid(1),grid(2),grid3) :: P
   real(pReal), dimension(3,3) :: &
@@ -215,13 +195,6 @@ end subroutine grid_mech_spectral_basic_init
 !> @brief solution for the basic scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
 function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation_BC) result(solution)
-  use spectral_utilities, only: &
-    tBoundaryCondition, &
-    utilities_maskedCompliance, &
-    utilities_updateGamma
-  use FEsolving, only: &
-    restartWrite, &
-    terminallyIll
  
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
@@ -277,27 +250,6 @@ end function grid_mech_spectral_basic_solution
 !> possibly writing restart information, triggering of state increment in DAMASK, and updating of IPcoordinates
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,stress_BC,rotation_BC)
-  use math, only: &
-    math_rotate_backward33
-  use numerics, only: &
-    worldrank
-  use homogenization, only: &
-    materialpoint_F0
-  use mesh, only: &
-    grid, &
-    grid3
-  use CPFEM2, only: &
-    CPFEM_age
-  use spectral_utilities, only: &
-    utilities_calculateRate, &
-    utilities_forwardField, &
-    utilities_updateIPcoords, &
-    tBoundaryCondition, &
-    cutBack
-  use IO, only: &
-    IO_open_jobFile_binary
-  use FEsolving, only: &
-    restartWrite
 
   logical,                     intent(in) :: &
     guess
@@ -387,15 +339,6 @@ end subroutine grid_mech_spectral_basic_forward
 !> @brief convergence check
 !--------------------------------------------------------------------------------------------------
 subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dummy,ierr)
-  use numerics, only: &
-    itmax, &
-    itmin, &
-    err_div_tolRel, &
-    err_div_tolAbs, &
-    err_stress_tolRel, &
-    err_stress_tolAbs
-  use FEsolving, only: &
-    terminallyIll
 
   SNES :: snes_local
   PetscInt,  intent(in) :: PETScIter
@@ -442,30 +385,6 @@ end subroutine converged
 !--------------------------------------------------------------------------------------------------
 subroutine formResidual(in, F, &
                         residuum, dummy, ierr)
-  use numerics, only: &
-    itmax, &
-    itmin
-  use mesh, only: &
-    grid, &
-    grid3
-  use math, only: &
-    math_rotate_backward33, &
-    math_mul3333xx33
-  use debug, only: &
-    debug_level, &
-    debug_spectral, &
-    debug_spectralRotation
-  use spectral_utilities, only: &
-    tensorField_real, &
-    utilities_FFTtensorForward, &
-    utilities_fourierGammaConvolution, &
-    utilities_FFTtensorBackward, &
-    utilities_constitutiveResponse, &
-    utilities_divergenceRMS
-  use IO, only: &
-    IO_intOut 
-  use FEsolving, only: &
-    terminallyIll
 
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: in                                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
   PetscScalar, dimension(3,3,XG_RANGE,YG_RANGE,ZG_RANGE), &

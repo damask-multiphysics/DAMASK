@@ -5,9 +5,37 @@
 !--------------------------------------------------------------------------------------------------
 module constitutive
  use math
+ use debug
+ use numerics
+ use IO
+ use config
+ use material
+ use results
+ use HDF5_utilities
+ use lattice
+ use mesh
+ use discretization
+ use plastic_none
+ use plastic_isotropic
+ use plastic_phenopowerlaw
+ use plastic_kinehardening
+ use plastic_dislotwin
+ use plastic_disloucla
+ use plastic_nonlocal
+ use geometry_plastic_nonlocal
+ use source_thermal_dissipation
+ use source_thermal_externalheat
+ use source_damage_isoBrittle
+ use source_damage_isoDuctile
+ use source_damage_anisoBrittle
+ use source_damage_anisoDuctile
+ use kinematics_cleavage_opening
+ use kinematics_slipplane_opening
+ use kinematics_thermal_expansion
 
  implicit none
  private
+ 
  integer, public, protected :: &
    constitutive_plasticity_maxSizePostResults, &
    constitutive_plasticity_maxSizeDotState, &
@@ -37,74 +65,6 @@ contains
 !> @brief allocates arrays pointing to array of the various constitutive modules
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_init
- use debug, only: &
-   debug_constitutive, &
-   debug_levelBasic
- use numerics, only: &
-   worldrank
- use IO, only: &
-   IO_error, &
-   IO_write_jobFile
- use config, only: &
-   material_Nphase, &
-   phase_name
- use material, only: &
-   material_phase, &
-   phase_plasticity, &
-   phase_plasticityInstance, &
-   phase_Nsources, &
-   phase_source, &
-   phase_kinematics, &
-   ELASTICITY_hooke_ID, &
-   PLASTICITY_none_ID, &
-   PLASTICITY_isotropic_ID, &
-   PLASTICITY_phenopowerlaw_ID, &
-   PLASTICITY_kinehardening_ID, &
-   PLASTICITY_dislotwin_ID, &
-   PLASTICITY_disloucla_ID, &
-   PLASTICITY_nonlocal_ID ,&
-   SOURCE_thermal_dissipation_ID, &
-   SOURCE_thermal_externalheat_ID, &
-   SOURCE_damage_isoBrittle_ID, &
-   SOURCE_damage_isoDuctile_ID, &
-   SOURCE_damage_anisoBrittle_ID, &
-   SOURCE_damage_anisoDuctile_ID, &
-   KINEMATICS_cleavage_opening_ID, &
-   KINEMATICS_slipplane_opening_ID, &
-   KINEMATICS_thermal_expansion_ID, &
-   ELASTICITY_HOOKE_label, &
-   PLASTICITY_NONE_label, &
-   PLASTICITY_ISOTROPIC_label, &
-   PLASTICITY_PHENOPOWERLAW_label, &
-   PLASTICITY_KINEHARDENING_label, &
-   PLASTICITY_DISLOTWIN_label, &
-   PLASTICITY_DISLOUCLA_label, &
-   PLASTICITY_NONLOCAL_label, &
-   SOURCE_thermal_dissipation_label, &
-   SOURCE_thermal_externalheat_label, &
-   SOURCE_damage_isoBrittle_label, &
-   SOURCE_damage_isoDuctile_label, &
-   SOURCE_damage_anisoBrittle_label, &
-   SOURCE_damage_anisoDuctile_label, &
-   plasticState, &
-   sourceState
-
- use plastic_none
- use plastic_isotropic
- use plastic_phenopowerlaw
- use plastic_kinehardening
- use plastic_dislotwin
- use plastic_disloucla
- use plastic_nonlocal
- use source_thermal_dissipation
- use source_thermal_externalheat
- use source_damage_isoBrittle
- use source_damage_isoDuctile
- use source_damage_anisoBrittle
- use source_damage_anisoDuctile
- use kinematics_cleavage_opening
- use kinematics_slipplane_opening
- use kinematics_thermal_expansion
 
  integer, parameter :: FILEUNIT = 204
  integer :: &
@@ -127,8 +87,11 @@ subroutine constitutive_init
  if (any(phase_plasticity == PLASTICITY_KINEHARDENING_ID)) call plastic_kinehardening_init
  if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call plastic_dislotwin_init
  if (any(phase_plasticity == PLASTICITY_DISLOUCLA_ID))     call plastic_disloucla_init
- if (any(phase_plasticity == PLASTICITY_NONLOCAL_ID))      call plastic_nonlocal_init
-
+ if (any(phase_plasticity == PLASTICITY_NONLOCAL_ID)) then
+   call plastic_nonlocal_init
+ else
+   call geometry_plastic_nonlocal_disable
+ endif
 !--------------------------------------------------------------------------------------------------
 ! initialize source mechanisms
  if (any(phase_source == SOURCE_thermal_dissipation_ID))     call source_thermal_dissipation_init
@@ -281,15 +244,6 @@ end subroutine constitutive_init
 !> ToDo: homogenizedC66 would be more consistent
 !--------------------------------------------------------------------------------------------------
 function constitutive_homogenizedC(ipc,ip,el)
- use material, only: &
-   phase_plasticity, &
-   material_phase, &
-   PLASTICITY_DISLOTWIN_ID, &
-   PLASTICITY_DISLOUCLA_ID
- use plastic_dislotwin, only: &
-   plastic_dislotwin_homogenizedC
- use lattice, only: &
-   lattice_C66
 
  real(pReal), dimension(6,6) :: constitutive_homogenizedC
  integer, intent(in) :: &
@@ -310,23 +264,6 @@ end function constitutive_homogenizedC
 !> @brief calls microstructure function of the different constitutive models
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_microstructure(Fe, Fp, ipc, ip, el)
- use material, only: &
-   phasememberAt, &
-   phase_plasticity, &
-   phase_plasticityInstance, &
-   material_phase, &
-   material_homogenizationAt, &
-   temperature, &
-   thermalMapping, &
-   PLASTICITY_dislotwin_ID, &
-   PLASTICITY_disloucla_ID, &
-   PLASTICITY_nonlocal_ID
- use plastic_nonlocal, only: &
-   plastic_nonlocal_dependentState
- use plastic_dislotwin, only: &
-   plastic_dislotwin_dependentState
- use plastic_disloUCLA, only: &
-   plastic_disloUCLA_dependentState
 
  integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
@@ -366,35 +303,6 @@ end subroutine constitutive_microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
                                          S, Fi, ipc, ip, el)
- use material, only: &
-   phasememberAt, &
-   phase_plasticity, &
-   phase_plasticityInstance, &
-   material_phase, &
-   material_homogenizationAt, &
-   temperature, &
-   thermalMapping, &
-   PLASTICITY_NONE_ID, &
-   PLASTICITY_ISOTROPIC_ID, &
-   PLASTICITY_PHENOPOWERLAW_ID, &
-   PLASTICITY_KINEHARDENING_ID, &
-   PLASTICITY_DISLOTWIN_ID, &
-   PLASTICITY_DISLOUCLA_ID, &
-   PLASTICITY_NONLOCAL_ID
- use mesh, only: &
-   mesh_ipVolume
- use plastic_isotropic, only: &
-   plastic_isotropic_LpAndItsTangent
- use plastic_phenopowerlaw, only: &
-   plastic_phenopowerlaw_LpAndItsTangent
- use plastic_kinehardening, only: &
-   plastic_kinehardening_LpAndItsTangent  
- use plastic_dislotwin, only: &
-   plastic_dislotwin_LpAndItsTangent
- use plastic_disloucla, only: &
-   plastic_disloucla_LpAndItsTangent
- use plastic_nonlocal, only: &
-   plastic_nonlocal_LpAndItsTangent
 
  integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
@@ -446,7 +354,7 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
 
    case (PLASTICITY_NONLOCAL_ID) plasticityType
      call plastic_nonlocal_LpAndItsTangent        (Lp,dLp_dMp,Mp, &
-                                                   temperature(ho)%p(tme),mesh_ipVolume(ip,el),ip,el)
+                                                   temperature(ho)%p(tme),geometry_plastic_nonlocal_IPvolume0(ip,el),ip,el)
 
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
      of = phasememberAt(ipc,ip,el)
@@ -475,26 +383,6 @@ end subroutine constitutive_LpAndItsTangents
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
                                          S, Fi, ipc, ip, el)
- use material, only: &
-   phasememberAt, &
-   phase_plasticity, &
-   phase_plasticityInstance, &
-   phase_plasticity, &
-   material_phase, &
-   phase_kinematics, &
-   phase_Nkinematics, &
-   PLASTICITY_isotropic_ID, &
-   KINEMATICS_cleavage_opening_ID, &
-   KINEMATICS_slipplane_opening_ID, &
-   KINEMATICS_thermal_expansion_ID
- use plastic_isotropic, only: &
-   plastic_isotropic_LiAndItsTangent
- use kinematics_cleavage_opening, only: &
-   kinematics_cleavage_opening_LiAndItsTangent
- use kinematics_slipplane_opening, only: &
-   kinematics_slipplane_opening_LiAndItsTangent
- use kinematics_thermal_expansion, only: &
-   kinematics_thermal_expansion_LiAndItsTangent
 
  integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
@@ -573,16 +461,6 @@ end subroutine constitutive_LiAndItsTangents
 !> @brief  collects initial intermediate deformation gradient
 !--------------------------------------------------------------------------------------------------
 pure function constitutive_initialFi(ipc, ip, el)
- use material, only: &
-   material_phase, &
-   material_homogenizationAt, &
-   thermalMapping, &
-   phase_kinematics, &
-   phase_Nkinematics, &
-   material_phase, &
-   KINEMATICS_thermal_expansion_ID
- use kinematics_thermal_expansion, only: &
-   kinematics_thermal_expansion_initialStrain
 
  integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
@@ -644,14 +522,6 @@ end subroutine constitutive_SandItsTangents
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
                                               Fe, Fi, ipc, ip, el)
- use material, only: &
-   material_phase, &
-   material_homogenizationAt, &
-   phase_NstiffnessDegradations, &
-   phase_stiffnessDegradation, &
-   damage, &
-   damageMapping, &
-   STIFFNESS_DEGRADATION_damage_ID
 
  integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
@@ -700,54 +570,6 @@ end subroutine constitutive_hooke_SandItsTangents
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_collectDotState(S, FeArray, Fi, FpArray, subdt, ipc, ip, el)
- use debug, only: &
-   debug_level, &
-   debug_constitutive, &
-   debug_levelBasic
- use mesh, only: &
-   theMesh
- use material, only: &
-   phasememberAt, &
-   phase_plasticityInstance, &
-   phase_plasticity, &
-   phase_source, &
-   phase_Nsources, &
-   material_phase, &
-   material_homogenizationAt, &
-   temperature, &
-   thermalMapping, &
-   homogenization_maxNgrains, &
-   PLASTICITY_none_ID, &
-   PLASTICITY_isotropic_ID, &
-   PLASTICITY_phenopowerlaw_ID, &
-   PLASTICITY_kinehardening_ID, &
-   PLASTICITY_dislotwin_ID, &
-   PLASTICITY_disloucla_ID, &
-   PLASTICITY_nonlocal_ID, &
-   SOURCE_damage_isoDuctile_ID, &
-   SOURCE_damage_anisoBrittle_ID, &
-   SOURCE_damage_anisoDuctile_ID, &
-   SOURCE_thermal_externalheat_ID
- use plastic_isotropic, only:  &
-   plastic_isotropic_dotState
- use plastic_phenopowerlaw, only: &
-   plastic_phenopowerlaw_dotState
- use plastic_kinehardening, only: &
-   plastic_kinehardening_dotState  
- use plastic_dislotwin, only: &
-   plastic_dislotwin_dotState
- use plastic_disloucla, only: &
-   plastic_disloucla_dotState
- use plastic_nonlocal, only: &
-   plastic_nonlocal_dotState
- use source_damage_isoDuctile, only: &
-   source_damage_isoDuctile_dotState
- use source_damage_anisoBrittle, only: &
-   source_damage_anisoBrittle_dotState
- use source_damage_anisoDuctile, only: &
-   source_damage_anisoDuctile_dotState
- use source_thermal_externalheat, only: &
-   source_thermal_externalheat_dotState
 
  integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
@@ -755,7 +577,7 @@ subroutine constitutive_collectDotState(S, FeArray, Fi, FpArray, subdt, ipc, ip,
    el                                                                                               !< element
  real(pReal),  intent(in) :: &
    subdt                                                                                            !< timestep
- real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems) :: &
+ real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
    FeArray, &                                                                                       !< elastic deformation gradient
    FpArray                                                                                          !< plastic deformation gradient
  real(pReal),  intent(in), dimension(3,3) :: &
@@ -835,26 +657,6 @@ end subroutine constitutive_collectDotState
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_collectDeltaState(S, Fe, Fi, ipc, ip, el)
- use debug, only: &
-   debug_level, &
-   debug_constitutive, &
-   debug_levelBasic
- use material, only: &
-   phasememberAt, &
-   phase_plasticityInstance, &
-   phase_plasticity, &
-   phase_source, &
-   phase_Nsources, &
-   material_phase, &
-   PLASTICITY_KINEHARDENING_ID, &
-   PLASTICITY_NONLOCAL_ID, &
-   SOURCE_damage_isoBrittle_ID
- use plastic_kinehardening, only: &
-   plastic_kinehardening_deltaState   
- use plastic_nonlocal, only: &
-   plastic_nonlocal_deltaState
- use source_damage_isoBrittle, only: &
-   source_damage_isoBrittle_deltaState
 
  integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
@@ -903,49 +705,6 @@ end subroutine constitutive_collectDeltaState
 !> @brief returns array of constitutive results
 !--------------------------------------------------------------------------------------------------
 function constitutive_postResults(S, Fi, ipc, ip, el)
- use material, only: &
-   phasememberAt, &
-   phase_plasticityInstance, &
-   plasticState, &
-   sourceState, &
-   phase_plasticity, &
-   phase_source, &
-   phase_Nsources, &
-   material_phase, &
-   material_homogenizationAt, &
-   temperature, &
-   thermalMapping, &
-   PLASTICITY_NONE_ID, &
-   PLASTICITY_ISOTROPIC_ID, &
-   PLASTICITY_PHENOPOWERLAW_ID, &
-   PLASTICITY_KINEHARDENING_ID, &
-   PLASTICITY_DISLOTWIN_ID, &
-   PLASTICITY_DISLOUCLA_ID, &
-   PLASTICITY_NONLOCAL_ID, &
-   SOURCE_damage_isoBrittle_ID, &
-   SOURCE_damage_isoDuctile_ID, &
-   SOURCE_damage_anisoBrittle_ID, &
-   SOURCE_damage_anisoDuctile_ID
- use plastic_isotropic, only: &
-   plastic_isotropic_postResults
- use plastic_phenopowerlaw, only: &
-   plastic_phenopowerlaw_postResults
- use plastic_kinehardening, only: &
-   plastic_kinehardening_postResults
- use plastic_dislotwin, only: &
-   plastic_dislotwin_postResults
- use plastic_disloucla, only: &
-   plastic_disloucla_postResults
- use plastic_nonlocal, only: &
-   plastic_nonlocal_postResults
- use source_damage_isoBrittle, only: &
-   source_damage_isoBrittle_postResults
- use source_damage_isoDuctile, only: &
-   source_damage_isoDuctile_postResults
- use source_damage_anisoBrittle, only: &
-   source_damage_anisoBrittle_postResults
- use source_damage_anisoDuctile, only: &
-   source_damage_anisoDuctile_postResults
 
  integer, intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
@@ -1031,47 +790,18 @@ end function constitutive_postResults
 !> @brief writes constitutive results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_results
-  use material, only: &
-    PLASTICITY_ISOTROPIC_ID, &
-    PLASTICITY_PHENOPOWERLAW_ID, &
-    PLASTICITY_KINEHARDENING_ID, &
-    PLASTICITY_DISLOTWIN_ID, &
-    PLASTICITY_DISLOUCLA_ID, &
-    PLASTICITY_NONLOCAL_ID
-#if defined(PETSc) || defined(DAMASK_HDF5)
-  use results
-  use HDF5_utilities
-  use config, only: &
-    config_name_phase => phase_name                                                                  ! anticipate logical name
-   
-  use material, only: &
-    phase_plasticityInstance, &
-    material_phase_plasticity_type => phase_plasticity
-    
-  use plastic_isotropic, only: &
-    plastic_isotropic_results
-  use plastic_phenopowerlaw, only: &
-    plastic_phenopowerlaw_results
-  use plastic_kinehardening, only: &
-    plastic_kinehardening_results
-  use plastic_dislotwin, only: &
-    plastic_dislotwin_results  
-  use plastic_disloUCLA, only: &
-    plastic_disloUCLA_results 
-  use plastic_nonlocal, only: &
-    plastic_nonlocal_results 
         
   integer :: p
   character(len=256) :: group
-                                             
-  do p=1,size(config_name_phase)
-    group = trim('current/constituent')//'/'//trim(config_name_phase(p))
+#if defined(PETSc) || defined(DAMASK_HDF5)                                             
+  do p=1,size(phase_name)
+    group = trim('current/constituent')//'/'//trim(phase_name(p))
     call HDF5_closeGroup(results_addGroup(group))
     
     group = trim(group)//'/plastic'
     
     call HDF5_closeGroup(results_addGroup(group))  
-    select case(material_phase_plasticity_type(p))
+    select case(phase_plasticity(p))
     
       case(PLASTICITY_ISOTROPIC_ID)
         call plastic_isotropic_results(phase_plasticityInstance(p),group) 

@@ -8,12 +8,20 @@
 !! 'phase', 'texture', and 'microstucture'
 !--------------------------------------------------------------------------------------------------
 module material
- use prec
- use math
- use config
+  use prec
+  use math
+  use config
+  use results
+  use IO
+  use debug
+  use mesh
+  use numerics
+  use rotations
+  use discretization
 
  implicit none
  private
+
  character(len=*),                         parameter,            public :: &
    ELASTICITY_hooke_label               = 'hooke', &
    PLASTICITY_none_label                = 'none', &
@@ -122,7 +130,7 @@ module material
 
 ! NEW MAPPINGS 
  integer, dimension(:),     allocatable, public, protected :: &                                     ! (elem)
-   material_homogenizationAt                                                                        !< homogenization ID of each element (copy of mesh_homogenizationAt)
+   material_homogenizationAt                                                                        !< homogenization ID of each element (copy of discretization_homogenizationAt)
  integer, dimension(:,:),   allocatable, public, protected :: &                                     ! (ip,elem)
    material_homogenizationMemberAt                                                                  !< position of the element within its homogenization instance
  integer, dimension(:,:), allocatable, public, protected :: &                                       ! (constituent,elem)
@@ -145,34 +153,28 @@ module material
    damageState
 
  integer, dimension(:,:,:), allocatable, public, protected :: &
-   material_texture                                                                                 !< texture (index) of each grain,IP,element
+   material_texture                                                                                 !< texture (index) of each grain,IP,element. Only used by plastic_nonlocal
 
  real(pReal), dimension(:,:,:,:), allocatable, public, protected :: &
    material_EulerAngles                                                                             !< initial orientation of each grain,IP,element
 
  logical, dimension(:), allocatable, public, protected :: &
    microstructure_active, &
-   microstructure_elemhomo, &                                                                       !< flag to indicate homogeneous microstructure distribution over element's IPs
    phase_localPlasticity                                                                            !< flags phases with local constitutive law
 
  integer, private :: &
-   microstructure_maxNconstituents, &                                                               !< max number of constituents in any phase
-   texture_maxNgauss                                                                                !< max number of Gauss components in any texture
+   microstructure_maxNconstituents                                                                  !< max number of constituents in any phase
 
  integer, dimension(:), allocatable, private :: &
-   microstructure_Nconstituents, &                                                                  !< number of constituents in each microstructure
-   texture_Ngauss                                                                                   !< number of Gauss components per texture
+   microstructure_Nconstituents                                                                     !< number of constituents in each microstructure
 
  integer, dimension(:,:), allocatable, private :: &
    microstructure_phase, &                                                                          !< phase IDs of each microstructure
    microstructure_texture                                                                           !< texture IDs of each microstructure
 
  real(pReal), dimension(:,:), allocatable, private :: &
-   microstructure_fraction                                                                          !< vol fraction of each constituent in microstructure
-
- real(pReal), dimension(:,:,:), allocatable, private :: &
    texture_Gauss, &                                                                                 !< data of each Gauss component
-   texture_transformation                                                                           !< transformation for each texture
+   microstructure_fraction                                                                          !< vol fraction of each constituent in microstructure
 
  logical, dimension(:), allocatable, private :: &
    homogenization_active
@@ -243,18 +245,6 @@ contains
 !> material.config
 !--------------------------------------------------------------------------------------------------
 subroutine material_init
-#if defined(PETSc) || defined(DAMASK_HDF5)
- use results
-#endif
- use IO, only: &
-   IO_error
- use debug, only: &
-   debug_level, &
-   debug_material, &
-   debug_levelBasic, &
-   debug_levelExtensive
- use mesh, only: &
-   theMesh
 
  integer, parameter :: FILEUNIT = 210
  integer            :: m,c,h, myDebug, myPhase, myHomog
@@ -323,12 +313,11 @@ subroutine material_init
    do h = 1,size(config_homogenization)
      write(6,'(1x,a32,1x,a16,1x,i6)') homogenization_name(h),homogenization_type(h),homogenization_Ngrains(h)
    enddo
-   write(6,'(/,a14,18x,1x,a11,1x,a12,1x,a13)') 'microstructure','crystallite','constituents','homogeneous'
+   write(6,'(/,a14,18x,1x,a11,1x,a12,1x,a13)') 'microstructure','crystallite','constituents'
    do m = 1,size(config_microstructure)
-     write(6,'(1x,a32,1x,i11,1x,i12,1x,l13)') microstructure_name(m), &
-                                        microstructure_crystallite(m), &
-                                        microstructure_Nconstituents(m), &
-                                        microstructure_elemhomo(m)
+     write(6,'(1x,a32,1x,i11,1x,i12)') microstructure_name(m), &
+                                       microstructure_crystallite(m), &
+                                       microstructure_Nconstituents(m)
      if (microstructure_Nconstituents(m) > 0) then
        do c = 1,microstructure_Nconstituents(m)
          write(6,'(a1,1x,a32,1x,a32,1x,f7.4)') '>',phase_name(microstructure_phase(c,m)),&
@@ -344,12 +333,12 @@ subroutine material_init
  
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! new mappings
- allocate(material_homogenizationAt,source=theMesh%homogenizationAt)
- allocate(material_homogenizationMemberAt(theMesh%elem%nIPs,theMesh%Nelems),source=0)
+ allocate(material_homogenizationAt,source=discretization_homogenizationAt)
+ allocate(material_homogenizationMemberAt(discretization_nIP,discretization_nElem),source=0)
 
  allocate(CounterHomogenization(size(config_homogenization)),source=0)
- do e = 1, theMesh%Nelems
-   do i = 1, theMesh%elem%nIPs
+ do e = 1, discretization_nElem
+   do i = 1, discretization_nIP
      CounterHomogenization(material_homogenizationAt(e)) = &
      CounterHomogenization(material_homogenizationAt(e)) + 1
      material_homogenizationMemberAt(i,e) = CounterHomogenization(material_homogenizationAt(e))
@@ -357,12 +346,12 @@ subroutine material_init
  enddo
 
 
- allocate(material_phaseAt(homogenization_maxNgrains,theMesh%Nelems), source=material_phase(:,1,:))
- allocate(material_phaseMemberAt(homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),source=0)
+ allocate(material_phaseAt(homogenization_maxNgrains,discretization_nElem), source=material_phase(:,1,:))
+ allocate(material_phaseMemberAt(homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0)
  
  allocate(CounterPhase(size(config_phase)),source=0)
- do e = 1, theMesh%Nelems
-   do i = 1, theMesh%elem%nIPs
+ do e = 1, discretization_nElem
+   do i = 1, discretization_nIP
      do c = 1, homogenization_maxNgrains
        CounterPhase(material_phaseAt(c,e)) = &
        CounterPhase(material_phaseAt(c,e)) + 1
@@ -371,6 +360,9 @@ subroutine material_init
    enddo
  enddo
  
+ call config_deallocate('material.config/microstructure')
+ call config_deallocate('material.config/texture')
+
 #if defined(PETSc) || defined(DAMASK_HDF5)
  call results_openJobFile
  call results_mapping_constituent(material_phaseAt,material_phaseMemberAt,phase_name)
@@ -383,18 +375,18 @@ subroutine material_init
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! BEGIN DEPRECATED
- allocate(phaseAt                   (  homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),source=0)
- allocate(phasememberAt             (  homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),source=0)
- allocate(mappingHomogenization     (2,                          theMesh%elem%nIPs,theMesh%Nelems),source=0)
- allocate(mappingHomogenizationConst(                            theMesh%elem%nIPs,theMesh%Nelems),source=1)
+ allocate(phaseAt                   (  homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0)
+ allocate(phasememberAt             (  homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0)
+ allocate(mappingHomogenization     (2,                          discretization_nIP,discretization_nElem),source=0)
+ allocate(mappingHomogenizationConst(                            discretization_nIP,discretization_nElem),source=1)
  
  CounterHomogenization=0
  CounterPhase         =0
 
 
- do e = 1,theMesh%Nelems
- myHomog = theMesh%homogenizationAt(e)
-   do i = 1, theMesh%elem%nIPs
+ do e = 1,discretization_nElem
+ myHomog = discretization_homogenizationAt(e)
+   do i = 1, discretization_nIP
      CounterHomogenization(myHomog) = CounterHomogenization(myHomog) + 1
      mappingHomogenization(1:2,i,e) = [CounterHomogenization(myHomog),huge(1)]
      do g = 1,homogenization_Ngrains(myHomog)
@@ -424,10 +416,6 @@ end subroutine material_init
 !> @brief parses the homogenization part from the material configuration
 !--------------------------------------------------------------------------------------------------
 subroutine material_parseHomogenization
- use mesh, only: &
-   theMesh
- use IO, only: &
-   IO_error
 
  integer              :: h
  character(len=65536) :: tag
@@ -445,7 +433,7 @@ subroutine material_parseHomogenization
  allocate(damage_initialPhi(size(config_homogenization)),             source=1.0_pReal)
 
  forall (h = 1:size(config_homogenization)) &
-   homogenization_active(h) = any(theMesh%homogenizationAt == h)
+   homogenization_active(h) = any(discretization_homogenizationAt == h)
 
 
  do h=1, size(config_homogenization)
@@ -519,14 +507,6 @@ end subroutine material_parseHomogenization
 !> @brief parses the microstructure part in the material configuration file
 !--------------------------------------------------------------------------------------------------
 subroutine material_parseMicrostructure
- use IO, only: &
-   IO_floatValue, &
-   IO_intValue, &
-   IO_stringValue, &
-   IO_stringPos, &
-   IO_error
- use mesh, only: &
-   theMesh
 
  character(len=65536), dimension(:), allocatable :: &
    strings
@@ -538,18 +518,16 @@ subroutine material_parseMicrostructure
  allocate(microstructure_crystallite(size(config_microstructure)),          source=0)
  allocate(microstructure_Nconstituents(size(config_microstructure)),        source=0)
  allocate(microstructure_active(size(config_microstructure)),               source=.false.)
- allocate(microstructure_elemhomo(size(config_microstructure)),             source=.false.)
 
- if(any(theMesh%microstructureAt > size(config_microstructure))) &
+ if(any(discretization_microstructureAt > size(config_microstructure))) &
   call IO_error(155,ext_msg='More microstructures in geometry than sections in material.config')
 
- forall (e = 1:theMesh%Nelems) &
-   microstructure_active(theMesh%microstructureAt(e)) = .true.                                         ! current microstructure used in model? Elementwise view, maximum N operations for N elements
+ forall (e = 1:discretization_nElem) &
+   microstructure_active(discretization_microstructureAt(e)) = .true.                                ! current microstructure used in model? Elementwise view, maximum N operations for N elements
 
  do m=1, size(config_microstructure)
    microstructure_Nconstituents(m) =  config_microstructure(m)%countKeys('(constituent)')
    microstructure_crystallite(m)   =  config_microstructure(m)%getInt('crystallite')
-   microstructure_elemhomo(m)      =  config_microstructure(m)%keyExists('/elementhomogeneous/')
  enddo
 
  microstructure_maxNconstituents = maxval(microstructure_Nconstituents)
@@ -577,12 +555,9 @@ subroutine material_parseMicrostructure
      
      enddo
    enddo
+   if (dNeq(sum(microstructure_fraction(:,m)),1.0_pReal)) call IO_error(153,ext_msg=microstructure_name(m))
  enddo
 
- do m = 1, size(config_microstructure)
-   if (dNeq(sum(microstructure_fraction(:,m)),1.0_pReal)) &
-     call IO_error(153,ext_msg=microstructure_name(m))
- enddo
  
 end subroutine material_parseMicrostructure
 
@@ -596,7 +571,7 @@ subroutine material_parseCrystallite
 
  allocate(crystallite_Noutput(size(config_crystallite)),source=0)
  do c=1, size(config_crystallite)
-   crystallite_Noutput(c) =  config_crystallite(c)%countKeys('(output)')
+   crystallite_Noutput(c) = config_crystallite(c)%countKeys('(output)')
  enddo
 
 end subroutine material_parseCrystallite
@@ -606,10 +581,6 @@ end subroutine material_parseCrystallite
 !> @brief parses the phase part in the material configuration file
 !--------------------------------------------------------------------------------------------------
 subroutine material_parsePhase
- use IO, only: &
-   IO_error, &
-   IO_getTag, &
-   IO_stringValue
 
  integer :: sourceCtr, kinematicsCtr, stiffDegradationCtr, p
  character(len=65536), dimension(:), allocatable ::  str 
@@ -729,81 +700,71 @@ subroutine material_parsePhase
 
 end subroutine material_parsePhase
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the texture part in the material configuration file
 !--------------------------------------------------------------------------------------------------
 subroutine material_parseTexture
- use IO, only: &
-   IO_error, &
-   IO_stringPos, &
-   IO_floatValue, &
-   IO_stringValue
 
- integer :: section, gauss, j, t, i
- character(len=65536), dimension(:), allocatable ::  strings                                     ! Values for given key in material config 
- integer, dimension(:), allocatable :: chunkPos
+  integer :: j, t, i
+  character(len=65536), dimension(:), allocatable ::  strings                                       ! Values for given key in material config 
+  integer, dimension(:), allocatable :: chunkPos
+  real(pReal), dimension(3,3)  :: texture_transformation                                            ! maps texture to microstructure coordinate system
+  type(rotation) :: eulers
 
- allocate(texture_Ngauss(size(config_texture)),   source=0)
+  do t=1, size(config_texture)
+    if (config_texture(t)%countKeys('(gauss)') /= 1) call IO_error(147,ext_msg='count((gauss)) != 1')
+    if (config_texture(t)%keyExists('symmetry'))     call IO_error(147,ext_msg='symmetry')
+    if (config_texture(t)%keyExists('(random)'))     call IO_error(147,ext_msg='(random)')
+    if (config_texture(t)%keyExists('(fiber)'))      call IO_error(147,ext_msg='(fiber)')
+  enddo
 
- do t=1, size(config_texture)
-   texture_Ngauss(t) =  config_texture(t)%countKeys('(gauss)')
-   if (config_texture(t)%keyExists('symmetry')) call IO_error(147,ext_msg='symmetry')
-   if (config_texture(t)%keyExists('(random)')) call IO_error(147,ext_msg='(random)')
-   if (config_texture(t)%keyExists('(fiber)'))  call IO_error(147,ext_msg='(fiber)')
- enddo
+  allocate(texture_Gauss (3,size(config_texture)), source=0.0_pReal)
 
- texture_maxNgauss = maxval(texture_Ngauss)
- allocate(texture_Gauss (5,texture_maxNgauss,size(config_texture)), source=0.0_pReal)
- allocate(texture_transformation(3,3,size(config_texture)),         source=0.0_pReal)
-          texture_transformation = spread(math_I3,3,size(config_texture))
-
- do t=1, size(config_texture)
-   section = t
-   gauss = 0
-   
-   if (config_texture(t)%keyExists('axes')) then
-     strings = config_texture(t)%getStrings('axes')
-     do j = 1, 3                                                                                    ! look for "x", "y", and "z" entries
-       select case (strings(j))
-         case('x', '+x')
-           texture_transformation(j,1:3,t) = [ 1.0_pReal, 0.0_pReal, 0.0_pReal]                     ! original axis is now +x-axis
-         case('-x')
-           texture_transformation(j,1:3,t) = [-1.0_pReal, 0.0_pReal, 0.0_pReal]                     ! original axis is now -x-axis
-         case('y', '+y')
-           texture_transformation(j,1:3,t) = [ 0.0_pReal, 1.0_pReal, 0.0_pReal]                     ! original axis is now +y-axis
-         case('-y')
-           texture_transformation(j,1:3,t) = [ 0.0_pReal,-1.0_pReal, 0.0_pReal]                     ! original axis is now -y-axis
-         case('z', '+z')
-           texture_transformation(j,1:3,t) = [ 0.0_pReal, 0.0_pReal, 1.0_pReal]                     ! original axis is now +z-axis
-         case('-z')
-           texture_transformation(j,1:3,t) = [ 0.0_pReal, 0.0_pReal,-1.0_pReal]                     ! original axis is now -z-axis
-         case default
-           call IO_error(157,t)
-       end select
-     enddo
-     if(dNeq(math_det33(texture_transformation(1:3,1:3,t)),1.0_pReal)) call IO_error(157,t)
-   endif
-
-   if (config_texture(t)%keyExists('(gauss)')) then
-     gauss = gauss + 1
-     strings = config_texture(t)%getStrings('(gauss)',raw= .true.)
-     do i = 1 , size(strings)
-       chunkPos = IO_stringPos(strings(i))
-       do j = 1,9,2
-         select case (IO_stringValue(strings(i),chunkPos,j))
-             case('phi1')
-                 texture_Gauss(1,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
-             case('phi')
-                 texture_Gauss(2,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
-             case('phi2')
-                 texture_Gauss(3,gauss,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
-          end select
+  do t=1, size(config_texture)
+    
+    strings = config_texture(t)%getStrings('(gauss)',raw= .true.)
+    do i = 1 , size(strings)
+      chunkPos = IO_stringPos(strings(i))
+      do j = 1,9,2
+        select case (IO_stringValue(strings(i),chunkPos,j))
+          case('phi1')
+            texture_Gauss(1,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
+          case('phi')
+            texture_Gauss(2,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
+          case('phi2')
+            texture_Gauss(3,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
+        end select
       enddo
-     enddo
-   endif
- enddo    
- 
- call config_deallocate('material.config/texture')
+    enddo
+
+    if (config_texture(t)%keyExists('axes')) then
+      strings = config_texture(t)%getStrings('axes')
+      do j = 1, 3                                                                                   ! look for "x", "y", and "z" entries
+        select case (strings(j))
+          case('x', '+x')
+            texture_transformation(j,1:3) = [ 1.0_pReal, 0.0_pReal, 0.0_pReal]                      ! original axis is now +x-axis
+          case('-x')
+            texture_transformation(j,1:3) = [-1.0_pReal, 0.0_pReal, 0.0_pReal]                      ! original axis is now -x-axis
+          case('y', '+y')
+            texture_transformation(j,1:3) = [ 0.0_pReal, 1.0_pReal, 0.0_pReal]                      ! original axis is now +y-axis
+          case('-y')
+            texture_transformation(j,1:3) = [ 0.0_pReal,-1.0_pReal, 0.0_pReal]                      ! original axis is now -y-axis
+          case('z', '+z')
+            texture_transformation(j,1:3) = [ 0.0_pReal, 0.0_pReal, 1.0_pReal]                      ! original axis is now +z-axis
+          case('-z')
+            texture_transformation(j,1:3) = [ 0.0_pReal, 0.0_pReal,-1.0_pReal]                      ! original axis is now -z-axis
+          case default
+            call IO_error(157,t)
+        end select
+      enddo
+      if(dNeq(math_det33(texture_transformation),1.0_pReal)) call IO_error(157,t)
+      call eulers%fromEulerAngles(texture_Gauss(:,t))
+      texture_Gauss(:,t) = math_RtoEuler(matmul(eulers%asRotationMatrix(),texture_transformation))
+    endif
+    
+  enddo 
+  
 
 end subroutine material_parseTexture
 
@@ -814,8 +775,6 @@ end subroutine material_parseTexture
 subroutine material_allocatePlasticState(phase,NofMyPhase,&
                                          sizeState,sizeDotState,sizeDeltaState,&
                                          Nslip,Ntwin,Ntrans)
- use numerics, only: &
-   numerics_integrator
 
  integer, intent(in) :: &
    phase, &
@@ -861,8 +820,6 @@ end subroutine material_allocatePlasticState
 !--------------------------------------------------------------------------------------------------
 subroutine material_allocateSourceState(phase,of,NofMyPhase,&
                                         sizeState,sizeDotState,sizeDeltaState)
- use numerics, only: &
-   numerics_integrator
 
  integer, intent(in) :: &
    phase, &
@@ -902,36 +859,27 @@ end subroutine material_allocateSourceState
 !! calculates the volume of the grains and deals with texture components
 !--------------------------------------------------------------------------------------------------
 subroutine material_populateGrains
- use mesh, only: &
-   theMesh
 
  integer :: e,i,c,homog,micro
 
- allocate(material_phase(homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),        source=0)
- allocate(material_texture(homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),      source=0)
- allocate(material_EulerAngles(3,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%Nelems),source=0.0_pReal)
+ allocate(material_phase(homogenization_maxNgrains,discretization_nIP,discretization_nElem),        source=0)
+ allocate(material_texture(homogenization_maxNgrains,discretization_nIP,discretization_nElem),      source=0)
+ allocate(material_EulerAngles(3,homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0.0_pReal)
 
-  do e = 1, theMesh%Nelems
-    do i = 1, theMesh%elem%nIPs
-      homog = theMesh%homogenizationAt(e)
-      micro = theMesh%microstructureAt(e)
+  do e = 1, discretization_nElem
+    do i = 1, discretization_nIP
+      homog = discretization_homogenizationAt(e)
+      micro = discretization_microstructureAt(e)
       do c = 1, homogenization_Ngrains(homog)
-        material_phase(c,i,e)   = microstructure_phase(c,micro)
-        material_texture(c,i,e) = microstructure_texture(c,micro)
-        material_EulerAngles(1:3,c,i,e) = texture_Gauss(1:3,1,material_texture(c,i,e))
-        material_EulerAngles(1:3,c,i,e) = math_RtoEuler( &                                       ! translate back to Euler angles
-                                             matmul( &                                       ! pre-multiply
-                                               math_EulertoR(material_EulerAngles(1:3,c,i,e)), &    ! face-value orientation
-                                               texture_transformation(1:3,1:3,material_texture(c,i,e)) &          ! and transformation matrix
-                                             ) &
-                                             )
+        material_phase(c,i,e)           = microstructure_phase(c,micro)
+        material_texture(c,i,e)         = microstructure_texture(c,micro)
+        material_EulerAngles(1:3,c,i,e) = texture_Gauss(1:3,material_texture(c,i,e))
       enddo
     enddo
   enddo
 
- deallocate(texture_transformation)
-
- call config_deallocate('material.config/microstructure')
+ deallocate(microstructure_phase)
+ deallocate(microstructure_texture)
 
 end subroutine material_populateGrains
 

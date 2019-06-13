@@ -7,12 +7,22 @@
 module plastic_nonlocal
   use prec
   use future
+  use IO
+  use math
+  use debug
+  use mesh
+  use material
+  use lattice
+  use rotations
+  use config
+  use lattice
+  use discretization
   use geometry_plastic_nonlocal, only: &
-    periodicSurface => geometry_plastic_nonlocal_periodicSurface, &
+    nIPneighbors    => geometry_plastic_nonlocal_nIPneighbors, &
     IPneighborhood  => geometry_plastic_nonlocal_IPneighborhood, &
-    IPvolume        => geometry_plastic_nonlocal_IPvolume, &
-    IParea          => geometry_plastic_nonlocal_IParea, &
-    IPareaNormal    => geometry_plastic_nonlocal_IPareaNormal
+    IPvolume        => geometry_plastic_nonlocal_IPvolume0, &
+    IParea          => geometry_plastic_nonlocal_IParea0, &
+    IPareaNormal    => geometry_plastic_nonlocal_IPareaNormal0
     
   implicit none
   private
@@ -241,21 +251,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_init
-  use prec, only: &
-    dEq0, dNeq0, dEq
-  use math, only: &
-    math_expand, math_cross
-  use IO, only: &
-    IO_error
-  use debug, only: &
-    debug_level, &
-    debug_constitutive, &
-    debug_levelBasic
-  use mesh, only: &
-    theMesh
-  use material
-  use config
-  use lattice
 
   character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
   integer,                dimension(0), parameter :: emptyIntArray    = [integer::]
@@ -290,7 +285,6 @@ subroutine plastic_nonlocal_init
   maxNinstances = count(phase_plasticity == PLASTICITY_NONLOCAL_ID)
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
     write(6,'(a16,1x,i5,/)') '# instances:',maxNinstances
-
 
   allocate(param(maxNinstances))
   allocate(state(maxNinstances))
@@ -672,8 +666,8 @@ subroutine plastic_nonlocal_init
 
   enddo
  
-  allocate(compatibility(2,maxval(totalNslip),maxval(totalNslip),theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), &
-                                                                                  source=0.0_pReal)
+  allocate(compatibility(2,maxval(totalNslip),maxval(totalNslip),nIPneighbors,&
+                         discretization_nIP,discretization_nElem), source=0.0_pReal)
                                             
 ! BEGIN DEPRECATED----------------------------------------------------------------------------------
   allocate(iRhoU(maxval(totalNslip),4,maxNinstances), source=0)
@@ -738,15 +732,6 @@ subroutine plastic_nonlocal_init
   !> @brief populates the initial dislocation density
   !--------------------------------------------------------------------------------------------------
   subroutine stateInit(phase,NofMyPhase)
-   use math, only: &
-     math_sampleGaussVar
-   use mesh, only: &
-     theMesh, &
-     mesh_ipVolume
-   use material, only: &
-     material_phase, &
-     phase_plasticityInstance, &
-     phasememberAt
       
    integer,intent(in) ::&
      phase, &
@@ -779,9 +764,9 @@ subroutine plastic_nonlocal_init
    if (prm%rhoSglRandom > 0.0_pReal) then
   
     ! get the total volume of the instance
-    do e = 1,theMesh%nElems
-      do i = 1,theMesh%elem%nIPs
-        if (material_phase(1,i,e) == phase) volume(phasememberAt(1,i,e)) = mesh_ipVolume(i,e)
+    do e = 1,discretization_nElem
+      do i = 1,discretization_nIP
+        if (material_phase(1,i,e) == phase) volume(phasememberAt(1,i,e)) = IPvolume(i,e)
       enddo
     enddo
     totalVolume = sum(volume)
@@ -828,39 +813,6 @@ end subroutine plastic_nonlocal_init
 !> @brief calculates quantities characterizing the microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
-  use prec, only: &
-    dEq0
-  use IO, only: &
-    IO_error
-  use math, only: &
-    PI, &
-    math_inner, &
-    math_inv33
-#ifdef DEBUG
-  use debug, only: &
-    debug_level, &
-    debug_constitutive, &
-    debug_levelExtensive, &
-    debug_levelSelective, &
-    debug_i, &
-    debug_e
-#endif
-  use mesh, only: &
-    theMesh, &
-    mesh_ipNeighborhood, &
-    mesh_ipCoordinates, &
-    mesh_ipVolume, &
-    mesh_ipAreaNormal, &
-    mesh_ipArea
-  use material, only: &
-    material_phase, &
-    phase_localPlasticity, &
-    phaseAt, phasememberAt, &
-    phase_plasticityInstance
-  use lattice, only: &
-    LATTICE_bcc_ID, &
-    LATTICE_fcc_ID, &
-    lattice_structure
   
   integer, intent(in) :: &
     ip, &
@@ -900,7 +852,7 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
     invFp, &                                                                                        !< inverse of plastic deformation gradient
     connections, &
     invConnections
-  real(pReal), dimension(3,theMesh%elem%nIPneighbors) :: &
+  real(pReal), dimension(3,nIPneighbors) :: &
     connection_latticeConf
   real(pReal), dimension(2,totalNslip(phase_plasticityInstance(material_phase(1,ip,el)))) :: &
     rhoExcess
@@ -914,10 +866,10 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
                          totalNslip(phase_plasticityInstance(material_phase(1,ip,el)))) :: &
     myInteractionMatrix                                                                             ! corrected slip interaction matrix
                                   
-  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),theMesh%elem%nIPneighbors) :: &
+  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),nIPneighbors) :: &
     rho_edg_delta_neighbor, &
     rho_scr_delta_neighbor
-  real(pReal), dimension(2,maxval(totalNslip),theMesh%elem%nIPneighbors) :: &
+  real(pReal), dimension(2,maxval(totalNslip),nIPneighbors) :: &
     neighbor_rhoExcess, &                                                                           ! excess density at neighboring material point
     neighbor_rhoTotal                                                                               ! total density at neighboring material point
   real(pReal), dimension(3,totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),2) :: &
@@ -974,15 +926,15 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
     rhoExcess(1,1:ns) = rho_edg_delta
     rhoExcess(2,1:ns) = rho_scr_delta
   
-    FVsize = mesh_ipVolume(ip,el) ** (1.0_pReal/3.0_pReal)
+    FVsize = IPvolume(ip,el) ** (1.0_pReal/3.0_pReal)
     
     !* loop through my neighborhood and get the connection vectors (in lattice frame) and the excess densities
     
     nRealNeighbors = 0.0_pReal
     neighbor_rhoTotal = 0.0_pReal
-    do n = 1,theMesh%elem%nIPneighbors
-      neighbor_el = mesh_ipNeighborhood(1,n,ip,el)
-      neighbor_ip = mesh_ipNeighborhood(2,n,ip,el)
+    do n = 1,nIPneighbors
+      neighbor_el = IPneighborhood(1,n,ip,el)
+      neighbor_ip = IPneighborhood(2,n,ip,el)
       no = phasememberAt(1,neighbor_ip,neighbor_el)
       if (neighbor_el > 0 .and. neighbor_ip > 0) then
         neighbor_instance = phase_plasticityInstance(material_phase(1,neighbor_ip,neighbor_el))
@@ -1000,9 +952,9 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
             connection_latticeConf(1:3,n) = &
               matmul(invFe, mesh_ipCoordinates(1:3,neighbor_ip,neighbor_el) &
                                   - mesh_ipCoordinates(1:3,ip,el))
-            normal_latticeConf = matmul(transpose(invFp), mesh_ipAreaNormal(1:3,n,ip,el))
+            normal_latticeConf = matmul(transpose(invFp), IPareaNormal(1:3,n,ip,el))
             if (math_inner(normal_latticeConf,connection_latticeConf(1:3,n)) < 0.0_pReal) &        ! neighboring connection points in opposite direction to face normal: must be periodic image
-              connection_latticeConf(1:3,n) = normal_latticeConf * mesh_ipVolume(ip,el)/mesh_ipArea(n,ip,el) ! instead take the surface normal scaled with the diameter of the cell
+              connection_latticeConf(1:3,n) = normal_latticeConf * IPvolume(ip,el)/IParea(n,ip,el) ! instead take the surface normal scaled with the diameter of the cell
         else
           ! local neighbor or different lattice structure or different constitution instance -> use central values instead
           connection_latticeConf(1:3,n) = 0.0_pReal
@@ -1224,13 +1176,6 @@ end subroutine plastic_nonlocal_kinetics
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
                                             Mp, Temperature, volume, ip, el)
-  use math,     only: &
-    math_mul33xx33
-  use material, only: &
-    material_phase, &
-    plasticState, &
-    phaseAt, phasememberAt, &
-    phase_plasticityInstance
 
   integer, intent(in) :: &
     ip, &                                                                                           !< current integration point
@@ -1363,26 +1308,6 @@ end subroutine plastic_nonlocal_LpAndItsTangent
 !> @brief (instantaneous) incremental change of microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_deltaState(Mp,ip,el)
-  use prec, only: &
-    dNeq0
-#ifdef DEBUG
-  use debug, only: &
-    debug_level, &
-    debug_constitutive, &
-    debug_levelBasic, &
-    debug_levelExtensive, &
-    debug_levelSelective, &
-    debug_i, &
-    debug_e
-#endif
-  use math, only: &
-    PI, &
-    math_mul33xx33
-  use material, only: &
-    material_phase, &
-    plasticState, &
-    phaseAt, phasememberAt, &
-    phase_plasticityInstance
   
   integer, intent(in) :: &
     ip, &
@@ -1500,49 +1425,6 @@ end subroutine plastic_nonlocal_deltaState
 !---------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
                                      timestep,ip,el)
-  use, intrinsic :: &
-    IEEE_arithmetic
-  use prec, only: &
-    dNeq0, &
-    dNeq, &
-    dEq0
-  use IO, only: &
-    IO_error
-#ifdef DEBUG
-  use debug, only: &
-    debug_level, &
-    debug_constitutive, &
-    debug_levelBasic, &
-    debug_levelExtensive, &
-    debug_levelSelective, &
-    debug_i, &
-    debug_e
-#endif
-  use math, only: &
-    math_inner, &
-    math_mul33xx33, &
-    math_inv33, &
-    math_det33, &
-    PI
-  use mesh, only: &
-    theMesh, &
-    mesh_ipNeighborhood, &
-    mesh_ipVolume, &
-    mesh_ipArea, &
-    mesh_ipAreaNormal
-  use material, only: &
-    homogenization_maxNgrains, &
-    material_phase, &
-    phase_plasticityInstance, &
-    phase_localPlasticity, &
-    plasticState, &
-    phaseAt, phasememberAt, &
-    phase_plasticity ,&
-    PLASTICITY_NONLOCAL_ID
-  use lattice, only: &
-    lattice_structure, &
-    LATTICE_bcc_ID, & 
-    LATTICE_fcc_ID
   
   integer, intent(in) :: &
     ip, &                                                                                           !< current integration point
@@ -1552,7 +1434,7 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
     timestep                                                                                        !< substepped crystallite time increment
   real(pReal), dimension(3,3), intent(in) ::&
     Mp                                                                                              !< MandelStress
-  real(pReal), dimension(3,3,homogenization_maxNgrains,theMesh%elem%nIPs,theMesh%nElems), intent(in) :: &
+  real(pReal), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem), intent(in) :: &
     Fe, &                                                                                           !< elastic deformation gradient
     Fp                                                                                              !< plastic deformation gradient
   
@@ -1715,14 +1597,14 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
     !*** check CFL (Courant-Friedrichs-Lewy) condition for flux
     if (any( abs(gdot) > 0.0_pReal &                                                                ! any active slip system ...
             .and. prm%CFLfactor * abs(v) * timestep &
-                > mesh_ipVolume(ip,el) / maxval(mesh_ipArea(:,ip,el)))) then                        ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
+                > IPvolume(ip,el) / maxval(IParea(:,ip,el)))) then                                  ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
 #ifdef DEBUG
     if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0) then 
       write(6,'(a,i5,a,i2)') '<< CONST >> CFL condition not fullfilled at el ',el,' ip ',ip
       write(6,'(a,e10.3,a,e10.3)') '<< CONST >> velocity is at  ', &
         maxval(abs(v), abs(gdot) > 0.0_pReal &
                        .and.  prm%CFLfactor * abs(v) * timestep &
-                             > mesh_ipVolume(ip,el) / maxval(mesh_ipArea(:,ip,el))), &
+                             > IPvolume(ip,el) / maxval(IParea(:,ip,el))), &
         ' at a timestep of ',timestep
       write(6,'(a)') '<< CONST >> enforcing cutback !!!'
     endif
@@ -1743,18 +1625,18 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
     my_Fe = Fe(1:3,1:3,1,ip,el)
     my_F = matmul(my_Fe, Fp(1:3,1:3,1,ip,el))
     
-    neighbors: do n = 1,theMesh%elem%nIPneighbors
+    neighbors: do n = 1,nIPneighbors
   
-      neighbor_el = mesh_ipNeighborhood(1,n,ip,el)
-      neighbor_ip = mesh_ipNeighborhood(2,n,ip,el)
-      neighbor_n  = mesh_ipNeighborhood(3,n,ip,el)
+      neighbor_el = IPneighborhood(1,n,ip,el)
+      neighbor_ip = IPneighborhood(2,n,ip,el)
+      neighbor_n  = IPneighborhood(3,n,ip,el)
       np = phaseAt(1,neighbor_ip,neighbor_el)
       no = phasememberAt(1,neighbor_ip,neighbor_el)
   
       opposite_neighbor = n + mod(n,2) - mod(n+1,2)
-      opposite_el = mesh_ipNeighborhood(1,opposite_neighbor,ip,el)
-      opposite_ip = mesh_ipNeighborhood(2,opposite_neighbor,ip,el)
-      opposite_n  = mesh_ipNeighborhood(3,opposite_neighbor,ip,el)
+      opposite_el = IPneighborhood(1,opposite_neighbor,ip,el)
+      opposite_ip = IPneighborhood(2,opposite_neighbor,ip,el)
+      opposite_n  = IPneighborhood(3,opposite_neighbor,ip,el)
     
       if (neighbor_n > 0) then                                                                      ! if neighbor exists, average deformation gradient
         neighbor_instance = phase_plasticityInstance(material_phase(1,neighbor_ip,neighbor_el))
@@ -1791,30 +1673,30 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
                                                                                             0.0_pReal)
           endforall
   
-        where (neighbor_rhoSgl * mesh_ipVolume(neighbor_ip,neighbor_el) ** 0.667_pReal < prm%significantN &
+        where (neighbor_rhoSgl * IPvolume(neighbor_ip,neighbor_el) ** 0.667_pReal < prm%significantN &
           .or. neighbor_rhoSgl < prm%significantRho) &
           neighbor_rhoSgl = 0.0_pReal
         normal_neighbor2me_defConf = math_det33(Favg) * matmul(math_inv33(transpose(Favg)), &
-                                     mesh_ipAreaNormal(1:3,neighbor_n,neighbor_ip,neighbor_el))     ! calculate the normal of the interface in (average) deformed configuration (now pointing from my neighbor to me!!!)
+                                     IPareaNormal(1:3,neighbor_n,neighbor_ip,neighbor_el))          ! calculate the normal of the interface in (average) deformed configuration (now pointing from my neighbor to me!!!)
         normal_neighbor2me = matmul(transpose(neighbor_Fe), normal_neighbor2me_defConf) &
                            / math_det33(neighbor_Fe)                                                ! interface normal in the lattice configuration of my neighbor
-        area = mesh_ipArea(neighbor_n,neighbor_ip,neighbor_el) * norm2(normal_neighbor2me)
+        area = IParea(neighbor_n,neighbor_ip,neighbor_el) * norm2(normal_neighbor2me)
         normal_neighbor2me = normal_neighbor2me / norm2(normal_neighbor2me)                         ! normalize the surface normal to unit length
         do s = 1,ns
           do t = 1,4
             c = (t + 1) / 2
             topp = t + mod(t,2) - mod(t+1,2)
-            if (neighbor_v(s,t) * math_inner(m(1:3,s,t), normal_neighbor2me) > 0.0_pReal &         ! flux from my neighbor to me == entering flux for me
+            if (neighbor_v(s,t) * math_inner(m(1:3,s,t), normal_neighbor2me) > 0.0_pReal &          ! flux from my neighbor to me == entering flux for me
                 .and. v(s,t) * neighbor_v(s,t) >= 0.0_pReal ) then                                  ! ... only if no sign change in flux density  
               lineLength = neighbor_rhoSgl(s,t) * neighbor_v(s,t) &
-                         * math_inner(m(1:3,s,t), normal_neighbor2me) * area                       ! positive line length that wants to enter through this interface
+                         * math_inner(m(1:3,s,t), normal_neighbor2me) * area                        ! positive line length that wants to enter through this interface
               where (compatibility(c,1:ns,s,n,ip,el) > 0.0_pReal) &                                 ! positive compatibility...
                 rhoDotFlux(1:ns,t) = rhoDotFlux(1:ns,t) &
-                                   + lineLength / mesh_ipVolume(ip,el) &                            ! ... transferring to equally signed mobile dislocation type
+                                   + lineLength / IPvolume(ip,el) &                                 ! ... transferring to equally signed mobile dislocation type
                                    * compatibility(c,1:ns,s,n,ip,el) ** 2.0_pReal
               where (compatibility(c,1:ns,s,n,ip,el) < 0.0_pReal) &                                 ! ..negative compatibility...
                 rhoDotFlux(1:ns,topp) = rhoDotFlux(1:ns,topp) &
-                                      + lineLength / mesh_ipVolume(ip,el) &                         ! ... transferring to opposite signed mobile dislocation type
+                                      + lineLength / IPvolume(ip,el) &                              ! ... transferring to opposite signed mobile dislocation type
                                       * compatibility(c,1:ns,s,n,ip,el) ** 2.0_pReal
             endif
           enddo
@@ -1842,15 +1724,15 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
         
         normal_me2neighbor_defConf = math_det33(Favg) &
                                    * matmul(math_inv33(transpose(Favg)), & 
-                                                             mesh_ipAreaNormal(1:3,n,ip,el))        ! calculate the normal of the interface in (average) deformed configuration (pointing from me to my neighbor!!!)
+                                                             IPareaNormal(1:3,n,ip,el))             ! calculate the normal of the interface in (average) deformed configuration (pointing from me to my neighbor!!!)
         normal_me2neighbor = matmul(transpose(my_Fe), normal_me2neighbor_defConf) &
                            / math_det33(my_Fe)                                                      ! interface normal in my lattice configuration
-        area = mesh_ipArea(n,ip,el) * norm2(normal_me2neighbor)
+        area = IParea(n,ip,el) * norm2(normal_me2neighbor)
         normal_me2neighbor = normal_me2neighbor / norm2(normal_me2neighbor)                         ! normalize the surface normal to unit length    
         do s = 1,ns
           do t = 1,4
             c = (t + 1) / 2
-            if (my_v(s,t) * math_inner(m(1:3,s,t), normal_me2neighbor) > 0.0_pReal ) then          ! flux from me to my neighbor == leaving flux for me (might also be a pure flux from my mobile density to dead density if interface not at all transmissive)
+            if (my_v(s,t) * math_inner(m(1:3,s,t), normal_me2neighbor) > 0.0_pReal ) then           ! flux from me to my neighbor == leaving flux for me (might also be a pure flux from my mobile density to dead density if interface not at all transmissive)
               if (my_v(s,t) * neighbor_v(s,t) >= 0.0_pReal) then                                    ! no sign change in flux density
                 transmissivity = sum(compatibility(c,1:ns,s,n,ip,el)**2.0_pReal)                    ! overall transmissivity from this slip system to my neighbor
               else                                                                                  ! sign change in flux density means sign change in stress which does not allow for dislocations to arive at the neighbor
@@ -1858,9 +1740,9 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
               endif
               lineLength = my_rhoSgl(s,t) * my_v(s,t) &
                          * math_inner(m(1:3,s,t), normal_me2neighbor) * area                       ! positive line length of mobiles that wants to leave through this interface
-              rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / mesh_ipVolume(ip,el)                 ! subtract dislocation flux from current type
+              rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / IPvolume(ip,el)                     ! subtract dislocation flux from current type
               rhoDotFlux(s,t+4) = rhoDotFlux(s,t+4) &
-                                     + lineLength / mesh_ipVolume(ip,el) * (1.0_pReal - transmissivity) &
+                                     + lineLength / IPvolume(ip,el) * (1.0_pReal - transmissivity) &
                                      * sign(1.0_pReal, my_v(s,t))                                   ! dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point
             endif
           enddo
@@ -1938,12 +1820,12 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
          + rhoDotAthermalAnnihilation &
          + rhoDotThermalAnnihilation 
   
-  results(instance)%rhoDotFlux(1:ns,1:8,o) = rhoDotFlux(1:ns,1:8)
-  results(instance)%rhoDotMultiplication(1:ns,1:2,o) = rhoDotMultiplication(1:ns,[1,3])
-  results(instance)%rhoDotSingle2DipoleGlide(1:ns,1:2,o) = rhoDotSingle2DipoleGlide(1:ns,9:10)
+  results(instance)%rhoDotFlux(1:ns,1:8,o)                 = rhoDotFlux(1:ns,1:8)
+  results(instance)%rhoDotMultiplication(1:ns,1:2,o)       = rhoDotMultiplication(1:ns,[1,3])
+  results(instance)%rhoDotSingle2DipoleGlide(1:ns,1:2,o)   = rhoDotSingle2DipoleGlide(1:ns,9:10)
   results(instance)%rhoDotAthermalAnnihilation(1:ns,1:2,o) = rhoDotAthermalAnnihilation(1:ns,9:10)
-  results(instance)%rhoDotThermalAnnihilation(1:ns,1:2,o) = rhoDotThermalAnnihilation(1:ns,9:10)
-  results(instance)%rhoDotEdgeJogs(1:ns,o) = 2.0_pReal * rhoDotThermalAnnihilation(1:ns,1)
+  results(instance)%rhoDotThermalAnnihilation(1:ns,1:2,o)  = rhoDotThermalAnnihilation(1:ns,9:10)
+  results(instance)%rhoDotEdgeJogs(1:ns,o)                 = 2.0_pReal * rhoDotThermalAnnihilation(1:ns,1)
 
 
 #ifdef DEBUG
@@ -2001,26 +1883,11 @@ end subroutine plastic_nonlocal_dotState
 ! that sum up to a total of 1 are considered, all others are set to zero.
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_updateCompatibility(orientation,i,e) 
-  use math, only: &
-    math_inner, &
-    math_qRot
-  use rotations, only: &
-    rotation
-  use material, only: &
-    material_phase, &
-    material_texture, &
-    phase_localPlasticity, &
-    phase_plasticityInstance
-  use mesh, only: &
-    mesh_ipNeighborhood, &
-    theMesh
-  use lattice, only: &
-    lattice_qDisorientation
   
   integer, intent(in) :: &
     i, &
     e
-  type(rotation), dimension(1,theMesh%elem%nIPs,theMesh%nElems), intent(in) :: &
+  type(rotation), dimension(1,discretization_nIP,discretization_nElem), intent(in) :: &
     orientation                                                                                     ! crystal orientation in quaternions
                                               
   integer :: &
@@ -2040,7 +1907,7 @@ subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
     absoluteMisorientation                                                                          ! absolute misorientation (without symmetry) between me and my neighbor
   real(pReal), dimension(2,totalNslip(phase_plasticityInstance(material_phase(1,i,e))),&
                            totalNslip(phase_plasticityInstance(material_phase(1,i,e))),&
-                           theMesh%elem%nIPneighbors) :: &  
+                           nIPneighbors) :: &  
     my_compatibility                                                                                ! my_compatibility for current element and ip  
   real(pReal) :: &
     my_compatibilitySum, &
@@ -2050,7 +1917,7 @@ subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
     belowThreshold
   type(rotation) :: rot
 
-  Nneighbors = theMesh%elem%nIPneighbors
+  Nneighbors = nIPneighbors
   ph = material_phase(1,i,e)
   textureID = material_texture(1,i,e)
   instance = phase_plasticityInstance(ph)
@@ -2065,8 +1932,8 @@ subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
   !*** Loop thrugh neighbors and check whether there is any compatibility.
   
   neighbors: do n = 1,Nneighbors
-    neighbor_e = mesh_ipNeighborhood(1,n,i,e)
-    neighbor_i = mesh_ipNeighborhood(2,n,i,e)
+    neighbor_e = IPneighborhood(1,n,i,e)
+    neighbor_i = IPneighborhood(2,n,i,e)
     
     
     !* FREE SURFACE
@@ -2159,10 +2026,6 @@ end subroutine plastic_nonlocal_updateCompatibility
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
 function plastic_nonlocal_postResults(ph,instance,of) result(postResults)
- use prec, only: &
-   dNeq0
- use material, only: &
-   plasticState
 
  integer, intent(in) :: &
    ph, &
@@ -2364,7 +2227,6 @@ end function plastic_nonlocal_postResults
 !> @details raw values is rectified
 !--------------------------------------------------------------------------------------------------
 function getRho(instance,of,ip,el)
-  use mesh
   
   integer, intent(in) :: instance, of,ip,el
   real(pReal), dimension(param(instance)%totalNslip,10) :: getRho
@@ -2377,7 +2239,7 @@ function getRho(instance,of,ip,el)
   getRho(:,mob) = max(getRho(:,mob),0.0_pReal)
   getRho(:,dip) = max(getRho(:,dip),0.0_pReal)
   
-  where(abs(getRho) < max(prm%significantN/mesh_ipVolume(ip,el)**(2.0_pReal/3.0_pReal),prm%significantRho)) &
+  where(abs(getRho) < max(prm%significantN/IPvolume(ip,el)**(2.0_pReal/3.0_pReal),prm%significantRho)) &
     getRho = 0.0_pReal
 
   end associate

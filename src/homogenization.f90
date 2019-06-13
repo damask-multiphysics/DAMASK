@@ -14,24 +14,24 @@ module homogenization
  use numerics
  use constitutive
  use crystallite
- use mesh
  use FEsolving
+ use mesh
+ use discretization
  use thermal_isothermal
  use thermal_adiabatic
  use thermal_conduction
  use damage_none
  use damage_local
  use damage_nonlocal
-#if defined(PETSc) || defined(DAMASK_HDF5)
  use results
  use HDF5_utilities
-#endif
+
+ implicit none
+ private
 
 !--------------------------------------------------------------------------------------------------
 ! General variables for the homogenization at a  material point
- implicit none
- private
-   real(pReal),   dimension(:,:,:,:),   allocatable, public :: &
+ real(pReal),   dimension(:,:,:,:),   allocatable, public :: &
    materialpoint_F0, &                                                                              !< def grad of IP at start of FE increment
    materialpoint_F, &                                                                               !< def grad of IP to be reached at end of FE increment
    materialpoint_P                                                                                  !< first P--K stress of IP
@@ -44,17 +44,17 @@ module homogenization
    thermal_maxSizePostResults, &
    damage_maxSizePostResults
 
- real(pReal),   dimension(:,:,:,:),     allocatable, private :: &
+ real(pReal),   dimension(:,:,:,:),     allocatable :: &
    materialpoint_subF0, &                                                                           !< def grad of IP at beginning of homogenization increment
    materialpoint_subF                                                                               !< def grad of IP to be reached at end of homog inc
- real(pReal),   dimension(:,:),         allocatable, private :: &
+ real(pReal),   dimension(:,:),         allocatable :: &
    materialpoint_subFrac, &
    materialpoint_subStep, &
    materialpoint_subdt
- logical,       dimension(:,:),         allocatable, private :: &
+ logical,       dimension(:,:),         allocatable :: &
    materialpoint_requested, &
    materialpoint_converged
- logical,       dimension(:,:,:),       allocatable, private :: &
+ logical,       dimension(:,:,:),       allocatable :: &
    materialpoint_doneAndHappy
    
  interface
@@ -236,20 +236,20 @@ subroutine homogenization_init
 
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global variables
- allocate(materialpoint_dPdF(3,3,3,3,theMesh%elem%nIPs,theMesh%nElems),       source=0.0_pReal)
- allocate(materialpoint_F0(3,3,theMesh%elem%nIPs,theMesh%nElems),             source=0.0_pReal)
- materialpoint_F0 = spread(spread(math_I3,3,theMesh%elem%nIPs),4,theMesh%nElems)                    ! initialize to identity
- allocate(materialpoint_F(3,3,theMesh%elem%nIPs,theMesh%nElems),              source=0.0_pReal)
+ allocate(materialpoint_dPdF(3,3,3,3,discretization_nIP,discretization_nElem),       source=0.0_pReal)
+ allocate(materialpoint_F0(3,3,discretization_nIP,discretization_nElem),             source=0.0_pReal)
+ materialpoint_F0 = spread(spread(math_I3,3,discretization_nIP),4,discretization_nElem)                    ! initialize to identity
+ allocate(materialpoint_F(3,3,discretization_nIP,discretization_nElem),              source=0.0_pReal)
  materialpoint_F = materialpoint_F0                                                                 ! initialize to identity
- allocate(materialpoint_subF0(3,3,theMesh%elem%nIPs,theMesh%nElems),          source=0.0_pReal)
- allocate(materialpoint_subF(3,3,theMesh%elem%nIPs,theMesh%nElems),           source=0.0_pReal)
- allocate(materialpoint_P(3,3,theMesh%elem%nIPs,theMesh%nElems),              source=0.0_pReal)
- allocate(materialpoint_subFrac(theMesh%elem%nIPs,theMesh%nElems),            source=0.0_pReal)
- allocate(materialpoint_subStep(theMesh%elem%nIPs,theMesh%nElems),            source=0.0_pReal)
- allocate(materialpoint_subdt(theMesh%elem%nIPs,theMesh%nElems),              source=0.0_pReal)
- allocate(materialpoint_requested(theMesh%elem%nIPs,theMesh%nElems),          source=.false.)
- allocate(materialpoint_converged(theMesh%elem%nIPs,theMesh%nElems),          source=.true.)
- allocate(materialpoint_doneAndHappy(2,theMesh%elem%nIPs,theMesh%nElems),     source=.true.)
+ allocate(materialpoint_subF0(3,3,discretization_nIP,discretization_nElem),          source=0.0_pReal)
+ allocate(materialpoint_subF(3,3,discretization_nIP,discretization_nElem),           source=0.0_pReal)
+ allocate(materialpoint_P(3,3,discretization_nIP,discretization_nElem),              source=0.0_pReal)
+ allocate(materialpoint_subFrac(discretization_nIP,discretization_nElem),            source=0.0_pReal)
+ allocate(materialpoint_subStep(discretization_nIP,discretization_nElem),            source=0.0_pReal)
+ allocate(materialpoint_subdt(discretization_nIP,discretization_nElem),              source=0.0_pReal)
+ allocate(materialpoint_requested(discretization_nIP,discretization_nElem),          source=.false.)
+ allocate(materialpoint_converged(discretization_nIP,discretization_nElem),          source=.true.)
+ allocate(materialpoint_doneAndHappy(2,discretization_nIP,discretization_nElem),     source=.true.)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global state and postresutls variables
@@ -266,7 +266,7 @@ subroutine homogenization_init
                            + homogenization_maxNgrains * (1 + crystallite_maxSizePostResults &      ! crystallite size & crystallite results
                                                         + 1 + constitutive_plasticity_maxSizePostResults &     ! constitutive size & constitutive results
                                                             + constitutive_source_maxSizePostResults)
- allocate(materialpoint_results(materialpoint_sizeResults,theMesh%elem%nIPs,theMesh%nElems))
+ allocate(materialpoint_results(materialpoint_sizeResults,discretization_nIP,discretization_nElem))
 
  write(6,'(/,a)')   ' <<<+-  homogenization init  -+>>>'
 
@@ -286,7 +286,7 @@ subroutine homogenization_init
  endif
  flush(6)
 
- if (debug_g < 1 .or. debug_g > homogenization_Ngrains(mesh_element(3,debug_e))) &
+ if (debug_g < 1 .or. debug_g > homogenization_Ngrains(material_homogenizationAt(debug_e))) &
    call IO_error(602,ext_msg='constituent', el=debug_e, g=debug_g)
 
 end subroutine homogenization_init
@@ -322,7 +322,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 !--------------------------------------------------------------------------------------------------
 ! initialize restoration points of ...
  do e = FEsolving_execElem(1),FEsolving_execElem(2)
-   myNgrains = homogenization_Ngrains(mesh_element(3,e))
+   myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e);
      do g = 1,myNgrains
 
@@ -370,7 +370,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
    !$OMP PARALLEL DO PRIVATE(myNgrains)
    elementLooping1: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     myNgrains = homogenization_Ngrains(mesh_element(3,e))
+     myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
      IpLooping1: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
 
        converged: if (materialpoint_converged(i,e)) then
@@ -521,7 +521,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 ! results in crystallite_partionedF
      !$OMP PARALLEL DO PRIVATE(myNgrains)
      elementLooping2: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-       myNgrains = homogenization_Ngrains(mesh_element(3,e))
+       myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
        IpLooping2: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
          if (      materialpoint_requested(i,e) .and. &                                             ! process requested but...
              .not. materialpoint_doneAndHappy(1,i,e)) then                                          ! ...not yet done material points
@@ -600,8 +600,8 @@ subroutine materialpoint_postResults
 
  !$OMP PARALLEL DO PRIVATE(myNgrains,myCrystallite,thePos,theSize)
    elementLooping: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     myNgrains = homogenization_Ngrains(mesh_element(3,e))
-     myCrystallite = microstructure_crystallite(mesh_element(4,e))
+     myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
+     myCrystallite = microstructure_crystallite(discretization_microstructureAt(e))
      IpLooping: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        thePos = 0
 
@@ -642,19 +642,19 @@ subroutine partitionDeformation(ip,el)
    ip, &                                                                                            !< integration point
    el                                                                                               !< element number
 
- chosenHomogenization: select case(homogenization_type(mesh_element(3,el)))
+ chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
 
    case (HOMOGENIZATION_NONE_ID) chosenHomogenization
      crystallite_partionedF(1:3,1:3,1,ip,el) = materialpoint_subF(1:3,1:3,ip,el)
 
    case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
      call mech_isostrain_partitionDeformation(&
-                          crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
+                          crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
                           materialpoint_subF(1:3,1:3,ip,el))
 
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
      call mech_RGC_partitionDeformation(&
-                         crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
+                         crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
                          materialpoint_subF(1:3,1:3,ip,el),&
                          ip, &
                          el)
@@ -675,21 +675,21 @@ function updateState(ip,el)
  logical, dimension(2) :: updateState
 
  updateState = .true.
- chosenHomogenization: select case(homogenization_type(mesh_element(3,el)))
+ chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
      updateState = &
        updateState .and. &
-        mech_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
-                             crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
-                             crystallite_partionedF0(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el),&
+        mech_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+                             crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+                             crystallite_partionedF0(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el),&
                              materialpoint_subF(1:3,1:3,ip,el),&
                              materialpoint_subdt(ip,el), &
-                             crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
+                             crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
                              ip, &
                              el)
  end select chosenHomogenization
 
- chosenThermal: select case (thermal_type(mesh_element(3,el)))
+ chosenThermal: select case (thermal_type(material_homogenizationAt(el)))
    case (THERMAL_adiabatic_ID) chosenThermal
      updateState = &
        updateState .and. &
@@ -698,7 +698,7 @@ function updateState(ip,el)
                                      el)
  end select chosenThermal
 
- chosenDamage: select case (damage_type(mesh_element(3,el)))
+ chosenDamage: select case (damage_type(material_homogenizationAt(el)))
    case (DAMAGE_local_ID) chosenDamage
      updateState = &
        updateState .and. &
@@ -719,7 +719,7 @@ subroutine averageStressAndItsTangent(ip,el)
    ip, &                                                                                            !< integration point
    el                                                                                               !< element number
 
- chosenHomogenization: select case(homogenization_type(mesh_element(3,el)))
+ chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
    case (HOMOGENIZATION_NONE_ID) chosenHomogenization
        materialpoint_P(1:3,1:3,ip,el)            = crystallite_P(1:3,1:3,1,ip,el)
        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el) = crystallite_dPdF(1:3,1:3,1:3,1:3,1,ip,el)
@@ -728,17 +728,17 @@ subroutine averageStressAndItsTangent(ip,el)
      call mech_isostrain_averageStressAndItsTangent(&
        materialpoint_P(1:3,1:3,ip,el), &
        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
-       crystallite_P(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
-       crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
-       homogenization_typeInstance(mesh_element(3,el)))
+       crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+       crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+       homogenization_typeInstance(material_homogenizationAt(el)))
 
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
      call mech_RGC_averageStressAndItsTangent(&
        materialpoint_P(1:3,1:3,ip,el), &
        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
-       crystallite_P(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
-       crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)),ip,el), &
-       homogenization_typeInstance(mesh_element(3,el)))
+       crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+       crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+       homogenization_typeInstance(material_homogenizationAt(el)))
  end select chosenHomogenization
 
 end subroutine averageStressAndItsTangent
@@ -765,7 +765,7 @@ function postResults(ip,el)
  postResults = 0.0_pReal
  startPos = 1
  endPos   = thermalState(material_homogenizationAt(el))%sizePostResults
- chosenThermal: select case (thermal_type(mesh_element(3,el)))
+ chosenThermal: select case (thermal_type(material_homogenizationAt(el)))
 
    case (THERMAL_adiabatic_ID) chosenThermal
      homog = material_homogenizationAt(el)
@@ -780,7 +780,7 @@ function postResults(ip,el)
 
  startPos = endPos + 1
  endPos   = endPos + damageState(material_homogenizationAt(el))%sizePostResults
- chosenDamage: select case (damage_type(mesh_element(3,el)))
+ chosenDamage: select case (damage_type(material_homogenizationAt(el)))
 
    case (DAMAGE_local_ID) chosenDamage
      postResults(startPos:endPos) = damage_local_postResults(ip, el)

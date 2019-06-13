@@ -8,9 +8,12 @@
 module mesh
  use prec
  use mesh_base
+ use geometry_plastic_nonlocal
+ use discretization
 
  implicit none
  private
+ 
  integer, public, protected :: &
    mesh_NcpElems, &                                                                                 !< total number of CP elements in local mesh
    mesh_elemType, &                                                                                 !< Element type of the mesh (only support homogeneous meshes)
@@ -518,6 +521,14 @@ subroutine mesh_init(ip,el)
  theMesh%homogenizationAt  = mesh_element(3,:)
  theMesh%microstructureAt  = mesh_element(4,:)
 
+   call discretization_init(mesh_element(3,:),mesh_element(4,:),&
+                            reshape(mesh_ipCoordinates,[3,theMesh%elem%nIPs*theMesh%nElems]),&
+                            mesh_node0)
+ call geometry_plastic_nonlocal_setIPvolume(mesh_ipVolume)
+ call geometry_plastic_nonlocal_setIPneighborhood(mesh_ipNeighborhood)
+ call geometry_plastic_nonlocal_setIParea(mesh_IParea)
+ call geometry_plastic_nonlocal_setIPareaNormal(mesh_IPareaNormal)
+ 
 contains
 
 
@@ -1908,6 +1919,8 @@ subroutine mesh_build_ipNeighborhood
      enddo
    enddo
  enddo
+ 
+  call geometry_plastic_nonlocal_set_IPneighborhood(mesh_ipNeighborhood)
  
  contains
  !--------------------------------------------------------------------------------------------------

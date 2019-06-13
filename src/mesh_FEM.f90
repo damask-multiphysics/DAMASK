@@ -3,37 +3,39 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Driver controlling inner and outer load case looping of the FEM solver
-!> @details doing cutbacking, forwarding in case of restart, reporting statistics, writing
-!> results
 !--------------------------------------------------------------------------------------------------
 module mesh     
 #include <petsc/finclude/petscdmplex.h>
 #include <petsc/finclude/petscis.h>
 #include <petsc/finclude/petscdmda.h>
- use prec, only: pReal, pInt
+ use prec
  use mesh_base
-use PETScdmplex
-use PETScdmda
-use PETScis
-
+ use PETScdmplex
+ use PETScdmda
+ use PETScis
+ use DAMASK_interface
+ use IO
+ use debug
+ use discretization
+ use numerics
+ use FEsolving
+ use FEM_Zoo
+ 
  implicit none
  private
- integer(pInt), public, parameter :: &
-   mesh_ElemType=1_pInt                                                                             !< Element type of the mesh (only support homogeneous meshes)
-
- integer(pInt), public, protected :: &
+ 
+ integer, public, protected :: &
    mesh_Nboundaries, &
    mesh_NcpElems, &                                                                                 !< total number of CP elements in mesh
    mesh_NcpElemsGlobal, &
-   mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
-   mesh_maxNipNeighbors
+   mesh_Nnodes                                                                                      !< total number of nodes in mesh
+
 !!!! BEGIN DEPRECATED !!!!!
- integer(pInt), public, protected :: &
+ integer, public, protected :: &
    mesh_maxNips                                                                                     !< max number of IPs in any CP element
 !!!! BEGIN DEPRECATED !!!!!
 
- integer(pInt), dimension(:,:), allocatable, public, protected :: &
+ integer, dimension(:,:), allocatable, public, protected :: &
    mesh_element !DEPRECATED
 
  real(pReal), dimension(:,:), allocatable, public :: &
@@ -46,35 +48,12 @@ use PETScis
  real(pReal), dimension(:,:,:), allocatable, public :: &
    mesh_ipCoordinates                                                                               !< IP x,y,z coordinates (after deformation!)
 
- real(pReal), dimension(:,:,:), allocatable, public, protected :: &
-   mesh_ipArea                                                                                      !< area of interface to neighboring IP (initially!)
-
- real(pReal),dimension(:,:,:,:), allocatable, public, protected :: & 
-   mesh_ipAreaNormal                                                                                !< area normal of interface to neighboring IP (initially!)
- 
- integer(pInt), dimension(:,:,:,:), allocatable, public, protected :: &
-   mesh_ipNeighborhood                                                                              !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
-
- logical, dimension(3), public, protected :: mesh_periodicSurface                                   !< flag indicating periodic outer surfaces (used for fluxes)
-
  DM, public :: geomMesh
  
  PetscInt, dimension(:), allocatable, public, protected :: &
    mesh_boundaries
 
-                      
- integer(pInt), dimension(1_pInt), parameter, public :: FE_geomtype = &                      !< geometry type of particular element type
- int([1],pInt)
-
- integer(pInt), dimension(1_pInt), parameter, public  :: FE_celltype = &                     !< cell type that is used by each geometry type
- int([1],pInt)
-
- integer(pInt), dimension(1_pInt),            public :: FE_Nips = &                          !< number of IPs in a specific type of element
- int([0],pInt)
-
- integer(pInt), dimension(1_pInt), parameter, public :: FE_NipNeighbors = &                  !< number of ip neighbors / cell faces in a specific cell type
- int([6],pInt)
- 
+                       
   type, public, extends(tMesh) :: tMesh_FEM
 
    
@@ -96,18 +75,17 @@ contains
 
 subroutine tMesh_FEM_init(self,dimen,order,nodes)
  
- implicit none
-  integer, intent(in) :: dimen
- integer(pInt), intent(in) :: order
-  real(pReal), intent(in), dimension(:,:) :: nodes
+ integer, intent(in) :: dimen
+ integer, intent(in) :: order
+ real(pReal), intent(in), dimension(:,:) :: nodes
  class(tMesh_FEM) :: self
  
- if (dimen == 2_pInt) then
-   if (order == 1_pInt) call  self%tMesh%init('mesh',1_pInt,nodes)
-   if (order == 2_pInt) call  self%tMesh%init('mesh',2_pInt,nodes)
- elseif(dimen == 3_pInt) then
-   if (order == 1_pInt) call self%tMesh%init('mesh',6_pInt,nodes)
-   if (order == 2_pInt) call self%tMesh%init('mesh',8_pInt,nodes)
+ if (dimen == 2) then
+   if (order == 1) call  self%tMesh%init('mesh',1,nodes)
+   if (order == 2) call  self%tMesh%init('mesh',2,nodes)
+ elseif(dimen == 3) then
+   if (order == 1) call self%tMesh%init('mesh',6,nodes)
+   if (order == 2) call self%tMesh%init('mesh',8,nodes)
  endif
 
  end subroutine tMesh_FEM_init
@@ -118,35 +96,19 @@ subroutine tMesh_FEM_init(self,dimen,order,nodes)
 !> @brief initializes the mesh by calling all necessary private routines the mesh module
 !! Order and routines strongly depend on type of solver
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_init()
- use DAMASK_interface
- use IO, only: &
-   IO_error, &
-   IO_open_file, &
-   IO_stringPos, &
-   IO_intValue, &
-   IO_EOF, &
-   IO_isBlank
- use debug, only: &
-   debug_e, &
-   debug_i
- use numerics, only: &
-   usePingPong, &
-   integrationOrder, &
-   worldrank, &
-   worldsize
- use FEsolving, only: &
-   FEsolving_execElem, &
-   FEsolving_execIP
- use FEM_Zoo, only: &
-   FEM_Zoo_nQuadrature, &
-   FEM_Zoo_QuadraturePoints
+subroutine mesh_init
+
+ integer, dimension(1), parameter:: FE_geomtype = [1]                      !< geometry type of particular element type
+
+ integer, dimension(1) :: FE_Nips                         !< number of IPs in a specific type of element
+
  
- implicit none
- integer(pInt), parameter :: FILEUNIT = 222_pInt
- integer(pInt) :: j
- integer(pInt), allocatable, dimension(:) :: chunkPos
+ integer, parameter :: FILEUNIT = 222
+ integer :: j
+ integer, allocatable, dimension(:) :: chunkPos
  integer :: dimPlex
+ integer, parameter :: &
+   mesh_ElemType=1                                                                             !< Element type of the mesh (only support homogeneous meshes)
  character(len=512) :: &
    line
  logical :: flag
@@ -177,7 +139,7 @@ subroutine mesh_init()
  call MPI_Bcast(mesh_NcpElemsGlobal,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
  call MPI_Bcast(dimPlex,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
 
- allocate(mesh_boundaries(mesh_Nboundaries), source = 0_pInt)
+ allocate(mesh_boundaries(mesh_Nboundaries), source = 0)
  call DMGetLabelSize(globalMesh,'Face Sets',nFaceSets,ierr)
  CHKERRQ(ierr)
  call DMGetLabelIdIS(globalMesh,'Face Sets',faceSetIS,ierr)
@@ -230,31 +192,31 @@ subroutine mesh_init()
  call DMGetStratumSize(geomMesh,'depth',0,mesh_Nnodes,ierr)
  CHKERRQ(ierr)
 
- FE_Nips(FE_geomtype(1_pInt)) = FEM_Zoo_nQuadrature(dimPlex,integrationOrder)
- mesh_maxNips = FE_Nips(1_pInt)
+ FE_Nips(FE_geomtype(1)) = FEM_Zoo_nQuadrature(dimPlex,integrationOrder)
+ mesh_maxNips = FE_Nips(1)
  
  write(6,*) 'mesh_maxNips',mesh_maxNips
  call mesh_FEM_build_ipCoordinates(dimPlex,FEM_Zoo_QuadraturePoints(dimPlex,integrationOrder)%p)
  call mesh_FEM_build_ipVolumes(dimPlex)
  
- allocate (mesh_element (4_pInt,mesh_NcpElems)); mesh_element = 0_pInt
+ allocate (mesh_element (4,mesh_NcpElems)); mesh_element = 0
  do j = 1, mesh_NcpElems
-   mesh_element( 1,j) = -1_pInt                                                                     ! DEPRECATED
+   mesh_element( 1,j) = -1                                                                     ! DEPRECATED
    mesh_element( 2,j) = mesh_elemType                                                               ! elem type
-   mesh_element( 3,j) = 1_pInt                                                                      ! homogenization
+   mesh_element( 3,j) = 1                                                                      ! homogenization
    call DMGetLabelValue(geomMesh,'material',j-1,mesh_element(4,j),ierr)
    CHKERRQ(ierr)
  end do 
 
  if (debug_e < 1 .or. debug_e > mesh_NcpElems) &
-   call IO_error(602_pInt,ext_msg='element')                                                        ! selected element does not exist
- if (debug_i < 1 .or. debug_i > FE_Nips(FE_geomtype(mesh_element(2_pInt,debug_e)))) &
-   call IO_error(602_pInt,ext_msg='IP')                                                             ! selected element does not have requested IP
+   call IO_error(602,ext_msg='element')                                                        ! selected element does not exist
+ if (debug_i < 1 .or. debug_i > FE_Nips(FE_geomtype(mesh_element(2,debug_e)))) &
+   call IO_error(602,ext_msg='IP')                                                             ! selected element does not have requested IP
  
- FEsolving_execElem = [ 1_pInt,mesh_NcpElems ]                                                      ! parallel loop bounds set to comprise all DAMASK elements
+ FEsolving_execElem = [ 1,mesh_NcpElems ]                                                      ! parallel loop bounds set to comprise all DAMASK elements
  if (allocated(FEsolving_execIP)) deallocate(FEsolving_execIP)
- allocate(FEsolving_execIP(2_pInt,mesh_NcpElems)); FEsolving_execIP = 1_pInt                        ! parallel loop bounds set to comprise from first IP...
- forall (j = 1_pInt:mesh_NcpElems) FEsolving_execIP(2,j) = FE_Nips(FE_geomtype(mesh_element(2,j)))  ! ...up to own IP count for each element
+ allocate(FEsolving_execIP(2,mesh_NcpElems)); FEsolving_execIP = 1                        ! parallel loop bounds set to comprise from first IP...
+ forall (j = 1:mesh_NcpElems) FEsolving_execIP(2,j) = FE_Nips(FE_geomtype(mesh_element(2,j)))  ! ...up to own IP count for each element
  
  allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pReal)
  call theMesh%init(dimplex,integrationOrder,mesh_node0)
@@ -262,6 +224,10 @@ subroutine mesh_init()
 
  theMesh%homogenizationAt  = mesh_element(3,:)
  theMesh%microstructureAt  = mesh_element(4,:)
+ 
+   call discretization_init(mesh_element(3,:),mesh_element(4,:),&
+                           reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]), &
+                           mesh_node0)
  
 end subroutine mesh_init
 
@@ -271,12 +237,11 @@ end subroutine mesh_init
 !--------------------------------------------------------------------------------------------------
 pure function mesh_cellCenterCoordinates(ip,el)
  
- implicit none
- integer(pInt), intent(in) :: el, &                                                                  !< element number
-                              ip                                                                     !< integration point number
+ integer, intent(in) :: el, &                                                                  !< element number
+                        ip                                                                     !< integration point number
  real(pReal), dimension(3) :: mesh_cellCenterCoordinates                                             !< x,y,z coordinates of the cell center of the requested IP cell
 
- end function mesh_cellCenterCoordinates
+end function mesh_cellCenterCoordinates
 
 
 !--------------------------------------------------------------------------------------------------
@@ -289,11 +254,7 @@ pure function mesh_cellCenterCoordinates(ip,el)
 !> and one corner at the central ip.
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_FEM_build_ipVolumes(dimPlex)
- use math, only: &
-   math_I3, &
-   math_det33
  
- implicit none
  PetscInt           :: dimPlex
  PetscReal          :: vol
  PetscReal,  target :: cent(dimPlex), norm(dimPlex)
@@ -332,9 +293,9 @@ end subroutine mesh_FEM_build_ipVolumes
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
 
- implicit none
  PetscInt,      intent(in) :: dimPlex
  PetscReal,     intent(in) :: qPoints(mesh_maxNips*dimPlex)
+ 
  PetscReal,         target :: v0(dimPlex), cellJ(dimPlex*dimPlex), invcellJ(dimPlex*dimPlex)
  PetscReal,        pointer :: pV0(:), pCellJ(:), pInvcellJ(:)
  PetscReal                 :: detJ
