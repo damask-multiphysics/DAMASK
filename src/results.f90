@@ -17,8 +17,7 @@ module results
   private
   
 #if defined(PETSc) || defined(DAMASK_HDF5)
-  integer(HID_T), public, protected :: tempCoordinates, tempResults
-  integer(HID_T), private :: resultsFile, currentIncID, plist_id
+  integer(HID_T) :: resultsFile
 
   interface results_writeDataset
   

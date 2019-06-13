@@ -386,15 +386,15 @@ module element
 
 
  
-  real(pReal), dimension(nNode(1),NcellNode(geomType(1))), parameter :: cellNodeParentNodeWeights1 = &
-    reshape(real([&
+  integer, dimension(nNode(1),NcellNode(geomType(1))), parameter :: cellNodeParentNodeWeights1 = &
+    reshape([&
       1, 0, 0, &
       0, 1, 0, &
       0, 0, 1  &
-    ],pReal),[nNode(1),NcellNode(geomType(1))]) ! 2D 3node 1ip
+    ],[nNode(1),NcellNode(geomType(1))])                                                            !< 2D 3node 1ip
  
-  real(pReal), dimension(nNode(2),NcellNode(geomType(2))), parameter :: cellNodeParentNodeWeights2 = &
-    reshape(real([&
+  integer, dimension(nNode(2),NcellNode(geomType(2))), parameter :: cellNodeParentNodeWeights2 = &
+    reshape([&
       1, 0, 0, 0, 0, 0, &
       0, 1, 0, 0, 0, 0, &
       0, 0, 1, 0, 0, 0, &
@@ -402,10 +402,10 @@ module element
       0, 0, 0, 0, 1, 0, &
       0, 0, 0, 0, 0, 1, &
       1, 1, 1, 2, 2, 2  &
-    ],pReal),[nNode(2),NcellNode(geomType(2))]) ! 2D 6node 3ip
+    ],[nNode(2),NcellNode(geomType(2))])                                                            !< 2D 6node 3ip
  
-  real(pReal), dimension(nNode(3),NcellNode(geomType(3))), parameter :: cellNodeParentNodeWeights3 = &
-    reshape(real([&
+  integer, dimension(nNode(3),NcellNode(geomType(3))), parameter :: cellNodeParentNodeWeights3 = &
+    reshape([&
       1, 0, 0, 0, &
       0, 1, 0, 0, &
       0, 0, 1, 0, &
@@ -415,10 +415,10 @@ module element
       0, 0, 1, 1, &
       1, 0, 0, 1, &
       1, 1, 1, 1  &
-     ],pReal),[nNode(3),NcellNode(geomType(3))]) ! 2D 6node 3ip
+     ],[nNode(3),NcellNode(geomType(3))])                                                           !< 2D 6node 3ip
  
-  real(pReal), dimension(nNode(4),NcellNode(geomType(4))), parameter :: cellNodeParentNodeWeights4 = &
-    reshape(real([&
+  integer, dimension(nNode(4),NcellNode(geomType(4))), parameter :: cellNodeParentNodeWeights4 = &
+    reshape([&
       1, 0, 0, 0, 0, 0, 0, 0, &
       0, 1, 0, 0, 0, 0, 0, 0, &
       0, 0, 1, 0, 0, 0, 0, 0, &
@@ -435,10 +435,10 @@ module element
       1, 4, 1, 1, 8, 8, 2, 2, &
       1, 1, 4, 1, 2, 8, 8, 2, &
       1, 1, 1, 4, 2, 2, 8, 8  &
-    ],pReal),[nNode(4),NcellNode(geomType(4))])  ! 2D 8node 9ip
+    ],[nNode(4),NcellNode(geomType(4))])                                                            !< 2D 8node 9ip
  
-  real(pReal), dimension(nNode(5),NcellNode(geomType(5))), parameter :: cellNodeParentNodeWeights5 = &
-    reshape(real([&
+  integer, dimension(nNode(5),NcellNode(geomType(5))), parameter :: cellNodeParentNodeWeights5 = &
+    reshape([&
       1, 0, 0, 0, 0, 0, 0, 0, &
       0, 1, 0, 0, 0, 0, 0, 0, &
       0, 0, 1, 0, 0, 0, 0, 0, &
@@ -448,18 +448,18 @@ module element
       0, 0, 0, 0, 0, 0, 1, 0, &
       0, 0, 0, 0, 0, 0, 0, 1, &
       1, 1, 1, 1, 2, 2, 2, 2  &
-    ],pReal),[nNode(5),NcellNode(geomType(5))])  ! 2D 8node 4ip
+    ],[nNode(5),NcellNode(geomType(5))])                                                            !< 2D 8node 4ip
  
-  real(pReal), dimension(nNode(6),NcellNode(geomType(6))), parameter :: cellNodeParentNodeWeights6 = &
-    reshape(real([&
+  integer, dimension(nNode(6),NcellNode(geomType(6))), parameter :: cellNodeParentNodeWeights6 = &
+    reshape([&
       1, 0, 0, 0, &
       0, 1, 0, 0, &
       0, 0, 1, 0, &
       0, 0, 0, 1  &
-    ],pReal),[nNode(6),NcellNode(geomType(6))]) ! 3D 4node 1ip
+    ],[nNode(6),NcellNode(geomType(6))])                                                            !< 3D 4node 1ip
  
-  real(pReal), dimension(nNode(7),NcellNode(geomType(7))), parameter :: cellNodeParentNodeWeights7 = &
-    reshape(real([&
+  integer, dimension(nNode(7),NcellNode(geomType(7))), parameter :: cellNodeParentNodeWeights7 = &
+    reshape([&
       1, 0, 0, 0, 0, &
       0, 1, 0, 0, 0, &
       0, 0, 1, 0, 0, &
@@ -475,10 +475,10 @@ module element
       0, 1, 1, 1, 0, &
       1, 0, 1, 1, 0, &
       0, 0, 0, 0, 1  &
-    ],pReal),[nNode(7),NcellNode(geomType(7))])  ! 3D 5node 4ip
+    ],[nNode(7),NcellNode(geomType(7))])                                                            !< 3D 5node 4ip
  
-  real(pReal), dimension(nNode(8),NcellNode(geomType(8))), parameter :: cellNodeParentNodeWeights8 = &
-    reshape(real([&
+  integer, dimension(nNode(8),NcellNode(geomType(8))), parameter :: cellNodeParentNodeWeights8 = &
+    reshape([&
       1, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
       0, 1, 0, 0, 0, 0, 0, 0, 0, 0, &
       0, 0, 1, 0, 0, 0, 0, 0, 0, 0, &
@@ -494,10 +494,10 @@ module element
       0, 1, 1, 1, 0, 2, 0, 0, 2, 2, &
       1, 0, 1, 1, 0, 0, 2, 2, 0, 2, &
       3, 3, 3, 3, 4, 4, 4, 4, 4, 4  &
-    ],pReal),[nNode(8),NcellNode(geomType(8))])  ! 3D 10node 4ip
+    ],[nNode(8),NcellNode(geomType(8))])                                                            !< 3D 10node 4ip
  
-  real(pReal), dimension(nNode(9),NcellNode(geomType(9))), parameter :: cellNodeParentNodeWeights9 = &
-    reshape(real([&
+  integer, dimension(nNode(9),NcellNode(geomType(9))), parameter :: cellNodeParentNodeWeights9 = &
+    reshape([&
       1, 0, 0, 0, 0, 0, &
       0, 1, 0, 0, 0, 0, &
       0, 0, 1, 0, 0, 0, &
@@ -519,10 +519,10 @@ module element
       1, 0, 1, 1, 0, 1, &
       0, 0, 0, 1, 1, 1, &
       1, 1, 1, 1, 1, 1  &
-    ],pReal),[nNode(9),NcellNode(geomType(9))])  ! 3D 6node 6ip
+    ],[nNode(9),NcellNode(geomType(9))])                                                            !< 3D 6node 6ip
  
-  real(pReal), dimension(nNode(10),NcellNode(geomType(10))), parameter :: cellNodeParentNodeWeights10 = &
-    reshape(real([&
+  integer, dimension(nNode(10),NcellNode(geomType(10))), parameter :: cellNodeParentNodeWeights10 = &
+    reshape([&
       1, 0, 0, 0, 0, 0, 0, 0, &
       0, 1, 0, 0, 0, 0, 0, 0, &
       0, 0, 1, 0, 0, 0, 0, 0, &
@@ -531,10 +531,10 @@ module element
       0, 0, 0, 0, 0, 1, 0, 0, &
       0, 0, 0, 0, 0, 0, 1, 0, &
       0, 0, 0, 0, 0, 0, 0, 1  &
-    ],pReal),[nNode(10),NcellNode(geomType(10))])  ! 3D 8node 1ip
+    ],[nNode(10),NcellNode(geomType(10))])                                                          !< 3D 8node 1ip
   
-  real(pReal), dimension(nNode(11),NcellNode(geomType(11))), parameter :: cellNodeParentNodeWeights11 = &
-    reshape(real([&
+  integer, dimension(nNode(11),NcellNode(geomType(11))), parameter :: cellNodeParentNodeWeights11 = &
+    reshape([&
       1, 0, 0, 0,  0, 0, 0, 0, &   !
       0, 1, 0, 0,  0, 0, 0, 0, &   !
       0, 0, 1, 0,  0, 0, 0, 0, &   !
@@ -562,10 +562,10 @@ module element
       1, 0, 0, 1,  1, 0, 0, 1, &   ! 25
       0, 0, 0, 0,  1, 1, 1, 1, &   !
       1, 1, 1, 1,  1, 1, 1, 1  &   !
-    ],pReal),[nNode(11),NcellNode(geomType(11))])  ! 3D 8node 8ip
+    ],[nNode(11),NcellNode(geomType(11))])                                                          !< 3D 8node 8ip
   
-  real(pReal), dimension(nNode(12),NcellNode(geomType(12))), parameter :: cellNodeParentNodeWeights12 = &
-    reshape(real([&
+  integer, dimension(nNode(12),NcellNode(geomType(12))), parameter :: cellNodeParentNodeWeights12 = &
+    reshape([&
       1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
       0, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
       0, 0, 1, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
@@ -593,10 +593,10 @@ module element
       1, 0, 0, 1,  1, 0, 0, 1,  0, 0, 0, 2,  0, 0, 0, 2,  2, 0, 0, 2, &   ! 25
       0, 0, 0, 0,  1, 1, 1, 1,  0, 0, 0, 0,  2, 2, 2, 2,  0, 0, 0, 0, &   !
       3, 3, 3, 3,  3, 3, 3, 3,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4  &   !
-    ],pReal),[nNode(12),NcellNode(geomType(12))])  ! 3D 20node 8ip
+    ],[nNode(12),NcellNode(geomType(12))])                                                          !< 3D 20node 8ip
   
-  real(pReal), dimension(nNode(13),NcellNode(geomType(13))), parameter :: cellNodeParentNodeWeights13 = &
-    reshape(real([&
+  integer, dimension(nNode(13),NcellNode(geomType(13))), parameter :: cellNodeParentNodeWeights13 = &
+    reshape([&
        1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
        0, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
        0, 0, 1, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
@@ -661,7 +661,7 @@ module element
        4, 8, 4, 3,  8,24, 8, 4, 12,12, 4, 4, 32,32,12,12, 12,32,12, 4, &   !
        3, 4, 8, 4,  4, 8,24, 8,  4,12,12, 4, 12,32,32,12,  4,12,32,12, &   !
        4, 3, 4, 8,  8, 4, 8,24,  4, 4,12,12, 12,12,32,32, 12, 4,12,32  &   !
-    ],pReal),[nNode(13),NcellNode(geomType(13))])  ! 3D 20node 27ip
+    ],[nNode(13),NcellNode(geomType(13))])                                                          !< 3D 20node 27ip
  
  
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(1)),NIP(1)), parameter :: CELL1 = &
