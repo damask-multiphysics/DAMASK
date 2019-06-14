@@ -36,7 +36,7 @@ subroutine plastic_none_init
  do p = 1, size(phase_plasticity)
    if (phase_plasticity(p) /= PLASTICITY_NONE_ID) cycle
 
-   NipcMyPhase = count(material_phase == p)
+   NipcMyPhase = count(material_phaseMemberAt == p)
    call material_allocatePlasticState(p,NipcMyPhase,0,0,0, &
                                       0,0,0)
    plasticState(p)%sizePostResults = 0

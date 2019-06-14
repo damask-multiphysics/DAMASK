@@ -127,7 +127,7 @@ subroutine plastic_isotropic_init
               config => config_phase(p))
  
 #ifdef DEBUG
-    if  (p==material_phase(debug_g,debug_i,debug_e)) &
+    if  (p==material_phaseAt(debug_g,debug_e)) &
       prm%of_debug = material_phasememberAt(debug_g,debug_i,debug_e)
 #endif
  
@@ -190,7 +190,7 @@ subroutine plastic_isotropic_init
  
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    NipcMyPhase = count(material_phase == p)
+    NipcMyPhase = count(material_phaseMemberAt == p)
     sizeDotState = size(['xi               ','accumulated_shear'])
     sizeState = sizeDotState
  

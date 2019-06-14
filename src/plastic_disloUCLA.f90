@@ -295,7 +295,7 @@ subroutine plastic_disloUCLA_init()
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    NipcMyPhase = count(material_phase == p)
+    NipcMyPhase = count(material_phaseMemberAt == p)
     sizeDotState = size(['rho_mob ','rho_dip ','gamma_sl']) * prm%sum_N_sl
     sizeState = sizeDotState
  

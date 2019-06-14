@@ -83,7 +83,7 @@ subroutine source_thermal_externalheat_init
     if (all(phase_source(:,p) /= SOURCE_thermal_externalheat_ID)) cycle
     instance = source_thermal_externalheat_instance(p)
     sourceOffset = source_thermal_externalheat_offset(p)
-    NofMyPhase=count(material_phase==p)
+    NofMyPhase=count(material_phaseMemberAt==p)
  
     param(instance)%time       = config_phase(p)%getFloats('externalheat_time')
     param(instance)%nIntervals = size(param(instance)%time) - 1

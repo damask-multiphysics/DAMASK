@@ -150,7 +150,7 @@ subroutine source_damage_anisoDuctile_init
     
     phase = p
     
-    NofMyPhase=count(material_phase==phase)
+    NofMyPhase=count(material_phaseMemberAt==phase)
     instance = source_damage_anisoDuctile_instance(phase)
     sourceOffset = source_damage_anisoDuctile_offset(phase)
  

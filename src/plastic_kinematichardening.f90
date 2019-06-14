@@ -146,7 +146,7 @@ subroutine plastic_kinehardening_init
              config => config_phase(p))
 
 #ifdef DEBUG
-   if  (p==material_phase(debug_g,debug_i,debug_e)) then
+   if  (p==material_phaseAt(debug_g,debug_e)) then
       prm%of_debug = material_phasememberAt(debug_g,debug_i,debug_e)
    endif
 #endif
@@ -257,7 +257,7 @@ subroutine plastic_kinehardening_init
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-   NipcMyPhase = count(material_phase == p)
+   NipcMyPhase = count(material_phaseMemberAt == p)
    sizeDotState   = size(['crss     ','crss_back', 'accshear ']) * prm%totalNslip
    sizeDeltaState = size(['sense ',   'chi0  ',    'gamma0'   ]) * prm%totalNslip
    sizeState = sizeDotState + sizeDeltaState

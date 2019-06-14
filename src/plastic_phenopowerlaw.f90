@@ -314,7 +314,7 @@ subroutine plastic_phenopowerlaw_init
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-   NipcMyPhase = count(material_phase == p)
+   NipcMyPhase = count(material_phaseMemberAt == p)
    sizeDotState = size(['tau_slip  ','gamma_slip']) * prm%totalNslip &
                 + size(['tau_twin  ','gamma_twin']) * prm%totalNtwin
    sizeState = sizeDotState
