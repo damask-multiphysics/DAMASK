@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
-import numpy as np
+import os
+import sys
 from optparse import OptionParser
+
+import numpy as np
+
 import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -27,7 +30,7 @@ def curlFFT(geomdim,field):
   curl_fourier  = np.empty(field_fourier.shape,'c16')
 
   # differentiation in Fourier space
-  TWOPIIMG = 2.0j*math.pi
+  TWOPIIMG = 2.0j*np.pi
   einsums = { 
               3:'slm,ijkl,ijkm->ijks',                                                               # vector, 3 -> 3
               9:'slm,ijkl,ijknm->ijksn',                                                             # tensor, 3x3 -> 3x3

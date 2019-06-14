@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys
-import numpy as np
+import os
+import sys
 from optparse import OptionParser
+
+import numpy as np
+
 import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -25,6 +28,7 @@ def E_hkl(stiffness,vec):   # stiffness = (c11,c12,c44)
                                   )
 
     return 1.0/invE
+
 
 # --------------------------------------------------------------------
 #                                MAIN

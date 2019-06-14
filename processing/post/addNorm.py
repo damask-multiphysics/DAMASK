@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
+import os
+import sys
 from optparse import OptionParser
+
 import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -16,11 +18,12 @@ def norm(which,object):
   if which == 'Abs':                                                                                # p = 1
     return sum(map(abs, object))
   elif which == 'Frobenius':                                                                        # p = 2
-    return math.sqrt(sum([x*x for x in object]))
+    return np.sqrt(sum([x*x for x in object]))
   elif which == 'Max':                                                                              # p = inf
     return max(map(abs, object))
   else:
     return -1
+
 
 # --------------------------------------------------------------------
 #                                MAIN

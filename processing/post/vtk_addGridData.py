@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,vtk
-import damask
-from vtk.util import numpy_support
-from collections import defaultdict
+import os
 from optparse import OptionParser
+from collections import defaultdict
+
+import vtk
+from vtk.util import numpy_support
+
+import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
+
 
 # --------------------------------------------------------------------
 #                                MAIN

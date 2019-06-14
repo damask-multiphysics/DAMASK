@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
-import numpy as np
+import os
+import sys
 from optparse import OptionParser
+
+import numpy as np
+
 import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -27,7 +30,7 @@ def divFFT(geomdim,field):
   div_fourier   = np.empty(field_fourier.shape[0:len(np.shape(field))-1],'c16')
 
   # differentiation in Fourier space
-  TWOPIIMG = 2.0j*math.pi
+  TWOPIIMG = 2.0j*np.pi
   einsums = { 
               3:'ijkl,ijkl->ijk',                                                               # vector, 3 -> 1
               9:'ijkm,ijklm->ijkl',                                                             # tensor, 3x3 -> 3
