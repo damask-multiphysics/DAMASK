@@ -590,7 +590,7 @@ function plastic_dislotwin_homogenizedC(ipc,ip,el) result(homogenizedC)
             of
  real(pReal) :: f_unrotated
 
- of = phasememberAt(ipc,ip,el)
+ of = material_phasememberAt(ipc,ip,el)
  associate(prm => param(phase_plasticityInstance(material_phase(ipc,ip,el))),&
            stt => state(phase_plasticityInstance(material_phase(ipc,ip,el))))
 

@@ -128,7 +128,7 @@ subroutine plastic_isotropic_init
  
 #ifdef DEBUG
     if  (p==material_phase(debug_g,debug_i,debug_e)) &
-      prm%of_debug = phasememberAt(debug_g,debug_i,debug_e)
+      prm%of_debug = material_phasememberAt(debug_g,debug_i,debug_e)
 #endif
  
     prm%xi_0            = config%getFloat('tau0')

@@ -766,7 +766,7 @@ subroutine plastic_nonlocal_init
     ! get the total volume of the instance
     do e = 1,discretization_nElem
       do i = 1,discretization_nIP
-        if (material_phase(1,i,e) == phase) volume(phasememberAt(1,i,e)) = IPvolume(i,e)
+        if (material_phase(1,i,e) == phase) volume(material_phasememberAt(1,i,e)) = IPvolume(i,e)
       enddo
     enddo
     totalVolume = sum(volume)
@@ -935,7 +935,7 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
     do n = 1,nIPneighbors
       neighbor_el = IPneighborhood(1,n,ip,el)
       neighbor_ip = IPneighborhood(2,n,ip,el)
-      no = phasememberAt(1,neighbor_ip,neighbor_el)
+      no = material_phasememberAt(1,neighbor_ip,neighbor_el)
       if (neighbor_el > 0 .and. neighbor_ip > 0) then
         neighbor_instance = phase_plasticityInstance(material_phase(1,neighbor_ip,neighbor_el))
         if (neighbor_instance == instance) then
