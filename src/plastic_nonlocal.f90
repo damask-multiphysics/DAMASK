@@ -875,8 +875,8 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
   real(pReal), dimension(3,totalNslip(phase_plasticityInstance(material_phase(1,ip,el))),2) :: &
     m                                                                                               ! direction of dislocation motion
   
-  ph = phaseAt(1,ip,el)
-  of = phasememberAt(1,ip,el)
+  ph = material_phaseAt(1,el)
+  of = material_phasememberAt(1,ip,el)
   instance = phase_plasticityInstance(ph)
 
   associate(prm => param(instance),dst => microstructure(instance), stt => state(instance))
@@ -1216,8 +1216,8 @@ subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
     gdotTotal                                                                                       !< shear rate
   
   !*** shortcut for mapping
-  ph = phaseAt(1,ip,el)
-  of = phasememberAt(1,ip,el)
+  ph = material_phaseAt(1,el)
+  of = material_phasememberAt(1,ip,el)
   
   instance = phase_plasticityInstance(ph)
   associate(prm => param(instance),dst=>microstructure(instance))
@@ -1338,8 +1338,8 @@ subroutine plastic_nonlocal_deltaState(Mp,ip,el)
     dUpperOld, &                                                                                    ! old maximum stable dipole distance for edges and screws
     deltaDUpper                                                                                     ! change in maximum stable dipole distance for edges and screws
   
-   ph = phaseAt(1,ip,el)
-   of = phasememberAt(1,ip,el)
+   ph = material_phaseAt(1,el)
+   of = material_phasememberAt(1,ip,el)
    instance = phase_plasticityInstance(ph)
 
    associate(prm => param(instance),dst => microstructure(instance),del => deltaState(instance))
@@ -1507,8 +1507,8 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
     considerEnteringFlux, &
     considerLeavingFlux
                                               
-  p = phaseAt(1,ip,el)
-  o = phasememberAt(1,ip,el)
+  p = material_phaseAt(1,el)
+  o = material_phasememberAt(1,ip,el)
   
   if (timestep <= 0.0_pReal) then
     plasticState(p)%dotState = 0.0_pReal
@@ -1630,8 +1630,8 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
       neighbor_el = IPneighborhood(1,n,ip,el)
       neighbor_ip = IPneighborhood(2,n,ip,el)
       neighbor_n  = IPneighborhood(3,n,ip,el)
-      np = phaseAt(1,neighbor_ip,neighbor_el)
-      no = phasememberAt(1,neighbor_ip,neighbor_el)
+      np = material_phaseAt(1,neighbor_el)
+      no = material_phasememberAt(1,neighbor_ip,neighbor_el)
   
       opposite_neighbor = n + mod(n,2) - mod(n+1,2)
       opposite_el = IPneighborhood(1,opposite_neighbor,ip,el)

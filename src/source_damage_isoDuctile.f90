@@ -157,7 +157,7 @@ subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
  integer :: &
    phase, constituent, instance, homog, sourceOffset, damageOffset
 
- phase = phaseAt(ipc,ip,el)
+ phase = material_phaseAt(ipc,el)
  constituent = phasememberAt(ipc,ip,el)
  instance = source_damage_isoDuctile_instance(phase)
  sourceOffset = source_damage_isoDuctile_offset(phase)

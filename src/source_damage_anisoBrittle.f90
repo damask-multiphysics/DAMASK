@@ -202,7 +202,7 @@ subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
   real(pReal) :: &
     traction_d, traction_t, traction_n, traction_crit
 
-  phase = phaseAt(ipc,ip,el)
+  phase = material_phaseAt(ipc,el)
   constituent = phasememberAt(ipc,ip,el)
   instance = source_damage_anisoBrittle_instance(phase)
   sourceOffset = source_damage_anisoBrittle_offset(phase)

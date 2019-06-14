@@ -262,7 +262,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
      if (debug_e <= discretization_nElem .and. debug_i <=discretization_nIP) then
        write(6,'(a,1x,i8,1x,i2,1x,i4,/,(12x,6(e20.8,1x)),/)') &
              '<< CPFEM >> aged state of elFE ip grain',debug_e, debug_i, 1, &
-              plasticState(phaseAt(1,debug_i,debug_e))%state(:,phasememberAt(1,debug_i,debug_e))
+              plasticState(material_phaseAt(1,debug_e))%state(:,material_phasememberAt(1,debug_i,debug_e))
        endif
    endif
 

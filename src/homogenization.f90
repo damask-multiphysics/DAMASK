@@ -326,11 +326,11 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e);
      do g = 1,myNgrains
 
-       plasticState    (phaseAt(g,i,e))%partionedState0(:,phasememberAt(g,i,e)) = &
-       plasticState    (phaseAt(g,i,e))%state0(         :,phasememberAt(g,i,e))
-       do mySource = 1, phase_Nsources(phaseAt(g,i,e))
-         sourceState(phaseAt(g,i,e))%p(mySource)%partionedState0(:,phasememberAt(g,i,e)) = &
-         sourceState(phaseAt(g,i,e))%p(mySource)%state0(         :,phasememberAt(g,i,e))
+       plasticState    (material_phaseAt(g,e))%partionedState0(:,phasememberAt(g,i,e)) = &
+       plasticState    (material_phaseAt(g,e))%state0(         :,phasememberAt(g,i,e))
+       do mySource = 1, phase_Nsources(material_phaseAt(g,e))
+         sourceState(material_phaseAt(g,e))%p(mySource)%partionedState0(:,phasememberAt(g,i,e)) = &
+         sourceState(material_phaseAt(g,e))%p(mySource)%state0(         :,phasememberAt(g,i,e))
        enddo
 
        crystallite_partionedFp0(1:3,1:3,g,i,e) = crystallite_Fp0(1:3,1:3,g,i,e)
@@ -412,11 +412,11 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
              crystallite_S          (1:3,1:3,1:myNgrains,i,e)
 
            do g = 1,myNgrains
-             plasticState    (phaseAt(g,i,e))%partionedState0(:,phasememberAt(g,i,e)) = &
-             plasticState    (phaseAt(g,i,e))%state          (:,phasememberAt(g,i,e))
-             do mySource = 1, phase_Nsources(phaseAt(g,i,e))
-               sourceState(phaseAt(g,i,e))%p(mySource)%partionedState0(:,phasememberAt(g,i,e)) = &
-               sourceState(phaseAt(g,i,e))%p(mySource)%state          (:,phasememberAt(g,i,e))
+             plasticState    (material_phaseAt(g,e))%partionedState0(:,phasememberAt(g,i,e)) = &
+             plasticState    (material_phaseAt(g,e))%state          (:,phasememberAt(g,i,e))
+             do mySource = 1, phase_Nsources(material_phaseAt(g,e))
+               sourceState(material_phaseAt(g,e))%p(mySource)%partionedState0(:,phasememberAt(g,i,e)) = &
+               sourceState(material_phaseAt(g,e))%p(mySource)%state          (:,phasememberAt(g,i,e))
              enddo
            enddo
 
@@ -475,11 +475,11 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
            crystallite_S(1:3,1:3,1:myNgrains,i,e) = &
               crystallite_partionedS0(1:3,1:3,1:myNgrains,i,e)
            do g = 1, myNgrains
-             plasticState    (phaseAt(g,i,e))%state(          :,phasememberAt(g,i,e)) = &
-             plasticState    (phaseAt(g,i,e))%partionedState0(:,phasememberAt(g,i,e))
-             do mySource = 1, phase_Nsources(phaseAt(g,i,e))
-               sourceState(phaseAt(g,i,e))%p(mySource)%state(          :,phasememberAt(g,i,e)) = &
-               sourceState(phaseAt(g,i,e))%p(mySource)%partionedState0(:,phasememberAt(g,i,e))
+             plasticState    (material_phaseAt(g,e))%state(          :,phasememberAt(g,i,e)) = &
+             plasticState    (material_phaseAt(g,e))%partionedState0(:,phasememberAt(g,i,e))
+             do mySource = 1, phase_Nsources(material_phaseAt(g,e))
+               sourceState(material_phaseAt(g,e))%p(mySource)%state(          :,phasememberAt(g,i,e)) = &
+               sourceState(material_phaseAt(g,e))%p(mySource)%partionedState0(:,phasememberAt(g,i,e))
              enddo
            enddo
            if(homogState(material_homogenizationAt(e))%sizeState > 0) &

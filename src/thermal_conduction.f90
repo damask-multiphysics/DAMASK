@@ -132,8 +132,8 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
   Tdot = 0.0_pReal
   dTdot_dT = 0.0_pReal
   do grain = 1, homogenization_Ngrains(homog)
-    phase = phaseAt(grain,ip,el)
-    constituent = phasememberAt(grain,ip,el)
+    phase = material_phaseAt(grain,el)
+    constituent = material_phasememberAt(grain,ip,el)
     do source = 1, phase_Nsources(phase)
       select case(phase_source(source,phase))                                                   
         case (SOURCE_thermal_dissipation_ID)
