@@ -7,6 +7,7 @@
 module source_thermal_dissipation
   use prec
   use debug
+  use discretization
   use material
   use config
  
@@ -75,7 +76,7 @@ subroutine source_thermal_dissipation_init
     if (all(phase_source(:,p) /= SOURCE_THERMAL_DISSIPATION_ID)) cycle
     instance = source_thermal_dissipation_instance(p)
     param(instance)%kappa = config_phase(p)%getFloat('dissipation_coldworkcoeff')
-    NofMyPhase=count(material_phaseMemberAt==p)
+    NofMyPhase = count(material_phaseAt==p) * discretization_nIP
     sourceOffset = source_thermal_dissipation_offset(p)
  
     call material_allocateSourceState(p,sourceOffset,NofMyPhase,0,0,0)

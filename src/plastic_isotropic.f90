@@ -14,9 +14,8 @@ module plastic_isotropic
   use IO
   use material
   use config
-#if defined(PETSc) || defined(DAMASK_HDF5)
+  use discretization
   use results
-#endif
  
   implicit none
   private
@@ -190,7 +189,7 @@ subroutine plastic_isotropic_init
  
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    NipcMyPhase = count(material_phaseMemberAt == p)
+    NipcMyPhase = count(material_phaseAt == p) * discretization_nIP
     sizeDotState = size(['xi               ','accumulated_shear'])
     sizeState = sizeDotState
  

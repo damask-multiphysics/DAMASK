@@ -12,9 +12,8 @@ module plastic_phenopowerlaw
  use material
  use config
  use lattice
-#if defined(PETSc) || defined(DAMASK_HDF5)
+ use discretization
  use results
-#endif
 
  implicit none
  private
@@ -314,7 +313,7 @@ subroutine plastic_phenopowerlaw_init
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-   NipcMyPhase = count(material_phaseMemberAt == p)
+   NipcMyPhase = count(material_phaseAt == p) * discretization_nIP
    sizeDotState = size(['tau_slip  ','gamma_slip']) * prm%totalNslip &
                 + size(['tau_twin  ','gamma_twin']) * prm%totalNtwin
    sizeState = sizeDotState

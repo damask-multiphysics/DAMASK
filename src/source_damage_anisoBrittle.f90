@@ -10,6 +10,7 @@ module source_damage_anisoBrittle
   use IO
   use math
   use material
+  use discretization
   use config
   use lattice
 
@@ -164,7 +165,7 @@ subroutine source_damage_anisoBrittle_init
     end associate
     
     phase = p
-    NofMyPhase=count(material_phaseMemberAt==phase)
+    NofMyPhase=count(material_phaseAt==phase) * discretization_nIP
     instance = source_damage_anisoBrittle_instance(phase)
     sourceOffset = source_damage_anisoBrittle_offset(phase)
 

@@ -13,6 +13,7 @@ module plastic_disloUCLA
   use material
   use config
   use lattice
+  use discretization
   use results
  
   implicit none
@@ -295,7 +296,7 @@ subroutine plastic_disloUCLA_init()
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    NipcMyPhase = count(material_phaseMemberAt == p)
+    NipcMyPhase = count(material_phaseAt == p) * discretization_nIP
     sizeDotState = size(['rho_mob ','rho_dip ','gamma_sl']) * prm%sum_N_sl
     sizeState = sizeDotState
  

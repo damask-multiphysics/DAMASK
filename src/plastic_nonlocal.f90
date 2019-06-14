@@ -556,7 +556,7 @@ subroutine plastic_nonlocal_init
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    NofMyPhase=count(material_phaseMemberAt==p)
+    NofMyPhase   = count(material_phaseAt==p) * discretization_nIP
     sizeDotState =     size([   'rhoSglEdgePosMobile   ','rhoSglEdgeNegMobile   ', &
                                 'rhoSglScrewPosMobile  ','rhoSglScrewNegMobile  ', &
                                 'rhoSglEdgePosImmobile ','rhoSglEdgeNegImmobile ', &
@@ -677,7 +677,7 @@ subroutine plastic_nonlocal_init
   allocate(iD(maxval(totalNslip),2,maxNinstances),    source=0)
 
   initializeInstances: do p = 1, size(phase_plasticity)
-    NofMyPhase=count(material_phaseMemberAt==p)
+    NofMyPhase = count(material_phaseAt==p) * discretization_nIP
     myPhase2: if (phase_plasticity(p) == PLASTICITY_NONLOCAL_ID) then
 
       !*** determine indices to state array

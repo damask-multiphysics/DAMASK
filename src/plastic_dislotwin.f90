@@ -15,6 +15,7 @@ module plastic_dislotwin
   use material
   use config
   use lattice
+  use discretization
 #if defined(PETSc) || defined(DAMASK_HDF5)
   use results
 #endif
@@ -503,7 +504,7 @@ subroutine plastic_dislotwin_init
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-   NipcMyPhase = count(material_phaseMemberAt == p)
+   NipcMyPhase  = count(material_phaseAt == p) * discretization_nIP
    sizeDotState = size(['rho_mob ','rho_dip ','gamma_sl']) * prm%sum_N_sl &
                 + size(['f_tw'])                           * prm%sum_N_tw &
                 + size(['f_tr'])                           * prm%sum_N_tr

@@ -13,9 +13,8 @@ module plastic_kinehardening
  use material
  use config
  use lattice
-#if defined(PETSc) || defined(DAMASK_HDF5)
+ use discretization
  use results
-#endif
 
  implicit none
  private
@@ -257,7 +256,7 @@ subroutine plastic_kinehardening_init
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-   NipcMyPhase = count(material_phaseMemberAt == p)
+   NipcMyPhase = count(material_phaseAt == p) * discretization_nIP
    sizeDotState   = size(['crss     ','crss_back', 'accshear ']) * prm%totalNslip
    sizeDeltaState = size(['sense ',   'chi0  ',    'gamma0'   ]) * prm%totalNslip
    sizeState = sizeDotState + sizeDeltaState

@@ -9,6 +9,7 @@ module source_damage_isoBrittle
   use debug
   use IO
   use math
+  use discretization
   use material
   use config
 
@@ -133,7 +134,7 @@ subroutine source_damage_isoBrittle_init
     
    phase = p
    
-   NofMyPhase=count(material_phaseMemberAt==phase)
+   NofMyPhase = count(material_phaseAt==phase) * discretization_nIP
    instance = source_damage_isoBrittle_instance(phase)
    sourceOffset = source_damage_isoBrittle_offset(phase)
       
