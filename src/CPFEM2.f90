@@ -89,7 +89,6 @@ subroutine CPFEM_init
 
     fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
    
-    call HDF5_read(fileHandle,material_phase,      'recordedPhase')
     call HDF5_read(fileHandle,crystallite_F0,      'convergedF')
     call HDF5_read(fileHandle,crystallite_Fp0,     'convergedFp')
     call HDF5_read(fileHandle,crystallite_Fi0,     'convergedFi')
@@ -158,7 +157,6 @@ subroutine CPFEM_age
     write(rankStr,'(a1,i0)')'_',worldrank
     fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','a')
     
-    call HDF5_write(fileHandle,material_phase,      'recordedPhase')
     call HDF5_write(fileHandle,crystallite_F0,      'convergedF')
     call HDF5_write(fileHandle,crystallite_Fp0,     'convergedFp')
     call HDF5_write(fileHandle,crystallite_Fi0,     'convergedFi')

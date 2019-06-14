@@ -180,9 +180,6 @@ module material
    homogenization_active
 
 ! BEGIN DEPRECATED
- integer, dimension(:,:,:), allocatable, public :: phaseAt                                          !< phase ID of every material point (ipc,ip,el)
- integer, dimension(:,:,:), allocatable, public :: phasememberAt                                    !< memberID of given phase at every material point (ipc,ip,el)
-
  integer, dimension(:,:,:), allocatable, public, target :: mappingHomogenization                    !< mapping from material points to offset in heterogenous state/field
  integer, dimension(:,:),   allocatable, private, target :: mappingHomogenizationConst               !< mapping from material points to offset in constant state/field
 ! END DEPRECATED
@@ -247,11 +244,7 @@ contains
 subroutine material_init
 
  integer, parameter :: FILEUNIT = 210
- integer            :: m,c,h, myDebug, myPhase, myHomog
- integer :: &
-  g, &                                                                                              !< grain number
-  i, &                                                                                              !< integration point number
-  e                                                                                                 !< element number
+ integer            :: i,e,m,c,h, myDebug, myPhase, myHomog
  integer, dimension(:), allocatable :: &
   CounterPhase, &
   CounterHomogenization
@@ -375,26 +368,15 @@ subroutine material_init
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! BEGIN DEPRECATED
- allocate(phaseAt                   (  homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0)
- allocate(phasememberAt             (  homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0)
  allocate(mappingHomogenization     (2,                          discretization_nIP,discretization_nElem),source=0)
  allocate(mappingHomogenizationConst(                            discretization_nIP,discretization_nElem),source=1)
  
  CounterHomogenization=0
- CounterPhase         =0
-
-
  do e = 1,discretization_nElem
- myHomog = discretization_homogenizationAt(e)
+   myHomog = discretization_homogenizationAt(e)
    do i = 1, discretization_nIP
      CounterHomogenization(myHomog) = CounterHomogenization(myHomog) + 1
      mappingHomogenization(1:2,i,e) = [CounterHomogenization(myHomog),huge(1)]
-     do g = 1,homogenization_Ngrains(myHomog)
-       myPhase = material_phase(g,i,e)
-       CounterPhase(myPhase) = CounterPhase(myPhase)+1                             ! not distinguishing between instances of same phase
-       phaseAt(g,i,e)              = myPhase
-       phasememberAt(g,i,e)        = CounterPhase(myPhase)
-     enddo
    enddo
  enddo
 ! END DEPRECATED

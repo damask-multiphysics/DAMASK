@@ -15,6 +15,7 @@ module plastic_dislotwin
   use material
   use config
   use lattice
+  use discretization
 #if defined(PETSc) || defined(DAMASK_HDF5)
   use results
 #endif
@@ -494,7 +495,7 @@ subroutine plastic_dislotwin_init
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-   NipcMyPhase = count(material_phase == p)
+   NipcMyPhase  = count(material_phaseAt == p) * discretization_nIP
    sizeDotState = size(['rho_mob ','rho_dip ','gamma_sl']) * prm%sum_N_sl &
                 + size(['f_tw'])                           * prm%sum_N_tw &
                 + size(['f_tr'])                           * prm%sum_N_tr
@@ -581,9 +582,9 @@ function plastic_dislotwin_homogenizedC(ipc,ip,el) result(homogenizedC)
             of
  real(pReal) :: f_unrotated
 
- of = phasememberAt(ipc,ip,el)
- associate(prm => param(phase_plasticityInstance(material_phase(ipc,ip,el))),&
-           stt => state(phase_plasticityInstance(material_phase(ipc,ip,el))))
+ of = material_phasememberAt(ipc,ip,el)
+ associate(prm => param(phase_plasticityInstance(material_phaseAt(ipc,el))),&
+           stt => state(phase_plasticityInstance(material_phaseAT(ipc,el))))
 
  f_unrotated = 1.0_pReal &
              - sum(stt%f_tw(1:prm%sum_N_tw,of)) &

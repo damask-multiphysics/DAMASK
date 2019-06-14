@@ -8,6 +8,7 @@ module source_damage_isoDuctile
  use prec
  use debug
  use IO
+ use discretization
  use material
  use config
 
@@ -132,7 +133,7 @@ subroutine source_damage_isoDuctile_init
    end associate
    
    phase = p
-   NofMyPhase=count(material_phase==phase)
+   NofMyPhase=count(material_phaseAt==phase) * discretization_nIP
    instance = source_damage_isoDuctile_instance(phase)
    sourceOffset = source_damage_isoDuctile_offset(phase)
 
@@ -157,8 +158,8 @@ subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
  integer :: &
    phase, constituent, instance, homog, sourceOffset, damageOffset
 
- phase = phaseAt(ipc,ip,el)
- constituent = phasememberAt(ipc,ip,el)
+ phase = material_phaseAt(ipc,el)
+ constituent = material_phasememberAt(ipc,ip,el)
  instance = source_damage_isoDuctile_instance(phase)
  sourceOffset = source_damage_isoDuctile_offset(phase)
  homog = material_homogenizationAt(el)

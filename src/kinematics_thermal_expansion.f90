@@ -112,7 +112,7 @@ subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ipc, ip,
   real(pReal) :: &
     T, TRef, TDot  
     
-  phase = material_phase(ipc,ip,el)
+  phase = material_phaseAt(ipc,el)
   homog = material_homogenizationAt(el)
   offset = thermalMapping(homog)%p(ip,el)
   T = temperature(homog)%p(offset)
