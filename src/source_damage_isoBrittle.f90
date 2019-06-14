@@ -165,7 +165,7 @@ subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
     strainenergy
 
   phase = material_phaseAt(ipc,el)                                                                        !< phase ID at ipc,ip,el
-  constituent = phasememberAt(ipc,ip,el)                                                            !< state array offset for phase ID at ipc,ip,el
+  constituent = material_phasememberAt(ipc,ip,el)                                                            !< state array offset for phase ID at ipc,ip,el
   ! ToDo: capability for multiple instances of SAME source within given phase. Needs Ninstance loop from here on!
   instance = source_damage_isoBrittle_instance(phase)                                               !< instance of damage_isoBrittle source
   sourceOffset = source_damage_isoBrittle_offset(phase)
