@@ -5,9 +5,27 @@
 !--------------------------------------------------------------------------------------------------
 module CPFEM
  use prec
+ use numerics
+ use debug
+ use FEsolving
+ use math
+ use mesh
+ use material
+ use config
+ use crystallite
+ use homogenization
+ use IO
+ use discretization
+ use DAMASK_interface
+ use numerics
+ use HDF5_utilities
+ use results
+ use lattice
+ use constitutive
 
  implicit none
  private
+ 
  real(pReal),                      parameter,   private :: &
    CPFEM_odd_stress    = 1e15_pReal, &                                                              !< return value for stress in case of ping pong dummy cycle
    CPFEM_odd_jacobian  = 1e50_pReal                                                                 !< return value for jacobian in case of ping pong dummy cycle
@@ -55,38 +73,6 @@ contains
 !> @brief call (thread safe) all module initializations
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_initAll(el,ip)
- use numerics, only: &
-   numerics_init
- use debug, only: &
-   debug_init
- use config, only: &
-   config_init
- use FEsolving, only: &
-   FE_init
- use math, only: &
-   math_init
- use mesh, only: &
-   mesh_init
- use material, only: &
-   material_init
-#ifdef DAMASK_HDF5
- use HDF5_utilities, only: &
-   HDF5_utilities_init
- use results, only: &
-   results_init
-#endif
- use lattice, only: &
-   lattice_init
- use constitutive, only: &
-   constitutive_init
- use crystallite, only: &
-   crystallite_init
- use homogenization, only: &
-   homogenization_init
- use IO, only: &
-   IO_init
- use DAMASK_interface
-
  integer(pInt), intent(in) ::                        el, &                                          !< FE el number
                                                      ip                                             !< FE integration point number
 
@@ -100,12 +86,12 @@ subroutine CPFEM_initAll(el,ip)
      call config_init
      call math_init
      call FE_init
-     call mesh_init(ip, el)
-     call lattice_init
 #ifdef DAMASK_HDF5
      call HDF5_utilities_init
      call results_init
 #endif
+     call mesh_init(ip, el)
+     call lattice_init
      call material_init
      call constitutive_init
      call crystallite_init
@@ -122,42 +108,15 @@ end subroutine CPFEM_initAll
 !> @brief allocate the arrays defined in module CPFEM and initialize them
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_init
- use IO, only: &
-   IO_error
- use debug, only: &
-   debug_level, &
-   debug_CPFEM, &
-   debug_levelBasic, &
-   debug_levelExtensive
- use FEsolving, only: &
-   symmetricSolver, &
-   restartRead, &
-   modelName
- use mesh, only: &
-   theMesh
- use material, only: &
-   material_phase, &
-   homogState, &
-   phase_plasticity, &
-   plasticState
- use config, only: &
-   material_Nhomogenization
- use crystallite, only: &
-   crystallite_F0, &
-   crystallite_Fp0, &
-   crystallite_Lp0, &
-   crystallite_Fi0, &
-   crystallite_Li0, &
-   crystallite_S0
 
  integer :: k,l,m,ph,homog
 
  write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
  flush(6)
 
- allocate(CPFEM_cs(               6,theMesh%elem%nIPs,theMesh%Nelems), source= 0.0_pReal)
- allocate(CPFEM_dcsdE(          6,6,theMesh%elem%nIPs,theMesh%Nelems), source= 0.0_pReal)
- allocate(CPFEM_dcsdE_knownGood(6,6,theMesh%elem%nIPs,theMesh%Nelems), source= 0.0_pReal)
+ allocate(CPFEM_cs(               6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
+ allocate(CPFEM_dcsdE(          6,6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
+ allocate(CPFEM_dcsdE_knownGood(6,6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
 
  ! *** restore the last converged values of each essential variable from the binary file
  !if (restartRead) then
@@ -238,86 +197,6 @@ end subroutine CPFEM_init
 !> @brief perform initialization at first call, update variables and call the actual material model
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyStress, jacobian)
- use numerics, only: &
-   defgradTolerance, &
-   iJacoStiffness
- use debug, only: &
-   debug_level, &
-   debug_CPFEM, &
-   debug_levelBasic, &
-   debug_levelExtensive, &
-   debug_levelSelective, &
-   debug_stressMaxLocation, &
-   debug_stressMinLocation, &
-   debug_jacobianMaxLocation, &
-   debug_jacobianMinLocation, &
-   debug_stressMax, &
-   debug_stressMin, &
-   debug_jacobianMax, &
-   debug_jacobianMin, &
-   debug_e, &
-   debug_i
- use FEsolving, only: &
-   terminallyIll, &
-   FEsolving_execElem, &
-   FEsolving_execIP, &
-   restartWrite
- use math, only: &
-   math_identity2nd, &
-   math_det33, &
-   math_delta, &
-   math_sym3333to66, &
-   math_66toSym3333, &
-   math_sym33to6, &
-   math_6toSym33
- use mesh, only: &
-   mesh_FEasCP, &
-   theMesh, &
-   mesh_element
- use material, only: &
-   microstructure_elemhomo, &
-   plasticState, &
-   sourceState, &
-   homogState, &
-   thermalState, &
-   damageState, &
-   phaseAt, phasememberAt, &
-   material_phase, &
-   phase_plasticity, &
-   temperature, &
-   thermalMapping, &
-   thermal_type, &
-   THERMAL_conduction_ID, &
-   phase_Nsources, &
-   material_homogenizationAt
- use config, only: &
-   material_Nhomogenization
- use crystallite, only: &
-   crystallite_partionedF,&
-   crystallite_F0, &
-   crystallite_Fp0, &
-   crystallite_Fp, &
-   crystallite_Fi0, &
-   crystallite_Fi, &
-   crystallite_Lp0, &
-   crystallite_Lp, &
-   crystallite_Li0, &
-   crystallite_Li, &
-   crystallite_dPdF, &
-   crystallite_S0, &
-   crystallite_S
- use homogenization, only: &  
-   materialpoint_F, &
-   materialpoint_F0, &
-   materialpoint_P, &
-   materialpoint_dPdF, &
-   materialpoint_results, &
-   materialpoint_sizeResults, &
-   materialpoint_stressAndItsTangent, &
-   materialpoint_postResults
- use IO, only: &
-   IO_warning
- use DAMASK_interface
 
  integer(pInt), intent(in) ::                        elFE, &                                        !< FE element number
                                                      ip                                             !< integration point number
@@ -380,7 +259,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
    enddo; enddo
    if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) then
      write(6,'(a)') '<< CPFEM >> aging states'
-     if (debug_e <= theMesh%Nelems .and. debug_i <= theMesh%elem%nIPs) then
+     if (debug_e <= discretization_nElem .and. debug_i <=discretization_nIP) then
        write(6,'(a,1x,i8,1x,i2,1x,i4,/,(12x,6(e20.8,1x)),/)') &
              '<< CPFEM >> aged state of elFE ip grain',debug_e, debug_i, 1, &
               plasticState(phaseAt(1,debug_i,debug_e))%state(:,phasememberAt(1,debug_i,debug_e))
@@ -464,7 +343,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
  !*   If no parallel execution is required, there is no need to collect FEM input
 
  if (.not. parallelExecution) then
-   chosenThermal1: select case (thermal_type(mesh_element(3,elCP)))
+   chosenThermal1: select case (thermal_type(material_homogenizationAt(elCP)))
      case (THERMAL_conduction_ID) chosenThermal1
        temperature(material_homogenizationAt(elCP))%p(thermalMapping(material_homogenizationAt(elCP))%p(ip,elCP)) = &
          temperature_inp
@@ -477,7 +356,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
    if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
    CPFEM_cs(1:6,ip,elCP) = rnd * CPFEM_odd_stress
    CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian * math_identity2nd(6)
-   chosenThermal2: select case (thermal_type(mesh_element(3,elCP)))
+   chosenThermal2: select case (thermal_type(material_homogenizationAt(elCP)))
      case (THERMAL_conduction_ID) chosenThermal2
        temperature(material_homogenizationAt(elCP))%p(thermalMapping(material_homogenizationAt(elCP))%p(ip,elCP)) = &
          temperature_inp
@@ -520,15 +399,12 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
      if (.not. parallelExecution) then
        FEsolving_execElem(1)     = elCP
        FEsolving_execElem(2)     = elCP
-       if (.not. microstructure_elemhomo(mesh_element(4,elCP)) .or. &                               ! calculate unless homogeneous
-                (microstructure_elemhomo(mesh_element(4,elCP)) .and. ip == 1_pInt)) then            ! and then only first ip
-         FEsolving_execIP(1,elCP) = ip
-         FEsolving_execIP(2,elCP) = ip
-         if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /=  0_pInt) &
-           write(6,'(a,i8,1x,i2)') '<< CPFEM >> calculation for elFE ip ',elFE,ip
-         call materialpoint_stressAndItsTangent(updateJaco, dt)                                     ! calculate stress and its tangent
-         call materialpoint_postResults()
-       endif
+       FEsolving_execIP(1,elCP) = ip
+       FEsolving_execIP(2,elCP) = ip
+       if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /=  0_pInt) &
+         write(6,'(a,i8,1x,i2)') '<< CPFEM >> calculation for elFE ip ',elFE,ip
+       call materialpoint_stressAndItsTangent(updateJaco, dt)                                     ! calculate stress and its tangent
+       call materialpoint_postResults()
 
      !* parallel computation and calulation not yet done
 
@@ -551,13 +427,6 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
 
      else terminalIllness
 
-       if (microstructure_elemhomo(mesh_element(4,elCP)) .and. ip > 1_pInt) then                    ! me homogenous? --> copy from first ip
-         materialpoint_P(1:3,1:3,ip,elCP) = materialpoint_P(1:3,1:3,1,elCP)
-         materialpoint_F(1:3,1:3,ip,elCP) = materialpoint_F(1:3,1:3,1,elCP)
-         materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,elCP) = materialpoint_dPdF(1:3,1:3,1:3,1:3,1,elCP)
-         materialpoint_results(1:materialpoint_sizeResults,ip,elCP) = &
-         materialpoint_results(1:materialpoint_sizeResults,1,elCP)
-       endif
 
        ! translate from P to CS
        Kirchhoff = matmul(materialpoint_P(1:3,1:3,ip,elCP), transpose(materialpoint_F(1:3,1:3,ip,elCP)))
@@ -632,14 +501,6 @@ end subroutine CPFEM_general
 !> @brief triggers writing of the results
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_results(inc,time)
-#ifdef DAMASK_HDF5
- use results
- use HDF5_utilities
-#endif
- use constitutive, only: &
-   constitutive_results
- use crystallite, only: &
-   crystallite_results
 
  integer(pInt), intent(in) :: inc
  real(pReal),   intent(in) :: time

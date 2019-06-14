@@ -5,7 +5,7 @@
 !
 !        MSC.Marc include file
 !
-integer(pInt) &
+integer &
  iacous,     iasmbl,    iautth,     ibear,   icompl,     iconj,       icreep,    ideva,      idyn,    idynt,&
  ielas,      ielcma,    ielect,     iform,   ifour,      iharm,       ihcps,     iheat,      iheatt,  ihresp,&
  ijoule,     ilem,      ilnmom,     iloren,  inc,        incext,      incsub,    ipass,      iplres,  ipois,&
@@ -27,7 +27,7 @@ integer(pInt) &
  iaem,       icosim,    inodels,    nlharm,  iampini,    iphasetr,    inonlcl,   inonlct,    iforminp,ispecerror,&
  icsprg
 dimension :: ideva(60)
-integer(pInt) num_concom
+integer num_concom
 parameter(num_concom=251)
 common/marc_concom/&
  iacous,      iasmbl,    iautth,     ibear,   icompl,     iconj,       icreep,    ideva,      idyn,    idynt,&

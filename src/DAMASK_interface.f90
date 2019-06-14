@@ -40,12 +40,6 @@ module DAMASK_interface
     setSIGTERM, &
     setSIGUSR1, &
     setSIGUSR2
-  private :: &
-    setWorkingDirectory, &
-    getGeometryFile, &
-    getLoadCaseFile, &
-    rectifyPath, &
-    makeRelativePath
 
 contains
 

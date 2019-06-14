@@ -7,14 +7,20 @@ module spectral_utilities
   use, intrinsic :: iso_c_binding
 #include <petsc/finclude/petscsys.h>
   use PETScSys
-  use prec, only: &
-    pReal, &
-    pStringLen
-  use math, only: &
-   math_I3
 
+  use prec
+  use math
+  use IO
+  use mesh
+  use numerics
+  use debug
+  use config
+  use discretization
+  use homogenization
+  
   implicit none
   private
+  
   include 'fftw3-mpi.f03'
 
   logical, public             :: cutBack = .false.                                                  !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
@@ -170,32 +176,7 @@ contains
 !> Initializes FFTW.
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_init
-  use IO, only: &
-    IO_error, &
-    IO_warning, &
-    IO_lc
-  use numerics, only: &
-    petsc_defaultOptions, &
-    petsc_options
-  use debug, only: &
-    debug_level, &
-    debug_SPECTRAL, &
-    debug_LEVELBASIC, &
-    debug_SPECTRALDIVERGENCE, &
-    debug_SPECTRALFFTW, &
-    debug_SPECTRALPETSC, &
-    debug_SPECTRALROTATION
-  use config, only: &
-    config_numerics
-  use debug, only: &
-    PETSCDEBUG
-  use math
-  use mesh, only: &
-    grid, &
-    grid3, &
-    grid3Offset, &
-    geomSize
- 
+
   PetscErrorCode :: ierr
   integer        :: i, j, k, &
     FFTW_planner_flag
@@ -412,17 +393,6 @@ end subroutine utilities_init
 !> Also writes out the current reference stiffness for restart.
 !---------------------------------------------------------------------------------------------------
 subroutine utilities_updateGamma(C,saveReference)
-  use IO, only: &
-    IO_open_jobFile_binary
-  use numerics, only: &
-    worldrank
-  use mesh, only: &
-    grid3Offset, &
-    grid3,&
-    grid
-  use math, only: &
-    math_det33, &
-    math_invert2
  
   real(pReal), intent(in), dimension(3,3,3,3) :: C                                                  !< input stiffness to store as reference stiffness
   logical    , intent(in)                     :: saveReference                                      !< save reference stiffness to file for restart
@@ -538,13 +508,6 @@ end subroutine utilities_FFTvectorBackward
 !> @brief doing convolution gamma_hat * field_real, ensuring that average value = fieldAim
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_fourierGammaConvolution(fieldAim)
-  use math, only: &
-    math_det33, &
-    math_invert2
-  use mesh, only: &
-    grid3, &
-    grid, &
-    grid3Offset
  
   real(pReal), intent(in), dimension(3,3) :: fieldAim                                               !< desired average value of the field after convolution
   complex(pReal),          dimension(3,3) :: temp33_complex, xiDyad_cmplx
@@ -600,12 +563,7 @@ end subroutine utilities_fourierGammaConvolution
 !> @brief doing convolution DamageGreenOp_hat * field_real
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_fourierGreenConvolution(D_ref, mobility_ref, deltaT)
-  use math, only: &
-    PI
-  use mesh, only: &
-    grid, &
-    grid3
- 
+
   real(pReal), dimension(3,3), intent(in) :: D_ref
   real(pReal),                 intent(in) :: mobility_ref, deltaT
   complex(pReal)                          :: GreenOp_hat
@@ -627,12 +585,6 @@ end subroutine utilities_fourierGreenConvolution
 !> @brief calculate root mean square of divergence of field_fourier
 !--------------------------------------------------------------------------------------------------
 real(pReal) function utilities_divergenceRMS()
-  use IO, only: &
-    IO_error
-  use mesh, only: &
-    geomSize, &
-    grid, &
-    grid3
 
   integer :: i, j, k, ierr
   complex(pReal), dimension(3)   :: rescaledGeom
@@ -676,13 +628,7 @@ end function utilities_divergenceRMS
 !> @brief calculate max of curl of field_fourier
 !--------------------------------------------------------------------------------------------------
 real(pReal) function utilities_curlRMS()
-  use IO, only: &
-    IO_error
-  use mesh, only: &
-    geomSize, &
-    grid, &
-    grid3
- 
+
   integer  ::  i, j, k, l, ierr
   complex(pReal), dimension(3,3) :: curl_fourier
   complex(pReal), dimension(3)   :: rescaledGeom
@@ -743,17 +689,7 @@ end function utilities_curlRMS
 !> @brief calculates mask compliance tensor used to adjust F to fullfill stress BC
 !--------------------------------------------------------------------------------------------------
 function utilities_maskedCompliance(rot_BC,mask_stress,C)
-  use, intrinsic :: &
-    IEEE_arithmetic
-  use IO, only: &
-    IO_error
-  use math, only: &
-    math_3333to99, &
-    math_99to3333, &
-    math_rotate_forward3333, &
-    math_rotate_forward33, &
-    math_invert2
- 
+
   real(pReal),              dimension(3,3,3,3) :: utilities_maskedCompliance                        !< masked compliance
   real(pReal), intent(in) , dimension(3,3,3,3) :: C                                                 !< current average stiffness
   real(pReal), intent(in) , dimension(3,3)     :: rot_BC                                            !< rotation of load frame
@@ -844,9 +780,6 @@ end function utilities_maskedCompliance
 !> @brief calculate scalar gradient in fourier field
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_fourierScalarGradient()
-  use mesh, only: &
-    grid3, &
-    grid
  
   integer :: i, j, k
  
@@ -861,9 +794,6 @@ end subroutine utilities_fourierScalarGradient
 !> @brief calculate vector divergence in fourier field
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_fourierVectorDivergence()
-  use mesh, only: &
-    grid3, &
-    grid
  
   integer                :: i, j, k
  
@@ -879,9 +809,6 @@ end subroutine utilities_fourierVectorDivergence
 !> @brief calculate vector gradient in fourier field
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_fourierVectorGradient()
-  use mesh, only: &
-    grid3, &
-    grid
  
   integer :: i, j, k, m, n
  
@@ -899,10 +826,7 @@ end subroutine utilities_fourierVectorGradient
 !> @brief calculate tensor divergence in fourier field
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_fourierTensorDivergence()
-  use mesh, only: &
-    grid3, &
-    grid
- 
+
   integer :: i, j, k, m, n
  
   vectorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
@@ -921,21 +845,6 @@ end subroutine utilities_fourierTensorDivergence
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
                                           F,timeinc,rotation_BC)
-  use IO, only: &
-    IO_error
-  use numerics, only: &
-    worldrank
-  use math, only: &
-    math_rotate_forward33, &
-    math_det33
-  use mesh, only: &
-    grid,&
-    grid3
-  use homogenization, only: &
-    materialpoint_F, &
-    materialpoint_P, &
-    materialpoint_dPdF, &
-    materialpoint_stressAndItsTangent
  
   real(pReal),intent(out), dimension(3,3,3,3)                     :: C_volAvg, C_minmaxAvg          !< average stiffness
   real(pReal),intent(out), dimension(3,3)                         :: P_av                           !< average PK stress
@@ -1010,9 +919,6 @@ end subroutine utilities_constitutiveResponse
 !> @brief calculates forward rate, either guessing or just add delta/timeinc
 !--------------------------------------------------------------------------------------------------
 pure function utilities_calculateRate(heterogeneous,field0,field,dt,avRate)
-  use mesh, only: &
-    grid3, &
-    grid
  
   real(pReal), intent(in), dimension(3,3) :: &
     avRate                                                                                          !< homogeneous addon
@@ -1040,9 +946,6 @@ end function utilities_calculateRate
 !> ensures that the average matches the aim
 !--------------------------------------------------------------------------------------------------
 function utilities_forwardField(timeinc,field_lastInc,rate,aim)
-  use mesh, only: &
-    grid3, &
-    grid
 
   real(pReal), intent(in) :: &
     timeinc                                                                                         !< timeinc of current step
@@ -1074,11 +977,6 @@ end function utilities_forwardField
 ! standard approach
 !--------------------------------------------------------------------------------------------------
 pure function utilities_getFreqDerivative(k_s)
-  use math, only: &
-    PI
-  use mesh, only: &
-    geomSize, &
-    grid
 
   integer, intent(in),  dimension(3) :: k_s                                                         !< indices of frequency
   complex(pReal),       dimension(3) :: utilities_getFreqDerivative
@@ -1127,16 +1025,6 @@ end function utilities_getFreqDerivative
 ! convolution
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_updateIPcoords(F)
-  use prec, only: &
-    cNeq
-  use IO, only: &
-    IO_error
-  use mesh, only: &
-    grid, &
-    grid3, &
-    grid3Offset, &
-    geomSize, &
-    mesh_ipCoordinates
  
   real(pReal),   dimension(3,3,grid(1),grid(2),grid3), intent(in) :: F
   integer :: i, j, k, m, ierr
@@ -1178,6 +1066,8 @@ subroutine utilities_updateIPcoords(F)
                                 + matmul(Favg,step*real([i,j,k+grid3Offset]-1,pReal))
     m = m+1
   enddo; enddo; enddo
+  
+  call discretization_setIPcoords(reshape(mesh_ipCoordinates,[3,grid(1)*grid(2)*grid3]))
 
 end subroutine utilities_updateIPcoords
 

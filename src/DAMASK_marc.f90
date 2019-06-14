@@ -29,9 +29,18 @@
 #include "prec.f90"
 
 module DAMASK_interface
+ use prec
+#if __INTEL_COMPILER >= 1800
+ use, intrinsic :: iso_fortran_env, only: &
+   compiler_version, &
+   compiler_options
+#endif
+ use ifport, only: &
+   CHDIR
 
  implicit none
  private
+ 
  character(len=4), parameter, public :: InputFileExtension = '.dat'
  character(len=4), parameter, public :: LogFileExtension = '.log'
  
@@ -45,15 +54,7 @@ contains
 !> @brief reports and sets working directory
 !--------------------------------------------------------------------------------------------------
 subroutine DAMASK_interface_init
-#if __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
-#endif
- use ifport, only: &
-   CHDIR
 
- implicit none
  integer, dimension(8) :: &
    dateAndTime
  integer :: ierr
@@ -96,9 +97,7 @@ end subroutine DAMASK_interface_init
 !> @brief solver job name (no extension) as combination of geometry and load case name
 !--------------------------------------------------------------------------------------------------
 function getSolverJobName()
- use prec
 
- implicit none
  character(1024) :: getSolverJobName, inputName
  character(len=*), parameter :: pathSep = achar(47)//achar(92)                                      ! forward and backward slash
  integer :: extPos
@@ -113,8 +112,6 @@ end function getSolverJobName
 
 
 end module DAMASK_interface
-
-
 
 
 #include "commercialFEM_fileList.f90"
@@ -132,47 +129,11 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
                    strechn1,eigvn1,ncrd,itel,ndeg,ndm,nnode, &
                    jtype,lclass,ifr,ifu)
  use prec
- use numerics, only: &
-!$ DAMASK_NumThreadsInt, &
-   numerics_unitlength, &
-   usePingPong
- use FEsolving, only: &
-   calcMode, &
-   terminallyIll, &
-   symmetricSolver
- use debug, only: &
-   debug_level, &
-   debug_LEVELBASIC, &
-   debug_MARC, &
-   debug_info, &
-   debug_reset
- use mesh, only: &
-   theMesh, &
-   mesh_FEasCP, &
-   mesh_element, &
-   mesh_node0, &
-   mesh_node, &
-   mesh_Ncellnodes, &
-   mesh_cellnode, &
-   mesh_build_cellnodes, &
-   mesh_build_ipCoordinates
- use CPFEM, only: &
-   CPFEM_general, &
-   CPFEM_init_done, &
-   CPFEM_initAll, &
-   CPFEM_CALCRESULTS, &
-   CPFEM_AGERESULTS, &
-   CPFEM_COLLECT, &
-   CPFEM_RESTOREJACOBIAN, &
-   CPFEM_BACKUPJACOBIAN, &
-   cycleCounter, &
-   theInc, &
-   theTime, &
-   theDelta, &
-   lastIncConverged, &
-   outdatedByNewInc, &
-   outdatedFFN1, &
-   lastLovl
+ use numerics
+ use FEsolving
+ use debug
+ use mesh
+ use CPFEM
 
  implicit none
 !$ include "omp_lib.h"                                                                              ! the openMP function library
@@ -304,7 +265,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
          call debug_reset()                                                                         ! resets debugging
          outdatedFFN1  = .false.
          cycleCounter  = cycleCounter + 1
-         mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)                            ! update cell node coordinates
+         mesh_cellnode = mesh_build_cellnodes()                                                     ! update cell node coordinates
          call mesh_build_ipCoordinates()                                                            ! update ip coordinates
        endif
        if (outdatedByNewInc) then
@@ -319,10 +280,10 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
          computationMode = ior(computationMode,CPFEM_BACKUPJACOBIAN)                                ! collect and backup Jacobian after convergence
          lastIncConverged = .false.                                                                 ! reset flag
        endif
-       do node = 1,theMesh%elem%nNodes
-         CPnodeID = mesh_element(4+node,cp_en)
-         mesh_node(1:ndeg,CPnodeID) = mesh_node0(1:ndeg,CPnodeID) + numerics_unitlength * dispt(1:ndeg,node)
-       enddo
+       !do node = 1,theMesh%elem%nNodes
+         !CPnodeID = mesh_element(4+node,cp_en)
+         !mesh_node(1:ndeg,CPnodeID) = mesh_node0(1:ndeg,CPnodeID) + numerics_unitlength * dispt(1:ndeg,node)
+       !enddo
      endif
 
    else                                                                                             ! --- PLAIN MODE ---
@@ -333,8 +294,8 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
        call debug_reset()                                                                           ! and resets debugging
        outdatedFFN1  = .false.
        cycleCounter  = cycleCounter + 1
-       mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)                              ! update cell node coordinates
-       call mesh_build_ipCoordinates()                                                              ! update ip coordinates
+       !mesh_cellnode = mesh_build_cellnodes()                                                       ! update cell node coordinates
+       !call mesh_build_ipCoordinates()                                                              ! update ip coordinates
      endif
      if (outdatedByNewInc) then
        computationMode = ior(computationMode,CPFEM_AGERESULTS)
@@ -373,10 +334,8 @@ end subroutine hypela2
 !--------------------------------------------------------------------------------------------------
 subroutine flux(f,ts,n,time)
  use prec
- use thermal_conduction, only: &
-   thermal_conduction_getSourceAndItsTangent
- use mesh, only: &
-   mesh_FEasCP
+ use thermal_conduction
+ use mesh
 
  implicit none
  real(pReal), dimension(6),           intent(in) :: &
@@ -399,8 +358,7 @@ subroutine flux(f,ts,n,time)
 !--------------------------------------------------------------------------------------------------
 subroutine uedinc(inc,incsub)
   use prec
-  use CPFEM, only: &
-    CPFEM_results
+  use CPFEM
 
   implicit none
   integer, intent(in) :: inc, incsub
@@ -417,13 +375,9 @@ end subroutine uedinc
 !--------------------------------------------------------------------------------------------------
 subroutine plotv(v,s,sp,etot,eplas,ecreep,t,m,nn,layer,ndi,nshear,jpltcd)
  use prec
- use mesh, only: &
-   mesh_FEasCP
- use IO, only: &
-   IO_error
- use homogenization, only: &
-   materialpoint_results,&
-   materialpoint_sizeResults
+ use mesh
+ use IO
+ use homogenization
 
  implicit none
  integer,               intent(in) :: &

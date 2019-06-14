@@ -4,6 +4,7 @@
 !--------------------------------------------------------------------------------------------------
 module element
   use prec
+  use IO
  
   implicit none
   private 
@@ -27,7 +28,7 @@ module element
       NnodeAtIP, &
       IPneighbor, &
       cellFace
-    real(pReal), dimension(:,:), allocatable :: &
+    integer, dimension(:,:), allocatable :: &
       ! center of gravity of the weighted nodes gives the position of the cell node.
       ! example: face-centered cell node with face nodes 1,2,5,6 to be used in,
       !          e.g., an 8 node element, would be encoded: 1, 1, 0, 0, 1, 1, 0, 0
@@ -129,7 +130,7 @@ module element
        6  & ! 3D 8node
     ]                                                                                               !< number of ip neighbors / cell faces in a specific cell type 
 
-  !integer, dimension(maxval(cellType)), parameter, private :: NCELLNODESPERCELLFACE = &            
+  !integer, dimension(maxval(cellType)), parameter, private :: NCELLNODESPERCELLFACE = &            ! Intel 16.0 complains
   integer, dimension(4), parameter, private :: NCELLNODEPERCELLFACE = &
     [ &
        2, & ! 2D 3node
@@ -162,6 +163,10 @@ module element
        8  & ! 3D 8node
     ]                                                                                               !< number of cell nodes in a specific cell type
 
+
+
+! --------------------------------------------------------------------------------------------------
+! MD: probably not needed START
   integer, dimension(maxNnodeAtIP(1),nIP(1)), parameter, private :: NnodeAtIP1 = &
     reshape([&
       1,2,3 &
@@ -265,8 +270,7 @@ module element
       7,8, 0,0, &
       7,0, 0,0  &
     ],[maxNnodeAtIP(10),nIP(10)])
-
-
+  
   ! *** FE_ipNeighbor ***
   ! is a list of the neighborhood of each IP.
   ! It is sorted in (local) +x,-x, +y,-y, +z,-z direction.
@@ -376,7 +380,11 @@ module element
       27,25,-4,23,-6,17, &
       -3,26,-4,24,-6,18  &
      ],[nIPneighbor(cellType(10)),nIP(10)])
- 
+
+! MD: probably not needed END
+! --------------------------------------------------------------------------------------------------
+
+
  
   real(pReal), dimension(nNode(1),NcellNode(geomType(1))), parameter :: cellNodeParentNodeWeights1 = &
     reshape(real([&
@@ -798,8 +806,6 @@ module element
  contains
  
  subroutine tElement_init(self,elemType)
-   use IO, only: &
-     IO_error
 
    class(tElement) :: self
    integer, intent(in) :: elemType

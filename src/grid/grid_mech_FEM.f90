@@ -11,13 +11,18 @@ module grid_mech_FEM
   use HDF5_utilities
   use PETScdmda
   use PETScsnes
-  use prec, only: &
-    pReal
-  use math, only: &
-    math_I3
-  use spectral_utilities, only: &
-    tSolutionState, &
-    tSolutionParams
+  use prec
+  use CPFEM2
+  use IO
+  use debug
+  use FEsolving
+  use numerics
+  use homogenization
+  use DAMASK_interface
+  use spectral_utilities
+  use discretization
+  use mesh
+  use math
  
   implicit none
   private
@@ -74,30 +79,6 @@ contains
 !> @brief allocates all necessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mech_FEM_init
-  use IO, only: &
-    IO_intOut, &
-    IO_error, &
-    IO_open_jobFile_binary
-  use FEsolving, only: &
-    restartInc
-  use numerics, only: &
-    worldrank, &
-    worldsize, &
-    petsc_options
-  use homogenization, only: &
-    materialpoint_F0
-  use DAMASK_interface, only: &
-    getSolverJobName
-  use spectral_utilities, only: &
-    utilities_constitutiveResponse, &
-    utilities_updateIPcoords, &
-    wgt
-  use mesh, only: &
-    geomSize, &
-    grid, &
-    grid3
-  use math, only: &
-    math_invSym3333
     
   real(pReal) :: HGCoeff = 0e-2_pReal
   PetscInt, dimension(:), allocatable :: localK
@@ -243,14 +224,6 @@ end subroutine grid_mech_FEM_init
 !> @brief solution for the FEM scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
 function grid_mech_FEM_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation_BC) result(solution)
-  use IO, only: &
-    IO_error
-  use spectral_utilities, only: &
-    tBoundaryCondition, &
-    utilities_maskedCompliance
-  use FEsolving, only: &
-    restartWrite, &
-    terminallyIll
 
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
@@ -304,25 +277,6 @@ end function grid_mech_FEM_solution
 !> possibly writing restart information, triggering of state increment in DAMASK, and updating of IPcoordinates
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,stress_BC,rotation_BC)
-  use math, only: &
-    math_rotate_backward33
-  use numerics, only: &
-    worldrank
-  use homogenization, only: &
-    materialpoint_F0
-  use mesh, only: &
-    grid, &
-    grid3
-  use CPFEM2, only: &
-    CPFEM_age
-  use spectral_utilities, only: &
-    utilities_updateIPcoords, &
-    tBoundaryCondition, &
-    cutBack
-  use IO, only: &
-    IO_open_jobFile_binary
-  use FEsolving, only: &
-    restartWrite
 
   logical,                     intent(in) :: &
     guess
@@ -422,17 +376,6 @@ end subroutine grid_mech_FEM_forward
 !> @brief convergence check
 !--------------------------------------------------------------------------------------------------
 subroutine converged(snes_local,PETScIter,devNull1,devNull2,fnorm,reason,dummy,ierr)
-  use mesh
-  use spectral_utilities
-  use numerics, only: &
-    itmax, &
-    itmin, &
-    err_div_tolRel, &
-    err_div_tolAbs, &
-    err_stress_tolRel, &
-    err_stress_tolAbs
-  use FEsolving, only: &
-    terminallyIll
 
   SNES :: snes_local
    PetscInt,  intent(in) :: PETScIter
@@ -481,28 +424,6 @@ end subroutine converged
 !--------------------------------------------------------------------------------------------------
 subroutine formResidual(da_local,x_local, &
                         f_local,dummy,ierr)
-  use numerics, only: &
-    itmax, &
-    itmin
-  use numerics, only: &
-    worldrank
-  use mesh, only: &
-    grid
-  use math, only: &
-    math_rotate_backward33, &
-    math_mul3333xx33
-  use debug, only: &
-    debug_level, &
-    debug_spectral, &
-    debug_spectralRotation
-  use spectral_utilities, only: &
-    utilities_constitutiveResponse
-  use IO, only: &
-    IO_intOut 
-  use FEsolving, only: &
-    terminallyIll
-  use homogenization, only: &
-    materialpoint_dPdF
 
   DM                   :: da_local
   Vec                  :: x_local, f_local
@@ -617,12 +538,7 @@ end subroutine formResidual
 !> @brief forms the FEM stiffness matrix
 !--------------------------------------------------------------------------------------------------
 subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,ierr)
-  use mesh, only: &
-    mesh_ipCoordinates
-  use homogenization, only: &
-    materialpoint_dPdF
- 
- 
+
   DM                                   :: da_local
   Vec                                  :: x_local, coordinates
   Mat                                  :: Jac_pre, Jac
@@ -699,7 +615,7 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,ierr)
   ele = 0
   do k = zstart, zend; do j = ystart, yend; do i = xstart, xend
     ele = ele + 1
-    x_scal(0:2,i,j,k) = mesh_ipCoordinates(1:3,1,ele)
+    x_scal(0:2,i,j,k) = discretization_IPcoords(1:3,ele)
   enddo; enddo; enddo
   call DMDAVecRestoreArrayF90(da_local,coordinates,x_scal,ierr);CHKERRQ(ierr)                       ! initialize to undeformed coordinates (ToDo: use ip coordinates)
   call MatNullSpaceCreateRigidBody(coordinates,matnull,ierr);CHKERRQ(ierr)                          ! get rigid body deformation modes

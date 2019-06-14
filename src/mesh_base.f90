@@ -23,7 +23,7 @@ module mesh_base
      elem
    real(pReal), dimension(:,:), allocatable, public :: &
      ipVolume, &                                                                                 !< volume associated with each IP (initially!)
-     node0, &                                                                                    !< node x,y,z coordinates (initially)
+     node_0, &                                                                                    !< node x,y,z coordinates (initially)
      node                                                                                        !< node x,y,z coordinates (deformed)
    integer(pInt), dimension(:,:), allocatable, public :: &    
      cellnodeParent                                                                               !< cellnode's parent element ID, cellnode's intra-element ID 
@@ -62,7 +62,7 @@ subroutine tMesh_base_init(self,meshType,elemType,nodes)
 
  self%type = meshType
  call self%elem%init(elemType)
- self%node0 = nodes
+ self%node_0 = nodes
  self%nNodes = size(nodes,2)
 
 end subroutine tMesh_base_init

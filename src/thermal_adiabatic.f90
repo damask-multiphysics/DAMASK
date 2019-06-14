@@ -11,7 +11,6 @@ module thermal_adiabatic
   use source_thermal_externalheat
   use crystallite
   use lattice
-  use mesh
 
   implicit none
   private
@@ -214,13 +213,13 @@ function thermal_adiabatic_getSpecificHeat(ip,el)
   thermal_adiabatic_getSpecificHeat = 0.0_pReal
   
    
-  do grain = 1, homogenization_Ngrains(mesh_element(3,el))
+  do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
     thermal_adiabatic_getSpecificHeat = thermal_adiabatic_getSpecificHeat + &
      lattice_specificHeat(material_phase(grain,ip,el))
   enddo
  
   thermal_adiabatic_getSpecificHeat = &
-    thermal_adiabatic_getSpecificHeat/real(homogenization_Ngrains(mesh_element(3,el)),pReal)
+    thermal_adiabatic_getSpecificHeat/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
   
 end function thermal_adiabatic_getSpecificHeat
  
@@ -241,13 +240,13 @@ function thermal_adiabatic_getMassDensity(ip,el)
   thermal_adiabatic_getMassDensity = 0.0_pReal
  
    
-  do grain = 1, homogenization_Ngrains(mesh_element(3,el))
+  do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
     thermal_adiabatic_getMassDensity = thermal_adiabatic_getMassDensity + &
      lattice_massDensity(material_phase(grain,ip,el))
   enddo
  
   thermal_adiabatic_getMassDensity = &
-    thermal_adiabatic_getMassDensity/real(homogenization_Ngrains(mesh_element(3,el)),pReal)
+    thermal_adiabatic_getMassDensity/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
  
 end function thermal_adiabatic_getMassDensity
 

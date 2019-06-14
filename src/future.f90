@@ -3,7 +3,11 @@
 !> @brief New fortran functions for compiler versions that do not support them
 !--------------------------------------------------------------------------------------------------
 module future
+  use prec
+
+  implicit none
   public
+
 contains
 
 #if defined(__GFORTRAN__) || __INTEL_COMPILER < 1800
@@ -11,6 +15,7 @@ contains
 !> @brief substitute for the findloc intrinsic (only for integer, dimension(:) at the moment)
 !--------------------------------------------------------------------------------------------------
 function findloc(a,v)
+
   integer, intent(in), dimension(:) :: a
   integer, intent(in) :: v
   integer :: i,j
@@ -29,13 +34,10 @@ end function findloc
 
 #if defined(__PGI)
 !--------------------------------------------------------------------------------------------------
-!> @brief substitute for the norm2 intrinsic (only for real,dimension(3) at the moment)
+!> @brief substitute for the norm2 intrinsic (only for real, dimension(3) at the moment)
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function norm2(v)
-  use prec, only: &
-    pReal
   
-  implicit none
   real(pReal), intent(in), dimension(3) :: v
   
   norm2 = sqrt(sum(v**2))

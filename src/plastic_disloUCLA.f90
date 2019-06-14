@@ -6,11 +6,18 @@
 !> @brief crystal plasticity model for bcc metals, especially Tungsten
 !--------------------------------------------------------------------------------------------------
 module plastic_disloUCLA
-  use prec, only: &
-    pReal
+  use prec
+  use debug
+  use math
+  use IO
+  use material
+  use config
+  use lattice
+  use results
  
   implicit none
   private
+
   integer,                       dimension(:,:),   allocatable, target, public :: &
     plastic_disloUCLA_sizePostResult                                                                !< size of each post result output
   character(len=64),             dimension(:,:),   allocatable, target, public :: &
@@ -111,20 +118,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_disloUCLA_init()
-  use prec, only: &
-    pStringLen
-  use debug, only: &
-    debug_level,&
-    debug_constitutive,&
-    debug_levelBasic
-  use math, only: &
-    math_expand
-  use IO, only: &
-    IO_error
-  use material
-  use config, only: &
-    config_phase
-  use lattice
  
   integer :: &
     Ninstance, &
@@ -394,12 +387,6 @@ end subroutine plastic_disloUCLA_LpAndItsTangent
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_disloUCLA_dotState(Mp,T,instance,of)
-  use prec, only: &
-    tol_math_check, &
-    dEq0
-  use math, only: &
-    PI, &
-    math_clip
  
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                               !< Mandel stress
@@ -489,11 +476,6 @@ end subroutine plastic_disloUCLA_dependentState
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
 function plastic_disloUCLA_postResults(Mp,T,instance,of) result(postResults)
-  use prec, only: &
-    dEq, dNeq0
-  use math, only: &
-    PI, &
-    math_mul33xx33
  
   real(pReal), dimension(3,3), intent(in) :: &
     Mp                                                                                              !< Mandel stress
@@ -548,8 +530,6 @@ end function plastic_disloUCLA_postResults
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_disloUCLA_results(instance,group)
 #if defined(PETSc) || defined(DAMASK_HDF5)
-  use results, only: &
-    results_writeDataset
 
   integer,          intent(in) :: instance
   character(len=*), intent(in) :: group
@@ -595,12 +575,6 @@ end subroutine plastic_disloUCLA_results
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics(Mp,T,instance,of, &
                  dot_gamma_pos,dot_gamma_neg,ddot_gamma_dtau_pos,ddot_gamma_dtau_neg,tau_pos_out,tau_neg_out)
-  use prec, only: &
-    tol_math_check, &
-    dEq, dNeq0
-  use math, only: &
-    PI, &
-    math_mul33xx33
  
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress

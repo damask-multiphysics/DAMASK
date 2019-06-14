@@ -9,14 +9,17 @@ module grid_thermal_spectral
 #include <petsc/finclude/petscdmda.h>
   use PETScdmda
   use PETScsnes
-  use prec, only: & 
-    pReal
-  use spectral_utilities, only: &
-    tSolutionState, &
-    tSolutionParams
+
+  use prec
+  use spectral_utilities
+  use mesh
+  use thermal_conduction
+  use material
+  use numerics
  
   implicit none
   private
+
 !--------------------------------------------------------------------------------------------------
 ! derived types
   type(tSolutionParams), private :: params
@@ -51,23 +54,6 @@ contains
 ! ToDo: Restart not implemented
 !--------------------------------------------------------------------------------------------------
 subroutine grid_thermal_spectral_init
-  use spectral_utilities, only: &
-    wgt
-  use mesh, only: &
-    grid, &
-    grid3
-  use thermal_conduction, only: &
-    thermal_conduction_getConductivity33, &
-    thermal_conduction_getMassDensity, &
-    thermal_conduction_getSpecificHeat
-  use material, only: &
-    material_homogenizationAt, &
-    temperature, &
-    thermalMapping
-  use numerics, only: &
-    worldrank, &
-    worldsize, &
-    petsc_options
 
   PetscInt, dimension(worldsize) :: localK  
   integer :: i, j, k, cell
@@ -156,15 +142,6 @@ end subroutine grid_thermal_spectral_init
 !> @brief solution for the spectral thermal scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
 function grid_thermal_spectral_solution(timeinc,timeinc_old,loadCaseTime) result(solution)
-  use numerics, only: &
-    itmax, &
-    err_thermal_tolAbs, &
-    err_thermal_tolRel
-  use mesh, only: &
-    grid, &
-    grid3
-  use thermal_conduction, only: &
-    thermal_conduction_putTemperatureAndItsRate
  
   real(pReal), intent(in) :: &
     timeinc, &                                                                                      !< increment in time for current solution
@@ -228,18 +205,7 @@ end function grid_thermal_spectral_solution
 !> @brief forwarding routine
 !--------------------------------------------------------------------------------------------------
 subroutine grid_thermal_spectral_forward
-  use mesh, only: &
-    grid, &
-    grid3
-  use spectral_utilities, only: &
-    cutBack, &
-    wgt
-  use thermal_conduction, only: &
-    thermal_conduction_putTemperatureAndItsRate, &
-    thermal_conduction_getConductivity33, &
-    thermal_conduction_getMassDensity, &
-    thermal_conduction_getSpecificHeat
-    
+   
   integer :: i, j, k, cell
   DM :: dm_local
   PetscScalar,  dimension(:,:,:), pointer :: x_scal
@@ -289,24 +255,6 @@ end subroutine grid_thermal_spectral_forward
 !> @brief forms the spectral thermal residual vector
 !--------------------------------------------------------------------------------------------------
 subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
-  use mesh, only: &
-    grid, &
-    grid3
-  use spectral_utilities, only: &
-    scalarField_real, &
-    vectorField_real, &
-    utilities_FFTvectorForward, &
-    utilities_FFTvectorBackward, &
-    utilities_FFTscalarForward, &
-    utilities_FFTscalarBackward, &
-    utilities_fourierGreenConvolution, &
-    utilities_fourierScalarGradient, &
-    utilities_fourierVectorDivergence
-  use thermal_conduction, only: &
-    thermal_conduction_getSourceAndItsTangent, &
-    thermal_conduction_getConductivity33, &
-    thermal_conduction_getMassDensity, &
-    thermal_conduction_getSpecificHeat
  
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
     in
