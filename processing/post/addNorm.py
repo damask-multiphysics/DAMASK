@@ -4,6 +4,8 @@ import os
 import sys
 from optparse import OptionParser
 
+import numpy as np
+
 import damask
 
 
