@@ -461,7 +461,7 @@ subroutine plastic_dislotwin_init
        case ('gamma_sl')
          outputID = merge(gamma_sl_ID,undefined_ID,prm%sum_N_sl > 0)
          outputSize = prm%sum_N_sl
-       case ('Lambda_sl')
+       case ('lambda_sl')
          outputID = merge(Lambda_sl_ID,undefined_ID,prm%sum_N_sl > 0)
          outputSize = prm%sum_N_sl
        case ('tau_pass')
@@ -471,7 +471,7 @@ subroutine plastic_dislotwin_init
        case ('f_tw')
          outputID = merge(f_tw_ID,undefined_ID,prm%sum_N_tw >0)
          outputSize = prm%sum_N_tw
-       case ('Lambda_tw')
+       case ('lambda_tw')
          outputID = merge(Lambda_tw_ID,undefined_ID,prm%sum_N_tw >0)
          outputSize = prm%sum_N_tw
        case ('tau_hat_tw')
