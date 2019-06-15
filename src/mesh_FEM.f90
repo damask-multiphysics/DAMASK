@@ -8,11 +8,10 @@ module mesh
 #include <petsc/finclude/petscdmplex.h>
 #include <petsc/finclude/petscis.h>
 #include <petsc/finclude/petscdmda.h>
- use prec
- use mesh_base
  use PETScdmplex
  use PETScdmda
  use PETScis
+
  use DAMASK_interface
  use IO
  use debug
@@ -20,6 +19,8 @@ module mesh
  use numerics
  use FEsolving
  use FEM_Zoo
+ use prec
+ use mesh_base
  
  implicit none
  private
@@ -35,13 +36,13 @@ module mesh
    mesh_maxNips                                                                                     !< max number of IPs in any CP element
 !!!! BEGIN DEPRECATED !!!!!
 
- integer, dimension(:,:), allocatable, public, protected :: &
+ integer, dimension(:,:), allocatable :: &
    mesh_element !DEPRECATED
 
- real(pReal), dimension(:,:), allocatable, public :: &
+ real(pReal), dimension(:,:), allocatable  :: &
    mesh_node                                                                                        !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!)
  
- real(pReal), dimension(:,:), allocatable, public, protected :: &
+ real(pReal), dimension(:,:), allocatable :: &
    mesh_ipVolume, &                                                                                 !< volume associated with IP (initially!)
    mesh_node0                                                                                       !< node x,y,z coordinates (initially!)
  
@@ -176,15 +177,13 @@ subroutine mesh_init
      endif
    enddo
    close (FILEUNIT)
- endif
- 
- if (worldsize > 1) then
-   call DMPlexDistribute(globalMesh,0,sf,geomMesh,ierr)
-   CHKERRQ(ierr)
- else 
    call DMClone(globalMesh,geomMesh,ierr)
    CHKERRQ(ierr)
+ else 
+   call DMPlexDistribute(globalMesh,0,sf,geomMesh,ierr)
+   CHKERRQ(ierr)
  endif  
+
  call DMDestroy(globalMesh,ierr); CHKERRQ(ierr)
  
  call DMGetStratumSize(geomMesh,'depth',dimPlex,mesh_NcpElems,ierr)
@@ -255,75 +254,66 @@ end function mesh_cellCenterCoordinates
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_FEM_build_ipVolumes(dimPlex)
  
- PetscInt           :: dimPlex
- PetscReal          :: vol
- PetscReal,  target :: cent(dimPlex), norm(dimPlex)
- PetscReal, pointer :: pCent(:), pNorm(:)
- PetscInt           :: cellStart, cellEnd, cell
- PetscErrorCode     :: ierr
-
- if (.not. allocated(mesh_ipVolume)) then
-   allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems))
-   mesh_ipVolume = 0.0_pReal 
- endif
-
- call DMPlexGetHeightStratum(geomMesh,0,cellStart,cellEnd,ierr); CHKERRQ(ierr)
- pCent => cent
- pNorm => norm
- do cell = cellStart, cellEnd-1
-   call  DMPlexComputeCellGeometryFVM(geomMesh,cell,vol,pCent,pNorm,ierr) 
-   CHKERRQ(ierr)
-   mesh_ipVolume(:,cell+1) = vol/real(mesh_maxNips,pReal)
- enddo  
+  PetscInt           :: dimPlex
+  PetscReal          :: vol
+  PetscReal,  target :: cent(dimPlex), norm(dimPlex)
+  PetscReal, pointer :: pCent(:), pNorm(:)
+  PetscInt           :: cellStart, cellEnd, cell
+  PetscErrorCode     :: ierr
+ 
+  if (.not. allocated(mesh_ipVolume)) then
+    allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems))
+    mesh_ipVolume = 0.0_pReal 
+  endif
+ 
+  call DMPlexGetHeightStratum(geomMesh,0,cellStart,cellEnd,ierr); CHKERRQ(ierr)
+  pCent => cent
+  pNorm => norm
+  do cell = cellStart, cellEnd-1
+    call  DMPlexComputeCellGeometryFVM(geomMesh,cell,vol,pCent,pNorm,ierr) 
+    CHKERRQ(ierr)
+    mesh_ipVolume(:,cell+1) = vol/real(mesh_maxNips,pReal)
+  enddo  
 
 end subroutine mesh_FEM_build_ipVolumes
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculates IP Coordinates. Allocates global array 'mesh_ipCoordinates'
-! Called by all solvers in mesh_init in order to initialize the ip coordinates.
-! Later on the current ip coordinates are directly prvided by the spectral solver and by Abaqus,
-! so no need to use this subroutine anymore; Marc however only provides nodal displacements,
-! so in this case the ip coordinates are always calculated on the basis of this subroutine.
-! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! FOR THE MOMENT THIS SUBROUTINE ACTUALLY CALCULATES THE CELL CENTER AND NOT THE IP COORDINATES,
-! AS THE IP IS NOT (ALWAYS) LOCATED IN THE CENTER OF THE IP VOLUME. 
-! HAS TO BE CHANGED IN A LATER VERSION. 
-! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
 
- PetscInt,      intent(in) :: dimPlex
- PetscReal,     intent(in) :: qPoints(mesh_maxNips*dimPlex)
+  PetscInt,      intent(in) :: dimPlex
+  PetscReal,     intent(in) :: qPoints(mesh_maxNips*dimPlex)
+  
+  PetscReal,         target :: v0(dimPlex), cellJ(dimPlex*dimPlex), invcellJ(dimPlex*dimPlex)
+  PetscReal,        pointer :: pV0(:), pCellJ(:), pInvcellJ(:)
+  PetscReal                 :: detJ
+  PetscInt                  :: cellStart, cellEnd, cell, qPt, dirI, dirJ, qOffset
+  PetscErrorCode            :: ierr
  
- PetscReal,         target :: v0(dimPlex), cellJ(dimPlex*dimPlex), invcellJ(dimPlex*dimPlex)
- PetscReal,        pointer :: pV0(:), pCellJ(:), pInvcellJ(:)
- PetscReal                 :: detJ
- PetscInt                  :: cellStart, cellEnd, cell, qPt, dirI, dirJ, qOffset
- PetscErrorCode            :: ierr
-
-
- allocate(mesh_ipCoordinates(3,mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
-
- pV0 => v0
- pCellJ => cellJ
- pInvcellJ => invcellJ
- call DMPlexGetHeightStratum(geomMesh,0,cellStart,cellEnd,ierr); CHKERRQ(ierr)
- do cell = cellStart, cellEnd-1                                                                     !< loop over all elements 
-   call DMPlexComputeCellGeometryAffineFEM(geomMesh,cell,pV0,pCellJ,pInvcellJ,detJ,ierr)
-   CHKERRQ(ierr)
-   qOffset = 0
-   do qPt = 1, mesh_maxNips
-     do dirI = 1, dimPlex
-       mesh_ipCoordinates(dirI,qPt,cell+1) = pV0(dirI)
-       do dirJ = 1, dimPlex
-         mesh_ipCoordinates(dirI,qPt,cell+1) = mesh_ipCoordinates(dirI,qPt,cell+1) + &
-                                               pCellJ((dirI-1)*dimPlex+dirJ)*(qPoints(qOffset+dirJ) + 1.0)
-       enddo
-     enddo
-     qOffset = qOffset + dimPlex
-   enddo
- enddo  
+ 
+  allocate(mesh_ipCoordinates(3,mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
+ 
+  pV0 => v0
+  pCellJ => cellJ
+  pInvcellJ => invcellJ
+  call DMPlexGetHeightStratum(geomMesh,0,cellStart,cellEnd,ierr); CHKERRQ(ierr)
+  do cell = cellStart, cellEnd-1                                                                     !< loop over all elements 
+    call DMPlexComputeCellGeometryAffineFEM(geomMesh,cell,pV0,pCellJ,pInvcellJ,detJ,ierr)
+    CHKERRQ(ierr)
+    qOffset = 0
+    do qPt = 1, mesh_maxNips
+      do dirI = 1, dimPlex
+        mesh_ipCoordinates(dirI,qPt,cell+1) = pV0(dirI)
+        do dirJ = 1, dimPlex
+          mesh_ipCoordinates(dirI,qPt,cell+1) = mesh_ipCoordinates(dirI,qPt,cell+1) + &
+                                                pCellJ((dirI-1)*dimPlex+dirJ)*(qPoints(qOffset+dirJ) + 1.0)
+        enddo
+      enddo
+      qOffset = qOffset + dimPlex
+    enddo
+  enddo  
 
 end subroutine mesh_FEM_build_ipCoordinates
 
