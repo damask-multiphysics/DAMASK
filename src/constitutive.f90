@@ -149,7 +149,7 @@ subroutine constitutive_init
          case default plasticityType
            knownPlasticity = .false.
        end select plasticityType
-       write(FILEUNIT,'(/,a,/)') '['//trim(phase_name(ph))//']'
+       write(FILEUNIT,'(/,a,/)') '['//trim(config_name_phase(ph))//']'
        if (knownPlasticity) then
          write(FILEUNIT,'(a)') '(plasticity)'//char(9)//trim(outputName)
          if (phase_plasticity(ph) /= PLASTICITY_NONE_ID) then
@@ -794,8 +794,8 @@ subroutine constitutive_results
   integer :: p
   character(len=256) :: group
 #if defined(PETSc) || defined(DAMASK_HDF5)                                             
-  do p=1,size(phase_name)
-    group = trim('current/constituent')//'/'//trim(phase_name(p))
+  do p=1,size(config_name_phase)
+    group = trim('current/constituent')//'/'//trim(config_name_phase(p))
     call HDF5_closeGroup(results_addGroup(group))
     
     group = trim(group)//'/plastic'

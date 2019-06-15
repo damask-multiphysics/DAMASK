@@ -164,7 +164,7 @@ subroutine homogenization_init
    call IO_write_jobFile(FILEUNIT,'outputHomogenization')
    do p = 1,size(config_homogenization)
      if (any(material_homogenizationAt == p)) then
-       write(FILEUNIT,'(/,a,/)')  '['//trim(homogenization_name(p))//']'
+       write(FILEUNIT,'(/,a,/)')  '['//trim(config_name_homogenization(p))//']'
        write(FILEUNIT,'(a)') '(type) n/a'
        write(FILEUNIT,'(a,i4)') '(ngrains)'//char(9),homogenization_Ngrains(p)
        
@@ -797,8 +797,6 @@ end function postResults
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_results
 #if defined(PETSc) || defined(DAMASK_HDF5)
-  use config, only: &
-    config_name_homogenization => homogenization_name                                               ! anticipate logical name
   use material, only: &
     material_homogenization_type => homogenization_type
     

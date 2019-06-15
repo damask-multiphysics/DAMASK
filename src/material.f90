@@ -297,17 +297,17 @@ subroutine material_init
    write(6,'(/,a,/)') ' MATERIAL configuration'
    write(6,'(a32,1x,a16,1x,a6)') 'homogenization                  ','type            ','grains'
    do h = 1,size(config_homogenization)
-     write(6,'(1x,a32,1x,a16,1x,i6)') homogenization_name(h),homogenization_type(h),homogenization_Ngrains(h)
+     write(6,'(1x,a32,1x,a16,1x,i6)') config_name_homogenization(h),homogenization_type(h),homogenization_Ngrains(h)
    enddo
    write(6,'(/,a14,18x,1x,a11,1x,a12,1x,a13)') 'microstructure','crystallite','constituents'
    do m = 1,size(config_microstructure)
-     write(6,'(1x,a32,1x,i11,1x,i12)') microstructure_name(m), &
+     write(6,'(1x,a32,1x,i11,1x,i12)') config_name_microstructure(m), &
                                        microstructure_crystallite(m), &
                                        microstructure_Nconstituents(m)
      if (microstructure_Nconstituents(m) > 0) then
        do c = 1,microstructure_Nconstituents(m)
-         write(6,'(a1,1x,a32,1x,a32,1x,f7.4)') '>',phase_name(microstructure_phase(c,m)),&
-                                                   texture_name(microstructure_texture(c,m)),&
+         write(6,'(a1,1x,a32,1x,a32,1x,f7.4)') '>',config_name_phase(microstructure_phase(c,m)),&
+                                                   config_name_texture(microstructure_texture(c,m)),&
                                                    microstructure_fraction(c,m)
        enddo
        write(6,*)
@@ -366,8 +366,8 @@ subroutine material_init
 
 #if defined(PETSc) || defined(DAMASK_HDF5)
  call results_openJobFile
- call results_mapping_constituent(material_phaseAt,material_phaseMemberAt,phase_name)
- call results_mapping_materialpoint(material_homogenizationAt,material_homogenizationMemberAt,homogenization_name)
+ call results_mapping_constituent(material_phaseAt,material_phaseMemberAt,config_name_phase)
+ call results_mapping_materialpoint(material_homogenizationAt,material_homogenizationMemberAt,config_name_homogenization)
  call results_closeJobFile
 #endif
 
@@ -545,7 +545,7 @@ subroutine material_parseMicrostructure
      
      enddo
    enddo
-   if (dNeq(sum(microstructure_fraction(:,m)),1.0_pReal)) call IO_error(153,ext_msg=microstructure_name(m))
+   if (dNeq(sum(microstructure_fraction(:,m)),1.0_pReal)) call IO_error(153,ext_msg=config_name_microstructure(m))
  enddo
 
  

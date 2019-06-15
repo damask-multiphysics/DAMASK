@@ -364,7 +364,7 @@ subroutine crystallite_init
  
     do r = 1,size(config_crystallite)
       if (any(microstructure_crystallite(discretization_microstructureAt) == r)) then
-        write(FILEUNIT,'(/,a,/)') '['//trim(crystallite_name(r))//']'
+        write(FILEUNIT,'(/,a,/)') '['//trim(config_name_crystallite(r))//']'
         do o = 1,crystallite_Noutput(r)
           write(FILEUNIT,'(a,i4)') trim(crystallite_output(o,r))//char(9),crystallite_sizePostResult(o,r)
         enddo
@@ -982,9 +982,6 @@ end function crystallite_postResults
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_results
 #if defined(PETSc) || defined(DAMASK_HDF5)
-  use config, only: &
-    config_name_phase => phase_name                                                                  ! anticipate logical name
-   
   integer :: p,o
   real(pReal),    allocatable, dimension(:,:,:) :: selected_tensors
   type(rotation), allocatable, dimension(:)     :: selected_rotations
