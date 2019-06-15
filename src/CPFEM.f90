@@ -125,11 +125,6 @@ subroutine CPFEM_init
  !    flush(6)
  !  endif
 
-
- !  call IO_read_intFile(777,'recordedPhase'//trim(rankStr),modelName,size(material_phase))
- !  read (777,rec=1) material_phase
- !  close (777)
-
  !  call IO_read_realFile(777,'convergedF'//trim(rankStr),modelName,size(crystallite_F0))
  !  read (777,rec=1) crystallite_F0
  !  close (777)
@@ -279,10 +274,6 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
    !  if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
    !     write(6,'(a)') '<< CPFEM >> writing state variables of last converged step to binary files'
    !
-
-   !  call IO_write_jobRealFile(777,'recordedPhase'//trim(rankStr),size(material_phase))
-   !  write (777,rec=1) material_phase
-   !  close (777)
 
    !  call IO_write_jobRealFile(777,'convergedF'//trim(rankStr),size(crystallite_F0))
    !  write (777,rec=1) crystallite_F0

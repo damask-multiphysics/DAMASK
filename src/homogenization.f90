@@ -621,8 +621,8 @@ subroutine materialpoint_postResults
 
        grainLooping :do g = 1,myNgrains
          theSize = 1 + crystallite_sizePostResults(myCrystallite) + &
-                   1 + plasticState    (material_phase(g,i,e))%sizePostResults + &                    !ToDo
-                       sum(sourceState(material_phase(g,i,e))%p(:)%sizePostResults)
+                   1 + plasticState    (material_phaseAt(g,e))%sizePostResults + &                    !ToDo
+                       sum(sourceState(material_phaseAt(g,e))%p(:)%sizePostResults)
          materialpoint_results(thePos+1:thePos+theSize,i,e) = crystallite_postResults(g,i,e)        ! tell crystallite results
          thePos = thePos + theSize
        enddo grainLooping

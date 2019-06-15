@@ -114,7 +114,7 @@ subroutine constitutive_init
 ! write description file for constitutive output
    call IO_write_jobFile(FILEUNIT,'outputConstitutive')
    PhaseLoop: do ph = 1,material_Nphase
-     activePhase: if (any(material_phase == ph)) then
+     activePhase: if (any(material_phaseAt == ph)) then
        ins = phase_plasticityInstance(ph)
        knownPlasticity = .true.                                                                     ! assume valid
        plasticityType: select case(phase_plasticity(ph))
@@ -255,7 +255,7 @@ function constitutive_homogenizedC(ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID) plasticityType
      constitutive_homogenizedC = plastic_dislotwin_homogenizedC(ipc,ip,el)
    case default plasticityType
-     constitutive_homogenizedC = lattice_C66(1:6,1:6,material_phase (ipc,ip,el))
+     constitutive_homogenizedC = lattice_C66(1:6,1:6,material_phaseAt(ipc,el))
  end select plasticityType
 
 end function constitutive_homogenizedC
