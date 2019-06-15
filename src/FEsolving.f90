@@ -26,7 +26,7 @@ module FEsolving
     
 #if defined(Marc4DAMASK) || defined(Abaqus)
   logical, public, protected :: & 
-    symmetricSolver   = .false., &                                                                  !< use a symmetric FEM solver
+    symmetricSolver   = .false.                                                                     !< use a symmetric FEM solver (only Abaqus)
   character(len=1024), public :: &
     modelName                                                                                       !< needs description
   logical, dimension(:,:), allocatable, public :: &
