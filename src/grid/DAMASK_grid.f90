@@ -336,20 +336,20 @@ program DAMASK_spectral
    writeHeader: if (interface_restartInc < 1) then
      open(newunit=fileUnit,file=trim(getSolverJobName())//&
                                  '.spectralOut',form='UNFORMATTED',status='REPLACE')
-     write(fileUnit) 'load:',       trim(loadCaseFile)                                               ! ... and write header
+     write(fileUnit) 'load:',       trim(loadCaseFile)                                              ! ... and write header
      write(fileUnit) 'workingdir:', 'n/a'
      write(fileUnit) 'geometry:',   trim(geometryFile)
      write(fileUnit) 'grid:',       grid
      write(fileUnit) 'size:',       geomSize
      write(fileUnit) 'materialpoint_sizeResults:', materialpoint_sizeResults
      write(fileUnit) 'loadcases:',  size(loadCases)
-     write(fileUnit) 'frequencies:', loadCases%outputfrequency                                       ! one entry per LoadCase
-     write(fileUnit) 'times:',      loadCases%time                                                   ! one entry per LoadCase
+     write(fileUnit) 'frequencies:', loadCases%outputfrequency                                      ! one entry per LoadCase
+     write(fileUnit) 'times:',      loadCases%time                                                  ! one entry per LoadCase
      write(fileUnit) 'logscales:',  loadCases%logscale
-     write(fileUnit) 'increments:', loadCases%incs                                                   ! one entry per LoadCase
-     write(fileUnit) 'startingIncrement:', restartInc                                                ! start with writing out the previous inc
+     write(fileUnit) 'increments:', loadCases%incs                                                  ! one entry per LoadCase
+     write(fileUnit) 'startingIncrement:', interface_restartInc                                     ! start with writing out the previous inc
      write(fileUnit) 'eoh'
-     close(fileUnit)                                                                                 ! end of header
+     close(fileUnit)                                                                                ! end of header
      open(newunit=statUnit,file=trim(getSolverJobName())//&
                                  '.sta',form='FORMATTED',status='REPLACE')
      write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                 ! statistics file
@@ -425,7 +425,7 @@ program DAMASK_spectral
      endif
      timeinc = timeinc * real(subStepFactor,pReal)**real(-cutBackLevel,pReal)                       ! depending on cut back level, decrease time step
 
-     skipping: if (totalIncsCounter <= restartInc) then                                             ! not yet at restart inc?
+     skipping: if (totalIncsCounter <= interface_restartInc) then                                   ! not yet at restart inc?
        time = time + timeinc                                                                        ! just advance time, skip already performed calculation
        guess = .true.                                                                               ! QUESTION:why forced guessing instead of inheriting loadcase preference
      else skipping
