@@ -353,8 +353,7 @@ subroutine flux(f,ts,n,time)
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief sets user defined output variables for Marc
-!> @details select a variable contour plotting (user subroutine).
+!> @brief trigger writing of results
 !--------------------------------------------------------------------------------------------------
 subroutine uedinc(inc,incsub)
   use prec
