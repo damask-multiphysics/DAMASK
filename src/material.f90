@@ -98,6 +98,10 @@ module material
  integer(kind(DAMAGE_none_ID)),              dimension(:),   allocatable, public, protected :: &
    damage_type                                                                                      !< nonlocal damage model
 
+ integer, public, protected :: &
+   material_Nphase, &                                                                              !< number of phases
+   material_Nhomogenization                                                                        !< number of homogenizations
+
  integer(kind(SOURCE_undefined_ID)),         dimension(:,:), allocatable, public, protected :: &
    phase_source, &                                                                                  !< active sources mechanisms of each phase
    phase_kinematics, &                                                                              !< active kinematic mechanisms of each phase
@@ -260,24 +264,28 @@ subroutine material_init
  
  call material_parseTexture()
  if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Texture        parsed'; flush(6)
+ 
+ material_Nphase          = size(config_phase)
+ material_Nhomogenization = size(config_homogenization)
 
- allocate(plasticState       (size(config_phase)))
- allocate(sourceState        (size(config_phase)))
- do myPhase = 1,size(config_phase)
+
+ allocate(plasticState(material_Nphase))
+ allocate(sourceState (material_Nphase))
+ do myPhase = 1,material_Nphase
    allocate(sourceState(myPhase)%p(phase_Nsources(myPhase)))
  enddo
 
- allocate(homogState         (size(config_homogenization)))
- allocate(thermalState       (size(config_homogenization)))
- allocate(damageState        (size(config_homogenization)))
+ allocate(homogState      (material_Nhomogenization))
+ allocate(thermalState    (material_Nhomogenization))
+ allocate(damageState     (material_Nhomogenization))
 
- allocate(thermalMapping     (size(config_homogenization)))
- allocate(damageMapping      (size(config_homogenization)))
+ allocate(thermalMapping  (material_Nhomogenization))
+ allocate(damageMapping   (material_Nhomogenization))
 
- allocate(temperature        (size(config_homogenization)))
- allocate(damage             (size(config_homogenization)))
+ allocate(temperature     (material_Nhomogenization))
+ allocate(damage          (material_Nhomogenization))
 
- allocate(temperatureRate    (size(config_homogenization)))
+ allocate(temperatureRate (material_Nhomogenization))
 
  do m = 1,size(config_microstructure)
    if(microstructure_crystallite(m) < 1 .or. &

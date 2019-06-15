@@ -33,12 +33,6 @@ module config
     config_name_microstructure, &                                                                   !< name of each microstructure
     config_name_texture                                                                             !< name of each texture
 
-
-! ToDo: Remove, use size(config_phase) etc
-  integer, public, protected :: &
-    material_Nphase, &                                                                              !< number of phases
-    material_Nhomogenization                                                                        !< number of homogenizations
-
   public :: &
     config_init, &
     config_deallocate
@@ -96,20 +90,17 @@ subroutine config_init
         if (verbose) write(6,'(a)') ' Homogenization parsed'; flush(6)
     
       case (trim('texture'))
-        call parse_materialConfig(texture_name,config_texture,line,fileContent(i+1:))
+        call parse_materialConfig(config_name_texture,config_texture,line,fileContent(i+1:))
         if (verbose) write(6,'(a)') ' Texture        parsed'; flush(6)
 
     end select
 
   enddo
  
-  material_Nhomogenization = size(config_homogenization)
-  material_Nphase          = size(config_phase)
- 
-  if (material_Nhomogenization    < 1) call IO_error(160,ext_msg='<homogenization>')
+  if (size(config_homogenization) < 1) call IO_error(160,ext_msg='<homogenization>')
   if (size(config_microstructure) < 1) call IO_error(160,ext_msg='<microstructure>')
   if (size(config_crystallite)    < 1) call IO_error(160,ext_msg='<crystallite>')
-  if (material_Nphase             < 1) call IO_error(160,ext_msg='<phase>')
+  if (size(config_phase)          < 1) call IO_error(160,ext_msg='<phase>')
   if (size(config_texture)        < 1) call IO_error(160,ext_msg='<texture>')
  
  
