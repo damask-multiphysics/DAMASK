@@ -138,10 +138,6 @@ module material
  integer, dimension(:,:,:), allocatable, public, protected :: &                                     ! (constituent,ip,elem)
    material_phaseMemberAt                                                                           !< position of the element within its phase instance
 ! END NEW MAPPINGS
- 
-! DEPRECATED: use material_phaseAt
- integer, dimension(:,:,:), allocatable, public :: &
-   material_phase                                                                                   !< phase (index) of each grain,IP,element
 
  type(tPlasticState), allocatable, dimension(:), public :: &
    plasticState
@@ -230,21 +226,18 @@ module material
    material_parseMicrostructure, &
    material_parseCrystallite, &
    material_parsePhase, &
-   material_parseTexture, &
-   material_populateGrains
+   material_parseTexture
 
 contains
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief parses material configuration file
-!> @details figures out if solverJobName.materialConfig is present, if not looks for
-!> material.config
 !--------------------------------------------------------------------------------------------------
 subroutine material_init
 
  integer, parameter :: FILEUNIT = 210
- integer            :: i,e,m,c,h, myDebug, myPhase, myHomog
+ integer            :: i,e,m,c,h, myDebug, myPhase, myHomog, myMicro
  integer, dimension(:), allocatable :: &
   CounterPhase, &
   CounterHomogenization
@@ -322,10 +315,27 @@ subroutine material_init
    enddo
  endif debugOut
 
- call material_populateGrains
- 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! new mappings
+ allocate(material_phaseAt(homogenization_maxNgrains,discretization_nElem),        source=0)
+ allocate(material_texture(homogenization_maxNgrains,discretization_nIP,discretization_nElem),      source=0)   !this is only needed by plasticity nonlocal
+ allocate(material_EulerAngles(3,homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0.0_pReal)
+
+ do e = 1, discretization_nElem
+    do i = 1, discretization_nIP
+      myMicro = discretization_microstructureAt(e)
+      do c = 1, homogenization_Ngrains(discretization_homogenizationAt(e))
+        material_phaseAt(c,e)           = microstructure_phase(c,myMicro)
+        material_texture(c,i,e)         = microstructure_texture(c,myMicro)
+        material_EulerAngles(1:3,c,i,e) = texture_Gauss(1:3,material_texture(c,i,e))                ! this is a copy of crystallite_orientation0
+      enddo
+    enddo
+  enddo
+
+ deallocate(microstructure_phase)
+ deallocate(microstructure_texture)
+
+ 
  allocate(material_homogenizationAt,source=discretization_homogenizationAt)
  allocate(material_homogenizationMemberAt(discretization_nIP,discretization_nElem),source=0)
 
@@ -338,8 +348,6 @@ subroutine material_init
    enddo
  enddo
 
-
- allocate(material_phaseAt(homogenization_maxNgrains,discretization_nElem), source=material_phase(:,1,:))
  allocate(material_phaseMemberAt(homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0)
  
  allocate(CounterPhase(size(config_phase)),source=0)
@@ -833,36 +841,5 @@ subroutine material_allocateSourceState(phase,of,NofMyPhase,&
  allocate(sourceState(phase)%p(of)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
 
 end subroutine material_allocateSourceState
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief populates the grains
-!> @details populates the grains by identifying active microstructure/homogenization pairs,
-!! calculates the volume of the grains and deals with texture components
-!--------------------------------------------------------------------------------------------------
-subroutine material_populateGrains
-
- integer :: e,i,c,homog,micro
-
- allocate(material_phase(homogenization_maxNgrains,discretization_nIP,discretization_nElem),        source=0)
- allocate(material_texture(homogenization_maxNgrains,discretization_nIP,discretization_nElem),      source=0)
- allocate(material_EulerAngles(3,homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0.0_pReal)
-
-  do e = 1, discretization_nElem
-    do i = 1, discretization_nIP
-      homog = discretization_homogenizationAt(e)
-      micro = discretization_microstructureAt(e)
-      do c = 1, homogenization_Ngrains(homog)
-        material_phase(c,i,e)           = microstructure_phase(c,micro)
-        material_texture(c,i,e)         = microstructure_texture(c,micro)
-        material_EulerAngles(1:3,c,i,e) = texture_Gauss(1:3,material_texture(c,i,e))
-      enddo
-    enddo
-  enddo
-
- deallocate(microstructure_phase)
- deallocate(microstructure_texture)
-
-end subroutine material_populateGrains
 
 end module material
