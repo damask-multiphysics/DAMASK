@@ -774,41 +774,41 @@ subroutine material_allocatePlasticState(phase,NofMyPhase,&
                                          sizeState,sizeDotState,sizeDeltaState,&
                                          Nslip,Ntwin,Ntrans)
 
- integer, intent(in) :: &
-   phase, &
-   NofMyPhase, &
-   sizeState, &
-   sizeDotState, &
-   sizeDeltaState, &
-   Nslip, &
-   Ntwin, &
-   Ntrans
+  integer, intent(in) :: &
+    phase, &
+    NofMyPhase, &
+    sizeState, &
+    sizeDotState, &
+    sizeDeltaState, &
+    Nslip, &
+    Ntwin, &
+    Ntrans
 
- plasticState(phase)%sizeState        = sizeState
- plasticState(phase)%sizeDotState     = sizeDotState
- plasticState(phase)%sizeDeltaState   = sizeDeltaState
- plasticState(phase)%offsetDeltaState = sizeState-sizeDeltaState                                    ! deltaState occupies latter part of state by definition
- plasticState(phase)%Nslip = Nslip
- plasticState(phase)%Ntwin = Ntwin
- plasticState(phase)%Ntrans= Ntrans
+  plasticState(phase)%sizeState        = sizeState
+  plasticState(phase)%sizeDotState     = sizeDotState
+  plasticState(phase)%sizeDeltaState   = sizeDeltaState
+  plasticState(phase)%offsetDeltaState = sizeState-sizeDeltaState                                   ! deltaState occupies latter part of state by definition
+  plasticState(phase)%Nslip = Nslip
+  plasticState(phase)%Ntwin = Ntwin
+  plasticState(phase)%Ntrans= Ntrans
 
- allocate(plasticState(phase)%aTolState           (sizeState),                source=0.0_pReal)
- allocate(plasticState(phase)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
- allocate(plasticState(phase)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
- allocate(plasticState(phase)%subState0           (sizeState,NofMyPhase),     source=0.0_pReal)
- allocate(plasticState(phase)%state               (sizeState,NofMyPhase),     source=0.0_pReal)
+  allocate(plasticState(phase)%aTolState           (sizeState),               source=0.0_pReal)
+  allocate(plasticState(phase)%state0              (sizeState,NofMyPhase),    source=0.0_pReal)
+  allocate(plasticState(phase)%partionedState0     (sizeState,NofMyPhase),    source=0.0_pReal)
+  allocate(plasticState(phase)%subState0           (sizeState,NofMyPhase),    source=0.0_pReal)
+  allocate(plasticState(phase)%state               (sizeState,NofMyPhase),    source=0.0_pReal)
 
- allocate(plasticState(phase)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
- if (numerics_integrator == 1) then
-   allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
-   allocate(plasticState(phase)%previousDotState2 (sizeDotState,NofMyPhase),  source=0.0_pReal)
- endif
- if (numerics_integrator == 4) &
-   allocate(plasticState(phase)%RK4dotState       (sizeDotState,NofMyPhase),  source=0.0_pReal)
- if (numerics_integrator == 5) &
-   allocate(plasticState(phase)%RKCK45dotState  (6,sizeDotState,NofMyPhase),  source=0.0_pReal)
+  allocate(plasticState(phase)%dotState            (sizeDotState,NofMyPhase), source=0.0_pReal)
+  if (numerics_integrator == 1) then
+    allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase), source=0.0_pReal)
+    allocate(plasticState(phase)%previousDotState2 (sizeDotState,NofMyPhase), source=0.0_pReal)
+  endif
+  if (numerics_integrator == 4) &
+    allocate(plasticState(phase)%RK4dotState       (sizeDotState,NofMyPhase), source=0.0_pReal)
+  if (numerics_integrator == 5) &
+    allocate(plasticState(phase)%RKCK45dotState  (6,sizeDotState,NofMyPhase), source=0.0_pReal)
 
- allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
+  allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase), source=0.0_pReal)
 
 end subroutine material_allocatePlasticState
 
@@ -819,34 +819,34 @@ end subroutine material_allocatePlasticState
 subroutine material_allocateSourceState(phase,of,NofMyPhase,&
                                         sizeState,sizeDotState,sizeDeltaState)
 
- integer, intent(in) :: &
-   phase, &
-   of, &
-   NofMyPhase, &
-   sizeState, sizeDotState,sizeDeltaState
-
- sourceState(phase)%p(of)%sizeState        = sizeState
- sourceState(phase)%p(of)%sizeDotState     = sizeDotState
- sourceState(phase)%p(of)%sizeDeltaState   = sizeDeltaState
- sourceState(phase)%p(of)%offsetDeltaState = sizeState-sizeDeltaState                               ! deltaState occupies latter part of state by definition
-
- allocate(sourceState(phase)%p(of)%aTolState           (sizeState),                source=0.0_pReal)
- allocate(sourceState(phase)%p(of)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
- allocate(sourceState(phase)%p(of)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
- allocate(sourceState(phase)%p(of)%subState0           (sizeState,NofMyPhase),     source=0.0_pReal)
- allocate(sourceState(phase)%p(of)%state               (sizeState,NofMyPhase),     source=0.0_pReal)
-
- allocate(sourceState(phase)%p(of)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
- if (numerics_integrator == 1) then
-   allocate(sourceState(phase)%p(of)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
-   allocate(sourceState(phase)%p(of)%previousDotState2 (sizeDotState,NofMyPhase),  source=0.0_pReal)
- endif
- if (numerics_integrator == 4) &
-   allocate(sourceState(phase)%p(of)%RK4dotState       (sizeDotState,NofMyPhase),  source=0.0_pReal)
- if (numerics_integrator == 5) &
-   allocate(sourceState(phase)%p(of)%RKCK45dotState  (6,sizeDotState,NofMyPhase),  source=0.0_pReal)
-
- allocate(sourceState(phase)%p(of)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
+  integer, intent(in) :: &
+    phase, &
+    of, &
+    NofMyPhase, &
+    sizeState, sizeDotState,sizeDeltaState
+ 
+  sourceState(phase)%p(of)%sizeState        = sizeState
+  sourceState(phase)%p(of)%sizeDotState     = sizeDotState
+  sourceState(phase)%p(of)%sizeDeltaState   = sizeDeltaState
+  sourceState(phase)%p(of)%offsetDeltaState = sizeState-sizeDeltaState                              ! deltaState occupies latter part of state by definition
+ 
+  allocate(sourceState(phase)%p(of)%aTolState           (sizeState),               source=0.0_pReal)
+  allocate(sourceState(phase)%p(of)%state0              (sizeState,NofMyPhase),    source=0.0_pReal)
+  allocate(sourceState(phase)%p(of)%partionedState0     (sizeState,NofMyPhase),    source=0.0_pReal)
+  allocate(sourceState(phase)%p(of)%subState0           (sizeState,NofMyPhase),    source=0.0_pReal)
+  allocate(sourceState(phase)%p(of)%state               (sizeState,NofMyPhase),    source=0.0_pReal)
+ 
+  allocate(sourceState(phase)%p(of)%dotState            (sizeDotState,NofMyPhase), source=0.0_pReal)
+  if (numerics_integrator == 1) then
+    allocate(sourceState(phase)%p(of)%previousDotState  (sizeDotState,NofMyPhase), source=0.0_pReal)
+    allocate(sourceState(phase)%p(of)%previousDotState2 (sizeDotState,NofMyPhase), source=0.0_pReal)
+  endif
+  if (numerics_integrator == 4) &
+    allocate(sourceState(phase)%p(of)%RK4dotState       (sizeDotState,NofMyPhase), source=0.0_pReal)
+  if (numerics_integrator == 5) &
+    allocate(sourceState(phase)%p(of)%RKCK45dotState  (6,sizeDotState,NofMyPhase), source=0.0_pReal)
+ 
+  allocate(sourceState(phase)%p(of)%deltaState        (sizeDeltaState,NofMyPhase), source=0.0_pReal)
 
 end subroutine material_allocateSourceState
 
