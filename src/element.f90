@@ -137,21 +137,6 @@ module element
        4  & ! 3D 8node
     ]                                                                                               !< number of cell nodes in a specific cell type 
 
-  !integer, dimension(maxval(geomType)), parameter, private :: maxNodeAtIP = &                      ! Intel 16.0 complains
-  integer, dimension(10), parameter, private :: maxNnodeAtIP = &
-    [ &
-       3, &
-       1, &
-       1, &
-       2, &
-       4, &
-       1, &
-       1, &
-       8, &
-       1, &
-       4  &
-    ]                                                                                               !< maximum number of parent nodes that belong to an IP for a specific type of element 
- 
   !integer, dimension(maxval(CELLTYPE)), parameter, private  :: NCELLNODEPERCELL = &                ! Intel 16.0 complains
   integer, dimension(4), parameter, private :: NCELLNODEPERCELL = &
     [ &
