@@ -16,9 +16,7 @@ module plastic_dislotwin
   use config
   use lattice
   use discretization
-#if defined(PETSc) || defined(DAMASK_HDF5)
   use results
-#endif
 
  implicit none
  private
@@ -340,14 +338,15 @@ subroutine plastic_dislotwin_init
      prm%r            = math_expand(prm%r,prm%N_tw)
      
    else
-     allocate(prm%t_tw(0))
-     allocate(prm%b_tw(0))
-     allocate(prm%r(0))
+     allocate(prm%t_tw   (0))
+     allocate(prm%b_tw   (0))
+     allocate(prm%r      (0))
+     allocate(prm%h_tw_tw(0,0))
    endif
   
 !--------------------------------------------------------------------------------------------------
 ! transformation related parameters
-   prm%N_tr      = config%getInts('ntrans', defaultVal=emptyIntArray)
+   prm%N_tr     = config%getInts('ntrans', defaultVal=emptyIntArray)
    prm%sum_N_tr = sum(prm%N_tr)
    if (prm%sum_N_tr > 0) then
      prm%b_tr = config%getFloats('transburgers')
@@ -384,8 +383,10 @@ subroutine plastic_dislotwin_init
      prm%s    = config%getFloats('s_trans',defaultVal=[0.0_pReal])
      prm%s    = math_expand(prm%s,prm%N_tr)
    else
-     allocate(prm%t_tr(0))
-     allocate(prm%b_tr(0))
+     allocate(prm%t_tr   (0))
+     allocate(prm%b_tr   (0))
+     allocate(prm%s      (0))
+     allocate(prm%h_tr_tr(0,0))
    endif
    
    if (sum(prm%N_tw) > 0  .or. prm%sum_N_tr > 0) then
@@ -826,18 +827,17 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
  real(pReal) :: &
    sumf_twin,SFE,sumf_trans
  real(pReal), dimension(param(instance)%sum_N_sl) :: &
-   inv_lambda_sl_sl, & !< 1/mean free distance between 2 forest dislocations seen by a moving dislocation
-   inv_lambda_sl_tw, & !< 1/mean free distance between 2 twin stacks from different systems seen by a moving dislocation
-   inv_lambda_sl_tr    !< 1/mean free distance between 2 martensite lamellar from different systems seen by a moving dislocation
+   inv_lambda_sl_sl, &                                                                              !< 1/mean free distance between 2 forest dislocations seen by a moving dislocation
+   inv_lambda_sl_tw, &                                                                              !< 1/mean free distance between 2 twin stacks from different systems seen by a moving dislocation
+   inv_lambda_sl_tr                                                                                 !< 1/mean free distance between 2 martensite lamellar from different systems seen by a moving dislocation
  real(pReal), dimension(param(instance)%sum_N_tw) :: &
-   inv_lambda_tw_tw    !< 1/mean free distance between 2 twin stacks from different systems seen by a growing twin
+   inv_lambda_tw_tw, &                                                                              !< 1/mean free distance between 2 twin stacks from different systems seen by a growing twin
+   f_over_t_tw
   real(pReal), dimension(param(instance)%sum_N_tr) :: &
-   inv_lambda_tr_tr    !< 1/mean free distance between 2 martensite stacks from different systems seen by a growing martensite
-
- real(pReal), dimension(:), allocatable :: &
-   x0, &
-   f_over_t_tw, &
+   inv_lambda_tr_tr, &                                                                              !< 1/mean free distance between 2 martensite stacks from different systems seen by a growing martensite
    f_over_t_tr
+ real(pReal), dimension(:), allocatable :: &
+   x0
 
 
  associate(prm => param(instance),&
@@ -866,7 +866,6 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
 
  
 
-  !ToDo: needed? if (prm%sum_N_tw > 0) &
  inv_lambda_tw_tw = matmul(prm%h_tw_tw,f_over_t_tw)/(1.0_pReal-sumf_twin)
 
 
@@ -875,7 +874,6 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
    inv_lambda_sl_tr = matmul(prm%h_sl_tr,f_over_t_tr)/(1.0_pReal-sumf_trans)
 
  
- !ToDo: needed? if (prm%sum_N_tr > 0) &
  inv_lambda_tr_tr = matmul(prm%h_tr_tr,f_over_t_tr)/(1.0_pReal-sumf_trans)
 
  
@@ -1224,7 +1222,6 @@ pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,instance,of,&
    ddot_gamma_dtau
 
  integer :: i,s1,s2
- 
  associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
 
  do i = 1, prm%sum_N_tr
