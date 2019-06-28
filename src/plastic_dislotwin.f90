@@ -277,7 +277,7 @@ subroutine plastic_dislotwin_init
      prm%rho_mob_0    = math_expand(prm%rho_mob_0,   prm%N_sl)
      prm%rho_dip_0    = math_expand(prm%rho_dip_0,   prm%N_sl)
      prm%v0           = math_expand(prm%v0,          prm%N_sl)
-     prm%b_sl         = math_expand(prm%b_sl,prm%N_sl)
+     prm%b_sl         = math_expand(prm%b_sl,        prm%N_sl)
      prm%Delta_F      = math_expand(prm%Delta_F,     prm%N_sl)
      prm%CLambdaSlip  = math_expand(prm%CLambdaSlip, prm%N_sl)
      prm%p            = math_expand(prm%p,           prm%N_sl)
@@ -804,7 +804,7 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
  dot%f_tw(:,of) = f_unrotated*dot_gamma_twin/prm%gamma_char
 
  call kinetics_trans(Mp,T,dot_gamma_sl,instance,of,dot_gamma_tr)
- dot%f_tw(:,of) = f_unrotated*dot_gamma_tr
+ dot%f_tr(:,of) = f_unrotated*dot_gamma_tr
 
  end associate
  
@@ -1246,7 +1246,7 @@ pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,instance,of,&
  significantStress: where(tau > tol_math_check)
    StressRatio_s = (dst%tau_hat_tr(:,of)/tau)**prm%s
    dot_gamma_tr  = dst%f_tr(:,of) * Ndot0*exp(-StressRatio_s)
-   ddot_gamma_dtau = (dot_gamma_tr*prm%r/tau)*StressRatio_s
+   ddot_gamma_dtau = (dot_gamma_tr*prm%s/tau)*StressRatio_s
  else where significantStress
    dot_gamma_tr  = 0.0_pReal
    ddot_gamma_dtau = 0.0_pReal
