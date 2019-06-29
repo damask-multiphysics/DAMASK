@@ -138,14 +138,14 @@ module plastic_dislotwin
 
  type :: tDislotwinMicrostructure
    real(pReal),                  dimension(:,:),   allocatable :: &
-     Lambda_sl, & !* mean free path between 2 obstacles seen by a moving dislocation
-     Lambda_tw, &  !* mean free path between 2 obstacles seen by a growing twin
-     Lambda_tr, &!* mean free path between 2 obstacles seen by a growing martensite
+     Lambda_sl, &                                                                                   !< mean free path between 2 obstacles seen by a moving dislocation
+     Lambda_tw, &                                                                                   !< mean free path between 2 obstacles seen by a growing twin
+     Lambda_tr, &                                                                                   !< mean free path between 2 obstacles seen by a growing martensite
      tau_pass, &
      tau_hat_tw, &
      tau_hat_tr, &
-     f_tw, &
-     f_tr, &
+     V_tw, &                                                                                        !< volume of a new twin
+     V_tr, &                                                                                        !< volume of a new martensite disc
      tau_r_tw, &                                                                                    !< stress to bring partials close together (twin)
      tau_r_tr                                                                                       !< stress to bring partials close together (trans)
  end type tDislotwinMicrostructure
@@ -544,18 +544,18 @@ subroutine plastic_dislotwin_init
    dot%f_tr=>plasticState(p)%dotState(startIndex:endIndex,:)
    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTol_f_tr
 
-   allocate(dst%Lambda_sl             (prm%sum_N_sl, NipcMyPhase),source=0.0_pReal)
-   allocate(dst%tau_pass              (prm%sum_N_sl, NipcMyPhase),source=0.0_pReal)
+   allocate(dst%Lambda_sl             (prm%sum_N_sl,NipcMyPhase),source=0.0_pReal)
+   allocate(dst%tau_pass              (prm%sum_N_sl,NipcMyPhase),source=0.0_pReal)
 
-   allocate(dst%Lambda_tw             (prm%sum_N_tw, NipcMyPhase),source=0.0_pReal)
-   allocate(dst%tau_hat_tw            (prm%sum_N_tw, NipcMyPhase),source=0.0_pReal)
-   allocate(dst%tau_r_tw              (prm%sum_N_tw, NipcMyPhase),source=0.0_pReal)
-   allocate(dst%f_tw                  (prm%sum_N_tw, NipcMyPhase),source=0.0_pReal)
+   allocate(dst%Lambda_tw             (prm%sum_N_tw,NipcMyPhase),source=0.0_pReal)
+   allocate(dst%tau_hat_tw            (prm%sum_N_tw,NipcMyPhase),source=0.0_pReal)
+   allocate(dst%tau_r_tw              (prm%sum_N_tw,NipcMyPhase),source=0.0_pReal)
+   allocate(dst%V_tw                  (prm%sum_N_tw,NipcMyPhase),source=0.0_pReal)
 
    allocate(dst%Lambda_tr             (prm%sum_N_tr,NipcMyPhase),source=0.0_pReal)
    allocate(dst%tau_hat_tr            (prm%sum_N_tr,NipcMyPhase),source=0.0_pReal)
    allocate(dst%tau_r_tr              (prm%sum_N_tr,NipcMyPhase),source=0.0_pReal)
-   allocate(dst%f_tr                  (prm%sum_N_tr,NipcMyPhase),source=0.0_pReal)
+   allocate(dst%V_tr                  (prm%sum_N_tr,NipcMyPhase),source=0.0_pReal)
 
 
    plasticState(p)%state0 = plasticState(p)%state                                                   ! ToDo: this could be done centrally
@@ -850,9 +850,9 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
  SFE = prm%SFE_0K + prm%dSFE_dT * T
  
  !* rescaled volume fraction for topology
- f_over_t_tw =  stt%f_tw(1:prm%sum_N_tw,of)/prm%t_tw  !ToDo: this is per system
- f_over_t_tr =  sumf_trans/prm%t_tr                !ToDo: But this not ...
- !Todo: Physically ok, but naming could be adjusted
+ f_over_t_tw = stt%f_tw(1:prm%sum_N_tw,of)/prm%t_tw  ! this is per system ...
+ f_over_t_tr = sumf_trans/prm%t_tr                   ! but this not
+                                                     ! ToDo ...Physically correct, but naming could be adjusted
 
 
  forall (i = 1:prm%sum_N_sl) &
@@ -898,8 +898,8 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
                         + prm%h*prm%gamma_fcc_hex/ (3.0_pReal*prm%b_tr)  
  
 
- dst%f_tw(:,of) = (PI/4.0_pReal)*prm%t_tw*dst%Lambda_tw(:,of)**2.0_pReal
- dst%f_tr(:,of) = (PI/4.0_pReal)*prm%t_tr*dst%Lambda_tr(:,of)**2.0_pReal
+ dst%V_tw(:,of) = (PI/4.0_pReal)*prm%t_tw*dst%Lambda_tw(:,of)**2.0_pReal
+ dst%V_tr(:,of) = (PI/4.0_pReal)*prm%t_tr*dst%Lambda_tr(:,of)**2.0_pReal
 
 
  x0 = prm%mu*prm%b_tw**2.0_pReal/(SFE*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)  ! ToDo: In the paper, this is the burgers vector for slip and is the same for twin and trans
@@ -1174,7 +1174,7 @@ pure subroutine kinetics_twin(Mp,T,dot_gamma_sl,instance,of,&
 
  significantStress: where(tau > tol_math_check)
    StressRatio_r = (dst%tau_hat_tw(:,of)/tau)**prm%r
-   dot_gamma_twin  = prm%gamma_char * dst%f_tw(:,of) * Ndot0*exp(-StressRatio_r)
+   dot_gamma_twin  = prm%gamma_char * dst%V_tw(:,of) * Ndot0*exp(-StressRatio_r)
    ddot_gamma_dtau = (dot_gamma_twin*prm%r/tau)*StressRatio_r
  else where significantStress
    dot_gamma_twin  = 0.0_pReal
@@ -1239,7 +1239,7 @@ pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,instance,of,&
 
  significantStress: where(tau > tol_math_check)
    StressRatio_s = (dst%tau_hat_tr(:,of)/tau)**prm%s
-   dot_gamma_tr  = dst%f_tr(:,of) * Ndot0*exp(-StressRatio_s)
+   dot_gamma_tr  = dst%V_tr(:,of) * Ndot0*exp(-StressRatio_s)
    ddot_gamma_dtau = (dot_gamma_tr*prm%s/tau)*StressRatio_s
  else where significantStress
    dot_gamma_tr  = 0.0_pReal
