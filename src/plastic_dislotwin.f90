@@ -72,7 +72,7 @@ module plastic_dislotwin
      aTol_rho, &                                                                                    !< absolute tolerance for integration of dislocation density
      aTol_f_tw, &                                                                                   !< absolute tolerance for integration of twin volume fraction
      aTol_f_tr, &                                                                                   !< absolute tolerance for integration of trans volume fraction
-     gamma_fcc_hex, &                                                                                      !< Free energy difference between austensite and martensite
+     gamma_fcc_hex, &                                                                               !< Free energy difference between austensite and martensite
      i_tr, &                                                                                        !<
      h                                                                                              !< Stack height of hex nucleus 
    real(pReal),                  dimension(:),     allocatable :: & 
@@ -88,7 +88,7 @@ module plastic_dislotwin
      t_tw, &                                                                                        !< twin thickness [m] for each twin system
      CLambdaSlip, &                                                                                 !< Adj. parameter for distance between 2 forest dislocations for each slip system
      atomicVolume, &
-     t_tr, &                                                                                       !< martensite lamellar thickness [m] for each trans system and instance
+     t_tr, &                                                                                        !< martensite lamellar thickness [m] for each trans system and instance
      p, &                                                                                           !< p-exponent in glide velocity
      q, &                                                                                           !< q-exponent in glide velocity
      r, &                                                                                           !< r-exponent in twin nucleation rate
@@ -864,28 +864,22 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
  if (prm%sum_N_tw > 0 .and. prm%sum_N_sl > 0) &
    inv_lambda_sl_tw = matmul(prm%h_sl_tw,f_over_t_tw)/(1.0_pReal-sumf_twin)
 
- 
-
  inv_lambda_tw_tw = matmul(prm%h_tw_tw,f_over_t_tw)/(1.0_pReal-sumf_twin)
-
-
  
  if (prm%sum_N_tr > 0 .and. prm%sum_N_sl > 0) &
    inv_lambda_sl_tr = matmul(prm%h_sl_tr,f_over_t_tr)/(1.0_pReal-sumf_trans)
-
  
  inv_lambda_tr_tr = matmul(prm%h_tr_tr,f_over_t_tr)/(1.0_pReal-sumf_trans)
 
  
 
-    if ((prm%sum_N_tw > 0) .or. (prm%sum_N_tr > 0)) then              ! ToDo: Change order
-       dst%Lambda_sl(:,of) = &
-         prm%D/(1.0_pReal+prm%D*&
-         (inv_lambda_sl_sl + inv_lambda_sl_tw + inv_lambda_sl_tr))
-    else
-       dst%Lambda_sl(:,of) = prm%D &
-                          / (1.0_pReal+prm%D*inv_lambda_sl_sl) !!!!!! correct?
-    endif
+ if ((prm%sum_N_tw > 0) .or. (prm%sum_N_tr > 0)) then              ! ToDo: better logic needed here
+   dst%Lambda_sl(:,of) = prm%D &
+                       / (1.0_pReal+prm%D*(inv_lambda_sl_sl + inv_lambda_sl_tw + inv_lambda_sl_tr))
+ else
+   dst%Lambda_sl(:,of) = prm%D &
+                       / (1.0_pReal+prm%D*inv_lambda_sl_sl) !!!!!! correct?
+ endif
 
 
  dst%Lambda_tw(:,of) = prm%i_tw*prm%D/(1.0_pReal+prm%D*inv_lambda_tw_tw)
@@ -896,12 +890,12 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
 
  !* threshold stress for growing twin/martensite
  if(prm%sum_N_tw == prm%sum_N_sl) &
- dst%tau_hat_tw(:,of) = &
-             (SFE/(3.0_pReal*prm%b_tw)+ 3.0_pReal*prm%b_tw*prm%mu/(prm%L_tw*prm%b_sl)) ! slip burgers here correct?
+   dst%tau_hat_tw(:,of) = SFE/(3.0_pReal*prm%b_tw) &
+                        + 3.0_pReal*prm%b_tw*prm%mu/(prm%L_tw*prm%b_sl) ! slip burgers here correct?
  if(prm%sum_N_tr == prm%sum_N_sl) &
-   dst%tau_hat_tr(:,of) =  &
-         (SFE/(3.0_pReal*prm%b_tr) + 3.0_pReal*prm%b_tr*prm%mu/&
-              (prm%L_tr*prm%b_sl) + prm%h*prm%gamma_fcc_hex/ (3.0_pReal*prm%b_tr) )    
+   dst%tau_hat_tr(:,of) = SFE/(3.0_pReal*prm%b_tr) &
+                        + 3.0_pReal*prm%b_tr*prm%mu/(prm%L_tr*prm%b_sl) & ! slip burgers here correct?
+                        + prm%h*prm%gamma_fcc_hex/ (3.0_pReal*prm%b_tr)  
  
 
  dst%f_tw(:,of) = (PI/4.0_pReal)*prm%t_tw*dst%Lambda_tw(:,of)**2.0_pReal
@@ -1121,7 +1115,7 @@ pure subroutine kinetics_slip(Mp,T,instance,of, &
  end where significantStress
  
  end associate
- 
+  
  if(present(ddot_gamma_dtau_slip)) ddot_gamma_dtau_slip = ddot_gamma_dtau
  if(present(tau_slip))             tau_slip             = tau
  
