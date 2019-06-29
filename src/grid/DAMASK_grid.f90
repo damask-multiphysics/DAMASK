@@ -300,7 +300,8 @@ program DAMASK_spectral
      if (newLoadCase%outputfrequency < 1)  errorID = 836                                            ! non-positive result frequency
      write(6,'(2x,a,i5)')  'output  frequency:  ', newLoadCase%outputfrequency
      if (newLoadCase%restartfrequency < 1)  errorID = 839                                           ! non-positive restart frequency
-     write(6,'(2x,a,i5)')  'restart frequency:  ', newLoadCase%restartfrequency
+     if (newLoadCase%restartfrequency < huge(0)) &
+       write(6,'(2x,a,i5)')  'restart frequency:  ', newLoadCase%restartfrequency
      if (errorID > 0) call IO_error(error_ID = errorID, ext_msg = loadcase_string)                  ! exit with error message
    endif reportAndCheck
    loadCases = [loadCases,newLoadCase]                                                              ! load case is ok, append it

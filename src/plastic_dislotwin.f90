@@ -1159,12 +1159,11 @@ pure subroutine kinetics_twin(Mp,T,dot_gamma_sl,instance,of,&
    isFCC: if (prm%fccTwinTransNucleation) then
      s1=prm%fcc_twinNucleationSlipPair(1,i)
      s2=prm%fcc_twinNucleationSlipPair(2,i)
-     if (tau(i) < dst%tau_r_tw(i,of)) then
+     if (tau(i) < dst%tau_r_tw(i,of)) then                                                          ! ToDo: correct?
        Ndot0=(abs(dot_gamma_sl(s1))*(stt%rho_mob(s2,of)+stt%rho_dip(s2,of))+&
               abs(dot_gamma_sl(s2))*(stt%rho_mob(s1,of)+stt%rho_dip(s1,of)))/&                      ! ToDo: MD: it would be more consistent to use shearrates from state
                (prm%L_tw*prm%b_sl(i))*&
-               (1.0_pReal-exp(-prm%V_cs/(kB*T)*&
-               (dst%tau_r_tw(i,of)-tau)))
+               (1.0_pReal-exp(-prm%V_cs/(kB*T)*(dst%tau_r_tw(i,of)-tau(i))))                        ! P_ncs
      else
        Ndot0=0.0_pReal
      end if
@@ -1224,12 +1223,11 @@ pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,instance,of,&
    isFCC: if (prm%fccTwinTransNucleation) then
      s1=prm%fcc_twinNucleationSlipPair(1,i)
      s2=prm%fcc_twinNucleationSlipPair(2,i)
-     if (tau(i) < dst%tau_r_tr(i,of)) then
+     if (tau(i) < dst%tau_r_tr(i,of)) then                                                          ! ToDo: correct?
        Ndot0=(abs(dot_gamma_sl(s1))*(stt%rho_mob(s2,of)+stt%rho_dip(s2,of))+&
               abs(dot_gamma_sl(s2))*(stt%rho_mob(s1,of)+stt%rho_dip(s1,of)))/&                      ! ToDo: MD: it would be more consistent to use shearrates from state
                (prm%L_tr*prm%b_sl(i))*&
-               (1.0_pReal-exp(-prm%V_cs/(kB*T)*&
-               (dst%tau_r_tr(i,of)-tau)))
+               (1.0_pReal-exp(-prm%V_cs/(kB*T)*(dst%tau_r_tr(i,of)-tau(i))))                        ! P_ncs
      else
        Ndot0=0.0_pReal
      end if
