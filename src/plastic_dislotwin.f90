@@ -309,23 +309,23 @@ subroutine plastic_dislotwin_init
    if (prm%sum_N_tw > 0) then
      prm%P_tw  = lattice_SchmidMatrix_twin(prm%N_tw,config%getString('lattice_structure'),&
                                                   config%getFloat('c/a',defaultVal=0.0_pReal))
-     prm%h_tw_tw      = lattice_interaction_TwinByTwin(prm%N_tw,&
-                                                       config%getFloats('interaction_twintwin'), &
-                                                       config%getString('lattice_structure'))
+     prm%h_tw_tw   = lattice_interaction_TwinByTwin(prm%N_tw,&
+                                                    config%getFloats('interaction_twintwin'), &
+                                                    config%getString('lattice_structure'))
 
-     prm%b_tw         = config%getFloats('twinburgers',  requiredSize=size(prm%N_tw))
-     prm%t_tw         = config%getFloats('twinsize',     requiredSize=size(prm%N_tw))
-     prm%r            = config%getFloats('r_twin',       requiredSize=size(prm%N_tw))
+     prm%b_tw      = config%getFloats('twinburgers',  requiredSize=size(prm%N_tw))
+     prm%t_tw      = config%getFloats('twinsize',     requiredSize=size(prm%N_tw))
+     prm%r         = config%getFloats('r_twin',       requiredSize=size(prm%N_tw))
 
      prm%xc_twin   = config%getFloat('xc_twin')
-     prm%L_tw   = config%getFloat('l0_twin')
+     prm%L_tw      = config%getFloat('l0_twin')
      prm%i_tw      = config%getFloat('cmfptwin')
 
-     prm%gamma_char      = lattice_characteristicShear_Twin(prm%N_tw,config%getString('lattice_structure'),&
-                                                            config%getFloat('c/a',defaultVal=0.0_pReal))
+     prm%gamma_char= lattice_characteristicShear_Twin(prm%N_tw,config%getString('lattice_structure'),&
+                                                      config%getFloat('c/a',defaultVal=0.0_pReal))
 
-     prm%C66_tw        = lattice_C66_twin(prm%N_tw,prm%C66,config%getString('lattice_structure'),&
-                                            config%getFloat('c/a',defaultVal=0.0_pReal))
+     prm%C66_tw    = lattice_C66_twin(prm%N_tw,prm%C66,config%getString('lattice_structure'),&
+                                      config%getFloat('c/a',defaultVal=0.0_pReal))
 
      if (.not. prm%fccTwinTransNucleation) then
        prm%dot_N_0_tw = config%getFloats('ndot0_twin') 
@@ -338,10 +338,11 @@ subroutine plastic_dislotwin_init
      prm%r            = math_expand(prm%r,prm%N_tw)
      
    else
-     allocate(prm%t_tw   (0))
-     allocate(prm%b_tw   (0))
-     allocate(prm%r      (0))
-     allocate(prm%h_tw_tw(0,0))
+     allocate(prm%gamma_char(0))
+     allocate(prm%t_tw      (0))
+     allocate(prm%b_tw      (0))
+     allocate(prm%r         (0))
+     allocate(prm%h_tw_tw   (0,0))
    endif
   
 !--------------------------------------------------------------------------------------------------
@@ -1173,7 +1174,7 @@ pure subroutine kinetics_twin(Mp,T,dot_gamma_sl,instance,of,&
  enddo
 
  significantStress: where(tau > tol_math_check)
-   StressRatio_r = (dst%tau_hat_tw(:,of)/tau)**prm%r
+   StressRatio_r   = (dst%tau_hat_tw(:,of)/tau)**prm%r
    dot_gamma_twin  = prm%gamma_char * dst%V_tw(:,of) * Ndot0*exp(-StressRatio_r)
    ddot_gamma_dtau = (dot_gamma_twin*prm%r/tau)*StressRatio_r
  else where significantStress
