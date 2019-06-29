@@ -783,6 +783,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'incomplete loadcase'
     case (838)
       msg = 'mixed boundary conditions allow rotation'
+    case (839)
+      msg = 'non-positive restart frequency in grid load case'
     case (841)
       msg = 'missing header length info in grid mesh'
     case (842)

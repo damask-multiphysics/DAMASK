@@ -1239,8 +1239,8 @@ pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,instance,of,&
  enddo
 
  significantStress: where(tau > tol_math_check)
-   StressRatio_s = (dst%tau_hat_tr(:,of)/tau)**prm%s
-   dot_gamma_tr  = dst%V_tr(:,of) * Ndot0*exp(-StressRatio_s)
+   StressRatio_s   = (dst%tau_hat_tr(:,of)/tau)**prm%s
+   dot_gamma_tr    = dst%V_tr(:,of) * Ndot0*exp(-StressRatio_s)
    ddot_gamma_dtau = (dot_gamma_tr*prm%s/tau)*StressRatio_s
  else where significantStress
    dot_gamma_tr  = 0.0_pReal
