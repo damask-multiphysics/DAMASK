@@ -217,8 +217,7 @@ program DAMASK_spectral
        case('freq','frequency','outputfreq')                                                        ! frequency of result writings
          newLoadCase%outputfrequency = IO_intValue(line,chunkPos,i+1)
        case('r','restart','restartwrite')                                                           ! frequency of writing restart information
-         newLoadCase%restartfrequency = &
-               max(0,IO_intValue(line,chunkPos,i+1))
+         newLoadCase%restartfrequency = IO_intValue(line,chunkPos,i+1)
        case('guessreset','dropguessing')
          newLoadCase%followFormerTrajectory = .false.                                               ! do not continue to predict deformation along former trajectory
        case('euler')                                                                                ! rotation of load case given in euler angles
@@ -561,8 +560,7 @@ program DAMASK_spectral
          fileOffset = fileOffset + sum(outputSize)                                                  ! forward to current file position
          call CPFEM_results(totalIncsCounter,time)
        endif
-       if (              loadCases(currentLoadCase)%restartFrequency > 0 &                          ! writing of restart info requested ...
-           .and. mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0) then                    ! ... and at frequency of writing restart information
+       if (mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0) then                          ! at frequency of writing restart information
          restartWrite = .true.                                                                      ! set restart parameter for FEsolving
          lastRestartWritten = inc                                                                   ! QUESTION: first call to CPFEM_general will write?
        endif
