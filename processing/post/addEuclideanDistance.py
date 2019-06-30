@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys,itertools
+import os
+import sys
+from optparse import OptionParser
+import itertools
+
 import numpy as np
 from scipy import ndimage
-from optparse import OptionParser
+
 import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -30,6 +34,7 @@ def periodic_3Dpad(array, rimdim=(1,1,1)):
           spot = (p-rimdim)%size
           padded[p[0],p[1],p[2]] = array[spot[0],spot[1],spot[2]]
   return padded
+
 
 # --------------------------------------------------------------------
 #                                MAIN

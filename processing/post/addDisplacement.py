@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
+import os
+import sys
+from optparse import OptionParser
+
 import numpy as np
 import scipy.ndimage
-from optparse import OptionParser
+
 import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -57,7 +60,7 @@ def displacementAvgFFT(F,grid,size,nodal=False,transformed=False):
 #--------------------------------------------------------------------------------------------------
 def displacementFluctFFT(F,grid,size,nodal=False,transformed=False):
   """Calculate cell center (or nodal) displacement for deformation gradient field specified in each grid cell"""
-  integrator = 0.5j * size / math.pi
+  integrator = 0.5j * size / np.pi
 
   kk, kj, ki = np.meshgrid(np.where(np.arange(grid[2])>grid[2]//2,np.arange(grid[2])-grid[2],np.arange(grid[2])),
                            np.where(np.arange(grid[1])>grid[1]//2,np.arange(grid[1])-grid[1],np.arange(grid[1])),

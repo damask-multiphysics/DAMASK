@@ -160,8 +160,9 @@ subroutine grid_mech_spectral_polarisation_init
   F        => FandF_tau( 0: 8,:,:,:)
   F_tau    => FandF_tau( 9:17,:,:,:)
  
-  restart: if (restartInc > 0) then
-    write(6,'(/,a,'//IO_intOut(restartInc)//',a)') ' reading values of increment ', restartInc, ' from file'
+  restartRead: if (interface_restartInc > 0) then
+    write(6,'(/,a,'//IO_intOut(interface_restartInc)//',a)') &
+      ' reading values of increment ', interface_restartInc, ' from file'
  
     write(rankStr,'(a1,i0)')'_',worldrank
     fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
@@ -174,12 +175,12 @@ subroutine grid_mech_spectral_polarisation_init
     call HDF5_read(fileHandle,F_tau,        'F_tau')
     call HDF5_read(fileHandle,F_tau_lastInc,'F_tau_lastInc')
  
-  elseif (restartInc == 0) then restart
+  elseif (interface_restartInc == 0) then restartRead
     F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                         ! initialize to identity
     F = reshape(F_lastInc,[9,grid(1),grid(2),grid3])
     F_tau = 2.0_pReal*F
     F_tau_lastInc = 2.0_pReal*F_lastInc
-  endif restart
+  endif restartRead
  
   materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
   call Utilities_updateIPcoords(reshape(F,shape(F_lastInc)))
@@ -189,15 +190,16 @@ subroutine grid_mech_spectral_polarisation_init
                                       math_I3)                                                      ! no rotation of boundary condition
   call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)                        ! deassociate pointer
  
-  restartRead: if (restartInc > 0) then
-    write(6,'(/,a,'//IO_intOut(restartInc)//',a)') ' reading more values of increment ', restartInc, ' from file'
+  restartRead2: if (interface_restartInc > 0) then
+    write(6,'(/,a,'//IO_intOut(interface_restartInc)//',a)') &
+      ' reading more values of increment ', interface_restartInc, ' from file'
     call HDF5_read(fileHandle,C_volAvg,       'C_volAvg')
     call HDF5_read(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
     call HDF5_closeFile(fileHandle)
 
     fileUnit = IO_open_jobFile_binary('C_ref')
     read(fileUnit) C_minMaxAvg; close(fileUnit)
-  endif restartRead
+  endif restartRead2
  
   call utilities_updateGamma(C_minMaxAvg,.true.)
   C_scale = C_minMaxAvg

@@ -1,14 +1,18 @@
 #!/usr/bin/env python2.7
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys
-import numpy as np
+import os
+import sys
 from optparse import OptionParser
+
+import numpy as np
 from PIL import Image, ImageDraw
+
 import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
+
 
 # --------------------------------------------------------------------
 #                                MAIN

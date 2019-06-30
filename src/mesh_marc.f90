@@ -497,7 +497,7 @@ subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,nElems,fileF
       mesh_mapFEtoCPelem(2,cpElem) = cpElem
     enddo
  
-call math_sort(mesh_mapFEtoCPelem,1,size(mesh_mapFEtoCPelem,2))
+call math_sort(mesh_mapFEtoCPelem)
 
 end subroutine mesh_marc_map_elements
 
@@ -532,7 +532,7 @@ subroutine mesh_marc_map_nodes(nNodes,fileUnit)
     endif
   enddo
 
-620 call math_sort(mesh_mapFEtoCPnode,1,size(mesh_mapFEtoCPnode,2))
+620 call math_sort(mesh_mapFEtoCPnode)
 
 end subroutine mesh_marc_map_nodes
 
@@ -1262,43 +1262,43 @@ end subroutine mesh_build_ipAreas
 !--------------------------------------------------------------------------------------------------
 integer function mesh_FEasCP(what,myID)
 
- character(len=*), intent(in) :: what
- integer,    intent(in) :: myID
-
- integer, dimension(:,:), pointer :: lookupMap
- integer :: lower,upper,center
-
- mesh_FEasCP = 0
- select case(IO_lc(what(1:4)))
-   case('elem')
-     lookupMap => mesh_mapFEtoCPelem
-   case('node')
-     lookupMap => mesh_mapFEtoCPnode
-   case default
-     return
- endselect
-
- lower = 1
- upper = int(size(lookupMap,2),pInt)
-
- if (lookupMap(1,lower) == myID) then                                                          ! check at bounds QUESTION is it valid to extend bounds by 1 and just do binary search w/o init check at bounds?
-   mesh_FEasCP = lookupMap(2,lower)
-   return
- elseif (lookupMap(1,upper) == myID) then
-   mesh_FEasCP = lookupMap(2,upper)
-   return
- endif
- binarySearch: do while (upper-lower > 1)
-   center = (lower+upper)/2
-   if (lookupMap(1,center) < myID) then
-     lower = center
-   elseif (lookupMap(1,center) > myID) then
-     upper = center
-   else
-     mesh_FEasCP = lookupMap(2,center)
-     exit
-   endif
- enddo binarySearch
+  character(len=*), intent(in) :: what
+  integer,          intent(in) :: myID
+ 
+  integer, dimension(:,:), pointer :: lookupMap
+  integer :: lower,upper,center
+ 
+  mesh_FEasCP = 0
+  select case(IO_lc(what(1:4)))
+    case('elem')
+      lookupMap => mesh_mapFEtoCPelem
+    case('node')
+      lookupMap => mesh_mapFEtoCPnode
+    case default
+      return
+  endselect
+ 
+  lower = 1
+  upper = int(size(lookupMap,2),pInt)
+ 
+  if (lookupMap(1,lower) == myID) then                                                               ! check at bounds QUESTION is it valid to extend bounds by 1 and just do binary search w/o init check at bounds?
+    mesh_FEasCP = lookupMap(2,lower)
+    return
+  elseif (lookupMap(1,upper) == myID) then
+    mesh_FEasCP = lookupMap(2,upper)
+    return
+  endif
+  binarySearch: do while (upper-lower > 1)
+    center = (lower+upper)/2
+    if (lookupMap(1,center) < myID) then
+      lower = center
+    elseif (lookupMap(1,center) > myID) then
+      upper = center
+    else
+      mesh_FEasCP = lookupMap(2,center)
+      exit
+    endif
+  enddo binarySearch
 
 end function mesh_FEasCP
 

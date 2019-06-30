@@ -132,8 +132,8 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
   Tdot = 0.0_pReal
   dTdot_dT = 0.0_pReal
   do grain = 1, homogenization_Ngrains(homog)
-    phase = phaseAt(grain,ip,el)
-    constituent = phasememberAt(grain,ip,el)
+    phase = material_phaseAt(grain,el)
+    constituent = material_phasememberAt(grain,ip,el)
     do source = 1, phase_Nsources(phase)
       select case(phase_source(source,phase))                                                   
         case (SOURCE_thermal_dissipation_ID)
@@ -179,7 +179,7 @@ function thermal_conduction_getConductivity33(ip,el)
   thermal_conduction_getConductivity33 = 0.0_pReal
   do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
     thermal_conduction_getConductivity33 = thermal_conduction_getConductivity33 + &
-     crystallite_push33ToRef(grain,ip,el,lattice_thermalConductivity33(:,:,material_phase(grain,ip,el)))
+     crystallite_push33ToRef(grain,ip,el,lattice_thermalConductivity33(:,:,material_phaseAt(grain,el)))
   enddo
  
   thermal_conduction_getConductivity33 = &
@@ -206,7 +206,7 @@ function thermal_conduction_getSpecificHeat(ip,el)
    
   do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
     thermal_conduction_getSpecificHeat = thermal_conduction_getSpecificHeat + &
-     lattice_specificHeat(material_phase(grain,ip,el))
+     lattice_specificHeat(material_phaseAt(grain,el))
   enddo
  
   thermal_conduction_getSpecificHeat = &
@@ -232,7 +232,7 @@ function thermal_conduction_getMassDensity(ip,el)
    
   do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
     thermal_conduction_getMassDensity = thermal_conduction_getMassDensity &
-                                      + lattice_massDensity(material_phase(grain,ip,el))
+                                      + lattice_massDensity(material_phaseAt(grain,el))
   enddo
  
   thermal_conduction_getMassDensity = &

@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
-import numpy as np
+import os
+import sys
 from optparse import OptionParser
+
+import numpy as np
+
 import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -136,7 +139,7 @@ parser.set_defaults(force = (0.0,0.0,1.0),
                     quaternion='orientation',
                     normal = None,
                     lattice = latticeChoices[0],
-                    CoverA = math.sqrt(8./3.),
+                    CoverA = np.sqrt(8./3.),
                    )
 
 (options, filenames) = parser.parse_args()

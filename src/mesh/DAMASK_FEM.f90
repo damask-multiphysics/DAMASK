@@ -291,7 +291,7 @@ program DAMASK_FEM
       endif
       timeinc = timeinc * real(subStepFactor,pReal)**real(-cutBackLevel,pReal)                      ! depending on cut back level, decrease time step
 
-      skipping: if (totalIncsCounter <= restartInc) then                                            ! not yet at restart inc?
+      skipping: if (totalIncsCounter <= interface_restartInc) then                                  ! not yet at restart inc?
         time = time + timeinc                                                                       ! just advance time, skip already performed calculation
         guess = .true.
       else skipping

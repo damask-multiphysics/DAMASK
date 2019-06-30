@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys
+import os
+import sys
 from optparse import OptionParser
+
 import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -15,6 +17,7 @@ def determinant(m):
           -m[2]*m[4]*m[6] \
           -m[1]*m[3]*m[8] \
           -m[0]*m[5]*m[7]
+
 
 # --------------------------------------------------------------------
 #                                MAIN
