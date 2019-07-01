@@ -1190,10 +1190,8 @@ logical function integrateStress(ipc,ip,el,timeFraction)
     Fg_new = crystallite_subF(1:3,1:3,ipc,ip,el)
   endif
 
-
- !* feed local variables
-  Lpguess     =   crystallite_Lp(1:3,1:3,ipc,ip,el)                                                 ! ... and take it as first guess
-  Liguess     =   crystallite_Li(1:3,1:3,ipc,ip,el)                                                 ! ... and take it as first guess
+  Lpguess     =   crystallite_Lp(1:3,1:3,ipc,ip,el)                                                 ! take as first guess
+  Liguess     =   crystallite_Li(1:3,1:3,ipc,ip,el)                                                 ! take as first guess
   Liguess_old =   Liguess
  
   invFp_current = math_inv33(crystallite_subFp0(1:3,1:3,ipc,ip,el))
