@@ -110,7 +110,7 @@ for executable in icc icpc ifort ;do
 done
 
 firstLevel "MPI Wrappers"
-for executable in mpicc mpiCC mpic++ mpicpc mpicxx mpifort mpif90 mpif77; do
+for executable in mpicc mpiCC mpiicc   mpic++ mpicpc mpicxx    mpifort mpif90 mpif77; do
   getDetails $executable '-show'
 done
 
