@@ -53,7 +53,8 @@ module plastic_dislotwin
      nu, &
      D0, &                                                                                          !< prefactor for self-diffusion coefficient
      Qsd, &                                                                                         !< activation energy for dislocation climb
-     D, &                                                                                           !<grain size
+     omega, &                                                                                       !< frequency factor for dislocation climb      
+     D, &                                                                                           !< grain size
      p_sb, &                                                                                        !< p-exponent in shear band velocity
      q_sb, &                                                                                        !< q-exponent in shear band velocity
      CEdgeDipMinDistance, &                                                                         !<
@@ -104,6 +105,7 @@ module plastic_dislotwin
    integer,                      dimension(:,:),   allocatable :: & 
      fcc_twinNucleationSlipPair                                                                     ! ToDo: Better name? Is also use for trans
    real(pReal),                  dimension(:,:),   allocatable :: & 
+     n0_sl, &                                                                                       !< slip system normal
      forestProjection, &
      C66
    real(pReal),                  dimension(:,:,:), allocatable :: &
@@ -251,6 +253,8 @@ subroutine plastic_dislotwin_init
      prm%forestProjection     = lattice_forestProjection (prm%N_sl,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
 
+     prm%n0_sl                = lattice_slip_normal(prm%N_sl,config%getString('lattice_structure'),&
+                                                    config%getFloat('c/a',defaultVal=0.0_pReal))  
      prm%fccTwinTransNucleation = merge(.true., .false., lattice_structure(p) == LATTICE_FCC_ID) &
                                 .and. (prm%N_sl(1) == 12)
      if(prm%fccTwinTransNucleation) &
@@ -271,7 +275,17 @@ subroutine plastic_dislotwin_init
      prm%CEdgeDipMinDistance  = config%getFloat('cedgedipmindistance')
      prm%D0                   = config%getFloat('d0')
      prm%Qsd                  = config%getFloat('qsd')
+     prm%omega                = config%getFloat('omega',defaultVal=1000.0_pReal)
      prm%atomicVolume         = config%getFloat('catomicvolume') * prm%b_sl**3.0_pReal
+     prm%SFE_0K               = config%getFloat('sfe_0k',defaultVal = 0.0_pReal)
+     prm%dSFE_dT              = config%getFloat('dsfe_dt',defaultVal = 0.0_pReal)
+     
+     ! multiplication factor according to slip system
+     if (lattice_structure(p) == LATTICE_FCC_ID .or. lattice_structure(p) == LATTICE_HEX_ID ) then
+       prm%omega    = prm%omega * 11.0_pReal      
+     else
+       prm%omega    = prm%omega * 8.0_pReal
+     endif
 
      ! expand: family => system
      prm%rho_mob_0    = math_expand(prm%rho_mob_0,   prm%N_sl)
@@ -740,8 +754,11 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
    f_unrotated, &
    VacancyDiffusion, &
    rho_dip_distance, &
-   v_cl, &
-   tau
+   v_cl, &                                                                                          !< climb velocity 
+   Gamma, &                                                                                         !< stacking fault energy
+   tau, &
+   tau_cl, & ! ToDo: MD: good name? It is not a resolved stress but a different projection
+   b_d
  real(pReal), dimension(param(instance)%sum_N_sl) :: &
    dot_rho_dip_formation, &
    dot_rho_dip_climb, &
@@ -759,6 +776,8 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
              - sum(stt%f_tw(1:prm%sum_N_tw,of)) &
              - sum(stt%f_tr(1:prm%sum_N_tr,of))
  VacancyDiffusion = prm%D0*exp(-prm%Qsd/(kB*T))
+
+ Gamma = prm%SFE_0K + prm%dSFE_dT * T
 
  call kinetics_slip(Mp,T,instance,of,dot_gamma_sl)
  dot%gamma_sl(:,of) = abs(dot_gamma_sl)
@@ -786,8 +805,16 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
      if (dEq0(rho_dip_distance-rho_dip_distance_min(i))) then
        dot_rho_dip_climb(i) = 0.0_pReal
      else
-       v_cl = 3.0_pReal*prm%mu*VacancyDiffusion*prm%atomicVolume(i) &
-            / (2.0_pReal*PI*kB*T*(rho_dip_distance+rho_dip_distance_min(i)))
+       tau_cl = norm2(matmul(Mp,prm%n0_sl(1:3,i))) ! ToDo: MD: correct?
+       
+       if (prm%SFE_0K > 0.0_pReal) then            ! ToDo: MD: I'm not really sure if this is correct. Maybe Gamma(0K) = 0
+         b_d = 24.0_pReal*PI*(1.0_pReal - prm%nu)/(2.0_pReal + prm%nu)* Gamma/(prm%mu*prm%b_sl(i))
+       else
+         b_d = 1.0_pReal      
+       endif
+
+       v_cl = 2.0_pReal*prm%omega*b_d**2.0_pReal*exp(-prm%Qsd/(kB*T)) &
+            * (exp(abs(tau_cl)*prm%b_sl(i)**3.0_pReal/(kB*T)) - 1.0_pReal)
        dot_rho_dip_climb(i) = 4.0_pReal*v_cl*stt%rho_dip(i,of) &
                             / (rho_dip_distance-rho_dip_distance_min(i))
      endif
