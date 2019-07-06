@@ -736,10 +736,12 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
    of
 
  integer :: i
- real(pReal) :: f_unrotated,&
-             VacancyDiffusion,&
-             rho_dip_distance, ClimbVelocity, &
-            tau
+ real(pReal) :: &
+   f_unrotated, &
+   VacancyDiffusion, &
+   rho_dip_distance, &
+   v_cl, &
+   tau
  real(pReal), dimension(param(instance)%sum_N_sl) :: &
    dot_rho_dip_formation, &
    dot_rho_dip_climb, &
@@ -751,7 +753,7 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
    dot_gamma_tr
 
  associate(prm => param(instance),    stt => state(instance), &
-           dot => dotstate(instance), dst => dependentState(instance))
+           dot => dotState(instance), dst => dependentState(instance))
 
  f_unrotated = 1.0_pReal &
              - sum(stt%f_tw(1:prm%sum_N_tw,of)) &
@@ -784,9 +786,9 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
      if (dEq0(rho_dip_distance-rho_dip_distance_min(i))) then
        dot_rho_dip_climb(i) = 0.0_pReal
      else
-       ClimbVelocity = 3.0_pReal*prm%mu*VacancyDiffusion*prm%atomicVolume(i) &
-                     / (2.0_pReal*PI*kB*T*(rho_dip_distance+rho_dip_distance_min(i)))
-       dot_rho_dip_climb(i) = 4.0_pReal*ClimbVelocity*stt%rho_dip(i,of) &
+       v_cl = 3.0_pReal*prm%mu*VacancyDiffusion*prm%atomicVolume(i) &
+            / (2.0_pReal*PI*kB*T*(rho_dip_distance+rho_dip_distance_min(i)))
+       dot_rho_dip_climb(i) = 4.0_pReal*v_cl*stt%rho_dip(i,of) &
                             / (rho_dip_distance-rho_dip_distance_min(i))
      endif
    endif significantSlipStress
