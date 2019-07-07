@@ -136,9 +136,9 @@ for name in filenames:
     for column in items['tensor']['column']:                                                        # loop over all requested defgrads
       F = np.array(list(map(float,table.data[column:column+items['tensor']['dim']])),'d').reshape(items['tensor']['shape'])
       (U,S,Vh) = np.linalg.svd(F)                                                                   # singular value decomposition
-      R = np.dot(U,Vh)                                                                              # rotation of polar decomposition
-      stretch['U'] = np.dot(np.linalg.inv(R),F)                                                     # F = RU
-      stretch['V'] = np.dot(F,np.linalg.inv(R))                                                     # F = VR
+      R_inv = np.linalg.inv(np.dot(U,Vh))                                                           # inverse rotation of polar decomposition
+      stretch['U'] = np.dot(R_inv,F)                                                                # F = RU
+      stretch['V'] = np.dot(F,R_inv)                                                                # F = VR
 
       for theStretch in stretches:
         stretch[theStretch] = np.where(abs(stretch[theStretch]) < 1e-12, 0, stretch[theStretch])    # kill nasty noisy data

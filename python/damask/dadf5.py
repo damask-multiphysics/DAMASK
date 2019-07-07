@@ -224,7 +224,7 @@ class DADF5():
   
   
   def add_determinant(self,a):
-    """Adds the determinan of a tensor"""
+    """Adds the determinant of a tensor"""
     # ToDo: The output unit should be the input unit
     args   = [{'label':a,'shape':[3,3],'unit':None}]
     result = {'label':'det({})'.format(a),
@@ -232,6 +232,33 @@ class DADF5():
               'Description': 'Determinant of a tensor'}
     
     self.add_generic_pointwise(np.linalg.det,args,result)
+    
+    
+  def add_strain_tensors(self,defgrad='F'):
+    """Adds a strain definition"""
+    def strain(defgrad):
+      (U,S,Vh) = np.linalg.svd(defgrad)                                                             # singular value decomposition
+      R_inv    = np.linalg.inv(np.dot(U,Vh))                                                        # inverse rotation of polar decomposition
+      U        = np.dot(R_inv,defgrad)                                                              # F = RU
+      U        = np.where(abs(U) < 1e-12, 0, U)                                                     # kill nasty noisy data
+      (D,V) = np.linalg.eig(U)                                                                      # eigen decomposition (of symmetric matrix)
+      neg   = np.where(D < 0.0)                                                                     # find negative eigenvalues ...
+      D[neg]   *= -1.                                                                               # ... flip value ...
+      V[:,neg] *= -1.                                                                               # ... and vector
+      for i,eigval in enumerate(D):
+        if np.dot(V[:,i],V[:,(i+1)%3]) != 0.0:                                                      # check each vector for orthogonality
+          V[:,(i+1)%3] = np.cross(V[:,(i+2)%3],V[:,i])                                              # correct next vector
+          V[:,(i+1)%3] /= np.sqrt(np.dot(V[:,(i+1)%3],V[:,(i+1)%3].conj()))                         # and renormalize (hyperphobic?)
+      d = np.log(D)                                                                                 # operate on eigenvalues of U o r V
+      return np.dot(V,np.dot(np.diag(d),V.T)).real                                                  # build tensor back from eigenvalue/vector basis
+
+    # ToDo: The output unit should be the input unit
+    args   = [{'label':defgrad,'shape':[3,3],'unit':None}]
+    result = {'label':'strain({})'.format(defgrad),
+              'unit':'-',
+              'Description': 'strain (ln(V)) of a deformation gradient'}
+    
+    self.add_generic_pointwise(strain,args,result)
     
 
   def get_fitting(self,data):
