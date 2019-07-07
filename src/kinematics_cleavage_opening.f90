@@ -102,15 +102,15 @@ subroutine kinematics_cleavage_opening_init
     kinematics_cleavage_opening_Ncleavage(1:lattice_maxNcleavageFamily,instance) = &
         min(lattice_NcleavageSystem(1:lattice_maxNcleavageFamily,p),&                            ! limit active cleavage systems per family to min of available and requested
             kinematics_cleavage_opening_Ncleavage(1:lattice_maxNcleavageFamily,instance))
-      kinematics_cleavage_opening_totalNcleavage(instance)  = sum(kinematics_cleavage_opening_Ncleavage(:,instance)) ! how many cleavage systems altogether
-      if (kinematics_cleavage_opening_sdot_0(instance) <= 0.0_pReal) &
-        call IO_error(211,el=instance,ext_msg='sdot_0 ('//KINEMATICS_cleavage_opening_LABEL//')')
-      if (any(kinematics_cleavage_opening_critDisp(1:size(tempInt),instance) < 0.0_pReal)) &
-        call IO_error(211,el=instance,ext_msg='critical_displacement ('//KINEMATICS_cleavage_opening_LABEL//')')
-      if (any(kinematics_cleavage_opening_critLoad(1:size(tempInt),instance) < 0.0_pReal)) &
-        call IO_error(211,el=instance,ext_msg='critical_load ('//KINEMATICS_cleavage_opening_LABEL//')')
-      if (kinematics_cleavage_opening_N(instance) <= 0.0_pReal) &
-        call IO_error(211,el=instance,ext_msg='rate_sensitivity ('//KINEMATICS_cleavage_opening_LABEL//')')
+    kinematics_cleavage_opening_totalNcleavage(instance)  = sum(kinematics_cleavage_opening_Ncleavage(:,instance)) ! how many cleavage systems altogether
+    if (kinematics_cleavage_opening_sdot_0(instance) <= 0.0_pReal) &
+      call IO_error(211,el=instance,ext_msg='sdot_0 ('//KINEMATICS_cleavage_opening_LABEL//')')
+    if (any(kinematics_cleavage_opening_critDisp(1:size(tempInt),instance) < 0.0_pReal)) &
+      call IO_error(211,el=instance,ext_msg='critical_displacement ('//KINEMATICS_cleavage_opening_LABEL//')')
+    if (any(kinematics_cleavage_opening_critLoad(1:size(tempInt),instance) < 0.0_pReal)) &
+      call IO_error(211,el=instance,ext_msg='critical_load ('//KINEMATICS_cleavage_opening_LABEL//')')
+    if (kinematics_cleavage_opening_N(instance) <= 0.0_pReal) &
+      call IO_error(211,el=instance,ext_msg='rate_sensitivity ('//KINEMATICS_cleavage_opening_LABEL//')')
   enddo
  
 end subroutine kinematics_cleavage_opening_init
@@ -138,7 +138,7 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, i
     traction_d, traction_t, traction_n, traction_crit, &
     udotd, dudotd_dt, udott, dudott_dt, udotn, dudotn_dt
 
-  phase = material_phase(ipc,ip,el)
+  phase = material_phaseAt(ipc,el)
   instance = kinematics_cleavage_opening_instance(phase)
   homog = material_homogenizationAt(el)
   damageOffset = damageMapping(homog)%p(ip,el)

@@ -179,7 +179,7 @@ recursive subroutine math_sort(a, istart, iend, sortDim)
     e = ubound(a,2)
   endif
   
-   if(present(sortDim)) then
+  if(present(sortDim)) then
     d = sortDim
   else
     d = 1

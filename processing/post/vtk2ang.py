@@ -1,11 +1,16 @@
 #!/usr/bin/env python2.7
-# -*- coding: UTF-8 no BOM -*-
 
-import os,string,math,sys
-import numpy as np
+import os
+import sys
 from optparse import OptionParser
+import string
+import math
+
+import numpy as np
 import vtk
+
 import damask
+
  
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])

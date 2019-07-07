@@ -26,19 +26,12 @@ module config
     config_numerics, &
     config_debug
  
-  !ToDo: bad names (how should one know that those variables are defined in config?)
   character(len=64), dimension(:), allocatable, public, protected :: &
-    phase_name, &                                                                                   !< name of each phase
-    homogenization_name, &                                                                          !< name of each homogenization
-    crystallite_name, &                                                                             !< name of each crystallite setting
-    microstructure_name, &                                                                          !< name of each microstructure
-    texture_name                                                                                    !< name of each texture
-
-
-! ToDo: Remove, use size(config_phase) etc
-  integer, public, protected :: &
-    material_Nphase, &                                                                              !< number of phases
-    material_Nhomogenization                                                                        !< number of homogenizations
+    config_name_phase, &                                                                            !< name of each phase
+    config_name_homogenization, &                                                                   !< name of each homogenization
+    config_name_crystallite, &                                                                      !< name of each crystallite setting
+    config_name_microstructure, &                                                                   !< name of each microstructure
+    config_name_texture                                                                             !< name of each texture
 
   public :: &
     config_init, &
@@ -81,36 +74,33 @@ subroutine config_init
     select case (trim(part))
     
       case (trim('phase'))
-        call parse_materialConfig(phase_name,config_phase,line,fileContent(i+1:))
+        call parse_materialConfig(config_name_phase,config_phase,line,fileContent(i+1:))
         if (verbose) write(6,'(a)') ' Phase          parsed'; flush(6)
     
       case (trim('microstructure'))
-        call parse_materialConfig(microstructure_name,config_microstructure,line,fileContent(i+1:))
+        call parse_materialConfig(config_name_microstructure,config_microstructure,line,fileContent(i+1:))
         if (verbose) write(6,'(a)') ' Microstructure parsed'; flush(6)
     
       case (trim('crystallite'))
-        call parse_materialConfig(crystallite_name,config_crystallite,line,fileContent(i+1:))
+        call parse_materialConfig(config_name_crystallite,config_crystallite,line,fileContent(i+1:))
         if (verbose) write(6,'(a)') ' Crystallite    parsed'; flush(6)
     
       case (trim('homogenization'))
-        call parse_materialConfig(homogenization_name,config_homogenization,line,fileContent(i+1:))
+        call parse_materialConfig(config_name_homogenization,config_homogenization,line,fileContent(i+1:))
         if (verbose) write(6,'(a)') ' Homogenization parsed'; flush(6)
     
       case (trim('texture'))
-        call parse_materialConfig(texture_name,config_texture,line,fileContent(i+1:))
+        call parse_materialConfig(config_name_texture,config_texture,line,fileContent(i+1:))
         if (verbose) write(6,'(a)') ' Texture        parsed'; flush(6)
 
     end select
 
   enddo
  
-  material_Nhomogenization = size(config_homogenization)
-  material_Nphase          = size(config_phase)
- 
-  if (material_Nhomogenization    < 1) call IO_error(160,ext_msg='<homogenization>')
+  if (size(config_homogenization) < 1) call IO_error(160,ext_msg='<homogenization>')
   if (size(config_microstructure) < 1) call IO_error(160,ext_msg='<microstructure>')
   if (size(config_crystallite)    < 1) call IO_error(160,ext_msg='<crystallite>')
-  if (material_Nphase             < 1) call IO_error(160,ext_msg='<phase>')
+  if (size(config_phase)          < 1) call IO_error(160,ext_msg='<phase>')
   if (size(config_texture)        < 1) call IO_error(160,ext_msg='<texture>')
  
  

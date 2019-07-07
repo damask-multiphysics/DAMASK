@@ -217,8 +217,7 @@ program DAMASK_spectral
        case('freq','frequency','outputfreq')                                                        ! frequency of result writings
          newLoadCase%outputfrequency = IO_intValue(line,chunkPos,i+1)
        case('r','restart','restartwrite')                                                           ! frequency of writing restart information
-         newLoadCase%restartfrequency = &
-               max(0,IO_intValue(line,chunkPos,i+1))
+         newLoadCase%restartfrequency = IO_intValue(line,chunkPos,i+1)
        case('guessreset','dropguessing')
          newLoadCase%followFormerTrajectory = .false.                                               ! do not continue to predict deformation along former trajectory
        case('euler')                                                                                ! rotation of load case given in euler angles
@@ -300,7 +299,9 @@ program DAMASK_spectral
      write(6,'(2x,a,i5)')  'increments: ', newLoadCase%incs
      if (newLoadCase%outputfrequency < 1)  errorID = 836                                            ! non-positive result frequency
      write(6,'(2x,a,i5)')  'output  frequency:  ', newLoadCase%outputfrequency
-     write(6,'(2x,a,i5)')  'restart frequency:  ', newLoadCase%restartfrequency
+     if (newLoadCase%restartfrequency < 1)  errorID = 839                                           ! non-positive restart frequency
+     if (newLoadCase%restartfrequency < huge(0)) &
+       write(6,'(2x,a,i5)')  'restart frequency:  ', newLoadCase%restartfrequency
      if (errorID > 0) call IO_error(error_ID = errorID, ext_msg = loadcase_string)                  ! exit with error message
    endif reportAndCheck
    loadCases = [loadCases,newLoadCase]                                                              ! load case is ok, append it
@@ -336,20 +337,20 @@ program DAMASK_spectral
    writeHeader: if (interface_restartInc < 1) then
      open(newunit=fileUnit,file=trim(getSolverJobName())//&
                                  '.spectralOut',form='UNFORMATTED',status='REPLACE')
-     write(fileUnit) 'load:',       trim(loadCaseFile)                                               ! ... and write header
+     write(fileUnit) 'load:',       trim(loadCaseFile)                                              ! ... and write header
      write(fileUnit) 'workingdir:', 'n/a'
      write(fileUnit) 'geometry:',   trim(geometryFile)
      write(fileUnit) 'grid:',       grid
      write(fileUnit) 'size:',       geomSize
      write(fileUnit) 'materialpoint_sizeResults:', materialpoint_sizeResults
      write(fileUnit) 'loadcases:',  size(loadCases)
-     write(fileUnit) 'frequencies:', loadCases%outputfrequency                                       ! one entry per LoadCase
-     write(fileUnit) 'times:',      loadCases%time                                                   ! one entry per LoadCase
+     write(fileUnit) 'frequencies:', loadCases%outputfrequency                                      ! one entry per LoadCase
+     write(fileUnit) 'times:',      loadCases%time                                                  ! one entry per LoadCase
      write(fileUnit) 'logscales:',  loadCases%logscale
-     write(fileUnit) 'increments:', loadCases%incs                                                   ! one entry per LoadCase
-     write(fileUnit) 'startingIncrement:', restartInc                                                ! start with writing out the previous inc
+     write(fileUnit) 'increments:', loadCases%incs                                                  ! one entry per LoadCase
+     write(fileUnit) 'startingIncrement:', interface_restartInc                                     ! start with writing out the previous inc
      write(fileUnit) 'eoh'
-     close(fileUnit)                                                                                 ! end of header
+     close(fileUnit)                                                                                ! end of header
      open(newunit=statUnit,file=trim(getSolverJobName())//&
                                  '.sta',form='FORMATTED',status='REPLACE')
      write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                 ! statistics file
@@ -425,7 +426,7 @@ program DAMASK_spectral
      endif
      timeinc = timeinc * real(subStepFactor,pReal)**real(-cutBackLevel,pReal)                       ! depending on cut back level, decrease time step
 
-     skipping: if (totalIncsCounter <= restartInc) then                                             ! not yet at restart inc?
+     skipping: if (totalIncsCounter <= interface_restartInc) then                                   ! not yet at restart inc?
        time = time + timeinc                                                                        ! just advance time, skip already performed calculation
        guess = .true.                                                                               ! QUESTION:why forced guessing instead of inheriting loadcase preference
      else skipping
@@ -561,8 +562,7 @@ program DAMASK_spectral
          fileOffset = fileOffset + sum(outputSize)                                                  ! forward to current file position
          call CPFEM_results(totalIncsCounter,time)
        endif
-       if (              loadCases(currentLoadCase)%restartFrequency > 0 &                          ! writing of restart info requested ...
-           .and. mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0) then                    ! ... and at frequency of writing restart information
+       if (mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0) then                          ! at frequency of writing restart information
          restartWrite = .true.                                                                      ! set restart parameter for FEsolving
          lastRestartWritten = inc                                                                   ! QUESTION: first call to CPFEM_general will write?
        endif

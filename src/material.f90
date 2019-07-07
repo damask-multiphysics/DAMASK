@@ -98,6 +98,10 @@ module material
  integer(kind(DAMAGE_none_ID)),              dimension(:),   allocatable, public, protected :: &
    damage_type                                                                                      !< nonlocal damage model
 
+ integer, public, protected :: &
+   material_Nphase, &                                                                              !< number of phases
+   material_Nhomogenization                                                                        !< number of homogenizations
+
  integer(kind(SOURCE_undefined_ID)),         dimension(:,:), allocatable, public, protected :: &
    phase_source, &                                                                                  !< active sources mechanisms of each phase
    phase_kinematics, &                                                                              !< active kinematic mechanisms of each phase
@@ -138,10 +142,6 @@ module material
  integer, dimension(:,:,:), allocatable, public, protected :: &                                     ! (constituent,ip,elem)
    material_phaseMemberAt                                                                           !< position of the element within its phase instance
 ! END NEW MAPPINGS
- 
-! DEPRECATED: use material_phaseAt
- integer, dimension(:,:,:), allocatable, public :: &
-   material_phase                                                                                   !< phase (index) of each grain,IP,element
 
  type(tPlasticState), allocatable, dimension(:), public :: &
    plasticState
@@ -180,9 +180,6 @@ module material
    homogenization_active
 
 ! BEGIN DEPRECATED
- integer, dimension(:,:,:), allocatable, public :: phaseAt                                          !< phase ID of every material point (ipc,ip,el)
- integer, dimension(:,:,:), allocatable, public :: phasememberAt                                    !< memberID of given phase at every material point (ipc,ip,el)
-
  integer, dimension(:,:,:), allocatable, public, target :: mappingHomogenization                    !< mapping from material points to offset in heterogenous state/field
  integer, dimension(:,:),   allocatable, private, target :: mappingHomogenizationConst               !< mapping from material points to offset in constant state/field
 ! END DEPRECATED
@@ -233,25 +230,18 @@ module material
    material_parseMicrostructure, &
    material_parseCrystallite, &
    material_parsePhase, &
-   material_parseTexture, &
-   material_populateGrains
+   material_parseTexture
 
 contains
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief parses material configuration file
-!> @details figures out if solverJobName.materialConfig is present, if not looks for
-!> material.config
 !--------------------------------------------------------------------------------------------------
 subroutine material_init
 
  integer, parameter :: FILEUNIT = 210
- integer            :: m,c,h, myDebug, myPhase, myHomog
- integer :: &
-  g, &                                                                                              !< grain number
-  i, &                                                                                              !< integration point number
-  e                                                                                                 !< element number
+ integer            :: i,e,m,c,h, myDebug, myPhase, myHomog, myMicro
  integer, dimension(:), allocatable :: &
   CounterPhase, &
   CounterHomogenization
@@ -274,24 +264,28 @@ subroutine material_init
  
  call material_parseTexture()
  if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Texture        parsed'; flush(6)
+ 
+ material_Nphase          = size(config_phase)
+ material_Nhomogenization = size(config_homogenization)
 
- allocate(plasticState       (size(config_phase)))
- allocate(sourceState        (size(config_phase)))
- do myPhase = 1,size(config_phase)
+
+ allocate(plasticState(material_Nphase))
+ allocate(sourceState (material_Nphase))
+ do myPhase = 1,material_Nphase
    allocate(sourceState(myPhase)%p(phase_Nsources(myPhase)))
  enddo
 
- allocate(homogState         (size(config_homogenization)))
- allocate(thermalState       (size(config_homogenization)))
- allocate(damageState        (size(config_homogenization)))
+ allocate(homogState      (material_Nhomogenization))
+ allocate(thermalState    (material_Nhomogenization))
+ allocate(damageState     (material_Nhomogenization))
 
- allocate(thermalMapping     (size(config_homogenization)))
- allocate(damageMapping      (size(config_homogenization)))
+ allocate(thermalMapping  (material_Nhomogenization))
+ allocate(damageMapping   (material_Nhomogenization))
 
- allocate(temperature        (size(config_homogenization)))
- allocate(damage             (size(config_homogenization)))
+ allocate(temperature     (material_Nhomogenization))
+ allocate(damage          (material_Nhomogenization))
 
- allocate(temperatureRate    (size(config_homogenization)))
+ allocate(temperatureRate (material_Nhomogenization))
 
  do m = 1,size(config_microstructure)
    if(microstructure_crystallite(m) < 1 .or. &
@@ -311,17 +305,17 @@ subroutine material_init
    write(6,'(/,a,/)') ' MATERIAL configuration'
    write(6,'(a32,1x,a16,1x,a6)') 'homogenization                  ','type            ','grains'
    do h = 1,size(config_homogenization)
-     write(6,'(1x,a32,1x,a16,1x,i6)') homogenization_name(h),homogenization_type(h),homogenization_Ngrains(h)
+     write(6,'(1x,a32,1x,a16,1x,i6)') config_name_homogenization(h),homogenization_type(h),homogenization_Ngrains(h)
    enddo
    write(6,'(/,a14,18x,1x,a11,1x,a12,1x,a13)') 'microstructure','crystallite','constituents'
    do m = 1,size(config_microstructure)
-     write(6,'(1x,a32,1x,i11,1x,i12)') microstructure_name(m), &
+     write(6,'(1x,a32,1x,i11,1x,i12)') config_name_microstructure(m), &
                                        microstructure_crystallite(m), &
                                        microstructure_Nconstituents(m)
      if (microstructure_Nconstituents(m) > 0) then
        do c = 1,microstructure_Nconstituents(m)
-         write(6,'(a1,1x,a32,1x,a32,1x,f7.4)') '>',phase_name(microstructure_phase(c,m)),&
-                                                   texture_name(microstructure_texture(c,m)),&
+         write(6,'(a1,1x,a32,1x,a32,1x,f7.4)') '>',config_name_phase(microstructure_phase(c,m)),&
+                                                   config_name_texture(microstructure_texture(c,m)),&
                                                    microstructure_fraction(c,m)
        enddo
        write(6,*)
@@ -329,10 +323,27 @@ subroutine material_init
    enddo
  endif debugOut
 
- call material_populateGrains
- 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! new mappings
+ allocate(material_phaseAt(homogenization_maxNgrains,discretization_nElem),        source=0)
+ allocate(material_texture(homogenization_maxNgrains,discretization_nIP,discretization_nElem),      source=0)   !this is only needed by plasticity nonlocal
+ allocate(material_EulerAngles(3,homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0.0_pReal)
+
+ do e = 1, discretization_nElem
+    do i = 1, discretization_nIP
+      myMicro = discretization_microstructureAt(e)
+      do c = 1, homogenization_Ngrains(discretization_homogenizationAt(e))
+        material_phaseAt(c,e)           = microstructure_phase(c,myMicro)
+        material_texture(c,i,e)         = microstructure_texture(c,myMicro)
+        material_EulerAngles(1:3,c,i,e) = texture_Gauss(1:3,material_texture(c,i,e))                ! this is a copy of crystallite_orientation0
+      enddo
+    enddo
+  enddo
+
+ deallocate(microstructure_phase)
+ deallocate(microstructure_texture)
+
+ 
  allocate(material_homogenizationAt,source=discretization_homogenizationAt)
  allocate(material_homogenizationMemberAt(discretization_nIP,discretization_nElem),source=0)
 
@@ -345,8 +356,6 @@ subroutine material_init
    enddo
  enddo
 
-
- allocate(material_phaseAt(homogenization_maxNgrains,discretization_nElem), source=material_phase(:,1,:))
  allocate(material_phaseMemberAt(homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0)
  
  allocate(CounterPhase(size(config_phase)),source=0)
@@ -365,8 +374,8 @@ subroutine material_init
 
 #if defined(PETSc) || defined(DAMASK_HDF5)
  call results_openJobFile
- call results_mapping_constituent(material_phaseAt,material_phaseMemberAt,phase_name)
- call results_mapping_materialpoint(material_homogenizationAt,material_homogenizationMemberAt,homogenization_name)
+ call results_mapping_constituent(material_phaseAt,material_phaseMemberAt,config_name_phase)
+ call results_mapping_materialpoint(material_homogenizationAt,material_homogenizationMemberAt,config_name_homogenization)
  call results_closeJobFile
 #endif
 
@@ -375,26 +384,15 @@ subroutine material_init
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! BEGIN DEPRECATED
- allocate(phaseAt                   (  homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0)
- allocate(phasememberAt             (  homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0)
  allocate(mappingHomogenization     (2,                          discretization_nIP,discretization_nElem),source=0)
  allocate(mappingHomogenizationConst(                            discretization_nIP,discretization_nElem),source=1)
  
  CounterHomogenization=0
- CounterPhase         =0
-
-
  do e = 1,discretization_nElem
- myHomog = discretization_homogenizationAt(e)
+   myHomog = discretization_homogenizationAt(e)
    do i = 1, discretization_nIP
      CounterHomogenization(myHomog) = CounterHomogenization(myHomog) + 1
      mappingHomogenization(1:2,i,e) = [CounterHomogenization(myHomog),huge(1)]
-     do g = 1,homogenization_Ngrains(myHomog)
-       myPhase = material_phase(g,i,e)
-       CounterPhase(myPhase) = CounterPhase(myPhase)+1                             ! not distinguishing between instances of same phase
-       phaseAt(g,i,e)              = myPhase
-       phasememberAt(g,i,e)        = CounterPhase(myPhase)
-     enddo
    enddo
  enddo
 ! END DEPRECATED
@@ -555,7 +553,7 @@ subroutine material_parseMicrostructure
      
      enddo
    enddo
-   if (dNeq(sum(microstructure_fraction(:,m)),1.0_pReal)) call IO_error(153,ext_msg=microstructure_name(m))
+   if (dNeq(sum(microstructure_fraction(:,m)),1.0_pReal)) call IO_error(153,ext_msg=config_name_microstructure(m))
  enddo
 
  
@@ -776,41 +774,41 @@ subroutine material_allocatePlasticState(phase,NofMyPhase,&
                                          sizeState,sizeDotState,sizeDeltaState,&
                                          Nslip,Ntwin,Ntrans)
 
- integer, intent(in) :: &
-   phase, &
-   NofMyPhase, &
-   sizeState, &
-   sizeDotState, &
-   sizeDeltaState, &
-   Nslip, &
-   Ntwin, &
-   Ntrans
+  integer, intent(in) :: &
+    phase, &
+    NofMyPhase, &
+    sizeState, &
+    sizeDotState, &
+    sizeDeltaState, &
+    Nslip, &
+    Ntwin, &
+    Ntrans
 
- plasticState(phase)%sizeState        = sizeState
- plasticState(phase)%sizeDotState     = sizeDotState
- plasticState(phase)%sizeDeltaState   = sizeDeltaState
- plasticState(phase)%offsetDeltaState = sizeState-sizeDeltaState                                    ! deltaState occupies latter part of state by definition
- plasticState(phase)%Nslip = Nslip
- plasticState(phase)%Ntwin = Ntwin
- plasticState(phase)%Ntrans= Ntrans
+  plasticState(phase)%sizeState        = sizeState
+  plasticState(phase)%sizeDotState     = sizeDotState
+  plasticState(phase)%sizeDeltaState   = sizeDeltaState
+  plasticState(phase)%offsetDeltaState = sizeState-sizeDeltaState                                   ! deltaState occupies latter part of state by definition
+  plasticState(phase)%Nslip = Nslip
+  plasticState(phase)%Ntwin = Ntwin
+  plasticState(phase)%Ntrans= Ntrans
 
- allocate(plasticState(phase)%aTolState           (sizeState),                source=0.0_pReal)
- allocate(plasticState(phase)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
- allocate(plasticState(phase)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
- allocate(plasticState(phase)%subState0           (sizeState,NofMyPhase),     source=0.0_pReal)
- allocate(plasticState(phase)%state               (sizeState,NofMyPhase),     source=0.0_pReal)
+  allocate(plasticState(phase)%aTolState           (sizeState),               source=0.0_pReal)
+  allocate(plasticState(phase)%state0              (sizeState,NofMyPhase),    source=0.0_pReal)
+  allocate(plasticState(phase)%partionedState0     (sizeState,NofMyPhase),    source=0.0_pReal)
+  allocate(plasticState(phase)%subState0           (sizeState,NofMyPhase),    source=0.0_pReal)
+  allocate(plasticState(phase)%state               (sizeState,NofMyPhase),    source=0.0_pReal)
 
- allocate(plasticState(phase)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
- if (numerics_integrator == 1) then
-   allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
-   allocate(plasticState(phase)%previousDotState2 (sizeDotState,NofMyPhase),  source=0.0_pReal)
- endif
- if (numerics_integrator == 4) &
-   allocate(plasticState(phase)%RK4dotState       (sizeDotState,NofMyPhase),  source=0.0_pReal)
- if (numerics_integrator == 5) &
-   allocate(plasticState(phase)%RKCK45dotState  (6,sizeDotState,NofMyPhase),  source=0.0_pReal)
+  allocate(plasticState(phase)%dotState            (sizeDotState,NofMyPhase), source=0.0_pReal)
+  if (numerics_integrator == 1) then
+    allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase), source=0.0_pReal)
+    allocate(plasticState(phase)%previousDotState2 (sizeDotState,NofMyPhase), source=0.0_pReal)
+  endif
+  if (numerics_integrator == 4) &
+    allocate(plasticState(phase)%RK4dotState       (sizeDotState,NofMyPhase), source=0.0_pReal)
+  if (numerics_integrator == 5) &
+    allocate(plasticState(phase)%RKCK45dotState  (6,sizeDotState,NofMyPhase), source=0.0_pReal)
 
- allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
+  allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase), source=0.0_pReal)
 
 end subroutine material_allocatePlasticState
 
@@ -821,66 +819,35 @@ end subroutine material_allocatePlasticState
 subroutine material_allocateSourceState(phase,of,NofMyPhase,&
                                         sizeState,sizeDotState,sizeDeltaState)
 
- integer, intent(in) :: &
-   phase, &
-   of, &
-   NofMyPhase, &
-   sizeState, sizeDotState,sizeDeltaState
-
- sourceState(phase)%p(of)%sizeState        = sizeState
- sourceState(phase)%p(of)%sizeDotState     = sizeDotState
- sourceState(phase)%p(of)%sizeDeltaState   = sizeDeltaState
- sourceState(phase)%p(of)%offsetDeltaState = sizeState-sizeDeltaState                               ! deltaState occupies latter part of state by definition
-
- allocate(sourceState(phase)%p(of)%aTolState           (sizeState),                source=0.0_pReal)
- allocate(sourceState(phase)%p(of)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
- allocate(sourceState(phase)%p(of)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
- allocate(sourceState(phase)%p(of)%subState0           (sizeState,NofMyPhase),     source=0.0_pReal)
- allocate(sourceState(phase)%p(of)%state               (sizeState,NofMyPhase),     source=0.0_pReal)
-
- allocate(sourceState(phase)%p(of)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
- if (numerics_integrator == 1) then
-   allocate(sourceState(phase)%p(of)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
-   allocate(sourceState(phase)%p(of)%previousDotState2 (sizeDotState,NofMyPhase),  source=0.0_pReal)
- endif
- if (numerics_integrator == 4) &
-   allocate(sourceState(phase)%p(of)%RK4dotState       (sizeDotState,NofMyPhase),  source=0.0_pReal)
- if (numerics_integrator == 5) &
-   allocate(sourceState(phase)%p(of)%RKCK45dotState  (6,sizeDotState,NofMyPhase),  source=0.0_pReal)
-
- allocate(sourceState(phase)%p(of)%deltaState        (sizeDeltaState,NofMyPhase),  source=0.0_pReal)
+  integer, intent(in) :: &
+    phase, &
+    of, &
+    NofMyPhase, &
+    sizeState, sizeDotState,sizeDeltaState
+ 
+  sourceState(phase)%p(of)%sizeState        = sizeState
+  sourceState(phase)%p(of)%sizeDotState     = sizeDotState
+  sourceState(phase)%p(of)%sizeDeltaState   = sizeDeltaState
+  sourceState(phase)%p(of)%offsetDeltaState = sizeState-sizeDeltaState                              ! deltaState occupies latter part of state by definition
+ 
+  allocate(sourceState(phase)%p(of)%aTolState           (sizeState),               source=0.0_pReal)
+  allocate(sourceState(phase)%p(of)%state0              (sizeState,NofMyPhase),    source=0.0_pReal)
+  allocate(sourceState(phase)%p(of)%partionedState0     (sizeState,NofMyPhase),    source=0.0_pReal)
+  allocate(sourceState(phase)%p(of)%subState0           (sizeState,NofMyPhase),    source=0.0_pReal)
+  allocate(sourceState(phase)%p(of)%state               (sizeState,NofMyPhase),    source=0.0_pReal)
+ 
+  allocate(sourceState(phase)%p(of)%dotState            (sizeDotState,NofMyPhase), source=0.0_pReal)
+  if (numerics_integrator == 1) then
+    allocate(sourceState(phase)%p(of)%previousDotState  (sizeDotState,NofMyPhase), source=0.0_pReal)
+    allocate(sourceState(phase)%p(of)%previousDotState2 (sizeDotState,NofMyPhase), source=0.0_pReal)
+  endif
+  if (numerics_integrator == 4) &
+    allocate(sourceState(phase)%p(of)%RK4dotState       (sizeDotState,NofMyPhase), source=0.0_pReal)
+  if (numerics_integrator == 5) &
+    allocate(sourceState(phase)%p(of)%RKCK45dotState  (6,sizeDotState,NofMyPhase), source=0.0_pReal)
+ 
+  allocate(sourceState(phase)%p(of)%deltaState        (sizeDeltaState,NofMyPhase), source=0.0_pReal)
 
 end subroutine material_allocateSourceState
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief populates the grains
-!> @details populates the grains by identifying active microstructure/homogenization pairs,
-!! calculates the volume of the grains and deals with texture components
-!--------------------------------------------------------------------------------------------------
-subroutine material_populateGrains
-
- integer :: e,i,c,homog,micro
-
- allocate(material_phase(homogenization_maxNgrains,discretization_nIP,discretization_nElem),        source=0)
- allocate(material_texture(homogenization_maxNgrains,discretization_nIP,discretization_nElem),      source=0)
- allocate(material_EulerAngles(3,homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0.0_pReal)
-
-  do e = 1, discretization_nElem
-    do i = 1, discretization_nIP
-      homog = discretization_homogenizationAt(e)
-      micro = discretization_microstructureAt(e)
-      do c = 1, homogenization_Ngrains(homog)
-        material_phase(c,i,e)           = microstructure_phase(c,micro)
-        material_texture(c,i,e)         = microstructure_texture(c,micro)
-        material_EulerAngles(1:3,c,i,e) = texture_Gauss(1:3,material_texture(c,i,e))
-      enddo
-    enddo
-  enddo
-
- deallocate(microstructure_phase)
- deallocate(microstructure_texture)
-
-end subroutine material_populateGrains
 
 end module material

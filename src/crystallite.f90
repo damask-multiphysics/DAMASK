@@ -364,7 +364,7 @@ subroutine crystallite_init
  
     do r = 1,size(config_crystallite)
       if (any(microstructure_crystallite(discretization_microstructureAt) == r)) then
-        write(FILEUNIT,'(/,a,/)') '['//trim(crystallite_name(r))//']'
+        write(FILEUNIT,'(/,a,/)') '['//trim(config_name_crystallite(r))//']'
         do o = 1,crystallite_Noutput(r)
           write(FILEUNIT,'(a,i4)') trim(crystallite_output(o,r))//char(9),crystallite_sizePostResult(o,r)
         enddo
@@ -386,7 +386,7 @@ subroutine crystallite_init
       crystallite_Fp0(1:3,1:3,c,i,e) = math_EulerToR(material_EulerAngles(1:3,c,i,e))               ! plastic def gradient reflects init orientation
       crystallite_Fi0(1:3,1:3,c,i,e) = constitutive_initialFi(c,i,e)
       crystallite_F0(1:3,1:3,c,i,e)  = math_I3
-      crystallite_localPlasticity(c,i,e) = phase_localPlasticity(material_phase(c,i,e))
+      crystallite_localPlasticity(c,i,e) = phase_localPlasticity(material_phaseAt(c,e))
       crystallite_Fe(1:3,1:3,c,i,e)  = math_inv33(matmul(crystallite_Fi0(1:3,1:3,c,i,e), &
                                                          crystallite_Fp0(1:3,1:3,c,i,e)))           ! assuming that euler angles are given in internal strain free configuration
       crystallite_Fp(1:3,1:3,c,i,e)  = crystallite_Fp0(1:3,1:3,c,i,e)
@@ -483,12 +483,12 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
   elementLooping1: do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e); do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
       homogenizationRequestsCalculation: if (crystallite_requested(c,i,e)) then
-        plasticState    (phaseAt(c,i,e))%subState0(      :,phasememberAt(c,i,e)) = &
-        plasticState    (phaseAt(c,i,e))%partionedState0(:,phasememberAt(c,i,e))
+        plasticState    (material_phaseAt(c,e))%subState0(      :,material_phaseMemberAt(c,i,e)) = &
+        plasticState    (material_phaseAt(c,e))%partionedState0(:,material_phaseMemberAt(c,i,e))
 
-        do s = 1, phase_Nsources(phaseAt(c,i,e))
-          sourceState(phaseAt(c,i,e))%p(s)%subState0(      :,phasememberAt(c,i,e)) = &
-          sourceState(phaseAt(c,i,e))%p(s)%partionedState0(:,phasememberAt(c,i,e))
+        do s = 1, phase_Nsources(material_phaseAt(c,e))
+          sourceState(material_phaseAt(c,e))%p(s)%subState0(      :,material_phaseMemberAt(c,i,e)) = &
+          sourceState(material_phaseAt(c,e))%p(s)%partionedState0(:,material_phaseMemberAt(c,i,e))
         enddo
         crystallite_subFp0(1:3,1:3,c,i,e) = crystallite_partionedFp0(1:3,1:3,c,i,e)
         crystallite_subLp0(1:3,1:3,c,i,e) = crystallite_partionedLp0(1:3,1:3,c,i,e)
@@ -543,11 +543,11 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
               crystallite_subFi0(1:3,1:3,c,i,e) = crystallite_Fi  (1:3,1:3,c,i,e)
               crystallite_subS0 (1:3,1:3,c,i,e) = crystallite_S   (1:3,1:3,c,i,e)
               !if abbrevation, make c and p private in omp
-              plasticState(    phaseAt(c,i,e))%subState0(:,phasememberAt(c,i,e)) &
-                = plasticState(phaseAt(c,i,e))%state(    :,phasememberAt(c,i,e))
-              do s = 1, phase_Nsources(phaseAt(c,i,e))
-                sourceState(    phaseAt(c,i,e))%p(s)%subState0(:,phasememberAt(c,i,e)) &
-                  = sourceState(phaseAt(c,i,e))%p(s)%state(    :,phasememberAt(c,i,e))
+              plasticState(    material_phaseAt(c,e))%subState0(:,material_phaseMemberAt(c,i,e)) &
+                = plasticState(material_phaseAt(c,e))%state(    :,material_phaseMemberAt(c,i,e))
+              do s = 1, phase_Nsources(material_phaseAt(c,e))
+                sourceState(    material_phaseAt(c,e))%p(s)%subState0(:,material_phaseMemberAt(c,i,e)) &
+                  = sourceState(material_phaseAt(c,e))%p(s)%state(    :,material_phaseMemberAt(c,i,e))
               enddo
 #ifdef DEBUG
               if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0 &
@@ -572,11 +572,11 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
               crystallite_Lp (1:3,1:3,c,i,e) =            crystallite_subLp0(1:3,1:3,c,i,e)
               crystallite_Li (1:3,1:3,c,i,e) =            crystallite_subLi0(1:3,1:3,c,i,e)
             endif
-            plasticState    (phaseAt(c,i,e))%state(    :,phasememberAt(c,i,e)) &
-              = plasticState(phaseAt(c,i,e))%subState0(:,phasememberAt(c,i,e))
-            do s = 1, phase_Nsources(phaseAt(c,i,e))
-              sourceState(    phaseAt(c,i,e))%p(s)%state(    :,phasememberAt(c,i,e)) &
-                = sourceState(phaseAt(c,i,e))%p(s)%subState0(:,phasememberAt(c,i,e))
+            plasticState    (material_phaseAt(c,e))%state(    :,material_phaseMemberAt(c,i,e)) &
+              = plasticState(material_phaseAt(c,e))%subState0(:,material_phaseMemberAt(c,i,e))
+            do s = 1, phase_Nsources(material_phaseAt(c,e))
+              sourceState(    material_phaseAt(c,e))%p(s)%state(    :,material_phaseMemberAt(c,i,e)) &
+                = sourceState(material_phaseAt(c,e))%p(s)%subState0(:,material_phaseMemberAt(c,i,e))
             enddo
 
                                                                                                     ! cant restore dotState here, since not yet calculated in first cutback after initialization
@@ -839,7 +839,7 @@ subroutine crystallite_orientations
     !$OMP PARALLEL DO
     do e = FEsolving_execElem(1),FEsolving_execElem(2)
       do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-        if (plasticState(material_phase(1,i,e))%nonLocal) &                                         ! if nonlocal model
+        if (plasticState(material_phaseAt(1,e))%nonLocal) &                                         ! if nonlocal model
           call plastic_nonlocal_updateCompatibility(crystallite_orientation,i,e)
     enddo; enddo
     !$OMP END PARALLEL DO
@@ -873,106 +873,106 @@ end function crystallite_push33ToRef
 !--------------------------------------------------------------------------------------------------
 function crystallite_postResults(ipc, ip, el)
 
- integer, intent(in):: &
-   el, &                         !< element index
-   ip, &                         !< integration point index
-   ipc                           !< grain index
+  integer, intent(in):: &
+    el, &                         !< element index
+    ip, &                         !< integration point index
+    ipc                           !< grain index
 
- real(pReal), dimension(1+crystallite_sizePostResults(microstructure_crystallite(discretization_microstructureAt(el))) + &
-                        1+plasticState(material_phase(ipc,ip,el))%sizePostResults + &
-                          sum(sourceState(material_phase(ipc,ip,el))%p(:)%sizePostResults)) :: &
-   crystallite_postResults
- integer :: &
-   o, &
-   c, &
-   crystID, &
-   mySize, &
-   n
- type(rotation) :: rot
+  real(pReal), dimension(1+crystallite_sizePostResults(microstructure_crystallite(discretization_microstructureAt(el))) + &
+                         1+plasticState(material_phaseAt(ipc,el))%sizePostResults + &
+                           sum(sourceState(material_phaseAt(ipc,el))%p(:)%sizePostResults)) :: &
+    crystallite_postResults
+  integer :: &
+    o, &
+    c, &
+    crystID, &
+    mySize, &
+    n
+  type(rotation) :: rot
 
- crystID = microstructure_crystallite(discretization_microstructureAt(el))
+  crystID = microstructure_crystallite(discretization_microstructureAt(el))
 
- crystallite_postResults = 0.0_pReal
- crystallite_postResults(1) = real(crystallite_sizePostResults(crystID),pReal)                  ! header-like information (length)
- c = 1
+  crystallite_postResults = 0.0_pReal
+  crystallite_postResults(1) = real(crystallite_sizePostResults(crystID),pReal)                      ! header-like information (length)
+  c = 1
 
- do o = 1,crystallite_Noutput(crystID)
-   mySize = 0
-   select case(crystallite_outputID(o,crystID))
-     case (phase_ID)
-       mySize = 1
-       crystallite_postResults(c+1) = real(material_phase(ipc,ip,el),pReal)                         ! phaseID of grain
-     case (texture_ID)
-       mySize = 1
-       crystallite_postResults(c+1) = real(material_texture(ipc,ip,el),pReal)                       ! textureID of grain
-     case (orientation_ID)
-       mySize = 4
-       crystallite_postResults(c+1:c+mySize) = crystallite_orientation(ipc,ip,el)%asQuaternion()
+  do o = 1,crystallite_Noutput(crystID)
+    mySize = 0
+    select case(crystallite_outputID(o,crystID))
+      case (phase_ID)
+        mySize = 1
+        crystallite_postResults(c+1) = real(material_phaseAt(ipc,el),pReal)                          ! phaseID of grain
+      case (texture_ID)
+        mySize = 1
+        crystallite_postResults(c+1) = real(material_texture(ipc,ip,el),pReal)                       ! textureID of grain
+      case (orientation_ID)
+        mySize = 4
+        crystallite_postResults(c+1:c+mySize) = crystallite_orientation(ipc,ip,el)%asQuaternion()
 
-     case (grainrotation_ID)
-       rot = crystallite_orientation0(ipc,ip,el)%misorientation(crystallite_orientation(ipc,ip,el))
-       mySize = 4
-       crystallite_postResults(c+1:c+mySize) = rot%asAxisAnglePair()
-       crystallite_postResults(c+4) = inDeg * crystallite_postResults(c+4)                          ! angle in degree
+      case (grainrotation_ID)
+        rot = crystallite_orientation0(ipc,ip,el)%misorientation(crystallite_orientation(ipc,ip,el))
+        mySize = 4
+        crystallite_postResults(c+1:c+mySize) = rot%asAxisAnglePair()
+        crystallite_postResults(c+4) = inDeg * crystallite_postResults(c+4)                          ! angle in degree
 
 ! remark: tensor output is of the form 11,12,13, 21,22,23, 31,32,33
 ! thus row index i is slow, while column index j is fast. reminder: "row is slow"
 
-     case (defgrad_ID)
-       mySize = 9
-       crystallite_postResults(c+1:c+mySize) = &
-         reshape(transpose(crystallite_partionedF(1:3,1:3,ipc,ip,el)),[mySize])
-     case (fe_ID)
-       mySize = 9
-       crystallite_postResults(c+1:c+mySize) = &
-         reshape(transpose(crystallite_Fe(1:3,1:3,ipc,ip,el)),[mySize])
-     case (fp_ID)
-       mySize = 9
-       crystallite_postResults(c+1:c+mySize) = &
-         reshape(transpose(crystallite_Fp(1:3,1:3,ipc,ip,el)),[mySize])
-     case (fi_ID)
-       mySize = 9
-       crystallite_postResults(c+1:c+mySize) = &
-         reshape(transpose(crystallite_Fi(1:3,1:3,ipc,ip,el)),[mySize])
-     case (lp_ID)
-       mySize = 9
-       crystallite_postResults(c+1:c+mySize) = &
-         reshape(transpose(crystallite_Lp(1:3,1:3,ipc,ip,el)),[mySize])
-     case (li_ID)
-       mySize = 9
-       crystallite_postResults(c+1:c+mySize) = &
-         reshape(transpose(crystallite_Li(1:3,1:3,ipc,ip,el)),[mySize])
-     case (p_ID)
-       mySize = 9
-       crystallite_postResults(c+1:c+mySize) = &
-         reshape(transpose(crystallite_P(1:3,1:3,ipc,ip,el)),[mySize])
-     case (s_ID)
-       mySize = 9
-       crystallite_postResults(c+1:c+mySize) = &
-         reshape(crystallite_S(1:3,1:3,ipc,ip,el),[mySize])
-     case (elasmatrix_ID)
-       mySize = 36
-       crystallite_postResults(c+1:c+mySize) = reshape(constitutive_homogenizedC(ipc,ip,el),[mySize])
-     case(neighboringelement_ID)
-       mySize = nIPneighbors
-       crystallite_postResults(c+1:c+mySize) = 0.0_pReal
-       forall (n = 1:mySize) &
-         crystallite_postResults(c+n) = real(IPneighborhood(1,n,ip,el),pReal)
-     case(neighboringip_ID)
-       mySize = nIPneighbors
-       crystallite_postResults(c+1:c+mySize) = 0.0_pReal
-       forall (n = 1:mySize) &
-         crystallite_postResults(c+n) = real(IPneighborhood(2,n,ip,el),pReal)
-   end select
-   c = c + mySize
- enddo
+      case (defgrad_ID)
+        mySize = 9
+        crystallite_postResults(c+1:c+mySize) = &
+          reshape(transpose(crystallite_partionedF(1:3,1:3,ipc,ip,el)),[mySize])
+      case (fe_ID)
+        mySize = 9
+        crystallite_postResults(c+1:c+mySize) = &
+          reshape(transpose(crystallite_Fe(1:3,1:3,ipc,ip,el)),[mySize])
+      case (fp_ID)
+        mySize = 9
+        crystallite_postResults(c+1:c+mySize) = &
+          reshape(transpose(crystallite_Fp(1:3,1:3,ipc,ip,el)),[mySize])
+      case (fi_ID)
+        mySize = 9
+        crystallite_postResults(c+1:c+mySize) = &
+          reshape(transpose(crystallite_Fi(1:3,1:3,ipc,ip,el)),[mySize])
+      case (lp_ID)
+        mySize = 9
+        crystallite_postResults(c+1:c+mySize) = &
+          reshape(transpose(crystallite_Lp(1:3,1:3,ipc,ip,el)),[mySize])
+      case (li_ID)
+        mySize = 9
+        crystallite_postResults(c+1:c+mySize) = &
+          reshape(transpose(crystallite_Li(1:3,1:3,ipc,ip,el)),[mySize])
+      case (p_ID)
+        mySize = 9
+        crystallite_postResults(c+1:c+mySize) = &
+          reshape(transpose(crystallite_P(1:3,1:3,ipc,ip,el)),[mySize])
+      case (s_ID)
+        mySize = 9
+        crystallite_postResults(c+1:c+mySize) = &
+          reshape(crystallite_S(1:3,1:3,ipc,ip,el),[mySize])
+      case (elasmatrix_ID)
+        mySize = 36
+        crystallite_postResults(c+1:c+mySize) = reshape(constitutive_homogenizedC(ipc,ip,el),[mySize])
+      case(neighboringelement_ID)
+        mySize = nIPneighbors
+        crystallite_postResults(c+1:c+mySize) = 0.0_pReal
+        forall (n = 1:mySize) &
+          crystallite_postResults(c+n) = real(IPneighborhood(1,n,ip,el),pReal)
+      case(neighboringip_ID)
+        mySize = nIPneighbors
+        crystallite_postResults(c+1:c+mySize) = 0.0_pReal
+        forall (n = 1:mySize) &
+          crystallite_postResults(c+n) = real(IPneighborhood(2,n,ip,el),pReal)
+    end select
+    c = c + mySize
+  enddo
 
- crystallite_postResults(c+1) = real(plasticState(material_phase(ipc,ip,el))%sizePostResults,pReal)             ! size of constitutive results
- c = c + 1
- if (size(crystallite_postResults)-c > 0) &
-   crystallite_postResults(c+1:size(crystallite_postResults)) = &
-      constitutive_postResults(crystallite_S(1:3,1:3,ipc,ip,el), crystallite_Fi(1:3,1:3,ipc,ip,el), &
-                               ipc, ip, el)
+  crystallite_postResults(c+1) = real(plasticState(material_phaseAt(ipc,el))%sizePostResults,pReal)  ! size of constitutive results
+  c = c + 1
+  if (size(crystallite_postResults)-c > 0) &
+    crystallite_postResults(c+1:size(crystallite_postResults)) = &
+       constitutive_postResults(crystallite_S(1:3,1:3,ipc,ip,el), crystallite_Fi(1:3,1:3,ipc,ip,el), &
+                                ipc, ip, el)
 
 end function crystallite_postResults
 
@@ -982,9 +982,6 @@ end function crystallite_postResults
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_results
 #if defined(PETSc) || defined(DAMASK_HDF5)
-  use config, only: &
-    config_name_phase => phase_name                                                                  ! anticipate logical name
-   
   integer :: p,o
   real(pReal),    allocatable, dimension(:,:,:) :: selected_tensors
   type(rotation), allocatable, dimension(:)     :: selected_rotations
@@ -1049,13 +1046,13 @@ subroutine crystallite_results
                                    'crystal orientation as quaternion',lattice_label)
       end select
     enddo
- enddo
+  enddo
  
- contains
+  contains
 
-!--------------------------------------------------------------------------------------------------
-!> @brief select tensors for output
-!--------------------------------------------------------------------------------------------------
+  !------------------------------------------------------------------------------------------------
+  !> @brief select tensors for output
+  !------------------------------------------------------------------------------------------------
   function select_tensors(dataset,instance)
  
     integer, intent(in) :: instance
@@ -1094,7 +1091,7 @@ subroutine crystallite_results
 
     j=0
     do e = 1, size(material_phaseAt,2)
-      do i = 1, homogenization_maxNgrains                                                            !ToDo: this needs to be changed for varying Ngrains
+      do i = 1, homogenization_maxNgrains                                                           !ToDo: this needs to be changed for varying Ngrains
         do c = 1, size(material_phaseAt,1)
            if (material_phaseAt(c,e) == instance) then
              j = j + 1
@@ -1106,8 +1103,6 @@ subroutine crystallite_results
    
  end function select_rotations
 #endif
-
-
 end subroutine crystallite_results
 
 
@@ -1195,10 +1190,8 @@ logical function integrateStress(ipc,ip,el,timeFraction)
     Fg_new = crystallite_subF(1:3,1:3,ipc,ip,el)
   endif
 
-
- !* feed local variables
-  Lpguess     =   crystallite_Lp(1:3,1:3,ipc,ip,el)                                                 ! ... and take it as first guess
-  Liguess     =   crystallite_Li(1:3,1:3,ipc,ip,el)                                                 ! ... and take it as first guess
+  Lpguess     =   crystallite_Lp(1:3,1:3,ipc,ip,el)                                                 ! take as first guess
+  Liguess     =   crystallite_Li(1:3,1:3,ipc,ip,el)                                                 ! take as first guess
   Liguess_old =   Liguess
  
   invFp_current = math_inv33(crystallite_subFp0(1:3,1:3,ipc,ip,el))
@@ -1555,7 +1548,7 @@ subroutine integrateStateFPI
        do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
          do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
            if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
-             p = phaseAt(g,i,e); c = phasememberAt(g,i,e)
+             p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
              plasticState(p)%previousDotState2(:,c) = merge(plasticState(p)%previousDotState(:,c),&
                                                             0.0_pReal,&
@@ -1583,7 +1576,7 @@ subroutine integrateStateFPI
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
          if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
-           p = phaseAt(g,i,e); c = phasememberAt(g,i,e)
+           p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
            sizeDotState = plasticState(p)%sizeDotState
 
            zeta = damper(plasticState(p)%dotState         (:,c), &
@@ -1746,7 +1739,7 @@ subroutine integrateStateAdaptiveEuler
    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
        if (crystallite_todo(g,i,e)) then
-         p = phaseAt(g,i,e); c = phasememberAt(g,i,e)
+         p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
          sizeDotState = plasticState(p)%sizeDotState
          
          residuum_plastic(1:sizeDotState,g,i,e) = plasticState(p)%dotstate(1:sizeDotState,c) &
@@ -1775,7 +1768,7 @@ subroutine integrateStateAdaptiveEuler
    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
        if (crystallite_todo(g,i,e)) then
-         p = phaseAt(g,i,e); c = phasememberAt(g,i,e)
+         p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
          sizeDotState = plasticState(p)%sizeDotState
          
          residuum_plastic(1:sizeDotState,g,i,e) = residuum_plastic(1:sizeDotState,g,i,e) &
@@ -1835,7 +1828,7 @@ subroutine integrateStateRK4
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
        if (crystallite_todo(g,i,e)) then
-         p = phaseAt(g,i,e); c = phasememberAt(g,i,e)
+         p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
          plasticState(p)%RK4dotState(:,c) = WEIGHT(n)*plasticState(p)%dotState(:,c) &
                                           + merge(plasticState(p)%RK4dotState(:,c),0.0_pReal,n>1)
@@ -1926,7 +1919,7 @@ subroutine integrateStateRKCK45
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
        if (crystallite_todo(g,i,e)) then
-         p = phaseAt(g,i,e); cc = phasememberAt(g,i,e)
+         p = material_phaseAt(g,e); cc = material_phaseMemberAt(g,i,e)
 
          plasticState(p)%RKCK45dotState(stage,:,cc) = plasticState(p)%dotState(:,cc)
          plasticState(p)%dotState(:,cc) = A(1,stage) * plasticState(p)%RKCK45dotState(1,:,cc)
@@ -1966,7 +1959,7 @@ subroutine integrateStateRKCK45
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
      if (crystallite_todo(g,i,e)) then
-       p = phaseAt(g,i,e); cc = phasememberAt(g,i,e)
+       p = material_phaseAt(g,e); cc = material_phaseMemberAt(g,i,e)
        
        sizeDotState = plasticState(p)%sizeDotState
               
@@ -2005,7 +1998,7 @@ subroutine integrateStateRKCK45
    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
        if (crystallite_todo(g,i,e)) then
-         p  = phaseAt(g,i,e); cc = phasememberAt(g,i,e)
+         p  = material_phaseAt(g,e); cc = material_phaseMemberAt(g,i,e)
        
          sizeDotState = plasticState(p)%sizeDotState
          
@@ -2163,7 +2156,7 @@ subroutine update_state(timeFraction)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
          if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
-       p = phaseAt(g,i,e); c = phasememberAt(g,i,e)
+       p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
        mySize = plasticState(p)%sizeDotState
        plasticState(p)%state(1:mySize,c) = plasticState(p)%subState0(1:mySize,c) &
@@ -2214,7 +2207,7 @@ subroutine update_dotState(timeFraction)
                                              crystallite_Fi(1:3,1:3,g,i,e), &
                                              crystallite_Fp, &
                                              crystallite_subdt(g,i,e)*timeFraction, g,i,e)
-           p = phaseAt(g,i,e); c = phasememberAt(g,i,e)
+           p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
            NaN = any(IEEE_is_NaN(plasticState(p)%dotState(:,c)))
            do s = 1, phase_Nsources(p)
              NaN = NaN .or. any(IEEE_is_NaN(sourceState(p)%p(s)%dotState(:,c)))
@@ -2259,7 +2252,7 @@ subroutine update_deltaState
                                             crystallite_Fe(1:3,1:3,g,i,e), &
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             g,i,e)
-         p = phaseAt(g,i,e); c = phasememberAt(g,i,e)
+         p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
          myOffset = plasticState(p)%offsetDeltaState
          mySize   = plasticState(p)%sizeDeltaState
          NaN = any(IEEE_is_NaN(plasticState(p)%deltaState(1:mySize,c)))
@@ -2311,8 +2304,8 @@ logical function stateJump(ipc,ip,el)
    myOffset, &
    mySize
 
- c = phasememberAt(ipc,ip,el)
- p = phaseAt(ipc,ip,el)
+ c = material_phaseMemberAt(ipc,ip,el)
+ p = material_phaseAt(ipc,el)
 
  call constitutive_collectDeltaState(crystallite_S(1:3,1:3,ipc,ip,el), &
                                      crystallite_Fe(1:3,1:3,ipc,ip,el), &

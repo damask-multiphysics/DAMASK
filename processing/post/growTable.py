@@ -4,6 +4,8 @@ import os
 import sys
 from optparse import OptionParser
 
+import numpy as np
+
 import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
@@ -15,7 +17,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
-Append data of ASCIItable(s) column-wise.
+Append data of ASCIItable(s) row-wise.
 
 """, version = scriptID)
 
@@ -58,20 +60,17 @@ for name in filenames:
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
-  for addTable in tables: table.labels_append(addTable.labels(raw = True))                          # extend ASCII header with new labels
-
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
 
-  outputAlive = True
-  while outputAlive and table.data_read():
-    for addTable in tables:
-      outputAlive = addTable.data_read()                                                            # read next table's data
-      if not outputAlive: break
-      table.data_append(addTable.data)                                                              # append to master table
-    if outputAlive:
-      outputAlive = table.data_write()                                                              # output processed line
+  table.data_readArray()
+  data = table.data
+  for addTable in tables:
+    addTable.data_readArray(table.labels(raw = True))
+    data = np.vstack((data,addTable.data))
+  table.data = data
+  table.data_writeArray()
 
 # ------------------------------------------ output finalization -----------------------------------  
 

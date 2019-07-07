@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys,re
-import damask
+import os
+import sys
 from optparse import OptionParser
+import re
+
+import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
+
 
 # --------------------------------------------------------------------
 #                                MAIN

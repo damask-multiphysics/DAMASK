@@ -10,7 +10,7 @@ module element
   private 
 
 !---------------------------------------------------------------------------------------------------
-!> Properties of a single element (the element used in the mesh)
+!> Properties of a single element
 !---------------------------------------------------------------------------------------------------
   type, public :: tElement
     integer :: &
@@ -21,11 +21,9 @@ module element
       Ncellnodes, &
       NcellnodesPerCell, &
       nIPs, &
-      nIPneighbors, &                                                                               ! ToDo: MD: Do all IPs in one element type have the same number of neighbors?
-      maxNnodeAtIP
+      nIPneighbors
     integer, dimension(:,:), allocatable :: &
       Cell, &                                                                                       !< intra-element (cell) nodes that constitute a cell
-      NnodeAtIP, &
       IPneighbor, &
       cellFace
     integer, dimension(:,:), allocatable :: &
@@ -139,21 +137,6 @@ module element
        4  & ! 3D 8node
     ]                                                                                               !< number of cell nodes in a specific cell type 
 
-  !integer, dimension(maxval(geomType)), parameter, private :: maxNodeAtIP = &                      ! Intel 16.0 complains
-  integer, dimension(10), parameter, private :: maxNnodeAtIP = &
-    [ &
-       3, &
-       1, &
-       1, &
-       2, &
-       4, &
-       1, &
-       1, &
-       8, &
-       1, &
-       4  &
-    ]                                                                                               !< maximum number of parent nodes that belong to an IP for a specific type of element 
- 
   !integer, dimension(maxval(CELLTYPE)), parameter, private  :: NCELLNODEPERCELL = &                ! Intel 16.0 complains
   integer, dimension(4), parameter, private :: NCELLNODEPERCELL = &
     [ &
@@ -163,114 +146,6 @@ module element
        8  & ! 3D 8node
     ]                                                                                               !< number of cell nodes in a specific cell type
 
-
-
-! --------------------------------------------------------------------------------------------------
-! MD: probably not needed START
-  integer, dimension(maxNnodeAtIP(1),nIP(1)), parameter, private :: NnodeAtIP1 = &
-    reshape([&
-      1,2,3 &
-    ],[maxNnodeAtIP(1),nIP(1)])
- 
-  integer, dimension(maxNnodeAtIP(2),nIP(2)), parameter, private :: NnodeAtIP2 = &
-    reshape([&
-      1, &
-      2, &
-      3  &
-    ],[maxNnodeAtIP(2),nIP(2)])
- 
-  integer, dimension(maxNnodeAtIP(3),nIP(3)), parameter, private :: NnodeAtIP3 = &
-    reshape([&
-      1, &
-      2, &
-      4, &
-      3  &
-    ],[maxNnodeAtIP(3),nIP(3)])
- 
-  integer, dimension(maxNnodeAtIP(4),nIP(4)), parameter, private :: NnodeAtIP4 = &
-    reshape([&
-      1,0, &
-      1,2, &
-      2,0, &
-      1,4, &
-      0,0, &
-      2,3, &
-      4,0, &
-      3,4, &
-      3,0  &
-     ],[maxNnodeAtIP(4),nIP(4)])
- 
-  integer, dimension(maxNnodeAtIP(5),nIP(5)), parameter, private :: NnodeAtIP5 = &
-    reshape([&
-      1,2,3,4 &
-    ],[maxNnodeAtIP(5),nIP(5)])
- 
-  integer, dimension(maxNnodeAtIP(6),nIP(6)), parameter, private :: NnodeAtIP6 = &
-    reshape([&
-      1, &
-      2, &
-      3, &
-      4  &
-    ],[maxNnodeAtIP(6),nIP(6)])
- 
-  integer, dimension(maxNnodeAtIP(7),nIP(7)), parameter, private :: NnodeAtIP7 = &
-    reshape([&
-      1, &
-      2, &
-      3, &
-      4, &
-      5, &
-      6  &
-    ],[maxNnodeAtIP(7),nIP(7)])
- 
-  integer, dimension(maxNnodeAtIP(8),nIP(8)), parameter, private :: NnodeAtIP8 = &
-    reshape([&
-      1,2,3,4,5,6,7,8 &
-    ],[maxNnodeAtIP(8),nIP(8)])
- 
-  integer, dimension(maxNnodeAtIP(9),nIP(9)), parameter, private :: NnodeAtIP9 = &
-    reshape([&
-      1, &
-      2, &
-      4, &
-      3, &
-      5, &
-      6, &
-      8, &
-      7  &
-    ],[maxNnodeAtIP(9),nIP(9)])
- 
-  integer, dimension(maxNnodeAtIP(10),nIP(10)), parameter, private :: NnodeAtIP10 = &
-    reshape([&
-      1,0, 0,0, &
-      1,2, 0,0, &
-      2,0, 0,0, &
-      1,4, 0,0, &
-      1,3, 2,4, &
-      2,3, 0,0, &
-      4,0, 0,0, &
-      3,4, 0,0, &
-      3,0, 0,0, &
-      1,5, 0,0, &
-      1,6, 2,5, &
-      2,6, 0,0, &
-      1,8, 4,5, &
-      0,0, 0,0, &
-      2,7, 3,6, &
-      4,8, 0,0, &
-      3,8, 4,7, &
-      3,7, 0,0, &
-      5,0, 0,0, &
-      5,6, 0,0, &
-      6,0, 0,0, &
-      5,8, 0,0, &
-      5,7, 6,8, &
-      6,7, 0,0, &
-      8,0, 0,0, &
-      7,8, 0,0, &
-      7,0, 0,0  &
-    ],[maxNnodeAtIP(10),nIP(10)])
-  
   ! *** FE_ipNeighbor ***
   ! is a list of the neighborhood of each IP.
   ! It is sorted in (local) +x,-x, +y,-y, +z,-z direction.
@@ -386,15 +261,15 @@ module element
 
 
  
-  real(pReal), dimension(nNode(1),NcellNode(geomType(1))), parameter :: cellNodeParentNodeWeights1 = &
-    reshape(real([&
+  integer, dimension(nNode(1),NcellNode(geomType(1))), parameter :: cellNodeParentNodeWeights1 = &
+    reshape([&
       1, 0, 0, &
       0, 1, 0, &
       0, 0, 1  &
-    ],pReal),[nNode(1),NcellNode(geomType(1))]) ! 2D 3node 1ip
+    ],[nNode(1),NcellNode(geomType(1))])                                                            !< 2D 3node 1ip
  
-  real(pReal), dimension(nNode(2),NcellNode(geomType(2))), parameter :: cellNodeParentNodeWeights2 = &
-    reshape(real([&
+  integer, dimension(nNode(2),NcellNode(geomType(2))), parameter :: cellNodeParentNodeWeights2 = &
+    reshape([&
       1, 0, 0, 0, 0, 0, &
       0, 1, 0, 0, 0, 0, &
       0, 0, 1, 0, 0, 0, &
@@ -402,10 +277,10 @@ module element
       0, 0, 0, 0, 1, 0, &
       0, 0, 0, 0, 0, 1, &
       1, 1, 1, 2, 2, 2  &
-    ],pReal),[nNode(2),NcellNode(geomType(2))]) ! 2D 6node 3ip
+    ],[nNode(2),NcellNode(geomType(2))])                                                            !< 2D 6node 3ip
  
-  real(pReal), dimension(nNode(3),NcellNode(geomType(3))), parameter :: cellNodeParentNodeWeights3 = &
-    reshape(real([&
+  integer, dimension(nNode(3),NcellNode(geomType(3))), parameter :: cellNodeParentNodeWeights3 = &
+    reshape([&
       1, 0, 0, 0, &
       0, 1, 0, 0, &
       0, 0, 1, 0, &
@@ -415,10 +290,10 @@ module element
       0, 0, 1, 1, &
       1, 0, 0, 1, &
       1, 1, 1, 1  &
-     ],pReal),[nNode(3),NcellNode(geomType(3))]) ! 2D 6node 3ip
+     ],[nNode(3),NcellNode(geomType(3))])                                                           !< 2D 6node 3ip
  
-  real(pReal), dimension(nNode(4),NcellNode(geomType(4))), parameter :: cellNodeParentNodeWeights4 = &
-    reshape(real([&
+  integer, dimension(nNode(4),NcellNode(geomType(4))), parameter :: cellNodeParentNodeWeights4 = &
+    reshape([&
       1, 0, 0, 0, 0, 0, 0, 0, &
       0, 1, 0, 0, 0, 0, 0, 0, &
       0, 0, 1, 0, 0, 0, 0, 0, &
@@ -435,10 +310,10 @@ module element
       1, 4, 1, 1, 8, 8, 2, 2, &
       1, 1, 4, 1, 2, 8, 8, 2, &
       1, 1, 1, 4, 2, 2, 8, 8  &
-    ],pReal),[nNode(4),NcellNode(geomType(4))])  ! 2D 8node 9ip
+    ],[nNode(4),NcellNode(geomType(4))])                                                            !< 2D 8node 9ip
  
-  real(pReal), dimension(nNode(5),NcellNode(geomType(5))), parameter :: cellNodeParentNodeWeights5 = &
-    reshape(real([&
+  integer, dimension(nNode(5),NcellNode(geomType(5))), parameter :: cellNodeParentNodeWeights5 = &
+    reshape([&
       1, 0, 0, 0, 0, 0, 0, 0, &
       0, 1, 0, 0, 0, 0, 0, 0, &
       0, 0, 1, 0, 0, 0, 0, 0, &
@@ -448,18 +323,18 @@ module element
       0, 0, 0, 0, 0, 0, 1, 0, &
       0, 0, 0, 0, 0, 0, 0, 1, &
       1, 1, 1, 1, 2, 2, 2, 2  &
-    ],pReal),[nNode(5),NcellNode(geomType(5))])  ! 2D 8node 4ip
+    ],[nNode(5),NcellNode(geomType(5))])                                                            !< 2D 8node 4ip
  
-  real(pReal), dimension(nNode(6),NcellNode(geomType(6))), parameter :: cellNodeParentNodeWeights6 = &
-    reshape(real([&
+  integer, dimension(nNode(6),NcellNode(geomType(6))), parameter :: cellNodeParentNodeWeights6 = &
+    reshape([&
       1, 0, 0, 0, &
       0, 1, 0, 0, &
       0, 0, 1, 0, &
       0, 0, 0, 1  &
-    ],pReal),[nNode(6),NcellNode(geomType(6))]) ! 3D 4node 1ip
+    ],[nNode(6),NcellNode(geomType(6))])                                                            !< 3D 4node 1ip
  
-  real(pReal), dimension(nNode(7),NcellNode(geomType(7))), parameter :: cellNodeParentNodeWeights7 = &
-    reshape(real([&
+  integer, dimension(nNode(7),NcellNode(geomType(7))), parameter :: cellNodeParentNodeWeights7 = &
+    reshape([&
       1, 0, 0, 0, 0, &
       0, 1, 0, 0, 0, &
       0, 0, 1, 0, 0, &
@@ -475,10 +350,10 @@ module element
       0, 1, 1, 1, 0, &
       1, 0, 1, 1, 0, &
       0, 0, 0, 0, 1  &
-    ],pReal),[nNode(7),NcellNode(geomType(7))])  ! 3D 5node 4ip
+    ],[nNode(7),NcellNode(geomType(7))])                                                            !< 3D 5node 4ip
  
-  real(pReal), dimension(nNode(8),NcellNode(geomType(8))), parameter :: cellNodeParentNodeWeights8 = &
-    reshape(real([&
+  integer, dimension(nNode(8),NcellNode(geomType(8))), parameter :: cellNodeParentNodeWeights8 = &
+    reshape([&
       1, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
       0, 1, 0, 0, 0, 0, 0, 0, 0, 0, &
       0, 0, 1, 0, 0, 0, 0, 0, 0, 0, &
@@ -494,10 +369,10 @@ module element
       0, 1, 1, 1, 0, 2, 0, 0, 2, 2, &
       1, 0, 1, 1, 0, 0, 2, 2, 0, 2, &
       3, 3, 3, 3, 4, 4, 4, 4, 4, 4  &
-    ],pReal),[nNode(8),NcellNode(geomType(8))])  ! 3D 10node 4ip
+    ],[nNode(8),NcellNode(geomType(8))])                                                            !< 3D 10node 4ip
  
-  real(pReal), dimension(nNode(9),NcellNode(geomType(9))), parameter :: cellNodeParentNodeWeights9 = &
-    reshape(real([&
+  integer, dimension(nNode(9),NcellNode(geomType(9))), parameter :: cellNodeParentNodeWeights9 = &
+    reshape([&
       1, 0, 0, 0, 0, 0, &
       0, 1, 0, 0, 0, 0, &
       0, 0, 1, 0, 0, 0, &
@@ -519,10 +394,10 @@ module element
       1, 0, 1, 1, 0, 1, &
       0, 0, 0, 1, 1, 1, &
       1, 1, 1, 1, 1, 1  &
-    ],pReal),[nNode(9),NcellNode(geomType(9))])  ! 3D 6node 6ip
+    ],[nNode(9),NcellNode(geomType(9))])                                                            !< 3D 6node 6ip
  
-  real(pReal), dimension(nNode(10),NcellNode(geomType(10))), parameter :: cellNodeParentNodeWeights10 = &
-    reshape(real([&
+  integer, dimension(nNode(10),NcellNode(geomType(10))), parameter :: cellNodeParentNodeWeights10 = &
+    reshape([&
       1, 0, 0, 0, 0, 0, 0, 0, &
       0, 1, 0, 0, 0, 0, 0, 0, &
       0, 0, 1, 0, 0, 0, 0, 0, &
@@ -531,10 +406,10 @@ module element
       0, 0, 0, 0, 0, 1, 0, 0, &
       0, 0, 0, 0, 0, 0, 1, 0, &
       0, 0, 0, 0, 0, 0, 0, 1  &
-    ],pReal),[nNode(10),NcellNode(geomType(10))])  ! 3D 8node 1ip
+    ],[nNode(10),NcellNode(geomType(10))])                                                          !< 3D 8node 1ip
   
-  real(pReal), dimension(nNode(11),NcellNode(geomType(11))), parameter :: cellNodeParentNodeWeights11 = &
-    reshape(real([&
+  integer, dimension(nNode(11),NcellNode(geomType(11))), parameter :: cellNodeParentNodeWeights11 = &
+    reshape([&
       1, 0, 0, 0,  0, 0, 0, 0, &   !
       0, 1, 0, 0,  0, 0, 0, 0, &   !
       0, 0, 1, 0,  0, 0, 0, 0, &   !
@@ -562,10 +437,10 @@ module element
       1, 0, 0, 1,  1, 0, 0, 1, &   ! 25
       0, 0, 0, 0,  1, 1, 1, 1, &   !
       1, 1, 1, 1,  1, 1, 1, 1  &   !
-    ],pReal),[nNode(11),NcellNode(geomType(11))])  ! 3D 8node 8ip
+    ],[nNode(11),NcellNode(geomType(11))])                                                          !< 3D 8node 8ip
   
-  real(pReal), dimension(nNode(12),NcellNode(geomType(12))), parameter :: cellNodeParentNodeWeights12 = &
-    reshape(real([&
+  integer, dimension(nNode(12),NcellNode(geomType(12))), parameter :: cellNodeParentNodeWeights12 = &
+    reshape([&
       1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
       0, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
       0, 0, 1, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
@@ -593,10 +468,10 @@ module element
       1, 0, 0, 1,  1, 0, 0, 1,  0, 0, 0, 2,  0, 0, 0, 2,  2, 0, 0, 2, &   ! 25
       0, 0, 0, 0,  1, 1, 1, 1,  0, 0, 0, 0,  2, 2, 2, 2,  0, 0, 0, 0, &   !
       3, 3, 3, 3,  3, 3, 3, 3,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4  &   !
-    ],pReal),[nNode(12),NcellNode(geomType(12))])  ! 3D 20node 8ip
+    ],[nNode(12),NcellNode(geomType(12))])                                                          !< 3D 20node 8ip
   
-  real(pReal), dimension(nNode(13),NcellNode(geomType(13))), parameter :: cellNodeParentNodeWeights13 = &
-    reshape(real([&
+  integer, dimension(nNode(13),NcellNode(geomType(13))), parameter :: cellNodeParentNodeWeights13 = &
+    reshape([&
        1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
        0, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
        0, 0, 1, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
@@ -661,7 +536,7 @@ module element
        4, 8, 4, 3,  8,24, 8, 4, 12,12, 4, 4, 32,32,12,12, 12,32,12, 4, &   !
        3, 4, 8, 4,  4, 8,24, 8,  4,12,12, 4, 12,32,32,12,  4,12,32,12, &   !
        4, 3, 4, 8,  8, 4, 8,24,  4, 4,12,12, 12,12,32,32, 12, 4,12,32  &   !
-    ],pReal),[nNode(13),NcellNode(geomType(13))])  ! 3D 20node 27ip
+    ],[nNode(13),NcellNode(geomType(13))])                                                          !< 3D 20node 27ip
  
  
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(1)),NIP(1)), parameter :: CELL1 = &
@@ -803,9 +678,9 @@ module element
     ],[NCELLNODEPERCELLFACE(4),NIPNEIGHBOR(4)])                                                     !< 3D 8node, VTK_HEXAHEDRON (12)
  
  
- contains
+contains
  
- subroutine tElement_init(self,elemType)
+subroutine tElement_init(self,elemType)
 
    class(tElement) :: self
    integer, intent(in) :: elemType
@@ -846,50 +721,38 @@ module element
    
  
    self%NcellNodes   = NcellNode    (self%geomType)
-   self%maxNnodeAtIP = maxNnodeAtIP (self%geomType) 
    self%nIPs         = nIP          (self%geomType)
    self%cellType     = cellType     (self%geomType)
  
- 
    select case (self%geomType)
      case(1)
-       self%NnodeAtIP   = NnodeAtIP1
        self%IPneighbor  = IPneighbor1
        self%cell        = CELL1
      case(2)
-       self%NnodeAtIP   = NnodeAtIP2
        self%IPneighbor  = IPneighbor2
        self%cell        = CELL2
      case(3)
-       self%NnodeAtIP   = NnodeAtIP3
        self%IPneighbor  = IPneighbor3
        self%cell        = CELL3
      case(4)
-       self%NnodeAtIP   = NnodeAtIP4
        self%IPneighbor  = IPneighbor4
        self%cell        = CELL4
      case(5)
-       self%NnodeAtIP   = NnodeAtIP5
        self%IPneighbor  = IPneighbor5
        self%cell        = CELL5
      case(6)
-       self%NnodeAtIP   = NnodeAtIP6
        self%IPneighbor  = IPneighbor6
        self%cell        = CELL6
      case(7)
-       self%NnodeAtIP   = NnodeAtIP7
        self%IPneighbor  = IPneighbor7
        self%cell        = CELL7
      case(8)
-       self%NnodeAtIP   = NnodeAtIP8
        self%IPneighbor  = IPneighbor8
        self%cell        = CELL8
      case(9)
-       self%NnodeAtIP   = NnodeAtIP9
        self%IPneighbor  = IPneighbor9
        self%cell        = CELL9
      case(10)
-       self%NnodeAtIP   = NnodeAtIP10
        self%IPneighbor  = IPneighbor10
        self%cell        = CELL10
    end select
@@ -911,16 +774,15 @@ module element
     
     write(6,'(/,a)')   ' <<<+-  element_init  -+>>>'
     
-    write(6,*)' element type:        ',self%elemType
-    write(6,*)'   geom type:         ',self%geomType
-    write(6,*)'   cell type:         ',self%cellType
-    write(6,*)'   # node:            ',self%Nnodes
-    write(6,*)'   # IP:              ',self%nIPs
-    write(6,*)'   # cellnode:        ',self%Ncellnodes
-    write(6,*)'   # cellnode/cell:   ',self%NcellnodesPerCell
-    write(6,*)'   # IP neighbor:     ',self%nIPneighbors
-    write(6,*)'   max # node at IP:  ',self%maxNnodeAtIP
+    write(6,*) ' element type:        ',self%elemType
+    write(6,*) '   geom type:         ',self%geomType
+    write(6,*) '   cell type:         ',self%cellType
+    write(6,*) '   # node:            ',self%Nnodes
+    write(6,*) '   # IP:              ',self%nIPs
+    write(6,*) '   # cellnode:        ',self%Ncellnodes
+    write(6,*) '   # cellnode/cell:   ',self%NcellnodesPerCell
+    write(6,*) '   # IP neighbor:     ',self%nIPneighbors
     
- end subroutine tElement_init
+end subroutine tElement_init
 
 end module element

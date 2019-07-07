@@ -167,8 +167,8 @@ subroutine thermal_adiabatic_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
   Tdot = 0.0_pReal
   dTdot_dT = 0.0_pReal
   do grain = 1, homogenization_Ngrains(homog)
-    phase = phaseAt(grain,ip,el)
-    constituent = phasememberAt(grain,ip,el)
+    phase = material_phaseAt(grain,el)
+    constituent = material_phasememberAt(grain,ip,el)
     do source = 1, phase_Nsources(phase)
       select case(phase_source(source,phase))                                                   
         case (SOURCE_thermal_dissipation_ID)
@@ -215,7 +215,7 @@ function thermal_adiabatic_getSpecificHeat(ip,el)
    
   do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
     thermal_adiabatic_getSpecificHeat = thermal_adiabatic_getSpecificHeat + &
-     lattice_specificHeat(material_phase(grain,ip,el))
+     lattice_specificHeat(material_phaseAt(grain,el))
   enddo
  
   thermal_adiabatic_getSpecificHeat = &
@@ -242,7 +242,7 @@ function thermal_adiabatic_getMassDensity(ip,el)
    
   do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
     thermal_adiabatic_getMassDensity = thermal_adiabatic_getMassDensity + &
-     lattice_massDensity(material_phase(grain,ip,el))
+     lattice_massDensity(material_phaseAt(grain,el))
   enddo
  
   thermal_adiabatic_getMassDensity = &

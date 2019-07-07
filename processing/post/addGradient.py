@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
-import numpy as np
+import os
+import sys
 from optparse import OptionParser
+
+import numpy as np
+
 import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -27,7 +30,7 @@ def gradFFT(geomdim,field):
   grad_fourier  = np.empty(field_fourier.shape+(3,),'c16')
 
   # differentiation in Fourier space
-  TWOPIIMG = 2.0j*math.pi
+  TWOPIIMG = 2.0j*np.pi
   einsums = { 
               1:'ijkl,ijkm->ijkm',                                                                   # scalar, 1 -> 3
               3:'ijkl,ijkm->ijklm',                                                                  # vector, 3 -> 3x3

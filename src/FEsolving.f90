@@ -1,8 +1,7 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief triggering reading in of restart information when doing a restart
-!> @todo Descriptions for public variables needed
+!> @brief holds some global variables and gets extra information for commercial FEM
 !--------------------------------------------------------------------------------------------------
 module FEsolving
   use prec
@@ -12,32 +11,34 @@ module FEsolving
    
   implicit none
   private
-  integer, public :: &
-    restartInc   =  1                                                                               !< needs description
-
+ 
   logical, public :: & 
-    symmetricSolver   = .false., &                                                                  !< use a symmetric FEM solver
-    restartWrite      = .false., &                                                                  !< write current state to enable restart
+#if defined(Marc4DAMASK) || defined(Abaqus)
     restartRead       = .false., &                                                                  !< restart information to continue calculation from saved state
+#endif
+    restartWrite      = .false., &                                                                  !< write current state to enable restart
     terminallyIll     = .false.                                                                     !< at least one material point is terminally ill
 
   integer, dimension(:,:), allocatable, public :: &
     FEsolving_execIP                                                                                !< for ping-pong scheme always range to max IP, otherwise one specific IP
-    
-  integer, dimension(2), public :: &
+  integer, dimension(2),                public :: &
     FEsolving_execElem                                                                              !< for ping-pong scheme always whole range, otherwise one specific element
     
+#if defined(Marc4DAMASK) || defined(Abaqus)
+  logical, public, protected :: & 
+    symmetricSolver   = .false.                                                                     !< use a symmetric FEM solver (only Abaqus)
   character(len=1024), public :: &
     modelName                                                                                       !< needs description
-    
   logical, dimension(:,:), allocatable, public :: &
     calcMode                                                                                        !< do calculation or simply collect when using ping pong scheme
 
   public :: FE_init
+#endif
 
 contains
 
 
+#if defined(Marc4DAMASK) || defined(Abaqus)
 !--------------------------------------------------------------------------------------------------
 !> @brief determine whether a symmetric solver is used and whether restart is requested
 !> @details restart information is found in input file in case of FEM solvers, in case of spectal
@@ -45,27 +46,15 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine FE_init
  
-#if defined(Marc4DAMASK) || defined(Abaqus)
   integer, parameter :: &
     FILEUNIT = 222
   integer :: j
   character(len=65536) :: tag, line
   integer, allocatable, dimension(:) :: chunkPos
-#endif
 
   write(6,'(/,a)')   ' <<<+-  FEsolving init  -+>>>'
 
-  modelName = getSolverJobName()
-
-#if defined(Grid) || defined(FEM)
-  restartInc = interface_RestartInc
-
-  if(restartInc < 0) then
-    call IO_warning(warning_ID=34)
-    restartInc = 0
-  endif
-  restartRead = restartInc > 0                                                                      ! only read in if "true" restart requested
-#else
+  modelName = getSolverJobName() 
   call IO_open_inputFile(FILEUNIT,modelName)
   rewind(FILEUNIT)
   do
@@ -125,7 +114,6 @@ subroutine FE_init
   200 close(FILEUNIT)
   endif
 
-#endif
   if (iand(debug_level(debug_FEsolving),debug_levelBasic) /= 0) then
     write(6,'(a21,l1)') ' restart writing:    ', restartWrite
     write(6,'(a21,l1)') ' restart reading:    ', restartRead
@@ -133,5 +121,6 @@ subroutine FE_init
   endif
 
 end subroutine FE_init
+#endif
 
 end module FEsolving

@@ -22,7 +22,7 @@ module HDF5_utilities
 
 #if defined(PETSc) || defined(DAMASK_HDF5)
 !--------------------------------------------------------------------------------------------------
-!> @brief reads integer or float data of defined shape from file                                       ! ToDo: order of arguments wrong
+!> @brief reads integer or float data of defined shape from file                                    ! ToDo: order of arguments wrong
 !> @details for parallel IO, all dimension except for the last need to match
 !--------------------------------------------------------------------------------------------------
   interface HDF5_read
@@ -45,7 +45,7 @@ module HDF5_utilities
   end interface HDF5_read
 
 !--------------------------------------------------------------------------------------------------
-!> @brief writes integer or real data of defined shape to file                                        ! ToDo: order of arguments wrong
+!> @brief writes integer or real data of defined shape to file                                      ! ToDo: order of arguments wrong
 !> @details for parallel IO, all dimension except for the last need to match
 !--------------------------------------------------------------------------------------------------
   interface HDF5_write
@@ -1759,66 +1759,66 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
                            myStart, globalShape, &
                            loc_id,localShape,datasetName,parallel)
 
- integer(HID_T),    intent(in) :: loc_id                                                             !< file or group handle
- character(len=*),  intent(in) :: datasetName                                                        !< name of the dataset in the file
- logical,           intent(in) :: parallel
- integer(HSIZE_T),  intent(in),   dimension(:) :: &
-   localShape   
- integer(HSIZE_T),  intent(out), dimension(size(localShape,1)):: &
-   myStart, &
-   globalShape                                                                                      !< shape of the dataset (all processes)
- integer(HID_T),    intent(out) :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
-    
- integer, dimension(worldsize) :: &
-   readSize                                                                                         !< contribution of all processes
- integer :: ierr
- integer :: hdferr
+  integer(HID_T),    intent(in) :: loc_id                                                           !< file or group handle
+  character(len=*),  intent(in) :: datasetName                                                      !< name of the dataset in the file
+  logical,           intent(in) :: parallel
+  integer(HSIZE_T),  intent(in),   dimension(:) :: &
+    localShape   
+  integer(HSIZE_T),  intent(out), dimension(size(localShape,1)):: &
+    myStart, &
+    globalShape                                                                                    !< shape of the dataset (all processes)
+  integer(HID_T),    intent(out) :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
+     
+  integer, dimension(worldsize) :: &
+    readSize                                                                                        !< contribution of all processes
+  integer :: ierr
+  integer :: hdferr
  
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for transfer properties (is collective for MPI)
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
- if (hdferr < 0) call IO_error(1,ext_msg='initialize_read: h5pcreate_f')
+  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+  if (hdferr < 0) call IO_error(1,ext_msg='initialize_read: h5pcreate_f')
 
 !--------------------------------------------------------------------------------------------------
- readSize = 0
- readSize(worldrank+1) = int(localShape(ubound(localShape,1)))
+  readSize = 0
+  readSize(worldrank+1) = int(localShape(ubound(localShape,1)))
 #ifdef PETSc
- if (parallel) then
-   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-   if (hdferr < 0) call IO_error(1,ext_msg='initialize_read: h5pset_dxpl_mpio_f')
-   call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
-   if (ierr /= 0) call IO_error(894,ext_msg='initialize_read: MPI_allreduce')
- endif
+  if (parallel) then
+    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
+    if (hdferr < 0) call IO_error(1,ext_msg='initialize_read: h5pset_dxpl_mpio_f')
+    call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+    if (ierr /= 0) call IO_error(894,ext_msg='initialize_read: MPI_allreduce')
+  endif
 #endif
- myStart                   = int(0,HSIZE_T)
- myStart(ubound(myStart))  = int(sum(readSize(1:worldrank)),HSIZE_T)
- globalShape = [localShape(1:ubound(localShape,1)-1),int(sum(readSize),HSIZE_T)]
+  myStart                   = int(0,HSIZE_T)
+  myStart(ubound(myStart))  = int(sum(readSize(1:worldrank)),HSIZE_T)
+  globalShape = [localShape(1:ubound(localShape,1)-1),int(sum(readSize),HSIZE_T)]
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
- call h5screate_simple_f(size(localShape), localShape, memspace_id, hdferr, localShape)
- if (hdferr < 0) call IO_error(1,ext_msg='initialize_read: h5screate_simple_f/memspace_id')
+  call h5screate_simple_f(size(localShape), localShape, memspace_id, hdferr, localShape)
+  if (hdferr < 0) call IO_error(1,ext_msg='initialize_read: h5screate_simple_f/memspace_id')
 
 !--------------------------------------------------------------------------------------------------
 ! creating a property list for IO and set it to collective
- call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr) 
-  if (hdferr < 0) call IO_error(1,ext_msg='initialize_read: h5pcreate_f')
+  call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr) 
+    if (hdferr < 0) call IO_error(1,ext_msg='initialize_read: h5pcreate_f')
 #ifdef PETSc
- call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
- if (hdferr < 0) call IO_error(1,ext_msg='initialize_read: h5pset_all_coll_metadata_ops_f')
+  call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
+  if (hdferr < 0) call IO_error(1,ext_msg='initialize_read: h5pset_all_coll_metadata_ops_f')
 #endif
 
 !--------------------------------------------------------------------------------------------------
 ! open the dataset in the file and get the space ID
- call h5dopen_f(loc_id,datasetName,dset_id,hdferr, dapl_id = aplist_id)
- if (hdferr < 0) call IO_error(1,ext_msg='initialize_read: h5dopen_f')
- call h5dget_space_f(dset_id, filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1,ext_msg='initialize_read: h5dget_space_f')
+  call h5dopen_f(loc_id,datasetName,dset_id,hdferr, dapl_id = aplist_id)
+  if (hdferr < 0) call IO_error(1,ext_msg='initialize_read: h5dopen_f')
+  call h5dget_space_f(dset_id, filespace_id, hdferr)
+  if (hdferr < 0) call IO_error(1,ext_msg='initialize_read: h5dget_space_f')
 
 !--------------------------------------------------------------------------------------------------
 ! select a hyperslab (the portion of the current process) in the file
- call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, localShape, hdferr)
- if (hdferr < 0) call IO_error(1,ext_msg='initialize_read: h5sselect_hyperslab_f')
+  call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, localShape, hdferr)
+  if (hdferr < 0) call IO_error(1,ext_msg='initialize_read: h5sselect_hyperslab_f')
 
 end subroutine initialize_read
 
@@ -1828,19 +1828,19 @@ end subroutine initialize_read
 !--------------------------------------------------------------------------------------------------
 subroutine finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
- integer(HID_T), intent(in)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
- integer :: hdferr
+  integer(HID_T), intent(in)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
+  integer :: hdferr
 
- call h5pclose_f(plist_id, hdferr)
- if (hdferr < 0) call IO_error(1,ext_msg='finalize_read: plist_id')
- call h5pclose_f(aplist_id, hdferr)
- if (hdferr < 0) call IO_error(1,ext_msg='finalize_read: aplist_id')
- call h5dclose_f(dset_id, hdferr)
- if (hdferr < 0) call IO_error(1,ext_msg='finalize_read: h5dclose_f')
- call h5sclose_f(filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1,ext_msg='finalize_read: h5sclose_f/filespace_id')
- call h5sclose_f(memspace_id, hdferr)
- if (hdferr < 0) call IO_error(1,ext_msg='finalize_read: h5sclose_f/memspace_id')
+  call h5pclose_f(plist_id, hdferr)
+  if (hdferr < 0) call IO_error(1,ext_msg='finalize_read: plist_id')
+  call h5pclose_f(aplist_id, hdferr)
+  if (hdferr < 0) call IO_error(1,ext_msg='finalize_read: aplist_id')
+  call h5dclose_f(dset_id, hdferr)
+  if (hdferr < 0) call IO_error(1,ext_msg='finalize_read: h5dclose_f')
+  call h5sclose_f(filespace_id, hdferr)
+  if (hdferr < 0) call IO_error(1,ext_msg='finalize_read: h5sclose_f/filespace_id')
+  call h5sclose_f(memspace_id, hdferr)
+  if (hdferr < 0) call IO_error(1,ext_msg='finalize_read: h5sclose_f/memspace_id')
 
 end subroutine finalize_read
 
@@ -1852,60 +1852,60 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
                            myStart, totalShape, &
                            loc_id,myShape,datasetName,datatype,parallel)
 
- integer(HID_T),    intent(in) :: loc_id                                                             !< file or group handle
- character(len=*),  intent(in) :: datasetName                                                        !< name of the dataset in the file
- logical,           intent(in) :: parallel
- integer(HID_T),    intent(in) :: datatype
- integer(HSIZE_T),  intent(in),   dimension(:) :: &
-   myShape   
- integer(HSIZE_T),  intent(out), dimension(size(myShape,1)):: &
-   myStart, &
-   totalShape                                                                                      !< shape of the dataset (all processes)
- integer(HID_T),    intent(out) :: dset_id, filespace_id, memspace_id, plist_id
-    
- integer, dimension(worldsize) :: &
-   writeSize                                                                                        !< contribution of all processes
- integer :: ierr
- integer :: hdferr
+  integer(HID_T),    intent(in) :: loc_id                                                           !< file or group handle
+  character(len=*),  intent(in) :: datasetName                                                      !< name of the dataset in the file
+  logical,           intent(in) :: parallel
+  integer(HID_T),    intent(in) :: datatype
+  integer(HSIZE_T),  intent(in),   dimension(:) :: &
+    myShape   
+  integer(HSIZE_T),  intent(out), dimension(size(myShape,1)):: &
+    myStart, &
+    totalShape                                                                                      !< shape of the dataset (all processes)
+  integer(HID_T),    intent(out) :: dset_id, filespace_id, memspace_id, plist_id
+     
+  integer, dimension(worldsize) :: &
+    writeSize                                                                                       !< contribution of all processes
+  integer :: ierr
+  integer :: hdferr
 
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for transfer properties (is collective when reading in parallel)
- call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
- if (hdferr < 0) call IO_error(1,ext_msg='initialize_write: h5pcreate_f')
+  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+  if (hdferr < 0) call IO_error(1,ext_msg='initialize_write: h5pcreate_f')
 #ifdef PETSc
-if (parallel) then
-   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-   if (hdferr < 0) call IO_error(1,ext_msg='initialize_write: h5pset_dxpl_mpio_f')
- endif
+  if (parallel) then
+    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
+    if (hdferr < 0) call IO_error(1,ext_msg='initialize_write: h5pset_dxpl_mpio_f')
+  endif
 #endif
 
 !--------------------------------------------------------------------------------------------------
 ! determine the global data layout among all processes
- writeSize              = 0
- writeSize(worldrank+1) = int(myShape(ubound(myShape,1)))
+  writeSize              = 0
+  writeSize(worldrank+1) = int(myShape(ubound(myShape,1)))
 #ifdef PETSc
-if (parallel) then
-   call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
-   if (ierr /= 0) call IO_error(894,ext_msg='initialize_write: MPI_allreduce')
- endif
+  if (parallel) then
+    call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)      ! get total output size over each process
+    if (ierr /= 0) call IO_error(894,ext_msg='initialize_write: MPI_allreduce')
+  endif
 #endif
- myStart                   = int(0,HSIZE_T)
- myStart(ubound(myStart))  = int(sum(writeSize(1:worldrank)),HSIZE_T)
- totalShape = [myShape(1:ubound(myShape,1)-1),int(sum(writeSize),HSIZE_T)]
+  myStart                   = int(0,HSIZE_T)
+  myStart(ubound(myStart))  = int(sum(writeSize(1:worldrank)),HSIZE_T)
+  totalShape = [myShape(1:ubound(myShape,1)-1),int(sum(writeSize),HSIZE_T)]
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape) and in file (global shape)
- call h5screate_simple_f(size(myShape), myShape, memspace_id, hdferr, myShape)
- if (hdferr < 0) call IO_error(1,ext_msg='initialize_write: h5dopen_f')
- call h5screate_simple_f(size(totalShape), totalShape, filespace_id, hdferr, totalShape)
- if (hdferr < 0) call IO_error(1,ext_msg='initialize_write: h5dget_space_f')
+  call h5screate_simple_f(size(myShape), myShape, memspace_id, hdferr, myShape)
+  if (hdferr < 0) call IO_error(1,ext_msg='initialize_write: h5dopen_f')
+  call h5screate_simple_f(size(totalShape), totalShape, filespace_id, hdferr, totalShape)
+  if (hdferr < 0) call IO_error(1,ext_msg='initialize_write: h5dget_space_f')
 
 !--------------------------------------------------------------------------------------------------
 ! create dataset in the file and select a hyperslab from it (the portion of the current process)
- call h5dcreate_f(loc_id, trim(datasetName), datatype, filespace_id, dset_id, hdferr)
- if (hdferr < 0) call IO_error(1,ext_msg='initialize_write: h5dcreate_f')
- call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, myShape, hdferr)
- if (hdferr < 0) call IO_error(1,ext_msg='initialize_write: h5sselect_hyperslab_f')
+  call h5dcreate_f(loc_id, trim(datasetName), datatype, filespace_id, dset_id, hdferr)
+  if (hdferr < 0) call IO_error(1,ext_msg='initialize_write: h5dcreate_f')
+  call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, myShape, hdferr)
+  if (hdferr < 0) call IO_error(1,ext_msg='initialize_write: h5sselect_hyperslab_f')
 
 end subroutine initialize_write
 
@@ -1915,19 +1915,19 @@ end subroutine initialize_write
 !--------------------------------------------------------------------------------------------------
 subroutine finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
- integer(HID_T), intent(in) :: dset_id, filespace_id, memspace_id, plist_id
- integer :: hdferr
+  integer(HID_T), intent(in) :: dset_id, filespace_id, memspace_id, plist_id
+  integer :: hdferr
 
- call h5pclose_f(plist_id, hdferr)
- if (hdferr < 0) call IO_error(1,ext_msg='finalize_write: plist_id')
- call h5dclose_f(dset_id, hdferr)
- if (hdferr < 0) call IO_error(1,ext_msg='finalize_write: h5dclose_f')
- call h5sclose_f(filespace_id, hdferr)
- if (hdferr < 0) call IO_error(1,ext_msg='finalize_write: h5sclose_f/filespace_id')
- call h5sclose_f(memspace_id, hdferr)
- if (hdferr < 0) call IO_error(1,ext_msg='finalize_write: h5sclose_f/memspace_id')
+  call h5pclose_f(plist_id, hdferr)
+  if (hdferr < 0) call IO_error(1,ext_msg='finalize_write: plist_id')
+  call h5dclose_f(dset_id, hdferr)
+  if (hdferr < 0) call IO_error(1,ext_msg='finalize_write: h5dclose_f')
+  call h5sclose_f(filespace_id, hdferr)
+  if (hdferr < 0) call IO_error(1,ext_msg='finalize_write: h5sclose_f/filespace_id')
+  call h5sclose_f(memspace_id, hdferr)
+  if (hdferr < 0) call IO_error(1,ext_msg='finalize_write: h5sclose_f/memspace_id')
 
 end subroutine finalize_write
-
 #endif
+
 end module HDF5_Utilities

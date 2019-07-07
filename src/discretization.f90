@@ -1,5 +1,6 @@
 !--------------------------------------------------------------------------------------------------
 !> @brief spatial discretization
+!> @details serves as an abstraction layer between the different solvers and DAMASK
 !--------------------------------------------------------------------------------------------------
 module discretization
 
@@ -30,10 +31,12 @@ module discretization
 
 contains
   
-
+!--------------------------------------------------------------------------------------------------
+!> @brief stores the relevant information in globally accesible variables
+!--------------------------------------------------------------------------------------------------
 subroutine discretization_init(homogenizationAt,microstructureAt,IPcoords0,NodeCoords0)
 
-  integer,     dimension(:), intent(in) :: &
+  integer,     dimension(:),   intent(in) :: &
     homogenizationAt, &
     microstructureAt
   real(pReal), dimension(:,:), intent(in) :: &
@@ -57,6 +60,9 @@ subroutine discretization_init(homogenizationAt,microstructureAt,IPcoords0,NodeC
 end subroutine discretization_init
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief write the displacements
+!--------------------------------------------------------------------------------------------------
 subroutine discretization_results
 #if defined(PETSc) || defined(DAMASK_HDF5)
   real(pReal), dimension(:,:), allocatable :: u
@@ -70,6 +76,9 @@ subroutine discretization_results
 end subroutine discretization_results
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief stores current IP coordinates
+!--------------------------------------------------------------------------------------------------
 subroutine discretization_setIPcoords(IPcoords)
 
   real(pReal), dimension(:,:), intent(in) :: IPcoords
@@ -77,6 +86,5 @@ subroutine discretization_setIPcoords(IPcoords)
   discretization_IPcoords = IPcoords
 
 end subroutine discretization_setIPcoords
-
 
 end module discretization

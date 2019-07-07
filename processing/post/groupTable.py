@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys
-import math                                                                                         # noqa
-import numpy as np
+import os
+import sys
 from optparse import OptionParser, OptionGroup
+import math                                                                                         # noqa
+
+import numpy as np
+
 import damask
+
 
 def periodicAverage(coords, limits):
   """Centroid in periodic domain, see https://en.wikipedia.org/wiki/Center_of_mass#Systems_with_periodic_boundary_conditions"""

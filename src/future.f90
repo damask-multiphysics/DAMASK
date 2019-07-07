@@ -32,6 +32,7 @@ function findloc(a,v)
 end function findloc
 #endif
 
+
 #if defined(__PGI)
 !--------------------------------------------------------------------------------------------------
 !> @brief substitute for the norm2 intrinsic (only for real, dimension(3) at the moment)

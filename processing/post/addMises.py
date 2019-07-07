@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math
-import numpy as np
+import os
+import sys
 from optparse import OptionParser
 from collections import OrderedDict
+
+import numpy as np
+
 import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -14,7 +17,7 @@ def Mises(what,tensor):
 
   dev = tensor - np.trace(tensor)/3.0*np.eye(3)
   symdev = 0.5*(dev+dev.T)
-  return math.sqrt(np.sum(symdev*symdev.T)*
+  return np.sqrt(np.sum(symdev*symdev.T)*
         {
          'stress': 3.0/2.0,
          'strain': 2.0/3.0,

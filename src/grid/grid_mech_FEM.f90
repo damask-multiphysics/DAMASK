@@ -181,8 +181,9 @@ subroutine grid_mech_FEM_init
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
-  restart: if (restartInc > 0) then
-    write(6,'(/,a,'//IO_intOut(restartInc)//',a)') 'reading values of increment ', restartInc, ' from file'
+  restartRead: if (interface_restartInc > 0) then
+    write(6,'(/,a,'//IO_intOut(interface_restartInc)//',a)') &
+      'reading values of increment ', interface_restartInc, ' from file'
  
     write(rankStr,'(a1,i0)')'_',worldrank
     fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
@@ -195,10 +196,10 @@ subroutine grid_mech_FEM_init
     call HDF5_read(fileHandle,u_current,    'u')
     call HDF5_read(fileHandle,u_lastInc,    'u_lastInc')
     
-  elseif (restartInc == 0) then restart
+  elseif (interface_restartInc == 0) then restartRead
     F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                         ! initialize to identity
     F         = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)
-  endif restart
+  endif restartRead
   materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
   call utilities_updateIPcoords(F)
   call utilities_constitutiveResponse(P_current,temp33_Real,C_volAvg,devNull, &                     ! stress field, stress avg, global average of stiffness and (min+max)/2
@@ -210,12 +211,13 @@ subroutine grid_mech_FEM_init
   call DMDAVecRestoreArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr)
   CHKERRQ(ierr)
  
-  restartRead: if (restartInc > 0) then
-    write(6,'(/,a,'//IO_intOut(restartInc)//',a)') 'reading more values of increment ', restartInc, ' from file'
+  restartRead2: if (interface_restartInc > 0) then
+    write(6,'(/,a,'//IO_intOut(interface_restartInc)//',a)') &
+      'reading more values of increment ', interface_restartInc, ' from file'
     call HDF5_read(fileHandle,C_volAvg,       'C_volAvg')
     call HDF5_read(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
     call HDF5_closeFile(fileHandle)
-  endif restartRead
+  endif restartRead2
 
 end subroutine grid_mech_FEM_init
 

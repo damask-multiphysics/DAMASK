@@ -50,6 +50,7 @@ module IO
    IO_countNumericalDataLines
 #endif
 #endif
+
  private :: &
    IO_verifyFloatValue, &
    IO_verifyIntValue
@@ -90,7 +91,7 @@ function IO_read_ASCII(fileName) result(fileContent)
 
   character(len=*),          intent(in)                :: fileName
 
-  character(len=pStringLen), dimension(:), allocatable :: fileContent                                      !< file content, separated per lines
+  character(len=pStringLen), dimension(:), allocatable :: fileContent                               !< file content, separated per lines
   character(len=pStringLen)                            :: line
   character(len=:),                        allocatable :: rawData
   integer ::  &
@@ -224,85 +225,85 @@ end function IO_open_binary
 !--------------------------------------------------------------------------------------------------
 subroutine IO_open_inputFile(fileUnit,modelName)
 
- integer,          intent(in) :: fileUnit                                                           !< file unit
- character(len=*), intent(in) :: modelName                                                          !< model name, in case of restart not solver job name
-
- integer                  :: myStat
- character(len=1024)      :: path
+  integer,          intent(in) :: fileUnit                                                          !< file unit
+  character(len=*), intent(in) :: modelName                                                         !< model name, in case of restart not solver job name
+ 
+  integer                  :: myStat
+  character(len=1024)      :: path
 #if defined(Abaqus)
- integer                  :: fileType
-
- fileType = 1                                                                                       ! assume .pes
- path = trim(modelName)//inputFileExtension(fileType)                                               ! attempt .pes, if it exists: it should be used
- open(fileUnit+1,status='old',iostat=myStat,file=path,action='read',position='rewind')
- if(myStat /= 0) then                                                                               ! if .pes does not work / exist; use conventional extension, i.e.".inp"
-    fileType = 2
-    path = trim(modelName)//inputFileExtension(fileType)
-    open(fileUnit+1,status='old',iostat=myStat,file=path,action='read',position='rewind')
- endif
- if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
-
- path = trim(modelName)//inputFileExtension(fileType)//'_assembly'
- open(fileUnit,iostat=myStat,file=path)
- if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
-    if (.not.abaqus_assembleInputFile(fileUnit,fileUnit+1)) call IO_error(103)                      ! strip comments and concatenate any "include"s
- close(fileUnit+1)
+  integer                  :: fileType
  
- contains
+  fileType = 1                                                                                      ! assume .pes
+  path = trim(modelName)//inputFileExtension(fileType)                                              ! attempt .pes, if it exists: it should be used
+  open(fileUnit+1,status='old',iostat=myStat,file=path,action='read',position='rewind')
+  if(myStat /= 0) then                                                                              ! if .pes does not work / exist; use conventional extension, i.e.".inp"
+     fileType = 2
+     path = trim(modelName)//inputFileExtension(fileType)
+     open(fileUnit+1,status='old',iostat=myStat,file=path,action='read',position='rewind')
+  endif
+  if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
  
-!--------------------------------------------------------------------------------------------------
-!> @brief create a new input file for abaqus simulations by removing all comment lines and
-!> including "include"s
-!--------------------------------------------------------------------------------------------------
-recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
-
- integer, intent(in)                :: unit1, &
-                                       unit2
-
-
- integer, allocatable, dimension(:) :: chunkPos
- character(len=65536)               :: line,fname
- logical                            :: createSuccess,fexist
-
-
- do
-   read(unit2,'(A65536)',END=220) line
-   chunkPos = IO_stringPos(line)
-
-   if (IO_lc(IO_StringValue(line,chunkPos,1))=='*include') then
-     fname = trim(line(9+scan(line(9:),'='):))
-     inquire(file=fname, exist=fexist)
-     if (.not.(fexist)) then
-       !$OMP CRITICAL (write2out)
-         write(6,*)'ERROR: file does not exist error in abaqus_assembleInputFile'
-         write(6,*)'filename: ', trim(fname)
-       !$OMP END CRITICAL (write2out)
-       createSuccess = .false.
-       return
-     endif
-     open(unit2+1,err=200,status='old',file=fname)
-     if (abaqus_assembleInputFile(unit1,unit2+1)) then
-       createSuccess=.true.
-       close(unit2+1)
-     else
-       createSuccess=.false.
-       return
-     endif
-   else if (line(1:2) /= '**' .OR. line(1:8)=='**damask') then
-     write(unit1,'(A)') trim(line)
-   endif
- enddo
-
+  path = trim(modelName)//inputFileExtension(fileType)//'_assembly'
+  open(fileUnit,iostat=myStat,file=path)
+  if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
+     if (.not.abaqus_assembleInputFile(fileUnit,fileUnit+1)) call IO_error(103)                     ! strip comments and concatenate any "include"s
+  close(fileUnit+1)
+  
+  contains
+  
+  !--------------------------------------------------------------------------------------------------
+  !> @brief create a new input file for abaqus simulations by removing all comment lines and
+  !> including "include"s
+  !--------------------------------------------------------------------------------------------------
+  recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
+  
+    integer, intent(in)                :: unit1, &
+                                          unit2
+   
+   
+    integer, allocatable, dimension(:) :: chunkPos
+    character(len=65536)               :: line,fname
+    logical                            :: createSuccess,fexist
+   
+   
+    do
+      read(unit2,'(A65536)',END=220) line
+      chunkPos = IO_stringPos(line)
+   
+      if (IO_lc(IO_StringValue(line,chunkPos,1))=='*include') then
+        fname = trim(line(9+scan(line(9:),'='):))
+        inquire(file=fname, exist=fexist)
+        if (.not.(fexist)) then
+          !$OMP CRITICAL (write2out)
+            write(6,*)'ERROR: file does not exist error in abaqus_assembleInputFile'
+            write(6,*)'filename: ', trim(fname)
+          !$OMP END CRITICAL (write2out)
+          createSuccess = .false.
+          return
+        endif
+        open(unit2+1,err=200,status='old',file=fname)
+        if (abaqus_assembleInputFile(unit1,unit2+1)) then
+          createSuccess=.true.
+          close(unit2+1)
+        else
+          createSuccess=.false.
+          return
+        endif
+      else if (line(1:2) /= '**' .OR. line(1:8)=='**damask') then
+        write(unit1,'(A)') trim(line)
+      endif
+    enddo
+  
 220 createSuccess = .true.
- return
-
+    return
+  
 200 createSuccess =.false.
-
-end function abaqus_assembleInputFile
+  
+  end function abaqus_assembleInputFile
 #elif defined(Marc4DAMASK)
-   path = trim(modelName)//inputFileExtension
-   open(fileUnit,status='old',iostat=myStat,file=path)
-   if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
+  path = trim(modelName)//inputFileExtension
+  open(fileUnit,status='old',iostat=myStat,file=path)
+  if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
 #endif
 
 end subroutine IO_open_inputFile
@@ -314,14 +315,14 @@ end subroutine IO_open_inputFile
 !--------------------------------------------------------------------------------------------------
 subroutine IO_open_logFile(fileUnit)
 
- integer,      intent(in) :: fileUnit                                                                 !< file unit
+  integer,      intent(in) :: fileUnit                                                              !< file unit
 
- integer                  :: myStat
- character(len=1024)      :: path
+  integer                  :: myStat
+  character(len=1024)      :: path
 
- path = trim(getSolverJobName())//LogFileExtension
- open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
- if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
+  path = trim(getSolverJobName())//LogFileExtension
+  open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
+  if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
 
 end subroutine IO_open_logFile
 #endif
@@ -333,15 +334,15 @@ end subroutine IO_open_logFile
 !--------------------------------------------------------------------------------------------------
 subroutine IO_write_jobFile(fileUnit,ext)
 
- integer,          intent(in) :: fileUnit                                                           !< file unit
- character(len=*), intent(in) :: ext                                                                !< extension of file
+  integer,          intent(in) :: fileUnit                                                          !< file unit
+  character(len=*), intent(in) :: ext                                                               !< extension of file
 
- integer                      :: myStat
- character(len=1024)          :: path
+  integer                      :: myStat
+  character(len=1024)          :: path
 
- path = trim(getSolverJobName())//'.'//ext
- open(fileUnit,status='replace',iostat=myStat,file=path)
- if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
+  path = trim(getSolverJobName())//'.'//ext
+  open(fileUnit,status='replace',iostat=myStat,file=path)
+  if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
 
 end subroutine IO_write_jobFile
 
@@ -351,16 +352,16 @@ end subroutine IO_write_jobFile
 !--------------------------------------------------------------------------------------------------
 logical pure function IO_isBlank(string)
 
- character(len=*), intent(in) :: string                                                             !< string to check for content
+  character(len=*), intent(in) :: string                                                            !< string to check for content
 
- character(len=*),  parameter :: blankChar = achar(32)//achar(9)//achar(10)//achar(13)              ! whitespaces
- character(len=*),  parameter :: comment = achar(35)                                                ! comment id '#'
+  character(len=*),  parameter :: blankChar = achar(32)//achar(9)//achar(10)//achar(13)             ! whitespaces
+  character(len=*),  parameter :: comment = achar(35)                                               ! comment id '#'
 
- integer :: posNonBlank, posComment
+  integer :: posNonBlank, posComment
 
- posNonBlank = verify(string,blankChar)
- posComment  = scan(string,comment)
- IO_isBlank = posNonBlank == 0 .or. posNonBlank == posComment
+  posNonBlank = verify(string,blankChar)
+  posComment  = scan(string,comment)
+  IO_isBlank = posNonBlank == 0 .or. posNonBlank == posComment
 
 end function IO_isBlank
 
@@ -370,28 +371,28 @@ end function IO_isBlank
 !--------------------------------------------------------------------------------------------------
 pure function IO_getTag(string,openChar,closeChar)
 
- character(len=*), intent(in)  :: string                                                            !< string to check for tag
- character(len=len_trim(string)) :: IO_getTag
-
- character, intent(in)  :: openChar, &                                                              !< indicates beginning of tag
-                           closeChar                                                                !< indicates end of tag
-
- character(len=*), parameter   :: SEP=achar(32)//achar(9)//achar(10)//achar(13)                     ! whitespaces
- integer :: left,right
-
- IO_getTag = ''
-
-
- if (openChar /= closeChar) then
-   left  = scan(string,openChar)
-   right = scan(string,closeChar)
- else
-   left  = scan(string,openChar)
-   right = left + merge(scan(string(left+1:),openChar),0,len(string) > left)
- endif
-
- if (left == verify(string,SEP) .and. right > left) &                                               ! openChar is first and closeChar occurs
-   IO_getTag = string(left+1:right-1)
+  character(len=*), intent(in)  :: string                                                           !< string to check for tag
+  character(len=len_trim(string)) :: IO_getTag
+ 
+  character, intent(in)  :: openChar, &                                                             !< indicates beginning of tag
+                            closeChar                                                               !< indicates end of tag
+ 
+  character(len=*), parameter   :: SEP=achar(32)//achar(9)//achar(10)//achar(13)                    ! whitespaces
+  integer :: left,right
+ 
+  IO_getTag = ''
+ 
+ 
+  if (openChar /= closeChar) then
+    left  = scan(string,openChar)
+    right = scan(string,closeChar)
+  else
+    left  = scan(string,openChar)
+    right = left + merge(scan(string(left+1:),openChar),0,len(string) > left)
+  endif
+ 
+  if (left == verify(string,SEP) .and. right > left) &                                              ! openChar is first and closeChar occurs
+    IO_getTag = string(left+1:right-1)
 
 end function IO_getTag
 
@@ -433,28 +434,28 @@ end function IO_stringPos
 !--------------------------------------------------------------------------------------------------
 function IO_stringValue(string,chunkPos,myChunk,silent)
 
- integer,   dimension(:),                intent(in) :: chunkPos                                     !< positions of start and end of each tag/chunk in given string
- integer,                                intent(in) :: myChunk                                      !< position number of desired chunk
- character(len=*),                       intent(in) :: string                                       !< raw input with known start and end of each chunk
- character(len=:), allocatable                      :: IO_stringValue
+  integer,   dimension(:),                intent(in) :: chunkPos                                    !< positions of start and end of each tag/chunk in given string
+  integer,                                intent(in) :: myChunk                                     !< position number of desired chunk
+  character(len=*),                       intent(in) :: string                                      !< raw input with known start and end of each chunk
+  character(len=:), allocatable                      :: IO_stringValue
 
- logical,                       optional,intent(in) :: silent                                       !< switch to trigger verbosity
- character(len=16), parameter                       :: MYNAME = 'IO_stringValue: '
+  logical,                       optional,intent(in) :: silent                                      !< switch to trigger verbosity
+  character(len=16), parameter                       :: MYNAME = 'IO_stringValue: '
 
- logical                                            :: warn
+  logical                                            :: warn
 
- if (present(silent)) then
-   warn = silent
- else
-   warn = .false.
- endif
+  if (present(silent)) then
+    warn = silent
+  else
+    warn = .false.
+  endif
 
- IO_stringValue = ''
- valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1) then
-   if (warn) call IO_warning(201,el=myChunk,ext_msg=MYNAME//trim(string))
- else valuePresent
-   IO_stringValue = string(chunkPos(myChunk*2):chunkPos(myChunk*2+1))
- endif valuePresent
+  IO_stringValue = ''
+  valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1) then
+    if (warn) call IO_warning(201,el=myChunk,ext_msg=MYNAME//trim(string))
+  else valuePresent
+    IO_stringValue = string(chunkPos(myChunk*2):chunkPos(myChunk*2+1))
+  endif valuePresent
 
 end function IO_stringValue
 
@@ -464,21 +465,21 @@ end function IO_stringValue
 !--------------------------------------------------------------------------------------------------
 real(pReal) function IO_floatValue (string,chunkPos,myChunk)
 
- integer,   dimension(:),        intent(in) :: chunkPos                                             !< positions of start and end of each tag/chunk in given string
- integer,                        intent(in) :: myChunk                                              !< position number of desired chunk
- character(len=*),               intent(in) :: string                                               !< raw input with known start and end of each chunk
- character(len=15),              parameter  :: MYNAME = 'IO_floatValue: '
- character(len=17),              parameter  :: VALIDCHARACTERS = '0123456789eEdD.+-'
+  integer,   dimension(:),        intent(in) :: chunkPos                                            !< positions of start and end of each tag/chunk in given string
+  integer,                        intent(in) :: myChunk                                             !< position number of desired chunk
+  character(len=*),               intent(in) :: string                                              !< raw input with known start and end of each chunk
+  character(len=15),              parameter  :: MYNAME = 'IO_floatValue: '
+  character(len=17),              parameter  :: VALIDCHARACTERS = '0123456789eEdD.+-'
 
- IO_floatValue = 0.0_pReal
+  IO_floatValue = 0.0_pReal
 
- valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1) then
-   call IO_warning(201,el=myChunk,ext_msg=MYNAME//trim(string))
- else  valuePresent
-   IO_floatValue = &
-               IO_verifyFloatValue(trim(adjustl(string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)))),&
-                                       VALIDCHARACTERS,MYNAME)
- endif  valuePresent
+  valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1) then
+    call IO_warning(201,el=myChunk,ext_msg=MYNAME//trim(string))
+  else  valuePresent
+    IO_floatValue = &
+                IO_verifyFloatValue(trim(adjustl(string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)))),&
+                                        VALIDCHARACTERS,MYNAME)
+  endif  valuePresent
 
 end function IO_floatValue
 
@@ -488,20 +489,20 @@ end function IO_floatValue
 !--------------------------------------------------------------------------------------------------
 integer function IO_intValue(string,chunkPos,myChunk)
 
- character(len=*),      intent(in) :: string                                                        !< raw input with known start and end of each chunk
- integer,               intent(in) :: myChunk                                                       !< position number of desired chunk
- integer, dimension(:), intent(in) :: chunkPos                                                      !< positions of start and end of each tag/chunk in given string
- character(len=13),     parameter  :: MYNAME = 'IO_intValue: '
- character(len=12),     parameter  :: VALIDCHARACTERS = '0123456789+-'
+  character(len=*),      intent(in) :: string                                                       !< raw input with known start and end of each chunk
+  integer,               intent(in) :: myChunk                                                      !< position number of desired chunk
+  integer, dimension(:), intent(in) :: chunkPos                                                     !< positions of start and end of each tag/chunk in given string
+  character(len=13),     parameter  :: MYNAME = 'IO_intValue: '
+  character(len=12),     parameter  :: VALIDCHARACTERS = '0123456789+-'
 
- IO_intValue = 0
+  IO_intValue = 0
 
- valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1) then
-   call IO_warning(201,el=myChunk,ext_msg=MYNAME//trim(string))
- else valuePresent
-   IO_intValue = IO_verifyIntValue(trim(adjustl(string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)))),&
-                                   VALIDCHARACTERS,MYNAME)
- endif valuePresent
+  valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1) then
+    call IO_warning(201,el=myChunk,ext_msg=MYNAME//trim(string))
+  else valuePresent
+    IO_intValue = IO_verifyIntValue(trim(adjustl(string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)))),&
+                                    VALIDCHARACTERS,MYNAME)
+  endif valuePresent
 
 end function IO_intValue
 
@@ -512,29 +513,29 @@ end function IO_intValue
 !--------------------------------------------------------------------------------------------------
 real(pReal) function IO_fixedNoEFloatValue (string,ends,myChunk)
 
- character(len=*),      intent(in) :: string                                                        !< raw input with known ends of each chunk
- integer,               intent(in) :: myChunk                                                       !< position number of desired chunk
- integer, dimension(:), intent(in) :: ends                                                          !< positions of end of each tag/chunk in given string
- character(len=22),     parameter  :: MYNAME = 'IO_fixedNoEFloatValue '
- character(len=13),     parameter  :: VALIDBASE = '0123456789.+-'
- character(len=12),     parameter  :: VALIDEXP  = '0123456789+-'
-
- real(pReal)   :: base
- integer :: expon
- integer       :: pos_exp
-
- pos_exp = scan(string(ends(myChunk)+1:ends(myChunk+1)),'+-',back=.true.)
- hasExponent: if (pos_exp > 1) then
-   base  = IO_verifyFloatValue(trim(adjustl(string(ends(myChunk)+1:ends(myChunk)+pos_exp-1))),&
-                               VALIDBASE,MYNAME//'(base): ')
-   expon = IO_verifyIntValue(trim(adjustl(string(ends(myChunk)+pos_exp:ends(myChunk+1)))),&
-                               VALIDEXP,MYNAME//'(exp): ')
- else hasExponent
-   base  = IO_verifyFloatValue(trim(adjustl(string(ends(myChunk)+1:ends(myChunk+1)))),&
-                               VALIDBASE,MYNAME//'(base): ')
-   expon = 0
- endif hasExponent
- IO_fixedNoEFloatValue = base*10.0_pReal**real(expon,pReal)
+  character(len=*),      intent(in) :: string                                                       !< raw input with known ends of each chunk
+  integer,               intent(in) :: myChunk                                                      !< position number of desired chunk
+  integer, dimension(:), intent(in) :: ends                                                         !< positions of end of each tag/chunk in given string
+  character(len=22),     parameter  :: MYNAME = 'IO_fixedNoEFloatValue '
+  character(len=13),     parameter  :: VALIDBASE = '0123456789.+-'
+  character(len=12),     parameter  :: VALIDEXP  = '0123456789+-'
+ 
+  real(pReal)   :: base
+  integer :: expon
+  integer       :: pos_exp
+ 
+  pos_exp = scan(string(ends(myChunk)+1:ends(myChunk+1)),'+-',back=.true.)
+  hasExponent: if (pos_exp > 1) then
+    base  = IO_verifyFloatValue(trim(adjustl(string(ends(myChunk)+1:ends(myChunk)+pos_exp-1))),&
+                                VALIDBASE,MYNAME//'(base): ')
+    expon = IO_verifyIntValue(trim(adjustl(string(ends(myChunk)+pos_exp:ends(myChunk+1)))),&
+                                VALIDEXP,MYNAME//'(exp): ')
+  else hasExponent
+    base  = IO_verifyFloatValue(trim(adjustl(string(ends(myChunk)+1:ends(myChunk+1)))),&
+                                VALIDBASE,MYNAME//'(base): ')
+    expon = 0
+  endif hasExponent
+  IO_fixedNoEFloatValue = base*10.0_pReal**real(expon,pReal)
 
 end function IO_fixedNoEFloatValue
 
@@ -544,14 +545,14 @@ end function IO_fixedNoEFloatValue
 !--------------------------------------------------------------------------------------------------
 integer function IO_fixedIntValue(string,ends,myChunk)
 
- character(len=*),      intent(in) :: string                                                        !< raw input with known ends of each chunk
- integer,               intent(in) :: myChunk                                                       !< position number of desired chunk
- integer, dimension(:), intent(in) :: ends                                                          !< positions of end of each tag/chunk in given string
- character(len=20),     parameter  :: MYNAME = 'IO_fixedIntValue: '
- character(len=12),     parameter  :: VALIDCHARACTERS = '0123456789+-'
-
- IO_fixedIntValue = IO_verifyIntValue(trim(adjustl(string(ends(myChunk)+1:ends(myChunk+1)))),&
-                                      VALIDCHARACTERS,MYNAME)
+  character(len=*),      intent(in) :: string                                                       !< raw input with known ends of each chunk
+  integer,               intent(in) :: myChunk                                                      !< position number of desired chunk
+  integer, dimension(:), intent(in) :: ends                                                         !< positions of end of each tag/chunk in given string
+  character(len=20),     parameter  :: MYNAME = 'IO_fixedIntValue: '
+  character(len=12),     parameter  :: VALIDCHARACTERS = '0123456789+-'
+ 
+  IO_fixedIntValue = IO_verifyIntValue(trim(adjustl(string(ends(myChunk)+1:ends(myChunk+1)))),&
+                                       VALIDCHARACTERS,MYNAME)
 
 end function IO_fixedIntValue
 #endif
@@ -562,19 +563,19 @@ end function IO_fixedIntValue
 !--------------------------------------------------------------------------------------------------
 pure function IO_lc(string)
 
- character(len=*), intent(in) :: string                                                             !< string to convert
- character(len=len(string))   :: IO_lc
+  character(len=*), intent(in) :: string                                                            !< string to convert
+  character(len=len(string))   :: IO_lc
 
- character(26), parameter :: LOWER = 'abcdefghijklmnopqrstuvwxyz'
- character(26), parameter :: UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  character(26), parameter :: LOWER = 'abcdefghijklmnopqrstuvwxyz'
+  character(26), parameter :: UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
- integer                      :: i,n
+  integer                      :: i,n
 
- IO_lc = string
- do i=1,len(string)
-   n = index(UPPER,IO_lc(i:i))
-   if (n/=0) IO_lc(i:i) = LOWER(n:n)
- enddo
+  IO_lc = string
+  do i=1,len(string)
+    n = index(UPPER,IO_lc(i:i))
+    if (n/=0) IO_lc(i:i) = LOWER(n:n)
+  enddo
 
 end function IO_lc
 
@@ -604,262 +605,264 @@ end function IO_intOut
 !--------------------------------------------------------------------------------------------------
 subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 
- integer,                    intent(in) :: error_ID
- integer,          optional, intent(in) :: el,ip,g,instance
- character(len=*), optional, intent(in) :: ext_msg
+  integer,                    intent(in) :: error_ID
+  integer,          optional, intent(in) :: el,ip,g,instance
+  character(len=*), optional, intent(in) :: ext_msg
 
- external                               :: quit
- character(len=1024)                    :: msg
- character(len=1024)                    :: formatString
+  external                               :: quit
+  character(len=1024)                    :: msg
+  character(len=1024)                    :: formatString
 
- select case (error_ID)
+  select case (error_ID)
 
 !--------------------------------------------------------------------------------------------------
 ! internal errors
- case (0)
-   msg = 'internal check failed:'
+    case (0)
+      msg = 'internal check failed:'
 
 !--------------------------------------------------------------------------------------------------
 ! file handling errors
- case (100)
-   msg = 'could not open file:'
- case (101)
-   msg = 'write error for file:'
- case (102)
-   msg = 'could not read file:'
- case (103)
-   msg = 'could not assemble input files'
- case (104)
-   msg = '{input} recursion limit reached'
- case (105)
-   msg = 'unknown output:'
- case (106)
-   msg = 'working directory does not exist:'
- case (107)
-   msg = 'line length exceeds limit of 256'
+    case (100)
+      msg = 'could not open file:'
+    case (101)
+      msg = 'write error for file:'
+    case (102)
+      msg = 'could not read file:'
+    case (103)
+      msg = 'could not assemble input files'
+    case (104)
+      msg = '{input} recursion limit reached'
+    case (105)
+      msg = 'unknown output:'
+    case (106)
+      msg = 'working directory does not exist:'
+    case (107)
+      msg = 'line length exceeds limit of 256'
 
 !--------------------------------------------------------------------------------------------------
 ! lattice error messages
- case (130)
-   msg = 'unknown lattice structure encountered'
- case (131)
-   msg = 'hex lattice structure with invalid c/a ratio'
- case (132)
-   msg = 'trans_lattice_structure not possible'
- case (133)
-   msg = 'transformed hex lattice structure with invalid c/a ratio'
- case (135)
-   msg = 'zero entry on stiffness diagonal'
- case (136)
-   msg = 'zero entry on stiffness diagonal for transformed phase'
- case (137)
-   msg = 'not defined for lattice structure'
- case (138)
-   msg = 'not enough interaction parameters given'
+    case (130)
+      msg = 'unknown lattice structure encountered'
+    case (131)
+      msg = 'hex lattice structure with invalid c/a ratio'
+    case (132)
+      msg = 'trans_lattice_structure not possible'
+    case (133)
+      msg = 'transformed hex lattice structure with invalid c/a ratio'
+    case (135)
+      msg = 'zero entry on stiffness diagonal'
+    case (136)
+      msg = 'zero entry on stiffness diagonal for transformed phase'
+    case (137)
+      msg = 'not defined for lattice structure'
+    case (138)
+      msg = 'not enough interaction parameters given'
 
 !--------------------------------------------------------------------------------------------------
 ! errors related to the parsing of material.config
- case (140)
-   msg = 'key not found'
- case (141)
-   msg = 'number of chunks in string differs'
- case (142)
-   msg = 'empty list'
- case (143)
-   msg = 'no value found for key'
- case (144)
-   msg = 'negative number systems requested'
- case (145)
-   msg = 'too many systems requested'
- case (146)
-   msg = 'number of values does not match'
- case (147)
-   msg = 'not supported anymore'
+    case (140)
+      msg = 'key not found'
+    case (141)
+      msg = 'number of chunks in string differs'
+    case (142)
+      msg = 'empty list'
+    case (143)
+      msg = 'no value found for key'
+    case (144)
+      msg = 'negative number systems requested'
+    case (145)
+      msg = 'too many systems requested'
+    case (146)
+      msg = 'number of values does not match'
+    case (147)
+      msg = 'not supported anymore'
 
 !--------------------------------------------------------------------------------------------------
 ! material error messages and related messages in mesh
- case (150)
-   msg = 'index out of bounds'
- case (151)
-   msg = 'microstructure has no constituents'
- case (153)
-   msg = 'sum of phase fractions differs from 1'
- case (154)
-   msg = 'homogenization index out of bounds'
- case (155)
-   msg = 'microstructure index out of bounds'
- case (156)
-   msg = 'reading from ODF file'
- case (157)
-   msg = 'illegal texture transformation specified'
- case (160)
-   msg = 'no entries in config part'
- case (161)
-   msg = 'config part found twice'
- case (165)
-   msg = 'homogenization configuration'
- case (170)
-   msg = 'no homogenization specified via State Variable 2'
- case (180)
-   msg = 'no microstructure specified via State Variable 3'
- case (190)
-   msg = 'unknown element type:'
- case (191)
-   msg = 'mesh consists of more than one element type'
+    case (150)
+      msg = 'index out of bounds'
+    case (151)
+      msg = 'microstructure has no constituents'
+    case (153)
+      msg = 'sum of phase fractions differs from 1'
+    case (154)
+      msg = 'homogenization index out of bounds'
+    case (155)
+      msg = 'microstructure index out of bounds'
+    case (156)
+      msg = 'reading from ODF file'
+    case (157)
+      msg = 'illegal texture transformation specified'
+    case (160)
+      msg = 'no entries in config part'
+    case (161)
+      msg = 'config part found twice'
+    case (165)
+      msg = 'homogenization configuration'
+    case (170)
+      msg = 'no homogenization specified via State Variable 2'
+    case (180)
+      msg = 'no microstructure specified via State Variable 3'
+    case (190)
+      msg = 'unknown element type:'
+    case (191)
+      msg = 'mesh consists of more than one element type'
 
 !--------------------------------------------------------------------------------------------------
 ! plasticity error messages
- case (200)
-   msg = 'unknown elasticity specified:'
- case (201)
-   msg = 'unknown plasticity specified:'
+    case (200)
+      msg = 'unknown elasticity specified:'
+    case (201)
+      msg = 'unknown plasticity specified:'
 
- case (210)
-   msg = 'unknown material parameter:'
- case (211)
-   msg = 'material parameter out of bounds:'
+    case (210)
+      msg = 'unknown material parameter:'
+    case (211)
+      msg = 'material parameter out of bounds:'
 
 !--------------------------------------------------------------------------------------------------
 ! numerics error messages
- case (300)
-   msg = 'unknown numerics parameter:'
- case (301)
-   msg = 'numerics parameter out of bounds:'
+    case (300)
+      msg = 'unknown numerics parameter:'
+    case (301)
+      msg = 'numerics parameter out of bounds:'
 
 !--------------------------------------------------------------------------------------------------
 ! math errors
- case (400)
-   msg = 'matrix inversion error'
- case (401)
-   msg = 'math_check failed'
- case (405)
-   msg = 'I_TO_HALTON-error: an input base BASE is <= 1'
- case (406)
-   msg = 'Prime-error: N must be between 0 and PRIME_MAX'
- case (407)
-   msg = 'Polar decomposition error'
- case (409)
-   msg = 'math_check: R*v == q*v failed'
- case (410)
-   msg = 'eigenvalues computation error'
+    case (400)
+      msg = 'matrix inversion error'
+    case (401)
+      msg = 'math_check failed'
+    case (405)
+      msg = 'I_TO_HALTON-error: an input base BASE is <= 1'
+    case (406)
+      msg = 'Prime-error: N must be between 0 and PRIME_MAX'
+    case (407)
+      msg = 'Polar decomposition error'
+    case (409)
+      msg = 'math_check: R*v == q*v failed'
+    case (410)
+      msg = 'eigenvalues computation error'
 
 !-------------------------------------------------------------------------------------------------
 ! homogenization errors
- case (500)
-   msg = 'unknown homogenization specified'
+    case (500)
+      msg = 'unknown homogenization specified'
 
 !--------------------------------------------------------------------------------------------------
 ! user errors
- case (600)
-   msg = 'Ping-Pong not possible when using non-DAMASK elements'
- case (601)
-   msg = 'Ping-Pong needed when using non-local plasticity'
- case (602)
-   msg = 'invalid selection for debug'
+    case (600)
+      msg = 'Ping-Pong not possible when using non-DAMASK elements'
+    case (601)
+      msg = 'Ping-Pong needed when using non-local plasticity'
+    case (602)
+      msg = 'invalid selection for debug'
 
 !-------------------------------------------------------------------------------------------------
 ! DAMASK_marc errors
- case (700)
-   msg = 'invalid materialpoint result requested'
+    case (700)
+      msg = 'invalid materialpoint result requested'
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the grid solver
- case (809)
-   msg = 'initializing FFTW'
- case (810)
-   msg = 'FFTW plan creation'
- case (831)
-   msg = 'mask consistency violated in spectral loadcase'
- case (832)
-   msg = 'ill-defined L (line partly defined) in spectral loadcase'
- case (834)
-   msg = 'negative time increment in spectral loadcase'
- case (835)
-   msg = 'non-positive increments in spectral loadcase'
- case (836)
-   msg = 'non-positive result frequency in spectral loadcase'
- case (837)
-   msg = 'incomplete loadcase'
- case (838)
-   msg = 'mixed boundary conditions allow rotation'
- case (841)
-   msg = 'missing header length info in spectral mesh'
- case (842)
-   msg = 'incomplete information in spectral mesh header'
- case (843)
-   msg = 'microstructure count mismatch'
- case (846)
-   msg = 'rotation for load case rotation ill-defined (R:RT != I)'
- case (880)
-   msg = 'mismatch of microstructure count and a*b*c in geom file'
- case (891)
-   msg = 'unknown solver type selected'
- case (892)
-   msg = 'unknown filter type selected'
- case (893)
-   msg = 'PETSc: SNES_DIVERGED_FNORM_NAN'
- case (894)
-   msg = 'MPI error'
+    case (809)
+      msg = 'initializing FFTW'
+    case (810)
+      msg = 'FFTW plan creation'
+    case (831)
+      msg = 'mask consistency violated in grid load case'
+    case (832)
+      msg = 'ill-defined L (line partly defined) in grid load case'
+    case (834)
+      msg = 'negative time increment in grid load case'
+    case (835)
+      msg = 'non-positive increments in grid load case'
+    case (836)
+      msg = 'non-positive result frequency in grid load case'
+    case (837)
+      msg = 'incomplete loadcase'
+    case (838)
+      msg = 'mixed boundary conditions allow rotation'
+    case (839)
+      msg = 'non-positive restart frequency in grid load case'
+    case (841)
+      msg = 'missing header length info in grid mesh'
+    case (842)
+      msg = 'incomplete information in grid mesh header'
+    case (843)
+      msg = 'microstructure count mismatch'
+    case (846)
+      msg = 'rotation for load case rotation ill-defined (R:RT != I)'
+    case (880)
+      msg = 'mismatch of microstructure count and a*b*c in geom file'
+    case (891)
+      msg = 'unknown solver type selected'
+    case (892)
+      msg = 'unknown filter type selected'
+    case (893)
+      msg = 'PETSc: SNES_DIVERGED_FNORM_NAN'
+    case (894)
+      msg = 'MPI error'
 
 !-------------------------------------------------------------------------------------------------
 ! error messages related to parsing of Abaqus input file
- case (900)
-   msg = 'improper definition of nodes in input file (Nnodes < 2)'
- case (901)
-   msg = 'no elements defined in input file (Nelems = 0)'
- case (902)
-   msg = 'no element sets defined in input file (No *Elset exists)'
- case (903)
-   msg = 'no materials defined in input file (Look into section assigments)'
- case (904)
-   msg = 'no elements could be assigned for Elset: '
- case (905)
-   msg = 'error in mesh_abaqus_map_materials'
- case (906)
-   msg = 'error in mesh_abaqus_count_cpElements'
- case (907)
-   msg = 'size of mesh_mapFEtoCPelem in mesh_abaqus_map_elements'
- case (908)
-   msg = 'size of mesh_mapFEtoCPnode in mesh_abaqus_map_nodes'
- case (909)
-   msg = 'size of mesh_node in mesh_abaqus_build_nodes not equal to mesh_Nnodes'
+    case (900)
+      msg = 'improper definition of nodes in input file (Nnodes < 2)'
+    case (901)
+      msg = 'no elements defined in input file (Nelems = 0)'
+    case (902)
+      msg = 'no element sets defined in input file (No *Elset exists)'
+    case (903)
+      msg = 'no materials defined in input file (Look into section assigments)'
+    case (904)
+      msg = 'no elements could be assigned for Elset: '
+    case (905)
+      msg = 'error in mesh_abaqus_map_materials'
+    case (906)
+      msg = 'error in mesh_abaqus_count_cpElements'
+    case (907)
+      msg = 'size of mesh_mapFEtoCPelem in mesh_abaqus_map_elements'
+    case (908)
+      msg = 'size of mesh_mapFEtoCPnode in mesh_abaqus_map_nodes'
+    case (909)
+      msg = 'size of mesh_node in mesh_abaqus_build_nodes not equal to mesh_Nnodes'
 
 
 !-------------------------------------------------------------------------------------------------
 ! general error messages
- case (666)
-   msg = 'memory leak detected'
- case default
-   msg = 'unknown error number...'
+    case (666)
+      msg = 'memory leak detected'
+    case default
+      msg = 'unknown error number...'
 
- end select
-
- !$OMP CRITICAL (write2out)
- write(0,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
- write(0,'(a,24x,a,40x,a)')      ' │','error',                                             '│'
- write(0,'(a,24x,i3,42x,a)')     ' │',error_ID,                                            '│'
- write(0,'(a)')                  ' ├'//IO_DIVIDER//'┤'
- write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len(trim(msg))),',',&
-                                                    max(1,72-len(trim(msg))-4),'x,a)'
- write(0,formatString)            '│ ',trim(msg),                                          '│'
- if (present(ext_msg)) then
-   write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len(trim(ext_msg))),',',&
-                                                      max(1,72-len(trim(ext_msg))-4),'x,a)'
-   write(0,formatString)          '│ ',trim(ext_msg),                                      '│'
- endif
- if (present(el)) &
-   write(0,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
- if (present(ip)) &
-   write(0,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
- if (present(g)) &
-   write(0,'(a19,1x,i9,44x,a3)') ' │ at constituent',g,                                    '│'
- if (present(instance)) &
-   write(0,'(a19,1x,i9,44x,a3)') ' │ at instance   ',instance,                             '│'
- write(0,'(a,69x,a)')            ' │',                                                     '│'
- write(0,'(a)')                  ' └'//IO_DIVIDER//'┘'
- flush(0)
- call quit(9000+error_ID)
- !$OMP END CRITICAL (write2out)
+  end select
+ 
+  !$OMP CRITICAL (write2out)
+  write(0,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
+  write(0,'(a,24x,a,40x,a)')      ' │','error',                                             '│'
+  write(0,'(a,24x,i3,42x,a)')     ' │',error_ID,                                            '│'
+  write(0,'(a)')                  ' ├'//IO_DIVIDER//'┤'
+  write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len(trim(msg))),',',&
+                                                     max(1,72-len(trim(msg))-4),'x,a)'
+  write(0,formatString)            '│ ',trim(msg),                                          '│'
+  if (present(ext_msg)) then
+    write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len(trim(ext_msg))),',',&
+                                                       max(1,72-len(trim(ext_msg))-4),'x,a)'
+    write(0,formatString)          '│ ',trim(ext_msg),                                      '│'
+  endif
+  if (present(el)) &
+    write(0,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
+  if (present(ip)) &
+    write(0,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
+  if (present(g)) &
+    write(0,'(a19,1x,i9,44x,a3)') ' │ at constituent',g,                                    '│'
+  if (present(instance)) &
+    write(0,'(a19,1x,i9,44x,a3)') ' │ at instance   ',instance,                             '│'
+  write(0,'(a,69x,a)')            ' │',                                                     '│'
+  write(0,'(a)')                  ' └'//IO_DIVIDER//'┘'
+  flush(0)
+  call quit(9000+error_ID)
+  !$OMP END CRITICAL (write2out)
 
 end subroutine IO_error
 
@@ -869,83 +872,83 @@ end subroutine IO_error
 !--------------------------------------------------------------------------------------------------
 subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
 
- integer,                    intent(in) :: warning_ID
- integer,          optional, intent(in) :: el,ip,g
- character(len=*), optional, intent(in) :: ext_msg
-
- character(len=1024)                    :: msg
- character(len=1024)                    :: formatString
-
- select case (warning_ID)
- case (1)
-   msg = 'unknown key'
- case (34)
-   msg = 'invalid restart increment given'
- case (35)
-   msg = 'could not get $DAMASK_NUM_THREADS'
- case (40)
-   msg = 'found spectral solver parameter'
- case (42)
-   msg = 'parameter has no effect'
- case (43)
-   msg = 'main diagonal of C66 close to zero'
- case (47)
-   msg = 'no valid parameter for FFTW, using FFTW_PATIENT'
- case (50)
-   msg = 'not all available slip system families are defined'
- case (51)
-   msg = 'not all available twin system families are defined'
- case (52)
-   msg = 'not all available parameters are defined'
- case (53)
-   msg = 'not all available transformation system families are defined'
- case (101)
-   msg = 'crystallite debugging off'
- case (201)
-   msg = 'position not found when parsing line'
- case (202)
-   msg = 'invalid character in string chunk'
- case (203)
-   msg = 'interpretation of string chunk failed'
- case (207)
-   msg = 'line truncated'
- case (600)
-   msg = 'crystallite responds elastically'
- case (601)
-   msg = 'stiffness close to zero'
- case (650)
-   msg = 'polar decomposition failed'
- case (700)
-   msg = 'unknown crystal symmetry'
- case (850)
-   msg = 'max number of cut back exceeded, terminating'
- case default
-   msg = 'unknown warning number'
- end select
-
- !$OMP CRITICAL (write2out)
- write(6,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
- write(6,'(a,24x,a,38x,a)')      ' │','warning',                                           '│'
- write(6,'(a,24x,i3,42x,a)')     ' │',warning_ID,                                          '│'
- write(6,'(a)')                  ' ├'//IO_DIVIDER//'┤'
- write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len(trim(msg))),',',&
-                                                    max(1,72-len(trim(msg))-4),'x,a)'
- write(6,formatString)            '│ ',trim(msg),                                          '│'
- if (present(ext_msg)) then
-   write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len(trim(ext_msg))),',',&
-                                                      max(1,72-len(trim(ext_msg))-4),'x,a)'
-   write(6,formatString)          '│ ',trim(ext_msg),                                      '│'
- endif
- if (present(el)) &
-   write(6,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
- if (present(ip)) &
-   write(6,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
- if (present(g)) &
-   write(6,'(a19,1x,i9,44x,a3)') ' │ at constituent',g,                                    '│'
- write(6,'(a,69x,a)')            ' │',                                                     '│'
- write(6,'(a)')                  ' └'//IO_DIVIDER//'┘'
- flush(6)
- !$OMP END CRITICAL (write2out)
+  integer,                    intent(in) :: warning_ID
+  integer,          optional, intent(in) :: el,ip,g
+  character(len=*), optional, intent(in) :: ext_msg
+ 
+  character(len=1024)                    :: msg
+  character(len=1024)                    :: formatString
+ 
+  select case (warning_ID)
+    case (1)
+      msg = 'unknown key'
+    case (34)
+      msg = 'invalid restart increment given'
+    case (35)
+      msg = 'could not get $DAMASK_NUM_THREADS'
+    case (40)
+      msg = 'found spectral solver parameter'
+    case (42)
+      msg = 'parameter has no effect'
+    case (43)
+      msg = 'main diagonal of C66 close to zero'
+    case (47)
+      msg = 'no valid parameter for FFTW, using FFTW_PATIENT'
+    case (50)
+      msg = 'not all available slip system families are defined'
+    case (51)
+      msg = 'not all available twin system families are defined'
+    case (52)
+      msg = 'not all available parameters are defined'
+    case (53)
+      msg = 'not all available transformation system families are defined'
+    case (101)
+      msg = 'crystallite debugging off'
+    case (201)
+      msg = 'position not found when parsing line'
+    case (202)
+      msg = 'invalid character in string chunk'
+    case (203)
+      msg = 'interpretation of string chunk failed'
+    case (207)
+      msg = 'line truncated'
+    case (600)
+      msg = 'crystallite responds elastically'
+    case (601)
+      msg = 'stiffness close to zero'
+    case (650)
+      msg = 'polar decomposition failed'
+    case (700)
+      msg = 'unknown crystal symmetry'
+    case (850)
+      msg = 'max number of cut back exceeded, terminating'
+    case default
+      msg = 'unknown warning number'
+    end select
+ 
+  !$OMP CRITICAL (write2out)
+  write(6,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
+  write(6,'(a,24x,a,38x,a)')      ' │','warning',                                           '│'
+  write(6,'(a,24x,i3,42x,a)')     ' │',warning_ID,                                          '│'
+  write(6,'(a)')                  ' ├'//IO_DIVIDER//'┤'
+  write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len(trim(msg))),',',&
+                                                     max(1,72-len(trim(msg))-4),'x,a)'
+  write(6,formatString)            '│ ',trim(msg),                                          '│'
+  if (present(ext_msg)) then
+    write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len(trim(ext_msg))),',',&
+                                                       max(1,72-len(trim(ext_msg))-4),'x,a)'
+    write(6,formatString)          '│ ',trim(ext_msg),                                      '│'
+  endif
+  if (present(el)) &
+    write(6,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
+  if (present(ip)) &
+    write(6,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
+  if (present(g)) &
+    write(6,'(a19,1x,i9,44x,a3)') ' │ at constituent',g,                                    '│'
+  write(6,'(a,69x,a)')            ' │',                                                     '│'
+  write(6,'(a)')                  ' └'//IO_DIVIDER//'┘'
+  flush(6)
+  !$OMP END CRITICAL (write2out)
 
 end subroutine IO_warning
 
