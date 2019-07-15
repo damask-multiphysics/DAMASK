@@ -232,6 +232,35 @@ class DADF5():
               'Description': 'Determinant of a tensor'}
     
     self.add_generic_pointwise(np.linalg.det,args,result)
+
+
+  def add_spherical(self,a):
+    """Adds the spherical component of a tensor"""
+    def spherical(m):
+      return (m[0,0]+m[1,1]+m[2,2])/3.0
+
+    # ToDo: The output unit should be the input unit  
+    args   = [{'label':a,'shape':[3,3],'unit':None}]
+    result = {'label':'sph({})'.format(a),
+              'unit':'n/a',
+              'Description': 'Spherical component of a tensor'}
+
+    self.add_generic_pointwise(spherical,args,result)
+  
+  
+  def add_deviator(self,a):
+    """Adds the deviator of a tensor"""
+    def deviator(m):
+      return m - np.eye(3)*(m[0,0]+m[1,1]+m[2,2])/3.0
+
+    # ToDo: The output unit should be the input unit  
+    args   = [{'label':a,'shape':[3,3],'unit':'Pa'}]
+    result = {'label':'dev({})'.format(a),
+              'unit':'n/a',
+              'Description': 'Deviatoric component of a tensor'}
+
+    self.add_generic_pointwise(deviator,args,result)
+
     
     
   def add_strain_tensors(self,defgrad='F'):
