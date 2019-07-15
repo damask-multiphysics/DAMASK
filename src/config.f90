@@ -97,11 +97,16 @@ subroutine config_init
 
   enddo
  
-  if (size(config_homogenization) < 1) call IO_error(160,ext_msg='<homogenization>')
-  if (size(config_microstructure) < 1) call IO_error(160,ext_msg='<microstructure>')
-  if (size(config_crystallite)    < 1) call IO_error(160,ext_msg='<crystallite>')
-  if (size(config_phase)          < 1) call IO_error(160,ext_msg='<phase>')
-  if (size(config_texture)        < 1) call IO_error(160,ext_msg='<texture>')
+  if (.not. allocated(config_homogenization) .or. size(config_homogenization) < 1) &
+    call IO_error(160,ext_msg='<homogenization>')
+  if (.not. allocated(config_microstructure) .or. size(config_microstructure) < 1) &
+    call IO_error(160,ext_msg='<microstructure>')
+  if (.not. allocated(config_crystallite)    .or. size(config_crystallite)    < 1) &
+    call IO_error(160,ext_msg='<crystallite>')
+  if (.not. allocated(config_phase)          .or. size(config_phase)          < 1) &
+    call IO_error(160,ext_msg='<phase>')
+  if (.not. allocated(config_texture)        .or. size(config_texture)        < 1) &
+    call IO_error(160,ext_msg='<texture>')
  
  
    inquire(file='numerics.config', exist=fileExists)
