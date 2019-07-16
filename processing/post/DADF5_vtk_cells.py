@@ -60,6 +60,7 @@ for filename in options.filenames:
     vtk_data = []
     results.active['increments'] = [inc]
     
+    results.active['m_output_types'] = []
     for label in options.con:
       
       for o in results.c_output_types:
@@ -77,6 +78,32 @@ for filename in options.filenames:
             rGrid.GetCellData().AddArray(vtk_data[-1])
         else:
           results.active['constituents'] = results.constituents
+          x = results.get_dataset_location(label)
+          if len(x) == 0:
+            continue
+          array = results.read_dataset(x,0)
+          shape = [array.shape[0],np.product(array.shape[1:])]
+          vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True,array_type= vtk.VTK_DOUBLE))
+          vtk_data[-1].SetName('1_'+x[0].split('/')[1]+'/generic/'+label)
+          rGrid.GetCellData().AddArray(vtk_data[-1])
+    
+    results.active['c_output_types'] = []
+    for label in options.mat:       
+      for o in results.m_output_types:
+        results.active['m_output_types'] = [o]
+        if o != 'generic':
+          for m in results.materialpoints:
+            results.active['materialpoints'] = [m]
+            x = results.get_dataset_location(label)
+            if len(x) == 0:
+              continue
+            array = results.read_dataset(x,0)
+            shape = [array.shape[0],np.product(array.shape[1:])]
+            vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True,array_type= vtk.VTK_DOUBLE))
+            vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
+            rGrid.GetCellData().AddArray(vtk_data[-1])
+        else:
+          results.active['materialpoints'] = results.materialpoints
           x = results.get_dataset_location(label)
           if len(x) == 0:
             continue
