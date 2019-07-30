@@ -807,7 +807,7 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
      else
        sigma_cl = norm2(matmul(Mp,prm%n0_sl(1:3,i))) ! ToDo: MD: correct?
        
-       if (prm%SFE_0K > 0.0_pReal) then            ! ToDo: MD: I'm not really sure if this is correct. Maybe Gamma(0K) = 0
+       if (prm%SFE_0K == 0.0_pReal) then            ! ToDo: MD: I'm not really sure if this is correct. Maybe Gamma(0K) = 0
          b_d = 24.0_pReal*PI*(1.0_pReal - prm%nu)/(2.0_pReal + prm%nu)* Gamma/(prm%mu*prm%b_sl(i))
        else
          b_d = 1.0_pReal      
