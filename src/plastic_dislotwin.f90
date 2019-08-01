@@ -757,7 +757,7 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
    v_cl, &                                                                                          !< climb velocity 
    Gamma, &                                                                                         !< stacking fault energy
    tau, &
-   sigma_cl, & ! ToDo: MD: good name? It is not a resolved stress but a different projection
+   sigma_cl, & 
    b_d
  real(pReal), dimension(param(instance)%sum_N_sl) :: &
    dot_rho_dip_formation, &
@@ -805,9 +805,9 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
      if (dEq0(rho_dip_distance-rho_dip_distance_min(i))) then
        dot_rho_dip_climb(i) = 0.0_pReal
      else
-       sigma_cl = norm2(matmul(Mp,prm%n0_sl(1:3,i))) ! ToDo: MD: correct?
-       
-       if (prm%SFE_0K == 0.0_pReal) then            ! ToDo: MD: I'm not really sure if this is correct. Maybe Gamma(0K) = 0
+!       sigma_cl = norm2(matmul(Mp,prm%n0_sl(1:3,i))) ! ToDo: MD: correct?
+       sigma_cl = DOT_PRODUCT(prm%n0_sl(1:3,i),matmul(Mp,prm%n0_sl(1:3,i)))
+       if (prm%SFE_0K == 0.0_pReal) then            
          b_d = 24.0_pReal*PI*(1.0_pReal - prm%nu)/(2.0_pReal + prm%nu)* Gamma/(prm%mu*prm%b_sl(i))
        else
          b_d = 1.0_pReal      
