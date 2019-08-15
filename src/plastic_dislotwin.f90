@@ -282,7 +282,7 @@ subroutine plastic_dislotwin_init
      
      ! multiplication factor according to slip system
      if (lattice_structure(p) == LATTICE_FCC_ID .or. lattice_structure(p) == LATTICE_HEX_ID ) then
-       prm%omega    = prm%omega * 11.0_pReal      
+       prm%omega    = prm%omega * 12.0_pReal      
      else
        prm%omega    = prm%omega * 8.0_pReal
      endif
