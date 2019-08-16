@@ -757,8 +757,8 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
    v_cl, &                                                                                          !< climb velocity 
    Gamma, &                                                                                         !< stacking fault energy
    tau, &
-   sigma_cl, & 
-   b_d
+   sigma_cl, &                                                                                      !< climb stress 
+   b_d                                                                                              !< width of burgers vector to stacking fault
  real(pReal), dimension(param(instance)%sum_N_sl) :: &
    dot_rho_dip_formation, &
    dot_rho_dip_climb, &
