@@ -118,7 +118,7 @@ module plastic_dislotwin
      sum_N_sl, &                                                                                    !< total number of active slip system
      sum_N_tw, &                                                                                    !< total number of active twin system
      sum_N_tr, &                                                                                    !< total number of active transformation system 
-     climbSwitch                                                                                    !< Switch to decide climb
+     climbSwitch                                                                                    !< Switch to decide climb !ToDo: Needs better name and should be a logical
    integer,                      dimension(:),     allocatable :: & 
      N_sl, &                                                                                        !< number of active slip systems for each family
      N_tw, &                                                                                        !< number of active twin systems for each family
@@ -280,7 +280,7 @@ subroutine plastic_dislotwin_init
      prm%SFE_0K               = config%getFloat('sfe_0k', defaultVal = 0.0_pReal)
      prm%dSFE_dT              = config%getFloat('dsfe_dt',defaultVal = 0.0_pReal)
      
-     prm%climbSwitch          = config%getInt('climbswitch',defaultVal = 1)
+     prm%climbSwitch          = config%getInt('climbswitch',defaultVal = 1) ! ToDo: turn on with config%key_exists('/name/')
  
      prm%omega                = config%getFloat('omega',  defaultVal = 1000.0_pReal) &
                               * merge(12.0_pReal, &
@@ -802,20 +802,22 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
        dot_rho_dip_formation(i) = 0.0_pReal
      endif
 
-     if (dEq0(rho_dip_distance-rho_dip_distance_min(i))) then
+     if (dEq0(rho_dip_distance-rho_dip_distance_min(i))) then !ToDo: use or here for climb switch (second if else not needed)
        dot_rho_dip_climb(i) = 0.0_pReal
      else
        sigma_cl = dot_product(prm%n0_sl(1:3,i),matmul(Mp,prm%n0_sl(1:3,i)))
        if (prm%climbSwitch /= 0) then            
          b_d = 24.0_pReal*PI*(1.0_pReal - prm%nu)/(2.0_pReal + prm%nu)* Gamma/(prm%mu*prm%b_sl(i))
+         
+         v_cl = 2.0_pReal*prm%omega*b_d**2.0_pReal*exp(-prm%Qsd/(kB*T)) &
+              * (exp(abs(sigma_cl)*prm%b_sl(i)**3.0_pReal/(kB*T)) - 1.0_pReal)
+              
+         dot_rho_dip_climb(i) = 4.0_pReal*v_cl*stt%rho_dip(i,of) &
+                              / (rho_dip_distance-rho_dip_distance_min(i))
        else
-         b_d = 0.0_pReal      
+         dot_rho_dip_climb(i) = 0.0_pReal
        endif
-
-       v_cl = 2.0_pReal*prm%omega*b_d**2.0_pReal*exp(-prm%Qsd/(kB*T)) &
-            * (exp(abs(sigma_cl)*prm%b_sl(i)**3.0_pReal/(kB*T)) - 1.0_pReal)
-       dot_rho_dip_climb(i) = 4.0_pReal*v_cl*stt%rho_dip(i,of) &
-                            / (rho_dip_distance-rho_dip_distance_min(i))
+       
      endif
    endif significantSlipStress
  enddo slipState
