@@ -59,7 +59,7 @@ module plastic_dislotwin
      q_sb, &                                                                                        !< q-exponent in shear band velocity
      CEdgeDipMinDistance, &                                                                         !<
      i_tw, &                                                                                        !<
-     tau_0, &                                                                                       !<strength due to elements in solid solution
+     tau_0, &                                                                                       !< strength due to elements in solid solution
      L_tw, &                                                                                        !< Length of twin nuclei in Burgers vectors
      L_tr, &                                                                                        !< Length of trans nuclei in Burgers vectors
      xc_twin, &                                                                                     !< critical distance for formation of twin nucleus
@@ -276,19 +276,16 @@ subroutine plastic_dislotwin_init
      prm%CEdgeDipMinDistance  = config%getFloat('cedgedipmindistance')
      prm%D0                   = config%getFloat('d0')
      prm%Qsd                  = config%getFloat('qsd')
-     prm%omega                = config%getFloat('omega',defaultVal=1000.0_pReal)
      prm%atomicVolume         = config%getFloat('catomicvolume') * prm%b_sl**3.0_pReal
-     prm%SFE_0K               = config%getFloat('sfe_0k',defaultVal = 0.0_pReal)
+     prm%SFE_0K               = config%getFloat('sfe_0k', defaultVal = 0.0_pReal)
      prm%dSFE_dT              = config%getFloat('dsfe_dt',defaultVal = 0.0_pReal)
      
      prm%climbSwitch          = config%getInt('climbswitch',defaultVal = 1)
  
-     ! multiplication factor according to slip system
-     if (lattice_structure(p) == LATTICE_FCC_ID .or. lattice_structure(p) == LATTICE_HEX_ID ) then
-       prm%omega    = prm%omega * 12.0_pReal      
-     else
-       prm%omega    = prm%omega * 8.0_pReal
-     endif
+     prm%omega                = config%getFloat('omega',  defaultVal = 1000.0_pReal) &
+                              * merge(12.0_pReal, &
+                                      8.0_pReal, &
+                                      lattice_structure(p) == LATTICE_FCC_ID .or. lattice_structure(p) == LATTICE_HEX_ID)
 
      ! expand: family => system
      prm%rho_mob_0    = math_expand(prm%rho_mob_0,   prm%N_sl)
@@ -808,8 +805,7 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
      if (dEq0(rho_dip_distance-rho_dip_distance_min(i))) then
        dot_rho_dip_climb(i) = 0.0_pReal
      else
-!       sigma_cl = norm2(matmul(Mp,prm%n0_sl(1:3,i))) ! ToDo: MD: correct?
-       sigma_cl = DOT_PRODUCT(prm%n0_sl(1:3,i),matmul(Mp,prm%n0_sl(1:3,i)))
+       sigma_cl = dot_product(prm%n0_sl(1:3,i),matmul(Mp,prm%n0_sl(1:3,i)))
        if (prm%climbSwitch /= 0) then            
          b_d = 24.0_pReal*PI*(1.0_pReal - prm%nu)/(2.0_pReal + prm%nu)* Gamma/(prm%mu*prm%b_sl(i))
        else
