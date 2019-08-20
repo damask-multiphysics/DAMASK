@@ -278,11 +278,12 @@ subroutine plastic_dislotwin_init
      prm%Qsd                  = config%getFloat('qsd')
      prm%omega                = config%getFloat('omega',defaultVal=1000.0_pReal)
      prm%atomicVolume         = config%getFloat('catomicvolume') * prm%b_sl**3.0_pReal
-     prm%SFE_0K               = config%getFloat('sfe_0k',defaultVal = 0.0_pReal)
-     prm%dSFE_dT              = config%getFloat('dsfe_dt',defaultVal = 0.0_pReal)
-     
-     prm%ExtendedDislocations = config%getInt('/ExtendedDislocations/',defaultVal = 1)
-
+     prm%ExtendedDislocations = config%getInt('extend_dislocations',defaultVal = 0)
+     if (prm%ExtendedDislocations == 1) then
+       prm%SFE_0K               = config%getFloat('sfe_0k')
+       prm%dSFE_dT              = config%getFloat('dsfe_dt')  !TODO: should this be in sanity check part?
+     endif
+  
      ! multiplication factor according to slip system
      if (lattice_structure(p) == LATTICE_FCC_ID .or. lattice_structure(p) == LATTICE_HEX_ID ) then
        prm%omega    = prm%omega * 12.0_pReal      
@@ -780,8 +781,6 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
              - sum(stt%f_tr(1:prm%sum_N_tr,of))
  VacancyDiffusion = prm%D0*exp(-prm%Qsd/(kB*T))
 
- Gamma = prm%SFE_0K + prm%dSFE_dT * T
-
  call kinetics_slip(Mp,T,instance,of,dot_gamma_sl)
  dot%gamma_sl(:,of) = abs(dot_gamma_sl)
  
@@ -811,9 +810,10 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
 !       sigma_cl = norm2(matmul(Mp,prm%n0_sl(1:3,i))) ! ToDo: MD: correct?
        sigma_cl = DOT_PRODUCT(prm%n0_sl(1:3,i),matmul(Mp,prm%n0_sl(1:3,i)))
        if (prm%ExtendedDislocations /= 0) then            
+         Gamma = prm%SFE_0K + prm%dSFE_dT * T
          b_d = 24.0_pReal*PI*(1.0_pReal - prm%nu)/(2.0_pReal + prm%nu)* Gamma/(prm%mu*prm%b_sl(i))
        else
-         b_d = 0.0_pReal      
+         b_d = 1.0_pReal      
        endif
 
        v_cl = 2.0_pReal*prm%omega*b_d**2.0_pReal*exp(-prm%Qsd/(kB*T)) &
