@@ -118,7 +118,7 @@ module plastic_dislotwin
      sum_N_sl, &                                                                                    !< total number of active slip system
      sum_N_tw, &                                                                                    !< total number of active twin system
      sum_N_tr, &                                                                                    !< total number of active transformation system 
-     climbSwitch                                                                                    !< Switch to decide climb
+     ExtendedDislocations                                                                           !< flag for existence of partial dislocations
    integer,                      dimension(:),     allocatable :: & 
      N_sl, &                                                                                        !< number of active slip systems for each family
      N_tw, &                                                                                        !< number of active twin systems for each family
@@ -281,8 +281,8 @@ subroutine plastic_dislotwin_init
      prm%SFE_0K               = config%getFloat('sfe_0k',defaultVal = 0.0_pReal)
      prm%dSFE_dT              = config%getFloat('dsfe_dt',defaultVal = 0.0_pReal)
      
-     prm%climbSwitch          = config%getInt('climbswitch',defaultVal = 1)
- 
+     prm%ExtendedDislocations = config%getInt('/ExtendedDislocations/',defaultVal = 1)
+
      ! multiplication factor according to slip system
      if (lattice_structure(p) == LATTICE_FCC_ID .or. lattice_structure(p) == LATTICE_HEX_ID ) then
        prm%omega    = prm%omega * 12.0_pReal      
@@ -810,7 +810,7 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
      else
 !       sigma_cl = norm2(matmul(Mp,prm%n0_sl(1:3,i))) ! ToDo: MD: correct?
        sigma_cl = DOT_PRODUCT(prm%n0_sl(1:3,i),matmul(Mp,prm%n0_sl(1:3,i)))
-       if (prm%climbSwitch /= 0) then            
+       if (prm%ExtendedDislocations /= 0) then            
          b_d = 24.0_pReal*PI*(1.0_pReal - prm%nu)/(2.0_pReal + prm%nu)* Gamma/(prm%mu*prm%b_sl(i))
        else
          b_d = 0.0_pReal      
