@@ -49,13 +49,13 @@ class Color():
 
 # ------------------------------------------------------------------
   def __repr__(self):
-    """Color model and values"""
+    """Color model and values."""
     return 'Model: %s Color: %s'%(self.model,str(self.color))
 
 
 # ------------------------------------------------------------------
   def __str__(self):
-    """Color model and values"""
+    """Color model and values."""
     return self.__repr__()
 
 
@@ -85,9 +85,9 @@ class Color():
 
   def _HSV2HSL(self):
     """
-    Convert H(ue) S(aturation) V(alue or brightness) to H(ue) S(aturation) L(uminance)
+    Convert H(ue) S(aturation) V(alue or brightness) to H(ue) S(aturation) L(uminance).
 
-    with all values in the range of 0 to 1
+    All values are in the range [0,1]
     http://codeitdown.com/hsl-hsb-hsv-color/
     """
     if self.model != 'HSV': return
@@ -105,9 +105,9 @@ class Color():
 
   def _HSL2HSV(self):
     """
-    Convert H(ue) S(aturation) L(uminance) to H(ue) S(aturation) V(alue or brightness)
+    Convert H(ue) S(aturation) L(uminance) to H(ue) S(aturation) V(alue or brightness).
 
-    with all values in the range of 0 to 1
+    All values are in the range [0,1]
     http://codeitdown.com/hsl-hsb-hsv-color/
     """
     if self.model != 'HSL': return
@@ -124,9 +124,9 @@ class Color():
 
   def _HSL2RGB(self):
     """
-    Convert H(ue) S(aturation) L(uminance) to R(red) G(reen) B(lue)
+    Convert H(ue) S(aturation) L(uminance) to R(red) G(reen) B(lue).
 
-    with all values in the range of 0 to 1
+    All values are in the range [0,1]
     from http://en.wikipedia.org/wiki/HSL_and_HSV
     """
     if self.model != 'HSL': return
@@ -150,9 +150,9 @@ class Color():
 
   def _RGB2HSL(self):
     """
-    Convert R(ed) G(reen) B(lue) to H(ue) S(aturation) L(uminance)
+    Convert R(ed) G(reen) B(lue) to H(ue) S(aturation) L(uminance).
 
-    with all values in the range of 0 to 1
+    All values are in the range [0,1]
     from http://130.113.54.154/~monger/hsl-rgb.html
     """
     if self.model != 'RGB': return
@@ -190,9 +190,9 @@ class Color():
 
   def _RGB2XYZ(self):
     """
-    Convert R(ed) G(reen) B(lue) to CIE XYZ
+    Convert R(ed) G(reen) B(lue) to CIE XYZ.
 
-    with all values in the range of 0 to 1
+    All values are in the range [0,1]
     from http://www.cs.rit.edu/~ncs/color/t_convert.html
     """
     if self.model != 'RGB': return
@@ -219,9 +219,9 @@ class Color():
 
   def _XYZ2RGB(self):
     """
-    Convert  CIE XYZ to R(ed) G(reen) B(lue)
+    Convert  CIE XYZ to R(ed) G(reen) B(lue).
 
-    with all values in the range of 0 to 1
+    All values are in the range [0,1]
     from http://www.cs.rit.edu/~ncs/color/t_convert.html
     """
     if self.model != 'XYZ':
@@ -251,9 +251,9 @@ class Color():
 
   def _CIELAB2XYZ(self):
     """
-    Convert  CIE Lab to CIE XYZ
+    Convert  CIE Lab to CIE XYZ.
 
-    with XYZ in the range of 0 to 1
+    All values are in the range [0,1]
     from http://www.easyrgb.com/index.php?X=MATH&H=07#text7
     """
     if self.model != 'CIELAB': return
@@ -275,11 +275,11 @@ class Color():
 
   def _XYZ2CIELAB(self):
     """
-    Convert CIE XYZ to CIE Lab
+    Convert CIE XYZ to CIE Lab.
 
-    with XYZ in the range of 0 to 1
+    All values are in the range [0,1]
     from http://en.wikipedia.org/wiki/Lab_color_space,
-    http://www.cs.rit.edu/~ncs/color/t_convert.html
+         http://www.cs.rit.edu/~ncs/color/t_convert.html
     """
     if self.model != 'XYZ': return
 
@@ -299,7 +299,7 @@ class Color():
 
   def _CIELAB2MSH(self):
     """
-    Convert CIE Lab to Msh colorspace
+    Convert CIE Lab to Msh colorspace.
 
     from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
     """
@@ -319,7 +319,7 @@ class Color():
 
   def _MSH2CIELAB(self):
     """
-    Convert Msh colorspace to CIE Lab
+    Convert Msh colorspace to CIE Lab.
 
     with s,h in radians
     from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
@@ -412,7 +412,7 @@ class Colormap():
 
 # ------------------------------------------------------------------
   def __repr__(self):
-    """Left and right value of colormap"""
+    """Left and right value of colormap."""
     return 'Left: %s Right: %s'%(self.left,self.right)
 
 
@@ -501,10 +501,10 @@ class Colormap():
                + ['}']
 
     elif format == 'gom':
-      colormap = ['1 1 ' + str(name) \
-                 + ' 9 ' + str(name) \
-                 + ' 0 1 0 3 0 0 -1 9 \ 0 0 0 255 255 255 0 0 255 ' \
-                 + '30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 ' + str(len(colors)) \
+      colormap = ['1 1 ' + str(name)
+                 + ' 9 ' + str(name)
+                 + ' 0 1 0 3 0 0 -1 9 \ 0 0 0 255 255 255 0 0 255 '
+                 + '30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 ' + str(len(colors))
                  + ' '.join([' 0 %s 255 1'%(' '.join([str(int(x*255.0)) for x in color])) for color in reversed(colors)])]
 
     elif format == 'raw':
