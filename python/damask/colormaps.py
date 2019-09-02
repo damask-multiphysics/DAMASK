@@ -490,7 +490,7 @@ class Colormap():
     frac = 0.5*(np.array(crop) + 1.0)                                                               # rescale crop range to fractions
     colors = [self.color(float(i)/(steps-1)*(frac[1]-frac[0])+frac[0]).expressAs(model).color for i in range(steps)]
     if   format == 'paraview':
-      colormap = ['[\n {{\n  "ColorSpace" : "RGB", "Name" : "{}",\n  "RGBPoints" : ['.format(name)] \
+      colormap = ['[\n {{\n  "ColorSpace": "RGB", "Name": "{}", "DefaultMap": true,\n  "RGBPoints" : ['.format(name)] \
                + ['    {:4d},{:8.6f},{:8.6f},{:8.6f},'.format(i,color[0],color[1],color[2],)
                                                                         for i,color in enumerate(colors[:-1])]\
                + ['    {:4d},{:8.6f},{:8.6f},{:8.6f} '.format(len(colors),colors[-1][0],colors[-1][1],colors[-1][2],)]\
