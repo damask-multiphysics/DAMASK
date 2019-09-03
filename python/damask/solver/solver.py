@@ -1,6 +1,3 @@
-# -*- coding: UTF-8 no BOM -*-
-
-
 import damask.solver
 
 class Solver():
