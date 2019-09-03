@@ -4,11 +4,12 @@ import numpy as np
 
 class Color():
   """
-  Conversion of colors between different color-spaces.
-
-  Colors should be given in the form Color('model',[vector]).
-  To convert or copy color from one space to other, use the methods
-  convertTo('model') or expressAs('model'), respectively.
+  Color representation in and conversion between different color-spaces.
+  
+  Public Methods
+  --------------
+  convertTo
+  expressAs
   """
 
   __slots__ = [
@@ -22,7 +23,17 @@ class Color():
   def __init__(self,
                model = 'RGB',
                color = np.zeros(3,'d')):
+    """
+    Create a Color object.
+    
+    Parameters
+    ----------
+    model : string
+        color model
+    color : numpy.ndarray
+        vector representing the color according to the selected model
 
+    """
     self.__transforms__ = \
                    {'HSV':    {'index': 0, 'next': self._HSV2HSL},
                     'HSL':    {'index': 1, 'next': self._HSL2RGB,     'prev': self._HSL2HSV},
@@ -61,6 +72,15 @@ class Color():
 
 # ------------------------------------------------------------------
   def convertTo(self,toModel = 'RGB'):
+    """
+    Change the color model permanently.
+    
+    Parameters
+    ----------
+    toModel : string
+        color model
+
+    """
     toModel = toModel.upper()
     if toModel not in list(self.__transforms__.keys()): return
 
@@ -79,6 +99,15 @@ class Color():
 
 # ------------------------------------------------------------------
   def expressAs(self,asModel = 'RGB'):
+    """
+    Return the color in a different model.
+    
+    Parameters
+    ----------
+    asModel : string
+        color model
+
+    """
     return self.__class__(self.model,self.color).convertTo(asModel)
 
 
@@ -88,7 +117,7 @@ class Color():
     Convert H(ue) S(aturation) V(alue or brightness) to H(ue) S(aturation) L(uminance).
 
     All values are in the range [0,1]
-    http://codeitdown.com/hsl-hsb-hsv-color/
+    http://codeitdown.com/hsl-hsb-hsv-color
     """
     if self.model != 'HSV': return
 
@@ -108,7 +137,7 @@ class Color():
     Convert H(ue) S(aturation) L(uminance) to H(ue) S(aturation) V(alue or brightness).
 
     All values are in the range [0,1]
-    http://codeitdown.com/hsl-hsb-hsv-color/
+    http://codeitdown.com/hsl-hsb-hsv-color
     """
     if self.model != 'HSL': return
 
@@ -337,7 +366,7 @@ class Color():
 
 
 class Colormap():
-  """Perceptually uniform diverging or sequential colormaps."""
+  """Perceptually uniform diverging or sequential colormap."""
 
   __slots__ = [
                'left',
@@ -394,7 +423,21 @@ class Colormap():
                interpolate = 'perceptualuniform',
                predefined = None
                ):
+    """
+    Create a Colormap object.
+    
+    Parameters
+    ----------
+    left : Color
+        left color (minimum value)
+    right : Color
+        right color (maximum value)
+    interpolate : str
+        interpolation scheme (either 'perceptualuniform' or 'linear')
+    predefined : bool
+         ignore other arguments and use predefined definition
 
+    """
     if predefined is not None:
       left = self.__predefined__[predefined.lower()]['left']
       right= self.__predefined__[predefined.lower()]['right']
@@ -418,9 +461,15 @@ class Colormap():
 
 # ------------------------------------------------------------------
   def invert(self):
+    """Switch left/minimum with right/maximum."""
     (self.left, self.right) = (self.right, self.left)
     return self
 
+
+# ------------------------------------------------------------------
+  def show_predefined(self):
+    """Show the labels of the predefined colormaps."""
+    print('\n'.join(self.__predefined__.keys()))
 
 # ------------------------------------------------------------------
   def color(self,fraction = 0.5):
@@ -491,10 +540,11 @@ class Colormap():
     colors = [self.color(float(i)/(steps-1)*(frac[1]-frac[0])+frac[0]).expressAs(model).color for i in range(steps)]
     if   format == 'paraview':
       colormap = ['[\n {{\n  "ColorSpace": "RGB", "Name": "{}", "DefaultMap": true,\n  "RGBPoints" : ['.format(name)] \
-               + ['    {:4d},{:8.6f},{:8.6f},{:8.6f},'.format(i,color[0],color[1],color[2],)
-                                                                        for i,color in enumerate(colors[:-1])]\
-               + ['    {:4d},{:8.6f},{:8.6f},{:8.6f} '.format(len(colors),colors[-1][0],colors[-1][1],colors[-1][2],)]\
+               + ['    {:4d},{:8.6f},{:8.6f},{:8.6f},'.format(i,color[0],color[1],color[2],) \
+                                                                        for i,color in enumerate(colors[:-1])] \
+               + ['    {:4d},{:8.6f},{:8.6f},{:8.6f} '.format(len(colors),colors[-1][0],colors[-1][1],colors[-1][2],)] \
                + ['   ]\n }\n]']
+
     elif format == 'gmsh':
       colormap = ['View.ColorTable = {'] \
                + [',\n'.join(['{%s}'%(','.join([str(x*255.0) for x in color])) for color in colors])] \
@@ -503,7 +553,7 @@ class Colormap():
     elif format == 'gom':
       colormap = ['1 1 ' + str(name)
                  + ' 9 ' + str(name)
-                 + ' 0 1 0 3 0 0 -1 9 \ 0 0 0 255 255 255 0 0 255 '
+                 + ' 0 1 0 3 0 0 -1 9  0 0 0 255 255 255 0 0 255 '
                  + '30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 ' + str(len(colors))
                  + ' '.join([' 0 %s 255 1'%(' '.join([str(int(x*255.0)) for x in color])) for color in reversed(colors)])]
 
