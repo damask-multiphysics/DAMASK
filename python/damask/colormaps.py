@@ -553,7 +553,7 @@ class Colormap():
     elif format == 'gom':
       colormap = ['1 1 ' + str(name)
                  + ' 9 ' + str(name)
-                 + ' 0 1 0 3 0 0 -1 9  0 0 0 255 255 255 0 0 255 '
+                 + ' 0 1 0 3 0 0 -1 9 {} 0 0 0 255 255 255 0 0 255 '.format('\\')
                  + '30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 ' + str(len(colors))
                  + ' '.join([' 0 %s 255 1'%(' '.join([str(int(x*255.0)) for x in color])) for color in reversed(colors)])]
 
