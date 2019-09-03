@@ -3,14 +3,7 @@ import math
 import numpy as np
 
 class Color():
-  """
-  Color representation in and conversion between different color-spaces.
-  
-  Public Methods
-  --------------
-  convertTo
-  expressAs
-  """
+  """Color representation in and conversion between different color-spaces."""
 
   __slots__ = [
                'model',
