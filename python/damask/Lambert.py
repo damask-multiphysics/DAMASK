@@ -47,9 +47,7 @@ def CubeToBall(cube):
         
     References
     ----------
-    D. Roşca, A. Morawiec, and M. De Graef
-    A new method of constructing a grid in the space of 3D rotations and its applications to texture analysis
-    Modelling Simul. Mater. Sci. Eng. 22, 2014, 075013
+    D. Roşca et al., Modelling and Simulation in Materials Science and Engineering 22:075013, 2014
     https://doi.org/10.1088/0965-0393/22/7/075013
 
     """
@@ -100,9 +98,7 @@ def BallToCube(ball):
 
     References
     ----------
-    D. Roşca, A. Morawiec, and M. De Graef
-    A new method of constructing a grid in the space of 3D rotations and its applications to texture analysis
-    Modelling Simul. Mater. Sci. Eng. 22, 2014, 075013
+    D. Roşca et al., Modelling and Simulation in Materials Science and Engineering 22:075013, 2014
     https://doi.org/10.1088/0965-0393/22/7/075013
 
     """
@@ -155,9 +151,7 @@ def get_order(xyz):
 
     References
     ----------
-    D. Roşca, A. Morawiec, and M. De Graef
-    A new method of constructing a grid in the space of 3D rotations and its applications to texture analysis
-    Modelling Simul. Mater. Sci. Eng. 22, 2014, 075013
+    D. Roşca et al., Modelling and Simulation in Materials Science and Engineering 22:075013, 2014
     https://doi.org/10.1088/0965-0393/22/7/075013
 
     """
