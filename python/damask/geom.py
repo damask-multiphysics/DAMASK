@@ -73,37 +73,40 @@ class Geom():
     
     if size is not None and rescale:
       raise ValueError('Either set size explicitly or rescale automatically')
+    elif size is not None:
+      self.set_size(size)
+    elif rescale:
+      self.set_size(self.get_grid()/grid_old*self.size)
 
     self.set_microstructure(microstructure)
-    self.set_size(self.get_grid()/grid_old*self.size if rescale else size)
     self.set_origin(origin)
    
     message = ['grid     a b c:      {}'.format(' x '.join(map(str,grid_old)))]
     if np.any(grid_old != self.get_grid()):
       message[-1] = util.delete(message[-1])
-      message.append('grid     a b c:      {}'.format(' x '.join(map(str,self.get_grid()))))
+      message.append(util.emph('grid     a b c:      {}'.format(' x '.join(map(str,self.get_grid())))))
 
     message.append('size     x y z:      {}'.format(' x '.join(map(str,size_old))))
     if np.any(size_old != self.get_size()):
       message[-1] = util.delete(message[-1])
-      message.append('size     x y z:      {}'.format(' x '.join(map(str,self.get_size()))))
+      message.append(util.emph('size     x y z:      {}'.format(' x '.join(map(str,self.get_size())))))
 
     message.append('origin   x y z:      {}'.format('   '.join(map(str,origin_old))))
     if np.any(origin_old != self.get_origin()):
       message[-1] = util.delete(message[-1])
-      message.append('origin   x y z:      {}'.format('   '.join(map(str,self.get_origin()))))
+      message.append(util.emph('origin   x y z:      {}'.format('   '.join(map(str,self.get_origin())))))
 
     message.append('homogenization:      {}'.format(self.get_homogenization()))
 
     message.append('# microstructures:   {}'.format(unique_old))
     if unique_old != len(np.unique(self.microstructure)):
       message[-1] = util.delete(message[-1])
-      message.append('# microstructures:   {}'.format(len(np.unique(self.microstructure))))
+      message.append(util.emph('# microstructures:   {}'.format(len(np.unique(self.microstructure)))))
 
     message.append('max microstructure:  {}'.format(max_old))
     if max_old != np.nanmax(self.microstructure):
       message[-1] = util.delete(message[-1])
-      message.append('max microstructure:  {}'.format(np.nanmax(self.microstructure)))
+      message.append(util.emph('max microstructure:  {}'.format(np.nanmax(self.microstructure))))
     
     return util.return_message(message)
 
