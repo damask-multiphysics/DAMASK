@@ -10,10 +10,27 @@ from . import version
 
 
 class Geom():
-  """Geometry definition for grid solvers"""
+  """Geometry definition for grid solvers."""
 
   def __init__(self,microstructure,size,origin=[0.0,0.0,0.0],homogenization=1,comments=[]):
-    """New geometry definition from array of microstructures and size"""
+    """
+    New geometry definition from array of microstructures and size.
+
+    Parameters
+    ----------
+    microstructure : numpy.ndarray
+        microstructure array (3D)
+    size : list or numpy.ndarray
+        physical size of the microstructure in meter.
+    origin : list or numpy.ndarray, optional
+        physical origin of the microstructure in meter.
+    homogenization : integer, optional
+        homogenization index.
+    comments : list of str, optional
+        comments lines.
+
+    """
+    self.__transforms__ = \
     self.set_microstructure(microstructure)
     self.set_size(size)
     self.set_origin(origin)
@@ -22,7 +39,7 @@ class Geom():
     
 
   def __repr__(self):
-    """Basic information on geometry definition"""
+    """Basic information on geometry definition."""
     return util.srepr([
            'grid     a b c:      {}'.format(' x '.join(map(str,self.get_grid  ()))),
            'size     x y z:      {}'.format(' x '.join(map(str,self.get_size  ()))),
@@ -33,7 +50,21 @@ class Geom():
           ])
 
   def update(self,microstructure=None,size=None,origin=None,rescale=False):
-    """Updates microstructure and size"""
+    """
+    Updates microstructure and size.
+
+    Parameters
+    ----------
+    microstructure : numpy.ndarray, optional
+        microstructure array (3D).
+    size : list or numpy.ndarray, optional
+        physical size of the microstructure in meter.
+    origin : list or numpy.ndarray, optional
+        physical origin of the microstructure in meter.
+    rescale : bool, optional
+        ignore size parameter and rescale according to change of grid points.
+
+    """
     grid_old    = self.get_grid()
     size_old    = self.get_size()
     origin_old  = self.get_origin()
@@ -42,48 +73,78 @@ class Geom():
     
     if size is not None and rescale:
       raise ValueError('Either set size explicitly or rescale automatically')
+    elif size is not None:
+      self.set_size(size)
+    elif rescale:
+      self.set_size(self.get_grid()/grid_old*self.size)
 
     self.set_microstructure(microstructure)
-    self.set_size(self.get_grid()/grid_old*self.size if rescale else size)
     self.set_origin(origin)
    
     message = ['grid     a b c:      {}'.format(' x '.join(map(str,grid_old)))]
     if np.any(grid_old != self.get_grid()):
       message[-1] = util.delete(message[-1])
-      message.append('grid     a b c:      {}'.format(' x '.join(map(str,self.get_grid()))))
+      message.append(util.emph('grid     a b c:      {}'.format(' x '.join(map(str,self.get_grid())))))
 
     message.append('size     x y z:      {}'.format(' x '.join(map(str,size_old))))
     if np.any(size_old != self.get_size()):
       message[-1] = util.delete(message[-1])
-      message.append('size     x y z:      {}'.format(' x '.join(map(str,self.get_size()))))
+      message.append(util.emph('size     x y z:      {}'.format(' x '.join(map(str,self.get_size())))))
 
     message.append('origin   x y z:      {}'.format('   '.join(map(str,origin_old))))
     if np.any(origin_old != self.get_origin()):
       message[-1] = util.delete(message[-1])
-      message.append('origin   x y z:      {}'.format('   '.join(map(str,self.get_origin()))))
+      message.append(util.emph('origin   x y z:      {}'.format('   '.join(map(str,self.get_origin())))))
 
     message.append('homogenization:      {}'.format(self.get_homogenization()))
 
     message.append('# microstructures:   {}'.format(unique_old))
     if unique_old != len(np.unique(self.microstructure)):
       message[-1] = util.delete(message[-1])
-      message.append('# microstructures:   {}'.format(len(np.unique(self.microstructure))))
+      message.append(util.emph('# microstructures:   {}'.format(len(np.unique(self.microstructure)))))
 
     message.append('max microstructure:  {}'.format(max_old))
     if max_old != np.nanmax(self.microstructure):
       message[-1] = util.delete(message[-1])
-      message.append('max microstructure:  {}'.format(np.nanmax(self.microstructure)))
+      message.append(util.emph('max microstructure:  {}'.format(np.nanmax(self.microstructure))))
     
     return util.return_message(message)
 
   def set_comments(self,comments):
+    """
+    Replaces all existing comments.
+
+    Parameters
+    ----------
+    comments : list of str
+        new comments.
+
+    """
     self.comments = []
     self.add_comments(comments)
     
   def add_comments(self,comments):
+    """
+    Appends comments to existing comments.
+
+    Parameters
+    ----------
+    comments : list of str
+        new comments.
+
+    """
     self.comments += [str(c) for c in comments] if isinstance(comments,list) else [str(comments)]
 
   def set_microstructure(self,microstructure):
+    """
+    Replaces the existing microstructure representation.
+
+    Parameters
+    ----------
+    microstructure : numpy.ndarray
+        microstructure array (3D).
+
+    """
     if microstructure is not None:
       if len(microstructure.shape) != 3:
         raise ValueError('Invalid microstructure shape {}'.format(*microstructure.shape))
@@ -93,6 +154,15 @@ class Geom():
         self.microstructure = np.copy(microstructure)
 
   def set_size(self,size):
+    """
+    Replaces the existing size information.
+
+    Parameters
+    ----------
+    size : list or numpy.ndarray
+        physical size of the microstructure in meter.
+
+    """
     if size is None:
       grid = np.asarray(self.microstructure.shape)
       self.size = grid/np.max(grid)
@@ -103,6 +173,15 @@ class Geom():
         self.size = np.array(size)
 
   def set_origin(self,origin):
+    """
+    Replaces the existing origin information.
+
+    Parameters
+    ----------
+    origin : list or numpy.ndarray
+        physical origin of the microstructure in meter
+
+    """
     if origin is not None:
       if len(origin) != 3:
         raise ValueError('Invalid origin {}'.format(*origin))
@@ -110,6 +189,15 @@ class Geom():
         self.origin = np.array(origin)
 
   def set_homogenization(self,homogenization):
+    """
+    Replaces the existing homogenization index.
+
+    Parameters
+    ----------
+    homogenization : integer
+        homogenization index
+
+    """
     if homogenization is not None:
       if not isinstance(homogenization,int) or homogenization < 1:
         raise TypeError('Invalid homogenization {}'.format(homogenization))
@@ -118,24 +206,31 @@ class Geom():
 
 
   def get_microstructure(self):
+    """Return the microstructure representation."""
     return np.copy(self.microstructure)
 
   def get_size(self):
+    """Return the physical size in meter."""
     return np.copy(self.size)
 
   def get_origin(self):
+    """Return the origin in meter."""
     return np.copy(self.origin)
 
   def get_grid(self):
+    """Return the grid discretization."""
     return np.array(self.microstructure.shape)
 
   def get_homogenization(self):
+    """Return the homogenization index."""
     return self.homogenization
 
   def get_comments(self):
+    """Return the comments."""
     return self.comments[:]
 
   def get_header(self):
+    """Return the full header (grid, size, origin, homogenization, comments)."""
     header =  ['{} header'.format(len(self.comments)+4)] + self.comments
     header.append('grid   a {} b {} c {}'.format(*self.get_grid()))
     header.append('size   x {} y {} z {}'.format(*self.get_size()))
@@ -145,7 +240,15 @@ class Geom():
       
   @classmethod
   def from_file(cls,fname):
-    """Reads a geom file"""
+    """
+    Reads a geom file.
+
+    Parameters
+    ----------
+    fname : str or file handle
+        geometry file to read.
+
+    """
     with (open(fname) if isinstance(fname,str) else fname) as f:
       f.seek(0)
       header_length,keyword = f.readline().split()[:2]
@@ -190,13 +293,21 @@ class Geom():
       raise TypeError('Invalid file: expected {} entries,found {}'.format(grid.prod(),i))
     
     microstructure = microstructure.reshape(grid,order='F')
-    if not np.any(np.mod(microstructure.flatten(),1) != 0.0):                                     # no float present
+    if not np.any(np.mod(microstructure.flatten(),1) != 0.0):                                       # no float present
       microstructure = microstructure.astype('int')
     
     return cls(microstructure.reshape(grid),size,origin,homogenization,comments)
 
   def to_file(self,fname):
-    """Writes to file"""
+    """
+    Writes a geom file.
+
+    Parameters
+    ----------
+    fname : str or file handle
+        geometry file to write.
+
+    """
     header = self.get_header()
     grid   = self.get_grid()
     format_string = '%{}i'.format(1+int(np.floor(np.log10(np.nanmax(self.microstructure))))) if self.microstructure.dtype == int \
@@ -208,7 +319,15 @@ class Geom():
 
                
   def to_vtk(self,fname=None):
-    """Generates vtk file. If file name is given, stored in file otherwise returned as string"""
+    """
+    Generates vtk file.
+
+    Parameters
+    ----------
+    fname : str, optional
+        vtk file to write. If no file is given, a string is returned.
+
+    """
     grid = self.get_grid() + np.ones(3,dtype=int)
     size = self.get_size()
     origin = self.get_origin()
@@ -262,7 +381,7 @@ class Geom():
 
                
   def show(self):
-    """Show raw content (as in file)"""
+    """Show raw content (as in file)."""
     f=StringIO()
     self.to_file(f)
     f.seek(0)
