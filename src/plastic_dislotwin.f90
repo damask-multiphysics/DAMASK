@@ -117,8 +117,7 @@ module plastic_dislotwin
    integer :: & 
      sum_N_sl, &                                                                                    !< total number of active slip system
      sum_N_tw, &                                                                                    !< total number of active twin system
-     sum_N_tr, &                                                                                    !< total number of active transformation system 
-     ExtendedDislocations                                                                           !< flag for existence of partial dislocations
+     sum_N_tr                                                                                       !< total number of active transformation system 
    integer,                      dimension(:),     allocatable :: & 
      N_sl, &                                                                                        !< number of active slip systems for each family
      N_tw, &                                                                                        !< number of active twin systems for each family
@@ -126,6 +125,7 @@ module plastic_dislotwin
    integer(kind(undefined_ID)),  dimension(:),     allocatable :: &
      outputID                                                                                       !< ID of each post result output
    logical :: &
+     ExtendedDislocations, &                                                                        !< consider split into partials for climb calculation
      fccTwinTransNucleation, &                                                                      !< twinning and transformation models are for fcc
      dipoleFormation                                                                                !< flag indicating consideration of dipole formation
  end type                                                                                           !< container type for internal constitutive parameters
@@ -277,13 +277,13 @@ subroutine plastic_dislotwin_init
      prm%D0                   = config%getFloat('d0')
      prm%Qsd                  = config%getFloat('qsd')
      prm%atomicVolume         = config%getFloat('catomicvolume') * prm%b_sl**3.0_pReal
-     prm%ExtendedDislocations = config%getInt('extend_dislocations',defaultVal = 0)
-     if (prm%ExtendedDislocations == 1) then
+     prm%ExtendedDislocations = config%keyExists('/extend_dislocations/')
+     if (prm%ExtendedDislocations) then
        prm%SFE_0K               = config%getFloat('sfe_0k')
-       prm%dSFE_dT              = config%getFloat('dsfe_dt')  !TODO: should this be in sanity check part?
+       prm%dSFE_dT              = config%getFloat('dsfe_dt')
      endif
   
-     ! multiplication factor according to slip system
+     ! multiplication factor according to crystal structure (nearest neighbors bcc vs fcc/hex)
      prm%omega                = config%getFloat('omega',  defaultVal = 1000.0_pReal) &
                               * merge(12.0_pReal, &
                                       8.0_pReal, &
@@ -803,11 +803,11 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
        dot_rho_dip_formation(i) = 0.0_pReal
      endif
 
-     if (dEq0(rho_dip_distance-rho_dip_distance_min(i))) then !ToDo: use or here for climb switch (second if else not needed)
+     if (dEq0(rho_dip_distance-rho_dip_distance_min(i))) then
        dot_rho_dip_climb(i) = 0.0_pReal
      else
-       sigma_cl = DOT_PRODUCT(prm%n0_sl(1:3,i),matmul(Mp,prm%n0_sl(1:3,i)))
-       if (prm%ExtendedDislocations /= 0) then            
+       sigma_cl = dot_product(prm%n0_sl(1:3,i),matmul(Mp,prm%n0_sl(1:3,i)))
+       if (prm%ExtendedDislocations) then            
          Gamma = prm%SFE_0K + prm%dSFE_dT * T
          b_d = 24.0_pReal*PI*(1.0_pReal - prm%nu)/(2.0_pReal + prm%nu)* Gamma/(prm%mu*prm%b_sl(i))
        else
