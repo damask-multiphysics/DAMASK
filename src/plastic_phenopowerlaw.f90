@@ -250,6 +250,7 @@ subroutine plastic_phenopowerlaw_init
 !--------------------------------------------------------------------------------------------------
 ! slip-twin related parameters
    slipAndTwinActive: if (prm%totalNslip > 0 .and. prm%totalNtwin > 0) then
+     prm%h0_TwinSlip          = config%getFloat('h0_twinslip')
      prm%interaction_SlipTwin = lattice_interaction_SlipByTwin(prm%Nslip,prm%Ntwin,&
                                                                config%getFloats('interaction_sliptwin'), &
                                                                config%getString('lattice_structure'))
