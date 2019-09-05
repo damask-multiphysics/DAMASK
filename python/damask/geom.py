@@ -73,14 +73,15 @@ class Geom():
     
     if size is not None and rescale:
       raise ValueError('Either set size explicitly or rescale automatically')
-    elif size is not None:
+
+    self.set_microstructure(microstructure)
+    self.set_origin(origin)
+
+    if size is not None:
       self.set_size(size)
     elif rescale:
       self.set_size(self.get_grid()/grid_old*self.size)
 
-    self.set_microstructure(microstructure)
-    self.set_origin(origin)
-   
     message = ['grid     a b c:      {}'.format(' x '.join(map(str,grid_old)))]
     if np.any(grid_old != self.get_grid()):
       message[-1] = util.delete(message[-1])
