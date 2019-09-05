@@ -284,6 +284,7 @@ subroutine plastic_dislotwin_init
      endif
   
      ! multiplication factor according to crystal structure (nearest neighbors bcc vs fcc/hex)
+     !@details: Refer: Argon & Moffat, Acta Metallurgica, Vol. 29, pg 293 to 299, 1981
      prm%omega                = config%getFloat('omega',  defaultVal = 1000.0_pReal) &
                               * merge(12.0_pReal, &
                                       8.0_pReal, &
@@ -806,6 +807,7 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
      if (dEq0(rho_dip_distance-rho_dip_distance_min(i))) then
        dot_rho_dip_climb(i) = 0.0_pReal
      else
+     !@details: Refer: Argon & Moffat, Acta Metallurgica, Vol. 29, pg 293 to 299, 1981
        sigma_cl = dot_product(prm%n0_sl(1:3,i),matmul(Mp,prm%n0_sl(1:3,i)))
        if (prm%ExtendedDislocations) then            
          Gamma = prm%SFE_0K + prm%dSFE_dT * T
