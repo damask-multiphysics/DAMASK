@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-# Makes postprocessing routines acessible from everywhere.
-import os,sys
+# Makes postprocessing routines accessible from everywhere.
+import os
+import sys
+
 import damask
 
 damaskEnv = damask.Environment()
