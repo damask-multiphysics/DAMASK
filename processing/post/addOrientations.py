@@ -27,6 +27,7 @@ Additional (globally fixed) rotations of the lab frame and/or crystal frame can 
 representations = {
                   'quaternion': ['qu',4],
                   'rodrigues':  ['ro',4],
+                  'Rodrigues':  ['Ro',3],
                   'eulers':     ['eu',3],
                   'matrix':     ['om',9],
                   'angleaxis':  ['ax',4],
@@ -80,15 +81,20 @@ parser.add_option('-z',
                   dest = 'z',
                   metavar = 'string',
                   help = 'label of lab z vector (expressed in crystal coords)')
+parser.add_option('--lattice',
+                  dest = 'lattice',
+                  metavar = 'string',
+                  help = 'lattice structure to reduce rotation into fundamental zone')
 
 parser.set_defaults(output = [],
                     labrotation     = (1.,1.,1.,0.),                                                # no rotation about (1,1,1)
                     crystalrotation = (1.,1.,1.,0.),                                                # no rotation about (1,1,1)
+                    lattice = None,
                    )
 
 (options, filenames) = parser.parse_args()
 
-options.output = list(map(lambda x: x.lower(), options.output))
+#options.output = list(map(lambda x: x.lower(), options.output))
 if options.output == [] or (not set(options.output).issubset(set(representations))):
   parser.error('output must be chosen from {}.'.format(', '.join(representations)))
 
@@ -121,7 +127,7 @@ if filenames == []: filenames = [None]
 for name in filenames:
   try:    table = damask.ASCIItable(name = name,
                                     buffered = False)
-  except: continue
+  except Exception: continue
   damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
@@ -156,16 +162,16 @@ for name in filenames:
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     if   inputtype == 'eulers':
-      l = representations['eulers'][1]
-      o = damask.Rotation.fromEulers(list(map(float,table.data[column:column+l])),options.degrees)
+      d = representations['eulers'][1]
+      o = damask.Rotation.fromEulers(list(map(float,table.data[column:column+d])),options.degrees)
       
     elif inputtype == 'rodrigues':
-      l = representations['rodrigues'][1]
-      o = damask.Rotation.fromRodrigues(list(map(float,table.data[column:column+l])))
+      d = representations['rodrigues'][1]
+      o = damask.Rotation.fromRodrigues(list(map(float,table.data[column:column+d])))
       
     elif inputtype == 'matrix':
-      l = representations['matrix'][1]
-      o = damask.Rotation.fromMatrix(list(map(float,table.data[column:column+l])))
+      d = representations['matrix'][1]
+      o = damask.Rotation.fromMatrix(list(map(float,table.data[column:column+d])))
 
     elif inputtype == 'frame':
       M = np.array(list(map(float,table.data[column[0]:column[0]+3] + \
@@ -174,14 +180,18 @@ for name in filenames:
       o = damask.Rotation.fromMatrix(M/np.linalg.norm(M,axis=0))
       
     elif inputtype == 'quaternion':
-      l = representations['quaternion'][1]
-      o = damask.Rotation.fromQuaternion(list(map(float,table.data[column:column+l])))
+      d = representations['quaternion'][1]
+      o = damask.Rotation.fromQuaternion(list(map(float,table.data[column:column+d])))
 
-    o= r*o*R                                                                                        # apply additional lab and crystal frame rotations
+    o = r*o*R                                                                                       # apply additional lab and crystal frame rotations
+
+    if options.lattice is not None:
+      o = damask.Orientation(rotation = o,lattice = options.lattice).reduced().rotation
 
     for output in options.output:
       if   output == 'quaternion': table.data_append(o.asQuaternion())
       elif output == 'rodrigues':  table.data_append(o.asRodrigues())
+      elif output == 'Rodrigues':  table.data_append(o.asRodrigues(vector=True))
       elif output == 'eulers':     table.data_append(o.asEulers(degrees=options.degrees))
       elif output == 'matrix':     table.data_append(o.asMatrix())
       elif output == 'angleaxis':  table.data_append(o.asAxisAngle(degrees=options.degrees))
