@@ -118,6 +118,7 @@ program DAMASK_spectral
 ! assign mechanics solver depending on selected type
  select case (trim(config_numerics%getString('spectral_solver',defaultVal='basic')))
    case ('basic')
+     write(6,'(a)')   ' Basic solution algorithm'
      mech_init     => grid_mech_spectral_basic_init
      mech_forward  => grid_mech_spectral_basic_forward
      mech_solution => grid_mech_spectral_basic_solution
@@ -125,6 +126,7 @@ program DAMASK_spectral
    case ('polarisation')
      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
        call IO_warning(42, ext_msg='debug Divergence')
+     write(6,'(a)')   ' Polarisation solution algorithm'
      mech_init     => grid_mech_spectral_polarisation_init
      mech_forward  => grid_mech_spectral_polarisation_forward
      mech_solution => grid_mech_spectral_polarisation_solution
@@ -132,6 +134,7 @@ program DAMASK_spectral
    case ('fem')
      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
        call IO_warning(42, ext_msg='debug Divergence')
+     write(6,'(a)')   ' FEM solution algorithm'
      mech_init     => grid_mech_FEM_init
      mech_forward  => grid_mech_FEM_forward
      mech_solution => grid_mech_FEM_solution

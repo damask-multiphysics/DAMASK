@@ -283,49 +283,52 @@ end subroutine plastic_isotropic_LpAndItsTangent
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
-! ToDo: Rename Tstar to Mi?
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dTstar,Tstar,instance,of)
+subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
  
   real(pReal), dimension(3,3), intent(out) :: &
     Li                                                                                              !< inleastic velocity gradient
   real(pReal), dimension(3,3,3,3), intent(out)  :: &
-    dLi_dTstar                                                                                      !< derivative of Li with respect to the Mandel stress
+    dLi_dMi                                                                                         !< derivative of Li with respect to the Mandel stress
  
   real(pReal), dimension(3,3),   intent(in) :: &
-    Tstar                                                                                           !< Mandel stress ToDo: Mi?
+    Mi                                                                                              !< Mandel stress 
   integer,                       intent(in) :: &
     instance, &
     of
  
   real(pReal), dimension(3,3) :: &
-    Tstar_sph                                                                                       !< sphiatoric part of the Mandel stress
+    Mi_sph                                                                                          !< spherical part of the Mandel stress
   real(pReal) :: &
-    dot_gamma, &                                                                                    !< strainrate
-    norm_Tstar_sph, &                                                                               !< euclidean norm of Tstar_sph
-    squarenorm_Tstar_sph                                                                            !< square of the euclidean norm of Tstar_sph
+    dot_gamma, &                                                                                    !< shear rate
+    tr                                                                                               !< pressure
   integer :: &
     k, l, m, n
  
   associate(prm => param(instance), stt => state(instance))
  
-  Tstar_sph = math_spherical33(Tstar)
-  squarenorm_Tstar_sph = math_mul33xx33(Tstar_sph,Tstar_sph)
-  norm_Tstar_sph = sqrt(squarenorm_Tstar_sph)
+  tr=math_trace33(math_spherical33(Mi))
+
+  if (prm%dilatation .and. abs(tr) > 0.0_pReal) then                                                 ! no stress or J2 plasticity --> Li and its derivative are zero
+    Li = math_I3 &
+       * prm%dot_gamma_0/prm%M * (3.0_pReal*prm%M*stt%xi(of))**(-prm%n) &
+       * tr * abs(tr)**(prm%n-1.0_pReal)
  
-  if (prm%dilatation .and. norm_Tstar_sph > 0.0_pReal) then                                         ! no stress or J2 plastitiy --> Li and its derivative are zero
-    dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pReal) * norm_Tstar_sph /(prm%M*stt%xi(of))) **prm%n
- 
-    Li = math_I3/sqrt(3.0_pReal) * dot_gamma/prm%M
+#ifdef DEBUG
+    if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0 &
+        .and. (of == prm%of_debug .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0)) then
+      write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> pressure / MPa', tr/3.0_pReal*1.0e-6_pReal
+      write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> gdot', prm%dot_gamma_0 * (3.0_pReal*prm%M*stt%xi(of))**(-prm%n) &
+                                                           * tr * abs(tr)**(prm%n-1.0_pReal)
+    end if
+#endif
+
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-      dLi_dTstar(k,l,m,n) = (prm%n-1.0_pReal) * Tstar_sph(k,l)*Tstar_sph(m,n) / squarenorm_Tstar_sph
-    forall (k=1:3,l=1:3) &
-      dLi_dTstar(k,l,k,l) = dLi_dTstar(k,l,k,l) + 1.0_pReal
- 
-    dLi_dTstar = dot_gamma / prm%M * dLi_dTstar / norm_Tstar_sph
+      dLi_dMi(k,l,m,n) = n / tr * Li(k,l) * math_I3(m,n)
+
   else
-    Li = 0.0_pReal
-    dLi_dTstar = 0.0_pReal
+    Li      = 0.0_pReal
+    dLi_dMi = 0.0_pReal
   endif
  
   end associate
