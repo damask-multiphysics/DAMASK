@@ -1,49 +1,47 @@
-# -*- coding: UTF-8 no BOM -*-
-
+import os
+import subprocess
+import shlex
 
 from .solver import Solver
-
+import damask
 
 class Marc(Solver):
+  """Wrapper to run DAMASK with MSCMarc."""
 
-  def __init__(self):
-    self.solver = 'Marc'
-
-
-#--------------------------
-  def version(self):
-    import damask.environment
-
-    return damask.environment.Environment().options['MARC_VERSION']
-      
+  def __init__(self,version=float(damask.Environment().options['MARC_VERSION'])):
+    """
+    Create a Marc solver object.
     
-#--------------------------
-  def libraryPath(self,release = ''):
-    import os,damask.environment
+    Parameters
+    ----------
+    version : float
+        Marc version
 
-    MSCpath     = damask.environment.Environment().options['MSC_ROOT']
-    if len(release) == 0: release = self.version()
-    
-    path = '{}/mentat{}/shlib/linux64'.format(MSCpath,release)
-
-    return path if os.path.exists(path) else ''
+    """
+    self.solver  ='Marc'
+    self.version = float(damask.environment.Environment().options['MARC_VERSION'])
 
 
 #--------------------------
-  def toolsPath(self,release = ''):
-    import os,damask.environment
+  def libraryPath(self):
 
-    MSCpath = damask.environment.Environment().options['MSC_ROOT']
-    if len(release) == 0: release = self.version()
+    path_MSC = damask.environment.Environment().options['MSC_ROOT']   
+    path_lib = '{}/mentat{}/shlib/linux64'.format(path_MSC,self.version)
 
-    path = '%s/marc%s/tools'%(MSCpath,release)
+    return path_lib if os.path.exists(path_lib) else ''
 
-    return path if os.path.exists(path) else ''
-  
+
+#--------------------------
+  def toolsPath(self):
+
+    path_MSC   = damask.environment.Environment().options['MSC_ROOT']
+    path_tools = '{}/marc{}/tools'.format(path_MSC,self.version)
+
+    return path_tools if os.path.exists(path_tools) else ''
+
 
 #--------------------------
   def submit_job(self,
-                 release      = '',
                  model        = 'model',
                  job          = 'job1',
                  logfile      = None,
@@ -51,25 +49,22 @@ class Marc(Solver):
                  optimization ='',
                 ):
 
-    import os,damask.environment
-    import subprocess,shlex
-    
-    if len(release) == 0: release = self.version()
+
     damaskEnv = damask.environment.Environment()
     
     user = 'not found'
 
     if compile:
-      if os.path.isfile(os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc{}.f90'.format(release))):
-        user = os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc{}'.format(release))
+      if os.path.isfile(os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc{}.f90'.format(self.version))):
+        user = os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc{}'.format(self.version))
     else:
-      if os.path.isfile(os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc{}.marc'.format(release))):
-        user = os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc{}'.format(release))
+      if os.path.isfile(os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc{}.marc'.format(self.version))):
+        user = os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc{}'.format(self.version))
 
     # Define options [see Marc Installation and Operation Guide, pp 23]
     script = 'run_damask_{}mp'.format(optimization)
     
-    cmd = os.path.join(self.toolsPath(release),script) + \
+    cmd = os.path.join(self.toolsPath(),script) + \
           ' -jid ' + model + '_' + job + \
           ' -nprocd 1  -autorst 0 -ci n  -cr n  -dcoup 0 -b no -v no'
 

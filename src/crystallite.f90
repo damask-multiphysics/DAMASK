@@ -1274,7 +1274,7 @@ logical function integrateStress(ipc,ip,el,timeFraction)
       if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0 &
           .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
                  .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0)) then
-        write(6,'(a,i3,/)')                   '<< CRYST integrateStress >> iteration ', NiterationStressLp
+        write(6,'(a,i3,/)')                   '<< CRYST integrateStress >> Lp iteration ', NiterationStressLp
         write(6,'(a,/,3(12x,3(e20.10,1x)/))') '<< CRYST integrateStress >> Lpguess', transpose(Lpguess)
         write(6,'(a,/,3(12x,3(e20.10,1x)/))') '<< CRYST integrateStress >> Lp_constitutive', transpose(Lp_constitutive)
         write(6,'(a,/,3(12x,3(e20.10,1x)/))') '<< CRYST integrateStress >> Fi', transpose(Fi_new)
@@ -1377,6 +1377,7 @@ logical function integrateStress(ipc,ip,el,timeFraction)
       if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0 &
           .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
                  .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0)) then
+        write(6,'(a,i3,/)')                  '<< CRYST integrateStress >> Li iteration ', NiterationStressLi
         write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST integrateStress >> Li_constitutive', transpose(Li_constitutive)
         write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST integrateStress >> Liguess', transpose(Liguess)
       endif
@@ -1405,6 +1406,13 @@ logical function integrateStress(ipc,ip,el,timeFraction)
     else                                                                                            ! not converged and residuum not improved...
       steplengthLi   = num%subStepSizeLi * steplengthLi                                             ! ...try with smaller step length in same direction
       Liguess        = Liguess_old + steplengthLi * deltaLi
+#ifdef DEBUG
+        if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0 &
+            .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
+                   .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0)) then
+          write(6,'(a,1x,f7.4)') '<< CRYST integrateStress >> linear search for Liguess with step', steplengthLi
+        endif
+#endif
       cycle LiLoop
     endif
  
@@ -1450,6 +1458,13 @@ logical function integrateStress(ipc,ip,el,timeFraction)
     jacoCounterLi = jacoCounterLi + 1
  
     Liguess = Liguess + steplengthLi * deltaLi
+#ifdef DEBUG
+        if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0 &
+            .and. ((el == debug_e .and. ip == debug_i .and. ipc == debug_g) &
+                   .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0)) then
+          write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST integrateStress >> corrected Liguess by', transpose(deltaLi)
+        endif
+#endif
   enddo LiLoop
  
   !* calculate new plastic and elastic deformation gradient

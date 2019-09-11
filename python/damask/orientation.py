@@ -10,35 +10,44 @@ from .quaternion import P
 ####################################################################################################
 class Rotation:
     u"""
-    Orientation stored as unit quaternion.
-    
-    Following: D Rowenhorst et al. Consistent representations of and conversions between 3D rotations
-               10.1088/0965-0393/23/8/083501
-    Convention 1: coordinate frames are right-handed
-    Convention 2: a rotation angle ω is taken to be positive for a counterclockwise rotation
-                  when viewing from the end point of the rotation axis towards the origin
-    Convention 3: rotations will be interpreted in the passive sense
-    Convention 4: Euler angle triplets are implemented using the Bunge convention,
-                  with the angular ranges as [0, 2π],[0, π],[0, 2π]
-    Convention 5: the rotation angle ω is limited to the interval [0, π]
-    Convention 6: P = -1 (as default)
-    
-    q is the real part, p = (x, y, z) are the imaginary parts.
+    Orientation stored with functionality for conversion to different representations.
 
+    References
+    ----------
+    D. Rowenhorst et al., Modelling and Simulation in Materials Science and Engineering 23:083501, 2015
+    https://doi.org/10.1088/0965-0393/23/8/083501
+
+    Conventions
+    -----------
+    Convention 1: Coordinate frames are right-handed.
+    Convention 2: A rotation angle ω is taken to be positive for a counterclockwise rotation
+                  when viewing from the end point of the rotation axis towards the origin.
+    Convention 3: Rotations will be interpreted in the passive sense.
+    Convention 4: Euler angle triplets are implemented using the Bunge convention,
+                  with the angular ranges as [0, 2π],[0, π],[0, 2π].
+    Convention 5: The rotation angle ω is limited to the interval [0, π].
+    Convention 6: P = -1 (as default).
+    
+    Usage
+    -----
     Vector "a" (defined in coordinate system "A") is passively rotated
                resulting in new coordinates "b" when expressed in system "B".
     b = Q * a
     b = np.dot(Q.asMatrix(),a)
+
     """
 
     __slots__ = ['quaternion']
     
     def __init__(self,quaternion = np.array([1.0,0.0,0.0,0.0])):
       """
-      Initializes to identity unless specified
+      Initializes to identity unless specified.
       
-      If a quaternion is given, it needs to comply with the convection. Use .fromQuaternion
-      to check the input.
+      Parameters
+      ----------
+      quaternion : numpy.ndarray, optional
+          Unit quaternion that follows the conventions. Use .fromQuaternion to perform a sanity check.
+
       """
       if isinstance(quaternion,Quaternion):
         self.quaternion = quaternion.copy()
@@ -46,14 +55,14 @@ class Rotation:
         self.quaternion = Quaternion(q=quaternion[0],p=quaternion[1:4])
         
     def __copy__(self):
-      """Copy"""
+      """Copy."""
       return self.__class__(self.quaternion)
       
     copy = __copy__
 
 
     def __repr__(self):
-      """Value in selected representation"""
+      """Orientation displayed as unit quaternion, rotation matrix, and Bunge-Euler angles."""
       return '\n'.join([
             '{}'.format(self.quaternion),
             'Matrix:\n{}'.format( '\n'.join(['\t'.join(list(map(str,self.asMatrix()[i,:]))) for i in range(3)]) ),
@@ -62,9 +71,18 @@ class Rotation:
               
     def __mul__(self, other):
       """
-      Multiplication
+      Multiplication.
       
-      Rotation: Details needed (active/passive), rotation of (3,3,3,3)-matrix should be considered
+      Parameters
+      ----------
+      other : numpy.ndarray or Rotation
+          Vector, second or fourth order tensor, or rotation object that is rotated.
+
+      Todo
+      ----
+      Document details active/passive)
+      considere rotation of (3,3,3,3)-matrix
+
       """
       if isinstance(other, Rotation):                                                               # rotate a rotation
         return self.__class__(self.quaternion * other.quaternion).standardize()
@@ -104,32 +122,48 @@ class Rotation:
         
     
     def inverse(self):
-      """In-place inverse rotation/backward rotation"""
+      """In-place inverse rotation/backward rotation."""
       self.quaternion.conjugate()
       return self
       
     def inversed(self):
-      """Inverse rotation/backward rotation"""
+      """Inverse rotation/backward rotation."""
       return self.copy().inverse()
 
 
     def standardize(self):
-      """In-place quaternion representation with positive q"""
+      """In-place quaternion representation with positive q."""
       if self.quaternion.q < 0.0: self.quaternion.homomorph()
       return self
 
     def standardized(self):
-      """Quaternion representation with positive q"""
+      """Quaternion representation with positive q."""
       return self.copy().standardize()
 
 
     def misorientation(self,other):
-      """Misorientation"""
+      """
+      Get Misorientation.
+
+      Parameters
+      ----------
+      other : Rotation
+          Rotation to which the misorientation is computed.
+
+      """
       return other*self.inversed()
 
 
     def average(self,other):
-      """Calculate the average rotation"""
+      """
+      Calculate the average rotation.
+
+      Parameters
+      ----------
+      other : Rotation
+          Rotation from which the average is rotated.
+
+      """
       return Rotation.fromAverage([self,other])
       
 
@@ -137,41 +171,75 @@ class Rotation:
     # convert to different orientation representations (numpy arrays)
 
     def asQuaternion(self):
-      """Unit quaternion: (q, [p_1, p_2, p_3])"""
+      """Unit quaternion: (q, p_1, p_2, p_3)."""
       return self.quaternion.asArray()
       
     def asEulers(self,
                  degrees = False):
-      """Bunge-Euler angles: (φ_1, ϕ, φ_2)"""
+      """
+      Bunge-Euler angles: (φ_1, ϕ, φ_2).
+
+      Parameters
+      ----------
+      degrees : bool, optional
+          return angles in degrees.
+
+      """
       eu = qu2eu(self.quaternion.asArray())
       if degrees: eu = np.degrees(eu)
       return eu
     
     def asAxisAngle(self,
                     degrees = False):
-      """Axis-angle pair: ([n_1, n_2, n_3], ω)"""
+      """
+      Axis angle pair: ([n_1, n_2, n_3], ω).
+
+      Parameters
+      ----------
+      degrees : bool, optional
+          return rotation angle in degrees.
+      
+      """
       ax = qu2ax(self.quaternion.asArray())
       if degrees: ax[3] = np.degrees(ax[3])
       return ax
       
     def asMatrix(self):
-      """Rotation matrix"""
+      """Rotation matrix."""
       return qu2om(self.quaternion.asArray())
 
-    def asRodrigues(self,vector=False):
-      """Rodrigues-Frank vector: ([n_1, n_2, n_3], tan(ω/2))"""
+    def asRodrigues(self,
+                    vector=False):
+      """
+      Rodrigues-Frank vector: ([n_1, n_2, n_3], tan(ω/2)).
+
+      Parameters
+      ----------
+      vector : bool, optional
+          return as array of length 3, i.e. scale the unit vector giving the rotation axis.
+
+      """
       ro = qu2ro(self.quaternion.asArray())
       return ro[:3]*ro[3] if vector else ro
   
     def asHomochoric(self):
-      """Homochoric vector: (h_1, h_2, h_3)"""
+      """Homochoric vector: (h_1, h_2, h_3)."""
       return qu2ho(self.quaternion.asArray())
          
     def asCubochoric(self):
+      """Cubochoric vector: (c_1, c_2, c_3)."""
       return qu2cu(self.quaternion.asArray())
       
     def asM(self):
-      """Intermediate representation supporting quaternion averaging (see F. Landis Markley et al.)"""
+      """
+      Intermediate representation supporting quaternion averaging.
+
+      References
+      ----------
+      F. Landis Markley et al., Journal of Guidance, Control, and Dynamics 30(4):1193-1197, 2007
+      https://doi.org/10.2514/1.28949
+
+      """
       return self.quaternion.asM()
       
 
@@ -299,14 +367,20 @@ class Rotation:
                     rotations,
                     weights = []):
       """
-      Average rotation
-
-      ref: F. Landis Markley, Yang Cheng, John Lucas Crassidis, and Yaakov Oshman.
-           Averaging Quaternions,
-           Journal of Guidance, Control, and Dynamics, Vol. 30, No. 4 (2007), pp. 1193-1197.
-           doi: 10.2514/1.28949
+      Average rotation.
+      
+      References
+      ----------
+      F. Landis Markley et al., Journal of Guidance, Control, and Dynamics 30(4):1193-1197, 2007
+      https://doi.org/10.2514/1.28949
            
-      usage: input a list of rotations and optional weights
+      Parameters
+      ----------
+      rotations : list of Rotations
+          Rotations to average from
+      weights : list of floats, optional
+          Weights for each rotation used for averaging
+
       """
       if not all(isinstance(item, Rotation) for item in rotations):
         raise TypeError("Only instances of Rotation can be averaged.")
@@ -339,42 +413,78 @@ class Rotation:
 # ******************************************************************************************
 class Symmetry:
   """
-  Symmetry operations for lattice systems
+  Symmetry operations for lattice systems.
   
+  References
+  ----------
   https://en.wikipedia.org/wiki/Crystal_system
+  
   """
 
   lattices = [None,'orthorhombic','tetragonal','hexagonal','cubic',]
 
   def __init__(self, symmetry = None):
-    if isinstance(symmetry, str) and symmetry.lower() in Symmetry.lattices:
-      self.lattice = symmetry.lower()
-    else:
-      self.lattice = None
+    """
+    Symmetry Definition.
+
+    Parameters
+    ----------
+    symmetry : str, optional
+        label of the crystal system
+
+    """
+    if symmetry is not None and symmetry.lower() not in Symmetry.lattices:
+      raise KeyError('Symmetry/crystal system "{}" is unknown'.format(symmetry))
+
+    self.lattice = symmetry.lower() if isinstance(symmetry,str) else symmetry
 
 
   def __copy__(self):
-    """Copy"""
+    """Copy."""
     return self.__class__(self.lattice)
 
   copy = __copy__
 
 
   def __repr__(self):
-    """Readable string"""
+    """Readable string."""
     return '{}'.format(self.lattice)
 
 
   def __eq__(self, other):
-    """Equal to other"""
+    """
+    Equal to other.
+    
+    Parameters
+    ----------
+    other : Symmetry
+        Symmetry to check for equality.
+        
+    """
     return self.lattice == other.lattice
 
   def __neq__(self, other):
-    """Not equal to other"""
+    """
+    Not Equal to other.
+    
+    Parameters
+    ----------
+    other : Symmetry
+        Symmetry to check for inequality.
+        
+    """
     return not self.__eq__(other)
 
   def __cmp__(self,other):
-    """Linear ordering"""
+    """
+    Linear ordering.
+
+    Parameters
+    ----------
+    other : Symmetry
+        Symmetry to check for for order.
+        
+    """
     myOrder    = Symmetry.lattices.index(self.lattice)
     otherOrder = Symmetry.lattices.index(other.lattice)
     return (myOrder > otherOrder) - (myOrder < otherOrder)
@@ -458,7 +568,7 @@ class Symmetry:
 
   def inFZ(self,rodrigues):
     """
-    Check whether given Rodrigues vector falls into fundamental zone of own symmetry.
+    Check whether given Rodriques-Frank vector falls into fundamental zone of own symmetry.
     
     Fundamental zone in Rodrigues space is point symmetric around origin.
     """
@@ -491,11 +601,13 @@ class Symmetry:
 
   def inDisorientationSST(self,rodrigues):
     """
-    Check whether given Rodrigues vector (of misorientation) falls into standard stereographic triangle of own symmetry.
+    Check whether given Rodriques-Frank vector (of misorientation) falls into standard stereographic triangle of own symmetry.
 
-    Determination of disorientations follow the work of A. Heinz and P. Neumann:
-    Representation of Orientation and Disorientation Data for Cubic, Hexagonal, Tetragonal and Orthorhombic Crystals
-    Acta Cryst. (1991). A47, 780-789
+    References
+    ----------
+    A. Heinz and P. Neumann, Acta Crystallographica Section A 47:780-789, 1991
+    https://doi.org/10.1107/S0108767391006864
+
     """
     if (len(rodrigues) != 3):
       raise ValueError('Input is not a Rodriques-Frank vector.\n')
@@ -611,11 +723,15 @@ class Symmetry:
 # ******************************************************************************************
 class Lattice:
   """
-  Lattice system
+  Lattice system.
   
   Currently, this contains only a mapping from Bravais lattice to symmetry
   and orientation relationships. It could include twin and slip systems.
+
+  References
+  ----------
   https://en.wikipedia.org/wiki/Bravais_lattice
+
   """
 
   lattices = {
@@ -628,18 +744,27 @@ class Lattice:
 
 
   def __init__(self, lattice):
+    """
+    New lattice of given type.
+      
+    Parameters
+    ----------
+    lattice : str
+        Bravais lattice.
+
+    """
     self.lattice  = lattice
     self.symmetry = Symmetry(self.lattices[lattice]['symmetry'])
     
     
   def __repr__(self):
-    """Report basic lattice information"""
+    """Report basic lattice information."""
     return 'Bravais lattice {} ({} symmetry)'.format(self.lattice,self.symmetry)
     
     
   # Kurdjomov--Sachs orientation relationship for fcc <-> bcc transformation
-  # from S. Morito et al. Journal of Alloys and Compounds 577 (2013) 587-S592
-  # also see K. Kitahara et al. Acta Materialia 54 (2006) 1279-1288
+  # from S. Morito et al., Journal of Alloys and Compounds 577:s587-s592, 2013 
+  # also see K. Kitahara et al., Acta Materialia 54:1279-1288, 2006 
   KS = {'mapping':{'fcc':0,'bcc':1},
       'planes': np.array([
       [[  1,  1,  1],[  0,  1,  1]],
@@ -693,7 +818,7 @@ class Lattice:
       [[  1,  0,  1],[ -1,  1, -1]]],dtype='float')}
       
   # Greninger--Troiano orientation relationship for fcc <-> bcc transformation
-  # from Y. He et al. Journal of Applied Crystallography 39 (2006) 72-81
+  # from Y. He et al., Journal of Applied Crystallography 39:72-81, 2006 
   GT = {'mapping':{'fcc':0,'bcc':1},
       'planes': np.array([
       [[  1,  1,  1],[  1,  0,  1]],
@@ -747,7 +872,7 @@ class Lattice:
       [[-17,-12,  5],[-17,  7, 17]]],dtype='float')}
  
   # Greninger--Troiano' orientation relationship for fcc <-> bcc transformation
-  # from Y. He et al. Journal of Applied Crystallography 39 (2006) 72-81
+  # from Y. He et al., Journal of Applied Crystallography 39:72-81, 2006 
   GTprime = {'mapping':{'fcc':0,'bcc':1},
       'planes': np.array([
       [[  7, 17, 17],[ 12,  5, 17]],
@@ -801,7 +926,7 @@ class Lattice:
       [[  1,  1,  0],[  1,  1, -1]]],dtype='float')}
     
   # Nishiyama--Wassermann orientation relationship for fcc <-> bcc transformation
-  # from H. Kitahara et al. Materials Characterization 54 (2005) 378-386
+  # from H. Kitahara et al., Materials Characterization 54:378-386, 2005
   NW = {'mapping':{'fcc':0,'bcc':1},
       'planes': np.array([
       [[  1,  1,  1],[  0,  1,  1]],
@@ -831,7 +956,7 @@ class Lattice:
       [[ -1, -1, -2],[  0, -1,  1]]],dtype='float')}
                
   # Pitsch orientation relationship for fcc <-> bcc transformation              
-  # from Y. He et al. Acta Materialia 53 (2005) 1179-1190               
+  # from Y. He et al., Acta Materialia 53:1179-1190, 2005 
   Pitsch = {'mapping':{'fcc':0,'bcc':1},
       'planes': np.array([
       [[  0,  1,  0],[ -1,  0,  1]],
@@ -861,7 +986,7 @@ class Lattice:
       [[  1,  1,  0],[  1,  1, -1]]],dtype='float')}
                               
   # Bain orientation relationship for fcc <-> bcc transformation                        
-  # from Y. He et al./Journal of Applied Crystallography (2006). 39, 72-81
+  # from Y. He et al., Journal of Applied Crystallography 39:72-81, 2006
   Bain = {'mapping':{'fcc':0,'bcc':1},
       'planes': np.array([
       [[  1,  0,  0],[  1,  0,  0]],
@@ -873,12 +998,32 @@ class Lattice:
       [[  1,  0,  0],[  1,  1,  0]]],dtype='float')}
   
   def relationOperations(self,model):
+    """
+    Crystallographic orientation relationships for phase transformations.
     
+    References
+    ----------
+    S. Morito et al., Journal of Alloys and Compounds 577:s587-s592, 2013
+    https://doi.org/10.1016/j.jallcom.2012.02.004
+    
+    K. Kitahara et al., Acta Materialia 54(5):1279-1288, 2006
+    https://doi.org/10.1016/j.actamat.2005.11.001
+    
+    Y. He et al., Journal of Applied Crystallography 39:72-81, 2006
+    https://doi.org/10.1107/S0021889805038276
+    
+    H. Kitahara et al., Materials Characterization 54(4-5):378-386, 2005
+    https://doi.org/10.1016/j.matchar.2004.12.015
+    
+    Y. He et al., Acta Materialia 53(4):1179-1190, 2005 
+    https://doi.org/10.1016/j.actamat.2004.11.021
+
+    """
     models={'KS':self.KS, 'GT':self.GT, "GT'":self.GTprime, 
             'NW':self.NW, 'Pitsch': self.Pitsch, 'Bain':self.Bain}
     try:
       relationship = models[model]
-    except:
+    except KeyError :
       raise KeyError('Orientation relationship "{}" is unknown'.format(model))
 
     if self.lattice not in relationship['mapping']:
@@ -909,19 +1054,29 @@ class Lattice:
 
 class Orientation:
   """
-  Crystallographic orientation
+  Crystallographic orientation.
   
-  A crystallographic orientation contains a rotation and a lattice
+  A crystallographic orientation contains a rotation and a lattice.
   """
 
   __slots__ = ['rotation','lattice']
   
   def __repr__(self):
-    """Report lattice type and orientation"""
+    """Report lattice type and orientation."""
     return self.lattice.__repr__()+'\n'+self.rotation.__repr__()
 
   def __init__(self, rotation, lattice):
-  
+    """
+    New orientation from rotation and lattice.
+
+    Parameters
+    ----------
+    rotation : Rotation
+        Rotation specifying the lattice orientation.
+    lattice : Lattice
+        Lattice type of the crystal.
+
+    """
     if isinstance(lattice, Lattice):
       self.lattice = lattice
     else:
@@ -971,7 +1126,7 @@ class Orientation:
     return self.lattice.symmetry.inFZ(self.rotation.asRodrigues(vector=True))
   
   def equivalentOrientations(self,members=[]):
-    """List of orientations which are symmetrically equivalent"""
+    """List of orientations which are symmetrically equivalent."""
     try:
       iter(members)                                                                                 # asking for (even empty) list of members?
     except TypeError:
@@ -981,12 +1136,12 @@ class Orientation:
                                     for q in self.lattice.symmetry.symmetryOperations(members)]           # yes, return list of rotations
     
   def relatedOrientations(self,model):
-    """List of orientations related by the given orientation relationship"""
+    """List of orientations related by the given orientation relationship."""
     r = self.lattice.relationOperations(model)
     return [self.__class__(self.rotation*o,r['lattice']) for o in r['rotations']]
     
   def reduced(self):
-    """Transform orientation to fall into fundamental zone according to symmetry"""
+    """Transform orientation to fall into fundamental zone according to symmetry."""
     for me in self.equivalentOrientations():
       if self.lattice.symmetry.inFZ(me.rotation.asRodrigues(vector=True)): break
 
@@ -996,7 +1151,7 @@ class Orientation:
                   axis,
                   proper = False,
                   SST = True):
-    """Axis rotated according to orientation (using crystal symmetry to ensure location falls into SST)"""
+    """Axis rotated according to orientation (using crystal symmetry to ensure location falls into SST)."""
     if SST:                                                                                         # pole requested to be within SST
       for i,o in enumerate(self.equivalentOrientations()):                                          # test all symmetric equivalent quaternions
         pole = o.rotation*axis                                                                      # align crystal direction to axis
@@ -1008,7 +1163,7 @@ class Orientation:
     
     
   def IPFcolor(self,axis):
-    """TSL color of inverse pole figure for given axis"""
+    """TSL color of inverse pole figure for given axis."""
     color = np.zeros(3,'d')
 
     for o in self.equivalentOrientations():
@@ -1023,7 +1178,7 @@ class Orientation:
   def fromAverage(cls,
                   orientations,
                   weights = []):
-    """Create orientation from average of list of orientations"""
+    """Create orientation from average of list of orientations."""
     if not all(isinstance(item, Orientation) for item in orientations):
       raise TypeError("Only instances of Orientation can be averaged.")
 
@@ -1039,7 +1194,7 @@ class Orientation:
 
 
   def average(self,other):
-    """Calculate the average rotation"""
+    """Calculate the average rotation."""
     return Orientation.fromAverage([self,other])
 
 
@@ -1080,10 +1235,10 @@ def isone(a):
 def iszero(a):
   return np.isclose(a,0.0,atol=1.0e-12,rtol=0.0)
   
-#---------- quaternion ----------
+#---------- Quaternion ----------
 
 def qu2om(qu):
-  """Quaternion to orientation matrix"""
+  """Quaternion to rotation matrix."""
   qq = qu[0]**2-(qu[1]**2 + qu[2]**2 + qu[3]**2)
   om = np.diag(qq + 2.0*np.array([qu[1],qu[2],qu[3]])**2)
 
@@ -1097,7 +1252,7 @@ def qu2om(qu):
   
   
 def qu2eu(qu):
-  """Quaternion to Euler angles""" 
+  """Quaternion to Bunge-Euler angles.""" 
   q03 = qu[0]**2+qu[3]**2
   q12 = qu[1]**2+qu[2]**2
   chi = np.sqrt(q03*q12)
@@ -1117,7 +1272,7 @@ def qu2eu(qu):
 
 def qu2ax(qu):
   """
-  Quaternion to axis angle
+  Quaternion to axis angle pair.
   
   Modified version of the original formulation, should be numerically more stable
   """
@@ -1134,7 +1289,7 @@ def qu2ax(qu):
 
 
 def qu2ro(qu):
-  """Quaternion to Rodrigues vector"""
+  """Quaternion to Rodriques-Frank vector."""
   if iszero(qu[0]):
     ro = [qu[1], qu[2], qu[3], np.inf]
   else:
@@ -1146,7 +1301,7 @@ def qu2ro(qu):
 
 
 def qu2ho(qu):
-  """Quaternion to homochoric"""
+  """Quaternion to homochoric vector."""
   omega = 2.0 * np.arccos(np.clip(qu[0],-1.0,1.0))                                                  # avoid numerical difficulties
   
   if iszero(omega):
@@ -1160,15 +1315,15 @@ def qu2ho(qu):
 
 
 def qu2cu(qu):
-  """Quaternion to cubochoric"""
+  """Quaternion to cubochoric vector."""
   return ho2cu(qu2ho(qu))
 
 
-#---------- orientation matrix ----------
+#---------- Rotation matrix ----------
 
 def om2qu(om):
   """
-  Orientation matrix to quaternion
+  Rotation matrix to quaternion.
   
   The original formulation (direct conversion) had (numerical?) issues
   """
@@ -1176,7 +1331,7 @@ def om2qu(om):
 
 
 def om2eu(om):
-  """Orientation matrix to Euler angles"""
+  """Rotation matrix to Bunge-Euler angles."""
   if abs(om[2,2]) < 1.0:
     zeta = 1.0/np.sqrt(1.0-om[2,2]**2)
     eu = np.array([np.arctan2(om[2,0]*zeta,-om[2,1]*zeta),
@@ -1191,7 +1346,7 @@ def om2eu(om):
 
 
 def om2ax(om):
-  """Orientation matrix to axis angle"""
+  """Rotation matrix to axis angle pair."""
   ax=np.empty(4)
 
   # first get the rotation angle
@@ -1212,24 +1367,24 @@ def om2ax(om):
   
 
 def om2ro(om):
-  """Orientation matrix to Rodriques vector"""
+  """Rotation matrix to Rodriques-Frank vector."""
   return eu2ro(om2eu(om))
   
 
 def om2ho(om):
-  """Orientation matrix to homochoric"""
+  """Rotation matrix to homochoric vector."""
   return ax2ho(om2ax(om))
 
 
 def om2cu(om):
-  """Orientation matrix to cubochoric"""
+  """Rotation matrix to cubochoric vector."""
   return ho2cu(om2ho(om))
   
   
-#---------- Euler angles ----------
+#---------- Bunge-Euler angles ----------
 
 def eu2qu(eu):
-  """Euler angles to quaternion"""
+  """Bunge-Euler angles to quaternion."""
   ee = 0.5*eu
   cPhi = np.cos(ee[1])
   sPhi = np.sin(ee[1])
@@ -1242,7 +1397,7 @@ def eu2qu(eu):
 
 
 def eu2om(eu):
-  """Euler angles to orientation matrix"""
+  """Bunge-Euler angles to rotation matrix."""
   c = np.cos(eu)
   s = np.sin(eu)
 
@@ -1255,7 +1410,7 @@ def eu2om(eu):
 
 
 def eu2ax(eu):
-  """Euler angles to axis angle""" 
+  """Bunge-Euler angles to axis angle pair.""" 
   t = np.tan(eu[1]*0.5)
   sigma = 0.5*(eu[0]+eu[2])
   delta = 0.5*(eu[0]-eu[2])
@@ -1266,7 +1421,7 @@ def eu2ax(eu):
   if iszero(alpha):
     ax = np.array([ 0.0, 0.0, 1.0, 0.0 ])
   else:
-    ax = -P/tau * np.array([ t*np.cos(delta), t*np.sin(delta), np.sin(sigma) ])                     # passive axis-angle pair so a minus sign in front
+    ax = -P/tau * np.array([ t*np.cos(delta), t*np.sin(delta), np.sin(sigma) ])                     # passive axis angle pair so a minus sign in front
     ax = np.append(ax,alpha) 
     if alpha < 0.0: ax *= -1.0                                                                      # ensure alpha is positive
   
@@ -1274,8 +1429,8 @@ def eu2ax(eu):
 
 
 def eu2ro(eu):
-  """Euler angles to Rodrigues vector"""
-  ro = eu2ax(eu)                                                                                    # convert to axis angle representation
+  """Bunge-Euler angles to Rodriques-Frank vector."""
+  ro = eu2ax(eu)                                                                                    # convert to axis angle pair representation
   if ro[3] >= np.pi:                                                                                # Differs from original implementation. check convention 5
     ro[3] = np.inf
   elif iszero(ro[3]):
@@ -1287,19 +1442,19 @@ def eu2ro(eu):
 
 
 def eu2ho(eu):
-  """Euler angles to homochoric"""
+  """Bunge-Euler angles to homochoric vector."""
   return ax2ho(eu2ax(eu))
 
 
 def eu2cu(eu):
-  """Euler angles to cubochoric"""
+  """Bunge-Euler angles to cubochoric vector."""
   return ho2cu(eu2ho(eu))
 
 
-#---------- axis angle ----------
+#---------- Axis angle pair ----------
 
 def ax2qu(ax):
-  """Axis angle to quaternion"""
+  """Axis angle pair to quaternion."""
   if iszero(ax[3]):
     qu = np.array([ 1.0, 0.0, 0.0, 0.0 ])
   else:
@@ -1311,7 +1466,7 @@ def ax2qu(ax):
 
 
 def ax2om(ax):
-  """Axis angle to orientation matrix"""
+  """Axis angle pair to rotation matrix."""
   c = np.cos(ax[3])
   s = np.sin(ax[3])
   omc = 1.0-c
@@ -1326,12 +1481,12 @@ def ax2om(ax):
 
   
 def ax2eu(ax):
-  """Orientation matrix to Euler angles"""
+  """Rotation matrix to Bunge Euler angles."""
   return om2eu(ax2om(ax))
 
 
 def ax2ro(ax):
-  """Axis angle to Rodrigues vector""" 
+  """Axis angle pair to Rodriques-Frank vector.""" 
   if iszero(ax[3]):
     ro = [ 0.0, 0.0, P, 0.0 ]
   else:
@@ -1344,36 +1499,36 @@ def ax2ro(ax):
 
 
 def ax2ho(ax):
-  """Axis angle to homochoric""" 
+  """Axis angle pair to homochoric vector.""" 
   f = (0.75 * ( ax[3] - np.sin(ax[3]) ))**(1.0/3.0)
   ho = ax[0:3] * f
   return ho
 
 
 def ax2cu(ax):
-  """Axis angle to cubochoric"""
+  """Axis angle pair to cubochoric vector."""
   return ho2cu(ax2ho(ax))
 
 
-#---------- Rodrigues--Frank ----------
+#---------- Rodrigues-Frank vector ----------
 
 def ro2qu(ro):
-  """Rodrigues vector to quaternion"""
+  """Rodriques-Frank vector to quaternion."""
   return ax2qu(ro2ax(ro))
 
 
 def ro2om(ro):
- """Rodgrigues vector to orientation matrix"""
+ """Rodgrigues-Frank vector to rotation matrix."""
  return ax2om(ro2ax(ro))
 
 
 def ro2eu(ro):
-  """Rodrigues vector to orientation matrix"""
+  """Rodriques-Frank vector to Bunge-Euler angles."""
   return om2eu(ro2om(ro))
  
  
 def ro2ax(ro):
-  """Rodrigues vector to axis angle"""
+  """Rodriques-Frank vector to axis angle pair."""
   ta = ro[3]
   
   if iszero(ta):
@@ -1389,7 +1544,7 @@ def ro2ax(ro):
 
 
 def ro2ho(ro):
-  """Rodrigues vector to homochoric""" 
+  """Rodriques-Frank vector to homochoric vector.""" 
   if iszero(np.sum(ro[0:3]**2.0)):
     ho = [ 0.0, 0.0, 0.0 ]
   else:
@@ -1400,29 +1555,29 @@ def ro2ho(ro):
 
 
 def ro2cu(ro):
-  """Rodrigues vector to cubochoric"""
+  """Rodriques-Frank vector to cubochoric vector."""
   return ho2cu(ro2ho(ro))
 
 
-#---------- homochoric ----------
+#---------- Homochoric vector----------
 
 def ho2qu(ho):
-  """Homochoric to quaternion"""
+  """Homochoric vector to quaternion."""
   return ax2qu(ho2ax(ho))
 
 
 def ho2om(ho):
-  """Homochoric to orientation matrix"""
+  """Homochoric vector to rotation matrix."""
   return ax2om(ho2ax(ho))
 
 
 def ho2eu(ho):
-  """Homochoric to Euler angles"""
+  """Homochoric vector to Bunge-Euler angles."""
   return ax2eu(ho2ax(ho))
   
 
 def ho2ax(ho):
-  """Homochoric to axis angle"""
+  """Homochoric vector to axis angle pair."""
   tfit = np.array([+1.0000000000018852,      -0.5000000002194847,
                    -0.024999992127593126,    -0.003928701544781374,
                    -0.0008152701535450438,   -0.0002009500426119712,
@@ -1448,42 +1603,42 @@ def ho2ax(ho):
 
 
 def ho2ro(ho):
-  """Axis angle to Rodriques vector"""
+  """Axis angle pair to Rodriques-Frank vector."""
   return ax2ro(ho2ax(ho))
 
 
 def ho2cu(ho):
-  """Homochoric to cubochoric"""
+  """Homochoric vector to cubochoric vector."""
   return  Lambert.BallToCube(ho)
 
 
-#---------- cubochoric ----------
+#---------- Cubochoric ----------
 
 def cu2qu(cu):
-  """Cubochoric to quaternion"""
+  """Cubochoric vector to quaternion."""
   return ho2qu(cu2ho(cu))
 
 
 def cu2om(cu):
-  """Cubochoric to orientation matrix"""
+  """Cubochoric vector to rotation matrix."""
   return ho2om(cu2ho(cu))
 
 
 def cu2eu(cu):
-  """Cubochoric to Euler angles"""
+  """Cubochoric vector to Bunge-Euler angles."""
   return ho2eu(cu2ho(cu))
 
 
 def cu2ax(cu):
-  """Cubochoric to axis angle"""
+  """Cubochoric vector to axis angle pair."""
   return ho2ax(cu2ho(cu))
 
 
 def cu2ro(cu):
-  """Cubochoric to Rodrigues vector"""
+  """Cubochoric vector to Rodriques-Frank vector."""
   return ho2ro(cu2ho(cu))
 
 
 def cu2ho(cu):
-  """Cubochoric to homochoric"""
+  """Cubochoric vector to homochoric vector."""
   return  Lambert.CubeToBall(cu)
