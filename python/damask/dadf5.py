@@ -267,7 +267,7 @@ class DADF5():
     """Adds a strain definition"""
     def strain(defgrad):
       (U,S,Vh) = np.linalg.svd(defgrad)                                                             # singular value decomposition
-      R_inv    = np.linalg.inv(np.dot(U,Vh))                                                        # inverse rotation of polar decomposition
+      R_inv    = np.dot(U,Vh).T                                                                     # inverse rotation of polar decomposition
       U        = np.dot(R_inv,defgrad)                                                              # F = RU
       U        = np.where(abs(U) < 1e-12, 0, U)                                                     # kill nasty noisy data
       (D,V) = np.linalg.eig(U)                                                                      # eigen decomposition (of symmetric matrix)
