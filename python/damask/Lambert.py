@@ -1,5 +1,6 @@
 ####################################################################################################
-# Code below available according to the followin conditions on https://github.com/MarDiehl/3Drotations
+# Code below available according to the following conditions on
+# https://github.com/MarDiehl/3Drotations
 ####################################################################################################
 # Copyright (c) 2017-2019, Martin Diehl/Max-Planck-Institut für Eisenforschung GmbH
 # Copyright (c) 2013-2014, Marc De Graef/Carnegie Mellon University
@@ -36,7 +37,20 @@ beta = np.pi**(5./6.)/6.**(1./6.)/2.
 R1   = (3.*np.pi/4.)**(1./3.)
 
 def CubeToBall(cube):
-  
+    """
+    Map a point in a uniform refinable cubical grid to a point on a uniform refinable grid on a ball.
+
+    Parameters
+    ----------
+    cube : numpy.ndarray
+        coordinates of a point in a uniform refinable cubical grid.
+        
+    References
+    ----------
+    D. Roşca et al., Modelling and Simulation in Materials Science and Engineering 22:075013, 2014
+    https://doi.org/10.1088/0965-0393/22/7/075013
+
+    """
     if np.abs(np.max(cube))>np.pi**(2./3.) * 0.5:
       raise ValueError
   
@@ -45,7 +59,7 @@ def CubeToBall(cube):
       ball = np.zeros(3)
     else:
       # get pyramide and scale by grid parameter ratio
-      p = GetPyramidOrder(cube)
+      p = get_order(cube)
       XYZ = cube[p] * sc
 
       # intercept all the points along the z-axis
@@ -74,7 +88,20 @@ def CubeToBall(cube):
 
 
 def BallToCube(ball):
-  
+    """
+    Map a point on a uniform refinable grid on a ball to a point in a uniform refinable cubical grid.
+
+    Parameters
+    ----------
+    ball : numpy.ndarray
+       coordinates of a point on a uniform refinable grid on a ball.
+
+    References
+    ----------
+    D. Roşca et al., Modelling and Simulation in Materials Science and Engineering 22:075013, 2014
+    https://doi.org/10.1088/0965-0393/22/7/075013
+
+    """
     rs = np.linalg.norm(ball)
     if rs > R1: 
       raise ValueError
@@ -82,7 +109,7 @@ def BallToCube(ball):
     if np.allclose(ball,0.0,rtol=0.0,atol=1.0e-300):
       cube = np.zeros(3)
     else:
-      p = GetPyramidOrder(ball)
+      p = get_order(ball)
       xyz3 = ball[p] 
 
       # inverse M_3
@@ -110,8 +137,24 @@ def BallToCube(ball):
       
     return cube
 
-def GetPyramidOrder(xyz):
- 
+def get_order(xyz):
+    """
+    Get order of the coordinates.
+
+    Depending on the pyramid in which the point is located, the order need to be adjusted.
+    
+    Parameters
+    ----------
+    xyz : numpy.ndarray
+       coordinates of a point on a uniform refinable grid on a ball or
+       in a uniform refinable cubical grid.
+
+    References
+    ----------
+    D. Roşca et al., Modelling and Simulation in Materials Science and Engineering 22:075013, 2014
+    https://doi.org/10.1088/0965-0393/22/7/075013
+
+    """
     if   (abs(xyz[0])<= xyz[2]) and (abs(xyz[1])<= xyz[2]) or \
          (abs(xyz[0])<=-xyz[2]) and (abs(xyz[1])<=-xyz[2]):
       return [0,1,2]

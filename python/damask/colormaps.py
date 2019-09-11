@@ -3,13 +3,7 @@ import math
 import numpy as np
 
 class Color():
-  """
-  Conversion of colors between different color-spaces.
-
-  Colors should be given in the form Color('model',[vector]).
-  To convert or copy color from one space to other, use the methods
-  convertTo('model') or expressAs('model'), respectively.
-  """
+  """Color representation in and conversion between different color-spaces."""
 
   __slots__ = [
                'model',
@@ -22,7 +16,17 @@ class Color():
   def __init__(self,
                model = 'RGB',
                color = np.zeros(3,'d')):
+    """
+    Create a Color object.
+    
+    Parameters
+    ----------
+    model : string
+        color model
+    color : numpy.ndarray
+        vector representing the color according to the selected model
 
+    """
     self.__transforms__ = \
                    {'HSV':    {'index': 0, 'next': self._HSV2HSL},
                     'HSL':    {'index': 1, 'next': self._HSL2RGB,     'prev': self._HSL2HSV},
@@ -49,18 +53,27 @@ class Color():
 
 # ------------------------------------------------------------------
   def __repr__(self):
-    """Color model and values"""
+    """Color model and values."""
     return 'Model: %s Color: %s'%(self.model,str(self.color))
 
 
 # ------------------------------------------------------------------
   def __str__(self):
-    """Color model and values"""
+    """Color model and values."""
     return self.__repr__()
 
 
 # ------------------------------------------------------------------
   def convertTo(self,toModel = 'RGB'):
+    """
+    Change the color model permanently.
+    
+    Parameters
+    ----------
+    toModel : string
+        color model
+
+    """
     toModel = toModel.upper()
     if toModel not in list(self.__transforms__.keys()): return
 
@@ -79,16 +92,25 @@ class Color():
 
 # ------------------------------------------------------------------
   def expressAs(self,asModel = 'RGB'):
+    """
+    Return the color in a different model.
+    
+    Parameters
+    ----------
+    asModel : string
+        color model
+
+    """
     return self.__class__(self.model,self.color).convertTo(asModel)
 
 
 
   def _HSV2HSL(self):
     """
-    Convert H(ue) S(aturation) V(alue or brightness) to H(ue) S(aturation) L(uminance)
+    Convert H(ue) S(aturation) V(alue or brightness) to H(ue) S(aturation) L(uminance).
 
-    with all values in the range of 0 to 1
-    http://codeitdown.com/hsl-hsb-hsv-color/
+    All values are in the range [0,1]
+    http://codeitdown.com/hsl-hsb-hsv-color
     """
     if self.model != 'HSV': return
 
@@ -105,10 +127,10 @@ class Color():
 
   def _HSL2HSV(self):
     """
-    Convert H(ue) S(aturation) L(uminance) to H(ue) S(aturation) V(alue or brightness)
+    Convert H(ue) S(aturation) L(uminance) to H(ue) S(aturation) V(alue or brightness).
 
-    with all values in the range of 0 to 1
-    http://codeitdown.com/hsl-hsb-hsv-color/
+    All values are in the range [0,1]
+    http://codeitdown.com/hsl-hsb-hsv-color
     """
     if self.model != 'HSL': return
 
@@ -124,9 +146,9 @@ class Color():
 
   def _HSL2RGB(self):
     """
-    Convert H(ue) S(aturation) L(uminance) to R(red) G(reen) B(lue)
+    Convert H(ue) S(aturation) L(uminance) to R(red) G(reen) B(lue).
 
-    with all values in the range of 0 to 1
+    All values are in the range [0,1]
     from http://en.wikipedia.org/wiki/HSL_and_HSV
     """
     if self.model != 'HSL': return
@@ -150,9 +172,9 @@ class Color():
 
   def _RGB2HSL(self):
     """
-    Convert R(ed) G(reen) B(lue) to H(ue) S(aturation) L(uminance)
+    Convert R(ed) G(reen) B(lue) to H(ue) S(aturation) L(uminance).
 
-    with all values in the range of 0 to 1
+    All values are in the range [0,1]
     from http://130.113.54.154/~monger/hsl-rgb.html
     """
     if self.model != 'RGB': return
@@ -190,9 +212,9 @@ class Color():
 
   def _RGB2XYZ(self):
     """
-    Convert R(ed) G(reen) B(lue) to CIE XYZ
+    Convert R(ed) G(reen) B(lue) to CIE XYZ.
 
-    with all values in the range of 0 to 1
+    All values are in the range [0,1]
     from http://www.cs.rit.edu/~ncs/color/t_convert.html
     """
     if self.model != 'RGB': return
@@ -219,9 +241,9 @@ class Color():
 
   def _XYZ2RGB(self):
     """
-    Convert  CIE XYZ to R(ed) G(reen) B(lue)
+    Convert  CIE XYZ to R(ed) G(reen) B(lue).
 
-    with all values in the range of 0 to 1
+    All values are in the range [0,1]
     from http://www.cs.rit.edu/~ncs/color/t_convert.html
     """
     if self.model != 'XYZ':
@@ -251,9 +273,9 @@ class Color():
 
   def _CIELAB2XYZ(self):
     """
-    Convert  CIE Lab to CIE XYZ
+    Convert  CIE Lab to CIE XYZ.
 
-    with XYZ in the range of 0 to 1
+    All values are in the range [0,1]
     from http://www.easyrgb.com/index.php?X=MATH&H=07#text7
     """
     if self.model != 'CIELAB': return
@@ -275,11 +297,11 @@ class Color():
 
   def _XYZ2CIELAB(self):
     """
-    Convert CIE XYZ to CIE Lab
+    Convert CIE XYZ to CIE Lab.
 
-    with XYZ in the range of 0 to 1
+    All values are in the range [0,1]
     from http://en.wikipedia.org/wiki/Lab_color_space,
-    http://www.cs.rit.edu/~ncs/color/t_convert.html
+         http://www.cs.rit.edu/~ncs/color/t_convert.html
     """
     if self.model != 'XYZ': return
 
@@ -299,7 +321,7 @@ class Color():
 
   def _CIELAB2MSH(self):
     """
-    Convert CIE Lab to Msh colorspace
+    Convert CIE Lab to Msh colorspace.
 
     from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
     """
@@ -319,7 +341,7 @@ class Color():
 
   def _MSH2CIELAB(self):
     """
-    Convert Msh colorspace to CIE Lab
+    Convert Msh colorspace to CIE Lab.
 
     with s,h in radians
     from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
@@ -337,7 +359,7 @@ class Color():
 
 
 class Colormap():
-  """Perceptually uniform diverging or sequential colormaps."""
+  """Perceptually uniform diverging or sequential colormap."""
 
   __slots__ = [
                'left',
@@ -394,7 +416,21 @@ class Colormap():
                interpolate = 'perceptualuniform',
                predefined = None
                ):
+    """
+    Create a Colormap object.
+    
+    Parameters
+    ----------
+    left : Color
+        left color (minimum value)
+    right : Color
+        right color (maximum value)
+    interpolate : str
+        interpolation scheme (either 'perceptualuniform' or 'linear')
+    predefined : bool
+         ignore other arguments and use predefined definition
 
+    """
     if predefined is not None:
       left = self.__predefined__[predefined.lower()]['left']
       right= self.__predefined__[predefined.lower()]['right']
@@ -412,15 +448,21 @@ class Colormap():
 
 # ------------------------------------------------------------------
   def __repr__(self):
-    """Left and right value of colormap"""
+    """Left and right value of colormap."""
     return 'Left: %s Right: %s'%(self.left,self.right)
 
 
 # ------------------------------------------------------------------
   def invert(self):
+    """Switch left/minimum with right/maximum."""
     (self.left, self.right) = (self.right, self.left)
     return self
 
+
+# ------------------------------------------------------------------
+  def show_predefined(self):
+    """Show the labels of the predefined colormaps."""
+    print('\n'.join(self.__predefined__.keys()))
 
 # ------------------------------------------------------------------
   def color(self,fraction = 0.5):
@@ -490,21 +532,22 @@ class Colormap():
     frac = 0.5*(np.array(crop) + 1.0)                                                               # rescale crop range to fractions
     colors = [self.color(float(i)/(steps-1)*(frac[1]-frac[0])+frac[0]).expressAs(model).color for i in range(steps)]
     if   format == 'paraview':
-      colormap = ['[\n {{\n  "ColorSpace" : "RGB", "Name" : "{}",\n  "RGBPoints" : ['.format(name)] \
-               + ['    {:4d},{:8.6f},{:8.6f},{:8.6f},'.format(i,color[0],color[1],color[2],)
-                                                                        for i,color in enumerate(colors[:-1])]\
-               + ['    {:4d},{:8.6f},{:8.6f},{:8.6f} '.format(len(colors),colors[-1][0],colors[-1][1],colors[-1][2],)]\
+      colormap = ['[\n {{\n  "ColorSpace": "RGB", "Name": "{}", "DefaultMap": true,\n  "RGBPoints" : ['.format(name)] \
+               + ['    {:4d},{:8.6f},{:8.6f},{:8.6f},'.format(i,color[0],color[1],color[2],) \
+                                                                        for i,color in enumerate(colors[:-1])] \
+               + ['    {:4d},{:8.6f},{:8.6f},{:8.6f} '.format(len(colors),colors[-1][0],colors[-1][1],colors[-1][2],)] \
                + ['   ]\n }\n]']
+
     elif format == 'gmsh':
       colormap = ['View.ColorTable = {'] \
                + [',\n'.join(['{%s}'%(','.join([str(x*255.0) for x in color])) for color in colors])] \
                + ['}']
 
     elif format == 'gom':
-      colormap = ['1 1 ' + str(name) \
-                 + ' 9 ' + str(name) \
-                 + ' 0 1 0 3 0 0 -1 9 \ 0 0 0 255 255 255 0 0 255 ' \
-                 + '30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 ' + str(len(colors)) \
+      colormap = ['1 1 ' + str(name)
+                 + ' 9 ' + str(name)
+                 + ' 0 1 0 3 0 0 -1 9 \\ 0 0 0 255 255 255 0 0 255 '
+                 + '30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 ' + str(len(colors))
                  + ' '.join([' 0 %s 255 1'%(' '.join([str(int(x*255.0)) for x in color])) for color in reversed(colors)])]
 
     elif format == 'raw':
