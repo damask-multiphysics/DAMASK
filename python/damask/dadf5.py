@@ -82,11 +82,21 @@ class DADF5():
 
     self.filename   = filename
     self.mode       = mode
-    
+
+
   def get_candidates(self,l):
+    """
+    Get groups that contain all requested datasets.
+    
+    Parameters
+    ----------
+    l : list of str
+        Names of datasets that need to be located in the group.
+
+    """    
     groups = []
     if type(l) is not list:
-      print('mist')
+     raise TypeError('Candidates should be given as a list')
     with h5py.File(self.filename,'r') as f:
       for g in self.get_active_groups():
         if set(l).issubset(f[g].keys()): groups.append(g)
@@ -94,6 +104,9 @@ class DADF5():
 
 
   def get_active_groups(self):
+    """
+    Get groups that are currently considered for evaluation. 
+    """
     groups = []
     for i,x in enumerate(self.active['increments']):
       group_inc = 'inc{:05}'.format(self.active['increments'][i]['inc'])
@@ -107,10 +120,11 @@ class DADF5():
         for t in self.active['m_output_types']:
           group_output_types = group_materialpoint+'/'+t
           groups.append(group_output_types)
-    return groups  
+    return groups
+    
 
   def list_data(self):
-    """Shows information on all datasets in the file."""
+    """Shows information on all active datasets in the file."""
     with h5py.File(self.filename,'r') as f:
       group_inc = 'inc{:05}'.format(self.active['increments'][0]['inc'])
       for c in self.active['constituents']:
@@ -216,7 +230,7 @@ class DADF5():
               'unit':'Pa',
               'Description': 'Cauchy stress calculated from 1st Piola-Kirchhoff stress and deformation gradient'}
     
-    self.add_generic_pointwise_vectorized(Cauchy,args,result)
+    self.add_generic_pointwise_vectorized(Cauchy,args,None,result)
 
     
   def add_Mises_stress(self,stress='sigma'):
@@ -397,7 +411,7 @@ class DADF5():
     pool.wait_completion()
     
     
-  def add_generic_pointwise_vectorized(self,func,args,result):
+  def add_generic_pointwise_vectorized(self,func,args,args2=None,result=None):
     """
     General function to add pointwise data.
     
@@ -407,9 +421,16 @@ class DADF5():
     groups = self.get_fitting(args)
     
     def job(args):
+      """
+      A job. It has different args!
+      """
+      print('args for job',args)
       out         = args['out']
       datasets_in = args['dat']
       func        = args['fun']
+#      try:
+ #       out         = func(*datasets_in,*args['fun_args'])
+  #    except:
       out         = func(*datasets_in)
       args['results'].put({'out':out,'group':args['group']})
     
@@ -421,21 +442,16 @@ class DADF5():
     for g in groups:
       with h5py.File(self.filename,'r') as f:
         datasets_in = [f[g+'/'+u['label']][()] for u in args]
-        
-      # figure out dimension of results
-      testArg = tuple([d[0:1,] for d in datasets_in])                                                 # to call function with first point
-      out = np.empty([datasets_in[0].shape[0]] + list(func(*testArg).shape[1:]))                        # shape is Npoints x shape of the results for one point
-      todo.append({'dat':datasets_in,'fun':func,'out':out,'group':g,'results':results})
+
+      if args2 is not None:
+        todo.append({'dat':datasets_in,'fun':func,'group':g,'results':results,'func_args':args,'out':None})
+      else:  
+        todo.append({'dat':datasets_in,'fun':func,'group':g,'results':results,'out':None})
     
     # Instantiate a thread pool with worker threads
     pool = util.ThreadPool(Nthreads)
     missingResults = len(todo)
 
-
-    # Add the jobs in bulk to the thread pool. Alternatively you could use
-    # `pool.add_task` to add single jobs. The code will block here, which
-    # makes it possible to cancel the thread pool with an exception when
-    # the currently running batch of workers is finished
 
     pool.map(job, todo[:Nthreads+1])
     i = 0
