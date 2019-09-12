@@ -235,14 +235,22 @@ class DADF5():
     
     
   def add_norm(self,x,ord=None):
-    """Adds norm of vector or tensor or magnitude of a scalar."""
-    # ToDo: The output unit should be the input unit
+    """
+    Adds norm of vector or tensor or magnitude of a scalar.
+
+    Todo
+    ----
+      The output unit should be the input unit.
+      The ord parameter should be taken into account.
+      The whole thing should be vectorized. This requires to parse optional arguments to func.
+
+    """
     args   = [{'label':x,'shape':None,'unit':None}]
     result = {'label':'norm_{}({})'.format(str(ord),x),
               'unit':'n/a',
               'Description': 'Norm of vector or tensor or magnitude of a scalar. See numpy.linalg.norm manual for details'}
     
-    self.add_generic_pointwise_vectorized(np.linalg.norm,args,result)
+    self.add_generic_pointwise(np.linalg.norm,args,result)
   
   
   def add_determinant(self,a):
