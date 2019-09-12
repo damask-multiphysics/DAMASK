@@ -184,9 +184,15 @@ class DADF5():
     
     
   def add_Cauchy(self,P='P',F='F'):
-    """Adds Cauchy stress calculated from 1st Piola-Kirchhoff stress and deformation gradient"""
+    """
+    Adds Cauchy stress calculated from 1st Piola-Kirchhoff stress and deformation gradient.
+    
+    Todo
+    ----
+    The einsum formula is completely untested!
+    """
     def Cauchy(F,P):
-      return 1.0/np.linalg.det(F)*np.dot(P,F.T)
+      return np.einsum('i,ijk,ilk->ijl',1.0/np.linalg.det(F),F,P)
       
     args   = [{'label':F,'shape':[3,3],'unit':'-'},
               {'label':P,'shape':[3,3],'unit':'Pa'} ]
@@ -194,7 +200,7 @@ class DADF5():
               'unit':'Pa',
               'Description': 'Cauchy stress calculated from 1st Piola-Kirchhoff stress and deformation gradient'}
     
-    self.add_generic_pointwise(Cauchy,args,result)
+    self.add_generic_pointwise_vectorized(Cauchy,args,result)
 
     
   def add_Mises_stress(self,stress='sigma'):
@@ -220,7 +226,7 @@ class DADF5():
               'unit':'n/a',
               'Description': 'Norm of vector or tensor or magnitude of a scalar. See numpy.linalg.norm manual for details'}
     
-    self.add_generic_pointwise(np.linalg.norm,args,result)
+    self.add_generic_pointwise_vectorized(np.linalg.norm,args,result)
   
   
   def add_determinant(self,a):
@@ -231,7 +237,7 @@ class DADF5():
               'unit':'n/a',
               'Description': 'Determinant of a tensor'}
     
-    self.add_generic_pointwise(np.linalg.det,args,result)
+    self.add_generic_pointwise_vectorized(np.linalg.det,args,result)
 
 
   def add_spherical(self,a):
@@ -307,9 +313,10 @@ class DADF5():
     
   def add_generic_pointwise(self,func,args,result):
     """
-    Ggeneral function to add pointwise data
+    Ggeneral function to add pointwise data.
     
     function 'func' first needs to have data arguments before other arguments
+    Works for functions that are pointwise defined.
     """
     groups = self.get_fitting(args)
     
@@ -317,9 +324,6 @@ class DADF5():
       out         = args['out']
       datasets_in = args['dat']
       func        = args['fun']
-      # calling the function per point might be performance-wise not optimal
-      # could be worth to investigate the performance for vectorized add_XXX functions that do the
-      # loops internally
       for i in range(out.shape[0]):
         arg = tuple([d[i,] for d in datasets_in]) 
         out[i,] = func(*arg)
@@ -347,7 +351,7 @@ class DADF5():
     # Add the jobs in bulk to the thread pool. Alternatively you could use
     # `pool.add_task` to add single jobs. The code will block here, which
     # makes it possible to cancel the thread pool with an exception when
-    # the currently running batch of workers is finishnumpy.linalg.normed.
+    # the currently running batch of workers is finished
 
     pool.map(job, todo[:Nthreads+1])
     i = 0
@@ -367,6 +371,67 @@ class DADF5():
         i+=1   
 
     pool.wait_completion()
-
+    
+    
+  def add_generic_pointwise_vectorized(self,func,args,result):
+    """
+    Ggeneral function to add pointwise data
+    
+    function 'func' first needs to have data arguments before other arguments
+    Works for vectorized functions.
+    """
+    groups = self.get_fitting(args)
+    
+    def job(args):
+      out         = args['out']
+      datasets_in = args['dat']
+      func        = args['fun']
+      out         = func(*datasets_in)
+      args['results'].put({'out':out,'group':args['group']})
+    
+    Nthreads = 4 # ToDo: should be a parameter
+    results  = Queue(Nthreads+1)
+    
+    todo = []
+    
+    for g in groups:
+      with h5py.File(self.filename,'r') as f:
+        datasets_in = [f[g+'/'+u['label']][()] for u in args]
         
-      
+      # figure out dimension of results
+      for d in datasets_in:
+        print('input shape',d.shape)
+      testArg = tuple([d[0:1,] for d in datasets_in])                                                 # to call function with first point
+      #print('testArg',testArg)
+      out = np.empty([datasets_in[0].shape[0]] + list(func(*testArg).shape[1:]))                        # shape is Npoints x shape of the results for one point
+      print('estimated output shape',out.shape)
+      todo.append({'dat':datasets_in,'fun':func,'out':out,'group':g,'results':results})
+    
+    # Instantiate a thread pool with worker threads
+    pool = util.ThreadPool(Nthreads)
+    missingResults = len(todo)
+
+
+    # Add the jobs in bulk to the thread pool. Alternatively you could use
+    # `pool.add_task` to add single jobs. The code will block here, which
+    # makes it possible to cancel the thread pool with an exception when
+    # the currently running batch of workers is finished
+
+    pool.map(job, todo[:Nthreads+1])
+    i = 0
+    while missingResults > 0:    
+        r=results.get() # noqa
+        print(r['group'])
+        with h5py.File(self.filename,'r+') as f:
+           dataset_out = f[r['group']].create_dataset(result['label'],data=r['out'])
+           dataset_out.attrs['Unit'] = result['unit']
+           dataset_out.attrs['Description'] = result['Description']
+           dataset_out.attrs['Creator'] = 'dadf5.py v{}'.format('n/a')
+        missingResults-=1
+        try:
+          pool.add_task(job,todo[Nthreads+1+i])
+        except:
+          pass
+        i+=1   
+
+    pool.wait_completion()
