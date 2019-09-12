@@ -1,20 +1,35 @@
-# -*- coding: UTF-8 no BOM -*-
-import h5py
-import re
-import numpy as np
 from queue import Queue
+import re
+
+import h5py
+import numpy as np
+
 from . import util
 
 # ------------------------------------------------------------------
 class DADF5():
-  """Read and write to DADF5 files"""
+  """
+  Read and write to DADF5 files.
+  
+  DADF5 files contain DAMASK results.
+  """
   
 # ------------------------------------------------------------------
   def __init__(self,
                filename,
                mode     = 'r',
               ):
+    """
+    Opens an existing DADF5 file.
     
+    Parameters
+    ----------
+    filename : str
+        name of the DADF5 file to be openend.
+    mode : str, optional
+        filemode for opening, either 'r' or 'a'.
+    
+    """
     if mode not in ['a','r']:
       print('Invalid file access mode')
     else:
@@ -95,7 +110,7 @@ class DADF5():
     return groups  
 
   def list_data(self):
-    """Shows information on all datasets in the file"""
+    """Shows information on all datasets in the file."""
     with h5py.File(self.filename,'r') as f:
       group_inc = 'inc{:05}'.format(self.active['increments'][0]['inc'])
       for c in self.active['constituents']:
@@ -107,7 +122,7 @@ class DADF5():
           try:
             for x in f[group_output_types].keys():
               print('    {} ({})'.format(x,f[group_output_types+'/'+x].attrs['Description'].decode()))
-          except:
+          except KeyError:
             pass
       for m in self.active['materialpoints']:
         group_materialpoint = group_inc+'/materialpoint/'+m
@@ -117,12 +132,12 @@ class DADF5():
           try:
             for x in f[group_output_types].keys():
               print('    {} ({})'.format(x,f[group_output_types+'/'+x].attrs['Description'].decode()))
-          except:
+          except KeyError:
             pass
     
 
   def get_dataset_location(self,label):
-    """Returns the location of all active datasets with given label"""
+    """Returns the location of all active datasets with given label."""
     path = []
     with h5py.File(self.filename,'r') as f:
       for i in self.active['increments']:
@@ -134,7 +149,7 @@ class DADF5():
             try:
               f[group_constituent+'/'+t+'/'+label]
               path.append(group_constituent+'/'+t+'/'+label)
-            except Exception as e:
+            except KeyError as e:
               print('unable to locate constituents dataset: '+ str(e))
        
         for m in self.active['materialpoints']:
@@ -143,7 +158,7 @@ class DADF5():
             try:
               f[group_materialpoint+'/'+t+'/'+label]
               path.append(group_materialpoint+'/'+t+'/'+label)
-            except Exception as e:
+            except KeyError as e:
               print('unable to locate materialpoints dataset: '+ str(e))
               
     return path
@@ -151,7 +166,7 @@ class DADF5():
     
   def read_dataset(self,path,c):
     """
-    Dataset for all points/cells
+    Dataset for all points/cells.
     
     If more than one path is given, the dataset is composed of the individual contributions
     """
@@ -168,7 +183,7 @@ class DADF5():
           if len(a.shape) == 1:
             a=a.reshape([a.shape[0],1])
           dataset[p,:] = a[u,:]
-        except Exception as e:
+        except KeyError as e:
           print('unable to read constituent: '+ str(e))
         try:
           p = np.where(f['mapping/cellResults/materialpoint']['Name'] == str.encode(label))[0]
@@ -177,7 +192,7 @@ class DADF5():
           if len(a.shape) == 1:
             a=a.reshape([a.shape[0],1])
           dataset[p,:] = a[u,:]
-        except Exception as e:
+        except KeyError as e:
           print('unable to read materialpoint: '+ str(e))
 
     return dataset
@@ -190,6 +205,7 @@ class DADF5():
     Todo
     ----
     The einsum formula is completely untested!
+    
     """
     def Cauchy(F,P):
       return np.einsum('i,ijk,ilk->ijl',1.0/np.linalg.det(F),F,P)
@@ -204,7 +220,7 @@ class DADF5():
 
     
   def add_Mises_stress(self,stress='sigma'):
-    """Adds equivalent von Mises stress"""
+    """Adds equivalent von Mises stress."""
     def Mises_stress(stress):
       dev = stress - np.trace(stress)/3.0*np.eye(3)
       symdev = 0.5*(dev+dev.T)
@@ -230,7 +246,7 @@ class DADF5():
   
   
   def add_determinant(self,a):
-    """Adds the determinant of a tensor"""
+    """Adds the determinant of a tensor."""
     # ToDo: The output unit should be the input unit
     args   = [{'label':a,'shape':[3,3],'unit':None}]
     result = {'label':'det({})'.format(a),
@@ -241,7 +257,7 @@ class DADF5():
 
 
   def add_spherical(self,a):
-    """Adds the spherical component of a tensor"""
+    """Adds the spherical component of a tensor."""
     def spherical(m):
       return (m[0,0]+m[1,1]+m[2,2])/3.0
 
@@ -255,7 +271,7 @@ class DADF5():
   
   
   def add_deviator(self,a):
-    """Adds the deviator of a tensor"""
+    """Adds the deviator of a tensor."""
     def deviator(m):
       return m - np.eye(3)*(m[0,0]+m[1,1]+m[2,2])/3.0
 
@@ -270,7 +286,7 @@ class DADF5():
     
     
   def add_strain_tensors(self,defgrad='F'):
-    """Adds a strain definition"""
+    """Adds a strain definition."""
     def strain(defgrad):
       (U,S,Vh) = np.linalg.svd(defgrad)                                                             # singular value decomposition
       R_inv    = np.dot(U,Vh).T                                                                     # inverse rotation of polar decomposition
@@ -313,7 +329,7 @@ class DADF5():
     
   def add_generic_pointwise(self,func,args,result):
     """
-    Ggeneral function to add pointwise data.
+    General function to add pointwise data.
     
     function 'func' first needs to have data arguments before other arguments
     Works for functions that are pointwise defined.
@@ -366,7 +382,7 @@ class DADF5():
         missingResults-=1
         try:
           pool.add_task(job,todo[Nthreads+1+i])
-        except:
+        except IndexError:
           pass
         i+=1   
 
@@ -375,7 +391,7 @@ class DADF5():
     
   def add_generic_pointwise_vectorized(self,func,args,result):
     """
-    Ggeneral function to add pointwise data
+    General function to add pointwise data.
     
     function 'func' first needs to have data arguments before other arguments
     Works for vectorized functions.
@@ -399,12 +415,8 @@ class DADF5():
         datasets_in = [f[g+'/'+u['label']][()] for u in args]
         
       # figure out dimension of results
-      for d in datasets_in:
-        print('input shape',d.shape)
       testArg = tuple([d[0:1,] for d in datasets_in])                                                 # to call function with first point
-      #print('testArg',testArg)
       out = np.empty([datasets_in[0].shape[0]] + list(func(*testArg).shape[1:]))                        # shape is Npoints x shape of the results for one point
-      print('estimated output shape',out.shape)
       todo.append({'dat':datasets_in,'fun':func,'out':out,'group':g,'results':results})
     
     # Instantiate a thread pool with worker threads
@@ -430,7 +442,7 @@ class DADF5():
         missingResults-=1
         try:
           pool.add_task(job,todo[Nthreads+1+i])
-        except:
+        except IndexError:
           pass
         i+=1   
 
