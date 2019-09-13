@@ -17,7 +17,7 @@ class DADF5():
 # ------------------------------------------------------------------
   def __init__(self,
                filename,
-               mode     = 'r',
+               mode     = 'a',
               ):
     """
     Opens an existing DADF5 file.
@@ -26,16 +26,9 @@ class DADF5():
     ----------
     filename : str
         name of the DADF5 file to be openend.
-    mode : str, optional
-        filemode for opening, either 'r' or 'a'.
     
     """
-    if mode not in ['a','r']:
-      print('Invalid file access mode')
-    else:
-      with h5py.File(filename,mode):
-        pass
-      
+
     with h5py.File(filename,'r') as f:
       
       if f.attrs['DADF5-major'] != 0 or f.attrs['DADF5-minor'] != 2:
