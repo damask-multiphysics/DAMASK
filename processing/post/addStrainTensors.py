@@ -137,8 +137,8 @@ for name in filenames:
       F = np.array(list(map(float,table.data[column:column+items['tensor']['dim']])),'d').reshape(items['tensor']['shape'])
       (U,S,Vh) = np.linalg.svd(F)                                                                   # singular value decomposition
       R = np.dot(U,Vh)                                                                              # rotation of polar decomposition
-      stretch['U'] = np.dot(np.linalg.inv(R),F)                                                     # F = RU
-      stretch['V'] = np.dot(F,np.linalg.inv(R))                                                     # F = VR
+      stretch['U'] = np.dot(R.T,F)                                                                  # F = RU
+      stretch['V'] = np.dot(F,R.T)                                                                  # F = VR
 
       for theStretch in stretches:
         stretch[theStretch] = np.where(abs(stretch[theStretch]) < 1e-12, 0, stretch[theStretch])    # kill nasty noisy data
