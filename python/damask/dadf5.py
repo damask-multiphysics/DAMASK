@@ -15,10 +15,7 @@ class DADF5():
   """
   
 # ------------------------------------------------------------------
-  def __init__(self,
-               filename,
-               mode     = 'a',
-              ):
+  def __init__(self,filename):
     """
     Opens an existing DADF5 file.
     
@@ -28,7 +25,6 @@ class DADF5():
         name of the DADF5 file to be openend.
     
     """
-
     with h5py.File(filename,'r') as f:
       
       if f.attrs['DADF5-major'] != 0 or f.attrs['DADF5-minor'] != 2:
@@ -63,7 +59,7 @@ class DADF5():
       self.m_output_types = list(set(self.m_output_types))                                          # make unique
 
     #self.on_air
-    self.active= {'increments':     self.increments,                                                # ToDo:simplify, activity only positions that translate into (no complex types)
+    self.active= {'increments':     self.increments, # ToDo:simplify, activity only positions that translate into (no complex types)
                   'constituents':   self.constituents,
                   'materialpoints': self.materialpoints,
                   'constituent':    range(self.Nconstituents),                                      # ToDo: stupid naming
@@ -73,8 +69,6 @@ class DADF5():
 # ToDo: store increments, select icrements (trivial), position, and time
 
     self.filename   = filename
-    self.mode       = mode
-
 
   def get_groups(self,l): #group_with_data(datasets)
     """
@@ -96,9 +90,7 @@ class DADF5():
 
 
   def get_active_groups(self): # rename: get_groups needed? merge with datasets and have [] and ['*']
-    """
-    Get groups that are currently considered for evaluation. 
-    """
+    """Get groups that are currently considered for evaluation."""
     groups = []
     for i in self.active['increments']:
       group_inc = 'inc{:05}'.format(i['inc'])                               #ToDo: Merge path only once at the end '/'.join(listE)
@@ -258,6 +250,7 @@ class DADF5():
   def add_norm(self,x,ord=None):
     """
     Adds norm of vector or tensor or magnitude of a scalar.
+    
     See numpy.linalg.norm manual for details.
     """
     def norm(x,ord):
@@ -385,12 +378,16 @@ class DADF5():
   def __add_generic_pointwise(self,func,datasets_requested,extra_args={}):
     """
     General function to add pointwise data.
-    """
+    
+    Parameters
+    ----------
+      func : function
+      datasets_requested : list of dictionaries
+      extra_args : dictitionary
 
+    """
     def job(args):
-      """
-      Call function with input data + extra arguments, returns results + group.
-      """
+      """Call function with input data + extra arguments, returns results + group."""
       args['results'].put({**args['func'](**args['in']),'group':args['group']})
     
 
