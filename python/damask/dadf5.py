@@ -45,15 +45,11 @@ class DADF5():
                           'time': round(f[u].attrs['time/s'],12),
                           }   for u in f.keys() if r.match(u)]
       
-      self.constituents    = np.unique(f['mapping/cellResults/constituent']['Name']).tolist()        # ToDo: I am not to happy with the name
-      self.constituents    = [c.decode() for c in self.constituents]
-      
-      self.materialpoints  = np.unique(f['mapping/cellResults/materialpoint']['Name']).tolist()      # ToDo: I am not to happy with the name
-      self.materialpoints  = [m.decode() for m in self.materialpoints]
-      
-      self.Nconstituents   = [i for i in range(np.shape(f['mapping/cellResults/constituent'])[1])]
-      self.Nmaterialpoints = np.shape(f['mapping/cellResults/constituent'])[0]
-      
+      self.Nmaterialpoints, self.Nconstituents =   np.shape(f['mapping/cellResults/constituent'])
+      self.materialpoints  = [m.decode() for m in np.unique(f['mapping/cellResults/materialpoint']['Name'])]
+      self.constituents    = [c.decode() for c in np.unique(f['mapping/cellResults/constituent']  ['Name'])]
+
+
       self.c_output_types  = []
       for c in self.constituents:
         for o in f['inc{:05}/constituent/{}'.format(self.increments[0]['inc'],c)].keys():
@@ -65,19 +61,22 @@ class DADF5():
         for o in f['inc{:05}/materialpoint/{}'.format(self.increments[0]['inc'],m)].keys():
           self.m_output_types.append(o)
       self.m_output_types = list(set(self.m_output_types))                                          # make unique
-      
-    self.active= {'increments':     self.increments,
+
+    #self.on_air
+    self.active= {'increments':     self.increments,                                                # ToDo:simplify, activity only positions that translate into (no complex types)
                   'constituents':   self.constituents,
                   'materialpoints': self.materialpoints,
-                  'constituent':    self.Nconstituents,
+                  'constituent':    range(self.Nconstituents),                                      # ToDo: stupid naming
                   'c_output_types': self.c_output_types,
                   'm_output_types': self.m_output_types}
+
+# ToDo: store increments, select icrements (trivial), position, and time
 
     self.filename   = filename
     self.mode       = mode
 
 
-  def get_groups(self,l):
+  def get_groups(self,l): #group_with_data(datasets)
     """
     Get groups that contain all requested datasets.
     
@@ -96,13 +95,13 @@ class DADF5():
     return groups
 
 
-  def get_active_groups(self):
+  def get_active_groups(self): # rename: get_groups needed? merge with datasets and have [] and ['*']
     """
     Get groups that are currently considered for evaluation. 
     """
     groups = []
     for i,x in enumerate(self.active['increments']):
-      group_inc = 'inc{:05}'.format(self.active['increments'][i]['inc'])
+      group_inc = 'inc{:05}'.format(self.active['increments'][i]['inc']) #ToDo: Merge path only once at the end '/'.join(listE)
       for c in self.active['constituents']:
         group_constituent = group_inc+'/constituent/'+c
         for t in self.active['c_output_types']:
@@ -116,16 +115,16 @@ class DADF5():
     return groups
     
 
-  def list_data(self):
+  def list_data(self): # print_datasets and have [] and ['*'], loop over all increment, soll auf anderen basieren (get groups with sternchen)
     """Shows information on all active datasets in the file."""
     with h5py.File(self.filename,'r') as f:
-      group_inc = 'inc{:05}'.format(self.active['increments'][0]['inc'])
+      group_inc = 'inc{:05}'.format(self.active['increments'][0]['inc']) #ToDo: Merge path only once at the end '/'.join(listE)
       for c in self.active['constituents']:
         print('\n'+c)
         group_constituent = group_inc+'/constituent/'+c
         for t in self.active['c_output_types']:
           print('  {}'.format(t))
-          group_output_types = group_constituent+'/'+t
+          group_output_types = group_constituent+'/'+t 
           try:
             for x in f[group_output_types].keys():
               print('    {} ({})'.format(x,f[group_output_types+'/'+x].attrs['Description'].decode()))
@@ -143,8 +142,8 @@ class DADF5():
             pass
     
 
-  def get_dataset_location(self,label):
-    """Returns the location of all active datasets with given label."""
+  def get_dataset_location(self,label): # names
+    """Returns the location of all active datasets with given label.""" #ToDo: Merge path only once at the end '/'.join(listE)
     path = []
     with h5py.File(self.filename,'r') as f:
       for i in self.active['increments']:
