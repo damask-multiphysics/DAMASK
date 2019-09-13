@@ -149,7 +149,7 @@ for name in filenames:
         for i in [0,1,2]:
           if np.dot(V[:,i],V[:,(i+1)%3]) != 0.0:                                                    # check each vector for orthogonality
               V[:,(i+1)%3] = np.cross(V[:,(i+2)%3],V[:,i])                                          # correct next vector
-              V[:,(i+1)%3] /= np.sqrt(np.dot(V[:,(i+1)%3],V[:,(i+1)%3]))                            # and renormalize (hyperphobic?)
+              V[:,(i+1)%3] /= np.linalg.norm(V[:,(i+1)%3])                                          # and renormalize (hyperphobic?)
         for theStrain in strains:
           d = operator(theStretch,theStrain,D)                                                      # operate on eigenvalues of U or V
           eps = np.dot(V,np.dot(np.diag(d),V.T)).reshape(9)                                         # build tensor back from eigenvalue/vector basis
