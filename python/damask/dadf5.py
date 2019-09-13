@@ -100,18 +100,14 @@ class DADF5():
     Get groups that are currently considered for evaluation. 
     """
     groups = []
-    for i,x in enumerate(self.active['increments']):
-      group_inc = 'inc{:05}'.format(self.active['increments'][i]['inc']) #ToDo: Merge path only once at the end '/'.join(listE)
+    for i in self.active['increments']:
+      group_inc = 'inc{:05}'.format(i['inc'])                               #ToDo: Merge path only once at the end '/'.join(listE)
       for c in self.active['constituents']:
-        group_constituent = group_inc+'/constituent/'+c
         for t in self.active['c_output_types']:
-          group_output_types = group_constituent+'/'+t
-          groups.append(group_output_types)
+          groups.append('/'.join([group_inc,'constituent',c,t]))
       for m in self.active['materialpoints']:
-        group_materialpoint = group_inc+'/materialpoint/'+m
         for t in self.active['m_output_types']:
-          group_output_types = group_materialpoint+'/'+t
-          groups.append(group_output_types)
+          groups.append('/'.join([group_inc,'materialpoint',m,t]))
     return groups
     
 
@@ -150,20 +146,20 @@ class DADF5():
         group_inc = 'inc{:05}'.format(i['inc'])
         
         for c in self.active['constituents']:
-          group_constituent = group_inc+'/constituent/'+c
           for t in self.active['c_output_types']:
             try:
-              f[group_constituent+'/'+t+'/'+label]
-              path.append(group_constituent+'/'+t+'/'+label)
+              p = '/'.join([group_inc,'constituent',c,t,label])
+              f[p]
+              path.append(p)
             except KeyError as e:
               print('unable to locate constituents dataset: '+ str(e))
        
         for m in self.active['materialpoints']:
-          group_materialpoint = group_inc+'/materialpoint/'+m
           for t in self.active['m_output_types']:
             try:
-              f[group_materialpoint+'/'+t+'/'+label]
-              path.append(group_materialpoint+'/'+t+'/'+label)
+              p = '/'.join([group_inc,'materialpoint',m,t,label])
+              f[p]
+              path.append(p)
             except KeyError as e:
               print('unable to locate materialpoints dataset: '+ str(e))
               
@@ -182,24 +178,22 @@ class DADF5():
       dataset = np.full(shape,np.nan)
       for pa in path:
         label   = pa.split('/')[2]
-        try:
-          p = np.where(f['mapping/cellResults/constituent'][:,c]['Name'] == str.encode(label))[0]
+        
+        p = np.where(f['mapping/cellResults/constituent'][:,c]['Name'] == str.encode(label))[0]
+        if len(p)>0:
           u = (f['mapping/cellResults/constituent'][p,c]['Position'])
           a = np.array(f[pa])
           if len(a.shape) == 1:
             a=a.reshape([a.shape[0],1])
           dataset[p,:] = a[u,:]
-        except KeyError as e:
-          print('unable to read constituent: '+ str(e))
-        try:
-          p = np.where(f['mapping/cellResults/materialpoint']['Name'] == str.encode(label))[0]
+
+        p = np.where(f['mapping/cellResults/materialpoint']['Name'] == str.encode(label))[0]
+        if len(p)>0:
           u = (f['mapping/cellResults/materialpoint'][p.tolist()]['Position'])
           a = np.array(f[pa])
           if len(a.shape) == 1:
             a=a.reshape([a.shape[0],1])
           dataset[p,:] = a[u,:]
-        except KeyError as e:
-          print('unable to read materialpoint: '+ str(e))
 
     return dataset
 
@@ -424,7 +418,7 @@ class DADF5():
     N_not_calculated = len(todo)
     while N_not_calculated > 0:    
       result = results.get()
-      with h5py.File(self.filename,self.mode) as f:                                                 # write to file
+      with h5py.File(self.filename,'a') as f:                                                       # write to file
         dataset_out = f[result['group']].create_dataset(result['label'],data=result['data'])
         for k in result['meta'].keys():
           dataset_out.attrs[k] = result['meta'][k]
