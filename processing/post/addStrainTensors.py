@@ -13,7 +13,7 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 def operator(stretch,strain,eigenvalues):
-  """Albrecht Bertram: Elasticity and Plasticity of Large Deformations An Introduction (3rd Edition, 2012), p. 102"""
+  """Albrecht Bertram: Elasticity and Plasticity of Large Deformations An Introduction (3rd Edition, 2012), p. 102."""
   return {
     'V#ln':    np.log(eigenvalues)                                 ,
     'U#ln':    np.log(eigenvalues)                                 ,
@@ -88,7 +88,7 @@ for name in filenames:
   try:
     table = damask.ASCIItable(name = name,
                               buffered = False)
-  except: continue
+  except IOError: continue
   damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
