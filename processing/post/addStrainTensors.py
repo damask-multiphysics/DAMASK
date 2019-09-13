@@ -146,7 +146,7 @@ for name in filenames:
         neg = np.where(D < 0.0)                                                                     # find negative eigenvalues ...
         D[neg]   *= -1.                                                                             # ... flip value ...
         V[:,neg] *= -1.                                                                             # ... and vector
-        for i,eigval in enumerate(D):
+        for i in [0,1,2]:
           if np.dot(V[:,i],V[:,(i+1)%3]) != 0.0:                                                    # check each vector for orthogonality
               V[:,(i+1)%3] = np.cross(V[:,(i+2)%3],V[:,i])                                          # correct next vector
               V[:,(i+1)%3] /= np.sqrt(np.dot(V[:,(i+1)%3],V[:,(i+1)%3]))                            # and renormalize (hyperphobic?)
