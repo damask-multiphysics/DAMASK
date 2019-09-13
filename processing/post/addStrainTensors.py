@@ -142,17 +142,17 @@ for name in filenames:
 
       for theStretch in stretches:
         stretch[theStretch] = np.where(abs(stretch[theStretch]) < 1e-12, 0, stretch[theStretch])    # kill nasty noisy data
-        (D,V) = np.linalg.eig(stretch[theStretch])                                                  # eigen decomposition (of symmetric matrix)
+        (D,V) = np.linalg.eigh((stretch[theStretch]+stretch[theStretch].T)*0.5)                     # eigen decomposition (of symmetric(ed) matrix)
         neg = np.where(D < 0.0)                                                                     # find negative eigenvalues ...
         D[neg]   *= -1.                                                                             # ... flip value ...
         V[:,neg] *= -1.                                                                             # ... and vector
         for i,eigval in enumerate(D):
           if np.dot(V[:,i],V[:,(i+1)%3]) != 0.0:                                                    # check each vector for orthogonality
               V[:,(i+1)%3] = np.cross(V[:,(i+2)%3],V[:,i])                                          # correct next vector
-              V[:,(i+1)%3] /= np.sqrt(np.dot(V[:,(i+1)%3],V[:,(i+1)%3].conj()))                     # and renormalize (hyperphobic?)
+              V[:,(i+1)%3] /= np.sqrt(np.dot(V[:,(i+1)%3],V[:,(i+1)%3]))                            # and renormalize (hyperphobic?)
         for theStrain in strains:
           d = operator(theStretch,theStrain,D)                                                      # operate on eigenvalues of U or V
-          eps = (np.dot(V,np.dot(np.diag(d),V.T)).real).reshape(9)                                  # build tensor back from eigenvalue/vector basis
+          eps = np.dot(V,np.dot(np.diag(d),V.T)).reshape(9)                                         # build tensor back from eigenvalue/vector basis
 
           table.data_append(list(eps))
 
