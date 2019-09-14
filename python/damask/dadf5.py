@@ -65,10 +65,87 @@ class DADF5():
                   'constituent':    range(self.Nconstituents),                                      # ToDo: stupid naming
                   'c_output_types': self.c_output_types,
                   'm_output_types': self.m_output_types}
+                  
+    self.filename   = filename
+
+  def __on_air_set(self,output,t,p):
+    valid  = set(p)
+    choice = [output] if isinstance(output,str) else output
+    self.active[t] = list(valid.intersection(choice))
+
+
+  def __on_air_add(self,output,t,p):
+    choice   = [output] if isinstance(output,str) else output
+    valid    = set(p).intersection(choice)
+    existing = set(self.active[t])
+    self.active[t] = list(existing.add(valid))
+
+
+  def __on_air_del(self,output):
+    choice   = [output] if isinstance(output,str) else output
+    existing = set(self.active[t])
+    self.active[t] = list(existing.remove(choice))
+
+
+  def constitutive_output_set(self,output):
+    self.__on_air_set(output,'c_output_types',self.c_output_types)
+
+
+  def constitutive_output_add(self,output):
+    self.__on_air_add(output,'c_output_types',self.c_output_types)
+
+
+  def constitutive_output_del(self,output):
+    self.__on_air_del(output,'c_output_types')
+    
+  
+  def materialpoint_output_set(self,output):
+    self.__on_air_set(output,'m_output_types',self.m_output_types)
+
+
+  def materialpoint_output_add(self,output):
+    self.__on_air_add(output,'m_output_types',self.m_output_types)
+
+
+  def materialpoint_output_del(self,output):
+    self.__on_air_del(output,'m_output_types')
+  
+  
+  def constitutive_set(self,output):
+    self.__on_air_set(output,'constituents',self.constituents)
+
+
+  def constitutive_add(self,output):
+    self.__on_air_add(output,'constituents',self.constituents)
+
+
+  def constitutive_del(self,output):
+    self.__on_air_del(output,'constituents')
+    
+  
+  def materialpoint_set(self,output):
+    self.__on_air_set(output,'materialpoints',self.materialpoints)
+
+
+  def materialpoint_add(self,output):
+    self.__on_air_add(output,'materialpoints',self.materialpoints)
+
+
+  def materialpoint_del(self,output):
+    self.__on_air_del(output,'materialpoints')
+    
+  def c_it(self):
+    a = self.active['constituents']#.copy()
+    for i in a:
+      self.constitutive_set(i)
+      yield i
+    self.constitutive_set(a)
+
+
 
 # ToDo: store increments, select icrements (trivial), position, and time
 
-    self.filename   = filename
+
 
   def get_groups(self,l): #group_with_data(datasets)
     """
@@ -194,14 +271,13 @@ class DADF5():
     """
     Adds Cauchy stress calculated from 1st Piola-Kirchhoff stress and deformation gradient.
     
-    Todo
-    ----
-    The einsum formula is completely untested!
-    
+    Resulting tensor is symmetrized as the Cauchy stress should be symmetric.
     """
     def Cauchy(F,P):
+      sigma = np.einsum('i,ijk,ilk->ijl',1.0/np.linalg.det(F['data']),P['data'],F['data'])
+      sigma = (sigma + np.einsum('ijk->ikj',sigma))*0.5                                     # enforce symmetry
       return  {
-               'data' : np.einsum('i,ijk,ilk->ijl',1.0/np.linalg.det(F['data']),F['data'],P['data']),
+               'data'  : sigma,
                'label' : 'sigma',
                'meta' : {
                         'Unit' :        P['meta']['Unit'],
