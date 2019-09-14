@@ -1,5 +1,6 @@
 from queue import Queue
 import re
+import glob
 
 import h5py
 import numpy as np
@@ -37,9 +38,11 @@ class DADF5():
         self.size = f['geometry'].attrs['size']
         
       r=re.compile('inc[0-9]+')
-      self.increments = [{'inc':  int(u[3:]),
+      self.time_information = [{'inc':  int(u[3:]),
                           'time': round(f[u].attrs['time/s'],12),
                           }   for u in f.keys() if r.match(u)]
+                          
+      self.increments = self.time_information.copy() # unify later
       
       self.Nmaterialpoints, self.Nconstituents =   np.shape(f['mapping/cellResults/constituent'])
       self.materialpoints  = [m.decode() for m in np.unique(f['mapping/cellResults/materialpoint']['Name'])]
@@ -58,7 +61,7 @@ class DADF5():
           self.m_output_types.append(o)
       self.m_output_types = list(set(self.m_output_types))                                          # make unique
 
-    self.visible= {'increments':     self.increments, # ToDo:simplify, activity only positions that translate into (no complex types)
+    self.visible= {'increments':    self.increments, # ToDo:simplify, activity only positions that translate into (no complex types)
                   'constituents':   self.constituents,
                   'materialpoints': self.materialpoints,
                   'constituent':    range(self.Nconstituents),                                      # ToDo: stupid naming
@@ -97,8 +100,25 @@ class DADF5():
       last_a = self.visible[t]
       yield i
     self.__visible_set(a,t,a)
-  
-  
+
+
+  def increment_set_by_time(self,start,end):
+    for t in self.time_information:
+      if start<= t['time']< end:
+        print(t)
+
+
+  def increment_set_by_position(self,start,end):
+    for t in self.time_information[start:end]:
+      print(t)
+
+
+  def increment_set(self,start,end):
+    for t in self.time_information:
+      if start<= t['inc']< end:
+        print(t)
+      
+      
   def constituent_output_iter(self):
     return self.__visible_iter('c_output_types')
   
@@ -167,39 +187,60 @@ class DADF5():
 # ToDo: store increments, select icrements (trivial), position, and time
 
 
-
-  def get_groups(self,l): #group_with_data(datasets)
+  def groups_with_datasets(self,datasets):
     """
     Get groups that contain all requested datasets.
     
+    Only groups within inc?????/constituent/*_*/* inc?????/materialpoint/*_*/* 
+    are considered as they contain the data.
+    Single strings will be treated as list with one entry.
+    
+    Wild card matching is allowed, but the number of arguments need to fit.
+    
     Parameters
     ----------
-    l : list of str
-        Names of datasets that need to be located in the group.
-
-    """    
-    groups = []
-    if type(l) is not list:
-     raise TypeError('Candidates should be given as a list')
-    with h5py.File(self.filename,'r') as f:
-      for g in self.get_active_groups():
-        if set(l).issubset(f[g].keys()): groups.append(g)
-    return groups
-
-
-  def get_active_groups(self): # rename: get_groups needed? merge with datasets and have [] and ['*']
-    """Get groups that are currently considered for evaluation."""
-    groups = []
-    for i in self.visible['increments']:
-      group_inc = 'inc{:05}'.format(i['inc'])                               #ToDo: Merge path only once at the end '/'.join(listE)
-      for c in self.visible['constituents']:
-        for t in self.visible['c_output_types']:
-          groups.append('/'.join([group_inc,'constituent',c,t]))
-      for m in self.visible['materialpoints']:
-        for t in self.visible['m_output_types']:
-          groups.append('/'.join([group_inc,'materialpoint',m,t]))
-    return groups
+      datasets : iterable or str or boolean
     
+    Examples
+    --------
+      datasets = False matches no group
+      datasets = True matches all groups
+      datasets = ['F','P'] matches a group with ['F','P','sigma']
+      datasets = ['*','P'] matches a group with ['F','P','sigma']
+      datasets = ['*'] does not matche a group with ['F','P','sigma']
+      datasets = ['*','*'] does not matche a group with ['F','P','sigma']
+      datasets = ['*','*','*'] matches a group with ['F','P','sigma']
+      
+    """
+    if datasets is False: return []
+    if isinstance(datasets,str):
+      s = [datasets]
+    else:
+      s = datasets
+
+    groups = []
+    
+    with h5py.File(self.filename,'r') as f:
+      for i in self.visible['increments']:
+        group_inc = 'inc{:05}'.format(i['inc'])                               #ToDo: Merge path only once at the end '/'.join(listE)
+        for c in self.constituent_iter():
+          for t in self.constituent_output_iter():
+            group = '/'.join([group_inc,'constituent',c,t])
+            if datasets is True:
+              groups.append(group)
+            else:
+              match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in datasets] for e in e_]
+              if len(set(match)) == len(s) : groups.append(group)
+        for m in self.materialpoint_iter():
+          for t in self.materialpoint_output_iter():
+            group = '/'.join([group_inc,'materialpoint',m,t])
+            if datasets is True:
+              groups.append(group)
+            else:
+              match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in datasets] for e in e_]
+              if len(set(match)) == len(s) : groups.append(group)
+    return groups
+
 
   def list_data(self): # print_datasets and have [] and ['*'], loop over all increment, soll auf anderen basieren (get groups with sternchen)
     """Shows information on all active datasets in the file."""
@@ -316,14 +357,17 @@ class DADF5():
 
   def add_Mises(self,x):
     """Adds the equivalent Mises stress or strain of a tensor."""
-    def deviator(x):
+    def Mises(x):
       
-      if x['meta']['Unit'] == 'Pa': #ToDo: Should we use this? Then add_Cauchy  and add_strain_tensors also should perform sanity checks
+      if x['meta']['Unit'] == b'Pa': #ToDo: Should we use this? Then add_Cauchy  and add_strain_tensors also should perform sanity checks
         factor = 3.0/2.0
-      elif x['meta']['Unit'] == '-':
+        t = 'stress'
+      elif x['meta']['Unit'] == b'1':
         factor = 2.0/3.0
+        t = 'strain'
       else:
-        ValueError
+        print(x['meta']['Unit'])
+        raise ValueError
       
       d = x['data']
       dev = d - np.einsum('ijk,i->ijk',np.broadcast_to(np.eye(3),[d.shape[0],3,3]),np.trace(d,axis1=1,axis2=2)/3.0)
@@ -331,35 +375,29 @@ class DADF5():
 
       return  {
                'data' :  np.sqrt(np.einsum('ijk->i',dev**2)*factor), 
-               'label' : 'Mises({})'.format(x['label']),
+               'label' : '{}_vM'.format(x['label']),
                'meta' : {
                         'Unit' :        x['meta']['Unit'],
-                        'Description' : 'Mises equivalent stress of {} ({})'.format(x['label'],x['meta']['Description']),
+                        'Description' : 'Mises equivalent {} of {} ({})'.format(t,x['label'],x['meta']['Description']),
                         'Creator' :     'dadf5.py:add_Mises_stress vXXXXX'
                         }
                }
       
     requested = [{'label':x,'arg':'x'}]
     
-    self.__add_generic_pointwise(deviator,requested)
+    self.__add_generic_pointwise(Mises,requested)
 
 
   def add_norm(self,x,ord=None):
     """
-    Adds norm of vector or tensor or magnitude of a scalar.
+    Adds norm of vector or tensor.
     
     See numpy.linalg.norm manual for details.
     """
-    
-    
     def norm(x,ord):
 
       o = ord
-      if   len(x['data'].shape) == 1:
-        axis = 0
-        t = 'scalar'
-        if o is None: o = 2
-      elif len(x['data'].shape) == 2:
+      if len(x['data'].shape) == 2:
         axis = 1
         t = 'vector'
         if o is None: o = 2
@@ -372,7 +410,7 @@ class DADF5():
 
       return  {
                'data' : np.linalg.norm(x['data'],ord=o,axis=axis,keepdims=True),
-               'label' : '|{}|_{}'.format(x['label'],ord),
+               'label' : '|{}|_{}'.format(x['label'],o),
                'meta' : {
                         'Unit' :        x['meta']['Unit'],
                         'Description' : '{}-Norm of {} {} ({})'.format(ord,t,x['label'],x['meta']['Description']),
@@ -381,8 +419,27 @@ class DADF5():
                }
 
     requested = [{'label':x,'arg':'x'}]
-    
+
     self.__add_generic_pointwise(norm,requested,{'ord':ord})
+    
+    
+  def add_absolute(self,x):
+    """Adds absolute value."""
+    def absolute(x):
+
+      return  {
+               'data' : np.abs(x['data']),
+               'label' : '|{}|'.format(x['label']),
+               'meta' : {
+                        'Unit' :        x['meta']['Unit'],
+                        'Description' : 'Absolute value of {} ({})'.format(x['label'],x['meta']['Description']),
+                        'Creator' :     'dadf5.py:add_abs vXXXXX'
+                        }
+               }
+
+    requested = [{'label':x,'arg':'x'}]
+    
+    self.__add_generic_pointwise(absolute,requested)
 
 
   def add_determinant(self,x):
@@ -516,7 +573,7 @@ class DADF5():
     
     todo = []
     # ToDo: It would be more memory efficient to read only from file when required, i.e. do to it in pool.add_task
-    for group in self.get_groups([d['label'] for d in datasets_requested]):
+    for group in self.groups_with_datasets([d['label'] for d in datasets_requested]):
       with h5py.File(self.filename,'r') as f:
         datasets_in = {}
         for d in datasets_requested:

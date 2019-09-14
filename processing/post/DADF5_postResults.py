@@ -24,9 +24,9 @@ parser.add_argument('filenames', nargs='+',
 parser.add_argument('-d','--dir', dest='dir',default='postProc',metavar='string',
                     help='name of subdirectory to hold output')
 parser.add_argument('--mat', nargs='+',
-                    help='labels for materialpoint/homogenization',dest='mat')
+                    help='labels for materialpoint',dest='mat')
 parser.add_argument('--con', nargs='+',
-                    help='labels for constituent/crystallite/constitutive',dest='con')
+                    help='labels for constituent',dest='con')
 
 options = parser.parse_args()
 
@@ -67,11 +67,9 @@ for filename in options.filenames:
           x = results.get_dataset_location(label)
           if len(x) == 0:
             continue
-          label = x[0].split('/')[-1]
           array = results.read_dataset(x,0)
           d = int(np.product(np.shape(array)[1:]))
-          array = np.reshape(array,[np.product(results.grid),d])
-          data = np.concatenate((data,array),1)
+          data = np.concatenate((data,np.reshape(array,[np.product(results.grid),d])),1)
           
           if d>1:
             header+= ''.join([' {}_{}'.format(j+1,label) for j in range(d)])
@@ -84,11 +82,9 @@ for filename in options.filenames:
           x = results.get_dataset_location(label)
           if len(x) == 0:
             continue
-          label = x[0].split('/')[-1]
           array = results.read_dataset(x,0)
           d = int(np.product(np.shape(array)[1:]))
-          array = np.reshape(array,[np.product(results.grid),d])
-          data = np.concatenate((data,array),1)
+          data = np.concatenate((data,np.reshape(array,[np.product(results.grid),d])),1)
           
           if d>1:
             header+= ''.join([' {}_{}'.format(j+1,label) for j in range(d)])
