@@ -81,7 +81,7 @@ class DADF5():
     self.active[t] = list(existing.add(valid))
 
 
-  def __on_air_del(self,output):
+  def __on_air_del(self,output,t):
     choice   = [output] if isinstance(output,str) else output
     existing = set(self.active[t])
     self.active[t] = list(existing.remove(choice))
@@ -275,7 +275,7 @@ class DADF5():
     """
     def Cauchy(F,P):
       sigma = np.einsum('i,ijk,ilk->ijl',1.0/np.linalg.det(F['data']),P['data'],F['data'])
-      sigma = (sigma + np.einsum('ijk->ikj',sigma))*0.5                                     # enforce symmetry
+      sigma = (sigma + np.einsum('ikj',sigma))*0.5                                     # enforce symmetry
       return  {
                'data'  : sigma,
                'label' : 'sigma',
@@ -294,10 +294,10 @@ class DADF5():
 
 
   def add_Mises(self,x):
-    """Adds the equivalent Mises stres of a tensor."""
+    """Adds the equivalent Mises stress or strain of a tensor."""
     def deviator(x):
       
-      if x['meta']['Unit'] == 'Pa':
+      if x['meta']['Unit'] == 'Pa': #ToDo: Should we use this? Then add_Cauchy  and add_strain_tensors also should perform sanity checks
         factor = 3.0/2.0
       elif x['meta']['Unit'] == '-':
         factor = 2.0/3.0
@@ -306,10 +306,10 @@ class DADF5():
       
       d = x['data']
       dev = d - np.einsum('ijk,i->ijk',np.broadcast_to(np.eye(3),[d.shape[0],3,3]),np.trace(d,axis1=1,axis2=2)/3.0)
-      dev_sym = (dev + np.einsum('ikj',dev))*0.5
+      #dev_sym = (dev + np.einsum('ikj',dev))*0.5 # ToDo: this is not needed (only if the input is not symmetric, but then the whole concept breaks down)
 
       return  {
-               'data' :  np.sqrt(np.einsum('ijk->i',dev_sym**2)*factor), 
+               'data' :  np.sqrt(np.einsum('ijk->i',dev**2)*factor), 
                'label' : 'dev({})'.format(x['label']),
                'meta' : {
                         'Unit' :        x['meta']['Unit'],
@@ -348,7 +348,7 @@ class DADF5():
                'label' : 'norm({})'.format(x['label']),
                'meta' : {
                         'Unit' :        x['meta']['Unit'],
-                        'Description' : 'Norm of {} {} ({})'.format(t,x['label'],x['meta']['Description']),
+                        'Description' : 'Norm of {} {} ({})'.format(t,x['label'],x['meta']['Description']), # ToDo: add details about norm used
                         'Creator' :     'dadf5.py:add_norm vXXXXX'
                         }
                }
@@ -403,6 +403,10 @@ class DADF5():
     """Adds the deviator of a tensor."""
     def deviator(x):
       d = x['data']
+      
+      if not np.all(np.array(d.shape[1:]) == np.array([3,3])):
+        raise ValueError
+      
       return  {
                'data' :  d - np.einsum('ijk,i->ijk',np.broadcast_to(np.eye(3),[d.shape[0],3,3]),np.trace(d,axis1=1,axis2=2)/3.0), 
                'label' : 'dev({})'.format(x['label']),
@@ -418,11 +422,11 @@ class DADF5():
     self.__add_generic_pointwise(deviator,requested)
 
 
-  def add_strain_tensor(self,t,ord,defgrad='F'):
+  def add_strain_tensor(self,t,ord,defgrad='F'): #ToDo: Use t and ord
     """Adds the a strain tensor."""
     def strain_tensor(defgrad,t,ord):
       (U,S,Vh) = np.linalg.svd(defgrad['data'])                                                             # singular value decomposition
-      R_inv    = np.einsum('ijk->ikj',np.matmul(U,Vh))                                                      # inverse rotation of polar decomposition
+      R_inv    = np.einsum('ikj',np.matmul(U,Vh))                                                           # inverse rotation of polar decomposition
       U        = np.matmul(R_inv,defgrad['data'])                                                           # F = RU
       (D,V)    = np.linalg.eigh((U+np.einsum('ikj',U))*.5)                                                  # eigen decomposition (of symmetric(ed) matrix)
 
@@ -431,17 +435,14 @@ class DADF5():
       V[neg[0],:,neg[1]] = V[neg[0],:,neg[1]]* -1                                                           # ... and vector
       
       d = np.log(D)
-      a = np.matmul(V,np.einsum('ij,ikj->ijk',d,V)) # this is wrong ... 
-      for j in range(V.shape[0]):                                  # but this is slow ...
-        a[j,:,:] = np.dot(V[j,:,:],np.dot(np.diag(d[j,:]),V[j,:,:].T))
-      print(np.max(a))
-
+      a = np.matmul(V,np.einsum('ij,ikj->ijk',d,V))
+      
       return  {
                'data' : a, 
-               'label' : 'lnV({})'.format(defgrad['label']),
+               'label' : 'ln(V)({})'.format(defgrad['label']),
                'meta' : {
                         'Unit' :        defgrad['meta']['Unit'],
-                        'Description' : 'Strain tensor {} ({})'.format(defgrad['label'],defgrad['meta']['Description']),
+                        'Description' : 'Strain tensor ln(V){} ({})'.format(defgrad['label'],defgrad['meta']['Description']),
                         'Creator' :     'dadf5.py:add_deviator vXXXXX'
                         }
                }
