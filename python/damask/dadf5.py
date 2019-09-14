@@ -58,8 +58,7 @@ class DADF5():
           self.m_output_types.append(o)
       self.m_output_types = list(set(self.m_output_types))                                          # make unique
 
-    #self.on_air
-    self.active= {'increments':     self.increments, # ToDo:simplify, activity only positions that translate into (no complex types)
+    self.visible= {'increments':     self.increments, # ToDo:simplify, activity only positions that translate into (no complex types)
                   'constituents':   self.constituents,
                   'materialpoints': self.materialpoints,
                   'constituent':    range(self.Nconstituents),                                      # ToDo: stupid naming
@@ -68,100 +67,100 @@ class DADF5():
                   
     self.filename   = filename
 
-  def __on_air_set(self,output,t,p):
+  def __visible_set(self,output,t,p):
     valid  = set(p)
     choice = [output] if isinstance(output,str) else output
-    self.active[t] = list(valid.intersection(choice))
+    self.visible[t] = list(valid.intersection(choice))
 
 
-  def __on_air_add(self,output,t,p):
+  def __visible_add(self,output,t,p):
     choice   = [output] if isinstance(output,str) else output
     valid    = set(p).intersection(choice)
-    existing = set(self.active[t])
-    self.active[t] = list(existing.add(valid))
+    existing = set(self.visible[t])
+    self.visible[t] = list(existing.add(valid))
 
 
-  def __on_air_del(self,output,t):
+  def __visible_del(self,output,t):
     choice   = [output] if isinstance(output,str) else output
-    existing = set(self.active[t])
-    self.active[t] = list(existing.remove(choice))
+    existing = set(self.visible[t])
+    self.visible[t] = list(existing.remove(choice))
 
 
-  def __on_air_iter(self,t):
-    a = self.active[t]
+  def __visible_iter(self,t):
+    a = self.visible[t]
     last_a = a.copy()
     for i in a:
-      if last_a != self.active[t]:
-        self.__on_air_set(a,t,a)
+      if last_a != self.visible[t]:
+        self.__visible_set(a,t,a)
         raise Exception
-      self.__on_air_set(i,t,a)
-      last_a = self.active[t]
+      self.__visible_set(i,t,a)
+      last_a = self.visible[t]
       yield i
-    self.__on_air_set(a,t,a)
+    self.__visible_set(a,t,a)
   
   
   def constituent_output_iter(self):
-    return self.__on_air_iter('c_output_types')
+    return self.__visible_iter('c_output_types')
   
     
   def constituent_output_set(self,output):
-    self.__on_air_set(output,'c_output_types',self.c_output_types)
+    self.__visible_set(output,'c_output_types',self.c_output_types)
 
 
   def constituent_output_add(self,output):
-    self.__on_air_add(output,'c_output_types',self.c_output_types)
+    self.__visible_add(output,'c_output_types',self.c_output_types)
 
 
   def constituent_output_del(self,output):
-    self.__on_air_del(output,'c_output_types')
+    self.__visible_del(output,'c_output_types')
   
     
   def materialpoint_output_iter(self):
-    return self.__on_air_iter('m_output_types')
+    return self.__visible_iter('m_output_types')
   
     
   def materialpoint_output_set(self,output):
-    self.__on_air_set(output,'m_output_types',self.m_output_types)
+    self.__visible_set(output,'m_output_types',self.m_output_types)
 
 
   def materialpoint_output_add(self,output):
-    self.__on_air_add(output,'m_output_types',self.m_output_types)
+    self.__visible_add(output,'m_output_types',self.m_output_types)
 
 
   def materialpoint_output_del(self,output):
-    self.__on_air_del(output,'m_output_types')
+    self.__visible_del(output,'m_output_types')
   
   
   def constituent_iter(self):
-    return self.__on_air_iter('constituents')
+    return self.__visible_iter('constituents')
     
     
   def constituent_set(self,output):
-    self.__on_air_set(output,'constituents',self.constituents)
+    self.__visible_set(output,'constituents',self.constituents)
 
 
   def constituent_add(self,output):
-    self.__on_air_add(output,'constituents',self.constituents)
+    self.__visible_add(output,'constituents',self.constituents)
 
 
   def constituent_del(self,output):
-    self.__on_air_del(output,'constituents')
+    self.__visible_del(output,'constituents')
   
   
   def materialpoint_iter(self):
-    return self.__on_air_iter('materialpoints')
+    return self.__visible_iter('materialpoints')
     
 
   def materialpoint_set(self,output):
-    self.__on_air_set(output,'materialpoints',self.materialpoints)
+    self.__visible_set(output,'materialpoints',self.materialpoints)
 
 
   def materialpoint_add(self,output):
-    self.__on_air_add(output,'materialpoints',self.materialpoints)
+    self.__visible_add(output,'materialpoints',self.materialpoints)
 
 
   def materialpoint_del(self,output):
-    self.__on_air_del(output,'materialpoints')
+    self.__visible_del(output,'materialpoints')
     
 
 
@@ -191,13 +190,13 @@ class DADF5():
   def get_active_groups(self): # rename: get_groups needed? merge with datasets and have [] and ['*']
     """Get groups that are currently considered for evaluation."""
     groups = []
-    for i in self.active['increments']:
+    for i in self.visible['increments']:
       group_inc = 'inc{:05}'.format(i['inc'])                               #ToDo: Merge path only once at the end '/'.join(listE)
-      for c in self.active['constituents']:
-        for t in self.active['c_output_types']:
+      for c in self.visible['constituents']:
+        for t in self.visible['c_output_types']:
           groups.append('/'.join([group_inc,'constituent',c,t]))
-      for m in self.active['materialpoints']:
-        for t in self.active['m_output_types']:
+      for m in self.visible['materialpoints']:
+        for t in self.visible['m_output_types']:
           groups.append('/'.join([group_inc,'materialpoint',m,t]))
     return groups
     
@@ -205,11 +204,11 @@ class DADF5():
   def list_data(self): # print_datasets and have [] and ['*'], loop over all increment, soll auf anderen basieren (get groups with sternchen)
     """Shows information on all active datasets in the file."""
     with h5py.File(self.filename,'r') as f:
-      group_inc = 'inc{:05}'.format(self.active['increments'][0]['inc']) #ToDo: Merge path only once at the end '/'.join(listE)
-      for c in self.active['constituents']:
+      group_inc = 'inc{:05}'.format(self.visible['increments'][0]['inc']) #ToDo: Merge path only once at the end '/'.join(listE)
+      for c in self.visible['constituents']:
         print('\n'+c)
         group_constituent = group_inc+'/constituent/'+c
-        for t in self.active['c_output_types']:
+        for t in self.visible['c_output_types']:
           print('  {}'.format(t))
           group_output_types = group_constituent+'/'+t 
           try:
@@ -217,9 +216,9 @@ class DADF5():
               print('    {} ({})'.format(x,f[group_output_types+'/'+x].attrs['Description'].decode()))
           except KeyError:
             pass
-      for m in self.active['materialpoints']:
+      for m in self.visible['materialpoints']:
         group_materialpoint = group_inc+'/materialpoint/'+m
-        for t in self.active['m_output_types']:
+        for t in self.visible['m_output_types']:
           print('  {}'.format(t))
           group_output_types = group_materialpoint+'/'+t
           try:
@@ -233,11 +232,11 @@ class DADF5():
     """Returns the location of all active datasets with given label.""" #ToDo: Merge path only once at the end '/'.join(listE)
     path = []
     with h5py.File(self.filename,'r') as f:
-      for i in self.active['increments']:
+      for i in self.visible['increments']:
         group_inc = 'inc{:05}'.format(i['inc'])
         
-        for c in self.active['constituents']:
-          for t in self.active['c_output_types']:
+        for c in self.visible['constituents']:
+          for t in self.visible['c_output_types']:
             try:
               p = '/'.join([group_inc,'constituent',c,t,label])
               f[p]
@@ -245,8 +244,8 @@ class DADF5():
             except KeyError as e:
               print('unable to locate constituents dataset: '+ str(e))
        
-        for m in self.active['materialpoints']:
-          for t in self.active['m_output_types']:
+        for m in self.visible['materialpoints']:
+          for t in self.visible['m_output_types']:
             try:
               p = '/'.join([group_inc,'materialpoint',m,t,label])
               f[p]

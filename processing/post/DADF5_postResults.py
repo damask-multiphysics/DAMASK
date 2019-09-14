@@ -59,7 +59,7 @@ for filename in options.filenames:
     data = np.concatenate((data,coords),1)
     header+=' 1_pos 2_pos 3_pos'
         
-    results.active['increments'] = [inc]
+    results.visible['increments'] = [inc]
 
     for label in options.con:
       for o in results.constituent_output_iter():

@@ -60,7 +60,7 @@ for filename in options.filenames:
   for i,inc in enumerate(results.increments):
     print('Output step {}/{}'.format(i+1,len(results.increments)))
     vtk_data = []
-    results.active['increments'] = [inc]
+    results.visible['increments'] = [inc]
     
     results.materialpoint_set([])
     results.constituent_set(results.constituents)
