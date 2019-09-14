@@ -87,18 +87,39 @@ class DADF5():
     self.active[t] = list(existing.remove(choice))
 
 
-  def constitutive_output_set(self,output):
+  def __on_air_iter(self,t):
+    a = self.active[t]
+    last_a = a.copy()
+    for i in a:
+      if last_a != self.active[t]:
+        self.__on_air_set(a,t,a)
+        raise Exception
+      self.__on_air_set(i,t,a)
+      last_a = self.active[t]
+      yield i
+    self.__on_air_set(a,t,a)
+  
+  
+  def constituent_output_iter(self):
+    return self.__on_air_iter('c_output_types')
+  
+    
+  def constituent_output_set(self,output):
     self.__on_air_set(output,'c_output_types',self.c_output_types)
 
 
-  def constitutive_output_add(self,output):
+  def constituent_output_add(self,output):
     self.__on_air_add(output,'c_output_types',self.c_output_types)
 
 
-  def constitutive_output_del(self,output):
+  def constituent_output_del(self,output):
     self.__on_air_del(output,'c_output_types')
-    
   
+    
+  def materialpoint_output_iter(self):
+    return self.__on_air_iter('m_output_types')
+  
+    
   def materialpoint_output_set(self,output):
     self.__on_air_set(output,'m_output_types',self.m_output_types)
 
@@ -111,18 +132,26 @@ class DADF5():
     self.__on_air_del(output,'m_output_types')
   
   
-  def constitutive_set(self,output):
+  def constituent_iter(self):
+    return self.__on_air_iter('constituents')
+    
+    
+  def constituent_set(self,output):
     self.__on_air_set(output,'constituents',self.constituents)
 
 
-  def constitutive_add(self,output):
+  def constituent_add(self,output):
     self.__on_air_add(output,'constituents',self.constituents)
 
 
-  def constitutive_del(self,output):
+  def constituent_del(self,output):
     self.__on_air_del(output,'constituents')
-    
   
+  
+  def materialpoint_iter(self):
+    return self.__on_air_iter('materialpoints')
+    
+
   def materialpoint_set(self,output):
     self.__on_air_set(output,'materialpoints',self.materialpoints)
 
@@ -134,13 +163,6 @@ class DADF5():
   def materialpoint_del(self,output):
     self.__on_air_del(output,'materialpoints')
     
-  def c_it(self):
-    a = self.active['constituents']#.copy()
-    for i in a:
-      self.constitutive_set(i)
-      yield i
-    self.constitutive_set(a)
-
 
 
 # ToDo: store increments, select icrements (trivial), position, and time
@@ -310,7 +332,7 @@ class DADF5():
 
       return  {
                'data' :  np.sqrt(np.einsum('ijk->i',dev**2)*factor), 
-               'label' : 'dev({})'.format(x['label']),
+               'label' : 'Mises({})'.format(x['label']),
                'meta' : {
                         'Unit' :        x['meta']['Unit'],
                         'Description' : 'Mises equivalent stress of {} ({})'.format(x['label'],x['meta']['Description']),
@@ -329,26 +351,32 @@ class DADF5():
     
     See numpy.linalg.norm manual for details.
     """
+    
+    
     def norm(x,ord):
 
+      o = ord
       if   len(x['data'].shape) == 1:
         axis = 0
         t = 'scalar'
+        if o is None: o = 2
       elif len(x['data'].shape) == 2:
         axis = 1
         t = 'vector'
+        if o is None: o = 2
       elif len(x['data'].shape) == 3:
         axis = (1,2)
         t = 'tensor'
+        if o is None: o = 'fro'
       else:
         raise ValueError
 
       return  {
-               'data' : np.linalg.norm(x['data'],ord=ord,axis=axis,keepdims=True),
-               'label' : 'norm({})'.format(x['label']),
+               'data' : np.linalg.norm(x['data'],ord=o,axis=axis,keepdims=True),
+               'label' : '|{}|_{}'.format(x['label'],ord),
                'meta' : {
                         'Unit' :        x['meta']['Unit'],
-                        'Description' : 'Norm of {} {} ({})'.format(t,x['label'],x['meta']['Description']), # ToDo: add details about norm used
+                        'Description' : '{}-Norm of {} {} ({})'.format(ord,t,x['label'],x['meta']['Description']),
                         'Creator' :     'dadf5.py:add_norm vXXXXX'
                         }
                }
@@ -425,6 +453,16 @@ class DADF5():
   def add_strain_tensor(self,t,ord,defgrad='F'): #ToDo: Use t and ord
     """Adds the a strain tensor."""
     def strain_tensor(defgrad,t,ord):
+  #    def operator(stretch,strain,eigenvalues):
+  #"""Albrecht Bertram: Elasticity and Plasticity of Large Deformations An Introduction (3rd Edition, 2012), p. 102"""
+  #return {
+  #  'V#ln':    np.log(eigenvalues)                                 ,
+  #  'U#ln':    np.log(eigenvalues)                                 ,
+  #  'V#Biot':  ( np.ones(3,'d') - 1.0/eigenvalues )                ,
+  #  'U#Biot':  ( eigenvalues - np.ones(3,'d') )                    ,
+  #  'V#Green': ( np.ones(3,'d') - 1.0/eigenvalues/eigenvalues) *0.5,
+  #  'U#Green': ( eigenvalues*eigenvalues - np.ones(3,'d'))     *0.5,
+  #      }[stretch+'#'+strain]
       (U,S,Vh) = np.linalg.svd(defgrad['data'])                                                             # singular value decomposition
       R_inv    = np.einsum('ikj',np.matmul(U,Vh))                                                           # inverse rotation of polar decomposition
       U        = np.matmul(R_inv,defgrad['data'])                                                           # F = RU
@@ -459,8 +497,11 @@ class DADF5():
     Parameters
     ----------
       func : function
+        Function that calculates a new dataset from one or more datasets per HDF5 group.
       datasets_requested : list of dictionaries
-      extra_args : dictitionary
+        Details of the datasets to be used: label (in HDF5 file) and arg (argument to which the data is parsed in func).
+      extra_args : dictionary, optional
+        Any extra arguments parsed to func.
 
     """
     def job(args):
