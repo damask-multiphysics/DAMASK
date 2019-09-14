@@ -71,22 +71,47 @@ class DADF5():
     self.filename   = filename
 
   def __visible_set(self,output,t,p):
-    valid  = set(p)
+    """Sets visible."""
+    # allow True/False and string arguments
+    if output is True:
+      output = ['*']
+    elif output is False:
+      output = []
     choice = [output] if isinstance(output,str) else output
-    self.visible[t] = list(valid.intersection(choice))
+    
+    valid = [e for e_ in [glob.fnmatch.filter(p,s) for s in choice] for e in e_]
+    
+    self.visible[t] = valid
 
 
   def __visible_add(self,output,t,p):
-    choice   = [output] if isinstance(output,str) else output
-    valid    = set(p).intersection(choice)
+    """Adds from visible."""
+    # allow True/False and string arguments
+    if output is True:
+      output = ['*']
+    elif output is False:
+      output = []
+    choice = [output] if isinstance(output,str) else output
+    
     existing = set(self.visible[t])
-    self.visible[t] = list(existing.add(valid))
+    valid    = [e for e_ in [glob.fnmatch.filter(p,s) for s in choice] for e in e_]
+
+    self.visible[t] = list(existing.union(valid))
 
 
   def __visible_del(self,output,t):
-    choice   = [output] if isinstance(output,str) else output
+    """Deletes from visible."""
+    # allow True/False and string arguments
+    if output is True:
+      output = ['*']
+    elif output is False:
+      output = []
+    choice = [output] if isinstance(output,str) else output
+    
     existing = set(self.visible[t])
-    self.visible[t] = list(existing.remove(choice))
+    valid    = [e for e_ in [glob.fnmatch.filter(existing,s) for s in choice] for e in e_]
+
+    self.visible[t] = list(existing.difference_update(valid))
 
 
   def __visible_iter(self,t):
@@ -102,6 +127,7 @@ class DADF5():
     self.__visible_set(a,t,a)
 
 
+# ToDo: store increments, select icrements (trivial), position, and time
   def increment_set_by_time(self,start,end):
     for t in self.time_information:
       if start<= t['time']< end:
@@ -181,10 +207,6 @@ class DADF5():
 
   def materialpoint_del(self,output):
     self.__visible_del(output,'materialpoints')
-    
-
-
-# ToDo: store increments, select icrements (trivial), position, and time
 
 
   def groups_with_datasets(self,datasets):
