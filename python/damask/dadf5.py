@@ -526,6 +526,38 @@ class DADF5():
     requested = [{'label':x,'arg':'x'}]
     
     self.__add_generic_pointwise(deviator,requested)
+    
+
+  def add_calculation(self,formula,label,unit='n/a',description=None,vectorized=True):
+    """
+    General formula.
+    
+    Works currently only for vectorized expressions
+    
+    """
+    if vectorized is not True:
+      raise NotImplementedError
+    
+    def calculation(**kwargs):
+      
+      formula = kwargs['formula']
+      for d in re.findall(r'#(.*?)#',formula):
+        formula = re.sub('#{}#'.format(d),"kwargs['{}']['data']".format(d),formula)
+        
+      return  {
+               'data' : eval(formula), 
+               'label' : kwargs['label'],
+               'meta' : {
+                        'Unit' :        kwargs['unit'],
+                        'Description' : '{}'.format(kwargs['description']),
+                        'Creator' :     'dadf5.py:add_calculation vXXXXX'
+                        }
+               }
+    
+    requested    = [{'label':d,'arg':d} for d in re.findall(r'#(.*?)#',formula)]         # datasets used in the formula
+    pass_through = {'formula':formula,'label':label,'unit':unit,'description':description} 
+    
+    self.__add_generic_pointwise(calculation,requested,pass_through)
 
 
   def add_strain_tensor(self,t,ord,defgrad='F'): #ToDo: Use t and ord
