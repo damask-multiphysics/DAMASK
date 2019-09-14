@@ -62,14 +62,13 @@ for filename in options.filenames:
     vtk_data = []
     results.active['increments'] = [inc]
     
-    results.active['m_output_types'] = []
+    results.materialpoint_set([])
+    results.constituent_set(results.constituents)
     for label in options.con:
       
-      for o in results.c_output_types:
-        results.active['c_output_types'] = [o]
+      for o in results.constituent_output_iter():
         if o != 'generic':
-          for c in results.constituents:
-            results.active['constituents'] = [c]
+          for c in results.constituent_iter():
             x = results.get_dataset_location(label)
             if len(x) == 0:
               continue
@@ -79,7 +78,6 @@ for filename in options.filenames:
             vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
             rGrid.GetCellData().AddArray(vtk_data[-1])
         else:
-          results.active['constituents'] = results.constituents
           x = results.get_dataset_location(label)
           if len(x) == 0:
             continue
@@ -89,13 +87,12 @@ for filename in options.filenames:
           vtk_data[-1].SetName('1_'+x[0].split('/')[1]+'/generic/'+label)
           rGrid.GetCellData().AddArray(vtk_data[-1])
     
-    results.active['c_output_types'] = []
+    results.constituent_set([])
+    results.materialpoint_set(results.materialpoints)
     for label in options.mat:       
-      for o in results.m_output_types:
-        results.active['m_output_types'] = [o]
+      for o in results.materialpoint_output_iter():
         if o != 'generic':
-          for m in results.materialpoints:
-            results.active['materialpoints'] = [m]
+          for m in results.materialpoint_iter():
             x = results.get_dataset_location(label)
             if len(x) == 0:
               continue
@@ -105,7 +102,6 @@ for filename in options.filenames:
             vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
             rGrid.GetCellData().AddArray(vtk_data[-1])
         else:
-          results.active['materialpoints'] = results.materialpoints
           x = results.get_dataset_location(label)
           if len(x) == 0:
             continue

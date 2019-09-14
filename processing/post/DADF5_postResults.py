@@ -60,11 +60,10 @@ for filename in options.filenames:
     header+=' 1_pos 2_pos 3_pos'
         
     results.active['increments'] = [inc]
+
     for label in options.con:
-      for o in results.c_output_types:
-        results.active['c_output_types'] = [o]
-        for c in results.constituents:
-          results.active['constituents'] = [c]
+      for o in results.constituent_output_iter():
+        for c in results.constituent_iter():
           x = results.get_dataset_location(label)
           if len(x) == 0:
             continue
@@ -80,10 +79,8 @@ for filename in options.filenames:
             header+=' '+label
             
     for label in options.mat:
-      for o in results.m_output_types:
-        results.active['m_output_types'] = [o]
-        for m in results.materialpoints:
-          results.active['materialpoints'] = [m]
+      for o in results.materialpoint_output_iter():
+        for m in results.materialpoint_iter():
           x = results.get_dataset_location(label)
           if len(x) == 0:
             continue
