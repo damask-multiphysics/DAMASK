@@ -85,7 +85,7 @@ class DADF5():
 
 
   def __visible_add(self,output,t,p):
-    """Adds from visible."""
+    """Adds to visible."""
     # allow True/False and string arguments
     if output is True:
       output = ['*']
@@ -529,18 +529,22 @@ class DADF5():
 
 
   def add_strain_tensor(self,t,ord,defgrad='F'): #ToDo: Use t and ord
-    """Adds the a strain tensor."""
+    """
+    Adds the a strain tensor.
+    
+    Albrecht Bertram: Elasticity and Plasticity of Large Deformations An Introduction (3rd Edition, 2012), p. 102.
+    """
     def strain_tensor(defgrad,t,ord):
-  #    def operator(stretch,strain,eigenvalues):
-  #"""Albrecht Bertram: Elasticity and Plasticity of Large Deformations An Introduction (3rd Edition, 2012), p. 102"""
-  #return {
-  #  'V#ln':    np.log(eigenvalues)                                 ,
-  #  'U#ln':    np.log(eigenvalues)                                 ,
-  #  'V#Biot':  ( np.ones(3,'d') - 1.0/eigenvalues )                ,
-  #  'U#Biot':  ( eigenvalues - np.ones(3,'d') )                    ,
-  #  'V#Green': ( np.ones(3,'d') - 1.0/eigenvalues/eigenvalues) *0.5,
-  #  'U#Green': ( eigenvalues*eigenvalues - np.ones(3,'d'))     *0.5,
-  #      }[stretch+'#'+strain]
+      
+      operator = { 
+                   'V#ln':   lambda V: np.log(V),
+                   'U#ln':   lambda U: np.log(U),
+                   'V#Biot': lambda V: np.broadcast_to(np.ones(3),[V.shape[0],3]) - 1.0/V,
+                   'U#Biot': lambda U: U - np.broadcast_to(np.ones(3),[U.shape[0],3]),
+                   'V#Green':lambda V: np.broadcast_to(np.ones(3),[V.shape[0],3]) - 1.0/V**2,
+                   'U#Biot': lambda U: U**2 - np.broadcast_to(np.ones(3),[U.shape[0],3]), 
+                 }
+
       (U,S,Vh) = np.linalg.svd(defgrad['data'])                                                             # singular value decomposition
       R_inv    = np.einsum('ikj',np.matmul(U,Vh))                                                           # inverse rotation of polar decomposition
       U        = np.matmul(R_inv,defgrad['data'])                                                           # F = RU
@@ -550,7 +554,7 @@ class DADF5():
       D[neg[0],neg[1]]   = D[neg[0],neg[1]]* -1                                                             # ... flip value ...
       V[neg[0],:,neg[1]] = V[neg[0],:,neg[1]]* -1                                                           # ... and vector
       
-      d = np.log(D)
+      d = operator['V#ln'](D)
       a = np.matmul(V,np.einsum('ij,ikj->ijk',d,V))
       
       return  {
