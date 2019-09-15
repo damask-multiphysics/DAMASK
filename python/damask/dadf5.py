@@ -49,24 +49,24 @@ class DADF5():
       self.constituents    = [c.decode() for c in np.unique(f['mapping/cellResults/constituent']  ['Name'])]
 
 
-      self.c_output_types  = []
+      self.con_physics  = []
       for c in self.constituents:
         for o in f['inc{:05}/constituent/{}'.format(self.increments[0]['inc'],c)].keys():
-          self.c_output_types.append(o)
-      self.c_output_types = list(set(self.c_output_types))                                          # make unique
+          self.con_physics.append(o)
+      self.con_physics = list(set(self.con_physics))                                          # make unique
 
-      self.m_output_types = []
+      self.mat_physics = []
       for m in self.materialpoints:
         for o in f['inc{:05}/materialpoint/{}'.format(self.increments[0]['inc'],m)].keys():
-          self.m_output_types.append(o)
-      self.m_output_types = list(set(self.m_output_types))                                          # make unique
+          self.mat_physics.append(o)
+      self.mat_physics = list(set(self.mat_physics))                                          # make unique
 
     self.visible= {'increments':    self.increments, # ToDo:simplify, activity only positions that translate into (no complex types)
                   'constituents':   self.constituents,
                   'materialpoints': self.materialpoints,
                   'constituent':    range(self.Nconstituents),                                      # ToDo: stupid naming
-                  'c_output_types': self.c_output_types,
-                  'm_output_types': self.m_output_types}
+                  'con_physics': self.con_physics,
+                  'mat_physics': self.mat_physics}
                   
     self.filename   = filename
 
@@ -146,35 +146,35 @@ class DADF5():
       
       
   def constituent_output_iter(self):
-    return self.__visible_iter('c_output_types')
+    return self.__visible_iter('con_physics')
   
     
   def constituent_output_set(self,output):
-    self.__visible_set(output,'c_output_types',self.c_output_types)
+    self.__visible_set(output,'con_physics',self.con_physics)
 
 
   def constituent_output_add(self,output):
-    self.__visible_add(output,'c_output_types',self.c_output_types)
+    self.__visible_add(output,'con_physics',self.con_physics)
 
 
   def constituent_output_del(self,output):
-    self.__visible_del(output,'c_output_types')
+    self.__visible_del(output,'con_physics')
   
     
   def materialpoint_output_iter(self):
-    return self.__visible_iter('m_output_types')
+    return self.__visible_iter('mat_physics')
   
     
   def materialpoint_output_set(self,output):
-    self.__visible_set(output,'m_output_types',self.m_output_types)
+    self.__visible_set(output,'mat_physics',self.mat_physics)
 
 
   def materialpoint_output_add(self,output):
-    self.__visible_add(output,'m_output_types',self.m_output_types)
+    self.__visible_add(output,'mat_physics',self.mat_physics)
 
 
   def materialpoint_output_del(self,output):
-    self.__visible_del(output,'m_output_types')
+    self.__visible_del(output,'mat_physics')
   
   
   def constituent_iter(self):
@@ -271,7 +271,7 @@ class DADF5():
       for c in self.visible['constituents']:
         print('\n'+c)
         group_constituent = group_inc+'/constituent/'+c
-        for t in self.visible['c_output_types']:
+        for t in self.visible['con_physics']:
           print('  {}'.format(t))
           group_output_types = group_constituent+'/'+t 
           try:
@@ -281,7 +281,7 @@ class DADF5():
             pass
       for m in self.visible['materialpoints']:
         group_materialpoint = group_inc+'/materialpoint/'+m
-        for t in self.visible['m_output_types']:
+        for t in self.visible['mat_physics']:
           print('  {}'.format(t))
           group_output_types = group_materialpoint+'/'+t
           try:
@@ -299,7 +299,7 @@ class DADF5():
         group_inc = 'inc{:05}'.format(i['inc'])
         
         for c in self.visible['constituents']:
-          for t in self.visible['c_output_types']:
+          for t in self.visible['con_physics']:
             try:
               p = '/'.join([group_inc,'constituent',c,t,label])
               f[p]
@@ -308,7 +308,7 @@ class DADF5():
               print('unable to locate constituents dataset: '+ str(e))
        
         for m in self.visible['materialpoints']:
-          for t in self.visible['m_output_types']:
+          for t in self.visible['mat_physics']:
             try:
               p = '/'.join([group_inc,'materialpoint',m,t,label])
               f[p]

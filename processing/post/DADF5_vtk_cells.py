@@ -26,9 +26,9 @@ parser.add_argument('filenames', nargs='+',
 parser.add_argument('-d','--dir', dest='dir',default='postProc',metavar='string',
                     help='name of subdirectory to hold output')
 parser.add_argument('--mat', nargs='+',
-                    help='labels for materialpoint/homogenization',dest='mat')
+                    help='labels for materialpoint',dest='mat')
 parser.add_argument('--con', nargs='+',
-                    help='labels for constituent/crystallite/constitutive',dest='con')
+                    help='labels for constituent',dest='con')
 
 options = parser.parse_args()
 
