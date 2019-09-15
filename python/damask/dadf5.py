@@ -51,14 +51,12 @@ class DADF5():
 
       self.con_physics  = []
       for c in self.constituents:
-        for o in f['inc{:05}/constituent/{}'.format(self.increments[0]['inc'],c)].keys():
-          self.con_physics.append(o)
+        self.con_physics += f['inc{:05}/constituent/{}'.format(self.increments[0]['inc'],c)].keys()
       self.con_physics = list(set(self.con_physics))                                          # make unique
 
       self.mat_physics = []
       for m in self.materialpoints:
-        for o in f['inc{:05}/materialpoint/{}'.format(self.increments[0]['inc'],m)].keys():
-          self.mat_physics.append(o)
+        self.mat_physics += f['inc{:05}/materialpoint/{}'.format(self.increments[0]['inc'],m)].keys()
       self.mat_physics = list(set(self.mat_physics))                                          # make unique
 
     self.visible= {'increments':    self.increments, # ToDo:simplify, activity only positions that translate into (no complex types)
@@ -228,17 +226,14 @@ class DADF5():
       datasets = False matches no group
       datasets = True matches all groups
       datasets = ['F','P'] matches a group with ['F','P','sigma']
-      datasets = ['*','P'] matches a group with ['F','P','sigma']
-      datasets = ['*'] does not matche a group with ['F','P','sigma']
-      datasets = ['*','*'] does not matche a group with ['F','P','sigma']
+      datasets = ['*','P'] matches a group with ['F','P']
+      datasets = ['*'] does not match a group with ['F','P','sigma']
+      datasets = ['*','*'] does not match a group with ['F','P','sigma']
       datasets = ['*','*','*'] matches a group with ['F','P','sigma']
       
     """
     if datasets is False: return []
-    if isinstance(datasets,str):
-      s = [datasets]
-    else:
-      s = datasets
+    sets = [datasets] if isinstance(datasets,str) else datasets
 
     groups = []
     
@@ -248,19 +243,19 @@ class DADF5():
         for c in self.constituent_iter():
           for t in self.constituent_output_iter():
             group = '/'.join([group_inc,'constituent',c,t])
-            if datasets is True:
+            if sets is True:
               groups.append(group)
             else:
-              match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in datasets] for e in e_]
-              if len(set(match)) == len(s) : groups.append(group)
+              match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in sets] for e in e_]
+              if len(set(match)) == len(sets) : groups.append(group)
         for m in self.materialpoint_iter():
           for t in self.materialpoint_output_iter():
             group = '/'.join([group_inc,'materialpoint',m,t])
-            if datasets is True:
+            if sets is True:
               groups.append(group)
             else:
-              match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in datasets] for e in e_]
-              if len(set(match)) == len(s) : groups.append(group)
+              match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in sets] for e in e_]
+              if len(set(match)) == len(sets) : groups.append(group)
     return groups
 
 
@@ -366,7 +361,7 @@ class DADF5():
                'meta' : {
                         'Unit' :        P['meta']['Unit'],
                         'Description' : 'Cauchy stress calculated from {} ({}) '.format(P['label'],P['meta']['Description'])+\
-                                        'and deformation gradient {} ({})'.format(F['label'],P['meta']['Description']),
+                                        'and deformation gradient {} ({})'.format(F['label'],F['meta']['Description']),
                         'Creator' :     'dadf5.py:add_Cauchy vXXXXX'
                         }
                }
