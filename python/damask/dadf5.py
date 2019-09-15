@@ -68,7 +68,7 @@ class DADF5():
                   
     self.filename   = filename
 
-  def __visible_set(self,output,t,p):
+  def __visible_set(self,output,t):
     """Sets visible."""
     # allow True/False and string arguments
     if output is True:
@@ -77,12 +77,12 @@ class DADF5():
       output = []
     choice = [output] if isinstance(output,str) else output
     
-    valid = [e for e_ in [glob.fnmatch.filter(p,s) for s in choice] for e in e_]
+    valid = [e for e_ in [glob.fnmatch.filter(getattr(self,t),s) for s in choice] for e in e_]
     
     self.visible[t] = valid
 
 
-  def __visible_add(self,output,t,p):
+  def __visible_add(self,output,t):
     """Adds to visible."""
     # allow True/False and string arguments
     if output is True:
@@ -92,7 +92,7 @@ class DADF5():
     choice = [output] if isinstance(output,str) else output
     
     existing = set(self.visible[t])
-    valid    = [e for e_ in [glob.fnmatch.filter(p,s) for s in choice] for e in e_]
+    valid    = [e for e_ in [glob.fnmatch.filter(getattr(self,t),s) for s in choice] for e in e_]
 
     self.visible[t] = list(existing.union(valid))
 
@@ -117,12 +117,12 @@ class DADF5():
     last_a = a.copy()
     for i in a:
       if last_a != self.visible[t]:
-        self.__visible_set(a,t,a)
+        self.__visible_set(a,t)
         raise Exception
-      self.__visible_set(i,t,a)
+      self.__visible_set(i,t)
       last_a = self.visible[t]
       yield i
-    self.__visible_set(a,t,a)
+    self.__visible_set(a,t)
 
 
 # ToDo: store increments, select icrements (trivial), position, and time
@@ -148,11 +148,11 @@ class DADF5():
   
     
   def constituent_output_set(self,output):
-    self.__visible_set(output,'con_physics',self.con_physics)
+    self.__visible_set(output,'con_physics')
 
 
   def constituent_output_add(self,output):
-    self.__visible_add(output,'con_physics',self.con_physics)
+    self.__visible_add(output,'con_physics')
 
 
   def constituent_output_del(self,output):
@@ -164,11 +164,11 @@ class DADF5():
   
     
   def materialpoint_output_set(self,output):
-    self.__visible_set(output,'mat_physics',self.mat_physics)
+    self.__visible_set(output,'mat_physics')
 
 
   def materialpoint_output_add(self,output):
-    self.__visible_add(output,'mat_physics',self.mat_physics)
+    self.__visible_add(output,'mat_physics')
 
 
   def materialpoint_output_del(self,output):
@@ -180,11 +180,11 @@ class DADF5():
     
     
   def constituent_set(self,output):
-    self.__visible_set(output,'constituents',self.constituents)
+    self.__visible_set(output,'constituents')
 
 
   def constituent_add(self,output):
-    self.__visible_add(output,'constituents',self.constituents)
+    self.__visible_add(output,'constituents')
 
 
   def constituent_del(self,output):
@@ -196,11 +196,11 @@ class DADF5():
     
 
   def materialpoint_set(self,output):
-    self.__visible_set(output,'materialpoints',self.materialpoints)
+    self.__visible_set(output,'materialpoints')
 
 
   def materialpoint_add(self,output):
-    self.__visible_add(output,'materialpoints',self.materialpoints)
+    self.__visible_add(output,'materialpoints')
 
 
   def materialpoint_del(self,output):
