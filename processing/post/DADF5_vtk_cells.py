@@ -62,13 +62,13 @@ for filename in options.filenames:
     vtk_data = []
     results.visible['increments'] = [inc]
     
-    results.materialpoint_set([])
-    results.constituent_set(results.constituents)
+    results.set_visible('materialpoints',False)
+    results.set_visible('constituents',  True)
     for label in options.con:
       
-      for o in results.constituent_output_iter():
+      for o in results.iter_visible('con_physics'):
         if o != 'generic':
-          for c in results.constituent_iter():
+          for c in results.iter_visible('constituents'):
             x = results.get_dataset_location(label)
             if len(x) == 0:
               continue
@@ -84,15 +84,15 @@ for filename in options.filenames:
           array = results.read_dataset(x,0)
           shape = [array.shape[0],np.product(array.shape[1:])]
           vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True,array_type= vtk.VTK_DOUBLE))
-          vtk_data[-1].SetName('1_'+x[0].split('/')[1]+'/generic/'+label)
+          vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
           rGrid.GetCellData().AddArray(vtk_data[-1])
     
-    results.constituent_set([])
-    results.materialpoint_set(results.materialpoints)
+    results.set_visible('constituents',  False)
+    results.set_visible('materialpoints',True)
     for label in options.mat:       
-      for o in results.materialpoint_output_iter():
+      for o in results.iter_visible('mat_physics'):
         if o != 'generic':
-          for m in results.materialpoint_iter():
+          for m in results.iter_visible('materialpoints'):
             x = results.get_dataset_location(label)
             if len(x) == 0:
               continue
@@ -108,7 +108,7 @@ for filename in options.filenames:
           array = results.read_dataset(x,0)
           shape = [array.shape[0],np.product(array.shape[1:])]
           vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True,array_type= vtk.VTK_DOUBLE))
-          vtk_data[-1].SetName('1_'+x[0].split('/')[1]+'/generic/'+label)
+          vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
           rGrid.GetCellData().AddArray(vtk_data[-1])
           
     if results.structured:

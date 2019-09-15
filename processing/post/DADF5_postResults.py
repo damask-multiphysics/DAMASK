@@ -62,8 +62,8 @@ for filename in options.filenames:
     results.visible['increments'] = [inc]
 
     for label in options.con:
-      for o in results.constituent_output_iter():
-        for c in results.constituent_iter():
+      for o in results.iter_visible('con_physics'):
+        for c in results.iter_visible('constituents'):
           x = results.get_dataset_location(label)
           if len(x) == 0:
             continue
@@ -77,8 +77,8 @@ for filename in options.filenames:
             header+=' '+label
             
     for label in options.mat:
-      for o in results.materialpoint_output_iter():
-        for m in results.materialpoint_iter():
+      for o in results.iter_visible('mat_physics'):
+        for m in results.iter_visible('materialpoints'):
           x = results.get_dataset_location(label)
           if len(x) == 0:
             continue

@@ -68,61 +68,38 @@ class DADF5():
                   
     self.filename   = filename
 
-  def __visible_set(self,output,t):
+
+  def __manage_visible(self,datasets,what,action):
     """Sets visible."""
     # allow True/False and string arguments
-    if output is True:
-      output = ['*']
-    elif output is False:
-      output = []
-    choice = [output] if isinstance(output,str) else output
+    if datasets is True:
+      datasets = ['*']
+    elif datasets is False:
+      datasets = []
+    choice = [datasets] if isinstance(datasets,str) else datasets
     
-    valid = [e for e_ in [glob.fnmatch.filter(getattr(self,t),s) for s in choice] for e in e_]
+    valid = [e for e_ in [glob.fnmatch.filter(getattr(self,what) ,s) for s in choice] for e in e_]
+    existing = set(self.visible[what])
     
-    self.visible[t] = valid
+    if   action == 'set':
+      self.visible[what] = valid
+    elif action == 'add':
+      self.visible[what] = list(existing.union(valid))
+    elif action == 'del':
+      self.visible[what] = list(existing.difference_update(valid))
 
 
-  def __visible_add(self,output,t):
-    """Adds to visible."""
-    # allow True/False and string arguments
-    if output is True:
-      output = ['*']
-    elif output is False:
-      output = []
-    choice = [output] if isinstance(output,str) else output
-    
-    existing = set(self.visible[t])
-    valid    = [e for e_ in [glob.fnmatch.filter(getattr(self,t),s) for s in choice] for e in e_]
-
-    self.visible[t] = list(existing.union(valid))
-
-
-  def __visible_del(self,output,t):
-    """Deletes from visible."""
-    # allow True/False and string arguments
-    if output is True:
-      output = ['*']
-    elif output is False:
-      output = []
-    choice = [output] if isinstance(output,str) else output
-    
-    existing = set(self.visible[t])
-    valid    = [e for e_ in [glob.fnmatch.filter(existing,s) for s in choice] for e in e_]
-
-    self.visible[t] = list(existing.difference_update(valid))
-
-
-  def __visible_iter(self,t):
-    a = self.visible[t]
-    last_a = a.copy()
-    for i in a:
-      if last_a != self.visible[t]:
-        self.__visible_set(a,t)
+  def iter_visible(self,what):
+    datasets = self.visible[what]
+    last_datasets = datasets.copy()
+    for dataset in datasets:
+      if last_datasets != self.visible[what]:
+        self.__manage_visible(datasets,what,'set')
         raise Exception
-      self.__visible_set(i,t)
-      last_a = self.visible[t]
-      yield i
-    self.__visible_set(a,t)
+      self.__manage_visible(dataset,what,'set')
+      last_datasets = self.visible[what]
+      yield dataset
+    self.__manage_visible(datasets,what,'set')
 
 
 # ToDo: store increments, select icrements (trivial), position, and time
@@ -141,70 +118,18 @@ class DADF5():
     for t in self.time_information:
       if start<= t['inc']< end:
         print(t)
-      
-      
-  def constituent_output_iter(self):
-    return self.__visible_iter('con_physics')
-  
     
-  def constituent_output_set(self,output):
-    self.__visible_set(output,'con_physics')
-
-
-  def constituent_output_add(self,output):
-    self.__visible_add(output,'con_physics')
-
-
-  def constituent_output_del(self,output):
-    self.__visible_del(output,'con_physics')
   
-    
-  def materialpoint_output_iter(self):
-    return self.__visible_iter('mat_physics')
-  
-    
-  def materialpoint_output_set(self,output):
-    self.__visible_set(output,'mat_physics')
+  def set_visible(self,what,datasets):
+    self.__manage_visible(datasets,what,'set')
 
 
-  def materialpoint_output_add(self,output):
-    self.__visible_add(output,'mat_physics')
+  def add_visible(self,what,datasets):
+    self.__manage_visible(datasets,what,'add')
 
 
-  def materialpoint_output_del(self,output):
-    self.__visible_del(output,'mat_physics')
-  
-  
-  def constituent_iter(self):
-    return self.__visible_iter('constituents')
-    
-    
-  def constituent_set(self,output):
-    self.__visible_set(output,'constituents')
-
-
-  def constituent_add(self,output):
-    self.__visible_add(output,'constituents')
-
-
-  def constituent_del(self,output):
-    self.__visible_del(output,'constituents')
-  
-  
-  def materialpoint_iter(self):
-    return self.__visible_iter('materialpoints')
-    
-
-  def materialpoint_set(self,output):
-    self.__visible_set(output,'materialpoints')
-
-
-  def materialpoint_add(self,output):
-    self.__visible_add(output,'materialpoints')
-
-
-  def materialpoint_del(self,output):
-    self.__visible_del(output,'materialpoints')
+  def del_visible(self,what,datasets):
+    self.__manage_visible(datasets,what,'del')
 
 
   def groups_with_datasets(self,datasets):
@@ -240,16 +165,16 @@ class DADF5():
     with h5py.File(self.filename,'r') as f:
       for i in self.visible['increments']:
         group_inc = 'inc{:05}'.format(i['inc'])                               #ToDo: Merge path only once at the end '/'.join(listE)
-        for c in self.constituent_iter():
-          for t in self.constituent_output_iter():
+        for c in self.iter_visible('constituents'):
+          for t in self.iter_visible('con_physics'):
             group = '/'.join([group_inc,'constituent',c,t])
             if sets is True:
               groups.append(group)
             else:
               match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in sets] for e in e_]
               if len(set(match)) == len(sets) : groups.append(group)
-        for m in self.materialpoint_iter():
-          for t in self.materialpoint_output_iter():
+        for m in self.iter_visible('materialpoints'):
+          for t in self.iter_visible('mat_physics'):
             group = '/'.join([group_inc,'materialpoint',m,t])
             if sets is True:
               groups.append(group)
@@ -263,10 +188,10 @@ class DADF5():
     """Shows information on all active datasets in the file."""
     with h5py.File(self.filename,'r') as f:
       group_inc = 'inc{:05}'.format(self.visible['increments'][0]['inc']) #ToDo: Merge path only once at the end '/'.join(listE)
-      for c in self.visible['constituents']:
+      for c in self.iter_visible('constituents'):
         print('\n'+c)
         group_constituent = group_inc+'/constituent/'+c
-        for t in self.visible['con_physics']:
+        for t in self.iter_visible('con_physics'):
           print('  {}'.format(t))
           group_output_types = group_constituent+'/'+t 
           try:
@@ -274,9 +199,9 @@ class DADF5():
               print('    {} ({})'.format(x,f[group_output_types+'/'+x].attrs['Description'].decode()))
           except KeyError:
             pass
-      for m in self.visible['materialpoints']:
+      for m in self.iter_visible('materialpoints'):
         group_materialpoint = group_inc+'/materialpoint/'+m
-        for t in self.visible['mat_physics']:
+        for t in self.iter_visible('mat_physics'):
           print('  {}'.format(t))
           group_output_types = group_materialpoint+'/'+t
           try:
@@ -293,8 +218,8 @@ class DADF5():
       for i in self.visible['increments']:
         group_inc = 'inc{:05}'.format(i['inc'])
         
-        for c in self.visible['constituents']:
-          for t in self.visible['con_physics']:
+        for c in self.iter_visible('constituents'):
+          for t in self.iter_visible('con_physics'):
             try:
               p = '/'.join([group_inc,'constituent',c,t,label])
               f[p]
@@ -302,8 +227,8 @@ class DADF5():
             except KeyError as e:
               print('unable to locate constituents dataset: '+ str(e))
        
-        for m in self.visible['materialpoints']:
-          for t in self.visible['mat_physics']:
+        for m in self.iter_visible('materialpoints'):
+          for t in self.iter_visible('mat_physics'):
             try:
               p = '/'.join([group_inc,'materialpoint',m,t,label])
               f[p]
