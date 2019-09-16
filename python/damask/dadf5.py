@@ -203,8 +203,8 @@ class DADF5():
         for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
           for oo in self.iter_visible(o):
             for pp in self.iter_visible(p):
+              k = '/'.join([i,o[:-1],oo,pp,label])
               try:
-                k = '/'.join([i,'constituent',oo,pp,label])
                 f[k]
                 path.append(k)
               except KeyError as e:
