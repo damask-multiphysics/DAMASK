@@ -47,22 +47,20 @@ for filename in options.filenames:
 
   coords = np.concatenate((z[:,:,:,None],y[:,:,:,None],x[:,:,:,None]),axis = 3) 
   
-  for i,inc in enumerate(results.increments):
+  for i,inc in enumerate(results.iter_visible('increments')):
     print('Output step {}/{}'.format(i+1,len(results.increments)))
 
     header = '1 header\n'
     
-    data = np.array([inc['inc'] for j in range(np.product(results.grid))]).reshape([np.product(results.grid),1])
+    data = np.array([int(inc[3:]) for j in range(np.product(results.grid))]).reshape([np.product(results.grid),1])
     header+= 'inc'
 
     coords = coords.reshape([np.product(results.grid),3])
     data = np.concatenate((data,coords),1)
     header+=' 1_pos 2_pos 3_pos'
-        
-    results.visible['increments'] = [inc]
 
     for label in options.con:
-      for o in results.iter_visible('con_physics'):
+      for p in results.iter_visible('con_physics'):
         for c in results.iter_visible('constituents'):
           x = results.get_dataset_location(label)
           if len(x) == 0:
@@ -77,7 +75,7 @@ for filename in options.filenames:
             header+=' '+label
             
     for label in options.mat:
-      for o in results.iter_visible('mat_physics'):
+      for p in results.iter_visible('mat_physics'):
         for m in results.iter_visible('materialpoints'):
           x = results.get_dataset_location(label)
           if len(x) == 0:
@@ -96,5 +94,5 @@ for filename in options.filenames:
       os.mkdir(dirname)
     except FileExistsError:
       pass
-    file_out = '{}_inc{:04d}.txt'.format(filename.split('.')[0],inc['inc'])
+    file_out = '{}_{}.txt'.format(filename.split('.')[0],inc)
     np.savetxt(os.path.join(dirname,file_out),data,header=header,comments='')

@@ -38,11 +38,7 @@ class DADF5():
         self.size = f['geometry'].attrs['size']
         
       r=re.compile('inc[0-9]+')
-      self.time_information = [{'inc':  int(u[3:]),
-                          'time': round(f[u].attrs['time/s'],12),
-                          }   for u in f.keys() if r.match(u)]
-                          
-      self.increments = self.time_information.copy() # unify later
+      self.increments = [u for u in f.keys() if r.match(u)]
       
       self.Nmaterialpoints, self.Nconstituents =   np.shape(f['mapping/cellResults/constituent'])
       self.materialpoints  = [m.decode() for m in np.unique(f['mapping/cellResults/materialpoint']['Name'])]
@@ -51,20 +47,20 @@ class DADF5():
 
       self.con_physics  = []
       for c in self.constituents:
-        self.con_physics += f['inc{:05}/constituent/{}'.format(self.increments[0]['inc'],c)].keys()
+        self.con_physics += f['inc00000/constituent/{}'.format(c)].keys()
       self.con_physics = list(set(self.con_physics))                                          # make unique
 
       self.mat_physics = []
       for m in self.materialpoints:
-        self.mat_physics += f['inc{:05}/materialpoint/{}'.format(self.increments[0]['inc'],m)].keys()
+        self.mat_physics += f['inc00000/materialpoint/{}'.format(m)].keys()
       self.mat_physics = list(set(self.mat_physics))                                          # make unique
 
     self.visible= {'increments':    self.increments, # ToDo:simplify, activity only positions that translate into (no complex types)
                   'constituents':   self.constituents,
                   'materialpoints': self.materialpoints,
                   'constituent':    range(self.Nconstituents),                                      # ToDo: stupid naming
-                  'con_physics': self.con_physics,
-                  'mat_physics': self.mat_physics}
+                  'con_physics':    self.con_physics,
+                  'mat_physics':    self.mat_physics}
                   
     self.filename   = filename
 
@@ -100,24 +96,6 @@ class DADF5():
       last_datasets = self.visible[what]
       yield dataset
     self.__manage_visible(datasets,what,'set')
-
-
-# ToDo: store increments, select icrements (trivial), position, and time
-  def increment_set_by_time(self,start,end):
-    for t in self.time_information:
-      if start<= t['time']< end:
-        print(t)
-
-
-  def increment_set_by_position(self,start,end):
-    for t in self.time_information[start:end]:
-      print(t)
-
-
-  def increment_set(self,start,end):
-    for t in self.time_information:
-      if start<= t['inc']< end:
-        print(t)
     
   
   def set_visible(self,what,datasets):
@@ -163,19 +141,18 @@ class DADF5():
     groups = []
     
     with h5py.File(self.filename,'r') as f:
-      for i in self.visible['increments']:
-        group_inc = 'inc{:05}'.format(i['inc'])                               #ToDo: Merge path only once at the end '/'.join(listE)
+      for i in self.iter_visible('increments'): #ToDo: Merge path only once at the end '/'.join(listE)
         for c in self.iter_visible('constituents'):
-          for t in self.iter_visible('con_physics'):
-            group = '/'.join([group_inc,'constituent',c,t])
+          for p in self.iter_visible('con_physics'):
+            group = '/'.join([i,'constituent',c,p])
             if sets is True:
               groups.append(group)
             else:
               match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in sets] for e in e_]
               if len(set(match)) == len(sets) : groups.append(group)
         for m in self.iter_visible('materialpoints'):
-          for t in self.iter_visible('mat_physics'):
-            group = '/'.join([group_inc,'materialpoint',m,t])
+          for p in self.iter_visible('mat_physics'):
+            group = '/'.join([i,'materialpoint',m,p])
             if sets is True:
               groups.append(group)
             else:
@@ -187,23 +164,23 @@ class DADF5():
   def list_data(self): # print_datasets and have [] and ['*'], loop over all increment, soll auf anderen basieren (get groups with sternchen)
     """Shows information on all active datasets in the file."""
     with h5py.File(self.filename,'r') as f:
-      group_inc = 'inc{:05}'.format(self.visible['increments'][0]['inc']) #ToDo: Merge path only once at the end '/'.join(listE)
+      i = 'inc{:05}'.format(0)                   #ToDo: Merge path only once at the end '/'.join(listE)
       for c in self.iter_visible('constituents'):
         print('\n'+c)
-        group_constituent = group_inc+'/constituent/'+c
-        for t in self.iter_visible('con_physics'):
+        group_constituent = i+'/constituent/'+c
+        for p in self.iter_visible('con_physics'):
           print('  {}'.format(t))
-          group_output_types = group_constituent+'/'+t 
+          group_output_types = group_constituent+'/'+p 
           try:
             for x in f[group_output_types].keys():
               print('    {} ({})'.format(x,f[group_output_types+'/'+x].attrs['Description'].decode()))
           except KeyError:
             pass
       for m in self.iter_visible('materialpoints'):
-        group_materialpoint = group_inc+'/materialpoint/'+m
-        for t in self.iter_visible('mat_physics'):
+        group_materialpoint = i+'/materialpoint/'+m
+        for p in self.iter_visible('mat_physics'):
           print('  {}'.format(t))
-          group_output_types = group_materialpoint+'/'+t
+          group_output_types = group_materialpoint+'/'+p
           try:
             for x in f[group_output_types].keys():
               print('    {} ({})'.format(x,f[group_output_types+'/'+x].attrs['Description'].decode()))
@@ -215,24 +192,22 @@ class DADF5():
     """Returns the location of all active datasets with given label.""" #ToDo: Merge path only once at the end '/'.join(listE)
     path = []
     with h5py.File(self.filename,'r') as f:
-      for i in self.visible['increments']:
-        group_inc = 'inc{:05}'.format(i['inc'])
-        
+      for i in self.iter_visible('increments'):        
         for c in self.iter_visible('constituents'):
           for t in self.iter_visible('con_physics'):
             try:
-              p = '/'.join([group_inc,'constituent',c,t,label])
-              f[p]
-              path.append(p)
+              k = '/'.join([i,'constituent',c,t,label])
+              f[k]
+              path.append(k)
             except KeyError as e:
               print('unable to locate constituents dataset: '+ str(e))
        
         for m in self.iter_visible('materialpoints'):
           for t in self.iter_visible('mat_physics'):
             try:
-              p = '/'.join([group_inc,'materialpoint',m,t,label])
-              f[p]
-              path.append(p)
+              k = '/'.join([i,'materialpoint',m,t,label])
+              f[k]
+              path.append(k)
             except KeyError as e:
               print('unable to locate materialpoints dataset: '+ str(e))
               

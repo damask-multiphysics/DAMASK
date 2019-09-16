@@ -57,17 +57,16 @@ for filename in options.filenames:
     rGrid.SetZCoordinates(coordArray[2])
 
 
-  for i,inc in enumerate(results.increments):
+  for i,inc in enumerate(results.iter_visible('increments')):
     print('Output step {}/{}'.format(i+1,len(results.increments)))
     vtk_data = []
-    results.visible['increments'] = [inc]
     
     results.set_visible('materialpoints',False)
     results.set_visible('constituents',  True)
     for label in options.con:
       
-      for o in results.iter_visible('con_physics'):
-        if o != 'generic':
+      for p in results.iter_visible('con_physics'):
+        if p != 'generic':
           for c in results.iter_visible('constituents'):
             x = results.get_dataset_location(label)
             if len(x) == 0:
@@ -90,8 +89,8 @@ for filename in options.filenames:
     results.set_visible('constituents',  False)
     results.set_visible('materialpoints',True)
     for label in options.mat:       
-      for o in results.iter_visible('mat_physics'):
-        if o != 'generic':
+      for p in results.iter_visible('mat_physics'):
+        if p != 'generic':
           for m in results.iter_visible('materialpoints'):
             x = results.get_dataset_location(label)
             if len(x) == 0:
@@ -120,7 +119,7 @@ for filename in options.filenames:
       os.mkdir(dirname)
     except FileExistsError:
       pass
-    file_out = '{}_inc{:04d}.{}'.format(filename.split('.')[0],inc['inc'],writer.GetDefaultFileExtension())
+    file_out = '{}_{}.{}'.format(filename.split('.')[0],inc,writer.GetDefaultFileExtension())
     
     writer.SetCompressorTypeToZLib()
     writer.SetDataModeToBinary()
