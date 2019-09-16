@@ -38,8 +38,9 @@ class DADF5():
         self.size = f['geometry'].attrs['size']
         
       r=re.compile('inc[0-9]+')
-      self.increments = [u for u in f.keys() if r.match(u)]
-      
+      self.increments = [i for i in f.keys() if r.match(i)]
+      self.times      = [round(f[i].attrs['time/s'],12) for i in self.increments]
+
       self.Nmaterialpoints, self.Nconstituents =   np.shape(f['mapping/cellResults/constituent'])
       self.materialpoints  = [m.decode() for m in np.unique(f['mapping/cellResults/materialpoint']['Name'])]
       self.constituents    = [c.decode() for c in np.unique(f['mapping/cellResults/constituent']  ['Name'])]
