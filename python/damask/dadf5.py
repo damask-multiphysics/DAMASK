@@ -176,7 +176,7 @@ class DADF5():
 
 
   def list_data(self):
-    """Gices information on all active datasets in the file."""
+    """Gives information on all active datasets in the file."""
     message = ''
     with h5py.File(self.filename,'r') as f:
       for i in self.iter_visible('increments'):
