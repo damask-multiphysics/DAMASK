@@ -66,7 +66,7 @@ class DADF5():
 
 
   def __manage_visible(self,datasets,what,action):
-    """Sets visible."""
+    """Manages the visibility of the groups."""
     # allow True/False and string arguments
     if datasets is True:
       datasets = ['*']
@@ -86,6 +86,7 @@ class DADF5():
 
 
   def iter_visible(self,what):
+    """Iterates over visible items by setting each one visible."""
     datasets = self.visible[what]
     last_datasets = datasets.copy()
     for dataset in datasets:
@@ -161,51 +162,50 @@ class DADF5():
     return groups
 
 
-  def list_data(self): # print_datasets and have [] and ['*'], loop over all increment, soll auf anderen basieren (get groups with sternchen)
+  def list_data(self):
     """Shows information on all active datasets in the file."""
     with h5py.File(self.filename,'r') as f:
-      i = 'inc{:05}'.format(0)                   #ToDo: Merge path only once at the end '/'.join(listE)
+      i = 'inc{:05}'.format(0)
       for c in self.iter_visible('constituents'):
-        print('\n'+c)
-        group_constituent = i+'/constituent/'+c
+        print('{}'.format(c))
         for p in self.iter_visible('con_physics'):
-          print('  {}'.format(t))
-          group_output_types = group_constituent+'/'+p 
+          print('  {}'.format(p))
           try:
-            for x in f[group_output_types].keys():
-              print('    {} ({})'.format(x,f[group_output_types+'/'+x].attrs['Description'].decode()))
+            k = '/'.join([i,'constituent',c,p])
+            for d in f[k].keys():
+              print('    {} ({})'.format(d,f[k+'/'+d].attrs['Description'].decode()))
           except KeyError:
             pass
       for m in self.iter_visible('materialpoints'):
-        group_materialpoint = i+'/materialpoint/'+m
+        print('{}'.format(m))
         for p in self.iter_visible('mat_physics'):
-          print('  {}'.format(t))
-          group_output_types = group_materialpoint+'/'+p
+          print('  {}'.format(p))
           try:
-            for x in f[group_output_types].keys():
-              print('    {} ({})'.format(x,f[group_output_types+'/'+x].attrs['Description'].decode()))
+            k = '/'.join([i,'materialpoint',m,p])
+            for d in f[k].keys():
+              print('    {} ({})'.format(d,f[k+'/'+d].attrs['Description'].decode()))
           except KeyError:
             pass
     
 
-  def get_dataset_location(self,label): # names
-    """Returns the location of all active datasets with given label.""" #ToDo: Merge path only once at the end '/'.join(listE)
+  def get_dataset_location(self,label):
+    """Returns the location of all active datasets with given label."""
     path = []
     with h5py.File(self.filename,'r') as f:
       for i in self.iter_visible('increments'):        
         for c in self.iter_visible('constituents'):
-          for t in self.iter_visible('con_physics'):
+          for p in self.iter_visible('con_physics'):
             try:
-              k = '/'.join([i,'constituent',c,t,label])
+              k = '/'.join([i,'constituent',c,p,label])
               f[k]
               path.append(k)
             except KeyError as e:
               print('unable to locate constituents dataset: '+ str(e))
        
         for m in self.iter_visible('materialpoints'):
-          for t in self.iter_visible('mat_physics'):
+          for p in self.iter_visible('mat_physics'):
             try:
-              k = '/'.join([i,'materialpoint',m,t,label])
+              k = '/'.join([i,'materialpoint',m,p,label])
               f[k]
               path.append(k)
             except KeyError as e:
