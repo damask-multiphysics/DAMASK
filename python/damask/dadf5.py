@@ -84,6 +84,26 @@ class DADF5():
       self.visible[what] = list(existing.union(valid))
     elif action == 'del':
       self.visible[what] = list(existing.difference_update(valid))
+      
+  
+  def __time_to_inc(self,start,end):
+    selected = []
+    for i,time in enumerate(self.times):
+      if start <= time < end:
+        selected.append(self.increments[i])
+    return selected
+
+
+  def set_by_time(self,start,end):
+    self.__manage_visible(self.__time_to_inc(start,end),'increments','set')
+
+
+  def add_by_time(self,start,end):
+    self.__manage_visible(self.__time_to_inc(start,end),'increments','add')
+
+
+  def del_by_time(self,start,end):
+    self.__manage_visible(self.__time_to_inc(start,end),'increments','del')
 
 
   def iter_visible(self,what):
