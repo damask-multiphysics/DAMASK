@@ -1,0 +1,66 @@
+! common block definition file taken from respective MSC.Marc release and reformated to free format
+!***********************************************************************
+!
+!        File: creeps.cmn
+!
+!        MSC.Marc include file
+!
+real(pReal)   cptim,timinc,timinc_p,timinc_s,timincm,timinc_a,timinc_b
+integer       icfte,icfst,icfeq,icftm,icetem,mcreep,jcreep,icpa,icftmp,icfstr,&
+              icfqcp,icfcpm,icrppr,icrcha,icpb,iicpmt,iicpa
+real(pReal)   time_beg_lcase,time_beg_inc,fractol,time_beg_pst
+real(pReal)   fraction_donn,timinc_ol2
+!
+integer       num_creepsr,num_creepsi,num_creeps2r
+parameter(num_creepsr=7)
+parameter(num_creepsi=17)
+parameter(num_creeps2r=6)
+common/marc_creeps/cptim,timinc,timinc_p,timinc_s,timincm,timinc_a,timinc_b,icfte,icfst,&
+      icfeq,icftm,icetem,mcreep,jcreep,icpa,icftmp,icfstr,icfqcp,icfcpm,icrppr,icrcha,icpb,iicpmt,iicpa
+common/marc_creeps2/time_beg_lcase,time_beg_inc,fractol,time_beg_pst,fraction_donn,timinc_ol2
+!
+! cptim          Total time at begining of increment.
+! timinc         Incremental time for this step.
+! icfte          Local copy number of slopes of creep strain rate function
+!                versus temperature. Is -1 if exponent law used.
+! icfst          Local copy number of slopes of creep strain rate function
+!                versus equivalent stress. Is -1 if exponent law used.
+! icfeq          Local copy number of slopes of creep strain rate function
+!                versus equivalent strain. Is -1 if exponent law used.
+! icftm          Local copy number of slopes of creep strain rate function
+!                versus time. Is -1 if exponent law used.
+! icetem         Element number that needs to be checked for creep convergence
+!                or, if negative, the number of elements that need to 
+!                be checked. In the latter case the elements to check
+!                are stored in ielcp.
+! mcreep         Maximum nuber of iterations for explicit creep.
+! jcreep         Counter of number of iterations for explicit creep 
+!                procedure. jcreep must be .le. mcreep
+! icpa           Pointer to constant in creep strain rate expression.
+! icftmp         Pointer to temperature dependent creep strain rate data.
+! icfstr         Pointer to equivalent stress dependent creep strain rate data.
+! icfqcp         Pointer to equivalent creep strain dependent creep strain
+!                rate data.
+! icfcpm         Pointer to equivalent creep strain rate dependent
+!                creep strain rate data.
+! icrppr         Permanent copy of icreep
+! icrcha         Control flag for creep convergence checking , if set to
+!                1 then testing on absolute change in stress and creep
+!                strain, not relative testing. Input data.
+! icpb           Pointer to storage of material id cross reference numbers.
+! iicpmt         
+! iicpa          Pointer to constant in creep strain rate expression
+!
+! time_beg_lcase  time at the beginning of the current load case
+! time_beg_inc    time at the beginning of the current increment
+! fractol         fraction of loadcase or increment time when we
+!                 consider it to be finished
+! time_beg_pst    time corresponding to first increment to be
+!                 read in from thermal post file for auto step
+!
+! timinc_old    Time step of the previous increment
+!
+!***********************************************************************
+!!$omp threadprivate(/marc_creeps/)
+!!$omp threadprivate(/marc_creeps2/)
+!! 
