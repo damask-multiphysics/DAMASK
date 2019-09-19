@@ -196,8 +196,8 @@ subroutine plastic_disloUCLA_init()
       prm%h_sl_sl     = lattice_interaction_SlipBySlip(prm%N_sl, &
                                                        config%getFloats('interaction_slipslip'), &
                                                        config%getString('lattice_structure'))
-      prm%forestProjectionEdge = lattice_forestProjection(prm%N_sl,config%getString('lattice_structure'),&
-                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
+      prm%forestProjectionEdge = lattice_forestProjection_edge(prm%N_sl,config%getString('lattice_structure'),&
+                                                               config%getFloat('c/a',defaultVal=0.0_pReal))
  
       prm%rho_mob_0   = config%getFloats('rhoedge0',       requiredSize=size(prm%N_sl))
       prm%rho_dip_0   = config%getFloats('rhoedgedip0',    requiredSize=size(prm%N_sl))

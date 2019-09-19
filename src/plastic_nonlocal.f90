@@ -6,7 +6,6 @@
 !--------------------------------------------------------------------------------------------------
 module plastic_nonlocal
   use prec
-  use future
   use IO
   use math
   use debug

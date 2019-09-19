@@ -251,8 +251,8 @@ subroutine plastic_dislotwin_init
      prm%h_sl_sl = lattice_interaction_SlipBySlip(prm%N_sl, &
                                                   config%getFloats('interaction_slipslip'), &
                                                   config%getString('lattice_structure'))
-     prm%forestProjection     = lattice_forestProjection (prm%N_sl,config%getString('lattice_structure'),&
-                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
+     prm%forestProjection     = lattice_forestProjection_edge(prm%N_sl,config%getString('lattice_structure'),&
+                                                              config%getFloat('c/a',defaultVal=0.0_pReal))
 
      prm%n0_sl                = lattice_slip_normal(prm%N_sl,config%getString('lattice_structure'),&
                                                     config%getFloat('c/a',defaultVal=0.0_pReal))  
