@@ -45,23 +45,22 @@ class DADF5():
       self.materialpoints  = [m.decode() for m in np.unique(f['mapping/cellResults/materialpoint']['Name'])]
       self.constituents    = [c.decode() for c in np.unique(f['mapping/cellResults/constituent']  ['Name'])]
 
-
       self.con_physics  = []
       for c in self.constituents:
-        self.con_physics += f['inc00000/constituent/{}'.format(c)].keys()
+        self.con_physics += f['/'.join([self.increments[0],'constituent',c])].keys()
       self.con_physics = list(set(self.con_physics))                                          # make unique
 
       self.mat_physics = []
       for m in self.materialpoints:
-        self.mat_physics += f['inc00000/materialpoint/{}'.format(m)].keys()
+        self.mat_physics += f['/'.join([self.increments[0],'materialpoint',m])].keys()
       self.mat_physics = list(set(self.mat_physics))                                          # make unique
 
-    self.visible= {'increments':    self.increments, # ToDo:simplify, activity only positions that translate into (no complex types)
-                  'constituents':   self.constituents,
-                  'materialpoints': self.materialpoints,
-                  'constituent':    range(self.Nconstituents),                                      # ToDo: stupid naming
-                  'con_physics':    self.con_physics,
-                  'mat_physics':    self.mat_physics}
+    self.visible= {'increments':     self.increments,
+                   'constituents':   self.constituents,
+                   'materialpoints': self.materialpoints,
+                   'constituent':    range(self.Nconstituents),                               # ToDo: stupid naming
+                   'con_physics':    self.con_physics,
+                   'mat_physics':    self.mat_physics}
                   
     self.filename   = filename
 
@@ -163,75 +162,53 @@ class DADF5():
     groups = []
     
     with h5py.File(self.filename,'r') as f:
-      for i in self.iter_visible('increments'): #ToDo: Merge path only once at the end '/'.join(listE)
-        for c in self.iter_visible('constituents'):
-          for p in self.iter_visible('con_physics'):
-            group = '/'.join([i,'constituent',c,p])
-            if sets is True:
-              groups.append(group)
-            else:
-              match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in sets] for e in e_]
-              if len(set(match)) == len(sets) : groups.append(group)
-        for m in self.iter_visible('materialpoints'):
-          for p in self.iter_visible('mat_physics'):
-            group = '/'.join([i,'materialpoint',m,p])
-            if sets is True:
-              groups.append(group)
-            else:
-              match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in sets] for e in e_]
-              if len(set(match)) == len(sets) : groups.append(group)
+      for i in self.iter_visible('increments'):
+        for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
+          for oo in self.iter_visible(o):
+            for pp in self.iter_visible(p):
+              group = '/'.join([i,o[:-1],oo,pp])                              # o[:-1]: plural/singular issue
+              if sets is True:
+                groups.append(group)
+              else:
+                match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in sets] for e in e_]
+                if len(set(match)) == len(sets) : groups.append(group)
     return groups
 
 
   def list_data(self):
-    """Shows information on all active datasets in the file."""
+    """Gives information on all active datasets in the file."""
+    message = ''
     with h5py.File(self.filename,'r') as f:
-      i = 'inc{:05}'.format(0)
-      for c in self.iter_visible('constituents'):
-        print('{}'.format(c))
-        for p in self.iter_visible('con_physics'):
-          print('  {}'.format(p))
-          try:
-            k = '/'.join([i,'constituent',c,p])
-            for d in f[k].keys():
-              print('    {} ({})'.format(d,f[k+'/'+d].attrs['Description'].decode()))
-          except KeyError:
-            pass
-      for m in self.iter_visible('materialpoints'):
-        print('{}'.format(m))
-        for p in self.iter_visible('mat_physics'):
-          print('  {}'.format(p))
-          try:
-            k = '/'.join([i,'materialpoint',m,p])
-            for d in f[k].keys():
-              print('    {} ({})'.format(d,f[k+'/'+d].attrs['Description'].decode()))
-          except KeyError:
-            pass
-    
+      for i in self.iter_visible('increments'):
+        message+='\n{}\n'.format(i)
+        for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
+          for oo in self.iter_visible(o):
+            message+='  {}\n'.format(oo)
+            for pp in self.iter_visible(p):
+              message+='    {}\n'.format(pp)
+              group = '/'.join([i,o[:-1],oo,pp])                              # o[:-1]: plural/singular issue
+              for d in f[group].keys():
+                try:
+                  message+='      {} ({})\n'.format(d,f['/'.join([group,d])].attrs['Description'].decode())
+                except KeyError:
+                  pass
+    return message
+
 
   def get_dataset_location(self,label):
     """Returns the location of all active datasets with given label."""
     path = []
     with h5py.File(self.filename,'r') as f:
       for i in self.iter_visible('increments'):        
-        for c in self.iter_visible('constituents'):
-          for p in self.iter_visible('con_physics'):
-            try:
-              k = '/'.join([i,'constituent',c,p,label])
-              f[k]
-              path.append(k)
-            except KeyError as e:
-              print('unable to locate constituents dataset: '+ str(e))
-       
-        for m in self.iter_visible('materialpoints'):
-          for p in self.iter_visible('mat_physics'):
-            try:
-              k = '/'.join([i,'materialpoint',m,p,label])
-              f[k]
-              path.append(k)
-            except KeyError as e:
-              print('unable to locate materialpoints dataset: '+ str(e))
-              
+        for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
+          for oo in self.iter_visible(o):
+            for pp in self.iter_visible(p):
+              k = '/'.join([i,o[:-1],oo,pp,label])
+              try:
+                f[k]
+                path.append(k)
+              except KeyError as e:
+                print('unable to locate constituents dataset: '+ str(e))
     return path
     
     
