@@ -71,9 +71,10 @@ variables:
   # ++++++++++++ commercial FEM ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   Abaqus2019:                      "FEM/Abaqus/2019"
   MSC2018_1:                       "FEM/MSC/2018.1"
+  MSC2019:                         "FEM/MSC/2019"
   # ------------ Defaults ----------------------------------------------
   Abaqus:                          "$Abaqus2019"
-  MSC:                             "$MSC2018_1"
+  MSC:                             "$MSC2019"
   IntelMarc:                       "$IntelCompiler17_8"
   IntelAbaqus:                     "$IntelCompiler16_4"
   HDF5Marc:                        "HDF5/1.10.4/Intel-17.8"
@@ -394,12 +395,22 @@ Phenopowerlaw_singleSlip:
 Marc_compileIfort2018_1:
   stage: compileMarc
   script:
-    - module load $IntelMarc $HDF5Marc $MSC
+    - module load $IntelMarc $HDF5Marc $MSC_2018_1
     - export DAMASK_HDF5=ON
     - Marc_compileIfort/test.py -m 2018.1
   except:
     - master
     - release
+Marc_compileIfort2019:
+  stage: compileMarc
+  script:
+    - module load $IntelMarc $HDF5Marc $MSC_2019
+    - export DAMASK_HDF5=ON
+    - Marc_compileIfort/test.py -m 2019
+  except:
+    - master
+    - release
+
 
 ###################################################################################################
 Hex_elastic:
