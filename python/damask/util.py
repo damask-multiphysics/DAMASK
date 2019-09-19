@@ -212,6 +212,7 @@ class return_message():
     ----------
     message : str or list of str
       message for output to screen
+
     """
     self.message = message
   
@@ -484,7 +485,7 @@ class ThreadPool:
     """Thread executing tasks from a given tasks queue."""
 
     def __init__(self, tasks):
-      """ Worker for tasks."""
+      """Worker for tasks."""
       Thread.__init__(self)
       self.tasks = tasks
       self.daemon = True
