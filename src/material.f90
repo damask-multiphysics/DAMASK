@@ -474,9 +474,9 @@ subroutine material_parseHomogenization
   enddo
  
   do h=1, size(config_homogenization)
-    homogenization_typeInstance(h)  = count(homogenization_type(1:h)  == homogenization_type(h))
-    thermal_typeInstance(h)         = count(thermal_type       (1:h)  == thermal_type       (h))
-    damage_typeInstance(h)          = count(damage_type        (1:h)  == damage_type        (h))
+    homogenization_typeInstance(h)  = count(homogenization_type(1:h) == homogenization_type(h))
+    thermal_typeInstance(h)         = count(thermal_type       (1:h) == thermal_type       (h))
+    damage_typeInstance(h)          = count(damage_type        (1:h) == damage_type        (h))
   enddo
  
   homogenization_maxNgrains = maxval(homogenization_Ngrains,homogenization_active)
@@ -496,9 +496,9 @@ subroutine material_parseMicrostructure
   character(len=65536) :: &
     tag
  
-  allocate(microstructure_crystallite(size(config_microstructure)),          source=0)
-  allocate(microstructure_Nconstituents(size(config_microstructure)),        source=0)
-  allocate(microstructure_active(size(config_microstructure)),               source=.false.)
+  allocate(microstructure_crystallite(size(config_microstructure)),   source=0)
+  allocate(microstructure_Nconstituents(size(config_microstructure)), source=0)
+  allocate(microstructure_active(size(config_microstructure)),        source=.false.)
  
   if(any(discretization_microstructureAt > size(config_microstructure))) &
    call IO_error(155,ext_msg='More microstructures in geometry than sections in material.config')
@@ -531,7 +531,7 @@ subroutine material_parseMicrostructure
            case('texture')
              microstructure_texture(c,m) =  IO_intValue(strings(c),chunkPos,i+1)
            case('fraction')
-             microstructure_fraction(c,m) =  IO_floatValue(strings(c),chunkPos,i+1)
+             microstructure_fraction(c,m) = IO_floatValue(strings(c),chunkPos,i+1)
          end select
       
       enddo

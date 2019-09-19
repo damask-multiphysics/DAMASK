@@ -7,7 +7,6 @@
 !--------------------------------------------------------------------------------------------------
 module math
   use prec
-  use future
   use IO
   use debug
   use numerics
@@ -16,8 +15,7 @@ module math
 #if __INTEL_COMPILER >= 1900
   ! do not make use associated entities available to other modules
   private :: &
-    prec, &
-    future
+    prec
 #endif
 
   real(pReal),    parameter :: PI = acos(-1.0_pReal)                                                !< ratio of a circle's circumference to its diameter
@@ -75,15 +73,7 @@ module math
       3,3  &
       ],[2,9])                                                                                      !< arrangement in Plain notation
      
-!--------------------------------------------------------------------------------------------------
-! Provide deprecated name for compatibility
-  interface math_mul3x3
-    module procedure math_inner
-  end interface math_mul3x3
-  public :: &
-    math_mul3x3
 !---------------------------------------------------------------------------------------------------
-
  private :: &
    unitTest
 

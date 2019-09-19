@@ -11,7 +11,6 @@ module lattice
   use IO
   use config
   use math
-  use future
  
   implicit none
   private
@@ -493,11 +492,6 @@ module lattice
   integer(kind(LATTICE_undefined_ID)),        dimension(:),       allocatable, public, protected :: &
     lattice_structure
  
-  
-  interface lattice_forestProjection ! DEPRECATED, use lattice_forestProjection_edge
-    module procedure slipProjection_transverse
-  end interface lattice_forestProjection
-  
   interface lattice_forestProjection_edge
     module procedure slipProjection_transverse
   end interface lattice_forestProjection_edge
@@ -529,7 +523,6 @@ module lattice
    lattice_characteristicShear_Twin, &
    lattice_C66_twin, &
    lattice_C66_trans, &
-   lattice_forestProjection, &
    lattice_forestProjection_edge, &
    lattice_forestProjection_screw, &
    lattice_slip_normal, &

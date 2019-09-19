@@ -10,6 +10,7 @@ module mesh
  use mesh_base
  use geometry_plastic_nonlocal
  use discretization
+ use math
 
  implicit none
  private
@@ -1758,9 +1759,6 @@ end subroutine mesh_build_sharedElems
 !> @brief build up of IP neighborhood, allocate globals '_ipNeighborhood'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_ipNeighborhood
- use math, only: &
-   math_mul3x3
-
  
  integer      ::           myElem, &                                                           ! my CP element index
                                  myIP, &
@@ -1908,7 +1906,7 @@ subroutine mesh_build_ipNeighborhood
          do pointingToMe = 1,FE_NipNeighbors(FE_celltype(neighboringType))                      ! find neighboring index that points from my neighbor to myself
            if (    myElem == mesh_ipNeighborhood(1,pointingToMe,neighboringIP,neighboringElem) &
                .and. myIP == mesh_ipNeighborhood(2,pointingToMe,neighboringIP,neighboringElem)) then ! possible candidate
-             if (math_mul3x3(mesh_ipAreaNormal(1:3,neighbor,myIP,myElem),&
+             if (math_inner(mesh_ipAreaNormal(1:3,neighbor,myIP,myElem),&
                              mesh_ipAreaNormal(1:3,pointingToMe,neighboringIP,neighboringElem)) < 0.0_pReal) then ! area normals have opposite orientation (we have to check that because of special case for single element with two ips and periodicity. In this case the neighbor is identical in two different directions.)
                mesh_ipNeighborhood(3,neighbor,myIP,myElem) = pointingToMe                            ! found match
                exit                                                                                  ! so no need to search further

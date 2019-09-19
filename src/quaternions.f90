@@ -35,7 +35,6 @@
 !---------------------------------------------------------------------------------------------------
 module quaternions
   use prec
-  use future
 
   implicit none
   public

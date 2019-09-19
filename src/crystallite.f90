@@ -22,7 +22,6 @@ module crystallite
   use constitutive
   use discretization
   use lattice
-  use future
   use plastic_nonlocal
   use geometry_plastic_nonlocal, only: &
     nIPneighbors    => geometry_plastic_nonlocal_nIPneighbors, &
