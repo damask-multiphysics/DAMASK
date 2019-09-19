@@ -800,6 +800,8 @@ subroutine homogenization_results
     
   integer :: p
   character(len=256) :: group
+  
+  real(pReal), dimension(:,:,:), allocatable :: temp
                                              
   do p=1,size(config_name_homogenization)
     group = trim('current/materialpoint')//'/'//trim(config_name_homogenization(p))
@@ -812,7 +814,17 @@ subroutine homogenization_results
       case(HOMOGENIZATION_rgc_ID)
         call mech_RGC_results(homogenization_typeInstance(p),group)
     end select
-  
+    
+    group = trim('current/materialpoint')//'/'//trim(config_name_homogenization(p))//'/generic'
+    call HDF5_closeGroup(results_addGroup(group))
+    
+    !temp = reshape(materialpoint_F,[3,3,discretization_nIP*discretization_nElem])
+    !call results_writeDataset(group,temp,'F',&
+    !                          'deformation gradient','1')  
+    !temp = reshape(materialpoint_P,[3,3,discretization_nIP*discretization_nElem])
+    !call results_writeDataset(group,temp,'P',&
+    !                          '1st Piola-Kirchoff stress','Pa')  
+
  enddo   
 #endif
 end subroutine homogenization_results

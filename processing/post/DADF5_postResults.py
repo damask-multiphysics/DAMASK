@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
 import os
-import numpy as np
 import argparse
+
+import numpy as np
+
 import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
@@ -23,9 +24,9 @@ parser.add_argument('filenames', nargs='+',
 parser.add_argument('-d','--dir', dest='dir',default='postProc',metavar='string',
                     help='name of subdirectory to hold output')
 parser.add_argument('--mat', nargs='+',
-                    help='labels for materialpoint/homogenization',dest='mat')
+                    help='labels for materialpoint',dest='mat')
 parser.add_argument('--con', nargs='+',
-                    help='labels for constituent/crystallite/constitutive',dest='con')
+                    help='labels for constituent',dest='con')
 
 options = parser.parse_args()
 
@@ -46,32 +47,27 @@ for filename in options.filenames:
 
   coords = np.concatenate((z[:,:,:,None],y[:,:,:,None],x[:,:,:,None]),axis = 3) 
   
-  for i,inc in enumerate(results.increments):
+  for i,inc in enumerate(results.iter_visible('increments')):
     print('Output step {}/{}'.format(i+1,len(results.increments)))
 
     header = '1 header\n'
     
-    data = np.array([inc['inc'] for j in range(np.product(results.grid))]).reshape([np.product(results.grid),1])
+    data = np.array([int(inc[3:]) for j in range(np.product(results.grid))]).reshape([np.product(results.grid),1])
     header+= 'inc'
 
     coords = coords.reshape([np.product(results.grid),3])
     data = np.concatenate((data,coords),1)
     header+=' 1_pos 2_pos 3_pos'
-        
-    results.active['increments'] = [inc]
+
     for label in options.con:
-      for o in results.c_output_types:
-        results.active['c_output_types'] = [o]
-        for c in results.constituents:
-          results.active['constituents'] = [c]
+      for p in results.iter_visible('con_physics'):
+        for c in results.iter_visible('constituents'):
           x = results.get_dataset_location(label)
           if len(x) == 0:
             continue
-          label = x[0].split('/')[-1]
           array = results.read_dataset(x,0)
           d = int(np.product(np.shape(array)[1:]))
-          array = np.reshape(array,[np.product(results.grid),d])
-          data = np.concatenate((data,array),1)
+          data = np.concatenate((data,np.reshape(array,[np.product(results.grid),d])),1)
           
           if d>1:
             header+= ''.join([' {}_{}'.format(j+1,label) for j in range(d)])
@@ -79,18 +75,14 @@ for filename in options.filenames:
             header+=' '+label
             
     for label in options.mat:
-      for o in results.m_output_types:
-        results.active['m_output_types'] = [o]
-        for m in results.materialpoints:
-          results.active['materialpoints'] = [m]
+      for p in results.iter_visible('mat_physics'):
+        for m in results.iter_visible('materialpoints'):
           x = results.get_dataset_location(label)
           if len(x) == 0:
             continue
-          label = x[0].split('/')[-1]
           array = results.read_dataset(x,0)
           d = int(np.product(np.shape(array)[1:]))
-          array = np.reshape(array,[np.product(results.grid),d])
-          data = np.concatenate((data,array),1)
+          data = np.concatenate((data,np.reshape(array,[np.product(results.grid),d])),1)
           
           if d>1:
             header+= ''.join([' {}_{}'.format(j+1,label) for j in range(d)])
@@ -102,5 +94,5 @@ for filename in options.filenames:
       os.mkdir(dirname)
     except FileExistsError:
       pass
-    file_out = '{}_inc{:04d}.txt'.format(filename.split('.')[0],inc['inc'])
+    file_out = '{}_{}.txt'.format(filename.split('.')[0],inc)
     np.savetxt(os.path.join(dirname,file_out),data,header=header,comments='')

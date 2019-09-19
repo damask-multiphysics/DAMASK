@@ -146,7 +146,7 @@ for name in filenames:
         neg = np.where(D < 0.0)                                                                     # find negative eigenvalues ...
         D[neg]   *= -1.                                                                             # ... flip value ...
         V[:,neg] *= -1.                                                                             # ... and vector
-        for theStrain in strains:
+      for theStrain in strains:
           d = operator(theStretch,theStrain,D)                                                      # operate on eigenvalues of U or V
           eps = np.dot(V,np.dot(np.diag(d),V.T)).reshape(9)                                         # build tensor back from eigenvalue/vector basis
 

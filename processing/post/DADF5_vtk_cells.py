@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,vtk
-import numpy as np
+import os
 import argparse
-import damask
+
+import numpy as np
+import vtk
 from vtk.util import numpy_support
+
+import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -24,9 +26,9 @@ parser.add_argument('filenames', nargs='+',
 parser.add_argument('-d','--dir', dest='dir',default='postProc',metavar='string',
                     help='name of subdirectory to hold output')
 parser.add_argument('--mat', nargs='+',
-                    help='labels for materialpoint/homogenization',dest='mat')
+                    help='labels for materialpoint',dest='mat')
 parser.add_argument('--con', nargs='+',
-                    help='labels for constituent/crystallite/constitutive',dest='con')
+                    help='labels for constituent',dest='con')
 
 options = parser.parse_args()
 
@@ -55,18 +57,17 @@ for filename in options.filenames:
     rGrid.SetZCoordinates(coordArray[2])
 
 
-  for i,inc in enumerate(results.increments):
+  for i,inc in enumerate(results.iter_visible('increments')):
     print('Output step {}/{}'.format(i+1,len(results.increments)))
     vtk_data = []
-    results.active['increments'] = [inc]
     
+    results.set_visible('materialpoints',False)
+    results.set_visible('constituents',  True)
     for label in options.con:
       
-      for o in results.c_output_types:
-        results.active['c_output_types'] = [o]
-        if o != 'generic':
-          for c in results.constituents:
-            results.active['constituents'] = [c]
+      for p in results.iter_visible('con_physics'):
+        if p != 'generic':
+          for c in results.iter_visible('constituents'):
             x = results.get_dataset_location(label)
             if len(x) == 0:
               continue
@@ -76,14 +77,37 @@ for filename in options.filenames:
             vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
             rGrid.GetCellData().AddArray(vtk_data[-1])
         else:
-          results.active['constituents'] = results.constituents
           x = results.get_dataset_location(label)
           if len(x) == 0:
             continue
           array = results.read_dataset(x,0)
           shape = [array.shape[0],np.product(array.shape[1:])]
           vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True,array_type= vtk.VTK_DOUBLE))
-          vtk_data[-1].SetName('1_'+x[0].split('/')[1]+'/generic/'+label)
+          vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
+          rGrid.GetCellData().AddArray(vtk_data[-1])
+    
+    results.set_visible('constituents',  False)
+    results.set_visible('materialpoints',True)
+    for label in options.mat:       
+      for p in results.iter_visible('mat_physics'):
+        if p != 'generic':
+          for m in results.iter_visible('materialpoints'):
+            x = results.get_dataset_location(label)
+            if len(x) == 0:
+              continue
+            array = results.read_dataset(x,0)
+            shape = [array.shape[0],np.product(array.shape[1:])]
+            vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True,array_type= vtk.VTK_DOUBLE))
+            vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
+            rGrid.GetCellData().AddArray(vtk_data[-1])
+        else:
+          x = results.get_dataset_location(label)
+          if len(x) == 0:
+            continue
+          array = results.read_dataset(x,0)
+          shape = [array.shape[0],np.product(array.shape[1:])]
+          vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True,array_type= vtk.VTK_DOUBLE))
+          vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
           rGrid.GetCellData().AddArray(vtk_data[-1])
           
     if results.structured:
@@ -95,7 +119,7 @@ for filename in options.filenames:
       os.mkdir(dirname)
     except FileExistsError:
       pass
-    file_out = '{}_inc{:04d}.{}'.format(filename.split('.')[0],inc['inc'],writer.GetDefaultFileExtension())
+    file_out = '{}_{}.{}'.format(filename.split('.')[0],inc,writer.GetDefaultFileExtension())
     
     writer.SetCompressorTypeToZLib()
     writer.SetDataModeToBinary()
