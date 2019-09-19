@@ -1022,59 +1022,6 @@ end function math_RtoEuler
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief converts a rotation matrix into a quaternion (w+ix+jy+kz)
-!> @details math adopted from http://arxiv.org/pdf/math/0701759v1.pdf
-!--------------------------------------------------------------------------------------------------
-pure function math_RtoQ(R)
-
-  real(pReal), dimension(3,3), intent(in) :: R
-  real(pReal), dimension(4)   :: absQ, math_RtoQ
-  real(pReal) :: max_absQ
-  integer, dimension(1) :: largest
-
-  math_RtoQ = 0.0_pReal
-
-  absQ  = [+ R(1,1) + R(2,2) + R(3,3), &
-           + R(1,1) - R(2,2) - R(3,3), &
-           - R(1,1) + R(2,2) - R(3,3), &
-           - R(1,1) - R(2,2) + R(3,3)] + 1.0_pReal
-
-  largest = maxloc(absQ)
-
-  largestComponent: select case(largest(1))
-    case (1) largestComponent
-       !1----------------------------------
-       math_RtoQ(2) = R(3,2) - R(2,3)
-       math_RtoQ(3) = R(1,3) - R(3,1)
-       math_RtoQ(4) = R(2,1) - R(1,2)
-                                  
-    case (2) largestComponent
-       math_RtoQ(1) = R(3,2) - R(2,3)
-       !2----------------------------------
-       math_RtoQ(3) = R(2,1) + R(1,2)
-       math_RtoQ(4) = R(1,3) + R(3,1)
-                                  
-    case (3) largestComponent
-       math_RtoQ(1) = R(1,3) - R(3,1)
-       math_RtoQ(2) = R(2,1) + R(1,2)
-       !3----------------------------------
-       math_RtoQ(4) = R(3,2) + R(2,3)
-                                  
-    case (4) largestComponent
-       math_RtoQ(1) = R(2,1) - R(1,2)
-       math_RtoQ(2) = R(1,3) + R(3,1)
-       math_RtoQ(3) = R(2,3) + R(3,2)
-       !4----------------------------------
-  end select  largestComponent
-
-  max_absQ = 0.5_pReal * sqrt(absQ(largest(1)))
-  math_RtoQ = math_RtoQ * 0.25_pReal / max_absQ
-  math_RtoQ(largest(1)) = max_absQ
-
-end function math_RtoQ
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief rotation matrix from Bunge-Euler (3-1-3) angles (in radians)
 !> @details rotation matrix is meant to represent a PASSIVE rotation, composed of INTRINSIC
 !> @details rotations around the axes of the details rotating reference frame.
@@ -1151,19 +1098,6 @@ pure function math_axisAngleToR(axis,omega)
   endif wellDefined
  
 end function math_axisAngleToR
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Rodrigues vector (x, y, z) from unit quaternion (w+ix+jy+kz)
-!--------------------------------------------------------------------------------------------------
-pure function math_qToRodrig(Q)
-
-  real(pReal), dimension(4), intent(in) :: Q
-  real(pReal), dimension(3) :: math_qToRodrig
-
-  math_qToRodrig = merge(Q(2:4)/Q(1),IEEE_value(1.0_pReal,IEEE_quiet_NaN),abs(Q(1)) > tol_math_check)! NaN for 180 deg since Rodrig is unbound
-
-end function math_qToRodrig
 
 
 !--------------------------------------------------------------------------------------------------

@@ -501,37 +501,34 @@ module lattice
   end interface lattice_forestProjection_screw
   
   public :: &
-   lattice_init, &
-   lattice_qDisorientation, &
-   LATTICE_iso_ID, &
-   LATTICE_fcc_ID, &
-   LATTICE_bcc_ID, &
-   LATTICE_bct_ID, &
-   LATTICE_hex_ID, &
-   LATTICE_ort_ID, &
-   lattice_SchmidMatrix_slip, &
-   lattice_SchmidMatrix_twin, &
-   lattice_SchmidMatrix_trans, &
-   lattice_SchmidMatrix_cleavage, &
-   lattice_nonSchmidMatrix, &
-   lattice_interaction_SlipBySlip, &
-   lattice_interaction_TwinByTwin, &
-   lattice_interaction_TransByTrans, &
-   lattice_interaction_SlipByTwin, &
-   lattice_interaction_SlipByTrans, &
-   lattice_interaction_TwinBySlip, &
-   lattice_characteristicShear_Twin, &
-   lattice_C66_twin, &
-   lattice_C66_trans, &
-   lattice_forestProjection_edge, &
-   lattice_forestProjection_screw, &
-   lattice_slip_normal, &
-   lattice_slip_direction, &
-   lattice_slip_transverse
+    lattice_init, &
+    LATTICE_iso_ID, &
+    LATTICE_fcc_ID, &
+    LATTICE_bcc_ID, &
+    LATTICE_bct_ID, &
+    LATTICE_hex_ID, &
+    LATTICE_ort_ID, &
+    lattice_SchmidMatrix_slip, &
+    lattice_SchmidMatrix_twin, &
+    lattice_SchmidMatrix_trans, &
+    lattice_SchmidMatrix_cleavage, &
+    lattice_nonSchmidMatrix, &
+    lattice_interaction_SlipBySlip, &
+    lattice_interaction_TwinByTwin, &
+    lattice_interaction_TransByTrans, &
+    lattice_interaction_SlipByTwin, &
+    lattice_interaction_SlipByTrans, &
+    lattice_interaction_TwinBySlip, &
+    lattice_characteristicShear_Twin, &
+    lattice_C66_twin, &
+    lattice_C66_trans, &
+    lattice_forestProjection_edge, &
+    lattice_forestProjection_screw, &
+    lattice_slip_normal, &
+    lattice_slip_direction, &
+    lattice_slip_transverse
  
- 
- contains
- 
+contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Module initialization
 !--------------------------------------------------------------------------------------------------
@@ -825,141 +822,6 @@ pure function lattice_symmetrize33(struct,T33)
    end select
  
 end function lattice_symmetrize33
- 
- 
-!--------------------------------------------------------------------------------------------------
-!> @brief figures whether unit quat falls into stereographic standard triangle
-!--------------------------------------------------------------------------------------------------
-logical pure function lattice_qInSST(Q, struct)
- 
-  real(pReal), dimension(4), intent(in) ::      Q                                                   ! orientation
-  integer(kind(LATTICE_undefined_ID)), intent(in) :: struct                                         ! lattice structure
-  real(pReal), dimension(3) ::                  Rodrig                                              ! Rodrigues vector of Q
- 
-  Rodrig = math_qToRodrig(Q)
-  if (any(IEEE_is_NaN(Rodrig))) then
-    lattice_qInSST = .false.
-  else
-    select case (struct)
-      case (LATTICE_bcc_ID,LATTICE_fcc_ID)
-        lattice_qInSST = Rodrig(1) > Rodrig(2) .and. &
-                         Rodrig(2) > Rodrig(3) .and. &
-                         Rodrig(3) > 0.0_pReal
-      case (LATTICE_hex_ID)
-        lattice_qInSST = Rodrig(1) > sqrt(3.0_pReal)*Rodrig(2) .and. &
-                         Rodrig(2) > 0.0_pReal .and. &
-                         Rodrig(3) > 0.0_pReal
-      case default
-        lattice_qInSST = .true.
-    end select
-  endif
- 
-end function lattice_qInSST
- 
- 
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates the disorientation for 2 unit quaternions
-!--------------------------------------------------------------------------------------------------
-pure function lattice_qDisorientation(Q1, Q2, struct)
- 
-  real(pReal), dimension(4) ::                  lattice_qDisorientation
-  real(pReal), dimension(4), intent(in) :: &
-    Q1, &                                                                                           !< 1st orientation
-    Q2                                                                                              !< 2nd orientation
-  integer(kind(LATTICE_undefined_ID)), optional, intent(in) :: &                                    !< if given, symmetries between the two orientation will be considered
-    struct
- 
-  real(pReal), dimension(4) ::                  dQ,dQsymA,mis
-  integer    ::                           i,j,k,s,symmetry
-  integer(kind(LATTICE_undefined_ID)) :: myStruct
- 
-  integer, dimension(2), parameter :: &
-    NsymOperations = [24,12]
- 
- real(pReal), dimension(4,36), parameter :: &
-   symOperations = reshape([&
-      1.0_pReal,                  0.0_pReal,                  0.0_pReal,                  0.0_pReal, &                  ! cubic symmetry operations
-      0.0_pReal,                  0.0_pReal,                  1.0_pReal/sqrt(2.0_pReal),  1.0_pReal/sqrt(2.0_pReal), &  !     2-fold symmetry
-      0.0_pReal,                  1.0_pReal/sqrt(2.0_pReal),  0.0_pReal,                  1.0_pReal/sqrt(2.0_pReal), &
-      0.0_pReal,                  1.0_pReal/sqrt(2.0_pReal),  1.0_pReal/sqrt(2.0_pReal),  0.0_pReal, &
-      0.0_pReal,                  0.0_pReal,                  1.0_pReal/sqrt(2.0_pReal), -1.0_pReal/sqrt(2.0_pReal), &
-      0.0_pReal,                 -1.0_pReal/sqrt(2.0_pReal),  0.0_pReal,                  1.0_pReal/sqrt(2.0_pReal), &
-      0.0_pReal,                  1.0_pReal/sqrt(2.0_pReal), -1.0_pReal/sqrt(2.0_pReal),  0.0_pReal, &
-      0.5_pReal,                  0.5_pReal,                  0.5_pReal,                  0.5_pReal, &                  !     3-fold symmetry
-     -0.5_pReal,                  0.5_pReal,                  0.5_pReal,                  0.5_pReal, &
-      0.5_pReal,                 -0.5_pReal,                  0.5_pReal,                  0.5_pReal, &
-     -0.5_pReal,                 -0.5_pReal,                  0.5_pReal,                  0.5_pReal, &
-      0.5_pReal,                  0.5_pReal,                 -0.5_pReal,                  0.5_pReal, &
-     -0.5_pReal,                  0.5_pReal,                 -0.5_pReal,                  0.5_pReal, &
-      0.5_pReal,                  0.5_pReal,                  0.5_pReal,                 -0.5_pReal, &
-     -0.5_pReal,                  0.5_pReal,                  0.5_pReal,                 -0.5_pReal, &
-      1.0_pReal/sqrt(2.0_pReal),  1.0_pReal/sqrt(2.0_pReal),  0.0_pReal,                  0.0_pReal, &                  !     4-fold symmetry
-      0.0_pReal,                  1.0_pReal,                  0.0_pReal,                  0.0_pReal, &
-     -1.0_pReal/sqrt(2.0_pReal),  1.0_pReal/sqrt(2.0_pReal),  0.0_pReal,                  0.0_pReal, &
-      1.0_pReal/sqrt(2.0_pReal),  0.0_pReal,                  1.0_pReal/sqrt(2.0_pReal),  0.0_pReal, &
-      0.0_pReal,                  0.0_pReal,                  1.0_pReal,                  0.0_pReal, &
-     -1.0_pReal/sqrt(2.0_pReal),  0.0_pReal,                  1.0_pReal/sqrt(2.0_pReal),  0.0_pReal, &
-      1.0_pReal/sqrt(2.0_pReal),  0.0_pReal,                  0.0_pReal,                  1.0_pReal/sqrt(2.0_pReal), &
-      0.0_pReal,                  0.0_pReal,                  0.0_pReal,                  1.0_pReal, &
-     -1.0_pReal/sqrt(2.0_pReal),  0.0_pReal,                  0.0_pReal,                  1.0_pReal/sqrt(2.0_pReal), &
- !
-      1.0_pReal,                  0.0_pReal,                  0.0_pReal,                  0.0_pReal, &                  ! hexagonal symmetry operations
-      0.0_pReal,                  1.0_pReal,                  0.0_pReal,                  0.0_pReal, &                  !     2-fold symmetry
-      0.0_pReal,                  0.0_pReal,                  1.0_pReal,                  0.0_pReal, &
-      0.0_pReal,                  0.5_pReal,                  2.0_pReal/sqrt(3.0_pReal),  0.0_pReal, &
-      0.0_pReal,                 -0.5_pReal,                  2.0_pReal/sqrt(3.0_pReal),  0.0_pReal, &
-      0.0_pReal,                  2.0_pReal/sqrt(3.0_pReal),  0.5_pReal,                  0.0_pReal, &
-      0.0_pReal,                 -2.0_pReal/sqrt(3.0_pReal),  0.5_pReal,                  0.0_pReal, &
-      2.0_pReal/sqrt(3.0_pReal),  0.0_pReal,                  0.0_pReal,                  0.5_pReal, &                  !     6-fold symmetry
-     -2.0_pReal/sqrt(3.0_pReal),  0.0_pReal,                  0.0_pReal,                  0.5_pReal, &
-      0.5_pReal,                  0.0_pReal,                  0.0_pReal,                  2.0_pReal/sqrt(3.0_pReal), &
-     -0.5_pReal,                  0.0_pReal,                  0.0_pReal,                  2.0_pReal/sqrt(3.0_pReal), &
-      0.0_pReal,                  0.0_pReal,                  0.0_pReal,                  1.0_pReal &
-      ],[4,36])                                                                                     !< Symmetry operations as quaternions 24 for cubic, 12 for hexagonal = 36
- 
-!--------------------------------------------------------------------------------------------------
-! check if a structure with known symmetries is given
-  if (present(struct)) then
-    myStruct = struct
-    select case (struct)
-      case(LATTICE_fcc_ID,LATTICE_bcc_ID)
-        symmetry = 1
-      case(LATTICE_hex_ID)
-        symmetry = 2
-      case default
-        symmetry = 0
-    end select
-  else
-    symmetry = 0
-    myStruct = LATTICE_undefined_ID
-  endif
- 
- 
-!--------------------------------------------------------------------------------------------------
-! calculate misorientation, for cubic and hexagonal structure find symmetries
-  dQ = math_qMul(math_qConj(Q1),Q2)
-  lattice_qDisorientation = dQ
- 
-  select case(symmetry)
- 
-     case (1,2)
-      s = sum(NsymOperations(1:symmetry-1))
-       do i = 1,2
-         dQ = math_qConj(dQ)                                                                        ! switch order of "from -- to"
-         do j = 1,NsymOperations(symmetry)                                                          ! run through first crystal's symmetries
-           dQsymA = math_qMul(symOperations(1:4,s+j),dQ)                                            ! apply sym
-           do k = 1,NsymOperations(symmetry)                                                        ! run through 2nd crystal's symmetries
-             mis = math_qMul(dQsymA,symOperations(1:4,s+k))                                         ! apply sym
-             if (mis(1) < 0.0_pReal) &                                                              ! want positive angle
-               mis = -mis
-             if (mis(1)-lattice_qDisorientation(1) > -tol_math_check &
-              .and. lattice_qInSST(mis,LATTICE_undefined_ID)) lattice_qDisorientation = mis         ! found better one
-       enddo; enddo; enddo
-    case (0)
-      if (lattice_qDisorientation(1) < 0.0_pReal) lattice_qDisorientation = -lattice_qDisorientation ! keep omega within 0 to 180 deg
-   end select
- 
-end function lattice_qDisorientation
  
  
 !--------------------------------------------------------------------------------------------------
