@@ -6,6 +6,9 @@ module discretization
 
   use prec
   use results
+#if defined(PETSc) || defined(DAMASK_HDF5)
+  use HDF5_utilities
+#endif
 
   implicit none
   private
@@ -67,11 +70,13 @@ subroutine discretization_results
 #if defined(PETSc) || defined(DAMASK_HDF5)
   real(pReal), dimension(:,:), allocatable :: u
   
-  u =  discretization_NodeCoords -discretization_NodeCoords0
-  call results_writeDataset('current',U,'U','nodal displacements','m')
+  call HDF5_closeGroup(results_addGroup(trim('current/geometry')))
   
-  u = discretization_IPcoords -discretization_IPcoords0
-  call results_writeDataset('current',u,'u','IP displacements','m')
+  u =  discretization_NodeCoords - discretization_NodeCoords0
+  call results_writeDataset('current/geometry',u,'u_n','nodal displacements','m')
+  
+  u = discretization_IPcoords - discretization_IPcoords0
+  call results_writeDataset('current/geometry',u,'u_c','cell center displacements','m')
 #endif
 end subroutine discretization_results
 
