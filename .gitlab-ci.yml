@@ -390,7 +390,6 @@ Phenopowerlaw_singleSlip:
     - master
     - release
 
-
 ###################################################################################################
 Marc_compileIfort2018_1:
   stage: compileMarc
@@ -401,7 +400,6 @@ Marc_compileIfort2018_1:
   except:
     - master
     - release
-
 
 ###################################################################################################
 Hex_elastic:
@@ -440,11 +438,13 @@ J2_plasticBehavior:
     - master
     - release
 
-
 ###################################################################################################
 grid_all_example:
   stage: example
   script: grid_all_example/test.py
+  except:
+    - master
+    - release
 
 ###################################################################################################
 SpectralRuntime:

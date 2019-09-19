@@ -53,12 +53,13 @@ module plastic_dislotwin
      nu, &
      D0, &                                                                                          !< prefactor for self-diffusion coefficient
      Qsd, &                                                                                         !< activation energy for dislocation climb
-     D, &                                                                                           !<grain size
+     omega, &                                                                                       !< frequency factor for dislocation climb      
+     D, &                                                                                           !< grain size
      p_sb, &                                                                                        !< p-exponent in shear band velocity
      q_sb, &                                                                                        !< q-exponent in shear band velocity
      CEdgeDipMinDistance, &                                                                         !<
      i_tw, &                                                                                        !<
-     tau_0, &                                                                                       !<strength due to elements in solid solution
+     tau_0, &                                                                                       !< strength due to elements in solid solution
      L_tw, &                                                                                        !< Length of twin nuclei in Burgers vectors
      L_tr, &                                                                                        !< Length of trans nuclei in Burgers vectors
      xc_twin, &                                                                                     !< critical distance for formation of twin nucleus
@@ -104,6 +105,7 @@ module plastic_dislotwin
    integer,                      dimension(:,:),   allocatable :: & 
      fcc_twinNucleationSlipPair                                                                     ! ToDo: Better name? Is also use for trans
    real(pReal),                  dimension(:,:),   allocatable :: & 
+     n0_sl, &                                                                                       !< slip system normal
      forestProjection, &
      C66
    real(pReal),                  dimension(:,:,:), allocatable :: &
@@ -123,6 +125,7 @@ module plastic_dislotwin
    integer(kind(undefined_ID)),  dimension(:),     allocatable :: &
      outputID                                                                                       !< ID of each post result output
    logical :: &
+     ExtendedDislocations, &                                                                        !< consider split into partials for climb calculation
      fccTwinTransNucleation, &                                                                      !< twinning and transformation models are for fcc
      dipoleFormation                                                                                !< flag indicating consideration of dipole formation
  end type                                                                                           !< container type for internal constitutive parameters
@@ -251,6 +254,8 @@ subroutine plastic_dislotwin_init
      prm%forestProjection     = lattice_forestProjection (prm%N_sl,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
 
+     prm%n0_sl                = lattice_slip_normal(prm%N_sl,config%getString('lattice_structure'),&
+                                                    config%getFloat('c/a',defaultVal=0.0_pReal))  
      prm%fccTwinTransNucleation = merge(.true., .false., lattice_structure(p) == LATTICE_FCC_ID) &
                                 .and. (prm%N_sl(1) == 12)
      if(prm%fccTwinTransNucleation) &
@@ -272,6 +277,19 @@ subroutine plastic_dislotwin_init
      prm%D0                   = config%getFloat('d0')
      prm%Qsd                  = config%getFloat('qsd')
      prm%atomicVolume         = config%getFloat('catomicvolume') * prm%b_sl**3.0_pReal
+     prm%ExtendedDislocations = config%keyExists('/extend_dislocations/')
+     if (prm%ExtendedDislocations) then
+       prm%SFE_0K               = config%getFloat('sfe_0k')
+       prm%dSFE_dT              = config%getFloat('dsfe_dt')
+     endif
+  
+     ! multiplication factor according to crystal structure (nearest neighbors bcc vs fcc/hex)
+     !@details: Refer: Argon & Moffat, Acta Metallurgica, Vol. 29, pg 293 to 299, 1981
+     prm%omega                = config%getFloat('omega',  defaultVal = 1000.0_pReal) &
+                              * merge(12.0_pReal, &
+                                      8.0_pReal, &
+                                      lattice_structure(p) == LATTICE_FCC_ID .or. lattice_structure(p) == LATTICE_HEX_ID)
+
 
      ! expand: family => system
      prm%rho_mob_0    = math_expand(prm%rho_mob_0,   prm%N_sl)
@@ -740,8 +758,11 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
    f_unrotated, &
    VacancyDiffusion, &
    rho_dip_distance, &
-   v_cl, &
-   tau
+   v_cl, &                                                                                          !< climb velocity 
+   Gamma, &                                                                                         !< stacking fault energy
+   tau, &
+   sigma_cl, &                                                                                      !< climb stress 
+   b_d                                                                                              !< ratio of burgers vector to stacking fault width
  real(pReal), dimension(param(instance)%sum_N_sl) :: &
    dot_rho_dip_formation, &
    dot_rho_dip_climb, &
@@ -786,8 +807,17 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
      if (dEq0(rho_dip_distance-rho_dip_distance_min(i))) then
        dot_rho_dip_climb(i) = 0.0_pReal
      else
-       v_cl = 3.0_pReal*prm%mu*VacancyDiffusion*prm%atomicVolume(i) &
-            / (2.0_pReal*PI*kB*T*(rho_dip_distance+rho_dip_distance_min(i)))
+     !@details: Refer: Argon & Moffat, Acta Metallurgica, Vol. 29, pg 293 to 299, 1981
+       sigma_cl = dot_product(prm%n0_sl(1:3,i),matmul(Mp,prm%n0_sl(1:3,i)))
+       if (prm%ExtendedDislocations) then            
+         Gamma = prm%SFE_0K + prm%dSFE_dT * T
+         b_d = 24.0_pReal*PI*(1.0_pReal - prm%nu)/(2.0_pReal + prm%nu)* Gamma/(prm%mu*prm%b_sl(i))
+       else
+         b_d = 1.0_pReal      
+       endif
+       v_cl = 2.0_pReal*prm%omega*b_d**2.0_pReal*exp(-prm%Qsd/(kB*T)) &
+            * (exp(abs(sigma_cl)*prm%b_sl(i)**3.0_pReal/(kB*T)) - 1.0_pReal)
+              
        dot_rho_dip_climb(i) = 4.0_pReal*v_cl*stt%rho_dip(i,of) &
                             / (rho_dip_distance-rho_dip_distance_min(i))
      endif
