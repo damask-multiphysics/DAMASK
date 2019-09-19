@@ -66,7 +66,20 @@ class DADF5():
 
 
   def __manage_visible(self,datasets,what,action):
-    """Manages the visibility of the groups."""
+    """
+    Manages the visibility of the groups.
+    
+    Parameters
+    ----------
+    datasets : list of str or Boolean
+      name of datasets as list, supports ? and * wildcards.
+      True is equivalent to [*], False is equivalent to []
+    what : str
+      attribute to change (must be in self.visible) 
+    action : str
+      select from 'set', 'add', and 'del' 
+
+    """
     # allow True/False and string arguments
     if datasets is True:
       datasets = ['*']
@@ -74,7 +87,7 @@ class DADF5():
       datasets = []
     choice = [datasets] if isinstance(datasets,str) else datasets
     
-    valid = [e for e_ in [glob.fnmatch.filter(getattr(self,what) ,s) for s in choice] for e in e_]
+    valid = [e for e_ in [glob.fnmatch.filter(getattr(self,what),s) for s in choice] for e in e_]
     existing = set(self.visible[what])
     
     if   action == 'set':
@@ -94,19 +107,60 @@ class DADF5():
 
 
   def set_by_time(self,start,end):
+    """
+    Sets active time increments based on start and end time.
+
+    Parameters
+    ----------
+    start : float
+      start time (included)
+    end : float
+      end time (exclcuded)
+
+    """
     self.__manage_visible(self.__time_to_inc(start,end),'increments','set')
 
 
   def add_by_time(self,start,end):
+    """
+    Adds to active time increments based on start and end time.
+
+    Parameters
+    ----------
+    start : float
+      start time (included)
+    end : float
+      end time (exclcuded)
+
+    """
     self.__manage_visible(self.__time_to_inc(start,end),'increments','add')
 
 
   def del_by_time(self,start,end):
+    """
+    Delets from active time increments based on start and end time.
+
+    Parameters
+    ----------
+    start : float
+      start time (included)
+    end : float
+      end time (exclcuded)
+
+    """
     self.__manage_visible(self.__time_to_inc(start,end),'increments','del')
 
 
   def iter_visible(self,what):
-    """Iterates over visible items by setting each one visible."""
+    """
+    Iterates over visible items by setting each one visible.
+
+    Parameters
+    ----------
+    what : str
+      attribute to change (must be in self.visible) 
+
+    """
     datasets = self.visible[what]
     last_datasets = datasets.copy()
     for dataset in datasets:
@@ -120,14 +174,50 @@ class DADF5():
     
   
   def set_visible(self,what,datasets):
+    """
+    Sets active groups.
+    
+    Parameters
+    ----------
+    datasets : list of str or Boolean
+      name of datasets as list, supports ? and * wildcards.
+      True is equivalent to [*], False is equivalent to []
+    what : str
+      attribute to change (must be in self.visible) 
+
+    """
     self.__manage_visible(datasets,what,'set')
 
 
   def add_visible(self,what,datasets):
+    """
+    Adds to active groups.
+    
+    Parameters
+    ----------
+    datasets : list of str or Boolean
+      name of datasets as list, supports ? and * wildcards.
+      True is equivalent to [*], False is equivalent to []
+    what : str
+      attribute to change (must be in self.visible) 
+
+    """
     self.__manage_visible(datasets,what,'add')
 
 
   def del_visible(self,what,datasets):
+    """
+    Removes from active groupse.
+    
+    Parameters
+    ----------
+    datasets : list of str or Boolean
+      name of datasets as list, supports ? and * wildcards.
+      True is equivalent to [*], False is equivalent to []
+    what : str
+      attribute to change (must be in self.visible) 
+
+    """
     self.__manage_visible(datasets,what,'del')
 
 
