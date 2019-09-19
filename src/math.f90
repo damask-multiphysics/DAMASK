@@ -425,12 +425,19 @@ pure function math_exp33(A,n)
   real(pReal), dimension(3,3), intent(in) :: A
   real(pReal), dimension(3,3) :: B, math_exp33
   real(pReal) :: invFac
+  integer     :: order
 
   B = math_I3                                                                                       ! init
   invFac = 1.0_pReal                                                                                ! 0!
   math_exp33 = B                                                                                    ! A^0 = eye2
 
-  do i = 1, merge(n,5,present(n))
+  if (present(n)) then
+    order = n
+  else
+    order = 5
+  endif
+  
+  do i = 1, order
     invFac = invFac/real(i,pReal)                                                                   ! invfac = 1/i!
     B = matmul(B,A)
     math_exp33 = math_exp33 + invFac*B                                                              ! exp = SUM (A^i)/i!
