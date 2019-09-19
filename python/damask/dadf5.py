@@ -252,7 +252,7 @@ class DADF5():
     """
     def Cauchy(F,P):
       sigma = np.einsum('i,ijk,ilk->ijl',1.0/np.linalg.det(F['data']),P['data'],F['data'])
-      sigma = (sigma + np.einsum('ikj',sigma))*0.5                                     # enforce symmetry
+      sigma = (sigma + np.transpose(sigma,(0,2,1)))*0.5                                             # enforce symmetry
       return  {
                'data'  : sigma,
                'label' : 'sigma',
@@ -471,9 +471,9 @@ class DADF5():
                  }
 
       (U,S,Vh) = np.linalg.svd(defgrad['data'])                                                             # singular value decomposition
-      R_inv    = np.einsum('ikj',np.matmul(U,Vh))                                                           # inverse rotation of polar decomposition
+      R_inv    = np.transpose(np.matmul(U,Vh),(0,2,1))                                                      # transposed rotation of polar decomposition
       U        = np.matmul(R_inv,defgrad['data'])                                                           # F = RU
-      (D,V)    = np.linalg.eigh((U+np.einsum('ikj',U))*.5)                                                  # eigen decomposition (of symmetric(ed) matrix)
+      (D,V)    = np.linalg.eigh((U+np.transpose(U,(0,2,1)))*.5)                                             # eigen decomposition (of symmetric(ed) matrix)
 
       neg      = np.where(D < 0.0)                                                                          # find negative eigenvalues ...
       D[neg[0],neg[1]]   = D[neg[0],neg[1]]* -1                                                             # ... flip value ...
