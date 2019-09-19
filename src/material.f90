@@ -170,7 +170,7 @@ module material
     microstructure_texture                                                                          !< texture IDs of each microstructure
  
   real(pReal), dimension(:,:), allocatable, private :: &
-    texture_Gauss, &                                                                                !< data of each Gauss component
+    texture_Eulers, &                                                                               !< Euler angles in material.config (possibly rotated for alignment)
     microstructure_fraction                                                                         !< vol fraction of each constituent in microstructure
  
   logical, dimension(:), allocatable, private :: &
@@ -322,7 +322,7 @@ subroutine material_init
        do c = 1, homogenization_Ngrains(discretization_homogenizationAt(e))
          material_phaseAt(c,e)           = microstructure_phase(c,myMicro)
          material_texture(c,i,e)         = microstructure_texture(c,myMicro)
-         material_EulerAngles(1:3,c,i,e) = texture_Gauss(1:3,material_texture(c,i,e))                ! this is a copy of crystallite_orientation0
+         material_EulerAngles(1:3,c,i,e) = texture_Eulers(1:3,material_texture(c,i,e))                ! this is a copy of crystallite_orientation0
        enddo
      enddo
    enddo
@@ -700,7 +700,7 @@ subroutine material_parseTexture
     if (config_texture(t)%keyExists('(fiber)'))      call IO_error(147,ext_msg='(fiber)')
   enddo
 
-  allocate(texture_Gauss (3,size(config_texture)), source=0.0_pReal)
+  allocate(texture_Eulers (3,size(config_texture)), source=0.0_pReal)
 
   do t=1, size(config_texture)
     
@@ -710,11 +710,11 @@ subroutine material_parseTexture
       do j = 1,9,2
         select case (IO_stringValue(strings(i),chunkPos,j))
           case('phi1')
-            texture_Gauss(1,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
+            texture_Eulers(1,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
           case('phi')
-            texture_Gauss(2,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
+            texture_Eulers(2,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
           case('phi2')
-            texture_Gauss(3,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
+            texture_Eulers(3,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
         end select
       enddo
     enddo
@@ -740,8 +740,8 @@ subroutine material_parseTexture
         end select
       enddo
       if(dNeq(math_det33(texture_transformation),1.0_pReal)) call IO_error(157,t)
-      call eulers%fromEulerAngles(texture_Gauss(:,t))
-      texture_Gauss(:,t) = math_RtoEuler(matmul(eulers%asRotationMatrix(),texture_transformation))
+      call eulers%fromEulerAngles(texture_Eulers(:,t))
+      texture_Eulers(:,t) = math_RtoEuler(matmul(eulers%asRotationMatrix(),texture_transformation))
     endif
     
   enddo 
