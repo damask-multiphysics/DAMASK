@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('filenames', nargs='+',
                     help='DADF5 files')
 parser.add_argument('-d','--dir', dest='dir',default='postProc',metavar='string',
-                    help='name of subdirectory to hold output')
+                    help='name of subdirectory relative to the location of the DADF5 file to hold output')
 parser.add_argument('--mat', nargs='+',
                     help='labels for materialpoint',dest='mat')
 parser.add_argument('--con', nargs='+',
@@ -90,9 +90,7 @@ for filename in options.filenames:
             header+=' '+label
 
     dirname  = os.path.abspath(os.path.join(os.path.dirname(filename),options.dir))
-    try:
-      os.mkdir(dirname)
-    except FileExistsError:
-      pass
-    file_out = '{}_{}.txt'.format(filename.split('.')[0],inc)
+    if not os.path.isdir(dirname):
+      os.mkdir(dirname,0o755)
+    file_out = '{}_{}.txt'.format(os.path.splitext(os.path.split(filename)[-1])[0],inc)
     np.savetxt(os.path.join(dirname,file_out),data,header=header,comments='')
