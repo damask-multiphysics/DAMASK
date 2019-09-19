@@ -395,7 +395,7 @@ Phenopowerlaw_singleSlip:
 Marc_compileIfort2018_1:
   stage: compileMarc
   script:
-    - module load $IntelMarc $HDF5Marc $MSC_2018_1
+    - module load $IntelMarc $HDF5Marc $MSC2018_1
     - export DAMASK_HDF5=ON
     - Marc_compileIfort/test.py -m 2018.1
   except:
@@ -404,7 +404,7 @@ Marc_compileIfort2018_1:
 Marc_compileIfort2019:
   stage: compileMarc
   script:
-    - module load $IntelMarc $HDF5Marc $MSC_2019
+    - module load $IntelMarc $HDF5Marc $MSC2019
     - export DAMASK_HDF5=ON
     - Marc_compileIfort/test.py -m 2019
   except:
