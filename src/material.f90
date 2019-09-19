@@ -3,9 +3,6 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Parses material config file, either solverJobName.materialConfig or material.config
-!> @details reads the material configuration file, where solverJobName.materialConfig takes
-!! precedence over material.config and parses the sections 'homogenization', 'crystallite',
-!! 'phase', 'texture', and 'microstucture'
 !--------------------------------------------------------------------------------------------------
 module material
   use prec
@@ -240,7 +237,6 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine material_init
 
- integer, parameter :: FILEUNIT = 210
  integer            :: i,e,m,c,h, myDebug, myPhase, myHomog, myMicro
  integer, dimension(:), allocatable :: &
   CounterPhase, &
@@ -384,8 +380,8 @@ subroutine material_init
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! BEGIN DEPRECATED
- allocate(mappingHomogenization     (2,                          discretization_nIP,discretization_nElem),source=0)
- allocate(mappingHomogenizationConst(                            discretization_nIP,discretization_nElem),source=1)
+ allocate(mappingHomogenization     (2,discretization_nIP,discretization_nElem),source=0)
+ allocate(mappingHomogenizationConst(  discretization_nIP,discretization_nElem),source=1)
  
  CounterHomogenization=0
  do e = 1,discretization_nElem

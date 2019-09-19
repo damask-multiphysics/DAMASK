@@ -4,6 +4,7 @@
 !> @details Reads the material configuration file, where solverJobName.materialConfig takes
 !! precedence over material.config. Stores the raw strings and the positions of delimiters for the
 !! parts 'homogenization', 'crystallite', 'phase', 'texture', and 'microstucture'
+!! Reads numerics.config and debug.config
 !--------------------------------------------------------------------------------------------------
 module config
   use prec
@@ -138,7 +139,7 @@ recursive function read_materialConfig(fileName,cnt) result(fileContent)
   character(len=pStringLen), dimension(:), allocatable :: includedContent
   character(len=pStringLen)                            :: line
   character(len=pStringLen), parameter                 :: dummy = 'https://damask.mpie.de'          !< to fill up remaining array
-  character(len=:),                 allocatable :: rawData
+  character(len=:),                        allocatable :: rawData
   integer ::  &
     fileLength, &
     fileUnit, &
