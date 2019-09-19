@@ -32,18 +32,4 @@ function findloc(a,v)
 end function findloc
 #endif
 
-
-#if defined(__PGI)
-!--------------------------------------------------------------------------------------------------
-!> @brief substitute for the norm2 intrinsic (only for real, dimension(3) at the moment)
-!--------------------------------------------------------------------------------------------------
-real(pReal) pure function norm2(v)
-  
-  real(pReal), intent(in), dimension(3) :: v
-  
-  norm2 = sqrt(sum(v**2))
- 
-end function norm2
-#endif
-
 end module future
