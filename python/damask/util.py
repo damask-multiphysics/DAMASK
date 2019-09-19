@@ -12,7 +12,7 @@ import numpy as np
 
 class bcolors:
     """
-    ASCII Colors (Blender code)
+    ASCII Colors (Blender code).
     
     https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
     http://stackoverflow.com/questions/287871/print-in-terminal-with-colors-using-python
@@ -43,7 +43,7 @@ class bcolors:
 
 # -----------------------------
 def srepr(arg,glue = '\n'):
-  """Joins arguments as individual lines"""
+  """Joins arguments as individual lines."""
   if (not hasattr(arg, "strip") and
           (hasattr(arg, "__getitem__") or
            hasattr(arg, "__iter__"))):
@@ -52,7 +52,7 @@ def srepr(arg,glue = '\n'):
 
 # -----------------------------
 def croak(what, newline = True):
-  """Writes formated to stderr"""
+  """Writes formated to stderr."""
   if what is not None:
     sys.stderr.write(srepr(what,glue = '\n') + ('\n' if newline else ''))
   sys.stderr.flush()
@@ -60,14 +60,14 @@ def croak(what, newline = True):
 # -----------------------------
 def report(who = None,
            what = None):
-  """Reports script and file name"""
+  """Reports script and file name."""
   croak( (emph(who)+': ' if who is not None else '') + (what if what is not None else '') + '\n' )
 
 
 # -----------------------------
 def report_geom(info,
                 what = ['grid','size','origin','homogenization','microstructures']):
-  """Reports (selected) geometry information"""
+  """Reports (selected) geometry information."""
   output = {
             'grid'   : 'grid     a b c:  {}'.format(' x '.join(list(map(str,info['grid'  ])))),
             'size'   : 'size     x y z:  {}'.format(' x '.join(list(map(str,info['size'  ])))),
@@ -79,22 +79,22 @@ def report_geom(info,
 
 # -----------------------------
 def emph(what):
-  """Boldens string"""
+  """Formats string with emphasis."""
   return bcolors.BOLD+srepr(what)+bcolors.ENDC
 
 # -----------------------------
 def deemph(what):
-  """Dims string"""
+  """Formats string with deemphasis."""
   return bcolors.DIM+srepr(what)+bcolors.ENDC
 
 # -----------------------------
 def delete(what):
-  """Dims string"""
+  """Formats string as deleted."""
   return bcolors.DIM+srepr(what)+bcolors.ENDC
 
 # -----------------------------
 def strikeout(what):
-  """Dims string"""
+  """Formats string as strikeout."""
   return bcolors.CROSSOUT+srepr(what)+bcolors.ENDC
 
 # -----------------------------
@@ -102,7 +102,7 @@ def execute(cmd,
             streamIn = None,
             wd = './',
             env = None):
-  """Executes a command in given directory and returns stdout and stderr for optional stdin"""
+  """Executes a command in given directory and returns stdout and stderr for optional stdin."""
   initialPath = os.getcwd()
   os.chdir(wd)
   myEnv = os.environ if env is None else env
@@ -120,7 +120,7 @@ def execute(cmd,
   return out,error
 
 def coordGridAndSize(coordinates):
-  """Determines grid count and overall physical size along each dimension of an ordered array of coordinates"""
+  """Determines grid count and overall physical size along each dimension of an ordered array of coordinates."""
   dim    = coordinates.shape[1]
   coords = [np.unique(coordinates[:,i]) for i in range(dim)]
   mincorner = np.array(list(map(min,coords)))
@@ -146,9 +146,9 @@ def coordGridAndSize(coordinates):
 # -----------------------------
 class extendableOption(Option):
   """
-  Used for definition of new option parser action 'extend', which enables to take multiple option arguments
+  Used for definition of new option parser action 'extend', which enables to take multiple option arguments.
 
-  taken from online tutorial http://docs.python.org/library/optparse.html
+  Adopted from online tutorial http://docs.python.org/library/optparse.html
   """
 
   ACTIONS = Option.ACTIONS + ("extend",)
@@ -167,7 +167,7 @@ class extendableOption(Option):
 # from https://gist.github.com/aubricus/f91fb55dc6ba5557fbab06119420dd6a
 def progressBar(iteration, total, prefix='', bar_length=50):
   """
-  Call in a loop to create terminal progress bar
+  Call in a loop to create terminal progress bar.
 
   @params:
       iteration   - Required  : current iteration (Int)
@@ -202,13 +202,13 @@ def progressBar(iteration, total, prefix='', bar_length=50):
  
 
 class return_message():
-  """Object with formatted return message"""
+  """Object with formatted return message."""
   
   def __init__(self,message):
     self.message = message
   
   def __repr__(self):
-    """Return message suitable for interactive shells"""
+    """Return message suitable for interactive shells."""
     return srepr(self.message)
 
 
