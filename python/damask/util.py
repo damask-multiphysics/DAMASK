@@ -221,8 +221,7 @@ def leastsqBound(func, x0, args=(), bounds=None, Dfun=None, full_output=0,
   bounded parameters.
   the codes of transformation between int <-> ext refers to the work of
   Jonathan J. Helmus: https://github.com/jjhelmus/leastsqbound-scipy
-  other codes refers to the source code of minpack.py:
-  ..\Lib\site-packages\scipy\optimize\minpack.py
+  other codes refer to the source code of minpack.py:
 
   An internal parameter list is used to enforce contraints on the fitting 
   parameters. The transfomation is based on that of MINUIT package. 
@@ -235,8 +234,7 @@ def leastsqBound(func, x0, args=(), bounds=None, Dfun=None, full_output=0,
     bounds is [(min1,max1), (min2,max2)]
     
   This function is based on 'leastsq' of minpack.py, the annotation of
-  other parameters can be found in 'leastsq'.
-  ..\Lib\site-packages\scipy\optimize\minpack.py
+  other parameters can be found in 'least_squares.py'.
   """
  
   def _check_func(checker, argname, thefunc, x0, args, numinputs,
