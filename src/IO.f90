@@ -6,48 +6,48 @@
 !> @brief  input/output functions, partly depending on chosen solver
 !--------------------------------------------------------------------------------------------------
 module IO
- use prec
- use DAMASK_interface
- 
- implicit none
- private
- character(len=5), parameter, public :: &
-   IO_EOF = '#EOF#'                                                                                 !< end of file string
- character(len=207), parameter, private :: &
-   IO_DIVIDER = '───────────────────'//&
-                '───────────────────'//&
-                '───────────────────'//&
-                '────────────'
- public :: &
-   IO_init, &
-   IO_read_ASCII, &
-   IO_open_file, &
-   IO_open_jobFile_binary, &
-   IO_write_jobFile, &
-   IO_isBlank, &
-   IO_getTag, &
-   IO_stringPos, &
-   IO_stringValue, &
-   IO_floatValue, &
-   IO_intValue, &
-   IO_lc, &
-   IO_error, &
-   IO_warning, &
-   IO_intOut
+  use prec
+  use DAMASK_interface
+  
+  implicit none
+  private
+  character(len=5), parameter, public :: &
+    IO_EOF = '#EOF#'                                                                                !< end of file string
+  character(len=207), parameter, private :: &
+    IO_DIVIDER = '───────────────────'//&
+                 '───────────────────'//&
+                 '───────────────────'//&
+                 '────────────'
+  public :: &
+    IO_init, &
+    IO_read_ASCII, &
+    IO_open_file, &
+    IO_open_jobFile_binary, &
+    IO_write_jobFile, &
+    IO_isBlank, &
+    IO_getTag, &
+    IO_stringPos, &
+    IO_stringValue, &
+    IO_floatValue, &
+    IO_intValue, &
+    IO_lc, &
+    IO_error, &
+    IO_warning, &
+    IO_intOut
 #if defined(Marc4DAMASK) || defined(Abaqus)
- public :: &
-   IO_open_inputFile, &
-   IO_open_logFile, &
-   IO_countContinuousIntValues, &
-   IO_continuousIntValues, &
+  public :: &
+    IO_open_inputFile, &
+    IO_open_logFile, &
+    IO_countContinuousIntValues, &
+    IO_continuousIntValues, &
 #if defined(Abaqus)
-   IO_extractValue, &
-   IO_countDataLines
+    IO_extractValue, &
+    IO_countDataLines
 #elif defined(Marc4DAMASK)
-   IO_skipChunks, &
-   IO_fixedNoEFloatValue, &
-   IO_fixedIntValue, &
-   IO_countNumericalDataLines
+    IO_skipChunks, &
+    IO_fixedNoEFloatValue, &
+    IO_fixedIntValue, &
+    IO_countNumericalDataLines
 #endif
 #endif
 
@@ -961,17 +961,17 @@ end subroutine IO_warning
 !--------------------------------------------------------------------------------------------------
 character(len=300) pure function IO_extractValue(pair,key)
 
- character(len=*), intent(in) :: pair, &                                                            !< key=value pair
-                                 key                                                                !< key to be expected
-
- character(len=*), parameter  :: SEP = achar(61)                                                    ! '='
-
- integer                      :: myChunk                                                            !< position number of desired chunk
-
- IO_extractValue = ''
-
- myChunk = scan(pair,SEP)
- if (myChunk > 0 .and. pair(:myChunk-1) == key) IO_extractValue = pair(myChunk+1:)                  ! extract value if key matches
+  character(len=*), intent(in) :: pair, &                                                           !< key=value pair
+                                  key                                                               !< key to be expected
+ 
+  character(len=*), parameter  :: SEP = achar(61)                                                   ! '='
+ 
+  integer                      :: myChunk                                                           !< position number of desired chunk
+ 
+  IO_extractValue = ''
+ 
+  myChunk = scan(pair,SEP)
+  if (myChunk > 0 .and. pair(:myChunk-1) == key) IO_extractValue = pair(myChunk+1:)                 ! extract value if key matches
 
 end function IO_extractValue
 
@@ -981,27 +981,27 @@ end function IO_extractValue
 !--------------------------------------------------------------------------------------------------
 integer function IO_countDataLines(fileUnit)
 
- integer, intent(in)                :: fileUnit                                                     !< file handle
-
-
- integer, allocatable, dimension(:) :: chunkPos
- character(len=65536)               :: line, &
-                                       tmp
-
- IO_countDataLines = 0
- line = ''
-
- do while (trim(line) /= IO_EOF)
-   line = IO_read(fileUnit)
-   chunkPos = IO_stringPos(line)
-   tmp = IO_lc(IO_stringValue(line,chunkPos,1))
-   if (tmp(1:1) == '*' .and. tmp(2:2) /= '*') then                                                  ! found keyword
-     exit
-   else
-     if (tmp(2:2) /= '*') IO_countDataLines = IO_countDataLines + 1
-   endif
- enddo
- backspace(fileUnit)
+  integer, intent(in)                :: fileUnit                                                    !< file handle
+ 
+ 
+  integer, allocatable, dimension(:) :: chunkPos
+  character(len=65536)               :: line, &
+                                        tmp
+ 
+  IO_countDataLines = 0
+  line = ''
+ 
+  do while (trim(line) /= IO_EOF)
+    line = IO_read(fileUnit)
+    chunkPos = IO_stringPos(line)
+    tmp = IO_lc(IO_stringValue(line,chunkPos,1))
+    if (tmp(1:1) == '*' .and. tmp(2:2) /= '*') then                                                 ! found keyword
+      exit
+    else
+      if (tmp(2:2) /= '*') IO_countDataLines = IO_countDataLines + 1
+    endif
+  enddo
+  backspace(fileUnit)
 
 end function IO_countDataLines
 #endif
@@ -1013,27 +1013,27 @@ end function IO_countDataLines
 !--------------------------------------------------------------------------------------------------
 integer function IO_countNumericalDataLines(fileUnit)
 
- integer, intent(in)                :: fileUnit                                                     !< file handle
-
-
- integer, allocatable, dimension(:) :: chunkPos
- character(len=65536)               :: line, &
-                                       tmp
-
- IO_countNumericalDataLines = 0
- line = ''
-
- do while (trim(line) /= IO_EOF)
-   line = IO_read(fileUnit)
-   chunkPos = IO_stringPos(line)
-   tmp = IO_lc(IO_stringValue(line,chunkPos,1))
-   if (verify(trim(tmp),'0123456789') == 0) then                                                    ! numerical values
-     IO_countNumericalDataLines = IO_countNumericalDataLines + 1
-   else
-     exit
-   endif
- enddo
- backspace(fileUnit)
+  integer, intent(in)                :: fileUnit                                                    !< file handle
+ 
+ 
+  integer, allocatable, dimension(:) :: chunkPos
+  character(len=65536)               :: line, &
+                                        tmp
+ 
+  IO_countNumericalDataLines = 0
+  line = ''
+ 
+  do while (trim(line) /= IO_EOF)
+    line = IO_read(fileUnit)
+    chunkPos = IO_stringPos(line)
+    tmp = IO_lc(IO_stringValue(line,chunkPos,1))
+    if (verify(trim(tmp),'0123456789') == 0) then                                                   ! numerical values
+      IO_countNumericalDataLines = IO_countNumericalDataLines + 1
+    else
+      exit
+    endif
+  enddo
+  backspace(fileUnit)
 
 end function IO_countNumericalDataLines
 
@@ -1043,19 +1043,19 @@ end function IO_countNumericalDataLines
 !--------------------------------------------------------------------------------------------------
 subroutine IO_skipChunks(fileUnit,N)
 
- integer, intent(in)  :: fileUnit, &                                                                !< file handle
-                         N                                                                          !< minimum number of chunks to skip
-
- integer              :: remainingChunks
- character(len=65536) :: line
-
- line = ''
- remainingChunks = N
-
- do while (trim(line) /= IO_EOF .and. remainingChunks > 0)
-   line = IO_read(fileUnit)
-   remainingChunks = remainingChunks - (size(IO_stringPos(line))-1)/2
- enddo
+  integer, intent(in)  :: fileUnit, &                                                               !< file handle
+                          N                                                                         !< minimum number of chunks to skip
+ 
+  integer              :: remainingChunks
+  character(len=65536) :: line
+ 
+  line = ''
+  remainingChunks = N
+ 
+  do while (trim(line) /= IO_EOF .and. remainingChunks > 0)
+    line = IO_read(fileUnit)
+    remainingChunks = remainingChunks - (size(IO_stringPos(line))-1)/2
+  enddo
 end subroutine IO_skipChunks
 #endif
 
