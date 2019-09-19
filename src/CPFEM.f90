@@ -4,67 +4,66 @@
 !> @brief CPFEM engine
 !--------------------------------------------------------------------------------------------------
 module CPFEM
- use prec
- use numerics
- use debug
- use FEsolving
- use math
- use mesh
- use material
- use config
- use crystallite
- use homogenization
- use IO
- use discretization
- use DAMASK_interface
- use numerics
- use HDF5_utilities
- use results
- use lattice
- use constitutive
+  use prec
+  use numerics
+  use debug
+  use FEsolving
+  use math
+  use mesh
+  use material
+  use config
+  use crystallite
+  use homogenization
+  use IO
+  use discretization
+  use DAMASK_interface
+  use numerics
+  use HDF5_utilities
+  use results
+  use lattice
+  use constitutive
 
- implicit none
- private
- 
- real(pReal),                      parameter,   private :: &
-   CPFEM_odd_stress    = 1e15_pReal, &                                                              !< return value for stress in case of ping pong dummy cycle
-   CPFEM_odd_jacobian  = 1e50_pReal                                                                 !< return value for jacobian in case of ping pong dummy cycle
- real(pReal), dimension (:,:,:),   allocatable, private :: &
-   CPFEM_cs                                                                                         !< Cauchy stress
- real(pReal), dimension (:,:,:,:), allocatable, private :: &
-   CPFEM_dcsdE                                                                                      !< Cauchy stress tangent
- real(pReal), dimension (:,:,:,:), allocatable, private :: &
-   CPFEM_dcsdE_knownGood                                                                            !< known good tangent
- integer(pInt),                                 public :: &
-   cycleCounter =  0_pInt, &                                                                        !< needs description
-   theInc       = -1_pInt, &                                                                        !< needs description
-   lastLovl     =  0_pInt, &                                                                        !< lovl in previous call to marc hypela2
-   lastStep     =  0_pInt                                                                           !< kstep in previous call to abaqus umat
- real(pReal),                                   public :: &
-   theTime      = 0.0_pReal, &                                                                      !< needs description
-   theDelta     = 0.0_pReal    
- logical,                                       public :: & 
-   outdatedFFN1      = .false., &                                                                   !< needs description
-   lastIncConverged  = .false., &                                                                   !< needs description
-   outdatedByNewInc  = .false.                                                                      !< needs description
+  implicit none
+  private
+  
+  real(pReal),                      parameter,   private :: &
+    CPFEM_odd_stress    = 1e15_pReal, &                                                             !< return value for stress in case of ping pong dummy cycle
+    CPFEM_odd_jacobian  = 1e50_pReal                                                                !< return value for jacobian in case of ping pong dummy cycle
+  real(pReal), dimension (:,:,:),   allocatable, private :: &
+    CPFEM_cs                                                                                        !< Cauchy stress
+  real(pReal), dimension (:,:,:,:), allocatable, private :: &
+    CPFEM_dcsdE                                                                                     !< Cauchy stress tangent
+  real(pReal), dimension (:,:,:,:), allocatable, private :: &
+    CPFEM_dcsdE_knownGood                                                                           !< known good tangent
+  integer(pInt),                                 public :: &
+    cycleCounter =  0_pInt, &                                                                       !< needs description
+    theInc       = -1_pInt, &                                                                       !< needs description
+    lastLovl     =  0_pInt, &                                                                       !< lovl in previous call to marc hypela2
+    lastStep     =  0_pInt                                                                          !< kstep in previous call to abaqus umat
+  real(pReal),                                   public :: &
+    theTime      = 0.0_pReal, &                                                                     !< needs description
+    theDelta     = 0.0_pReal    
+  logical,                                       public :: & 
+    outdatedFFN1      = .false., &                                                                  !< needs description
+    lastIncConverged  = .false., &                                                                  !< needs description
+    outdatedByNewInc  = .false.                                                                     !< needs description
 
- logical,                                       public, protected :: &
-   CPFEM_init_done       = .false.                                                                  !< remember whether init has been done already
- logical,                                       private :: &
-   CPFEM_calc_done       = .false.                                                                  !< remember whether first ip has already calced the results
+  logical,                                       public, protected :: &
+    CPFEM_init_done       = .false.                                                                 !< remember whether init has been done already
+  logical,                                       private :: &
+    CPFEM_calc_done       = .false.                                                                 !< remember whether first ip has already calced the results
 
- integer(pInt), parameter,                      public :: &
-   CPFEM_COLLECT         = 2_pInt**0_pInt, &
-   CPFEM_CALCRESULTS     = 2_pInt**1_pInt, &
-   CPFEM_AGERESULTS      = 2_pInt**2_pInt, &
-   CPFEM_BACKUPJACOBIAN  = 2_pInt**3_pInt, &
-   CPFEM_RESTOREJACOBIAN = 2_pInt**4_pInt
+  integer(pInt), parameter,                      public :: &
+    CPFEM_COLLECT         = 2_pInt**0_pInt, &
+    CPFEM_CALCRESULTS     = 2_pInt**1_pInt, &
+    CPFEM_AGERESULTS      = 2_pInt**2_pInt, &
+    CPFEM_BACKUPJACOBIAN  = 2_pInt**3_pInt, &
+    CPFEM_RESTOREJACOBIAN = 2_pInt**4_pInt
 
-
- public :: &
-   CPFEM_general, &
-   CPFEM_initAll, &
-   CPFEM_results
+  public :: &
+    CPFEM_general, &
+    CPFEM_initAll, &
+    CPFEM_results
 
 contains
 
@@ -109,81 +108,20 @@ end subroutine CPFEM_initAll
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_init
 
- integer :: k,l,m,ph,homog
+  write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
+  flush(6)
 
- write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
- flush(6)
+  allocate(CPFEM_cs(               6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
+  allocate(CPFEM_dcsdE(          6,6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
+  allocate(CPFEM_dcsdE_knownGood(6,6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
 
- allocate(CPFEM_cs(               6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
- allocate(CPFEM_dcsdE(          6,6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
- allocate(CPFEM_dcsdE_knownGood(6,6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
-
- ! *** restore the last converged values of each essential variable from the binary file
- !if (restartRead) then
- !  if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) then
- !    write(6,'(a)') '<< CPFEM >> restored state variables of last converged step from binary files'
- !    flush(6)
- !  endif
-
- !  call IO_read_realFile(777,'convergedF'//trim(rankStr),modelName,size(crystallite_F0))
- !  read (777,rec=1) crystallite_F0
- !  close (777)
-
- !  call IO_read_realFile(777,'convergedFp'//trim(rankStr),modelName,size(crystallite_Fp0))
- !  read (777,rec=1) crystallite_Fp0
- !  close (777)
-
- !  call IO_read_realFile(777,'convergedFi'//trim(rankStr),modelName,size(crystallite_Fi0))
- !  read (777,rec=1) crystallite_Fi0
- !  close (777)
-
- !  call IO_read_realFile(777,'convergedLp'//trim(rankStr),modelName,size(crystallite_Lp0))
- !  read (777,rec=1) crystallite_Lp0
- !  close (777)
-
- !  call IO_read_realFile(777,'convergedLi'//trim(rankStr),modelName,size(crystallite_Li0))
- !  read (777,rec=1) crystallite_Li0
- !  close (777)
-
-
- !  call IO_read_realFile(777,'convergedTstar'//trim(rankStr),modelName,size(crystallite_Tstar0_v))
- !  read (777,rec=1) crystallite_Tstar0_v
- !  close (777)
-
- !  call IO_read_realFile(777,'convergedStateConst'//trim(rankStr),modelName)
- !  m = 0_pInt
- !  readPlasticityInstances: do ph = 1_pInt, size(phase_plasticity)
- !    do k = 1_pInt, plasticState(ph)%sizeState
- !      do l = 1, size(plasticState(ph)%state0(1,:))
- !        m = m+1_pInt
- !        read(777,rec=m) plasticState(ph)%state0(k,l)
- !    enddo; enddo
- !  enddo readPlasticityInstances
- !  close (777)
-
- !  call IO_read_realFile(777,'convergedStateHomog'//trim(rankStr),modelName)
- !  m = 0_pInt
- !  readHomogInstances: do homog = 1_pInt, material_Nhomogenization
- !    do k = 1_pInt, homogState(homog)%sizeState
- !      do l = 1, size(homogState(homog)%state0(1,:))
- !        m = m+1_pInt
- !        read(777,rec=m) homogState(homog)%state0(k,l)
- !    enddo; enddo
- !  enddo readHomogInstances
- !  close (777)
-
- !  call IO_read_realFile(777,'convergeddcsdE',modelName,size(CPFEM_dcsdE))
- !  read (777,rec=1) CPFEM_dcsdE
- !  close (777)
- !  restartRead = .false.
- !endif
- if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) then
-   write(6,'(a32,1x,6(i8,1x))')   'CPFEM_cs:              ', shape(CPFEM_cs)
-   write(6,'(a32,1x,6(i8,1x))')   'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
-   write(6,'(a32,1x,6(i8,1x),/)') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
-   write(6,'(a32,l1)')            'symmetricSolver:       ', symmetricSolver
-   flush(6)
- endif
+  if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) then
+    write(6,'(a32,1x,6(i8,1x))')   'CPFEM_cs:              ', shape(CPFEM_cs)
+    write(6,'(a32,1x,6(i8,1x))')   'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
+    write(6,'(a32,1x,6(i8,1x),/)') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
+    write(6,'(a32,l1)')            'symmetricSolver:       ', symmetricSolver
+    flush(6)
+  endif
 
 end subroutine CPFEM_init
 
@@ -266,66 +204,6 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
      thermalState     (homog)%state0 =  thermalState     (homog)%state
      damageState      (homog)%state0 =  damageState      (homog)%state
    enddo
-  
-
-   ! * dump the last converged values of each essential variable to a binary file
-
-   !if (restartWrite) then
-   !  if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
-   !     write(6,'(a)') '<< CPFEM >> writing state variables of last converged step to binary files'
-   !
-
-   !  call IO_write_jobRealFile(777,'convergedF'//trim(rankStr),size(crystallite_F0))
-   !  write (777,rec=1) crystallite_F0
-   !  close (777)
-
-   !  call IO_write_jobRealFile(777,'convergedFp'//trim(rankStr),size(crystallite_Fp0))
-   !  write (777,rec=1) crystallite_Fp0
-   !  close (777)
-
-   !  call IO_write_jobRealFile(777,'convergedFi'//trim(rankStr),size(crystallite_Fi0))
-   !  write (777,rec=1) crystallite_Fi0
-   !  close (777)
-
-   !  call IO_write_jobRealFile(777,'convergedLp'//trim(rankStr),size(crystallite_Lp0))
-   !  write (777,rec=1) crystallite_Lp0
-   !  close (777)
-
-   !  call IO_write_jobRealFile(777,'convergedLi'//trim(rankStr),size(crystallite_Li0))
-   !  write (777,rec=1) crystallite_Li0
-   !  close (777)
-
-   !  call IO_write_jobRealFile(777,'convergedTstar'//trim(rankStr),size(crystallite_Tstar0_v))
-   !  write (777,rec=1) crystallite_Tstar0_v
-   !  close (777)
-
-   !  call IO_write_jobRealFile(777,'convergedStateConst'//trim(rankStr))
-   !  m = 0_pInt
-   !  writePlasticityInstances: do ph = 1_pInt, size(phase_plasticity)
-   !    do k = 1_pInt, plasticState(ph)%sizeState
-   !      do l = 1, size(plasticState(ph)%state0(1,:))
-   !        m = m+1_pInt
-   !        write(777,rec=m) plasticState(ph)%state0(k,l)
-   !    enddo; enddo
-   !  enddo writePlasticityInstances
-   !  close (777)
-
-   !  call IO_write_jobRealFile(777,'convergedStateHomog'//trim(rankStr))
-   !  m = 0_pInt
-   !  writeHomogInstances: do homog = 1_pInt, material_Nhomogenization
-   !    do k = 1_pInt, homogState(homog)%sizeState
-   !      do l = 1, size(homogState(homog)%state0(1,:))
-   !        m = m+1_pInt
-   !        write(777,rec=m) homogState(homog)%state0(k,l)
-   !    enddo; enddo
-   !  enddo writeHomogInstances
-   !  close (777)
-
-   !  call IO_write_jobRealFile(777,'convergeddcsdE',size(CPFEM_dcsdE))
-   !  write (777,rec=1) CPFEM_dcsdE
-   !  close (777)
-
-   !endif
  endif
 
 
@@ -493,16 +371,16 @@ end subroutine CPFEM_general
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_results(inc,time)
 
- integer(pInt), intent(in) :: inc
- real(pReal),   intent(in) :: time
+  integer(pInt), intent(in) :: inc
+  real(pReal),   intent(in) :: time
 
 #ifdef DAMASK_HDF5
- call results_openJobFile
- call results_addIncrement(inc,time)
- call constitutive_results
- call crystallite_results
- call results_removeLink('current') ! ToDo: put this into closeJobFile
- call results_closeJobFile
+  call results_openJobFile
+  call results_addIncrement(inc,time)
+  call constitutive_results
+  call crystallite_results
+  call results_removeLink('current') ! ToDo: put this into closeJobFile
+  call results_closeJobFile
 #endif
 
 end subroutine CPFEM_results
