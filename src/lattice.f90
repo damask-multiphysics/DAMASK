@@ -736,13 +736,17 @@ pure function lattice_symmetrizeC66(struct,C66)
   select case(struct)
     case (LATTICE_iso_ID)
       do k=1,3
-        forall(j=1:3) lattice_symmetrizeC66(k,j) = C66(1,2)
+        do j=1,3
+          lattice_symmetrizeC66(k,j) = C66(1,2)
+        enddo
         lattice_symmetrizeC66(k,k)     = C66(1,1)
         lattice_symmetrizeC66(k+3,k+3) = 0.5_pReal*(C66(1,1)-C66(1,2))
       enddo
     case (LATTICE_fcc_ID,LATTICE_bcc_ID)
       do k=1,3
-        forall(j=1:3) lattice_symmetrizeC66(k,j) = C66(1,2)
+        do j=1,3
+          lattice_symmetrizeC66(k,j) = C66(1,2)
+        enddo
         lattice_symmetrizeC66(k,k)     = C66(1,1)
         lattice_symmetrizeC66(k+3,k+3) = C66(4,4)
       enddo
