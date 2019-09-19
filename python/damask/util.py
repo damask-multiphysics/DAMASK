@@ -279,6 +279,7 @@ def leastsqBound(func, x0, args=(), bounds=None, Dfun=None, full_output=0,
   def _int2extFunc(bounds):
     """Transform internal parameters into external parameters."""
     local = [_int2extLocal(b) for b in bounds]
+
     def _transform_i2e(p_int):
         p_ext = np.empty_like(p_int)
         p_ext[:] = [i(j) for i, j in zip(local, p_int)]
@@ -288,6 +289,7 @@ def leastsqBound(func, x0, args=(), bounds=None, Dfun=None, full_output=0,
   def _ext2intFunc(bounds):
     """Transform external parameters into internal parameters."""
     local = [_ext2intLocal(b) for b in bounds]
+
     def _transform_e2i(p_ext):
         p_int = np.empty_like(p_ext)
         p_int[:] = [i(j) for i, j in zip(local, p_ext)]
@@ -427,7 +429,7 @@ def _weighted_general_function(params, ydata, xdata, function, weights):
     return (function(xdata, *params) - ydata)*weights
 
 def curve_fit_bound(f, xdata, ydata, p0=None, sigma=None, bounds=None, **kw):
-    """Similar as 'curve_fit' in minpack.py"""
+    """Similar as 'curve_fit' in minpack.py."""
     if p0 is None:
         # determine number of parameters by inspecting the function
         import inspect
@@ -467,7 +469,7 @@ def curve_fit_bound(f, xdata, ydata, p0=None, sigma=None, bounds=None, **kw):
     return (popt, pcov, infodict, errmsg, ier) if return_full else (popt, pcov)
     
 class Worker(Thread):
-    """Thread executing tasks from a given tasks queue"""
+    """Thread executing tasks from a given tasks queue."""
 
     def __init__(self, tasks):
         Thread.__init__(self)
@@ -489,7 +491,7 @@ class Worker(Thread):
 
 
 class ThreadPool:
-    """Pool of threads consuming tasks from a queue"""
+    """Pool of threads consuming tasks from a queue."""
 
     def __init__(self, num_threads):
         self.tasks = Queue(num_threads)
@@ -497,14 +499,14 @@ class ThreadPool:
             Worker(self.tasks)
 
     def add_task(self, func, *args, **kargs):
-        """Add a task to the queue"""
+        """Add a task to the queue."""
         self.tasks.put((func, args, kargs))
 
     def map(self, func, args_list):
-        """Add a list of tasks to the queue"""
+        """Add a list of tasks to the queue."""
         for args in args_list:
             self.add_task(func, args)
 
     def wait_completion(self):
-        """Wait for completion of all the tasks in the queue"""
+        """Wait for completion of all the tasks in the queue."""
         self.tasks.join()

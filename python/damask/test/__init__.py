@@ -1,5 +1,3 @@
-# -*- coding: UTF-8 no BOM -*-
-
-"""Test functionality"""
+"""Test functionality."""
 
 from .test import Test      # noqa
