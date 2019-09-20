@@ -4,8 +4,8 @@
 set DAMASK_NUM_THREADS    = 4
 
 set MSC_ROOT              = /opt/msc
-set MARC_VERSION          = 2018.1
+set MARC_VERSION          = 2019
 
 set ABAQUS_VERSION        = 2019
 
-set DAMASK_HDF5           = OFF
+set DAMASK_HDF5           = ON

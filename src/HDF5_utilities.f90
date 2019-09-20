@@ -102,8 +102,8 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_utilities_init
 
-  integer :: hdferr
-  integer(SIZE_T)        :: typeSize
+  integer         :: hdferr
+  integer(SIZE_T) :: typeSize
 
   write(6,'(/,a)') ' <<<+-  HDF5_Utilities init  -+>>>'
 
@@ -112,10 +112,14 @@ subroutine HDF5_utilities_init
   call h5open_f(hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_Utilities_init: h5open_f')
 
+#ifndef Marc4DAMASK
+! This test should ensure that integer size matches. For some reasons, the HDF5 libraries
+! that come with MSC.Marc>=2019 seem to be of 4byte even though it is a 8byte Marc version
   call h5tget_size_f(H5T_NATIVE_INTEGER,typeSize, hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_Utilities_init: h5tget_size_f (int)')
   if (int(bit_size(0),SIZE_T)/=typeSize*8) &
     call IO_error(0,ext_msg='Default integer size does not match H5T_NATIVE_INTEGER')
+#endif
 
   call h5tget_size_f(H5T_NATIVE_DOUBLE,typeSize, hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_Utilities_init: h5tget_size_f (double)')
@@ -128,7 +132,7 @@ end subroutine HDF5_utilities_init
 !--------------------------------------------------------------------------------------------------
 !> @brief open and initializes HDF5 output file
 !--------------------------------------------------------------------------------------------------
-integer(HID_T) function HDF5_openFile(fileName,mode,parallel) ! ToDo: simply "open" is enough
+integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
 
   character(len=*), intent(in)           :: fileName
   character,        intent(in), optional :: mode
@@ -196,8 +200,8 @@ integer(HID_T) function HDF5_addGroup(fileHandle,groupName)
   integer(HID_T), intent(in)   :: fileHandle
   character(len=*), intent(in) :: groupName
  
-  integer       :: hdferr
-  integer(HID_T)               :: aplist_id
+  integer        :: hdferr
+  integer(HID_T) :: aplist_id
 
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for data access properties
@@ -230,9 +234,9 @@ integer(HID_T) function HDF5_openGroup(fileHandle,groupName)
   character(len=*), intent(in) :: groupName
  
  
-  integer       :: hdferr
-  integer(HID_T)   :: aplist_id
-  logical          :: is_collective
+  integer        :: hdferr
+  integer(HID_T) :: aplist_id
+  logical        :: is_collective
  
  
  !-------------------------------------------------------------------------------------------------
@@ -263,7 +267,7 @@ end function HDF5_openGroup
 subroutine HDF5_closeGroup(group_id)
 
   integer(HID_T), intent(in) :: group_id
-  integer     :: hdferr
+  integer                    :: hdferr
  
   call h5gclose_f(group_id, hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg = 'HDF5_closeGroup: h5gclose_f (el is ID)', el = int(group_id))
@@ -352,7 +356,7 @@ subroutine HDF5_addAttribute_int(loc_id,attrLabel,attrValue,path)
 
   integer(HID_T),   intent(in)            :: loc_id
   character(len=*), intent(in)            :: attrLabel
-  integer,    intent(in)            :: attrValue
+  integer,          intent(in)            :: attrValue
   character(len=*), intent(in), optional  :: path
   
   integer            :: hdferr
@@ -521,8 +525,8 @@ end subroutine HDF5_addAttribute_real_array
 subroutine HDF5_setLink(loc_id,target_name,link_name)
 
   character(len=*), intent(in) :: target_name, link_name
-  integer(HID_T),  intent(in) :: loc_id
-  integer       :: hdferr
+  integer(HID_T),   intent(in) :: loc_id
+  integer                      :: hdferr
   logical                      :: linkExists
  
   call h5lexists_f(loc_id, link_name,linkExists, hdferr)
