@@ -29,6 +29,7 @@ program DAMASK_spectral
  use grid_thermal_spectral
  use HDF5_utilities
  use results
+ use rotations
 
  implicit none
 
@@ -79,6 +80,7 @@ program DAMASK_spectral
  character(len=6)  :: loadcase_string
  character(len=1024) :: &
    incInfo
+ type(rotation) :: R
  type(tLoadCase), allocatable, dimension(:) :: loadCases                                            !< array of all load cases
  type(tLoadCase) :: newLoadCase
  type(tSolutionState), allocatable, dimension(:) :: solres
@@ -234,8 +236,8 @@ program DAMASK_spectral
          do j = 1, 3
            temp_valueVector(j) = IO_floatValue(line,chunkPos,i+k+j)
          enddo
-         if (l == 1) temp_valueVector(1:3) = temp_valueVector(1:3) * INRAD                          ! convert to rad
-         newLoadCase%rotation = math_EulerToR(temp_valueVector(1:3))                                ! convert rad Eulers to rotation matrix
+         call R%fromEulerAngles(temp_valueVector(1:3),degrees=(l==1))
+         newLoadCase%rotation = R%asRotationMatrix()
        case('rotation','rot')                                                                       ! assign values for the rotation  matrix
          temp_valueVector = 0.0_pReal
          do j = 1, 9
