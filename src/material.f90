@@ -693,6 +693,7 @@ subroutine material_parseTexture
   integer, dimension(:), allocatable :: chunkPos
   real(pReal), dimension(3,3) :: texture_transformation                                             ! maps texture to microstructure coordinate system
   real(pReal), dimension(3)   :: Eulers                                                             ! Euler angles in degrees from file
+  type(rotation)              :: transformation
 
   do t=1, size(config_texture)
     if (config_texture(t)%countKeys('(gauss)') /= 1) call IO_error(147,ext_msg='count((gauss)) != 1')
@@ -740,7 +741,8 @@ subroutine material_parseTexture
         end select
       enddo
       if(dNeq(math_det33(texture_transformation),1.0_pReal)) call IO_error(157,t)
-      call texture_Eulers(t)%fromRotationMatrix(matmul(texture_Eulers(t)%asRotationMatrix(),texture_transformation))
+      call transformation%fromRotationMatrix(texture_transformation)
+      texture_Eulers(t) = texture_Eulers(t) * transformation
     endif
     
   enddo 
