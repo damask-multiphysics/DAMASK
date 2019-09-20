@@ -297,11 +297,8 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
     instance, &
     of
  
-  real(pReal), dimension(3,3) :: &
-    Mi_sph                                                                                          !< spherical part of the Mandel stress
   real(pReal) :: &
-    dot_gamma, &                                                                                    !< shear rate
-    tr                                                                                               !< pressure
+    tr                                                                                              !< pressure
   integer :: &
     k, l, m, n
  
@@ -309,7 +306,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
  
   tr=math_trace33(math_spherical33(Mi))
 
-  if (prm%dilatation .and. abs(tr) > 0.0_pReal) then                                                 ! no stress or J2 plasticity --> Li and its derivative are zero
+  if (prm%dilatation .and. abs(tr) > 0.0_pReal) then                                                ! no stress or J2 plasticity --> Li and its derivative are zero
     Li = math_I3 &
        * prm%dot_gamma_0/prm%M * (3.0_pReal*prm%M*stt%xi(of))**(-prm%n) &
        * tr * abs(tr)**(prm%n-1.0_pReal)
@@ -324,7 +321,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
 #endif
 
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-      dLi_dMi(k,l,m,n) = n / tr * Li(k,l) * math_I3(m,n)
+      dLi_dMi(k,l,m,n) = real(n,pReal) / tr * Li(k,l) * math_I3(m,n)
 
   else
     Li      = 0.0_pReal
