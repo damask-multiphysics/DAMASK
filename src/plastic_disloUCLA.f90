@@ -553,7 +553,7 @@ subroutine plastic_disloUCLA_results(instance,group)
         call results_writeDataset(group,dst%Lambda_sl,'Lambda_sl',&
                                   'mean free path for slip','m')
       case (thresholdstress_ID)
-        call results_writeDataset(group,dst%threshold_stress,'threshold_stress',&
+        call results_writeDataset(group,dst%threshold_stress,'tau_pass',&
                                   'threshold stress for slip','Pa')
     end select
   enddo outputsLoop

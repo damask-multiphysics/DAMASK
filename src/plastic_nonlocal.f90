@@ -2128,7 +2128,7 @@ outputsLoop: do o = 1,size(param(instance)%outputID)
       cs = cs + ns
       
     case (resolvedstress_back_ID)
-      postResults(cs+1:cs+ns) =  dst%tau_back(:,of)
+      postResults(cs+1:cs+ns) = dst%tau_back(:,of)
       cs = cs + ns
       
     case (resistance_ID)
@@ -2137,7 +2137,7 @@ outputsLoop: do o = 1,size(param(instance)%outputID)
       
     case (rho_dot_sgl_ID)
       postResults(cs+1:cs+ns) = sum(rhoDotSgl(1:ns,1:4),2) &
-                                   + sum(rhoDotSgl(1:ns,5:8)*sign(1.0_pReal,rhoSgl(1:ns,5:8)),2)
+                              + sum(rhoDotSgl(1:ns,5:8)*sign(1.0_pReal,rhoSgl(1:ns,5:8)),2)
       cs = cs + ns
       
     case (rho_dot_sgl_mobile_ID)
@@ -2187,12 +2187,12 @@ outputsLoop: do o = 1,size(param(instance)%outputID)
     
     case (rho_dot_flux_edge_ID)
       postResults(cs+1:cs+ns) = sum(results(instance)%rhoDotFlux(1:ns,1:2,of),2) &
-                          + sum(results(instance)%rhoDotFlux(1:ns,5:6,of)*sign(1.0_pReal,rhoSgl(1:ns,5:6)),2)
+                              + sum(results(instance)%rhoDotFlux(1:ns,5:6,of)*sign(1.0_pReal,rhoSgl(1:ns,5:6)),2)
       cs = cs + ns
       
     case (rho_dot_flux_screw_ID)
       postResults(cs+1:cs+ns) = sum(results(instance)%rhoDotFlux(1:ns,3:4,of),2) &
-                          + sum(results(instance)%rhoDotFlux(1:ns,7:8,of)*sign(1.0_pReal,rhoSgl(1:ns,7:8)),2)
+                              + sum(results(instance)%rhoDotFlux(1:ns,7:8,of)*sign(1.0_pReal,rhoSgl(1:ns,7:8)),2)
       cs = cs + ns
             
     case (velocity_edge_pos_ID)
