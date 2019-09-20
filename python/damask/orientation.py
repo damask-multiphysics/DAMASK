@@ -252,7 +252,8 @@ class Rotation:
                        acceptHomomorph = False,
                        P = -1):
 
-      qu = quaternion if isinstance(quaternion, np.ndarray) else np.array(quaternion)
+      qu = quaternion if isinstance(quaternion, np.ndarray) and quaternion.dtype == np.dtype(float) \
+                      else np.array(quaternion,dtype=float)
       if P > 0: qu[1:4] *= -1                                                                       # convert from P=1 to P=-1
       if qu[0] < 0.0:
         if acceptHomomorph:
@@ -269,7 +270,8 @@ class Rotation:
                    eulers,
                    degrees = False):
 
-      eu = eulers if isinstance(eulers, np.ndarray) else np.array(eulers)
+      eu = eulers if isinstance(eulers, np.ndarray) and eulers.dtype == np.dtype(float) \
+                  else np.array(eulers,dtype=float)
       eu = np.radians(eu) if degrees else eu
       if np.any(eu < 0.0) or np.any(eu > 2.0*np.pi) or eu[1] > np.pi:
         raise ValueError('Euler angles outside of [0..2π],[0..π],[0..2π].\n{} {} {}.'.format(*eu))
@@ -283,15 +285,16 @@ class Rotation:
                       normalise = False,
                       P = -1):
       
-      ax = angleAxis if isinstance(angleAxis, np.ndarray) else np.array(angleAxis)
-      if P > 0: ax[0:3] *= -1                                                                       # convert from P=1 to P=-1
-      if degrees:   ax[3] = np.radians(ax[3])
-      if normalise: ax[0:3] /=np.linalg.norm(ax[0:3])
+      ax = angleAxis if isinstance(angleAxis, np.ndarray) and angleAxis.dtype == np.dtype(float) \
+                     else np.array(angleAxis,dtype=float)
+      if P > 0:     ax[0:3] *= -1                                                                   # convert from P=1 to P=-1
+      if degrees:   ax[  3]  = np.radians(ax[3])
+      if normalise: ax[0:3] /= np.linalg.norm(ax[0:3])
       if ax[3] < 0.0 or ax[3] > np.pi:
         raise ValueError('Axis angle rotation angle outside of [0..π].\n'.format(ax[3]))
       if not np.isclose(np.linalg.norm(ax[0:3]), 1.0):
         raise ValueError('Axis angle rotation axis is not of unit length.\n{} {} {}'.format(*ax[0:3]))
-      
+
       return cls(ax2qu(ax))
       
     @classmethod
@@ -330,9 +333,10 @@ class Rotation:
                       normalise = False,
                       P = -1):
         
-      ro = rodrigues if isinstance(rodrigues, np.ndarray) else np.array(rodrigues) 
-      if P > 0: ro[0:3] *= -1                                                                       # convert from P=1 to P=-1
-      if normalise: ro[0:3] /=np.linalg.norm(ro[0:3])
+      ro = rodrigues if isinstance(rodrigues, np.ndarray) and rodrigues.dtype == np.dtype(float) \
+                     else np.array(rodrigues,dtype=float)
+      if P > 0:     ro[0:3] *= -1                                                                   # convert from P=1 to P=-1
+      if normalise: ro[0:3] /= np.linalg.norm(ro[0:3])
       if not np.isclose(np.linalg.norm(ro[0:3]), 1.0):
         raise ValueError('Rodrigues rotation axis is not of unit length.\n{} {} {}'.format(*ro[0:3]))
       if ro[3] < 0.0:
@@ -345,7 +349,8 @@ class Rotation:
                       homochoric,
                       P = -1):
         
-      ho = homochoric if isinstance(homochoric, np.ndarray) else np.array(homochoric) 
+      ho = homochoric if isinstance(homochoric, np.ndarray) and homochoric.dtype == np.dtype(float) \
+                      else np.array(homochoric,dtype=float)
       if P > 0: ho *= -1                                                                            # convert from P=1 to P=-1
 
       return cls(ho2qu(ho))
@@ -355,7 +360,8 @@ class Rotation:
                       cubochoric,
                       P = -1):
       
-      cu = cubochoric if isinstance(cubochoric, np.ndarray) else np.array(cubochoric)   
+      cu = cubochoric if isinstance(cubochoric, np.ndarray) and cubochoric.dtype == np.dtype(float) \
+                      else np.array(cubochoric,dtype=float)
       ho = cu2ho(cu)
       if P > 0: ho *= -1                                                                            # convert from P=1 to P=-1
         

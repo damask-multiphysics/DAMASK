@@ -289,7 +289,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
   real(pReal), dimension(3,3), intent(out) :: &
     Li                                                                                              !< inleastic velocity gradient
   real(pReal), dimension(3,3,3,3), intent(out)  :: &
-    dLi_dMi                                                                                         !< derivative of Li with respect to the Mandel stress
+    dLi_dMi                                                                                         !< derivative of Li with respect to Mandel stress
  
   real(pReal), dimension(3,3),   intent(in) :: &
     Mi                                                                                              !< Mandel stress 
@@ -298,7 +298,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
     of
  
   real(pReal) :: &
-    tr                                                                                              !< pressure
+    tr                                                                                              !< trace of spherical part of Mandel stress (= 3 x pressure)
   integer :: &
     k, l, m, n
  
@@ -306,7 +306,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
  
   tr=math_trace33(math_spherical33(Mi))
 
-  if (prm%dilatation .and. abs(tr) > 0.0_pReal) then                                                ! no stress or J2 plasticity --> Li and its derivative are zero
+  if (prm%dilatation .and. abs(tr) > 0.0_pReal) then                                                 ! no stress or J2 plasticity --> Li and its derivative are zero
     Li = math_I3 &
        * prm%dot_gamma_0/prm%M * (3.0_pReal*prm%M*stt%xi(of))**(-prm%n) &
        * tr * abs(tr)**(prm%n-1.0_pReal)
@@ -321,7 +321,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
 #endif
 
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-      dLi_dMi(k,l,m,n) = real(n,pReal) / tr * Li(k,l) * math_I3(m,n)
+      dLi_dMi(k,l,m,n) = prm%n / tr * Li(k,l) * math_I3(m,n)
 
   else
     Li      = 0.0_pReal
