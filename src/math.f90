@@ -967,39 +967,6 @@ end function math_qRot
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Euler angles (in radians) from rotation matrix
-!> @details rotation matrix is meant to represent a PASSIVE rotation, 
-!> composed of INTRINSIC rotations around the axes of the 
-!> rotating reference frame 
-!> (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
-!--------------------------------------------------------------------------------------------------
-pure function math_RtoEuler(R)
-
-  real(pReal), dimension (3,3), intent(in) :: R
-  real(pReal), dimension(3) :: math_RtoEuler
-  real(pReal) :: sqhkl, squvw, sqhk
-
-  sqhkl=sqrt(R(1,3)*R(1,3)+R(2,3)*R(2,3)+R(3,3)*R(3,3))
-  squvw=sqrt(R(1,1)*R(1,1)+R(2,1)*R(2,1)+R(3,1)*R(3,1))
-  sqhk =sqrt(R(1,3)*R(1,3)+R(2,3)*R(2,3))
-
-  math_RtoEuler(2) = acos(math_clip(R(3,3)/sqhkl,-1.0_pReal, 1.0_pReal))
-
-  if((math_RtoEuler(2) < 1.0e-8_pReal) .or. (pi-math_RtoEuler(2) < 1.0e-8_pReal)) then
-    math_RtoEuler(3) = 0.0_pReal
-    math_RtoEuler(1) = acos(math_clip(R(1,1)/squvw, -1.0_pReal, 1.0_pReal))
-    if(R(2,1) > 0.0_pReal) math_RtoEuler(1) = 2.0_pReal*pi-math_RtoEuler(1)
-  else
-    math_RtoEuler(3) = acos(math_clip(R(2,3)/sqhk, -1.0_pReal, 1.0_pReal))
-    if(R(1,3) < 0.0) math_RtoEuler(3) = 2.0_pReal*pi-math_RtoEuler(3)
-    math_RtoEuler(1) = acos(math_clip(-R(3,2)/sin(math_RtoEuler(2)), -1.0_pReal, 1.0_pReal))
-    if(R(3,1) < 0.0) math_RtoEuler(1) = 2.0_pReal*pi-math_RtoEuler(1)
-  end if
-
-end function math_RtoEuler
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief rotation matrix from Bunge-Euler (3-1-3) angles (in radians)
 !> @details rotation matrix is meant to represent a PASSIVE rotation, composed of INTRINSIC
 !> @details rotations around the axes of the details rotating reference frame.
