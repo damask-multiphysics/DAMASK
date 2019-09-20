@@ -82,7 +82,7 @@ contains
 !---------------------------------------------------------------------------------------------------
 ! Return rotation in different represenations
 !---------------------------------------------------------------------------------------------------
-function asQuaternion(self)
+pure function asQuaternion(self)
 
   class(rotation), intent(in) :: self
   real(pReal), dimension(4)   :: asQuaternion
@@ -91,7 +91,7 @@ function asQuaternion(self)
 
 end function asQuaternion
 !---------------------------------------------------------------------------------------------------
-function asEulerAngles(self)
+pure function asEulerAngles(self)
   
   class(rotation), intent(in) :: self
   real(pReal), dimension(3)   :: asEulerAngles
@@ -100,7 +100,7 @@ function asEulerAngles(self)
 
 end function asEulerAngles
 !---------------------------------------------------------------------------------------------------
-function asAxisAnglePair(self)
+pure function asAxisAnglePair(self)
 
   class(rotation), intent(in) :: self
   real(pReal), dimension(4)   :: asAxisAnglePair
@@ -109,7 +109,7 @@ function asAxisAnglePair(self)
 
 end function asAxisAnglePair
 !---------------------------------------------------------------------------------------------------
-function asRotationMatrix(self)
+pure function asRotationMatrix(self)
  
   class(rotation), intent(in) :: self
   real(pReal), dimension(3,3) :: asRotationMatrix
@@ -118,7 +118,7 @@ function asRotationMatrix(self)
 
 end function asRotationMatrix
 !---------------------------------------------------------------------------------------------------
-function asRodriguesFrankVector(self)
+pure function asRodriguesFrankVector(self)
 
   class(rotation), intent(in) :: self
   real(pReal), dimension(4)   :: asRodriguesFrankVector
@@ -127,7 +127,7 @@ function asRodriguesFrankVector(self)
  
 end function asRodriguesFrankVector
 !---------------------------------------------------------------------------------------------------
-function asHomochoric(self)
+pure function asHomochoric(self)
 
   class(rotation), intent(in) :: self
   real(pReal), dimension(3)   :: asHomochoric
@@ -145,25 +145,48 @@ subroutine fromEulerAngles(self,eu,degrees)
   real(pReal), dimension(3), intent(in) :: eu
   logical, intent(in), optional         :: degrees
 
+  real(pReal), dimension(3)             :: Eulers
+
   if (.not. present(degrees)) then
-    self%q = eu2qu(eu)
+    Eulers = eu
   else
-    self%q = eu2qu(merge(eu*INRAD,eu,degrees))
+    Eulers = merge(eu*INRAD,eu,degrees)
   endif
+
+  if (any(Eulers<0.0) .or. any(Eulers>2.0*PI) .or. Eulers(2) > PI) &
+    call IO_error(402,ext_msg='fromEulerAngles')
+
+  self%q = eu2qu(Eulers)
 
 end subroutine fromEulerAngles
 !---------------------------------------------------------------------------------------------------
-subroutine fromAxisAnglePair(self,ax,degrees)
+subroutine fromAxisAnglePair(self,ax,degrees,P)
 
   class(rotation), intent(out)          :: self
   real(pReal), dimension(4), intent(in) :: ax
   logical, intent(in), optional         :: degrees
+  integer, intent(in), optional         :: P
+
+  real                                  :: angle
+  real,dimension(3)                     :: axis
 
   if (.not. present(degrees)) then
-    self%q = ax2qu(ax)
+    angle = ax(4)
   else
-    self%q = ax2qu(merge([ax(1:3),ax(4)*INRAD],ax,degrees))
+    angle = merge(ax(4)*INRAD,ax(4),degrees)
   endif
+  
+  if (.not. present(P)) then
+    axis = ax(1:3)
+  else
+    axis = ax(1:3) * merge(-1.0,1.0,P == 1)
+    if(abs(P) /= 1) call IO_error(402,ext_msg='fromAxisAnglePair (P)')
+  endif
+
+  if(dNeq(norm2(axis),1.0) .or. angle < 0.0 .or. angle > PI) &
+    call IO_error(402,ext_msg='fromAxisAnglePair')
+  
+  self%q = ax2qu([axis,angle])
 
 end subroutine fromAxisAnglePair
 !---------------------------------------------------------------------------------------------------
@@ -171,7 +194,10 @@ subroutine fromRotationMatrix(self,om)
 
   class(rotation), intent(out)            :: self
   real(pReal), dimension(3,3), intent(in) :: om
- 
+
+  if (dNeq(math_det33(om),1.0,tol=1.0e-5)) &
+    call IO_error(402,ext_msg='fromRotationMatrix')
+
   self%q = om2qu(om)
 
 end subroutine fromRotationMatrix
@@ -711,13 +737,14 @@ pure function ax2om(ax) result(om)
   real(pReal),             dimension(3,3) :: om
   
   real(pReal)                             :: q, c, s, omc
-  integer                                 :: i
 
   c = cos(ax(4))
   s = sin(ax(4))
   omc = 1.0-c
 
-  forall(i=1:3) om(i,i) = ax(i)**2*omc + c
+  om(1,1) = ax(1)**2*omc + c
+  om(2,2) = ax(2)**2*omc + c
+  om(3,3) = ax(3)**2*omc + c
 
   q = omc*ax(1)*ax(2)
   om(1,2) = q + s*ax(3)
