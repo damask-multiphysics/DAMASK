@@ -124,7 +124,7 @@ getDetails cmake --version
 
 firstLevel "Abaqus"
 cd installation/mods_Abaqus                                                                         # to have the right environment file
-for executable in abaqus abq2017 abq2018; do
+for executable in abaqus abq2017 abq2018 abq2019; do
   getDetails $executable 'information=all'
 done
 cd ../..
