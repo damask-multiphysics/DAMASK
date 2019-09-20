@@ -42,24 +42,19 @@ class Marc(Solver):
 
 #--------------------------
   def submit_job(self,
-                 model        = 'model',
+                 model,
                  job          = 'job1',
-                 logfile      = None,
+                 logfile      = False,
                  compile      = False,
                  optimization ='',
                 ):
 
 
     damaskEnv = damask.environment.Environment()
-    
-    user = 'not found'
-
-    if compile:
-      if os.path.isfile(os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc{}.f90'.format(self.version))):
-        user = os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc{}'.format(self.version))
-    else:
-      if os.path.isfile(os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc{}.marc'.format(self.version))):
-        user = os.path.join(damaskEnv.relPath('src/'),'DAMASK_marc{}'.format(self.version))
+   
+    user = os.path.join(damaskEnv.relPath('src'),'DAMASK_marc{}.{}'.format(self.version,'f90' if compile else 'marc'))
+    if not os.path.isfile(user):
+      raise FileNotFoundError("DAMASK4Marc ({}) '{}' not found".format(('source' if compile else 'binary'),user))
 
     # Define options [see Marc Installation and Operation Guide, pp 23]
     script = 'run_damask_{}mp'.format(optimization)
@@ -68,12 +63,11 @@ class Marc(Solver):
           ' -jid ' + model + '_' + job + \
           ' -nprocd 1  -autorst 0 -ci n  -cr n  -dcoup 0 -b no -v no'
 
-    if compile: cmd += ' -u ' + user+'.f90' + ' -save y'
-    else:       cmd += ' -prog ' + user
+    if compile: cmd += ' -u ' + user + ' -save y'
+    else:       cmd += ' -prog ' + os.path.splitext(user)[0]
 
-    print('job submission with{} compilation: {}'.format({False:'out',True:''}[compile],user))
-    if logfile:
-      log = open(logfile, 'w')
+    print('job submission with{} compilation: {}'.format('' if compile else 'out',user))
+    if logfile: log = open(logfile, 'w')
     print(cmd)
     process = subprocess.Popen(shlex.split(cmd),stdout = log,stderr = subprocess.STDOUT)
     log.close()
