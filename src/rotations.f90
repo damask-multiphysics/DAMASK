@@ -64,12 +64,15 @@ module rotations
       procedure, public :: asRodriguesFrankVector
       procedure, public :: asRotationMatrix
       !------------------------------------------
-      procedure, public :: fromRotationMatrix
       procedure, public :: fromEulerAngles
+      procedure, public :: fromAxisAnglePair
+      procedure, public :: fromRotationMatrix
       !------------------------------------------
-      procedure, public :: rotVector
-      procedure, public :: rotTensor
-      procedure, public :: misorientation
+      procedure, private :: rotRot__
+      generic,   public  :: operator(*) => rotRot__
+      procedure, public  :: rotVector
+      procedure, public  :: rotTensor
+      procedure, public  :: misorientation
   end type rotation
 
 
@@ -136,15 +139,6 @@ end function asHomochoric
 !---------------------------------------------------------------------------------------------------
 ! Initialize rotation from different representations
 !---------------------------------------------------------------------------------------------------
-subroutine fromRotationMatrix(self,om)
-
-  class(rotation), intent(out)            :: self
-  real(pReal), dimension(3,3), intent(in) :: om
- 
-  self%q = om2qu(om)
-
-end subroutine
-!---------------------------------------------------------------------------------------------------
 subroutine fromEulerAngles(self,eu,degrees)
 
   class(rotation), intent(out)          :: self
@@ -157,18 +151,55 @@ subroutine fromEulerAngles(self,eu,degrees)
     self%q = eu2qu(merge(eu*INRAD,eu,degrees))
   endif
 
-
-end subroutine
+end subroutine fromEulerAngles
 !---------------------------------------------------------------------------------------------------
+subroutine fromAxisAnglePair(self,ax,degrees)
+
+  class(rotation), intent(out)          :: self
+  real(pReal), dimension(4), intent(in) :: ax
+  logical, intent(in), optional         :: degrees
+
+  if (.not. present(degrees)) then
+    self%q = ax2qu(ax)
+  else
+    self%q = ax2qu(merge([ax(1:3),ax(4)*INRAD],ax,degrees))
+  endif
+
+end subroutine fromAxisAnglePair
+!---------------------------------------------------------------------------------------------------
+subroutine fromRotationMatrix(self,om)
+
+  class(rotation), intent(out)            :: self
+  real(pReal), dimension(3,3), intent(in) :: om
+ 
+  self%q = om2qu(om)
+
+end subroutine fromRotationMatrix
+!---------------------------------------------------------------------------------------------------
+
+
+!---------------------------------------------------------------------------------------------------
+!> @brief: Rotate a rotation
+!> ToDo: completly untested
+!---------------------------------------------------------------------------------------------------
+function rotRot__(self,r) result(rRot)
+    
+  type(rotation)              :: rRot
+  class(rotation), intent(in) :: self,r
+  
+  rRot = rotation(self%q*r%q)
+
+end function rotRot__
+
 
 !---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
 !> @brief rotate a vector passively (default) or actively
 !> @details: rotation is based on unit quaternion or rotation matrix (fallback)
 !---------------------------------------------------------------------------------------------------
-function rotVector(self,v,active)
+function rotVector(self,v,active) result(vRot)
     
-  real(pReal),                 dimension(3) :: rotVector
+  real(pReal),                 dimension(3) :: vRot
   class(rotation), intent(in)               :: self
   real(pReal),     intent(in), dimension(3) :: v
   logical,         intent(in), optional     :: active
@@ -188,12 +219,12 @@ function rotVector(self,v,active)
     else
       q = conjg(self%q) * (quaternion([0.0_pReal, v(1), v(2), v(3)]) * self%q )
     endif
-    rotVector = [q%x,q%y,q%z]
+    vRot = [q%x,q%y,q%z]
   else
     if (passive) then
-      rotVector = matmul(self%asRotationMatrix(),v)
+      vRot = matmul(self%asRotationMatrix(),v)
     else
-      rotVector = matmul(transpose(self%asRotationMatrix()),v)
+      vRot = matmul(transpose(self%asRotationMatrix()),v)
     endif
   endif
 
@@ -205,9 +236,9 @@ end function rotVector
 !> @brief rotate a second rank tensor passively (default) or actively
 !> @details: rotation is based on rotation matrix
 !---------------------------------------------------------------------------------------------------
-function rotTensor(self,m,active)
+function rotTensor(self,m,active) result(mRot)
   
-  real(pReal),                 dimension(3,3) :: rotTensor
+  real(pReal),                 dimension(3,3) :: mRot
   class(rotation), intent(in)                 :: self
   real(pReal),     intent(in), dimension(3,3) :: m
   logical,         intent(in), optional       :: active
@@ -221,9 +252,9 @@ function rotTensor(self,m,active)
   endif
  
   if (passive) then
-    rotTensor = matmul(matmul(self%asRotationMatrix(),m),transpose(self%asRotationMatrix()))
+    mRot = matmul(matmul(self%asRotationMatrix(),m),transpose(self%asRotationMatrix()))
   else
-    rotTensor = matmul(matmul(transpose(self%asRotationMatrix()),m),self%asRotationMatrix())
+    mRot = matmul(matmul(transpose(self%asRotationMatrix()),m),self%asRotationMatrix())
   endif
 
 end function rotTensor
@@ -396,7 +427,7 @@ end function qu2cu
 !> @brief convert rotation matrix to cubochoric
 !> @details the original formulation (direct conversion) had (numerical?) issues
 !---------------------------------------------------------------------------------------------------
-function om2qu(om) result(qu)
+pure function om2qu(om) result(qu)
 
   real(pReal), intent(in), dimension(3,3) :: om
   type(quaternion)                        :: qu
