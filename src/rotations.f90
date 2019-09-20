@@ -70,9 +70,10 @@ module rotations
       !------------------------------------------
       procedure, private :: rotRot__
       generic,   public  :: operator(*) => rotRot__
+      generic,   public  :: rotate => rotVector,rotTensor2,rotTensor4
       procedure, public  :: rotVector
       procedure, public  :: rotTensor2
-      !procedure, public  :: rotTensor4
+      procedure, public  :: rotTensor4
       procedure, public  :: misorientation
   end type rotation
 
@@ -209,12 +210,12 @@ end subroutine fromRotationMatrix
 !> @brief: Rotate a rotation
 !> ToDo: completly untested
 !---------------------------------------------------------------------------------------------------
-function rotRot__(self,r) result(rRot)
+pure elemental function rotRot__(self,R) result(rRot)
     
   type(rotation)              :: rRot
-  class(rotation), intent(in) :: self,r
+  class(rotation), intent(in) :: self,R
   
-  rRot = rotation(self%q*r%q)
+  rRot = rotation(self%q*R%q)
 
 end function rotRot__
 
@@ -223,7 +224,7 @@ end function rotRot__
 !> @author Marc De Graef, Carnegie Mellon University
 !> @brief rotate a vector passively (default) or actively
 !---------------------------------------------------------------------------------------------------
-function rotVector(self,v,active) result(vRot)
+pure function rotVector(self,v,active) result(vRot)
     
   real(pReal),                 dimension(3) :: vRot
   class(rotation), intent(in)               :: self
@@ -257,14 +258,14 @@ end function rotVector
 
 !---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief rotate a second rank tensor passively (default) or actively
+!> @brief rotate a rank-2 tensor passively (default) or actively
 !> @details: rotation is based on rotation matrix
 !---------------------------------------------------------------------------------------------------
-function rotTensor2(self,m,active) result(mRot)
+pure function rotTensor2(self,T,active) result(tRot)
   
-  real(pReal),                 dimension(3,3) :: mRot
+  real(pReal),                 dimension(3,3) :: tRot
   class(rotation), intent(in)                 :: self
-  real(pReal),     intent(in), dimension(3,3) :: m
+  real(pReal),     intent(in), dimension(3,3) :: T
   logical,         intent(in), optional       :: active
    
   logical           :: passive
@@ -276,18 +277,49 @@ function rotTensor2(self,m,active) result(mRot)
   endif
  
   if (passive) then
-    mRot = matmul(matmul(self%asRotationMatrix(),m),transpose(self%asRotationMatrix()))
+    tRot = matmul(matmul(self%asRotationMatrix(),T),transpose(self%asRotationMatrix()))
   else
-    mRot = matmul(matmul(transpose(self%asRotationMatrix()),m),self%asRotationMatrix())
+    tRot = matmul(matmul(transpose(self%asRotationMatrix()),T),self%asRotationMatrix())
   endif
 
 end function rotTensor2
+
+!---------------------------------------------------------------------------------------------------
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief rotate a rank-4 tensor passively (default) or actively
+!> @details: rotation is based on rotation matrix
+!! ToDo: Need to check active/passive !!!
+!---------------------------------------------------------------------------------------------------
+pure function rotTensor4(self,T,active) result(tRot)
+
+  real(pReal),                 dimension(3,3,3,3) :: tRot
+  class(rotation), intent(in)                     :: self
+  real(pReal),     intent(in), dimension(3,3,3,3) :: T
+  logical,         intent(in), optional           :: active
+ 
+  real(pReal), dimension(3,3) :: R
+  integer :: i,j,k,l,m,n,o,p
+
+  if (present(active)) then
+    R = merge(transpose(self%asRotationMatrix()),self%asRotationMatrix(),active)
+  else
+    R = self%asRotationMatrix()
+  endif
+
+  tRot = 0.0_pReal
+  do i = 1,3;do j = 1,3;do k = 1,3;do l = 1,3
+  do m = 1,3;do n = 1,3;do o = 1,3;do p = 1,3
+    tRot(i,j,k,l) = tRot(i,j,k,l) &
+                  + R(i,m) * R(j,n) * R(k,o) * R(l,p) * T(m,n,o,p)
+  enddo; enddo; enddo; enddo; enddo; enddo; enddo; enddo
+
+end function rotTensor4
 
 
 !---------------------------------------------------------------------------------------------------
 !> @brief misorientation
 !---------------------------------------------------------------------------------------------------
-function misorientation(self,other)
+pure elemental function misorientation(self,other)
   
   type(rotation)              :: misorientation
   class(rotation), intent(in) :: self, other
@@ -436,7 +468,7 @@ end function qu2ho
 !> @author Marc De Graef, Carnegie Mellon University
 !> @brief convert unit quaternion to cubochoric
 !---------------------------------------------------------------------------------------------------
-function qu2cu(qu) result(cu)
+pure function qu2cu(qu) result(cu)
  
   real(pReal), intent(in), dimension(4) :: qu
   real(pReal),             dimension(3) :: cu
@@ -922,7 +954,7 @@ end function ro2ho
 !> @author Marc De Graef, Carnegie Mellon University
 !> @brief convert Rodrigues vector to cubochoric
 !---------------------------------------------------------------------------------------------------
-function ro2cu(ro) result(cu)
+pure function ro2cu(ro) result(cu)
 
   real(pReal), intent(in), dimension(4) :: ro
   real(pReal),             dimension(3) :: cu
@@ -1032,7 +1064,7 @@ end function ho2ro
 !> @author Marc De Graef, Carnegie Mellon University
 !> @brief convert homochoric to cubochoric
 !---------------------------------------------------------------------------------------------------
-function ho2cu(ho) result(cu)
+pure function ho2cu(ho) result(cu)
 
   real(pReal), intent(in), dimension(3) :: ho
   real(pReal),             dimension(3) :: cu
@@ -1046,7 +1078,7 @@ end function ho2cu
 !> @author Marc De Graef, Carnegie Mellon University
 !> @brief convert cubochoric to unit quaternion
 !---------------------------------------------------------------------------------------------------
-function cu2qu(cu) result(qu)
+pure function cu2qu(cu) result(qu)
 
   real(pReal), intent(in), dimension(3) :: cu
   real(pReal),             dimension(4) :: qu
@@ -1060,7 +1092,7 @@ end function cu2qu
 !> @author Marc De Graef, Carnegie Mellon University
 !> @brief convert cubochoric to rotation matrix
 !---------------------------------------------------------------------------------------------------
-function cu2om(cu) result(om)
+pure function cu2om(cu) result(om)
 
   real(pReal), intent(in), dimension(3)   :: cu
   real(pReal),             dimension(3,3) :: om
@@ -1074,7 +1106,7 @@ end function cu2om
 !> @author Marc De Graef, Carnegie Mellon University
 !> @brief convert cubochoric to Euler angles
 !---------------------------------------------------------------------------------------------------
-function cu2eu(cu) result(eu)
+pure function cu2eu(cu) result(eu)
 
   real(pReal), intent(in), dimension(3) :: cu
   real(pReal),             dimension(3) :: eu
@@ -1102,7 +1134,7 @@ end function cu2ax
 !> @author Marc De Graef, Carnegie Mellon University
 !> @brief convert cubochoric to Rodrigues vector
 !---------------------------------------------------------------------------------------------------
-function cu2ro(cu) result(ro)
+pure function cu2ro(cu) result(ro)
 
   real(pReal), intent(in), dimension(3) :: cu
   real(pReal),             dimension(4) :: ro
@@ -1116,7 +1148,7 @@ end function cu2ro
 !> @author Marc De Graef, Carnegie Mellon University
 !> @brief convert cubochoric to homochoric
 !---------------------------------------------------------------------------------------------------
-function cu2ho(cu) result(ho)
+pure function cu2ho(cu) result(ho)
 
   real(pReal), intent(in), dimension(3) :: cu
   real(pReal),             dimension(3) :: ho

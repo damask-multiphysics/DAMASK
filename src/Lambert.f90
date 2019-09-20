@@ -68,7 +68,7 @@ contains
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief map from 3D cubic grid to 3D ball 
 !--------------------------------------------------------------------------
-function Lambert_CubeToBall(cube) result(ball)
+pure function Lambert_CubeToBall(cube) result(ball)
  
   real(pReal), intent(in), dimension(3) :: cube
   real(pReal),             dimension(3) :: ball, LamXYZ, XYZ
