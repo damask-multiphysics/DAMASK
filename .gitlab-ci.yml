@@ -69,12 +69,10 @@ variables:
   PETSc_MPICH_Intel:               "$PETSc3_10_3IMPI2018Intel18_4"
   PETSc_MPICH_GNU:                 "$PETSc3_10_3MPICH3_3GNU8_2"
   # ++++++++++++ commercial FEM ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  Abaqus2019:                      "FEM/Abaqus/2019"
-  MSC2018_1:                       "FEM/MSC/2018.1"
+  MSC2018:                         "FEM/MSC/2018"
   MSC2019:                         "FEM/MSC/2019"
   # ------------ Defaults ----------------------------------------------
-  Abaqus:                          "$Abaqus2019"
-  MSC:                             "$MSC2019"
+  MSC:                             "$MSC2018"
   IntelMarc:                       "$IntelCompiler17_8"
   IntelAbaqus:                     "$IntelCompiler16_4"
   HDF5Marc:                        "HDF5/1.10.4/Intel-17.8"
@@ -391,7 +389,6 @@ Phenopowerlaw_singleSlip:
     - master
     - release
 
-
 ###################################################################################################
 Marc_compileIfort:
   stage: compileMarc
@@ -403,12 +400,12 @@ Marc_compileIfort:
     - master
     - release
 
-
 ###################################################################################################
 Hex_elastic:
   stage: marc
   script:
     - module load $IntelMarc $HDF5Marc $MSC
+    - export DAMASK_HDF5=ON
     - Hex_elastic/test.py
   except:
     - master
@@ -418,6 +415,7 @@ CubicFCC_elastic:
   stage: marc
   script:
     - module load $IntelMarc $HDF5Marc $MSC
+    - export DAMASK_HDF5=ON
     - CubicFCC_elastic/test.py
   except:
     - master
@@ -427,6 +425,7 @@ CubicBCC_elastic:
   stage: marc
   script:
     - module load $IntelMarc $HDF5Marc $MSC
+    - export DAMASK_HDF5=ON
     - CubicBCC_elastic/test.py
   except:
     - master
@@ -436,6 +435,7 @@ J2_plasticBehavior:
   stage: marc
   script:
     - module load $IntelMarc $HDF5Marc $MSC
+    - export DAMASK_HDF5=ON
     - J2_plasticBehavior/test.py
   except:
     - master

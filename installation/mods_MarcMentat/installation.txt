@@ -11,7 +11,7 @@ The Intel Fortran compiler needs to be installed.
 
 1) Install Marc, Mentat and Documentation as usual
    Run the test example including subroutines to confirm that the installation of both Marc/Mentat and the Intel Fortran Compiler is ok!
-2) Run the apply_DAMASK_modifications script from this directory.
+2) Run the apply_DAMASK_modifications.sh script from this directory.
 
 
 APPENDIX:
@@ -19,7 +19,7 @@ APPENDIX:
 The structure of this directory should be (VERSION = 20XX or 20XX.Y)
 
 ./installation.txt                              this text
-./apply_MPIE_modifications                      script file to apply modifications to the installation
+./apply_DAMASK_modifications.sh                 script file to apply modifications to the installation
 ./VERSION/Marc_tools/comp_user.original         original file from installation
 ./VERSION/Marc_tools/comp_damask_mp             modified version using -O1 optimization and OpenMP
 ./VERSION/Marc_tools/comp_damask_lmp            modified version using -O0 optimization and OpenMP
