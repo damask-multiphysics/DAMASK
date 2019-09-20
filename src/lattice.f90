@@ -11,7 +11,8 @@ module lattice
   use IO
   use config
   use math
- 
+  use rotations
+
   implicit none
   private
  
@@ -916,8 +917,8 @@ function lattice_C66_twin(Ntwin,C66,structure,CoverA)
   real(pReal),                          intent(in) :: cOverA                                        !< c/a ratio
   real(pReal), dimension(6,6,sum(Ntwin))           :: lattice_C66_twin
  
-  real(pReal),dimension(3,3,sum(Ntwin)) :: coordinateSystem
-  real(pReal), dimension(3,3)           :: R
+  real(pReal), dimension(3,3,sum(Ntwin)):: coordinateSystem
+  type(rotation)                        :: R
   integer                               :: i
   
   if (len_trim(structure) /= 3) &
@@ -938,9 +939,10 @@ function lattice_C66_twin(Ntwin,C66,structure,CoverA)
   end select
  
   do i = 1, sum(Ntwin)
-    R = math_axisAngleToR(coordinateSystem(1:3,2,i), PI)                                            ! ToDo: Why always 180 deg?
-    lattice_C66_twin(1:6,1:6,i) = math_sym3333to66(math_rotate_forward3333(math_66toSym3333(C66),R))
+    call R%fromAxisAnglePair([coordinateSystem(1:3,2,i),PI],P=1)                                    ! ToDo: Why always 180 deg?
+    lattice_C66_twin(1:6,1:6,i) = math_sym3333to66(math_rotate_forward3333(math_66toSym3333(C66),R%asRotationMatrix()))
   enddo
+
 end function lattice_C66_twin
  
  
@@ -1000,6 +1002,7 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_target, &
   do i = 1, sum(Ntrans)
     lattice_C66_trans(1:6,1:6,i) = math_sym3333to66(math_rotate_forward3333(C_target_unrotated,Q(1:3,1:3,i)))
   enddo
+
  end function lattice_C66_trans
  
  
@@ -1015,9 +1018,10 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
   integer,                                  intent(in) :: sense                                     !< sense (-1,+1)
   real(pReal), dimension(1:3,1:3,sum(Nslip))           :: nonSchmidMatrix
  
-  real(pReal), dimension(1:3,1:3,sum(Nslip))              :: coordinateSystem                       !< coordinate system of slip system
-  real(pReal), dimension(:),                  allocatable :: direction, normal, np
-  integer                                                 :: i
+  real(pReal), dimension(1:3,1:3,sum(Nslip))           :: coordinateSystem                          !< coordinate system of slip system
+  real(pReal), dimension(3)                            :: direction, normal, np
+  type(rotation)                                       :: R
+  integer                                              :: i
  
   if (abs(sense) /= 1) call IO_error(0,ext_msg='lattice_nonSchmidMatrix')
  
@@ -1029,7 +1033,9 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
   do i = 1,sum(Nslip)
     direction = coordinateSystem(1:3,1,i)
     normal    = coordinateSystem(1:3,2,i)
-    np = matmul(math_axisAngleToR(direction,60.0_pReal*INRAD), normal)
+    call R%fromAxisAnglePair([direction,60.0_pReal],degrees=.true.,P=1)
+    np = R%rotVector(normal)
+
     if (size(nonSchmidCoefficients)>0) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
       + nonSchmidCoefficients(1) * math_outer(direction, np)
     if (size(nonSchmidCoefficients)>1) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
@@ -1044,6 +1050,7 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
     if (size(nonSchmidCoefficients)>5) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
       + nonSchmidCoefficients(6) * math_outer(direction, direction)
   enddo
+
 end function lattice_nonSchmidMatrix
  
  
@@ -2143,10 +2150,11 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
     a_bcc, &                                                                                        !< lattice parameter a for target bcc structure
     a_fcc                                                                                           !< lattice parameter a for parent fcc structure
  
-  real(pReal), dimension(3,3) :: &
+  type(rotation) :: &
     R, &                                                                                            !< Pitsch rotation
+    B                                                                                               !< Rotation of fcc to Bain coordinate system    
+  real(pReal), dimension(3,3) :: &
     U, &                                                                                            !< Bain deformation
-    B, &                                                                                            !< Rotation of fcc to Bain coordinate system
     ss, sd
   real(pReal), dimension(3) :: &
     x, y, z
@@ -2170,17 +2178,17 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
        real(pReal), dimension(4,LATTICE_fcc_Ntrans), parameter :: &
     LATTICE_FCCTOBCC_SYSTEMTRANS = reshape([&
       0.0, 1.0, 0.0,     10.26, &                                                                   ! Pitsch OR (Ma & Hartmaier 2014, Table 3)
-      0.0, 1.0, 0.0,    -10.26, &
+      0.0,-1.0, 0.0,     10.26, &
       0.0, 0.0, 1.0,     10.26, &
-      0.0, 0.0, 1.0,    -10.26, &
+      0.0, 0.0,-1.0,     10.26, &
       1.0, 0.0, 0.0,     10.26, &
-      1.0, 0.0, 0.0,    -10.26, &
+     -1.0, 0.0, 0.0,     10.26, &
       0.0, 0.0, 1.0,     10.26, &
-      0.0, 0.0, 1.0,    -10.26, &
+      0.0, 0.0,-1.0,     10.26, &
       1.0, 0.0, 0.0,     10.26, &
-      1.0, 0.0, 0.0,    -10.26, &
+     -1.0, 0.0, 0.0,     10.26, &
       0.0, 1.0, 0.0,     10.26, &
-      0.0, 1.0, 0.0,    -10.26  &
+      0.0,-1.0, 0.0,     10.26  &
       ],shape(LATTICE_FCCTOBCC_SYSTEMTRANS))
  
   integer, dimension(9,LATTICE_fcc_Ntrans), parameter :: &
@@ -2220,19 +2228,17 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
  
   if (a_bcc > 0.0_pReal .and. dEq0(cOverA)) then                                                    ! fcc -> bcc transformation
     do i = 1,sum(Ntrans)
-      R = math_axisAngleToR(lattice_fccTobcc_systemTrans(1:3,i), &
-                            lattice_fccTobcc_systemTrans(4,i)*INRAD)
-      B = math_axisAngleToR(lattice_fccTobcc_bainRot(1:3,i), & 
-                            lattice_fccTobcc_bainRot(4,i)*INRAD)
-      x = real(LATTICE_fccTobcc_bainVariant(1:3,i),pReal)
-      y = real(LATTICE_fccTobcc_bainVariant(4:6,i),pReal)
-      z = real(LATTICE_fccTobcc_bainVariant(7:9,i),pReal)
+      call R%fromAxisAnglePair(LATTICE_FCCTOBCC_SYSTEMTRANS(:,i),degrees=.true.,P=1)
+      call B%fromAxisAnglePair(LATTICE_FCCTOBCC_BAINROT(:,i),    degrees=.true.,P=1)
+      x = real(LATTICE_FCCTOBCC_BAINVARIANT(1:3,i),pReal)
+      y = real(LATTICE_FCCTOBCC_BAINVARIANT(4:6,i),pReal)
+      z = real(LATTICE_FCCTOBCC_BAINVARIANT(7:9,i),pReal)
  
       U = (a_bcc/a_fcc)*math_outer(x,x) &
         + (a_bcc/a_fcc)*math_outer(y,y) * sqrt(2.0_pReal) &
         + (a_bcc/a_fcc)*math_outer(z,z) * sqrt(2.0_pReal)
-      Q(1:3,1:3,i) = matmul(R,B)
-      S(1:3,1:3,i) = matmul(R,U) - MATH_I3
+      Q(1:3,1:3,i) = matmul(R%asRotationMatrix(),B%asRotationMatrix())
+      S(1:3,1:3,i) = matmul(R%asRotationMatrix(),U) - MATH_I3
     enddo
   elseif (cOverA > 0.0_pReal .and. dEq0(a_bcc)) then                                                ! fcc -> hex transformation
     ss      = MATH_I3
@@ -2242,8 +2248,8 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
       sd(3,3) = cOverA/sqrt(8.0_pReal/3.0_pReal)
  
     do i = 1,sum(Ntrans)
-      x = lattice_fccTohex_systemTrans(1:3,i)/norm2(lattice_fccTohex_systemTrans(1:3,i))
-      z = lattice_fccTohex_systemTrans(4:6,i)/norm2(lattice_fccTohex_systemTrans(4:6,i))
+      x = LATTICE_FCCTOHEX_SYSTEMTRANS(1:3,i)/norm2(LATTICE_FCCTOHEX_SYSTEMTRANS(1:3,i))
+      z = LATTICE_FCCTOHEX_SYSTEMTRANS(4:6,i)/norm2(LATTICE_FCCTOHEX_SYSTEMTRANS(4:6,i))
       y = -math_cross(x,z)
       Q(1:3,1,i) = x
       Q(1:3,2,i) = y
@@ -2253,7 +2259,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
   else
     call IO_error(0) !ToDo: define error
   endif
- 
+
 end subroutine buildTransformationSystem
  
 end module lattice

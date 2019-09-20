@@ -968,10 +968,7 @@ end function math_qRot
 
 !--------------------------------------------------------------------------------------------------
 !> @brief rotation matrix from Bunge-Euler (3-1-3) angles (in radians)
-!> @details rotation matrix is meant to represent a PASSIVE rotation, composed of INTRINSIC
-!> @details rotations around the axes of the details rotating reference frame.
-!> @details similar to eu2om from "D Rowenhorst et al. Consistent representations of and conversions
-!> @details between 3D rotations, Model. Simul. Mater. Sci. Eng. 23-8 (2015)", but R is transposed
+!> @details deprecated
 !--------------------------------------------------------------------------------------------------
 pure function math_EulerToR(Euler)
 
@@ -1001,48 +998,6 @@ pure function math_EulerToR(Euler)
   math_EulerToR = transpose(math_EulerToR)  ! convert to passive rotation
 
 end function math_EulerToR
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief rotation matrix from axis and angle (in radians)
-!> @details rotation matrix is meant to represent a ACTIVE rotation
-!> @details (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
-!> @details formula for active rotation taken from http://mathworld.wolfram.com/RodriguesRotationFormula.html
-!> @details equivalent to eu2om (P=-1) from "D Rowenhorst et al. Consistent representations of and
-!> @details conversions between 3D rotations, Model. Simul. Mater. Sci. Eng. 23-8 (2015)"
-!--------------------------------------------------------------------------------------------------
-pure function math_axisAngleToR(axis,omega)
-
-  real(pReal), dimension(3,3) :: math_axisAngleToR
-  real(pReal), dimension(3), intent(in) :: axis
-  real(pReal), intent(in) :: omega
-  real(pReal), dimension(3) :: n
-  real(pReal) :: norm,s,c,c1
-
-  norm = norm2(axis)
-  wellDefined: if (norm > 1.0e-8_pReal) then
-    n = axis/norm                                                                                    ! normalize axis to be sure
-
-    s = sin(omega)
-    c = cos(omega)
-    c1 = 1.0_pReal - c
-
-    math_axisAngleToR(1,1) =  c + c1*n(1)**2.0_pReal
-    math_axisAngleToR(1,2) =  c1*n(1)*n(2) - s*n(3)
-    math_axisAngleToR(1,3) =  c1*n(1)*n(3) + s*n(2)
-                              
-    math_axisAngleToR(2,1) =  c1*n(1)*n(2) + s*n(3)
-    math_axisAngleToR(2,2) =  c + c1*n(2)**2.0_pReal
-    math_axisAngleToR(2,3) =  c1*n(2)*n(3) - s*n(1)
-                              
-    math_axisAngleToR(3,1) =  c1*n(1)*n(3) - s*n(2)
-    math_axisAngleToR(3,2) =  c1*n(2)*n(3) + s*n(1)
-    math_axisAngleToR(3,3) =  c + c1*n(3)**2.0_pReal
-  else wellDefined
-    math_axisAngleToR = math_I3
-  endif wellDefined
- 
-end function math_axisAngleToR
 
 
 !--------------------------------------------------------------------------------------------------
