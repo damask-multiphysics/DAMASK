@@ -152,8 +152,8 @@ module material
   integer, dimension(:,:,:), allocatable, public, protected :: &
     material_texture                                                                                !< texture (index) of each grain,IP,element. Only used by plastic_nonlocal
  
-  real(pReal), dimension(:,:,:,:), allocatable, public, protected :: &
-    material_EulerAngles                                                                            !< initial orientation of each grain,IP,element
+  type(Rotation), dimension(:,:,:), allocatable, public, protected :: &
+    material_orientation0                                                                           !< initial orientation of each grain,IP,element
  
   logical, dimension(:), allocatable, public, protected :: &
     microstructure_active, &
@@ -313,17 +313,17 @@ subroutine material_init
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! new mappings
-  allocate(material_phaseAt(homogenization_maxNgrains,discretization_nElem),        source=0)
-  allocate(material_texture(homogenization_maxNgrains,discretization_nIP,discretization_nElem),      source=0)   !this is only needed by plasticity nonlocal
-  allocate(material_EulerAngles(3,homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0.0_pReal)
+  allocate(material_phaseAt(homogenization_maxNgrains,discretization_nElem),                   source=0)
+  allocate(material_texture(homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0)   !this is only needed by plasticity nonlocal
+  allocate(material_orientation0(homogenization_maxNgrains,discretization_nIP,discretization_nElem))
  
   do e = 1, discretization_nElem
      do i = 1, discretization_nIP
        myMicro = discretization_microstructureAt(e)
        do c = 1, homogenization_Ngrains(discretization_homogenizationAt(e))
-         material_phaseAt(c,e)           = microstructure_phase(c,myMicro)
-         material_texture(c,i,e)         = microstructure_texture(c,myMicro)
-         material_EulerAngles(1:3,c,i,e) = texture_Eulers(material_texture(c,i,e))%asEulerAngles()  ! this is a copy of crystallite_orientation0
+         material_phaseAt(c,e)        = microstructure_phase(c,myMicro)
+         material_texture(c,i,e)      = microstructure_texture(c,myMicro)
+         material_orientation0(c,i,e) = texture_Eulers(material_texture(c,i,e))                     ! this is a copy of crystallite_orientation0
        enddo
      enddo
    enddo

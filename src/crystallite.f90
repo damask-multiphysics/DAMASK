@@ -47,8 +47,7 @@ module crystallite
     crystallite_subFrac, &                                                                          !< already calculated fraction of increment
     crystallite_subStep                                                                             !< size of next integration step
   type(rotation),            dimension(:,:,:),        allocatable :: &
-    crystallite_orientation, &                                                                      !< orientation 
-    crystallite_orientation0                                                                        !< initial orientation
+    crystallite_orientation                                                                         !< current orientation 
   real(pReal),               dimension(:,:,:,:,:),    allocatable, public, protected :: &
     crystallite_Fe, &                                                                               !< current "elastic" def grad (end of converged time step)
     crystallite_P                                                                                   !< 1st Piola-Kirchhoff stress per grain
@@ -211,7 +210,6 @@ subroutine crystallite_init
   allocate(crystallite_subFrac(cMax,iMax,eMax),               source=0.0_pReal)
   allocate(crystallite_subStep(cMax,iMax,eMax),               source=0.0_pReal)
   allocate(crystallite_orientation(cMax,iMax,eMax))
-  allocate(crystallite_orientation0(cMax,iMax,eMax))
   allocate(crystallite_localPlasticity(cMax,iMax,eMax),       source=.true.)
   allocate(crystallite_requested(cMax,iMax,eMax),             source=.false.)
   allocate(crystallite_todo(cMax,iMax,eMax),                  source=.false.)
@@ -382,7 +380,7 @@ subroutine crystallite_init
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     myNcomponents = homogenization_Ngrains(material_homogenizationAt(e))
     do i = FEsolving_execIP(1,e), FEsolving_execIP(2,e); do c = 1, myNcomponents
-      crystallite_Fp0(1:3,1:3,c,i,e) = math_EulerToR(material_EulerAngles(1:3,c,i,e))               ! plastic def gradient reflects init orientation
+      crystallite_Fp0(1:3,1:3,c,i,e) = material_orientation0(c,i,e)%asRotationMatrix()              ! plastic def gradient reflects init orientation
       crystallite_Fi0(1:3,1:3,c,i,e) = constitutive_initialFi(c,i,e)
       crystallite_F0(1:3,1:3,c,i,e)  = math_I3
       crystallite_localPlasticity(c,i,e) = phase_localPlasticity(material_phaseAt(c,e))
@@ -403,7 +401,6 @@ subroutine crystallite_init
   crystallite_partionedF   = crystallite_F0
  
   call crystallite_orientations()
-  crystallite_orientation0 = crystallite_orientation                                                ! store initial orientations for calculation of grain rotations
  
   !$OMP PARALLEL DO
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
@@ -860,8 +857,8 @@ function crystallite_push33ToRef(ipc,ip,el, tensor33)
     ip, &
     ipc
  
-  T = matmul(math_EulerToR(material_EulerAngles(1:3,ipc,ip,el)), &
-                    transpose(math_inv33(crystallite_subF(1:3,1:3,ipc,ip,el))))
+  T = matmul(material_orientation0(ipc,ip,el)%asRotationMatrix(), &                                 ! ToDo: initial orientation correct?
+             transpose(math_inv33(crystallite_subF(1:3,1:3,ipc,ip,el))))
   crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))
 
 end function crystallite_push33ToRef
@@ -909,7 +906,7 @@ function crystallite_postResults(ipc, ip, el)
         crystallite_postResults(c+1:c+mySize) = crystallite_orientation(ipc,ip,el)%asQuaternion()
 
       case (grainrotation_ID)
-        rot = crystallite_orientation0(ipc,ip,el)%misorientation(crystallite_orientation(ipc,ip,el))
+        rot = material_orientation0(ipc,ip,el)%misorientation(crystallite_orientation(ipc,ip,el))
         mySize = 4
         crystallite_postResults(c+1:c+mySize) = rot%asAxisAnglePair()
         crystallite_postResults(c+4) = inDeg * crystallite_postResults(c+4)                          ! angle in degree
