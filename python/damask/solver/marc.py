@@ -8,7 +8,7 @@ import damask
 class Marc(Solver):
   """Wrapper to run DAMASK with MSCMarc."""
 
-  def __init__(self,version=float(damask.Environment().options['MARC_VERSION'])):
+  def __init__(self,version=damask.Environment().options['MARC_VERSION']):
     """
     Create a Marc solver object.
     
@@ -19,7 +19,7 @@ class Marc(Solver):
 
     """
     self.solver  ='Marc'
-    self.version = float(damask.environment.Environment().options['MARC_VERSION'])
+    self.version = damask.environment.Environment().options['MARC_VERSION']
 
 
 #--------------------------
