@@ -31,8 +31,8 @@
 !> @author Marc De Graef, Carnegie Mellon University
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief rotation storage and conversion
-!> @details: rotation is internally stored as quaternion. It cabe inialized from different 
-!> represantations and also returns itself in different representations.
+!> @details: rotation is internally stored as quaternion. It can be inialized from different 
+!> representations and also returns itself in different representations.
 !
 !  All methods and naming conventions based on Rowenhorst_etal2015
 !    Convention 1: coordinate frames are right-handed
@@ -87,7 +87,7 @@ pure function asQuaternion(self)
   class(rotation), intent(in) :: self
   real(pReal), dimension(4)   :: asQuaternion
  
-  asQuaternion = [self%q%w, self%q%x, self%q%y, self%q%z]
+  asQuaternion = self%q%asArray()
 
 end function asQuaternion
 !---------------------------------------------------------------------------------------------------
@@ -96,7 +96,7 @@ pure function asEulerAngles(self)
   class(rotation), intent(in) :: self
   real(pReal), dimension(3)   :: asEulerAngles
    
-  asEulerAngles = qu2eu(self%q)
+  asEulerAngles = qu2eu(self%q%asArray())
 
 end function asEulerAngles
 !---------------------------------------------------------------------------------------------------
@@ -105,7 +105,7 @@ pure function asAxisAnglePair(self)
   class(rotation), intent(in) :: self
   real(pReal), dimension(4)   :: asAxisAnglePair
  
-  asAxisAnglePair = qu2ax(self%q)
+  asAxisAnglePair = qu2ax(self%q%asArray())
 
 end function asAxisAnglePair
 !---------------------------------------------------------------------------------------------------
@@ -114,7 +114,7 @@ pure function asRotationMatrix(self)
   class(rotation), intent(in) :: self
   real(pReal), dimension(3,3) :: asRotationMatrix
  
-  asRotationMatrix = qu2om(self%q)
+  asRotationMatrix = qu2om(self%q%asArray())
 
 end function asRotationMatrix
 !---------------------------------------------------------------------------------------------------
@@ -123,7 +123,7 @@ pure function asRodriguesFrankVector(self)
   class(rotation), intent(in) :: self
   real(pReal), dimension(4)   :: asRodriguesFrankVector
  
-  asRodriguesFrankVector = qu2ro(self%q)
+  asRodriguesFrankVector = qu2ro(self%q%asArray())
  
 end function asRodriguesFrankVector
 !---------------------------------------------------------------------------------------------------
@@ -132,7 +132,7 @@ pure function asHomochoric(self)
   class(rotation), intent(in) :: self
   real(pReal), dimension(3)   :: asHomochoric
  
-  asHomochoric = qu2ho(self%q)
+  asHomochoric = qu2ho(self%q%asArray())
 
 end function asHomochoric
  
@@ -230,8 +230,8 @@ function rotVector(self,v,active) result(vRot)
   real(pReal),     intent(in), dimension(3) :: v
   logical,         intent(in), optional     :: active
   
-  type(quaternion)  :: q
-  logical           :: passive
+  type(quaternion)          :: q
+  logical                   :: passive
  
   if (present(active)) then
     passive = .not. active
@@ -245,7 +245,7 @@ function rotVector(self,v,active) result(vRot)
     else
       q = conjg(self%q) * (quaternion([0.0_pReal, v(1), v(2), v(3)]) * self%q )
     endif
-    vRot = [q%x,q%y,q%z]
+    vRot = q%real()
   else
     if (passive) then
       vRot = matmul(self%asRotationMatrix(),v)
@@ -305,24 +305,24 @@ end function misorientation
 !---------------------------------------------------------------------------------------------------
 pure function qu2om(qu) result(om)
 
-  type(quaternion), intent(in)                :: qu
-  real(pReal),                 dimension(3,3) :: om
+  real(pReal), intent(in), dimension(4)   :: qu
+  real(pReal),             dimension(3,3) :: om
   
-  real(pReal)                                 :: qq
+  real(pReal)                             :: qq
 
-  qq = qu%w**2-(qu%x**2 + qu%y**2 + qu%z**2)
+  qq = qu(1)**2-sum(qu(2:4)**2)
 
 
-  om(1,1) = qq+2.0*qu%x*qu%x
-  om(2,2) = qq+2.0*qu%y*qu%y
-  om(3,3) = qq+2.0*qu%z*qu%z
+  om(1,1) = qq+2.0*qu(2)**2
+  om(2,2) = qq+2.0*qu(3)**2
+  om(3,3) = qq+2.0*qu(4)**2
 
-  om(1,2) = 2.0*(qu%x*qu%y-qu%w*qu%z)
-  om(2,3) = 2.0*(qu%y*qu%z-qu%w*qu%x)
-  om(3,1) = 2.0*(qu%z*qu%x-qu%w*qu%y)
-  om(2,1) = 2.0*(qu%y*qu%x+qu%w*qu%z)
-  om(3,2) = 2.0*(qu%z*qu%y+qu%w*qu%x)
-  om(1,3) = 2.0*(qu%x*qu%z+qu%w*qu%y)
+  om(1,2) = 2.0*(qu(2)*qu(3)-qu(1)*qu(4))
+  om(2,3) = 2.0*(qu(3)*qu(4)-qu(1)*qu(2))
+  om(3,1) = 2.0*(qu(4)*qu(2)-qu(1)*qu(3))
+  om(2,1) = 2.0*(qu(3)*qu(2)+qu(1)*qu(4))
+  om(3,2) = 2.0*(qu(4)*qu(3)+qu(1)*qu(2))
+  om(1,3) = 2.0*(qu(2)*qu(4)+qu(1)*qu(3))
 
   if (P < 0.0) om = transpose(om)
 
@@ -335,24 +335,24 @@ end function qu2om
 !---------------------------------------------------------------------------------------------------
 pure function qu2eu(qu) result(eu)
 
-  type(quaternion), intent(in)              :: qu
-  real(pReal),                 dimension(3) :: eu
+  real(pReal), intent(in), dimension(4) :: qu
+  real(pReal),             dimension(3) :: eu
   
-  real(pReal)                               :: q12, q03, chi, chiInv
+  real(pReal)                           :: q12, q03, chi, chiInv
   
-  q03 = qu%w**2+qu%z**2
-  q12 = qu%x**2+qu%y**2
+  q03 = qu(1)**2+qu(4)**2
+  q12 = qu(2)**2+qu(3)**2
   chi = sqrt(q03*q12)
   
   degenerated: if (dEq0(chi)) then
-    eu = merge([atan2(-P*2.0*qu%w*qu%z,qu%w**2-qu%z**2), 0.0_pReal, 0.0_pReal], &
-               [atan2(2.0*qu%x*qu%y,qu%x**2-qu%y**2),    PI,        0.0_pReal], &
+    eu = merge([atan2(-P*2.0*qu(1)*qu(4),qu(1)**2-qu(4)**2), 0.0_pReal, 0.0_pReal], &
+               [atan2(   2.0*qu(2)*qu(3),qu(2)**2-qu(3)**2), PI,        0.0_pReal], &
                dEq0(q12))
   else degenerated
     chiInv = 1.0/chi
-    eu = [atan2((-P*qu%w*qu%y+qu%x*qu%z)*chi, (-P*qu%w*qu%x-qu%y*qu%z)*chi ), &
+    eu = [atan2((-P*qu(1)*qu(3)+qu(2)*qu(4))*chi, (-P*qu(1)*qu(2)-qu(3)*qu(4))*chi ), &
           atan2( 2.0*chi, q03-q12 ), &
-          atan2(( P*qu%w*qu%y+qu%x*qu%z)*chi, (-P*qu%w*qu%x+qu%y*qu%z)*chi )]
+          atan2(( P*qu(1)*qu(3)+qu(2)*qu(4))*chi, (-P*qu(1)*qu(2)+qu(3)*qu(4))*chi )]
   endif degenerated
   where(eu<0.0_pReal) eu = mod(eu+2.0_pReal*PI,[2.0_pReal*PI,PI,2.0_pReal*PI])
 
@@ -365,19 +365,19 @@ end function qu2eu
 !---------------------------------------------------------------------------------------------------
 pure function qu2ax(qu) result(ax)
 
-  type(quaternion), intent(in)              :: qu
-  real(pReal),                 dimension(4) :: ax
+  real(pReal), intent(in), dimension(4) :: qu
+  real(pReal),             dimension(4) :: ax
   
-  real(pReal)                               :: omega, s
+  real(pReal)                           :: omega, s
 
-  if (dEq0(qu%x**2+qu%y**2+qu%z**2)) then
+  if (dEq0(sum(qu(2:4)**2))) then
     ax = [ 0.0_pReal, 0.0_pReal, 1.0_pReal, 0.0_pReal ]                                             ! axis = [001]
-  elseif (dNeq0(qu%w)) then
-    s =  sign(1.0_pReal,qu%w)/sqrt(qu%x**2+qu%y**2+qu%z**2)
-    omega = 2.0_pReal * acos(math_clip(qu%w,-1.0_pReal,1.0_pReal))
-    ax = [ qu%x*s, qu%y*s, qu%z*s, omega ]
+  elseif (dNeq0(qu(1))) then
+    s =  sign(1.0_pReal,qu(1))/norm2(qu(2:4))
+    omega = 2.0_pReal * acos(math_clip(qu(1),-1.0_pReal,1.0_pReal))
+    ax = [ qu(2)*s, qu(3)*s, qu(4)*s, omega ]
   else
-    ax = [ qu%x, qu%y, qu%z, PI ]
+    ax = [ qu(2),   qu(3),   qu(4),   PI ]
   end if
 
 end function qu2ax
@@ -389,20 +389,20 @@ end function qu2ax
 !---------------------------------------------------------------------------------------------------
 pure function qu2ro(qu) result(ro)
   
-  type(quaternion), intent(in)              :: qu
-  real(pReal),                 dimension(4) :: ro
+  real(pReal), intent(in), dimension(4) :: qu
+  real(pReal),             dimension(4) :: ro
   
-  real(pReal)                               :: s
-  real(pReal), parameter                    :: thr = 1.0e-8_pReal
+  real(pReal)                           :: s
+  real(pReal), parameter                :: thr = 1.0e-8_pReal
   
-  if (qu%w < thr) then
-    ro = [qu%x, qu%y, qu%z, IEEE_value(ro(4),IEEE_positive_inf)]
+  if (qu(1) < thr) then
+    ro =   [qu(2),  qu(3),  qu(4), IEEE_value(ro(4),IEEE_positive_inf)]
   else
-    s = norm2([qu%x,qu%y,qu%z])
+    s = norm2(qu(2:4))
     if (s < thr) then
-      ro = [ 0.0_pReal, 0.0_pReal, P, 0.0_pReal]
+      ro = [0.0_pReal, 0.0_pReal, P, 0.0_pReal]
     else
-      ro = [ qu%x/s,  qu%y/s,  qu%z/s, tan(acos(math_clip(qu%w,-1.0_pReal,1.0_pReal)))]
+      ro = [qu(2)/s,qu(3)/s,qu(4)/s, tan(acos(math_clip(qu(1),-1.0_pReal,1.0_pReal)))]
     endif
     
   end if
@@ -416,17 +416,17 @@ end function qu2ro
 !---------------------------------------------------------------------------------------------------
 pure function qu2ho(qu) result(ho)
 
-  type(quaternion), intent(in)               :: qu
-  real(pReal),                  dimension(3) :: ho
+  real(pReal), intent(in), dimension(4) :: qu
+  real(pReal),             dimension(3) :: ho
   
-  real(pReal)                                :: omega, f
+  real(pReal)                           :: omega, f
 
-  omega = 2.0 * acos(math_clip(qu%w,-1.0_pReal,1.0_pReal))
+  omega = 2.0 * acos(math_clip(qu(1),-1.0_pReal,1.0_pReal))
   
   if (dEq0(omega)) then
     ho = [ 0.0, 0.0, 0.0 ]
   else
-    ho = [qu%x, qu%y, qu%z]
+    ho = qu(2:4)
     f  = 0.75 * ( omega - sin(omega) )
     ho = ho/norm2(ho)* f**(1.0/3.0)
   end if
@@ -440,8 +440,8 @@ end function qu2ho
 !---------------------------------------------------------------------------------------------------
 function qu2cu(qu) result(cu)
  
-  type(quaternion), intent(in)              :: qu
-  real(pReal),                 dimension(3) :: cu
+  real(pReal), intent(in), dimension(4) :: qu
+  real(pReal),             dimension(3) :: cu
 
   cu = ho2cu(qu2ho(qu))
 
@@ -456,7 +456,7 @@ end function qu2cu
 pure function om2qu(om) result(qu)
 
   real(pReal), intent(in), dimension(3,3) :: om
-  type(quaternion)                        :: qu
+  real(pReal),             dimension(4)   :: qu
 
   qu = eu2qu(om2eu(om))
 
@@ -578,21 +578,21 @@ end function om2cu
 !---------------------------------------------------------------------------------------------------
 pure function eu2qu(eu) result(qu)
 
-  real(pReal),      intent(in), dimension(3) :: eu
-  type(quaternion)                           :: qu
-  real(pReal),                  dimension(3) :: ee
-  real(pReal)                                :: cPhi, sPhi
+  real(pReal), intent(in), dimension(3) :: eu
+  real(pReal),             dimension(4) :: qu
+  real(pReal),             dimension(3) :: ee
+  real(pReal)                           :: cPhi, sPhi
 
   ee = 0.5_pReal*eu
   
   cPhi = cos(ee(2))
   sPhi = sin(ee(2))
 
-  qu = quaternion([   cPhi*cos(ee(1)+ee(3)), &
-                   -P*sPhi*cos(ee(1)-ee(3)), &
-                   -P*sPhi*sin(ee(1)-ee(3)), &
-                   -P*cPhi*sin(ee(1)+ee(3))])
-  if(qu%w < 0.0_pReal) qu = qu%homomorphed() 
+  qu = [   cPhi*cos(ee(1)+ee(3)), &
+        -P*sPhi*cos(ee(1)-ee(3)), &
+        -P*sPhi*sin(ee(1)-ee(3)), &
+        -P*cPhi*sin(ee(1)+ee(3))]
+  if(qu(1) < 0.0_pReal) qu = qu * (-1.0_pReal)
 
 end function eu2qu
 
@@ -710,18 +710,18 @@ end function eu2cu
 !---------------------------------------------------------------------------------------------------
 pure function ax2qu(ax) result(qu)
     
-  real(pReal),      intent(in), dimension(4) :: ax
-  type(quaternion)                           :: qu
-  
-  real(pReal)                                :: c, s
+  real(pReal), intent(in), dimension(4) :: ax
+  real(pReal),             dimension(4) :: qu
+
+  real(pReal)                           :: c, s
 
 
   if (dEq0(ax(4))) then
-    qu = quaternion([ 1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal ])
+    qu = [ 1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal ]
   else
     c = cos(ax(4)*0.5)
     s = sin(ax(4)*0.5)
-    qu = quaternion([ c, ax(1)*s, ax(2)*s, ax(3)*s ])
+    qu = [ c, ax(1)*s, ax(2)*s, ax(3)*s ]
   end if
 
 end function ax2qu
@@ -837,8 +837,8 @@ end function ax2cu
 !---------------------------------------------------------------------------------------------------
 pure function ro2qu(ro) result(qu)
 
-  real(pReal),      intent(in), dimension(4) :: ro
-  type(quaternion)                           :: qu
+  real(pReal), intent(in), dimension(4) :: ro
+  real(pReal),             dimension(4) :: qu
   
   qu = ax2qu(ro2ax(ro))
 
@@ -940,8 +940,8 @@ end function ro2cu
 !---------------------------------------------------------------------------------------------------
 pure function ho2qu(ho) result(qu)
 
-  real(pReal),      intent(in), dimension(3) :: ho
-  type(quaternion)                           :: qu
+  real(pReal), intent(in), dimension(3) :: ho
+  real(pReal),             dimension(4) :: qu
 
   qu = ax2qu(ho2ax(ho))
 
@@ -1051,7 +1051,7 @@ end function ho2cu
 function cu2qu(cu) result(qu)
 
   real(pReal), intent(in), dimension(3) :: cu
-  type(quaternion)                      :: qu
+  real(pReal),             dimension(4) :: qu
 
   qu = ho2qu(cu2ho(cu))
 

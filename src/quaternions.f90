@@ -42,10 +42,10 @@ module quaternions
   real(pReal), parameter, public :: P = -1.0_pReal                                                  !< parameter for orientation conversion.
 
   type, public :: quaternion
-    real(pReal) :: w = 0.0_pReal
-    real(pReal) :: x = 0.0_pReal
-    real(pReal) :: y = 0.0_pReal
-    real(pReal) :: z = 0.0_pReal
+    real(pReal), private :: w = 0.0_pReal
+    real(pReal), private :: x = 0.0_pReal
+    real(pReal), private :: y = 0.0_pReal
+    real(pReal), private :: z = 0.0_pReal
 
 
   contains
@@ -82,6 +82,9 @@ module quaternions
     procedure, public  :: log__
 
     procedure, public  :: homomorphed => quat_homomorphed
+    procedure, public  :: asArray
+    procedure, public  :: real  => real__
+    procedure, public  :: aimag => aimag__
 
   end type
 
@@ -135,7 +138,7 @@ end function init__
 !---------------------------------------------------------------------------------------------------
 !> assing a quaternion
 !---------------------------------------------------------------------------------------------------
-elemental subroutine assign_quat__(self,other)
+elemental pure subroutine assign_quat__(self,other)
 
   type(quaternion), intent(out) :: self
   type(quaternion), intent(in)  :: other
@@ -167,7 +170,7 @@ end subroutine assign_vec__
 !---------------------------------------------------------------------------------------------------
 !> addition of two quaternions
 !---------------------------------------------------------------------------------------------------
-type(quaternion) elemental function add__(self,other)
+type(quaternion) elemental pure function add__(self,other)
 
   class(quaternion), intent(in) :: self,other
 
@@ -182,7 +185,7 @@ end function add__
 !---------------------------------------------------------------------------------------------------
 !> unary positive operator
 !---------------------------------------------------------------------------------------------------
-type(quaternion) elemental function pos__(self)
+type(quaternion) elemental pure function pos__(self)
 
   class(quaternion), intent(in) :: self
 
@@ -197,7 +200,7 @@ end function pos__
 !---------------------------------------------------------------------------------------------------
 !> subtraction of two quaternions
 !---------------------------------------------------------------------------------------------------
-type(quaternion) elemental function sub__(self,other)
+type(quaternion) elemental pure function sub__(self,other)
 
   class(quaternion), intent(in) :: self,other
 
@@ -212,7 +215,7 @@ end function sub__
 !---------------------------------------------------------------------------------------------------
 !> unary positive operator
 !---------------------------------------------------------------------------------------------------
-type(quaternion) elemental function neg__(self)
+type(quaternion) elemental pure function neg__(self)
 
   class(quaternion), intent(in) :: self
 
@@ -227,7 +230,7 @@ end function neg__
 !---------------------------------------------------------------------------------------------------
 !> multiplication of two quaternions
 !---------------------------------------------------------------------------------------------------
-type(quaternion) elemental function mul_quat__(self,other)
+type(quaternion) elemental pure function mul_quat__(self,other)
 
   class(quaternion), intent(in) :: self, other
 
@@ -242,7 +245,7 @@ end function mul_quat__
 !---------------------------------------------------------------------------------------------------
 !> multiplication of quaternions with scalar
 !---------------------------------------------------------------------------------------------------
-type(quaternion) elemental function mul_scal__(self,scal)
+type(quaternion) elemental pure function mul_scal__(self,scal)
 
   class(quaternion), intent(in) :: self
   real(pReal), intent(in) :: scal
@@ -258,7 +261,7 @@ end function mul_scal__
 !---------------------------------------------------------------------------------------------------
 !> division of two quaternions
 !---------------------------------------------------------------------------------------------------
-type(quaternion) elemental function div_quat__(self,other)
+type(quaternion) elemental pure function div_quat__(self,other)
 
   class(quaternion), intent(in) :: self, other
 
@@ -270,7 +273,7 @@ end function div_quat__
 !---------------------------------------------------------------------------------------------------
 !> divisiont of quaternions by scalar
 !---------------------------------------------------------------------------------------------------
-type(quaternion) elemental function div_scal__(self,scal)
+type(quaternion) elemental pure function div_scal__(self,scal)
 
   class(quaternion), intent(in) :: self
   real(pReal), intent(in) :: scal
@@ -283,7 +286,7 @@ end function div_scal__
 !---------------------------------------------------------------------------------------------------
 !> equality of two quaternions
 !---------------------------------------------------------------------------------------------------
-logical elemental function eq__(self,other)
+logical elemental pure function eq__(self,other)
 
   class(quaternion), intent(in) :: self,other
 
@@ -296,7 +299,7 @@ end function eq__
 !---------------------------------------------------------------------------------------------------
 !> inequality of two quaternions
 !---------------------------------------------------------------------------------------------------
-logical elemental function neq__(self,other)
+logical elemental pure function neq__(self,other)
 
   class(quaternion), intent(in) :: self,other
 
@@ -308,7 +311,7 @@ end function neq__
 !---------------------------------------------------------------------------------------------------
 !> quaternion to the power of a scalar
 !---------------------------------------------------------------------------------------------------
-type(quaternion) elemental function pow_scal__(self,expon)
+type(quaternion) elemental pure function pow_scal__(self,expon)
 
   class(quaternion), intent(in) :: self
   real(pReal), intent(in) :: expon
@@ -321,7 +324,7 @@ end function pow_scal__
 !---------------------------------------------------------------------------------------------------
 !> quaternion to the power of a quaternion
 !---------------------------------------------------------------------------------------------------
-type(quaternion) elemental function pow_quat__(self,expon)
+type(quaternion) elemental pure function pow_quat__(self,expon)
 
   class(quaternion), intent(in) :: self
   type(quaternion),  intent(in) :: expon
@@ -335,7 +338,7 @@ end function pow_quat__
 !> exponential of a quaternion
 !> ToDo: Lacks any check for invalid operations
 !---------------------------------------------------------------------------------------------------
-type(quaternion) elemental function exp__(self)
+type(quaternion) elemental pure function exp__(self)
 
   class(quaternion), intent(in) :: self
   real(pReal)                   :: absImag
@@ -354,7 +357,7 @@ end function exp__
 !> logarithm of a quaternion
 !> ToDo: Lacks any check for invalid operations
 !---------------------------------------------------------------------------------------------------
-type(quaternion) elemental function log__(self)
+type(quaternion) elemental pure function log__(self)
 
   class(quaternion), intent(in) :: self
   real(pReal)                   :: absImag
@@ -372,7 +375,7 @@ end function log__
 !---------------------------------------------------------------------------------------------------
 !> norm of a quaternion
 !---------------------------------------------------------------------------------------------------
-real(pReal) elemental function abs__(a)
+real(pReal) elemental pure function abs__(a)
 
   class(quaternion), intent(in) :: a
 
@@ -384,7 +387,7 @@ end function abs__
 !---------------------------------------------------------------------------------------------------
 !> dot product of two quaternions
 !---------------------------------------------------------------------------------------------------
-real(pReal) elemental function dot_product__(a,b)
+real(pReal) elemental pure function dot_product__(a,b)
 
   class(quaternion), intent(in) :: a,b
 
@@ -396,7 +399,7 @@ end function dot_product__
 !---------------------------------------------------------------------------------------------------
 !> conjugate complex of a quaternion
 !---------------------------------------------------------------------------------------------------
-type(quaternion) elemental function conjg__(a)
+type(quaternion) elemental pure function conjg__(a)
 
   class(quaternion), intent(in) :: a
 
@@ -408,12 +411,52 @@ end function conjg__
 !---------------------------------------------------------------------------------------------------
 !> homomorphed quaternion of a quaternion
 !---------------------------------------------------------------------------------------------------
-type(quaternion) elemental function quat_homomorphed(a)
+type(quaternion) elemental pure function quat_homomorphed(self)
 
-  class(quaternion), intent(in) :: a
+  class(quaternion), intent(in) :: self
 
-  quat_homomorphed = quaternion(-[a%w,a%x,a%y,a%z])
+  quat_homomorphed = quaternion(-[self%w,self%x,self%y,self%z])
 
 end function quat_homomorphed
+
+
+!---------------------------------------------------------------------------------------------------
+!> quaternion as plain array
+!---------------------------------------------------------------------------------------------------
+pure function asArray(self)
+
+  real(pReal), dimension(4)     :: asArray
+  class(quaternion), intent(in) :: self
+
+  asArray = [self%w,self%x,self%y,self%z]
+
+end function asArray
+
+
+!---------------------------------------------------------------------------------------------------
+!> quaternion as plain array
+!---------------------------------------------------------------------------------------------------
+pure function real__(self)
+
+  real(pReal), dimension(3)     :: real__
+  class(quaternion), intent(in) :: self
+
+  real__ = [self%x,self%y,self%z]
+
+end function real__
+
+
+!---------------------------------------------------------------------------------------------------
+!> quaternion as plain array
+!---------------------------------------------------------------------------------------------------
+pure function aimag__(self)
+
+  real(pReal)                   :: aimag__
+  class(quaternion), intent(in) :: self
+
+  aimag__ = self%w
+
+end function aimag__
+
 
 end module quaternions
