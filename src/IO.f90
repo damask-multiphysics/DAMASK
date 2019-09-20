@@ -689,10 +689,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'homogenization index out of bounds'
     case (155)
       msg = 'microstructure index out of bounds'
-    case (156)
-      msg = 'reading from ODF file'
     case (157)
-      msg = 'illegal texture transformation specified'
+      msg = 'invalid texture transformation specified'
     case (160)
       msg = 'no entries in config part'
     case (161)
@@ -733,16 +731,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'matrix inversion error'
     case (401)
       msg = 'math_check failed'
-    case (405)
-      msg = 'I_TO_HALTON-error: an input base BASE is <= 1'
-    case (406)
-      msg = 'Prime-error: N must be between 0 and PRIME_MAX'
-    case (407)
-      msg = 'Polar decomposition error'
-    case (409)
-      msg = 'math_check: R*v == q*v failed'
-    case (410)
-      msg = 'eigenvalues computation error'
+    case (402)
+      msg = 'invalid orientation specified'
 
 !-------------------------------------------------------------------------------------------------
 ! homogenization errors
@@ -793,14 +783,10 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'microstructure count mismatch'
     case (846)
       msg = 'rotation for load case rotation ill-defined (R:RT != I)'
-    case (880)
-      msg = 'mismatch of microstructure count and a*b*c in geom file'
     case (891)
       msg = 'unknown solver type selected'
     case (892)
       msg = 'unknown filter type selected'
-    case (893)
-      msg = 'PETSc: SNES_DIVERGED_FNORM_NAN'
     case (894)
       msg = 'MPI error'
 
@@ -830,8 +816,6 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 
 !-------------------------------------------------------------------------------------------------
 ! general error messages
-    case (666)
-      msg = 'memory leak detected'
     case default
       msg = 'unknown error number...'
 
