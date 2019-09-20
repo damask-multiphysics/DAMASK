@@ -153,7 +153,7 @@ subroutine fromEulerAngles(self,eu,degrees)
     Eulers = merge(eu*INRAD,eu,degrees)
   endif
 
-  if (any(Eulers<0.0) .or. any(Eulers>2.0*PI) .or. Eulers(2) > PI) &
+  if (any(Eulers<0.0_pReal) .or. any(Eulers>2.0_pReal*PI) .or. Eulers(2) > PI) &
     call IO_error(402,ext_msg='fromEulerAngles')
 
   self%q = eu2qu(Eulers)
@@ -167,8 +167,8 @@ subroutine fromAxisAnglePair(self,ax,degrees,P)
   logical, intent(in), optional         :: degrees
   integer, intent(in), optional         :: P
 
-  real                                  :: angle
-  real,dimension(3)                     :: axis
+  real(pReal)                           :: angle
+  real(pReal),dimension(3)              :: axis
 
   if (.not. present(degrees)) then
     angle = ax(4)
@@ -179,11 +179,11 @@ subroutine fromAxisAnglePair(self,ax,degrees,P)
   if (.not. present(P)) then
     axis = ax(1:3)
   else
-    axis = ax(1:3) * merge(-1.0,1.0,P == 1)
+    axis = ax(1:3) * merge(-1.0_pReal,1.0_pReal,P == 1)
     if(abs(P) /= 1) call IO_error(402,ext_msg='fromAxisAnglePair (P)')
   endif
 
-  if(dNeq(norm2(axis),1.0) .or. angle < 0.0 .or. angle > PI) &
+  if(dNeq(norm2(axis),1.0_pReal) .or. angle < 0.0_pReal .or. angle > PI) &
     call IO_error(402,ext_msg='fromAxisAnglePair')
   
   self%q = ax2qu([axis,angle])
@@ -195,7 +195,7 @@ subroutine fromRotationMatrix(self,om)
   class(rotation), intent(out)            :: self
   real(pReal), dimension(3,3), intent(in) :: om
 
-  if (dNeq(math_det33(om),1.0,tol=1.0e-5)) &
+  if (dNeq(math_det33(om),1.0_pReal,tol=1.0e-5_pReal)) &
     call IO_error(402,ext_msg='fromRotationMatrix')
 
   self%q = om2qu(om)
