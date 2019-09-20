@@ -71,7 +71,8 @@ module rotations
       procedure, private :: rotRot__
       generic,   public  :: operator(*) => rotRot__
       procedure, public  :: rotVector
-      procedure, public  :: rotTensor
+      procedure, public  :: rotTensor2
+      !procedure, public  :: rotTensor4
       procedure, public  :: misorientation
   end type rotation
 
@@ -221,7 +222,6 @@ end function rotRot__
 !---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
 !> @brief rotate a vector passively (default) or actively
-!> @details: rotation is based on unit quaternion or rotation matrix (fallback)
 !---------------------------------------------------------------------------------------------------
 function rotVector(self,v,active) result(vRot)
     
@@ -230,8 +230,9 @@ function rotVector(self,v,active) result(vRot)
   real(pReal),     intent(in), dimension(3) :: v
   logical,         intent(in), optional     :: active
   
-  type(quaternion)          :: q
-  logical                   :: passive
+  real(pReal),    dimension(3) :: v_normed
+  type(quaternion)             :: q
+  logical                      :: passive
  
   if (present(active)) then
     passive = .not. active
@@ -239,19 +240,16 @@ function rotVector(self,v,active) result(vRot)
     passive = .true.
   endif
  
-  if (dEq(norm2(v),1.0_pReal,tol=1.0e-15_pReal)) then
-    if (passive) then
-      q = self%q * (quaternion([0.0_pReal, v(1), v(2), v(3)]) * conjg(self%q) )
-    else
-      q = conjg(self%q) * (quaternion([0.0_pReal, v(1), v(2), v(3)]) * self%q )
-    endif
-    vRot = q%real()
+  if (dEq0(norm2(v))) then
+    vRot = v
   else
+    v_normed = v_normed/norm2(v)
     if (passive) then
-      vRot = matmul(self%asRotationMatrix(),v)
+      q = self%q * (quaternion([0.0_pReal, v_normed(1), v_normed(2), v_normed(3)]) * conjg(self%q) )
     else
-      vRot = matmul(transpose(self%asRotationMatrix()),v)
+      q = conjg(self%q) * (quaternion([0.0_pReal, v_normed(1), v_normed(2), v_normed(3)]) * self%q )
     endif
+    vRot = q%real()*norm2(v)
   endif
 
 end function rotVector
@@ -262,7 +260,7 @@ end function rotVector
 !> @brief rotate a second rank tensor passively (default) or actively
 !> @details: rotation is based on rotation matrix
 !---------------------------------------------------------------------------------------------------
-function rotTensor(self,m,active) result(mRot)
+function rotTensor2(self,m,active) result(mRot)
   
   real(pReal),                 dimension(3,3) :: mRot
   class(rotation), intent(in)                 :: self
@@ -283,7 +281,7 @@ function rotTensor(self,m,active) result(mRot)
     mRot = matmul(matmul(transpose(self%asRotationMatrix()),m),self%asRotationMatrix())
   endif
 
-end function rotTensor
+end function rotTensor2
 
 
 !---------------------------------------------------------------------------------------------------
