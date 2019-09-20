@@ -243,7 +243,7 @@ function rotVector(self,v,active) result(vRot)
   if (dEq0(norm2(v))) then
     vRot = v
   else
-    v_normed = v_normed/norm2(v)
+    v_normed = v/norm2(v)
     if (passive) then
       q = self%q * (quaternion([0.0_pReal, v_normed(1), v_normed(2), v_normed(3)]) * conjg(self%q) )
     else
