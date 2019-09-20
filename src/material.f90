@@ -169,8 +169,9 @@ module material
     microstructure_phase, &                                                                         !< phase IDs of each microstructure
     microstructure_texture                                                                          !< texture IDs of each microstructure
  
+  type(Rotation), dimension(:), allocatable, private :: &
+    texture_Eulers                                                                                  !< Euler angles in material.config (possibly rotated for alignment)
   real(pReal), dimension(:,:), allocatable, private :: &
-    texture_Eulers, &                                                                               !< Euler angles in material.config (possibly rotated for alignment)
     microstructure_fraction                                                                         !< vol fraction of each constituent in microstructure
  
   logical, dimension(:), allocatable, private :: &
@@ -322,7 +323,7 @@ subroutine material_init
        do c = 1, homogenization_Ngrains(discretization_homogenizationAt(e))
          material_phaseAt(c,e)           = microstructure_phase(c,myMicro)
          material_texture(c,i,e)         = microstructure_texture(c,myMicro)
-         material_EulerAngles(1:3,c,i,e) = texture_Eulers(1:3,material_texture(c,i,e))                ! this is a copy of crystallite_orientation0
+         material_EulerAngles(1:3,c,i,e) = texture_Eulers(material_texture(c,i,e))%asEulerAngles()  ! this is a copy of crystallite_orientation0
        enddo
      enddo
    enddo
@@ -687,11 +688,11 @@ end subroutine material_parsePhase
 !--------------------------------------------------------------------------------------------------
 subroutine material_parseTexture
 
-  integer :: j, t, i
+  integer :: j, t
   character(len=65536), dimension(:), allocatable ::  strings                                       ! Values for given key in material config 
   integer, dimension(:), allocatable :: chunkPos
   real(pReal), dimension(3,3) :: texture_transformation                                             ! maps texture to microstructure coordinate system
-  type(rotation) :: unajusted, adjusted
+  real(pReal), dimension(3)   :: Eulers                                                             ! Euler angles in degrees from file
 
   do t=1, size(config_texture)
     if (config_texture(t)%countKeys('(gauss)') /= 1) call IO_error(147,ext_msg='count((gauss)) != 1')
@@ -700,24 +701,23 @@ subroutine material_parseTexture
     if (config_texture(t)%keyExists('(fiber)'))      call IO_error(147,ext_msg='(fiber)')
   enddo
 
-  allocate(texture_Eulers (3,size(config_texture)), source=0.0_pReal)
+  allocate(texture_Eulers(size(config_texture)))
 
   do t=1, size(config_texture)
     
     strings = config_texture(t)%getStrings('(gauss)',raw= .true.)
-    do i = 1 , size(strings)
-      chunkPos = IO_stringPos(strings(i))
-      do j = 1,9,2
-        select case (IO_stringValue(strings(i),chunkPos,j))
-          case('phi1')
-            texture_Eulers(1,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
-          case('phi')
-            texture_Eulers(2,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
-          case('phi2')
-            texture_Eulers(3,t) = IO_floatValue(strings(i),chunkPos,j+1)*inRad
-        end select
-      enddo
+    chunkPos = IO_stringPos(strings(1))
+    do j = 1,9,2
+      select case (IO_stringValue(strings(1),chunkPos,j))
+        case('phi1')
+          Eulers(1) = IO_floatValue(strings(1),chunkPos,j+1)
+        case('phi')
+          Eulers(2) = IO_floatValue(strings(1),chunkPos,j+1)
+        case('phi2')
+          Eulers(3) = IO_floatValue(strings(1),chunkPos,j+1)
+      end select
     enddo
+    call texture_Eulers(t)%fromEulerAngles(Eulers,degrees=.true.)
 
     if (config_texture(t)%keyExists('axes')) then
       strings = config_texture(t)%getStrings('axes')
@@ -740,9 +740,7 @@ subroutine material_parseTexture
         end select
       enddo
       if(dNeq(math_det33(texture_transformation),1.0_pReal)) call IO_error(157,t)
-      call unajusted%fromEulerAngles(texture_Eulers(:,t))
-      call adjusted%fromRotationMatrix(matmul(unajusted%asRotationMatrix(),texture_transformation))
-      texture_Eulers(:,t) = adjusted%asEulerAngles()
+      call texture_Eulers(t)%fromRotationMatrix(matmul(texture_Eulers(t)%asRotationMatrix(),texture_transformation))
     endif
     
   enddo 

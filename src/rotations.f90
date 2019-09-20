@@ -145,12 +145,18 @@ subroutine fromRotationMatrix(self,om)
 
 end subroutine
 !---------------------------------------------------------------------------------------------------
-subroutine fromEulerAngles(self,eu)
+subroutine fromEulerAngles(self,eu,degrees)
 
   class(rotation), intent(out)          :: self
   real(pReal), dimension(3), intent(in) :: eu
- 
-  self%q = eu2qu(eu)
+  logical, intent(in), optional         :: degrees
+
+  if (.not. present(degrees)) then
+    self%q = eu2qu(eu)
+  else
+    self%q = eu2qu(merge(eu*INRAD,eu,degrees))
+  endif
+
 
 end subroutine
 !---------------------------------------------------------------------------------------------------
