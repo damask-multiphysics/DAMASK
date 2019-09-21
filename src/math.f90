@@ -532,47 +532,26 @@ end function math_invSym3333
 
 !--------------------------------------------------------------------------------------------------
 !> @brief invert quadratic matrix of arbitrary dimension
-! ToDo: replaces math_invert
 !--------------------------------------------------------------------------------------------------
 subroutine math_invert(InvA, error, A)
 
-  real(pReal), dimension(:,:), intent(in)  :: A
-  
+  real(pReal), dimension(:,:),                 intent(in)  :: A
   real(pReal), dimension(size(A,1),size(A,1)), intent(out) :: invA
-  logical, intent(out) :: error
+  logical,                                     intent(out) :: error
 
-  call math_invert2(size(A,1), A, InvA, error)
- 
-end subroutine math_invert
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief invert matrix of arbitrary dimension
-! ToDo: Wrong order of arguments and superfluous myDim argument.
-! Use math_invert2 instead
-!--------------------------------------------------------------------------------------------------
-subroutine math_invert2(myDim,A, InvA, error)
-
-  integer, intent(in)  :: myDim
-  real(pReal), dimension(myDim,myDim), intent(in)  :: A
-
-
-  integer :: ierr
-  integer,     dimension(myDim) :: ipiv
-  real(pReal), dimension(myDim) :: work
-  
-  real(pReal), dimension(myDim,myDim), intent(out) :: invA
-  logical, intent(out) :: error
+  integer,     dimension(size(A,1)) :: ipiv
+  real(pReal), dimension(size(A,1)) :: work
+  integer                           :: ierr
   external :: &
    dgetrf, &
    dgetri
-  
+
   invA = A 
-  call dgetrf(myDim,myDim,invA,myDim,ipiv,ierr)
-  call dgetri(myDim,InvA,myDim,ipiv,work,myDim,ierr)
+  call dgetrf(size(A,1),size(A,1),invA,size(A,1),ipiv,ierr)
+  call dgetri(size(A,1),InvA,size(A,1),ipiv,work,size(A,1),ierr)
   error = merge(.true.,.false., ierr /= 0)
  
-end subroutine math_invert2
+end subroutine math_invert
 
 
 !--------------------------------------------------------------------------------------------------
