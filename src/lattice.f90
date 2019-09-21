@@ -971,6 +971,8 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_target, &
  !--------------------------------------------------------------------------------------------------
  ! elasticity matrix of the target phase in cube orientation
   if (structure_target(1:3) == 'hex') then
+    if (CoverA_trans < 1.0_pReal .or. CoverA_trans > 2.0_pReal) &
+      call IO_error(131,ext_msg='lattice_C66_trans: '//trim(structure_target))
     C_bar66(1,1) = (C_parent66(1,1) + C_parent66(1,2) + 2.0_pReal*C_parent66(4,4))/2.0_pReal
     C_bar66(1,2) = (C_parent66(1,1) + 5.0_pReal*C_parent66(1,2) - 2.0_pReal*C_parent66(4,4))/6.0_pReal
     C_bar66(3,3) = (C_parent66(1,1) + 2.0_pReal*C_parent66(1,2) + 4.0_pReal*C_parent66(4,4))/3.0_pReal
