@@ -484,9 +484,8 @@ end function math_inv33
 !> @brief Cramer inversion of 33 matrix (subroutine)
 !> @details Direct Cramer inversion of matrix A. Also returns determinant
 !  Returns an error if not possible, i.e. if determinant is close to zero
-! ToDo: Output arguments should be first
 !--------------------------------------------------------------------------------------------------
-pure subroutine math_invert33(A, InvA, DetA, error)
+pure subroutine math_invert33(InvA, DetA, error, A)
 
   logical, intent(out) :: error
   real(pReal),dimension(3,3),intent(in)  :: A

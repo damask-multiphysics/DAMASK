@@ -816,7 +816,7 @@ module procedure mech_RGC_updateState
     integer :: i,j,iBase
     logical     ::  error
   
-    call math_invert33(matmul(transpose(avgF),avgF),invC,detF,error)
+    call math_invert33(invC,detF,error,matmul(transpose(avgF),avgF))
   
     surfaceCorrection = 0.0_pReal
     do iBase = 1,3
