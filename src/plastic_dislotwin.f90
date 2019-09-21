@@ -687,7 +687,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
                       + ddot_gamma_dtau_slip(i) * prm%P_sl(k,l,i) * prm%P_sl(m,n,i)
  enddo slipContribution
- 
+
  !ToDo: Why do this before shear banding?
  Lp      = Lp      * f_unrotated
  dLp_dMp = dLp_dMp * f_unrotated
@@ -854,10 +854,8 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
  real(pReal),   intent(in) :: &
    T
 
- integer :: &
-   i
  real(pReal) :: &
-   sumf_twin,SFE,sumf_trans
+   sumf_twin,Gamma,sumf_trans
  real(pReal), dimension(param(instance)%sum_N_sl) :: &
    inv_lambda_sl_sl, &                                                                              !< 1/mean free distance between 2 forest dislocations seen by a moving dislocation
    inv_lambda_sl_tw, &                                                                              !< 1/mean free distance between 2 twin stacks from different systems seen by a moving dislocation
@@ -879,20 +877,16 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
  sumf_twin  = sum(stt%f_tw(1:prm%sum_N_tw,of))
  sumf_trans = sum(stt%f_tr(1:prm%sum_N_tr,of))
 
- SFE = prm%SFE_0K + prm%dSFE_dT * T
+ Gamma = prm%SFE_0K + prm%dSFE_dT * T
  
  !* rescaled volume fraction for topology
  f_over_t_tw = stt%f_tw(1:prm%sum_N_tw,of)/prm%t_tw  ! this is per system ...
  f_over_t_tr = sumf_trans/prm%t_tr                   ! but this not
                                                      ! ToDo ...Physically correct, but naming could be adjusted
 
+ inv_lambda_sl_sl = sqrt(matmul(transpose(prm%forestProjection), &
+                                stt%rho_mob(:,of)+stt%rho_dip(:,of)))/prm%CLambdaSlip
 
- forall (i = 1:prm%sum_N_sl) &
-   inv_lambda_sl_sl(i) = &
-     sqrt(dot_product((stt%rho_mob(1:prm%sum_N_sl,of)+stt%rho_dip(1:prm%sum_N_sl,of)),&
-                      prm%forestProjection(1:prm%sum_N_sl,i)))/prm%CLambdaSlip(i) ! change order and use matmul
-
- 
  if (prm%sum_N_tw > 0 .and. prm%sum_N_sl > 0) &
    inv_lambda_sl_tw = matmul(prm%h_sl_tw,f_over_t_tw)/(1.0_pReal-sumf_twin)
 
@@ -903,8 +897,6 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
  
  inv_lambda_tr_tr = matmul(prm%h_tr_tr,f_over_t_tr)/(1.0_pReal-sumf_trans)
 
- 
-
  if ((prm%sum_N_tw > 0) .or. (prm%sum_N_tr > 0)) then              ! ToDo: better logic needed here
    dst%Lambda_sl(:,of) = prm%D &
                        / (1.0_pReal+prm%D*(inv_lambda_sl_sl + inv_lambda_sl_tw + inv_lambda_sl_tr))
@@ -912,7 +904,6 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
    dst%Lambda_sl(:,of) = prm%D &
                        / (1.0_pReal+prm%D*inv_lambda_sl_sl) !!!!!! correct?
  endif
-
 
  dst%Lambda_tw(:,of) = prm%i_tw*prm%D/(1.0_pReal+prm%D*inv_lambda_tw_tw)
  dst%Lambda_tr(:,of) = prm%i_tr*prm%D/(1.0_pReal+prm%D*inv_lambda_tr_tr)
@@ -922,22 +913,21 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
 
  !* threshold stress for growing twin/martensite
  if(prm%sum_N_tw == prm%sum_N_sl) &
-   dst%tau_hat_tw(:,of) = SFE/(3.0_pReal*prm%b_tw) &
+   dst%tau_hat_tw(:,of) = Gamma/(3.0_pReal*prm%b_tw) &
                         + 3.0_pReal*prm%b_tw*prm%mu/(prm%L_tw*prm%b_sl) ! slip burgers here correct?
  if(prm%sum_N_tr == prm%sum_N_sl) &
-   dst%tau_hat_tr(:,of) = SFE/(3.0_pReal*prm%b_tr) &
+   dst%tau_hat_tr(:,of) = Gamma/(3.0_pReal*prm%b_tr) &
                         + 3.0_pReal*prm%b_tr*prm%mu/(prm%L_tr*prm%b_sl) & ! slip burgers here correct?
                         + prm%h*prm%gamma_fcc_hex/ (3.0_pReal*prm%b_tr)  
  
-
  dst%V_tw(:,of) = (PI/4.0_pReal)*prm%t_tw*dst%Lambda_tw(:,of)**2.0_pReal
  dst%V_tr(:,of) = (PI/4.0_pReal)*prm%t_tr*dst%Lambda_tr(:,of)**2.0_pReal
 
 
- x0 = prm%mu*prm%b_tw**2.0_pReal/(SFE*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)  ! ToDo: In the paper, this is the burgers vector for slip and is the same for twin and trans
+ x0 = prm%mu*prm%b_tw**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)  ! ToDo: In the paper, this is the burgers vector for slip and is the same for twin and trans
  dst%tau_r_tw(:,of) = prm%mu*prm%b_tw/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%xc_twin)+cos(pi/3.0_pReal)/x0)
 
- x0 = prm%mu*prm%b_tr**2.0_pReal/(SFE*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu) ! ToDo: In the paper, this is the burgers vector for slip
+ x0 = prm%mu*prm%b_tr**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu) ! ToDo: In the paper, this is the burgers vector for slip
  dst%tau_r_tr(:,of) = prm%mu*prm%b_tr/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%xc_trans)+cos(pi/3.0_pReal)/x0)
 
  end associate

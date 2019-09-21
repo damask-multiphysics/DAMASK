@@ -455,14 +455,11 @@ subroutine plastic_disloUCLA_dependentState(instance,of)
  
   real(pReal), dimension(param(instance)%sum_N_sl) :: &
     dislocationSpacing
-  integer :: &
-    i
  
   associate(prm => param(instance), stt => state(instance),dst => dependentState(instance))
  
-  forall (i = 1:prm%sum_N_sl) &
-    dislocationSpacing(i) = sqrt(dot_product(stt%rho_mob(:,of)+stt%rho_dip(:,of), &
-                                        prm%forestProjectionEdge(:,i)))
+  dislocationSpacing = sqrt(matmul(transpose(prm%forestProjectionEdge), &
+                                   stt%rho_mob(:,of)+stt%rho_dip(:,of)))
   dst%threshold_stress(:,of) = prm%mu*prm%b_sl &
                              * sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,of)+stt%rho_dip(:,of)))
  

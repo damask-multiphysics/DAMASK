@@ -365,7 +365,7 @@ subroutine plastic_isotropic_dotState(Mp,instance,of)
     else
       xi_inf_star = prm%xi_inf &
                   + asinh( (dot_gamma / prm%c_1)**(1.0_pReal / prm%c_2))**(1.0_pReal / prm%c_3) &
-                     / prm%c_4 * (dot_gamma / prm%dot_gamma_0)**(1.0_pReal / prm%n)
+                  / prm%c_4 * (dot_gamma / prm%dot_gamma_0)**(1.0_pReal / prm%n)
     endif
     dot%xi(of) = dot_gamma &
                * ( prm%h0 + prm%h_ln * log(dot_gamma) ) &
@@ -419,7 +419,7 @@ function plastic_isotropic_postResults(Mp,instance,of) result(postResults)
         c = c + 1
       case (dot_gamma_ID)
         postResults(c+1) = prm%dot_gamma_0 &
-                              * (sqrt(1.5_pReal) * norm_Mp /(prm%M * stt%xi(of)))**prm%n
+                         * (sqrt(1.5_pReal) * norm_Mp /(prm%M * stt%xi(of)))**prm%n
         c = c + 1
  
     end select
