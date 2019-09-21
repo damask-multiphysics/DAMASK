@@ -784,7 +784,7 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
  call kinetics_slip(Mp,T,instance,of,dot_gamma_sl)
  dot%gamma_sl(:,of) = abs(dot_gamma_sl)
  
- rho_dip_distance_min   = prm%CEdgeDipMinDistance*prm%b_sl
+ rho_dip_distance_min = prm%CEdgeDipMinDistance*prm%b_sl
  
  slipState: do i = 1, prm%sum_N_sl
    tau = math_mul33xx33(Mp,prm%P_sl(1:3,1:3,i))
@@ -804,7 +804,7 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
        dot_rho_dip_formation(i) = 0.0_pReal
      endif
 
-     if (dEq0(rho_dip_distance-rho_dip_distance_min(i))) then
+     if (dEq(rho_dip_distance,rho_dip_distance_min(i))) then
        dot_rho_dip_climb(i) = 0.0_pReal
      else
      !@details: Refer: Argon & Moffat, Acta Metallurgica, Vol. 29, pg 293 to 299, 1981
@@ -832,7 +832,6 @@ subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
                    - 2.0_pReal*rho_dip_distance_min/prm%b_sl * stt%rho_dip(:,of)*abs(dot_gamma_sl) &
                    - dot_rho_dip_climb
 
- 
  call kinetics_twin(Mp,T,dot_gamma_sl,instance,of,dot_gamma_twin)
  dot%f_tw(:,of) = f_unrotated*dot_gamma_twin/prm%gamma_char
 
