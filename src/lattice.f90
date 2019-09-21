@@ -1947,15 +1947,16 @@ function slipProjection_transverse(Nslip,structure,cOverA) result(projection)
   real(pReal),                                     intent(in) :: cOverA                             !< c/a ratio
   real(pReal),     dimension(sum(Nslip),sum(Nslip))           :: projection
  
-  real(pReal), dimension(3,3,sum(Nslip)) :: coordinateSystem
-  integer                                :: i, j
+  real(pReal), dimension(3,sum(Nslip)) :: n, t
+  integer                              :: i, j
   
-  coordinateSystem = coordinateSystem_slip(Nslip,structure,cOverA)
+  n = lattice_slip_normal    (Nslip,structure,cOverA)
+  t = lattice_slip_transverse(Nslip,structure,cOverA)
  
   do i=1, sum(Nslip); do j=1, sum(Nslip)
-    projection(i,j) = abs(math_inner(coordinateSystem(1:3,2,i),coordinateSystem(1:3,3,j)))
+    projection(i,j) = abs(math_inner(n(:,i),t(:,j)))
   enddo; enddo
- 
+   
 end function slipProjection_transverse
  
  
@@ -1970,13 +1971,14 @@ function slipProjection_direction(Nslip,structure,cOverA) result(projection)
   real(pReal),                                     intent(in) :: cOverA                             !< c/a ratio
   real(pReal),     dimension(sum(Nslip),sum(Nslip))           :: projection
  
-  real(pReal), dimension(3,3,sum(Nslip)) :: coordinateSystem
-  integer                                :: i, j
+  real(pReal), dimension(3,sum(Nslip)) :: n, d
+  integer                              :: i, j
   
-  coordinateSystem = coordinateSystem_slip(Nslip,structure,cOverA)
+  n = lattice_slip_normal   (Nslip,structure,cOverA)
+  d = lattice_slip_direction(Nslip,structure,cOverA)
  
   do i=1, sum(Nslip); do j=1, sum(Nslip)
-    projection(i,j) = abs(math_inner(coordinateSystem(1:3,2,i),coordinateSystem(1:3,1,j)))
+    projection(i,j) = abs(math_inner(n(:,i),d(:,j)))
   enddo; enddo
  
 end function slipProjection_direction
