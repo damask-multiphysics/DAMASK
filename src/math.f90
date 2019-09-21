@@ -454,28 +454,12 @@ end function math_exp33
 pure function math_inv33(A)
 
   real(pReal),dimension(3,3),intent(in)  :: A
-  real(pReal) :: DetA
+  real(pReal)                :: DetA
   real(pReal),dimension(3,3) :: math_inv33
+  logical                    :: error
 
-  math_inv33(1,1) =  A(2,2) * A(3,3) - A(2,3) * A(3,2)
-  math_inv33(2,1) = -A(2,1) * A(3,3) + A(2,3) * A(3,1)
-  math_inv33(3,1) =  A(2,1) * A(3,2) - A(2,2) * A(3,1)
-
-  DetA = A(1,1) * math_inv33(1,1) + A(1,2) * math_inv33(2,1) + A(1,3) * math_inv33(3,1)
-
-  if (dNeq0(DetA)) then
-    math_inv33(1,2) = -A(1,2) * A(3,3) + A(1,3) * A(3,2)
-    math_inv33(2,2) =  A(1,1) * A(3,3) - A(1,3) * A(3,1)
-    math_inv33(3,2) = -A(1,1) * A(3,2) + A(1,2) * A(3,1)
-
-    math_inv33(1,3) =  A(1,2) * A(2,3) - A(1,3) * A(2,2)
-    math_inv33(2,3) = -A(1,1) * A(2,3) + A(1,3) * A(2,1)
-    math_inv33(3,3) =  A(1,1) * A(2,2) - A(1,2) * A(2,1)
-    
-    math_inv33 = math_inv33/DetA
-  else
-    math_inv33 = 0.0_pReal
-  endif
+  call math_invert33(math_inv33,DetA,error,A)
+  if(error) math_inv33 = 0.0_pReal
 
 end function math_inv33
 
