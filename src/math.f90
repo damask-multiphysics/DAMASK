@@ -620,47 +620,6 @@ end function math_deviatoric33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief equivalent scalar quantity of a full symmetric strain tensor
-!--------------------------------------------------------------------------------------------------
-pure function math_equivStrain33(m)
-
-  real(pReal), dimension(3,3), intent(in) :: m
-  real(pReal), dimension(3) :: e,s
-  real(pReal) :: math_equivStrain33
-
-  e = [2.0_pReal*m(1,1)-m(2,2)-m(3,3), &
-       2.0_pReal*m(2,2)-m(3,3)-m(1,1), &
-       2.0_pReal*m(3,3)-m(1,1)-m(2,2)]/3.0_pReal
-  s = [m(1,2),m(2,3),m(1,3)]*2.0_pReal
-
-  math_equivStrain33 = 2.0_pReal/3.0_pReal &
-                     * (1.50_pReal*(sum(e**2.0_pReal))+ 0.75_pReal*(sum(s**2.0_pReal)))**(0.5_pReal)
-
-end function math_equivStrain33
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief von Mises equivalent of a full symmetric stress tensor
-!--------------------------------------------------------------------------------------------------
-pure function math_equivStress33(m)
-
-  real(pReal), dimension(3,3), intent(in) :: m
-  real(pReal) :: math_equivStress33
-
-  math_equivStress33 =( ( (m(1,1)-m(2,2))**2.0_pReal + &
-                          (m(2,2)-m(3,3))**2.0_pReal + &
-                          (m(3,3)-m(1,1))**2.0_pReal + &
-                          6.0_pReal*( m(1,2)**2.0_pReal + &
-                                      m(2,3)**2.0_pReal + &
-                                      m(1,3)**2.0_pReal &
-                                    ) &
-                        )**0.5_pReal &
-                      )/sqrt(2.0_pReal)
-
-end function math_equivStress33
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief trace of a 33 matrix
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_trace33(m)
