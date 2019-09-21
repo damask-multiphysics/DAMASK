@@ -74,6 +74,7 @@ module rotations
       procedure, public  :: rotVector
       procedure, public  :: rotTensor2
       procedure, public  :: rotTensor4
+      procedure, public  :: rotTensor4sym
       procedure, public  :: misorientation
   end type rotation
 
@@ -284,6 +285,7 @@ pure function rotTensor2(self,T,active) result(tRot)
 
 end function rotTensor2
 
+
 !---------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief rotate a rank-4 tensor passively (default) or actively
@@ -314,6 +316,27 @@ pure function rotTensor4(self,T,active) result(tRot)
   enddo; enddo; enddo; enddo; enddo; enddo; enddo; enddo
 
 end function rotTensor4
+
+
+!---------------------------------------------------------------------------------------------------
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief rotate a symmetric rank-4 tensor stored as (6,6) passively (default) or actively
+!! ToDo: Need to check active/passive !!!
+!---------------------------------------------------------------------------------------------------
+pure function rotTensor4sym(self,T,active) result(tRot)
+
+  real(pReal),                 dimension(6,6) :: tRot
+  class(rotation), intent(in)                 :: self
+  real(pReal),     intent(in), dimension(6,6) :: T
+  logical,         intent(in), optional       :: active
+ 
+  if (present(active)) then
+    tRot = math_sym3333to66(rotTensor4(self,math_66toSym3333(T),active))
+  else
+    tRot = math_sym3333to66(rotTensor4(self,math_66toSym3333(T)))
+  endif
+
+end function rotTensor4sym
 
 
 !---------------------------------------------------------------------------------------------------
