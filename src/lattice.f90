@@ -940,7 +940,7 @@ function lattice_C66_twin(Ntwin,C66,structure,CoverA)
  
   do i = 1, sum(Ntwin)
     call R%fromAxisAngle([coordinateSystem(1:3,2,i),PI],P=1)                                        ! ToDo: Why always 180 deg?
-    lattice_C66_twin(1:6,1:6,i) = math_sym3333to66(R%rotate(math_66toSym3333(C66)))
+    lattice_C66_twin(1:6,1:6,i) = R%rotTensor4sym(C66)
   enddo
 
 end function lattice_C66_twin
@@ -958,7 +958,6 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_target, &
   real(pReal), dimension(6,6,sum(Ntrans))           :: lattice_C66_trans
    
   real(pReal), dimension(6,6)             :: C_bar66, C_target_unrotated66
-  real(pReal), dimension(3,3,3,3)         :: C_target_unrotated
   real(pReal), dimension(3,3,sum(Ntrans)) :: Q,S
   type(rotation)                          :: R
   real(pReal)                             :: a_bcc, a_fcc, CoverA_trans
@@ -999,10 +998,9 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_target, &
   
   call buildTransformationSystem(Q,S,Ntrans,CoverA_trans,a_fcc,a_bcc)
  
-  C_target_unrotated = math_66toSym3333(C_target_unrotated66)
   do i = 1, sum(Ntrans)
     call R%fromMatrix(Q(1:3,1:3,i))
-    lattice_C66_trans(1:6,1:6,i) = math_sym3333to66(R%rotate(C_target_unrotated))
+    lattice_C66_trans(1:6,1:6,i) = R%rotTensor4sym(C_target_unrotated66)
   enddo
 
  end function lattice_C66_trans
