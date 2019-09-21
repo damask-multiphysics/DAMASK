@@ -64,9 +64,9 @@ class Rotation:
     def __repr__(self):
       """Orientation displayed as unit quaternion, rotation matrix, and Bunge-Euler angles."""
       return '\n'.join([
-            '{}'.format(self.quaternion),
-            'Matrix:\n{}'.format( '\n'.join(['\t'.join(list(map(str,self.asMatrix()[i,:]))) for i in range(3)]) ),
-            'Bunge Eulers / deg: {}'.format('\t'.join(list(map(str,self.asEulers(degrees=True)))) ),
+             '{}'.format(self.quaternion),
+             'Matrix:\n{}'.format( '\n'.join(['\t'.join(list(map(str,self.asMatrix()[i,:]))) for i in range(3)]) ),
+             'Bunge Eulers / deg: {}'.format('\t'.join(list(map(str,self.asEulers(degrees=True)))) ),
               ])
               
     def __mul__(self, other):

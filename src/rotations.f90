@@ -59,14 +59,14 @@ module rotations
     type(quaternion), private :: q
     contains
       procedure, public :: asQuaternion
-      procedure, public :: asEulerAngles
-      procedure, public :: asAxisAnglePair
-      procedure, public :: asRodriguesFrankVector
-      procedure, public :: asRotationMatrix
+      procedure, public :: asEulers
+      procedure, public :: asAxisAngle
+      procedure, public :: asRodrigues
+      procedure, public :: asMatrix
       !------------------------------------------
-      procedure, public :: fromEulerAngles
-      procedure, public :: fromAxisAnglePair
-      procedure, public :: fromRotationMatrix
+      procedure, public :: fromEulers
+      procedure, public :: fromAxisAngle
+      procedure, public :: fromMatrix
       !------------------------------------------
       procedure, private :: rotRot__
       generic,   public  :: operator(*) => rotRot__
@@ -93,41 +93,41 @@ pure function asQuaternion(self)
 
 end function asQuaternion
 !---------------------------------------------------------------------------------------------------
-pure function asEulerAngles(self)
+pure function asEulers(self)
   
   class(rotation), intent(in) :: self
-  real(pReal), dimension(3)   :: asEulerAngles
+  real(pReal), dimension(3)   :: asEulers
    
-  asEulerAngles = qu2eu(self%q%asArray())
+  asEulers = qu2eu(self%q%asArray())
 
-end function asEulerAngles
+end function asEulers
 !---------------------------------------------------------------------------------------------------
-pure function asAxisAnglePair(self)
+pure function asAxisAngle(self)
 
   class(rotation), intent(in) :: self
-  real(pReal), dimension(4)   :: asAxisAnglePair
+  real(pReal), dimension(4)   :: asAxisAngle
  
-  asAxisAnglePair = qu2ax(self%q%asArray())
+  asAxisAngle = qu2ax(self%q%asArray())
 
-end function asAxisAnglePair
+end function asAxisAngle
 !---------------------------------------------------------------------------------------------------
-pure function asRotationMatrix(self)
+pure function asMatrix(self)
  
   class(rotation), intent(in) :: self
-  real(pReal), dimension(3,3) :: asRotationMatrix
+  real(pReal), dimension(3,3) :: asMatrix
  
-  asRotationMatrix = qu2om(self%q%asArray())
+  asMatrix = qu2om(self%q%asArray())
 
-end function asRotationMatrix
+end function asMatrix
 !---------------------------------------------------------------------------------------------------
-pure function asRodriguesFrankVector(self)
+pure function asRodrigues(self)
 
   class(rotation), intent(in) :: self
-  real(pReal), dimension(4)   :: asRodriguesFrankVector
+  real(pReal), dimension(4)   :: asRodrigues
  
-  asRodriguesFrankVector = qu2ro(self%q%asArray())
+  asRodrigues = qu2ro(self%q%asArray())
  
-end function asRodriguesFrankVector
+end function asRodrigues
 !---------------------------------------------------------------------------------------------------
 pure function asHomochoric(self)
 
@@ -141,7 +141,7 @@ end function asHomochoric
 !---------------------------------------------------------------------------------------------------
 ! Initialize rotation from different representations
 !---------------------------------------------------------------------------------------------------
-subroutine fromEulerAngles(self,eu,degrees)
+subroutine fromEulers(self,eu,degrees)
 
   class(rotation), intent(out)          :: self
   real(pReal), dimension(3), intent(in) :: eu
@@ -156,13 +156,13 @@ subroutine fromEulerAngles(self,eu,degrees)
   endif
 
   if (any(Eulers<0.0_pReal) .or. any(Eulers>2.0_pReal*PI) .or. Eulers(2) > PI) &
-    call IO_error(402,ext_msg='fromEulerAngles')
+    call IO_error(402,ext_msg='fromEulers')
 
   self%q = eu2qu(Eulers)
 
-end subroutine fromEulerAngles
+end subroutine fromEulers
 !---------------------------------------------------------------------------------------------------
-subroutine fromAxisAnglePair(self,ax,degrees,P)
+subroutine fromAxisAngle(self,ax,degrees,P)
 
   class(rotation), intent(out)          :: self
   real(pReal), dimension(4), intent(in) :: ax
@@ -182,27 +182,27 @@ subroutine fromAxisAnglePair(self,ax,degrees,P)
     axis = ax(1:3)
   else
     axis = ax(1:3) * merge(-1.0_pReal,1.0_pReal,P == 1)
-    if(abs(P) /= 1) call IO_error(402,ext_msg='fromAxisAnglePair (P)')
+    if(abs(P) /= 1) call IO_error(402,ext_msg='fromAxisAngle (P)')
   endif
 
   if(dNeq(norm2(axis),1.0_pReal) .or. angle < 0.0_pReal .or. angle > PI) &
-    call IO_error(402,ext_msg='fromAxisAnglePair')
+    call IO_error(402,ext_msg='fromAxisAngle')
   
   self%q = ax2qu([axis,angle])
 
-end subroutine fromAxisAnglePair
+end subroutine fromAxisAngle
 !---------------------------------------------------------------------------------------------------
-subroutine fromRotationMatrix(self,om)
+subroutine fromMatrix(self,om)
 
   class(rotation), intent(out)            :: self
   real(pReal), dimension(3,3), intent(in) :: om
 
   if (dNeq(math_det33(om),1.0_pReal,tol=1.0e-5_pReal)) &
-    call IO_error(402,ext_msg='fromRotationMatrix')
+    call IO_error(402,ext_msg='fromMatrix')
 
   self%q = om2qu(om)
 
-end subroutine fromRotationMatrix
+end subroutine fromMatrix
 !---------------------------------------------------------------------------------------------------
 
 
@@ -277,9 +277,9 @@ pure function rotTensor2(self,T,active) result(tRot)
   endif
  
   if (passive) then
-    tRot = matmul(matmul(self%asRotationMatrix(),T),transpose(self%asRotationMatrix()))
+    tRot = matmul(matmul(self%asMatrix(),T),transpose(self%asMatrix()))
   else
-    tRot = matmul(matmul(transpose(self%asRotationMatrix()),T),self%asRotationMatrix())
+    tRot = matmul(matmul(transpose(self%asMatrix()),T),self%asMatrix())
   endif
 
 end function rotTensor2
@@ -301,9 +301,9 @@ pure function rotTensor4(self,T,active) result(tRot)
   integer :: i,j,k,l,m,n,o,p
 
   if (present(active)) then
-    R = merge(transpose(self%asRotationMatrix()),self%asRotationMatrix(),active)
+    R = merge(transpose(self%asMatrix()),self%asMatrix(),active)
   else
-    R = self%asRotationMatrix()
+    R = self%asMatrix()
   endif
 
   tRot = 0.0_pReal

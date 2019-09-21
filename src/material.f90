@@ -718,7 +718,7 @@ subroutine material_parseTexture
           Eulers(3) = IO_floatValue(strings(1),chunkPos,j+1)
       end select
     enddo
-    call texture_Eulers(t)%fromEulerAngles(Eulers,degrees=.true.)
+    call texture_Eulers(t)%fromEulers(Eulers,degrees=.true.)
 
     if (config_texture(t)%keyExists('axes')) then
       strings = config_texture(t)%getStrings('axes')
@@ -741,7 +741,7 @@ subroutine material_parseTexture
         end select
       enddo
       if(dNeq(math_det33(texture_transformation),1.0_pReal)) call IO_error(157,t)
-      call transformation%fromRotationMatrix(texture_transformation)
+      call transformation%fromMatrix(texture_transformation)
       texture_Eulers(t) = texture_Eulers(t) * transformation
     endif
     

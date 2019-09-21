@@ -939,8 +939,8 @@ function lattice_C66_twin(Ntwin,C66,structure,CoverA)
   end select
  
   do i = 1, sum(Ntwin)
-    call R%fromAxisAnglePair([coordinateSystem(1:3,2,i),PI],P=1)                                    ! ToDo: Why always 180 deg?
-    lattice_C66_twin(1:6,1:6,i) = math_sym3333to66(math_rotate_forward3333(math_66toSym3333(C66),R%asRotationMatrix()))
+    call R%fromAxisAngle([coordinateSystem(1:3,2,i),PI],P=1)                                        ! ToDo: Why always 180 deg?
+    lattice_C66_twin(1:6,1:6,i) = math_sym3333to66(math_rotate_forward3333(math_66toSym3333(C66),R%asMatrix()))
   enddo
 
 end function lattice_C66_twin
@@ -1001,9 +1001,9 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_target, &
   call buildTransformationSystem(Q,S,Ntrans,CoverA_trans,a_fcc,a_bcc)
  
   do i = 1, sum(Ntrans)
-    call R%fromRotationMatrix(Q(1:3,1:3,i))
+    call R%fromMatrix(Q(1:3,1:3,i))
     lattice_C66_trans(1:6,1:6,i) &
-    = math_sym3333to66(math_rotate_forward3333(C_target_unrotated,R%asRotationMatrix()))
+    = math_sym3333to66(math_rotate_forward3333(C_target_unrotated,R%asMatrix()))
   enddo
 
  end function lattice_C66_trans
@@ -1036,8 +1036,8 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
   do i = 1,sum(Nslip)
     direction = coordinateSystem(1:3,1,i)
     normal    = coordinateSystem(1:3,2,i)
-    call R%fromAxisAnglePair([direction,60.0_pReal],degrees=.true.,P=1)
-    np = R%rotVector(normal)
+    call R%fromAxisAngle([direction,60.0_pReal],degrees=.true.,P=1)
+    np = R%rotate(normal)
 
     if (size(nonSchmidCoefficients)>0) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
       + nonSchmidCoefficients(1) * math_outer(direction, np)
@@ -2231,8 +2231,8 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
  
   if (a_bcc > 0.0_pReal .and. dEq0(cOverA)) then                                                    ! fcc -> bcc transformation
     do i = 1,sum(Ntrans)
-      call R%fromAxisAnglePair(LATTICE_FCCTOBCC_SYSTEMTRANS(:,i),degrees=.true.,P=1)
-      call B%fromAxisAnglePair(LATTICE_FCCTOBCC_BAINROT(:,i),    degrees=.true.,P=1)
+      call R%fromAxisAngle(LATTICE_FCCTOBCC_SYSTEMTRANS(:,i),degrees=.true.,P=1)
+      call B%fromAxisAngle(LATTICE_FCCTOBCC_BAINROT(:,i),    degrees=.true.,P=1)
       x = real(LATTICE_FCCTOBCC_BAINVARIANT(1:3,i),pReal)
       y = real(LATTICE_FCCTOBCC_BAINVARIANT(4:6,i),pReal)
       z = real(LATTICE_FCCTOBCC_BAINVARIANT(7:9,i),pReal)
@@ -2240,8 +2240,8 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
       U = (a_bcc/a_fcc)*math_outer(x,x) &
         + (a_bcc/a_fcc)*math_outer(y,y) * sqrt(2.0_pReal) &
         + (a_bcc/a_fcc)*math_outer(z,z) * sqrt(2.0_pReal)
-      Q(1:3,1:3,i) = matmul(R%asRotationMatrix(),B%asRotationMatrix())
-      S(1:3,1:3,i) = matmul(R%asRotationMatrix(),U) - MATH_I3
+      Q(1:3,1:3,i) = matmul(R%asMatrix(),B%asMatrix())
+      S(1:3,1:3,i) = matmul(R%asMatrix(),U) - MATH_I3
     enddo
   elseif (cOverA > 0.0_pReal .and. dEq0(a_bcc)) then                                                ! fcc -> hex transformation
     ss      = MATH_I3

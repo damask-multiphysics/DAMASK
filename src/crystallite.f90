@@ -380,7 +380,7 @@ subroutine crystallite_init
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     myNcomponents = homogenization_Ngrains(material_homogenizationAt(e))
     do i = FEsolving_execIP(1,e), FEsolving_execIP(2,e); do c = 1, myNcomponents
-      crystallite_Fp0(1:3,1:3,c,i,e) = material_orientation0(c,i,e)%asRotationMatrix()              ! plastic def gradient reflects init orientation
+      crystallite_Fp0(1:3,1:3,c,i,e) = material_orientation0(c,i,e)%asMatrix()                      ! plastic def gradient reflects init orientation
       crystallite_Fi0(1:3,1:3,c,i,e) = constitutive_initialFi(c,i,e)
       crystallite_F0(1:3,1:3,c,i,e)  = math_I3
       crystallite_localPlasticity(c,i,e) = phase_localPlasticity(material_phaseAt(c,e))
@@ -827,7 +827,7 @@ subroutine crystallite_orientations
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
       do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        call crystallite_orientation(c,i,e)%fromRotationMatrix(transpose(math_rotationalPart33(crystallite_Fe(1:3,1:3,c,i,e))))
+        call crystallite_orientation(c,i,e)%fromMatrix(transpose(math_rotationalPart33(crystallite_Fe(1:3,1:3,c,i,e))))
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
   
@@ -857,7 +857,7 @@ function crystallite_push33ToRef(ipc,ip,el, tensor33)
     ip, &
     ipc
  
-  T = matmul(material_orientation0(ipc,ip,el)%asRotationMatrix(), &                                 ! ToDo: initial orientation correct?
+  T = matmul(material_orientation0(ipc,ip,el)%asMatrix(), &                                         ! ToDo: initial orientation correct?
              transpose(math_inv33(crystallite_subF(1:3,1:3,ipc,ip,el))))
   crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))
 
@@ -908,7 +908,7 @@ function crystallite_postResults(ipc, ip, el)
       case (grainrotation_ID)
         rot = material_orientation0(ipc,ip,el)%misorientation(crystallite_orientation(ipc,ip,el))
         mySize = 4
-        crystallite_postResults(c+1:c+mySize) = rot%asAxisAnglePair()
+        crystallite_postResults(c+1:c+mySize) = rot%asAxisAngle()
         crystallite_postResults(c+4) = inDeg * crystallite_postResults(c+4)                          ! angle in degree
 
 ! remark: tensor output is of the form 11,12,13, 21,22,23, 31,32,33

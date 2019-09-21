@@ -236,8 +236,8 @@ program DAMASK_spectral
          do j = 1, 3
            temp_valueVector(j) = IO_floatValue(line,chunkPos,i+k+j)
          enddo
-         call R%fromEulerAngles(temp_valueVector(1:3),degrees=(l==1))
-         newLoadCase%rotation = R%asRotationMatrix()
+         call R%fromEulers(temp_valueVector(1:3),degrees=(l==1))
+         newLoadCase%rotation = R%asMatrix()
        case('rotation','rot')                                                                       ! assign values for the rotation  matrix
          temp_valueVector = 0.0_pReal
          do j = 1, 9
