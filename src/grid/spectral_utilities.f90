@@ -423,7 +423,7 @@ subroutine utilities_updateGamma(C,saveReference)
         A(1:3,1:3) = real(temp33_complex);  A(4:6,4:6) =   real(temp33_complex)
         A(1:3,4:6) = aimag(temp33_complex); A(4:6,1:3) = -aimag(temp33_complex)
         if (abs(math_det33(A(1:3,1:3))) > 1e-16) then
-          call math_invert2(A_inv, err, A)
+          call math_invert(A_inv, err, A)
           temp33_complex = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pReal)
           forall(l=1:3, m=1:3, n=1:3, o=1:3) &
             gamma_hat(l,m,n,o,i,j,k-grid3Offset) = temp33_complex(l,n)* &
@@ -534,7 +534,7 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
         A(1:3,1:3) =  real(temp33_complex); A(4:6,4:6) =   real(temp33_complex)
         A(1:3,4:6) = aimag(temp33_complex); A(4:6,1:3) = -aimag(temp33_complex)
         if (abs(math_det33(A(1:3,1:3))) > 1e-16) then
-          call math_invert2(A_inv, err, A)
+          call math_invert(A_inv, err, A)
           temp33_complex = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pReal)
           forall(l=1:3, m=1:3, n=1:3, o=1:3) &
             gamma_hat(l,m,n,o,1,1,1) =  temp33_complex(l,n)*conjg(-xi1st(o,i,j,k))*xi1st(m,i,j,k)
@@ -730,7 +730,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
             c_reduced(k,j) = temp99_Real(n,m)
     endif; enddo; endif; enddo
  
-    call math_invert2(s_reduced, errmatinv, c_reduced)                                              ! invert reduced stiffness
+    call math_invert(s_reduced, errmatinv, c_reduced)                                               ! invert reduced stiffness
     if (any(IEEE_is_NaN(s_reduced))) errmatinv = .true.
     if (errmatinv) call IO_error(error_ID=400,ext_msg='utilities_maskedCompliance')
     temp99_Real = 0.0_pReal                                                                         ! fill up compliance with zeros

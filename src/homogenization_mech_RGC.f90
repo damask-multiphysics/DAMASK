@@ -597,7 +597,7 @@ module procedure mech_RGC_updateState
 !--------------------------------------------------------------------------------------------------
 ! computing the update of the state variable (relaxation vectors) using the Jacobian matrix
   allocate(jnverse(3*nIntFaceTot,3*nIntFaceTot),source=0.0_pReal)
-  call math_invert2(jnverse,error,jmatrix)
+  call math_invert(jnverse,error,jmatrix)
  
 #ifdef DEBUG
   if (iand(debug_level(debug_homogenization), debug_levelExtensive) /= 0) then

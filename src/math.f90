@@ -551,16 +551,16 @@ end function math_invSym3333
 !> @brief invert quadratic matrix of arbitrary dimension
 ! ToDo: replaces math_invert
 !--------------------------------------------------------------------------------------------------
-subroutine math_invert2(InvA, error, A)
+subroutine math_invert(InvA, error, A)
 
   real(pReal), dimension(:,:), intent(in)  :: A
   
   real(pReal), dimension(size(A,1),size(A,1)), intent(out) :: invA
   logical, intent(out) :: error
 
-  call math_invert(size(A,1), A, InvA, error)
+  call math_invert2(size(A,1), A, InvA, error)
  
-end subroutine math_invert2
+end subroutine math_invert
 
 
 !--------------------------------------------------------------------------------------------------
@@ -568,7 +568,7 @@ end subroutine math_invert2
 ! ToDo: Wrong order of arguments and superfluous myDim argument.
 ! Use math_invert2 instead
 !--------------------------------------------------------------------------------------------------
-subroutine math_invert(myDim,A, InvA, error)
+subroutine math_invert2(myDim,A, InvA, error)
 
   integer, intent(in)  :: myDim
   real(pReal), dimension(myDim,myDim), intent(in)  :: A
@@ -589,7 +589,7 @@ subroutine math_invert(myDim,A, InvA, error)
   call dgetri(myDim,InvA,myDim,ipiv,work,myDim,ierr)
   error = merge(.true.,.false., ierr /= 0)
  
-end subroutine math_invert
+end subroutine math_invert2
 
 
 !--------------------------------------------------------------------------------------------------

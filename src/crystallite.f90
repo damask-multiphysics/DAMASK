@@ -728,7 +728,7 @@ subroutine crystallite_stressTangent
             rhs_3333(1:3,1:3,o,p) = rhs_3333(1:3,1:3,o,p) &
                                   - crystallite_subdt(c,i,e)*matmul(invSubFi0,dLidS(1:3,1:3,o,p))
           enddo; enddo
-          call math_invert2(temp_99,error,math_3333to99(lhs_3333))
+          call math_invert(temp_99,error,math_3333to99(lhs_3333))
           if (error) then
             call IO_warning(warning_ID=600,el=e,ip=i,g=c, &
                             ext_msg='inversion error in analytic tangent calculation')
@@ -763,7 +763,7 @@ subroutine crystallite_stressTangent
         lhs_3333 = crystallite_subdt(c,i,e)*math_mul3333xx3333(dSdFe,temp_3333) &
                  + math_mul3333xx3333(dSdFi,dFidS)
 
-        call math_invert2(temp_99,error,math_identity2nd(9)+math_3333to99(lhs_3333))
+        call math_invert(temp_99,error,math_identity2nd(9)+math_3333to99(lhs_3333))
         if (error) then
           call IO_warning(warning_ID=600,el=e,ip=i,g=c, &
                           ext_msg='inversion error in analytic tangent calculation')
