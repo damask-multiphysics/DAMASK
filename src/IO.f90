@@ -649,6 +649,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'trans_lattice_structure not possible'
     case (133)
       msg = 'transformed hex lattice structure with invalid c/a ratio'
+    case (134)
+      msg = 'negative lattice parameter'
     case (135)
       msg = 'zero entry on stiffness diagonal'
     case (136)
