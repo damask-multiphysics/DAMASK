@@ -198,7 +198,8 @@ subroutine plastic_disloUCLA_init()
                                                        config%getString('lattice_structure'))
       prm%forestProjectionEdge = lattice_forestProjection_edge(prm%N_sl,config%getString('lattice_structure'),&
                                                                config%getFloat('c/a',defaultVal=0.0_pReal))
- 
+      prm%forestProjectionEdge = transpose(prm%forestProjectionEdge)
+      
       prm%rho_mob_0   = config%getFloats('rhoedge0',       requiredSize=size(prm%N_sl))
       prm%rho_dip_0   = config%getFloats('rhoedgedip0',    requiredSize=size(prm%N_sl))
       prm%v0          = config%getFloats('v0',             requiredSize=size(prm%N_sl))
@@ -458,7 +459,7 @@ subroutine plastic_disloUCLA_dependentState(instance,of)
  
   associate(prm => param(instance), stt => state(instance),dst => dependentState(instance))
  
-  dislocationSpacing = sqrt(matmul(transpose(prm%forestProjectionEdge), &
+  dislocationSpacing = sqrt(matmul(prm%forestProjectionEdge, &
                                    stt%rho_mob(:,of)+stt%rho_dip(:,of)))
   dst%threshold_stress(:,of) = prm%mu*prm%b_sl &
                              * sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,of)+stt%rho_dip(:,of)))

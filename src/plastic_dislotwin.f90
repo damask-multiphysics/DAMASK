@@ -253,6 +253,7 @@ subroutine plastic_dislotwin_init
                                                   config%getString('lattice_structure'))
      prm%forestProjection     = lattice_forestProjection_edge(prm%N_sl,config%getString('lattice_structure'),&
                                                               config%getFloat('c/a',defaultVal=0.0_pReal))
+     prm%forestProjection     = transpose(prm%forestProjection)
 
      prm%n0_sl                = lattice_slip_normal(prm%N_sl,config%getString('lattice_structure'),&
                                                     config%getFloat('c/a',defaultVal=0.0_pReal))  
@@ -884,7 +885,7 @@ subroutine plastic_dislotwin_dependentState(T,instance,of)
  f_over_t_tr = sumf_trans/prm%t_tr                   ! but this not
                                                      ! ToDo ...Physically correct, but naming could be adjusted
 
- inv_lambda_sl_sl = sqrt(matmul(transpose(prm%forestProjection), &
+ inv_lambda_sl_sl = sqrt(matmul(prm%forestProjection, &
                                 stt%rho_mob(:,of)+stt%rho_dip(:,of)))/prm%CLambdaSlip
 
  if (prm%sum_N_tw > 0 .and. prm%sum_N_sl > 0) &
