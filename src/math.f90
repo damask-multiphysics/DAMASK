@@ -1257,9 +1257,8 @@ end function math_invariantsSym33
 integer pure function math_factorial(n)
 
   integer, intent(in) :: n
-  integer :: i
   
-  math_factorial = product([(i, i=1,n)])
+  math_factorial = product(math_range(n))
 
 end function math_factorial
 
@@ -1400,7 +1399,6 @@ subroutine unitTest
   real(pReal), dimension(5) :: range_out_ = [1.0_pReal,2.0_pReal,3.0_pReal,4.0_pReal,5.0_pReal]
 
   real(pReal)                 :: det
-  real(pReal), dimension(3)   :: v3
   real(pReal), dimension(6)   :: v6
   real(pReal), dimension(9)   :: v9
   real(pReal), dimension(3,3) :: t33,t33_2
@@ -1454,30 +1452,33 @@ subroutine unitTest
   if(dNeq(math_det33(math_symmetric33(t33)),math_detSym33(math_symmetric33(t33)),tol=1.0e-12_pReal)) &
     call IO_error(401,ext_msg='math_det33/math_detSym33')
   
-  if(abs(math_det33(t33))>1.0e-13) then
+  do while(abs(math_det33(t33))<1.0e-9_pReal)
+    call random_number(t33)
+  enddo
+  if(any(dNeq0(matmul(t33,math_inv33(t33)) - math_identity2nd(3),tol=1.0e-9_pReal))) &
+    call IO_error(401,ext_msg='math_inv33')
     
-    if(any(dNeq0(matmul(t33,math_inv33(t33)) - math_identity2nd(3),tol=1.0e-9_pReal))) &
-      call IO_error(401,ext_msg='math_inv33')
-      
-    call math_invert33(t33_2,det,e,t33)
-    if(any(dNeq0(matmul(t33,t33_2) - math_identity2nd(3),tol=1.0e-9_pReal)) .or. e) &
-      call IO_error(401,ext_msg='math_invert33')
-    if(dNeq(det,math_det33(t33))) &
-      call IO_error(401,ext_msg='math_invert33')
-      
-    call math_invert(t33_2,e,t33)
-    if(any(dNeq0(matmul(t33,t33_2) - math_identity2nd(3),tol=1.0e-9_pReal)) .or. e) &
-      call IO_error(401,ext_msg='math_invert t33')
-      
-    t33_2 = transpose(math_rotationalPart33(t33))
-    if(any(dNeq0(math_rotationalPart33(matmul(t33_2,t33)) - MATH_I3,tol=5.0e-4_pReal))) &
-      call IO_error(401,ext_msg='math_rotationalPart33')
-      
-  endif
+  call math_invert33(t33_2,det,e,t33)
+  if(any(dNeq0(matmul(t33,t33_2) - math_identity2nd(3),tol=1.0e-9_pReal)) .or. e) &
+    call IO_error(401,ext_msg='math_invert33: T:T^-1 != I')
+  if(dNeq(det,math_det33(t33),tol=1.0e-12_pReal)) &
+    call IO_error(401,ext_msg='math_invert33 (determinant)')
+    
+  call math_invert(t33_2,e,t33)
+  if(any(dNeq0(matmul(t33,t33_2) - math_identity2nd(3),tol=1.0e-9_pReal)) .or. e) &
+    call IO_error(401,ext_msg='math_invert t33')
+    
+  t33_2 = transpose(math_rotationalPart33(t33))
+  if(any(dNeq0(math_rotationalPart33(matmul(t33_2,t33)) - MATH_I3,tol=5.0e-4_pReal))) &
+    call IO_error(401,ext_msg='math_rotationalPart33')
+
 
   call math_invert(t99_2,e,t99) ! not sure how likely it is that we get a singular matrix 
   if(any(dNeq0(matmul(t99_2,t99)-math_identity2nd(9),tol=1.0e-9_pReal)) .or. e) &
     call IO_error(401,ext_msg='math_invert t99')
+
+  if(any(math_clip([4.0_pReal,9.0_pReal],5.0_pReal,6.5_pReal)/=[5.0_pReal,6.5_pReal])) &
+     call IO_error(401,ext_msg='math_clip')  
 
 end subroutine unitTest
 
