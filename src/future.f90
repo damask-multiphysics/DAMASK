@@ -10,7 +10,7 @@ module future
 
 contains
 
-#if defined(__GFORTRAN__) || __INTEL_COMPILER < 1800
+#if defined(__GFORTRAN__) &&  __GNUC__ < 9 || __INTEL_COMPILER < 1800
 !--------------------------------------------------------------------------------------------------
 !> @brief substitute for the findloc intrinsic (only for integer, dimension(:) at the moment)
 !--------------------------------------------------------------------------------------------------
