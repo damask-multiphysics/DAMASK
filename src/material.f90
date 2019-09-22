@@ -170,7 +170,7 @@ module material
     microstructure_texture                                                                          !< texture IDs of each microstructure
  
   type(Rotation), dimension(:), allocatable, private :: &
-    texture_Eulers                                                                                  !< Euler angles in material.config (possibly rotated for alignment)
+    texture_orientation                                                                             !< Euler angles in material.config (possibly rotated for alignment)
   real(pReal), dimension(:,:), allocatable, private :: &
     microstructure_fraction                                                                         !< vol fraction of each constituent in microstructure
  
@@ -316,14 +316,14 @@ subroutine material_init
   allocate(material_phaseAt(homogenization_maxNgrains,discretization_nElem),                   source=0)
   allocate(material_texture(homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0)   !this is only needed by plasticity nonlocal
   allocate(material_orientation0(homogenization_maxNgrains,discretization_nIP,discretization_nElem))
- 
+
   do e = 1, discretization_nElem
      do i = 1, discretization_nIP
        myMicro = discretization_microstructureAt(e)
        do c = 1, homogenization_Ngrains(discretization_homogenizationAt(e))
          material_phaseAt(c,e)        = microstructure_phase(c,myMicro)
          material_texture(c,i,e)      = microstructure_texture(c,myMicro)
-         material_orientation0(c,i,e) = texture_Eulers(material_texture(c,i,e))                     ! this is a copy of crystallite_orientation0
+         material_orientation0(c,i,e) = texture_orientation(material_texture(c,i,e))
        enddo
      enddo
    enddo
@@ -691,9 +691,9 @@ subroutine material_parseTexture
   integer :: j, t
   character(len=65536), dimension(:), allocatable ::  strings                                       ! Values for given key in material config 
   integer, dimension(:), allocatable :: chunkPos
-  real(pReal), dimension(3,3) :: texture_transformation                                             ! maps texture to microstructure coordinate system
+  real(pReal), dimension(3,3) :: transformation                                                     ! maps texture to microstructure coordinate system
   real(pReal), dimension(3)   :: Eulers                                                             ! Euler angles in degrees from file
-  type(rotation)              :: transformation
+  type(rotation)              :: transformation_
 
   do t=1, size(config_texture)
     if (config_texture(t)%countKeys('(gauss)') /= 1) call IO_error(147,ext_msg='count((gauss)) != 1')
@@ -702,7 +702,7 @@ subroutine material_parseTexture
     if (config_texture(t)%keyExists('(fiber)'))      call IO_error(147,ext_msg='(fiber)')
   enddo
 
-  allocate(texture_Eulers(size(config_texture)))
+  allocate(texture_orientation(size(config_texture)))
 
   do t=1, size(config_texture)
     
@@ -718,31 +718,31 @@ subroutine material_parseTexture
           Eulers(3) = IO_floatValue(strings(1),chunkPos,j+1)
       end select
     enddo
-    call texture_Eulers(t)%fromEulers(Eulers,degrees=.true.)
+    call texture_orientation(t)%fromEulers(Eulers,degrees=.true.)
 
     if (config_texture(t)%keyExists('axes')) then
       strings = config_texture(t)%getStrings('axes')
       do j = 1, 3                                                                                   ! look for "x", "y", and "z" entries
         select case (strings(j))
           case('x', '+x')
-            texture_transformation(j,1:3) = [ 1.0_pReal, 0.0_pReal, 0.0_pReal]                      ! original axis is now +x-axis
+            transformation(j,1:3) = [ 1.0_pReal, 0.0_pReal, 0.0_pReal]                      ! original axis is now +x-axis
           case('-x')
-            texture_transformation(j,1:3) = [-1.0_pReal, 0.0_pReal, 0.0_pReal]                      ! original axis is now -x-axis
+            transformation(j,1:3) = [-1.0_pReal, 0.0_pReal, 0.0_pReal]                      ! original axis is now -x-axis
           case('y', '+y')
-            texture_transformation(j,1:3) = [ 0.0_pReal, 1.0_pReal, 0.0_pReal]                      ! original axis is now +y-axis
+            transformation(j,1:3) = [ 0.0_pReal, 1.0_pReal, 0.0_pReal]                      ! original axis is now +y-axis
           case('-y')
-            texture_transformation(j,1:3) = [ 0.0_pReal,-1.0_pReal, 0.0_pReal]                      ! original axis is now -y-axis
+            transformation(j,1:3) = [ 0.0_pReal,-1.0_pReal, 0.0_pReal]                      ! original axis is now -y-axis
           case('z', '+z')
-            texture_transformation(j,1:3) = [ 0.0_pReal, 0.0_pReal, 1.0_pReal]                      ! original axis is now +z-axis
+            transformation(j,1:3) = [ 0.0_pReal, 0.0_pReal, 1.0_pReal]                      ! original axis is now +z-axis
           case('-z')
-            texture_transformation(j,1:3) = [ 0.0_pReal, 0.0_pReal,-1.0_pReal]                      ! original axis is now -z-axis
+            transformation(j,1:3) = [ 0.0_pReal, 0.0_pReal,-1.0_pReal]                      ! original axis is now -z-axis
           case default
             call IO_error(157,t)
         end select
       enddo
-      if(dNeq(math_det33(texture_transformation),1.0_pReal)) call IO_error(157,t)
-      call transformation%fromMatrix(texture_transformation)
-      texture_Eulers(t) = texture_Eulers(t) * transformation
+      if(dNeq(math_det33(transformation),1.0_pReal)) call IO_error(157,t)
+      call transformation_%fromMatrix(transformation)
+      texture_orientation(t) = texture_orientation(t) * transformation_
     endif
     
   enddo 
