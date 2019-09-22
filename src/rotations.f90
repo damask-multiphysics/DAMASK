@@ -1206,18 +1206,34 @@ subroutine unitTest
   real    :: A,B
   integer :: i
 
-  do i=1,5
+  do i=1,10
   
     msg = ''
 
-    call random_number(r)
-    A = sqrt(r(3))
-    B = sqrt(1-0_pReal -r(3))
-    qu = [cos(2.0_pReal*PI*r(1))*A,&
-          sin(2.0_pReal*PI*r(2))*B,&
-          cos(2.0_pReal*PI*r(2))*B,&
-          sin(2.0_pReal*PI*r(1))*A]
-    if(qu(1)<0.0_pReal) qu = qu * (-1.0_pReal)
+    if(i==1) then
+      qu = om2qu(math_I3)
+    elseif(i==2) then
+      qu = eu2qu([0.0_pReal,0.0_pReal,0.0_pReal])
+    elseif(i==3) then
+      qu = eu2qu([2.0_pReal*PI,PI,2.0_pReal*PI])
+    elseif(i==4) then
+      qu = [0.0_pReal,0.0_pReal,1.0_pReal,0.0_pReal]
+    elseif(i==5) then
+      qu = ro2qu([1.0_pReal,0.0_pReal,0.0_pReal,ieee_value(1.0_pReal, IEEE_positive_inf)])
+    elseif(i==6) then
+      qu = ax2qu([1.0_pReal,0.0_pReal,0.0_pReal,0.0_pReal])
+    else
+      call random_number(r)
+      A = sqrt(r(3))
+      B = sqrt(1-0_pReal -r(3))
+      qu = [cos(2.0_pReal*PI*r(1))*A,&
+            sin(2.0_pReal*PI*r(2))*B,&
+            cos(2.0_pReal*PI*r(2))*B,&
+            sin(2.0_pReal*PI*r(1))*A]
+      if(qu(1)<0.0_pReal) qu = qu * (-1.0_pReal)
+    endif
+    
+ 
     
     if(dNeq0(norm2(om2qu(qu2om(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'om2qu/qu2om,'
     if(dNeq0(norm2(eu2qu(qu2eu(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'eu2qu/qu2eu,'
