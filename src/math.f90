@@ -118,33 +118,6 @@ subroutine math_init
 
 end subroutine math_init
 
- 
-!--------------------------------------------------------------------------------------------------
-!> @brief check correctness of (some) math functions
-!--------------------------------------------------------------------------------------------------
-subroutine unitTest
-
-  character(len=64) :: error_msg
-
-  ! +++ check vector expansion +++
-  if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal,3.0_pReal,3.0_pReal,3.0_pReal] - &
-              math_expand([1.0_pReal,2.0_pReal,3.0_pReal],[1,2,3,0])) > tol_math_check)) then
-    write (error_msg, '(a)' ) 'math_expand [1,2,3] by [1,2,3,0] => [1,2,2,3,3,3]'
-    call IO_error(401,ext_msg=error_msg)
-  endif
-  if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal] - &
-              math_expand([1.0_pReal,2.0_pReal,3.0_pReal],[1,2])) > tol_math_check)) then
-    write (error_msg, '(a)' ) 'math_expand [1,2,3] by [1,2] => [1,2,2]'
-    call IO_error(401,ext_msg=error_msg)
-  endif
-  if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal,1.0_pReal,1.0_pReal,1.0_pReal] - &
-              math_expand([1.0_pReal,2.0_pReal],[1,2,3])) > tol_math_check)) then
-    write (error_msg, '(a)' ) 'math_expand [1,2] by [1,2,3] => [1,2,2,1,1,1]'
-    call IO_error(401,ext_msg=error_msg)
-  endif
- 
-end subroutine unitTest
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Quicksort algorithm for two-dimensional integer arrays
@@ -561,7 +534,7 @@ pure function math_symmetric33(m)
 
   real(pReal), dimension(3,3) :: math_symmetric33
   real(pReal), dimension(3,3), intent(in) :: m
-  
+
   math_symmetric33 = 0.5_pReal * (m + transpose(m))
 
 end function math_symmetric33
@@ -701,8 +674,8 @@ end function math_9to33
 pure function math_sym33to6(m33,weighted)
 
   real(pReal), dimension(6)               :: math_sym33to6
-  real(pReal), dimension(3,3), intent(in) :: m33
-  logical,     optional,       intent(in) :: weighted
+  real(pReal), dimension(3,3), intent(in) :: m33                                                     !< symmetric matrix (no internal check)
+  logical,     optional,       intent(in) :: weighted                                                !< weight according to Mandel (.true. by default)
   
   real(pReal), dimension(6) :: w
   integer :: i
@@ -730,7 +703,7 @@ pure function math_6toSym33(v6,weighted)
 
   real(pReal), dimension(3,3)           :: math_6toSym33
   real(pReal), dimension(6), intent(in) :: v6
-  logical,     optional,     intent(in) :: weighted
+  logical,     optional,     intent(in) :: weighted                                                  !< weight according to Mandel (.true. by default)
 
   real(pReal), dimension(6) :: w
   integer :: i
@@ -792,8 +765,8 @@ end function math_99to3333
 pure function math_sym3333to66(m3333,weighted)
 
   real(pReal), dimension(6,6)                 :: math_sym3333to66
-  real(pReal), dimension(3,3,3,3), intent(in) :: m3333
-  logical,     optional,           intent(in) :: weighted
+  real(pReal), dimension(3,3,3,3), intent(in) :: m3333                                               !< symmetric matrix (no internal check)
+  logical,     optional,           intent(in) :: weighted                                            !< weight according to Mandel (.true. by default)
 
   real(pReal), dimension(6) :: w
   integer :: i,j
@@ -821,7 +794,7 @@ pure function math_66toSym3333(m66,weighted)
 
   real(pReal), dimension(3,3,3,3)            :: math_66toSym3333
   real(pReal), dimension(6,6),    intent(in) :: m66
-  logical,     optional,          intent(in) :: weighted
+  logical,     optional,          intent(in) :: weighted                                             !< weight according to Mandel (.true. by default)
   
   real(pReal), dimension(6) :: w
   integer :: i,j
@@ -1408,5 +1381,100 @@ real(pReal) pure elemental function math_clip(a, left, right)
     math_clip = merge (IEEE_value(1.0_pReal,IEEE_quiet_NaN),math_clip, left>right)
 
 end function math_clip
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief check correctness of (some) math functions
+!--------------------------------------------------------------------------------------------------
+subroutine unitTest
+ 
+  integer, dimension(2,4) :: &
+    sort_in_   = reshape([+1,+5,  +5,+6,  -1,-1,  +3,-2],[2,4])
+  integer, dimension(2,4), parameter :: &
+    sort_out_  = reshape([-1,-1,  +1,+5,  +5,+6,  +3,-2],[2,4])
+    
+  real(pReal), dimension(5) :: range_out_ = [1.0_pReal,2.0_pReal,3.0_pReal,4.0_pReal,5.0_pReal]
+
+  real(pReal)                 :: det
+  real(pReal), dimension(3)   :: v3
+  real(pReal), dimension(6)   :: v6
+  real(pReal), dimension(9)   :: v9
+  real(pReal), dimension(3,3) :: t33,t33_2
+  real(pReal), dimension(6,6) :: t66
+  real(pReal), dimension(9,9) :: t99,t99_2
+  logical                     :: e
+  
+
+  if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal,3.0_pReal,3.0_pReal,3.0_pReal] - &
+              math_expand([1.0_pReal,2.0_pReal,3.0_pReal],[1,2,3,0])) > tol_math_check)) &
+    call IO_error(401,ext_msg='math_expand [1,2,3] by [1,2,3,0] => [1,2,2,3,3,3]')
+
+  if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal] - &
+              math_expand([1.0_pReal,2.0_pReal,3.0_pReal],[1,2])) > tol_math_check)) &
+    call IO_error(401,ext_msg='math_expand [1,2,3] by [1,2] => [1,2,2]')
+
+  if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal,1.0_pReal,1.0_pReal,1.0_pReal] - &
+              math_expand([1.0_pReal,2.0_pReal],[1,2,3])) > tol_math_check)) &
+    call IO_error(401,ext_msg='math_expand [1,2] by [1,2,3] => [1,2,2,1,1,1]')
+
+
+  call math_sort(sort_in_,1,3,2)
+  if(any(sort_in_ /= sort_out_)) &
+    call IO_error(401,ext_msg='math_sort')
+  
+  if(any(math_range(5) /= range_out_)) &
+    call IO_error(401,ext_msg='math_range')
+ 
+ 
+  call random_number(v9)
+  if(any(dNeq(math_33to9(math_9to33(v9)),v9))) &
+    call IO_error(401,ext_msg='math_33to9/math_9to33')
+    
+  call random_number(t99)
+  if(any(dNeq(math_3333to99(math_99to3333(t99)),t99))) &
+    call IO_error(401,ext_msg='math_3333to99/math_99to3333')
+  
+  call random_number(v6)
+  if(any(dNeq(math_sym33to6(math_6toSym33(v6)),v6))) &
+    call IO_error(401,ext_msg='math_sym33to6/math_6toSym33')
+  
+  call random_number(t66)
+  if(any(dNeq(math_sym3333to66(math_66toSym3333(t66)),t66))) &
+    call IO_error(401,ext_msg='math_sym3333to66/math_66toSym3333')
+    
+  call random_number(v6)
+  if(any(dNeq0(math_6toSym33(v6) - math_symmetric33(math_6toSym33(v6))))) &
+    call IO_error(401,ext_msg='math_symmetric33')
+ 
+  call random_number(t33)
+  if(dNeq(math_det33(math_symmetric33(t33)),math_detSym33(math_symmetric33(t33)),tol=1.0e-12_pReal)) &
+    call IO_error(401,ext_msg='math_det33/math_detSym33')
+  
+  if(abs(math_det33(t33))>1.0e-13) then
+    
+    if(any(dNeq0(matmul(t33,math_inv33(t33)) - math_identity2nd(3),tol=1.0e-9_pReal))) &
+      call IO_error(401,ext_msg='math_inv33')
+      
+    call math_invert33(t33_2,det,e,t33)
+    if(any(dNeq0(matmul(t33,t33_2) - math_identity2nd(3),tol=1.0e-9_pReal)) .or. e) &
+      call IO_error(401,ext_msg='math_invert33')
+    if(dNeq(det,math_det33(t33))) &
+      call IO_error(401,ext_msg='math_invert33')
+      
+    call math_invert(t33_2,e,t33)
+    if(any(dNeq0(matmul(t33,t33_2) - math_identity2nd(3),tol=1.0e-9_pReal)) .or. e) &
+      call IO_error(401,ext_msg='math_invert t33')
+      
+    t33_2 = transpose(math_rotationalPart33(t33))
+    if(any(dNeq0(math_rotationalPart33(matmul(t33_2,t33)) - MATH_I3,tol=5.0e-4_pReal))) &
+      call IO_error(401,ext_msg='math_rotationalPart33')
+      
+  endif
+
+  call math_invert(t99_2,e,t99) ! not sure how likely it is that we get a singular matrix 
+  if(any(dNeq0(matmul(t99_2,t99)-math_identity2nd(9),tol=1.0e-9_pReal)) .or. e) &
+    call IO_error(401,ext_msg='math_invert t99')
+
+end subroutine unitTest
 
 end module math
