@@ -546,7 +546,7 @@ pure function om2eu(om) result(eu)
           acos(om(3,3)), &
           atan2(om(1,3)*zeta, om(2,3)*zeta)]
   else 
-    eu = [ atan2( om(1,2),om(1,1)), 0.5*PI*(1-om(3,3)),0.0_pReal ]
+    eu = [atan2(om(1,2),om(1,1)), 0.5_pReal*PI*(1.0_pReal-om(3,3)),0.0_pReal ]
   end if
 
   where(eu<0.0_pReal) eu = mod(eu+2.0_pReal*PI,[2.0_pReal*PI,PI,2.0_pReal*PI])
@@ -1245,7 +1245,7 @@ subroutine unitTest
     if(dNeq0(norm2(cu2qu(qu2cu(qu))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2qu/qu2cu,'
     
     om = qu2om(qu)
-    if(dNeq0(norm2(om2qu(eu2om(om2eu(om)))-qu),1.0e-12_pReal)) msg = trim(msg)//'eu2om/om2eu,'
+    if(dNeq0(norm2(om2qu(eu2om(om2eu(om)))-qu),1.0e-7_pReal))  msg = trim(msg)//'eu2om/om2eu,'
     if(dNeq0(norm2(om2qu(ax2om(om2ax(om)))-qu),1.0e-7_pReal))  msg = trim(msg)//'ax2om/om2ax,'
     if(dNeq0(norm2(om2qu(ro2om(om2ro(om)))-qu),1.0e-12_pReal)) msg = trim(msg)//'ro2om/om2ro,'
     if(dNeq0(norm2(om2qu(ho2om(om2ho(om)))-qu),1.0e-9_pReal))  msg = trim(msg)//'ho2om/om2ho,'
