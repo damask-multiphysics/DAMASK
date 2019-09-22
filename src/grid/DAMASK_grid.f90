@@ -353,8 +353,7 @@ program DAMASK_spectral
      write(fileUnit) 'startingIncrement:', interface_restartInc                                     ! start with writing out the previous inc
      write(fileUnit) 'eoh'
      close(fileUnit)                                                                                ! end of header
-     open(newunit=statUnit,file=trim(getSolverJobName())//&
-                                 '.sta',form='FORMATTED',status='REPLACE')
+     open(newunit=statUnit,file=trim(getSolverJobName())//'.sta',form='FORMATTED',status='REPLACE')
      write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                 ! statistics file
      if (iand(debug_level(debug_spectral),debug_levelBasic) /= 0) &
        write(6,'(/,a)') ' header of result and statistics file written out'

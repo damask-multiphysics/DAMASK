@@ -261,6 +261,8 @@ program DAMASK_FEM
     end select
   enddo   
 
+  open(newunit=statUnit,file=trim(getSolverJobName())//'.sta',form='FORMATTED',status='REPLACE')
+  write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                 ! statistics file
 
   loadCaseLooping: do currentLoadCase = 1, size(loadCases)
     time0 = time                                                                                    ! load case start time
