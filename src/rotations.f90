@@ -77,7 +77,7 @@ module rotations
       procedure, public  :: rotTensor4sym
       procedure, public  :: misorientation
   end type rotation
-
+  
 
 contains
 
@@ -546,35 +546,34 @@ end function om2eu
 !---------------------------------------------------------------------------------------------------
 function om2ax(om) result(ax)
 
-  real(pReal), intent(in)     :: om(3,3)
-  real(pReal)                 :: ax(4)
+  real(pReal), intent(in), dimension(3,3) :: om
+  real(pReal),             dimension(4)   :: ax
   
-  real(pReal)                 :: t
-  real(pReal), dimension(3)   :: Wr, Wi
-  real(pReal), dimension(10)  :: WORK
-  real(pReal), dimension(3,3) :: VR, devNull, o
-  integer                     :: INFO, LWORK, i
+  real(pReal)                      :: t
+  real(pReal), dimension(3)        :: Wr, Wi
+  real(pReal), dimension((64+2)*3) :: work
+  real(pReal), dimension(3,3)      :: VR, devNull, om_
+    integer                        :: ierr, i
   
-  external :: dgeev,sgeev
+  external :: dgeev
   
-  o = om
+  om_ = om
   
   ! first get the rotation angle
-  t = 0.5_pReal * (math_trace33(om) - 1.0)
+  t = 0.5_pReal * (math_trace33(om) - 1.0_pReal)
   ax(4) = acos(math_clip(t,-1.0_pReal,1.0_pReal))
   
   if (dEq0(ax(4))) then
     ax(1:3) = [ 0.0, 0.0, 1.0 ]
   else
-    ! set some initial LAPACK variables 
-    INFO = 0
-    ! first initialize the parameters for the LAPACK DGEEV routines
-    LWORK = 20   
-  
-  ! call the eigenvalue solver
-    call dgeev('N','V',3,o,3,Wr,Wi,devNull,3,VR,3,WORK,LWORK,INFO)
-    if (INFO /= 0) call IO_error(0,ext_msg='Error in om2ax DGEEV return not zero')
-    i = maxloc(merge(1.0_pReal,0.0_pReal,cEq(cmplx(Wr,Wi,pReal),cmplx(1.0_pReal,0.0_pReal,pReal),tol=1.0e-14_pReal)),dim=1) ! poor substitute for findloc
+    call dgeev('N','V',3,om_,3,Wr,Wi,devNull,3,VR,3,work,size(work,1),ierr)
+    if (ierr /= 0) call IO_error(0,ext_msg='Error in om2ax DGEEV return not zero')
+#if defined(__GFORTRAN__) &&  __GNUC__ < 9 || __INTEL_COMPILER < 1800
+    i = maxloc(merge(1,0,cEq(cmplx(Wr,Wi,pReal),cmplx(1.0_pReal,0.0_pReal,pReal),tol=1.0e-14_pReal)),dim=1)
+#else
+    i = findloc(cEq(cmplx(Wr,Wi,pReal),cmplx(1.0_pReal,0.0_pReal,pReal),tol=1.0e-14_pReal),.true.,dim=1) !find eigenvalue (1,0)
+#endif
+    if (i == 0) call IO_error(0,ext_msg='Error in om2ax Real eigenvalue not found')
     ax(1:3) = VR(1:3,i)
     where (                dNeq0([om(2,3)-om(3,2), om(3,1)-om(1,3), om(1,2)-om(2,1)])) &
       ax(1:3) = sign(ax(1:3),-P *[om(2,3)-om(3,2), om(3,1)-om(1,3), om(1,2)-om(2,1)])
@@ -958,10 +957,10 @@ end function ro2ax
 !---------------------------------------------------------------------------------------------------
 pure function ro2ho(ro) result(ho)
 
-  real(pReal),        intent(in), dimension(4) :: ro
-  real(pReal),                    dimension(3) :: ho
+  real(pReal), intent(in), dimension(4) :: ro
+  real(pReal),             dimension(3) :: ho
   
-  real(pReal)                                  :: f
+  real(pReal)                           :: f
   
   if (dEq0(norm2(ro(1:3)))) then
     ho = [ 0.0, 0.0, 0.0 ]
