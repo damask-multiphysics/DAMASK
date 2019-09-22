@@ -952,10 +952,10 @@ pure function ro2ax(ro) result(ax)
   
   ta = ro(4)
   
-  if (dEq0(ta))  then 
-    ax = [ 0.0, 0.0, 1.0, 0.0 ]
-  elseif (.not. IEEE_is_finite(ta)) then
+  if (.not. IEEE_is_finite(ta)) then
     ax = [ ro(1), ro(2), ro(3), PI ]
+  elseif (dEq0(ta))  then 
+    ax = [ 0.0, 0.0, 1.0, 0.0 ]
   else
     angle = 2.0*atan(ta)
     ta = 1.0/norm2(ro(1:3))
@@ -1210,6 +1210,10 @@ subroutine unitTest
   
     msg = ''
 
+#if defined(__GFORTRAN__) && __GNUC__<9
+    if(i>2 .and. i<7) cycle
+#endif
+
     if(i==1) then
       qu = om2qu(math_I3)
     elseif(i==2) then
@@ -1219,7 +1223,7 @@ subroutine unitTest
     elseif(i==4) then
       qu = [0.0_pReal,0.0_pReal,1.0_pReal,0.0_pReal]
     elseif(i==5) then
-      qu = ro2qu([1.0_pReal,0.0_pReal,0.0_pReal,ieee_value(1.0_pReal, IEEE_positive_inf)])
+      qu = ro2qu([1.0_pReal,0.0_pReal,0.0_pReal,IEEE_value(1.0_pReal, IEEE_positive_inf)])
     elseif(i==6) then
       qu = ax2qu([1.0_pReal,0.0_pReal,0.0_pReal,0.0_pReal])
     else
@@ -1232,7 +1236,7 @@ subroutine unitTest
             sin(2.0_pReal*PI*r(1))*A]
       if(qu(1)<0.0_pReal) qu = qu * (-1.0_pReal)
     endif
-    
+
     if(dNeq0(norm2(om2qu(qu2om(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'om2qu/qu2om,'
     if(dNeq0(norm2(eu2qu(qu2eu(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'eu2qu/qu2eu,'
     if(dNeq0(norm2(ax2qu(qu2ax(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'ax2qu/qu2ax,'
