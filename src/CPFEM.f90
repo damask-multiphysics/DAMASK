@@ -9,6 +9,7 @@ module CPFEM
   use debug
   use FEsolving
   use math
+  use rotations
   use mesh
   use material
   use config
@@ -84,6 +85,7 @@ subroutine CPFEM_initAll(el,ip)
      call debug_init
      call config_init
      call math_init
+     call rotations_init
      call FE_init
 #ifdef DAMASK_HDF5
      call HDF5_utilities_init

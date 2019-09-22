@@ -78,8 +78,22 @@ module rotations
       procedure, public  :: misorientation
   end type rotation
   
+  public :: &
+    rotations_init
+
 
 contains
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief doing self test
+!--------------------------------------------------------------------------------------------------
+subroutine rotations_init()
+
+  write(6,'(/,a)')   ' <<<+-  rotations init  -+>>>'
+  call unitTest()
+
+end subroutine rotations_init
 
 
 !---------------------------------------------------------------------------------------------------
@@ -553,7 +567,7 @@ function om2ax(om) result(ax)
   real(pReal), dimension(3)        :: Wr, Wi
   real(pReal), dimension((64+2)*3) :: work
   real(pReal), dimension(3,3)      :: VR, devNull, om_
-    integer                        :: ierr, i
+  integer                          :: ierr, i
   
   external :: dgeev
   
@@ -567,13 +581,13 @@ function om2ax(om) result(ax)
     ax(1:3) = [ 0.0, 0.0, 1.0 ]
   else
     call dgeev('N','V',3,om_,3,Wr,Wi,devNull,3,VR,3,work,size(work,1),ierr)
-    if (ierr /= 0) call IO_error(0,ext_msg='Error in om2ax DGEEV return not zero')
+    if (ierr /= 0) call IO_error(0,ext_msg='Error in om2ax: DGEEV return not zero')
 #if defined(__GFORTRAN__) &&  __GNUC__ < 9 || __INTEL_COMPILER < 1800
     i = maxloc(merge(1,0,cEq(cmplx(Wr,Wi,pReal),cmplx(1.0_pReal,0.0_pReal,pReal),tol=1.0e-14_pReal)),dim=1)
 #else
     i = findloc(cEq(cmplx(Wr,Wi,pReal),cmplx(1.0_pReal,0.0_pReal,pReal),tol=1.0e-14_pReal),.true.,dim=1) !find eigenvalue (1,0)
 #endif
-    if (i == 0) call IO_error(0,ext_msg='Error in om2ax Real eigenvalue not found')
+    if (i == 0) call IO_error(0,ext_msg='Error in om2ax Real: eigenvalue not found')
     ax(1:3) = VR(1:3,i)
     where (                dNeq0([om(2,3)-om(3,2), om(3,1)-om(1,3), om(1,2)-om(2,1)])) &
       ax(1:3) = sign(ax(1:3),-P *[om(2,3)-om(3,2), om(3,1)-om(1,3), om(1,2)-om(2,1)])
@@ -1178,6 +1192,46 @@ pure function cu2ho(cu) result(ho)
   ho = Lambert_CubeToBall(cu)
 
 end function cu2ho
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief check correctness of (some) rotations functions
+!--------------------------------------------------------------------------------------------------
+subroutine unitTest
+  
+  real(pReal), dimension(4)   :: qu,ro,ax
+  real(pReal), dimension(3)   :: eu,r
+  real(pReal), dimension(3,3) :: om
+  character(len=pStringLen)   :: msg
+  real    :: A,B
+  integer :: i
+
+  do i=1,5
+  
+    msg = ''
+
+    call random_number(r)
+    A = sqrt(r(3))
+    B = sqrt(1-0_pReal -r(3))
+    qu = [cos(2.0_pReal*PI*r(1))*A,&
+          sin(2.0_pReal*PI*r(2))*B,&
+          cos(2.0_pReal*PI*r(2))*B,&
+          sin(2.0_pReal*PI*r(1))*A]
+    if(qu(1)<0.0_pReal) qu = qu * (-1.0_pReal)
+    
+    if(any(dNeq(om2qu(qu2om(qu)),qu,1.0e-10_pReal))) msg = trim(msg)//'om2qu/qu2om,'
+    if(any(dNeq(eu2qu(qu2eu(qu)),qu,1.0e-10_pReal))) msg = trim(msg)//'eu2qu/qu2eu,'
+    if(any(dNeq(ax2qu(qu2ax(qu)),qu,1.0e-10_pReal))) msg = trim(msg)//'ax2qu/qu2ax,'
+    if(any(dNeq(ro2qu(qu2ro(qu)),qu,1.0e-10_pReal))) msg = trim(msg)//'ro2qu/qu2ro,'
+    if(any(dNeq(ho2qu(qu2ho(qu)),qu,1.0e-7_pReal)))  msg = trim(msg)//'ho2qu/qu2ho,'
+    if(any(dNeq(cu2qu(qu2cu(qu)),qu,1.0e-7_pReal)))  msg = trim(msg)//'cu2qu/qu2cu,'
+    
+    if(len_trim(msg) /= 0) &
+      call IO_error(401,ext_msg=msg)
+
+  enddo
+      
+end subroutine unitTest
 
 
 end module rotations

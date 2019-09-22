@@ -10,6 +10,7 @@ module CPFEM2
   use config
   use FEsolving
   use math
+  use rotations
   use mesh
   use material
   use lattice
@@ -52,6 +53,7 @@ subroutine CPFEM_initAll
   call debug_init
   call config_init
   call math_init
+  call rotations_init
   call mesh_init
   call lattice_init
   call HDF5_utilities_init

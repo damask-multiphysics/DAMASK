@@ -801,7 +801,7 @@ subroutine homogenization_results
   integer :: p
   character(len=256) :: group
   
-  real(pReal), dimension(:,:,:), allocatable :: temp
+  !real(pReal), dimension(:,:,:), allocatable :: temp
                                              
   do p=1,size(config_name_homogenization)
     group = trim('current/materialpoint')//'/'//trim(config_name_homogenization(p))
