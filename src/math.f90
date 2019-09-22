@@ -484,20 +484,23 @@ function math_invSym3333(A)
   real(pReal),dimension(3,3,3,3),intent(in) :: A
 
   integer :: ierr
-  integer,     dimension(6)   :: ipiv6
-  real(pReal), dimension(6,6) :: temp66_Real
-  real(pReal), dimension(6)   :: work6
+  integer,     dimension(6)        :: ipiv6
+  real(pReal), dimension(6,6)      :: temp66
+  real(pReal), dimension(6*(64+2)) :: work
+  logical                          :: error
   external :: &
    dgetrf, &
    dgetri
 
-  temp66_real = math_sym3333to66(A)
-  call dgetrf(6,6,temp66_real,6,ipiv6,ierr)
-  call dgetri(6,temp66_real,6,ipiv6,work6,6,ierr)
-  if (ierr == 0) then
-    math_invSym3333 = math_66toSym3333(temp66_real)
-  else
+  temp66 = math_sym3333to66(A)
+  call dgetrf(6,6,temp66,6,ipiv6,ierr)
+  error = (ierr /= 0)
+  call dgetri(6,temp66,6,ipiv6,work,size(work,1),ierr)
+  error = error .or. (ierr /= 0)
+  if (error) then
     call IO_error(400, ext_msg = 'math_invSym3333')
+  else
+    math_invSym3333 = math_66toSym3333(temp66)
   endif
 
 end function math_invSym3333
@@ -512,17 +515,18 @@ subroutine math_invert(InvA, error, A)
   real(pReal), dimension(size(A,1),size(A,1)), intent(out) :: invA
   logical,                                     intent(out) :: error
 
-  integer,     dimension(size(A,1)) :: ipiv
-  real(pReal), dimension(size(A,1)) :: work
-  integer                           :: ierr
+  integer,     dimension(size(A,1))        :: ipiv
+  real(pReal), dimension(size(A,1)*(64+2)) :: work
+  integer                                  :: ierr
   external :: &
    dgetrf, &
    dgetri
 
   invA = A 
   call dgetrf(size(A,1),size(A,1),invA,size(A,1),ipiv,ierr)
-  call dgetri(size(A,1),InvA,size(A,1),ipiv,work,size(A,1),ierr)
-  error = merge(.true.,.false., ierr /= 0)
+  error = (ierr /= 0)
+  call dgetri(size(A,1),InvA,size(A,1),ipiv,work,size(work,1),ierr)
+  error = error .or. (ierr /= 0)
  
 end subroutine math_invert
 
@@ -933,14 +937,14 @@ subroutine math_eigenValuesVectorsSym(m,values,vectors,error)
   real(pReal), dimension(size(m,1)),            intent(out) :: values
   real(pReal), dimension(size(m,1),size(m,1)),  intent(out) :: vectors
   logical, intent(out) :: error
-  integer :: info
+  integer :: ierr
   real(pReal), dimension((64+2)*size(m,1)) :: work                                                  ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
   external :: &
-   dsyev
+    dsyev
 
   vectors = m                                                                                       ! copy matrix to input (doubles as output) array
-  call dsyev('V','U',size(m,1),vectors,size(m,1),values,work,(64+2)*size(m,1),info)
-  error = (info == 0)
+  call dsyev('V','U',size(m,1),vectors,size(m,1),values,work,size(work,1),ierr)
+  error = (ierr /= 0)
 
 end subroutine math_eigenValuesVectorsSym
 
@@ -1184,15 +1188,15 @@ function math_eigenvaluesSym(m)
  
   real(pReal), dimension(:,:),                  intent(in)  :: m
   real(pReal), dimension(size(m,1))                         :: math_eigenvaluesSym
-  real(pReal), dimension(size(m,1),size(m,1))               :: vectors
-  integer :: info
+  real(pReal), dimension(size(m,1),size(m,1))               :: m_
+  integer :: ierr
   real(pReal), dimension((64+2)*size(m,1)) :: work                                                  ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
   external :: &
    dsyev
 
-  vectors = m                                                                                       ! copy matrix to input (doubles as output) array
-  call dsyev('N','U',size(m,1),vectors,size(m,1),math_eigenvaluesSym,work,(64+2)*size(m,1),info)
-  if (info /= 0) math_eigenvaluesSym = IEEE_value(1.0_pReal,IEEE_quiet_NaN)
+  m_= m                                                                                             ! copy matrix to input (will be destroyed)
+  call dsyev('N','U',size(m,1),m_,size(m,1),math_eigenvaluesSym,work,size(work,1),ierr)
+  if (ierr /= 0) math_eigenvaluesSym = IEEE_value(1.0_pReal,IEEE_quiet_NaN)
 
 end function math_eigenvaluesSym
 
