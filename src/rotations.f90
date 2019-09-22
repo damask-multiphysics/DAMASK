@@ -1199,10 +1199,9 @@ end function cu2ho
 !--------------------------------------------------------------------------------------------------
 subroutine unitTest
   
-  real(pReal), dimension(4)   :: qu,ro,ax
-  real(pReal), dimension(3)   :: eu,r
-  real(pReal), dimension(3,3) :: om
-  character(len=pStringLen)   :: msg
+  real(pReal), dimension(4) :: qu
+  real(pReal), dimension(3) :: r
+  character(len=pStringLen) :: msg
   real    :: A,B
   integer :: i
 
