@@ -462,8 +462,8 @@ pure function qu2ro(qu) result(ro)
   real(pReal)                           :: s
   real(pReal), parameter                :: thr = 1.0e-8_pReal
   
-  if (qu(1) < thr) then
-    ro =   [qu(2),  qu(3),  qu(4), IEEE_value(ro(4),IEEE_positive_inf)]
+  if (abs(qu(1)) < thr) then
+    ro =   [qu(2),  qu(3),  qu(4), IEEE_value(1.0_pReal,IEEE_positive_inf)]
   else
     s = norm2(qu(2:4))
     if (s < thr) then
