@@ -184,8 +184,10 @@ subroutine grid_mech_spectral_basic_init
     call HDF5_read(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
     call HDF5_closeFile(fileHandle)
 
-    fileUnit = IO_open_jobFile_binary('C_ref')
-    read(fileUnit) C_minMaxAvg; close(fileUnit)
+    call MPI_File_open(PETSC_COMM_WORLD, trim(getSolverJobName())//'.C_ref', &
+                       MPI_MODE_RDONLY,MPI_INFO_NULL,fileUnit,ierr)
+    call MPI_File_read(fileUnit,C_minMaxAvg,81,MPI_DOUBLE,MPI_STATUS_IGNORE,ierr)
+    call MPI_File_close(fileUnit,ierr)
   endif restartRead2
 
   call utilities_updateGamma(C_minMaxAvg,.true.)

@@ -527,7 +527,7 @@ program DAMASK_spectral
            write(6,'(/,a)') ' cutting back '
          else                                                                                       ! no more options to continue
            call IO_warning(850)
-           call MPI_file_close(fileUnit,ierr)
+           call MPI_File_close(fileUnit,ierr)
            close(statUnit)
            call quit(-1*(lastRestartWritten+1))                                                     ! quit and provide information about last restart inc written
          endif
@@ -550,7 +550,7 @@ program DAMASK_spectral
          write(6,'(1/,a)') ' ... writing results to file ......................................'
          flush(6)
          call materialpoint_postResults()
-         call MPI_file_seek (fileUnit,fileOffset,MPI_SEEK_SET,ierr)
+         call MPI_File_seek (fileUnit,fileOffset,MPI_SEEK_SET,ierr)
          if (ierr /= 0) call IO_error(894, ext_msg='MPI_file_seek')
          do i=1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1     ! slice the output of my process in chunks not exceeding the limit for one output
            outputIndex=int([(i-1)*((maxRealOut)/materialpoint_sizeResults)+1, &
