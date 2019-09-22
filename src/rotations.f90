@@ -88,10 +88,10 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief doing self test
 !--------------------------------------------------------------------------------------------------
-subroutine rotations_init()
+subroutine rotations_init
 
   write(6,'(/,a)')   ' <<<+-  rotations init  -+>>>'
-  call unitTest()
+  call unitTest
 
 end subroutine rotations_init
 
@@ -265,7 +265,7 @@ pure function rotVector(self,v,active) result(vRot)
     else
       q = conjg(self%q) * (quaternion([0.0_pReal, v_normed(1), v_normed(2), v_normed(3)]) * self%q )
     endif
-    vRot = q%real()*norm2(v)
+    vRot = q%aimag()*norm2(v)
   endif
 
 end function rotVector
@@ -1233,8 +1233,6 @@ subroutine unitTest
       if(qu(1)<0.0_pReal) qu = qu * (-1.0_pReal)
     endif
     
- 
-    
     if(dNeq0(norm2(om2qu(qu2om(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'om2qu/qu2om,'
     if(dNeq0(norm2(eu2qu(qu2eu(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'eu2qu/qu2eu,'
     if(dNeq0(norm2(ax2qu(qu2ax(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'ax2qu/qu2ax,'
@@ -1267,11 +1265,10 @@ subroutine unitTest
     ho = qu2ho(qu)
     if(dNeq0(norm2(ho2qu(cu2ho(ho2cu(ho)))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2ho/ho2cu,'
 
-    if(len_trim(msg) /= 0) &
-      call IO_error(401,ext_msg=msg)
+    if(len_trim(msg) /= 0) call IO_error(401,ext_msg=msg)
 
   enddo
-      
+
 end subroutine unitTest
 
 

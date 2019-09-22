@@ -88,36 +88,50 @@ module quaternions
 
   end type
 
-interface assignment (=)
-  module procedure assign_quat__
-  module procedure assign_vec__
-end interface assignment (=)
-
-interface quaternion
-  module procedure init__
-end interface quaternion
-
-interface abs
-  procedure abs__
-end interface abs
-
-interface dot_product
-  procedure dot_product__
-end interface dot_product
-
-interface conjg
-  module procedure conjg__
-end interface conjg
-
-interface exp
-  module procedure exp__
-end interface exp
-
-interface log
-  module procedure log__
-end interface log
+  interface assignment (=)
+    module procedure assign_quat__
+    module procedure assign_vec__
+  end interface assignment (=)
+  
+  interface quaternion
+    module procedure init__
+  end interface quaternion
+  
+  interface abs
+    procedure abs__
+  end interface abs
+  
+  interface dot_product
+    procedure dot_product__
+  end interface dot_product
+  
+  interface conjg
+    module procedure conjg__
+  end interface conjg
+  
+  interface exp
+    module procedure exp__
+  end interface exp
+  
+  interface log
+    module procedure log__
+  end interface log
+  
+  private :: &
+    unitTest
 
 contains
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief doing self test
+!--------------------------------------------------------------------------------------------------
+subroutine quaternions_init()
+
+  write(6,'(/,a)')   ' <<<+-  quaternions init  -+>>>'
+  call unitTest
+
+end subroutine quaternions_init
 
 
 !---------------------------------------------------------------------------------------------------
@@ -434,29 +448,58 @@ end function asArray
 
 
 !---------------------------------------------------------------------------------------------------
-!> quaternion as plain array
+!> real part of a quaternion
 !---------------------------------------------------------------------------------------------------
 pure function real__(self)
 
-  real(pReal), dimension(3)     :: real__
+  real(pReal)                   :: real__
   class(quaternion), intent(in) :: self
 
-  real__ = [self%x,self%y,self%z]
+  real__ = self%w
 
 end function real__
 
 
 !---------------------------------------------------------------------------------------------------
-!> quaternion as plain array
+!> imagninary part of a quaternion
 !---------------------------------------------------------------------------------------------------
 pure function aimag__(self)
 
-  real(pReal)                   :: aimag__
+  real(pReal), dimension(3)     :: aimag__
   class(quaternion), intent(in) :: self
 
-  aimag__ = self%w
+  aimag__ = [self%x,self%y,self%z]
 
 end function aimag__
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief check correctness of (some) quaternions functions
+!--------------------------------------------------------------------------------------------------
+subroutine unitTest
+
+  real(pReal), dimension(4) :: qu
+
+  type(quaternion)          :: q, q_2
+  
+  call random_number(qu)
+  q = qu
+
+  write(6,*) q%asArray() == qu
+  write(6,*) q%real()  == qu(1)
+  write(6,*) q%aimag() == qu(2:4)
+  
+
+  q_2 = q%homomorphed()
+  write(6,*) q == q_2*(-1.0_pReal)
+  write(6,*) q_2%real()  == qu(1)*(-1.0_pReal)
+  write(6,*) q_2%aimag() == qu(2:4)*(-1.0_pReal)
+  
+  q_2 = conjg(q)
+  write(6,*) q_2%real()  == q%real() 
+  write(6,*) q_2%aimag() == q%aimag()*(-1.0_pReal)
+      
+end subroutine unitTest
 
 
 end module quaternions
