@@ -1199,9 +1199,10 @@ end function cu2ho
 !--------------------------------------------------------------------------------------------------
 subroutine unitTest
   
-  real(pReal), dimension(4) :: qu
-  real(pReal), dimension(3) :: r
-  character(len=pStringLen) :: msg
+  real(pReal), dimension(4)   :: qu, ax, ro
+  real(pReal), dimension(3)   :: r, eu, ho
+  real(pReal), dimension(3,3) :: om
+  character(len=pStringLen)   :: msg
   real    :: A,B
   integer :: i
 
@@ -1218,13 +1219,38 @@ subroutine unitTest
           sin(2.0_pReal*PI*r(1))*A]
     if(qu(1)<0.0_pReal) qu = qu * (-1.0_pReal)
     
-    if(any(dNeq(om2qu(qu2om(qu)),qu,1.0e-10_pReal))) msg = trim(msg)//'om2qu/qu2om,'
-    if(any(dNeq(eu2qu(qu2eu(qu)),qu,1.0e-10_pReal))) msg = trim(msg)//'eu2qu/qu2eu,'
-    if(any(dNeq(ax2qu(qu2ax(qu)),qu,1.0e-10_pReal))) msg = trim(msg)//'ax2qu/qu2ax,'
-    if(any(dNeq(ro2qu(qu2ro(qu)),qu,1.0e-10_pReal))) msg = trim(msg)//'ro2qu/qu2ro,'
-    if(any(dNeq(ho2qu(qu2ho(qu)),qu,1.0e-7_pReal)))  msg = trim(msg)//'ho2qu/qu2ho,'
-    if(any(dNeq(cu2qu(qu2cu(qu)),qu,1.0e-7_pReal)))  msg = trim(msg)//'cu2qu/qu2cu,'
+    if(dNeq0(norm2(om2qu(qu2om(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'om2qu/qu2om,'
+    if(dNeq0(norm2(eu2qu(qu2eu(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'eu2qu/qu2eu,'
+    if(dNeq0(norm2(ax2qu(qu2ax(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'ax2qu/qu2ax,'
+    if(dNeq0(norm2(ro2qu(qu2ro(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'ro2qu/qu2ro,'
+    if(dNeq0(norm2(ho2qu(qu2ho(qu))-qu),1.0e-9_pReal))  msg = trim(msg)//'ho2qu/qu2ho,'
+    if(dNeq0(norm2(cu2qu(qu2cu(qu))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2qu/qu2cu,'
     
+    om = qu2om(qu)
+    if(dNeq0(norm2(om2qu(eu2om(om2eu(om)))-qu),1.0e-12_pReal)) msg = trim(msg)//'eu2om/om2eu,'
+    if(dNeq0(norm2(om2qu(ax2om(om2ax(om)))-qu),1.0e-7_pReal))  msg = trim(msg)//'ax2om/om2ax,'
+    if(dNeq0(norm2(om2qu(ro2om(om2ro(om)))-qu),1.0e-12_pReal)) msg = trim(msg)//'ro2om/om2ro,'
+    if(dNeq0(norm2(om2qu(ho2om(om2ho(om)))-qu),1.0e-9_pReal))  msg = trim(msg)//'ho2om/om2ho,'
+    if(dNeq0(norm2(om2qu(cu2om(om2cu(om)))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2om/om2cu,'
+    
+    eu = qu2eu(qu)
+    if(dNeq0(norm2(eu2qu(ax2eu(eu2ax(eu)))-qu),1.0e-12_pReal)) msg = trim(msg)//'ax2eu/eu2ax,'
+    if(dNeq0(norm2(eu2qu(ro2eu(eu2ro(eu)))-qu),1.0e-12_pReal)) msg = trim(msg)//'ro2eu/eu2ro,'
+    if(dNeq0(norm2(eu2qu(ho2eu(eu2ho(eu)))-qu),1.0e-9_pReal))  msg = trim(msg)//'ho2eu/eu2ho,'
+    if(dNeq0(norm2(eu2qu(cu2eu(eu2cu(eu)))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2eu/eu2cu,'
+    
+    ax = qu2ax(qu)
+    if(dNeq0(norm2(ax2qu(ro2ax(ax2ro(ax)))-qu),1.0e-12_pReal)) msg = trim(msg)//'ro2ax/ax2ro,'
+    if(dNeq0(norm2(ax2qu(ho2ax(ax2ho(ax)))-qu),1.0e-9_pReal))  msg = trim(msg)//'ho2ax/ax2ho,'
+    if(dNeq0(norm2(ax2qu(cu2ax(ax2cu(ax)))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2ax/ax2cu,'
+    
+    ro = qu2ro(qu)
+    if(dNeq0(norm2(ro2qu(ho2ro(ro2ho(ro)))-qu),1.0e-9_pReal))  msg = trim(msg)//'ho2ro/ro2ho,'
+    if(dNeq0(norm2(ro2qu(cu2ro(ro2cu(ro)))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2ro/ro2cu,'
+    
+    ho = qu2ho(qu)
+    if(dNeq0(norm2(ho2qu(cu2ho(ho2cu(ho)))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2ho/ho2cu,'
+
     if(len_trim(msg) /= 0) &
       call IO_error(401,ext_msg=msg)
 
