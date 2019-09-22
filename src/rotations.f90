@@ -1211,7 +1211,7 @@ subroutine unitTest
     msg = ''
 
 #if defined(__GFORTRAN__) && __GNUC__<9
-    if(i>2 .and. i<7) cycle
+    if(i<7) cycle
 #endif
 
     if(i==1) then
