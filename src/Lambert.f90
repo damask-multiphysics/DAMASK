@@ -111,7 +111,7 @@ pure function Lambert_CubeToBall(cube) result(ball)
       LamXYZ = [ T(order(2)) * q, T(order(1)) * q, pref * XYZ(3) - c ]
     endif special
   
-    ! reverse the coordinates back to the regular order according to the original pyramid number
+    ! reverse the coordinates back to order according to the original pyramid number
     ball = LamXYZ(p)
  
   endif center
@@ -165,7 +165,7 @@ pure function Lambert_BallToCube(xyz) result(cube)
     ! inverse M_1
     xyz1 = [ Tinv(1), Tinv(2), sign(1.0_pReal,xyz3(3)) * rs / pref ] /sc
     
-    ! reverst the coordinates back to the regular order according to the original pyramid number
+    ! reverse the coordinates back to order according to the original pyramid number
     cube = xyz1(p)
  
   endif center

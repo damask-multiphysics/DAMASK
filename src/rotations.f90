@@ -90,6 +90,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine rotations_init
 
+  call quaternions_init
   write(6,'(/,a)')   ' <<<+-  rotations init  -+>>>'
   call unitTest
 

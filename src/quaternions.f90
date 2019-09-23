@@ -127,7 +127,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief doing self test
 !--------------------------------------------------------------------------------------------------
-subroutine quaternions_init()
+subroutine quaternions_init
 
   write(6,'(/,a)')   ' <<<+-  quaternions init  -+>>>'
   call unitTest
@@ -482,39 +482,37 @@ subroutine unitTest
   real(pReal), dimension(4) :: qu
 
   type(quaternion)          :: q, q_2
-  
+
   call random_number(qu)
   q = qu
   
   q_2 = q + q
-  if(any(q_2%asArray() /= 2.0_pReal*qu))         call IO_error(401,ext_msg='add__')
+  if(any(dNeq(q_2%asArray(),2.0_pReal*qu)))         call IO_error(401,ext_msg='add__')
   
   q_2 = q - q
-  if(any(q_2%asArray() /= [0.0_pReal,0.0_pReal,0.0_pReal,0.0_pReal])) &
-                                                 call IO_error(401,ext_msg='sub__')
+  if(any(dNeq0(q_2%asArray())))                     call IO_error(401,ext_msg='sub__')
      
   q_2 = q * 5.0_preal
-  if(any(q_2%asArray() /= 5.0_pReal*qu))         call IO_error(401,ext_msg='mul__')
+  if(any(dNeq(q_2%asArray(),5.0_pReal*qu)))         call IO_error(401,ext_msg='mul__')
   
   q_2 = q / 0.5_preal
-  if(any(q_2%asArray() /= 2.0_pReal*qu))         call IO_error(401,ext_msg='div__')
+  if(any(dNeq(q_2%asArray(),2.0_pReal*qu)))         call IO_error(401,ext_msg='div__')
     
   q_2 = q
-  if(q_2 /= q)                                   call IO_error(401,ext_msg='eq__')
+  if(q_2 /= q)                                      call IO_error(401,ext_msg='eq__')
 
-  if(any(q%asArray() /= qu))                     call IO_error(401,ext_msg='eq__')
-  if(q%real()        /= qu(1))                   call IO_error(401,ext_msg='real()')
-  if(any(q%aimag()   /= qu(2:4)))                call IO_error(401,ext_msg='aimag()')
+  if(any(dNeq(q%asArray(),qu)))                     call IO_error(401,ext_msg='eq__')
+  if(dNeq(q%real(),       qu(1)))                   call IO_error(401,ext_msg='real()')
+  if(any(dNeq(q%aimag(),  qu(2:4))))                call IO_error(401,ext_msg='aimag()')
   
   q_2 = q%homomorphed()
-  if(q               /= q_2*(-1.0_pReal))        call IO_error(401,ext_msg='homomorphed')
-  if(q_2%real()      /= qu(1)*(-1.0_pReal))      call IO_error(401,ext_msg='homomorphed/real')
-  if(any(q_2%aimag() /= qu(2:4)*(-1.0_pReal)))   call IO_error(401,ext_msg='homomorphed/aimag')
+  if(q                 /= q_2*    (-1.0_pReal))     call IO_error(401,ext_msg='homomorphed')
+  if(dNeq(q_2%real(),     qu(1)*  (-1.0_pReal)))    call IO_error(401,ext_msg='homomorphed/real')
+  if(any(dNeq(q_2%aimag(),qu(2:4)*(-1.0_pReal))))   call IO_error(401,ext_msg='homomorphed/aimag')
   
   q_2 = conjg(q)
-  if(q_2%real()  /= q%real())                    call IO_error(401,ext_msg='conjg/real')
-  if(any(q_2%aimag() /= q%aimag()*(-1.0_pReal))) call IO_error(401,ext_msg='conjg/aimag')
-  
+  if(dNeq(q_2%real(),     q%real()))                call IO_error(401,ext_msg='conjg/real')
+  if(any(dNeq(q_2%aimag(),q%aimag()*(-1.0_pReal)))) call IO_error(401,ext_msg='conjg/aimag')
       
 end subroutine unitTest
 
