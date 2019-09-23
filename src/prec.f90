@@ -127,7 +127,7 @@ logical elemental pure function dEq(a,b,tol)
     eps = PREAL_EPSILON * maxval(abs([a,b]))
   endif
 
-  dEq = merge(.True.,.False.,abs(a-b) < eps)
+  dEq = merge(.True.,.False.,abs(a-b) <= eps)
 
 end function dEq
 
@@ -170,7 +170,7 @@ logical elemental pure function dEq0(a,tol)
     eps = PREAL_MIN * 10.0_pReal
   endif
 
-  dEq0 = merge(.True.,.False.,abs(a) < eps)
+  dEq0 = merge(.True.,.False.,abs(a) <= eps)
 
 end function dEq0
 
@@ -214,7 +214,7 @@ logical elemental pure function cEq(a,b,tol)
     eps = PREAL_EPSILON * maxval(abs([a,b]))
   endif
 
-  cEq = merge(.True.,.False.,abs(a-b) < eps)
+  cEq = merge(.True.,.False.,abs(a-b) <= eps)
 
 end function cEq
 
