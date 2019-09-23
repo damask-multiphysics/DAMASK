@@ -484,14 +484,14 @@ program DAMASK_spectral
                case(FIELD_MECH_ID)
                  solres(field) = mech_solution (&
                                         incInfo,timeinc,timeIncOld, &
-                                        stress_BC          = loadCases(currentLoadCase)%stress, &
-                                        rotation_BC        = loadCases(currentLoadCase)%rotation)
+                                        stress_BC   = loadCases(currentLoadCase)%stress, &
+                                        rotation_BC = loadCases(currentLoadCase)%rotation)
 
                case(FIELD_THERMAL_ID)
-                 solres(field) = grid_thermal_spectral_solution(timeinc,timeIncOld,remainingLoadCaseTime)
+                 solres(field) = grid_thermal_spectral_solution(timeinc,timeIncOld)
 
                case(FIELD_DAMAGE_ID)
-                 solres(field) = grid_damage_spectral_solution(timeinc,timeIncOld,remainingLoadCaseTime)
+                 solres(field) = grid_damage_spectral_solution(timeinc,timeIncOld)
 
              end select
 

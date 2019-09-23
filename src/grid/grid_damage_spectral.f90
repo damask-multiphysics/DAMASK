@@ -143,12 +143,11 @@ end subroutine grid_damage_spectral_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the spectral damage scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-function grid_damage_spectral_solution(timeinc,timeinc_old,loadCaseTime) result(solution)
+function grid_damage_spectral_solution(timeinc,timeinc_old) result(solution)
  
   real(pReal), intent(in) :: &
     timeinc, &                                                                                      !< increment in time for current solution
-    timeinc_old, &                                                                                  !< increment in time of last increment
-    loadCaseTime                                                                                    !< remaining time of current load case
+    timeinc_old                                                                                     !< increment in time of last increment
   integer :: i, j, k, cell
   type(tSolutionState) :: solution
   PetscInt  :: devNull

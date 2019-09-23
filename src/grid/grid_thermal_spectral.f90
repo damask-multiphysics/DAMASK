@@ -141,12 +141,11 @@ end subroutine grid_thermal_spectral_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the spectral thermal scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-function grid_thermal_spectral_solution(timeinc,timeinc_old,loadCaseTime) result(solution)
+function grid_thermal_spectral_solution(timeinc,timeinc_old) result(solution)
  
   real(pReal), intent(in) :: &
     timeinc, &                                                                                      !< increment in time for current solution
-    timeinc_old, &                                                                                  !< increment in time of last increment
-    loadCaseTime                                                                                    !< remaining time of current load case
+    timeinc_old                                                                                     !< increment in time of last increment
   integer :: i, j, k, cell
   type(tSolutionState) :: solution
   PetscInt  :: position
