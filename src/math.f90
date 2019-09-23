@@ -1401,7 +1401,7 @@ subroutine unitTest
   integer, dimension(2,4), parameter :: &
     sort_out_  = reshape([-1,-1,  +1,+5,  +5,+6,  +3,-2],[2,4])
     
-  real(pReal), dimension(5) :: range_out_ = [1.0_pReal,2.0_pReal,3.0_pReal,4.0_pReal,5.0_pReal]
+  integer,     dimension(5) :: range_out_ = [1,2,3,4,5]
 
   real(pReal)                 :: det
   real(pReal), dimension(6)   :: v6
