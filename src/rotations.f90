@@ -97,7 +97,7 @@ end subroutine rotations_init
 
 
 !---------------------------------------------------------------------------------------------------
-! Return rotation in different represenations
+! Return rotation in different representations
 !---------------------------------------------------------------------------------------------------
 pure function asQuaternion(self)
 
@@ -1199,10 +1199,12 @@ end function cu2ho
 !--------------------------------------------------------------------------------------------------
 subroutine unitTest
   
-  real(pReal), dimension(4)   :: qu, ax, ro
-  real(pReal), dimension(3)   :: r, eu, ho
-  real(pReal), dimension(3,3) :: om
-  character(len=pStringLen)   :: msg
+  type(rotation)                  :: R
+  real(pReal), dimension(4)       :: qu, ax, ro
+  real(pReal), dimension(3)       :: x, eu, ho, v3
+  real(pReal), dimension(3,3)     :: om, t33
+  real(pReal), dimension(3,3,3,3) :: t3333
+  character(len=pStringLen)       :: msg
   real    :: A,B
   integer :: i
 
@@ -1227,13 +1229,13 @@ subroutine unitTest
     elseif(i==6) then
       qu = ax2qu([1.0_pReal,0.0_pReal,0.0_pReal,0.0_pReal])
     else
-      call random_number(r)
-      A = sqrt(r(3))
-      B = sqrt(1-0_pReal -r(3))
-      qu = [cos(2.0_pReal*PI*r(1))*A,&
-            sin(2.0_pReal*PI*r(2))*B,&
-            cos(2.0_pReal*PI*r(2))*B,&
-            sin(2.0_pReal*PI*r(1))*A]
+      call random_number(x)
+      A = sqrt(x(3))
+      B = sqrt(1-0_pReal -x(3))
+      qu = [cos(2.0_pReal*PI*x(1))*A,&
+            sin(2.0_pReal*PI*x(2))*B,&
+            cos(2.0_pReal*PI*x(2))*B,&
+            sin(2.0_pReal*PI*x(1))*A]
       if(qu(1)<0.0_pReal) qu = qu * (-1.0_pReal)
     endif
 
@@ -1241,35 +1243,49 @@ subroutine unitTest
     if(dNeq0(norm2(eu2qu(qu2eu(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'eu2qu/qu2eu,'
     if(dNeq0(norm2(ax2qu(qu2ax(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'ax2qu/qu2ax,'
     if(dNeq0(norm2(ro2qu(qu2ro(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'ro2qu/qu2ro,'
-    if(dNeq0(norm2(ho2qu(qu2ho(qu))-qu),1.0e-9_pReal))  msg = trim(msg)//'ho2qu/qu2ho,'
+    if(dNeq0(norm2(ho2qu(qu2ho(qu))-qu),1.0e-7_pReal))  msg = trim(msg)//'ho2qu/qu2ho,'
     if(dNeq0(norm2(cu2qu(qu2cu(qu))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2qu/qu2cu,'
     
     om = qu2om(qu)
     if(dNeq0(norm2(om2qu(eu2om(om2eu(om)))-qu),1.0e-7_pReal))  msg = trim(msg)//'eu2om/om2eu,'
     if(dNeq0(norm2(om2qu(ax2om(om2ax(om)))-qu),1.0e-7_pReal))  msg = trim(msg)//'ax2om/om2ax,'
     if(dNeq0(norm2(om2qu(ro2om(om2ro(om)))-qu),1.0e-12_pReal)) msg = trim(msg)//'ro2om/om2ro,'
-    if(dNeq0(norm2(om2qu(ho2om(om2ho(om)))-qu),1.0e-9_pReal))  msg = trim(msg)//'ho2om/om2ho,'
+    if(dNeq0(norm2(om2qu(ho2om(om2ho(om)))-qu),1.0e-7_pReal))  msg = trim(msg)//'ho2om/om2ho,'
     if(dNeq0(norm2(om2qu(cu2om(om2cu(om)))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2om/om2cu,'
     
     eu = qu2eu(qu)
     if(dNeq0(norm2(eu2qu(ax2eu(eu2ax(eu)))-qu),1.0e-12_pReal)) msg = trim(msg)//'ax2eu/eu2ax,'
     if(dNeq0(norm2(eu2qu(ro2eu(eu2ro(eu)))-qu),1.0e-12_pReal)) msg = trim(msg)//'ro2eu/eu2ro,'
-    if(dNeq0(norm2(eu2qu(ho2eu(eu2ho(eu)))-qu),1.0e-9_pReal))  msg = trim(msg)//'ho2eu/eu2ho,'
+    if(dNeq0(norm2(eu2qu(ho2eu(eu2ho(eu)))-qu),1.0e-7_pReal))  msg = trim(msg)//'ho2eu/eu2ho,'
     if(dNeq0(norm2(eu2qu(cu2eu(eu2cu(eu)))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2eu/eu2cu,'
     
     ax = qu2ax(qu)
     if(dNeq0(norm2(ax2qu(ro2ax(ax2ro(ax)))-qu),1.0e-12_pReal)) msg = trim(msg)//'ro2ax/ax2ro,'
-    if(dNeq0(norm2(ax2qu(ho2ax(ax2ho(ax)))-qu),1.0e-9_pReal))  msg = trim(msg)//'ho2ax/ax2ho,'
+    if(dNeq0(norm2(ax2qu(ho2ax(ax2ho(ax)))-qu),1.0e-7_pReal))  msg = trim(msg)//'ho2ax/ax2ho,'
     if(dNeq0(norm2(ax2qu(cu2ax(ax2cu(ax)))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2ax/ax2cu,'
     
     ro = qu2ro(qu)
-    if(dNeq0(norm2(ro2qu(ho2ro(ro2ho(ro)))-qu),1.0e-9_pReal))  msg = trim(msg)//'ho2ro/ro2ho,'
+    if(dNeq0(norm2(ro2qu(ho2ro(ro2ho(ro)))-qu),1.0e-7_pReal))  msg = trim(msg)//'ho2ro/ro2ho,'
     if(dNeq0(norm2(ro2qu(cu2ro(ro2cu(ro)))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2ro/ro2cu,'
     
     ho = qu2ho(qu)
     if(dNeq0(norm2(ho2qu(cu2ho(ho2cu(ho)))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2ho/ho2cu,'
+    
+    call R%fromMatrix(om)
+    
+    call random_number(v3)
+    if(all(dNeq(R%rotVector(R%rotVector(v3),active=.true.),v3,1.0e-12_pReal))) &
+      msg = trim(msg)//'rotVector,'
+    
+    call random_number(t33)
+    if(all(dNeq(R%rotTensor2(R%rotTensor2(t33),active=.true.),t33,1.0e-12_pReal))) &
+      msg = trim(msg)//'rotTensor2,'
+    
+    call random_number(t3333)
+    if(all(dNeq(R%rotTensor4(R%rotTensor4(t3333),active=.true.),t3333,1.0e-12_pReal))) &
+      msg = trim(msg)//'rotTensor4,'
 
-    if(len_trim(msg) /= 0) call IO_error(401,ext_msg=msg)
+    if(len_trim(msg) /= 0) call IO_error(401,ext_msg=msg)  
 
   enddo
 
