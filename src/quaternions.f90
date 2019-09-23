@@ -484,6 +484,21 @@ subroutine unitTest
   
   call random_number(qu)
   q = qu
+  
+  q_2 = q + q
+  write(6,*) q_2%asArray() == 2.0_pReal*qu
+  
+  q_2 = q - q
+  write(6,*) q_2%asArray() == [0.0_pReal,0.0_pReal,0.0_pReal,0.0_pReal]
+  
+  q_2 = q * 5.0_preal
+  write(6,*) q_2%asArray() == 5.0_pReal*qu
+  
+  q_2 = q / 0.5_preal
+  write(6,*) q_2%asArray() == 2.0_pReal*qu
+  
+  q_2 = q
+  write(6,*) q_2 == q
 
   write(6,*) q%asArray() == qu
   write(6,*) q%real()  == qu(1)
@@ -498,6 +513,7 @@ subroutine unitTest
   q_2 = conjg(q)
   write(6,*) q_2%real()  == q%real() 
   write(6,*) q_2%aimag() == q%aimag()*(-1.0_pReal)
+  
       
 end subroutine unitTest
 
