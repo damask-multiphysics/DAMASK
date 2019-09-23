@@ -254,7 +254,7 @@ subroutine unitTest
   r = r/minval(r)
   if(.not. all(dEq(r,r+PREAL_EPSILON)))    call quit(9000)
   if(dEq(r(1),r(2)) .and. dNeq(r(1),r(2))) call quit(9000)
-  if(.not. all(dEq0(r-r+PREAL_MIN)))       call quit(9000)
+  if(.not. all(dEq0(r-(r+PREAL_MIN))))     call quit(9000)
   
   realloc_lhs_test = [1,2]
   if (any(realloc_lhs_test/=[1,2])) call quit(9000)
