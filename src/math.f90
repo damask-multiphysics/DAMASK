@@ -1481,7 +1481,7 @@ subroutine unitTest
   if(any(dNeq0(matmul(t99_2,t99)-math_identity2nd(9),tol=1.0e-9_pReal)) .or. e) &
     call IO_error(401,ext_msg='math_invert t99')
 
-  if(any(math_clip([4.0_pReal,9.0_pReal],5.0_pReal,6.5_pReal)/=[5.0_pReal,6.5_pReal])) &
+  if(any(dNeq(math_clip([4.0_pReal,9.0_pReal],5.0_pReal,6.5_pReal),[5.0_pReal,6.5_pReal]))) &
      call IO_error(401,ext_msg='math_clip')  
 
   if(math_factorial(10) /= 3628800) &
