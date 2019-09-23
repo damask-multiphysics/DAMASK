@@ -10,6 +10,7 @@ module prec
   use, intrinsic :: IEEE_arithmetic
 
   implicit none
+  public
   ! https://software.intel.com/en-us/blogs/2017/03/27/doctor-fortran-in-it-takes-all-kinds
 #ifdef Abaqus
   integer,     parameter, public :: pReal      = selected_real_kind(15,307)                         !< number with 15 significant digits, up to 1e+-307 (typically 64 bit)
@@ -83,14 +84,8 @@ module prec
   real(pReal), private, parameter :: PREAL_EPSILON = epsilon(0.0_pReal)                             !< minimum positive number such that 1.0 + EPSILON /= 1.0.
   real(pReal), private, parameter :: PREAL_MIN     = tiny(0.0_pReal)                                !< smallest normalized floating point number
 
-  public :: &
-    prec_init, &
-    dEq, &
-    dEq0, &
-    cEq, &
-    dNeq, &
-    dNeq0, &
-    cNeq
+  private :: &
+    unitTest
 
 contains
 
@@ -99,11 +94,6 @@ contains
 !> @brief reporting precision
 !--------------------------------------------------------------------------------------------------
 subroutine prec_init
-
-  integer, allocatable, dimension(:) :: realloc_lhs_test
-
-  external :: &
-    quit
 
   write(6,'(/,a)') ' <<<+-  prec init  -+>>>'
 
@@ -114,8 +104,7 @@ subroutine prec_init
   write(6,'(a,e10.3)') '   Minimum value:        ',tiny(0.0_pReal)
   write(6,'(a,i3)')    '   Decimal precision:    ',precision(0.0_pReal)
 
-  realloc_lhs_test = [1,2]
-  if (realloc_lhs_test(2)/=2) call quit(9000)
+  call unitTest
 
 end subroutine prec_init
 
@@ -153,15 +142,12 @@ logical elemental pure function dNeq(a,b,tol)
 
   real(pReal), intent(in)           :: a,b
   real(pReal), intent(in), optional :: tol
-  real(pReal)                       :: eps
 
   if (present(tol)) then
-    eps = tol
+    dNeq = .not. dEq(a,b,tol)
   else
-    eps = PREAL_EPSILON * maxval(abs([a,b]))
+    dNeq = .not. dEq(a,b)
   endif
-
-  dNeq = merge(.False.,.True.,abs(a-b) <= eps)
 
 end function dNeq
 
@@ -199,15 +185,12 @@ logical elemental pure function dNeq0(a,tol)
 
   real(pReal), intent(in)           :: a
   real(pReal), intent(in), optional :: tol
-  real(pReal)                       :: eps
 
   if (present(tol)) then
-    eps = tol
+    dNeq0 = .not. dEq0(a,tol)
   else
-    eps = PREAL_MIN * 10.0_pReal
+    dNeq0 = .not. dEq0(a)
   endif
-
-  dNeq0 = merge(.False.,.True.,abs(a) <= eps)
 
 end function dNeq0
 
@@ -247,16 +230,35 @@ logical elemental pure function cNeq(a,b,tol)
 
   complex(pReal), intent(in)           :: a,b
   real(pReal),    intent(in), optional :: tol
-  real(pReal)                          :: eps
 
   if (present(tol)) then
-    eps = tol
+    cNeq = .not. cEq(a,b,tol)
   else
-    eps = PREAL_EPSILON * maxval(abs([a,b]))
+    cNeq = .not. cEq(a,b)
   endif
 
-  cNeq = merge(.False.,.True.,abs(a-b) <= eps)
-
 end function cNeq
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief check correctness of (some) prec functions
+!--------------------------------------------------------------------------------------------------
+subroutine unitTest
+
+  integer, allocatable, dimension(:) :: realloc_lhs_test
+  real(pReal), dimension(2) :: r
+  external :: &
+    quit
+  
+  call random_number(r)
+  r = r/minval(r)
+  if(.not. all(dEq(r,r+PREAL_EPSILON)))    call quit(9000)
+  if(dEq(r(1),r(2)) .and. dNeq(r(1),r(2))) call quit(9000)
+  if(.not. all(dEq0(r-r+PREAL_MIN)))       call quit(9000)
+  
+  realloc_lhs_test = [1,2]
+  if (any(realloc_lhs_test/=[1,2])) call quit(9000)
+  
+end subroutine unitTest
 
 end module prec

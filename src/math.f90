@@ -1411,7 +1411,6 @@ subroutine unitTest
   real(pReal), dimension(9,9) :: t99,t99_2
   logical                     :: e
   
-integer :: i
   if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal,3.0_pReal,3.0_pReal,3.0_pReal] - &
               math_expand([1.0_pReal,2.0_pReal,3.0_pReal],[1,2,3,0])) > tol_math_check)) &
     call IO_error(401,ext_msg='math_expand [1,2,3] by [1,2,3,0] => [1,2,2,3,3,3]')
