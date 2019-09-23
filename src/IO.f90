@@ -70,21 +70,6 @@ end subroutine IO_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads a line from a text file.
-!--------------------------------------------------------------------------------------------------
-function IO_read(fileUnit) result(line)
- 
-  integer, intent(in) :: fileUnit                                                                   !< file unit
- 
-  character(len=pStringLen) :: line
- 
- 
-  read(fileUnit,'(a256)',END=100) line
- 
-100 end function IO_read
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief reads an entire ASCII file into an array
 !--------------------------------------------------------------------------------------------------
 function IO_read_ASCII(fileName) result(fileContent)
@@ -940,6 +925,22 @@ end subroutine IO_warning
 
 
 #if defined(Abaqus) || defined(Marc4DAMASK)
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief reads a line from a text file.
+!--------------------------------------------------------------------------------------------------
+function IO_read(fileUnit) result(line)
+ 
+  integer, intent(in) :: fileUnit                                                                   !< file unit
+ 
+  character(len=pStringLen) :: line
+ 
+ 
+  read(fileUnit,'(a256)',END=100) line
+ 
+100 end function IO_read
+
 
 #ifdef Abaqus
 !--------------------------------------------------------------------------------------------------
