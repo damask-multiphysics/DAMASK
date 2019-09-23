@@ -35,6 +35,7 @@
 !---------------------------------------------------------------------------------------------------
 module quaternions
   use prec
+  use IO
 
   implicit none
   public
@@ -486,33 +487,33 @@ subroutine unitTest
   q = qu
   
   q_2 = q + q
-  write(6,*) q_2%asArray() == 2.0_pReal*qu
+  if(any(q_2%asArray() /= 2.0_pReal*qu))         call IO_error(401,ext_msg='add__')
   
   q_2 = q - q
-  write(6,*) q_2%asArray() == [0.0_pReal,0.0_pReal,0.0_pReal,0.0_pReal]
-  
+  if(any(q_2%asArray() /= [0.0_pReal,0.0_pReal,0.0_pReal,0.0_pReal])) &
+                                                 call IO_error(401,ext_msg='sub__')
+     
   q_2 = q * 5.0_preal
-  write(6,*) q_2%asArray() == 5.0_pReal*qu
+  if(any(q_2%asArray() /= 5.0_pReal*qu))         call IO_error(401,ext_msg='mul__')
   
   q_2 = q / 0.5_preal
-  write(6,*) q_2%asArray() == 2.0_pReal*qu
-  
+  if(any(q_2%asArray() /= 2.0_pReal*qu))         call IO_error(401,ext_msg='div__')
+    
   q_2 = q
-  write(6,*) q_2 == q
+  if(q_2 /= q)                                   call IO_error(401,ext_msg='eq__')
 
-  write(6,*) q%asArray() == qu
-  write(6,*) q%real()  == qu(1)
-  write(6,*) q%aimag() == qu(2:4)
+  if(any(q%asArray() /= qu))                     call IO_error(401,ext_msg='eq__')
+  if(q%real()        /= qu(1))                   call IO_error(401,ext_msg='real()')
+  if(any(q%aimag()   /= qu(2:4)))                call IO_error(401,ext_msg='aimag()')
   
-
   q_2 = q%homomorphed()
-  write(6,*) q == q_2*(-1.0_pReal)
-  write(6,*) q_2%real()  == qu(1)*(-1.0_pReal)
-  write(6,*) q_2%aimag() == qu(2:4)*(-1.0_pReal)
+  if(q               /= q_2*(-1.0_pReal))        call IO_error(401,ext_msg='homomorphed')
+  if(q_2%real()      /= qu(1)*(-1.0_pReal))      call IO_error(401,ext_msg='homomorphed/real')
+  if(any(q_2%aimag() /= qu(2:4)*(-1.0_pReal)))   call IO_error(401,ext_msg='homomorphed/aimag')
   
   q_2 = conjg(q)
-  write(6,*) q_2%real()  == q%real() 
-  write(6,*) q_2%aimag() == q%aimag()*(-1.0_pReal)
+  if(q_2%real()  /= q%real())                    call IO_error(401,ext_msg='conjg/real')
+  if(any(q_2%aimag() /= q%aimag()*(-1.0_pReal))) call IO_error(401,ext_msg='conjg/aimag')
   
       
 end subroutine unitTest
