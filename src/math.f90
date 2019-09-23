@@ -1269,10 +1269,15 @@ end function math_factorial
 integer pure function math_binomial(n,k)
 
   integer, intent(in) :: n, k
-  integer :: i, j
-  
-  j = min(k,n-k)
-  math_binomial = product([(i, i=n, n-j+1, -1)])/math_factorial(j)
+  integer :: i, k_, n_
+ 
+  k_ = min(k,n-k)
+  n_ = n
+  math_binomial = merge(1,0,k_>-1)                                                                  ! handling special cases k < 0 or k > n
+  do i = 1, k_
+    math_binomial = (math_binomial * n_)/i
+    n_ = n_ -1
+  enddo
 
 end function math_binomial
 
@@ -1406,7 +1411,7 @@ subroutine unitTest
   real(pReal), dimension(9,9) :: t99,t99_2
   logical                     :: e
   
-
+integer :: i
   if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal,3.0_pReal,3.0_pReal,3.0_pReal] - &
               math_expand([1.0_pReal,2.0_pReal,3.0_pReal],[1,2,3,0])) > tol_math_check)) &
     call IO_error(401,ext_msg='math_expand [1,2,3] by [1,2,3,0] => [1,2,2,3,3,3]')
@@ -1479,6 +1484,12 @@ subroutine unitTest
 
   if(any(math_clip([4.0_pReal,9.0_pReal],5.0_pReal,6.5_pReal)/=[5.0_pReal,6.5_pReal])) &
      call IO_error(401,ext_msg='math_clip')  
+
+  if(math_factorial(10) /= 3628800) &
+     call IO_error(401,ext_msg='math_factorial')  
+
+  if(math_binomial(49,6) /= 13983816) &
+     call IO_error(401,ext_msg='math_binomial')  
 
 end subroutine unitTest
 
