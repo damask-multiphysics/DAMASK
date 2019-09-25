@@ -185,10 +185,11 @@ subroutine plastic_disloUCLA_init()
  
       if(trim(config%getString('lattice_structure')) == 'bcc') then
         prm%nonSchmidCoeff = config%getFloats('nonschmid_coefficients',&
-                                                  defaultVal = emptyRealArray)
+                                               defaultVal = emptyRealArray)
         prm%nonSchmid_pos  = lattice_nonSchmidMatrix(prm%N_sl,prm%nonSchmidCoeff,+1)
         prm%nonSchmid_neg  = lattice_nonSchmidMatrix(prm%N_sl,prm%nonSchmidCoeff,-1)
       else
+        allocate(prm%nonSchmidCoeff(0))
         prm%nonSchmid_pos  = prm%Schmid
         prm%nonSchmid_neg  = prm%Schmid
       endif
@@ -622,7 +623,7 @@ pure subroutine kinetics(Mp,T,instance,of, &
     needsGoodName       = exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)
     
     t_n = prm%b_sl/(needsGoodName*prm%omega*effectiveLength)
-    t_k = effectiveLength * prm%B /(2.0_pReal*prm%b_sl*tau_pos)     ! our definition of tk is different with the one in dislotwin
+    t_k = effectiveLength * prm%B /(2.0_pReal*prm%b_sl*tau_pos)
  
     vel = prm%kink_height/(t_n + t_k)
  
@@ -632,17 +633,17 @@ pure subroutine kinetics(Mp,T,instance,of, &
   end where significantPositiveTau
  
   if (present(ddot_gamma_dtau_pos)) then
-  significantPositiveTau2: where(abs(tau_pos)-dst%threshold_stress(:,of) > tol_math_check)
-    dtn = -1.0_pReal * t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
-        * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau_0
-    dtk = -1.0_pReal * t_k / tau_pos
-   
-    dvel = -1.0_pReal * prm%kink_height * (dtk + dtn) / (t_n + t_k)**2.0_pReal
+    significantPositiveTau2: where(abs(tau_pos)-dst%threshold_stress(:,of) > tol_math_check)
+      dtn = -1.0_pReal * t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
+          * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau_0
+      dtk = -1.0_pReal * t_k / tau_pos
+     
+      dvel = -1.0_pReal * prm%kink_height * (dtk + dtn) / (t_n + t_k)**2.0_pReal
  
-    ddot_gamma_dtau_pos = dot_gamma_0 * dvel* 0.5_pReal
-  else where significantPositiveTau2
-    ddot_gamma_dtau_pos = 0.0_pReal
-  end where significantPositiveTau2
+      ddot_gamma_dtau_pos = dot_gamma_0 * dvel* 0.5_pReal
+    else where significantPositiveTau2
+      ddot_gamma_dtau_pos = 0.0_pReal
+    end where significantPositiveTau2
   endif
  
   significantNegativeTau: where(abs(tau_neg)-dst%threshold_stress(:,of) > tol_math_check)
@@ -652,7 +653,7 @@ pure subroutine kinetics(Mp,T,instance,of, &
     needsGoodName       = exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)
  
     t_n = prm%b_sl/(needsGoodName*prm%omega*effectiveLength)
-    t_k = effectiveLength * prm%B /(2.0_pReal*prm%b_sl*tau_pos)     ! our definition of tk is different with the one in dislotwin
+    t_k = effectiveLength * prm%B /(2.0_pReal*prm%b_sl*tau_pos)
  
     vel = prm%kink_height/(t_n + t_k)
  
@@ -662,17 +663,17 @@ pure subroutine kinetics(Mp,T,instance,of, &
   end where significantNegativeTau
  
   if (present(ddot_gamma_dtau_neg)) then
-  significantNegativeTau2: where(abs(tau_neg)-dst%threshold_stress(:,of) > tol_math_check)
-    dtn = -1.0_pReal * t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
-        * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau_0
-    dtk = -1.0_pReal * t_k / tau_neg
+    significantNegativeTau2: where(abs(tau_neg)-dst%threshold_stress(:,of) > tol_math_check)
+      dtn = -1.0_pReal * t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
+          * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau_0
+      dtk = -1.0_pReal * t_k / tau_neg
+     
+      dvel = -1.0_pReal * prm%kink_height * (dtk + dtn) / (t_n + t_k)**2.0_pReal
    
-    dvel = -1.0_pReal * prm%kink_height * (dtk + dtn) / (t_n + t_k)**2.0_pReal
- 
-    ddot_gamma_dtau_neg = dot_gamma_0 * dvel * 0.5_pReal
-  else where significantNegativeTau2
-    ddot_gamma_dtau_neg = 0.0_pReal
-  end where significantNegativeTau2
+      ddot_gamma_dtau_neg = dot_gamma_0 * dvel * 0.5_pReal
+    else where significantNegativeTau2
+      ddot_gamma_dtau_neg = 0.0_pReal
+    end where significantNegativeTau2
   end if
   
   end associate

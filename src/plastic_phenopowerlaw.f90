@@ -182,6 +182,7 @@ subroutine plastic_phenopowerlaw_init
        prm%nonSchmid_pos  = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1)
        prm%nonSchmid_neg  = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1)
      else
+       allocate(prm%nonSchmidCoeff(0))
        prm%nonSchmid_pos  = prm%Schmid_slip
        prm%nonSchmid_neg  = prm%Schmid_slip
      endif
