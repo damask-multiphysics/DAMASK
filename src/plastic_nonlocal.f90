@@ -948,9 +948,8 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
             neighbor_rhoTotal(1,:,n) = sum(abs(rho_neighbor(:,edg)),2)
             neighbor_rhoTotal(2,:,n) = sum(abs(rho_neighbor(:,scr)),2)
   
-            connection_latticeConf(1:3,n) = &
-              matmul(invFe, mesh_ipCoordinates(1:3,neighbor_ip,neighbor_el) &
-                                  - mesh_ipCoordinates(1:3,ip,el))
+            connection_latticeConf(1:3,n) = matmul(invFe, mesh_ipCoordinates(1:3,neighbor_ip,neighbor_el) &
+                                          - mesh_ipCoordinates(1:3,ip,el))
             normal_latticeConf = matmul(transpose(invFp), IPareaNormal(1:3,n,ip,el))
             if (math_inner(normal_latticeConf,connection_latticeConf(1:3,n)) < 0.0_pReal) &        ! neighboring connection points in opposite direction to face normal: must be periodic image
               connection_latticeConf(1:3,n) = normal_latticeConf * IPvolume(ip,el)/IParea(n,ip,el) ! instead take the surface normal scaled with the diameter of the cell
@@ -1009,7 +1008,8 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
       
         ! ... gives the local stress correction when multiplied with a factor
       dst%tau_back(s,of) = - prm%mu * prm%burgers(s) / (2.0_pReal * pi) &
-                        * (rhoExcessGradient_over_rho(1) / (1.0_pReal - prm%nu) + rhoExcessGradient_over_rho(2))
+                         * (rhoExcessGradient_over_rho(1) / (1.0_pReal - prm%nu) &
+                         + rhoExcessGradient_over_rho(2))
   
     enddo
   endif
