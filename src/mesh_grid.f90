@@ -20,10 +20,7 @@ module mesh_grid
  
   implicit none
   private
- 
-  real(pReal), dimension(:,:,:), allocatable, public :: &
-    mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
- 
+  
   integer,     dimension(3), public, protected :: &
     grid                                                                                            !< (global) grid
   integer,                   public, protected :: &
@@ -92,9 +89,8 @@ subroutine mesh_init(ip,el)
   homogenizationAt = homogenizationAt(product(grid(1:2))*grid3Offset+1: &
                                       product(grid(1:2))*(grid3Offset+grid3))                       ! reallocate/shrink in case of MPI
 
-  mesh_ipCoordinates = IPcoordinates(myGrid,mySize,grid3Offset)
   call discretization_init(homogenizationAt,microstructureAt, &
-                           reshape(mesh_ipCoordinates,[3,product(myGrid)]), &
+                           reshape(IPcoordinates(myGrid,mySize,grid3Offset),[3,product(myGrid)]), &
                            Nodes(myGrid,mySize,grid3Offset))
 
   FEsolving_execElem = [1,product(myGrid)]                                                          ! parallel loop bounds set to comprise all elements

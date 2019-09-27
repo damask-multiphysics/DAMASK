@@ -1027,7 +1027,8 @@ end function utilities_getFreqDerivative
 subroutine utilities_updateIPcoords(F)
  
   real(pReal),   dimension(3,3,grid(1),grid(2),grid3), intent(in) :: F
-  integer :: i, j, k, m, ierr
+  real(pReal),   dimension(3,  grid(1),grid(2),grid3)             :: IPcoords
+  integer :: i, j, k, ierr
   real(pReal),   dimension(3) :: step, offset_coords
   real(pReal),   dimension(3,3) :: Favg
  
@@ -1040,8 +1041,8 @@ subroutine utilities_updateIPcoords(F)
  
   do k = 1, grid3; do j = 1, grid(2); do i = 1, grid1Red
     if (any(cNeq(xi1st(1:3,i,j,k),cmplx(0.0,0.0,pReal)))) &
-      vectorField_fourier(1:3,i,j,k) = vectorField_fourier(1:3,i,j,k)/ &
-                                       sum(conjg(-xi1st(1:3,i,j,k))*xi1st(1:3,i,j,k))
+      vectorField_fourier(1:3,i,j,k) = vectorField_fourier(1:3,i,j,k) &
+                                     / sum(conjg(-xi1st(1:3,i,j,k))*xi1st(1:3,i,j,k))
   enddo; enddo; enddo
   call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
   vectorField_real = vectorField_real * wgt
@@ -1059,15 +1060,14 @@ subroutine utilities_updateIPcoords(F)
   call MPI_Bcast(offset_coords,3,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
   if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords')
   offset_coords = matmul(Favg,step/2.0_pReal) - offset_coords
-  m = 1
+
   do k = 1,grid3; do j = 1,grid(2); do i = 1,grid(1)
-    mesh_ipCoordinates(1:3,1,m) = vectorField_real(1:3,i,j,k) &
-                                + offset_coords &
-                                + matmul(Favg,step*real([i,j,k+grid3Offset]-1,pReal))
-    m = m+1
+    IPcoords(1:3,i,j,k) = vectorField_real(1:3,i,j,k) &
+                        + offset_coords &
+                        + matmul(Favg,step*real([i,j,k+grid3Offset]-1,pReal))
   enddo; enddo; enddo
   
-  call discretization_setIPcoords(reshape(mesh_ipCoordinates,[3,grid(1)*grid(2)*grid3]))
+  call discretization_setIPcoords(reshape(IPcoords,[3,grid(1)*grid(2)*grid3]))
 
 end subroutine utilities_updateIPcoords
 
