@@ -15,7 +15,7 @@ program DAMASK_spectral
  use config
  use debug
  use math
- use mesh
+ use mesh_grid
  use CPFEM2
  use FEsolving
  use numerics

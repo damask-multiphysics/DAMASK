@@ -11,7 +11,6 @@ module CPFEM2
   use FEsolving
   use math
   use rotations
-  use mesh
   use material
   use lattice
   use IO
@@ -25,6 +24,9 @@ module CPFEM2
   use crystallite
 #ifdef FEM
   use FEM_Zoo
+  use mesh
+#else
+  use mesh_grid
 #endif
 
   implicit none

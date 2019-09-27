@@ -11,7 +11,7 @@ module spectral_utilities
   use prec
   use math
   use IO
-  use mesh
+  use mesh_grid
   use numerics
   use debug
   use config

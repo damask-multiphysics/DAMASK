@@ -21,7 +21,7 @@ module grid_mech_FEM
   use DAMASK_interface
   use spectral_utilities
   use discretization
-  use mesh
+  use mesh_grid
   use math
  
   implicit none

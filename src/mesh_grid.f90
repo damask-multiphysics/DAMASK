@@ -4,7 +4,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Parse geometry file to set up discretization and geometry for nonlocal model
 !--------------------------------------------------------------------------------------------------
-module mesh
+module mesh_grid
 #include <petsc/finclude/petscsys.h>
   use PETScsys
 
@@ -477,4 +477,4 @@ end function IPneighborhood
 !
 !end function mesh_nodesAroundCentres
 
-end module mesh
+end module mesh_grid

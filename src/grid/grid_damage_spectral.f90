@@ -12,7 +12,7 @@ module grid_damage_spectral
 
   use prec
   use spectral_utilities
-  use mesh
+  use mesh_grid
   use damage_nonlocal
   use numerics
   use damage_nonlocal

@@ -20,7 +20,7 @@ module grid_mech_spectral_basic
   use config
   use numerics
   use homogenization
-  use mesh
+  use mesh_grid
   use CPFEM2
   use debug
 
