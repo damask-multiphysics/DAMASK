@@ -90,8 +90,8 @@ subroutine mesh_init(ip,el)
                                       product(grid(1:2))*(grid3Offset+grid3))                       ! reallocate/shrink in case of MPI
 
   call discretization_init(homogenizationAt,microstructureAt, &
-                           reshape(IPcoordinates(myGrid,mySize,grid3Offset),[3,product(myGrid)]), &
-                           Nodes(myGrid,mySize,grid3Offset))
+                           reshape(IPcoordinates0(myGrid,mySize,grid3Offset),[3,product(myGrid)]), &
+                           Nodes0(myGrid,mySize,grid3Offset))
 
   FEsolving_execElem = [1,product(myGrid)]                                                          ! parallel loop bounds set to comprise all elements
   allocate(FEsolving_execIP(2,product(myGrid)),source=1)                                            ! parallel loop bounds set to comprise the only IP
@@ -264,15 +264,15 @@ end subroutine readGeom
 
 
 !---------------------------------------------------------------------------------------------------
-!> @brief Calculate position of IPs/cell centres (pretend to be an element)
+!> @brief Calculate undeformed position of IPs/cell centres (pretend to be an element)
 !---------------------------------------------------------------------------------------------------
-function IPcoordinates(grid,geomSize,grid3Offset)
+function IPcoordinates0(grid,geomSize,grid3Offset)
 
   integer,     dimension(3), intent(in) :: grid                                                     ! grid (for this process!)
   real(pReal), dimension(3), intent(in) :: geomSize                                                 ! size (for this process!)
   integer,                   intent(in) :: grid3Offset                                              ! grid(3) offset
 
-  real(pReal), dimension(3,1,product(grid))  :: ipCoordinates
+  real(pReal), dimension(3,1,product(grid))  :: ipCoordinates0
 
   integer :: &
     a,b,c, &
@@ -281,22 +281,22 @@ function IPcoordinates(grid,geomSize,grid3Offset)
   i = 0
   do c = 1, grid(3); do b = 1, grid(2); do a = 1, grid(1)
     i = i + 1
-    IPcoordinates(1:3,1,i) = geomSize/real(grid,pReal) * (real([a,b,grid3Offset+c],pReal) -0.5_pReal)
+    IPcoordinates0(1:3,1,i) = geomSize/real(grid,pReal) * (real([a,b,grid3Offset+c],pReal) -0.5_pReal)
   enddo; enddo; enddo
 
-end function IPcoordinates
+end function IPcoordinates0
 
 
 !---------------------------------------------------------------------------------------------------
-!> @brief Calculate position of nodes (pretend to be an element)
+!> @brief Calculate position of undeformed nodes (pretend to be an element)
 !---------------------------------------------------------------------------------------------------
-pure function nodes(grid,geomSize,grid3Offset)
+pure function nodes0(grid,geomSize,grid3Offset)
 
   integer,     dimension(3), intent(in) :: grid                                                     ! grid (for this process!)
   real(pReal), dimension(3), intent(in) :: geomSize                                                 ! size (for this process!)
   integer,                   intent(in) :: grid3Offset                                              ! grid(3) offset
 
-  real(pReal), dimension(3,product(grid+1))  :: nodes
+  real(pReal), dimension(3,product(grid+1))  :: nodes0
 
   integer :: &
     a,b,c, &
@@ -305,10 +305,10 @@ pure function nodes(grid,geomSize,grid3Offset)
   n = 0
   do c = 0, grid3; do b = 0, grid(2); do a = 0, grid(1)
     n = n + 1
-    nodes(1:3,n) = geomSize/real(grid,pReal) * real([a,b,grid3Offset+c],pReal)
+    nodes0(1:3,n) = geomSize/real(grid,pReal) * real([a,b,grid3Offset+c],pReal)
   enddo; enddo; enddo
 
-end function nodes
+end function nodes0
 
 
 !--------------------------------------------------------------------------------------------------
