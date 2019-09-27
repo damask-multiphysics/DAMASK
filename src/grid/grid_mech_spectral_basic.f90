@@ -170,7 +170,7 @@ subroutine grid_mech_spectral_basic_init
   endif restartRead
  
   materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
-  call Utilities_updateIPcoords(reshape(F,shape(F_lastInc)))
+  call Utilities_updateCoords(reshape(F,shape(F_lastInc)))
   call Utilities_constitutiveResponse(P,temp33_Real,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
                                       0.0_pReal, &                                                  ! time increment
@@ -300,7 +300,7 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
     endif
 
     call CPFEM_age                                                                                  ! age state and kinematics
-    call utilities_updateIPcoords(F)
+    call utilities_updateCoords(F)
 
     C_volAvgLastInc    = C_volAvg
     C_minMaxAvgLastInc = C_minMaxAvg

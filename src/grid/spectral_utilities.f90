@@ -157,7 +157,7 @@ module spectral_utilities
     utilities_constitutiveResponse, &
     utilities_calculateRate, &
     utilities_forwardField, &
-    utilities_updateIPcoords, &
+    utilities_updateCoords, &
     FIELD_UNDEFINED_ID, &
     FIELD_MECH_ID, &
     FIELD_THERMAL_ID, &
@@ -1024,7 +1024,7 @@ end function utilities_getFreqDerivative
 ! using integration in Fourier space. Similar as in mesh.f90, but using data already defined for
 ! convolution
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_updateIPcoords(F)
+subroutine utilities_updateCoords(F)
  
   real(pReal),   dimension(3,3,grid(1),grid(2),grid3), intent(in) :: F
   real(pReal),   dimension(3,  grid(1),grid(2),grid3)             :: IPcoords
@@ -1069,6 +1069,6 @@ subroutine utilities_updateIPcoords(F)
   
   call discretization_setIPcoords(reshape(IPcoords,[3,grid(1)*grid(2)*grid3]))
 
-end subroutine utilities_updateIPcoords
+end subroutine utilities_updateCoords
 
 end module spectral_utilities

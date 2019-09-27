@@ -201,7 +201,7 @@ subroutine grid_mech_FEM_init
     F         = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)
   endif restartRead
   materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
-  call utilities_updateIPcoords(F)
+  call utilities_updateCoords(F)
   call utilities_constitutiveResponse(P_current,temp33_Real,C_volAvg,devNull, &                     ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       F, &                                                          ! target F
                                       0.0_pReal, &                                                  ! time increment
@@ -326,7 +326,7 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
 
     endif
     call CPFEM_age                                                                                  ! age state and kinematics
-    call utilities_updateIPcoords(F)
+    call utilities_updateCoords(F)
 
     C_volAvgLastInc    = C_volAvg
  
