@@ -30,7 +30,8 @@ module discretization
   public :: &
     discretization_init, &
     discretization_results, &
-    discretization_setIPcoords
+    discretization_setIPcoords, &
+    discretization_setNodeCoords
 
 contains
   
@@ -91,5 +92,18 @@ subroutine discretization_setIPcoords(IPcoords)
   discretization_IPcoords = IPcoords
 
 end subroutine discretization_setIPcoords
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief stores current IP coordinates
+!--------------------------------------------------------------------------------------------------
+subroutine discretization_setNodeCoords(NodeCoords)
+
+  real(pReal), dimension(:,:), intent(in) :: NodeCoords
+  
+  discretization_NodeCoords = NodeCoords
+
+end subroutine discretization_setNodeCoords
+
 
 end module discretization
