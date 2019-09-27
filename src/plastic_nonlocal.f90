@@ -948,8 +948,8 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
             neighbor_rhoTotal(1,:,n) = sum(abs(rho_neighbor(:,edg)),2)
             neighbor_rhoTotal(2,:,n) = sum(abs(rho_neighbor(:,scr)),2)
   
-            connection_latticeConf(1:3,n) = matmul(invFe, mesh_ipCoordinates(1:3,neighbor_ip,neighbor_el) &
-                                          - mesh_ipCoordinates(1:3,ip,el))
+            connection_latticeConf(1:3,n) = matmul(invFe, discretization_IPcoords(1:3,neighbor_el+neighbor_ip-1) &
+                                          - discretization_IPcoords(1:3,el+neighbor_ip-1))
             normal_latticeConf = matmul(transpose(invFp), IPareaNormal(1:3,n,ip,el))
             if (math_inner(normal_latticeConf,connection_latticeConf(1:3,n)) < 0.0_pReal) &        ! neighboring connection points in opposite direction to face normal: must be periodic image
               connection_latticeConf(1:3,n) = normal_latticeConf * IPvolume(ip,el)/IParea(n,ip,el) ! instead take the surface normal scaled with the diameter of the cell
