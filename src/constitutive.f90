@@ -13,7 +13,6 @@ module constitutive
   use results
   use HDF5_utilities
   use lattice
-  use mesh
   use discretization
   use plastic_none
   use plastic_isotropic

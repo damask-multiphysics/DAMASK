@@ -16,7 +16,6 @@ module crystallite
   use numerics
   use rotations
   use math
-  use mesh
   use FEsolving
   use material
   use constitutive
