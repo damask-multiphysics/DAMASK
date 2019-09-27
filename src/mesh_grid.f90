@@ -90,7 +90,7 @@ subroutine mesh_init(ip,el)
                                       product(grid(1:2))*(grid3Offset+grid3))                       ! reallocate/shrink in case of MPI
 
   call discretization_init(homogenizationAt,microstructureAt, &
-                           reshape(IPcoordinates0(myGrid,mySize,grid3Offset),[3,product(myGrid)]), &
+                           IPcoordinates0(myGrid,mySize,grid3Offset), &
                            Nodes0(myGrid,mySize,grid3Offset))
 
   FEsolving_execElem = [1,product(myGrid)]                                                          ! parallel loop bounds set to comprise all elements
@@ -272,7 +272,7 @@ function IPcoordinates0(grid,geomSize,grid3Offset)
   real(pReal), dimension(3), intent(in) :: geomSize                                                 ! size (for this process!)
   integer,                   intent(in) :: grid3Offset                                              ! grid(3) offset
 
-  real(pReal), dimension(3,1,product(grid))  :: ipCoordinates0
+  real(pReal), dimension(3,product(grid))  :: ipCoordinates0
 
   integer :: &
     a,b,c, &
@@ -281,7 +281,7 @@ function IPcoordinates0(grid,geomSize,grid3Offset)
   i = 0
   do c = 1, grid(3); do b = 1, grid(2); do a = 1, grid(1)
     i = i + 1
-    IPcoordinates0(1:3,1,i) = geomSize/real(grid,pReal) * (real([a,b,grid3Offset+c],pReal) -0.5_pReal)
+    IPcoordinates0(1:3,i) = geomSize/real(grid,pReal) * (real([a,b,grid3Offset+c],pReal) -0.5_pReal)
   enddo; enddo; enddo
 
 end function IPcoordinates0
@@ -296,7 +296,7 @@ pure function nodes0(grid,geomSize,grid3Offset)
   real(pReal), dimension(3), intent(in) :: geomSize                                                 ! size (for this process!)
   integer,                   intent(in) :: grid3Offset                                              ! grid(3) offset
 
-  real(pReal), dimension(3,product(grid+1))  :: nodes0
+  real(pReal), dimension(3,product(grid+1)) :: nodes0
 
   integer :: &
     a,b,c, &
