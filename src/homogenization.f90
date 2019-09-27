@@ -15,7 +15,6 @@ module homogenization
   use constitutive
   use crystallite
   use FEsolving
-  use mesh
   use discretization
   use thermal_isothermal
   use thermal_adiabatic

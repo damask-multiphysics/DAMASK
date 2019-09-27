@@ -9,7 +9,6 @@ module plastic_nonlocal
   use IO
   use math
   use debug
-  use mesh
   use material
   use lattice
   use rotations
