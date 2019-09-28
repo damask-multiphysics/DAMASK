@@ -298,7 +298,7 @@ class DADF5():
                 f[k]
                 path.append(k)
               except KeyError as e:
-                print('unable to locate constituents dataset: '+ str(e))
+                print('unable to locate {} dataset: {}'.format(o,str(e)))
     return path
     
     
