@@ -88,7 +88,7 @@ for filename in options.filenames:
     
     results.set_visible('constituents',  False)
     results.set_visible('materialpoints',True)
-    for label in options.mat:       
+    for label in options.mat:
       for p in results.iter_visible('mat_physics'):
         if p != 'generic':
           for m in results.iter_visible('materialpoints'):
@@ -113,7 +113,13 @@ for filename in options.filenames:
     if results.structured:
       writer = vtk.vtkXMLRectilinearGridWriter()
 
-
+    results.set_visible('constituents',  False)
+    results.set_visible('materialpoints',False)
+    x = results.get_dataset_location('u_n')
+    vtk_data.append(numpy_support.numpy_to_vtk(num_array=results.read_dataset(x,0),deep=True,array_type=vtk.VTK_DOUBLE))
+    vtk_data[-1].SetName('u')
+    rGrid.GetPointData().AddArray(vtk_data[-1])
+    
     dirname  = os.path.abspath(os.path.join(os.path.dirname(filename),options.dir))
     if not os.path.isdir(dirname):
       os.mkdir(dirname,0o755)

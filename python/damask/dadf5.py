@@ -289,7 +289,13 @@ class DADF5():
     """Returns the location of all active datasets with given label."""
     path = []
     with h5py.File(self.filename,'r') as f:
-      for i in self.iter_visible('increments'):        
+      for i in self.iter_visible('increments'):
+        k = '/'.join([i,'geometry',label])
+        try:
+          f[k]
+          path.append(k)
+        except KeyError as e:
+          print('unable to locate geometry dataset: {}'.format(str(e)))
         for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
           for oo in self.iter_visible(o):
             for pp in self.iter_visible(p):
@@ -313,7 +319,11 @@ class DADF5():
       if len(shape) == 1: shape = shape +(1,)
       dataset = np.full(shape,np.nan)
       for pa in path:
-        label   = pa.split('/')[2]
+        label = pa.split('/')[2]
+        
+        if (pa.split('/')[1] == 'geometry'):
+          dataset = np.array(f[pa])
+          continue
         
         p = np.where(f['mapping/cellResults/constituent'][:,c]['Name'] == str.encode(label))[0]
         if len(p)>0:

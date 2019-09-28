@@ -24,7 +24,6 @@ module spectral_utilities
   include 'fftw3-mpi.f03'
 
   logical, public             :: cutBack = .false.                                                  !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
-  integer, public, parameter  :: maxPhaseFields = 2
   integer, public             :: nActiveFields = 0
 
 !--------------------------------------------------------------------------------------------------
@@ -1068,6 +1067,63 @@ subroutine utilities_updateCoords(F)
   enddo; enddo; enddo
   
   call discretization_setIPcoords(reshape(IPcoords,[3,grid(1)*grid(2)*grid3]))
+  call discretization_setNodeCoords(reshape(NodeCoords(IPcoords,Favg),[3,(grid(1)+1)*(grid(2)+1)*(grid3+1)]))
+  
+  contains
+  
+  function nodeCoords(IPcoords,Favg)
+    real(pReal), dimension(:,:,:,:), intent(in) :: IPcoords
+    real(pReal), dimension(3,3),     intent(in) :: Favg
+    
+    real(pReal), dimension(3,size(IPcoords,2)+1,size(IPcoords,3)+1,size(IPcoords,3)+1) :: nodeCoords
+    real(pReal), dimension(3,size(IPcoords,2)+2,size(IPcoords,3)+2,size(IPcoords,3)+2) :: IPCoords_wrapped
+    
+    integer :: &
+      i,j,k,n
+    integer,           dimension(3) :: &
+      shift, &
+      lookup, &
+      me
+    integer,           dimension(3,8) :: &
+      neighbor = reshape([ &
+                          0, 0, 0, &
+                          1, 0, 0, &
+                          1, 1, 0, &
+                          0, 1, 0, &
+                          0, 0, 1, &
+                          1, 0, 1, &
+                          1, 1, 1, &
+                          0, 1, 1  ], [3,8])
+        
+    do k = grid3offset,grid3offset+grid3+1
+      do j = 0,grid(2)+1
+        do i = 0,grid(1)+1
+          if (k==0 .or. k==grid(3)+1 .or. &                                                  ! z skin
+              j==0 .or. j==grid(2)+1 .or. &                                                  ! y skin
+              i==0 .or. i==grid(1)+1      ) then                                             ! x skin
+            me = [i,j,k]                                                                     ! me on skin
+            shift = sign(abs(grid+1-2*me)/(grid+1),grid+1-2*me)
+            lookup = me-1+shift*grid
+            IPCoords_wrapped(1:3,i+1,j+1,k+1) = IPcoords(1:3,lookup(1)+1,lookup(2)+1,lookup(3)+1) &
+                                              - matmul(Favg, real(shift,pReal)*geomSize)
+          else
+            IPCoords_wrapped(1:3,i+1,j+1,k+1) = IPCoords(1:3,i,j,k)
+          endif
+     enddo; enddo; enddo
+     
+
+     nodeCoords = 0.0_pReal
+     do k = 0,grid3; do j = 0,grid(2); do i = 0,grid(1)
+       do n = 1,8
+         nodeCoords(1:3,i+1,j+1,k+1) = nodeCoords(1:3,i+1,j+1,k+1) &
+                                     + IPCoords_wrapped(1:3,i+1+neighbor(1,n), &
+                                                            j+1+neighbor(2,n), &
+                                                            k+1+neighbor(3,n) )
+       enddo
+     enddo; enddo; enddo
+    nodeCoords = nodeCoords/8.0_pReal
+  
+  end function nodeCoords
 
 end subroutine utilities_updateCoords
 
