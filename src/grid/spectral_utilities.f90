@@ -1058,12 +1058,12 @@ subroutine utilities_updateCoords(F)
   if (grid3Offset == 0) offset_coords = vectorField_real(1:3,1,1,1)
   call MPI_Bcast(offset_coords,3,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
   if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords')
-  offset_coords = matmul(Favg,step/2.0_pReal) - offset_coords
+  offset_coords = offset_coords - matmul(Favg,step/2.0_pReal)
 
   do k = 1,grid3; do j = 1,grid(2); do i = 1,grid(1)
     IPcoords(1:3,i,j,k) = vectorField_real(1:3,i,j,k) &
-                        + offset_coords &
-                        + matmul(Favg,step*real([i,j,k+grid3Offset]-1,pReal))
+                        + matmul(Favg,step*real([i,j,k+grid3Offset]-1,pReal)) &
+                        - offset_coords
   enddo; enddo; enddo
   
   call discretization_setIPcoords(reshape(IPcoords,[3,grid(1)*grid(2)*grid3]))
