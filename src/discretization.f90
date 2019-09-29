@@ -26,6 +26,9 @@ module discretization
     discretization_NodeCoords0, &
     discretization_IPcoords, &
     discretization_NodeCoords
+    
+  integer :: &
+    discretization_sharedNodesBegin
 
   public :: &
     discretization_init, &
@@ -38,7 +41,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief stores the relevant information in globally accesible variables
 !--------------------------------------------------------------------------------------------------
-subroutine discretization_init(homogenizationAt,microstructureAt,IPcoords0,NodeCoords0)
+subroutine discretization_init(homogenizationAt,microstructureAt,&
+                               IPcoords0,NodeCoords0,&
+                               sharedNodesBegin)
 
   integer,     dimension(:),   intent(in) :: &
     homogenizationAt, &
@@ -46,6 +51,8 @@ subroutine discretization_init(homogenizationAt,microstructureAt,IPcoords0,NodeC
   real(pReal), dimension(:,:), intent(in) :: &
     IPcoords0, &
     NodeCoords0
+  integer, optional, intent(in) :: &
+    sharedNodesBegin
 
   write(6,'(/,a)')   ' <<<+-  discretization init  -+>>>'
 
@@ -61,6 +68,12 @@ subroutine discretization_init(homogenizationAt,microstructureAt,IPcoords0,NodeC
   discretization_NodeCoords0 = NodeCoords0
   discretization_NodeCoords  = NodeCoords0
   
+  if(present(sharedNodesBegin)) then
+    discretization_sharedNodesBegin = sharedNodesBegin
+  else
+    discretization_sharedNodesBegin = size(discretization_NodeCoords0,2)
+  endif
+  
 end subroutine discretization_init
 
 
@@ -73,10 +86,12 @@ subroutine discretization_results
   
   call HDF5_closeGroup(results_addGroup(trim('current/geometry')))
   
-  u =  discretization_NodeCoords - discretization_NodeCoords0
+  u = discretization_NodeCoords (1:3,:discretization_sharedNodesBegin) &
+    - discretization_NodeCoords0(1:3,:discretization_sharedNodesBegin)
   call results_writeDataset('current/geometry',u,'u_n','nodal displacements','m')
   
-  u = discretization_IPcoords - discretization_IPcoords0
+  u = discretization_IPcoords &
+    - discretization_IPcoords0
   call results_writeDataset('current/geometry',u,'u_c','cell center displacements','m')
 #endif
 end subroutine discretization_results

@@ -91,7 +91,10 @@ subroutine mesh_init(ip,el)
 
   call discretization_init(homogenizationAt,microstructureAt, &
                            IPcoordinates0(myGrid,mySize,grid3Offset), &
-                           Nodes0(myGrid,mySize,grid3Offset))
+                           Nodes0(myGrid,mySize,grid3Offset),&
+                           merge((grid(1)+1) * (grid(2)+1) * (grid3+1),&                            ! write bottom layer 
+                                 (grid(1)+1) * (grid(2)+1) *  grid3,&                               ! do not write bottom layer (is top of rank-1)
+                                 worldrank<1))
 
   FEsolving_execElem = [1,product(myGrid)]                                                          ! parallel loop bounds set to comprise all elements
   allocate(FEsolving_execIP(2,product(myGrid)),source=1)                                            ! parallel loop bounds set to comprise the only IP
