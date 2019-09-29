@@ -381,18 +381,18 @@ pure function qu2om(qu) result(om)
   qq = qu(1)**2-sum(qu(2:4)**2)
 
 
-  om(1,1) = qq+2.0*qu(2)**2
-  om(2,2) = qq+2.0*qu(3)**2
-  om(3,3) = qq+2.0*qu(4)**2
+  om(1,1) = qq+2.0_pReal*qu(2)**2
+  om(2,2) = qq+2.0_pReal*qu(3)**2
+  om(3,3) = qq+2.0_pReal*qu(4)**2
 
-  om(1,2) = 2.0*(qu(2)*qu(3)-qu(1)*qu(4))
-  om(2,3) = 2.0*(qu(3)*qu(4)-qu(1)*qu(2))
-  om(3,1) = 2.0*(qu(4)*qu(2)-qu(1)*qu(3))
-  om(2,1) = 2.0*(qu(3)*qu(2)+qu(1)*qu(4))
-  om(3,2) = 2.0*(qu(4)*qu(3)+qu(1)*qu(2))
-  om(1,3) = 2.0*(qu(2)*qu(4)+qu(1)*qu(3))
+  om(1,2) = 2.0_pReal*(qu(2)*qu(3)-qu(1)*qu(4))
+  om(2,3) = 2.0_pReal*(qu(3)*qu(4)-qu(1)*qu(2))
+  om(3,1) = 2.0_pReal*(qu(4)*qu(2)-qu(1)*qu(3))
+  om(2,1) = 2.0_pReal*(qu(3)*qu(2)+qu(1)*qu(4))
+  om(3,2) = 2.0_pReal*(qu(4)*qu(3)+qu(1)*qu(2))
+  om(1,3) = 2.0_pReal*(qu(2)*qu(4)+qu(1)*qu(3))
 
-  if (P < 0.0) om = transpose(om)
+  if (P < 0.0_pReal) om = transpose(om)
 
 end function qu2om
 
@@ -413,13 +413,13 @@ pure function qu2eu(qu) result(eu)
   chi = sqrt(q03*q12)
   
   degenerated: if (dEq0(chi)) then
-    eu = merge([atan2(-P*2.0*qu(1)*qu(4),qu(1)**2-qu(4)**2), 0.0_pReal, 0.0_pReal], &
-               [atan2(   2.0*qu(2)*qu(3),qu(2)**2-qu(3)**2), PI,        0.0_pReal], &
+    eu = merge([atan2(-P*2.0_pReal*qu(1)*qu(4),qu(1)**2-qu(4)**2), 0.0_pReal, 0.0_pReal], &
+               [atan2(   2.0_pReal*qu(2)*qu(3),qu(2)**2-qu(3)**2), PI,        0.0_pReal], &
                dEq0(q12))
   else degenerated
-    chiInv = 1.0/chi
+    chiInv = 1.0_pReal/chi
     eu = [atan2((-P*qu(1)*qu(3)+qu(2)*qu(4))*chi, (-P*qu(1)*qu(2)-qu(3)*qu(4))*chi ), &
-          atan2( 2.0*chi, q03-q12 ), &
+          atan2( 2.0_pReal*chi, q03-q12 ), &
           atan2(( P*qu(1)*qu(3)+qu(2)*qu(4))*chi, (-P*qu(1)*qu(2)+qu(3)*qu(4))*chi )]
   endif degenerated
   where(eu<0.0_pReal) eu = mod(eu+2.0_pReal*PI,[2.0_pReal*PI,PI,2.0_pReal*PI])
@@ -492,11 +492,11 @@ pure function qu2ho(qu) result(ho)
   omega = 2.0 * acos(math_clip(qu(1),-1.0_pReal,1.0_pReal))
   
   if (dEq0(omega)) then
-    ho = [ 0.0, 0.0, 0.0 ]
+    ho = [ 0.0_pReal, 0.0_pReal, 0.0_pReal ]
   else
     ho = qu(2:4)
-    f  = 0.75 * ( omega - sin(omega) )
-    ho = ho/norm2(ho)* f**(1.0/3.0)
+    f  = 0.75_pReal * ( omega - sin(omega) )
+    ho = ho/norm2(ho)* f**(1.0_pReal/3.0_pReal)
   end if
 
 end function qu2ho
@@ -579,7 +579,7 @@ function om2ax(om) result(ax)
   ax(4) = acos(math_clip(t,-1.0_pReal,1.0_pReal))
   
   if (dEq0(ax(4))) then
-    ax(1:3) = [ 0.0, 0.0, 1.0 ]
+    ax(1:3) = [ 0.0_pReal, 0.0_pReal, 1.0_pReal ]
   else
     call dgeev('N','V',3,om_,3,Wr,Wi,devNull,3,VR,3,work,size(work,1),ierr)
     if (ierr /= 0) call IO_error(0,ext_msg='Error in om2ax: DGEEV return not zero')
@@ -704,19 +704,19 @@ pure function eu2ax(eu) result(ax)
   
   real(pReal)                           :: t, delta, tau, alpha, sigma
   
-  t     = tan(eu(2)*0.5)
-  sigma = 0.5*(eu(1)+eu(3))
-  delta = 0.5*(eu(1)-eu(3))
+  t     = tan(eu(2)*0.5_pReal)
+  sigma = 0.5_pReal*(eu(1)+eu(3))
+  delta = 0.5_pReal*(eu(1)-eu(3))
   tau   = sqrt(t**2+sin(sigma)**2)
   
-  alpha = merge(PI, 2.0*atan(tau/cos(sigma)), dEq(sigma,PI*0.5_pReal,tol=1.0e-15_pReal))
+  alpha = merge(PI, 2.0_pReal*atan(tau/cos(sigma)), dEq(sigma,PI*0.5_pReal,tol=1.0e-15_pReal))
   
   if (dEq0(alpha)) then                                                                             ! return a default identity axis-angle pair
     ax = [ 0.0_pReal, 0.0_pReal, 1.0_pReal, 0.0_pReal ]
   else
     ax(1:3) = -P/tau * [ t*cos(delta), t*sin(delta), sin(sigma) ]                                   ! passive axis-angle pair so a minus sign in front
     ax(4) = alpha
-    if (alpha < 0.0) ax = -ax                                                                       ! ensure alpha is positive
+    if (alpha < 0.0_pReal) ax = -ax                                                                 ! ensure alpha is positive
   end if
  
 end function eu2ax
@@ -737,7 +737,7 @@ pure function eu2ro(eu) result(ro)
   elseif(dEq0(ro(4))) then
     ro = [ 0.0_pReal, 0.0_pReal, P, 0.0_pReal ]
   else
-    ro(4) = tan(ro(4)*0.5)
+    ro(4) = tan(ro(4)*0.5_pReal)
   end if
  
 end function eu2ro
@@ -786,8 +786,8 @@ pure function ax2qu(ax) result(qu)
   if (dEq0(ax(4))) then
     qu = [ 1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal ]
   else
-    c = cos(ax(4)*0.5)
-    s = sin(ax(4)*0.5)
+    c = cos(ax(4)*0.5_pReal)
+    s = sin(ax(4)*0.5_pReal)
     qu = [ c, ax(1)*s, ax(2)*s, ax(3)*s ]
   end if
 
@@ -807,7 +807,7 @@ pure function ax2om(ax) result(om)
 
   c = cos(ax(4))
   s = sin(ax(4))
-  omc = 1.0-c
+  omc = 1.0_pReal-c
 
   om(1,1) = ax(1)**2*omc + c
   om(2,2) = ax(2)**2*omc + c
@@ -825,7 +825,7 @@ pure function ax2om(ax) result(om)
   om(3,1) = q + s*ax(2)
   om(1,3) = q - s*ax(2)
 
-  if (P > 0.0) om = transpose(om)
+  if (P > 0.0_pReal) om = transpose(om)
 
 end function ax2om
 
@@ -853,14 +853,14 @@ pure function ax2ro(ax) result(ro)
   real(pReal), intent(in), dimension(4) :: ax
   real(pReal),             dimension(4) :: ro
   
-  real(pReal), parameter                :: thr = 1.0E-7
+  real(pReal), parameter                :: thr = 1.0e-7_pReal
   
   if (dEq0(ax(4))) then
     ro = [ 0.0_pReal, 0.0_pReal, P, 0.0_pReal ]
   else 
     ro(1:3) =  ax(1:3)
     ! we need to deal with the 180 degree case
-    ro(4) = merge(IEEE_value(ro(4),IEEE_positive_inf),tan(ax(4)*0.5 ),abs(ax(4)-PI) < thr)
+    ro(4) = merge(IEEE_value(ro(4),IEEE_positive_inf),tan(ax(4)*0.5_pReal),abs(ax(4)-PI) < thr)
   end if
 
 end function ax2ro
@@ -877,8 +877,8 @@ pure function ax2ho(ax) result(ho)
   
   real(pReal)                           :: f
   
-  f = 0.75 * ( ax(4) - sin(ax(4)) )
-  f = f**(1.0/3.0)
+  f = 0.75_pReal * ( ax(4) - sin(ax(4)) )
+  f = f**(1.0_pReal/3.0_pReal)
   ho = ax(1:3) * f
 
 end function ax2ho
@@ -956,10 +956,10 @@ pure function ro2ax(ro) result(ax)
   if (.not. IEEE_is_finite(ta)) then
     ax = [ ro(1), ro(2), ro(3), PI ]
   elseif (dEq0(ta))  then 
-    ax = [ 0.0, 0.0, 1.0, 0.0 ]
+    ax = [ 0.0_pReal, 0.0_pReal, 1.0_pReal, 0.0_pReal ]
   else
-    angle = 2.0*atan(ta)
-    ta = 1.0/norm2(ro(1:3))
+    angle = 2.0_pReal*atan(ta)
+    ta = 1.0_pReal/norm2(ro(1:3))
     ax = [ ro(1)/ta, ro(2)/ta, ro(3)/ta, angle ]
   end if
 
@@ -978,10 +978,10 @@ pure function ro2ho(ro) result(ho)
   real(pReal)                           :: f
   
   if (dEq0(norm2(ro(1:3)))) then
-    ho = [ 0.0, 0.0, 0.0 ]
+    ho = [ 0.0_pReal, 0.0_pReal, 0.0_pReal ]
   else
-    f = merge(2.0*atan(ro(4)) - sin(2.0*atan(ro(4))),PI, IEEE_is_finite(ro(4)))
-    ho = ro(1:3) * (0.75_pReal*f)**(1.0/3.0)
+    f = merge(2.0_pReal*atan(ro(4)) - sin(2.0_pReal*atan(ro(4))),PI, IEEE_is_finite(ro(4)))
+    ho = ro(1:3) * (0.75_pReal*f)**(1.0_pReal/3.0_pReal)
   end if
 
 end function ro2ho

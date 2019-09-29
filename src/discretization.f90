@@ -68,7 +68,7 @@ subroutine discretization_init(homogenizationAt,microstructureAt,&
   discretization_NodeCoords0 = NodeCoords0
   discretization_NodeCoords  = NodeCoords0
   
-  if(present(sharedNodesBegin)) then
+  if(present(sharedNodesBeginn)) then
     discretization_sharedNodesBeginn = sharedNodesBeginn
   else
     discretization_sharedNodesBeginn = size(discretization_NodeCoords0,2)
