@@ -1051,8 +1051,9 @@ subroutine utilities_updateCoords(F)
                         1, 1, 1, &
                         0, 1, 1  ], [3,8])
  
+  step = geomSize/real(grid, pReal)
  !--------------------------------------------------------------------------------------------------
- ! integration in Fourier space
+ ! integration in Fourier space to get fluctuations of cell center discplacements
   tensorField_real = 0.0_pReal
   tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = F
   call utilities_FFTtensorForward()
@@ -1070,43 +1071,51 @@ subroutine utilities_updateCoords(F)
  ! average F
   if (grid3Offset == 0) Favg = real(tensorField_fourier(1:3,1:3,1,1,1),pReal)*wgt
   call MPI_Bcast(Favg,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
-  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords')
+  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Bcast')
  
  !--------------------------------------------------------------------------------------------------
  ! add average to fluctuation and put (0,0,0) on (0,0,0): MD: Needs improvement, edge should be on zero
   step = geomSize/real(grid, pReal)
   if (grid3Offset == 0) offset_coords = vectorField_real(1:3,1,1,1)
   call MPI_Bcast(offset_coords,3,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
-  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords')
+  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Bcast')
   offset_coords = offset_coords - matmul(Favg,step/2.0_pReal)
   
  !--------------------------------------------------------------------------------------------------
- ! calculate nodal displacements
+ ! pad cell center fluctuations along z-direction (needed when running MPI simulation)
   IPfluct_padded(1:3,1:grid(1),1:grid(2),2:grid3+1) = vectorField_real(1:3,1:grid(1),1:grid(2),1:grid3)
-  c = product(shape(IPfluct_padded(:,:,:,1)))
+  c = product(shape(IPfluct_padded(:,:,:,1)))                                                        !< amount of data to transfer
   rank_t = modulo(worldrank+1,worldsize)
   rank_b = modulo(worldrank-1,worldsize)
+  
+  ! send bottom layer to process below
   call MPI_Isend(IPfluct_padded(:,:,:,2),      c,MPI_DOUBLE,rank_b,0,PETSC_COMM_WORLD,r,ierr)
+  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Isend')
   call MPI_Irecv(IPfluct_padded(:,:,:,grid3+2),c,MPI_DOUBLE,rank_t,0,PETSC_COMM_WORLD,r,ierr)
-  call MPI_Wait(r,s,ierr)
-  call MPI_Isend(IPfluct_padded(:,:,:,grid3+1),c,MPI_DOUBLE,rank_t,0,PETSC_COMM_WORLD,r,ierr)
-  call MPI_Irecv(IPfluct_padded(:,:,:,1),      c,MPI_DOUBLE,rank_b,0,PETSC_COMM_WORLD,r,ierr)
+  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Irecv')
   call MPI_Wait(r,s,ierr)
   
+  ! send top layer to process above
+  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Wait')
+  call MPI_Isend(IPfluct_padded(:,:,:,grid3+1),c,MPI_DOUBLE,rank_t,0,PETSC_COMM_WORLD,r,ierr)
+  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Isend')
+  call MPI_Irecv(IPfluct_padded(:,:,:,1),      c,MPI_DOUBLE,rank_b,0,PETSC_COMM_WORLD,r,ierr)
+  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Irecv')
+  call MPI_Wait(r,s,ierr)
+  
+ !--------------------------------------------------------------------------------------------------
+ ! calculate nodal displacements  
   nodeCoords = 0.0_pReal
   do k = 0,grid3; do j = 0,grid(2); do i = 0,grid(1)
-    do n = 1,8
+    average: do n = 1,8
       me = [i+neighbor(1,n),j+neighbor(2,n),k+neighbor(3,n)]
-         nodeCoords(1:3,i+1,j+1,k+1) = nodeCoords(1:3,i+1,j+1,k+1) &
-                                     + IPfluct_padded(1:3,modulo(me(1)-1,grid(1))+1,modulo(me(2)-1,grid(2)) +1,me(3)+1) &
-      +matmul(Favg,geomSize/real(grid, pReal)*(real([me(1),me(2),me(3)+grid3Offset],pReal)-0.5_pReal))
-      enddo
+      nodeCoords(1:3,i+1,j+1,k+1) = nodeCoords(1:3,i+1,j+1,k+1) &
+                                  + IPfluct_padded(1:3,modulo(me(1)-1,grid(1))+1,modulo(me(2)-1,grid(2))+1,me(3)+1) &
+                                  + matmul(Favg,step*(real([me(1),me(2),me(3)+grid3Offset],pReal)-0.5_pReal))
+      enddo average
   enddo; enddo; enddo
   nodeCoords = nodeCoords/8.0_pReal
-    
-  call discretization_setNodeCoords(reshape(NodeCoords,[3,(grid(1)+1)*(grid(2)+1)*(grid3+1)]))
-
-  
+      
  !--------------------------------------------------------------------------------------------------
  ! calculate cell center displacements
   do k = 1,grid3; do j = 1,grid(2); do i = 1,grid(1)
@@ -1115,7 +1124,8 @@ subroutine utilities_updateCoords(F)
                         - offset_coords
   enddo; enddo; enddo
   
-  call discretization_setIPcoords(reshape(IPcoords,[3,grid(1)*grid(2)*grid3]))
+  call discretization_setNodeCoords(reshape(NodeCoords,[3,(grid(1)+1)*(grid(2)+1)*(grid3+1)]))
+  call discretization_setIPcoords  (reshape(IPcoords,  [3,grid(1)*grid(2)*grid3]))
   
 end subroutine utilities_updateCoords
 
