@@ -1027,9 +1027,29 @@ subroutine utilities_updateCoords(F)
  
   real(pReal),   dimension(3,3,grid(1),grid(2),grid3), intent(in) :: F
   real(pReal),   dimension(3,  grid(1),grid(2),grid3)             :: IPcoords
-  integer :: i, j, k, ierr
+  real(pReal),   dimension(3,  grid(1),grid(2),grid3+2)           :: IPfluct_padded                  ! Fluctuations of cell center displacement (padded along z for MPI)
+  real(pReal),   dimension(3,  grid(1)+1,grid(2)+1,grid3+1)       :: nodeCoords
+  integer :: &
+    i,j,k,n, &
+    rank_t, &
+    rank_b, &
+    c, r, &
+    ierr
+  integer, dimension(MPI_STATUS_SIZE) :: &
+    s
   real(pReal),   dimension(3) :: step, offset_coords
   real(pReal),   dimension(3,3) :: Favg
+  integer,       dimension(3) :: me
+  integer, dimension(3,8) :: &
+    neighbor = reshape([ &
+                        0, 0, 0, &
+                        1, 0, 0, &
+                        1, 1, 0, &
+                        0, 1, 0, &
+                        0, 0, 1, &
+                        1, 0, 1, &
+                        1, 1, 1, &
+                        0, 1, 1  ], [3,8])
  
  !--------------------------------------------------------------------------------------------------
  ! integration in Fourier space
@@ -1053,13 +1073,42 @@ subroutine utilities_updateCoords(F)
   if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords')
  
  !--------------------------------------------------------------------------------------------------
- ! add average to fluctuation and put (0,0,0) on (0,0,0)
+ ! add average to fluctuation and put (0,0,0) on (0,0,0): MD: Needs improvement, edge should be on zero
   step = geomSize/real(grid, pReal)
   if (grid3Offset == 0) offset_coords = vectorField_real(1:3,1,1,1)
   call MPI_Bcast(offset_coords,3,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
   if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords')
   offset_coords = offset_coords - matmul(Favg,step/2.0_pReal)
+  
+ !--------------------------------------------------------------------------------------------------
+ ! calculate nodal displacements
+  IPfluct_padded(1:3,1:grid(1),1:grid(2),2:grid3+1) = vectorField_real(1:3,1:grid(1),1:grid(2),1:grid3)
+  c = product(shape(nodeCoords(:,:,:,1)))
+  rank_t = modulo(worldrank+1,worldsize)
+  rank_b = modulo(worldrank-1,worldsize)
+  call MPI_Isend(IPfluct_padded(:,:,:,2),      c,MPI_DOUBLE,rank_b,0,PETSC_COMM_WORLD,r,ierr)
+  call MPI_Irecv(IPfluct_padded(:,:,:,grid3+2),c,MPI_DOUBLE,rank_t,0,PETSC_COMM_WORLD,r,ierr)
+  call MPI_Wait(r,s,ierr)
+  call MPI_Isend(IPfluct_padded(:,:,:,grid3+1),c,MPI_DOUBLE,rank_t,0,PETSC_COMM_WORLD,r,ierr)
+  call MPI_Irecv(IPfluct_padded(:,:,:,1),      c,MPI_DOUBLE,rank_b,0,PETSC_COMM_WORLD,r,ierr)
+  call MPI_Wait(r,s,ierr)
+  
+  nodeCoords = 0.0_pReal
+  do k = 0,grid3; do j = 0,grid(2); do i = 0,grid(1)
+    do n = 1,8
+      me = [i+neighbor(1,n),j+neighbor(2,n),k+neighbor(3,n)]
+         nodeCoords(1:3,i+1,j+1,k+1) = nodeCoords(1:3,i+1,j+1,k+1) &
+                                     + IPfluct_padded(1:3,modulo(me(1)-1,grid(1))+1,modulo(me(2)-1,grid(2)) +1,me(3)+1) &
+      +matmul(Favg,geomSize/real(grid, pReal)*(real([me(1),me(2),me(3)+grid3Offset],pReal)-0.5_pReal))
+      enddo
+  enddo; enddo; enddo
+  nodeCoords = nodeCoords/8.0_pReal
+    
+  call discretization_setNodeCoords(reshape(NodeCoords,[3,(grid(1)+1)*(grid(2)+1)*(grid3+1)]))
 
+  
+ !--------------------------------------------------------------------------------------------------
+ ! calculate cell center displacements
   do k = 1,grid3; do j = 1,grid(2); do i = 1,grid(1)
     IPcoords(1:3,i,j,k) = vectorField_real(1:3,i,j,k) &
                         + matmul(Favg,step*real([i,j,k+grid3Offset]-1,pReal)) &
@@ -1067,64 +1116,7 @@ subroutine utilities_updateCoords(F)
   enddo; enddo; enddo
   
   call discretization_setIPcoords(reshape(IPcoords,[3,grid(1)*grid(2)*grid3]))
-  call discretization_setNodeCoords(reshape(NodeCoords(IPcoords,Favg),[3,(grid(1)+1)*(grid(2)+1)*(grid3+1)]))
   
-  contains
-  
-  function nodeCoords(IPcoords,Favg)
-    real(pReal), dimension(:,:,:,:), intent(in) :: IPcoords
-    real(pReal), dimension(3,3),     intent(in) :: Favg
-    
-    real(pReal), dimension(3,size(IPcoords,2)+1,size(IPcoords,3)+1,size(IPcoords,3)+1) :: nodeCoords
-    real(pReal), dimension(3,size(IPcoords,2)+2,size(IPcoords,3)+2,size(IPcoords,3)+2) :: IPCoords_wrapped
-    
-    integer :: &
-      i,j,k,n
-    integer,           dimension(3) :: &
-      shift, &
-      lookup, &
-      me
-    integer,           dimension(3,8) :: &
-      neighbor = reshape([ &
-                          0, 0, 0, &
-                          1, 0, 0, &
-                          1, 1, 0, &
-                          0, 1, 0, &
-                          0, 0, 1, &
-                          1, 0, 1, &
-                          1, 1, 1, &
-                          0, 1, 1  ], [3,8])
-        
-    do k = grid3offset,grid3offset+grid3+1
-      do j = 0,grid(2)+1
-        do i = 0,grid(1)+1
-          if (k==0 .or. k==grid(3)+1 .or. &                                                  ! z skin
-              j==0 .or. j==grid(2)+1 .or. &                                                  ! y skin
-              i==0 .or. i==grid(1)+1      ) then                                             ! x skin
-            me = [i,j,k]                                                                     ! me on skin
-            shift = sign(abs(grid+1-2*me)/(grid+1),grid+1-2*me)
-            lookup = me-1+shift*grid
-            IPCoords_wrapped(1:3,i+1,j+1,k+1) = IPcoords(1:3,lookup(1)+1,lookup(2)+1,lookup(3)+1) &
-                                              - matmul(Favg, real(shift,pReal)*geomSize)
-          else
-            IPCoords_wrapped(1:3,i+1,j+1,k+1) = IPCoords(1:3,i,j,k)
-          endif
-     enddo; enddo; enddo
-     
-
-     nodeCoords = 0.0_pReal
-     do k = 0,grid3; do j = 0,grid(2); do i = 0,grid(1)
-       do n = 1,8
-         nodeCoords(1:3,i+1,j+1,k+1) = nodeCoords(1:3,i+1,j+1,k+1) &
-                                     + IPCoords_wrapped(1:3,i+1+neighbor(1,n), &
-                                                            j+1+neighbor(2,n), &
-                                                            k+1+neighbor(3,n) )
-       enddo
-     enddo; enddo; enddo
-    nodeCoords = nodeCoords/8.0_pReal
-  
-  end function nodeCoords
-
 end subroutine utilities_updateCoords
 
 end module spectral_utilities
