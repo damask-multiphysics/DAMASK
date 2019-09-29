@@ -1083,7 +1083,7 @@ subroutine utilities_updateCoords(F)
  !--------------------------------------------------------------------------------------------------
  ! calculate nodal displacements
   IPfluct_padded(1:3,1:grid(1),1:grid(2),2:grid3+1) = vectorField_real(1:3,1:grid(1),1:grid(2),1:grid3)
-  c = product(shape(nodeCoords(:,:,:,1)))
+  c = product(shape(IPfluct_padded(:,:,:,1)))
   rank_t = modulo(worldrank+1,worldsize)
   rank_b = modulo(worldrank-1,worldsize)
   call MPI_Isend(IPfluct_padded(:,:,:,2),      c,MPI_DOUBLE,rank_b,0,PETSC_COMM_WORLD,r,ierr)
