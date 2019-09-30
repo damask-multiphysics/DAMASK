@@ -575,10 +575,6 @@ class DADF5():
       R_inv    = np.transpose(np.matmul(U,Vh),(0,2,1))                                                      # transposed rotation of polar decomposition
       U        = np.matmul(R_inv,defgrad['data'])                                                           # F = RU
       (D,V)    = np.linalg.eigh((U+np.transpose(U,(0,2,1)))*.5)                                             # eigen decomposition (of symmetric(ed) matrix)
-
-      neg      = np.where(D < 0.0)                                                                          # find negative eigenvalues ...
-      D[neg[0],neg[1]]   = D[neg[0],neg[1]]* -1                                                             # ... flip value ...
-      V[neg[0],:,neg[1]] = V[neg[0],:,neg[1]]* -1                                                           # ... and vector
       
       d = operator['V#ln'](D)
       a = np.matmul(V,np.einsum('ij,ikj->ijk',d,V))
@@ -589,7 +585,7 @@ class DADF5():
                'meta' : {
                         'Unit' :        defgrad['meta']['Unit'],
                         'Description' : 'Strain tensor ln(V){} ({})'.format(defgrad['label'],defgrad['meta']['Description']),
-                        'Creator' :     'dadf5.py:add_deviator v{}'.format(version)
+                        'Creator' :     'dadf5.py:add_strain_tensor v{}'.format(version)
                         }
                }
 
