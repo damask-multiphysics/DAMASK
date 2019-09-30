@@ -6,6 +6,7 @@ import h5py
 import numpy as np
 
 from . import util
+from . import version
 
 # ------------------------------------------------------------------
 class DADF5():
@@ -360,7 +361,7 @@ class DADF5():
                         'Unit' :        P['meta']['Unit'],
                         'Description' : 'Cauchy stress calculated from {} ({}) '.format(P['label'],P['meta']['Description'])+\
                                         'and deformation gradient {} ({})'.format(F['label'],F['meta']['Description']),
-                        'Creator' :     'dadf5.py:add_Cauchy vXXXXX'
+                        'Creator' :     'dadf5.py:add_Cauchy v{}'.format(version)
                         }
                }
       
@@ -394,7 +395,7 @@ class DADF5():
                'meta' : {
                         'Unit' :        x['meta']['Unit'],
                         'Description' : 'Mises equivalent {} of {} ({})'.format(t,x['label'],x['meta']['Description']),
-                        'Creator' :     'dadf5.py:add_Mises_stress vXXXXX'
+                        'Creator' :     'dadf5.py:add_Mises_stress v{}'.format(version)
                         }
                }
       
@@ -429,7 +430,7 @@ class DADF5():
                'meta' : {
                         'Unit' :        x['meta']['Unit'],
                         'Description' : '{}-Norm of {} {} ({})'.format(ord,t,x['label'],x['meta']['Description']),
-                        'Creator' :     'dadf5.py:add_norm vXXXXX'
+                        'Creator' :     'dadf5.py:add_norm v{}'.format(version)
                         }
                }
 
@@ -448,7 +449,7 @@ class DADF5():
                'meta' : {
                         'Unit' :        x['meta']['Unit'],
                         'Description' : 'Absolute value of {} ({})'.format(x['label'],x['meta']['Description']),
-                        'Creator' :     'dadf5.py:add_abs vXXXXX'
+                        'Creator' :     'dadf5.py:add_abs v{}'.format(version)
                         }
                }
 
@@ -467,7 +468,7 @@ class DADF5():
                'meta' : {
                         'Unit' :        x['meta']['Unit'],
                         'Description' : 'Determinant of tensor {} ({})'.format(x['label'],x['meta']['Description']),
-                        'Creator' :     'dadf5.py:add_determinant vXXXXX'
+                        'Creator' :     'dadf5.py:add_determinant v{}'.format(version)
                         }
                }
       
@@ -489,7 +490,7 @@ class DADF5():
                'meta' : {
                         'Unit' :        x['meta']['Unit'],
                         'Description' : 'Spherical component of tensor {} ({})'.format(x['label'],x['meta']['Description']),
-                        'Creator' :     'dadf5.py:add_spherical vXXXXX'
+                        'Creator' :     'dadf5.py:add_spherical v{}'.format(version)
                         }
                }
 
@@ -512,7 +513,7 @@ class DADF5():
                'meta' : {
                         'Unit' :        x['meta']['Unit'],
                         'Description' : 'Deviator of tensor {} ({})'.format(x['label'],x['meta']['Description']),
-                        'Creator' :     'dadf5.py:add_deviator vXXXXX'
+                        'Creator' :     'dadf5.py:add_deviator v{}'.format(version)
                         }
                }
       
@@ -543,7 +544,7 @@ class DADF5():
                'meta' : {
                         'Unit' :        kwargs['unit'],
                         'Description' : '{}'.format(kwargs['description']),
-                        'Creator' :     'dadf5.py:add_calculation vXXXXX'
+                        'Creator' :     'dadf5.py:add_calculation v{}'.format(version)
                         }
                }
     
@@ -567,7 +568,7 @@ class DADF5():
                    'V#Biot': lambda V: np.broadcast_to(np.ones(3),[V.shape[0],3]) - 1.0/V,
                    'U#Biot': lambda U: U - np.broadcast_to(np.ones(3),[U.shape[0],3]),
                    'V#Green':lambda V: np.broadcast_to(np.ones(3),[V.shape[0],3]) - 1.0/V**2,
-                   'U#Biot': lambda U: U**2 - np.broadcast_to(np.ones(3),[U.shape[0],3]), 
+                   'U#Green':lambda U: U**2 - np.broadcast_to(np.ones(3),[U.shape[0],3]), 
                  }
 
       (U,S,Vh) = np.linalg.svd(defgrad['data'])                                                             # singular value decomposition
@@ -588,7 +589,7 @@ class DADF5():
                'meta' : {
                         'Unit' :        defgrad['meta']['Unit'],
                         'Description' : 'Strain tensor ln(V){} ({})'.format(defgrad['label'],defgrad['meta']['Description']),
-                        'Creator' :     'dadf5.py:add_deviator vXXXXX'
+                        'Creator' :     'dadf5.py:add_deviator v{}'.format(version)
                         }
                }
 
