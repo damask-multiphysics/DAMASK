@@ -554,7 +554,7 @@ class DADF5():
     self.__add_generic_pointwise(calculation,requested,pass_through)
 
 
-  def add_strain_tensor(self,t,ord,defgrad='F'): #ToDo: Use t and ord
+  def add_strain_tensor(self,t,ord,defgrad='F'):
     """
     Adds the a strain tensor.
     
@@ -570,21 +570,28 @@ class DADF5():
                    'V#Green':lambda V: np.broadcast_to(np.ones(3),[V.shape[0],3]) - 1.0/V**2,
                    'U#Green':lambda U: U**2 - np.broadcast_to(np.ones(3),[U.shape[0],3]), 
                  }
+      if   t.lower() in ['l','left']:
+        stretch = 'V'
+      elif t.lower() in ['r','right']:
+        stretch = 'U'
+      else:
+        raise KeyError
 
       (U,S,Vh) = np.linalg.svd(defgrad['data'])                                                             # singular value decomposition
       R_inv    = np.transpose(np.matmul(U,Vh),(0,2,1))                                                      # transposed rotation of polar decomposition
-      U        = np.matmul(R_inv,defgrad['data'])                                                           # F = RU
-      (D,V)    = np.linalg.eigh((U+np.transpose(U,(0,2,1)))*.5)                                             # eigen decomposition (of symmetric(ed) matrix)
+      s        = np.matmul(R_inv,defgrad['data']) if stretch == 'U' else \
+                 np.matmul(defgrad['data'],R_inv)
+      (D,V)    = np.linalg.eigh((s+np.transpose(s,(0,2,1)))*.5)                                             # eigen decomposition (of symmetric(ed) matrix)
       
-      d = operator['V#ln'](D)
+      d = operator[stretch+'#'+{0:'ln',1:'Biot',2:'Green'}[ord]](D)
       a = np.matmul(V,np.einsum('ij,ikj->ijk',d,V))
       
       return  {
                'data' : a, 
-               'label' : 'ln(V)({})'.format(defgrad['label']),
+               'label' : 'epsilon_{}^{}({})'.format(stretch,ord,defgrad['label']),
                'meta' : {
                         'Unit' :        defgrad['meta']['Unit'],
-                        'Description' : 'Strain tensor ln(V){} ({})'.format(defgrad['label'],defgrad['meta']['Description']),
+                        'Description' : 'Strain tensor of {} ({})'.format(defgrad['label'],defgrad['meta']['Description']),
                         'Creator' :     'dadf5.py:add_strain_tensor v{}'.format(version)
                         }
                }
