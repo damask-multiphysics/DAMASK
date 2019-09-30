@@ -6,6 +6,7 @@ import h5py
 import numpy as np
 
 from . import util
+from . import damask
 
 # ------------------------------------------------------------------
 class DADF5():
@@ -557,7 +558,7 @@ class DADF5():
                    'V#Biot': lambda V: np.broadcast_to(np.ones(3),[V.shape[0],3]) - 1.0/V,
                    'U#Biot': lambda U: U - np.broadcast_to(np.ones(3),[U.shape[0],3]),
                    'V#Green':lambda V: np.broadcast_to(np.ones(3),[V.shape[0],3]) - 1.0/V**2,
-                   'U#Biot': lambda U: U**2 - np.broadcast_to(np.ones(3),[U.shape[0],3]), 
+                   'U#Green':lambda U: U**2 - np.broadcast_to(np.ones(3),[U.shape[0],3]), 
                  }
 
       (U,S,Vh) = np.linalg.svd(defgrad['data'])                                                             # singular value decomposition
