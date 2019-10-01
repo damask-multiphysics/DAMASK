@@ -543,7 +543,7 @@ class DADF5():
                'label' : kwargs['label'],
                'meta' : {
                         'Unit' :        kwargs['unit'],
-                        'Description' : '{}'.format(kwargs['description']),
+                        'Description' : '{} (formula: {})'.format(kwargs['description'],kwargs['formula']),
                         'Creator' :     'dadf5.py:add_calculation v{}'.format(version)
                         }
                }
@@ -580,7 +580,7 @@ class DADF5():
       (U,S,Vh) = np.linalg.svd(defgrad['data'])                                                             # singular value decomposition
       R_inv    = np.transpose(np.matmul(U,Vh),(0,2,1))                                                      # transposed rotation of polar decomposition
       s        = np.matmul(R_inv,defgrad['data']) if stretch == 'U' else \
-                 np.matmul(defgrad['data'],R_inv)
+                 np.matmul(defgrad['data'],R_inv)                                                           # compute either left or right stretch
       (D,V)    = np.linalg.eigh((s+np.transpose(s,(0,2,1)))*.5)                                             # eigen decomposition (of symmetric(ed) matrix)
       
       d = operator[stretch+'#'+{0:'ln',1:'Biot',2:'Green'}[ord]](D)
