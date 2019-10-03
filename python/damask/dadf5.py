@@ -29,7 +29,7 @@ class DADF5():
     """
     with h5py.File(filename,'r') as f:
       
-      if f.attrs['DADF5-major'] != 0 or f.attrs['DADF5-minor'] <= 2:
+      if f.attrs['DADF5-major'] != 0 or not 2 <= f.attrs['DADF5-minor'] <= 3:
         raise TypeError('Unsupported DADF5 version {} '.format(f.attrs['DADF5-version']))
     
       self.structured = 'grid' in f['geometry'].attrs.keys()
