@@ -68,9 +68,9 @@ subroutine results_init
   write(6,'(a)')   ' https://doi.org/10.1007/s40192-018-0118-7'
 
   resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','w',.true.)
-  call HDF5_addAttribute(resultsFile,'DADF5-version',0.2_pReal)
+  call HDF5_addAttribute(resultsFile,'DADF5-version',0.3_pReal)
   call HDF5_addAttribute(resultsFile,'DADF5-major',0)
-  call HDF5_addAttribute(resultsFile,'DADF5-minor',2)
+  call HDF5_addAttribute(resultsFile,'DADF5-minor',3)
   call HDF5_addAttribute(resultsFile,'DAMASK',DAMASKVERSION)
   call get_command(commandLine)
   call HDF5_addAttribute(resultsFile,'call',trim(commandLine))

@@ -29,7 +29,7 @@ class DADF5():
     """
     with h5py.File(filename,'r') as f:
       
-      if f.attrs['DADF5-major'] != 0 or f.attrs['DADF5-minor'] != 2:
+      if f.attrs['DADF5-major'] != 0 or f.attrs['DADF5-minor'] <= 2:
         raise TypeError('Unsupported DADF5 version {} '.format(f.attrs['DADF5-version']))
     
       self.structured = 'grid' in f['geometry'].attrs.keys()
@@ -49,17 +49,17 @@ class DADF5():
       self.con_physics  = []
       for c in self.constituents:
         self.con_physics += f['/'.join([self.increments[0],'constituent',c])].keys()
-      self.con_physics = list(set(self.con_physics))                                          # make unique
+      self.con_physics = list(set(self.con_physics))                                                # make unique
 
       self.mat_physics = []
       for m in self.materialpoints:
         self.mat_physics += f['/'.join([self.increments[0],'materialpoint',m])].keys()
-      self.mat_physics = list(set(self.mat_physics))                                          # make unique
+      self.mat_physics = list(set(self.mat_physics))                                                # make unique
 
     self.visible= {'increments':     self.increments,
                    'constituents':   self.constituents,
                    'materialpoints': self.materialpoints,
-                   'constituent':    range(self.Nconstituents),                               # ToDo: stupid naming
+                   'constituent':    range(self.Nconstituents),                                     # ToDo: stupid naming
                    'con_physics':    self.con_physics,
                    'mat_physics':    self.mat_physics}
                   
