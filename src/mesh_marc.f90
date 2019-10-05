@@ -207,7 +207,7 @@ subroutine mesh_init(ip,el)
   mesh_element(1,:) = -1 ! DEPRECATED
   mesh_element(2,:) = elemType ! DEPRECATED
  
-  call mesh_marc_buildElements(mesh_nElems,initialcondTableStyle,FILEUNIT)
+  call mesh_marc_buildElements(mesh_nElems,theMesh%elem%nNodes,initialcondTableStyle,FILEUNIT)
   if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
   close (FILEUNIT)
    
@@ -607,7 +607,7 @@ integer function mesh_marc_getElemType(nElem,fileUnit)
     endif
   enddo
 
-contains 
+  contains 
 
   !--------------------------------------------------------------------------------------------------
   !> @brief mapping of Marc element types to internal representation
@@ -659,10 +659,11 @@ end function mapElemtype
 !--------------------------------------------------------------------------------------------------
 !> @brief Stores node IDs and homogenization and microstructure ID
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_buildElements(nElem,initialcondTableStyle,fileUnit)
+subroutine mesh_marc_buildElements(nElem,nNodes,initialcondTableStyle,fileUnit)
  
   integer, intent(in) :: &
     nElem, &
+    nNodes, &                                                                                       !< number of nodes per element
     initialcondTableStyle, &
     fileUnit
  
@@ -688,7 +689,7 @@ subroutine mesh_marc_buildElements(nElem,initialcondTableStyle,fileUnit)
             mesh_element(4+j,e) = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j+2))                ! CP ids of nodes
           enddo
           nNodesAlreadyRead = chunkPos(1) - 2
-          do while(nNodesAlreadyRead < theMesh%elem%nNodes)                                         ! read on if not all nodes in one line
+          do while(nNodesAlreadyRead < nNodes)                                                      ! read on if not all nodes in one line
             read (fileUnit,'(A300)',END=620) line
             chunkPos = IO_stringPos(line)
             do j = 1,chunkPos(1)
