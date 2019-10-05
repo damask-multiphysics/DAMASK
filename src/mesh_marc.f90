@@ -45,7 +45,6 @@ module mesh
    
  real(pReal), dimension(:,:), allocatable :: &
    mesh_node, &                                                                                     !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!
-   mesh_ipVolume, &                                                                                 !< volume associated with IP (initially!)
    mesh_node0                                                                                       !< node x,y,z coordinates (initially!)
 
  real(pReal), dimension(:,:,:), allocatable:: &
@@ -219,8 +218,7 @@ subroutine mesh_init(ip,el)
   allocate(mesh_ipCoordinates(3,theMesh%elem%nIPs,theMesh%nElems),source=0.0_pReal)
   call mesh_build_ipCoordinates
   if (myDebug) write(6,'(a)') ' Built IP coordinates'; flush(6)
-  call mesh_build_ipVolumes
-  if (myDebug) write(6,'(a)') ' Built IP volumes'; flush(6)
+
   call mesh_build_ipAreas
   if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
  
@@ -245,7 +243,8 @@ subroutine mesh_init(ip,el)
   call discretization_init(mesh_element(3,:),mesh_element(4,:),&
                            reshape(mesh_ipCoordinates,[3,theMesh%elem%nIPs*theMesh%nElems]),&
                            mesh_node0)
-  call geometry_plastic_nonlocal_setIPvolume(mesh_ipVolume)
+
+  call geometry_plastic_nonlocal_setIPvolume(IPvolume())
   call geometry_plastic_nonlocal_setIPneighborhood(mesh_ipNeighborhood2)
   call geometry_plastic_nonlocal_setIParea(mesh_IParea)
   call geometry_plastic_nonlocal_setIPareaNormal(mesh_IPareaNormal)
@@ -1020,7 +1019,7 @@ end function mesh_build_cellnodes
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Calculates IP volume. Allocates global array 'mesh_ipVolume'
+!> @brief Calculates IP volume.
 !> @details The IP volume is calculated differently depending on the cell type.
 !> 2D cells assume an element depth of one in order to calculate the volume.
 !> For the hexahedral cell we subdivide the cell into subvolumes of pyramidal
@@ -1028,58 +1027,57 @@ end function mesh_build_cellnodes
 !> calculated as an average of four tetrahedals with three corners on the cell face
 !> and one corner at the central ip.
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_build_ipVolumes
+function IPvolume()
  
+  real(pReal), dimension(theMesh%elem%nIPs,theMesh%nElems) :: IPvolume
+
   integer :: e,i,c,m,f,n
   real(pReal), dimension(size(theMesh%elem%cellFace,1),size(theMesh%elem%cellFace,2)) :: subvolume
 
-  allocate(mesh_ipVolume(theMesh%elem%nIPs,theMesh%nElems),source=0.0_pReal)
   c = theMesh%elem%cellType
   m = FE_NcellnodesPerCellface(c)
 
- !$OMP PARALLEL DO PRIVATE(f,n,subvolume)
-   do e = 1,theMesh%nElems
-     select case (c)
+  do e = 1,theMesh%nElems
+    select case (c)
 
-       case (1)                                                                                ! 2D 3node
-         forall (i = 1:theMesh%elem%nIPs) &                                                           ! loop over ips=cells in this element
-           mesh_ipVolume(i,e) = math_areaTriangle(theMesh%node_0(1:3,mesh_cell2(1,i,e)), &
-                                                  theMesh%node_0(1:3,mesh_cell2(2,i,e)), &
-                                                  theMesh%node_0(1:3,mesh_cell2(3,i,e)))
+      case (1)                                                                                ! 2D 3node
+        forall (i = 1:theMesh%elem%nIPs) &                                                           ! loop over ips=cells in this element
+          IPvolume(i,e) = math_areaTriangle(theMesh%node_0(1:3,mesh_cell2(1,i,e)), &
+                                            theMesh%node_0(1:3,mesh_cell2(2,i,e)), &
+                                            theMesh%node_0(1:3,mesh_cell2(3,i,e)))
 
-       case (2)                                                                                ! 2D 4node
-         forall (i = 1:theMesh%elem%nIPs) &                                                           ! loop over ips=cells in this element
-           mesh_ipVolume(i,e) = math_areaTriangle(theMesh%node_0(1:3,mesh_cell2(1,i,e)), &            ! here we assume a planar shape, so division in two triangles suffices
-                                                  theMesh%node_0(1:3,mesh_cell2(2,i,e)), &
-                                                  theMesh%node_0(1:3,mesh_cell2(3,i,e))) &
-                              + math_areaTriangle(theMesh%node_0(1:3,mesh_cell2(3,i,e)), &
-                                                  theMesh%node_0(1:3,mesh_cell2(4,i,e)), &
-                                                  theMesh%node_0(1:3,mesh_cell2(1,i,e)))
+      case (2)                                                                                ! 2D 4node
+        forall (i = 1:theMesh%elem%nIPs) &                                                           ! loop over ips=cells in this element
+          IPvolume(i,e) = math_areaTriangle(theMesh%node_0(1:3,mesh_cell2(1,i,e)), &            ! here we assume a planar shape, so division in two triangles suffices
+                                            theMesh%node_0(1:3,mesh_cell2(2,i,e)), &
+                                            theMesh%node_0(1:3,mesh_cell2(3,i,e))) &
+                        + math_areaTriangle(theMesh%node_0(1:3,mesh_cell2(3,i,e)), &
+                                            theMesh%node_0(1:3,mesh_cell2(4,i,e)), &
+                                            theMesh%node_0(1:3,mesh_cell2(1,i,e)))
 
-       case (3)                                                                                ! 3D 4node
-         forall (i = 1:theMesh%elem%nIPs) &                                                           ! loop over ips=cells in this element
-           mesh_ipVolume(i,e) = math_volTetrahedron(theMesh%node_0(1:3,mesh_cell2(1,i,e)), &
-                                                    theMesh%node_0(1:3,mesh_cell2(2,i,e)), &
-                                                    theMesh%node_0(1:3,mesh_cell2(3,i,e)), &
-                                                    theMesh%node_0(1:3,mesh_cell2(4,i,e)))
+      case (3)                                                                                ! 3D 4node
+        forall (i = 1:theMesh%elem%nIPs) &                                                           ! loop over ips=cells in this element
+          IPvolume(i,e) = math_volTetrahedron(theMesh%node_0(1:3,mesh_cell2(1,i,e)), &
+                                              theMesh%node_0(1:3,mesh_cell2(2,i,e)), &
+                                              theMesh%node_0(1:3,mesh_cell2(3,i,e)), &
+                                              theMesh%node_0(1:3,mesh_cell2(4,i,e)))
 
-       case (4)                                                                                ! 3D 8node
-         do i = 1,theMesh%elem%nIPs                                                                   ! loop over ips=cells in this element
-           subvolume = 0.0_pReal
-           forall(f = 1:FE_NipNeighbors(c), n = 1:m) &
-             subvolume(n,f) = math_volTetrahedron(&
-                                mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(      n     ,f),i,e)), &
-                                mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(1+mod(n  ,m),f),i,e)), &
-                                mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(1+mod(n+1,m),f),i,e)), &
-                                mesh_ipCoordinates(1:3,i,e))
-           mesh_ipVolume(i,e) = 0.5_pReal * sum(subvolume)                                         ! each subvolume is based on four tetrahedrons, altough the face consists of only two triangles -> averaging factor two
-         enddo
+      case (4)                                                                                ! 3D 8node
+        do i = 1,theMesh%elem%nIPs                                                                   ! loop over ips=cells in this element
+          subvolume = 0.0_pReal
+          forall(f = 1:FE_NipNeighbors(c), n = 1:m) &
+            subvolume(n,f) = math_volTetrahedron(&
+                               mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(      n     ,f),i,e)), &
+                               mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(1+mod(n  ,m),f),i,e)), &
+                               mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(1+mod(n+1,m),f),i,e)), &
+                               mesh_ipCoordinates(1:3,i,e))
+          IPvolume(i,e) = 0.5_pReal * sum(subvolume)                                         ! each subvolume is based on four tetrahedrons, altough the face consists of only two triangles -> averaging factor two
+        enddo
 
-     end select
-   enddo
- !$OMP END PARALLEL DO
+    end select
+  enddo
 
-end subroutine mesh_build_ipVolumes
+end function IPvolume
 
 
 subroutine IP_neighborhood2
@@ -1155,15 +1153,12 @@ subroutine IP_neighborhood2
 end subroutine IP_neighborhood2
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Calculates IP Coordinates. Allocates global array 'mesh_ipCoordinates'
-! Called by all solvers in mesh_init in order to initialize the ip coordinates.
-! Later on the current ip coordinates are directly prvided by the spectral solver and by Abaqus,
-! so no need to use this subroutine anymore; Marc however only provides nodal displacements,
+!> @brief Calculates IP Coordinates.
+! Marc however only provides nodal displacements,
 ! so in this case the ip coordinates are always calculated on the basis of this subroutine.
 ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! FOR THE MOMENT THIS SUBROUTINE ACTUALLY CALCULATES THE CELL CENTER AND NOT THE IP COORDINATES,
 ! AS THE IP IS NOT (ALWAYS) LOCATED IN THE CENTER OF THE IP VOLUME.
-! HAS TO BE CHANGED IN A LATER VERSION.
 ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_ipCoordinates
