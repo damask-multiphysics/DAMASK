@@ -47,10 +47,6 @@ module mesh
    mesh_node, &                                                                                     !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!
    mesh_node0                                                                                       !< node x,y,z coordinates (initially!)
 
- real(pReal), dimension(:,:,:), allocatable:: &
-   mesh_ipArea                                                                                      !< area of interface to neighboring IP (initially!)
- real(pReal),dimension(:,:,:,:), allocatable :: &
-   mesh_ipAreaNormal                                                                                !< area normal of interface to neighboring IP (initially!)
 
 ! -------------------------------------------------------------------------------------------------- 
 
@@ -154,6 +150,10 @@ subroutine mesh_init(ip,el)
     hypoelasticTableStyle, &
     initialcondTableStyle
   logical :: myDebug
+  real(pReal), dimension(:,:,:), allocatable:: &
+   mesh_ipArea                                                                                      !< area of interface to neighboring IP (initially!)
+  real(pReal),dimension(:,:,:,:), allocatable :: &
+   mesh_ipAreaNormal                                                                                !< area normal of interface to neighboring IP (initially!)
  
   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
  
@@ -232,12 +232,10 @@ subroutine mesh_init(ip,el)
   call geometry_plastic_nonlocal_setIPvolume(IPvolume())
   call geometry_plastic_nonlocal_setIPneighborhood(mesh_ipNeighborhood2)
   
-  call mesh_build_ipAreas
+  call mesh_build_ipAreas(mesh_IParea,mesh_IPareaNormal)
   if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
   call geometry_plastic_nonlocal_setIParea(mesh_IParea)
   call geometry_plastic_nonlocal_setIPareaNormal(mesh_IPareaNormal)
-  deallocate(mesh_IParea)
-  deallocate(mesh_IPareaNormal)
 
   ! sanity checks
   if (usePingPong .and. (mesh_Nelems /= theMesh%nElems)) &
@@ -1194,19 +1192,21 @@ end subroutine mesh_build_ipCoordinates
 !--------------------------------------------------------------------------------------------------
 !> @brief calculation of IP interface areas, allocate globals '_ipArea', and '_ipAreaNormal'
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_build_ipAreas
+subroutine mesh_build_ipAreas(area,areaNormal)
+
+ real(pReal), dimension(:,:,:), allocatable, intent(out)   :: area
+ real(pReal), dimension(:,:,:,:), allocatable, intent(out) :: areaNormal
 
  integer :: e,c,i,f,n,m
  real(pReal), dimension (3,FE_maxNcellnodesPerCellface) :: nodePos, normals
  real(pReal), dimension(3) :: normal
 
- allocate(mesh_ipArea        (theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), source=0.0_pReal)
- allocate(mesh_ipAreaNormal(3,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), source=0.0_pReal)
+ allocate(area        (theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), source=0.0_pReal)
+ allocate(areaNormal(3,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), source=0.0_pReal)
  
  c = theMesh%elem%cellType
 
- !$OMP PARALLEL DO PRIVATE(nodePos,normal,normals)
-   do e = 1,theMesh%nElems                                                                      ! loop over cpElems
+   do e = 1,theMesh%nElems
      select case (c)
 
        case (1,2)                                                                         ! 2D 3 or 4 node
@@ -1217,8 +1217,8 @@ subroutine mesh_build_ipAreas
              normal(1) =   nodePos(2,2) - nodePos(2,1)                                              ! x_normal =  y_connectingVector
              normal(2) = -(nodePos(1,2) - nodePos(1,1))                                             ! y_normal = -x_connectingVector
              normal(3) = 0.0_pReal
-             mesh_ipArea(f,i,e) = norm2(normal)
-             mesh_ipAreaNormal(1:3,f,i,e) = normal / norm2(normal)                             ! ensure unit length of area normal
+             area(f,i,e) = norm2(normal)
+             areaNormal(1:3,f,i,e) = normal / norm2(normal)                             ! ensure unit length of area normal
            enddo
          enddo
 
@@ -1229,8 +1229,8 @@ subroutine mesh_build_ipAreas
                nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(n,f),i,e))
              normal = math_cross(nodePos(1:3,2) - nodePos(1:3,1), &
                                  nodePos(1:3,3) - nodePos(1:3,1))
-             mesh_ipArea(f,i,e) = norm2(normal)
-             mesh_ipAreaNormal(1:3,f,i,e) = normal / norm2(normal)                             ! ensure unit length of area normal
+             area(f,i,e) = norm2(normal)
+             areaNormal(1:3,f,i,e) = normal / norm2(normal)                             ! ensure unit length of area normal
            enddo
          enddo
 
@@ -1249,14 +1249,13 @@ subroutine mesh_build_ipAreas
                               * math_cross(nodePos(1:3,1+mod(n  ,m)) - nodePos(1:3,n), &
                                            nodePos(1:3,1+mod(n+1,m)) - nodePos(1:3,n))
              normal = 0.5_pReal * sum(normals,2)
-             mesh_ipArea(f,i,e) = norm2(normal)
-             mesh_ipAreaNormal(1:3,f,i,e) = normal / norm2(normal)
+             area(f,i,e) = norm2(normal)
+             areaNormal(1:3,f,i,e) = normal / norm2(normal)
            enddo
          enddo
 
      end select
    enddo
- !$OMP END PARALLEL DO
 
 end subroutine mesh_build_ipAreas
 
