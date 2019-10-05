@@ -1191,18 +1191,17 @@ end subroutine mesh_build_ipCoordinates
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_ipAreas
 
- integer :: e,t,g,c,i,f,n,m
+ integer :: e,c,i,f,n,m
  real(pReal), dimension (3,FE_maxNcellnodesPerCellface) :: nodePos, normals
  real(pReal), dimension(3) :: normal
 
  allocate(mesh_ipArea(theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), source=0.0_pReal)
  allocate(mesh_ipAreaNormal(3,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), source=0.0_pReal)
+ 
+ c = theMesh%elem%cellType
 
- !$OMP PARALLEL DO PRIVATE(t,g,c,nodePos,normal,normals)
+ !$OMP PARALLEL DO PRIVATE(nodePos,normal,normals)
    do e = 1,theMesh%nElems                                                                      ! loop over cpElems
-     t = mesh_element(2,e)                                                                     ! get element type
-     g = theMesh%elem%geomType
-     c = theMesh%elem%cellType
      select case (c)
 
        case (1,2)                                                                         ! 2D 3 or 4 node
