@@ -64,28 +64,12 @@ integer, dimension(:,:), allocatable :: &
    mesh_cell2, &                                                                                        !< cell connectivity for each element,ip/cell
    mesh_cell                                                                                        !< cell connectivity for each element,ip/cell
 
-! These definitions should actually reside in the FE-solver specific part (different for MARC/ABAQUS)
-! Hence, I suggest to prefix with "FE_"
 
  integer, parameter :: &
    FE_Ngeomtypes = 10, &
    FE_Ncelltypes = 4, &
    FE_maxNcellnodesPerCell = 8, &
    FE_maxNcellnodesPerCellface = 4
-
- integer, dimension(FE_Ngeomtypes), parameter :: FE_NmatchingNodes = &               !< number of nodes that are needed for face matching in a specific type of element geometry
- int([ &
-      3, & ! element   6 (2D 3node 1ip)
-      3, & ! element 125 (2D 6node 3ip)
-      4, & ! element  11 (2D 4node 4ip)
-      4, & ! element  27 (2D 8node 9ip)
-      4, & ! element 134 (3D 4node 1ip)
-      4, & ! element 127 (3D 10node 4ip)
-      6, & ! element 136 (3D 6node 6ip)
-      8, & ! element 117 (3D 8node 1ip)
-      8, & ! element   7 (3D 8node 8ip)
-      8  & ! element  21 (3D 20node 27ip)
-  ],pInt)
 
 
  integer, dimension(FE_Ncelltypes), parameter :: FE_NipNeighbors = &                  !< number of ip neighbors / cell faces in a specific cell type
@@ -916,6 +900,21 @@ subroutine mesh_build_cellconnectivity
 
  integer, dimension(:), allocatable :: &
    matchingNode2cellnode
+   
+ integer, dimension(FE_Ngeomtypes), parameter :: FE_NmatchingNodes = &               !< number of nodes that are needed for face matching in a specific type of element geometry
+ int([ &
+      3, & ! element   6 (2D 3node 1ip)
+      3, & ! element 125 (2D 6node 3ip)
+      4, & ! element  11 (2D 4node 4ip)
+      4, & ! element  27 (2D 8node 9ip)
+      4, & ! element 134 (3D 4node 1ip)
+      4, & ! element 127 (3D 10node 4ip)
+      6, & ! element 136 (3D 6node 6ip)
+      8, & ! element 117 (3D 8node 1ip)
+      8, & ! element   7 (3D 8node 8ip)
+      8  & ! element  21 (3D 20node 27ip)
+  ],pInt)
+
  integer, dimension(:,:), allocatable :: &
    cellnodeParent
  integer, dimension(theMesh%elem%Ncellnodes) :: &
