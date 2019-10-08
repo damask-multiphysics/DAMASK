@@ -38,7 +38,7 @@ module mesh
 !--------------------------------------------------------------------------------------------------
 
  integer, dimension(:,:), allocatable :: &
-   mesh_element
+   mesh_FEnodes
    
  real(pReal), dimension(:,:), allocatable :: &
    mesh_node, &                                                                                     !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!
@@ -180,9 +180,7 @@ subroutine mesh_init(ip,el)
   
   allocate(microstructureAt(theMesh%nElems), source=0)
   allocate(homogenizationAt(theMesh%nElems), source=0)
-  allocate(mesh_element(4+theMesh%elem%nNodes,theMesh%nElems), source=0)
-  mesh_element(1,:) = -1 ! DEPRECATED
-  mesh_element(2,:) = elemType ! DEPRECATED
+  allocate(mesh_FEnodes(theMesh%elem%nNodes,theMesh%nElems), source=0)
  
   call mesh_marc_buildElements(microstructureAt,homogenizationAt, &
                                mesh_nElems,theMesh%elem%nNodes,initialcondTableStyle,FILEUNIT)
@@ -668,14 +666,14 @@ subroutine mesh_marc_buildElements(microstructureAt,homogenizationAt, &
         if (e /= 0) then                                                                            ! disregard non CP elems
           nNodesAlreadyRead = 0
           do j = 1,chunkPos(1)-2
-            mesh_element(4+j,e) = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j+2))                ! CP ids of nodes
+            mesh_FEnodes(j,e) = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j+2))                ! CP ids of nodes
           enddo
           nNodesAlreadyRead = chunkPos(1) - 2
           do while(nNodesAlreadyRead < nNodes)                                                      ! read on if not all nodes in one line
             read (fileUnit,'(A300)',END=620) line
             chunkPos = IO_stringPos(line)
             do j = 1,chunkPos(1)
-              mesh_element(4+nNodesAlreadyRead+j,e) = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j)) ! CP ids of nodes
+              mesh_FEnodes(nNodesAlreadyRead+j,e) = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j)) ! CP ids of nodes
             enddo
             nNodesAlreadyRead = nNodesAlreadyRead + chunkPos(1)
           enddo
@@ -689,12 +687,12 @@ subroutine mesh_marc_buildElements(microstructureAt,homogenizationAt, &
 #if defined(DAMASK_HDF5)
   call results_openJobFile
   call HDF5_closeGroup(results_addGroup('geometry'))
-  call results_writeDataset('geometry',mesh_element(5:,:),'C',&
+  call results_writeDataset('geometry',mesh_FEnodes,'C',&
                             'connectivity of the elements','-')
   call results_closeJobFile
 #endif
  
-  call buildCells(theMesh,theMesh%elem,mesh_element(5:,:))
+  call buildCells(theMesh,theMesh%elem,mesh_FEnodes)
  
   read (fileUnit,'(A300)',END=630) line
   do
@@ -937,7 +935,7 @@ subroutine mesh_build_cellconnectivity
      do n = 1,theMesh%elem%NcellnodesPerCell
        localCellnodeID = theMesh%elem%cell(n,i)
        if (localCellnodeID <= FE_NmatchingNodes(theMesh%elem%geomType)) then                                            ! this cell node is a matching node
-         matchingNodeID = mesh_element(4+localCellnodeID,e)
+         matchingNodeID = mesh_FEnodes(localCellnodeID,e)
          if (matchingNode2cellnode(matchingNodeID) == 0) then                                  ! if this matching node does not yet exist in the glbal cell node list ...
            mesh_Ncellnodes = mesh_Ncellnodes + 1                                               ! ... count it as cell node ...
            matchingNode2cellnode(matchingNodeID) = mesh_Ncellnodes                                  ! ... and remember its global ID
@@ -991,7 +989,7 @@ function mesh_build_cellnodes()
    localCellnodeID = mesh_cellnodeParent(2,n)
    myCoords = 0.0_pReal
    do m = 1,theMesh%elem%nNodes
-     myCoords = myCoords + mesh_node(1:3,mesh_element(4+m,e)) &
+     myCoords = myCoords + mesh_node(1:3,mesh_FEnodes(m,e)) &
                          * theMesh%elem%cellNodeParentNodeWeights(m,localCellnodeID)
    enddo
    mesh_build_cellnodes(1:3,n) = myCoords / sum(theMesh%elem%cellNodeParentNodeWeights(:,localCellnodeID))
