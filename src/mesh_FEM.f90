@@ -221,9 +221,6 @@ subroutine mesh_init
  call theMesh%init(dimplex,integrationOrder,mesh_node0)
  call theMesh%setNelems(mesh_NcpElems)
 
- theMesh%homogenizationAt  = mesh_element(3,:)
- theMesh%microstructureAt  = mesh_element(4,:)
- 
    call discretization_init(mesh_element(3,:),mesh_element(4,:),&
                            reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]), &
                            mesh_node0)
