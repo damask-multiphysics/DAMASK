@@ -47,6 +47,10 @@ module mesh
    mesh_node, &                                                                                     !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!
    mesh_node0                                                                                       !< node x,y,z coordinates (initially!)
 
+ real(pReal), dimension(:,:,:), allocatable:: &
+   mesh_ipArea                                                                                      !< area of interface to neighboring IP (initially!)
+ real(pReal),dimension(:,:,:,:), allocatable :: &
+   mesh_ipAreaNormal                                                                                !< area normal of interface to neighboring IP (initially!)
 
 ! -------------------------------------------------------------------------------------------------- 
 
@@ -108,7 +112,10 @@ integer, dimension(:,:), allocatable :: &
       6  & ! (3D 8node)
   ],pInt)
 
-
+ integer,     dimension(:),   allocatable :: &
+   microstructureAt, &
+   homogenizationAt
+    
  integer :: &
    mesh_NelemSets
  character(len=64), dimension(:), allocatable :: &
@@ -150,10 +157,6 @@ subroutine mesh_init(ip,el)
     hypoelasticTableStyle, &
     initialcondTableStyle
   logical :: myDebug
-  real(pReal), dimension(:,:,:), allocatable:: &
-   mesh_ipArea                                                                                      !< area of interface to neighboring IP (initially!)
-  real(pReal),dimension(:,:,:,:), allocatable :: &
-   mesh_ipAreaNormal                                                                                !< area normal of interface to neighboring IP (initially!)
  
   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
  
@@ -161,40 +164,24 @@ subroutine mesh_init(ip,el)
  
   myDebug = (iand(debug_level(debug_mesh),debug_levelBasic) /= 0)
  
+  ! parsing Marc input file
   call IO_open_inputFile(FILEUNIT,modelName)
   fileFormatVersion = mesh_marc_get_fileFormat(FILEUNIT)
-  if (myDebug) write(6,'(a)') ' Got input file format'; flush(6)
-  
   call mesh_marc_get_tableStyles(initialcondTableStyle,hypoelasticTableStyle,FILEUNIT)
-  if (myDebug) write(6,'(a)') ' Got table styles'; flush(6)
-  
-  if (fileFormatVersion > 12) then
+  if (fileFormatVersion > 12) &
     Marc_matNumber = mesh_marc_get_matNumber(FILEUNIT,hypoelasticTableStyle)
-    if (myDebug) write(6,'(a)') ' Got hypoleastic material number'; flush(6)
-  endif
-  
   call mesh_marc_count_nodesAndElements(mesh_nNodes, mesh_nElems, FILEUNIT)
-  if (myDebug) write(6,'(a)') ' Counted nodes/elements'; flush(6)
-  
-  call mesh_marc_count_elementSets(mesh_NelemSets,mesh_maxNelemInSet,FILEUNIT)
-  if (myDebug) write(6,'(a)') ' Counted element sets'; flush(6)
- 
+  call mesh_marc_count_elementSets(mesh_NelemSets,mesh_maxNelemInSet,FILEUNIT) 
   allocate(mesh_nameElemSet(mesh_NelemSets)); mesh_nameElemSet = 'n/a'
   allocate(mesh_mapElemSet(1+mesh_maxNelemInSet,mesh_NelemSets),source=0)
   call mesh_marc_map_elementSets(mesh_nameElemSet,mesh_mapElemSet,FILEUNIT)
-  if (myDebug) write(6,'(a)') ' Mapped element sets'; flush(6)
-  
   allocate (mesh_mapFEtoCPelem(2,mesh_nElems), source = 0)
-  call mesh_marc_map_elements(hypoelasticTableStyle,mesh_nameElemSet,mesh_mapElemSet,mesh_nElems,fileFormatVersion,FILEUNIT)
-  if (myDebug) write(6,'(a)') ' Mapped elements'; flush(6)
-  
+  call mesh_marc_map_elements(hypoelasticTableStyle,mesh_nameElemSet,mesh_mapElemSet,mesh_nElems,fileFormatVersion,FILEUNIT)  
   allocate (mesh_mapFEtoCPnode(2,mesh_Nnodes),source=0)
   call mesh_marc_map_nodes(mesh_Nnodes,FILEUNIT)                                                                  !ToDo: don't work on global variables
-  if (myDebug) write(6,'(a)') ' Mapped nodes'; flush(6)
   
   mesh_node0 = mesh_marc_build_nodes(mesh_Nnodes,FILEUNIT)
   mesh_node  = mesh_node0
-  if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
   
   elemType = mesh_marc_getElemType(mesh_nElems,FILEUNIT)
   if (myDebug) write(6,'(a)') ' Counted CP sizes'; flush(6)
@@ -202,11 +189,14 @@ subroutine mesh_init(ip,el)
   call theMesh%init('mesh',elemType,mesh_node0)
   call theMesh%setNelems(mesh_nElems)
   
+  allocate(microstructureAt(theMesh%nElems), source=0)
+  allocate(homogenizationAt(theMesh%nElems), source=0)
   allocate(mesh_element(4+theMesh%elem%nNodes,theMesh%nElems), source=0)
   mesh_element(1,:) = -1 ! DEPRECATED
   mesh_element(2,:) = elemType ! DEPRECATED
  
-  call mesh_marc_buildElements(mesh_nElems,theMesh%elem%nNodes,initialcondTableStyle,FILEUNIT)
+  call mesh_marc_buildElements(microstructureAt,homogenizationAt, &
+                               mesh_nElems,theMesh%elem%nNodes,initialcondTableStyle,FILEUNIT)
   if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
   close (FILEUNIT)
    
@@ -219,33 +209,19 @@ subroutine mesh_init(ip,el)
   call mesh_build_ipCoordinates
   if (myDebug) write(6,'(a)') ' Built IP coordinates'; flush(6)
 
+  call mesh_build_ipAreas
+  if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
  
   call IP_neighborhood2
   if (myDebug) write(6,'(a)') ' Built IP neighborhood'; flush(6)
  
- 
-  call discretization_init(mesh_element(3,:),mesh_element(4,:),&
-                           reshape(mesh_ipCoordinates,[3,theMesh%elem%nIPs*theMesh%nElems]),&
-                           mesh_node0)
-
-  ! calculate and store information needed for nonlocal plasticity model
-  call geometry_plastic_nonlocal_setIPvolume(IPvolume())
-  call geometry_plastic_nonlocal_setIPneighborhood(mesh_ipNeighborhood2)
-  
-  call mesh_build_ipAreas(mesh_IParea,mesh_IPareaNormal)
-  if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
-  call geometry_plastic_nonlocal_setIParea(mesh_IParea)
-  call geometry_plastic_nonlocal_setIPareaNormal(mesh_IPareaNormal)
-
-  ! sanity checks
   if (usePingPong .and. (mesh_Nelems /= theMesh%nElems)) &
-    call IO_error(600)
+    call IO_error(600)                                                                          ! ping-pong must be disabled when having non-DAMASK elements
   if (debug_e < 1 .or. debug_e > theMesh%nElems) &
-    call IO_error(602,ext_msg='element')
+    call IO_error(602,ext_msg='element')                                                        ! selected element does not exist
   if (debug_i < 1 .or. debug_i > theMesh%elem%nIPs) &
-    call IO_error(602,ext_msg='IP')
+    call IO_error(602,ext_msg='IP')                                                             ! selected element does not have requested IP
  
-  ! solving related
   FEsolving_execElem = [ 1,theMesh%nElems ]                                                      ! parallel loop bounds set to comprise all DAMASK elements
   allocate(FEsolving_execIP(2,theMesh%nElems), source=1)                                    ! parallel loop bounds set to comprise from first IP...
   FEsolving_execIP(2,:) = theMesh%elem%nIPs
@@ -253,6 +229,15 @@ subroutine mesh_init(ip,el)
   allocate(calcMode(theMesh%elem%nIPs,theMesh%nElems))
   calcMode = .false.                                                                                 ! pretend to have collected what first call is asking (F = I)
   calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                       ! first ip,el needs to be already pingponged to "calc"
+ 
+  call discretization_init(microstructureAt,homogenizationAt,&
+                           reshape(mesh_ipCoordinates,[3,theMesh%elem%nIPs*theMesh%nElems]),&
+                           mesh_node0)
+
+  call geometry_plastic_nonlocal_setIPvolume(IPvolume())
+  call geometry_plastic_nonlocal_setIPneighborhood(mesh_ipNeighborhood2)
+  call geometry_plastic_nonlocal_setIParea(mesh_IParea)
+  call geometry_plastic_nonlocal_setIPareaNormal(mesh_IPareaNormal)
 
 end subroutine mesh_init
 
@@ -663,8 +648,12 @@ end function mapElemtype
 !--------------------------------------------------------------------------------------------------
 !> @brief Stores node IDs and homogenization and microstructure ID
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_buildElements(nElem,nNodes,initialcondTableStyle,fileUnit)
+subroutine mesh_marc_buildElements(microstructureAt,homogenizationAt, &
+                                   nElem,nNodes,initialcondTableStyle,fileUnit)
  
+  integer, dimension(:), intent(out) :: &
+    microstructureAt, &
+    homogenizationAt
   integer, intent(in) :: &
     nElem, &
     nNodes, &                                                                                       !< number of nodes per element
@@ -740,7 +729,8 @@ subroutine mesh_marc_buildElements(nElem,nNodes,initialcondTableStyle,fileUnit)
                     (fileUnit,theMesh%nElems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
           do i = 1,contInts(1)
             e = mesh_FEasCP('elem',contInts(1+i))
-            mesh_element(1+sv,e) = myVal
+            if (sv == 2) microstructureAt(e) = myVal
+            if (sv == 3) homogenizationAt(e) = myVal
           enddo
           if (initialcondTableStyle == 0) read (fileUnit,'(A300)',END=630) line                     ! ignore IP range for old table style
           read (fileUnit,'(A300)',END=630) line
@@ -1007,7 +997,6 @@ function mesh_build_cellnodes()
    myCoords
 
  mesh_build_cellnodes = 0.0_pReal
-!$OMP PARALLEL DO PRIVATE(e,localCellnodeID,myCoords)
  do n = 1,mesh_Ncellnodes                                                                           ! loop over cell nodes
    e = mesh_cellnodeParent(1,n)
    localCellnodeID = mesh_cellnodeParent(2,n)
@@ -1018,7 +1007,6 @@ function mesh_build_cellnodes()
    enddo
    mesh_build_cellnodes(1:3,n) = myCoords / sum(theMesh%elem%cellNodeParentNodeWeights(:,localCellnodeID))
  enddo
-!$OMP END PARALLEL DO
 
 end function mesh_build_cellnodes
 
@@ -1045,30 +1033,30 @@ function IPvolume()
   do e = 1,theMesh%nElems
     select case (c)
 
-      case (1)                                                                                      ! 2D 3node
-        forall (i = 1:theMesh%elem%nIPs) &
+      case (1)                                                                                ! 2D 3node
+        forall (i = 1:theMesh%elem%nIPs) &                                                           ! loop over ips=cells in this element
           IPvolume(i,e) = math_areaTriangle(theMesh%node_0(1:3,mesh_cell2(1,i,e)), &
                                             theMesh%node_0(1:3,mesh_cell2(2,i,e)), &
                                             theMesh%node_0(1:3,mesh_cell2(3,i,e)))
 
-      case (2)                                                                                      ! 2D 4node
-        forall (i = 1:theMesh%elem%nIPs) &
-          IPvolume(i,e) = math_areaTriangle(theMesh%node_0(1:3,mesh_cell2(1,i,e)), &                ! here we assume a planar shape, so division in two triangles suffices
+      case (2)                                                                                ! 2D 4node
+        forall (i = 1:theMesh%elem%nIPs) &                                                           ! loop over ips=cells in this element
+          IPvolume(i,e) = math_areaTriangle(theMesh%node_0(1:3,mesh_cell2(1,i,e)), &            ! here we assume a planar shape, so division in two triangles suffices
                                             theMesh%node_0(1:3,mesh_cell2(2,i,e)), &
                                             theMesh%node_0(1:3,mesh_cell2(3,i,e))) &
                         + math_areaTriangle(theMesh%node_0(1:3,mesh_cell2(3,i,e)), &
                                             theMesh%node_0(1:3,mesh_cell2(4,i,e)), &
                                             theMesh%node_0(1:3,mesh_cell2(1,i,e)))
 
-      case (3)                                                                                      ! 3D 4node
-        forall (i = 1:theMesh%elem%nIPs) &
+      case (3)                                                                                ! 3D 4node
+        forall (i = 1:theMesh%elem%nIPs) &                                                           ! loop over ips=cells in this element
           IPvolume(i,e) = math_volTetrahedron(theMesh%node_0(1:3,mesh_cell2(1,i,e)), &
                                               theMesh%node_0(1:3,mesh_cell2(2,i,e)), &
                                               theMesh%node_0(1:3,mesh_cell2(3,i,e)), &
                                               theMesh%node_0(1:3,mesh_cell2(4,i,e)))
 
-      case (4)                                                                                      ! 3D 8node
-        do i = 1,theMesh%elem%nIPs
+      case (4)                                                                                ! 3D 8node
+        do i = 1,theMesh%elem%nIPs                                                                   ! loop over ips=cells in this element
           subvolume = 0.0_pReal
           forall(f = 1:FE_NipNeighbors(c), n = 1:m) &
             subvolume(n,f) = math_volTetrahedron(&
@@ -1076,7 +1064,7 @@ function IPvolume()
                                mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(1+mod(n  ,m),f),i,e)), &
                                mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(1+mod(n+1,m),f),i,e)), &
                                mesh_ipCoordinates(1:3,i,e))
-          IPvolume(i,e) = 0.5_pReal * sum(subvolume)                                                ! each subvolume is based on four tetrahedrons, but the face consists of two triangles -> average by 2
+          IPvolume(i,e) = 0.5_pReal * sum(subvolume)                                         ! each subvolume is based on four tetrahedrons, altough the face consists of only two triangles -> averaging factor two
         enddo
 
     end select
@@ -1085,9 +1073,6 @@ function IPvolume()
 end function IPvolume
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief Calculates IP neighborhood
-!--------------------------------------------------------------------------------------------------
 subroutine IP_neighborhood2
 
   integer, dimension(:,:), allocatable :: faces
@@ -1174,7 +1159,7 @@ subroutine mesh_build_ipCoordinates
   integer :: e,i,n
   real(pReal), dimension(3) :: myCoords
 
-  !$OMP PARALLEL DO PRIVATE(myCoords)
+
   do e = 1,theMesh%nElems
     do i = 1,theMesh%elem%nIPs
       myCoords = 0.0_pReal
@@ -1184,7 +1169,6 @@ subroutine mesh_build_ipCoordinates
       mesh_ipCoordinates(1:3,i,e) = myCoords / real(theMesh%elem%nCellnodesPerCell,pReal)
     enddo
   enddo
-  !$OMP END PARALLEL DO
 
 end subroutine mesh_build_ipCoordinates
 
@@ -1192,21 +1176,19 @@ end subroutine mesh_build_ipCoordinates
 !--------------------------------------------------------------------------------------------------
 !> @brief calculation of IP interface areas, allocate globals '_ipArea', and '_ipAreaNormal'
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_build_ipAreas(area,areaNormal)
-
- real(pReal), dimension(:,:,:), allocatable, intent(out)   :: area
- real(pReal), dimension(:,:,:,:), allocatable, intent(out) :: areaNormal
+subroutine mesh_build_ipAreas
 
  integer :: e,c,i,f,n,m
  real(pReal), dimension (3,FE_maxNcellnodesPerCellface) :: nodePos, normals
  real(pReal), dimension(3) :: normal
 
- allocate(area        (theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), source=0.0_pReal)
- allocate(areaNormal(3,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), source=0.0_pReal)
+ allocate(mesh_ipArea(theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), source=0.0_pReal)
+ allocate(mesh_ipAreaNormal(3,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), source=0.0_pReal)
  
  c = theMesh%elem%cellType
 
-   do e = 1,theMesh%nElems
+
+   do e = 1,theMesh%nElems                                                                      ! loop over cpElems
      select case (c)
 
        case (1,2)                                                                         ! 2D 3 or 4 node
@@ -1217,8 +1199,8 @@ subroutine mesh_build_ipAreas(area,areaNormal)
              normal(1) =   nodePos(2,2) - nodePos(2,1)                                              ! x_normal =  y_connectingVector
              normal(2) = -(nodePos(1,2) - nodePos(1,1))                                             ! y_normal = -x_connectingVector
              normal(3) = 0.0_pReal
-             area(f,i,e) = norm2(normal)
-             areaNormal(1:3,f,i,e) = normal / norm2(normal)                             ! ensure unit length of area normal
+             mesh_ipArea(f,i,e) = norm2(normal)
+             mesh_ipAreaNormal(1:3,f,i,e) = normal / norm2(normal)                             ! ensure unit length of area normal
            enddo
          enddo
 
@@ -1229,8 +1211,8 @@ subroutine mesh_build_ipAreas(area,areaNormal)
                nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(n,f),i,e))
              normal = math_cross(nodePos(1:3,2) - nodePos(1:3,1), &
                                  nodePos(1:3,3) - nodePos(1:3,1))
-             area(f,i,e) = norm2(normal)
-             areaNormal(1:3,f,i,e) = normal / norm2(normal)                             ! ensure unit length of area normal
+             mesh_ipArea(f,i,e) = norm2(normal)
+             mesh_ipAreaNormal(1:3,f,i,e) = normal / norm2(normal)                             ! ensure unit length of area normal
            enddo
          enddo
 
@@ -1249,14 +1231,14 @@ subroutine mesh_build_ipAreas(area,areaNormal)
                               * math_cross(nodePos(1:3,1+mod(n  ,m)) - nodePos(1:3,n), &
                                            nodePos(1:3,1+mod(n+1,m)) - nodePos(1:3,n))
              normal = 0.5_pReal * sum(normals,2)
-             area(f,i,e) = norm2(normal)
-             areaNormal(1:3,f,i,e) = normal / norm2(normal)
+             mesh_ipArea(f,i,e) = norm2(normal)
+             mesh_ipAreaNormal(1:3,f,i,e) = normal / norm2(normal)
            enddo
          enddo
 
      end select
    enddo
-
+   
 end subroutine mesh_build_ipAreas
 
 
