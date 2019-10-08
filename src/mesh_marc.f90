@@ -39,9 +39,6 @@ module mesh
 
  integer, dimension(:,:), allocatable :: &
    mesh_element
-
- integer, dimension(:,:,:,:), allocatable :: &
-   mesh_ipNeighborhood                                                                              !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
    
  real(pReal), dimension(:,:), allocatable :: &
    mesh_node, &                                                                                     !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!
