@@ -44,11 +44,6 @@ module mesh
    mesh_node, &                                                                                     !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!
    mesh_node0                                                                                       !< node x,y,z coordinates (initially!)
 
- real(pReal), dimension(:,:,:), allocatable:: &
-   mesh_ipArea                                                                                      !< area of interface to neighboring IP (initially!)
- real(pReal),dimension(:,:,:,:), allocatable :: &
-   mesh_ipAreaNormal                                                                                !< area normal of interface to neighboring IP (initially!)
-
 ! -------------------------------------------------------------------------------------------------- 
 
  type(tMesh) :: theMesh
@@ -107,9 +102,9 @@ integer, dimension(:,:), allocatable :: &
     
  integer :: &
    mesh_NelemSets
+   
  character(len=64), dimension(:), allocatable :: &
    mesh_nameElemSet
-   
  integer, dimension(:,:), allocatable :: &
    mesh_mapElemSet                                                                                  !< list of elements in elementSet
  integer, dimension(:,:), allocatable, target :: &
@@ -147,6 +142,10 @@ subroutine mesh_init(ip,el)
   integer, dimension(:), allocatable :: &
    marc_matNumber                                                                                   !< array of material numbers for hypoelastic material (Marc only)
   logical :: myDebug
+   real(pReal), dimension(:,:,:), allocatable:: &
+   mesh_ipArea                                                                                      !< area of interface to neighboring IP (initially!)
+ real(pReal),dimension(:,:,:,:), allocatable :: &
+   mesh_ipAreaNormal                                                                                !< area normal of interface to neighboring IP (initially!)
  
   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
  
@@ -198,7 +197,9 @@ subroutine mesh_init(ip,el)
   call mesh_build_ipCoordinates
   if (myDebug) write(6,'(a)') ' Built IP coordinates'; flush(6)
 
-  call mesh_build_ipAreas
+  allocate(mesh_ipArea(theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems))
+  allocate(mesh_ipAreaNormal(3,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems))
+  call mesh_build_ipAreas(mesh_ipArea,mesh_ipAreaNormal)
   if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
  
   call IP_neighborhood2
@@ -225,8 +226,8 @@ subroutine mesh_init(ip,el)
 
   call geometry_plastic_nonlocal_setIPvolume(IPvolume())
   call geometry_plastic_nonlocal_setIPneighborhood(mesh_ipNeighborhood2)
-  call geometry_plastic_nonlocal_setIParea(mesh_IParea)
-  call geometry_plastic_nonlocal_setIPareaNormal(mesh_IPareaNormal)
+  call geometry_plastic_nonlocal_setIParea(mesh_ipArea)
+  call geometry_plastic_nonlocal_setIPareaNormal(mesh_ipAreaNormal)
 
 end subroutine mesh_init
 
@@ -737,13 +738,14 @@ subroutine mesh_marc_buildElements(microstructureAt,homogenizationAt, &
 
 subroutine buildCells(thisMesh,elem,connectivity_elem)
 
-  class(tMesh)    :: thisMesh
-  type(tElement)  :: elem
+  class(tMesh)                       :: thisMesh
+  type(tElement),         intent(in) :: elem
   integer,dimension(:,:), intent(in) :: connectivity_elem
-  integer,dimension(:,:), allocatable :: parentsAndWeights,candidates_global
-  integer,dimension(:), allocatable :: candidates_local
+  
+  integer,dimension(:),     allocatable :: candidates_local
+  integer,dimension(:,:),   allocatable :: parentsAndWeights,candidates_global, connectivity_cell_reshape
   integer,dimension(:,:,:), allocatable :: connectivity_cell
-  integer,dimension(:,:), allocatable :: connectivity_cell_reshape
+  
   real(pReal), dimension(:,:), allocatable :: nodes_new,nodes
   integer :: e, n, c, p, s,i,m,j,nParentNodes,nCellNode,Nelem,candidateID
   
@@ -1166,14 +1168,13 @@ end subroutine mesh_build_ipCoordinates
 !--------------------------------------------------------------------------------------------------
 !> @brief calculation of IP interface areas, allocate globals '_ipArea', and '_ipAreaNormal'
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_build_ipAreas
+subroutine mesh_build_ipAreas(ipArea,ipAreaNormal)
 
  integer :: e,c,i,f,n,m
+ real(pReal), dimension(theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), intent(out) ::  ipArea
+ real(pReal), dimension(3,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), intent(out) :: ipAreaNormal
  real(pReal), dimension (3,FE_maxNcellnodesPerCellface) :: nodePos, normals
  real(pReal), dimension(3) :: normal
-
- allocate(mesh_ipArea(theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), source=0.0_pReal)
- allocate(mesh_ipAreaNormal(3,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), source=0.0_pReal)
  
  c = theMesh%elem%cellType
 
@@ -1189,8 +1190,8 @@ subroutine mesh_build_ipAreas
              normal(1) =   nodePos(2,2) - nodePos(2,1)                                              ! x_normal =  y_connectingVector
              normal(2) = -(nodePos(1,2) - nodePos(1,1))                                             ! y_normal = -x_connectingVector
              normal(3) = 0.0_pReal
-             mesh_ipArea(f,i,e) = norm2(normal)
-             mesh_ipAreaNormal(1:3,f,i,e) = normal / norm2(normal)                             ! ensure unit length of area normal
+             ipArea(f,i,e) = norm2(normal)
+             ipAreaNormal(1:3,f,i,e) = normal / norm2(normal)                             ! ensure unit length of area normal
            enddo
          enddo
 
@@ -1201,8 +1202,8 @@ subroutine mesh_build_ipAreas
                nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(n,f),i,e))
              normal = math_cross(nodePos(1:3,2) - nodePos(1:3,1), &
                                  nodePos(1:3,3) - nodePos(1:3,1))
-             mesh_ipArea(f,i,e) = norm2(normal)
-             mesh_ipAreaNormal(1:3,f,i,e) = normal / norm2(normal)                             ! ensure unit length of area normal
+             ipArea(f,i,e) = norm2(normal)
+             ipAreaNormal(1:3,f,i,e) = normal / norm2(normal)                             ! ensure unit length of area normal
            enddo
          enddo
 
@@ -1221,8 +1222,8 @@ subroutine mesh_build_ipAreas
                               * math_cross(nodePos(1:3,1+mod(n  ,m)) - nodePos(1:3,n), &
                                            nodePos(1:3,1+mod(n+1,m)) - nodePos(1:3,n))
              normal = 0.5_pReal * sum(normals,2)
-             mesh_ipArea(f,i,e) = norm2(normal)
-             mesh_ipAreaNormal(1:3,f,i,e) = normal / norm2(normal)
+             ipArea(f,i,e) = norm2(normal)
+             ipAreaNormal(1:3,f,i,e) = normal / norm2(normal)
            enddo
          enddo
 
