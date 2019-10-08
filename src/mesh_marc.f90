@@ -96,14 +96,6 @@ integer, dimension(:,:), allocatable :: &
   ],pInt)
 
 
- integer, dimension(FE_Ncelltypes), parameter :: FE_NcellnodesPerCellface = &        !< number of cell nodes per cell face in a specific cell type
- int([&
-      2, & ! (2D 3node)
-      2, & ! (2D 4node)
-      3, & ! (3D 4node)
-      4  & ! (3D 8node)
-  ],pInt)
-
  integer, dimension(FE_Ncelltypes), parameter :: FE_NipNeighbors = &                  !< number of ip neighbors / cell faces in a specific cell type
  int([&
       3, & ! (2D 3node)
@@ -1028,7 +1020,7 @@ function IPvolume()
   real(pReal), dimension(size(theMesh%elem%cellFace,1),size(theMesh%elem%cellFace,2)) :: subvolume
 
   c = theMesh%elem%cellType
-  m = FE_NcellnodesPerCellface(c)
+  m = size(theMesh%elem%cellFace,1)
 
   do e = 1,theMesh%nElems
     select case (c)
@@ -1194,7 +1186,7 @@ subroutine mesh_build_ipAreas
        case (1,2)                                                                         ! 2D 3 or 4 node
          do i = 1,theMesh%elem%nIPs
            do f = 1,FE_NipNeighbors(c)                                                         ! loop over cell faces
-             forall(n = 1:FE_NcellnodesPerCellface(c)) &
+             forall(n = 1: size(theMesh%elem%cellface,1)) &
                nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(n,f),i,e))
              normal(1) =   nodePos(2,2) - nodePos(2,1)                                              ! x_normal =  y_connectingVector
              normal(2) = -(nodePos(1,2) - nodePos(1,1))                                             ! y_normal = -x_connectingVector
@@ -1207,7 +1199,7 @@ subroutine mesh_build_ipAreas
        case (3)                                                                                ! 3D 4node
          do i = 1,theMesh%elem%nIPs
            do f = 1,FE_NipNeighbors(c)                                                         ! loop over cell faces
-             forall(n = 1:FE_NcellnodesPerCellface(c)) &
+             forall(n = 1: size(theMesh%elem%cellface,1)) &
                nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(n,f),i,e))
              normal = math_cross(nodePos(1:3,2) - nodePos(1:3,1), &
                                  nodePos(1:3,3) - nodePos(1:3,1))
@@ -1221,12 +1213,12 @@ subroutine mesh_build_ipAreas
          ! four normals of triangular subfaces; since the face consists only of two triangles,
          ! the sum has to be divided by two; this whole prcedure tries to compensate for
          ! probable non-planar cell surfaces
-         m = FE_NcellnodesPerCellface(c)
+         m = size(theMesh%elem%cellFace,1)
          do i = 1,theMesh%elem%nIPs
            do f = 1,FE_NipNeighbors(c)                                                         ! loop over cell faces
-             forall(n = 1:FE_NcellnodesPerCellface(c)) &
+             forall(n = 1: size(theMesh%elem%cellface,1)) &
                nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(n,f),i,e))
-             forall(n = 1:FE_NcellnodesPerCellface(c)) &
+             forall(n = 1: size(theMesh%elem%cellface,1)) &
                normals(1:3,n) = 0.5_pReal &
                               * math_cross(nodePos(1:3,1+mod(n  ,m)) - nodePos(1:3,n), &
                                            nodePos(1:3,1+mod(n+1,m)) - nodePos(1:3,n))
