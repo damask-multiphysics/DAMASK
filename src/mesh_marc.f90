@@ -119,8 +119,7 @@ integer, dimension(:,:), allocatable :: &
  integer, dimension(:,:,:,:), allocatable :: &
    mesh_ipNeighborhood2                                                                              !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
 
- integer, dimension(:), allocatable :: &
-   Marc_matNumber                                                                                   !< array of material numbers for hypoelastic material (Marc only)
+
 
  public :: &
    mesh_init, &
@@ -145,6 +144,8 @@ subroutine mesh_init(ip,el)
     mesh_nElems, &
     hypoelasticTableStyle, &
     initialcondTableStyle
+  integer, dimension(:), allocatable :: &
+   marc_matNumber                                                                                   !< array of material numbers for hypoelastic material (Marc only)
   logical :: myDebug
  
   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
@@ -158,14 +159,15 @@ subroutine mesh_init(ip,el)
   fileFormatVersion = mesh_marc_get_fileFormat(FILEUNIT)
   call mesh_marc_get_tableStyles(initialcondTableStyle,hypoelasticTableStyle,FILEUNIT)
   if (fileFormatVersion > 12) &
-    Marc_matNumber = mesh_marc_get_matNumber(FILEUNIT,hypoelasticTableStyle)
+    marc_matNumber = mesh_marc_get_matNumber(FILEUNIT,hypoelasticTableStyle)
   call mesh_marc_count_nodesAndElements(mesh_nNodes, mesh_nElems, FILEUNIT)
   call mesh_marc_count_elementSets(mesh_NelemSets,mesh_maxNelemInSet,FILEUNIT) 
   allocate(mesh_nameElemSet(mesh_NelemSets)); mesh_nameElemSet = 'n/a'
   allocate(mesh_mapElemSet(1+mesh_maxNelemInSet,mesh_NelemSets),source=0)
   call mesh_marc_map_elementSets(mesh_nameElemSet,mesh_mapElemSet,FILEUNIT)
   allocate (mesh_mapFEtoCPelem(2,mesh_nElems), source = 0)
-  call mesh_marc_map_elements(hypoelasticTableStyle,mesh_nameElemSet,mesh_mapElemSet,mesh_nElems,fileFormatVersion,FILEUNIT)  
+  call mesh_marc_map_elements(hypoelasticTableStyle,mesh_nameElemSet,mesh_mapElemSet,&
+                              mesh_nElems,fileFormatVersion,marc_matNumber,FILEUNIT)  
   allocate (mesh_mapFEtoCPnode(2,mesh_Nnodes),source=0)
   call mesh_marc_map_nodes(mesh_Nnodes,FILEUNIT)                                                                  !ToDo: don't work on global variables
   
@@ -418,9 +420,10 @@ subroutine mesh_marc_map_elementSets(nameElemSet,mapElemSet,fileUnit)
 !--------------------------------------------------------------------------------------------------
 !> @brief Maps elements from FE ID to internal (consecutive) representation.
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,nElems,fileFormatVersion,fileUnit)
+subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,nElems,fileFormatVersion,matNumber,fileUnit)
  
  integer, intent(in) :: fileUnit,tableStyle,nElems,fileFormatVersion
+ integer, dimension(:), intent(in) :: matNumber
  character(len=64), intent(in), dimension(:) :: nameElemSet
  integer, dimension(:,:), intent(in) :: &
    mapElemSet
@@ -451,7 +454,7 @@ subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,nElems,fileF
      if ( IO_lc(IO_stringValue(line,chunkPos,1)) == 'connectivity') then
        read (fileUnit,'(A300)',END=620) line
        chunkPos = IO_stringPos(line)
-       if(any(Marc_matNumber==IO_intValue(line,chunkPos,6))) then
+       if(any(matNumber==IO_intValue(line,chunkPos,6))) then
          do 
            read (fileUnit,'(A300)',END=620) line
            chunkPos = IO_stringPos(line)
