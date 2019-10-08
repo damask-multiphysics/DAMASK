@@ -65,14 +65,7 @@ integer, dimension(:,:), allocatable :: &
    mesh_cell                                                                                        !< cell connectivity for each element,ip/cell
 
 
- integer, parameter :: &
-   FE_Ngeomtypes = 10, &
-   FE_Ncelltypes = 4, &
-   FE_maxNcellnodesPerCell = 8, &
-   FE_maxNcellnodesPerCellface = 4
-
-
- integer, dimension(FE_Ncelltypes), parameter :: FE_NipNeighbors = &                  !< number of ip neighbors / cell faces in a specific cell type
+ integer, dimension(4), parameter :: FE_NipNeighbors = &                                            !< number of ip neighbors / cell faces in a specific cell type
  int([&
       3, & ! (2D 3node)
       4, & ! (2D 4node)
@@ -901,7 +894,7 @@ subroutine mesh_build_cellconnectivity
  integer, dimension(:), allocatable :: &
    matchingNode2cellnode
    
- integer, dimension(FE_Ngeomtypes), parameter :: FE_NmatchingNodes = &               !< number of nodes that are needed for face matching in a specific type of element geometry
+ integer, dimension(10), parameter :: FE_NmatchingNodes = &               !< number of nodes that are needed for face matching in a specific type of element geometry
  int([ &
       3, & ! element   6 (2D 3node 1ip)
       3, & ! element 125 (2D 6node 3ip)
@@ -924,7 +917,7 @@ subroutine mesh_build_cellconnectivity
    matchingNodeID, &
    localCellnodeID
 
- allocate(mesh_cell(FE_maxNcellnodesPerCell,theMesh%elem%nIPs,theMesh%nElems), source=0)
+ allocate(mesh_cell(theMesh%elem%NcellNodesPerCell,theMesh%elem%nIPs,theMesh%nElems), source=0)
  allocate(matchingNode2cellnode(theMesh%nNodes),                            source=0)
  allocate(cellnodeParent(2,theMesh%elem%Ncellnodes*theMesh%nElems),       source=0)
  
@@ -1172,7 +1165,7 @@ subroutine mesh_build_ipAreas(ipArea,ipAreaNormal)
  integer :: e,c,i,f,n,m
  real(pReal), dimension(theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), intent(out) ::  ipArea
  real(pReal), dimension(3,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), intent(out) :: ipAreaNormal
- real(pReal), dimension (3,FE_maxNcellnodesPerCellface) :: nodePos, normals
+ real(pReal), dimension (3,size(theMesh%elem%cellFace,2)) :: nodePos, normals
  real(pReal), dimension(3) :: normal
  
  c = theMesh%elem%cellType
