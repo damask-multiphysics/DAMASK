@@ -1763,8 +1763,8 @@ function lattice_SchmidMatrix_trans(Ntrans,structure_target,cOverA,a_bcc,a_fcc) 
   real(pReal),                               intent(in) :: cOverA                                   !< c/a ratio
   real(pReal),     dimension(3,3,sum(Ntrans))           :: SchmidMatrix
  
-  real(pReal), dimension(3,3,sum(Ntrans)):: devNull
-  real(pReal)                            :: a_bcc, a_fcc
+  real(pReal), dimension(3,3,sum(Ntrans)) :: devNull
+  real(pReal)                             :: a_bcc, a_fcc
  
   if (len_trim(structure_target) /= 3) &
     call IO_error(137,ext_msg='lattice_SchmidMatrix_trans: '//trim(structure_target))
@@ -2085,9 +2085,9 @@ function buildCoordinateSystem(active,complete,system,structure,cOverA)
       end select
  
       buildCoordinateSystem(1:3,1,a) = direction/norm2(direction)
-      buildCoordinateSystem(1:3,2,a) = normal/norm2(normal)
-      buildCoordinateSystem(1:3,3,a) = math_cross(buildCoordinateSystem(1:3,1,a),&
-                                                  buildCoordinateSystem(1:3,2,a))
+      buildCoordinateSystem(1:3,2,a) = normal   /norm2(normal)
+      buildCoordinateSystem(1:3,3,a) = math_cross(direction/norm2(direction),&
+                                                  normal   /norm2(normal))
  
     enddo activeSystems
   enddo activeFamilies
