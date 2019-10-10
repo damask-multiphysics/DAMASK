@@ -43,10 +43,10 @@ module lattice
     LATTICE_FCC_NCLEAVAGESYSTEM = [3, 4]                                                            !< # of cleavage systems per family for fcc
  
   integer, parameter  :: &
-    LATTICE_FCC_NSLIP      = sum(LATTICE_FCC_NSLIPSYSTEM), &                                        !< total # of slip systems for fcc
-    LATTICE_FCC_NTWIN      = sum(LATTICE_FCC_NTWINSYSTEM), &                                        !< total # of twin systems for fcc
-    LATTICE_FCC_NTRANS     = sum(LATTICE_FCC_NTRANSSYSTEM), &                                       !< total # of transformation systems for fcc
-    LATTICE_FCC_NCLEAVAGE  = sum(LATTICE_FCC_NCLEAVAGESYSTEM)                                       !< total # of cleavage systems for fcc
+    LATTICE_FCC_NSLIP     = sum(LATTICE_FCC_NSLIPSYSTEM), &                                         !< total # of slip systems for fcc
+    LATTICE_FCC_NTWIN     = sum(LATTICE_FCC_NTWINSYSTEM), &                                         !< total # of twin systems for fcc
+    LATTICE_FCC_NTRANS    = sum(LATTICE_FCC_NTRANSSYSTEM), &                                        !< total # of transformation systems for fcc
+    LATTICE_FCC_NCLEAVAGE = sum(LATTICE_FCC_NCLEAVAGESYSTEM)                                        !< total # of cleavage systems for fcc
  
   real(pReal), dimension(3+3,LATTICE_FCC_NSLIP), parameter :: &
     LATTICE_FCC_SYSTEMSLIP = reshape(real([&
@@ -72,10 +72,6 @@ module lattice
        0, 1,-1,     0, 1, 1  &
       ],pReal),shape(LATTICE_FCC_SYSTEMSLIP))                                                       !< Slip system <110>{111} directions. Sorted according to Eisenlohr & Hantcherli
  
-  character(len=*), dimension(2), parameter :: LATTICE_FCC_SLIPFAMILY_NAME = &
-    ['<0 1 -1>{1 1 1}', &
-     '<0 1 -1>{0 1 1}']
- 
   real(pReal), dimension(3+3,LATTICE_FCC_NTWIN), parameter :: &
     LATTICE_FCC_SYSTEMTWIN = reshape(real( [&
       -2, 1, 1,     1, 1, 1, &
@@ -91,10 +87,6 @@ module lattice
       -1,-2,-1,    -1, 1,-1, &
       -1, 1, 2,    -1, 1,-1  &
       ],pReal),shape(LATTICE_FCC_SYSTEMTWIN))                                                       !< Twin system <112>{111} directions. Sorted according to Eisenlohr & Hantcherli
- 
-  character(len=*), dimension(1), parameter :: LATTICE_FCC_TWINFAMILY_NAME = &
-    ['<-2 1 1>{1 1 1}']
- 
  
   integer, dimension(2,LATTICE_FCC_NTWIN), parameter, public :: &
     LATTICE_FCC_TWINNUCLEATIONSLIPPAIR = reshape( [&
@@ -136,9 +128,9 @@ module lattice
     LATTICE_BCC_NCLEAVAGESYSTEM = [3, 6]                                                            !< # of cleavage systems per family for bcc
  
   integer, parameter  :: &
-    LATTICE_BCC_NSLIP      = sum(LATTICE_BCC_NSLIPSYSTEM), &                                        !< total # of slip systems for bcc
-    LATTICE_BCC_NTWIN      = sum(LATTICE_BCC_NTWINSYSTEM), &                                        !< total # of twin systems for bcc
-    LATTICE_BCC_NCLEAVAGE  = sum(LATTICE_BCC_NCLEAVAGESYSTEM)                                       !< total # of cleavage systems for bcc
+    LATTICE_BCC_NSLIP     = sum(LATTICE_BCC_NSLIPSYSTEM), &                                         !< total # of slip systems for bcc
+    LATTICE_BCC_NTWIN     = sum(LATTICE_BCC_NTWINSYSTEM), &                                         !< total # of twin systems for bcc
+    LATTICE_BCC_NCLEAVAGE = sum(LATTICE_BCC_NCLEAVAGESYSTEM)                                        !< total # of cleavage systems for bcc
  
   real(pReal), dimension(3+3,LATTICE_BCC_NSLIP), parameter :: &
     LATTICE_BCC_SYSTEMSLIP = reshape(real([&
@@ -171,10 +163,6 @@ module lattice
        1, 1, 1,     1, 1,-2  &
       ],pReal),shape(LATTICE_BCC_SYSTEMSLIP))
  
-  character(len=*), dimension(2), parameter :: LATTICE_BCC_SLIPFAMILY_NAME = &
-    ['<1 -1 1>{0 1 1}', &
-     '<1 -1 1>{2 1 1}']
- 
   real(pReal), dimension(3+3,LATTICE_BCC_NTWIN), parameter :: &
     LATTICE_BCC_SYSTEMTWIN = reshape(real([&
      ! Twin system <111>{112}
@@ -190,10 +178,7 @@ module lattice
        1,-1, 1,    -1, 1, 2, &
       -1, 1, 1,     1,-1, 2, &
        1, 1, 1,     1, 1,-2  &
-      ],pReal),shape(LATTICE_BCC_SYSTEMTWIN))
- 
-  character(len=*), dimension(1), parameter :: LATTICE_BCC_TWINFAMILY_NAME = &
-    ['<1 1 1>{2 1 1}']
+      ],pReal),shape(LATTICE_BCC_SYSTEMTWIN)) 
  
   real(pReal), dimension(3+3,LATTICE_BCC_NCLEAVAGE), parameter :: &
     LATTICE_BCC_SYSTEMCLEAVAGE = reshape(real([&
@@ -221,9 +206,9 @@ module lattice
     LATTICE_HEX_NCLEAVAGESYSTEM = [3]                                                               !< # of cleavage systems per family for hex
  
   integer, parameter  :: &
-    LATTICE_HEX_NSLIP      = sum(LATTICE_HEX_NSLIPSYSTEM), &                                        !< total # of slip systems for hex
-    LATTICE_HEX_NTWIN      = sum(LATTICE_HEX_NTWINSYSTEM), &                                        !< total # of twin systems for hex
-    LATTICE_HEX_NCLEAVAGE  = sum(LATTICE_HEX_NCLEAVAGESYSTEM)                                       !< total # of cleavage systems for hex
+    LATTICE_HEX_NSLIP     = sum(LATTICE_HEX_NSLIPSYSTEM), &                                         !< total # of slip systems for hex
+    LATTICE_HEX_NTWIN     = sum(LATTICE_HEX_NTWINSYSTEM), &                                         !< total # of twin systems for hex
+    LATTICE_HEX_NCLEAVAGE = sum(LATTICE_HEX_NCLEAVAGESYSTEM)                                        !< total # of cleavage systems for hex
  
   real(pReal), dimension(4+4,LATTICE_HEX_NSLIP), parameter :: &
     LATTICE_HEX_SYSTEMSLIP = reshape(real([&
@@ -269,14 +254,6 @@ module lattice
       -2,  1,  1,  3,     2, -1, -1,  2  &
       ],pReal),shape(LATTICE_HEX_SYSTEMSLIP))                                                       !< slip systems for hex, sorted by P. Eisenlohr CCW around <c> starting next to a_1 axis
  
-  character(len=*), dimension(6), parameter :: LATTICE_HEX_SLIPFAMILY_NAME = &
-    ['< 1 1 . 0>{ 0  0 . 1}', &
-     '< 1 1 . 0>{ 1  0 . 0}', &
-     '<-1 1 . 0>{ 1  1 . 0}', &
-     '< 1 1 . 0>{ 1 -1 . 1}', &
-     '< 1 1 . 3>{-1  0 . 1}', &
-     '< 1 1 . 3>{-1 -1 . 2}']
- 
   real(pReal), dimension(4+4,LATTICE_HEX_NTWIN), parameter :: &
     LATTICE_HEX_SYSTEMTWIN =  reshape(real([&
      ! Compression or Tension = f(twinning shear=f(c/a)) for each metal ! (according to Yoo 1981)
@@ -309,12 +286,6 @@ module lattice
        2, -1, -1, -3,     2, -1, -1,  2  &
       ],pReal),shape(LATTICE_HEX_SYSTEMTWIN))                                                       !< twin systems for hex, sorted by P. Eisenlohr CCW around <c> starting next to a_1 axis
  
-  character(len=*), dimension(4), parameter :: LATTICE_HEX_TWINFAMILY_NAME = &
-    ['<-1 0 .  1>{ 1  0 . 2}', &
-     '< 1 1 .  6>{-1 -1 . 1}', &
-     '< 1 0 . -2>{ 1  0 . 1}', &
-     '< 1 1 . -3>{ 1  1 . 2}']
- 
   real(pReal), dimension(4+4,LATTICE_HEX_NCLEAVAGE), parameter :: &
     LATTICE_HEX_SYSTEMCLEAVAGE = reshape(real([&
      ! Cleavage direction     Plane normal
@@ -330,7 +301,7 @@ module lattice
     LATTICE_BCT_NSLIPSYSTEM = [2, 2, 2, 4, 2, 4, 2, 2, 4, 8, 4, 8, 8 ]                              !< # of slip systems per family for bct (Sn) Bieler J. Electr Mater 2009
  
   integer, parameter :: &
-    LATTICE_BCT_NSLIP       = sum(LATTICE_BCT_NSLIPSYSTEM)                                          !< total # of slip systems for bct
+    LATTICE_BCT_NSLIP = sum(LATTICE_BCT_NSLIPSYSTEM)                                                !< total # of slip systems for bct
  
   real(pReal), dimension(3+3,LATTICE_BCT_NSLIP), parameter :: &
     LATTICE_BCT_SYSTEMSLIP = reshape(real([&
@@ -401,30 +372,14 @@ module lattice
       -1, 1, 1,     -1,-2, 1, &
        1, 1, 1,      1,-2, 1  &
        ],pReal),[ 3 + 3,LATTICE_BCT_NSLIP])                                                         !< slip systems for bct sorted by Bieler
- 
-  character(len=*), dimension(13), parameter :: LATTICE_BCT_SLIPFAMILY_NAME = &
-    ['{1 0 0)<0 0 1] ', &
-     '{1 1 0)<0 0 1] ', &
-     '{1 0 0)<0 1 0] ', &
-     '{1 1 0)<1 -1 1]', &
-     '{1 1 0)<1 -1 0]', &
-     '{1 0 0)<0 1 1] ', &
-     '{0 0 1)<0 1 0] ', &
-     '{0 0 1)<1 1 0] ', &
-     '{0 1 1)<0 1 -1]', &
-     '{0 1 1)<1 -1 1]', &
-     '{0 1 1)<1 0 0] ', &
-     '{2 1 1)<0 1 -1]', &
-     '{2 1 1)<-1 1 1]']
- 
- 
+  
 !--------------------------------------------------------------------------------------------------
 ! isotropic
   integer, dimension(1), parameter :: &
     LATTICE_ISO_NCLEAVAGESYSTEM = [3]                                                               !< # of cleavage systems per family for iso
  
   integer, parameter  :: &
-    LATTICE_ISO_NCLEAVAGE  = sum(LATTICE_ISO_NCLEAVAGESYSTEM)                                       !< total # of cleavage systems for iso
+    LATTICE_ISO_NCLEAVAGE = sum(LATTICE_ISO_NCLEAVAGESYSTEM)                                        !< total # of cleavage systems for iso
  
   real(pReal), dimension(3+3,LATTICE_ISO_NCLEAVAGE), parameter :: &
     LATTICE_ISO_SYSTEMCLEAVAGE= reshape(real([&
@@ -441,7 +396,7 @@ module lattice
     LATTICE_ORT_NCLEAVAGESYSTEM = [1, 1, 1]                                                         !< # of cleavage systems per family for ortho
  
   integer, parameter  :: &
-    LATTICE_ORT_NCLEAVAGE  = sum(LATTICE_ORT_NCLEAVAGESYSTEM)                                       !< total # of cleavage systems for ortho
+    LATTICE_ORT_NCLEAVAGE = sum(LATTICE_ORT_NCLEAVAGESYSTEM)                                        !< total # of cleavage systems for ortho
  
   real(pReal), dimension(3+3,LATTICE_ORT_NCLEAVAGE), parameter :: &
     LATTICE_ORT_SYSTEMCLEAVAGE = reshape(real([&
@@ -468,7 +423,7 @@ module lattice
     lattice_mu, lattice_nu
  
 ! SHOULD NOT BE PART OF LATTICE BEGIN
-  real(pReal),                              dimension(:,:,:,:), allocatable, public, protected :: &  ! with higher-order parameters (e.g. temperature-dependent)
+  real(pReal),                              dimension(:,:,:,:), allocatable, public, protected :: & ! with higher-order parameters (e.g. temperature-dependent)
     lattice_thermalExpansion33
   real(pReal),                              dimension(:,:,:),   allocatable, public, protected :: &
     lattice_thermalConductivity33, &
@@ -597,7 +552,7 @@ subroutine lattice_init
     lattice_C66(6,6,p) = config_phase(p)%getFloat('c66',defaultVal=0.0_pReal)
  
  
-    CoverA(p)       = config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal)
+    CoverA(p) = config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal)
  
     lattice_thermalConductivity33(1,1,p) = config_phase(p)%getFloat('thermal_conductivity11',defaultVal=0.0_pReal)
     lattice_thermalConductivity33(2,2,p) = config_phase(p)%getFloat('thermal_conductivity22',defaultVal=0.0_pReal)
