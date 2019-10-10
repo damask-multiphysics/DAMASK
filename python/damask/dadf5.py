@@ -312,7 +312,7 @@ class DADF5():
     with h5py.File(self.filename,'r') as f:
       shape = (self.Nmaterialpoints,) + np.shape(f[path[0]])[1:]
       if len(shape) == 1: shape = shape +(1,)
-      dataset = np.full(shape,np.nan)
+      dataset = np.full(shape,np.nan,dtype=np.dtype(f[path[0]]))
       for pa in path:
         label   = pa.split('/')[2]
         
