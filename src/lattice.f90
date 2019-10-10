@@ -482,7 +482,8 @@ module lattice
     lattice_forestProjection_screw, &
     lattice_slip_normal, &
     lattice_slip_direction, &
-    lattice_slip_transverse
+    lattice_slip_transverse, &
+    lattice_labels_slip
  
 contains
 !--------------------------------------------------------------------------------------------------
@@ -1913,8 +1914,93 @@ function slipProjection_transverse(Nslip,structure,cOverA) result(projection)
   enddo; enddo
    
 end function slipProjection_transverse
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Labels for slip systems
+!> details only active slip systems are considered
+!--------------------------------------------------------------------------------------------------
+function lattice_labels_slip(Nslip,structure) result(labels)
+
+  integer,         dimension(:),  intent(in)  :: Nslip                                              !< number of active slip systems per family
+  character(len=*),               intent(in)  :: structure                                          !< lattice structure
+  
+  character(len=:), dimension(:),   allocatable :: labels
+
+  real(pReal),      dimension(:,:), allocatable :: slipSystems
+  integer,          dimension(:),   allocatable :: NslipMax
+  
+  if (len_trim(structure) /= 3) &
+    call IO_error(137,ext_msg='lattice_labels_slip: '//trim(structure))
  
+  select case(structure(1:3))
+    case('fcc')
+      NslipMax    = LATTICE_FCC_NSLIPSYSTEM
+      slipSystems = LATTICE_FCC_SYSTEMSLIP
+    case('bcc')
+      NslipMax    = LATTICE_BCC_NSLIPSYSTEM
+      slipSystems = LATTICE_BCC_SYSTEMSLIP
+    case('hex')
+      NslipMax    = LATTICE_HEX_NSLIPSYSTEM
+      slipSystems = LATTICE_HEX_SYSTEMSLIP
+    case('bct')
+      NslipMax    = LATTICE_BCT_NSLIPSYSTEM
+      slipSystems = LATTICE_BCT_SYSTEMSLIP
+    case default
+      call IO_error(137,ext_msg='lattice_labels_slip: '//trim(structure))
+  end select
  
+  if (any(NslipMax(1:size(Nslip)) - Nslip < 0)) &
+    call IO_error(145,ext_msg='Nslip '//trim(structure))
+  if (any(Nslip < 0)) &
+    call IO_error(144,ext_msg='Nslip '//trim(structure))
+ 
+  labels = getLabels(Nslip,NslipMax,slipSystems,structure)
+ 
+end function lattice_labels_slip
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Labels for twin systems
+!> details only active twin systems are considered
+!--------------------------------------------------------------------------------------------------
+function lattice_labels_twin(Ntwin,structure) result(labels)
+
+  integer,         dimension(:),  intent(in)  :: Ntwin                                              !< number of active slip systems per family
+  character(len=*),               intent(in)  :: structure                                          !< lattice structure
+  
+  character(len=:), dimension(:),   allocatable :: labels
+
+  real(pReal),      dimension(:,:), allocatable :: twinSystems
+  integer,          dimension(:),   allocatable :: NtwinMax
+  
+  if (len_trim(structure) /= 3) &
+    call IO_error(137,ext_msg='lattice_labels_twin: '//trim(structure))
+ 
+  select case(structure(1:3))
+    case('fcc')
+      NtwinMax    = LATTICE_FCC_NTWINSYSTEM
+      twinSystems = LATTICE_FCC_SYSTEMTWIN
+    case('bcc')
+      NtwinMax    = LATTICE_BCC_NTWINSYSTEM
+      twinSystems = LATTICE_BCC_SYSTEMTWIN
+    case('hex')
+      NtwinMax    = LATTICE_HEX_NTWINSYSTEM
+      twinSystems = LATTICE_HEX_SYSTEMTWIN
+    case default
+      call IO_error(137,ext_msg='lattice_labels_twin: '//trim(structure))
+  end select
+ 
+  if (any(NtwinMax(1:size(Ntwin)) - Ntwin < 0)) &
+    call IO_error(145,ext_msg='Ntwin '//trim(structure))
+  if (any(Ntwin < 0)) &
+    call IO_error(144,ext_msg='Ntwin '//trim(structure))
+ 
+  labels = getLabels(Ntwin,NtwinMax,twinSystems,structure)
+ 
+end function lattice_labels_twin
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief Projection of the slip direction onto the slip plane
 !> @details: This projection is used to calculate forest hardening for screw dislocations
@@ -2220,5 +2306,62 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
   endif
 
 end subroutine buildTransformationSystem
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief select active systems as strings
+!--------------------------------------------------------------------------------------------------
+function getlabels(active,potential,system,structure) result(labels)
  
+  integer,     dimension(:),   intent(in) :: &
+    active, &
+    potential
+  real(pReal), dimension(:,:), intent(in) :: &
+    system
+  character(len=*),            intent(in) :: structure                                              !< lattice structure
+
+  character(len=:), dimension(:), allocatable :: labels
+  character(len=:),               allocatable :: label
+
+  integer :: i,j 
+  integer :: &
+    a, &                                                                                            !< index of active system
+    p, &                                                                                            !< index in complete system matrix
+    f, &                                                                                            !< index of my family
+    s                                                                                               !< index of my system in current family
+
+  i = 2*size(system,1) + (size(system,1) - 2) + 4                                                   ! 2 letters per index + spaces + brackets
+  allocate(character(len=i) :: labels(sum(active)), label)
+ 
+  a = 0
+  activeFamilies: do f = 1,size(active,1)
+    activeSystems: do s = 1,active(f)
+      a = a + 1
+      p = sum(potential(1:f-1))+s
+      
+      i = 1
+      label(i:i) = merge('[','<',structure(1:3) /= 'bct')
+      direction: do j = 1, size(system,1)/2
+        write(label(i+1:i+2),"(I2.1)") int(system(j,p))
+        label(i+3:i+3) = ' '
+        i = i + 3
+      enddo direction
+      label(i:i) = ']'
+      i = i +1
+      label(i:i) = merge('(','{',structure(1:3) /= 'bct')
+      normal: do j = size(system,1)/2+1, size(system,1)
+        write(label(i+1:i+2),"(I2.1)") int(system(j,p))
+        label(i+3:i+3) = ' '
+        i = i + 3
+      enddo normal
+      label(i:i) = ')'
+    
+      labels(s) = label
+
+    enddo activeSystems
+  enddo activeFamilies
+ 
+end function getlabels
+
+
 end module lattice
