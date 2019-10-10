@@ -796,9 +796,9 @@ function lattice_characteristicShear_Twin(Ntwin,structure,CoverA) result(charact
   
   integer :: &
     a, &                                                                                            !< index of active system
-    c, &                                                                                            !< index in complete system list
-    mf, &                                                                                           !< index of my family
-    ms                                                                                              !< index of my system in current family
+    p, &                                                                                            !< index in potential system list
+    f, &                                                                                            !< index of my family
+    s                                                                                               !< index of my system in current family
  
   integer, dimension(LATTICE_HEX_NTWIN), parameter :: &
     HEX_SHEARTWIN = reshape( [&
@@ -832,8 +832,8 @@ function lattice_characteristicShear_Twin(Ntwin,structure,CoverA) result(charact
     call IO_error(137,ext_msg='lattice_characteristicShear_Twin: '//trim(structure))
  
   a = 0
-  myFamilies: do mf = 1,size(Ntwin,1)
-    mySystems: do ms = 1,Ntwin(mf)
+  myFamilies: do f = 1,size(Ntwin,1)
+    mySystems: do s = 1,Ntwin(f)
       a = a + 1
       select case(structure(1:3))
         case('fcc','bcc')
@@ -841,8 +841,8 @@ function lattice_characteristicShear_Twin(Ntwin,structure,CoverA) result(charact
         case('hex')
           if (cOverA < 1.0_pReal .or. cOverA > 2.0_pReal) &
             call IO_error(131,ext_msg='lattice_characteristicShear_Twin')
-          c = sum(LATTICE_HEX_NTWINSYSTEM(1:mf-1))+ms
-          select case(HEX_SHEARTWIN(c))                                                             ! from Christian & Mahajan 1995 p.29
+          p = sum(LATTICE_HEX_NTWINSYSTEM(1:f-1))+s
+          select case(HEX_SHEARTWIN(p))                                                             ! from Christian & Mahajan 1995 p.29
             case (1)                                                                                ! <-10.1>{10.2}
               characteristicShear(a) = (3.0_pReal-cOverA**2.0_pReal)/sqrt(3.0_pReal)/CoverA
             case (2)                                                                                ! <11.6>{-1-1.1}
@@ -2030,11 +2030,11 @@ end function buildInteraction
 !> @brief build a local coordinate system on slip, twin, trans, cleavage systems
 !> @details Order: Direction, plane (normal), and common perpendicular
 !--------------------------------------------------------------------------------------------------
-function buildCoordinateSystem(active,complete,system,structure,cOverA)
+function buildCoordinateSystem(active,potential,system,structure,cOverA)
  
   integer, dimension(:), intent(in) :: &
     active, &
-    complete
+    potential
   real(pReal), dimension(:,:), intent(in) :: &
     system
   character(len=*),            intent(in) :: &
@@ -2048,7 +2048,7 @@ function buildCoordinateSystem(active,complete,system,structure,cOverA)
     direction, normal
   integer :: &
     a, &                                                                                            !< index of active system
-    c, &                                                                                            !< index in complete system matrix
+    p, &                                                                                            !< index in potential system matrix
     f, &                                                                                            !< index of my family
     s                                                                                               !< index of my system in current family
  
@@ -2063,21 +2063,21 @@ function buildCoordinateSystem(active,complete,system,structure,cOverA)
   activeFamilies: do f = 1,size(active,1)
     activeSystems: do s = 1,active(f)
       a = a + 1
-      c = sum(complete(1:f-1))+s
+      p = sum(potential(1:f-1))+s
  
       select case(trim(structure(1:3)))
  
         case ('fcc','bcc','iso','ort','bct')
-          direction = system(1:3,c)
-          normal    = system(4:6,c)
+          direction = system(1:3,p)
+          normal    = system(4:6,p)
  
         case ('hex')
-          direction = [ system(1,c)*1.5_pReal, &
-                       (system(1,c)+2.0_pReal*system(2,c))*sqrt(0.75_pReal), &
-                        system(4,c)*cOverA ]                                                        ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)])
-          normal    = [ system(5,c), &
-                       (system(5,c)+2.0_pReal*system(6,c))/sqrt(3.0_pReal), &
-                        system(8,c)/cOverA ]                                                        ! plane (hkil)->(h (h+2k)/sqrt(3) l/(c/a))
+          direction = [ system(1,p)*1.5_pReal, &
+                       (system(1,p)+2.0_pReal*system(2,p))*sqrt(0.75_pReal), &
+                        system(4,p)*cOverA ]                                                        ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(p/a)])
+          normal    = [ system(5,p), &
+                       (system(5,p)+2.0_pReal*system(6,p))/sqrt(3.0_pReal), &
+                        system(8,p)/cOverA ]                                                        ! plane (hkil)->(h (h+2k)/sqrt(3) l/(p/a))
  
         case default
           call IO_error(137,ext_msg='buildCoordinateSystem: '//trim(structure))
