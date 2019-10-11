@@ -1453,9 +1453,9 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
     opposite_n, &                                                                                   !< neighbor index pointing to me when looking from my opposite neighbor
     t, &                                                                                            !< type of dislocation
     o,&                                                                                             !< offset shortcut
-    no,&                                                                                            !< neighbour offset shortcut
+    no,&                                                                                            !< neighbor offset shortcut
     p,&                                                                                             !< phase shortcut
-    np,&                                                                                            !< neighbour phase shortcut
+    np,&                                                                                            !< neighbor phase shortcut
     topp, &                                                                                         !< type of dislocation with opposite sign to t
     s                                                                                               !< index of my current slip system
   real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el))),10) :: &
@@ -1654,7 +1654,7 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
       !* If it's not at all compatible, no flux is arriving, because everything is dammed in front of
       !* my neighbor's interface.
       !* The entering flux from my neighbor will be distributed on my slip systems according to the 
-      !*compatibility
+      !* compatibility
       
       considerEnteringFlux = .false.
       neighbor_v = 0.0_pReal        ! needed for check of sign change in flux density below 
