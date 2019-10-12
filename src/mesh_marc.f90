@@ -89,8 +89,7 @@ integer, dimension(:,:), allocatable :: &
    mesh_mapFEtoCPnode                                                                               !< [sorted FEid, corresponding CPid]
 
  integer, dimension(:,:,:,:), allocatable :: &
-   mesh_ipNeighborhood2                                                                              !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
-
+   mesh_ipNeighborhood2                                                                             !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
 
 
  public :: &
@@ -163,7 +162,8 @@ subroutine mesh_init(ip,el)
   allocate(homogenizationAt(theMesh%nElems), source=0)
   allocate(mesh_FEnodes(theMesh%elem%nNodes,theMesh%nElems), source=0)
  
-  call mesh_marc_buildElements(microstructureAt,homogenizationAt, &
+  call mesh_marc_buildElements(mesh_nElems,theMesh%elem%nNodes,FILEUNIT)
+  call mesh_marc_buildElements2(microstructureAt,homogenizationAt, &
                                mesh_nElems,theMesh%elem%nNodes,initialcondTableStyle,FILEUNIT)
   if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
   close (FILEUNIT)
@@ -625,18 +625,13 @@ end function mapElemtype
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Stores node IDs and homogenization and microstructure ID
+!> @brief Stores node IDs
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_buildElements(microstructureAt,homogenizationAt, &
-                                   nElem,nNodes,initialcondTableStyle,fileUnit)
+subroutine mesh_marc_buildElements(nElem,nNodes,fileUnit)
  
-  integer, dimension(:), intent(out) :: &
-    microstructureAt, &
-    homogenizationAt
   integer, intent(in) :: &
     nElem, &
     nNodes, &                                                                                       !< number of nodes per element
-    initialcondTableStyle, &
     fileUnit
  
   integer, allocatable, dimension(:) :: chunkPos
@@ -658,7 +653,7 @@ subroutine mesh_marc_buildElements(microstructureAt,homogenizationAt, &
         if (e /= 0) then                                                                            ! disregard non CP elems
           nNodesAlreadyRead = 0
           do j = 1,chunkPos(1)-2
-            mesh_FEnodes(j,e) = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j+2))                ! CP ids of nodes
+            mesh_FEnodes(j,e) = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j+2))                  ! CP ids of nodes
           enddo
           nNodesAlreadyRead = chunkPos(1) - 2
           do while(nNodesAlreadyRead < nNodes)                                                      ! read on if not all nodes in one line
@@ -674,7 +669,7 @@ subroutine mesh_marc_buildElements(microstructureAt,homogenizationAt, &
       exit
     endif
   enddo
-620 rewind(fileUnit)                                                                                ! just in case "initial state" appears before "connectivity"
+620 rewind(fileUnit)
 
 #if defined(DAMASK_HDF5)
   call results_openJobFile
@@ -686,6 +681,30 @@ subroutine mesh_marc_buildElements(microstructureAt,homogenizationAt, &
  
   call buildCells(theMesh,theMesh%elem,mesh_FEnodes)
  
+end subroutine mesh_marc_buildElements
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Stores homogenization and microstructure ID
+!--------------------------------------------------------------------------------------------------
+subroutine mesh_marc_buildElements2(microstructureAt,homogenizationAt, &
+                                   nElem,nNodes,initialcondTableStyle,fileUnit)
+
+  integer, dimension(:), intent(out) :: &
+    microstructureAt, &
+    homogenizationAt
+  integer, intent(in) :: &
+    nElem, &
+    nNodes, &                                                                                       !< number of nodes per element
+    initialcondTableStyle, &
+    fileUnit
+
+  integer, allocatable, dimension(:) :: chunkPos
+  character(len=300) line
+ 
+  integer, dimension(1+nElem) :: contInts
+  integer :: i,j,t,sv,myVal,e,nNodesAlreadyRead
+
   read (fileUnit,'(A300)',END=630) line
   do
     chunkPos = IO_stringPos(line)
@@ -721,7 +740,7 @@ subroutine mesh_marc_buildElements(microstructureAt,homogenizationAt, &
     endif
   enddo
  
-630 end subroutine mesh_marc_buildElements
+630 end subroutine mesh_marc_buildElements2
 
 
 subroutine buildCells(thisMesh,elem,connectivity_elem)
@@ -1006,7 +1025,7 @@ function mesh_build_cellnodes()
 end function mesh_build_cellnodes
 
 
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 !> @brief Calculates IP volume.
 !> @details The IP volume is calculated differently depending on the cell type.
 !> 2D cells assume an element depth of one in order to calculate the volume.
@@ -1014,7 +1033,7 @@ end function mesh_build_cellnodes
 !> shape with a cell face as basis and the central ip at the tip. This subvolume is
 !> calculated as an average of four tetrahedals with three corners on the cell face
 !> and one corner at the central ip.
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 function IPvolume()
  
   real(pReal), dimension(theMesh%elem%nIPs,theMesh%nElems) :: IPvolume
@@ -1068,12 +1087,16 @@ function IPvolume()
 end function IPvolume
 
 
+!---------------------------------------------------------------------------------------------------
+!> @brief cell neighborhood
+!---------------------------------------------------------------------------------------------------
 subroutine IP_neighborhood2
 
   integer, dimension(:,:), allocatable :: faces
-  integer, dimension(:), allocatable :: face
+  integer, dimension(:),   allocatable :: face
   integer :: e,i,f,c,m,n,j,k,l,p, current, next,i2,e2,n2,k2
   logical :: match
+
   allocate(faces(size(theMesh%elem%cellface,1)+3,size(theMesh%elem%cellface,2)*theMesh%elem%nIPs*theMesh%Nelems))
 
   ! store cell face definitions
@@ -1139,6 +1162,7 @@ subroutine IP_neighborhood2
  enddo
 
 end subroutine IP_neighborhood2
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculates IP Coordinates.
