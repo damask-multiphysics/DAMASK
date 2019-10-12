@@ -110,6 +110,8 @@ subroutine mesh_init(ip,el)
   integer, intent(in) :: el, ip
    
   integer, parameter  :: FILEUNIT = 222
+  character(len=pStringLen), dimension(:), allocatable :: inputFile                                 !< file content, separated per lines
+
   integer :: j, fileFormatVersion, elemType, &
     mesh_maxNelemInSet, &
     mesh_nElems, &
@@ -129,13 +131,13 @@ subroutine mesh_init(ip,el)
   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
  
   mesh_unitlength = numerics_unitlength                                                              ! set physical extent of a length unit in mesh
- 
+  inputFile = IO_read_ASCII(trim(modelName)//trim(InputFileExtension))
   myDebug = (iand(debug_level(debug_mesh),debug_levelBasic) /= 0)
  
   ! parsing Marc input file
   call IO_open_inputFile(FILEUNIT,modelName)
-  fileFormatVersion = mesh_marc_get_fileFormat(FILEUNIT)
-  call mesh_marc_get_tableStyles(initialcondTableStyle,hypoelasticTableStyle,FILEUNIT)
+  fileFormatVersion = mesh_marc_get_fileFormat(inputFile)
+  call mesh_marc_get_tableStyles(initialcondTableStyle,hypoelasticTableStyle,inputFile)
   if (fileFormatVersion > 12) &
     marc_matNumber = mesh_marc_get_matNumber(FILEUNIT,hypoelasticTableStyle)
   call mesh_marc_count_nodesAndElements(mesh_nNodes, mesh_nElems, FILEUNIT)
@@ -223,55 +225,48 @@ end subroutine mesh_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Figures out version of Marc input file format
 !--------------------------------------------------------------------------------------------------
-integer function mesh_marc_get_fileFormat(fileUnit)
+integer function mesh_marc_get_fileFormat(fileContent)
  
-  integer, intent(in) :: fileUnit
-
+  character(len=pStringLen), dimension(:), intent(in) :: fileContent                                !< file content, separated per lines
+  
   integer, allocatable, dimension(:) :: chunkPos
-  character(len=300) line
-
-
-  rewind(fileUnit)
-  do
-    read (fileUnit,'(A300)',END=620) line
-    chunkPos = IO_stringPos(line)
-    
-    if ( IO_lc(IO_stringValue(line,chunkPos,1)) == 'version') then
-      mesh_marc_get_fileFormat = IO_intValue(line,chunkPos,2)
+  integer :: l
+  
+  do l = 1, size(fileContent)
+    chunkPos = IO_stringPos(fileContent(l))
+    if ( IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'version') then
+      mesh_marc_get_fileFormat = IO_intValue(fileContent(l),chunkPos,2)
       exit
     endif
   enddo
 
-620 end function mesh_marc_get_fileFormat
+end function mesh_marc_get_fileFormat
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Figures out table styles for initial cond and hypoelastic
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_get_tableStyles(initialcond,hypoelastic,fileUnit)
+subroutine mesh_marc_get_tableStyles(initialcond,hypoelastic,fileContent)
  
   integer, intent(out) :: initialcond, hypoelastic
-  integer, intent(in)  :: fileUnit
+  character(len=pStringLen), dimension(:), intent(in) :: fileContent                                !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
-  character(len=300) line
-
+  integer :: l
+  
   initialcond = 0
   hypoelastic = 0
 
-  rewind(fileUnit)
-  do
-    read (fileUnit,'(A300)',END=620) line
-    chunkPos = IO_stringPos(line)
-
-    if ( IO_lc(IO_stringValue(line,chunkPos,1)) == 'table' .and. chunkPos(1) > 5) then
-      initialcond = IO_intValue(line,chunkPos,4)
-      hypoelastic = IO_intValue(line,chunkPos,5)
+  do l = 1, size(fileContent)
+    chunkPos = IO_stringPos(fileContent(l))
+    if ( IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'table' .and. chunkPos(1) > 5) then
+      initialcond = IO_intValue(fileContent(l),chunkPos,4)
+      hypoelastic = IO_intValue(fileContent(l),chunkPos,5)
       exit
     endif
   enddo
 
-620 end subroutine mesh_marc_get_tableStyles
+end subroutine mesh_marc_get_tableStyles
 
 
 !--------------------------------------------------------------------------------------------------
