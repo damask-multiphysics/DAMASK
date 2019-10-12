@@ -206,7 +206,6 @@ subroutine mesh_init(ip,el)
                            mesh_node0)
 #if defined(DAMASK_HDF5)
   call results_openJobFile
-  call HDF5_closeGroup(results_addGroup('geometry'))
   call results_writeDataset('geometry',ip_reshaped,'x_c', &
                             'cell center coordinates','m')
   call results_writeDataset('geometry',mesh_node0,'x_n', &
@@ -679,6 +678,7 @@ subroutine mesh_marc_buildElements(microstructureAt,homogenizationAt, &
 
 #if defined(DAMASK_HDF5)
   call results_openJobFile
+  call HDF5_closeGroup(results_addGroup('geometry'))
   call results_writeDataset('geometry',mesh_FEnodes,'C',&
                             'connectivity of the elements','-')
   call results_closeJobFile
