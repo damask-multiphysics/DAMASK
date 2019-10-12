@@ -40,19 +40,14 @@ if options.con is None: options.con=[]
 for filename in options.filenames:
   results = damask.DADF5(filename)
   
-  Polydata = vtk.vtkPolyData()
   Points   = vtk.vtkPoints()
-  Vertices = vtk.vtkCellArray()
-  
-  if results.structured:                                                                            # for grid solvers calculate points
-    delta = results.size/results.grid*0.5
-    for z in np.linspace(delta[2],results.size[2]-delta[2],results.grid[2]):
-      for y in np.linspace(delta[1],results.size[1]-delta[1],results.grid[1]):
-        for x in np.linspace(delta[0],results.size[0]-delta[0],results.grid[0]):
-          pointID = Points.InsertNextPoint([x,y,z])
-          Vertices.InsertNextCell(1)
-          Vertices.InsertCellPoint(pointID)
+  Vertices = vtk.vtkCellArray()  
+  for c in results.cell_coordinates():
+    pointID = Points.InsertNextPoint(c)
+    Vertices.InsertNextCell(1)
+    Vertices.InsertCellPoint(pointID)
 
+  Polydata = vtk.vtkPolyData()
   Polydata.SetPoints(Points)
   Polydata.SetVerts(Vertices)
   Polydata.Modified()
