@@ -123,6 +123,9 @@ subroutine mesh_init(ip,el)
    mesh_ipArea                                                                                      !< area of interface to neighboring IP (initially!)
  real(pReal),dimension(:,:,:,:), allocatable :: &
    mesh_ipAreaNormal                                                                                !< area normal of interface to neighboring IP (initially!)
+   
+ real(pReal), dimension(:,:), allocatable :: &
+   ip_reshaped
  
   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
  
@@ -197,10 +200,18 @@ subroutine mesh_init(ip,el)
   calcMode = .false.                                                                                 ! pretend to have collected what first call is asking (F = I)
   calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                       ! first ip,el needs to be already pingponged to "calc"
  
+  ip_reshaped = reshape(mesh_ipCoordinates,[3,theMesh%elem%nIPs*theMesh%nElems])
   call discretization_init(microstructureAt,homogenizationAt,&
-                           reshape(mesh_ipCoordinates,[3,theMesh%elem%nIPs*theMesh%nElems]),&
+                           ip_reshaped,&
                            mesh_node0)
 
+  call results_openJobFile
+  call HDF5_closeGroup(results_addGroup('geometry'))
+  call results_writeDataset('geometry',ip_reshaped,'x_c', &
+                            'cell center coordinates','m')
+  call results_writeDataset('geometry',mesh_node0,'x_n', &
+                            'nodal coordinates','m')
+  call results_closeJobFile()
   call geometry_plastic_nonlocal_setIPvolume(IPvolume())
   call geometry_plastic_nonlocal_setIPneighborhood(mesh_ipNeighborhood2)
   call geometry_plastic_nonlocal_setIParea(mesh_ipArea)
@@ -667,7 +678,6 @@ subroutine mesh_marc_buildElements(microstructureAt,homogenizationAt, &
 
 #if defined(DAMASK_HDF5)
   call results_openJobFile
-  call HDF5_closeGroup(results_addGroup('geometry'))
   call results_writeDataset('geometry',mesh_FEnodes,'C',&
                             'connectivity of the elements','-')
   call results_closeJobFile
