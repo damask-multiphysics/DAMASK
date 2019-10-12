@@ -40,23 +40,23 @@ if options.con is None: options.con=[]
 for filename in options.filenames:
   results = damask.DADF5(filename)
   
-  if results.structured:                                                                            # for grid solvers use rectilinear grid
-    rGrid = vtk.vtkRectilinearGrid()
-    coordArray = [vtk.vtkDoubleArray(),
-                  vtk.vtkDoubleArray(),
-                  vtk.vtkDoubleArray(),
-                 ]
+  Polydata = vtk.vtkPolyData()
+  Points   = vtk.vtkPoints()
+  Vertices = vtk.vtkCellArray()
+  
+  if results.structured:                                                                            # for grid solvers calculate points
+    delta = results.size/results.grid*0.5
+    for z in np.linspace(delta[2],results.size[2]-delta[2],results.grid[2]):
+      for y in np.linspace(delta[1],results.size[1]-delta[1],results.grid[1]):
+        for x in np.linspace(delta[0],results.size[0]-delta[0],results.grid[0]):
+          pointID = Points.InsertNextPoint([x,y,z])
+          Vertices.InsertNextCell(1)
+          Vertices.InsertCellPoint(pointID)
 
-    rGrid.SetDimensions(*(results.grid+1))
-    for dim in [0,1,2]:
-      for c in np.linspace(0,results.size[dim],1+results.grid[dim]):
-        coordArray[dim].InsertNextValue(c)
-
-    rGrid.SetXCoordinates(coordArray[0])
-    rGrid.SetYCoordinates(coordArray[1])
-    rGrid.SetZCoordinates(coordArray[2])
-
-
+  Polydata.SetPoints(Points)
+  Polydata.SetVerts(Vertices)
+  Polydata.Modified()
+  
   for i,inc in enumerate(results.iter_visible('increments')):
     print('Output step {}/{}'.format(i+1,len(results.increments)))
     vtk_data = []
@@ -75,7 +75,7 @@ for filename in options.filenames:
             shape = [array.shape[0],np.product(array.shape[1:])]
             vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True,array_type= vtk.VTK_DOUBLE))
             vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
-            rGrid.GetCellData().AddArray(vtk_data[-1])
+            Polydata.GetCellData().AddArray(vtk_data[-1])
         else:
           x = results.get_dataset_location(label)
           if len(x) == 0:
@@ -84,7 +84,7 @@ for filename in options.filenames:
           shape = [array.shape[0],np.product(array.shape[1:])]
           vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True,array_type= vtk.VTK_DOUBLE))
           vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
-          rGrid.GetCellData().AddArray(vtk_data[-1])
+          Polydata.GetCellData().AddArray(vtk_data[-1])
     
     results.set_visible('constituents',  False)
     results.set_visible('materialpoints',True)
@@ -99,7 +99,7 @@ for filename in options.filenames:
             shape = [array.shape[0],np.product(array.shape[1:])]
             vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True,array_type= vtk.VTK_DOUBLE))
             vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
-            rGrid.GetCellData().AddArray(vtk_data[-1])
+            Polydata.GetCellData().AddArray(vtk_data[-1])
         else:
           x = results.get_dataset_location(label)
           if len(x) == 0:
@@ -108,10 +108,9 @@ for filename in options.filenames:
           shape = [array.shape[0],np.product(array.shape[1:])]
           vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True,array_type= vtk.VTK_DOUBLE))
           vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
-          rGrid.GetCellData().AddArray(vtk_data[-1])
+          Polydata.GetCellData().AddArray(vtk_data[-1])
           
-    if results.structured:
-      writer = vtk.vtkXMLRectilinearGridWriter()
+    writer = vtk.vtkXMLPolyDataWriter()
 
 
     dirname  = os.path.abspath(os.path.join(os.path.dirname(filename),options.dir))
@@ -122,7 +121,6 @@ for filename in options.filenames:
     writer.SetCompressorTypeToZLib()
     writer.SetDataModeToBinary()
     writer.SetFileName(os.path.join(dirname,file_out))
-    if results.structured:
-      writer.SetInputData(rGrid)
+    writer.SetInputData(Polydata)
     
     writer.Write()
