@@ -1072,8 +1072,8 @@ integer function IO_countContinuousIntValues(fileUnit)
    if (chunkPos(1) < 1) then                                                                        ! empty line
      exit
    elseif (IO_lc(IO_stringValue(line,chunkPos,2)) == 'to' ) then                                    ! found range indicator
-     IO_countContinuousIntValues = 1 + abs(  IO_intValue(line,chunkPos,3) &
-                                                - IO_intValue(line,chunkPos,1))
+     IO_countContinuousIntValues = 1 + abs( IO_intValue(line,chunkPos,3) &
+                                           -IO_intValue(line,chunkPos,1))
      exit                                                                                           ! only one single range indicator allowed                              
    else
      IO_countContinuousIntValues = IO_countContinuousIntValues+chunkPos(1)-1                        ! add line's count when assuming 'c'
