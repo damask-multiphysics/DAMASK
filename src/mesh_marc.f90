@@ -162,13 +162,23 @@ subroutine mesh_init(ip,el)
   
   allocate(microstructureAt(theMesh%nElems), source=0)
   allocate(homogenizationAt(theMesh%nElems), source=0)
-  allocate(mesh_FEnodes(theMesh%elem%nNodes,theMesh%nElems), source=0)
  
-  call mesh_marc_buildElements(mesh_nElems,theMesh%elem%nNodes,FILEUNIT)
+  mesh_FEnodes = mesh_marc_buildElements(theMesh%nElems,theMesh%elem%nNodes,FILEUNIT)
   call mesh_marc_buildElements2(microstructureAt,homogenizationAt, &
                                mesh_nElems,theMesh%elem%nNodes,initialcondTableStyle,FILEUNIT)
   if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
   close (FILEUNIT)
+
+
+#if defined(DAMASK_HDF5)
+  call results_openJobFile
+  call HDF5_closeGroup(results_addGroup('geometry'))
+  call results_writeDataset('geometry',mesh_FEnodes,'C',&
+                            'connectivity of the elements','-')
+  call results_closeJobFile
+#endif
+ 
+  call buildCells(theMesh,theMesh%elem,mesh_FEnodes)
    
   call mesh_build_cellconnectivity
   if (myDebug) write(6,'(a)') ' Built cell connectivity'; flush(6)
@@ -622,12 +632,15 @@ end function mapElemtype
 !--------------------------------------------------------------------------------------------------
 !> @brief Stores node IDs
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_buildElements(nElem,nNodes,fileUnit)
+function mesh_marc_buildElements(nElem,nNodes,fileUnit)
  
   integer, intent(in) :: &
     nElem, &
     nNodes, &                                                                                       !< number of nodes per element
     fileUnit
+    
+  integer, dimension(nElem,nNodes) :: &
+    mesh_marc_buildElements
  
   integer, allocatable, dimension(:) :: chunkPos
   character(len=300) line
@@ -648,14 +661,14 @@ subroutine mesh_marc_buildElements(nElem,nNodes,fileUnit)
         if (e /= 0) then                                                                            ! disregard non CP elems
           nNodesAlreadyRead = 0
           do j = 1,chunkPos(1)-2
-            mesh_FEnodes(j,e) = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j+2))                  ! CP ids of nodes
+            mesh_marc_buildElements(j,e) = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j+2))                  ! CP ids of nodes
           enddo
           nNodesAlreadyRead = chunkPos(1) - 2
           do while(nNodesAlreadyRead < nNodes)                                                      ! read on if not all nodes in one line
             read (fileUnit,'(A300)',END=620) line
             chunkPos = IO_stringPos(line)
             do j = 1,chunkPos(1)
-              mesh_FEnodes(nNodesAlreadyRead+j,e) = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j)) ! CP ids of nodes
+              mesh_marc_buildElements(nNodesAlreadyRead+j,e) = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j)) ! CP ids of nodes
             enddo
             nNodesAlreadyRead = nNodesAlreadyRead + chunkPos(1)
           enddo
@@ -665,18 +678,8 @@ subroutine mesh_marc_buildElements(nElem,nNodes,fileUnit)
     endif
   enddo
 620 rewind(fileUnit)
-
-#if defined(DAMASK_HDF5)
-  call results_openJobFile
-  call HDF5_closeGroup(results_addGroup('geometry'))
-  call results_writeDataset('geometry',mesh_FEnodes,'C',&
-                            'connectivity of the elements','-')
-  call results_closeJobFile
-#endif
  
-  call buildCells(theMesh,theMesh%elem,mesh_FEnodes)
- 
-end subroutine mesh_marc_buildElements
+end function mesh_marc_buildElements
 
 
 !--------------------------------------------------------------------------------------------------
