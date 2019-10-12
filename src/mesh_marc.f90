@@ -204,7 +204,7 @@ subroutine mesh_init(ip,el)
   call discretization_init(microstructureAt,homogenizationAt,&
                            ip_reshaped,&
                            mesh_node0)
-
+#if defined(DAMASK_HDF5)
   call results_openJobFile
   call HDF5_closeGroup(results_addGroup('geometry'))
   call results_writeDataset('geometry',ip_reshaped,'x_c', &
@@ -212,6 +212,7 @@ subroutine mesh_init(ip,el)
   call results_writeDataset('geometry',mesh_node0,'x_n', &
                             'nodal coordinates','m')
   call results_closeJobFile()
+#endif
   call geometry_plastic_nonlocal_setIPvolume(IPvolume())
   call geometry_plastic_nonlocal_setIPneighborhood(mesh_ipNeighborhood2)
   call geometry_plastic_nonlocal_setIParea(mesh_ipArea)
