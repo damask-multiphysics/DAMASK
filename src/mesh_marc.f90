@@ -135,12 +135,13 @@ subroutine mesh_init(ip,el)
   myDebug = (iand(debug_level(debug_mesh),debug_levelBasic) /= 0)
  
   ! parsing Marc input file
-  call IO_open_inputFile(FILEUNIT,modelName)
   fileFormatVersion = mesh_marc_get_fileFormat(inputFile)
   call mesh_marc_get_tableStyles(initialcondTableStyle,hypoelasticTableStyle,inputFile)
   if (fileFormatVersion > 12) &
-    marc_matNumber = mesh_marc_get_matNumber(FILEUNIT,hypoelasticTableStyle)
-  call mesh_marc_count_nodesAndElements(mesh_nNodes, mesh_nElems, FILEUNIT)
+    marc_matNumber = mesh_marc_get_matNumber(hypoelasticTableStyle,inputFile)
+  call mesh_marc_count_nodesAndElements(mesh_nNodes, mesh_nElems, inputFile)
+
+  call IO_open_inputFile(FILEUNIT,modelName)
   call mesh_marc_count_elementSets(mesh_NelemSets,mesh_maxNelemInSet,FILEUNIT) 
   allocate(mesh_nameElemSet(mesh_NelemSets)); mesh_nameElemSet = 'n/a'
   allocate(mesh_mapElemSet(1+mesh_maxNelemInSet,mesh_NelemSets),source=0)
@@ -258,8 +259,8 @@ end function mesh_marc_get_fileFormat
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_get_tableStyles(initialcond,hypoelastic,fileContent)
  
-  integer, intent(out) :: initialcond, hypoelastic
-  character(len=pStringLen), dimension(:), intent(in) :: fileContent                                !< file content, separated per lines
+  integer,                                 intent(out) :: initialcond, hypoelastic
+  character(len=pStringLen), dimension(:), intent(in)  :: fileContent                               !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
   integer :: l
@@ -282,73 +283,63 @@ end subroutine mesh_marc_get_tableStyles
 !--------------------------------------------------------------------------------------------------
 !> @brief Figures out material number of hypoelastic material
 !--------------------------------------------------------------------------------------------------
-function mesh_marc_get_matNumber(fileUnit,tableStyle)
+function mesh_marc_get_matNumber(tableStyle,fileContent)
  
-  integer, intent(in)                :: fileUnit, tableStyle
+  integer,                                 intent(in) :: tableStyle
+  character(len=pStringLen), dimension(:), intent(in) :: fileContent                                !< file content, separated per lines
+
   integer, dimension(:), allocatable :: mesh_marc_get_matNumber
 
   integer, allocatable, dimension(:) :: chunkPos
-  integer :: i, j, data_blocks
-  character(len=300) :: line
+  integer :: i, j, data_blocks, l
 
-  data_blocks = 1
-  rewind(fileUnit)
-  do
-   read (fileUnit,'(A300)',END=620) line
-   chunkPos = IO_stringPos(line)
-   
-   if ( IO_lc(IO_stringValue(line,chunkPos,1)) == 'hypoelastic') then
-     read (fileUnit,'(A300)',END=620) line
-     if (len(trim(line))/=0) then
-       chunkPos = IO_stringPos(line)
-       data_blocks = IO_intValue(line,chunkPos,1)
-     endif
-     allocate(mesh_marc_get_matNumber(data_blocks), source = 0)
-     do i=1,data_blocks                                                                             ! read all data blocks
-       read (fileUnit,'(A300)',END=620) line
-       chunkPos = IO_stringPos(line)
-       mesh_marc_get_matNumber(i) = IO_intValue(line,chunkPos,1)
-       do j=1,2 + tableStyle                                                                        ! read 2 or 3 remaining lines of data block
-         read (fileUnit,'(A300)') line
-       enddo
-     enddo
-     exit
-   endif
+  do l = 1, size(fileContent)
+    chunkPos = IO_stringPos(fileContent(l))
+    if ( IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'hypoelastic') then
+      if (len(trim(fileContent(l+1)))/=0) then
+        chunkPos = IO_stringPos(fileContent(l+1))
+        data_blocks = IO_intValue(fileContent(l+1),chunkPos,1)
+      else
+        data_blocks = 1
+      endif
+      allocate(mesh_marc_get_matNumber(data_blocks), source = 0)
+      do i = 0, data_blocks - 1
+        j = i*(2+tableStyle) + 1
+        chunkPos = IO_stringPos(fileContent(l+1+j))
+        mesh_marc_get_matNumber(i+1) = IO_intValue(fileContent(l+1+j),chunkPos,1)
+      enddo
+      exit
+    endif
   enddo
 
-620 end function mesh_marc_get_matNumber
+end function mesh_marc_get_matNumber
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Count overall number of nodes and elements
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_count_nodesAndElements(nNodes, nElems, fileUnit)
- 
-  integer, intent(in)  :: fileUnit
-  integer, intent(out) :: nNodes, nElems
+subroutine mesh_marc_count_nodesAndElements(nNodes, nElems, fileContent)
   
+  integer,                                 intent(out) :: nNodes, nElems
+  character(len=pStringLen), dimension(:), intent(in)  :: fileContent                               !< file content, separated per lines
+
   integer, allocatable, dimension(:) :: chunkPos
-  character(len=300) :: line
+  integer :: l
 
   nNodes = 0
   nElems = 0
 
-  rewind(fileUnit)
-  do
-    read (fileUnit,'(A300)',END=620) line
-    chunkPos = IO_stringPos(line)
-
-    if ( IO_lc(IO_StringValue(line,chunkPos,1)) == 'sizing') &
-      nElems = IO_IntValue (line,chunkPos,3)
-    if ( IO_lc(IO_StringValue(line,chunkPos,1)) == 'coordinates') then
-      read (fileUnit,'(A300)') line
-      chunkPos = IO_stringPos(line)
-      nNodes = IO_IntValue (line,chunkPos,2)
-      exit                                                                                          ! assumes that "coordinates" comes later in file
+  do l = 1, size(fileContent)
+    chunkPos = IO_stringPos(fileContent(l))
+    if     (IO_lc(IO_StringValue(fileContent(l),chunkPos,1)) == 'sizing') then
+      nElems = IO_IntValue (fileContent(l),chunkPos,3)
+    elseif (IO_lc(IO_StringValue(fileContent(l),chunkPos,1)) == 'coordinates') then
+      chunkPos = IO_stringPos(fileContent(l+1))
+      nNodes = IO_IntValue (fileContent(l+1),chunkPos,2)
     endif
   enddo
 
-620 end subroutine mesh_marc_count_nodesAndElements
+end subroutine mesh_marc_count_nodesAndElements
 
 
 !--------------------------------------------------------------------------------------------------
