@@ -657,9 +657,8 @@ function mesh_marc_buildElements(nElem,nNodes,fileUnit)
       exit
     endif
   enddo
-620 rewind(fileUnit)
- 
-end function mesh_marc_buildElements
+
+620 end function mesh_marc_buildElements
 
 
 !--------------------------------------------------------------------------------------------------
@@ -683,6 +682,7 @@ subroutine mesh_marc_buildElements2(microstructureAt,homogenizationAt, &
   integer, dimension(1+nElem) :: contInts
   integer :: i,j,t,sv,myVal,e,nNodesAlreadyRead
 
+  rewind(fileUnit)
   read (fileUnit,'(A300)',END=630) line
   do
     chunkPos = IO_stringPos(line)
