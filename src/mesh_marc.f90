@@ -30,14 +30,19 @@ module mesh
   end type tCellNodeDefinition
   
   real(pReal), public, protected :: &
-    mesh_unitlength                                                                                  !< physical length of one unit in mesh
+    mesh_unitlength                                                                                 !< physical length of one unit in mesh
+ 
+  integer, dimension(:,:), allocatable, target :: &
+    mesh_mapFEtoCPelem, &                                                                           !< [sorted FEid, corresponding CPid]
+    mesh_mapFEtoCPnode                                                                              !< [sorted FEid, corresponding CPid]
 
 !-------------------------------------------------------------------------------------------------- 
-! public variables (DEPRECATED)
-   
- real(pReal), dimension(:,:,:), allocatable, public :: &
-   mesh_ipCoordinates                                                                               !< IP x,y,z coordinates (after deformation!)
+! DEPRECATED
+  real(pReal), dimension(:,:,:), allocatable, public :: &
+    mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
 !--------------------------------------------------------------------------------------------------
+
+
 
  integer, dimension(:,:), allocatable :: &
    connectivity_elem
@@ -46,33 +51,10 @@ module mesh
    mesh_node, &                                                                                     !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!
    mesh_node0                                                                                       !< node x,y,z coordinates (initially!)
 
-! -------------------------------------------------------------------------------------------------- 
-
  type(tMesh) :: theMesh
  
-
- integer:: &
-   mesh_Nnodes                                                                                      !< total number of nodes in mesh
-
-
  integer,dimension(:,:,:), allocatable :: &
-   mesh_cell2, &                                                                                        !< cell connectivity for each element,ip/cell
-   mesh_cell                                                                                        !< cell connectivity for each element,ip/cell
-
- integer,     dimension(:),   allocatable :: &
-   microstructureAt, &
-   homogenizationAt
-    
- integer :: &
-   mesh_NelemSets
-   
- character(len=64), dimension(:), allocatable :: &
-   mesh_nameElemSet
- integer, dimension(:,:), allocatable :: &
-   mesh_mapElemSet                                                                                  !< list of elements in elementSet
- integer, dimension(:,:), allocatable, target :: &
-   mesh_mapFEtoCPelem, &                                                                            !< [sorted FEid, corresponding CPid]
-   mesh_mapFEtoCPnode                                                                               !< [sorted FEid, corresponding CPid]
+   mesh_cell2                                                                                       !< cell connectivity for each element,ip/cell
 
  integer, dimension(:,:,:,:), allocatable :: &
    mesh_ipNeighborhood2                                                                             !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
@@ -95,6 +77,8 @@ subroutine mesh_init(ip,el)
    
   integer, parameter  :: FILEUNIT = 222
   character(len=pStringLen), dimension(:), allocatable :: inputFile                                 !< file content, separated per lines
+ integer :: &
+   mesh_NelemSets
 
   integer :: j, fileFormatVersion, elemType, &
     mesh_maxNelemInSet, &
@@ -103,6 +87,15 @@ subroutine mesh_init(ip,el)
     initialcondTableStyle
   integer, dimension(:), allocatable :: &
    marc_matNumber                                                                                   !< array of material numbers for hypoelastic material (Marc only)
+ integer,     dimension(:),   allocatable :: &
+   microstructureAt, &
+   homogenizationAt
+ character(len=64), dimension(:), allocatable :: &
+   mesh_nameElemSet
+ integer, dimension(:,:), allocatable :: &
+   mesh_mapElemSet                                                                                  !< list of elements in elementSet
+ integer:: &
+   mesh_Nnodes                                                                                      !< total number of nodes in mesh
    
  real(pReal), dimension(:,:), allocatable :: &
    ip_reshaped
@@ -143,7 +136,8 @@ subroutine mesh_init(ip,el)
  
   connectivity_elem = mesh_marc_buildElements(theMesh%nElems,theMesh%elem%nNodes,FILEUNIT)
   call mesh_marc_buildElements2(microstructureAt,homogenizationAt, &
-                               mesh_nElems,theMesh%elem%nNodes,initialcondTableStyle,FILEUNIT)
+                               mesh_nElems,theMesh%elem%nNodes,mesh_nameElemSet,mesh_mapElemSet,&
+                               initialcondTableStyle,FILEUNIT)
   close (FILEUNIT)
 
 
@@ -627,7 +621,7 @@ function mesh_marc_buildElements(nElem,nNodes,fileUnit)
 !> @brief Stores homogenization and microstructure ID
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_buildElements2(microstructureAt,homogenizationAt, &
-                                   nElem,nNodes,initialcondTableStyle,fileUnit)
+                                    nElem,nNodes,nameElemSet,mapElemSet,initialcondTableStyle,fileUnit)
 
   integer, dimension(:), intent(out) :: &
     microstructureAt, &
@@ -637,6 +631,10 @@ subroutine mesh_marc_buildElements2(microstructureAt,homogenizationAt, &
     nNodes, &                                                                                       !< number of nodes per element
     initialcondTableStyle, &
     fileUnit
+  character(len=64), dimension(:), intent(in) :: &
+    nameElemSet
+  integer, dimension(:,:), intent(in) :: &
+    mapElemSet                                                                                      !< list of elements in elementSet
 
   integer, allocatable, dimension(:) :: chunkPos
   character(len=300) line
@@ -664,7 +662,7 @@ subroutine mesh_marc_buildElements2(microstructureAt,homogenizationAt, &
             read (fileUnit,'(A300)',END=630) line                                                   ! read extra line
           endif
           contInts = IO_continuousIntValues&                                                        ! get affected elements
-                    (fileUnit,theMesh%nElems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
+                    (fileUnit,nElem,nameElemSet,mapElemSet,size(nameElemSet))
           do i = 1,contInts(1)
             e = mesh_FEasCP('elem',contInts(1+i))
             if (sv == 2) microstructureAt(e) = myVal
