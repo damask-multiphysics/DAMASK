@@ -133,7 +133,7 @@ subroutine mesh_init(ip,el)
   allocate(microstructureAt(theMesh%nElems), source=0)
   allocate(homogenizationAt(theMesh%nElems), source=0)
  
-  connectivity_elem = mesh_marc_buildElements(theMesh%nElems,theMesh%elem%nNodes,FILEUNIT)
+  connectivity_elem = mesh_marc_buildElements(mesh_nElems,theMesh%elem%nNodes,FILEUNIT)
   call mesh_marc_buildElements2(microstructureAt,homogenizationAt, &
                                mesh_nElems,theMesh%elem%nNodes,mesh_nameElemSet,mesh_mapElemSet,&
                                initialcondTableStyle,FILEUNIT)
@@ -148,7 +148,7 @@ subroutine mesh_init(ip,el)
   call results_closeJobFile
 #endif
  
-  call buildCells(theMesh,theMesh%elem,connectivity_elem)
+  call buildCells(mesh_Nnodes,theMesh%elem,connectivity_elem)
    
   allocate(mesh_ipCoordinates(3,theMesh%elem%nIPs,theMesh%nElems),source=0.0_pReal)
  
@@ -680,9 +680,9 @@ subroutine mesh_marc_buildElements2(microstructureAt,homogenizationAt, &
 630 end subroutine mesh_marc_buildElements2
 
 
-subroutine buildCells(thisMesh,elem,connectivity_elem)
+subroutine buildCells(nNodes,elem,connectivity_elem)
 
-  class(tMesh)                       :: thisMesh
+  integer,         intent(in)                    :: nNodes
   type(tElement),         intent(in) :: elem
   integer,dimension(:,:), intent(in) :: connectivity_elem
   
@@ -694,7 +694,7 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
   
   integer :: e, n, c, p, s,i,m,j,nParentNodes,nCellNode,Nelem,candidateID
   
-  Nelem = thisMesh%Nelems
+  Nelem = size(connectivity_elem,1)
 
 !---------------------------------------------------------------------------------------------------
 ! initialize global connectivity to negative local connectivity
@@ -713,7 +713,7 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
       endif realNode
     enddo
   enddo
-  nCellNode = thisMesh%nNodes
+  nCellNode = nNodes
   
   
   allocate(cellNodeDefinition(elem%nNodes-1))
@@ -777,10 +777,8 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
     enddo
     
     i = uniqueRows(candidates_global(1:2*nParentNodes,:))
-    
     allocate(cellNodeDefinition(nParentNodes-1)%parents(i,nParentNodes))
     allocate(cellNodeDefinition(nParentNodes-1)%weights(i,nParentNodes))
-    
     
     i = 1
     n = 1
@@ -807,9 +805,10 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
     enddo
     nCellNode = nCellNode + i
 
-    mesh_cell2 = connectivity_cell
 
   enddo
+  
+  mesh_cell2 = connectivity_cell
 
   contains
   !------------------------------------------------------------------------------------------------
