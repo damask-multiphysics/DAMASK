@@ -23,7 +23,12 @@ module mesh
 
   implicit none
   private
-    
+  
+  type tCellNodeDefinition
+    integer, dimension(:,:), allocatable :: parents
+    integer, dimension(:,:), allocatable :: weights
+  end type tCellNodeDefinition
+  
   real(pReal), public, protected :: &
     mesh_unitlength                                                                                  !< physical length of one unit in mesh
 
@@ -38,7 +43,7 @@ module mesh
 !--------------------------------------------------------------------------------------------------
 
  integer, dimension(:,:), allocatable :: &
-   mesh_FEnodes
+   connectivity_elem
    
  real(pReal), dimension(:,:), allocatable :: &
    mesh_node, &                                                                                     !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!
@@ -164,7 +169,7 @@ subroutine mesh_init(ip,el)
   allocate(microstructureAt(theMesh%nElems), source=0)
   allocate(homogenizationAt(theMesh%nElems), source=0)
  
-  mesh_FEnodes = mesh_marc_buildElements(theMesh%nElems,theMesh%elem%nNodes,FILEUNIT)
+  connectivity_elem = mesh_marc_buildElements(theMesh%nElems,theMesh%elem%nNodes,FILEUNIT)
   call mesh_marc_buildElements2(microstructureAt,homogenizationAt, &
                                mesh_nElems,theMesh%elem%nNodes,initialcondTableStyle,FILEUNIT)
   if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
@@ -174,12 +179,12 @@ subroutine mesh_init(ip,el)
 #if defined(DAMASK_HDF5)
   call results_openJobFile
   call HDF5_closeGroup(results_addGroup('geometry'))
-  call results_writeDataset('geometry',mesh_FEnodes,'C',&
+  call results_writeDataset('geometry',connectivity_elem,'C',&
                             'connectivity of the elements','-')
   call results_closeJobFile
 #endif
  
-  call buildCells(theMesh,theMesh%elem,mesh_FEnodes)
+  call buildCells(theMesh,theMesh%elem,connectivity_elem)
    
   call mesh_build_cellconnectivity
   if (myDebug) write(6,'(a)') ' Built cell connectivity'; flush(6)
@@ -641,14 +646,16 @@ function mesh_marc_buildElements(nElem,nNodes,fileUnit)
         if (e /= 0) then                                                                            ! disregard non CP elems
           nNodesAlreadyRead = 0
           do j = 1,chunkPos(1)-2
-            mesh_marc_buildElements(j,e) = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j+2))                  ! CP ids of nodes
+            mesh_marc_buildElements(j,e) = &
+            mesh_FEasCP('node',IO_IntValue(line,chunkPos,j+2))
           enddo
           nNodesAlreadyRead = chunkPos(1) - 2
           do while(nNodesAlreadyRead < nNodes)                                                      ! read on if not all nodes in one line
             read (fileUnit,'(A300)',END=620) line
             chunkPos = IO_stringPos(line)
             do j = 1,chunkPos(1)
-              mesh_marc_buildElements(nNodesAlreadyRead+j,e) = mesh_FEasCP('node',IO_IntValue(line,chunkPos,j)) ! CP ids of nodes
+              mesh_marc_buildElements(nNodesAlreadyRead+j,e) = &
+              mesh_FEasCP('node',IO_IntValue(line,chunkPos,j))
             enddo
             nNodesAlreadyRead = nNodesAlreadyRead + chunkPos(1)
           enddo
@@ -731,6 +738,8 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
   integer,dimension(:,:),   allocatable :: parentsAndWeights,candidates_global, connectivity_cell_reshape
   integer,dimension(:,:,:), allocatable :: connectivity_cell
   
+  type(tCellNodeDefinition), dimension(:), allocatable :: cellNodeDefinition
+  
   real(pReal), dimension(:,:), allocatable :: nodes_new,nodes
   integer :: e, n, c, p, s,i,m,j,nParentNodes,nCellNode,Nelem,candidateID
   
@@ -755,6 +764,8 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
   enddo
   nCellNode = thisMesh%nNodes
   
+  
+  allocate(cellNodeDefinition(elem%nNodes-1))
 
 !---------------------------------------------------------------------------------------------------
 ! set connectivity of cell nodes that are defined by 2,...,nNodes real nodes
@@ -815,7 +826,9 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
     enddo
     
     i = uniqueRows(candidates_global(1:2*nParentNodes,:))
-      
+    
+    allocate(cellNodeDefinition(nParentNodes-1)%parents(i,nParentNodes))
+    allocate(cellNodeDefinition(nParentNodes-1)%weights(i,nParentNodes))
     
     ! calculate coordinates of cell nodes and insert their ID into the cell conectivity
     nodes_new = reshape([(0.0_pReal,j = 1, 3*i)], [3,i])
@@ -823,27 +836,29 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
     i = 1
     n = 1
     do while(n <= size(candidates_local)*Nelem)
-     j=0
-     parentsAndWeights(:,1) = candidates_global(1:nParentNodes,n+j)
-     parentsAndWeights(:,2) = candidates_global(nParentNodes+1:nParentNodes*2,n+j)
-     e = candidates_global(nParentNodes*2+1,n+j)
-     c = candidates_global(nParentNodes*2+2,n+j)
-     do m = 1, nParentNodes
-       nodes_new(:,i) = nodes_new(:,i) &
-                      + thisMesh%node_0(:,parentsAndWeights(m,1)) * real(parentsAndWeights(m,2),pReal)
-     enddo
-     nodes_new(:,i) =  nodes_new(:,i)/real(sum(parentsAndWeights(:,2)),pReal)
+      j=0
+      parentsAndWeights(:,1) = candidates_global(1:nParentNodes,n+j)
+      parentsAndWeights(:,2) = candidates_global(nParentNodes+1:nParentNodes*2,n+j)         
+      e = candidates_global(nParentNodes*2+1,n+j)
+      c = candidates_global(nParentNodes*2+2,n+j)
+      do m = 1, nParentNodes
+        nodes_new(:,i) = nodes_new(:,i) &
+                       + thisMesh%node_0(:,parentsAndWeights(m,1)) * real(parentsAndWeights(m,2),pReal)
+      enddo
+      nodes_new(:,i) =  nodes_new(:,i)/real(sum(parentsAndWeights(:,2)),pReal)
 
-     do while (n+j<= size(candidates_local)*Nelem)
-       if (any(candidates_global(1:2*nParentNodes,n+j)/=candidates_global(1:2*nParentNodes,n))) exit
-       where (connectivity_cell(:,:,candidates_global(nParentNodes*2+1,n+j)) == -candidates_global(nParentNodes*2+2,n+j)) ! still locally defined
-         connectivity_cell(:,:,candidates_global(nParentNodes*2+1,n+j)) = nCellNode + i                                   ! gets current new cell node id
-       end where
+      do while (n+j<= size(candidates_local)*Nelem)
+        if (any(candidates_global(1:2*nParentNodes,n+j)/=candidates_global(1:2*nParentNodes,n))) exit
+        where (connectivity_cell(:,:,candidates_global(nParentNodes*2+1,n+j)) == -candidates_global(nParentNodes*2+2,n+j)) ! still locally defined
+          connectivity_cell(:,:,candidates_global(nParentNodes*2+1,n+j)) = nCellNode + i                                   ! gets current new cell node id
+        end where
        
-        j = j + 1
-     enddo
-     i=i+1
-     n = n+j
+        j = j+1
+      enddo
+      cellNodeDefinition(nParentNodes-1)%parents(i,:) = parentsAndWeights(:,1)
+      cellNodeDefinition(nParentNodes-1)%weights(i,:) = parentsAndWeights(:,2)
+      i = i+1
+      n = n+j
 
     enddo
     nCellNode = nCellNode + i
@@ -940,7 +955,7 @@ subroutine mesh_build_cellconnectivity
      do n = 1,theMesh%elem%NcellnodesPerCell
        localCellnodeID = theMesh%elem%cell(n,i)
        if (localCellnodeID <= FE_NmatchingNodes(theMesh%elem%geomType)) then                                            ! this cell node is a matching node
-         matchingNodeID = mesh_FEnodes(localCellnodeID,e)
+         matchingNodeID = connectivity_elem(localCellnodeID,e)
          if (matchingNode2cellnode(matchingNodeID) == 0) then                                  ! if this matching node does not yet exist in the glbal cell node list ...
            mesh_Ncellnodes = mesh_Ncellnodes + 1                                               ! ... count it as cell node ...
            matchingNode2cellnode(matchingNodeID) = mesh_Ncellnodes                                  ! ... and remember its global ID
@@ -994,7 +1009,7 @@ function mesh_build_cellnodes()
    localCellnodeID = mesh_cellnodeParent(2,n)
    myCoords = 0.0_pReal
    do m = 1,theMesh%elem%nNodes
-     myCoords = myCoords + mesh_node(1:3,mesh_FEnodes(m,e)) &
+     myCoords = myCoords + mesh_node(1:3,connectivity_elem(m,e)) &
                          * theMesh%elem%cellNodeParentNodeWeights(m,localCellnodeID)
    enddo
    mesh_build_cellnodes(1:3,n) = myCoords / sum(theMesh%elem%cellNodeParentNodeWeights(:,localCellnodeID))
