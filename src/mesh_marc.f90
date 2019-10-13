@@ -149,9 +149,9 @@ subroutine mesh_init(ip,el)
   call mesh_marc_map_elements(hypoelasticTableStyle,mesh_nameElemSet,mesh_mapElemSet,&
                               mesh_nElems,fileFormatVersion,marc_matNumber,FILEUNIT)  
   allocate (mesh_mapFEtoCPnode(2,mesh_Nnodes),source=0)
-  call mesh_marc_map_nodes(mesh_Nnodes,FILEUNIT)                                                                  !ToDo: don't work on global variables
+  call mesh_marc_map_nodes(mesh_Nnodes,inputFile)                                                                  !ToDo: don't work on global variables
   
-  mesh_node0 = mesh_marc_build_nodes(mesh_Nnodes,FILEUNIT)
+  mesh_node0 = mesh_marc_build_nodes(mesh_Nnodes,inputFile)
   mesh_node  = mesh_node0
   
   elemType = mesh_marc_getElemType(mesh_nElems,FILEUNIT)
@@ -478,34 +478,26 @@ end subroutine mesh_marc_map_elements
 !--------------------------------------------------------------------------------------------------
 !> @brief Maps node from FE ID to internal (consecutive) representation.
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_map_nodes(nNodes,fileUnit)
+subroutine mesh_marc_map_nodes(nNodes,fileContent)
 
-  integer, intent(in) :: fileUnit, nNodes
+  integer, intent(in)                                 :: nNodes
+  character(len=pStringLen), dimension(:), intent(in) :: fileContent                                !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
-  character(len=300) line
+  integer :: i, l
 
-  integer, dimension (nNodes) :: node_count
-  integer :: i
-
-  node_count = 0
-
-  rewind(fileUnit)
-  do
-    read (fileUnit,'(A300)',END=620) line
-    chunkPos = IO_stringPos(line)
-    if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'coordinates' ) then
-      read (fileUnit,'(A300)') line                                                                 ! skip crap line
+  do l = 1, size(fileContent)
+    chunkPos = IO_stringPos(fileContent(l))
+    if( IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'coordinates' ) then
       do i = 1,nNodes
-        read (fileUnit,'(A300)') line
-        mesh_mapFEtoCPnode(1,i) = IO_fixedIntValue (line,[0,10],1)
+        mesh_mapFEtoCPnode(1,i) = IO_fixedIntValue (fileContent(l+1+i),[0,10],1)
         mesh_mapFEtoCPnode(2,i) = i
       enddo
       exit
     endif
   enddo
 
-620 call math_sort(mesh_mapFEtoCPnode)
+  call math_sort(mesh_mapFEtoCPnode)
 
 end subroutine mesh_marc_map_nodes
 
@@ -513,33 +505,30 @@ end subroutine mesh_marc_map_nodes
 !--------------------------------------------------------------------------------------------------
 !> @brief store x,y,z coordinates of all nodes in mesh.
 !--------------------------------------------------------------------------------------------------
-function mesh_marc_build_nodes(nNode,fileUnit) result(nodes)
+function mesh_marc_build_nodes(nNode,fileContent) result(nodes)
 
-  integer, intent(in)                :: nNode,fileUnit
+  integer,                                 intent(in) :: nNode
+  character(len=pStringLen), dimension(:), intent(in) :: fileContent                                !< file content, separated per lines
+  
   real(pReal), dimension(3,nNode)    :: nodes 
   integer, dimension(5), parameter   :: node_ends = [0,10,30,50,70]
   integer, allocatable, dimension(:) :: chunkPos
-  character(len=300) :: line
-  integer :: i,j,m
+  integer :: i,j,m,l
 
-  rewind(fileUnit)
-  do
-    read (fileUnit,'(A300)',END=620) line
-    chunkPos = IO_stringPos(line)
-    if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'coordinates' ) then
-      read (fileUnit,'(A300)') line                                                                 ! skip crap line
+  do l = 1, size(fileContent)
+    chunkPos = IO_stringPos(fileContent(l))
+    if( IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'coordinates' ) then
       do i=1,nNode
-        read (fileUnit,'(A300)') line
-        m = mesh_FEasCP('node',IO_fixedIntValue(line,node_ends,1))
+        m = mesh_FEasCP('node',IO_fixedIntValue(fileContent(l+1+i),node_ends,1))
         do j = 1,3
-          nodes(j,m) = mesh_unitlength * IO_fixedNoEFloatValue(line,node_ends,j+1)
+          nodes(j,m) = mesh_unitlength * IO_fixedNoEFloatValue(fileContent(l+1+i),node_ends,j+1)
         enddo
       enddo
       exit
     endif
   enddo
 
-620 end function mesh_marc_build_nodes
+end function mesh_marc_build_nodes
 
 
 !--------------------------------------------------------------------------------------------------
