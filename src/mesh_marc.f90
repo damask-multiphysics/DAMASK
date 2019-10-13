@@ -125,10 +125,6 @@ subroutine mesh_init(ip,el)
   integer, dimension(:), allocatable :: &
    marc_matNumber                                                                                   !< array of material numbers for hypoelastic material (Marc only)
   logical :: myDebug
-   real(pReal), dimension(:,:,:), allocatable:: &
-   mesh_ipArea                                                                                      !< area of interface to neighboring IP (initially!)
- real(pReal),dimension(:,:,:,:), allocatable :: &
-   mesh_ipAreaNormal                                                                                !< area normal of interface to neighboring IP (initially!)
    
  real(pReal), dimension(:,:), allocatable :: &
    ip_reshaped
@@ -195,9 +191,6 @@ subroutine mesh_init(ip,el)
   call mesh_build_ipCoordinates
   if (myDebug) write(6,'(a)') ' Built IP coordinates'; flush(6)
 
-  allocate(mesh_ipArea(theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems))
-  allocate(mesh_ipAreaNormal(3,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems))
-  call mesh_build_ipAreas(mesh_ipArea,mesh_ipAreaNormal)
   if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
  
   call IP_neighborhood2
@@ -230,10 +223,7 @@ subroutine mesh_init(ip,el)
                             'nodal coordinates','m')
   call results_closeJobFile()
 #endif
-  call geometry_plastic_nonlocal_setIPvolume(IPvolume())
   call geometry_plastic_nonlocal_setIPneighborhood(mesh_ipNeighborhood2)
-  call geometry_plastic_nonlocal_setIParea(mesh_ipArea)
-  call geometry_plastic_nonlocal_setIPareaNormal(mesh_ipAreaNormal)
 
 end subroutine mesh_init
 
@@ -1019,68 +1009,6 @@ end function mesh_build_cellnodes
 
 
 !---------------------------------------------------------------------------------------------------
-!> @brief Calculates IP volume.
-!> @details The IP volume is calculated differently depending on the cell type.
-!> 2D cells assume an element depth of one in order to calculate the volume.
-!> For the hexahedral cell we subdivide the cell into subvolumes of pyramidal
-!> shape with a cell face as basis and the central ip at the tip. This subvolume is
-!> calculated as an average of four tetrahedals with three corners on the cell face
-!> and one corner at the central ip.
-!---------------------------------------------------------------------------------------------------
-function IPvolume()
- 
-  real(pReal), dimension(theMesh%elem%nIPs,theMesh%nElems) :: IPvolume
-
-  integer :: e,i,c,m,f,n
-  real(pReal), dimension(size(theMesh%elem%cellFace,1),size(theMesh%elem%cellFace,2)) :: subvolume
-
-  c = theMesh%elem%cellType
-  m = size(theMesh%elem%cellFace,1)
-
-  do e = 1,theMesh%nElems
-    select case (c)
-
-      case (1)                                                                                ! 2D 3node
-        forall (i = 1:theMesh%elem%nIPs) &                                                           ! loop over ips=cells in this element
-          IPvolume(i,e) = math_areaTriangle(theMesh%node_0(1:3,mesh_cell2(1,i,e)), &
-                                            theMesh%node_0(1:3,mesh_cell2(2,i,e)), &
-                                            theMesh%node_0(1:3,mesh_cell2(3,i,e)))
-
-      case (2)                                                                                ! 2D 4node
-        forall (i = 1:theMesh%elem%nIPs) &                                                           ! loop over ips=cells in this element
-          IPvolume(i,e) = math_areaTriangle(theMesh%node_0(1:3,mesh_cell2(1,i,e)), &            ! here we assume a planar shape, so division in two triangles suffices
-                                            theMesh%node_0(1:3,mesh_cell2(2,i,e)), &
-                                            theMesh%node_0(1:3,mesh_cell2(3,i,e))) &
-                        + math_areaTriangle(theMesh%node_0(1:3,mesh_cell2(3,i,e)), &
-                                            theMesh%node_0(1:3,mesh_cell2(4,i,e)), &
-                                            theMesh%node_0(1:3,mesh_cell2(1,i,e)))
-
-      case (3)                                                                                ! 3D 4node
-        forall (i = 1:theMesh%elem%nIPs) &                                                           ! loop over ips=cells in this element
-          IPvolume(i,e) = math_volTetrahedron(theMesh%node_0(1:3,mesh_cell2(1,i,e)), &
-                                              theMesh%node_0(1:3,mesh_cell2(2,i,e)), &
-                                              theMesh%node_0(1:3,mesh_cell2(3,i,e)), &
-                                              theMesh%node_0(1:3,mesh_cell2(4,i,e)))
-
-      case (4)                                                                                ! 3D 8node
-        do i = 1,theMesh%elem%nIPs                                                                   ! loop over ips=cells in this element
-          subvolume = 0.0_pReal
-          forall(f = 1:FE_NipNeighbors(c), n = 1:m) &
-            subvolume(n,f) = math_volTetrahedron(&
-                               mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(      n     ,f),i,e)), &
-                               mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(1+mod(n  ,m),f),i,e)), &
-                               mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(1+mod(n+1,m),f),i,e)), &
-                               mesh_ipCoordinates(1:3,i,e))
-          IPvolume(i,e) = 0.5_pReal * sum(subvolume)                                         ! each subvolume is based on four tetrahedrons, altough the face consists of only two triangles -> averaging factor two
-        enddo
-
-    end select
-  enddo
-
-end function IPvolume
-
-
-!---------------------------------------------------------------------------------------------------
 !> @brief cell neighborhood
 !---------------------------------------------------------------------------------------------------
 subroutine IP_neighborhood2
@@ -1183,74 +1111,6 @@ subroutine mesh_build_ipCoordinates
   enddo
 
 end subroutine mesh_build_ipCoordinates
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculation of IP interface areas, allocate globals '_ipArea', and '_ipAreaNormal'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_build_ipAreas(ipArea,ipAreaNormal)
-
- integer :: e,c,i,f,n,m
- real(pReal), dimension(theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), intent(out) ::  ipArea
- real(pReal), dimension(3,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems), intent(out) :: ipAreaNormal
- real(pReal), dimension (3,size(theMesh%elem%cellFace,2)) :: nodePos, normals
- real(pReal), dimension(3) :: normal
- 
- c = theMesh%elem%cellType
-
-
-   do e = 1,theMesh%nElems                                                                      ! loop over cpElems
-     select case (c)
-
-       case (1,2)                                                                         ! 2D 3 or 4 node
-         do i = 1,theMesh%elem%nIPs
-           do f = 1,FE_NipNeighbors(c)                                                         ! loop over cell faces
-             forall(n = 1: size(theMesh%elem%cellface,1)) &
-               nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(n,f),i,e))
-             normal(1) =   nodePos(2,2) - nodePos(2,1)                                              ! x_normal =  y_connectingVector
-             normal(2) = -(nodePos(1,2) - nodePos(1,1))                                             ! y_normal = -x_connectingVector
-             normal(3) = 0.0_pReal
-             ipArea(f,i,e) = norm2(normal)
-             ipAreaNormal(1:3,f,i,e) = normal / norm2(normal)                             ! ensure unit length of area normal
-           enddo
-         enddo
-
-       case (3)                                                                                ! 3D 4node
-         do i = 1,theMesh%elem%nIPs
-           do f = 1,FE_NipNeighbors(c)                                                         ! loop over cell faces
-             forall(n = 1: size(theMesh%elem%cellface,1)) &
-               nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(n,f),i,e))
-             normal = math_cross(nodePos(1:3,2) - nodePos(1:3,1), &
-                                 nodePos(1:3,3) - nodePos(1:3,1))
-             ipArea(f,i,e) = norm2(normal)
-             ipAreaNormal(1:3,f,i,e) = normal / norm2(normal)                             ! ensure unit length of area normal
-           enddo
-         enddo
-
-       case (4)                                                                                ! 3D 8node
-         ! for this cell type we get the normal of the quadrilateral face as an average of
-         ! four normals of triangular subfaces; since the face consists only of two triangles,
-         ! the sum has to be divided by two; this whole prcedure tries to compensate for
-         ! probable non-planar cell surfaces
-         m = size(theMesh%elem%cellFace,1)
-         do i = 1,theMesh%elem%nIPs
-           do f = 1,FE_NipNeighbors(c)                                                         ! loop over cell faces
-             forall(n = 1: size(theMesh%elem%cellface,1)) &
-               nodePos(1:3,n) = mesh_cellnode(1:3,mesh_cell(theMesh%elem%cellface(n,f),i,e))
-             forall(n = 1: size(theMesh%elem%cellface,1)) &
-               normals(1:3,n) = 0.5_pReal &
-                              * math_cross(nodePos(1:3,1+mod(n  ,m)) - nodePos(1:3,n), &
-                                           nodePos(1:3,1+mod(n+1,m)) - nodePos(1:3,n))
-             normal = 0.5_pReal * sum(normals,2)
-             ipArea(f,i,e) = norm2(normal)
-             ipAreaNormal(1:3,f,i,e) = normal / norm2(normal)
-           enddo
-         enddo
-
-     end select
-   enddo
-   
-end subroutine mesh_build_ipAreas
 
 
 !--------------------------------------------------------------------------------------------------
