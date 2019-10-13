@@ -37,9 +37,6 @@ module mesh
    
  real(pReal), dimension(:,:,:), allocatable, public :: &
    mesh_ipCoordinates                                                                               !< IP x,y,z coordinates (after deformation!)
-
- real(pReal), dimension(:,:), allocatable, public :: &
-   mesh_cellnode                                                                                    !< cell node x,y,z coordinates (after deformation! ONLY FOR MARC!!!)
 !--------------------------------------------------------------------------------------------------
 
  integer, dimension(:,:), allocatable :: &
@@ -55,28 +52,12 @@ module mesh
  
 
  integer:: &
-   mesh_Ncellnodes, &                                                                                  !< total number of cell nodes in mesh (including duplicates)
-   mesh_elemType, &                                                                                 !< Element type of the mesh (only support homogeneous meshes)
-   mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
-   mesh_Ncells, &                                                                                   !< total number of cells in mesh
-   mesh_maxNsharedElems                                                                             !< max number of CP elements sharing a node
+   mesh_Nnodes                                                                                      !< total number of nodes in mesh
 
-
-integer, dimension(:,:), allocatable :: &
-   mesh_cellnodeParent                                                                              !< cellnode's parent element ID, cellnode's intra-element ID
 
  integer,dimension(:,:,:), allocatable :: &
    mesh_cell2, &                                                                                        !< cell connectivity for each element,ip/cell
    mesh_cell                                                                                        !< cell connectivity for each element,ip/cell
-
-
- integer, dimension(4), parameter :: FE_NipNeighbors = &                                            !< number of ip neighbors / cell faces in a specific cell type
- int([&
-      3, & ! (2D 3node)
-      4, & ! (2D 4node)
-      4, & ! (3D 4node)
-      6  & ! (3D 8node)
-  ],pInt)
 
  integer,     dimension(:),   allocatable :: &
    microstructureAt, &
@@ -99,7 +80,6 @@ integer, dimension(:,:), allocatable :: &
 
  public :: &
    mesh_init, &
-   mesh_build_cellnodes, &
    mesh_FEasCP
  
  
@@ -123,7 +103,6 @@ subroutine mesh_init(ip,el)
     initialcondTableStyle
   integer, dimension(:), allocatable :: &
    marc_matNumber                                                                                   !< array of material numbers for hypoelastic material (Marc only)
-  logical :: myDebug
    
  real(pReal), dimension(:,:), allocatable :: &
    ip_reshaped
@@ -132,7 +111,6 @@ subroutine mesh_init(ip,el)
  
   mesh_unitlength = numerics_unitlength                                                              ! set physical extent of a length unit in mesh
   inputFile = IO_read_ASCII(trim(modelName)//trim(InputFileExtension))
-  myDebug = (iand(debug_level(debug_mesh),debug_levelBasic) /= 0)
  
   ! parsing Marc input file
   fileFormatVersion = mesh_marc_get_fileFormat(inputFile)
@@ -156,7 +134,6 @@ subroutine mesh_init(ip,el)
   mesh_node  = mesh_node0
   
   elemType = mesh_marc_getElemType(mesh_nElems,FILEUNIT)
-  if (myDebug) write(6,'(a)') ' Counted CP sizes'; flush(6)
   
   call theMesh%init('mesh',elemType,mesh_node0)
   call theMesh%setNelems(mesh_nElems)
@@ -167,7 +144,6 @@ subroutine mesh_init(ip,el)
   connectivity_elem = mesh_marc_buildElements(theMesh%nElems,theMesh%elem%nNodes,FILEUNIT)
   call mesh_marc_buildElements2(microstructureAt,homogenizationAt, &
                                mesh_nElems,theMesh%elem%nNodes,initialcondTableStyle,FILEUNIT)
-  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
   close (FILEUNIT)
 
 
@@ -181,18 +157,9 @@ subroutine mesh_init(ip,el)
  
   call buildCells(theMesh,theMesh%elem,connectivity_elem)
    
-  call mesh_build_cellconnectivity
-  if (myDebug) write(6,'(a)') ' Built cell connectivity'; flush(6)
-  mesh_cellnode = mesh_build_cellnodes()
-  if (myDebug) write(6,'(a)') ' Built cell nodes'; flush(6)
- 
   allocate(mesh_ipCoordinates(3,theMesh%elem%nIPs,theMesh%nElems),source=0.0_pReal)
-  if (myDebug) write(6,'(a)') ' Built IP coordinates'; flush(6)
-
-  if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
  
   call IP_neighborhood2
-  if (myDebug) write(6,'(a)') ' Built IP neighborhood'; flush(6)
  
   if (usePingPong .and. (mesh_Nelems /= theMesh%nElems)) &
     call IO_error(600)                                                                          ! ping-pong must be disabled when having non-DAMASK elements
@@ -892,118 +859,6 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
   end function uniqueRows
 
 end subroutine buildCells
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Split CP elements into cells.
-!> @details Build a mapping between cells and the corresponding cell nodes ('mesh_cell').
-!> Cell nodes that are also matching nodes are unique in the list of cell nodes,
-!> all others (currently) might be stored more than once.
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_build_cellconnectivity
-
- integer, dimension(:), allocatable :: &
-   matchingNode2cellnode
-   
- integer, dimension(10), parameter :: FE_NmatchingNodes = &               !< number of nodes that are needed for face matching in a specific type of element geometry
- int([ &
-      3, & ! element   6 (2D 3node 1ip)
-      3, & ! element 125 (2D 6node 3ip)
-      4, & ! element  11 (2D 4node 4ip)
-      4, & ! element  27 (2D 8node 9ip)
-      4, & ! element 134 (3D 4node 1ip)
-      4, & ! element 127 (3D 10node 4ip)
-      6, & ! element 136 (3D 6node 6ip)
-      8, & ! element 117 (3D 8node 1ip)
-      8, & ! element   7 (3D 8node 8ip)
-      8  & ! element  21 (3D 20node 27ip)
-  ],pInt)
-
- integer, dimension(:,:), allocatable :: &
-   cellnodeParent
- integer, dimension(theMesh%elem%Ncellnodes) :: &
-   localCellnode2globalCellnode
- integer :: &
-   e,n,i, &
-   matchingNodeID, &
-   localCellnodeID
-
- allocate(mesh_cell(theMesh%elem%NcellNodesPerCell,theMesh%elem%nIPs,theMesh%nElems), source=0)
- allocate(matchingNode2cellnode(theMesh%nNodes),                            source=0)
- allocate(cellnodeParent(2,theMesh%elem%Ncellnodes*theMesh%nElems),       source=0)
- 
- mesh_Ncells = theMesh%nElems*theMesh%elem%nIPs
-!--------------------------------------------------------------------------------------------------
-! Count cell nodes (including duplicates) and generate cell connectivity list
- mesh_Ncellnodes = 0
-
- do e = 1,theMesh%nElems
-   localCellnode2globalCellnode = 0
-   do i = 1,theMesh%elem%nIPs
-     do n = 1,theMesh%elem%NcellnodesPerCell
-       localCellnodeID = theMesh%elem%cell(n,i)
-       if (localCellnodeID <= FE_NmatchingNodes(theMesh%elem%geomType)) then                                            ! this cell node is a matching node
-         matchingNodeID = connectivity_elem(localCellnodeID,e)
-         if (matchingNode2cellnode(matchingNodeID) == 0) then                                  ! if this matching node does not yet exist in the glbal cell node list ...
-           mesh_Ncellnodes = mesh_Ncellnodes + 1                                               ! ... count it as cell node ...
-           matchingNode2cellnode(matchingNodeID) = mesh_Ncellnodes                                  ! ... and remember its global ID
-           cellnodeParent(1,mesh_Ncellnodes) = e                                               ! ... and where it belongs to
-           cellnodeParent(2,mesh_Ncellnodes) = localCellnodeID
-         endif
-         mesh_cell(n,i,e) = matchingNode2cellnode(matchingNodeID)
-       else                                                                                         ! this cell node is no matching node
-         if (localCellnode2globalCellnode(localCellnodeID) == 0) then                          ! if this local cell node does not yet exist in the  global cell node list ...
-           mesh_Ncellnodes = mesh_Ncellnodes + 1                                               ! ... count it as cell node ...
-           localCellnode2globalCellnode(localCellnodeID) = mesh_Ncellnodes                          ! ... and remember its global ID ...
-           cellnodeParent(1,mesh_Ncellnodes) = e                                               ! ... and it belongs to
-           cellnodeParent(2,mesh_Ncellnodes) = localCellnodeID
-         endif
-         mesh_cell(n,i,e) = localCellnode2globalCellnode(localCellnodeID)
-       endif
-     enddo
-   enddo
- enddo
-
- allocate(mesh_cellnodeParent(2,mesh_Ncellnodes))
- allocate(mesh_cellnode(3,mesh_Ncellnodes))
- 
- forall(n = 1:mesh_Ncellnodes)
-   mesh_cellnodeParent(1,n) = cellnodeParent(1,n)
-   mesh_cellnodeParent(2,n) = cellnodeParent(2,n)
- endforall
-
-end subroutine mesh_build_cellconnectivity
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Calculate position of cellnodes from the given position of nodes
-!> Build list of cellnodes' coordinates.
-!> Cellnode coordinates are calculated from a weighted sum of node coordinates.
-!--------------------------------------------------------------------------------------------------
-function mesh_build_cellnodes()
-
- 
- real(pReal), dimension(3,mesh_Ncellnodes) :: mesh_build_cellnodes
-
- integer :: &
-   e,n,m, &
-   localCellnodeID
- real(pReal), dimension(3) :: &
-   myCoords
-
- mesh_build_cellnodes = 0.0_pReal
- do n = 1,mesh_Ncellnodes                                                                           ! loop over cell nodes
-   e = mesh_cellnodeParent(1,n)
-   localCellnodeID = mesh_cellnodeParent(2,n)
-   myCoords = 0.0_pReal
-   do m = 1,theMesh%elem%nNodes
-     myCoords = myCoords + mesh_node(1:3,connectivity_elem(m,e)) &
-                         * theMesh%elem%cellNodeParentNodeWeights(m,localCellnodeID)
-   enddo
-   mesh_build_cellnodes(1:3,n) = myCoords / sum(theMesh%elem%cellNodeParentNodeWeights(:,localCellnodeID))
- enddo
-
-end function mesh_build_cellnodes
 
 
 !---------------------------------------------------------------------------------------------------
