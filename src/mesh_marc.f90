@@ -29,6 +29,8 @@ module mesh
     integer, dimension(:,:), allocatable :: weights
   end type tCellNodeDefinition
   
+  type(tCellNodeDefinition), dimension(:), allocatable :: cellNodeDefinition
+  
   real(pReal), public, protected :: &
     mesh_unitlength                                                                                 !< physical length of one unit in mesh
  
@@ -41,19 +43,6 @@ module mesh
   real(pReal), dimension(:,:,:), allocatable, public :: &
     mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
 !--------------------------------------------------------------------------------------------------
-
-
- integer, dimension(:,:), allocatable :: &
-   connectivity_elem
-   
-
- type(tMesh) :: theMesh
- 
- integer,dimension(:,:,:), allocatable :: &
-   mesh_cell2                                                                                       !< cell connectivity for each element,ip/cell
-
- integer, dimension(:,:,:,:), allocatable :: &
-   mesh_ipNeighborhood2                                                                             !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
 
 
  public :: &
@@ -98,6 +87,14 @@ subroutine mesh_init(ip,el)
    
  real(pReal), dimension(:,:), allocatable :: &
    ip_reshaped
+  integer,dimension(:,:,:), allocatable :: &
+   connectivity_cell                                                                                       !< cell connectivity for each element,ip/cell
+ integer, dimension(:,:), allocatable :: &
+   connectivity_elem
+   
+
+ type(tMesh) :: theMesh
+ 
  
   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
  
@@ -129,6 +126,9 @@ subroutine mesh_init(ip,el)
   
   call theMesh%init('mesh',elemType,mesh_node0)
   call theMesh%setNelems(mesh_nElems)
+  allocate(cellNodeDefinition(theMesh%elem%nNodes-1))
+  
+
   
   allocate(microstructureAt(theMesh%nElems), source=0)
   allocate(homogenizationAt(theMesh%nElems), source=0)
@@ -148,11 +148,12 @@ subroutine mesh_init(ip,el)
   call results_closeJobFile
 #endif
  
-  call buildCells(mesh_Nnodes,theMesh%elem,connectivity_elem)
+ allocate(connectivity_cell(theMesh%elem%NcellNodesPerCell,theMesh%elem%nIPs,theMesh%nElems))
+  call buildCells(connectivity_cell,cellNodeDefinition,&
+                  mesh_Nnodes,theMesh%elem,connectivity_elem)
    
   allocate(mesh_ipCoordinates(3,theMesh%elem%nIPs,theMesh%nElems),source=0.0_pReal)
  
-  call IP_neighborhood2
  
   if (usePingPong .and. (mesh_Nelems /= theMesh%nElems)) &
     call IO_error(600)                                                                          ! ping-pong must be disabled when having non-DAMASK elements
@@ -181,7 +182,6 @@ subroutine mesh_init(ip,el)
                             'nodal coordinates','m')
   call results_closeJobFile()
 #endif
-  call geometry_plastic_nonlocal_setIPneighborhood(mesh_ipNeighborhood2)
 
 end subroutine mesh_init
 
@@ -680,17 +680,20 @@ subroutine mesh_marc_buildElements2(microstructureAt,homogenizationAt, &
 630 end subroutine mesh_marc_buildElements2
 
 
-subroutine buildCells(nNodes,elem,connectivity_elem)
 
-  integer,         intent(in)                    :: nNodes
-  type(tElement),         intent(in) :: elem
-  integer,dimension(:,:), intent(in) :: connectivity_elem
+
+subroutine buildCells(connectivity_cell,cellNodeDefinition, &
+                      nNodes,elem,connectivity_elem)
+
+  type(tCellNodeDefinition), dimension(:), intent(out) :: cellNodeDefinition
+  integer,dimension(:,:,:),intent(out):: connectivity_cell
+  
+  integer,                 intent(in) :: nNodes
+  type(tElement),          intent(in) :: elem
+  integer,dimension(:,:),  intent(in) :: connectivity_elem
   
   integer,dimension(:),     allocatable :: candidates_local
-  integer,dimension(:,:),   allocatable :: parentsAndWeights,candidates_global, connectivity_cell_reshape
-  integer,dimension(:,:,:), allocatable :: connectivity_cell
-  
-  type(tCellNodeDefinition), dimension(:), allocatable :: cellNodeDefinition
+  integer,dimension(:,:),   allocatable :: parentsAndWeights,candidates_global
   
   integer :: e, n, c, p, s,i,m,j,nParentNodes,nCellNode,Nelem,candidateID
   
@@ -698,7 +701,6 @@ subroutine buildCells(nNodes,elem,connectivity_elem)
 
 !---------------------------------------------------------------------------------------------------
 ! initialize global connectivity to negative local connectivity
-  allocate(connectivity_cell(elem%NcellNodesPerCell,elem%nIPs,Nelem))
   connectivity_cell = -spread(elem%cell,3,Nelem)                                                    ! local cell node ID
   
 !---------------------------------------------------------------------------------------------------
@@ -714,9 +716,6 @@ subroutine buildCells(nNodes,elem,connectivity_elem)
     enddo
   enddo
   nCellNode = nNodes
-  
-  
-  allocate(cellNodeDefinition(elem%nNodes-1))
 
 !---------------------------------------------------------------------------------------------------
 ! set connectivity of cell nodes that are defined by 2,...,nNodes real nodes
@@ -804,11 +803,7 @@ subroutine buildCells(nNodes,elem,connectivity_elem)
 
     enddo
     nCellNode = nCellNode + i
-
-
   enddo
-  
-  mesh_cell2 = connectivity_cell
 
   contains
   !------------------------------------------------------------------------------------------------
@@ -838,83 +833,6 @@ subroutine buildCells(nNodes,elem,connectivity_elem)
   end function uniqueRows
 
 end subroutine buildCells
-
-
-!---------------------------------------------------------------------------------------------------
-!> @brief cell neighborhood
-!---------------------------------------------------------------------------------------------------
-subroutine IP_neighborhood2
-
-  integer, dimension(:,:), allocatable :: faces
-  integer, dimension(:),   allocatable :: face
-  integer :: e,i,f,c,m,n,j,k,l,p, current, next,i2,e2,n2,k2
-  logical :: match
-
-  allocate(faces(size(theMesh%elem%cellface,1)+3,size(theMesh%elem%cellface,2)*theMesh%elem%nIPs*theMesh%Nelems))
-
-  ! store cell face definitions
-  f = 0
-  do e = 1,theMesh%nElems
-    do i = 1,theMesh%elem%nIPs
-      do n = 1, theMesh%elem%nIPneighbors
-        f = f + 1
-        face = mesh_cell2(theMesh%elem%cellFace(:,n),i,e)
-        storeSorted: do j = 1, size(face)
-          faces(j,f) = maxval(face)
-          face(maxloc(face)) = -huge(1)
-        enddo storeSorted
-        faces(j:j+2,f) = [e,i,n]
-      enddo
-    enddo
-  enddo
-  
-  ! sort ..
-  call math_sort(faces,sortDim=1)
-  do p = 2, size(faces,1)-2
-     n = 1
-     do while(n <= size(faces,2))
-      j=0
-      do while (n+j<= size(faces,2))
-        if (faces(p-1,n+j)/=faces(p-1,n)) exit
-        j = j + 1
-      enddo
-      e = n+j-1
-      if (any(faces(p,n:e)/=faces(p,n))) call math_sort(faces(:,n:e),sortDim=p)
-      n = e+1
-     enddo
-  enddo
-
- allocate(mesh_ipNeighborhood2(3,theMesh%elem%nIPneighbors,theMesh%elem%nIPs,theMesh%nElems),source=0)
- 
- ! find IP neighbors
- f = 1
- do while(f <= size(faces,2))
-   e = faces(size(theMesh%elem%cellface,1)+1,f)
-   i = faces(size(theMesh%elem%cellface,1)+2,f)
-   n = faces(size(theMesh%elem%cellface,1)+3,f)
-   
-   if (f < size(faces,2)) then
-     match = all(faces(1:size(theMesh%elem%cellface,1),f) == faces(1:size(theMesh%elem%cellface,1),f+1))
-     e2 = faces(size(theMesh%elem%cellface,1)+1,f+1)
-     i2 = faces(size(theMesh%elem%cellface,1)+2,f+1)
-     n2 = faces(size(theMesh%elem%cellface,1)+3,f+1)
-   else
-     match = .false.
-   endif
-   
-   if (match) then
-     if (e == e2) then ! same element. MD: I don't think that we need this (not even for other elements)
-       k  = theMesh%elem%IPneighbor(n, i)
-       k2 = theMesh%elem%IPneighbor(n2,i2)
-     endif
-     mesh_ipNeighborhood2(1:3,n, i, e)  = [e2,i2,n2]
-     mesh_ipNeighborhood2(1:3,n2,i2,e2) = [e, i, n]
-     f = f +1
-   endif
-   f = f +1 
- enddo
-
-end subroutine IP_neighborhood2
 
 
 !--------------------------------------------------------------------------------------------------
