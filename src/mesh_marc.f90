@@ -47,9 +47,6 @@ module mesh
  integer, dimension(:,:), allocatable :: &
    connectivity_elem
    
- real(pReal), dimension(:,:), allocatable :: &
-   mesh_node, &                                                                                     !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!
-   mesh_node0                                                                                       !< node x,y,z coordinates (initially!)
 
  type(tMesh) :: theMesh
  
@@ -79,6 +76,9 @@ subroutine mesh_init(ip,el)
   character(len=pStringLen), dimension(:), allocatable :: inputFile                                 !< file content, separated per lines
  integer :: &
    mesh_NelemSets
+ real(pReal), dimension(:,:), allocatable :: &
+   mesh_node, &                                                                                     !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!
+   mesh_node0                                                                                       !< node x,y,z coordinates (initially!)
 
   integer :: j, fileFormatVersion, elemType, &
     mesh_maxNelemInSet, &
