@@ -266,7 +266,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
          outdatedFFN1  = .false.
          cycleCounter  = cycleCounter + 1
          !mesh_cellnode = mesh_build_cellnodes()                                                     ! update cell node coordinates
-         call mesh_build_ipCoordinates()                                                            ! update ip coordinates
+         !call mesh_build_ipCoordinates()                                                            ! update ip coordinates
        endif
        if (outdatedByNewInc) then
          computationMode = ior(computationMode,CPFEM_AGERESULTS)                                    ! calc and age results

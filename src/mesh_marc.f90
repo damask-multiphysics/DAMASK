@@ -100,7 +100,6 @@ integer, dimension(:,:), allocatable :: &
  public :: &
    mesh_init, &
    mesh_build_cellnodes, &
-   mesh_build_ipCoordinates, &
    mesh_FEasCP
  
  
@@ -188,7 +187,6 @@ subroutine mesh_init(ip,el)
   if (myDebug) write(6,'(a)') ' Built cell nodes'; flush(6)
  
   allocate(mesh_ipCoordinates(3,theMesh%elem%nIPs,theMesh%nElems),source=0.0_pReal)
-  call mesh_build_ipCoordinates
   if (myDebug) write(6,'(a)') ' Built IP coordinates'; flush(6)
 
   if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
@@ -1083,34 +1081,6 @@ subroutine IP_neighborhood2
  enddo
 
 end subroutine IP_neighborhood2
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Calculates IP Coordinates.
-! Marc however only provides nodal displacements,
-! so in this case the ip coordinates are always calculated on the basis of this subroutine.
-! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! FOR THE MOMENT THIS SUBROUTINE ACTUALLY CALCULATES THE CELL CENTER AND NOT THE IP COORDINATES,
-! AS THE IP IS NOT (ALWAYS) LOCATED IN THE CENTER OF THE IP VOLUME.
-! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_build_ipCoordinates
-
-  integer :: e,i,n
-  real(pReal), dimension(3) :: myCoords
-
-
-  do e = 1,theMesh%nElems
-    do i = 1,theMesh%elem%nIPs
-      myCoords = 0.0_pReal
-      do n = 1,theMesh%elem%nCellnodesPerCell
-        myCoords = myCoords + mesh_cellnode(1:3,mesh_cell2(n,i,e))
-      enddo
-      mesh_ipCoordinates(1:3,i,e) = myCoords / real(theMesh%elem%nCellnodesPerCell,pReal)
-    enddo
-  enddo
-
-end subroutine mesh_build_ipCoordinates
 
 
 !--------------------------------------------------------------------------------------------------
