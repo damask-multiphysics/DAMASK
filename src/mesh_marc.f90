@@ -65,8 +65,8 @@ subroutine mesh_init(ip,el)
  integer :: &
    mesh_NelemSets
  real(pReal), dimension(:,:), allocatable :: &
-   mesh_node, &                                                                                     !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!
-   mesh_node0                                                                                       !< node x,y,z coordinates (initially!)
+   node0_elem, &                                                                                       !< node x,y,z coordinates (initially!)
+   node0_cell
 
   integer :: j, fileFormatVersion, elemType, &
     mesh_maxNelemInSet, &
@@ -88,7 +88,7 @@ subroutine mesh_init(ip,el)
  real(pReal), dimension(:,:), allocatable :: &
    ip_reshaped
   integer,dimension(:,:,:), allocatable :: &
-   connectivity_cell                                                                                       !< cell connectivity for each element,ip/cell
+   connectivity_cell                                                                                !< cell connectivity for each element,ip/cell
  integer, dimension(:,:), allocatable :: &
    connectivity_elem
    
@@ -119,14 +119,13 @@ subroutine mesh_init(ip,el)
   allocate (mesh_mapFEtoCPnode(2,mesh_Nnodes),source=0)
   call mesh_marc_map_nodes(mesh_Nnodes,inputFile)                                                                  !ToDo: don't work on global variables
   
-  mesh_node0 = mesh_marc_build_nodes(mesh_Nnodes,inputFile)
-  mesh_node  = mesh_node0
+  node0_elem = mesh_marc_build_nodes(mesh_Nnodes,inputFile)
   
   elemType = mesh_marc_getElemType(mesh_nElems,FILEUNIT)
   
-  call theMesh%init('mesh',elemType,mesh_node0)
+  call theMesh%init('mesh',elemType,node0_elem)
   call theMesh%setNelems(mesh_nElems)
-  allocate(cellNodeDefinition(theMesh%elem%nNodes-1))
+
   
 
   
@@ -148,9 +147,13 @@ subroutine mesh_init(ip,el)
   call results_closeJobFile
 #endif
  
- allocate(connectivity_cell(theMesh%elem%NcellNodesPerCell,theMesh%elem%nIPs,theMesh%nElems))
+  allocate(cellNodeDefinition(theMesh%elem%nNodes-1))
+  allocate(connectivity_cell(theMesh%elem%NcellNodesPerCell,theMesh%elem%nIPs,theMesh%nElems))
   call buildCells(connectivity_cell,cellNodeDefinition,&
                   mesh_Nnodes,theMesh%elem,connectivity_elem)
+  allocate(node0_cell(3,maxval(connectivity_cell)))
+  call buildCellNodes(node0_cell,&
+                      cellNodeDefinition,node0_elem)
    
   allocate(mesh_ipCoordinates(3,theMesh%elem%nIPs,theMesh%nElems),source=0.0_pReal)
  
@@ -173,12 +176,12 @@ subroutine mesh_init(ip,el)
   ip_reshaped = reshape(mesh_ipCoordinates,[3,theMesh%elem%nIPs*theMesh%nElems])
   call discretization_init(microstructureAt,homogenizationAt,&
                            ip_reshaped,&
-                           mesh_node0)
+                           node0_elem)
 #if defined(DAMASK_HDF5)
   call results_openJobFile
   call results_writeDataset('geometry',ip_reshaped,'x_c', &
                             'cell center coordinates','m')
-  call results_writeDataset('geometry',mesh_node0,'x_n', &
+  call results_writeDataset('geometry',node0_elem,'x_n', &
                             'nodal coordinates','m')
   call results_closeJobFile()
 #endif
@@ -833,6 +836,34 @@ subroutine buildCells(connectivity_cell,cellNodeDefinition, &
   end function uniqueRows
 
 end subroutine buildCells
+
+
+subroutine buildCellNodes(node_cell,&
+                          definition,node_elem)
+
+  real(pReal),               dimension(:,:), intent(out) :: node_cell
+  type(tCellNodeDefinition), dimension(:),   intent(in)  :: definition
+  real(pReal),               dimension(:,:), intent(in)  :: node_elem
+  
+  integer :: i, j, k, n
+  
+  n = size(node_elem,2)
+  node_cell(:,1:n) = node_elem
+  
+  do i = 1, size(cellNodeDefinition,1)
+    do j = 1, size(cellNodeDefinition(i)%parents,1)
+      n = n+1
+      node_cell(:,n) = 0.0_pReal
+      do k = 1, size(cellNodeDefinition(i)%parents,2)
+        node_cell(:,n) = node_cell(:,n) &
+                       + node_cell(:,definition(i)%parents(j,k)) * real(definition(i)%weights(j,k),pReal)
+      enddo
+      node_cell(:,n) = node_cell(:,n)/real(sum(definition(i)%weights(j,:)),pReal)
+    enddo
+  enddo
+  
+end subroutine buildCellNodes
+
 
 
 !--------------------------------------------------------------------------------------------------
