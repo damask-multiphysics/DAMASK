@@ -43,7 +43,6 @@ module mesh
 !--------------------------------------------------------------------------------------------------
 
 
-
  integer, dimension(:,:), allocatable :: &
    connectivity_elem
    
@@ -693,7 +692,6 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
   
   type(tCellNodeDefinition), dimension(:), allocatable :: cellNodeDefinition
   
-  real(pReal), dimension(:,:), allocatable :: nodes_new,nodes
   integer :: e, n, c, p, s,i,m,j,nParentNodes,nCellNode,Nelem,candidateID
   
   Nelem = thisMesh%Nelems
@@ -783,8 +781,6 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
     allocate(cellNodeDefinition(nParentNodes-1)%parents(i,nParentNodes))
     allocate(cellNodeDefinition(nParentNodes-1)%weights(i,nParentNodes))
     
-    ! calculate coordinates of cell nodes and insert their ID into the cell conectivity
-    nodes_new = reshape([(0.0_pReal,j = 1, 3*i)], [3,i])
     
     i = 1
     n = 1
@@ -794,11 +790,6 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
       parentsAndWeights(:,2) = candidates_global(nParentNodes+1:nParentNodes*2,n+j)         
       e = candidates_global(nParentNodes*2+1,n+j)
       c = candidates_global(nParentNodes*2+2,n+j)
-      do m = 1, nParentNodes
-        nodes_new(:,i) = nodes_new(:,i) &
-                       + thisMesh%node_0(:,parentsAndWeights(m,1)) * real(parentsAndWeights(m,2),pReal)
-      enddo
-      nodes_new(:,i) =  nodes_new(:,i)/real(sum(parentsAndWeights(:,2)),pReal)
 
       do while (n+j<= size(candidates_local)*Nelem)
         if (any(candidates_global(1:2*nParentNodes,n+j)/=candidates_global(1:2*nParentNodes,n))) exit
@@ -815,21 +806,12 @@ subroutine buildCells(thisMesh,elem,connectivity_elem)
 
     enddo
     nCellNode = nCellNode + i
-    if (i/=0) nodes = reshape([nodes,nodes_new],[3,nCellNode])
+
+    mesh_cell2 = connectivity_cell
+
   enddo
-  thisMesh%node_0 = nodes
-  mesh_cell2 = connectivity_cell
- 
-#if defined(DAMASK_HDF5) 
-  connectivity_cell_reshape = reshape(connectivity_cell,[elem%NcellNodesPerCell,elem%nIPs*Nelem])
-  call results_openJobFile
-  call results_writeDataset('geometry',connectivity_cell_reshape,'c',&
-                            'connectivity of the cells','-')
-  call results_closeJobFile
-#endif  
 
   contains
-
   !------------------------------------------------------------------------------------------------
   !> @brief count unique rows (same rows need to be stored consecutively)
   !------------------------------------------------------------------------------------------------
