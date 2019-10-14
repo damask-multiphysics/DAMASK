@@ -130,8 +130,8 @@ subroutine mesh_init(ip,el)
   allocate(microstructureAt(theMesh%nElems), source=0)
   allocate(homogenizationAt(theMesh%nElems), source=0)
  
-  connectivity_elem = mesh_marc_buildElements(mesh_nElems,theMesh%elem%nNodes,FILEUNIT)
-  call mesh_marc_buildElements2(microstructureAt,homogenizationAt, &
+  connectivity_elem = inputRead_connectivityElem(mesh_nElems,theMesh%elem%nNodes,FILEUNIT)
+  call inputRead_microstructureAndHomogenization(microstructureAt,homogenizationAt, &
                                mesh_nElems,theMesh%elem%nNodes,mesh_nameElemSet,mesh_mapElemSet,&
                                initialcondTableStyle,FILEUNIT)
   close (FILEUNIT)
@@ -169,19 +169,53 @@ subroutine mesh_init(ip,el)
   call discretization_init(microstructureAt,homogenizationAt,&
                            ip_reshaped,&
                            node0_elem)
+                           
+  call writeGeometry(0,connectivity_elem,&
+                           reshape(connectivity_cell,[theMesh%elem%NcellNodesPerCell,theMesh%elem%nIPs*theMesh%nElems]),&
+                           node0_cell,ip_reshaped)
+
+end subroutine mesh_init
+
+
+subroutine writeGeometry(elemType,connectivity_elem,connectivity_cell,coordinates_nodes,coordinates_points)
+
+  integer,                     intent(in) :: elemType
+  integer, dimension(:,:),     intent(in) :: &
+    connectivity_elem, &
+    connectivity_cell
+  real(pReal), dimension(:,:), intent(in) :: &
+    coordinates_nodes, &
+    coordinates_points
+  
+  integer,     dimension(:,:), allocatable :: &
+    connectivity_temp
+  real(pReal), dimension(:,:), allocatable :: &
+    coordinates_temp
+
 #if defined(DAMASK_HDF5)
   call results_openJobFile
   call HDF5_closeGroup(results_addGroup('geometry'))
-  call results_writeDataset('geometry',connectivity_elem,'C',&
+  
+  connectivity_temp = connectivity_elem
+  call results_writeDataset('geometry',connectivity_temp,'T_e',&
                             'connectivity of the elements','-')
-  call results_writeDataset('geometry',ip_reshaped,'x_c', &
-                            'cell center coordinates','m')
-  call results_writeDataset('geometry',node0_elem,'x_n', &
-                            'nodal coordinates','m')
+                            
+  connectivity_temp = connectivity_cell
+  call results_writeDataset('geometry',connectivity_temp,'T_c', &
+                            'connectivity of the cells','-')
+                            
+  coordinates_temp = coordinates_nodes
+  call results_writeDataset('geometry',coordinates_temp,'x_n', &
+                            'coordinates of the nodes','m')
+                            
+  coordinates_temp = coordinates_points
+  call results_writeDataset('geometry',coordinates_temp,'x_p', &
+                            'coordinates of the material points','m')
+                      
   call results_closeJobFile()
-#endif
+#endif  
 
-end subroutine mesh_init
+end subroutine writeGeometry
 
 
 !--------------------------------------------------------------------------------------------------
@@ -565,7 +599,7 @@ end function mapElemtype
 !--------------------------------------------------------------------------------------------------
 !> @brief Stores node IDs
 !--------------------------------------------------------------------------------------------------
-function mesh_marc_buildElements(nElem,nNodes,fileUnit)
+function inputRead_connectivityElem(nElem,nNodes,fileUnit)
  
   integer, intent(in) :: &
     nElem, &
@@ -573,7 +607,7 @@ function mesh_marc_buildElements(nElem,nNodes,fileUnit)
     fileUnit
     
   integer, dimension(nElem,nNodes) :: &
-    mesh_marc_buildElements
+    inputRead_connectivityElem
  
   integer, allocatable, dimension(:) :: chunkPos
   character(len=300) line
@@ -594,7 +628,7 @@ function mesh_marc_buildElements(nElem,nNodes,fileUnit)
         if (e /= 0) then                                                                            ! disregard non CP elems
           nNodesAlreadyRead = 0
           do j = 1,chunkPos(1)-2
-            mesh_marc_buildElements(j,e) = &
+            inputRead_connectivityElem(j,e) = &
             mesh_FEasCP('node',IO_IntValue(line,chunkPos,j+2))
           enddo
           nNodesAlreadyRead = chunkPos(1) - 2
@@ -602,7 +636,7 @@ function mesh_marc_buildElements(nElem,nNodes,fileUnit)
             read (fileUnit,'(A300)',END=620) line
             chunkPos = IO_stringPos(line)
             do j = 1,chunkPos(1)
-              mesh_marc_buildElements(nNodesAlreadyRead+j,e) = &
+              inputRead_connectivityElem(nNodesAlreadyRead+j,e) = &
               mesh_FEasCP('node',IO_IntValue(line,chunkPos,j))
             enddo
             nNodesAlreadyRead = nNodesAlreadyRead + chunkPos(1)
@@ -613,13 +647,13 @@ function mesh_marc_buildElements(nElem,nNodes,fileUnit)
     endif
   enddo
 
-620 end function mesh_marc_buildElements
+620 end function inputRead_connectivityElem
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Stores homogenization and microstructure ID
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_buildElements2(microstructureAt,homogenizationAt, &
+subroutine inputRead_microstructureAndHomogenization(microstructureAt,homogenizationAt, &
                                     nElem,nNodes,nameElemSet,mapElemSet,initialcondTableStyle,fileUnit)
 
   integer, dimension(:), intent(out) :: &
@@ -677,7 +711,7 @@ subroutine mesh_marc_buildElements2(microstructureAt,homogenizationAt, &
     endif
   enddo
  
-630 end subroutine mesh_marc_buildElements2
+630 end subroutine inputRead_microstructureAndHomogenization
 
 
 
