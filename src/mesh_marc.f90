@@ -606,7 +606,7 @@ function inputRead_connectivityElem(nElem,nNodes,fileUnit)
     nNodes, &                                                                                       !< number of nodes per element
     fileUnit
     
-  integer, dimension(nElem,nNodes) :: &
+  integer, dimension(nNodes,nElem) :: &
     inputRead_connectivityElem
  
   integer, allocatable, dimension(:) :: chunkPos
@@ -732,7 +732,7 @@ subroutine buildCells(connectivity_cell,cellNodeDefinition, &
   
   integer :: e, n, c, p, s,i,m,j,nParentNodes,nCellNode,Nelem,candidateID
   
-  Nelem = size(connectivity_elem,1)
+  Nelem = size(connectivity_elem,2)
 
 !---------------------------------------------------------------------------------------------------
 ! initialize global connectivity to negative local connectivity
