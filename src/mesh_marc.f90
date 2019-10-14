@@ -176,8 +176,12 @@ subroutine mesh_init(ip,el)
 
 end subroutine mesh_init
 
-
-subroutine writeGeometry(elemType,connectivity_elem,connectivity_cell,coordinates_nodes,coordinates_points)
+!--------------------------------------------------------------------------------------------------
+!> @brief Writes all information needed for the DADF5 geometry
+!--------------------------------------------------------------------------------------------------
+subroutine writeGeometry(elemType, &
+                         connectivity_elem,connectivity_cell, &
+                         coordinates_nodes,coordinates_points)
 
   integer,                     intent(in) :: elemType
   integer, dimension(:,:),     intent(in) :: &
