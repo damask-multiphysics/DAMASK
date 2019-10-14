@@ -149,7 +149,7 @@ subroutine mesh_init(ip,el)
   allocate(cellNodeDefinition(theMesh%elem%nNodes-1))
   allocate(connectivity_cell(theMesh%elem%NcellNodesPerCell,theMesh%elem%nIPs,theMesh%nElems))
   call buildCells(connectivity_cell,cellNodeDefinition,&
-                  mesh_Nnodes,theMesh%elem,connectivity_elem)
+                  theMesh%elem,connectivity_elem)
   allocate(node0_cell(3,maxval(connectivity_cell)))
   call buildCellNodes(node0_cell,&
                       cellNodeDefinition,node0_elem)
@@ -683,16 +683,17 @@ subroutine mesh_marc_buildElements2(microstructureAt,homogenizationAt, &
 
 
 
-
+!--------------------------------------------------------------------------------------------------
+!> @brief Calculates cell node coordinates from element node coordinates
+!--------------------------------------------------------------------------------------------------
 subroutine buildCells(connectivity_cell,cellNodeDefinition, &
-                      nNodes,elem,connectivity_elem)
+                      elem,connectivity_elem)
 
-  type(tCellNodeDefinition), dimension(:), intent(out) :: cellNodeDefinition
-  integer,dimension(:,:,:),intent(out):: connectivity_cell
+  type(tCellNodeDefinition), dimension(:),    intent(out) :: cellNodeDefinition                     ! definition of cell nodes for increasing number of parents
+  integer,                   dimension(:,:,:),intent(out) :: connectivity_cell
   
-  integer,                 intent(in) :: nNodes
-  type(tElement),          intent(in) :: elem
-  integer,dimension(:,:),  intent(in) :: connectivity_elem
+  type(tElement),                             intent(in)  :: elem                                   ! element definition
+  integer,                   dimension(:,:),  intent(in)  :: connectivity_elem                      ! connectivity of the elements
   
   integer,dimension(:),     allocatable :: candidates_local
   integer,dimension(:,:),   allocatable :: parentsAndWeights,candidates_global
@@ -718,7 +719,7 @@ subroutine buildCells(connectivity_cell,cellNodeDefinition, &
     enddo
   enddo
 
-  nCellNode = nNodes
+  nCellNode = maxval(connectivity_elem)
 
 !---------------------------------------------------------------------------------------------------
 ! set connectivity of cell nodes that are defined by 2,...,nNodes real nodes
@@ -839,17 +840,20 @@ subroutine buildCells(connectivity_cell,cellNodeDefinition, &
 end subroutine buildCells
 
 
-subroutine buildCellNodes(node_cell,&
+!--------------------------------------------------------------------------------------------------
+!> @brief Calculates cell node coordinates from element node coordinates
+!--------------------------------------------------------------------------------------------------
+subroutine buildCellNodes(node_cell, &
                           definition,node_elem)
 
-  real(pReal),               dimension(:,:), intent(out) :: node_cell
-  type(tCellNodeDefinition), dimension(:),   intent(in)  :: definition
-  real(pReal),               dimension(:,:), intent(in)  :: node_elem
+  real(pReal),               dimension(:,:), intent(out) :: node_cell                               !< cell node coordinates
+  type(tCellNodeDefinition), dimension(:),   intent(in)  :: definition                              !< cell node definition (weights and parents)
+  real(pReal),               dimension(:,:), intent(in)  :: node_elem                               !< element nodes
   
   integer :: i, j, k, n
   
   n = size(node_elem,2)
-  node_cell(:,1:n) = node_elem
+  node_cell(:,1:n) = node_elem                                                                      !< initial nodes coincide with element nodes
 
   do i = 1, size(cellNodeDefinition,1)
     do j = 1, size(cellNodeDefinition(i)%parents,1)
@@ -866,20 +870,23 @@ subroutine buildCellNodes(node_cell,&
 end subroutine buildCellNodes
 
 
-subroutine buildIPcoordinates(IPcoordinates,&
+!--------------------------------------------------------------------------------------------------
+!> @brief Calculates IP coordinates as center of cell
+!--------------------------------------------------------------------------------------------------
+subroutine buildIPcoordinates(IPcoordinates, &
                               connectivity_cell,node_cell)
 
-  real(pReal),               dimension(:,:), intent(out) :: IPcoordinates
-  integer,dimension(:,:),  intent(in) :: connectivity_cell                                          !< cell connectivity for each element,ip/cell
-  real(pReal),               dimension(:,:), intent(in)  :: node_cell
+  real(pReal), dimension(:,:), intent(out):: IPcoordinates                                          !< cell-center/IP coordinates
+  integer,     dimension(:,:), intent(in) :: connectivity_cell                                      !< connectivity for each cell
+  real(pReal), dimension(:,:), intent(in) :: node_cell                                              !< cell node coordinates
   
-  integer :: i, j
+  integer :: i, n
 
   do i = 1, size(connectivity_cell,2)
     IPcoordinates(:,i) = 0.0_pReal
-    do j = 1, size(connectivity_cell,1)
+    do n = 1, size(connectivity_cell,1)
       IPcoordinates(:,i) = IPcoordinates(:,i) &
-                         + node_cell(:,connectivity_cell(j,i))
+                         + node_cell(:,connectivity_cell(n,i))
     enddo
     IPcoordinates(:,i) = IPcoordinates(:,i)/real(size(connectivity_cell,1),pReal)
   enddo
