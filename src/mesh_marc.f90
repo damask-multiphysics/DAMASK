@@ -121,13 +121,11 @@ subroutine mesh_init(ip,el)
   
   node0_elem = mesh_marc_build_nodes(mesh_Nnodes,inputFile)
   
+  
   elemType = mesh_marc_getElemType(mesh_nElems,FILEUNIT)
   
   call theMesh%init('mesh',elemType,node0_elem)
   call theMesh%setNelems(mesh_nElems)
-
-  
-
   
   allocate(microstructureAt(theMesh%nElems), source=0)
   allocate(homogenizationAt(theMesh%nElems), source=0)
@@ -146,7 +144,8 @@ subroutine mesh_init(ip,el)
                             'connectivity of the elements','-')
   call results_closeJobFile
 #endif
- 
+  allocate(mesh_ipCoordinates(3,theMesh%elem%nIPs,theMesh%nElems),source=0.0_pReal) 
+
   allocate(cellNodeDefinition(theMesh%elem%nNodes-1))
   allocate(connectivity_cell(theMesh%elem%NcellNodesPerCell,theMesh%elem%nIPs,theMesh%nElems))
   call buildCells(connectivity_cell,cellNodeDefinition,&
@@ -154,8 +153,9 @@ subroutine mesh_init(ip,el)
   allocate(node0_cell(3,maxval(connectivity_cell)))
   call buildCellNodes(node0_cell,&
                       cellNodeDefinition,node0_elem)
-   
-  allocate(mesh_ipCoordinates(3,theMesh%elem%nIPs,theMesh%nElems),source=0.0_pReal)
+  allocate(ip_reshaped(3,theMesh%elem%nIPs*theMesh%nElems),source=0.0_pReal)
+  call buildIPcoordinates(ip_reshaped,reshape(connectivity_cell,[theMesh%elem%NcellNodesPerCell,&
+                                    theMesh%elem%nIPs*theMesh%nElems]),node0_cell)
  
  
   if (usePingPong .and. (mesh_Nelems /= theMesh%nElems)) &
@@ -173,7 +173,6 @@ subroutine mesh_init(ip,el)
   calcMode = .false.                                                                                 ! pretend to have collected what first call is asking (F = I)
   calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                       ! first ip,el needs to be already pingponged to "calc"
  
-  ip_reshaped = reshape(mesh_ipCoordinates,[3,theMesh%elem%nIPs*theMesh%nElems])
   call discretization_init(microstructureAt,homogenizationAt,&
                            ip_reshaped,&
                            node0_elem)
@@ -718,6 +717,7 @@ subroutine buildCells(connectivity_cell,cellNodeDefinition, &
       endif realNode
     enddo
   enddo
+
   nCellNode = nNodes
 
 !---------------------------------------------------------------------------------------------------
@@ -787,25 +787,26 @@ subroutine buildCells(connectivity_cell,cellNodeDefinition, &
     do while(n <= size(candidates_local)*Nelem)
       j=0
       parentsAndWeights(:,1) = candidates_global(1:nParentNodes,n+j)
-      parentsAndWeights(:,2) = candidates_global(nParentNodes+1:nParentNodes*2,n+j)         
+      parentsAndWeights(:,2) = candidates_global(nParentNodes+1:nParentNodes*2,n+j)
+
       e = candidates_global(nParentNodes*2+1,n+j)
       c = candidates_global(nParentNodes*2+2,n+j)
 
       do while (n+j<= size(candidates_local)*Nelem)
         if (any(candidates_global(1:2*nParentNodes,n+j)/=candidates_global(1:2*nParentNodes,n))) exit
         where (connectivity_cell(:,:,candidates_global(nParentNodes*2+1,n+j)) == -candidates_global(nParentNodes*2+2,n+j)) ! still locally defined
-          connectivity_cell(:,:,candidates_global(nParentNodes*2+1,n+j)) = nCellNode + i                                   ! gets current new cell node id
+          connectivity_cell(:,:,candidates_global(nParentNodes*2+1,n+j)) = nCellNode + 1                                   ! gets current new cell node id
         end where
        
         j = j+1
       enddo
+      nCellNode = nCellNode + 1
       cellNodeDefinition(nParentNodes-1)%parents(i,:) = parentsAndWeights(:,1)
       cellNodeDefinition(nParentNodes-1)%weights(i,:) = parentsAndWeights(:,2)
-      i = i+1
+      i = i + 1
       n = n+j
-
     enddo
-    nCellNode = nCellNode + i
+
   enddo
 
   contains
@@ -849,7 +850,7 @@ subroutine buildCellNodes(node_cell,&
   
   n = size(node_elem,2)
   node_cell(:,1:n) = node_elem
-  
+
   do i = 1, size(cellNodeDefinition,1)
     do j = 1, size(cellNodeDefinition(i)%parents,1)
       n = n+1
@@ -864,6 +865,26 @@ subroutine buildCellNodes(node_cell,&
   
 end subroutine buildCellNodes
 
+
+subroutine buildIPcoordinates(IPcoordinates,&
+                              connectivity_cell,node_cell)
+
+  real(pReal),               dimension(:,:), intent(out) :: IPcoordinates
+  integer,dimension(:,:),  intent(in) :: connectivity_cell                                          !< cell connectivity for each element,ip/cell
+  real(pReal),               dimension(:,:), intent(in)  :: node_cell
+  
+  integer :: i, j
+
+  do i = 1, size(connectivity_cell,2)
+    IPcoordinates(:,i) = 0.0_pReal
+    do j = 1, size(connectivity_cell,1)
+      IPcoordinates(:,i) = IPcoordinates(:,i) &
+                         + node_cell(:,connectivity_cell(j,i))
+    enddo
+    IPcoordinates(:,i) = IPcoordinates(:,i)/real(size(connectivity_cell,1),pReal)
+  enddo
+  
+end subroutine buildIPcoordinates
 
 
 !--------------------------------------------------------------------------------------------------
