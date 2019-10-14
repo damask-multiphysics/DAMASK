@@ -102,27 +102,27 @@ subroutine mesh_init(ip,el)
   inputFile = IO_read_ASCII(trim(modelName)//trim(InputFileExtension))
  
   ! parsing Marc input file
-  fileFormatVersion = mesh_marc_get_fileFormat(inputFile)
-  call mesh_marc_get_tableStyles(initialcondTableStyle,hypoelasticTableStyle,inputFile)
+  fileFormatVersion = inputRead_fileFormat(inputFile)
+  call inputRead_tableStyles(initialcondTableStyle,hypoelasticTableStyle,inputFile)
   if (fileFormatVersion > 12) &
-    marc_matNumber = mesh_marc_get_matNumber(hypoelasticTableStyle,inputFile)
-  call mesh_marc_count_nodesAndElements(mesh_nNodes, mesh_nElems, inputFile)
+    marc_matNumber = inputRead_matNumber(hypoelasticTableStyle,inputFile)
+  call inputRead_NnodesAndElements(mesh_nNodes, mesh_nElems, inputFile)
 
   call IO_open_inputFile(FILEUNIT,modelName)
-  call mesh_marc_count_elementSets(mesh_NelemSets,mesh_maxNelemInSet,FILEUNIT) 
+  call inputRead_NelemSets(mesh_NelemSets,mesh_maxNelemInSet,FILEUNIT) 
   allocate(mesh_nameElemSet(mesh_NelemSets)); mesh_nameElemSet = 'n/a'
   allocate(mesh_mapElemSet(1+mesh_maxNelemInSet,mesh_NelemSets),source=0)
-  call mesh_marc_map_elementSets(mesh_nameElemSet,mesh_mapElemSet,FILEUNIT)
+  call inputRead_mapElemSets(mesh_nameElemSet,mesh_mapElemSet,FILEUNIT)
   allocate (mesh_mapFEtoCPelem(2,mesh_nElems), source = 0)
-  call mesh_marc_map_elements(hypoelasticTableStyle,mesh_nameElemSet,mesh_mapElemSet,&
+  call inputRead_mapElems(hypoelasticTableStyle,mesh_nameElemSet,mesh_mapElemSet,&
                               mesh_nElems,fileFormatVersion,marc_matNumber,FILEUNIT)  
   allocate (mesh_mapFEtoCPnode(2,mesh_Nnodes),source=0)
-  call mesh_marc_map_nodes(mesh_Nnodes,inputFile)                                                                  !ToDo: don't work on global variables
+  call inputRead_mapNodes(mesh_Nnodes,inputFile)                                                                  !ToDo: don't work on global variables
   
-  node0_elem = mesh_marc_build_nodes(mesh_Nnodes,inputFile)
+  node0_elem = inputRead_elemNodes(mesh_Nnodes,inputFile)
   
   
-  elemType = mesh_marc_getElemType(mesh_nElems,FILEUNIT)
+  elemType = inputRead_elemType(mesh_nElems,FILEUNIT)
   
   call theMesh%init('mesh',elemType,node0_elem)
   call theMesh%setNelems(mesh_nElems)
@@ -137,13 +137,6 @@ subroutine mesh_init(ip,el)
   close (FILEUNIT)
 
 
-#if defined(DAMASK_HDF5)
-  call results_openJobFile
-  call HDF5_closeGroup(results_addGroup('geometry'))
-  call results_writeDataset('geometry',connectivity_elem,'C',&
-                            'connectivity of the elements','-')
-  call results_closeJobFile
-#endif
   allocate(mesh_ipCoordinates(3,theMesh%elem%nIPs,theMesh%nElems),source=0.0_pReal) 
 
   allocate(cellNodeDefinition(theMesh%elem%nNodes-1))
@@ -178,6 +171,9 @@ subroutine mesh_init(ip,el)
                            node0_elem)
 #if defined(DAMASK_HDF5)
   call results_openJobFile
+  call HDF5_closeGroup(results_addGroup('geometry'))
+  call results_writeDataset('geometry',connectivity_elem,'C',&
+                            'connectivity of the elements','-')
   call results_writeDataset('geometry',ip_reshaped,'x_c', &
                             'cell center coordinates','m')
   call results_writeDataset('geometry',node0_elem,'x_n', &
@@ -191,7 +187,7 @@ end subroutine mesh_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Figures out version of Marc input file format
 !--------------------------------------------------------------------------------------------------
-integer function mesh_marc_get_fileFormat(fileContent)
+integer function inputRead_fileFormat(fileContent)
  
   character(len=pStringLen), dimension(:), intent(in) :: fileContent                                !< file content, separated per lines
   
@@ -201,18 +197,18 @@ integer function mesh_marc_get_fileFormat(fileContent)
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
     if ( IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'version') then
-      mesh_marc_get_fileFormat = IO_intValue(fileContent(l),chunkPos,2)
+      inputRead_fileFormat = IO_intValue(fileContent(l),chunkPos,2)
       exit
     endif
   enddo
 
-end function mesh_marc_get_fileFormat
+end function inputRead_fileFormat
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Figures out table styles for initial cond and hypoelastic
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_get_tableStyles(initialcond,hypoelastic,fileContent)
+subroutine inputRead_tableStyles(initialcond,hypoelastic,fileContent)
  
   integer,                                 intent(out) :: initialcond, hypoelastic
   character(len=pStringLen), dimension(:), intent(in)  :: fileContent                               !< file content, separated per lines
@@ -232,18 +228,18 @@ subroutine mesh_marc_get_tableStyles(initialcond,hypoelastic,fileContent)
     endif
   enddo
 
-end subroutine mesh_marc_get_tableStyles
+end subroutine inputRead_tableStyles
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Figures out material number of hypoelastic material
 !--------------------------------------------------------------------------------------------------
-function mesh_marc_get_matNumber(tableStyle,fileContent)
+function inputRead_matNumber(tableStyle,fileContent)
  
   integer,                                 intent(in) :: tableStyle
   character(len=pStringLen), dimension(:), intent(in) :: fileContent                                !< file content, separated per lines
 
-  integer, dimension(:), allocatable :: mesh_marc_get_matNumber
+  integer, dimension(:), allocatable :: inputRead_matNumber
 
   integer, allocatable, dimension(:) :: chunkPos
   integer :: i, j, data_blocks, l
@@ -257,23 +253,24 @@ function mesh_marc_get_matNumber(tableStyle,fileContent)
       else
         data_blocks = 1
       endif
-      allocate(mesh_marc_get_matNumber(data_blocks), source = 0)
+      allocate(inputRead_matNumber(data_blocks), source = 0)
       do i = 0, data_blocks - 1
         j = i*(2+tableStyle) + 1
         chunkPos = IO_stringPos(fileContent(l+1+j))
-        mesh_marc_get_matNumber(i+1) = IO_intValue(fileContent(l+1+j),chunkPos,1)
+        inputRead_matNumber(i+1) = IO_intValue(fileContent(l+1+j),chunkPos,1)
       enddo
       exit
     endif
   enddo
 
-end function mesh_marc_get_matNumber
+end function inputRead_matNumber
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Count overall number of nodes and elements
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_count_nodesAndElements(nNodes, nElems, fileContent)
+subroutine inputRead_NnodesAndElements(nNodes,nElems,&
+                                       fileContent)
   
   integer,                                 intent(out) :: nNodes, nElems
   character(len=pStringLen), dimension(:), intent(in)  :: fileContent                               !< file content, separated per lines
@@ -294,13 +291,14 @@ subroutine mesh_marc_count_nodesAndElements(nNodes, nElems, fileContent)
     endif
   enddo
 
-end subroutine mesh_marc_count_nodesAndElements
+end subroutine inputRead_NnodesAndElements
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Count overall number of element sets in mesh.
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_count_elementSets(nElemSets,maxNelemInSet,fileUnit)
+subroutine inputRead_NelemSets(nElemSets,maxNelemInSet,&
+                                       fileUnit)
  
   integer, intent(out) :: nElemSets, maxNelemInSet
   integer, intent(in)  :: fileUnit
@@ -323,13 +321,13 @@ subroutine mesh_marc_count_elementSets(nElemSets,maxNelemInSet,fileUnit)
     endif
   enddo
 
-620 end subroutine mesh_marc_count_elementSets
+620 end subroutine inputRead_NelemSets
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief map element sets
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_map_elementSets(nameElemSet,mapElemSet,fileUnit)
+subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,fileUnit)
  
   character(len=64), dimension(:),   intent(out) :: nameElemSet
   integer,           dimension(:,:), intent(out) :: mapElemSet
@@ -353,14 +351,14 @@ subroutine mesh_marc_map_elementSets(nameElemSet,mapElemSet,fileUnit)
     endif
   enddo
 
-620 end subroutine mesh_marc_map_elementSets
+620 end subroutine inputRead_mapElemSets
 
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Maps elements from FE ID to internal (consecutive) representation.
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,nElems,fileFormatVersion,matNumber,fileUnit)
+subroutine inputRead_mapElems(tableStyle,nameElemSet,mapElemSet,nElems,fileFormatVersion,matNumber,fileUnit)
  
  integer, intent(in) :: fileUnit,tableStyle,nElems,fileFormatVersion
  integer, dimension(:), intent(in) :: matNumber
@@ -418,13 +416,13 @@ subroutine mesh_marc_map_elements(tableStyle,nameElemSet,mapElemSet,nElems,fileF
  
 call math_sort(mesh_mapFEtoCPelem)
 
-end subroutine mesh_marc_map_elements
+end subroutine inputRead_mapElems
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Maps node from FE ID to internal (consecutive) representation.
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_marc_map_nodes(nNodes,fileContent)
+subroutine inputRead_mapNodes(nNodes,fileContent)
 
   integer, intent(in)                                 :: nNodes
   character(len=pStringLen), dimension(:), intent(in) :: fileContent                                !< file content, separated per lines
@@ -445,13 +443,13 @@ subroutine mesh_marc_map_nodes(nNodes,fileContent)
 
   call math_sort(mesh_mapFEtoCPnode)
 
-end subroutine mesh_marc_map_nodes
+end subroutine inputRead_mapNodes
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief store x,y,z coordinates of all nodes in mesh.
 !--------------------------------------------------------------------------------------------------
-function mesh_marc_build_nodes(nNode,fileContent) result(nodes)
+function inputRead_elemNodes(nNode,fileContent) result(nodes)
 
   integer,                                 intent(in) :: nNode
   character(len=pStringLen), dimension(:), intent(in) :: fileContent                                !< file content, separated per lines
@@ -474,13 +472,13 @@ function mesh_marc_build_nodes(nNode,fileContent) result(nodes)
     endif
   enddo
 
-end function mesh_marc_build_nodes
+end function inputRead_elemNodes
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Gets element type (and checks if the whole mesh comprises of only one type)
 !--------------------------------------------------------------------------------------------------
-integer function mesh_marc_getElemType(nElem,fileUnit)
+integer function inputRead_elemType(nElem,fileUnit)
 
   integer, intent(in) :: &
     nElem, &
@@ -505,7 +503,7 @@ integer function mesh_marc_getElemType(nElem,fileUnit)
         if (t == -1) then
           t = mapElemtype(IO_stringValue(line,chunkPos,2))
           call tempEl%init(t)
-          mesh_marc_getElemType = t
+          inputRead_elemType = t
         else
           if (t /= mapElemtype(IO_stringValue(line,chunkPos,2))) call IO_error(191,el=t,ip=i)
         endif
@@ -561,7 +559,7 @@ integer function mesh_marc_getElemType(nElem,fileUnit)
 end function mapElemtype
 
 
-620 end function mesh_marc_getElemType
+620 end function inputRead_elemType
 
 
 !--------------------------------------------------------------------------------------------------
