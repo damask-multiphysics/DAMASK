@@ -434,7 +434,7 @@ end function plastic_isotropic_postResults
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_isotropic_results(instance,group)
-#if defined(PETSc) || defined(DAMASKHDF5)
+#if defined(PETSc) || defined(DAMASK_HDF5)
 
   integer, intent(in) :: instance
   character(len=*), intent(in) :: group

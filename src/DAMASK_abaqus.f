@@ -313,11 +313,10 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    
  call CPFEM_general(computationMode,usePingPong,dfgrd0,dfgrd1,temperature,dtime,noel,npt,stress_h,ddsdde_h)
 
-!     Mandel:              11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
-!     straight:            11, 22, 33, 12, 23, 13
-!     ABAQUS explicit:     11, 22, 33, 12, 23, 13
-!     ABAQUS implicit:     11, 22, 33, 12, 13, 23
-!     ABAQUS implicit:     11, 22, 33, 12
+!     DAMASK:            11, 22, 33, 12, 23, 13
+!     ABAQUS explicit:   11, 22, 33, 12, 23, 13
+!     ABAQUS implicit:   11, 22, 33, 12, 13, 23
+!     ABAQUS implicit:   11, 22, 33, 12
 
  ddsdde = ddsdde_h(1:ntens,1:ntens)
  stress = stress_h(1:ntens)
