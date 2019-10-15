@@ -44,7 +44,6 @@ module mesh
     mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
 !--------------------------------------------------------------------------------------------------
 
-
  public :: &
    mesh_init, &
    mesh_FEasCP
@@ -144,20 +143,20 @@ subroutine mesh_init(ip,el)
   allocate(node0_cell(3,maxval(connectivity_cell)))
   call buildCellNodes(node0_cell,&
                       cellNodeDefinition,node0_elem)
-  allocate(ip_reshaped(3,theMesh%elem%nIPs*theMesh%nElems),source=0.0_pReal)
+  allocate(ip_reshaped(3,theMesh%elem%nIPs*nElems),source=0.0_pReal)
   call buildIPcoordinates(ip_reshaped,reshape(connectivity_cell,[theMesh%elem%NcellNodesPerCell,&
-                                    theMesh%elem%nIPs*theMesh%nElems]),node0_cell)
+                                    theMesh%elem%nIPs*nElems]),node0_cell)
 
-  if (debug_e < 1 .or. debug_e > theMesh%nElems) &
+  if (debug_e < 1 .or. debug_e > nElems) &
     call IO_error(602,ext_msg='element')                                                        ! selected element does not exist
   if (debug_i < 1 .or. debug_i > theMesh%elem%nIPs) &
     call IO_error(602,ext_msg='IP')                                                             ! selected element does not have requested IP
  
-  FEsolving_execElem = [ 1,theMesh%nElems ]                                                      ! parallel loop bounds set to comprise all DAMASK elements
-  allocate(FEsolving_execIP(2,theMesh%nElems), source=1)                                    ! parallel loop bounds set to comprise from first IP...
+  FEsolving_execElem = [ 1,nElems ]                                                      ! parallel loop bounds set to comprise all DAMASK elements
+  allocate(FEsolving_execIP(2,nElems), source=1)                                    ! parallel loop bounds set to comprise from first IP...
   FEsolving_execIP(2,:) = theMesh%elem%nIPs
  
-  allocate(calcMode(theMesh%elem%nIPs,theMesh%nElems))
+  allocate(calcMode(theMesh%elem%nIPs,nElems))
   calcMode = .false.                                                                                 ! pretend to have collected what first call is asking (F = I)
   calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                       ! first ip,el needs to be already pingponged to "calc"
  
