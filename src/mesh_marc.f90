@@ -102,10 +102,10 @@ subroutine mesh_init(ip,el)
   inputFile = IO_read_ASCII(trim(modelName)//trim(InputFileExtension))
  
   ! parsing Marc input file
-  fileFormatVersion = inputRead_fileFormat(inputFile)
+  call inputRead_fileFormat(fileFormatVersion,inputFile)
   call inputRead_tableStyles(initialcondTableStyle,hypoelasticTableStyle,inputFile)
   if (fileFormatVersion > 12) &
-    marc_matNumber = inputRead_matNumber(hypoelasticTableStyle,inputFile)
+    call inputRead_matNumber(marc_matNumber,hypoelasticTableStyle,inputFile)
   call inputRead_NnodesAndElements(mesh_nNodes, mesh_nElems, inputFile)
 
   call IO_open_inputFile(FILEUNIT,modelName)
@@ -222,12 +222,42 @@ subroutine writeGeometry(elemType, &
 end subroutine writeGeometry
 
 
+subroutine inputRead()
+
+  integer :: &
+    fileFormatVersion, &
+    hypoelasticTableStyle, &
+    initialcondTableStyle, &
+    nNodes, &
+    nElems
+  integer, parameter :: &
+    FILEUNIT = 222
+  integer, dimension(:), allocatable :: &
+    matNumber                                                                                       !< material numbers for hypoelastic material
+  character(len=pStringLen), dimension(:), allocatable :: inputFile                                 !< file content, separated per lines
+
+  call inputRead_fileFormat(fileFormatVersion,inputFile)
+  call inputRead_tableStyles(initialcondTableStyle,hypoelasticTableStyle,inputFile)
+  if (fileFormatVersion > 12) &
+    call inputRead_matNumber(matNumber,hypoelasticTableStyle,inputFile)
+  call inputRead_NnodesAndElements(nNodes,nElems,inputFile)
+  
+  call IO_open_inputFile(FILEUNIT,modelName)
+  
+  !call inputRead_NelemSets(NelemSets,maxNelemInSet,FILEUNIT)
+
+  close(FILEUNIT)
+   
+end subroutine inputRead
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief Figures out version of Marc input file format
 !--------------------------------------------------------------------------------------------------
-integer function inputRead_fileFormat(fileContent)
+subroutine inputRead_fileFormat(fileFormat,fileContent)
  
-  character(len=pStringLen), dimension(:), intent(in) :: fileContent                                !< file content, separated per lines
+  integer,                                 intent(out) :: fileFormat
+  character(len=pStringLen), dimension(:), intent(in)  :: fileContent                                !< file content, separated per lines
   
   integer, allocatable, dimension(:) :: chunkPos
   integer :: l
@@ -235,12 +265,12 @@ integer function inputRead_fileFormat(fileContent)
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
     if ( IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'version') then
-      inputRead_fileFormat = IO_intValue(fileContent(l),chunkPos,2)
+      fileFormat = IO_intValue(fileContent(l),chunkPos,2)
       exit
     endif
   enddo
 
-end function inputRead_fileFormat
+end subroutine inputRead_fileFormat
 
 
 !--------------------------------------------------------------------------------------------------
@@ -272,12 +302,13 @@ end subroutine inputRead_tableStyles
 !--------------------------------------------------------------------------------------------------
 !> @brief Figures out material number of hypoelastic material
 !--------------------------------------------------------------------------------------------------
-function inputRead_matNumber(tableStyle,fileContent)
+subroutine inputRead_matNumber(matNumber, &
+                               tableStyle,fileContent)
  
-  integer,                                 intent(in) :: tableStyle
-  character(len=pStringLen), dimension(:), intent(in) :: fileContent                                !< file content, separated per lines
+  integer, allocatable,      dimension(:), intent(out) :: matNumber
+  integer,                                 intent(in)  :: tableStyle
+  character(len=pStringLen), dimension(:), intent(in)  :: fileContent                               !< file content, separated per lines
 
-  integer, dimension(:), allocatable :: inputRead_matNumber
 
   integer, allocatable, dimension(:) :: chunkPos
   integer :: i, j, data_blocks, l
@@ -291,17 +322,17 @@ function inputRead_matNumber(tableStyle,fileContent)
       else
         data_blocks = 1
       endif
-      allocate(inputRead_matNumber(data_blocks), source = 0)
+      allocate(matNumber(data_blocks), source = 0)
       do i = 0, data_blocks - 1
         j = i*(2+tableStyle) + 1
         chunkPos = IO_stringPos(fileContent(l+1+j))
-        inputRead_matNumber(i+1) = IO_intValue(fileContent(l+1+j),chunkPos,1)
+        matNumber(i+1) = IO_intValue(fileContent(l+1+j),chunkPos,1)
       enddo
       exit
     endif
   enddo
 
-end function inputRead_matNumber
+end subroutine inputRead_matNumber
 
 
 !--------------------------------------------------------------------------------------------------
