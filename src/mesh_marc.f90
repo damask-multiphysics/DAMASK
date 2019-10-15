@@ -62,38 +62,37 @@ subroutine mesh_init(ip,el)
    
   integer, parameter  :: FILEUNIT = 222
   character(len=pStringLen), dimension(:), allocatable :: inputFile                                 !< file content, separated per lines
- integer :: &
-   mesh_NelemSets
- real(pReal), dimension(:,:), allocatable :: &
+
+  real(pReal), dimension(:,:), allocatable :: &
    node0_elem, &                                                                                       !< node x,y,z coordinates (initially!)
    node0_cell
 
   integer :: j, fileFormatVersion, elemType, &
-    mesh_maxNelemInSet, &
-    mesh_nElems, &
+
+    nElems, &
     hypoelasticTableStyle, &
     initialcondTableStyle
   integer, dimension(:), allocatable :: &
    marc_matNumber                                                                                   !< array of material numbers for hypoelastic material (Marc only)
- integer,     dimension(:),   allocatable :: &
-   microstructureAt, &
-   homogenizationAt
- character(len=64), dimension(:), allocatable :: &
-   mesh_nameElemSet
- integer, dimension(:,:), allocatable :: &
-   mesh_mapElemSet                                                                                  !< list of elements in elementSet
- integer:: &
-   mesh_Nnodes                                                                                      !< total number of nodes in mesh
+  integer,     dimension(:),   allocatable :: &
+    microstructureAt, &
+    homogenizationAt
+  character(len=64), dimension(:), allocatable :: &
+    nameElemSet
+  integer, dimension(:,:), allocatable :: &
+    mapElemSet                                                                                  !< list of elements in elementSet
+  integer:: &
+    Nnodes                                                                                      !< total number of nodes in mesh
    
- real(pReal), dimension(:,:), allocatable :: &
-   ip_reshaped
+  real(pReal), dimension(:,:), allocatable :: &
+    ip_reshaped
   integer,dimension(:,:,:), allocatable :: &
-   connectivity_cell                                                                                !< cell connectivity for each element,ip/cell
- integer, dimension(:,:), allocatable :: &
-   connectivity_elem
+    connectivity_cell                                                                                !< cell connectivity for each element,ip/cell
+  integer, dimension(:,:), allocatable :: &
+    connectivity_elem
    
 
- type(tMesh) :: theMesh
+  type(tMesh) :: theMesh
  
  
   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
@@ -106,41 +105,40 @@ subroutine mesh_init(ip,el)
   call inputRead_tableStyles(initialcondTableStyle,hypoelasticTableStyle,inputFile)
   if (fileFormatVersion > 12) &
     call inputRead_matNumber(marc_matNumber,hypoelasticTableStyle,inputFile)
-  call inputRead_NnodesAndElements(mesh_nNodes, mesh_nElems, inputFile)
-
+  call inputRead_NnodesAndElements(nNodes, nElems, inputFile)
+  
+  allocate (mesh_mapFEtoCPelem(2,nElems), source = 0)
+  allocate (mesh_mapFEtoCPnode(2,Nnodes), source = 0)
+  
   call IO_open_inputFile(FILEUNIT,modelName)
-  call inputRead_NelemSets(mesh_NelemSets,mesh_maxNelemInSet,FILEUNIT) 
-  allocate(mesh_nameElemSet(mesh_NelemSets)); mesh_nameElemSet = 'n/a'
-  allocate(mesh_mapElemSet(1+mesh_maxNelemInSet,mesh_NelemSets),source=0)
-  call inputRead_mapElemSets(mesh_nameElemSet,mesh_mapElemSet,FILEUNIT)
-  allocate (mesh_mapFEtoCPelem(2,mesh_nElems), source = 0)
-  call inputRead_mapElems(hypoelasticTableStyle,mesh_nameElemSet,mesh_mapElemSet,&
-                              mesh_nElems,fileFormatVersion,marc_matNumber,FILEUNIT)  
-  allocate (mesh_mapFEtoCPnode(2,mesh_Nnodes),source=0)
-  call inputRead_mapNodes(mesh_Nnodes,inputFile)                                                                  !ToDo: don't work on global variables
+  call inputRead_mapElemSets(nameElemSet,mapElemSet,FILEUNIT)
+  call inputRead_mapElems(hypoelasticTableStyle,nameElemSet,mapElemSet,&
+                          nElems,fileFormatVersion,marc_matNumber,FILEUNIT)
+
+  call inputRead_mapNodes(Nnodes,inputFile)
   
-  node0_elem = inputRead_elemNodes(mesh_Nnodes,inputFile)
+  node0_elem = inputRead_elemNodes(Nnodes,inputFile)
   
   
-  elemType = inputRead_elemType(mesh_nElems,FILEUNIT)
+  elemType = inputRead_elemType(nElems,FILEUNIT)
   
   call theMesh%init('mesh',elemType,node0_elem)
-  call theMesh%setNelems(mesh_nElems)
+  call theMesh%setNelems(nElems)
   
-  allocate(microstructureAt(theMesh%nElems), source=0)
-  allocate(homogenizationAt(theMesh%nElems), source=0)
+  allocate(microstructureAt(nElems), source=0)
+  allocate(homogenizationAt(nElems), source=0)
  
-  connectivity_elem = inputRead_connectivityElem(mesh_nElems,theMesh%elem%nNodes,FILEUNIT)
+  connectivity_elem = inputRead_connectivityElem(nElems,theMesh%elem%nNodes,FILEUNIT)
   call inputRead_microstructureAndHomogenization(microstructureAt,homogenizationAt, &
-                               mesh_nElems,theMesh%elem%nNodes,mesh_nameElemSet,mesh_mapElemSet,&
+                               nElems,theMesh%elem%nNodes,nameElemSet,mapElemSet,&
                                initialcondTableStyle,FILEUNIT)
   close (FILEUNIT)
 
 
-  allocate(mesh_ipCoordinates(3,theMesh%elem%nIPs,theMesh%nElems),source=0.0_pReal) 
+  allocate(mesh_ipCoordinates(3,theMesh%elem%nIPs,nElems),source=0.0_pReal) 
 
   allocate(cellNodeDefinition(theMesh%elem%nNodes-1))
-  allocate(connectivity_cell(theMesh%elem%NcellNodesPerCell,theMesh%elem%nIPs,theMesh%nElems))
+  allocate(connectivity_cell(theMesh%elem%NcellNodesPerCell,theMesh%elem%nIPs,nElems))
   call buildCells(connectivity_cell,cellNodeDefinition,&
                   theMesh%elem,connectivity_elem)
   allocate(node0_cell(3,maxval(connectivity_cell)))
@@ -149,10 +147,7 @@ subroutine mesh_init(ip,el)
   allocate(ip_reshaped(3,theMesh%elem%nIPs*theMesh%nElems),source=0.0_pReal)
   call buildIPcoordinates(ip_reshaped,reshape(connectivity_cell,[theMesh%elem%NcellNodesPerCell,&
                                     theMesh%elem%nIPs*theMesh%nElems]),node0_cell)
- 
- 
-  if (usePingPong .and. (mesh_Nelems /= theMesh%nElems)) &
-    call IO_error(600)                                                                          ! ping-pong must be disabled when having non-DAMASK elements
+
   if (debug_e < 1 .or. debug_e > theMesh%nElems) &
     call IO_error(602,ext_msg='element')                                                        ! selected element does not exist
   if (debug_i < 1 .or. debug_i > theMesh%elem%nIPs) &
@@ -235,6 +230,11 @@ subroutine inputRead()
   integer, dimension(:), allocatable :: &
     matNumber                                                                                       !< material numbers for hypoelastic material
   character(len=pStringLen), dimension(:), allocatable :: inputFile                                 !< file content, separated per lines
+  
+  character(len=64), dimension(:), allocatable :: &
+    nameElemSet
+  integer, dimension(:,:), allocatable :: &
+    mapElemSet                                                                                  !< list of elements in elementSet
 
   call inputRead_fileFormat(fileFormatVersion,inputFile)
   call inputRead_tableStyles(initialcondTableStyle,hypoelasticTableStyle,inputFile)
@@ -242,9 +242,14 @@ subroutine inputRead()
     call inputRead_matNumber(matNumber,hypoelasticTableStyle,inputFile)
   call inputRead_NnodesAndElements(nNodes,nElems,inputFile)
   
+  allocate (mesh_mapFEtoCPelem(2,nElems), source = 0)
+  allocate (mesh_mapFEtoCPnode(2,Nnodes), source = 0)
+  
   call IO_open_inputFile(FILEUNIT,modelName)
   
-  !call inputRead_NelemSets(NelemSets,maxNelemInSet,FILEUNIT)
+  call inputRead_mapElemSets(nameElemSet,mapElemSet,FILEUNIT)
+  call inputRead_mapElems(hypoelasticTableStyle,nameElemSet,mapElemSet,&
+                          nElems,fileFormatVersion,matNumber,FILEUNIT)
 
   close(FILEUNIT)
    
@@ -398,14 +403,18 @@ subroutine inputRead_NelemSets(nElemSets,maxNelemInSet,&
 !--------------------------------------------------------------------------------------------------
 subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,fileUnit)
  
-  character(len=64), dimension(:),   intent(out) :: nameElemSet
-  integer,           dimension(:,:), intent(out) :: mapElemSet
-  integer,                           intent(in)  :: fileUnit
+  character(len=64), dimension(:),   allocatable, intent(out) :: nameElemSet
+  integer,           dimension(:,:), allocatable, intent(out) :: mapElemSet
+  integer,                                        intent(in)  :: fileUnit
 
   integer, allocatable, dimension(:) :: chunkPos
   character(len=300) :: line
-  integer :: elemSet
-  
+  integer :: elemSet, NelemSets, maxNelemInSet
+
+
+  call inputRead_NelemSets(NelemSets,maxNelemInSet,fileUnit) 
+  allocate(nameElemSet(NelemSets)); nameElemSet = 'n/a'
+  allocate(mapElemSet(1+maxNelemInSet,NelemSets),source=0)
   elemSet = 0
 
   rewind(fileUnit)
