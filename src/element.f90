@@ -256,10 +256,6 @@ module element
       -3,26,-4,24,-6,18  &
      ],[nIPneighbor(cellType(10)),nIP(10)])
 
-! MD: probably not needed END
-! --------------------------------------------------------------------------------------------------
-
-
  
   integer, dimension(nNode(1),NcellNode(geomType(1))), parameter :: cellNodeParentNodeWeights1 = &
     reshape([&
