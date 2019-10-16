@@ -146,11 +146,11 @@ module element
        8  & ! 3D 8node
     ]                                                                                               !< number of cell nodes in a specific cell type
 
-  ! *** FE_ipNeighbor ***
-  ! is a list of the neighborhood of each IP.
+  ! *** IPneighbor ***
+  ! list of the neighborhood of each IP.
   ! It is sorted in (local) +x,-x, +y,-y, +z,-z direction.
-  ! Positive integers denote an intra-FE IP identifier.
-  ! Negative integers denote the interface behind which the neighboring (extra-FE) IP will be located.
+  ! Positive integers denote an intra-element IP identifier.
+  ! Negative integers denote the interface behind which the neighboring (extra-element) IP will be located.
  
   integer, dimension(nIPneighbor(cellType(1)),nIP(1)), parameter, private :: IPneighbor1 = &
     reshape([&
