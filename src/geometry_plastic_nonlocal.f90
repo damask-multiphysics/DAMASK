@@ -7,6 +7,7 @@
 !--------------------------------------------------------------------------------------------------
 module geometry_plastic_nonlocal
   use prec
+  use results
 
   implicit none
   private
@@ -32,6 +33,7 @@ module geometry_plastic_nonlocal
     geometry_plastic_nonlocal_setIPvolume, &
     geometry_plastic_nonlocal_setIParea, &
     geometry_plastic_nonlocal_setIPareaNormal, &
+    geometry_plastic_nonlocal_results, &
     geometry_plastic_nonlocal_disable
     
 contains
@@ -111,5 +113,22 @@ subroutine geometry_plastic_nonlocal_disable
     deallocate(geometry_plastic_nonlocal_IPareaNormal0)
   
 end subroutine geometry_plastic_nonlocal_disable
+
+
+!---------------------------------------------------------------------------------------------------
+!> @brief Frees memory used by variables only needed by plastic_nonlocal
+!---------------------------------------------------------------------------------------------------
+subroutine geometry_plastic_nonlocal_results
+
+#if defined(DAMASK_HDF5)
+  call results_openJobFile
+  call results_writeDataset('geometry',geometry_plastic_nonlocal_IPvolume0,'v_0',&
+                            'initial cell volume','m³')
+  call results_writeDataset('geometry',geometry_plastic_nonlocal_IParea0,'a_0',&
+                            'initial cell face area','m²')
+  call results_closeJobFile
+#endif
+  
+end subroutine geometry_plastic_nonlocal_results
 
 end module geometry_plastic_nonlocal

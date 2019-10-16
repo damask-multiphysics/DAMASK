@@ -77,7 +77,8 @@ subroutine mesh_init(ip,el)
     connectivity_cell                                                                                !< cell connectivity for each element,ip/cell
   integer, dimension(:,:), allocatable :: &
     connectivity_elem
-   
+
+  real(pReal), dimension(:,:,:,:),allocatable :: x
 
   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
  
@@ -115,6 +116,11 @@ subroutine mesh_init(ip,el)
   call writeGeometry(0,connectivity_elem,&
                            reshape(connectivity_cell,[elem%NcellNodesPerCell,elem%nIPs*nElems]),&
                            node0_cell,ip_reshaped)
+
+  call geometry_plastic_nonlocal_setIPvolume(IPvolume(elem,node0_cell,connectivity_cell))
+  x = IPareaNormal(elem,nElems,connectivity_cell,node0_cell)
+  call geometry_plastic_nonlocal_setIParea(norm2(x,1))
+  call geometry_plastic_nonlocal_results
 
 end subroutine mesh_init
 
@@ -158,7 +164,7 @@ subroutine writeGeometry(elemType, &
   call results_writeDataset('geometry',coordinates_temp,'x_p', &
                             'coordinates of the material points','m')
                       
-  call results_closeJobFile()
+  call results_closeJobFile
 #endif  
 
 end subroutine writeGeometry
@@ -427,22 +433,17 @@ subroutine inputRead_mapElems(tableStyle,nameElemSet,mapElemSet,fileFormatVersio
  integer :: i,cpElem 
 
  allocate(contInts(size(mesh_mapFEtoCPelem,2)+1))
- write(6,*) 'hallo';flush(6)
- write(6,*) nameElemSet;flush(6)
- write(6,*) mapElemSet;flush(6)
- write(6,*) 'map', size(mesh_mapFEtoCPelem,2);flush(6)
+
  cpElem = 0
  contInts = 0
  rewind(fileUnit)
  do
    read (fileUnit,'(A300)',END=620) line
-   write(6,*) trim(line);flush(6)
    chunkPos = IO_stringPos(line)
    if (fileFormatVersion < 13) then                                                                       ! Marc 2016 or earlier
      if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'hypoelastic' ) then
        do i=1,3+TableStyle                                                                          ! skip three (or four if new table style!) lines
          read (fileUnit,'(A300)') line
-         write(6,*) i;flush(6)
        enddo
        contInts = IO_continuousIntValues(fileUnit,size(mesh_mapFEtoCPelem,2),nameElemSet,&
                                          mapElemSet,size(nameElemSet))
@@ -961,14 +962,16 @@ end subroutine buildIPcoordinates
 !---------------------------------------------------------------------------------------------------
 !> @brief Calculates IP volume.
 !> @details The IP volume is calculated differently depending on the cell type.
-!> 2D cells assume an element depth of one in order to calculate the volume.
+!> 2D cells assume an element depth of 1.0
 !---------------------------------------------------------------------------------------------------
 function IPvolume(elem,node,connectivity)
  
-  type(tElement) :: elem
-  real(pReal), dimension(:,:), intent(in) :: node
-  integer, dimension(:,:,:), intent(in) :: connectivity
+  type(tElement),                intent(in) :: elem
+  real(pReal), dimension(:,:),   intent(in) :: node
+  integer,     dimension(:,:,:), intent(in) :: connectivity
+  
   real(pReal), dimension(elem%nIPs,size(connectivity,3)) :: IPvolume
+  real(pReal), dimension(3) :: x0,x1,x2,x3,x4,x5,x6,x7
 
   integer :: e,i
 
@@ -994,98 +997,75 @@ function IPvolume(elem,node,connectivity)
                                               node(1:3,connectivity(3,i,e)), &
                                               node(1:3,connectivity(4,i,e)))
         case (4)                                                                                    ! 3D 8node
-          IPvolume(i,e) = math_volTetrahedron(node(1:3,connectivity(1,i,e)), &
-                                              node(1:3,connectivity(2,i,e)), &
-                                              node(1:3,connectivity(3,i,e)), &
-                                              node(1:3,connectivity(6,i,e))) &
-                        + math_volTetrahedron(node(1:3,connectivity(3,i,e)), &
-                                              node(1:3,connectivity(4,i,e)), &
-                                              node(1:3,connectivity(1,i,e)), &
-                                              node(1:3,connectivity(8,i,e))) &
-                        + math_volTetrahedron(node(1:3,connectivity(6,i,e)), &
-                                              node(1:3,connectivity(7,i,e)), &
-                                              node(1:3,connectivity(8,i,e)), &
-                                              node(1:3,connectivity(3,i,e))) &
-                        + math_volTetrahedron(node(1:3,connectivity(8,i,e)), &
-                                              node(1:3,connectivity(5,i,e)), &
-                                              node(1:3,connectivity(6,i,e)), &
-                                              node(1:3,connectivity(1,i,e)))                        ! first triangulation
-          IPvolume(i,e) = IPvolume(i,e) &
-                        + math_volTetrahedron(node(1:3,connectivity(2,i,e)), &
-                                              node(1:3,connectivity(3,i,e)), &
-                                              node(1:3,connectivity(4,i,e)), &
-                                              node(1:3,connectivity(7,i,e))) &
-                        + math_volTetrahedron(node(1:3,connectivity(4,i,e)), &
-                                              node(1:3,connectivity(1,i,e)), &
-                                              node(1:3,connectivity(2,i,e)), &
-                                              node(1:3,connectivity(5,i,e))) &
-                        + math_volTetrahedron(node(1:3,connectivity(7,i,e)), &
-                                              node(1:3,connectivity(8,i,e)), &
-                                              node(1:3,connectivity(5,i,e)), &
-                                              node(1:3,connectivity(4,i,e))) &
-                        + math_volTetrahedron(node(1:3,connectivity(5,i,e)), &
-                                              node(1:3,connectivity(6,i,e)), &
-                                              node(1:3,connectivity(7,i,e)), &
-                                              node(1:3,connectivity(2,i,e)))                        ! second triangulation
-          IPvolume(i,e) = IPvolume(i,e) * 0.5_pReal
+          x0 = node(1:3,connectivity(1,i,e))
+          x1 = node(1:3,connectivity(2,i,e))
+          x2 = node(1:3,connectivity(4,i,e))
+          x3 = node(1:3,connectivity(3,i,e))
+          x4 = node(1:3,connectivity(5,i,e))
+          x5 = node(1:3,connectivity(6,i,e))
+          x6 = node(1:3,connectivity(8,i,e))
+          x7 = node(1:3,connectivity(7,i,e))
+          IPvolume(i,e) = dot_product((x7-x1)+(x6-x0),math_cross((x7-x2),        (x3-x0))) &
+                        + dot_product((x6-x0),        math_cross((x7-x2)+(x5-x0),(x7-x4))) &
+                        + dot_product((x7-x1),        math_cross((x5-x0),        (x7-x4)+(x3-x0)))
+          IPvolume(i,e) = IPvolume(i,e)/12.0_pReal
       end select
     enddo
   enddo
 
 end function IPvolume
 
-!--------------------------------------------------------------------------------------------------
-!> @brief calculation of IP interface areas, allocate globals '_ipArea', and '_ipAreaNormal'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_build_ipAreas(ipArea,ipAreaNormal,elem,nElem,connectivity,node)
 
- type(tElement) :: elem
- integer :: nElem
-  integer, dimension(:,:,:), intent(in) :: connectivity
-  real(pReal), dimension(:,:), intent(in) :: node
- real(pReal), dimension(elem%nIPneighbors,elem%nIPs,nElem),   intent(out) :: ipArea
- real(pReal), dimension(3,elem%nIPneighbors,elem%nIPs,nElem), intent(out) :: ipAreaNormal
+!--------------------------------------------------------------------------------------------------
+!> @brief calculation of IP interface areas
+!--------------------------------------------------------------------------------------------------
+function IPareaNormal(elem,nElem,connectivity,node)
 
- real(pReal), dimension (3,size(elem%cellFace,2)) :: nodePos, normals
- real(pReal), dimension(3) :: normal
- integer :: e,i,f,n,m
+  type(tElement),                intent(in) :: elem
+  integer,                       intent(in) :: nElem
+  integer,     dimension(:,:,:), intent(in) :: connectivity
+  real(pReal), dimension(:,:),   intent(in) :: node
+  
+  real(pReal), dimension(3,elem%nIPneighbors,elem%nIPs,nElem) :: ipAreaNormal
+
+  real(pReal), dimension (3,size(elem%cellFace,2)) :: nodePos
+  integer :: e,i,f,n,m
  
- m = size(elem%cellFace,1)
+  m = size(elem%cellFace,1)
 
  do e = 1,nElem
    do i = 1,elem%nIPs
-     do f = 1,size(elem%cellFace,2) !????
-
-       forall(n = 1: size(elem%cellface,1)) &
+     do f = 1,size(elem%cellFace,2)
+       do n = 1, m 
          nodePos(1:3,n) = node(1:3,connectivity(elem%cellface(n,f),i,e))
+         write(6,*) e,i,f,n,nodePos(1:3,n)
+       enddo
         
        select case (elem%cellType)
-         case (1,2)                                                                                     ! 2D 3 or 4 node
-           normal(1) =   nodePos(2,2) - nodePos(2,1)                                                ! x_normal =  y_connectingVector
-           normal(2) = -(nodePos(1,2) - nodePos(1,1))                                               ! y_normal = -x_connectingVector
-           normal(3) = 0.0_pReal
-         case (3)                                                                                       ! 3D 4node
-           normal = math_cross(nodePos(1:3,2) - nodePos(1:3,1), &
-                               nodePos(1:3,3) - nodePos(1:3,1))
-         case (4)                                                                                     ! 3D 8node
+         case (1,2)                                                                                 ! 2D 3 or 4 node
+           IPareaNormal(1,n,i,e) =   nodePos(2,2) - nodePos(2,1)                                    ! x_normal =  y_connectingVector
+           IPareaNormal(2,n,i,e) = -(nodePos(1,2) - nodePos(1,1))                                   ! y_normal = -x_connectingVector
+           IPareaNormal(3,n,i,e) = 0.0_pReal
+         case (3)                                                                                   ! 3D 4node
+           IPareaNormal(1:3,n,i,e) = math_cross(nodePos(1:3,2) - nodePos(1:3,1), &
+                                                nodePos(1:3,3) - nodePos(1:3,1))
+         case (4)                                                                                   ! 3D 8node
          ! for this cell type we get the normal of the quadrilateral face as an average of
          ! four normals of triangular subfaces; since the face consists only of two triangles,
          ! the sum has to be divided by two; this whole prcedure tries to compensate for
          ! probable non-planar cell surfaces
-             normals(1:3,n) = 0.5_pReal &
-                            * math_cross(nodePos(1:3,1+mod(n  ,m)) - nodePos(1:3,n), &
-                                         nodePos(1:3,1+mod(n+1,m)) - nodePos(1:3,n))
-             normal = 0.5_pReal * sum(normals,2)
+           do n = 1, m 
+             IPareaNormal(1:3,n,i,e) = 0.5_pReal &
+                                     * math_cross(nodePos(1:3,1+mod(n  ,m)) - nodePos(1:3,n), &
+                                                  nodePos(1:3,1+mod(n+1,m)) - nodePos(1:3,n))
+           enddo
         end select
-
-        ipArea(f,i,e)           = norm2(normal)
-        ipAreaNormal(1:3,f,i,e) = normal / norm2(normal)                                         ! ensure unit length of area normal
-
       enddo
     enddo
  enddo
    
-end subroutine mesh_build_ipAreas
+end function IPareaNormal
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Gives the FE to CP ID mapping by binary search through lookup array

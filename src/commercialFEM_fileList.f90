@@ -14,11 +14,11 @@
 #include "Lambert.f90"
 #include "rotations.f90"
 #include "FEsolving.f90"
-#include "geometry_plastic_nonlocal.f90"
 #include "element.f90"
 #include "mesh_base.f90"
 #include "HDF5_utilities.f90"
 #include "results.f90"
+#include "geometry_plastic_nonlocal.f90"
 #include "discretization.f90"
 #ifdef Abaqus
 #include "mesh_abaqus.f90"
