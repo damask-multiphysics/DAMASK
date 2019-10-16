@@ -65,8 +65,9 @@ subroutine mesh_init(ip,el)
   real(pReal), dimension(:,:), allocatable :: &
    node0_elem, &                                                                                       !< node x,y,z coordinates (initially!)
    node0_cell
+  type(tElement) :: elem
 
-  integer :: j, fileFormatVersion, elemType, &
+  integer :: j, fileFormatVersion, &
 
     nElems, &
     hypoelasticTableStyle, &
@@ -91,8 +92,6 @@ subroutine mesh_init(ip,el)
     connectivity_elem
    
 
-  type(tMesh) :: theMesh
- 
  
   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
  
@@ -119,44 +118,41 @@ subroutine mesh_init(ip,el)
   node0_elem = inputRead_elemNodes(Nnodes,inputFile)
   
   
-  elemType = inputRead_elemType(nElems,FILEUNIT)
-  
-  call theMesh%init('mesh',elemType,node0_elem)
-  call theMesh%setNelems(nElems)
+  call inputRead_elemType(elem,nElems,FILEUNIT)
   
   allocate(microstructureAt(nElems), source=0)
   allocate(homogenizationAt(nElems), source=0)
  
-  connectivity_elem = inputRead_connectivityElem(nElems,theMesh%elem%nNodes,FILEUNIT)
+  connectivity_elem = inputRead_connectivityElem(nElems,elem%nNodes,FILEUNIT)
   call inputRead_microstructureAndHomogenization(microstructureAt,homogenizationAt, &
-                               nElems,theMesh%elem%nNodes,nameElemSet,mapElemSet,&
+                               nElems,elem%nNodes,nameElemSet,mapElemSet,&
                                initialcondTableStyle,FILEUNIT)
   close (FILEUNIT)
 
 
-  allocate(mesh_ipCoordinates(3,theMesh%elem%nIPs,nElems),source=0.0_pReal) 
+  allocate(mesh_ipCoordinates(3,elem%nIPs,nElems),source=0.0_pReal) 
 
-  allocate(cellNodeDefinition(theMesh%elem%nNodes-1))
-  allocate(connectivity_cell(theMesh%elem%NcellNodesPerCell,theMesh%elem%nIPs,nElems))
+  allocate(cellNodeDefinition(elem%nNodes-1))
+  allocate(connectivity_cell(elem%NcellNodesPerCell,elem%nIPs,nElems))
   call buildCells(connectivity_cell,cellNodeDefinition,&
-                  theMesh%elem,connectivity_elem)
+                  elem,connectivity_elem)
   allocate(node0_cell(3,maxval(connectivity_cell)))
   call buildCellNodes(node0_cell,&
                       cellNodeDefinition,node0_elem)
-  allocate(ip_reshaped(3,theMesh%elem%nIPs*nElems),source=0.0_pReal)
-  call buildIPcoordinates(ip_reshaped,reshape(connectivity_cell,[theMesh%elem%NcellNodesPerCell,&
-                                    theMesh%elem%nIPs*nElems]),node0_cell)
+  allocate(ip_reshaped(3,elem%nIPs*nElems),source=0.0_pReal)
+  call buildIPcoordinates(ip_reshaped,reshape(connectivity_cell,[elem%NcellNodesPerCell,&
+                                    elem%nIPs*nElems]),node0_cell)
 
   if (debug_e < 1 .or. debug_e > nElems) &
     call IO_error(602,ext_msg='element')                                                        ! selected element does not exist
-  if (debug_i < 1 .or. debug_i > theMesh%elem%nIPs) &
+  if (debug_i < 1 .or. debug_i > elem%nIPs) &
     call IO_error(602,ext_msg='IP')                                                             ! selected element does not have requested IP
  
   FEsolving_execElem = [ 1,nElems ]                                                      ! parallel loop bounds set to comprise all DAMASK elements
   allocate(FEsolving_execIP(2,nElems), source=1)                                    ! parallel loop bounds set to comprise from first IP...
-  FEsolving_execIP(2,:) = theMesh%elem%nIPs
+  FEsolving_execIP(2,:) = elem%nIPs
  
-  allocate(calcMode(theMesh%elem%nIPs,nElems))
+  allocate(calcMode(elem%nIPs,nElems))
   calcMode = .false.                                                                                 ! pretend to have collected what first call is asking (F = I)
   calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                       ! first ip,el needs to be already pingponged to "calc"
  
@@ -165,7 +161,7 @@ subroutine mesh_init(ip,el)
                            node0_elem)
                            
   call writeGeometry(0,connectivity_elem,&
-                           reshape(connectivity_cell,[theMesh%elem%NcellNodesPerCell,theMesh%elem%nIPs*theMesh%nElems]),&
+                           reshape(connectivity_cell,[elem%NcellNodesPerCell,elem%nIPs*nElems]),&
                            node0_cell,ip_reshaped)
 
 end subroutine mesh_init
@@ -241,18 +237,20 @@ subroutine inputRead()
     call inputRead_matNumber(matNumber,hypoelasticTableStyle,inputFile)
   call inputRead_NnodesAndElements(nNodes,nElems,inputFile)
   
-  allocate (mesh_mapFEtoCPelem(2,nElems), source = 0)
-  allocate (mesh_mapFEtoCPnode(2,Nnodes), source = 0)
-  
   call IO_open_inputFile(FILEUNIT,modelName)
   
   call inputRead_mapElemSets(nameElemSet,mapElemSet,FILEUNIT)
+  allocate (mesh_mapFEtoCPelem(2,nElems), source = 0)
   call inputRead_mapElems(hypoelasticTableStyle,nameElemSet,mapElemSet,&
                           nElems,fileFormatVersion,matNumber,FILEUNIT)
+
+  allocate (mesh_mapFEtoCPnode(2,Nnodes), source = 0)
+  call inputRead_mapNodes(Nnodes,inputFile)
 
   close(FILEUNIT)
    
 end subroutine inputRead
+
 
 
 !--------------------------------------------------------------------------------------------------
@@ -555,13 +553,14 @@ end function inputRead_elemNodes
 !--------------------------------------------------------------------------------------------------
 !> @brief Gets element type (and checks if the whole mesh comprises of only one type)
 !--------------------------------------------------------------------------------------------------
-integer function inputRead_elemType(nElem,fileUnit)
+subroutine inputRead_elemType(elem, &
+                              nElem,fileUnit)
 
-  integer, intent(in) :: &
+  type(tElement), intent(out) :: elem
+  integer,        intent(in)  :: &
     nElem, &
     fileUnit
 
-  type(tElement) :: tempEl
   integer, allocatable, dimension(:) :: chunkPos
   character(len=300) :: line
   integer :: i,t
@@ -579,12 +578,11 @@ integer function inputRead_elemType(nElem,fileUnit)
         chunkPos = IO_stringPos(line)
         if (t == -1) then
           t = mapElemtype(IO_stringValue(line,chunkPos,2))
-          call tempEl%init(t)
-          inputRead_elemType = t
+          call elem%init(t)
         else
           if (t /= mapElemtype(IO_stringValue(line,chunkPos,2))) call IO_error(191,el=t,ip=i)
         endif
-        call IO_skipChunks(fileUnit,tempEl%nNodes-(chunkPos(1)-2))
+        call IO_skipChunks(fileUnit,elem%nNodes-(chunkPos(1)-2))
       enddo
       exit
     endif
@@ -636,7 +634,7 @@ integer function inputRead_elemType(nElem,fileUnit)
 end function mapElemtype
 
 
-620 end function inputRead_elemType
+620 end subroutine inputRead_elemType
 
 
 !--------------------------------------------------------------------------------------------------
@@ -943,7 +941,6 @@ subroutine buildCellNodes(node_cell, &
   enddo
   
 end subroutine buildCellNodes
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculates IP coordinates as center of cell
