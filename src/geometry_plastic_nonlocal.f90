@@ -119,13 +119,28 @@ end subroutine geometry_plastic_nonlocal_disable
 !> @brief Frees memory used by variables only needed by plastic_nonlocal
 !---------------------------------------------------------------------------------------------------
 subroutine geometry_plastic_nonlocal_results
+  
+  integer,     dimension(:),   allocatable :: s
 
 #if defined(DAMASK_HDF5)
   call results_openJobFile
-  call results_writeDataset('geometry',geometry_plastic_nonlocal_IPvolume0,'v_0',&
-                            'initial cell volume','m³')
-  call results_writeDataset('geometry',geometry_plastic_nonlocal_IParea0,'a_0',&
-                            'initial cell face area','m²')
+
+  writeVolume: block
+    real(pReal), dimension(:), allocatable :: temp
+    s = shape(geometry_plastic_nonlocal_IPvolume0)
+    temp = reshape(geometry_plastic_nonlocal_IPvolume0,[s(1)*s(2)])
+    call results_writeDataset('geometry',temp,'v_0',&
+                              'initial cell volume','m³')
+  end block writeVolume
+
+  writeArea: block
+    real(pReal), dimension(:,:), allocatable :: temp
+    s = shape(geometry_plastic_nonlocal_IParea0)
+    temp = reshape(geometry_plastic_nonlocal_IParea0,[s(1),s(2)*s(3)])
+    call results_writeDataset('geometry',temp,'a_0',&
+                              'initial cell face area','m²')
+  end block writeArea
+
   call results_closeJobFile
 #endif
   

@@ -83,8 +83,20 @@ subroutine mesh_init(ip,el)
   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
  
   mesh_unitlength = numerics_unitlength                                                             ! set physical extent of a length unit in mesh
+
   call inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogenizationAt)
   nElems = size(connectivity_elem,2)
+
+  if (debug_e < 1 .or. debug_e > nElems)    call IO_error(602,ext_msg='element')
+  if (debug_i < 1 .or. debug_i > elem%nIPs) call IO_error(602,ext_msg='IP')
+ 
+  FEsolving_execElem = [ 1,nElems ]                                                                 ! parallel loop bounds set to comprise all DAMASK elements
+  allocate(FEsolving_execIP(2,nElems), source=1)                                                    ! parallel loop bounds set to comprise from first IP...
+  FEsolving_execIP(2,:) = elem%nIPs
+ 
+  allocate(calcMode(elem%nIPs,nElems),source=.false.)                                               ! pretend to have collected what first call is asking (F = I)
+  calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                      ! first ip,el needs to be already pingponged to "calc"
+ 
 
   allocate(mesh_ipCoordinates(3,elem%nIPs,nElems),source=0.0_pReal)                                 ! deprecated
 
@@ -97,25 +109,15 @@ subroutine mesh_init(ip,el)
                       cellNodeDefinition,node0_elem)
   allocate(ip_reshaped(3,elem%nIPs*nElems),source=0.0_pReal)
   call buildIPcoordinates(ip_reshaped,reshape(connectivity_cell,[elem%NcellNodesPerCell,&
-                                    elem%nIPs*nElems]),node0_cell)
+                          elem%nIPs*nElems]),node0_cell)
 
-  if (debug_e < 1 .or. debug_e > nElems)    call IO_error(602,ext_msg='element')
-  if (debug_i < 1 .or. debug_i > elem%nIPs) call IO_error(602,ext_msg='IP')
- 
-  FEsolving_execElem = [ 1,nElems ]                                                                 ! parallel loop bounds set to comprise all DAMASK elements
-  allocate(FEsolving_execIP(2,nElems), source=1)                                                    ! parallel loop bounds set to comprise from first IP...
-  FEsolving_execIP(2,:) = elem%nIPs
- 
-  allocate(calcMode(elem%nIPs,nElems),source=.false.)                                               ! pretend to have collected what first call is asking (F = I)
-  calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                      ! first ip,el needs to be already pingponged to "calc"
- 
   call discretization_init(microstructureAt,homogenizationAt,&
                            ip_reshaped,&
                            node0_elem)
                            
   call writeGeometry(0,connectivity_elem,&
-                           reshape(connectivity_cell,[elem%NcellNodesPerCell,elem%nIPs*nElems]),&
-                           node0_cell,ip_reshaped)
+                     reshape(connectivity_cell,[elem%NcellNodesPerCell,elem%nIPs*nElems]),&
+                     node0_cell,ip_reshaped)
 
   call geometry_plastic_nonlocal_setIPvolume(IPvolume(elem,node0_cell,connectivity_cell))
   x = IPareaNormal(elem,nElems,connectivity_cell,node0_cell)
@@ -997,6 +999,9 @@ function IPvolume(elem,node,connectivity)
                                               node(1:3,connectivity(3,i,e)), &
                                               node(1:3,connectivity(4,i,e)))
         case (4)                                                                                    ! 3D 8node
+          ! J. Grandy, Efficient Calculation of Volume of Hexahedral Cells
+          ! Lawrence Livermore National Laboratory
+          ! https://www.osti.gov/servlets/purl/632793
           x0 = node(1:3,connectivity(1,i,e))
           x1 = node(1:3,connectivity(2,i,e))
           x2 = node(1:3,connectivity(4,i,e))
@@ -1028,42 +1033,40 @@ function IPareaNormal(elem,nElem,connectivity,node)
   
   real(pReal), dimension(3,elem%nIPneighbors,elem%nIPs,nElem) :: ipAreaNormal
 
-  real(pReal), dimension (3,size(elem%cellFace,2)) :: nodePos
+  real(pReal), dimension (3,size(elem%cellFace,1)) :: nodePos
   integer :: e,i,f,n,m
  
   m = size(elem%cellFace,1)
 
- do e = 1,nElem
-   do i = 1,elem%nIPs
-     do f = 1,size(elem%cellFace,2)
-       do n = 1, m 
-         nodePos(1:3,n) = node(1:3,connectivity(elem%cellface(n,f),i,e))
-         write(6,*) e,i,f,n,nodePos(1:3,n)
-       enddo
+  do e = 1,nElem
+    do i = 1,elem%nIPs
+      do f = 1,size(elem%cellFace,2)
+        nodePos = node(1:3,connectivity(elem%cellface(1:m,f),i,e))
         
-       select case (elem%cellType)
-         case (1,2)                                                                                 ! 2D 3 or 4 node
-           IPareaNormal(1,n,i,e) =   nodePos(2,2) - nodePos(2,1)                                    ! x_normal =  y_connectingVector
-           IPareaNormal(2,n,i,e) = -(nodePos(1,2) - nodePos(1,1))                                   ! y_normal = -x_connectingVector
-           IPareaNormal(3,n,i,e) = 0.0_pReal
-         case (3)                                                                                   ! 3D 4node
-           IPareaNormal(1:3,n,i,e) = math_cross(nodePos(1:3,2) - nodePos(1:3,1), &
-                                                nodePos(1:3,3) - nodePos(1:3,1))
-         case (4)                                                                                   ! 3D 8node
-         ! for this cell type we get the normal of the quadrilateral face as an average of
-         ! four normals of triangular subfaces; since the face consists only of two triangles,
-         ! the sum has to be divided by two; this whole prcedure tries to compensate for
-         ! probable non-planar cell surfaces
-           do n = 1, m 
-             IPareaNormal(1:3,n,i,e) = 0.5_pReal &
-                                     * math_cross(nodePos(1:3,1+mod(n  ,m)) - nodePos(1:3,n), &
-                                                  nodePos(1:3,1+mod(n+1,m)) - nodePos(1:3,n))
-           enddo
+        select case (elem%cellType)
+          case (1,2)                                                                                ! 2D 3 or 4 node
+            IPareaNormal(1,f,i,e) =   nodePos(2,2) - nodePos(2,1)                                   ! x_normal =  y_connectingVector
+            IPareaNormal(2,f,i,e) = -(nodePos(1,2) - nodePos(1,1))                                  ! y_normal = -x_connectingVector
+            IPareaNormal(3,f,i,e) = 0.0_pReal
+          case (3)                                                                                  ! 3D 4node
+            IPareaNormal(1:3,f,i,e) = math_cross(nodePos(1:3,2) - nodePos(1:3,1), &
+                                                 nodePos(1:3,3) - nodePos(1:3,1))
+          case (4)                                                                                  ! 3D 8node
+            ! for this cell type we get the normal of the quadrilateral face as an average of
+            ! four normals of triangular subfaces; since the face consists only of two triangles,
+            ! the sum has to be divided by two; this whole prcedure tries to compensate for
+            ! probable non-planar cell surfaces
+            IPareaNormal(1:3,f,i,e) = 0.0_pReal
+            do n = 1, m 
+              IPareaNormal(1:3,f,i,e) = IPareaNormal(1:3,f,i,e) &
+                                      + math_cross(nodePos(1:3,mod(n+0,m)+1) - nodePos(1:3,n), &
+                                                   nodePos(1:3,mod(n+1,m)+1) - nodePos(1:3,n)) * 0.5_pReal
+            enddo
         end select
       enddo
     enddo
- enddo
-   
+  enddo
+
 end function IPareaNormal
 
 
