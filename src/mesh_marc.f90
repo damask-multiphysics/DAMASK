@@ -111,14 +111,15 @@ subroutine mesh_init(ip,el)
   call IO_open_inputFile(FILEUNIT,modelName)
   call inputRead_mapElemSets(nameElemSet,mapElemSet,FILEUNIT)
   call inputRead_mapElems(hypoelasticTableStyle,nameElemSet,mapElemSet,&
-                          nElems,fileFormatVersion,marc_matNumber,FILEUNIT)
+                          fileFormatVersion,marc_matNumber,FILEUNIT)
 
-  call inputRead_mapNodes(Nnodes,inputFile)
-  
-  node0_elem = inputRead_elemNodes(Nnodes,inputFile)
-  
-  
+  call inputRead_mapNodes(inputFile)
+
   call inputRead_elemType(elem,nElems,FILEUNIT)
+  
+  call inputRead_elemNodes(node0_elem,Nnodes,inputFile)
+  
+  
   
   allocate(microstructureAt(nElems), source=0)
   allocate(homogenizationAt(nElems), source=0)
@@ -231,21 +232,25 @@ subroutine inputRead()
   integer, dimension(:,:), allocatable :: &
     mapElemSet                                                                                  !< list of elements in elementSet
 
-  call inputRead_fileFormat(fileFormatVersion,inputFile)
-  call inputRead_tableStyles(initialcondTableStyle,hypoelasticTableStyle,inputFile)
+  call inputRead_fileFormat(fileFormatVersion, &
+                            inputFile)
+  call inputRead_tableStyles(initialcondTableStyle,hypoelasticTableStyle, &
+                             inputFile)
   if (fileFormatVersion > 12) &
-    call inputRead_matNumber(matNumber,hypoelasticTableStyle,inputFile)
-  call inputRead_NnodesAndElements(nNodes,nElems,inputFile)
+    call inputRead_matNumber(matNumber, &
+                             hypoelasticTableStyle,inputFile)
+  call inputRead_NnodesAndElements(nNodes,nElems,&
+                                   inputFile)
   
   call IO_open_inputFile(FILEUNIT,modelName)
   
-  call inputRead_mapElemSets(nameElemSet,mapElemSet,FILEUNIT)
+  call inputRead_mapElemSets(nameElemSet,mapElemSet,&
+                             FILEUNIT)
   allocate (mesh_mapFEtoCPelem(2,nElems), source = 0)
-  call inputRead_mapElems(hypoelasticTableStyle,nameElemSet,mapElemSet,&
-                          nElems,fileFormatVersion,matNumber,FILEUNIT)
+  call inputRead_mapElems(hypoelasticTableStyle,nameElemSet,mapElemSet,fileFormatVersion,matNumber,FILEUNIT)
 
   allocate (mesh_mapFEtoCPnode(2,Nnodes), source = 0)
-  call inputRead_mapNodes(Nnodes,inputFile)
+  call inputRead_mapNodes(inputFile)
 
   close(FILEUNIT)
    
@@ -433,9 +438,9 @@ subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,fileUnit)
 !--------------------------------------------------------------------------------------------------
 !> @brief Maps elements from FE ID to internal (consecutive) representation.
 !--------------------------------------------------------------------------------------------------
-subroutine inputRead_mapElems(tableStyle,nameElemSet,mapElemSet,nElems,fileFormatVersion,matNumber,fileUnit)
+subroutine inputRead_mapElems(tableStyle,nameElemSet,mapElemSet,fileFormatVersion,matNumber,fileUnit)
  
- integer, intent(in) :: fileUnit,tableStyle,nElems,fileFormatVersion
+ integer, intent(in) :: fileUnit,tableStyle,fileFormatVersion
  integer, dimension(:), intent(in) :: matNumber
  character(len=64), intent(in), dimension(:) :: nameElemSet
  integer, dimension(:,:), intent(in) :: &
@@ -445,8 +450,8 @@ subroutine inputRead_mapElems(tableStyle,nameElemSet,mapElemSet,nElems,fileForma
  character(len=300) :: line, &
                        tmp
 
- integer, dimension (1+nElems) :: contInts
- integer :: i,cpElem
+ integer, dimension (1+size(mesh_mapFEtoCPelem,2)) :: contInts
+ integer :: i,cpElem 
 
  cpElem = 0
  contInts = 0
@@ -459,7 +464,7 @@ subroutine inputRead_mapElems(tableStyle,nameElemSet,mapElemSet,nElems,fileForma
        do i=1,3+TableStyle                                                                          ! skip three (or four if new table style!) lines
          read (fileUnit,'(A300)') line
        enddo
-       contInts = IO_continuousIntValues(fileUnit,nElems,nameElemSet,&
+       contInts = IO_continuousIntValues(fileUnit,size(mesh_mapFEtoCPelem,2),nameElemSet,&
                                               mapElemSet,size(nameElemSet))
        exit
      endif  
@@ -497,9 +502,8 @@ end subroutine inputRead_mapElems
 !--------------------------------------------------------------------------------------------------
 !> @brief Maps node from FE ID to internal (consecutive) representation.
 !--------------------------------------------------------------------------------------------------
-subroutine inputRead_mapNodes(nNodes,fileContent)
+subroutine inputRead_mapNodes(fileContent)
 
-  integer, intent(in)                                 :: nNodes
   character(len=pStringLen), dimension(:), intent(in) :: fileContent                                !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
@@ -508,7 +512,7 @@ subroutine inputRead_mapNodes(nNodes,fileContent)
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
     if( IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'coordinates' ) then
-      do i = 1,nNodes
+      do i = 1,size(mesh_mapFEtoCPnode,2)
         mesh_mapFEtoCPnode(1,i) = IO_fixedIntValue (fileContent(l+1+i),[0,10],1)
         mesh_mapFEtoCPnode(2,i) = i
       enddo
@@ -524,15 +528,18 @@ end subroutine inputRead_mapNodes
 !--------------------------------------------------------------------------------------------------
 !> @brief store x,y,z coordinates of all nodes in mesh.
 !--------------------------------------------------------------------------------------------------
-function inputRead_elemNodes(nNode,fileContent) result(nodes)
+subroutine inputRead_elemNodes(nodes, &
+                               nNode,fileContent)
 
-  integer,                                 intent(in) :: nNode
-  character(len=pStringLen), dimension(:), intent(in) :: fileContent                                !< file content, separated per lines
+  real(pReal), allocatable,  dimension(:,:), intent(out) :: nodes 
+  integer,                                   intent(in)  :: nNode
+  character(len=pStringLen), dimension(:),   intent(in)  :: fileContent                             !< file content, separated per lines
   
-  real(pReal), dimension(3,nNode)    :: nodes 
   integer, dimension(5), parameter   :: node_ends = [0,10,30,50,70]
   integer, allocatable, dimension(:) :: chunkPos
   integer :: i,j,m,l
+
+  allocate(nodes(3,nNode))
 
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
@@ -547,7 +554,7 @@ function inputRead_elemNodes(nNode,fileContent) result(nodes)
     endif
   enddo
 
-end function inputRead_elemNodes
+end subroutine inputRead_elemNodes
 
 
 !--------------------------------------------------------------------------------------------------
