@@ -1307,10 +1307,10 @@ real(pReal) pure function math_volTetrahedron(v1,v2,v3,v4)
   real(pReal), dimension (3,3) :: m
 
   m(1:3,1) = v1-v2
-  m(1:3,2) = v2-v3
-  m(1:3,3) = v3-v4
+  m(1:3,2) = v1-v3
+  m(1:3,3) = v1-v4
 
-  math_volTetrahedron = math_det33(m)/6.0_pReal
+  math_volTetrahedron = abs(math_det33(m))/6.0_pReal
 
 end function math_volTetrahedron
 
