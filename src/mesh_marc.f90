@@ -59,28 +59,15 @@ subroutine mesh_init(ip,el)
 
   integer, intent(in) :: el, ip
    
-  integer, parameter  :: FILEUNIT = 222
-  character(len=pStringLen), dimension(:), allocatable :: inputFile                                 !< file content, separated per lines
-
   real(pReal), dimension(:,:), allocatable :: &
    node0_elem, &                                                                                       !< node x,y,z coordinates (initially!)
    node0_cell
   type(tElement) :: elem
 
-  integer :: j, fileFormatVersion, &
-
-    nElems, &
-    hypoelasticTableStyle, &
-    initialcondTableStyle
-  integer, dimension(:), allocatable :: &
-   marc_matNumber                                                                                   !< array of material numbers for hypoelastic material (Marc only)
+  integer :: nElems
   integer,     dimension(:),   allocatable :: &
     microstructureAt, &
     homogenizationAt
-  character(len=64), dimension(:), allocatable :: &
-    nameElemSet
-  integer, dimension(:,:), allocatable :: &
-    mapElemSet                                                                                  !< list of elements in elementSet
   integer:: &
     Nnodes                                                                                      !< total number of nodes in mesh
    
@@ -92,46 +79,13 @@ subroutine mesh_init(ip,el)
     connectivity_elem
    
 
- 
   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
  
-  mesh_unitlength = numerics_unitlength                                                              ! set physical extent of a length unit in mesh
-  inputFile = IO_read_ASCII(trim(modelName)//trim(InputFileExtension))
- 
-  ! parsing Marc input file
-  call inputRead_fileFormat(fileFormatVersion,inputFile)
-  call inputRead_tableStyles(initialcondTableStyle,hypoelasticTableStyle,inputFile)
-  if (fileFormatVersion > 12) &
-    call inputRead_matNumber(marc_matNumber,hypoelasticTableStyle,inputFile)
-  call inputRead_NnodesAndElements(nNodes, nElems, inputFile)
-  
-  allocate (mesh_mapFEtoCPelem(2,nElems), source = 0)
-  allocate (mesh_mapFEtoCPnode(2,Nnodes), source = 0)
-  
-  call IO_open_inputFile(FILEUNIT,modelName)
-  call inputRead_mapElemSets(nameElemSet,mapElemSet,FILEUNIT)
-  call inputRead_mapElems(hypoelasticTableStyle,nameElemSet,mapElemSet,&
-                          fileFormatVersion,marc_matNumber,FILEUNIT)
+  mesh_unitlength = numerics_unitlength                                                             ! set physical extent of a length unit in mesh
+  call inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogenizationAt)
+  nElems = size(connectivity_elem,2)
 
-  call inputRead_mapNodes(inputFile)
-
-  call inputRead_elemType(elem,nElems,FILEUNIT)
-  
-  call inputRead_elemNodes(node0_elem,Nnodes,inputFile)
-  
-  
-  
-  allocate(microstructureAt(nElems), source=0)
-  allocate(homogenizationAt(nElems), source=0)
- 
-  connectivity_elem = inputRead_connectivityElem(nElems,elem%nNodes,FILEUNIT)
-  call inputRead_microstructureAndHomogenization(microstructureAt,homogenizationAt, &
-                               nElems,elem%nNodes,nameElemSet,mapElemSet,&
-                               initialcondTableStyle,FILEUNIT)
-  close (FILEUNIT)
-
-
-  allocate(mesh_ipCoordinates(3,elem%nIPs,nElems),source=0.0_pReal) 
+  allocate(mesh_ipCoordinates(3,elem%nIPs,nElems),source=0.0_pReal)                                 ! deprecated
 
   allocate(cellNodeDefinition(elem%nNodes-1))
   allocate(connectivity_cell(elem%NcellNodesPerCell,elem%nIPs,nElems))
@@ -144,18 +98,15 @@ subroutine mesh_init(ip,el)
   call buildIPcoordinates(ip_reshaped,reshape(connectivity_cell,[elem%NcellNodesPerCell,&
                                     elem%nIPs*nElems]),node0_cell)
 
-  if (debug_e < 1 .or. debug_e > nElems) &
-    call IO_error(602,ext_msg='element')                                                        ! selected element does not exist
-  if (debug_i < 1 .or. debug_i > elem%nIPs) &
-    call IO_error(602,ext_msg='IP')                                                             ! selected element does not have requested IP
+  if (debug_e < 1 .or. debug_e > nElems)    call IO_error(602,ext_msg='element')
+  if (debug_i < 1 .or. debug_i > elem%nIPs) call IO_error(602,ext_msg='IP')
  
-  FEsolving_execElem = [ 1,nElems ]                                                      ! parallel loop bounds set to comprise all DAMASK elements
-  allocate(FEsolving_execIP(2,nElems), source=1)                                    ! parallel loop bounds set to comprise from first IP...
+  FEsolving_execElem = [ 1,nElems ]                                                                 ! parallel loop bounds set to comprise all DAMASK elements
+  allocate(FEsolving_execIP(2,nElems), source=1)                                                    ! parallel loop bounds set to comprise from first IP...
   FEsolving_execIP(2,:) = elem%nIPs
  
-  allocate(calcMode(elem%nIPs,nElems))
-  calcMode = .false.                                                                                 ! pretend to have collected what first call is asking (F = I)
-  calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                       ! first ip,el needs to be already pingponged to "calc"
+  allocate(calcMode(elem%nIPs,nElems),source=.false.)                                               ! pretend to have collected what first call is asking (F = I)
+  calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                      ! first ip,el needs to be already pingponged to "calc"
  
   call discretization_init(microstructureAt,homogenizationAt,&
                            ip_reshaped,&
@@ -213,7 +164,18 @@ subroutine writeGeometry(elemType, &
 end subroutine writeGeometry
 
 
-subroutine inputRead()
+subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogenizationAt)
+
+  type(tElement), intent(out) :: elem
+  real(pReal), dimension(:,:), allocatable, intent(out) :: &
+   node0_elem                                                                                       !< node x,y,z coordinates (initially!)
+  integer, dimension(:,:), allocatable, intent(out) :: &
+    connectivity_elem
+
+  integer,     dimension(:),   allocatable, intent(out) :: &
+    microstructureAt, &
+    homogenizationAt
+   
 
   integer :: &
     fileFormatVersion, &
@@ -242,16 +204,27 @@ subroutine inputRead()
   call inputRead_NnodesAndElements(nNodes,nElems,&
                                    inputFile)
   
-  call IO_open_inputFile(FILEUNIT,modelName)
+  call IO_open_inputFile(FILEUNIT,modelName)                                                        ! ToDo: It would be better to use fileContent
   
   call inputRead_mapElemSets(nameElemSet,mapElemSet,&
                              FILEUNIT)
+
   allocate (mesh_mapFEtoCPelem(2,nElems), source = 0)
   call inputRead_mapElems(hypoelasticTableStyle,nameElemSet,mapElemSet,fileFormatVersion,matNumber,FILEUNIT)
 
   allocate (mesh_mapFEtoCPnode(2,Nnodes), source = 0)
   call inputRead_mapNodes(inputFile)
 
+  call inputRead_elemType(elem, &
+                          nElems,FILEUNIT)
+  call inputRead_elemNodes(node0_elem, &
+                           Nnodes,inputFile)
+ 
+  connectivity_elem = inputRead_connectivityElem(nElems,elem%nNodes,FILEUNIT)
+
+  call inputRead_microstructureAndHomogenization(microstructureAt,homogenizationAt, &
+                                                 nElems,elem%nNodes,nameElemSet,mapElemSet,&
+                                                 initialcondTableStyle,FILEUNIT)
   close(FILEUNIT)
    
 end subroutine inputRead
@@ -704,7 +677,7 @@ function inputRead_connectivityElem(nElem,nNodes,fileUnit)
 subroutine inputRead_microstructureAndHomogenization(microstructureAt,homogenizationAt, &
                                     nElem,nNodes,nameElemSet,mapElemSet,initialcondTableStyle,fileUnit)
 
-  integer, dimension(:), intent(out) :: &
+  integer, dimension(:), allocatable, intent(out) :: &
     microstructureAt, &
     homogenizationAt
   integer, intent(in) :: &
@@ -722,6 +695,10 @@ subroutine inputRead_microstructureAndHomogenization(microstructureAt,homogeniza
  
   integer, dimension(1+nElem) :: contInts
   integer :: i,j,t,sv,myVal,e,nNodesAlreadyRead
+
+
+  allocate(microstructureAt(nElem),source=0)
+  allocate(homogenizationAt(nElem),source=0)
 
   rewind(fileUnit)
   read (fileUnit,'(A300)',END=630) line
