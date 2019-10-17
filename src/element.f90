@@ -753,7 +753,7 @@ subroutine tElement_init(self,elemType)
        self%cell        = CELL10
    end select
 
-   self%NcellNodesPerCell = NCELLNODEPERCELL(self%cellType)
+   self%NcellnodesPerCell = NCELLNODEPERCELL(self%cellType)
   
    select case(self%cellType)
      case(1)
