@@ -26,6 +26,10 @@ parser.add_option('-l','--label',
                   action = 'extend', metavar = '<string LIST>',
                   help = 'columns to cumulate')
 
+parser.add_option('-p','--product',
+                  dest='product', action = 'store_true',
+                  help = 'product of values instead of sum')
+
 (options,filenames) = parser.parse_args()
 
 if options.label is None:
@@ -38,8 +42,8 @@ if filenames == []: filenames = [None]
 for name in filenames:
   try:
     table = damask.ASCIItable(name = name,
-                            buffered = False)
-  except: continue
+                              buffered = False)
+  except IOError: continue
   damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------  
@@ -76,12 +80,16 @@ for name in filenames:
 # ------------------------------------------ process data ------------------------------------------ 
   mask = []
   for col,dim in zip(columns,dims): mask += range(col,col+dim)                                      # isolate data columns to cumulate
-  cumulated = np.zeros(len(mask),dtype=float)                                                       # prepare output field
+  cumulated = np.ones(len(mask),dtype=float) * (1 if options.product else 0)                        # prepare output field
 
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    for i,col in enumerate(mask):
-      cumulated[i] += float(table.data[col])                                                        # cumulate values
+    if options.product:
+      for i,col in enumerate(mask):
+        cumulated[i] *= float(table.data[col])                                                      # cumulate values (multiplication)
+    else:
+      for i,col in enumerate(mask):
+        cumulated[i] += float(table.data[col])                                                      # cumulate values (addition)
     table.data_append(cumulated)
 
     outputAlive = table.data_write()                                                                # output processed line
