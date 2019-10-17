@@ -229,7 +229,7 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
   call inputRead_elemNodes(node0_elem, &
                            Nnodes,inputFile)
 
-  connectivity_elem = inputRead_connectivityElem(nElems,elem%nNodes,FILEUNIT)
+  connectivity_elem = inputRead_connectivityElem(nElems,elem%nNodes,inputFile)
 
   call inputRead_microstructureAndHomogenization(microstructureAt,homogenizationAt, &
                                                  nElems,elem%nNodes,nameElemSet,mapElemSet,&
@@ -555,10 +555,10 @@ subroutine inputRead_elemType(elem, &
   integer :: i,j,t,l,remainingChunks
 
   t = -1
-  j = 0
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
     if( IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'connectivity' ) then
+      j = 0
       do i=1,nElem                                                                                  ! read all elements
         chunkPos = IO_stringPos(fileContent(l+1+i+j))
         if (t == -1) then
@@ -630,45 +630,40 @@ end subroutine inputRead_elemType
 !--------------------------------------------------------------------------------------------------
 !> @brief Stores node IDs
 !--------------------------------------------------------------------------------------------------
-function inputRead_connectivityElem(nElem,nNodes,fileUnit)
+function inputRead_connectivityElem(nElem,nNodes,fileContent)
  
   integer, intent(in) :: &
     nElem, &
-    nNodes, &                                                                                       !< number of nodes per element
-    fileUnit
+    nNodes                                                                                          !< number of nodes per element
+  character(len=pStringLen), dimension(:), intent(in)  :: fileContent                               !< file content, separated per lines
     
   integer, dimension(nNodes,nElem) :: &
     inputRead_connectivityElem
  
   integer, allocatable, dimension(:) :: chunkPos
-  character(len=300) line
  
   integer, dimension(1+nElem) :: contInts
-  integer :: i,j,t,sv,myVal,e,nNodesAlreadyRead
+  integer :: i,k,j,t,e,l,nNodesAlreadyRead
  
-  rewind(fileUnit)
-  do
-    read (fileUnit,'(A300)',END=620) line
-    chunkPos = IO_stringPos(line)
-    if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'connectivity' ) then
-      read (fileUnit,'(A300)',END=620) line                                                         ! garbage line
+  do l = 1, size(fileContent)
+    chunkPos = IO_stringPos(fileContent(l))
+    if( IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'connectivity' ) then
+      j = 0
       do i = 1,nElem
-        read (fileUnit,'(A300)',END=620) line
-        chunkPos = IO_stringPos(line)
-        e = mesh_FEasCP('elem',IO_intValue(line,chunkPos,1))
+        chunkPos = IO_stringPos(fileContent(l+1+i+j))
+        e = mesh_FEasCP('elem',IO_intValue(fileContent(l+1+i+j),chunkPos,1))
         if (e /= 0) then                                                                            ! disregard non CP elems
-          nNodesAlreadyRead = 0
-          do j = 1,chunkPos(1)-2
-            inputRead_connectivityElem(j,e) = &
-            mesh_FEasCP('node',IO_IntValue(line,chunkPos,j+2))
+          do k = 1,chunkPos(1)-2
+            inputRead_connectivityElem(k,e) = &
+              mesh_FEasCP('node',IO_IntValue(fileContent(l+1+i+j),chunkPos,k+2))
           enddo
           nNodesAlreadyRead = chunkPos(1) - 2
           do while(nNodesAlreadyRead < nNodes)                                                      ! read on if not all nodes in one line
-            read (fileUnit,'(A300)',END=620) line
-            chunkPos = IO_stringPos(line)
-            do j = 1,chunkPos(1)
-              inputRead_connectivityElem(nNodesAlreadyRead+j,e) = &
-              mesh_FEasCP('node',IO_IntValue(line,chunkPos,j))
+            j = j + 1
+            chunkPos = IO_stringPos(fileContent(l+1+i+j))
+            do k = 1,chunkPos(1)
+              inputRead_connectivityElem(nNodesAlreadyRead+k,e) = &
+                mesh_FEasCP('node',IO_IntValue(fileContent(l+1+i+j),chunkPos,k))
             enddo
             nNodesAlreadyRead = nNodesAlreadyRead + chunkPos(1)
           enddo
@@ -678,7 +673,7 @@ function inputRead_connectivityElem(nElem,nNodes,fileUnit)
     endif
   enddo
 
-620 end function inputRead_connectivityElem
+end function inputRead_connectivityElem
 
 
 !--------------------------------------------------------------------------------------------------
