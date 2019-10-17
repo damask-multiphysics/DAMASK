@@ -80,7 +80,7 @@ for name in filenames:
 # ------------------------------------------ process data ------------------------------------------ 
   mask = []
   for col,dim in zip(columns,dims): mask += range(col,col+dim)                                      # isolate data columns to cumulate
-  cumulated = np.ones(len(mask),dtype=float) * (1 if options.product else 0)                        # prepare output field
+  cumulated = np.ones(len(mask)) if options.product else np.zeros(len(mask))                        # prepare output field
 
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
