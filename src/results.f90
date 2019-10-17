@@ -316,8 +316,7 @@ subroutine results_writeTensorDataset_real(group,dataset,label,description,SIuni
   endif
 
   if(T) then
-    if(size(dataset_transposed,1) /= size(dataset_transposed,2)) &
-      call IO_error(0,ext_msg='transpose non-symmetric tensor')
+    if(size(dataset,1) /= size(dataset,2)) call IO_error(0,ext_msg='transpose non-symmetric tensor')
     allocate(dataset_transposed,mold=dataset)
     do i=1,size(dataset_transposed,3)
       dataset_transposed(:,:,i) = transpose(dataset(:,:,i))
