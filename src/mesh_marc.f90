@@ -123,6 +123,7 @@ subroutine mesh_init(ip,el)
   x = IPareaNormal(elem,nElems,connectivity_cell,node0_cell)
   call geometry_plastic_nonlocal_setIParea(norm2(x,1))
   call geometry_plastic_nonlocal_results
+  
 
 end subroutine mesh_init
 
@@ -224,7 +225,7 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
   call inputRead_mapNodes(inputFile)
 
   call inputRead_elemType(elem, &
-                          nElems,FILEUNIT)
+                          nElems,inputFile)
   call inputRead_elemNodes(node0_elem, &
                            Nnodes,inputFile)
 
@@ -355,7 +356,7 @@ end subroutine inputRead_NnodesAndElements
 !> @brief Count overall number of element sets in mesh.
 !--------------------------------------------------------------------------------------------------
 subroutine inputRead_NelemSets(nElemSets,maxNelemInSet,&
-                                       fileUnit)
+                               fileUnit)
  
   integer, intent(out) :: nElemSets, maxNelemInSet
   integer, intent(in)  :: fileUnit
@@ -421,62 +422,61 @@ subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,fileUnit)
 !--------------------------------------------------------------------------------------------------
 subroutine inputRead_mapElems(tableStyle,nameElemSet,mapElemSet,fileFormatVersion,matNumber,fileUnit)
  
- integer, intent(in) :: fileUnit,tableStyle,fileFormatVersion
- integer, dimension(:), intent(in) :: matNumber
- character(len=64), intent(in), dimension(:) :: nameElemSet
- integer, dimension(:,:), intent(in) :: &
-   mapElemSet
-
- integer, allocatable, dimension(:) :: chunkPos
- character(len=300) :: line, &
-                       tmp
-
- integer, dimension(:), allocatable :: contInts
- integer :: i,cpElem 
-
- allocate(contInts(size(mesh_mapFEtoCPelem,2)+1))
-
- cpElem = 0
- contInts = 0
- rewind(fileUnit)
- do
-   read (fileUnit,'(A300)',END=620) line
-   chunkPos = IO_stringPos(line)
-   if (fileFormatVersion < 13) then                                                                       ! Marc 2016 or earlier
-     if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'hypoelastic' ) then
-       do i=1,3+TableStyle                                                                          ! skip three (or four if new table style!) lines
-         read (fileUnit,'(A300)') line
-       enddo
-       contInts = IO_continuousIntValues(fileUnit,size(mesh_mapFEtoCPelem,2),nameElemSet,&
-                                         mapElemSet,size(nameElemSet))
-       
-       exit
-     endif  
-   else                                                                                             ! Marc2017 and later
-     if ( IO_lc(IO_stringValue(line,chunkPos,1)) == 'connectivity') then
-       read (fileUnit,'(A300)',END=620) line
-       chunkPos = IO_stringPos(line)
-       if(any(matNumber==IO_intValue(line,chunkPos,6))) then
-         do 
-           read (fileUnit,'(A300)',END=620) line
-           chunkPos = IO_stringPos(line)
-           tmp = IO_lc(IO_stringValue(line,chunkPos,1))
-           if (verify(trim(tmp),"0123456789")/=0) then                                              ! found keyword
-             exit
-           else
-             contInts(1) = contInts(1) + 1  
-             read (tmp,*) contInts(contInts(1)+1)     
-           endif
-         enddo
-       endif  
-     endif
-   endif    
- enddo    
+  integer, intent(in) :: fileUnit,tableStyle,fileFormatVersion
+  integer, dimension(:), intent(in) :: matNumber
+  character(len=64), intent(in), dimension(:) :: nameElemSet
+  integer, dimension(:,:), intent(in) :: &
+    mapElemSet
+ 
+  integer, allocatable, dimension(:) :: chunkPos
+  character(len=300) :: line, &
+                        tmp
+ 
+  integer, dimension(:), allocatable :: contInts
+  integer :: i,cpElem 
+ 
+  allocate(contInts(size(mesh_mapFEtoCPelem,2)+1))
+ 
+  cpElem = 0
+  contInts = 0
+  rewind(fileUnit)
+  do
+    read (fileUnit,'(A300)',END=620) line
+    chunkPos = IO_stringPos(line)
+    Marc2016andEarlier: if (fileFormatVersion < 13) then
+      if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'hypoelastic' ) then
+        skipLines: do i=1,3+TableStyle
+          read (fileUnit,'(A300)') line
+        enddo skipLines
+        contInts = IO_continuousIntValues(fileUnit,size(mesh_mapFEtoCPelem,2),nameElemSet,&
+                                          mapElemSet,size(nameElemSet))
+        exit
+      endif  
+    else Marc2016andEarlier
+      if ( IO_lc(IO_stringValue(line,chunkPos,1)) == 'connectivity') then
+        read (fileUnit,'(A300)',END=620) line
+        chunkPos = IO_stringPos(line)
+        if(any(matNumber==IO_intValue(line,chunkPos,6))) then
+          do 
+            read (fileUnit,'(A300)',END=620) line
+            chunkPos = IO_stringPos(line)
+            tmp = IO_lc(IO_stringValue(line,chunkPos,1))
+            if (verify(trim(tmp),"0123456789")/=0) then                                             ! found keyword
+              exit
+            else
+              contInts(1) = contInts(1) + 1  
+              read (tmp,*) contInts(contInts(1)+1)     
+            endif
+          enddo
+        endif  
+      endif
+    endif Marc2016andEarlier
+  enddo    
 620 do i = 1,contInts(1)
-      cpElem = cpElem+1
-      mesh_mapFEtoCPelem(1,cpElem) = contInts(1+i)
-      mesh_mapFEtoCPelem(2,cpElem) = cpElem
-    enddo
+    cpElem = cpElem+1
+    mesh_mapFEtoCPelem(1,cpElem) = contInts(1+i)
+    mesh_mapFEtoCPelem(2,cpElem) = cpElem
+  enddo
  
 call math_sort(mesh_mapFEtoCPelem)
 
@@ -545,35 +545,34 @@ end subroutine inputRead_elemNodes
 !> @brief Gets element type (and checks if the whole mesh comprises of only one type)
 !--------------------------------------------------------------------------------------------------
 subroutine inputRead_elemType(elem, &
-                              nElem,fileUnit)
+                              nElem,fileContent)
 
-  type(tElement), intent(out) :: elem
-  integer,        intent(in)  :: &
-    nElem, &
-    fileUnit
+  type(tElement),                          intent(out) :: elem
+  integer,                                 intent(in)  :: nElem
+  character(len=pStringLen), dimension(:), intent(in)  :: fileContent                               !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
-  character(len=300) :: line
-  integer :: i,t
+  integer :: i,j,t,l,remainingChunks
 
   t = -1
-
-  rewind(fileUnit)
-  do
-    read (fileUnit,'(A300)',END=620) line
-    chunkPos = IO_stringPos(line)
-    if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'connectivity' ) then
-      read (fileUnit,'(A300)') line                                                                 ! Garbage line
+  j = 0
+  do l = 1, size(fileContent)
+    chunkPos = IO_stringPos(fileContent(l))
+    if( IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'connectivity' ) then
       do i=1,nElem                                                                                  ! read all elements
-        read (fileUnit,'(A300)') line
-        chunkPos = IO_stringPos(line)
+        chunkPos = IO_stringPos(fileContent(l+1+i+j))
         if (t == -1) then
-          t = mapElemtype(IO_stringValue(line,chunkPos,2))
+          t = mapElemtype(IO_stringValue(fileContent(l+1+i+j),chunkPos,2))
           call elem%init(t)
         else
-          if (t /= mapElemtype(IO_stringValue(line,chunkPos,2))) call IO_error(191,el=t,ip=i)
+          if (t /= mapElemtype(IO_stringValue(fileContent(l+1+i+j),chunkPos,2))) call IO_error(191,el=t,ip=i)
         endif
-        call IO_skipChunks(fileUnit,elem%nNodes-(chunkPos(1)-2))
+        remainingChunks = elem%nNodes - (chunkPos(1) - 2)
+        do while(remainingChunks > 0)
+          j = j + 1
+          chunkPos = IO_stringPos(fileContent(l+1+i+j))
+          remainingChunks = remainingChunks - chunkPos(1)
+        enddo
       enddo
       exit
     endif
@@ -622,10 +621,10 @@ subroutine inputRead_elemType(elem, &
         call IO_error(error_ID=190,ext_msg=IO_lc(what))
    end select
 
-end function mapElemtype
+  end function mapElemtype
 
 
-620 end subroutine inputRead_elemType
+end subroutine inputRead_elemType
 
 
 !--------------------------------------------------------------------------------------------------
