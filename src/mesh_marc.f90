@@ -77,8 +77,8 @@ subroutine mesh_init(ip,el)
     connectivity_cell                                                                                !< cell connectivity for each element,ip/cell
   integer, dimension(:,:), allocatable :: &
     connectivity_elem
-
-  real(pReal), dimension(:,:,:,:),allocatable :: x
+  real(pReal), dimension(:,:,:,:),allocatable :: &
+    unscaledNormals
 
   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
  
@@ -120,8 +120,9 @@ subroutine mesh_init(ip,el)
                      node0_cell,ip_reshaped)
 
   call geometry_plastic_nonlocal_setIPvolume(IPvolume(elem,node0_cell,connectivity_cell))
-  x = IPareaNormal(elem,nElems,connectivity_cell,node0_cell)
-  call geometry_plastic_nonlocal_setIParea(norm2(x,1))
+  unscaledNormals = IPareaNormal(elem,nElems,connectivity_cell,node0_cell)
+  call geometry_plastic_nonlocal_setIParea(norm2(unscaledNormals,1))
+  call geometry_plastic_nonlocal_setIPareaNormal(unscaledNormals/spread(norm2(unscaledNormals,1),1,3))
   call geometry_plastic_nonlocal_results
   
 
@@ -1034,7 +1035,7 @@ function IPareaNormal(elem,nElem,connectivity,node)
 
   do e = 1,nElem
     do i = 1,elem%nIPs
-      do f = 1,size(elem%cellFace,2)
+      do f = 1,elem%nIPneighbors
         nodePos = node(1:3,connectivity(elem%cellface(1:m,f),i,e))
         
         select case (elem%cellType)
