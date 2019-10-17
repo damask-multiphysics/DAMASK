@@ -13,7 +13,7 @@
 #define INTEL_MIN 1600
 #define PETSC_MAJOR 3
 #define PETSC_MINOR_MIN 10
-#define PETSC_MINOR_MAX 11
+#define PETSC_MINOR_MAX 12
 
 module DAMASK_interface
   use, intrinsic :: iso_fortran_env
