@@ -626,6 +626,46 @@ class DADF5():
     requested = [{'label':defgrad,'arg':'defgrad'}]
     
     self.__add_generic_pointwise(strain_tensor,requested,{'t':t,'ord':ord})
+    
+    
+  def add_principal_components(self,x):
+    """Adds principal components of symmetric tensor."""
+    def principal_components(x):
+
+      return  {
+               'data' : np.linalg.eigvalsh((x['data']+np.transpose(x['data'],(0,2,1)))*.5)[:,::-1], # eigenvalues (of symmetric(ed) matrix)
+               'label' : 'lambda_{}'.format(x['label']),
+               'meta' : {
+                        'Unit' :        x['meta']['Unit'],
+                        'Description' : 'Pricipal components of {} ({})'.format(x['label'],x['meta']['Description']),
+                        'Creator' :     'dadf5.py:add_principal_components v{}'.format(version)
+                        }
+               }
+
+    requested = [{'label':x,'arg':'x'}]
+
+    self.__add_generic_pointwise(principal_components,requested)
+    
+    
+  def add_maximum_shear(self,x):
+    """Adds maximum shear components of symmetric tensor."""
+    def maximum_shear(x):
+    
+      w = np.linalg.eigvalsh((x['data']+np.transpose(x['data'],(0,2,1)))*.5)         # eigenvalues (of symmetric(ed) matrix)
+
+      return  {
+               'data' : (w[:,2] - w[:,0])*0.5,
+               'label' : 'max_shear({})'.format(x['label']),
+               'meta' : {
+                        'Unit' :        x['meta']['Unit'],
+                        'Description' : 'Maximum shear component of of {} ({})'.format(x['label'],x['meta']['Description']),
+                        'Creator' :     'dadf5.py:add_maximum_shear v{}'.format(version)
+                        }
+               }
+
+    requested = [{'label':x,'arg':'x'}]
+
+    self.__add_generic_pointwise(maximum_shear,requested)
 
 
   def __add_generic_pointwise(self,func,datasets_requested,extra_args={}):
