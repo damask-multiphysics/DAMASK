@@ -2091,7 +2091,7 @@ end subroutine setConvergenceFlag
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Standard forwarding of state as state = state0 + dotState * (delta t)
+!> @brief Standard forwarding of state as state = state0 + dotState * (delta t)                        comment seems wrong!
 !--------------------------------------------------------------------------------------------------
 subroutine update_stress(timeFraction)
 

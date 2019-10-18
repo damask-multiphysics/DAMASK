@@ -1,4 +1,3 @@
-
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
@@ -8,14 +7,13 @@
 !--------------------------------------------------------------------------------------------------
 module mesh_base
 
-  use, intrinsic :: iso_c_binding
   use prec
   use element
 
   implicit none
 
 !---------------------------------------------------------------------------------------------------
-!> Properties of a the whole mesh (consisting of one type of elements)
+!> Properties of a whole mesh (consisting of one type of elements)
 !---------------------------------------------------------------------------------------------------
  type, public :: tMesh
    type(tElement) :: &
@@ -33,11 +31,7 @@ module mesh_base
      elemType, &
      Ncells, &
      nIPneighbors, &
-     NcellNodes, &
-     maxElemsPerNode
-   integer(pInt), dimension(:), allocatable, public :: &
-     homogenizationAt, &
-     microstructureAt
+     NcellNodes
    integer(pInt), dimension(:,:), allocatable, public :: &
      connectivity
    contains
@@ -47,6 +41,7 @@ module mesh_base
  end type tMesh
 
 contains
+
 subroutine tMesh_base_init(self,meshType,elemType,nodes)
  
  class(tMesh) :: self

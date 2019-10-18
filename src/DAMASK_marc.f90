@@ -265,8 +265,8 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
          call debug_reset()                                                                         ! resets debugging
          outdatedFFN1  = .false.
          cycleCounter  = cycleCounter + 1
-         mesh_cellnode = mesh_build_cellnodes()                                                     ! update cell node coordinates
-         call mesh_build_ipCoordinates()                                                            ! update ip coordinates
+         !mesh_cellnode = mesh_build_cellnodes()                                                     ! update cell node coordinates
+         !call mesh_build_ipCoordinates()                                                            ! update ip coordinates
        endif
        if (outdatedByNewInc) then
          computationMode = ior(computationMode,CPFEM_AGERESULTS)                                    ! calc and age results
@@ -315,9 +315,6 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
  lastLovl = lovl                                                                                    ! record lovl
 
  call CPFEM_general(computationMode,usePingPong,ffn,ffn1,t(1),timinc,m(1),nn,stress,ddsdde)
-!     Mandel: 11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
-!     Marc:   11, 22, 33, 12, 23, 13
-!     Marc:   11, 22, 33, 12
 
  d = ddsdde(1:ngens,1:ngens)
  s = stress(1:ndi+nshear)

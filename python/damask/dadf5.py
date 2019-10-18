@@ -303,6 +303,19 @@ class DADF5():
     return path
     
     
+  def get_constituent_ID(self,c=0):
+    """Pointwise constituent ID."""
+    with h5py.File(self.filename,'r') as f:
+      names = f['/mapping/cellResults/constituent']['Name'][:,c].astype('str')
+    return np.array([int(n.split('_')[0]) for n in names.tolist()],dtype=np.int32)
+
+
+  def get_crystal_structure(self):                                                                  # ToDo: extension to multi constituents/phase
+    """Info about the crystal structure."""
+    with h5py.File(self.filename,'r') as f:
+      return f[self.get_dataset_location('orientation')[0]].attrs['Lattice'].astype('str')          # np.bytes_ to string
+
+
   def read_dataset(self,path,c):
     """
     Dataset for all points/cells.
@@ -312,7 +325,7 @@ class DADF5():
     with h5py.File(self.filename,'r') as f:
       shape = (self.Nmaterialpoints,) + np.shape(f[path[0]])[1:]
       if len(shape) == 1: shape = shape +(1,)
-      dataset = np.full(shape,np.nan)
+      dataset = np.full(shape,np.nan,dtype=np.dtype(f[path[0]]))
       for pa in path:
         label   = pa.split('/')[2]
         
@@ -333,6 +346,20 @@ class DADF5():
           dataset[p,:] = a[u,:]
 
     return dataset
+
+
+  def cell_coordinates(self):
+    """Initial coordinates of the cell centers."""
+    if self.structured:
+      delta = self.size/self.grid*0.5
+      z, y, x = np.meshgrid(np.linspace(delta[2],self.size[2]-delta[2],self.grid[2]),
+                            np.linspace(delta[1],self.size[1]-delta[1],self.grid[1]),
+                            np.linspace(delta[0],self.size[0]-delta[0],self.grid[0]),
+                           )
+      return np.concatenate((x[:,:,:,None],y[:,:,:,None],y[:,:,:,None]),axis = 3).reshape([np.product(self.grid),3])
+    else:
+      with h5py.File(self.filename,'r') as f:
+        return f['geometry/x_c'][()]
 
 
   def add_Cauchy(self,P='P',F='F'):
