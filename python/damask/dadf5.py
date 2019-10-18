@@ -563,7 +563,7 @@ class DADF5():
       
       formula = kwargs['formula']
       for d in re.findall(r'#(.*?)#',formula):
-        formula = re.sub('#{}#'.format(d),"kwargs['{}']['data']".format(d),formula)
+        formula = formula.replace('#{}#'.format(d),"kwargs['{}']['data']".format(d))
         
       return  {
                'data' : eval(formula), 
@@ -575,7 +575,7 @@ class DADF5():
                         }
                }
     
-    requested    = [{'label':d,'arg':d} for d in re.findall(r'#(.*?)#',formula)]         # datasets used in the formula
+    requested    = [{'label':d,'arg':d} for d in set(re.findall(r'#(.*?)#',formula))]         # datasets used in the formula
     pass_through = {'formula':formula,'label':label,'unit':unit,'description':description} 
     
     self.__add_generic_pointwise(calculation,requested,pass_through)
