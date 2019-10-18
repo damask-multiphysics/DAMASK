@@ -28,8 +28,7 @@ module mesh
  integer, public, protected :: &
    mesh_Nboundaries, &
    mesh_NcpElems, &                                                                                 !< total number of CP elements in mesh
-   mesh_NcpElemsGlobal, &
-   mesh_Nnodes                                                                                      !< total number of nodes in mesh
+   mesh_NcpElemsGlobal
 
 !!!! BEGIN DEPRECATED !!!!!
  integer, public, protected :: &
@@ -69,8 +68,7 @@ module mesh
  public :: &
    mesh_init, &
    mesh_FEM_build_ipVolumes, &
-   mesh_FEM_build_ipCoordinates, &
-   mesh_cellCenterCoordinates
+   mesh_FEM_build_ipCoordinates
 
 contains
 
@@ -107,7 +105,8 @@ subroutine mesh_init
  integer, parameter :: FILEUNIT = 222
  integer :: j
  integer, allocatable, dimension(:) :: chunkPos
- integer :: dimPlex
+ integer :: dimPlex, &
+   mesh_Nnodes                                                                                      !< total number of nodes in mesh
  integer, parameter :: &
    mesh_ElemType=1                                                                             !< Element type of the mesh (only support homogeneous meshes)
  character(len=512) :: &
@@ -229,25 +228,7 @@ end subroutine mesh_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Calculates cell center coordinates.
-!--------------------------------------------------------------------------------------------------
-pure function mesh_cellCenterCoordinates(ip,el)
- 
- integer, intent(in) :: el, &                                                                  !< element number
-                        ip                                                                     !< integration point number
- real(pReal), dimension(3) :: mesh_cellCenterCoordinates                                             !< x,y,z coordinates of the cell center of the requested IP cell
-
-end function mesh_cellCenterCoordinates
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief Calculates IP volume. Allocates global array 'mesh_ipVolume'
-!> @details The IP volume is calculated differently depending on the cell type.
-!> 2D cells assume an element depth of one in order to calculate the volume.
-!> For the hexahedral cell we subdivide the cell into subvolumes of pyramidal
-!> shape with a cell face as basis and the central ip at the tip. This subvolume is
-!> calculated as an average of four tetrahedals with three corners on the cell face 
-!> and one corner at the central ip.
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_FEM_build_ipVolumes(dimPlex)
  
