@@ -21,5 +21,5 @@ from .test        import Test             # noqa
 from .util        import extendableOption # noqa
 
 # functions in modules
-from . import mechanics
+from . import mechanics                   # noqa
 
