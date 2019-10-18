@@ -2326,7 +2326,7 @@ function getlabels(active,potential,system,structure) result(labels)
   integer :: i,j 
   integer :: &
     a, &                                                                                            !< index of active system
-    p, &                                                                                            !< index in complete system matrix
+    p, &                                                                                            !< index in potential system matrix
     f, &                                                                                            !< index of my family
     s                                                                                               !< index of my system in current family
 
