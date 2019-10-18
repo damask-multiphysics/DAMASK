@@ -7,6 +7,7 @@ import numpy as np
 
 from . import util
 from . import version
+from . import mechanics
 
 # ------------------------------------------------------------------
 class DADF5():
@@ -379,10 +380,8 @@ class DADF5():
     Resulting tensor is symmetrized as the Cauchy stress should be symmetric.
     """
     def Cauchy(F,P):
-      sigma = np.einsum('i,ijk,ilk->ijl',1.0/np.linalg.det(F['data']),P['data'],F['data'])
-      sigma = (sigma + np.transpose(sigma,(0,2,1)))*0.5                                             # enforce symmetry
       return  {
-               'data'  : sigma,
+               'data'  : mechanics.Cauchy(F['data']),P['data']),
                'label' : 'sigma',
                'meta' : {
                         'Unit' :        P['meta']['Unit'],
@@ -529,13 +528,12 @@ class DADF5():
   def add_deviator(self,x):
     """Adds the deviator of a tensor."""
     def deviator(x):
-      d = x['data']
       
-      if not np.all(np.array(d.shape[1:]) == np.array([3,3])):
+      if not np.all(np.array(x['data'].shape[1:]) == np.array([3,3])):
         raise ValueError
       
       return  {
-               'data' :  d - np.einsum('ijk,i->ijk',np.broadcast_to(np.eye(3),[d.shape[0],3,3]),np.trace(d,axis1=1,axis2=2)/3.0), 
+               'data' :  mechanics.deviator(x['data']),
                'label' : 'dev({})'.format(x['label']),
                'meta' : {
                         'Unit' :        x['meta']['Unit'],
