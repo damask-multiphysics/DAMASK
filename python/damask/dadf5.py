@@ -381,7 +381,7 @@ class DADF5():
     """
     def Cauchy(F,P):
       return  {
-               'data'  : mechanics.Cauchy(F['data']),P['data']),
+               'data'  : mechanics.Cauchy(F['data'],P['data']),
                'label' : 'sigma',
                'meta' : {
                         'Unit' :        P['meta']['Unit'],

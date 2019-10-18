@@ -13,7 +13,7 @@ def deviator(x):
   if np.shape(x) == (3,3):
     return x - np.eye(3)*np.trace(x)/3.0
   else:
-    return d - np.einsum('ijk,i->ijk',np.broadcast_to(np.eye(3),[d.shape[0],3,3]),np.trace(d,axis1=1,axis2=2)/3.0) 
+    return x - np.einsum('ijk,i->ijk',np.broadcast_to(np.eye(3),[x.shape[0],3,3]),np.trace(x,axis1=1,axis2=2)/3.0) 
 
 
 def spherical(x):
