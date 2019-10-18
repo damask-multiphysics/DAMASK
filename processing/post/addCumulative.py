@@ -56,6 +56,7 @@ for name in filenames:
   remarks = []
   columns = []
   dims    = []
+  how     = 'prod' if options.product else 'sum'
   
   for what in options.label:
     dim = table.label_dimension(what)
@@ -63,8 +64,8 @@ for name in filenames:
     else:
       dims.append(dim)
       columns.append(table.label_index(what))
-      table.labels_append('cum({})'.format(what) if dim == 1 else
-                         ['{}_cum({})'.format(i+1,what) for i in range(dim)]  )                     # extend ASCII header with new labels
+      table.labels_append('cum_{}({})'.format(how,what) if dim == 1 else
+                         ['{}_cum_{}({})'.format(i+1,how,what) for i in range(dim)]  )              # extend ASCII header with new labels
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
