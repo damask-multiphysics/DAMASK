@@ -42,7 +42,7 @@ for filename in options.filenames:
   results = damask.DADF5(filename)
   
   if results.structured:                                                                            # for grid solvers use rectilinear grid
-    grid = vtk.vtkRectilineagrid()
+    grid = vtk.vtkRectilinearGrid()
     coordArray = [vtk.vtkDoubleArray(),
                   vtk.vtkDoubleArray(),
                   vtk.vtkDoubleArray(),
@@ -120,7 +120,7 @@ for filename in options.filenames:
           vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
           grid.GetCellData().AddArray(vtk_data[-1])
           
-    writer = vtk.vtkXMLRectilineagridWriter() if results.structured else \
+    writer = vtk.vtkXMLRectilinearGridWriter() if results.structured else \
              vtk.vtkXMLUnstructuredGridWriter()
 
     results.set_visible('constituents',  False)
