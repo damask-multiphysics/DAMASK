@@ -228,92 +228,92 @@ module lattice
   real(pReal), dimension(4+4,LATTICE_HEX_NSLIP), parameter :: &
     LATTICE_HEX_SYSTEMSLIP = reshape(real([&
      ! Slip direction     Plane normal
-     ! Basal systems <11.0>{00.1} (independent of c/a-ratio, Bravais notation (4 coordinate base))
+     ! Basal systems <-1-1.0>{00.1} (independent of c/a-ratio, Bravais notation (4 coordinate base))
        2, -1, -1,  0,     0,  0,  0,  1, &
       -1,  2, -1,  0,     0,  0,  0,  1, &
       -1, -1,  2,  0,     0,  0,  0,  1, &
-     ! 1st type prismatic systems <11.0>{10.0}  (independent of c/a-ratio)
+     ! 1st type prismatic systems <-1-1.0>{1-1.0}  (independent of c/a-ratio)
        2, -1, -1,  0,     0,  1, -1,  0, &
       -1,  2, -1,  0,    -1,  0,  1,  0, &
       -1, -1,  2,  0,     1, -1,  0,  0, &
-     ! 2nd type prismatic systems <10.0>{11.0} -- a slip; plane normals independent of c/a-ratio
-       0,  1,  -1, 0,     2, -1, -1,  0, &
-      -1,  0,  1,  0,    -1,  2, -1,  0, &
-       1, -1,  0,  0,    -1, -1,  2,  0,  &
-     ! 1st type 1st order pyramidal systems <11.0>{-11.1} -- plane normals depend on the c/a-ratio
-       2, -1, -1,  0,     0,  1, -1,  1, &
-      -1,  2, -1,  0,    -1,  0,  1,  1, &
-      -1, -1,  2,  0,     1, -1,  0,  1, &
-       1,  1, -2,  0,    -1,  1,  0,  1, &
-      -2,  1,  1,  0,     0, -1,  1,  1, &
-       1, -2,  1,  0,     1,  0, -1,  1, &
+     ! 2nd type prismatic systems <-11.0>{11.0} -- a slip; plane normals independent of c/a-ratio
+      -1,  1,  0,  0,     1,  1, -2,  0, &
+       0, -1,  1,  0,    -2,  1,  1,  0, &
+       1,  0, -1,  0,     1, -2,  1,  0, &
+     ! 1st type 1st order pyramidal systems <-1-1.0>{-11.1} -- plane normals depend on the c/a-ratio
+      -1,  2, -1,  0,     1,  0, -1,  1, &
+      -2,  1,  1,  0,     0,  1, -1,  1, &
+      -1, -1,  2,  0,    -1,  1,  0,  1, &
+       1, -2,  1,  0,    -1,  0,  1,  1, &
+       2, -1, -1,  0,     0, -1,  1,  1, &
+       1,  1, -2,  0,     1, -1,  0,  1, &
      ! pyramidal system: c+a slip <11.3>{-10.1} -- plane normals depend on the c/a-ratio
-       2, -1, -1,  3,    -1,  1,  0,  1, &
-       1, -2,  1,  3,    -1,  1,  0,  1, &
-      -1, -1,  2,  3,     1,  0, -1,  1, &
       -2,  1,  1,  3,     1,  0, -1,  1, &
-      -1,  2, -1,  3,     0, -1,  1,  1, &
-       1,  1, -2,  3,     0, -1,  1,  1, &
-      -2,  1,  1,  3,     1, -1,  0,  1, &
-      -1,  2, -1,  3,     1, -1,  0,  1, &
-       1,  1, -2,  3,    -1,  0,  1,  1, &
-       2, -1, -1,  3,    -1,  0,  1,  1, &
-       1, -2,  1,  3,     0,  1, -1,  1, &
+      -1, -1,  2,  3,     1,  0, -1,  1, &
       -1, -1,  2,  3,     0,  1, -1,  1, &
+       1, -2,  1,  3,     0,  1, -1,  1, &
+       1, -2,  1,  3,    -1,  1,  0,  1, &
+       2, -1, -1,  3,    -1,  1,  0,  1, &
+       2, -1, -1,  3,    -1,  0,  1,  1, &
+       1,  1, -2,  3,    -1,  0,  1,  1, &
+       1,  1, -2,  3,     0, -1,  1,  1, &
+      -1,  2, -1,  3,     0, -1,  1,  1, &
+      -1,  2, -1,  3,     1, -1,  0,  1, &
+      -2,  1,  1,  3,     1, -1,  0,  1, &
      ! pyramidal system: c+a slip <11.3>{-1-1.2} -- as for hexagonal ice (Castelnau et al. 1996, similar to twin system found below)
-       2, -1, -1,  3,    -2,  1,  1,  2, & ! sorted according to similar twin system
-      -1,  2, -1,  3,     1, -2,  1,  2, & ! <11.3>{-1-1.2} shear = 2((c/a)^2-2)/(3 c/a)
-      -1, -1,  2,  3,     1,  1, -2,  2, &
-      -2,  1,  1,  3,     2, -1, -1,  2, &
+      -1, -1,  2,  3,     1,  1, -2,  2, & ! <11.3>{-1-1.2} shear = 2((c/a)^2-2)/(3 c/a) 
        1, -2,  1,  3,    -1,  2, -1,  2, &
-       1,  1, -2,  3,    -1, -1,  2,  2  &
-      ],pReal),shape(LATTICE_HEX_SYSTEMSLIP))                                                       !< slip systems for hex sorted by A. Alankar & P. Eisenlohr
+       2, -1, -1,  3,    -2,  1,  1,  2, &
+       1,  1, -2,  3,    -1, -1,  2,  2, &
+      -1,  2, -1,  3,     1, -2,  1,  2, &
+      -2,  1,  1,  3,     2, -1, -1,  2  &
+      ],pReal),shape(LATTICE_HEX_SYSTEMSLIP))                                                       !< slip systems for hex, sorted by P. Eisenlohr CCW around <c> starting next to a_1 axis
  
   character(len=*), dimension(6), parameter :: LATTICE_HEX_SLIPFAMILY_NAME = &
-    ['<1 1 . 1>{0 0 . 1}  ', &
-     '<1 1 . 1>{1 0 . 0}  ', &
-     '<1 0 . 0>{1 1 . 0}  ', &
-     '<1 1 . 0>{-1 1 . 1} ', &
-     '<1 1 . 3>{-1 0 . 1} ', &
-     '<1 1 . 3>{-1 -1 . 2}']
+    ['< 1 1 . 0>{ 0  0 . 1}', &
+     '< 1 1 . 0>{ 1  0 . 0}', &
+     '<-1 1 . 0>{ 1  1 . 0}', &
+     '< 1 1 . 0>{ 1 -1 . 1}', &
+     '< 1 1 . 3>{-1  0 . 1}', &
+     '< 1 1 . 3>{-1 -1 . 2}']
  
   real(pReal), dimension(4+4,LATTICE_HEX_NTWIN), parameter :: &
     LATTICE_HEX_SYSTEMTWIN =  reshape(real([&
-     ! Compression or Tension =f(twinning shear=f(c/a)) for each metal ! (according to Yoo 1981)
-       1, -1,  0,  1,    -1,  1,  0,  2, & ! <-10.1>{10.2} shear = (3-(c/a)^2)/(sqrt(3) c/a)
-      -1,  0,  1,  1,     1,  0, -1,  2, &
+     ! Compression or Tension = f(twinning shear=f(c/a)) for each metal ! (according to Yoo 1981)
+      -1,  0,  1,  1,     1,  0, -1,  2, & ! <-10.1>{10.2} shear = (3-(c/a)^2)/(sqrt(3) c/a)
+       0, -1,  1,  1,     0,  1, -1,  2, &
+       1, -1,  0,  1,    -1,  1,  0,  2, &
+       1,  0, -1,  1,    -1,  0,  1,  2, &
        0,  1, -1,  1,     0, -1,  1,  2, &
       -1,  1,  0,  1,     1, -1,  0,  2, &
-       1,  0, -1,  1,    -1,  0,  1,  2, &
-       0, -1,  1,  1,     0,  1, -1,  2, &
 !
-       2, -1, -1,  6,    -2,  1,  1,  1, & ! <11.6>{-1-1.1} shear = 1/(c/a)
-      -1,  2, -1,  6,     1, -2,  1,  1, &
-      -1, -1,  2,  6,     1,  1, -2,  1, &
-      -2,  1,  1,  6,     2, -1, -1,  1, &
+      -1, -1,  2,  6,     1,  1, -2,  1, & ! <11.6>{-1-1.1} shear = 1/(c/a)
        1, -2,  1,  6,    -1,  2, -1,  1, &
+       2, -1, -1,  6,    -2,  1,  1,  1, &
        1,  1, -2,  6,    -1, -1,  2,  1, &
+      -1,  2, -1,  6,     1, -2,  1,  1, &
+      -2,  1,  1,  6,     2, -1, -1,  1, &
 !
-      -1,  1,  0, -2,    -1,  1,  0,  1, & !! <10.-2>{10.1} shear = (4(c/a)^2-9)/(4 sqrt(3) c/a)
-       1,  0, -1, -2,     1,  0, -1,  1, &
+       1,  0, -1, -2,     1,  0, -1,  1, & ! <10.-2>{10.1} shear = (4(c/a)^2-9)/(4 sqrt(3) c/a)
+       0,  1, -1, -2,     0,  1, -1,  1, &
+      -1,  1,  0, -2,    -1,  1,  0,  1, &
+      -1,  0,  1, -2,    -1,  0,  1,  1, &
        0, -1,  1, -2,     0, -1,  1,  1, &
        1, -1,  0, -2,     1, -1,  0,  1, &
-      -1,  0,  1, -2,    -1,  0,  1,  1, &
-       0,  1, -1, -2,     0,  1, -1,  1, &
 !
-       2, -1, -1, -3,     2, -1, -1,  2, & ! <11.-3>{11.2} shear = 2((c/a)^2-2)/(3 c/a)
+       1,  1, -2, -3,     1,  1, -2,  2, & ! <11.-3>{11.2} shear = 2((c/a)^2-2)/(3 c/a)
       -1,  2, -1, -3,    -1,  2, -1,  2, &
-      -1, -1,  2, -3,    -1, -1,  2,  2, &
       -2,  1,  1, -3,    -2,  1,  1,  2, &
+      -1, -1,  2, -3,    -1, -1,  2,  2, &
        1, -2,  1, -3,     1, -2,  1,  2, &
-       1,  1, -2, -3,     1,  1, -2,  2  &
-      ],pReal),shape(LATTICE_HEX_SYSTEMTWIN))                                                       !< twin systems for hex, order follows Prof. Tom Bieler's scheme
+       2, -1, -1, -3,     2, -1, -1,  2  &
+      ],pReal),shape(LATTICE_HEX_SYSTEMTWIN))                                                       !< twin systems for hex, sorted by P. Eisenlohr CCW around <c> starting next to a_1 axis
  
   character(len=*), dimension(4), parameter :: LATTICE_HEX_TWINFAMILY_NAME = &
-    ['<-1 0 . 1>{1 0 . 2} ', &
-     '<1 1 . 6>{-1 -1 . 1}', &
-     '<1 0 . -2>{1 0 . 1} ', &
-     '<1 1 . -3>{1 1 . 2} ']
+    ['<-1 0 .  1>{ 1  0 . 2}', &
+     '< 1 1 .  6>{-1 -1 . 1}', &
+     '< 1 0 . -2>{ 1  0 . 1}', &
+     '< 1 1 . -3>{ 1  1 . 2}']
  
   real(pReal), dimension(4+4,LATTICE_HEX_NCLEAVAGE), parameter :: &
     LATTICE_HEX_SYSTEMCLEAVAGE = reshape(real([&

@@ -65,7 +65,7 @@ subroutine results_init
   write(6,'(/,a)') ' <<<+-  results init  -+>>>'
 
   write(6,'(/,a)') ' Diehl et al., Integrating Materials and Manufacturing Innovation 6(1):83–91, 2017'
-  write(6,'(a)')   ' https://doi.org/10.1007/s40192-018-0118-7'
+  write(6,'(a)')   ' https://doi.org/10.1007/s40192-017-0084-5'
 
   resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','w',.true.)
   call HDF5_addAttribute(resultsFile,'DADF5-version',0.3_pReal)
@@ -296,21 +296,34 @@ end subroutine results_writeVectorDataset_real
 !--------------------------------------------------------------------------------------------------
 !> @brief stores a tensor dataset in a group
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeTensorDataset_real(group,dataset,label,description,SIunit)
+subroutine results_writeTensorDataset_real(group,dataset,label,description,SIunit,transposed)
 
   character(len=*), intent(in)                   :: label,group,description
   character(len=*), intent(in), optional         :: SIunit
+  logical,          intent(in), optional         :: transposed
   real(pReal),      intent(in), dimension(:,:,:) :: dataset
   
   integer :: i 
+  logical :: T
   integer(HID_T) :: groupHandle
   real(pReal), dimension(:,:,:), allocatable :: dataset_transposed
 
+  
+  if(present(transposed)) then
+    T = transposed
+  else
+    T = .true.
+  endif
 
-  allocate(dataset_transposed,mold=dataset)
-  do i=1,size(dataset,3)
-    dataset_transposed(1:3,1:3,i) = transpose(dataset(1:3,1:3,i))
-  enddo
+  if(T) then
+    if(size(dataset,1) /= size(dataset,2)) call IO_error(0,ext_msg='transpose non-symmetric tensor')
+    allocate(dataset_transposed,mold=dataset)
+    do i=1,size(dataset_transposed,3)
+      dataset_transposed(:,:,i) = transpose(dataset(:,:,i))
+    enddo
+  else
+    allocate(dataset_transposed,source=dataset)
+  endif
 
   groupHandle = results_openGroup(group)
   

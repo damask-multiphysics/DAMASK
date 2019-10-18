@@ -44,7 +44,6 @@ module IO
     IO_extractValue, &
     IO_countDataLines
 #elif defined(Marc4DAMASK)
-    IO_skipChunks, &
     IO_fixedNoEFloatValue, &
     IO_fixedIntValue, &
     IO_countNumericalDataLines
@@ -189,17 +188,17 @@ integer function IO_open_binary(fileName,mode)
     m = 'r'
   endif
 
- if    (m == 'w') then
-   open(newunit=IO_open_binary, file=trim(fileName),&
-        status='replace',access='stream',action='write',iostat=ierr)
-   if (ierr /= 0) call IO_error(100,ext_msg='could not open file (w): '//trim(fileName))
- elseif(m == 'r') then
-   open(newunit=IO_open_binary, file=trim(fileName),&
-        status='old',    access='stream',action='read', iostat=ierr)
-   if (ierr /= 0) call IO_error(100,ext_msg='could not open file (r): '//trim(fileName))
- else
-   call IO_error(100,ext_msg='unknown access mode: '//m)
- endif
+  if    (m == 'w') then
+    open(newunit=IO_open_binary, file=trim(fileName),&
+         status='replace',access='stream',action='write',iostat=ierr)
+    if (ierr /= 0) call IO_error(100,ext_msg='could not open file (w): '//trim(fileName))
+  elseif(m == 'r') then
+    open(newunit=IO_open_binary, file=trim(fileName),&
+         status='old',    access='stream',action='read', iostat=ierr)
+    if (ierr /= 0) call IO_error(100,ext_msg='could not open file (r): '//trim(fileName))
+  else
+    call IO_error(100,ext_msg='unknown access mode: '//m)
+  endif
 
 end function IO_open_binary
 
@@ -403,7 +402,7 @@ pure function IO_stringPos(string)
    left  = right + verify(string(right+1:),SEP)
    right = left + scan(string(left:),SEP) - 2
    if ( string(left:left) == '#' ) exit
-   IO_stringPos = [IO_stringPos,left, right]
+   IO_stringPos = [IO_stringPos,left,right]
    IO_stringPos(1) = IO_stringPos(1)+1
    endOfString: if (right < left) then
      IO_stringPos(IO_stringPos(1)*2+1) = len_trim(string)
@@ -1023,27 +1022,6 @@ integer function IO_countNumericalDataLines(fileUnit)
   backspace(fileUnit)
 
 end function IO_countNumericalDataLines
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief reads file to skip (at least) N chunks (may be over multiple lines)
-!--------------------------------------------------------------------------------------------------
-subroutine IO_skipChunks(fileUnit,N)
-
-  integer, intent(in)  :: fileUnit, &                                                               !< file handle
-                          N                                                                         !< minimum number of chunks to skip
- 
-  integer              :: remainingChunks
-  character(len=65536) :: line
- 
-  line = ''
-  remainingChunks = N
- 
-  do while (trim(line) /= IO_EOF .and. remainingChunks > 0)
-    line = IO_read(fileUnit)
-    remainingChunks = remainingChunks - (size(IO_stringPos(line))-1)/2
-  enddo
-end subroutine IO_skipChunks
 #endif
 
 
@@ -1072,8 +1050,8 @@ integer function IO_countContinuousIntValues(fileUnit)
    if (chunkPos(1) < 1) then                                                                        ! empty line
      exit
    elseif (IO_lc(IO_stringValue(line,chunkPos,2)) == 'to' ) then                                    ! found range indicator
-     IO_countContinuousIntValues = 1 + abs(  IO_intValue(line,chunkPos,3) &
-                                                - IO_intValue(line,chunkPos,1))
+     IO_countContinuousIntValues = 1 + abs( IO_intValue(line,chunkPos,3) &
+                                           -IO_intValue(line,chunkPos,1))
      exit                                                                                           ! only one single range indicator allowed                              
    else
      IO_countContinuousIntValues = IO_countContinuousIntValues+chunkPos(1)-1                        ! add line's count when assuming 'c'

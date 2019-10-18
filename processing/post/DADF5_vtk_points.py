@@ -3,7 +3,6 @@
 import os
 import argparse
 
-import h5py
 import numpy as np
 import vtk
 from vtk.util import numpy_support
@@ -41,32 +40,18 @@ if options.con is None: options.con=[]
 for filename in options.filenames:
   results = damask.DADF5(filename)
   
-  if results.structured:                                                                            # for grid solvers use rectilinear grid
-    grid = vtk.vtkRectilineagrid()
-    coordArray = [vtk.vtkDoubleArray(),
-                  vtk.vtkDoubleArray(),
-                  vtk.vtkDoubleArray(),
-                 ]
+  Points   = vtk.vtkPoints()
+  Vertices = vtk.vtkCellArray()  
+  for c in results.cell_coordinates():
+    pointID = Points.InsertNextPoint(c)
+    Vertices.InsertNextCell(1)
+    Vertices.InsertCellPoint(pointID)
 
-    grid.SetDimensions(*(results.grid+1))
-    for dim in [0,1,2]:
-      for c in np.linspace(0,results.size[dim],1+results.grid[dim]):
-        coordArray[dim].InsertNextValue(c)
-
-    grid.SetXCoordinates(coordArray[0])
-    grid.SetYCoordinates(coordArray[1])
-    grid.SetZCoordinates(coordArray[2])
-  else:
-    nodes = vtk.vtkPoints()
-    with h5py.File(filename) as f:
-      nodes.SetData(numpy_support.numpy_to_vtk(f['/geometry/x_n'][()],deep=True))
-      grid = vtk.vtkUnstructuredGrid()
-      grid.SetPoints(nodes)
-      grid.Allocate(f['/geometry/T_c'].shape[0])
-      for i in f['/geometry/T_c']:
-        grid.InsertNextCell(vtk.VTK_HEXAHEDRON,8,i-1)
-
-
+  Polydata = vtk.vtkPolyData()
+  Polydata.SetPoints(Points)
+  Polydata.SetVerts(Vertices)
+  Polydata.Modified()
+  
   for i,inc in enumerate(results.iter_visible('increments')):
     print('Output step {}/{}'.format(i+1,len(results.increments)))
     vtk_data = []
@@ -85,7 +70,7 @@ for filename in options.filenames:
             shape = [array.shape[0],np.product(array.shape[1:])]
             vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True,array_type= vtk.VTK_DOUBLE))
             vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
-            grid.GetCellData().AddArray(vtk_data[-1])
+            Polydata.GetCellData().AddArray(vtk_data[-1])
         else:
           x = results.get_dataset_location(label)
           if len(x) == 0:
@@ -94,11 +79,11 @@ for filename in options.filenames:
           shape = [array.shape[0],np.product(array.shape[1:])]
           vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True,array_type= vtk.VTK_DOUBLE))
           vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
-          grid.GetCellData().AddArray(vtk_data[-1])
+          Polydata.GetCellData().AddArray(vtk_data[-1])
     
     results.set_visible('constituents',  False)
     results.set_visible('materialpoints',True)
-    for label in options.mat:
+    for label in options.mat:       
       for p in results.iter_visible('mat_physics'):
         if p != 'generic':
           for m in results.iter_visible('materialpoints'):
@@ -109,7 +94,7 @@ for filename in options.filenames:
             shape = [array.shape[0],np.product(array.shape[1:])]
             vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True,array_type= vtk.VTK_DOUBLE))
             vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
-            grid.GetCellData().AddArray(vtk_data[-1])
+            Polydata.GetCellData().AddArray(vtk_data[-1])
         else:
           x = results.get_dataset_location(label)
           if len(x) == 0:
@@ -118,18 +103,11 @@ for filename in options.filenames:
           shape = [array.shape[0],np.product(array.shape[1:])]
           vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True,array_type= vtk.VTK_DOUBLE))
           vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
-          grid.GetCellData().AddArray(vtk_data[-1])
+          Polydata.GetCellData().AddArray(vtk_data[-1])
           
-    writer = vtk.vtkXMLRectilineagridWriter() if results.structured else \
-             vtk.vtkXMLUnstructuredGridWriter()
+    writer = vtk.vtkXMLPolyDataWriter()
 
-    results.set_visible('constituents',  False)
-    results.set_visible('materialpoints',False)
-    x = results.get_dataset_location('u_n')
-    vtk_data.append(numpy_support.numpy_to_vtk(num_array=results.read_dataset(x,0),deep=True,array_type=vtk.VTK_DOUBLE))
-    vtk_data[-1].SetName('u')
-    rGrid.GetPointData().AddArray(vtk_data[-1])
-    
+
     dirname  = os.path.abspath(os.path.join(os.path.dirname(filename),options.dir))
     if not os.path.isdir(dirname):
       os.mkdir(dirname,0o755)
@@ -138,6 +116,6 @@ for filename in options.filenames:
     writer.SetCompressorTypeToZLib()
     writer.SetDataModeToBinary()
     writer.SetFileName(os.path.join(dirname,file_out))
-    writer.SetInputData(grid)
+    writer.SetInputData(Polydata)
     
     writer.Write()

@@ -75,7 +75,7 @@ variables:
   MSC:                             "$MSC2019"
   IntelMarc:                       "$IntelCompiler17_8"
   IntelAbaqus:                     "$IntelCompiler16_4"
-  HDF5Marc:                        "HDF5/1.10.4/Intel-17.8"
+  HDF5Marc:                        "HDF5/1.10.5/Intel-17.8"
   # ++++++++++++ Documentation ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   Doxygen1_8_15:                   "Documentation/Doxygen/1.8.15"
   # ------------ Defaults ----------------------------------------------

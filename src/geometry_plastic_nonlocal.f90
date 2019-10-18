@@ -7,6 +7,7 @@
 !--------------------------------------------------------------------------------------------------
 module geometry_plastic_nonlocal
   use prec
+  use results
 
   implicit none
   private
@@ -32,6 +33,7 @@ module geometry_plastic_nonlocal
     geometry_plastic_nonlocal_setIPvolume, &
     geometry_plastic_nonlocal_setIParea, &
     geometry_plastic_nonlocal_setIPareaNormal, &
+    geometry_plastic_nonlocal_results, &
     geometry_plastic_nonlocal_disable
     
 contains
@@ -111,5 +113,46 @@ subroutine geometry_plastic_nonlocal_disable
     deallocate(geometry_plastic_nonlocal_IPareaNormal0)
   
 end subroutine geometry_plastic_nonlocal_disable
+
+
+!---------------------------------------------------------------------------------------------------
+!> @brief Writes geometry data to results file
+!---------------------------------------------------------------------------------------------------
+subroutine geometry_plastic_nonlocal_results
+  
+  integer,     dimension(:),   allocatable :: shp
+
+#if defined(DAMASK_HDF5)
+  call results_openJobFile
+
+  writeVolume: block
+    real(pReal), dimension(:), allocatable :: temp
+    shp = shape(geometry_plastic_nonlocal_IPvolume0)
+    temp = reshape(geometry_plastic_nonlocal_IPvolume0,[shp(1)*shp(2)])
+    call results_writeDataset('geometry',temp,'v_0',&
+                              'initial cell volume','m³')
+  end block writeVolume
+
+  writeAreas: block
+    real(pReal), dimension(:,:), allocatable :: temp
+    shp = shape(geometry_plastic_nonlocal_IParea0)
+    temp = reshape(geometry_plastic_nonlocal_IParea0,[shp(1),shp(2)*shp(3)])
+    call results_writeDataset('geometry',temp,'a_0',&
+                              'initial cell face area','m²')
+  end block writeAreas
+
+  writeNormals: block
+    real(pReal), dimension(:,:,:), allocatable :: temp
+    shp = shape(geometry_plastic_nonlocal_IPareaNormal0)
+    temp = reshape(geometry_plastic_nonlocal_IPareaNormal0,[shp(1),shp(2),shp(3)*shp(4)])
+    call results_writeDataset('geometry',temp,'n_0',&
+                              'initial cell face normals','-',transposed=.false.)
+  end block writeNormals
+
+
+  call results_closeJobFile
+#endif
+  
+end subroutine geometry_plastic_nonlocal_results
 
 end module geometry_plastic_nonlocal

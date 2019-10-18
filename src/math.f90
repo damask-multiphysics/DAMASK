@@ -1307,10 +1307,10 @@ real(pReal) pure function math_volTetrahedron(v1,v2,v3,v4)
   real(pReal), dimension (3,3) :: m
 
   m(1:3,1) = v1-v2
-  m(1:3,2) = v2-v3
-  m(1:3,3) = v3-v4
+  m(1:3,2) = v1-v3
+  m(1:3,3) = v1-v4
 
-  math_volTetrahedron = math_det33(m)/6.0_pReal
+  math_volTetrahedron = abs(math_det33(m))/6.0_pReal
 
 end function math_volTetrahedron
 
@@ -1404,6 +1404,7 @@ subroutine unitTest
   integer,     dimension(5) :: range_out_ = [1,2,3,4,5]
 
   real(pReal)                 :: det
+  real(pReal), dimension(3)   :: v3_1,v3_2,v3_3,v3_4
   real(pReal), dimension(6)   :: v6
   real(pReal), dimension(9)   :: v9
   real(pReal), dimension(3,3) :: t33,t33_2
@@ -1452,6 +1453,15 @@ subroutine unitTest
   if(any(dNeq0(math_6toSym33(v6) - math_symmetric33(math_6toSym33(v6))))) &
     call IO_error(401,ext_msg='math_symmetric33')
  
+  call random_number(v3_1)
+  call random_number(v3_2)
+  call random_number(v3_3)
+  call random_number(v3_4)
+  
+  if(dNeq(abs(dot_product(math_cross(v3_1-v3_4,v3_2-v3_4),v3_3-v3_4))/6.0, &
+          math_volTetrahedron(v3_1,v3_2,v3_3,v3_4),tol=1.0e-12_pReal)) &
+  call IO_error(401,ext_msg='math_volTetrahedron')
+    
   call random_number(t33)
   if(dNeq(math_det33(math_symmetric33(t33)),math_detSym33(math_symmetric33(t33)),tol=1.0e-12_pReal)) &
     call IO_error(401,ext_msg='math_det33/math_detSym33')
