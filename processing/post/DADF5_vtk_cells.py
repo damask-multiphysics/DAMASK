@@ -128,7 +128,7 @@ for filename in options.filenames:
     x = results.get_dataset_location('u_n')
     vtk_data.append(numpy_support.numpy_to_vtk(num_array=results.read_dataset(x,0),deep=True,array_type=vtk.VTK_DOUBLE))
     vtk_data[-1].SetName('u')
-    rGrid.GetPointData().AddArray(vtk_data[-1])
+    grid.GetPointData().AddArray(vtk_data[-1])
     
     dirname  = os.path.abspath(os.path.join(os.path.dirname(filename),options.dir))
     if not os.path.isdir(dirname):
