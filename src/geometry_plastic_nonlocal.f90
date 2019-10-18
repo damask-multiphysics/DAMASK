@@ -116,7 +116,7 @@ end subroutine geometry_plastic_nonlocal_disable
 
 
 !---------------------------------------------------------------------------------------------------
-!> @brief Frees memory used by variables only needed by plastic_nonlocal
+!> @brief Writes geometry data to results file
 !---------------------------------------------------------------------------------------------------
 subroutine geometry_plastic_nonlocal_results
   
