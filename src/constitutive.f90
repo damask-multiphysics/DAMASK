@@ -128,16 +128,16 @@ subroutine constitutive_init
             thisSize   => plastic_phenopowerlaw_sizePostResult
           case (PLASTICITY_KINEHARDENING_ID) plasticityType
             outputName = PLASTICITY_KINEHARDENING_label
-            thisOutput => plastic_kinehardening_output
-            thisSize   => plastic_kinehardening_sizePostResult  
+            thisOutput => null()
+            thisSize   => null()
           case (PLASTICITY_DISLOTWIN_ID) plasticityType
             outputName = PLASTICITY_DISLOTWIN_label
-            thisOutput => plastic_dislotwin_output
-            thisSize   => plastic_dislotwin_sizePostResult
+            thisOutput => null()
+            thisSize   => null()
           case (PLASTICITY_DISLOUCLA_ID) plasticityType
             outputName = PLASTICITY_DISLOUCLA_label
-            thisOutput => plastic_disloucla_output
-            thisSize   => plastic_disloucla_sizePostResult
+            thisOutput => null()
+            thisSize   => null()
           case (PLASTICITY_NONLOCAL_ID) plasticityType
             outputName = PLASTICITY_NONLOCAL_label
             thisOutput => plastic_nonlocal_output
@@ -743,18 +743,6 @@ function constitutive_postResults(S, Fi, ipc, ip, el)
     case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
       constitutive_postResults(startPos:endPos) = &
         plastic_phenopowerlaw_postResults(Mp,instance,of)
-
-    case (PLASTICITY_KINEHARDENING_ID) plasticityType
-      constitutive_postResults(startPos:endPos) = &
-        plastic_kinehardening_postResults(Mp,instance,of)
-
-    case (PLASTICITY_DISLOTWIN_ID) plasticityType
-      constitutive_postResults(startPos:endPos) = &
-        plastic_dislotwin_postResults(Mp,temperature(ho)%p(tme),instance,of)
-
-    case (PLASTICITY_DISLOUCLA_ID) plasticityType
-      constitutive_postResults(startPos:endPos) = &
-        plastic_disloucla_postResults(Mp,temperature(ho)%p(tme),instance,of)
 
     case (PLASTICITY_NONLOCAL_ID) plasticityType
       constitutive_postResults(startPos:endPos) = &
