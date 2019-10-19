@@ -401,22 +401,16 @@ class DADF5():
     """Adds the equivalent Mises stress or strain of a tensor."""
     def Mises(x):
       
-      if x['meta']['Unit'] == b'Pa': #ToDo: Should we use this? Then add_Cauchy  and add_strain_tensors also should perform sanity checks
-        factor = 3.0/2.0
+      if x['meta']['Unit'] == 'Pa': #ToDo: Should we use this? Then add_Cauchy  and add_strain_tensors also should perform sanity checks
         t = 'stress'
-      elif x['meta']['Unit'] == b'1':
-        factor = 2.0/3.0
+      elif x['meta']['Unit'] == '1':
         t = 'strain'
       else:
         print(x['meta']['Unit'])
         raise ValueError
-      
-      d = x['data']
-      dev = d - np.einsum('ijk,i->ijk',np.broadcast_to(np.eye(3),[d.shape[0],3,3]),np.trace(d,axis1=1,axis2=2)/3.0)
-      #dev_sym = (dev + np.einsum('ikj',dev))*0.5 # ToDo: this is not needed (only if the input is not symmetric, but then the whole concept breaks down)
 
       return  {
-               'data' :  np.sqrt(np.einsum('ijk->i',dev**2)*factor), 
+               'data' :  mechanics.Mises_strain(x['data']) if t=='strain' else mechanics.Mises_stress(x['data']),
                'label' : '{}_vM'.format(x['label']),
                'meta' : {
                         'Unit' :        x['meta']['Unit'],
@@ -699,7 +693,7 @@ class DADF5():
         for d in datasets_requested:
           loc  = f[group+'/'+d['label']]
           data = loc[()]
-          meta = {k:loc.attrs[k] for k in loc.attrs.keys()}
+          meta = {k:loc.attrs[k].decode() for k in loc.attrs.keys()}
           datasets_in[d['arg']] = {'data': data, 'meta' : meta, 'label' : d['label']}
 
       todo.append({'in':{**datasets_in,**extra_args},'func':func,'group':group,'results':results})
@@ -712,7 +706,7 @@ class DADF5():
       with h5py.File(self.filename,'a') as f:                                                       # write to file
         dataset_out = f[result['group']].create_dataset(result['label'],data=result['data'])
         for k in result['meta'].keys():
-          dataset_out.attrs[k] = result['meta'][k]
+          dataset_out.attrs[k] = result['meta'][k].encode()
         N_not_calculated-=1
       
       if N_added < len(todo):                                                                       # add more jobs
