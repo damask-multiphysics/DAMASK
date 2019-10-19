@@ -327,7 +327,7 @@ class DADF5():
     """
     Dataset for all points/cells.
     
-    If more than one path is given, the dataset is composed of the individual contributions
+    If more than one path is given, the dataset is composed of the individual contributions.
     """
     with h5py.File(self.filename,'r') as f:
       shape = (self.Nmaterialpoints,) + np.shape(f[path[0]])[1:]
@@ -383,6 +383,7 @@ class DADF5():
       Label of the dataset containing the 1. Piola-Kirchhoff stress. Default value is ‘P’.
     F : str, optional
       Label of the dataset containing the deformation gradient. Default value is ‘F’.
+
     """
     def __add_Cauchy(F,P):
 
@@ -410,10 +411,12 @@ class DADF5():
     Parameters
     ----------
     x : str
-      Label of the dataset containing a symmetric stress or strain tensor
+      Label of the dataset containing a symmetric stress or strain tensor.
+
     """
     def __add_Mises(x):
 
+      t = 'strain' if x['Unit'] == '1' else 'stress'
       return {
               'data':  mechanics.Mises_strain(x) if t=='strain' else mechanics.Mises_stress(x),
               'label': '{}_vM'.format(x['label']),
@@ -439,6 +442,7 @@ class DADF5():
       Label of the dataset containing a vector or tensor.
     ord : {non-zero int, inf, -inf, ‘fro’, ‘nuc’}, optional
       Order of the norm. inf means numpy’s inf object. For details refer to numpy.linalg.norm.
+
     """
     def __add_norm(x,ord):
 
@@ -477,6 +481,7 @@ class DADF5():
     ----------
     x : str
       Label of the dataset containing a scalar, vector, or tensor.
+
     """
     def __add_absolute(x):
 
@@ -503,6 +508,7 @@ class DADF5():
     ----------
     x : str
       Label of the dataset containing a tensor.
+
     """
     def __add_determinant(x):
       
@@ -529,6 +535,7 @@ class DADF5():
     ----------
     x : str
       Label of the dataset containing a tensor.
+
     """
     def __add_spherical(x):
       
@@ -558,6 +565,7 @@ class DADF5():
     ----------
     x : str
       Label of the dataset containing a tensor.
+
     """
     def __add_deviator(x):
       
@@ -594,7 +602,8 @@ class DADF5():
     description : str, optional
       Human readable description of the result.
     vectorized : bool, optional
-      Indicate whether the formula is written in vectorized form.
+      Indicate whether the formula is written in vectorized form. Default is ‘True’.
+
     """
     if vectorized is not True:
       raise NotImplementedError
@@ -636,6 +645,7 @@ class DADF5():
       Defaults value is ‘U’.
     ord : float, optional
       Order of the strain calculation. Default value is ‘0.0’.
+
     """
     def __add_strain_tensor(F,t,ord):
       
@@ -664,6 +674,7 @@ class DADF5():
     ----------
     x : str
       Label of the dataset containing a symmetric tensor.
+
     """
     def __add_principal_components(x):
 
@@ -690,6 +701,7 @@ class DADF5():
     ----------
     x : str
       Label of the dataset containing a symmetric tensor.
+
     """
     def __add_maximum_shear(x):
 
@@ -720,6 +732,7 @@ class DADF5():
       Details of the datasets to be used: label (in HDF5 file) and arg (argument to which the data is parsed in func).
     extra_args : dictionary, optional
       Any extra arguments parsed to func.
+
     """
     def job(args):
       """Call function with input data + extra arguments, returns results + group."""

@@ -12,6 +12,7 @@ def Cauchy(F,P):
     Deformation gradient.
   P : numpy.array of shape (x,3,3) or (3,3)
     1. Piola-Kirchhoff stress.
+
   """
   if np.shape(F) == np.shape(P) == (3,3):
     sigma = 1.0/np.linalg.det(F) * np.dot(F,P)
@@ -34,23 +35,22 @@ def strain_tensor(F,t,ord):
   t : {‘V’, ‘U’}
     Type of the polar decomposition, ‘V’ for right stretch tensor and ‘U’ for left stretch tensor.
   ord : float
-    Order of the strain 
+    Order of the strain.
+
   """  
-  F_expanded = F if len(F.shape) == 3 else F.reshape(1,3,3)
-  
   if   t == 'U':
-    B   = np.matmul(F_expanded,transpose(F_expanded))
-    U,n = np.linalg.eigh(symmetric(B))
-    l   = np.log(U) if ord == 0 else U**ord - np.broadcast_to(np.ones(3),[U.shape[0],3])
+    B   = np.matmul(F,transpose(F))
+    U,n = np.linalg.eigh(B)
+    lmd = np.log(U) if ord == 0 else \
+          U**ord       - (np.broadcast_to(np.ones(3),[U.shape[0],3]) if len(F.shape) == 3 else np.ones(3))
   elif t == 'V':
-    C   = np.matmul(transpose(F_expanded),F_expanded)
-    V,n = np.linalg.eigh(symmetric(C))
-    l   = np.log(V) if ord == 0 else np.broadcast_to(np.ones(3),[V.shape[0],3]) - 1.0/V**ord
-  
-  epsilon = np.matmul(n,np.einsum('ij,ikj->ijk',l,n))
-  
-  return epsilon.reshape((3,3)) if np.shape(F) == (3,3) else \
-         epsilon
+    C   = np.matmul(transpose(F),F)
+    V,n = np.linalg.eigh(C)
+    lmd = np.log(V) if ord == 0 else \
+          - 1.0/V**ord + (np.broadcast_to(np.ones(3),[V.shape[0],3]) if len(F.shape) == 3 else np.ones(3)) 
+
+  return np.dot(n,np.dot(np.diag(l),n.T)) if np.shape(F) == (3,3) else \
+         np.matmul(n,np.einsum('ij,ikj->ijk',lmd,n))
 
 
 def deviatoric_part(x):
@@ -60,7 +60,8 @@ def deviatoric_part(x):
   Parameters
   ----------
   x : numpy.array of shape (x,3,3) or (3,3)
-    Tensor.
+    Tensor of which the deviatoric part is computed.
+
   """
   return x - np.eye(3)*spherical_part(x) if np.shape(x) == (3,3) else \
          x - np.einsum('ijk,i->ijk',np.broadcast_to(np.eye(3),[x.shape[0],3,3]),spherical_part(x)) 
@@ -76,9 +77,9 @@ def spherical_part(x):
   Parameters
   ----------
   x : numpy.array of shape (x,3,3) or (3,3)
-    Tensor.
+    Tensor of which the hydrostatic part is computed.
+
   """
-  
   return np.trace(x)/3.0 if np.shape(x) == (3,3) else \
          np.trace(x,axis1=1,axis2=2)/3.0
     
@@ -90,7 +91,8 @@ def Mises_stress(sigma):
   Parameters
   ----------
   sigma : numpy.array of shape (x,3,3) or (3,3)
-    Symmetric stress tensor.
+    Symmetric stress tensor of which the von Mises equivalent is computed.
+
   """
   s = deviatoric_part(sigma)
   return np.sqrt(3.0/2.0*np.trace(s)) if np.shape(sigma) == (3,3) else \
@@ -104,7 +106,8 @@ def Mises_strain(epsilon):
   Parameters
   ----------
   epsilon : numpy.array of shape (x,3,3) or (3,3)
-    Symmetric strain tensor.
+    Symmetric strain tensor of which the von Mises equivalent is computed.
+
   """
   s = deviatoric_part(epsilon)
   return np.sqrt(2.0/3.0*np.trace(s)) if np.shape(epsilon) == (3,3) else \
@@ -118,7 +121,8 @@ def symmetric(x):
   Parameters
   ----------
   x : numpy.array of shape (x,3,3) or (3,3)
-    Tensor.
+    Tensor of which the symmetrized values are computed.
+
   """
   return (x+transpose(x))*0.5
 
@@ -130,10 +134,11 @@ def maximum_shear(x):
   Parameters
   ----------
   x : numpy.array of shape (x,3,3) or (3,3)
-    Symmetric tensor.
+    Symmetric tensor of which the maximum shear is computed.
+
   """
   w = np.linalg.eigvalsh(symmetric(x))                                                              # eigenvalues in ascending order
-  return (w[2] - w[0])*0.5 if np.shape(epsilon) == (3,3) else \
+  return (w[2] - w[0])*0.5 if np.shape(x) == (3,3) else \
          (w[:,2] - w[:,0])*0.5
     
     
@@ -147,10 +152,11 @@ def principal_components(x):
   Parameters
   ----------
   x : numpy.array of shape (x,3,3) or (3,3)
-    Symmetric tensor.
+    Symmetric tensor of which the principal compontents are computed.
+
   """
   w = np.linalg.eigvalsh(symmetric(x))                                                              # eigenvalues in ascending order
-  return w[::-1] if np.shape(epsilon) == (3,3) else \
+  return w[::-1] if np.shape(x) == (3,3) else \
          w[:,::-1]
     
     
@@ -161,7 +167,8 @@ def transpose(x):
   Parameters
   ----------
   x : numpy.array of shape (x,3,3) or (3,3)
-    Tensor.
+    Tensor of which the transpose is computer.
+
   """
   return x.T if np.shape(x) == (3,3) else \
          np.transpose(x,(0,2,1))
