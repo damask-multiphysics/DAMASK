@@ -21,12 +21,12 @@ def Cauchy(F,P):
   return symmetric(sigma)
   
 
-def strain_tensor(F,t,ord):
+def strain_tensor(F,t,m):
   """
   Return strain tensor calculated from deformation gradient.
     
-  For details refer to Albrecht Bertram: Elasticity and Plasticity of Large Deformations:
-  An Introduction (3rd Edition, 2012), p. 102.
+  For details refer to https://en.wikipedia.org/wiki/Finite_strain_theory and
+  https://de.wikipedia.org/wiki/Verzerrungstensor
   
   Parameters
   ----------
@@ -34,23 +34,29 @@ def strain_tensor(F,t,ord):
     Deformation gradient.
   t : {‘V’, ‘U’}
     Type of the polar decomposition, ‘V’ for right stretch tensor and ‘U’ for left stretch tensor.
-  ord : float
+  m : float
     Order of the strain.
 
-  """  
+  """
+  F_ = F.reshape((1,3,3)) if F.shape == (3,3) else F
   if   t == 'U':
-    B   = np.matmul(F,transpose(F))
-    U,n = np.linalg.eigh(B)
-    lmd = np.log(U) if ord == 0 else \
-          U**ord       - (np.broadcast_to(np.ones(3),[U.shape[0],3]) if len(F.shape) == 3 else np.ones(3))
+    B   = np.matmul(F_,transpose(F_))
+    w,n = np.linalg.eigh(B)
   elif t == 'V':
-    C   = np.matmul(transpose(F),F)
-    V,n = np.linalg.eigh(C)
-    lmd = np.log(V) if ord == 0 else \
-          - 1.0/V**ord + (np.broadcast_to(np.ones(3),[V.shape[0],3]) if len(F.shape) == 3 else np.ones(3)) 
-
-  return np.dot(n,np.dot(np.diag(l),n.T)) if np.shape(F) == (3,3) else \
-         np.matmul(n,np.einsum('ij,ikj->ijk',lmd,n))
+    C   = np.matmul(transpose(F_),F_)
+    w,n = np.linalg.eigh(C)
+  
+  if   m > 0.0:
+    eps = 1.0/(2.0*abs(m)) * (+ np.matmul(n,np.einsum('ij,ikj->ijk',w**m,n)) 
+                              - np.broadcast_to(np.ones(3),[F_.shape[0],3]))
+  elif m < 0.0:
+    eps = 1.0/(2.0*abs(m)) * (- np.matmul(n,np.einsum('ij,ikj->ijk',w**m,n))
+                              + np.broadcast_to(np.ones(3),[F_.shape[0],3]))
+  else:
+    eps = np.matmul(n,np.einsum('ij,ikj->ijk',0.5*np.log(w),n))
+    
+  return eps.reshape((3,3)) if np.shape(F) == (3,3) else \
+         eps
 
 
 def deviatoric_part(x):

@@ -630,7 +630,7 @@ class DADF5():
     self.__add_generic_pointwise(__add_calculation,requested,pass_through)
 
 
-  def add_strain_tensor(self,F='F',t='U',ord=0):
+  def add_strain_tensor(self,F='F',t='U',m=0):
     """
     Add strain tensor calculated from a deformation gradient.
     
@@ -643,15 +643,15 @@ class DADF5():
     t : {‘V’, ‘U’}, optional
       Type of the polar decomposition, ‘V’ for right stretch tensor and ‘U’ for left stretch tensor.
       Defaults value is ‘U’.
-    ord : float, optional
+    m : float, optional
       Order of the strain calculation. Default value is ‘0.0’.
 
     """
-    def __add_strain_tensor(F,t,ord):
+    def __add_strain_tensor(F,t,m):
       
       return {
-              'data':  mechanics.strain_tensor(F['data'],t,ord), 
-              'label': 'epsilon_{}^{}({})'.format(t,ord,F['label']),
+              'data':  mechanics.strain_tensor(F['data'],t,m), 
+              'label': 'epsilon_{}^{}({})'.format(t,m,F['label']),
               'meta':  {
                         'Unit':        F['meta']['Unit'],
                         'Description': 'Strain tensor of {} ({})'.format(F['label'],F['meta']['Description']),
@@ -661,7 +661,7 @@ class DADF5():
 
     requested = [{'label':F,'arg':'F'}]
     
-    self.__add_generic_pointwise(__add_strain_tensor,requested,{'t':t,'ord':ord})
+    self.__add_generic_pointwise(__add_strain_tensor,requested,{'t':t,'m':m})
     
     
   def add_principal_components(self,x):
