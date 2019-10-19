@@ -135,7 +135,7 @@ module material
     material_homogenizationMemberAt                                                                 !< position of the element within its homogenization instance
   integer, dimension(:,:), allocatable, public, protected :: &                                      ! (constituent,elem)
     material_phaseAt                                                                                !< phase ID of each element
-  integer, dimension(:,:,:), allocatable, public, protected :: &                                    ! (constituent,ip,elem)
+  integer, dimension(:,:,:), allocatable, public, protected :: &                                    ! (constituent,elem)
     material_phaseMemberAt                                                                          !< position of the element within its phase instance
 ! END NEW MAPPINGS
 

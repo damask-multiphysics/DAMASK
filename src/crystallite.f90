@@ -1055,16 +1055,16 @@ subroutine crystallite_results
     real(pReal), allocatable, dimension(:,:,:) :: select_tensors
     integer :: e,i,c,j
      
-    allocate(select_tensors(3,3,count(material_phaseAt==instance)*homogenization_maxNgrains))
+    allocate(select_tensors(3,3,count(material_phaseAt==instance)*homogenization_maxNgrains*discretization_nIP))
 
     j=0
     do e = 1, size(material_phaseAt,2)
-      do i = 1, homogenization_maxNgrains                                                           !ToDo: this needs to be changed for varying Ngrains
-        do c = 1, size(material_phaseAt,1)
-           if (material_phaseAt(c,e) == instance) then
-             j = j + 1
-             select_tensors(1:3,1:3,j) = dataset(1:3,1:3,c,i,e)
-           endif
+      do i = 1, discretization_nIP
+        do c = 1, size(material_phaseAt,1)                                                          !ToDo: this needs to be changed for varying Ngrains
+          if (material_phaseAt(c,e) == instance) then
+            j = j + 1
+            select_tensors(1:3,1:3,j) = dataset(1:3,1:3,c,i,e)
+          endif
         enddo
       enddo
     enddo
@@ -1082,12 +1082,12 @@ subroutine crystallite_results
     type(rotation), allocatable, dimension(:) :: select_rotations
     integer :: e,i,c,j
      
-    allocate(select_rotations(count(material_phaseAt==instance)*homogenization_maxNgrains))
+    allocate(select_rotations(count(material_phaseAt==instance)*homogenization_maxNgrains*discretization_nIP))
 
     j=0
     do e = 1, size(material_phaseAt,2)
-      do i = 1, homogenization_maxNgrains                                                           !ToDo: this needs to be changed for varying Ngrains
-        do c = 1, size(material_phaseAt,1)
+      do i = 1, discretization_nIP
+        do c = 1, size(material_phaseAt,1)                                                          !ToDo: this needs to be changed for varying Ngrains
            if (material_phaseAt(c,e) == instance) then
              j = j + 1
              select_rotations(j) = dataset(c,i,e)
