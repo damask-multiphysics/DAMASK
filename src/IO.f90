@@ -735,11 +735,6 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'invalid selection for debug'
 
 !-------------------------------------------------------------------------------------------------
-! DAMASK_marc errors
-    case (700)
-      msg = 'invalid materialpoint result requested'
-
-!-------------------------------------------------------------------------------------------------
 ! errors related to the grid solver
     case (809)
       msg = 'initializing FFTW'
