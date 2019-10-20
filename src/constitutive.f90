@@ -120,8 +120,8 @@ subroutine constitutive_init
             thisSize   => null()
           case (PLASTICITY_ISOTROPIC_ID) plasticityType
             outputName = PLASTICITY_ISOTROPIC_label
-            thisOutput => plastic_isotropic_output
-            thisSize   => plastic_isotropic_sizePostResult
+            thisOutput => null()
+            thisSize   => null()
           case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
             outputName = PLASTICITY_PHENOPOWERLAW_label
             thisOutput => plastic_phenopowerlaw_output
@@ -736,9 +736,6 @@ function constitutive_postResults(S, Fi, ipc, ip, el)
   instance = phase_plasticityInstance(material_phaseAt(ipc,el))
 
   plasticityType: select case (phase_plasticity(material_phaseAt(ipc,el)))
-    case (PLASTICITY_ISOTROPIC_ID) plasticityType
-      constitutive_postResults(startPos:endPos) = &
-        plastic_isotropic_postResults(Mp,instance,of)
 
     case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
       constitutive_postResults(startPos:endPos) = &

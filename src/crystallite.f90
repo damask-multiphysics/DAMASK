@@ -879,7 +879,6 @@ function crystallite_postResults(ipc, ip, el)
     crystID, &
     mySize, &
     n
-  type(rotation) :: rot
 
   crystID = microstructure_crystallite(discretization_microstructureAt(el))
 
