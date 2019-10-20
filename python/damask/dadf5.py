@@ -326,7 +326,8 @@ class DADF5():
               group = '/'.join([i,o[:-1],oo,pp])                              # o[:-1]: plural/singular issue
               for d in f[group].keys():
                 try:
-                  message+='      {} ({})\n'.format(d,f['/'.join([group,d])].attrs['Description'].decode())
+                  dataset = f['/'.join([group,d])]
+                  message+='      {} / ({}): {}\n'.format(d,dataset.attrs['Unit'].decode(),dataset.attrs['Description'].decode())
                 except KeyError:
                   pass
     return message
