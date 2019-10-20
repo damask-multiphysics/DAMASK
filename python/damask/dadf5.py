@@ -91,7 +91,7 @@ class DADF5():
     
     valid = [e for e_ in [glob.fnmatch.filter(getattr(self,what),s) for s in choice] for e in e_]
     existing = set(self.visible[what])
-    
+
     if   action == 'set':
       self.visible[what] = valid
     elif action == 'add':
@@ -110,7 +110,7 @@ class DADF5():
 
   def set_by_time(self,start,end):
     """
-    Sets active time increments based on start and end time.
+    Set active increments based on start and end time.
 
     Parameters
     ----------
@@ -125,7 +125,7 @@ class DADF5():
 
   def add_by_time(self,start,end):
     """
-    Adds to active time increments based on start and end time.
+    Add to active increments based on start and end time.
 
     Parameters
     ----------
@@ -140,7 +140,7 @@ class DADF5():
 
   def del_by_time(self,start,end):
     """
-    Delets from active time increments based on start and end time.
+    Delete from active increments based on start and end time.
 
     Parameters
     ----------
@@ -151,11 +151,56 @@ class DADF5():
 
     """
     self.__manage_visible(self.__time_to_inc(start,end),'increments','del')
+    
+    
+  def set_by_increment(self,start,end):
+    """
+    Set active time increments based on start and end increment.
+
+    Parameters
+    ----------
+    start : int
+      start increment (included)
+    end : int
+      end increment (included)
+
+    """
+    self.__manage_visible(['inc{:05d}'.format(i) for i in range(start,end+1)],'increments','set')
+
+
+  def add_by_increment(self,start,end):
+    """
+    Add to active time increments based on start and end increment.
+
+    Parameters
+    ----------
+    start : int
+      start increment (included)
+    end : int
+      end increment (included)
+
+    """
+    self.__manage_visible(['inc{:05d}'.format(i) for i in range(start,end+1)],'increments','add')
+
+
+  def del_by_increment(self,start,end):
+    """
+    Delet from active time increments based on start and end increment.
+
+    Parameters
+    ----------
+    start : int
+      start increment (included)
+    end : int
+      end increment (included)
+
+    """
+    self.__manage_visible(['inc{:05d}'.format(i) for i in range(start,end+1)],'increments','del')
 
 
   def iter_visible(self,what):
     """
-    Iterates over visible items by setting each one visible.
+    Iterate over visible items by setting each one visible.
 
     Parameters
     ----------
@@ -177,7 +222,7 @@ class DADF5():
   
   def set_visible(self,what,datasets):
     """
-    Sets active groups.
+    Set active groups.
     
     Parameters
     ----------
@@ -193,7 +238,7 @@ class DADF5():
 
   def add_visible(self,what,datasets):
     """
-    Adds to active groups.
+    Add to active groups.
     
     Parameters
     ----------
@@ -209,7 +254,7 @@ class DADF5():
 
   def del_visible(self,what,datasets):
     """
-    Removes from active groupse.
+    Delete from active groupse.
     
     Parameters
     ----------
@@ -268,7 +313,7 @@ class DADF5():
 
 
   def list_data(self):
-    """Gives information on all active datasets in the file."""
+    """Return information on all active datasets in the file."""
     message = ''
     with h5py.File(self.filename,'r') as f:
       for i in self.iter_visible('increments'):
@@ -288,7 +333,7 @@ class DADF5():
 
 
   def get_dataset_location(self,label):
-    """Returns the location of all active datasets with given label."""
+    """Return the location of all active datasets with given label."""
     path = []
     with h5py.File(self.filename,'r') as f:
       for i in self.iter_visible('increments'):
