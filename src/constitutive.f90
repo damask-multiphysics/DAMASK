@@ -148,7 +148,7 @@ subroutine constitutive_init
         write(FILEUNIT,'(/,a,/)') '['//trim(config_name_phase(ph))//']'
         if (knownPlasticity) then
           write(FILEUNIT,'(a)') '(plasticity)'//char(9)//trim(outputName)
-          if (phase_plasticity(ph) /= PLASTICITY_NONE_ID) then
+          if (associated(thisOutput)) then
             OutputPlasticityLoop: do o = 1,size(thisOutput(:,ins))
               if(len_trim(thisOutput(o,ins)) > 0) &
                 write(FILEUNIT,'(a,i4)') trim(thisOutput(o,ins))//char(9),thisSize(o,ins)
