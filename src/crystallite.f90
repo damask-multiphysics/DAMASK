@@ -904,10 +904,6 @@ function crystallite_postResults(ipc, ip, el)
         mySize = 9
         crystallite_postResults(c+1:c+mySize) = &
           reshape(transpose(crystallite_Fp(1:3,1:3,ipc,ip,el)),[mySize])
-      case (lp_ID)
-        mySize = 9
-        crystallite_postResults(c+1:c+mySize) = &
-          reshape(transpose(crystallite_Lp(1:3,1:3,ipc,ip,el)),[mySize])
       case (p_ID)
         mySize = 9
         crystallite_postResults(c+1:c+mySize) = &
