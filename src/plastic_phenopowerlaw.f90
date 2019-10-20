@@ -17,11 +17,6 @@ module plastic_phenopowerlaw
 
  implicit none
  private
- 
- integer,          dimension(:,:),   allocatable, target, public :: &
-   plastic_phenopowerlaw_sizePostResult                                                             !< size of each post result output
- character(len=64), dimension(:,:),   allocatable, target, public :: &
-   plastic_phenopowerlaw_output                                                                     !< name of each post result output
 
  enum, bind(c)
    enumerator :: &
@@ -100,7 +95,6 @@ module plastic_phenopowerlaw
    plastic_phenopowerlaw_init, &
    plastic_phenopowerlaw_LpAndItsTangent, &
    plastic_phenopowerlaw_dotState, &
-   plastic_phenopowerlaw_postResults, &
    plastic_phenopowerlaw_results
 
 contains
@@ -136,10 +130,6 @@ subroutine plastic_phenopowerlaw_init
  Ninstance = count(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
-
- allocate(plastic_phenopowerlaw_sizePostResult(maxval(phase_Noutput),Ninstance),source=0)
- allocate(plastic_phenopowerlaw_output(maxval(phase_Noutput),Ninstance))
-          plastic_phenopowerlaw_output = ''
 
  allocate(param(Ninstance))
  allocate(state(Ninstance))
@@ -306,8 +296,6 @@ subroutine plastic_phenopowerlaw_init
      end select
 
      if (outputID /= undefined_ID) then
-       plastic_phenopowerlaw_output(i,phase_plasticityInstance(p)) = outputs(i)
-       plastic_phenopowerlaw_sizePostResult(i,phase_plasticityInstance(p)) = outputSize
        prm%outputID = [prm%outputID, outputID]
      endif
 
@@ -322,7 +310,6 @@ subroutine plastic_phenopowerlaw_init
 
    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0, &
                                       prm%totalNslip,prm%totalNtwin,0)
-   plasticState(p)%sizePostResults = sum(plastic_phenopowerlaw_sizePostResult(:,phase_plasticityInstance(p)))
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
@@ -471,71 +458,6 @@ subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
  end associate
 
 end subroutine plastic_phenopowerlaw_dotState
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return array of constitutive results
-!--------------------------------------------------------------------------------------------------
-function plastic_phenopowerlaw_postResults(Mp,instance,of) result(postResults)
-
- real(pReal), dimension(3,3), intent(in) :: &
-   Mp                                                                                               !< Mandel stress
- integer,                     intent(in) :: &
-   instance, &
-   of
-
- real(pReal), dimension(sum(plastic_phenopowerlaw_sizePostResult(:,instance))) :: &
-   postResults
-
- integer :: &
-   o,c,i
- real(pReal), dimension(param(instance)%totalNslip) :: &
-   gdot_slip_pos,gdot_slip_neg
-
- c = 0
-
- associate(prm => param(instance), stt => state(instance))
-
- outputsLoop: do o = 1,size(prm%outputID)
-   select case(prm%outputID(o))
-
-     case (resistance_slip_ID)
-       postResults(c+1:c+prm%totalNslip) = stt%xi_slip(1:prm%totalNslip,of)
-       c = c + prm%totalNslip
-     case (accumulatedshear_slip_ID)
-       postResults(c+1:c+prm%totalNslip) = stt%gamma_slip(1:prm%totalNslip,of)
-       c = c + prm%totalNslip
-     case (shearrate_slip_ID)
-       call kinetics_slip(Mp,instance,of,gdot_slip_pos,gdot_slip_neg)
-       postResults(c+1:c+prm%totalNslip) = gdot_slip_pos+gdot_slip_neg
-       c = c + prm%totalNslip
-     case (resolvedstress_slip_ID)
-       do i = 1, prm%totalNslip
-         postResults(c+i) = math_mul33xx33(Mp,prm%Schmid_slip(1:3,1:3,i))
-       enddo
-       c = c + prm%totalNslip
-
-     case (resistance_twin_ID)
-       postResults(c+1:c+prm%totalNtwin) = stt%xi_twin(1:prm%totalNtwin,of)
-       c = c + prm%totalNtwin
-     case (accumulatedshear_twin_ID)
-       postResults(c+1:c+prm%totalNtwin) = stt%gamma_twin(1:prm%totalNtwin,of)
-       c = c + prm%totalNtwin
-     case (shearrate_twin_ID)
-       call kinetics_twin(Mp,instance,of,postResults(c+1:c+prm%totalNtwin))
-       c = c + prm%totalNtwin
-     case (resolvedstress_twin_ID)
-       do i = 1, prm%totalNtwin
-         postResults(c+i) = math_mul33xx33(Mp,prm%Schmid_twin(1:3,1:3,i))
-       enddo
-       c = c + prm%totalNtwin
-
-   end select
- enddo outputsLoop
-
- end associate
-
-end function plastic_phenopowerlaw_postResults
 
 
 !--------------------------------------------------------------------------------------------------

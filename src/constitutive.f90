@@ -124,8 +124,8 @@ subroutine constitutive_init
             thisSize   => null()
           case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
             outputName = PLASTICITY_PHENOPOWERLAW_label
-            thisOutput => plastic_phenopowerlaw_output
-            thisSize   => plastic_phenopowerlaw_sizePostResult
+            thisOutput => null()
+            thisSize   => null()
           case (PLASTICITY_KINEHARDENING_ID) plasticityType
             outputName = PLASTICITY_KINEHARDENING_label
             thisOutput => null()
@@ -736,10 +736,6 @@ function constitutive_postResults(S, Fi, ipc, ip, el)
   instance = phase_plasticityInstance(material_phaseAt(ipc,el))
 
   plasticityType: select case (phase_plasticity(material_phaseAt(ipc,el)))
-
-    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
-      constitutive_postResults(startPos:endPos) = &
-        plastic_phenopowerlaw_postResults(Mp,instance,of)
 
     case (PLASTICITY_NONLOCAL_ID) plasticityType
       constitutive_postResults(startPos:endPos) = &
