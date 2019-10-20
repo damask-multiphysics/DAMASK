@@ -103,7 +103,7 @@ class DADF5():
   def __time_to_inc(self,start,end):
     selected = []
     for i,time in enumerate(self.times):
-      if start <= time < end:
+      if start <= time <= end:
         selected.append(self.increments[i])
     return selected
 
@@ -117,7 +117,7 @@ class DADF5():
     start : float
       start time (included)
     end : float
-      end time (exclcuded)
+      end time (included)
 
     """
     self.__manage_visible(self.__time_to_inc(start,end),'increments','set')
@@ -132,7 +132,7 @@ class DADF5():
     start : float
       start time (included)
     end : float
-      end time (exclcuded)
+      end time (included)
 
     """
     self.__manage_visible(self.__time_to_inc(start,end),'increments','add')
@@ -147,7 +147,7 @@ class DADF5():
     start : float
       start time (included)
     end : float
-      end time (exclcuded)
+      end time (included)
 
     """
     self.__manage_visible(self.__time_to_inc(start,end),'increments','del')
