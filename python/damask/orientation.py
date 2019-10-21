@@ -1046,13 +1046,13 @@ class Lattice:
     for miller in np.hstack((relationship['planes'],relationship['directions'])):
       myPlane     = miller[myPlane_id]/    np.linalg.norm(miller[myPlane_id])
       myDir       = miller[myDir_id]/      np.linalg.norm(miller[myDir_id])
-      myMatrix    = np.array([myDir,np.cross(myPlane,myDir),myPlane]).T
+      myMatrix    = np.array([myDir,np.cross(myPlane,myDir),myPlane])
 
       otherPlane  = miller[otherPlane_id]/ np.linalg.norm(miller[otherPlane_id])
       otherDir    = miller[otherDir_id]/   np.linalg.norm(miller[otherDir_id])
-      otherMatrix = np.array([otherDir,np.cross(otherPlane,otherDir),otherPlane]).T
+      otherMatrix = np.array([otherDir,np.cross(otherPlane,otherDir),otherPlane])
 
-      r['rotations'].append(Rotation.fromMatrix(np.dot(otherMatrix,myMatrix.T)))
+      r['rotations'].append(Rotation.fromMatrix(np.dot(otherMatrix.T,myMatrix)))
 
     return r
 
