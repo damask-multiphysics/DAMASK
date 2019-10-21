@@ -101,8 +101,8 @@ def Mises_stress(sigma):
 
   """
   s = deviatoric_part(sigma)
-  return np.sqrt(3.0/2.0*np.trace(s)) if np.shape(sigma) == (3,3) else \
-         np.sqrt(3.0/2.0*np.einsum('ijk->i',s))
+  return np.sqrt(3.0/2.0*(np.sum(s**2.0))) if np.shape(sigma) == (3,3) else \
+         np.sqrt(3.0/2.0*np.einsum('ijk->i',s**2.0))
     
     
 def Mises_strain(epsilon):
@@ -116,8 +116,8 @@ def Mises_strain(epsilon):
 
   """
   s = deviatoric_part(epsilon)
-  return np.sqrt(2.0/3.0*np.trace(s)) if np.shape(epsilon) == (3,3) else \
-         np.sqrt(2.0/3.0*np.einsum('ijk->i',s))
+  return np.sqrt(3.0/2.0*(np.sum(s**2.0))) if np.shape(epsilon) == (3,3) else \
+         np.sqrt(3.0/2.0*np.einsum('ijk->i',s**2.0))
 
 
 def symmetric(x):

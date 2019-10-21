@@ -462,9 +462,10 @@ class DADF5():
     """
     def __add_Mises(x):
 
-      t = 'strain' if x['Unit'] == '1' else 'stress'
+      t = 'strain' if x['meta']['Unit'] == '1' else \
+          'stress'
       return {
-              'data':  mechanics.Mises_strain(x) if t=='strain' else mechanics.Mises_stress(x),
+              'data':  mechanics.Mises_strain(x['data']) if t=='strain' else  mechanics.Mises_stress(x['data']),
               'label': '{}_vM'.format(x['label']),
               'meta':  {
                         'Unit':        x['meta']['Unit'],
@@ -589,7 +590,7 @@ class DADF5():
         raise ValueError
 
       return {
-              'data':  mechanics.spherical_part(x),
+              'data':  mechanics.spherical_part(x['data']),
               'label': 'p_{}'.format(x['label']),
               'meta':  {
                         'Unit':        x['meta']['Unit'],
@@ -725,7 +726,7 @@ class DADF5():
     def __add_principal_components(x):
 
       return {
-              'data':  mechanics.principal_components(x),
+              'data':  mechanics.principal_components(x['data']),
               'label': 'lambda_{}'.format(x['label']),
               'meta':  {
                         'Unit':        x['meta']['Unit'],
@@ -752,7 +753,7 @@ class DADF5():
     def __add_maximum_shear(x):
 
       return {
-              'data':  mechanics.maximum_shear(x),
+              'data':  mechanics.maximum_shear(x['data']),
               'label': 'max_shear({})'.format(x['label']),
               'meta':  {
                         'Unit':        x['meta']['Unit'],
