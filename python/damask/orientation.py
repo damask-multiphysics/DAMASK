@@ -702,14 +702,14 @@ class Symmetry:
     v = np.array(vector,dtype=float)
     if proper:                                                                                      # check both improper ...
       theComponents = np.dot(basis['improper'],v)
-      inSST = np.all(theComponents >= 0.0)
+      inSST = np.all(np.around(theComponents,12) >= 0.0)
       if not inSST:                                                                                 # ... and proper SST
-        theComponents = np.dot(basis['proper'],v)
-        inSST = np.all(theComponents >= 0.0)
+        theComponents = np.dot(basis['proper'],v)       
+        inSST = np.all(np.around(theComponents,12) >= 0.0)
     else:      
       v[2] = abs(v[2])                                                                              # z component projects identical 
       theComponents = np.dot(basis['improper'],v)                                                   # for positive and negative values
-      inSST = np.all(theComponents >= 0.0)
+      inSST = np.all(np.around(theComponents,12) >= 0.0)
 
     if color:                                                                                       # have to return color array
       if inSST:
