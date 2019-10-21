@@ -1144,7 +1144,7 @@ class Orientation:
   def relatedOrientations(self,model):
     """List of orientations related by the given orientation relationship."""
     r = self.lattice.relationOperations(model)
-    return [self.__class__(self.rotation*o,r['lattice']) for o in r['rotations']]
+    return [self.__class__(o*self.rotation,r['lattice']) for o in r['rotations']]
     
   def reduced(self):
     """Transform orientation to fall into fundamental zone according to symmetry."""
