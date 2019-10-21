@@ -160,7 +160,6 @@ module subroutine mech_RGC_init
               + size(['avg constitutive work ','average penalty energy'])
  
     homogState(h)%sizeState = sizeState
-    homogState(h)%sizePostResults = 0
     allocate(homogState(h)%state0   (sizeState,NofMyHomog), source=0.0_pReal)
     allocate(homogState(h)%subState0(sizeState,NofMyHomog), source=0.0_pReal)
     allocate(homogState(h)%state    (sizeState,NofMyHomog), source=0.0_pReal)

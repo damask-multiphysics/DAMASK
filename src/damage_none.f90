@@ -30,7 +30,6 @@ subroutine damage_none_init
     myhomog: if (damage_type(homog) == DAMAGE_NONE_ID) then
       NofMyHomog = count(material_homogenizationAt == homog)
       damageState(homog)%sizeState = 0
-      damageState(homog)%sizePostResults = 0
       allocate(damageState(homog)%state0   (0,NofMyHomog))
       allocate(damageState(homog)%subState0(0,NofMyHomog))
       allocate(damageState(homog)%state    (0,NofMyHomog))
