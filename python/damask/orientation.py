@@ -1126,10 +1126,9 @@ class Orientation:
     return (Orientation(r,self.lattice), i,j, k == 1) if symmetries else r                          # disorientation ...
                                                                                                     # ... own sym, other sym,
                                                                                                     # self-->other: True, self<--other: False
-
-
   def inFZ(self):
     return self.lattice.symmetry.inFZ(self.rotation.asRodrigues(vector=True))
+
   
   def equivalentOrientations(self,members=[]):
     """List of orientations which are symmetrically equivalent."""
@@ -1145,6 +1144,7 @@ class Orientation:
     """List of orientations related by the given orientation relationship."""
     r = self.lattice.relationOperations(model)
     return [self.__class__(o*self.rotation,r['lattice']) for o in r['rotations']]
+
     
   def reduced(self):
     """Transform orientation to fall into fundamental zone according to symmetry."""
@@ -1152,7 +1152,8 @@ class Orientation:
       if self.lattice.symmetry.inFZ(me.rotation.asRodrigues(vector=True)): break
 
     return self.__class__(me.rotation,self.lattice)
-    
+   
+ 
   def inversePole(self,
                   axis,
                   proper = False,
