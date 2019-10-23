@@ -77,7 +77,6 @@ module FEM_utilities
     real(pReal)  :: time                   = 0.0_pReal                                              !< length of increment
     integer      :: incs                   = 0, &                                                   !< number of increments
                     outputfrequency        = 1, &                                                   !< frequency of result writes
-                    restartfrequency       = 0, &                                                   !< frequency of restart writes
                     logscale               = 0                                                      !< linear/logarithmic time inc flag
     logical      :: followFormerTrajectory = .true.                                                 !< follow trajectory of former loadcase
     integer,        allocatable :: faceID(:)
@@ -145,7 +144,6 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
 
   call materialpoint_stressAndItsTangent(.true.,timeinc)                                            ! calculate P field
 
-  restartWrite = .false.                                                                            ! reset restartWrite status
   cutBack = .false.                                                                                 ! reset cutBack status
   
   P_av = sum(sum(materialpoint_P,dim=4),dim=3) * wgt                                                ! average of P 

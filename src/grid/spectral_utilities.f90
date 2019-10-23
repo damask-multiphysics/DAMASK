@@ -24,7 +24,6 @@ module spectral_utilities
   include 'fftw3-mpi.f03'
 
   logical, public             :: cutBack = .false.                                                  !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
-  integer, public             :: nActiveFields = 0
 
 !--------------------------------------------------------------------------------------------------
 ! field labels information
@@ -38,11 +37,13 @@ module spectral_utilities
 
 !--------------------------------------------------------------------------------------------------
 ! grid related information information
-  real(pReal),   public :: wgt                                                                      !< weighting factor 1/Nelems
+  real(pReal), protected,  public                :: wgt                                             !< weighting factor 1/Nelems
+  integer,     protected,  public                :: grid1Red                                        !< grid(1)/2
+  real(pReal), protected,  public,  dimension(3) :: scaledGeomSize                                  !< scaled geometry size for calculation of divergence
 
 !--------------------------------------------------------------------------------------------------
 ! variables storing information for spectral method and FFTW
-  integer, public                                                          :: grid1Red              !< grid(1)/2
+
   real   (C_DOUBLE),        public,  dimension(:,:,:,:,:),     pointer     :: tensorField_real      !< real representation (some stress or deformation) of field_fourier
   complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:,:,:),     pointer     :: tensorField_fourier   !< field on which the Fourier transform operates
   real(C_DOUBLE),           public,  dimension(:,:,:,:),       pointer     :: vectorField_real      !< vector field real representation for fftw
@@ -53,7 +54,7 @@ module spectral_utilities
   complex(pReal),           private, dimension(:,:,:,:),       allocatable :: xi1st                 !< wave vector field for first derivatives
   complex(pReal),           private, dimension(:,:,:,:),       allocatable :: xi2nd                 !< wave vector field for second derivatives
   real(pReal),              private, dimension(3,3,3,3)                    :: C_ref                 !< mechanic reference stiffness
-  real(pReal), protected,   public,  dimension(3)                          :: scaledGeomSize        !< scaled geometry size for calculation of divergence (Basic, Basic PETSc)
+
 
 !--------------------------------------------------------------------------------------------------
 ! plans for FFTW

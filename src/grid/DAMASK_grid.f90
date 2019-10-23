@@ -76,7 +76,8 @@ program DAMASK_spectral
    myStat, &
    statUnit = 0, &                                                                                  !< file unit for statistics output
    lastRestartWritten = 0, &                                                                        !< total increment # at which last restart information was written
-   stagIter
+   stagIter, &
+   nActiveFields = 0
  character(len=6)  :: loadcase_string
  character(len=1024) :: &
    incInfo
