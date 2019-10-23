@@ -15,7 +15,7 @@ def Cauchy(F,P):
 
   """
   if np.shape(F) == np.shape(P) == (3,3):
-    sigma = 1.0/np.linalg.det(F) * np.dot(F,P)
+    sigma = 1.0/np.linalg.det(F) * np.dot(P,F.T)
   else:
     sigma = np.einsum('i,ijk,ilk->ijl',1.0/np.linalg.det(F),P,F)
   return symmetric(sigma)
