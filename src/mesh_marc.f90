@@ -201,9 +201,9 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
   character(len=64), dimension(:), allocatable :: &
     nameElemSet
   integer, dimension(:,:), allocatable :: &
-    mapElemSet                                                                                  !< list of elements in elementSet
+    mapElemSet                                                                                      !< list of elements in elementSet
 
-  inputFile = IO_read_ASCII(trim(modelName)//trim(InputFileExtension))
+  inputFile = IO_read_ASCII(trim(getSolverJobName())//trim(InputFileExtension))
   call inputRead_fileFormat(fileFormatVersion, &
                             inputFile)
   call inputRead_tableStyles(initialcondTableStyle,hypoelasticTableStyle, &
@@ -214,7 +214,7 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
   call inputRead_NnodesAndElements(nNodes,nElems,&
                                    inputFile)
   
-  call IO_open_inputFile(FILEUNIT,modelName)                                                        ! ToDo: It would be better to use fileContent
+  call IO_open_inputFile(FILEUNIT)                                                                  ! ToDo: It would be better to use fileContent
   
   call inputRead_mapElemSets(nameElemSet,mapElemSet,&
                              FILEUNIT)
