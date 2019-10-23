@@ -33,7 +33,7 @@ def strain_tensor(F,t,m):
   F : numpy.array of shape (x,3,3) or (3,3)
     Deformation gradient.
   t : {‘V’, ‘U’}
-    Type of the polar decomposition, ‘V’ for right stretch tensor and ‘U’ for left stretch tensor.
+    Type of the polar decomposition, ‘V’ for left stretch tensor and ‘U’ for right stretch tensor.
   m : float
     Order of the strain.
 
@@ -116,8 +116,8 @@ def Mises_strain(epsilon):
 
   """
   s = deviatoric_part(epsilon)
-  return np.sqrt(3.0/2.0*(np.sum(s**2.0))) if np.shape(epsilon) == (3,3) else \
-         np.sqrt(3.0/2.0*np.einsum('ijk->i',s**2.0))
+  return np.sqrt(2.0/3.0*(np.sum(s**2.0))) if np.shape(epsilon) == (3,3) else \
+         np.sqrt(2.0/3.0*np.einsum('ijk->i',s**2.0))
 
 
 def symmetric(x):
