@@ -26,6 +26,10 @@ parser.add_option('-l','--label',
                   action = 'extend', metavar = '<string LIST>',
                   help = 'columns to cumulate')
 
+parser.add_option('-p','--product',
+                  dest='product', action = 'store_true',
+                  help = 'product of values instead of sum')
+
 (options,filenames) = parser.parse_args()
 
 if options.label is None:
@@ -38,8 +42,8 @@ if filenames == []: filenames = [None]
 for name in filenames:
   try:
     table = damask.ASCIItable(name = name,
-                            buffered = False)
-  except: continue
+                              buffered = False)
+  except IOError: continue
   damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------  
@@ -52,6 +56,7 @@ for name in filenames:
   remarks = []
   columns = []
   dims    = []
+  how     = 'prod' if options.product else 'sum'
   
   for what in options.label:
     dim = table.label_dimension(what)
@@ -59,8 +64,8 @@ for name in filenames:
     else:
       dims.append(dim)
       columns.append(table.label_index(what))
-      table.labels_append('cum({})'.format(what) if dim == 1 else
-                         ['{}_cum({})'.format(i+1,what) for i in range(dim)]  )                     # extend ASCII header with new labels
+      table.labels_append('cum_{}({})'.format(how,what) if dim == 1 else
+                         ['{}_cum_{}({})'.format(i+1,how,what) for i in range(dim)]  )              # extend ASCII header with new labels
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
@@ -76,12 +81,16 @@ for name in filenames:
 # ------------------------------------------ process data ------------------------------------------ 
   mask = []
   for col,dim in zip(columns,dims): mask += range(col,col+dim)                                      # isolate data columns to cumulate
-  cumulated = np.zeros(len(mask),dtype=float)                                                       # prepare output field
+  cumulated = np.ones(len(mask)) if options.product else np.zeros(len(mask))                        # prepare output field
 
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    for i,col in enumerate(mask):
-      cumulated[i] += float(table.data[col])                                                        # cumulate values
+    if options.product:
+      for i,col in enumerate(mask):
+        cumulated[i] *= float(table.data[col])                                                      # cumulate values (multiplication)
+    else:
+      for i,col in enumerate(mask):
+        cumulated[i] += float(table.data[col])                                                      # cumulate values (addition)
     table.data_append(cumulated)
 
     outputAlive = table.data_write()                                                                # output processed line
