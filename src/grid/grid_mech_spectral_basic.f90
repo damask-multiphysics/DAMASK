@@ -303,7 +303,7 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
       call HDF5_closeFile(fileHandle)
     endif
 
-    call CPFEM_age                                                                                  ! age state and kinematics
+    call CPFEM_age(restartWrite)                                                                     ! age state and kinematics
     call utilities_updateCoords(F)
 
     C_volAvgLastInc    = C_volAvg
@@ -314,13 +314,13 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
 
     !--------------------------------------------------------------------------------------------------
     ! calculate rate for aim
-    if     (deformation_BC%myType=='l') then                                                          ! calculate F_aimDot from given L and current F
+    if     (deformation_BC%myType=='l') then                                                         ! calculate F_aimDot from given L and current F
       F_aimDot = &
       F_aimDot + deformation_BC%maskFloat * matmul(deformation_BC%values, F_aim_lastInc)
-    elseif(deformation_BC%myType=='fdot') then                                                        ! F_aimDot is prescribed
+    elseif(deformation_BC%myType=='fdot') then                                                       ! F_aimDot is prescribed
       F_aimDot = &
       F_aimDot + deformation_BC%maskFloat * deformation_BC%values
-    elseif (deformation_BC%myType=='f') then                                                          ! aim at end of load case is prescribed
+    elseif (deformation_BC%myType=='f') then                                                         ! aim at end of load case is prescribed
       F_aimDot = &
       F_aimDot + deformation_BC%maskFloat * (deformation_BC%values - F_aim_lastInc)/loadCaseTime
     endif

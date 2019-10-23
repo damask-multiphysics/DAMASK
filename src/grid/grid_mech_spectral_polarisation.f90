@@ -325,7 +325,7 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
       call HDF5_closeFile(fileHandle)
     endif
 
-    call CPFEM_age                                                                                  ! age state and kinematics
+    call CPFEM_age(restartWrite)                                                                     ! age state and kinematics
     call utilities_updateCoords(F)
 
     C_volAvgLastInc    = C_volAvg

@@ -122,8 +122,10 @@ end subroutine CPFEM_init
 !--------------------------------------------------------------------------------------------------
 !> @brief forwards data after successful increment
 !--------------------------------------------------------------------------------------------------
-subroutine CPFEM_age
- 
+subroutine CPFEM_age(restartWrite)
+  
+  logical :: restartWrite
+
   integer    ::  i, ph, homog, mySource
   character(len=32) :: rankStr, PlasticItem, HomogItem
   integer(HID_T) :: fileHandle, groupPlastic, groupHomog
