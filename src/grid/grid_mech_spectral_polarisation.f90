@@ -203,7 +203,8 @@ subroutine grid_mech_spectral_polarisation_init
     call MPI_File_close(fileUnit,ierr)
   endif restartRead2
  
-  call utilities_updateGamma(C_minMaxAvg,.true.)
+  call utilities_updateGamma(C_minMaxAvg)
+  call utilities_saveReferenceStiffness
   C_scale = C_minMaxAvg
   S_scale = math_invSym3333(C_minMaxAvg)
  
@@ -238,7 +239,8 @@ function grid_mech_spectral_polarisation_solution(incInfoIn,timeinc,timeinc_old,
 ! update stiffness (and gamma operator)
   S = utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
   if (num%update_gamma) then
-    call utilities_updateGamma(C_minMaxAvg,restartWrite)
+    call utilities_updateGamma(C_minMaxAvg)
+    if(restartWrite) call utilities_saveReferenceStiffness
     C_scale = C_minMaxAvg
     S_scale = math_invSym3333(C_minMaxAvg)
   endif  

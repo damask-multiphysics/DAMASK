@@ -190,7 +190,8 @@ subroutine grid_mech_spectral_basic_init
     call MPI_File_close(fileUnit,ierr)
   endif restartRead2
 
-  call utilities_updateGamma(C_minMaxAvg,.true.)
+  call utilities_updateGamma(C_minMaxAvg)
+  call utilities_saveReferenceStiffness
 
 end subroutine grid_mech_spectral_basic_init
 
@@ -222,8 +223,11 @@ function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
   S = utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
-  if (num%update_gamma) call utilities_updateGamma(C_minMaxAvg,restartWrite)
- 
+  if (num%update_gamma) then 
+    call utilities_updateGamma(C_minMaxAvg)
+    if(restartWrite) call utilities_saveReferenceStiffness
+  endif
+
 !--------------------------------------------------------------------------------------------------
 ! set module wide available data 
   params%stress_mask = stress_BC%maskFloat

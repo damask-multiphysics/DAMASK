@@ -158,12 +158,11 @@ module spectral_utilities
     utilities_calculateRate, &
     utilities_forwardField, &
     utilities_updateCoords, &
+    utilities_saveReferenceStiffness, &
     FIELD_UNDEFINED_ID, &
     FIELD_MECH_ID, &
     FIELD_THERMAL_ID, &
     FIELD_DAMAGE_ID
-  private :: &
-    utilities_getFreqDerivative
 
 contains
 
@@ -390,27 +389,18 @@ end subroutine utilities_init
 !> @details Sets the current reference stiffness to the stiffness given as an argument.
 !> If the gamma operator is precalculated, it is calculated with this stiffness.
 !> In case of an on-the-fly calculation, only the reference stiffness is updated.
-!> Also writes out the current reference stiffness for restart.
 !---------------------------------------------------------------------------------------------------
-subroutine utilities_updateGamma(C,saveReference)
+subroutine utilities_updateGamma(C)
  
   real(pReal), intent(in), dimension(3,3,3,3) :: C                                                  !< input stiffness to store as reference stiffness
-  logical    , intent(in)                     :: saveReference                                      !< save reference stiffness to file for restart
   complex(pReal),              dimension(3,3) :: temp33_complex, xiDyad_cmplx
   real(pReal),                 dimension(6,6) :: A, A_inv
   integer :: &
     i, j, k, &
-    l, m, n, o, &
-    fileUnit
+    l, m, n, o
   logical :: err
  
   C_ref = C
-  if (saveReference .and. worldrank == 0) then
-    write(6,'(/,a)') ' writing reference stiffness to file'
-    flush(6)
-    fileUnit = IO_open_jobFile_binary('C_ref','w')
-    write(fileUnit) C_ref; close(fileUnit)
-  endif
  
   if(.not. num%memory_efficient) then
     gamma_hat =  cmplx(0.0_pReal,0.0_pReal,pReal)                                                   ! for the singular point and any non invertible A
@@ -1129,5 +1119,23 @@ subroutine utilities_updateCoords(F)
   call discretization_setIPcoords  (reshape(IPcoords,  [3,grid(1)*grid(2)*grid3]))
   
 end subroutine utilities_updateCoords
+
+
+!---------------------------------------------------------------------------------------------------
+!> @brief Write out the current reference stiffness for restart.
+!---------------------------------------------------------------------------------------------------
+subroutine utilities_saveReferenceStiffness
+ 
+  integer :: &
+    fileUnit
+
+  if (worldrank == 0) then
+    write(6,'(/,a)') ' writing reference stiffness to file'
+    flush(6)
+    fileUnit = IO_open_jobFile_binary('C_ref','w')
+    write(fileUnit) C_ref; close(fileUnit)
+  endif
+ 
+end subroutine utilities_saveReferenceStiffness
 
 end module spectral_utilities
