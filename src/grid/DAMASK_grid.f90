@@ -85,7 +85,7 @@ program DAMASK_spectral
  type(tSolutionState), allocatable, dimension(:) :: solres
  integer(MPI_OFFSET_KIND) :: fileOffset
  integer(MPI_OFFSET_KIND), dimension(:), allocatable :: outputSize
- integer, parameter :: maxByteOut = 2147483647-4096                                                !< limit of one file output write https://trac.mpich.org/projects/mpich/ticket/1742
+ integer, parameter :: maxByteOut = 2147483647-4096                                                 !< limit of one file output write https://trac.mpich.org/projects/mpich/ticket/1742
  integer, parameter :: maxRealOut = maxByteOut/pReal
  integer(pLongInt), dimension(2) :: outputIndex
  PetscErrorCode :: ierr
@@ -157,11 +157,11 @@ program DAMASK_spectral
    chunkPos = IO_stringPos(line)
    do i = 1, chunkPos(1)                                                                            ! reading compulsory parameters for loadcase
      select case (IO_lc(IO_stringValue(line,chunkPos,i)))
-       case('l','velocitygrad','velgrad','velocitygradient','fdot','dotf','f')
+       case('l','fdot','dotf','f')
          N_def = N_def + 1
        case('t','time','delta')
          N_t = N_t + 1
-       case('n','incs','increments','steps','logincs','logincrements','logsteps')
+       case('n','incs','increments','logincs','logincrements')
          N_n = N_n + 1
      end select
    enddo
@@ -182,7 +182,7 @@ program DAMASK_spectral
 
    readIn: do i = 1, chunkPos(1)
      select case (IO_lc(IO_stringValue(line,chunkPos,i)))
-       case('fdot','dotf','l','velocitygrad','velgrad','velocitygradient','f')                      ! assign values for the deformation BC matrix
+       case('fdot','dotf','l','f')                                                                  ! assign values for the deformation BC matrix
          temp_valueVector = 0.0_pReal
          if (IO_lc(IO_stringValue(line,chunkPos,i)) == 'fdot'.or. &                                 ! in case of Fdot, set type to fdot
              IO_lc(IO_stringValue(line,chunkPos,i)) == 'dotf') then
@@ -199,7 +199,7 @@ program DAMASK_spectral
          newLoadCase%deformation%maskLogical = transpose(reshape(temp_maskVector,[ 3,3]))           ! logical mask in 3x3 notation
          newLoadCase%deformation%maskFloat   = merge(ones,zeros,newLoadCase%deformation%maskLogical)! float (1.0/0.0) mask in 3x3 notation
          newLoadCase%deformation%values      = math_9to33(temp_valueVector)                         ! values in 3x3 notation
-       case('p','pk1','piolakirchhoff','stress', 's')
+       case('p','stress', 's')
          temp_valueVector = 0.0_pReal
          do j = 1, 9
            temp_maskVector(j) = IO_stringValue(line,chunkPos,i+j) /= '*'                            ! true if not an asterisk
@@ -210,9 +210,9 @@ program DAMASK_spectral
          newLoadCase%stress%values      = math_9to33(temp_valueVector)
        case('t','time','delta')                                                                     ! increment time
          newLoadCase%time = IO_floatValue(line,chunkPos,i+1)
-       case('n','incs','increments','steps')                                                        ! number of increments
+       case('n','incs','increments')                                                                ! number of increments
          newLoadCase%incs = IO_intValue(line,chunkPos,i+1)
-       case('logincs','logincrements','logsteps')                                                   ! number of increments (switch to log time scaling)
+       case('logincs','logincrements')                                                              ! number of increments (switch to log time scaling)
          newLoadCase%incs = IO_intValue(line,chunkPos,i+1)
          newLoadCase%logscale = 1
        case('freq','frequency','outputfreq')                                                        ! frequency of result writings
