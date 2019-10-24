@@ -162,30 +162,30 @@ subroutine CPFEM_restartWrite
   character(len=32) :: rankStr, PlasticItem, HomogItem
   integer(HID_T)    :: fileHandle, groupPlastic, groupHomog
 
-  if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) &
-    write(6,'(a)') '<< CPFEM >> writing restart variables of last converged step to hdf5 file'
+
+  write(6,'(a)') 'Writing current constitutive variables for restart to file';flush(6)
     
   write(rankStr,'(a1,i0)')'_',worldrank
   fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','a')
     
-  call HDF5_write(fileHandle,crystallite_F0,  'convergedF')
-  call HDF5_write(fileHandle,crystallite_Fp0, 'convergedFp')
-  call HDF5_write(fileHandle,crystallite_Fi0, 'convergedFi')
-  call HDF5_write(fileHandle,crystallite_Lp0, 'convergedLp')
-  call HDF5_write(fileHandle,crystallite_Li0, 'convergedLi')
-  call HDF5_write(fileHandle,crystallite_S0,  'convergedS')
+  call HDF5_write(fileHandle,crystallite_partionedF,  'convergedF')
+  call HDF5_write(fileHandle,crystallite_Fp, 'convergedFp')
+  call HDF5_write(fileHandle,crystallite_Fi, 'convergedFi')
+  call HDF5_write(fileHandle,crystallite_Lp, 'convergedLp')
+  call HDF5_write(fileHandle,crystallite_Li, 'convergedLi')
+  call HDF5_write(fileHandle,crystallite_S,  'convergedS')
     
   groupPlastic = HDF5_addGroup(fileHandle,'PlasticPhases')
   do ph = 1,size(phase_plasticity)
     write(PlasticItem,*) ph,'_'
-    call HDF5_write(groupPlastic,plasticState(ph)%state0,trim(PlasticItem)//'convergedStateConst')
+    call HDF5_write(groupPlastic,plasticState(ph)%state,trim(PlasticItem)//'convergedStateConst')
   enddo
   call HDF5_closeGroup(groupPlastic)
 
   groupHomog = HDF5_addGroup(fileHandle,'HomogStates')
   do homog = 1, material_Nhomogenization
     write(HomogItem,*) homog,'_'
-    call HDF5_write(groupHomog,homogState(homog)%state0,trim(HomogItem)//'convergedStateHomog')
+    call HDF5_write(groupHomog,homogState(homog)%state,trim(HomogItem)//'convergedStateHomog')
   enddo
   call HDF5_closeGroup(groupHomog)
     

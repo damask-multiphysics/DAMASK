@@ -286,7 +286,7 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
     call utilities_updateCoords(F)
     
     if (restartWrite) then
-      write(6,'(/,a)') ' writing converged results for restart';flush(6)
+      write(6,'(a)') 'Writing current solver data for restart to file';flush(6)
       
       write(rankStr,'(a1,i0)')'_',worldrank
       fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
@@ -304,7 +304,6 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
       call HDF5_closeFile(fileHandle)
             
       call CPFEM_restartWrite
-      restartWrite = .false.
     endif
     
     C_volAvgLastInc    = C_volAvg
