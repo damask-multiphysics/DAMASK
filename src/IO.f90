@@ -37,7 +37,6 @@ module IO
 #if defined(Marc4DAMASK) || defined(Abaqus)
   public :: &
     IO_open_inputFile, &
-    IO_open_logFile, &
     IO_countContinuousIntValues, &
     IO_continuousIntValues, &
 #if defined(Abaqus)
@@ -288,24 +287,6 @@ subroutine IO_open_inputFile(fileUnit)
 #endif
 
 end subroutine IO_open_inputFile
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief opens existing FEM log file for reading to given unit. File is named after solver job
-!!        name and located in current working directory
-!--------------------------------------------------------------------------------------------------
-subroutine IO_open_logFile(fileUnit)
-
-  integer,      intent(in) :: fileUnit                                                              !< file unit
-
-  integer                  :: myStat
-  character(len=1024)      :: path
-
-  path = trim(getSolverJobName())//LogFileExtension
-  open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
-  if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
-
-end subroutine IO_open_logFile
 #endif
 
 

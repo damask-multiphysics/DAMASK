@@ -21,7 +21,6 @@ module DAMASK_interface
  implicit none
  private
  character(len=4), dimension(2),  parameter, public :: INPUTFILEEXTENSION = ['.pes','.inp']
- character(len=4),                parameter, public :: LOGFILEEXTENSION   =  '.log'
  
  public :: &
   DAMASK_interface_init, &
