@@ -238,7 +238,6 @@ function grid_mech_spectral_polarisation_solution(incInfoIn,timeinc,timeinc_old,
   S = utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
   if (num%update_gamma) then
     call utilities_updateGamma(C_minMaxAvg)
-    if(restartWrite) call utilities_saveReferenceStiffness
     C_scale = C_minMaxAvg
     S_scale = math_invSym3333(C_minMaxAvg)
   endif  
@@ -369,6 +368,8 @@ subroutine grid_mech_spectral_polarisation_restartWrite()
   PetscScalar, dimension(:,:,:,:), pointer :: FandF_tau, F, F_tau
   integer(HID_T) :: fileHandle
   character(len=32) :: rankStr
+  
+  if(.not. restartWrite) return
 
   call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
   F     => FandF_tau(0: 8,:,:,:)
@@ -391,6 +392,8 @@ subroutine grid_mech_spectral_polarisation_restartWrite()
   call HDF5_write(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
 
   call HDF5_closeFile(fileHandle)
+  
+  if (num%update_gamma) call utilities_saveReferenceStiffness
   
   call CPFEM_restartWrite
  

@@ -78,7 +78,6 @@ module grid_mech_spectral_basic
     grid_mech_spectral_basic_forward, &
     grid_mech_spectral_basic_restartWrite
 
-
 contains
 
 !--------------------------------------------------------------------------------------------------
@@ -222,10 +221,7 @@ function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
   S = utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
-  if (num%update_gamma) then 
-    call utilities_updateGamma(C_minMaxAvg)
-    if(restartWrite) call utilities_saveReferenceStiffness
-  endif
+  if (num%update_gamma) call utilities_updateGamma(C_minMaxAvg)
 
 !--------------------------------------------------------------------------------------------------
 ! set module wide available data 
@@ -328,6 +324,8 @@ subroutine grid_mech_spectral_basic_restartWrite()
   PetscScalar, dimension(:,:,:,:), pointer :: F
   integer(HID_T) :: fileHandle
   character(len=32) :: rankStr
+  
+  if(.not. restartWrite) return
 
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
 
@@ -347,6 +345,8 @@ subroutine grid_mech_spectral_basic_restartWrite()
   call HDF5_write(fileHandle,C_minMaxAvg,    'C_minMaxAvg')
 
   call HDF5_closeFile(fileHandle)
+  
+  if (num%update_gamma) call utilities_saveReferenceStiffness
         
   call CPFEM_restartWrite
 

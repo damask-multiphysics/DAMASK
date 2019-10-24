@@ -302,7 +302,7 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
   if (cutBack) then
     C_volAvg = C_volAvgLastInc
   else
-    if (restartWrite) call grid_mech_FEM_restartWrite
+    call grid_mech_FEM_restartWrite
     call CPFEM_age                                                                                  ! age state and kinematics
     call utilities_updateCoords(F)
 
@@ -359,6 +359,8 @@ subroutine grid_mech_FEM_restartWrite()
   PetscScalar, dimension(:,:,:,:), pointer :: u_current,u_lastInc
   integer(HID_T) :: fileHandle
   character(len=32) :: rankStr
+  
+  if(.not. restartWrite) return
   
   call DMDAVecGetArrayF90(mech_grid,solution_current,u_current,ierr); CHKERRQ(ierr)
   call DMDAVecGetArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr); CHKERRQ(ierr)
@@ -564,7 +566,7 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,ierr)
   PetscScalar,dimension(24,24)         :: K_ele
   PetscScalar,dimension(9,24)          :: BMatFull
   PetscInt                             :: i, ii, j, jj, k, kk, ctr, ele
-  PetscInt,dimension(3)                :: rows
+  PetscInt,dimension(3),parameter      :: rows = [0, 1, 2]
   PetscScalar                          :: diag
   PetscObject                          :: dummy
   MatNullSpace                         :: matnull
@@ -621,7 +623,6 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,ierr)
  
 !--------------------------------------------------------------------------------------------------
 ! applying boundary conditions
-  rows = [0, 1, 2]
   diag = (C_volAvg(1,1,1,1)/delta(1)**2.0_pReal + &
           C_volAvg(2,2,2,2)/delta(2)**2.0_pReal + &
           C_volAvg(3,3,3,3)/delta(3)**2.0_pReal)*detJ
