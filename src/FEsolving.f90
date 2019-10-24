@@ -22,7 +22,7 @@ module FEsolving
     
 #if defined(Marc4DAMASK) || defined(Abaqus)
   logical, public, protected :: & 
-    symmetricSolver   = .false.                                                                     !< use a symmetric FEM solver (only Abaqus)
+    symmetricSolver   = .false.                                                                     !< use a symmetric FEM solver
   logical, dimension(:,:), allocatable, public :: &
     calcMode                                                                                        !< do calculation or simply collect when using ping pong scheme
 
@@ -31,36 +31,36 @@ module FEsolving
 
 contains
 
-
 #if defined(Marc4DAMASK) || defined(Abaqus)
 !--------------------------------------------------------------------------------------------------
 !> @brief determine whether a symmetric solver is used
 !--------------------------------------------------------------------------------------------------
 subroutine FE_init
- 
-  integer, parameter :: &
-    FILEUNIT = 222
-  character(len=pStringLen) :: tag, line
-  integer, allocatable, dimension(:) :: chunkPos
 
   write(6,'(/,a)')   ' <<<+-  FEsolving init  -+>>>'
-
-  call IO_open_inputFile(FILEUNIT)
-  rewind(FILEUNIT)
-  do
-    read (FILEUNIT,'(a256)',END=100) line
-    chunkPos = IO_stringPos(line)
-    tag = IO_lc(IO_stringValue(line,chunkPos,1))
-    select case(tag)
-      case ('solver')
+  
+#if defined(Marc4DAMASK)
+  block
+    integer, parameter :: FILEUNIT = 222
+    character(len=pStringLen) :: line
+    integer, allocatable, dimension(:) :: chunkPos
+    call IO_open_inputFile(FILEUNIT)
+    rewind(FILEUNIT)
+    do
+      read (FILEUNIT,'(a256)',END=100) line
+      chunkPos = IO_stringPos(line)
+      if(IO_lc(IO_stringValue(line,chunkPos,1)) == 'solver') then
         read (FILEUNIT,'(a256)',END=100) line                                                       ! next line
         chunkPos = IO_stringPos(line)
         symmetricSolver = (IO_intValue(line,chunkPos,2) /= 1)
-    end select
-  enddo
-  100 close(FILEUNIT)
+      endif
+    enddo
+100 close(FILEUNIT)
+  end block
+#endif
 
 end subroutine FE_init
 #endif
+
 
 end module FEsolving
