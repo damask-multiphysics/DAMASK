@@ -154,7 +154,7 @@ end subroutine CPFEM_age
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Store DAMASK restart data.
+!> @brief Write current constitutive variables for restart to file.
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_restartWrite
 
