@@ -119,23 +119,23 @@ program DAMASK_spectral
 ! assign mechanics solver depending on selected type
  select case (trim(config_numerics%getString('spectral_solver',defaultVal='basic')))
    case ('basic')
-     mech_init     => grid_mech_spectral_basic_init
-     mech_forward  => grid_mech_spectral_basic_forward
-     mech_solution => grid_mech_spectral_basic_solution
+     mech_init         => grid_mech_spectral_basic_init
+     mech_forward      => grid_mech_spectral_basic_forward
+     mech_solution     => grid_mech_spectral_basic_solution
 
    case ('polarisation')
      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
        call IO_warning(42, ext_msg='debug Divergence')
-     mech_init     => grid_mech_spectral_polarisation_init
-     mech_forward  => grid_mech_spectral_polarisation_forward
-     mech_solution => grid_mech_spectral_polarisation_solution
+     mech_init         => grid_mech_spectral_polarisation_init
+     mech_forward      => grid_mech_spectral_polarisation_forward
+     mech_solution     => grid_mech_spectral_polarisation_solution
      
    case ('fem')
      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
        call IO_warning(42, ext_msg='debug Divergence')
-     mech_init     => grid_mech_FEM_init
-     mech_forward  => grid_mech_FEM_forward
-     mech_solution => grid_mech_FEM_solution
+     mech_init         => grid_mech_FEM_init
+     mech_forward      => grid_mech_FEM_forward
+     mech_solution     => grid_mech_FEM_solution
 
    case default
      call IO_error(error_ID = 891, ext_msg = config_numerics%getString('spectral_solver'))
@@ -472,7 +472,7 @@ program DAMASK_spectral
              case(FIELD_DAMAGE_ID);  call grid_damage_spectral_forward
            end select
          enddo
-         restartWrite = .false.
+         if (restartWrite .and. .not. cutBack) restartWrite = .false.
 
 !--------------------------------------------------------------------------------------------------
 ! solve fields

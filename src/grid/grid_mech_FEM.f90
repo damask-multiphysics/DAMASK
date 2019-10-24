@@ -71,7 +71,8 @@ module grid_mech_FEM
   public :: &
     grid_mech_FEM_init, &
     grid_mech_FEM_solution, &
-    grid_mech_FEM_forward
+    grid_mech_FEM_forward, &
+    grid_mech_FEM_restartWrite
 
 contains
 
@@ -292,10 +293,8 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
   real(pReal), dimension(3,3), intent(in) :: &
     rotation_BC
   PetscErrorCode :: ierr
-    integer(HID_T) :: fileHandle
-  character(len=32) :: rankStr
-    PetscScalar, pointer, dimension(:,:,:,:) :: &
-  u_current,u_lastInc
+  PetscScalar, pointer, dimension(:,:,:,:) :: &
+    u_current,u_lastInc
   
   call DMDAVecGetArrayF90(mech_grid,solution_current,u_current,ierr); CHKERRQ(ierr)
   call DMDAVecGetArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr); CHKERRQ(ierr)
@@ -303,30 +302,7 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
   if (cutBack) then
     C_volAvg = C_volAvgLastInc
   else
-
-
-    if (restartWrite) then
-      write(6,'(a)') 'Writing current solver data for restart to file';flush(6)
-      
-      write(rankStr,'(a1,i0)')'_',worldrank
-      fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
-
-      call HDF5_write(fileHandle,F_aim,          'F_aim')
-      call HDF5_write(fileHandle,F_aim_lastInc,  'F_aim_lastInc')
-      call HDF5_write(fileHandle,F_aimDot,       'F_aimDot')
-      call HDF5_write(fileHandle,F,              'F')
-      call HDF5_write(fileHandle,F_lastInc,      'F_lastInc')
-      call HDF5_write(fileHandle,u_current,      'u')
-      call HDF5_write(fileHandle,u_lastInc,      'u_lastInc')
-
-      call HDF5_write(fileHandle,C_volAvg,       'C_volAvg')
-      call HDF5_write(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
-
-      call HDF5_closeFile(fileHandle)
-      
-      call CPFEM_restartWrite
-    endif
-    
+    if (restartWrite) call grid_mech_FEM_restartWrite
     call CPFEM_age                                                                                  ! age state and kinematics
     call utilities_updateCoords(F)
 
@@ -368,12 +344,49 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
   F_aim = F_aim_lastInc + F_aimDot * timeinc
   call VecAXPY(solution_current,timeinc,solution_rate,ierr); CHKERRQ(ierr)
 
-  call DMDAVecRestoreArrayF90(mech_grid,solution_current,u_current,ierr)
-  CHKERRQ(ierr)
-  call DMDAVecRestoreArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr)
-  CHKERRQ(ierr)
+  call DMDAVecRestoreArrayF90(mech_grid,solution_current,u_current,ierr);CHKERRQ(ierr)
+  call DMDAVecRestoreArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr);CHKERRQ(ierr)
 
 end subroutine grid_mech_FEM_forward
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Write current solver and constitutive data for restart to file
+!--------------------------------------------------------------------------------------------------
+subroutine grid_mech_FEM_restartWrite()
+
+  PetscErrorCode :: ierr
+  PetscScalar, dimension(:,:,:,:), pointer :: u_current,u_lastInc
+  integer(HID_T) :: fileHandle
+  character(len=32) :: rankStr
+  
+  call DMDAVecGetArrayF90(mech_grid,solution_current,u_current,ierr); CHKERRQ(ierr)
+  call DMDAVecGetArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr); CHKERRQ(ierr)
+
+  write(6,'(a)') 'Writing current solver data for restart to file';flush(6)
+  
+  write(rankStr,'(a1,i0)')'_',worldrank
+  fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
+
+  call HDF5_write(fileHandle,F_aim,          'F_aim')
+  call HDF5_write(fileHandle,F_aim_lastInc,  'F_aim_lastInc')
+  call HDF5_write(fileHandle,F_aimDot,       'F_aimDot')
+  call HDF5_write(fileHandle,F,              'F')
+  call HDF5_write(fileHandle,F_lastInc,      'F_lastInc')
+  call HDF5_write(fileHandle,u_current,      'u')
+  call HDF5_write(fileHandle,u_lastInc,      'u_lastInc')
+
+  call HDF5_write(fileHandle,C_volAvg,       'C_volAvg')
+  call HDF5_write(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
+
+  call HDF5_closeFile(fileHandle)
+  
+  call CPFEM_restartWrite
+ 
+  call DMDAVecRestoreArrayF90(mech_grid,solution_current,u_current,ierr);CHKERRQ(ierr)
+  call DMDAVecRestoreArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr);CHKERRQ(ierr)
+
+end subroutine grid_mech_FEM_restartWrite
 
 
 !--------------------------------------------------------------------------------------------------

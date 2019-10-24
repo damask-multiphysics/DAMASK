@@ -81,10 +81,8 @@ module grid_mech_spectral_polarisation
   public :: &
     grid_mech_spectral_polarisation_init, &
     grid_mech_spectral_polarisation_solution, &
-    grid_mech_spectral_polarisation_forward
-  private :: &
-    converged, &
-    formResidual
+    grid_mech_spectral_polarisation_forward, &
+    grid_mech_spectral_polarisation_restartWrite
 
 contains
 
@@ -292,9 +290,6 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
   integer :: i, j, k
   real(pReal), dimension(3,3) :: F_lambda33
 
-  integer(HID_T) :: fileHandle
-  character(len=32) :: rankStr
-
   call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
   F     => FandF_tau(0: 8,:,:,:)
   F_tau => FandF_tau(9:17,:,:,:)
@@ -303,29 +298,7 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
     C_volAvg    = C_volAvgLastInc
     C_minMaxAvg = C_minMaxAvgLastInc
   else
-
-    if (restartWrite) then
-      write(6,'(a)') 'Writing current solver data for restart to file';flush(6)
-
-      write(rankStr,'(a1,i0)')'_',worldrank
-      fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
-      
-      call HDF5_write(fileHandle,F_aim,          'F_aim')
-      call HDF5_write(fileHandle,F_aim_lastInc,  'F_aim_lastInc')
-      call HDF5_write(fileHandle,F_aimDot,       'F_aimDot')
-      call HDF5_write(fileHandle,F,              'F')
-      call HDF5_write(fileHandle,F_lastInc,      'F_lastInc')
-      call HDF5_write(fileHandle,F_tau,          'F_tau')
-      call HDF5_write(fileHandle,F_tau_lastInc,  'F_tau_lastInc')
-
-      call HDF5_write(fileHandle,C_volAvg,       'C_volAvg')
-      call HDF5_write(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
-
-      call HDF5_closeFile(fileHandle)
-      
-      call CPFEM_restartWrite
-    endif
-    
+    call grid_mech_spectral_polarisation_restartWrite
     call CPFEM_age                                                                                  ! age state and kinematics
     call utilities_updateCoords(F)
     
@@ -335,7 +308,7 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
     F_aimDot = merge(stress_BC%maskFloat*(F_aim-F_aim_lastInc)/timeinc_old, 0.0_pReal, guess)
     F_aim_lastInc = F_aim
 
-    !--------------------------------------------------------------------------------------------------
+    !-----------------------------------------------------------------------------------------------
     ! calculate rate for aim
     if     (deformation_BC%myType=='l') then                                                        ! calculate F_aimDot from given L and current F
       F_aimDot = &
@@ -385,6 +358,45 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
   call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
 
 end subroutine grid_mech_spectral_polarisation_forward
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Write current solver and constitutive data for restart to file
+!--------------------------------------------------------------------------------------------------
+subroutine grid_mech_spectral_polarisation_restartWrite()
+
+  PetscErrorCode :: ierr
+  PetscScalar, dimension(:,:,:,:), pointer :: FandF_tau, F, F_tau
+  integer(HID_T) :: fileHandle
+  character(len=32) :: rankStr
+
+  call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
+  F     => FandF_tau(0: 8,:,:,:)
+  F_tau => FandF_tau(9:17,:,:,:)
+
+  write(6,'(a)') 'Writing current solver data for restart to file';flush(6)
+
+  write(rankStr,'(a1,i0)')'_',worldrank
+  fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
+  
+  call HDF5_write(fileHandle,F_aim,          'F_aim')
+  call HDF5_write(fileHandle,F_aim_lastInc,  'F_aim_lastInc')
+  call HDF5_write(fileHandle,F_aimDot,       'F_aimDot')
+  call HDF5_write(fileHandle,F,              'F')
+  call HDF5_write(fileHandle,F_lastInc,      'F_lastInc')
+  call HDF5_write(fileHandle,F_tau,          'F_tau')
+  call HDF5_write(fileHandle,F_tau_lastInc,  'F_tau_lastInc')
+
+  call HDF5_write(fileHandle,C_volAvg,       'C_volAvg')
+  call HDF5_write(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
+
+  call HDF5_closeFile(fileHandle)
+  
+  call CPFEM_restartWrite
+ 
+  call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
+
+end subroutine grid_mech_spectral_polarisation_restartWrite
 
 
 !--------------------------------------------------------------------------------------------------
