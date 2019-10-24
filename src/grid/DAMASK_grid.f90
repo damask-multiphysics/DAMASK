@@ -476,7 +476,6 @@ program DAMASK_spectral
              case(FIELD_DAMAGE_ID);  call grid_damage_spectral_forward
            end select
          enddo
-         if (restartWrite .and. .not. cutBack) restartWrite = .false.
 
 !--------------------------------------------------------------------------------------------------
 ! solve fields

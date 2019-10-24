@@ -12,7 +12,6 @@ module FEsolving
   private
  
   logical, public :: &
-    restartWrite      = .false., &                                                                  !< write current state to enable restart
     terminallyIll     = .false.                                                                     !< at least one material point is terminally ill
 
   integer, dimension(:,:), allocatable, public :: &
