@@ -301,10 +301,11 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
   call DMDAVecGetArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr); CHKERRQ(ierr)
  
   if (cutBack) then
-    C_volAvg    = C_volAvgLastInc        ! QUESTION: where is this required?
+    C_volAvg = C_volAvgLastInc
   else
- !--------------------------------------------------------------------------------------------------
- ! restart information for spectral solver
+    call CPFEM_age                                                                                  ! age state and kinematics
+    call utilities_updateCoords(F)
+
     if (restartWrite) then
       write(6,'(/,a)') ' writing converged results for restart';flush(6)
       
@@ -323,10 +324,10 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
       call HDF5_write(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
 
       call HDF5_closeFile(fileHandle)
-
+      
+      call CPFEM_restartWrite
+      restartWrite = .false.
     endif
-    call CPFEM_age(restartWrite)                                                                    ! age state and kinematics
-    call utilities_updateCoords(F)
 
     C_volAvgLastInc    = C_volAvg
  
@@ -358,7 +359,7 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
     
     F_lastInc        = F                                                                            ! winding F forward
     materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                         ! set starting condition for materialpoint_stressAndItsTangent
-  
+    
   endif
 
 !--------------------------------------------------------------------------------------------------

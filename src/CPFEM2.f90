@@ -35,7 +35,8 @@ module CPFEM2
   public :: &
     CPFEM_age, &
     CPFEM_initAll, &
-    CPFEM_results
+    CPFEM_results, &
+    CPFEM_restartWrite
 
 contains
 
@@ -120,15 +121,11 @@ end subroutine CPFEM_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief forwards data after successful increment
+!> @brief Forward data after successful increment.
 !--------------------------------------------------------------------------------------------------
-subroutine CPFEM_age(restartWrite)
-  
-  logical :: restartWrite
+subroutine CPFEM_age
 
-  integer    ::  i, ph, homog, mySource
-  character(len=32) :: rankStr, PlasticItem, HomogItem
-  integer(HID_T) :: fileHandle, groupPlastic, groupHomog
+  integer :: i, homog, mySource
 
   if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) &
     write(6,'(a)') '<< CPFEM >> aging states'
@@ -153,46 +150,52 @@ subroutine CPFEM_age(restartWrite)
     damageState      (homog)%state0 =  damageState      (homog)%state
   enddo
 
-  if (restartWrite) then
-    if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) &
-      write(6,'(a)') '<< CPFEM >> writing restart variables of last converged step to hdf5 file'
-    
-    write(rankStr,'(a1,i0)')'_',worldrank
-    fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','a')
-    
-    call HDF5_write(fileHandle,crystallite_F0,  'convergedF')
-    call HDF5_write(fileHandle,crystallite_Fp0, 'convergedFp')
-    call HDF5_write(fileHandle,crystallite_Fi0, 'convergedFi')
-    call HDF5_write(fileHandle,crystallite_Lp0, 'convergedLp')
-    call HDF5_write(fileHandle,crystallite_Li0, 'convergedLi')
-    call HDF5_write(fileHandle,crystallite_S0,  'convergedS')
-    
-    groupPlastic = HDF5_addGroup(fileHandle,'PlasticPhases')
-    do ph = 1,size(phase_plasticity)
-      write(PlasticItem,*) ph,'_'
-      call HDF5_write(groupPlastic,plasticState(ph)%state0,trim(PlasticItem)//'convergedStateConst')
-    enddo
-    call HDF5_closeGroup(groupPlastic)
-
-    groupHomog = HDF5_addGroup(fileHandle,'HomogStates')
-    do homog = 1, material_Nhomogenization
-      write(HomogItem,*) homog,'_'
-      call HDF5_write(groupHomog,homogState(homog)%state0,trim(HomogItem)//'convergedStateHomog')
-    enddo
-    call HDF5_closeGroup(groupHomog)
-    
-    call HDF5_closeFile(fileHandle)
-    restartWrite = .false.
-  endif
-
-  if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) &
-    write(6,'(a)') '<< CPFEM >> done aging states'
-
 end subroutine CPFEM_age
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief triggers writing of the results
+!> @brief Store DAMASK restart data.
+!--------------------------------------------------------------------------------------------------
+subroutine CPFEM_restartWrite
+
+  integer           :: ph, homog
+  character(len=32) :: rankStr, PlasticItem, HomogItem
+  integer(HID_T)    :: fileHandle, groupPlastic, groupHomog
+
+  if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) &
+    write(6,'(a)') '<< CPFEM >> writing restart variables of last converged step to hdf5 file'
+    
+  write(rankStr,'(a1,i0)')'_',worldrank
+  fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','a')
+    
+  call HDF5_write(fileHandle,crystallite_F0,  'convergedF')
+  call HDF5_write(fileHandle,crystallite_Fp0, 'convergedFp')
+  call HDF5_write(fileHandle,crystallite_Fi0, 'convergedFi')
+  call HDF5_write(fileHandle,crystallite_Lp0, 'convergedLp')
+  call HDF5_write(fileHandle,crystallite_Li0, 'convergedLi')
+  call HDF5_write(fileHandle,crystallite_S0,  'convergedS')
+    
+  groupPlastic = HDF5_addGroup(fileHandle,'PlasticPhases')
+  do ph = 1,size(phase_plasticity)
+    write(PlasticItem,*) ph,'_'
+    call HDF5_write(groupPlastic,plasticState(ph)%state0,trim(PlasticItem)//'convergedStateConst')
+  enddo
+  call HDF5_closeGroup(groupPlastic)
+
+  groupHomog = HDF5_addGroup(fileHandle,'HomogStates')
+  do homog = 1, material_Nhomogenization
+    write(HomogItem,*) homog,'_'
+    call HDF5_write(groupHomog,homogState(homog)%state0,trim(HomogItem)//'convergedStateHomog')
+  enddo
+  call HDF5_closeGroup(groupHomog)
+    
+  call HDF5_closeFile(fileHandle)
+
+end subroutine CPFEM_restartWrite
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Trigger writing of results.
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_results(inc,time)
  

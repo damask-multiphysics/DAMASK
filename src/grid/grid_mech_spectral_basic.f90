@@ -279,11 +279,12 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
   
   if (cutBack) then
-    C_volAvg    = C_volAvgLastInc                                                                  ! QUESTION: where is this required?
-    C_minMaxAvg = C_minMaxAvgLastInc                                                               ! QUESTION: where is this required?
+    C_volAvg    = C_volAvgLastInc
+    C_minMaxAvg = C_minMaxAvgLastInc
   else
-  !--------------------------------------------------------------------------------------------------
-  ! restart information for spectral solver
+    call CPFEM_age                                                                                  ! age state and kinematics
+    call utilities_updateCoords(F)
+    
     if (restartWrite) then
       write(6,'(/,a)') ' writing converged results for restart';flush(6)
       
@@ -301,11 +302,11 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
       call HDF5_write(fileHandle,C_minMaxAvg,    'C_minMaxAvg')
 
       call HDF5_closeFile(fileHandle)
+            
+      call CPFEM_restartWrite
+      restartWrite = .false.
     endif
-
-    call CPFEM_age(restartWrite)                                                                     ! age state and kinematics
-    call utilities_updateCoords(F)
-
+    
     C_volAvgLastInc    = C_volAvg
     C_minMaxAvgLastInc = C_minMaxAvg
  
