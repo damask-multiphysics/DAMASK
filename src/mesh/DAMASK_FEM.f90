@@ -53,8 +53,6 @@ program DAMASK_FEM
     currentFace = 0, &
     inc, &                                                                                          !< current increment in current load case
     totalIncsCounter = 0, &                                                                         !< total # of increments
-    convergedCounter = 0, &                                                                         !< # of converged increments
-    notConvergedCounter = 0, &                                                                      !< # of non-converged increments
     fileUnit = 0, &                                                                                 !< file unit for reading load case and writing results
     myStat, &
     statUnit = 0, &                                                                                 !< file unit for statistics output
@@ -375,11 +373,9 @@ program DAMASK_FEM
       cutBackLevel = max(0, cutBackLevel - 1)                                                       ! try half number of subincs next inc
 
       if (all(solres(:)%converged)) then
-        convergedCounter = convergedCounter + 1
         write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                      ! report converged inc
                                   ' increment ', totalIncsCounter, ' converged'
       else
-        notConvergedCounter = notConvergedCounter + 1
         write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                      ! report non-converged inc
                                   ' increment ', totalIncsCounter, ' NOT converged'
       endif; flush(6)
@@ -398,15 +394,8 @@ program DAMASK_FEM
 !--------------------------------------------------------------------------------------------------
 ! report summary of whole calculation
   write(6,'(/,a)') ' ###########################################################################'
-  write(6,'(1x,'//IO_intOut(convergedCounter)//',a,'//IO_intOut(notConvergedCounter + convergedCounter)//',a,f5.1,a)') &
-    convergedCounter, ' out of ', &
-    notConvergedCounter + convergedCounter, ' (', &
-    real(convergedCounter, pReal)/&
-    real(notConvergedCounter + convergedCounter,pReal)*100.0_pReal, ' %) increments converged!'
-  flush(6)
   close(statUnit)
 
-  if (notConvergedCounter > 0) call quit(2)                                                         ! error if some are not converged
   call quit(0)                                                                                      ! no complains ;)
 
 end program DAMASK_FEM
