@@ -303,9 +303,7 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
     C_volAvg    = C_volAvgLastInc
     C_minMaxAvg = C_minMaxAvgLastInc
   else
-    call CPFEM_age                                                                                  ! age state and kinematics
-    call utilities_updateCoords(F)
-    
+
     if (restartWrite) then
       write(6,'(a)') 'Writing current solver data for restart to file';flush(6)
 
@@ -327,7 +325,10 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
       
       call CPFEM_restartWrite
     endif
-
+    
+    call CPFEM_age                                                                                  ! age state and kinematics
+    call utilities_updateCoords(F)
+    
     C_volAvgLastInc    = C_volAvg
     C_minMaxAvgLastInc = C_minMaxAvg
 

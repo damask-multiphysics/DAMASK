@@ -303,8 +303,7 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
   if (cutBack) then
     C_volAvg = C_volAvgLastInc
   else
-    call CPFEM_age                                                                                  ! age state and kinematics
-    call utilities_updateCoords(F)
+
 
     if (restartWrite) then
       write(6,'(a)') 'Writing current solver data for restart to file';flush(6)
@@ -327,6 +326,9 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
       
       call CPFEM_restartWrite
     endif
+    
+    call CPFEM_age                                                                                  ! age state and kinematics
+    call utilities_updateCoords(F)
 
     C_volAvgLastInc    = C_volAvg
  
