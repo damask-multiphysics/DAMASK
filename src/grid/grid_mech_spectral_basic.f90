@@ -221,7 +221,7 @@ function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
   S = utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
-  if (num%update_gamma) call utilities_updateGamma(C_minMaxAvg)
+  if(num%update_gamma) call utilities_updateGamma(C_minMaxAvg)
 
 !--------------------------------------------------------------------------------------------------
 ! set module wide available data 
@@ -274,7 +274,7 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
     C_volAvg    = C_volAvgLastInc
     C_minMaxAvg = C_minMaxAvgLastInc
   else
-    call grid_mech_spectral_basic_restartWrite
+
     call CPFEM_age                                                                                  ! age state and kinematics
     call utilities_updateCoords(F)
     
@@ -324,8 +324,6 @@ subroutine grid_mech_spectral_basic_restartWrite()
   PetscScalar, dimension(:,:,:,:), pointer :: F
   integer(HID_T) :: fileHandle
   character(len=32) :: rankStr
-  
-  if(.not. restartWrite) return
 
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
 

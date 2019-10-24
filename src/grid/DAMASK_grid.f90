@@ -73,7 +73,6 @@ program DAMASK_spectral
    fileUnit = 0, &                                                                                  !< file unit for reading load case and writing results
    myStat, &
    statUnit = 0, &                                                                                  !< file unit for statistics output
-   lastRestartWritten = 0, &                                                                        !< total increment # at which last restart information was written
    stagIter, &
    nActiveFields = 0
  character(len=6)  :: loadcase_string
@@ -95,6 +94,8 @@ program DAMASK_spectral
    mech_forward
  procedure(grid_mech_spectral_basic_solution), pointer :: &
    mech_solution
+ procedure(grid_mech_spectral_basic_restartWrite), pointer :: &
+   mech_restartWrite
 
  external :: &
    quit
@@ -122,6 +123,7 @@ program DAMASK_spectral
      mech_init         => grid_mech_spectral_basic_init
      mech_forward      => grid_mech_spectral_basic_forward
      mech_solution     => grid_mech_spectral_basic_solution
+     mech_restartWrite => grid_mech_spectral_basic_restartWrite
 
    case ('polarisation')
      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
@@ -129,13 +131,15 @@ program DAMASK_spectral
      mech_init         => grid_mech_spectral_polarisation_init
      mech_forward      => grid_mech_spectral_polarisation_forward
      mech_solution     => grid_mech_spectral_polarisation_solution
-     
+     mech_restartWrite => grid_mech_spectral_polarisation_restartWrite
+       
    case ('fem')
      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
        call IO_warning(42, ext_msg='debug Divergence')
      mech_init         => grid_mech_FEM_init
      mech_forward      => grid_mech_FEM_forward
      mech_solution     => grid_mech_FEM_solution
+     mech_restartWrite => grid_mech_FEM_restartWrite
 
    case default
      call IO_error(error_ID = 891, ext_msg = config_numerics%getString('spectral_solver'))
@@ -528,7 +532,7 @@ program DAMASK_spectral
            call IO_warning(850)
            call MPI_File_close(fileUnit,ierr)
            close(statUnit)
-           call quit(-1*(lastRestartWritten+1))                                                     ! quit and provide information about last restart inc written
+           call quit(0)                                                                             ! quit
          endif
 
        enddo subStepLooping
@@ -561,10 +565,7 @@ program DAMASK_spectral
          fileOffset = fileOffset + sum(outputSize)                                                  ! forward to current file position
          call CPFEM_results(totalIncsCounter,time)
        endif
-       if (mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0) then                          ! at frequency of writing restart information
-         restartWrite = .true.                                                                      ! set restart parameter for FEsolving
-         lastRestartWritten = inc                                                                   ! QUESTION: first call to CPFEM_general will write?
-       endif
+       if (mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0) call mech_restartWrite
 
      endif skipping
 

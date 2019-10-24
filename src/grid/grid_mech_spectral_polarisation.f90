@@ -297,7 +297,6 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
     C_volAvg    = C_volAvgLastInc
     C_minMaxAvg = C_minMaxAvgLastInc
   else
-    call grid_mech_spectral_polarisation_restartWrite
     call CPFEM_age                                                                                  ! age state and kinematics
     call utilities_updateCoords(F)
     
@@ -368,8 +367,6 @@ subroutine grid_mech_spectral_polarisation_restartWrite()
   PetscScalar, dimension(:,:,:,:), pointer :: FandF_tau, F, F_tau
   integer(HID_T) :: fileHandle
   character(len=32) :: rankStr
-  
-  if(.not. restartWrite) return
 
   call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
   F     => FandF_tau(0: 8,:,:,:)
@@ -393,7 +390,7 @@ subroutine grid_mech_spectral_polarisation_restartWrite()
 
   call HDF5_closeFile(fileHandle)
   
-  if (num%update_gamma) call utilities_saveReferenceStiffness
+  if(num%update_gamma) call utilities_saveReferenceStiffness
   
   call CPFEM_restartWrite
  

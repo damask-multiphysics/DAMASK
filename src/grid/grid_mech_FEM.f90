@@ -302,7 +302,6 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
   if (cutBack) then
     C_volAvg = C_volAvgLastInc
   else
-    call grid_mech_FEM_restartWrite
     call CPFEM_age                                                                                  ! age state and kinematics
     call utilities_updateCoords(F)
 
@@ -359,8 +358,6 @@ subroutine grid_mech_FEM_restartWrite()
   PetscScalar, dimension(:,:,:,:), pointer :: u_current,u_lastInc
   integer(HID_T) :: fileHandle
   character(len=32) :: rankStr
-  
-  if(.not. restartWrite) return
   
   call DMDAVecGetArrayF90(mech_grid,solution_current,u_current,ierr); CHKERRQ(ierr)
   call DMDAVecGetArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr); CHKERRQ(ierr)
