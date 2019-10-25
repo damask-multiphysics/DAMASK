@@ -388,7 +388,7 @@ class DADF5():
         
         p = np.where(f['mapping/cellResults/constituent'][:,c]['Name'] == str.encode(label))[0]
         if len(p)>0:
-          u = (f['mapping/cellResults/constituent'][p,c]['Position'])
+          u = (f['mapping/cellResults/constituent']['Position'][p,c])
           a = np.array(f[pa])
           if len(a.shape) == 1:
             a=a.reshape([a.shape[0],1])
