@@ -297,9 +297,7 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
   if (cutBack) then
     C_volAvg    = C_volAvgLastInc
     C_minMaxAvg = C_minMaxAvgLastInc
-  else
-    call grid_mech_spectral_polarisation_age
-    
+  else    
     C_volAvgLastInc    = C_volAvg
     C_minMaxAvgLastInc = C_minMaxAvg
 
@@ -366,7 +364,6 @@ subroutine grid_mech_spectral_polarisation_age()
   call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
   F     => FandF_tau(0: 8,:,:,:)
   materialpoint_F0 = reshape(F,[3,3,1,product(grid(1:2))*grid3])
-  call CPFEM_age                                                                                    ! age state and kinematics
   call utilities_updateCoords(F)
   call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
 
@@ -406,8 +403,6 @@ subroutine grid_mech_spectral_polarisation_restartWrite()
   call HDF5_closeFile(fileHandle)
   
   if(num%update_gamma) call utilities_saveReferenceStiffness
-  
-  call CPFEM_restartWrite
  
   call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
 

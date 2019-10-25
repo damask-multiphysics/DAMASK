@@ -303,7 +303,6 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
   if (cutBack) then
     C_volAvg = C_volAvgLastInc
   else
-    call grid_mech_FEM_age
     C_volAvgLastInc    = C_volAvg
  
     F_aimDot = merge(stress_BC%maskFloat*(F_aim-F_aim_lastInc)/timeinc_old, 0.0_pReal, guess)
@@ -352,7 +351,6 @@ end subroutine grid_mech_FEM_forward
 subroutine grid_mech_FEM_age()
 
   materialpoint_F0 = reshape(F, [3,3,1,product(grid(1:2))*grid3])
-  call CPFEM_age                                                                                    ! age state and kinematics
   call utilities_updateCoords(F)
 
 end subroutine grid_mech_FEM_age
@@ -388,8 +386,6 @@ subroutine grid_mech_FEM_restartWrite()
   call HDF5_write(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
 
   call HDF5_closeFile(fileHandle)
-  
-  call CPFEM_restartWrite
  
   call DMDAVecRestoreArrayF90(mech_grid,solution_current,u_current,ierr);CHKERRQ(ierr)
   call DMDAVecRestoreArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr);CHKERRQ(ierr)

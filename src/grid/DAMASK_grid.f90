@@ -137,7 +137,6 @@ program DAMASK_spectral
      mech_age          => grid_mech_spectral_polarisation_age
      mech_restartWrite => grid_mech_spectral_polarisation_restartWrite
 
-       
    case ('fem')
      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
        call IO_warning(42, ext_msg='debug Divergence')
@@ -518,6 +517,8 @@ program DAMASK_spectral
 
          if ( (all(solres(:)%converged .and. solres(:)%stagConverged)) &                            ! converged
               .and. .not. solres(1)%termIll) then                                                   ! and acceptable solution found
+           call mech_age
+           call CPFEM_age
            timeIncOld = timeinc
            cutBack = .false.
            guess = .true.                                                                           ! start guessing after first converged (sub)inc
@@ -570,8 +571,10 @@ program DAMASK_spectral
          fileOffset = fileOffset + sum(outputSize)                                                  ! forward to current file position
          call CPFEM_results(totalIncsCounter,time)
        endif
-       if (mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0) call mech_restartWrite
-
+       if (mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0) then
+         call mech_restartWrite
+         call CPFEM_restartWrite
+       endif
      endif skipping
 
     enddo incLooping
