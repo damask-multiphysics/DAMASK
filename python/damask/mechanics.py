@@ -8,9 +8,9 @@ def Cauchy(F,P):
   
   Parameters
   ----------
-  F : numpy.array of shape (x,3,3) or (3,3)
+  F : numpy.array of shape (:,3,3) or (3,3)
     Deformation gradient.
-  P : numpy.array of shape (x,3,3) or (3,3)
+  P : numpy.array of shape (:,3,3) or (3,3)
     1. Piola-Kirchhoff stress.
 
   """
@@ -30,7 +30,7 @@ def strain_tensor(F,t,m):
   
   Parameters
   ----------
-  F : numpy.array of shape (x,3,3) or (3,3)
+  F : numpy.array of shape (:,3,3) or (3,3)
     Deformation gradient.
   t : {‘V’, ‘U’}
     Type of the polar decomposition, ‘V’ for left stretch tensor and ‘U’ for right stretch tensor.
@@ -65,7 +65,7 @@ def deviatoric_part(x):
     
   Parameters
   ----------
-  x : numpy.array of shape (x,3,3) or (3,3)
+  x : numpy.array of shape (:,3,3) or (3,3)
     Tensor of which the deviatoric part is computed.
 
   """
@@ -82,7 +82,7 @@ def spherical_part(x):
     
   Parameters
   ----------
-  x : numpy.array of shape (x,3,3) or (3,3)
+  x : numpy.array of shape (:,3,3) or (3,3)
     Tensor of which the hydrostatic part is computed.
 
   """
@@ -96,7 +96,7 @@ def Mises_stress(sigma):
   
   Parameters
   ----------
-  sigma : numpy.array of shape (x,3,3) or (3,3)
+  sigma : numpy.array of shape (:,3,3) or (3,3)
     Symmetric stress tensor of which the von Mises equivalent is computed.
 
   """
@@ -111,7 +111,7 @@ def Mises_strain(epsilon):
   
   Parameters
   ----------
-  epsilon : numpy.array of shape (x,3,3) or (3,3)
+  epsilon : numpy.array of shape (:,3,3) or (3,3)
     Symmetric strain tensor of which the von Mises equivalent is computed.
 
   """
@@ -126,7 +126,7 @@ def symmetric(x):
   
   Parameters
   ----------
-  x : numpy.array of shape (x,3,3) or (3,3)
+  x : numpy.array of shape (:,3,3) or (3,3)
     Tensor of which the symmetrized values are computed.
 
   """
@@ -139,7 +139,7 @@ def maximum_shear(x):
   
   Parameters
   ----------
-  x : numpy.array of shape (x,3,3) or (3,3)
+  x : numpy.array of shape (:,3,3) or (3,3)
     Symmetric tensor of which the maximum shear is computed.
 
   """
@@ -157,7 +157,7 @@ def principal_components(x):
   
   Parameters
   ----------
-  x : numpy.array of shape (x,3,3) or (3,3)
+  x : numpy.array of shape (:,3,3) or (3,3)
     Symmetric tensor of which the principal compontents are computed.
 
   """
@@ -172,9 +172,76 @@ def transpose(x):
     
   Parameters
   ----------
-  x : numpy.array of shape (x,3,3) or (3,3)
-    Tensor of which the transpose is computer.
+  x : numpy.array of shape (:,3,3) or (3,3)
+    Tensor of which the transpose is computed.
 
   """
   return x.T if np.shape(x) == (3,3) else \
          np.transpose(x,(0,2,1))
+
+
+def rotational_part(x):
+  """
+  Return the rotational part of a tensor.
+    
+  Parameters
+  ----------
+  x : numpy.array of shape (:,3,3) or (3,3)
+    Tensor of which the rotational part is computed.
+
+  """
+  return __polar_decomposition(x,'R')
+
+
+def left_stretch(x):
+  """
+  Return the left stretch of a tensor.
+    
+  Parameters
+  ----------
+  x : numpy.array of shape (:,3,3) or (3,3)
+    Tensor of which the left stretch is computed.
+
+  """
+  return __polar_decomposition(x,'V')
+  
+  
+def right_stretch(x):
+  """
+  Return the right stretch of a tensor.
+    
+  Parameters
+  ----------
+  x : numpy.array of shape (:,3,3) or (3,3)
+    Tensor of which the right stretch is computed.
+
+  """
+  return __polar_decomposition(x,'U')
+
+
+def __polar_decomposition(x,requested):
+  """
+  Singular value decomposition.
+    
+  Parameters
+  ----------
+  x : numpy.array of shape (:,3,3) or (3,3)
+    Tensor of which the singular values are computed.
+  requested : list of str
+    Requested outputs: ‘R’ for the rotation tensor, 
+    ‘V’ for left stretch tensor and ‘U’ for right stretch tensor.
+
+  """
+  u, s, vh = np.linalg.svd(x)
+  R = np.dot(u,vh) if np.shape(x) == (3,3) else \
+      np.einsum('ijk,ikl->ijl',u,vh)
+  
+  output = []
+  if 'R' in requested:
+    output.append(R)
+  if 'V' in requested:
+    output.append(np.dot(x,R.T) if np.shape(x) == (3,3) else np.einsum('ijk,ilk->ijl',x,R))
+  if 'U' in requested:
+    output.append(np.dot(R.T,x) if np.shape(x) == (3,3) else np.einsum('ikj,ikl->ijl',R,x))
+  
+  return tuple(output)
