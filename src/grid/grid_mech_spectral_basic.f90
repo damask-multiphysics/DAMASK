@@ -76,6 +76,7 @@ module grid_mech_spectral_basic
     grid_mech_spectral_basic_init, &
     grid_mech_spectral_basic_solution, &
     grid_mech_spectral_basic_forward, &
+    grid_mech_spectral_basic_age, &
     grid_mech_spectral_basic_restartWrite
 
 contains
@@ -294,12 +295,10 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
       F_aimDot + deformation_BC%maskFloat * (deformation_BC%values - F_aim_lastInc)/loadCaseTime
     endif
 
-
     Fdot =  utilities_calculateRate(guess, &
                                     F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]),timeinc_old, &
                                     math_rotate_backward33(F_aimDot,rotation_BC))
-    F_lastInc        = reshape(F,         [3,3,grid(1),grid(2),grid3])                                ! winding F forward
-    materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
+    F_lastInc = reshape(F,[3,3,grid(1),grid(2),grid3])                                              ! winding F forward
   endif
 
 !--------------------------------------------------------------------------------------------------
@@ -321,6 +320,7 @@ subroutine grid_mech_spectral_basic_age()
   PetscScalar, dimension(:,:,:,:), pointer :: F
 
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
+  materialpoint_F0 = reshape(F, [3,3,1,product(grid(1:2))*grid3])
   call CPFEM_age                                                                                    ! age state and kinematics
   call utilities_updateCoords(F)
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)

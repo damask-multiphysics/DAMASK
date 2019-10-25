@@ -72,6 +72,7 @@ module grid_mech_FEM
     grid_mech_FEM_init, &
     grid_mech_FEM_solution, &
     grid_mech_FEM_forward, &
+    grid_mech_FEM_age, &
     grid_mech_FEM_restartWrite
 
 contains
@@ -331,9 +332,7 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
     endif
     call VecCopy(solution_current,solution_lastInc,ierr); CHKERRQ(ierr)
     
-    F_lastInc        = F                                                                            ! winding F forward
-    materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                         ! set starting condition for materialpoint_stressAndItsTangent
-    
+    F_lastInc = F                                                                                   ! winding F forward    
   endif
 
 !--------------------------------------------------------------------------------------------------
@@ -352,6 +351,7 @@ end subroutine grid_mech_FEM_forward
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mech_FEM_age()
 
+  materialpoint_F0 = reshape(F, [3,3,1,product(grid(1:2))*grid3])
   call CPFEM_age                                                                                    ! age state and kinematics
   call utilities_updateCoords(F)
 

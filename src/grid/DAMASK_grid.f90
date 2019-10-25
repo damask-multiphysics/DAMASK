@@ -94,6 +94,8 @@ program DAMASK_spectral
    mech_forward
  procedure(grid_mech_spectral_basic_solution), pointer :: &
    mech_solution
+ procedure(grid_mech_spectral_basic_age), pointer :: &
+   mech_age
  procedure(grid_mech_spectral_basic_restartWrite), pointer :: &
    mech_restartWrite
 
@@ -123,6 +125,7 @@ program DAMASK_spectral
      mech_init         => grid_mech_spectral_basic_init
      mech_forward      => grid_mech_spectral_basic_forward
      mech_solution     => grid_mech_spectral_basic_solution
+     mech_age          => grid_mech_spectral_basic_age
      mech_restartWrite => grid_mech_spectral_basic_restartWrite
 
    case ('polarisation')
@@ -131,7 +134,9 @@ program DAMASK_spectral
      mech_init         => grid_mech_spectral_polarisation_init
      mech_forward      => grid_mech_spectral_polarisation_forward
      mech_solution     => grid_mech_spectral_polarisation_solution
+     mech_age          => grid_mech_spectral_polarisation_age
      mech_restartWrite => grid_mech_spectral_polarisation_restartWrite
+
        
    case ('fem')
      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
@@ -139,6 +144,7 @@ program DAMASK_spectral
      mech_init         => grid_mech_FEM_init
      mech_forward      => grid_mech_FEM_forward
      mech_solution     => grid_mech_FEM_solution
+     mech_age          => grid_mech_FEM_age
      mech_restartWrite => grid_mech_FEM_restartWrite
 
    case default

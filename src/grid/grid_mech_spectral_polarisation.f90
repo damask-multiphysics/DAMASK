@@ -82,6 +82,7 @@ module grid_mech_spectral_polarisation
     grid_mech_spectral_polarisation_init, &
     grid_mech_spectral_polarisation_solution, &
     grid_mech_spectral_polarisation_forward, &
+    grid_mech_spectral_polarisation_age, &
     grid_mech_spectral_polarisation_restartWrite
 
 contains
@@ -318,17 +319,14 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
       F_aimDot + deformation_BC%maskFloat * (deformation_BC%values - F_aim_lastInc)/loadCaseTime
     endif
 
-
-    Fdot        = utilities_calculateRate(guess, &
-                                          F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]),timeinc_old, &
-                                          math_rotate_backward33(F_aimDot,rotation_BC))
-    F_tauDot    = utilities_calculateRate(guess, &
-                                          F_tau_lastInc,reshape(F_tau,[3,3,grid(1),grid(2),grid3]), timeinc_old, &
-                                          math_rotate_backward33(F_aimDot,rotation_BC))
-    F_lastInc        = reshape(F,         [3,3,grid(1),grid(2),grid3])                              ! winding F forward
-    F_tau_lastInc    = reshape(F_tau,     [3,3,grid(1),grid(2),grid3])                              ! winding F_tau forward
-    materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                         ! set starting condition for materialpoint_stressAndItsTangent
-
+    Fdot     = utilities_calculateRate(guess, &
+                                       F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]),timeinc_old, &
+                                       math_rotate_backward33(F_aimDot,rotation_BC))
+    F_tauDot = utilities_calculateRate(guess, &
+                                       F_tau_lastInc,reshape(F_tau,[3,3,grid(1),grid(2),grid3]), timeinc_old, &
+                                       math_rotate_backward33(F_aimDot,rotation_BC))
+    F_lastInc     = reshape(F,    [3,3,grid(1),grid(2),grid3])                                      ! winding F forward
+    F_tau_lastInc = reshape(F_tau,[3,3,grid(1),grid(2),grid3])                                      ! winding F_tau forward
   endif
 
 !--------------------------------------------------------------------------------------------------
@@ -367,6 +365,7 @@ subroutine grid_mech_spectral_polarisation_age()
   
   call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
   F     => FandF_tau(0: 8,:,:,:)
+  materialpoint_F0 = reshape(F,[3,3,1,product(grid(1:2))*grid3])
   call CPFEM_age                                                                                    ! age state and kinematics
   call utilities_updateCoords(F)
   call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
