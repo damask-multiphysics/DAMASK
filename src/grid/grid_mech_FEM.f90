@@ -302,9 +302,7 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
   if (cutBack) then
     C_volAvg = C_volAvgLastInc
   else
-    call CPFEM_age                                                                                  ! age state and kinematics
-    call utilities_updateCoords(F)
-
+    call grid_mech_FEM_age
     C_volAvgLastInc    = C_volAvg
  
     F_aimDot = merge(stress_BC%maskFloat*(F_aim-F_aim_lastInc)/timeinc_old, 0.0_pReal, guess)
@@ -350,6 +348,17 @@ end subroutine grid_mech_FEM_forward
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Age
+!--------------------------------------------------------------------------------------------------
+subroutine grid_mech_FEM_age()
+
+  call CPFEM_age                                                                                    ! age state and kinematics
+  call utilities_updateCoords(F)
+
+end subroutine grid_mech_FEM_age
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Write current solver and constitutive data for restart to file
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mech_FEM_restartWrite()
@@ -362,7 +371,7 @@ subroutine grid_mech_FEM_restartWrite()
   call DMDAVecGetArrayF90(mech_grid,solution_current,u_current,ierr); CHKERRQ(ierr)
   call DMDAVecGetArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr); CHKERRQ(ierr)
 
-  write(6,'(a)') 'Writing current solver data for restart to file';flush(6)
+  write(6,'(a)') ' writing solver data required for restart to file';flush(6)
   
   write(rankStr,'(a1,i0)')'_',worldrank
   fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')

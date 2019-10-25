@@ -297,8 +297,7 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
     C_volAvg    = C_volAvgLastInc
     C_minMaxAvg = C_minMaxAvgLastInc
   else
-    call CPFEM_age                                                                                  ! age state and kinematics
-    call utilities_updateCoords(F)
+    call grid_mech_spectral_polarisation_age
     
     C_volAvgLastInc    = C_volAvg
     C_minMaxAvgLastInc = C_minMaxAvg
@@ -359,6 +358,23 @@ end subroutine grid_mech_spectral_polarisation_forward
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Age
+!--------------------------------------------------------------------------------------------------
+subroutine grid_mech_spectral_polarisation_age()
+
+  PetscErrorCode :: ierr
+  PetscScalar, dimension(:,:,:,:), pointer :: FandF_tau, F
+  
+  call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
+  F     => FandF_tau(0: 8,:,:,:)
+  call CPFEM_age                                                                                    ! age state and kinematics
+  call utilities_updateCoords(F)
+  call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
+
+end subroutine grid_mech_spectral_polarisation_age
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Write current solver and constitutive data for restart to file
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mech_spectral_polarisation_restartWrite()
@@ -372,7 +388,7 @@ subroutine grid_mech_spectral_polarisation_restartWrite()
   F     => FandF_tau(0: 8,:,:,:)
   F_tau => FandF_tau(9:17,:,:,:)
 
-  write(6,'(a)') 'Writing current solver data for restart to file';flush(6)
+  write(6,'(a)') ' writing solver data required for restart to file';flush(6)
 
   write(rankStr,'(a1,i0)')'_',worldrank
   fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')

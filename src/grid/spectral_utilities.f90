@@ -1130,7 +1130,7 @@ subroutine utilities_saveReferenceStiffness
     fileUnit
 
   if (worldrank == 0) then
-    write(6,'(a)') 'Writing current reference stiffness for restart to file';flush(6)
+    write(6,'(a)') ' writing reference stiffness data required for restart to file';flush(6)
     fileUnit = IO_open_jobFile_binary('C_ref','w')
     write(fileUnit) C_ref
     close(fileUnit)

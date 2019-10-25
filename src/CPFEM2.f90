@@ -163,7 +163,7 @@ subroutine CPFEM_restartWrite
   integer(HID_T)    :: fileHandle, groupPlastic, groupHomog
 
 
-  write(6,'(a)') 'Writing current constitutive variables for restart to file';flush(6)
+  write(6,'(a)') ' writing constitutive data required for restart to file';flush(6)
     
   write(rankStr,'(a1,i0)')'_',worldrank
   fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','a')
