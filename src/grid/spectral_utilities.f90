@@ -1028,7 +1028,7 @@ subroutine utilities_updateCoords(F)
     ierr
   integer, dimension(MPI_STATUS_SIZE) :: &
     s
-  real(pReal),   dimension(3) :: step, offset_coords
+  real(pReal),   dimension(3)   :: step
   real(pReal),   dimension(3,3) :: Favg
   integer,       dimension(3) :: me
   integer, dimension(3,8) :: &
@@ -1063,14 +1063,6 @@ subroutine utilities_updateCoords(F)
   if (grid3Offset == 0) Favg = real(tensorField_fourier(1:3,1:3,1,1,1),pReal)*wgt
   call MPI_Bcast(Favg,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
   if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Bcast')
- 
- !--------------------------------------------------------------------------------------------------
- ! add average to fluctuation and put (0,0,0) on (0,0,0): MD: Needs improvement, edge should be on zero
-  step = geomSize/real(grid, pReal)
-  if (grid3Offset == 0) offset_coords = vectorField_real(1:3,1,1,1)
-  call MPI_Bcast(offset_coords,3,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
-  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Bcast')
-  offset_coords = offset_coords - matmul(Favg,step/2.0_pReal)
   
  !--------------------------------------------------------------------------------------------------
  ! pad cell center fluctuations along z-direction (needed when running MPI simulation)
@@ -1111,8 +1103,7 @@ subroutine utilities_updateCoords(F)
  ! calculate cell center displacements
   do k = 1,grid3; do j = 1,grid(2); do i = 1,grid(1)
     IPcoords(1:3,i,j,k) = vectorField_real(1:3,i,j,k) &
-                        + matmul(Favg,step*real([i,j,k+grid3Offset]-1,pReal)) &
-                        - offset_coords
+                        + matmul(Favg,step*real([i,j,k+grid3Offset]-1,pReal))
   enddo; enddo; enddo
   
   call discretization_setNodeCoords(reshape(NodeCoords,[3,(grid(1)+1)*(grid(2)+1)*(grid3+1)]))
