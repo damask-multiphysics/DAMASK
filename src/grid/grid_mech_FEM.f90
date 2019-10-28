@@ -97,7 +97,7 @@ subroutine grid_mech_FEM_init
                        1.0_pReal, 1.0_pReal, 1.0_pReal, 1.0_pReal], [4,8])
   PetscErrorCode :: ierr
   integer :: rank
-  integer(HID_T) :: fileHandle
+  integer(HID_T)      :: fileHandle, groupHandle
   character(len=1024) :: rankStr
   real(pReal), dimension(3,3,3,3) :: devNull
   PetscScalar, pointer, dimension(:,:,:,:) :: &
@@ -188,15 +188,16 @@ subroutine grid_mech_FEM_init
       'reading values of increment ', interface_restartInc, ' from file'
  
     write(rankStr,'(a1,i0)')'_',worldrank
-    fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
+    fileHandle  = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
+    groupHandle = HDF5_openGroup(fileHandle,'solver')
     
-    call HDF5_read(fileHandle,F_aim,        'F_aim')
-    call HDF5_read(fileHandle,F_aim_lastInc,'F_aim_lastInc')
-    call HDF5_read(fileHandle,F_aimDot,     'F_aimDot')
-    call HDF5_read(fileHandle,F,            'F')
-    call HDF5_read(fileHandle,F_lastInc,    'F_lastInc')
-    call HDF5_read(fileHandle,u_current,    'u')
-    call HDF5_read(fileHandle,u_lastInc,    'u_lastInc')
+    call HDF5_read(groupHandle,F_aim,        'F_aim')
+    call HDF5_read(groupHandle,F_aim_lastInc,'F_aim_lastInc')
+    call HDF5_read(groupHandle,F_aimDot,     'F_aimDot')
+    call HDF5_read(groupHandle,F,            'F')
+    call HDF5_read(groupHandle,F_lastInc,    'F_lastInc')
+    call HDF5_read(groupHandle,u_current,    'u')
+    call HDF5_read(groupHandle,u_lastInc,    'u_lastInc')
     
   elseif (interface_restartInc == 0) then restartRead
     F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                         ! initialize to identity
@@ -216,9 +217,12 @@ subroutine grid_mech_FEM_init
   restartRead2: if (interface_restartInc > 0) then
     write(6,'(/,a,'//IO_intOut(interface_restartInc)//',a)') &
       'reading more values of increment ', interface_restartInc, ' from file'
-    call HDF5_read(fileHandle,C_volAvg,       'C_volAvg')
-    call HDF5_read(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
+    call HDF5_read(groupHandle,C_volAvg,       'C_volAvg')
+    call HDF5_read(groupHandle,C_volAvgLastInc,'C_volAvgLastInc')
+    
+    call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
+
   endif restartRead2
 
 end subroutine grid_mech_FEM_init
@@ -363,7 +367,7 @@ subroutine grid_mech_FEM_restartWrite()
 
   PetscErrorCode :: ierr
   PetscScalar, dimension(:,:,:,:), pointer :: u_current,u_lastInc
-  integer(HID_T) :: fileHandle
+  integer(HID_T)    :: fileHandle, groupHandle
   character(len=32) :: rankStr
   
   call DMDAVecGetArrayF90(mech_grid,solution_current,u_current,ierr); CHKERRQ(ierr)
@@ -373,18 +377,20 @@ subroutine grid_mech_FEM_restartWrite()
   
   write(rankStr,'(a1,i0)')'_',worldrank
   fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
+  groupHandle = HDF5_addGroup(fileHandle,'solver')
 
-  call HDF5_write(fileHandle,F_aim,          'F_aim')
-  call HDF5_write(fileHandle,F_aim_lastInc,  'F_aim_lastInc')
-  call HDF5_write(fileHandle,F_aimDot,       'F_aimDot')
-  call HDF5_write(fileHandle,F,              'F')
-  call HDF5_write(fileHandle,F_lastInc,      'F_lastInc')
-  call HDF5_write(fileHandle,u_current,      'u')
-  call HDF5_write(fileHandle,u_lastInc,      'u_lastInc')
+  call HDF5_write(groupHandle,F_aim,        'F_aim')
+  call HDF5_write(groupHandle,F_aim_lastInc,'F_aim_lastInc')
+  call HDF5_write(groupHandle,F_aimDot,     'F_aimDot')
+  call HDF5_write(groupHandle,F,            'F')
+  call HDF5_write(groupHandle,F_lastInc,    'F_lastInc')
+  call HDF5_write(groupHandle,u_current,    'u')
+  call HDF5_write(groupHandle,u_lastInc,    'u_lastInc')
 
-  call HDF5_write(fileHandle,C_volAvg,       'C_volAvg')
-  call HDF5_write(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
+  call HDF5_write(groupHandle,C_volAvg,       'C_volAvg')
+  call HDF5_write(groupHandle,C_volAvgLastInc,'C_volAvgLastInc')
 
+  call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
  
   call DMDAVecRestoreArrayF90(mech_grid,solution_current,u_current,ierr);CHKERRQ(ierr)
