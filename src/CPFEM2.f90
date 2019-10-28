@@ -122,6 +122,7 @@ end subroutine CPFEM_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Forward data after successful increment.
+! ToDo: Any guessing for the current states possible?
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_forward
 
