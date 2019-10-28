@@ -773,10 +773,11 @@ subroutine utilities_fourierScalarGradient()
  
   integer :: i, j, k
  
-  vectorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
-  forall(k = 1:grid3, j = 1:grid(2), i = 1:grid1Red) &
-    vectorField_fourier(1:3,i,j,k) = scalarField_fourier(i,j,k)*xi1st(1:3,i,j,k)
- 
+  vectorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)                                            ! ToDo check padding and set only affected values to zero
+  do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid1Red
+    vectorField_fourier(1:3,i,j,k) = scalarField_fourier(i,j,k)*xi1st(1:3,i,j,k)                    ! ToDo: no -conjg?
+  enddo; enddo; enddo
+
 end subroutine utilities_fourierScalarGradient
 
 
@@ -785,13 +786,13 @@ end subroutine utilities_fourierScalarGradient
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_fourierVectorDivergence()
  
-  integer                :: i, j, k
+  integer :: i, j, k
  
-  scalarField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
-  forall(k = 1:grid3, j = 1:grid(2), i = 1:grid1Red) &
-    scalarField_fourier(i,j,k) = scalarField_fourier(i,j,k) &
-                               + sum(vectorField_fourier(1:3,i,j,k)*conjg(-xi1st(1:3,i,j,k)))
- 
+  scalarField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)                                            ! ToDo check padding and set only affected values to zero
+  do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid1Red
+    scalarField_fourier(i,j,k) = sum(vectorField_fourier(1:3,i,j,k)*conjg(-xi1st(1:3,i,j,k)))
+  enddo; enddo; enddo
+
 end subroutine utilities_fourierVectorDivergence
 
 
@@ -802,7 +803,7 @@ subroutine utilities_fourierVectorGradient()
  
   integer :: i, j, k, m, n
  
-  tensorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
+  tensorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)                                            ! ToDo check padding and set only affected values to zero
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid1Red
     do m = 1, 3; do n = 1, 3
       tensorField_fourier(m,n,i,j,k) = vectorField_fourier(m,i,j,k)*xi1st(n,i,j,k)
@@ -817,14 +818,11 @@ end subroutine utilities_fourierVectorGradient
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_fourierTensorDivergence()
 
-  integer :: i, j, k, m, n
+  integer :: i, j, k
  
-  vectorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
+  vectorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)                                            ! ToDo check padding and set only affected values to zero
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid1Red
-    do m = 1, 3; do n = 1, 3
-      vectorField_fourier(m,i,j,k) = vectorField_fourier(m,i,j,k) &
-                                   + tensorField_fourier(m,n,i,j,k)*conjg(-xi1st(n,i,j,k))
-    enddo; enddo
+    vectorField_fourier(:,i,j,k) = matmul(tensorField_fourier(:,:,i,j,k),conjg(-xi1st(:,i,j,k)))
   enddo; enddo; enddo
 
 end subroutine utilities_fourierTensorDivergence
