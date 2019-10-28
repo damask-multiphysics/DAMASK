@@ -330,6 +330,8 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
     F_tau_lastInc = reshape(F_tau,[3,3,grid(1),grid(2),grid3])                                      ! winding F_tau forward
   endif
 
+  materialpoint_F0 = reshape(F,[3,3,1,product(grid(1:2))*grid3])
+
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * timeinc
@@ -366,7 +368,6 @@ subroutine grid_mech_spectral_polarisation_age()
   
   call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
   F     => FandF_tau(0:8,:,:,:)
-  materialpoint_F0 = reshape(F,[3,3,1,product(grid(1:2))*grid3])
   call utilities_updateCoords(F)
   call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
 

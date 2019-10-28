@@ -481,6 +481,7 @@ program DAMASK_spectral
              case(FIELD_DAMAGE_ID);  call grid_damage_spectral_forward
            end select
          enddo
+         call CPFEM_forward
 
 !--------------------------------------------------------------------------------------------------
 ! solve fields
@@ -518,7 +519,6 @@ program DAMASK_spectral
          if ( (all(solres(:)%converged .and. solres(:)%stagConverged)) &                            ! converged
               .and. .not. solres(1)%termIll) then                                                   ! and acceptable solution found
            call mech_age
-           call CPFEM_age
            timeIncOld = timeinc
            cutBack = .false.
            guess = .true.                                                                           ! start guessing after first converged (sub)inc

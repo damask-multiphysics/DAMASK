@@ -338,6 +338,8 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
     F_lastInc = F                                                                                   ! winding F forward    
   endif
 
+  materialpoint_F0 = reshape(F, [3,3,1,product(grid(1:2))*grid3])
+  
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * timeinc
@@ -354,7 +356,6 @@ end subroutine grid_mech_FEM_forward
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mech_FEM_age()
 
-  materialpoint_F0 = reshape(F, [3,3,1,product(grid(1:2))*grid3])
   call utilities_updateCoords(F)
 
 end subroutine grid_mech_FEM_age

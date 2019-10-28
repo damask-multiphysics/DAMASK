@@ -302,6 +302,8 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
                                     math_rotate_backward33(F_aimDot,rotation_BC))
     F_lastInc = reshape(F,[3,3,grid(1),grid(2),grid3])                                              ! winding F forward
   endif
+  
+  materialpoint_F0 = reshape(F, [3,3,1,product(grid(1:2))*grid3])
 
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
@@ -322,7 +324,6 @@ subroutine grid_mech_spectral_basic_age()
   PetscScalar, dimension(:,:,:,:), pointer :: F
 
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
-  materialpoint_F0 = reshape(F, [3,3,1,product(grid(1:2))*grid3])
   call utilities_updateCoords(F)
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
 

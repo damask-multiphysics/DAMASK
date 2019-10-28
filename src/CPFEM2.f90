@@ -33,7 +33,7 @@ module CPFEM2
   private
 
   public :: &
-    CPFEM_age, &
+    CPFEM_forward, &
     CPFEM_initAll, &
     CPFEM_results, &
     CPFEM_restartWrite
@@ -123,7 +123,7 @@ end subroutine CPFEM_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Forward data after successful increment.
 !--------------------------------------------------------------------------------------------------
-subroutine CPFEM_age
+subroutine CPFEM_forward
 
   integer :: i, homog, mySource
 
@@ -150,7 +150,7 @@ subroutine CPFEM_age
     damageState      (homog)%state0 =  damageState      (homog)%state
   enddo
 
-end subroutine CPFEM_age
+end subroutine CPFEM_forward
 
 
 !--------------------------------------------------------------------------------------------------
