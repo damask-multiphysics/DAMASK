@@ -82,7 +82,7 @@ module grid_mech_spectral_polarisation
     grid_mech_spectral_polarisation_init, &
     grid_mech_spectral_polarisation_solution, &
     grid_mech_spectral_polarisation_forward, &
-    grid_mech_spectral_polarisation_age, &
+    grid_mech_spectral_polarisation_updateCoords, &
     grid_mech_spectral_polarisation_restartWrite
 
 contains
@@ -361,17 +361,16 @@ end subroutine grid_mech_spectral_polarisation_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief Age
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mech_spectral_polarisation_age()
+subroutine grid_mech_spectral_polarisation_updateCoords()
 
   PetscErrorCode :: ierr
-  PetscScalar, dimension(:,:,:,:), pointer :: FandF_tau, F
+  PetscScalar, dimension(:,:,:,:), pointer :: FandF_tau
   
   call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
-  F     => FandF_tau(0:8,:,:,:)
-  call utilities_updateCoords(F)
+  call utilities_updateCoords(FandF_tau(0:8,:,:,:))
   call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
 
-end subroutine grid_mech_spectral_polarisation_age
+end subroutine grid_mech_spectral_polarisation_updateCoords
 
 
 !--------------------------------------------------------------------------------------------------

@@ -76,7 +76,7 @@ module grid_mech_spectral_basic
     grid_mech_spectral_basic_init, &
     grid_mech_spectral_basic_solution, &
     grid_mech_spectral_basic_forward, &
-    grid_mech_spectral_basic_age, &
+    grid_mech_spectral_basic_updateCoords, &
     grid_mech_spectral_basic_restartWrite
 
 contains
@@ -318,7 +318,7 @@ end subroutine grid_mech_spectral_basic_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief Age
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mech_spectral_basic_age()
+subroutine grid_mech_spectral_basic_updateCoords()
 
   PetscErrorCode :: ierr
   PetscScalar, dimension(:,:,:,:), pointer :: F
@@ -327,7 +327,7 @@ subroutine grid_mech_spectral_basic_age()
   call utilities_updateCoords(F)
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
 
-end subroutine grid_mech_spectral_basic_age
+end subroutine grid_mech_spectral_basic_updateCoords
 
 
 !--------------------------------------------------------------------------------------------------

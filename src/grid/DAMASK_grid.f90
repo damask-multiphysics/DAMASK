@@ -94,8 +94,8 @@ program DAMASK_spectral
    mech_forward
  procedure(grid_mech_spectral_basic_solution), pointer :: &
    mech_solution
- procedure(grid_mech_spectral_basic_age), pointer :: &
-   mech_age
+ procedure(grid_mech_spectral_basic_updateCoords), pointer :: &
+   mech_updateCoords
  procedure(grid_mech_spectral_basic_restartWrite), pointer :: &
    mech_restartWrite
 
@@ -125,7 +125,7 @@ program DAMASK_spectral
      mech_init         => grid_mech_spectral_basic_init
      mech_forward      => grid_mech_spectral_basic_forward
      mech_solution     => grid_mech_spectral_basic_solution
-     mech_age          => grid_mech_spectral_basic_age
+     mech_updateCoords => grid_mech_spectral_basic_updateCoords
      mech_restartWrite => grid_mech_spectral_basic_restartWrite
 
    case ('polarisation')
@@ -134,7 +134,7 @@ program DAMASK_spectral
      mech_init         => grid_mech_spectral_polarisation_init
      mech_forward      => grid_mech_spectral_polarisation_forward
      mech_solution     => grid_mech_spectral_polarisation_solution
-     mech_age          => grid_mech_spectral_polarisation_age
+     mech_updateCoords => grid_mech_spectral_polarisation_updateCoords
      mech_restartWrite => grid_mech_spectral_polarisation_restartWrite
 
    case ('fem')
@@ -143,7 +143,7 @@ program DAMASK_spectral
      mech_init         => grid_mech_FEM_init
      mech_forward      => grid_mech_FEM_forward
      mech_solution     => grid_mech_FEM_solution
-     mech_age          => grid_mech_FEM_age
+     mech_updateCoords => grid_mech_FEM_updateCoords
      mech_restartWrite => grid_mech_FEM_restartWrite
 
    case default
@@ -518,7 +518,7 @@ program DAMASK_spectral
 
          if ( (all(solres(:)%converged .and. solres(:)%stagConverged)) &                            ! converged
               .and. .not. solres(1)%termIll) then                                                   ! and acceptable solution found
-           call mech_age
+           call mech_updateCoords
            timeIncOld = timeinc
            cutBack = .false.
            guess = .true.                                                                           ! start guessing after first converged (sub)inc

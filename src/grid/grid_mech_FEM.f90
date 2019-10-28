@@ -72,7 +72,7 @@ module grid_mech_FEM
     grid_mech_FEM_init, &
     grid_mech_FEM_solution, &
     grid_mech_FEM_forward, &
-    grid_mech_FEM_age, &
+    grid_mech_FEM_updateCoords, &
     grid_mech_FEM_restartWrite
 
 contains
@@ -354,11 +354,11 @@ end subroutine grid_mech_FEM_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief Age
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mech_FEM_age()
+subroutine grid_mech_FEM_updateCoords()
 
   call utilities_updateCoords(F)
 
-end subroutine grid_mech_FEM_age
+end subroutine grid_mech_FEM_updateCoords
 
 
 !--------------------------------------------------------------------------------------------------
