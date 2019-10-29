@@ -324,7 +324,6 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
       F_aimDot = &
       F_aimDot + deformation_BC%maskFloat * (deformation_BC%values - F_aim_lastInc)/loadCaseTime
     endif
-    
 
     if (guess) then
       call VecWAXPY(solution_rate,-1.0_pReal,solution_lastInc,solution_current,ierr)
@@ -335,11 +334,11 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
     endif
     call VecCopy(solution_current,solution_lastInc,ierr); CHKERRQ(ierr)
     
-    F_lastInc = F                                                                                   ! winding F forward    
+    F_lastInc = F
+    
+    materialpoint_F0 = reshape(F, [3,3,1,product(grid(1:2))*grid3])   
   endif
 
-  materialpoint_F0 = reshape(F, [3,3,1,product(grid(1:2))*grid3])
-  
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * timeinc

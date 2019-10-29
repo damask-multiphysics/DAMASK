@@ -481,7 +481,7 @@ program DAMASK_spectral
              case(FIELD_DAMAGE_ID);  call grid_damage_spectral_forward
            end select
          enddo
-         call CPFEM_forward
+         if(.not. cutBack) call CPFEM_forward
 
 !--------------------------------------------------------------------------------------------------
 ! solve fields

@@ -300,10 +300,10 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
     Fdot =  utilities_calculateRate(guess, &
                                     F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]),timeinc_old, &
                                     math_rotate_backward33(F_aimDot,rotation_BC))
-    F_lastInc = reshape(F,[3,3,grid(1),grid(2),grid3])                                              ! winding F forward
+    F_lastInc = reshape(F,[3,3,grid(1),grid(2),grid3])
+    
+    materialpoint_F0 = reshape(F, [3,3,1,product(grid(1:2))*grid3])
   endif
-  
-  materialpoint_F0 = reshape(F, [3,3,1,product(grid(1:2))*grid3])
 
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
