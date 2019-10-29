@@ -428,10 +428,12 @@ end subroutine utilities_updateGamma
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forward FFT of data in field_real to field_fourier
-!> @details Does an unweighted FFT transform from real to complex
+!> @details Does an unweighted FFT transform from real to complex. Extra padding entries are set
+! to 0.0
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTtensorForward
 
+  tensorField_real(1:3,1:3,grid(1)+1:grid1Red*2,:,:) = cmplx(0.0,0.0,pReal)
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
 
 end subroutine utilities_FFTtensorForward
@@ -450,10 +452,12 @@ end subroutine utilities_FFTtensorBackward
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forward FFT of data in scalarField_real to scalarField_fourier
-!> @details Does an unweighted FFT transform from real to complex
+!> @details Does an unweighted FFT transform from real to complex. Extra padding entries are set
+! to 0.0
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTscalarForward
 
+  scalarField_real(grid(1)+1:grid1Red*2,:,:) = cmplx(0.0,0.0,pReal)
   call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
 
 end subroutine utilities_FFTscalarForward
@@ -473,10 +477,12 @@ end subroutine utilities_FFTscalarBackward
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forward FFT of data in field_real to field_fourier with highest freqs. removed
-!> @details Does an unweighted FFT transform from real to complex.
+!> @details Does an unweighted FFT transform from real to complex. Extra padding entries are set
+! to 0.0
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTvectorForward
 
+  vectorField_real(1:3,grid(1)+1:grid1Red*2,:,:) = cmplx(0.0,0.0,pReal)
   call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
 
 end subroutine utilities_FFTvectorForward
@@ -773,7 +779,6 @@ subroutine utilities_fourierScalarGradient()
  
   integer :: i, j, k
  
-  vectorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)                                            ! ToDo check padding and set only affected values to zero
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid1Red
     vectorField_fourier(1:3,i,j,k) = scalarField_fourier(i,j,k)*xi1st(1:3,i,j,k)                    ! ToDo: no -conjg?
   enddo; enddo; enddo
@@ -788,7 +793,6 @@ subroutine utilities_fourierVectorDivergence()
  
   integer :: i, j, k
  
-  scalarField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)                                            ! ToDo check padding and set only affected values to zero
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid1Red
     scalarField_fourier(i,j,k) = sum(vectorField_fourier(1:3,i,j,k)*conjg(-xi1st(1:3,i,j,k)))
   enddo; enddo; enddo
@@ -803,7 +807,6 @@ subroutine utilities_fourierVectorGradient()
  
   integer :: i, j, k, m, n
  
-  tensorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)                                            ! ToDo check padding and set only affected values to zero
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid1Red
     do m = 1, 3; do n = 1, 3
       tensorField_fourier(m,n,i,j,k) = vectorField_fourier(m,i,j,k)*xi1st(n,i,j,k)
@@ -820,7 +823,6 @@ subroutine utilities_fourierTensorDivergence()
 
   integer :: i, j, k
  
-  vectorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)                                            ! ToDo check padding and set only affected values to zero
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid1Red
     vectorField_fourier(:,i,j,k) = matmul(tensorField_fourier(:,:,i,j,k),conjg(-xi1st(:,i,j,k)))
   enddo; enddo; enddo
@@ -1043,16 +1045,18 @@ subroutine utilities_updateCoords(F)
   step = geomSize/real(grid, pReal)
  !--------------------------------------------------------------------------------------------------
  ! integration in Fourier space to get fluctuations of cell center discplacements
-  tensorField_real = 0.0_pReal
-  tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = F                                            ! ToDo check padding and set only affected values to zero
+  tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = F
   call utilities_FFTtensorForward()
 
-  vectorField_fourier = cmplx(0.0,0.0,pReal)                                                           ! ToDo check padding and set only affected values to zero
   do k = 1, grid3; do j = 1, grid(2); do i = 1, grid1Red
-    if(any([i,j,k+grid3Offset] /= 1))  &
-    vectorField_fourier(1:3,i,j,k) = matmul(tensorField_fourier(1:3,1:3,i,j,k),xi2nd(1:3,i,j,k)) &
-                                   / sum(conjg(-xi2nd(1:3,i,j,k))*xi2nd(1:3,i,j,k)) * wgt
+    if(any([i,j,k+grid3Offset] /= 1)) then
+      vectorField_fourier(1:3,i,j,k) = matmul(tensorField_fourier(1:3,1:3,i,j,k),xi2nd(1:3,i,j,k)) &
+                                     / sum(conjg(-xi2nd(1:3,i,j,k))*xi2nd(1:3,i,j,k)) * wgt
+    else
+      vectorField_fourier(1:3,i,j,k) = cmplx(0.0,0.0,pReal)
+    endif
   enddo; enddo; enddo
+
   call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
  
  !--------------------------------------------------------------------------------------------------
