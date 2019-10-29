@@ -60,7 +60,8 @@ program DAMASK_spectral
    remainingLoadCaseTime = 0.0_pReal                                                                !< remaining time of current load case
  logical :: &
    guess, &                                                                                         !< guess along former trajectory
-   stagIterate
+   stagIterate, &
+   cutBack = .false.
  integer :: &
    i, j, k, l, field, &
    errorID = 0, &
@@ -472,13 +473,13 @@ program DAMASK_spectral
            select case(loadCases(currentLoadCase)%ID(field))
              case(FIELD_MECH_ID)
                call mech_forward (&
-                       guess,timeinc,timeIncOld,remainingLoadCaseTime, &
+                       cutBack,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
                        deformation_BC     = loadCases(currentLoadCase)%deformation, &
                        stress_BC          = loadCases(currentLoadCase)%stress, &
                        rotation_BC        = loadCases(currentLoadCase)%rotation)
 
-             case(FIELD_THERMAL_ID); call grid_thermal_spectral_forward
-             case(FIELD_DAMAGE_ID);  call grid_damage_spectral_forward
+             case(FIELD_THERMAL_ID); call grid_thermal_spectral_forward(cutBack)
+             case(FIELD_DAMAGE_ID);  call grid_damage_spectral_forward(cutBack)
            end select
          enddo
          if(.not. cutBack) call CPFEM_forward

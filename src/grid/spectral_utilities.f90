@@ -22,9 +22,7 @@ module spectral_utilities
   private
   
   include 'fftw3-mpi.f03'
-
-  logical, public             :: cutBack = .false.                                                  !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
-
+  
 !--------------------------------------------------------------------------------------------------
 ! field labels information
   enum, bind(c)

@@ -284,9 +284,11 @@ end function grid_mech_FEM_solution
 !> @details find new boundary conditions and best F estimate for end of current timestep
 !> possibly writing restart information, triggering of state increment in DAMASK, and updating of IPcoordinates
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,stress_BC,rotation_BC)
+subroutine grid_mech_FEM_forward(cutBack,guess,timeinc,timeinc_old,loadCaseTime,&
+                                 deformation_BC,stress_BC,rotation_BC)
 
   logical,                     intent(in) :: &
+    cutBack, &
     guess
   real(pReal),                 intent(in) :: &
     timeinc_old, &
