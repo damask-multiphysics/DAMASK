@@ -428,7 +428,7 @@ end subroutine utilities_updateGamma
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forward FFT of data in field_real to field_fourier
-!> @details Does an unweighted filtered FFT transform from real to complex
+!> @details Does an unweighted FFT transform from real to complex
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTtensorForward
 
@@ -450,7 +450,7 @@ end subroutine utilities_FFTtensorBackward
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forward FFT of data in scalarField_real to scalarField_fourier
-!> @details Does an unweighted filtered FFT transform from real to complex
+!> @details Does an unweighted FFT transform from real to complex
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTscalarForward
 
@@ -473,7 +473,7 @@ end subroutine utilities_FFTscalarBackward
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forward FFT of data in field_real to field_fourier with highest freqs. removed
-!> @details Does an unweighted filtered FFT transform from real to complex.
+!> @details Does an unweighted FFT transform from real to complex.
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTvectorForward
 
@@ -1044,17 +1044,16 @@ subroutine utilities_updateCoords(F)
  !--------------------------------------------------------------------------------------------------
  ! integration in Fourier space to get fluctuations of cell center discplacements
   tensorField_real = 0.0_pReal
-  tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = F
+  tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = F                                            ! ToDo check padding and set only affected values to zero
   call utilities_FFTtensorForward()
-  call utilities_fourierTensorDivergence()
- 
+
+  vectorField_fourier = cmplx(0.0,0.0,pReal)                                                           ! ToDo check padding and set only affected values to zero
   do k = 1, grid3; do j = 1, grid(2); do i = 1, grid1Red
-    if (any(cNeq(xi1st(1:3,i,j,k),cmplx(0.0,0.0,pReal)))) &
-      vectorField_fourier(1:3,i,j,k) = vectorField_fourier(1:3,i,j,k) &
-                                     / sum(conjg(-xi1st(1:3,i,j,k))*xi1st(1:3,i,j,k))
+    if(any([i,j,k+grid3Offset] /= 1))  &
+    vectorField_fourier(1:3,i,j,k) = matmul(tensorField_fourier(1:3,1:3,i,j,k),xi2nd(1:3,i,j,k)) &
+                                   / sum(conjg(-xi2nd(1:3,i,j,k))*xi2nd(1:3,i,j,k)) * wgt
   enddo; enddo; enddo
   call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
-  vectorField_real = vectorField_real * wgt
  
  !--------------------------------------------------------------------------------------------------
  ! average F
