@@ -396,7 +396,7 @@ class DADF5():
 
         p = np.where(f['mapping/cellResults/materialpoint']['Name'] == str.encode(label))[0]
         if len(p)>0:
-          u = (f['mapping/cellResults/materialpoint'][p.tolist()]['Position'])
+          u = (f['mapping/cellResults/materialpoint']['Position'][p.tolist()])
           a = np.array(f[pa])
           if len(a.shape) == 1:
             a=a.reshape([a.shape[0],1])
