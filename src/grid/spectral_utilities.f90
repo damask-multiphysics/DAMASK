@@ -1089,14 +1089,13 @@ subroutine utilities_updateCoords(F)
  ! calculate nodal displacements  
   nodeCoords = 0.0_pReal
   do k = 0,grid3; do j = 0,grid(2); do i = 0,grid(1)
-    average: do n = 1,8
+    nodeCoords(1:3,i+1,j+1,k+1) = matmul(Favg,step*(real([i,j,k+grid3Offset],pReal)))
+    averageFluct: do n = 1,8
       me = [i+neighbor(1,n),j+neighbor(2,n),k+neighbor(3,n)]
       nodeCoords(1:3,i+1,j+1,k+1) = nodeCoords(1:3,i+1,j+1,k+1) &
-                                  + IPfluct_padded(1:3,modulo(me(1)-1,grid(1))+1,modulo(me(2)-1,grid(2))+1,me(3)+1) &
-                                  + matmul(Favg,step*(real([me(1),me(2),me(3)+grid3Offset],pReal)-0.5_pReal))
-      enddo average
+                                  + IPfluct_padded(1:3,modulo(me(1)-1,grid(1))+1,modulo(me(2)-1,grid(2))+1,me(3)+1)*0.125_pReal
+    enddo averageFluct
   enddo; enddo; enddo
-  nodeCoords = nodeCoords/8.0_pReal
       
  !--------------------------------------------------------------------------------------------------
  ! calculate cell center displacements
