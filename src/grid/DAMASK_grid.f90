@@ -60,7 +60,8 @@ program DAMASK_spectral
    remainingLoadCaseTime = 0.0_pReal                                                                !< remaining time of current load case
  logical :: &
    guess, &                                                                                         !< guess along former trajectory
-   stagIterate
+   stagIterate, &
+   cutBack = .false.
  integer :: &
    i, j, k, l, field, &
    errorID = 0, &
@@ -70,13 +71,11 @@ program DAMASK_spectral
    currentLoadcase = 0, &                                                                           !< current load case
    inc, &                                                                                           !< current increment in current load case
    totalIncsCounter = 0, &                                                                          !< total # of increments
-   convergedCounter = 0, &                                                                          !< # of converged increments
-   notConvergedCounter = 0, &                                                                       !< # of non-converged increments
    fileUnit = 0, &                                                                                  !< file unit for reading load case and writing results
    myStat, &
    statUnit = 0, &                                                                                  !< file unit for statistics output
-   lastRestartWritten = 0, &                                                                        !< total increment # at which last restart information was written
-   stagIter
+   stagIter, &
+   nActiveFields = 0
  character(len=6)  :: loadcase_string
  character(len=1024) :: &
    incInfo
@@ -86,7 +85,7 @@ program DAMASK_spectral
  type(tSolutionState), allocatable, dimension(:) :: solres
  integer(MPI_OFFSET_KIND) :: fileOffset
  integer(MPI_OFFSET_KIND), dimension(:), allocatable :: outputSize
- integer, parameter :: maxByteOut = 2147483647-4096                                                !< limit of one file output write https://trac.mpich.org/projects/mpich/ticket/1742
+ integer, parameter :: maxByteOut = 2147483647-4096                                                 !< limit of one file output write https://trac.mpich.org/projects/mpich/ticket/1742
  integer, parameter :: maxRealOut = maxByteOut/pReal
  integer(pLongInt), dimension(2) :: outputIndex
  PetscErrorCode :: ierr
@@ -96,6 +95,10 @@ program DAMASK_spectral
    mech_forward
  procedure(grid_mech_spectral_basic_solution), pointer :: &
    mech_solution
+ procedure(grid_mech_spectral_basic_updateCoords), pointer :: &
+   mech_updateCoords
+ procedure(grid_mech_spectral_basic_restartWrite), pointer :: &
+   mech_restartWrite
 
  external :: &
    quit
@@ -120,23 +123,29 @@ program DAMASK_spectral
 ! assign mechanics solver depending on selected type
  select case (trim(config_numerics%getString('spectral_solver',defaultVal='basic')))
    case ('basic')
-     mech_init     => grid_mech_spectral_basic_init
-     mech_forward  => grid_mech_spectral_basic_forward
-     mech_solution => grid_mech_spectral_basic_solution
+     mech_init         => grid_mech_spectral_basic_init
+     mech_forward      => grid_mech_spectral_basic_forward
+     mech_solution     => grid_mech_spectral_basic_solution
+     mech_updateCoords => grid_mech_spectral_basic_updateCoords
+     mech_restartWrite => grid_mech_spectral_basic_restartWrite
 
    case ('polarisation')
      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
        call IO_warning(42, ext_msg='debug Divergence')
-     mech_init     => grid_mech_spectral_polarisation_init
-     mech_forward  => grid_mech_spectral_polarisation_forward
-     mech_solution => grid_mech_spectral_polarisation_solution
-     
+     mech_init         => grid_mech_spectral_polarisation_init
+     mech_forward      => grid_mech_spectral_polarisation_forward
+     mech_solution     => grid_mech_spectral_polarisation_solution
+     mech_updateCoords => grid_mech_spectral_polarisation_updateCoords
+     mech_restartWrite => grid_mech_spectral_polarisation_restartWrite
+
    case ('fem')
      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
        call IO_warning(42, ext_msg='debug Divergence')
-     mech_init     => grid_mech_FEM_init
-     mech_forward  => grid_mech_FEM_forward
-     mech_solution => grid_mech_FEM_solution
+     mech_init         => grid_mech_FEM_init
+     mech_forward      => grid_mech_FEM_forward
+     mech_solution     => grid_mech_FEM_solution
+     mech_updateCoords => grid_mech_FEM_updateCoords
+     mech_restartWrite => grid_mech_FEM_restartWrite
 
    case default
      call IO_error(error_ID = 891, ext_msg = config_numerics%getString('spectral_solver'))
@@ -158,11 +167,11 @@ program DAMASK_spectral
    chunkPos = IO_stringPos(line)
    do i = 1, chunkPos(1)                                                                            ! reading compulsory parameters for loadcase
      select case (IO_lc(IO_stringValue(line,chunkPos,i)))
-       case('l','velocitygrad','velgrad','velocitygradient','fdot','dotf','f')
+       case('l','fdot','dotf','f')
          N_def = N_def + 1
        case('t','time','delta')
          N_t = N_t + 1
-       case('n','incs','increments','steps','logincs','logincrements','logsteps')
+       case('n','incs','increments','logincs','logincrements')
          N_n = N_n + 1
      end select
    enddo
@@ -183,7 +192,7 @@ program DAMASK_spectral
 
    readIn: do i = 1, chunkPos(1)
      select case (IO_lc(IO_stringValue(line,chunkPos,i)))
-       case('fdot','dotf','l','velocitygrad','velgrad','velocitygradient','f')                      ! assign values for the deformation BC matrix
+       case('fdot','dotf','l','f')                                                                  ! assign values for the deformation BC matrix
          temp_valueVector = 0.0_pReal
          if (IO_lc(IO_stringValue(line,chunkPos,i)) == 'fdot'.or. &                                 ! in case of Fdot, set type to fdot
              IO_lc(IO_stringValue(line,chunkPos,i)) == 'dotf') then
@@ -200,7 +209,7 @@ program DAMASK_spectral
          newLoadCase%deformation%maskLogical = transpose(reshape(temp_maskVector,[ 3,3]))           ! logical mask in 3x3 notation
          newLoadCase%deformation%maskFloat   = merge(ones,zeros,newLoadCase%deformation%maskLogical)! float (1.0/0.0) mask in 3x3 notation
          newLoadCase%deformation%values      = math_9to33(temp_valueVector)                         ! values in 3x3 notation
-       case('p','pk1','piolakirchhoff','stress', 's')
+       case('p','stress', 's')
          temp_valueVector = 0.0_pReal
          do j = 1, 9
            temp_maskVector(j) = IO_stringValue(line,chunkPos,i+j) /= '*'                            ! true if not an asterisk
@@ -211,9 +220,9 @@ program DAMASK_spectral
          newLoadCase%stress%values      = math_9to33(temp_valueVector)
        case('t','time','delta')                                                                     ! increment time
          newLoadCase%time = IO_floatValue(line,chunkPos,i+1)
-       case('n','incs','increments','steps')                                                        ! number of increments
+       case('n','incs','increments')                                                                ! number of increments
          newLoadCase%incs = IO_intValue(line,chunkPos,i+1)
-       case('logincs','logincrements','logsteps')                                                   ! number of increments (switch to log time scaling)
+       case('logincs','logincrements')                                                              ! number of increments (switch to log time scaling)
          newLoadCase%incs = IO_intValue(line,chunkPos,i+1)
          newLoadCase%logscale = 1
        case('freq','frequency','outputfreq')                                                        ! frequency of result writings
@@ -464,15 +473,16 @@ program DAMASK_spectral
            select case(loadCases(currentLoadCase)%ID(field))
              case(FIELD_MECH_ID)
                call mech_forward (&
-                       guess,timeinc,timeIncOld,remainingLoadCaseTime, &
+                       cutBack,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
                        deformation_BC     = loadCases(currentLoadCase)%deformation, &
                        stress_BC          = loadCases(currentLoadCase)%stress, &
                        rotation_BC        = loadCases(currentLoadCase)%rotation)
 
-             case(FIELD_THERMAL_ID); call grid_thermal_spectral_forward
-             case(FIELD_DAMAGE_ID);  call grid_damage_spectral_forward
+             case(FIELD_THERMAL_ID); call grid_thermal_spectral_forward(cutBack)
+             case(FIELD_DAMAGE_ID);  call grid_damage_spectral_forward(cutBack)
            end select
          enddo
+         if(.not. cutBack) call CPFEM_forward
 
 !--------------------------------------------------------------------------------------------------
 ! solve fields
@@ -507,8 +517,9 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! check solution for either advance or retry
 
-         if ( (continueCalculation .or. all(solres(:)%converged .and. solres(:)%stagConverged)) &   ! don't care or did converge
+         if ( (all(solres(:)%converged .and. solres(:)%stagConverged)) &                            ! converged
               .and. .not. solres(1)%termIll) then                                                   ! and acceptable solution found
+           call mech_updateCoords
            timeIncOld = timeinc
            cutBack = .false.
            guess = .true.                                                                           ! start guessing after first converged (sub)inc
@@ -528,7 +539,7 @@ program DAMASK_spectral
            call IO_warning(850)
            call MPI_File_close(fileUnit,ierr)
            close(statUnit)
-           call quit(-1*(lastRestartWritten+1))                                                     ! quit and provide information about last restart inc written
+           call quit(0)                                                                             ! quit
          endif
 
        enddo subStepLooping
@@ -536,11 +547,9 @@ program DAMASK_spectral
        cutBackLevel = max(0, cutBackLevel - 1)                                                      ! try half number of subincs next inc
 
        if (all(solres(:)%converged)) then
-         convergedCounter = convergedCounter + 1
          write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                     ! report converged inc
                                    ' increment ', totalIncsCounter, ' converged'
        else
-         notConvergedCounter = notConvergedCounter + 1
          write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                     ! report non-converged inc
                                    ' increment ', totalIncsCounter, ' NOT converged'
        endif; flush(6)
@@ -563,11 +572,10 @@ program DAMASK_spectral
          fileOffset = fileOffset + sum(outputSize)                                                  ! forward to current file position
          call CPFEM_results(totalIncsCounter,time)
        endif
-       if (mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0) then                          ! at frequency of writing restart information
-         restartWrite = .true.                                                                      ! set restart parameter for FEsolving
-         lastRestartWritten = inc                                                                   ! QUESTION: first call to CPFEM_general will write?
+       if (mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0) then
+         call mech_restartWrite
+         call CPFEM_restartWrite
        endif
-
      endif skipping
 
     enddo incLooping
@@ -578,16 +586,9 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! report summary of whole calculation
  write(6,'(/,a)') ' ###########################################################################'
- write(6,'(1x,'//IO_intOut(convergedCounter)//',a,'//IO_intOut(notConvergedCounter + convergedCounter)//',a,f5.1,a)') &
-   convergedCounter, ' out of ', &
-   notConvergedCounter + convergedCounter, ' (', &
-   real(convergedCounter, pReal)/&
-   real(notConvergedCounter + convergedCounter,pReal)*100.0_pReal, ' %) increments converged!'
- flush(6)
  call MPI_file_close(fileUnit,ierr)
  close(statUnit)
 
- if (notConvergedCounter > 0) call quit(2)                                                          ! error if some are not converged
  call quit(0)                                                                                       ! no complains ;)
 
 end program DAMASK_spectral

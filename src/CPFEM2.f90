@@ -33,9 +33,10 @@ module CPFEM2
   private
 
   public :: &
-    CPFEM_age, &
+    CPFEM_forward, &
     CPFEM_initAll, &
-    CPFEM_results
+    CPFEM_results, &
+    CPFEM_restartWrite
 
 contains
 
@@ -92,24 +93,24 @@ subroutine CPFEM_init
 
     fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
    
-    call HDF5_read(fileHandle,crystallite_F0, 'convergedF')
-    call HDF5_read(fileHandle,crystallite_Fp0,'convergedFp')
-    call HDF5_read(fileHandle,crystallite_Fi0,'convergedFi')
-    call HDF5_read(fileHandle,crystallite_Lp0,'convergedLp')
-    call HDF5_read(fileHandle,crystallite_Li0,'convergedLi')
-    call HDF5_read(fileHandle,crystallite_S0, 'convergedS')
+    call HDF5_read(fileHandle,crystallite_F0, 'F')
+    call HDF5_read(fileHandle,crystallite_Fp0,'Fp')
+    call HDF5_read(fileHandle,crystallite_Fi0,'Fi')
+    call HDF5_read(fileHandle,crystallite_Lp0,'Lp')
+    call HDF5_read(fileHandle,crystallite_Li0,'Li')
+    call HDF5_read(fileHandle,crystallite_S0, 'S')
     
-    groupPlasticID = HDF5_openGroup(fileHandle,'PlasticPhases')
+    groupPlasticID = HDF5_openGroup(fileHandle,'constituent')
     do ph = 1,size(phase_plasticity)
       write(PlasticItem,*) ph,'_'
-      call HDF5_read(groupPlasticID,plasticState(ph)%state0,trim(PlasticItem)//'convergedStateConst')
+      call HDF5_read(groupPlasticID,plasticState(ph)%state0,trim(PlasticItem)//'omega_plastic')
     enddo
     call HDF5_closeGroup(groupPlasticID)
     
-    groupHomogID = HDF5_openGroup(fileHandle,'HomogStates')
+    groupHomogID = HDF5_openGroup(fileHandle,'materialpoint')
     do homog = 1, material_Nhomogenization
       write(HomogItem,*) homog,'_'
-      call HDF5_read(groupHomogID,homogState(homog)%state0, trim(HomogItem)//'convergedStateHomog')
+      call HDF5_read(groupHomogID,homogState(homog)%state0, trim(HomogItem)//'omega_homogenization')
     enddo
     call HDF5_closeGroup(groupHomogID)
 
@@ -120,13 +121,12 @@ end subroutine CPFEM_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief forwards data after successful increment
+!> @brief Forward data after successful increment.
+! ToDo: Any guessing for the current states possible?
 !--------------------------------------------------------------------------------------------------
-subroutine CPFEM_age
- 
-  integer    ::  i, ph, homog, mySource
-  character(len=32) :: rankStr, PlasticItem, HomogItem
-  integer(HID_T) :: fileHandle, groupPlastic, groupHomog
+subroutine CPFEM_forward
+
+  integer :: i, homog, mySource
 
   if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) &
     write(6,'(a)') '<< CPFEM >> aging states'
@@ -151,46 +151,52 @@ subroutine CPFEM_age
     damageState      (homog)%state0 =  damageState      (homog)%state
   enddo
 
-  if (restartWrite) then
-    if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) &
-      write(6,'(a)') '<< CPFEM >> writing restart variables of last converged step to hdf5 file'
-    
-    write(rankStr,'(a1,i0)')'_',worldrank
-    fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','a')
-    
-    call HDF5_write(fileHandle,crystallite_F0,  'convergedF')
-    call HDF5_write(fileHandle,crystallite_Fp0, 'convergedFp')
-    call HDF5_write(fileHandle,crystallite_Fi0, 'convergedFi')
-    call HDF5_write(fileHandle,crystallite_Lp0, 'convergedLp')
-    call HDF5_write(fileHandle,crystallite_Li0, 'convergedLi')
-    call HDF5_write(fileHandle,crystallite_S0,  'convergedS')
-    
-    groupPlastic = HDF5_addGroup(fileHandle,'PlasticPhases')
-    do ph = 1,size(phase_plasticity)
-      write(PlasticItem,*) ph,'_'
-      call HDF5_write(groupPlastic,plasticState(ph)%state0,trim(PlasticItem)//'convergedStateConst')
-    enddo
-    call HDF5_closeGroup(groupPlastic)
-
-    groupHomog = HDF5_addGroup(fileHandle,'HomogStates')
-    do homog = 1, material_Nhomogenization
-      write(HomogItem,*) homog,'_'
-      call HDF5_write(groupHomog,homogState(homog)%state0,trim(HomogItem)//'convergedStateHomog')
-    enddo
-    call HDF5_closeGroup(groupHomog)
-    
-    call HDF5_closeFile(fileHandle)
-    restartWrite = .false.
-  endif
-
-  if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) &
-    write(6,'(a)') '<< CPFEM >> done aging states'
-
-end subroutine CPFEM_age
+end subroutine CPFEM_forward
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief triggers writing of the results
+!> @brief Write current constitutive variables for restart to file.
+!--------------------------------------------------------------------------------------------------
+subroutine CPFEM_restartWrite
+
+  integer           :: ph, homog
+  character(len=32) :: rankStr, PlasticItem, HomogItem
+  integer(HID_T)    :: fileHandle, groupPlastic, groupHomog
+
+
+  write(6,'(a)') ' writing constitutive data required for restart to file';flush(6)
+    
+  write(rankStr,'(a1,i0)')'_',worldrank
+  fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','a')
+    
+  call HDF5_write(fileHandle,crystallite_partionedF,'F')
+  call HDF5_write(fileHandle,crystallite_Fp,        'Fp')
+  call HDF5_write(fileHandle,crystallite_Fi,        'Fi')
+  call HDF5_write(fileHandle,crystallite_Lp,        'Lp')
+  call HDF5_write(fileHandle,crystallite_Li,        'Li')
+  call HDF5_write(fileHandle,crystallite_S,         'S')
+    
+  groupPlastic = HDF5_addGroup(fileHandle,'constituent')
+  do ph = 1,size(phase_plasticity)
+    write(PlasticItem,*) ph,'_'
+    call HDF5_write(groupPlastic,plasticState(ph)%state,trim(PlasticItem)//'omega_plastic')
+  enddo
+  call HDF5_closeGroup(groupPlastic)
+
+  groupHomog = HDF5_addGroup(fileHandle,'materialpoint')
+  do homog = 1, material_Nhomogenization
+    write(HomogItem,*) homog,'_'
+    call HDF5_write(groupHomog,homogState(homog)%state,trim(HomogItem)//'omega_homogenization')
+  enddo
+  call HDF5_closeGroup(groupHomog)
+    
+  call HDF5_closeFile(fileHandle)
+
+end subroutine CPFEM_restartWrite
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Trigger writing of results.
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_results(inc,time)
  

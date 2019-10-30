@@ -454,7 +454,7 @@ subroutine mesh_init(ip,el)
 
  myDebug = (iand(debug_level(debug_mesh),debug_levelBasic) /= 0)
 
- call IO_open_inputFile(FILEUNIT,modelName)                                                         ! parse info from input file...
+ call IO_open_inputFile(FILEUNIT)                                                                   ! parse info from input file...
  if (myDebug) write(6,'(a)') ' Opened input file'; flush(6)
  noPart = hasNoPart(FILEUNIT)
  call mesh_abaqus_count_nodesAndElements(FILEUNIT)

@@ -62,7 +62,7 @@ module FEM_mech
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief allocates all neccessary fields and fills them with data, potentially from restart info
+!> @brief allocates all neccessary fields and fills them with data
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_mech_init(fieldBC)
 
