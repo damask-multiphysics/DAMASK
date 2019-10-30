@@ -1102,7 +1102,7 @@ subroutine utilities_updateCoords(F)
  ! calculate cell center displacements
   do k = 1,grid3; do j = 1,grid(2); do i = 1,grid(1)
     IPcoords(1:3,i,j,k) = vectorField_real(1:3,i,j,k) &
-                        + matmul(Favg,step*real([i,j,k+grid3Offset]-1,pReal))
+                        + matmul(Favg,step*real([i,j,k+grid3Offset]-0.5_pReal,pReal))
   enddo; enddo; enddo
   
   call discretization_setNodeCoords(reshape(NodeCoords,[3,(grid(1)+1)*(grid(2)+1)*(grid3+1)]))
