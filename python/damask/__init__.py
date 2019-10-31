@@ -9,6 +9,7 @@ name = 'damask'
 # classes
 from .environment import Environment      # noqa
 from .asciitable  import ASCIItable       # noqa
+from .table       import Table            # noqa
     
 from .config      import Material         # noqa
 from .colormaps   import Colormap, Color  # noqa

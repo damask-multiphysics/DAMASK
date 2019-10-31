@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 
 import os
-import sys
 from optparse import OptionParser
-
-import numpy as np
 
 import damask
 
@@ -37,53 +34,9 @@ parser.set_defaults(defgrad = 'f',
 
 (options,filenames) = parser.parse_args()
 
-# --- loop over input files -------------------------------------------------------------------------
-
-if filenames == []: filenames = [None]
-
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name, buffered = False)
-  except:
-    continue
-  damask.util.report(scriptName,name)
-
-# ------------------------------------------ read header ------------------------------------------
-
-  table.head_read()
-
-# ------------------------------------------ sanity checks ----------------------------------------
-
-  errors = []
-  column = {}
-  
-  for tensor in [options.defgrad,options.stress]:
-    dim = table.label_dimension(tensor)
-    if   dim <  0: errors.append('column {} not found.'.format(tensor))
-    elif dim != 9: errors.append('column {} is not a tensor.'.format(tensor))
-    else:
-      column[tensor] = table.label_index(tensor)
-
-  if errors != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# ------------------------------------------ assemble header --------------------------------------
-
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.labels_append(['{}_Cauchy'.format(i+1) for i in range(9)])                                  # extend ASCII header with new labels
-  table.head_write()
-
-# ------------------------------------------ process data ------------------------------------------
-
-  outputAlive = True
-  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    F = np.array(list(map(float,table.data[column[options.defgrad]:column[options.defgrad]+9])),'d').reshape(3,3)
-    P = np.array(list(map(float,table.data[column[options.stress ]:column[options.stress ]+9])),'d').reshape(3,3)
-    table.data_append(list(1.0/np.linalg.det(F)*np.dot(P,F.T).reshape(9)))                          # [Cauchy] = (1/det(F)) * [P].[F_transpose]
-    outputAlive = table.data_write()                                                                # output processed line
-
-# ------------------------------------------ output finalization -----------------------------------
-
-  table.close()                                                                                     # close input ASCII table (works for stdin)
+    table = damask.Table(name)
+    table.add_array('Cauchy',damask.mechanics.Cauchy(table.get_array(options.defgrad).reshape(-1,3,3),
+                                                     table.get_array(options.stress).reshape(-1,3,3)).reshape(-1,9),
+                    scriptID)
+    table.to_ASCII()
