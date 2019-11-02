@@ -304,18 +304,18 @@ subroutine results_writeTensorDataset_real(group,dataset,label,description,SIuni
   real(pReal),      intent(in), dimension(:,:,:) :: dataset
   
   integer :: i 
-  logical :: T
+  logical :: transposed_
   integer(HID_T) :: groupHandle
   real(pReal), dimension(:,:,:), allocatable :: dataset_transposed
 
   
   if(present(transposed)) then
-    T = transposed
+    transposed_ = transposed
   else
-    T = .true.
+    transposed_ = .true.
   endif
 
-  if(T) then
+  if(transposed_) then
     if(size(dataset,1) /= size(dataset,2)) call IO_error(0,ext_msg='transpose non-symmetric tensor')
     allocate(dataset_transposed,mold=dataset)
     do i=1,size(dataset_transposed,3)

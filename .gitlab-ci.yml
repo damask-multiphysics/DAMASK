@@ -506,7 +506,6 @@ Processing:
   stage: createDocumentation
   script:
     - cd $DAMASKROOT/processing/pre
-    - rm abq_addUserOutput.py marc_addUserOutput.py
     - $DAMASKROOT/PRIVATE/documenting/scriptHelpToWiki.py --debug *.py
     - cd $DAMASKROOT/processing/post
     - rm vtk2ang.py DAD*.py

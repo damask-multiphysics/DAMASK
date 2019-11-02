@@ -40,8 +40,6 @@ subroutine plastic_none_init
    NipcMyPhase = count(material_phaseAt == p) * discretization_nIP
    call material_allocatePlasticState(p,NipcMyPhase,0,0,0, &
                                       0,0,0)
-   plasticState(p)%sizePostResults = 0
-
  enddo
 
 end subroutine plastic_none_init

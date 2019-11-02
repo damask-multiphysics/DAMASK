@@ -331,14 +331,10 @@ subroutine crystallite_init
   do r = 1,size(config_crystallite)
     do o = 1,crystallite_Noutput(r)
       select case(crystallite_outputID(o,r))
-        case(phase_ID,texture_ID)
-          mySize = 1
-        case(orientation_ID,grainrotation_ID)
+        case(orientation_ID)
           mySize = 4
-        case(defgrad_ID,fe_ID,fp_ID,fi_ID,lp_ID,li_ID,p_ID,s_ID)
+        case(defgrad_ID,fp_ID,p_ID)
           mySize = 9
-        case(elasmatrix_ID)
-          mySize = 36
         case(neighboringip_ID,neighboringelement_ID)
           mySize = nIPneighbors
         case default
@@ -883,7 +879,6 @@ function crystallite_postResults(ipc, ip, el)
     crystID, &
     mySize, &
     n
-  type(rotation) :: rot
 
   crystID = microstructure_crystallite(discretization_microstructureAt(el))
 
@@ -894,21 +889,9 @@ function crystallite_postResults(ipc, ip, el)
   do o = 1,crystallite_Noutput(crystID)
     mySize = 0
     select case(crystallite_outputID(o,crystID))
-      case (phase_ID)
-        mySize = 1
-        crystallite_postResults(c+1) = real(material_phaseAt(ipc,el),pReal)                          ! phaseID of grain
-      case (texture_ID)
-        mySize = 1
-        crystallite_postResults(c+1) = real(material_texture(ipc,ip,el),pReal)                       ! textureID of grain
       case (orientation_ID)
         mySize = 4
         crystallite_postResults(c+1:c+mySize) = crystallite_orientation(ipc,ip,el)%asQuaternion()
-
-      case (grainrotation_ID)
-        rot = material_orientation0(ipc,ip,el)%misorientation(crystallite_orientation(ipc,ip,el))
-        mySize = 4
-        crystallite_postResults(c+1:c+mySize) = rot%asAxisAngle()
-        crystallite_postResults(c+4) = inDeg * crystallite_postResults(c+4)                          ! angle in degree
 
 ! remark: tensor output is of the form 11,12,13, 21,22,23, 31,32,33
 ! thus row index i is slow, while column index j is fast. reminder: "row is slow"
@@ -917,37 +900,14 @@ function crystallite_postResults(ipc, ip, el)
         mySize = 9
         crystallite_postResults(c+1:c+mySize) = &
           reshape(transpose(crystallite_partionedF(1:3,1:3,ipc,ip,el)),[mySize])
-      case (fe_ID)
-        mySize = 9
-        crystallite_postResults(c+1:c+mySize) = &
-          reshape(transpose(crystallite_Fe(1:3,1:3,ipc,ip,el)),[mySize])
       case (fp_ID)
         mySize = 9
         crystallite_postResults(c+1:c+mySize) = &
           reshape(transpose(crystallite_Fp(1:3,1:3,ipc,ip,el)),[mySize])
-      case (fi_ID)
-        mySize = 9
-        crystallite_postResults(c+1:c+mySize) = &
-          reshape(transpose(crystallite_Fi(1:3,1:3,ipc,ip,el)),[mySize])
-      case (lp_ID)
-        mySize = 9
-        crystallite_postResults(c+1:c+mySize) = &
-          reshape(transpose(crystallite_Lp(1:3,1:3,ipc,ip,el)),[mySize])
-      case (li_ID)
-        mySize = 9
-        crystallite_postResults(c+1:c+mySize) = &
-          reshape(transpose(crystallite_Li(1:3,1:3,ipc,ip,el)),[mySize])
       case (p_ID)
         mySize = 9
         crystallite_postResults(c+1:c+mySize) = &
           reshape(transpose(crystallite_P(1:3,1:3,ipc,ip,el)),[mySize])
-      case (s_ID)
-        mySize = 9
-        crystallite_postResults(c+1:c+mySize) = &
-          reshape(crystallite_S(1:3,1:3,ipc,ip,el),[mySize])
-      case (elasmatrix_ID)
-        mySize = 36
-        crystallite_postResults(c+1:c+mySize) = reshape(constitutive_homogenizedC(ipc,ip,el),[mySize])
       case(neighboringelement_ID)
         mySize = nIPneighbors
         crystallite_postResults(c+1:c+mySize) = 0.0_pReal
@@ -1055,16 +1015,16 @@ subroutine crystallite_results
     real(pReal), allocatable, dimension(:,:,:) :: select_tensors
     integer :: e,i,c,j
      
-    allocate(select_tensors(3,3,count(material_phaseAt==instance)*homogenization_maxNgrains))
+    allocate(select_tensors(3,3,count(material_phaseAt==instance)*homogenization_maxNgrains*discretization_nIP))
 
     j=0
     do e = 1, size(material_phaseAt,2)
-      do i = 1, homogenization_maxNgrains                                                           !ToDo: this needs to be changed for varying Ngrains
-        do c = 1, size(material_phaseAt,1)
-           if (material_phaseAt(c,e) == instance) then
-             j = j + 1
-             select_tensors(1:3,1:3,j) = dataset(1:3,1:3,c,i,e)
-           endif
+      do i = 1, discretization_nIP
+        do c = 1, size(material_phaseAt,1)                                                          !ToDo: this needs to be changed for varying Ngrains
+          if (material_phaseAt(c,e) == instance) then
+            j = j + 1
+            select_tensors(1:3,1:3,j) = dataset(1:3,1:3,c,i,e)
+          endif
         enddo
       enddo
     enddo
@@ -1082,12 +1042,12 @@ subroutine crystallite_results
     type(rotation), allocatable, dimension(:) :: select_rotations
     integer :: e,i,c,j
      
-    allocate(select_rotations(count(material_phaseAt==instance)*homogenization_maxNgrains))
+    allocate(select_rotations(count(material_phaseAt==instance)*homogenization_maxNgrains*discretization_nIP))
 
     j=0
     do e = 1, size(material_phaseAt,2)
-      do i = 1, homogenization_maxNgrains                                                           !ToDo: this needs to be changed for varying Ngrains
-        do c = 1, size(material_phaseAt,1)
+      do i = 1, discretization_nIP
+        do c = 1, size(material_phaseAt,1)                                                          !ToDo: this needs to be changed for varying Ngrains
            if (material_phaseAt(c,e) == instance) then
              j = j + 1
              select_rotations(j) = dataset(c,i,e)

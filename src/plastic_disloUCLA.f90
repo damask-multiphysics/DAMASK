@@ -18,11 +18,6 @@ module plastic_disloUCLA
  
   implicit none
   private
-
-  integer,                       dimension(:,:),   allocatable, target, public :: &
-    plastic_disloUCLA_sizePostResult                                                                !< size of each post result output
-  character(len=64),             dimension(:,:),   allocatable, target, public :: &
-    plastic_disloUCLA_output                                                                        !< name of each post result output
  
   real(pReal),                                                 parameter,           private :: &
     kB = 1.38e-23_pReal                                                                             !< Boltzmann constant in J/Kelvin
@@ -106,7 +101,6 @@ module plastic_disloUCLA
     plastic_disloUCLA_dependentState, &
     plastic_disloUCLA_LpAndItsTangent, &
     plastic_disloUCLA_dotState, &
-    plastic_disloUCLA_postResults, &
     plastic_disloUCLA_results
   private :: &
     kinetics
@@ -147,10 +141,6 @@ subroutine plastic_disloUCLA_init()
   Ninstance = count(phase_plasticity == PLASTICITY_DISLOUCLA_ID)
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
     write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
- 
-  allocate(plastic_disloUCLA_sizePostResult(maxval(phase_Noutput),Ninstance),source=0)
-  allocate(plastic_disloUCLA_output(maxval(phase_Noutput),Ninstance))
-           plastic_disloUCLA_output = ''
  
   allocate(param(Ninstance))
   allocate(state(Ninstance))
@@ -289,8 +279,6 @@ subroutine plastic_disloUCLA_init()
       end select
  
       if (outputID /= undefined_ID) then
-        plastic_disloUCLA_output(i,phase_plasticityInstance(p)) = outputs(i)
-        plastic_disloUCLA_sizePostResult(i,phase_plasticityInstance(p)) = prm%sum_N_sl
         prm%outputID = [prm%outputID, outputID]
       endif
  
@@ -304,7 +292,6 @@ subroutine plastic_disloUCLA_init()
  
     call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0, &
                                        prm%sum_N_sl,0,0)
-    plasticState(p)%sizePostResults = sum(plastic_disloUCLA_sizePostResult(:,phase_plasticityInstance(p)))
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
@@ -470,59 +457,6 @@ subroutine plastic_disloUCLA_dependentState(instance,of)
   end associate
 
 end subroutine plastic_disloUCLA_dependentState
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return array of constitutive results
-!--------------------------------------------------------------------------------------------------
-function plastic_disloUCLA_postResults(Mp,T,instance,of) result(postResults)
- 
-  real(pReal), dimension(3,3), intent(in) :: &
-    Mp                                                                                              !< Mandel stress
-  real(pReal),                 intent(in) :: &
-    T                                                                                               !< temperature
-  integer,                     intent(in) :: &
-    instance, &
-    of
- 
-  real(pReal), dimension(sum(plastic_disloUCLA_sizePostResult(:,instance))) :: &
-   postResults
- 
-  integer :: &
-    o,c
-  real(pReal), dimension(param(instance)%sum_N_sl) :: &
-    gdot_pos,gdot_neg
- 
-  c = 0
- 
-  associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
- 
-  outputsLoop: do o = 1,size(prm%outputID)
-    select case(prm%outputID(o))
- 
-      case (rho_mob_ID)
-        postResults(c+1:c+prm%sum_N_sl) = stt%rho_mob(1:prm%sum_N_sl,of)
-      case (rho_dip_ID)
-        postResults(c+1:c+prm%sum_N_sl) = stt%rho_dip(1:prm%sum_N_sl,of)
-      case (dot_gamma_sl_ID)
-        call kinetics(Mp,T,instance,of,gdot_pos,gdot_neg)
-        postResults(c+1:c+prm%sum_N_sl) = gdot_pos + gdot_neg
-      case (gamma_sl_ID)
-        postResults(c+1:c+prm%sum_N_sl) = stt%gamma_sl(1:prm%sum_N_sl, of)
-      case (Lambda_sl_ID)
-        postResults(c+1:c+prm%sum_N_sl) = dst%Lambda_sl(1:prm%sum_N_sl, of)
-      case (thresholdstress_ID)
-        postResults(c+1:c+prm%sum_N_sl) = dst%threshold_stress(1:prm%sum_N_sl,of)
- 
-    end select
- 
-    c = c + prm%sum_N_sl
- 
-  enddo outputsLoop
-
-  end associate
-
-end function plastic_disloUCLA_postResults
 
 
 !--------------------------------------------------------------------------------------------------

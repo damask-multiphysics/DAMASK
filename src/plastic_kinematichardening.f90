@@ -19,11 +19,6 @@ module plastic_kinehardening
  implicit none
  private
 
- integer,           dimension(:,:),   allocatable, target, public :: &
-   plastic_kinehardening_sizePostResult                                                             !< size of each post result output
- character(len=64), dimension(:,:),   allocatable, target, public :: &
-   plastic_kinehardening_output                                                                     !< name of each post result output
-
  enum, bind(c)
    enumerator :: &
      undefined_ID, &
@@ -90,7 +85,6 @@ module plastic_kinehardening
    plastic_kinehardening_LpAndItsTangent, &
    plastic_kinehardening_dotState, &
    plastic_kinehardening_deltaState, &
-   plastic_kinehardening_postResults, &
    plastic_kinehardening_results
 
 contains
@@ -126,10 +120,6 @@ subroutine plastic_kinehardening_init
  Ninstance = count(phase_plasticity == PLASTICITY_KINEHARDENING_ID)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
-
- allocate(plastic_kinehardening_sizePostResult(maxval(phase_Noutput),Ninstance),source=0)
- allocate(plastic_kinehardening_output(maxval(phase_Noutput),Ninstance))
-          plastic_kinehardening_output = ''
 
  allocate(param(Ninstance))
  allocate(state(Ninstance))
@@ -247,8 +237,6 @@ subroutine plastic_kinehardening_init
      end select
 
      if (outputID /= undefined_ID) then
-       plastic_kinehardening_output(i,phase_plasticityInstance(p)) = outputs(i)
-       plastic_kinehardening_sizePostResult(i,phase_plasticityInstance(p)) = prm%totalNslip
        prm%outputID = [prm%outputID , outputID]
      endif
 
@@ -263,7 +251,6 @@ subroutine plastic_kinehardening_init
 
    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,sizeDeltaState, &
                                       prm%totalNslip,0,0)
-   plasticState(p)%sizePostResults = sum(plastic_kinehardening_sizePostResult(:,phase_plasticityInstance(p)))
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
@@ -444,63 +431,6 @@ subroutine plastic_kinehardening_deltaState(Mp,instance,of)
  end associate
 
 end subroutine plastic_kinehardening_deltaState
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return array of constitutive results
-!--------------------------------------------------------------------------------------------------
-function plastic_kinehardening_postResults(Mp,instance,of) result(postResults)
-
- real(pReal), dimension(3,3), intent(in) :: &
-   Mp                                                                                               !< Mandel stress
- integer,               intent(in) :: &
-   instance, &
-   of
-
- real(pReal), dimension(sum(plastic_kinehardening_sizePostResult(:,instance))) :: &
-   postResults
-
- integer :: &
-   o,c,i
- real(pReal), dimension(param(instance)%totalNslip) :: &
-   gdot_pos,gdot_neg
-
- c = 0
-
- associate(prm => param(instance), stt => state(instance))
-
- outputsLoop: do o = 1,size(prm%outputID)
-   select case(prm%outputID(o))
-
-     case (crss_ID)
-       postResults(c+1:c+prm%totalNslip) = stt%crss(:,of)
-     case(crss_back_ID)
-       postResults(c+1:c+prm%totalNslip) = stt%crss_back(:,of)
-     case (sense_ID)
-       postResults(c+1:c+prm%totalNslip) = stt%sense(:,of)
-     case (chi0_ID)
-       postResults(c+1:c+prm%totalNslip) = stt%chi0(:,of)
-     case (gamma0_ID)
-       postResults(c+1:c+prm%totalNslip) = stt%gamma0(:,of)
-     case (accshear_ID)
-       postResults(c+1:c+prm%totalNslip) = stt%accshear(:,of)
-     case (shearrate_ID)
-       call kinetics(Mp,instance,of,gdot_pos,gdot_neg)
-       postResults(c+1:c+prm%totalNslip) = gdot_pos+gdot_neg
-     case (resolvedstress_ID)
-       do i = 1, prm%totalNslip
-         postResults(c+i) = math_mul33xx33(Mp,prm%Schmid(1:3,1:3,i))
-       enddo
-
-   end select
-
-   c = c + prm%totalNslip
-
- enddo outputsLoop
-
- end associate
-
-end function plastic_kinehardening_postResults
 
 
 !--------------------------------------------------------------------------------------------------
