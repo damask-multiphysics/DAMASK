@@ -1,10 +1,8 @@
-# -*- coding: UTF-8 no BOM -*-
-
 import os,sys,shutil
 import logging,logging.config
 import damask
 import numpy as np
-from collections import Iterable
+from collections.abc import Iterable
 from optparse import OptionParser
 
 class Test():

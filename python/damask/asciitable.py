@@ -2,7 +2,7 @@ import os
 import sys
 import re
 import shlex
-from collections import Iterable
+from collections.abc import Iterable
 
 import numpy as np
 
