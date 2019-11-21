@@ -3,7 +3,7 @@ from damask import mechanics
 
 class TestMechanics:
    
-    n = 9
+    n = 1000
     c = np.random.randint(n)
    
 
@@ -133,3 +133,10 @@ class TestMechanics:
          x = mechanics.symmetric(np.random.random((self.n,3,3)))
          assert np.allclose(mechanics.transpose(x),
                             x)
+
+
+    def test_Mises(self):
+         """Ensure that equivalent stress is 3/2 of equivalent strain."""
+         x = np.random.random((self.n,3,3))
+         assert np.allclose(mechanics.Mises_stress(x)/mechanics.Mises_strain(x),
+                            1.5)
