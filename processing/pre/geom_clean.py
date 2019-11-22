@@ -15,11 +15,6 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 
-def mostFrequent(arr):
-  unique, inverse = np.unique(arr, return_inverse=True)
-  return unique[np.argmax(np.bincount(inverse))]
-
-
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
@@ -46,9 +41,8 @@ for name in filenames:
 
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
-  damask.util.croak(geom.update(ndimage.filters.generic_filter(
-                                  geom.microstructure,mostFrequent,
-                                  size=(options.stencil,)*3).astype(geom.microstructure.dtype)))
+  damask.util.croak(geom.clean(options.stencil))
+
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
 
   if name is None:
