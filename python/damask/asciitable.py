@@ -448,7 +448,10 @@ class ASCIItable():
   def data_readArray(self,
                      labels = []):
     """Read whole data of all (given) labels as numpy array."""
-    self.data_rewind()
+    try:
+      self.data_rewind()                                                                            # try to wind back to start of data
+    except IOError:
+      pass                                                                                          # assume/hope we are at data start already...
 
     if labels is None or labels == []:
       use = None                                                                                    # use all columns (and keep labels intact)
