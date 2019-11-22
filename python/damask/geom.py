@@ -2,6 +2,7 @@ import os
 from io import StringIO
 
 import numpy as np
+from scipy import ndimage
 import vtk
 from vtk.util import numpy_support
 
@@ -385,3 +386,51 @@ class Geom():
         self.to_file(f)
         f.seek(0)
         return ''.join(f.readlines())
+
+
+    def mirror(self,directions,reflect=False):
+        """
+        Mirror microstructure along given directions.
+        Parameters
+        ----------
+        directions : iterable containing str
+            direction(s) along which the microstructure is mirrored. Valid entries are 'x', 'y', 'z'.
+        reflect : bool, optional
+            reflect (include) outermost layers.
+        """
+        valid = {'x','y','z'}
+        if not all(isinstance(d, str) for d in directions):
+            raise TypeError('Directions are not of type str.')
+        elif not set(directions).issubset(valid):
+            raise ValueError('Invalid direction specified {}'.format(*set(directions).difference(valid)))
+
+        limits = [None,None] if reflect else [-2,0]
+        ms = self.get_microstructure()
+
+        if 'z' in directions:
+            ms = np.concatenate([ms,ms[:,:,limits[0]:limits[1]:-1]],2)
+        if 'y' in directions:
+            ms = np.concatenate([ms,ms[:,limits[0]:limits[1]:-1,:]],1)
+        if 'x' in directions:
+            ms = np.concatenate([ms,ms[limits[0]:limits[1]:-1,:,:]],0)
+     
+        return self.update(ms,rescale=True)
+        #self.add_comments('tbd')
+
+
+    def clean(self,stencil=3):
+        """
+        Smooth microstructure by selecting most frequent index within given stencil at each location.
+        Parameters
+        ----------
+        stencil : int, optional
+            size of smoothing stencil.
+        """
+        def mostFrequent(arr):
+            unique, inverse = np.unique(arr, return_inverse=True)
+            return unique[np.argmax(np.bincount(inverse))]
+
+        return self.update(ndimage.filters.generic_filter(self.microstructure,
+                                                          mostFrequent,
+                                                          size=(stencil,)*3).astype(self.microstructure.dtype))
+        #self.add_comments('tbd')
