@@ -31,7 +31,6 @@ class Geom():
             comments lines.
 
         """
-        self.__transforms__ = \
         self.set_microstructure(microstructure)
         self.set_size(size)
         self.set_origin(origin)
