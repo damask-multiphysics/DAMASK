@@ -620,7 +620,7 @@ class DADF5():
         raise ValueError
       
       return {
-              'data':  mechanics.deviator(x['data']),
+              'data':  mechanics.deviatoric_part(x['data']),
               'label': 's_{}'.format(x['label']),
               'meta':  {
                         'Unit':        x['meta']['Unit'],
