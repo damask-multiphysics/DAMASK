@@ -51,17 +51,17 @@ class TestDADF5:
         assert np.allclose(in_memory,in_file)
 
     def test_add_determinant(self,default):
-        default.add_determinant('Lp')
-        loc = {'Lp':      default.get_dataset_location('Lp'),
-               'det(Lp)': default.get_dataset_location('det(Lp)')}
-        in_memory = np.linalg.det(default.read_dataset(loc['Lp'],0))
-        in_file   = default.read_dataset(loc['det(Lp)'],0)
+        default.add_determinant('P')
+        loc = {'P':      default.get_dataset_location('P'),
+               'det(P)': default.get_dataset_location('det(P)')}
+        in_memory = np.linalg.det(default.read_dataset(loc['P'],0)).reshape(-1,1)
+        in_file   = default.read_dataset(loc['det(P)'],0)
         assert np.allclose(in_memory,in_file)
 
     def test_add_spherical(self,default):
         default.add_spherical('P')
         loc = {'P':   default.get_dataset_location('P'),
                'p_P': default.get_dataset_location('p_P')}
-        in_memory = mechanics.spherical_part(default.read_dataset(loc['P'],0))
+        in_memory = mechanics.spherical_part(default.read_dataset(loc['P'],0)).reshape(-1,1)
         in_file   = default.read_dataset(loc['p_P'],0)
         assert np.allclose(in_memory,in_file)
