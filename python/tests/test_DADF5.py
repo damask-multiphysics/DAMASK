@@ -9,7 +9,7 @@ from damask import mechanics
 
 @pytest.fixture
 def default(tmp_path,reference_dir):
-    """Small DADF5 file for testing."""
+    """Small DADF5 file in temp location for modification."""
     fname = '12grains6x7x8_tensionY.hdf5'
     shutil.copy(os.path.join(reference_dir,fname),tmp_path)
     f = DADF5(os.path.join(tmp_path,fname))
