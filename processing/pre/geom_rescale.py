@@ -56,8 +56,6 @@ for name in filenames:
                   else float(n) for o,n in zip(size,options.size)],dtype=float)
 
   geom.scale(new_grid)
-  damask.util.croak(geom.update(microstructure = None,
-                                size = new_size))
+  damask.util.croak(geom.update(microstructure = None,size = new_size))
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
-
   geom.to_file(sys.stdout if name is None else name)

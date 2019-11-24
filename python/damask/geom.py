@@ -504,7 +504,20 @@ class Geom():
             unique, inverse = np.unique(arr, return_inverse=True)
             return unique[np.argmax(np.bincount(inverse))]
 
-        return self.update(ndimage.filters.generic_filter(self.microstructure,
+        return self.update(ndimage.filters.generic_filter(
+                                                          self.microstructure,
                                                           mostFrequent,
-                                                          size=(stencil,)*3).astype(self.microstructure.dtype))
+                                                          size=(stencil,)*3
+                                                         ).astype(self.microstructure.dtype)
+                          )
+        #self.add_comments('tbd')
+
+
+    def renumber(self):
+        """Renumber sorted microstructure indices to 1,...,N."""
+        renumbered = np.empty(self.get_grid(),dtype=self.microstructure.dtype)
+        for i, oldID in enumerate(np.unique(self.microstructure)):
+          renumbered = np.where(self.microstructure == oldID, i+1, renumbered)
+
+        return self.update(renumbered))
         #self.add_comments('tbd')
