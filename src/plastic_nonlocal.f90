@@ -81,7 +81,6 @@ module plastic_nonlocal
       rho_dip_edg_ID, &
       rho_dip_scr_ID, &
       rho_forest_ID, &
-      shearrate_ID, &
       resolvedstress_back_ID, &
       resistance_ID, &
       rho_dot_sgl_ID, &
@@ -498,8 +497,6 @@ subroutine plastic_nonlocal_init
           outputID = merge(rho_dip_scr_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_forest')
           outputID = merge(rho_forest_ID,undefined_ID,prm%totalNslip>0)
-        case ('shearrate')
-          outputID = merge(shearrate_ID,undefined_ID,prm%totalNslip>0)
         case ('resolvedstress_back')
           outputID = merge(resolvedstress_back_ID,undefined_ID,prm%totalNslip>0)
         case ('resistance')
@@ -1515,7 +1512,10 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
   
   ph = material_phaseAt(1,el)
   instance = phase_plasticityInstance(ph)
-  associate(prm => param(instance),dst => microstructure(instance),dot => dotState(instance),stt => state(instance))
+  associate(prm => param(instance), &
+            dst => microstructure(instance), &
+            dot => dotState(instance), &
+            stt => state(instance))
   ns = totalNslip(instance)
   
   tau = 0.0_pReal
@@ -1665,11 +1665,11 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
       endif
       
       enteringFlux: if (considerEnteringFlux) then
-          forall (s = 1:ns, t = 1:4)
-            neighbor_v(s,t) =          plasticState(np)%state(iV   (s,t,neighbor_instance),no)
-            neighbor_rhoSgl(s,t) = max(plasticState(np)%state(iRhoU(s,t,neighbor_instance),no), &
+        forall (s = 1:ns, t = 1:4)
+          neighbor_v(s,t) =          plasticState(np)%state(iV   (s,t,neighbor_instance),no)
+          neighbor_rhoSgl(s,t) = max(plasticState(np)%state(iRhoU(s,t,neighbor_instance),no), &
                                                                                             0.0_pReal)
-          endforall
+        endforall
   
         where (neighbor_rhoSgl * IPvolume(neighbor_ip,neighbor_el) ** 0.667_pReal < prm%significantN &
           .or. neighbor_rhoSgl < prm%significantRho) &
@@ -1860,12 +1860,7 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
 #endif
     plasticState(p)%dotState = IEEE_value(1.0_pReal,IEEE_quiet_NaN)
   else
-    forall (s = 1:ns, t = 1:4) 
-      plasticState(p)%dotState(iRhoU(s,t,instance),o) = rhoDot(s,t)
-      plasticState(p)%dotState(iRhoB(s,t,instance),o) = rhoDot(s,t+4)
-    endforall
-    forall (s = 1:ns, c = 1:2) &
-      plasticState(p)%dotState(iRhoD(s,c,instance),o) = rhoDot(s,c+8)
+    dot%rho(:,o) = pack(rhoDot,.true.)
     forall (s = 1:ns) &
       dot%accumulatedshear(s,o) = sum(gdot(s,1:4))
   endif
@@ -2045,7 +2040,6 @@ function plastic_nonlocal_postResults(ph,instance,of) result(postResults)
    rhoSgl, &
    rhoDotSgl                                                                                        !< evolution rate of single dislocation densities (positive/negative screw and edge without dipoles)
  real(pReal), dimension(param(instance)%totalNslip,4) :: &
-   gdot, &                                                                                          !< shear rates
    v                                                                                                !< velocities
  real(pReal), dimension(param(instance)%totalNslip,2) :: &
    rhoDotDip                                                                                        !< evolution rate of dipole dislocation densities (screw and edge dipoles)
@@ -2059,21 +2053,12 @@ associate(prm => param(instance),dst => microstructure(instance),stt=>state(inst
 
 forall (s = 1:ns, t = 1:4)
   rhoSgl(s,t+4)    = plasticState(ph)%State(iRhoB(s,t,instance),of)
-  v(s,t)                = plasticState(ph)%State(iV(s,t,instance),of)
+  v(s,t)           = plasticState(ph)%State(iV(s,t,instance),of)
   rhoDotSgl(s,t+4) = plasticState(ph)%dotState(iRhoB(s,t,instance),of)
 endforall
 forall (s = 1:ns, c = 1:2)
   rhoDotDip(s,c) = plasticState(ph)%dotState(iRhoD(s,c,instance),of)
 endforall
-
-!* Calculate shear rate
-
-forall (t = 1:4) &
-  gdot(1:ns,t) = rhoSgl(1:ns,t) * prm%burgers(1:ns) * v(1:ns,t)
-  
-
-!* calculate limits for stable dipole height
-
 
 outputsLoop: do o = 1,size(param(instance)%outputID)
   select case(param(instance)%outputID(o))
@@ -2120,10 +2105,6 @@ outputsLoop: do o = 1,size(param(instance)%outputID)
       
     case (rho_forest_ID)
       postResults(cs+1:cs+ns) = stt%rho_forest(:,of)
-      cs = cs + ns
-      
-    case (shearrate_ID)
-      postResults(cs+1:cs+ns) = sum(gdot,2)
       cs = cs + ns
       
     case (resolvedstress_back_ID)
@@ -2233,7 +2214,7 @@ function getRho(instance,of,ip,el)
 
   getRho = reshape(state(instance)%rho(:,of),[prm%totalNslip,10])
   
-  ! ensure mobile densities (not for imm, they have a sign)
+  ! ensure positive densities (not for imm, they have a sign)
   getRho(:,mob) = max(getRho(:,mob),0.0_pReal)
   getRho(:,dip) = max(getRho(:,dip),0.0_pReal)
   
