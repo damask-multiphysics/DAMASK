@@ -27,7 +27,6 @@ program DAMASK_spectral
  use grid_mech_FEM
  use grid_damage_spectral
  use grid_thermal_spectral
- use HDF5_utilities
  use results
  use rotations
 
@@ -319,15 +318,9 @@ program DAMASK_spectral
  enddo
  close(fileUnit)
 
- call results_openJobFile
- call HDF5_closeGroup(results_addGroup('geometry'))
- call results_addAttribute('grid',grid,'geometry')
- call results_addAttribute('size',geomSize,'geometry')
- call results_closeJobFile
-
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
- call Utilities_init()
+ call Utilities_init
  do field = 1, nActiveFields
    select case (loadCases(1)%ID(field))
      case(FIELD_MECH_ID)
