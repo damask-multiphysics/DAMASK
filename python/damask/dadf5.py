@@ -401,8 +401,11 @@ class DADF5():
           if len(a.shape) == 1:
             a=a.reshape([a.shape[0],1])
           dataset[p,:] = a[u,:]
-
-    return dataset if not plain else dataset.view(('float64',len(dataset.dtype.names)))
+    
+    if plain and dataset.dtype.names is not None:
+      return dataset.view(('float64',len(dataset.dtype.names)))
+    else:
+      return dataset
 
 
   def cell_coordinates(self):
