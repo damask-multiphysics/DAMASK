@@ -519,5 +519,5 @@ class Geom():
         for i, oldID in enumerate(np.unique(self.microstructure)):
           renumbered = np.where(self.microstructure == oldID, i+1, renumbered)
 
-        return self.update(renumbered))
+        return self.update(renumbered)
         #self.add_comments('tbd')

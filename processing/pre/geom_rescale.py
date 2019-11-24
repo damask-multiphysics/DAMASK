@@ -58,4 +58,4 @@ for name in filenames:
   geom.scale(new_grid)
   damask.util.croak(geom.update(microstructure = None,size = new_size))
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
-  geom.to_file(sys.stdout if name is None else name)
+  geom.to_file(sys.stdout if name is None else name,pack=False)

@@ -95,4 +95,4 @@ for name in filenames:
   damask.util.croak(geom.update(microstructure,origin=origin-(np.asarray(microstructure.shape)-grid)/2*size/grid,rescale=True))
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
 
-  geom.to_file(sys.stdout if name is None else name)
+  geom.to_file(sys.stdout if name is None else name,pack=False)

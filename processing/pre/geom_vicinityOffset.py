@@ -82,4 +82,4 @@ for name in filenames:
                                            geom.microstructure + offset,geom.microstructure)))
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
 
-  geom.to_file(sys.stdout if name is None else name)
+  geom.to_file(sys.stdout if name is None else name,pack=False)
