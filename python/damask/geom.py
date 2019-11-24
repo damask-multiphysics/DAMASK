@@ -467,6 +467,29 @@ class Geom():
         #self.add_comments('tbd')
 
 
+    def scale(self,grid):
+        """
+        Scale microstructure to new grid 
+
+        Parameters
+        ----------
+        grid : iterable of int
+            new grid dimension
+
+        """
+        return self.update(
+                           ndimage.interpolation.zoom(
+                                                      self.microstructure,
+                                                      grid/self.get_grid(),
+                                                      output=self.microstructure.dtype,
+                                                      order=0,
+                                                      mode='nearest',
+                                                      prefilter=False
+                                                     )
+                          )
+        #self.add_comments('tbd')
+
+
     def clean(self,stencil=3):
         """
         Smooth microstructure by selecting most frequent index within given stencil at each location.
