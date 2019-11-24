@@ -299,7 +299,7 @@ class Geom():
         return cls(microstructure.reshape(grid),size,origin,homogenization,comments)
 
 
-    def to_file(self,fname):
+    def to_file(self,fname,pack=None):
         """
         Writes a geom file.
 
@@ -307,15 +307,63 @@ class Geom():
         ----------
         fname : str or file handle
             geometry file to write.
+        pack : bool, optional
+            compress geometry with 'x of y' and 'a to b'.
 
         """
         header = self.get_header()
         grid   = self.get_grid()
-        format_string = '%g' if self.microstructure in np.sctypes['float'] else \
-                        '%{}i'.format(1+int(np.floor(np.log10(np.nanmax(self.microstructure)))))
-        np.savetxt(fname,
-                   self.microstructure.reshape([grid[0],np.prod(grid[1:])],order='F').T,
-                   header='\n'.join(header), fmt=format_string, comments='')
+        
+        if pack is None:
+            plain = grid.prod()/np.unique(self.microstructure).size < 250
+        else:
+            plain = not pack
+
+        if plain:
+            format_string = '%g' if self.microstructure in np.sctypes['float'] else \
+                            '%{}i'.format(1+int(np.floor(np.log10(np.nanmax(self.microstructure)))))
+            np.savetxt(fname,
+                       self.microstructure.reshape([grid[0],np.prod(grid[1:])],order='F').T,
+                       header='\n'.join(header), fmt=format_string, comments='')
+        else:
+            if isinstance(fname,str):
+                f = open(fname,'w')
+            else:
+                f = fname
+
+            compressType = None
+            former = start = -1
+            reps = 0
+            for current in self.microstructure.flatten('F'):
+                if abs(current - former) == 1 and (start - current) == reps*(former - current):
+                    compressType = 'to'
+                    reps += 1
+                elif current == former and start == former:
+                    compressType = 'of'
+                    reps += 1
+                else:
+                    if   compressType is None:
+                        f.write('\n'.join(self.get_header())+'\n')
+                    elif compressType == '.':
+                        f.write('{}\n'.format(former))
+                    elif compressType == 'to':
+                        f.write('{} to {}\n'.format(start,former))
+                    elif compressType == 'of':
+                        f.write('{} of {}\n'.format(reps,former))
+
+                    compressType = '.'
+                    start = current
+                    reps = 1
+
+                former = current
+
+            if compressType == '.':
+                f.write('{}\n'.format(former))
+            elif compressType == 'to':
+                f.write('{} to {}\n'.format(start,former))
+            elif compressType == 'of':
+                f.write('{} of {}\n'.format(reps,former))
+
                  
     def to_vtk(self,fname=None):
         """
@@ -419,6 +467,29 @@ class Geom():
         #self.add_comments('tbd')
 
 
+    def scale(self,grid):
+        """
+        Scale microstructure to new grid.
+
+        Parameters
+        ----------
+        grid : iterable of int
+            new grid dimension
+
+        """
+        return self.update(
+                           ndimage.interpolation.zoom(
+                                                      self.microstructure,
+                                                      grid/self.get_grid(),
+                                                      output=self.microstructure.dtype,
+                                                      order=0,
+                                                      mode='nearest',
+                                                      prefilter=False
+                                                     )
+                          )
+        #self.add_comments('tbd')
+
+
     def clean(self,stencil=3):
         """
         Smooth microstructure by selecting most frequent index within given stencil at each location.
@@ -433,7 +504,20 @@ class Geom():
             unique, inverse = np.unique(arr, return_inverse=True)
             return unique[np.argmax(np.bincount(inverse))]
 
-        return self.update(ndimage.filters.generic_filter(self.microstructure,
+        return self.update(ndimage.filters.generic_filter(
+                                                          self.microstructure,
                                                           mostFrequent,
-                                                          size=(stencil,)*3).astype(self.microstructure.dtype))
+                                                          size=(stencil,)*3
+                                                         ).astype(self.microstructure.dtype)
+                          )
+        #self.add_comments('tbd')
+
+
+    def renumber(self):
+        """Renumber sorted microstructure indices to 1,...,N."""
+        renumbered = np.empty(self.get_grid(),dtype=self.microstructure.dtype)
+        for i, oldID in enumerate(np.unique(self.microstructure)):
+          renumbered = np.where(self.microstructure == oldID, i+1, renumbered)
+
+        return self.update(renumbered)
         #self.add_comments('tbd')

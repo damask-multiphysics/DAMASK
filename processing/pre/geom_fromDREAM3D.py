@@ -86,7 +86,7 @@ for name in filenames:
            * inFile[os.path.join(group_geom,'SPACING')][...]
     grid   = inFile[os.path.join(group_geom,'DIMENSIONS')][...]
     origin = inFile[os.path.join(group_geom,'ORIGIN')][...]
-  except:
+  except KeyError:
     errors.append('Geometry data ({}) not found'.format(group_geom))
 
 
@@ -98,13 +98,13 @@ for name in filenames:
     try:
       quats = np.reshape(inFile[dataset][...],(np.product(grid),4))
       rot   = [damask.Rotation.fromQuaternion(q,True,P=+1) for q in quats]
-    except:
+    except KeyError:
       errors.append('Pointwise orientation (quaternion) data ({}) not readable'.format(dataset))
 
     dataset = os.path.join(group_pointwise,options.phase)
     try:
       phase = np.reshape(inFile[dataset][...],(np.product(grid)))
-    except:
+    except KeyError:
       errors.append('Pointwise phase data ({}) not readable'.format(dataset))
 
     microstructure = np.arange(1,np.product(grid)+1,dtype=int).reshape(grid,order='F')
@@ -116,7 +116,7 @@ for name in filenames:
     dataset = os.path.join(group_pointwise,options.microstructure)
     try:
       microstructure = np.transpose(inFile[dataset][...].reshape(grid[::-1]),(2,1,0))               # convert from C ordering
-    except:
+    except KeyError:
       errors.append('Link between pointwise and grain average data ({}) not readable'.format(dataset))
 
     group_average = os.path.join(rootDir,options.basegroup,options.average)
@@ -124,13 +124,13 @@ for name in filenames:
     dataset = os.path.join(group_average,options.quaternion)
     try:
       rot = [damask.Rotation.fromQuaternion(q,True,P=+1) for q in inFile[dataset][...][1:]]         # skip first entry (unindexed)
-    except:
+    except KeyError:
       errors.append('Average orientation data ({}) not readable'.format(dataset))
 
     dataset = os.path.join(group_average,options.phase)
     try:
       phase = [i[0] for i in inFile[dataset][...]][1:]                                              # skip first entry (unindexed)
-    except:
+    except KeyError:
       errors.append('Average phase data ({}) not readable'.format(dataset))
 
   if errors != []:
@@ -155,4 +155,4 @@ for name in filenames:
                      homogenization=options.homogenization,comments=header)
   damask.util.croak(geom)
 
-  geom.to_file(os.path.splitext(name)[0]+'.geom')
+  geom.to_file(os.path.splitext(name)[0]+'.geom',pack=False)
