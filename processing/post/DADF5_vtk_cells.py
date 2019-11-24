@@ -74,7 +74,6 @@ for filename in options.filenames:
     results.set_visible('materialpoints',False)
     results.set_visible('constituents',  True)
     for label in options.con:
-      
       for p in results.iter_visible('con_physics'):
         if p != 'generic':
           for c in results.iter_visible('constituents'):
