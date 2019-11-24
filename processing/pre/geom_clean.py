@@ -5,9 +5,6 @@ import sys
 from io import StringIO
 from optparse import OptionParser
 
-from scipy import ndimage
-import numpy as np
-
 import damask
 
 

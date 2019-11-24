@@ -5,8 +5,6 @@ import sys
 from io import StringIO
 from optparse import OptionParser
 
-import numpy as np
-
 import damask
 
 

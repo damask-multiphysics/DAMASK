@@ -311,8 +311,8 @@ class Geom():
         """
         header = self.get_header()
         grid   = self.get_grid()
-        format_string = '%{}i'.format(1+int(np.floor(np.log10(np.nanmax(self.microstructure))))) if self.microstructure.dtype == int \
-                   else '%g'
+        format_string = '%g' if self.microstructure in np.sctypes['float'] else \
+                        '%{}i'.format(1+int(np.floor(np.log10(np.nanmax(self.microstructure)))))
         np.savetxt(fname,
                    self.microstructure.reshape([grid[0],np.prod(grid[1:])],order='F').T,
                    header='\n'.join(header), fmt=format_string, comments='')
@@ -390,12 +390,14 @@ class Geom():
     def mirror(self,directions,reflect=False):
         """
         Mirror microstructure along given directions.
+
         Parameters
         ----------
         directions : iterable containing str
             direction(s) along which the microstructure is mirrored. Valid entries are 'x', 'y', 'z'.
         reflect : bool, optional
             reflect (include) outermost layers.
+
         """
         valid = {'x','y','z'}
         if not all(isinstance(d, str) for d in directions):
@@ -420,10 +422,12 @@ class Geom():
     def clean(self,stencil=3):
         """
         Smooth microstructure by selecting most frequent index within given stencil at each location.
+
         Parameters
         ----------
         stencil : int, optional
             size of smoothing stencil.
+
         """
         def mostFrequent(arr):
             unique, inverse = np.unique(arr, return_inverse=True)
