@@ -22,10 +22,6 @@ module crystallite
   use discretization
   use lattice
   use plastic_nonlocal
-  use geometry_plastic_nonlocal, only: &
-    nIPneighbors    => geometry_plastic_nonlocal_nIPneighbors, &
-    IPneighborhood  => geometry_plastic_nonlocal_IPneighborhood
-  use HDF5_utilities
   use results
  
   implicit none 
@@ -90,21 +86,11 @@ module crystallite
  
   enum, bind(c)
     enumerator :: undefined_ID, &
-                  phase_ID, &
-                  texture_ID, &
                   orientation_ID, &
-                  grainrotation_ID, &
                   defgrad_ID, &
-                  fe_ID, &
                   fp_ID, &
-                  fi_ID, &
-                  lp_ID, &
-                  li_ID, &
                   p_ID, &
-                  s_ID, &
-                  elasmatrix_ID, &
-                  neighboringip_ID, &
-                  neighboringelement_ID
+                  elasmatrix_ID
   end enum
   integer(kind(undefined_ID)),dimension(:,:),   allocatable :: &
     crystallite_outputID                                                                            !< ID of each post result output
@@ -279,36 +265,14 @@ subroutine crystallite_init
     do o = 1, size(str)
       crystallite_output(o,c) = str(o)
       outputName: select case(str(o))
-       case ('phase') outputName
-         crystallite_outputID(o,c) = phase_ID
-       case ('texture') outputName
-         crystallite_outputID(o,c) = texture_ID
        case ('orientation') outputName
          crystallite_outputID(o,c) = orientation_ID
-       case ('grainrotation') outputName
-         crystallite_outputID(o,c) = grainrotation_ID
        case ('defgrad','f') outputName                                                              ! ToDo: no alias (f only)
          crystallite_outputID(o,c) = defgrad_ID
-       case ('fe') outputName
-         crystallite_outputID(o,c) = fe_ID
        case ('fp') outputName
          crystallite_outputID(o,c) = fp_ID
-       case ('fi') outputName
-         crystallite_outputID(o,c) = fi_ID
-       case ('lp') outputName
-         crystallite_outputID(o,c) = lp_ID
-       case ('li') outputName
-         crystallite_outputID(o,c) = li_ID
        case ('p','firstpiola','1stpiola') outputName                                                ! ToDo: no alias (p only)
          crystallite_outputID(o,c) = p_ID
-       case ('s','tstar','secondpiola','2ndpiola') outputName                                       ! ToDo: no alias (s only)
-         crystallite_outputID(o,c) = s_ID
-       case ('elasmatrix') outputName
-         crystallite_outputID(o,c) = elasmatrix_ID
-       case ('neighboringip') outputName                                                            ! ToDo: this is not a result, it is static. Should be written out by mesh
-         crystallite_outputID(o,c) = neighboringip_ID
-       case ('neighboringelement') outputName                                                       ! ToDo: this is not a result, it is static. Should be written out by mesh
-         crystallite_outputID(o,c) = neighboringelement_ID
        case default outputName
          call IO_error(105,ext_msg=trim(str(o))//' (Crystallite)')
       end select outputName
@@ -335,8 +299,6 @@ subroutine crystallite_init
           mySize = 4
         case(defgrad_ID,fp_ID,p_ID)
           mySize = 9
-        case(neighboringip_ID,neighboringelement_ID)
-          mySize = nIPneighbors
         case default
           mySize = 0
       end select
@@ -908,16 +870,6 @@ function crystallite_postResults(ipc, ip, el)
         mySize = 9
         crystallite_postResults(c+1:c+mySize) = &
           reshape(transpose(crystallite_P(1:3,1:3,ipc,ip,el)),[mySize])
-      case(neighboringelement_ID)
-        mySize = nIPneighbors
-        crystallite_postResults(c+1:c+mySize) = 0.0_pReal
-        forall (n = 1:mySize) &
-          crystallite_postResults(c+n) = real(IPneighborhood(1,n,ip,el),pReal)
-      case(neighboringip_ID)
-        mySize = nIPneighbors
-        crystallite_postResults(c+1:c+mySize) = 0.0_pReal
-        forall (n = 1:mySize) &
-          crystallite_postResults(c+n) = real(IPneighborhood(2,n,ip,el),pReal)
     end select
     c = c + mySize
   enddo
@@ -945,7 +897,7 @@ subroutine crystallite_results
   do p=1,size(config_name_phase)
     group = trim('current/constituent')//'/'//trim(config_name_phase(p))//'/generic'
     
-    call HDF5_closeGroup(results_addGroup(group))  
+    call results_closeGroup(results_addGroup(group))  
 
     do o = 1, size(output_constituent(p)%label)
       select case (output_constituent(p)%label(o))

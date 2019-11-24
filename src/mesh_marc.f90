@@ -69,7 +69,7 @@ subroutine mesh_init(ip,el)
     microstructureAt, &
     homogenizationAt
   integer:: &
-    Nnodes                                                                                      !< total number of nodes in mesh
+    Nnodes                                                                                          !< total number of nodes in mesh
    
   real(pReal), dimension(:,:), allocatable :: &
     ip_reshaped
