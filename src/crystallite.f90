@@ -257,7 +257,6 @@ subroutine crystallite_init
     close(FILEUNIT)
   endif
   call config_deallocate('material.config/phase')
-  call config_deallocate('material.config/crystallite')
 
 !--------------------------------------------------------------------------------------------------
 ! initialize

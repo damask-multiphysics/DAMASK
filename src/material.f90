@@ -116,7 +116,6 @@ module material
     phase_Noutput, &                                                                                !< number of '(output)' items per phase
     phase_elasticityInstance, &                                                                     !< instance of particular elasticity of each phase
     phase_plasticityInstance, &                                                                     !< instance of particular plasticity of each phase
-    crystallite_Noutput, &                                                                          !< number of '(output)' items per crystallite setting
     homogenization_Ngrains, &                                                                       !< number of grains in each homogenization
     homogenization_Noutput, &                                                                       !< number of '(output)' items per homogenization
     homogenization_typeInstance, &                                                                  !< instance of particular type of each homogenization
@@ -244,9 +243,6 @@ subroutine material_init
   
   call material_parseMicrostructure()
   if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Microstructure parsed'; flush(6)
-  
-  call material_parseCrystallite()
-  if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Crystallite    parsed'; flush(6)
   
   call material_parseHomogenization()
   if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Homogenization parsed'; flush(6)
@@ -545,21 +541,6 @@ subroutine material_parseMicrostructure
 
  
 end subroutine material_parseMicrostructure
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief parses the crystallite part in the material configuration file
-!--------------------------------------------------------------------------------------------------
-subroutine material_parseCrystallite
-
-  integer :: c
- 
-  allocate(crystallite_Noutput(size(config_crystallite)),source=0)
-  do c=1, size(config_crystallite)
-    crystallite_Noutput(c) = config_crystallite(c)%countKeys('(output)')
-  enddo
-
-end subroutine material_parseCrystallite
 
 
 !--------------------------------------------------------------------------------------------------
