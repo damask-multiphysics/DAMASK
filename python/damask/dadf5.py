@@ -369,7 +369,7 @@ class DADF5():
       return f[self.get_dataset_location('orientation')[0]].attrs['Lattice'].astype('str')          # np.bytes_ to string
 
 
-  def read_dataset(self,path,c):
+  def read_dataset(self,path,c=0):
     """
     Dataset for all points/cells.
     
