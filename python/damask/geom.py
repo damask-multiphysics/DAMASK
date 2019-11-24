@@ -469,7 +469,7 @@ class Geom():
 
     def scale(self,grid):
         """
-        Scale microstructure to new grid 
+        Scale microstructure to new grid.
 
         Parameters
         ----------
