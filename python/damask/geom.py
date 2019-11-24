@@ -299,7 +299,7 @@ class Geom():
         return cls(microstructure.reshape(grid),size,origin,homogenization,comments)
 
 
-    def to_file(self,fname):
+    def to_file(self,fname,pack=None):
         """
         Writes a geom file.
 
@@ -307,15 +307,63 @@ class Geom():
         ----------
         fname : str or file handle
             geometry file to write.
+        pack : bool, optional
+            compress geometry with 'x of y' and 'a to b'.
 
         """
         header = self.get_header()
         grid   = self.get_grid()
-        format_string = '%g' if self.microstructure in np.sctypes['float'] else \
-                        '%{}i'.format(1+int(np.floor(np.log10(np.nanmax(self.microstructure)))))
-        np.savetxt(fname,
-                   self.microstructure.reshape([grid[0],np.prod(grid[1:])],order='F').T,
-                   header='\n'.join(header), fmt=format_string, comments='')
+        
+        if pack is None:
+            plain = grid.prod()/np.unique(self.microstructure).size < 250
+        else:
+            plain = not pack
+
+        if plain:
+            format_string = '%g' if self.microstructure in np.sctypes['float'] else \
+                            '%{}i'.format(1+int(np.floor(np.log10(np.nanmax(self.microstructure)))))
+            np.savetxt(fname,
+                       self.microstructure.reshape([grid[0],np.prod(grid[1:])],order='F').T,
+                       header='\n'.join(header), fmt=format_string, comments='')
+        else:
+            if isinstance(fname,str):
+                f = open(fname,'w')
+            else:
+                f = fname
+
+            compressType = None
+            former = start = -1
+            reps = 0
+            for current in self.microstructure.flatten('F'):
+                if abs(current - former) == 1 and (start - current) == reps*(former - current):
+                    compressType = 'to'
+                    reps += 1
+                elif current == former and start == former:
+                    compressType = 'of'
+                    reps += 1
+                else:
+                    if   compressType is None:
+                        f.write('\n'.join(self.get_header())+'\n')
+                    elif compressType == '.':
+                        f.write('{}\n'.format(former))
+                    elif compressType == 'to':
+                        f.write('{} to {}\n'.format(start,former))
+                    elif compressType == 'of':
+                        f.write('{} of {}\n'.format(reps,former))
+
+                    compressType = '.'
+                    start = current
+                    reps = 1
+
+                former = current
+
+            if compressType == '.':
+                f.write('{}\n'.format(former))
+            elif compressType == 'to':
+                f.write('{} to {}\n'.format(start,former))
+            elif compressType == 'of':
+                f.write('{} of {}\n'.format(reps,former))
+
                  
     def to_vtk(self,fname=None):
         """

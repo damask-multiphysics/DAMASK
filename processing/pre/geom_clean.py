@@ -42,7 +42,4 @@ for name in filenames:
 
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
 
-  if name is None:
-    sys.stdout.write(str(geom.show()))
-  else:
-    geom.to_file(name)
+  geom.to_file(sys.stdout if name is None else name)
