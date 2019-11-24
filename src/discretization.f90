@@ -6,9 +6,6 @@ module discretization
 
   use prec
   use results
-#if defined(PETSc) || defined(DAMASK_HDF5)
-  use HDF5_utilities
-#endif
 
   implicit none
   private
@@ -84,7 +81,7 @@ subroutine discretization_results
 #if defined(PETSc) || defined(DAMASK_HDF5)
   real(pReal), dimension(:,:), allocatable :: u
   
-  call HDF5_closeGroup(results_addGroup(trim('current/geometry')))
+  call results_closeGroup(results_addGroup(trim('current/geometry')))
   
   u = discretization_NodeCoords (1:3,:discretization_sharedNodesBeginn) &
     - discretization_NodeCoords0(1:3,:discretization_sharedNodesBeginn)

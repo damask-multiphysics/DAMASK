@@ -119,14 +119,16 @@ subroutine mesh_init(ip,el)
                      reshape(connectivity_cell,[elem%NcellNodesPerCell,elem%nIPs*nElems]),&
                      node0_cell,ip_reshaped)
 
+!--------------------------------------------------------------------------------------------------
+! geometry information required by the nonlocal CP model
   call geometry_plastic_nonlocal_setIPvolume(IPvolume(elem,node0_cell,connectivity_cell))
   unscaledNormals = IPareaNormal(elem,nElems,connectivity_cell,node0_cell)
   call geometry_plastic_nonlocal_setIParea(norm2(unscaledNormals,1))
   call geometry_plastic_nonlocal_setIPareaNormal(unscaledNormals/spread(norm2(unscaledNormals,1),1,3))
   call geometry_plastic_nonlocal_results
   
-
 end subroutine mesh_init
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Writes all information needed for the DADF5 geometry
