@@ -65,7 +65,7 @@ for filename in options.filenames:
           x = results.get_dataset_location(label)
           if len(x) == 0:
             continue
-          array = results.read_dataset(x,0)
+          array = results.read_dataset(x,0,plain=True)
           d = int(np.product(np.shape(array)[1:]))
           data = np.concatenate((data,np.reshape(array,[np.product(results.grid),d])),1)
           
@@ -80,7 +80,7 @@ for filename in options.filenames:
           x = results.get_dataset_location(label)
           if len(x) == 0:
             continue
-          array = results.read_dataset(x,0)
+          array = results.read_dataset(x,0,plain=True)
           d = int(np.product(np.shape(array)[1:]))
           data = np.concatenate((data,np.reshape(array,[np.product(results.grid),d])),1)
           
