@@ -5,8 +5,6 @@ import sys
 from io import StringIO
 from optparse import OptionParser
 
-import numpy as np
-
 import damask
 
 
@@ -38,16 +36,6 @@ parser.set_defaults(reflect = False)
 
 (options, filenames) = parser.parse_args()
 
-if options.directions is None:
-  parser.error('no direction given.')
-
-if not set(options.directions).issubset(validDirections):
-  invalidDirections = [str(e) for e in set(options.directions).difference(validDirections)]
-  parser.error('invalid directions {}. '.format(*invalidDirections))
-
-limits = [None,None] if options.reflect else [-2,0]
-
-
 if filenames == []: filenames = [None]
 
 for name in filenames:
@@ -55,15 +43,7 @@ for name in filenames:
 
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
-  microstructure = geom.get_microstructure()
-  if 'z' in options.directions:
-    microstructure = np.concatenate([microstructure,microstructure[:,:,limits[0]:limits[1]:-1]],2)
-  if 'y' in options.directions:
-    microstructure = np.concatenate([microstructure,microstructure[:,limits[0]:limits[1]:-1,:]],1)
-  if 'x' in options.directions:
-    microstructure = np.concatenate([microstructure,microstructure[limits[0]:limits[1]:-1,:,:]],0)
-
-  damask.util.croak(geom.update(microstructure,rescale=True))
+  damask.util.croak(geom.mirror(options.directions,options.reflect))
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
 
   if name is None:

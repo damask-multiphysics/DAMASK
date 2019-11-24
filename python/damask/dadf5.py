@@ -369,7 +369,7 @@ class DADF5():
       return f[self.get_dataset_location('orientation')[0]].attrs['Lattice'].astype('str')          # np.bytes_ to string
 
 
-  def read_dataset(self,path,c):
+  def read_dataset(self,path,c=0,plain=False):
     """
     Dataset for all points/cells.
     
@@ -402,7 +402,7 @@ class DADF5():
             a=a.reshape([a.shape[0],1])
           dataset[p,:] = a[u,:]
 
-    return dataset
+    return dataset if not plain else dataset.view(('float64',len(dataset.dtype.names)))
 
 
   def cell_coordinates(self):
@@ -620,7 +620,7 @@ class DADF5():
         raise ValueError
       
       return {
-              'data':  mechanics.deviator(x['data']),
+              'data':  mechanics.deviatoric_part(x['data']),
               'label': 's_{}'.format(x['label']),
               'meta':  {
                         'Unit':        x['meta']['Unit'],

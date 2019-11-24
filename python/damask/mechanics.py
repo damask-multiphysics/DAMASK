@@ -48,10 +48,10 @@ def strain_tensor(F,t,m):
     
     if   m > 0.0:
         eps = 1.0/(2.0*abs(m)) * (+ np.matmul(n,np.einsum('ij,ikj->ijk',w**m,n)) 
-                                  - np.broadcast_to(np.ones(3),[F_.shape[0],3]))
+                                  - np.broadcast_to(np.eye(3),[F_.shape[0],3,3]))
     elif m < 0.0:
         eps = 1.0/(2.0*abs(m)) * (- np.matmul(n,np.einsum('ij,ikj->ijk',w**m,n))
-                                  + np.broadcast_to(np.ones(3),[F_.shape[0],3]))
+                                  + np.broadcast_to(np.eye(3),[F_.shape[0],3,3]))
     else:
         eps = np.matmul(n,np.einsum('ij,ikj->ijk',0.5*np.log(w),n))
       
@@ -190,7 +190,7 @@ def rotational_part(x):
       Tensor of which the rotational part is computed.
 
     """
-    return __polar_decomposition(x,'R')
+    return __polar_decomposition(x,'R')[0]
 
 
 def left_stretch(x):
@@ -203,7 +203,7 @@ def left_stretch(x):
       Tensor of which the left stretch is computed.
 
     """
-    return __polar_decomposition(x,'V')
+    return __polar_decomposition(x,'V')[0]
   
   
 def right_stretch(x):
@@ -216,7 +216,7 @@ def right_stretch(x):
       Tensor of which the right stretch is computed.
 
     """
-    return __polar_decomposition(x,'U')
+    return __polar_decomposition(x,'U')[0]
 
 
 def __polar_decomposition(x,requested):
@@ -227,7 +227,7 @@ def __polar_decomposition(x,requested):
     ----------
     x : numpy.array of shape (:,3,3) or (3,3)
       Tensor of which the singular values are computed.
-    requested : list of str
+    requested : iterable of str
       Requested outputs: ‘R’ for the rotation tensor, 
       ‘V’ for left stretch tensor and ‘U’ for right stretch tensor.
 

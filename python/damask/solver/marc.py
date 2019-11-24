@@ -79,9 +79,9 @@ class Marc(Solver):
     exitnumber = -1
     fid_out = open(outFile,'r')
     for line in fid_out:
-      if (string.find(line,'tress iteration') is not -1):
+      if (string.find(line,'tress iteration') != -1):
         print(line)
-      elif (string.find(line,'Exit number') is not -1):
+      elif (string.find(line,'Exit number')   != -1):
         substr = line[string.find(line,'Exit number'):len(line)]
         exitnumber = int(substr[12:16])
 
