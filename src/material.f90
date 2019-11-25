@@ -120,8 +120,7 @@ module material
     homogenization_Noutput, &                                                                       !< number of '(output)' items per homogenization
     homogenization_typeInstance, &                                                                  !< instance of particular type of each homogenization
     thermal_typeInstance, &                                                                         !< instance of particular type of each thermal transport
-    damage_typeInstance, &                                                                          !< instance of particular type of each nonlocal damage
-    microstructure_crystallite                                                                      !< crystallite setting ID of each microstructure ! DEPRECATED !!!!
+    damage_typeInstance                                                                             !< instance of particular type of each nonlocal damage
  
   real(pReal), dimension(:), allocatable, public, protected :: &
     thermal_initialT, &                                                                             !< initial temperature per each homogenization
@@ -273,9 +272,6 @@ subroutine material_init
   allocate(temperatureRate (material_Nhomogenization))
  
   do m = 1,size(config_microstructure)
-    if(microstructure_crystallite(m) < 1 .or. &
-       microstructure_crystallite(m) > size(config_crystallite)) &
-         call IO_error(150,m,ext_msg='crystallite')
     if(minval(microstructure_phase(1:microstructure_Nconstituents(m),m)) < 1 .or. &
        maxval(microstructure_phase(1:microstructure_Nconstituents(m),m)) > size(config_phase)) &
          call IO_error(150,m,ext_msg='phase')
@@ -294,9 +290,8 @@ subroutine material_init
     enddo
     write(6,'(/,a14,18x,1x,a11,1x,a12,1x,a13)') 'microstructure','crystallite','constituents'
     do m = 1,size(config_microstructure)
-      write(6,'(1x,a32,1x,i11,1x,i12)') config_name_microstructure(m), &
-                                        microstructure_crystallite(m), &
-                                        microstructure_Nconstituents(m)
+      write(6,'(1x,a32,1x,i12)') config_name_microstructure(m), &
+                                  microstructure_Nconstituents(m)
       if (microstructure_Nconstituents(m) > 0) then
         do c = 1,microstructure_Nconstituents(m)
           write(6,'(a1,1x,a32,1x,a32,1x,f7.4)') '>',config_name_phase(microstructure_phase(c,m)),&
@@ -496,7 +491,6 @@ subroutine material_parseMicrostructure
   character(len=65536) :: &
     tag
  
-  allocate(microstructure_crystallite(size(config_microstructure)),   source=0)
   allocate(microstructure_Nconstituents(size(config_microstructure)), source=0)
   allocate(microstructure_active(size(config_microstructure)),        source=.false.)
  
@@ -508,7 +502,6 @@ subroutine material_parseMicrostructure
  
   do m=1, size(config_microstructure)
     microstructure_Nconstituents(m) =  config_microstructure(m)%countKeys('(constituent)')
-    microstructure_crystallite(m)   =  config_microstructure(m)%getInt('crystallite')
   enddo
  
   microstructure_maxNconstituents = maxval(microstructure_Nconstituents)
