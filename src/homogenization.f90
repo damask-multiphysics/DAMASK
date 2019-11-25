@@ -592,15 +592,13 @@ subroutine materialpoint_postResults
     thePos, &
     theSize, &
     myNgrains, &
-    myCrystallite, &
     g, &                                                                                            !< grain number
     i, &                                                                                            !< integration point number
     e                                                                                               !< element number
 
-  !$OMP PARALLEL DO PRIVATE(myNgrains,myCrystallite,thePos,theSize)
+  !$OMP PARALLEL DO PRIVATE(myNgrains,thePos,theSize)
   elementLooping: do e = FEsolving_execElem(1),FEsolving_execElem(2)
     myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
-    myCrystallite = microstructure_crystallite(discretization_microstructureAt(e))
     IpLooping: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
       thePos = 0
 
