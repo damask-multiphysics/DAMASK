@@ -51,6 +51,16 @@ class TestGeom:
             new = Geom.from_file(f)
         assert geom_equal(new,default)
 
+    def test_pack(self,default,tmpdir):
+        default.to_file(tmpdir.join('default.geom'),pack=True)
+        new = Geom.from_file(tmpdir.join('default.geom'))
+        assert geom_equal(new,default)
+
+    def test_plain(self,default,tmpdir):
+        default.to_file(tmpdir.join('default.geom'),pack=False)
+        new = Geom.from_file(tmpdir.join('default.geom'))
+        assert geom_equal(new,default)
+
     @pytest.mark.parametrize('directions,reflect',[
                             (['x'],        False),
                             (['x','y','z'],True),
