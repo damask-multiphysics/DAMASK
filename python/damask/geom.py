@@ -250,11 +250,15 @@ class Geom():
             geometry file to read.
 
         """
-        with (open(fname) if isinstance(fname,str) else fname) as f:
-            f.seek(0)
-            header_length,keyword = f.readline().split()[:2]
-            header_length = int(header_length)
-            content = f.readlines()
+        try:
+            f = open(fname)
+        except TypeError:
+            f = fname
+
+        f.seek(0)
+        header_length,keyword = f.readline().split()[:2]
+        header_length = int(header_length)
+        content = f.readlines()
 
         if not keyword.startswith('head') or header_length < 3:
             raise TypeError('Header length information missing or invalid')
@@ -320,15 +324,15 @@ class Geom():
             plain = not pack
 
         if plain:
-            format_string = '%g' if self.microstructure in np.sctypes['float'] else \
+            format_string = '%g' if self.microstructure.dtype in np.sctypes['float'] else \
                             '%{}i'.format(1+int(np.floor(np.log10(np.nanmax(self.microstructure)))))
             np.savetxt(fname,
                        self.microstructure.reshape([grid[0],np.prod(grid[1:])],order='F').T,
                        header='\n'.join(header), fmt=format_string, comments='')
         else:
-            if isinstance(fname,str):
+            try:
                 f = open(fname,'w')
-            else:
+            except TypeError:
                 f = fname
 
             compressType = None
