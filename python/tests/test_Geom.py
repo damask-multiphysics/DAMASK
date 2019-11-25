@@ -58,10 +58,12 @@ class TestGeom:
         assert geom_equal(new,default)
 
     @pytest.mark.parametrize('directions,reflect',[
-                            (['x'],        False),
-                            (['x','y','z'],True),
-                            (['z','x','y'],False),
-                            (['y','z'],    False)])
+                                                   (['x'],        False),
+                                                   (['x','y','z'],True),
+                                                   (['z','x','y'],False),
+                                                   (['y','z'],    False)
+                                                  ]
+                            )
     def test_mirror(self,default,update,reference_dir,directions,reflect):
         modified = copy.deepcopy(default)
         modified.mirror(directions,reflect)
@@ -76,5 +78,22 @@ class TestGeom:
         modified.clean(stencil)
         tag = 'stencil={}'.format(stencil)
         reference = os.path.join(reference_dir,'clean_{}.geom'.format(tag))
+        if update: modified.to_file(reference)
+        assert geom_equal(modified,Geom.from_file(reference))
+
+    @pytest.mark.parametrize('grid',[
+                                     ((10,11,10)),
+                                     ([10,13,10]),
+                                     (np.array((10,10,10))),
+                                     (np.array((8, 10,12))),
+                                     (np.array((5, 4, 20))),
+                                     (np.array((10,20,2)) )
+                                    ]
+                            )
+    def test_scale(self,default,update,reference_dir,grid):
+        modified = copy.deepcopy(default)
+        modified.scale(grid)
+        tag = 'grid={}'.format('-'.join([str(x) for x in grid]))
+        reference = os.path.join(reference_dir,'scale_{}.geom'.format(tag))
         if update: modified.to_file(reference)
         assert geom_equal(modified,Geom.from_file(reference))
