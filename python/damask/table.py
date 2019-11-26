@@ -5,36 +5,39 @@ import numpy as np
 
 class Table():
     """Read and write to ASCII tables"""
-    
-    def __init__(self,name):
-        self.name = name
-        with open(self.name) as f:
-            header,keyword = f.readline().split()
-            if keyword == 'header':
-                header = int(header)
+   
+    def __init__(self,fname):
+        try:
+            f = open(fname)
+        except TypeError:
+            f = fname
+
+        header,keyword = f.readline().split()
+        if keyword == 'header':
+            header = int(header)
+        else:
+            raise Exception
+        self.comments = [f.readline()[:-1] for i in range(header-1)]
+        labels_raw    = f.readline().split()
+        self.data     = pd.read_csv(f,delim_whitespace=True,header=None)
+        
+        labels_repeated = [l.split('_',1)[1] if '_' in l else l for l in labels_raw]
+        self.data.rename(columns=dict(zip([l for l in self.data.columns],labels_repeated)),inplace=True)
+        
+        self.shape = {}
+        for l in labels_raw:
+            tensor_column = re.search(':.*?_',l)
+            if tensor_column:
+                my_shape = tensor_column.group()[1:-1].split('x')
+                self.shape[l.split('_',1)[1]] = tuple([int(d) for d in my_shape])
             else:
-                raise Exception
-            self.comments = [f.readline()[:-1] for i in range(header-1)]
-            labels_raw    = f.readline().split()
-            self.data     = pd.read_csv(f,delim_whitespace=True,header=None)
-            
-            labels_repeated = [l.split('_',1)[1] if '_' in l else l for l in labels_raw]
-            self.data.rename(columns=dict(zip([l for l in self.data.columns],labels_repeated)),inplace=True)
-            
-            self.shape = {}
-            for l in labels_raw:
-                tensor_column = re.search(':.*?_',l)
-                if tensor_column:
-                    my_shape = tensor_column.group()[1:-1].split('x')
-                    self.shape[l.split('_',1)[1]] = tuple([int(d) for d in my_shape])
+                vector_column = re.match('.*?_',l)
+                if vector_column:
+                    self.shape[l.split('_',1)[1]] = (int(l.split('_',1)[0]),)
                 else:
-                    vector_column = re.match('.*?_',l)
-                    if vector_column:
-                        self.shape[l.split('_',1)[1]] = (int(l.split('_',1)[0]),)
-                    else:
-                        self.shape[l]=(1,)
-            
-            self.labels = list(dict.fromkeys(labels_repeated))
+                    self.shape[l]=(1,)
+        
+        self.labels = list(dict.fromkeys(labels_repeated))
 
 
     def get_array(self,label):
@@ -56,7 +59,7 @@ class Table():
         self.data = pd.concat([self.data,new_data],axis=1)
         
 
-    def to_ASCII(self,name=None):
+    def to_ASCII(self,fname):
         labels = []
         for l in self.labels:
             if(self.shape[l] == (1,)):
@@ -72,6 +75,9 @@ class Table():
                + self.comments\
                + [' '.join(labels)]
 
-        with open(name if name is not None else self.name,'w') as f:
-            for line in header: f.write(line+'\n')
-            self.data.to_csv(f,sep=' ',index=False,header=False)
+        try:
+            f = open(fname,'w')
+        except TypeError:
+            f = fname
+        for line in header: f.write(line+'\n')
+        self.data.to_csv(f,sep=' ',index=False,header=False)

@@ -39,4 +39,4 @@ for name in filenames:
     table.add_array('Cauchy',damask.mechanics.Cauchy(table.get_array(options.defgrad).reshape(-1,3,3),
                                                      table.get_array(options.stress).reshape(-1,3,3)).reshape(-1,9),
                     scriptID)
-    table.to_ASCII()
+    table.to_ASCII(name)
