@@ -4,9 +4,42 @@ import pandas as pd
 import numpy as np
 
 class Table():
-    """Read and write to ASCII tables"""
-   
-    def __init__(self,fname):
+    """Store spreadsheet-like data."""
+  
+    def __init__(self,array,headings,comments=None):
+        """
+        New spreadsheet data.
+        
+        Parameters
+        ----------
+        array : numpy.ndarray
+            Data.
+        headings : dict
+            Column headings. Labels as keys and shape as tuple. Example 'F':(3,3) for a deformation gradient. 
+        comments : iterable of str, optional
+            Additional, human-readable information
+        
+        """
+        self.data = pd.DataFrame(data=array)
+
+        d = {}
+        i = 0
+        for label in headings:
+            for components in range(np.prod(headings[label])):
+                d[i] = label
+                i+=1
+
+        self.data.rename(columns=d,inplace=True)
+
+        if comments is None:
+            self.comments = []
+        else:
+            self.comments = [c for c in comments]
+
+        self.headings  = headings
+
+    @staticmethod
+    def from_ASCII(fname):
         try:
             f = open(fname)
         except TypeError:
@@ -17,43 +50,38 @@ class Table():
             header = int(header)
         else:
             raise Exception
-        self.comments = [f.readline()[:-1] for i in range(header-1)]
-        labels_raw    = f.readline().split()
-        self.data     = pd.read_csv(f,delim_whitespace=True,header=None)
-        
-        labels_repeated = [l.split('_',1)[1] if '_' in l else l for l in labels_raw]
-        self.data.rename(columns=dict(zip([l for l in self.data.columns],labels_repeated)),inplace=True)
-        
-        self.shape = {}
+        comments   = [f.readline()[:-1] for i in range(header-1)]
+        labels_raw = f.readline().split()
+        labels     = [l.split('_',1)[1] if '_' in l else l for l in labels_raw]
+       
+        headings = {}
         for l in labels_raw:
             tensor_column = re.search(':.*?_',l)
             if tensor_column:
                 my_shape = tensor_column.group()[1:-1].split('x')
-                self.shape[l.split('_',1)[1]] = tuple([int(d) for d in my_shape])
+                headings[l.split('_',1)[1]] = tuple([int(d) for d in my_shape])
             else:
                 vector_column = re.match('.*?_',l)
                 if vector_column:
-                    self.shape[l.split('_',1)[1]] = (int(l.split('_',1)[0]),)
+                    headings[l.split('_',1)[1]] = (int(l.split('_',1)[0]),)
                 else:
-                    self.shape[l]=(1,)
+                    headings[l]=(1,)
         
-        self.labels = list(dict.fromkeys(labels_repeated))
+        return Table(np.loadtxt(f),headings,comments)
 
 
     def get_array(self,label):
-        return self.data[label].to_numpy().reshape((-1,)+self.shape[label])
+        return self.data[label].to_numpy().reshape((-1,)+self.headings[label])
 
 
     def add_array(self,label,array,info):
-        if np.product(array.shape[1:],dtype=int) == 1: 
+        if np.prod(array.shape[1:],dtype=int) == 1: 
             self.comments.append('{}: {}'.format(label,info))
-
         else:
             self.comments.append('{} {}: {}'.format(label,array.shape[1:],info))
         
-        self.shape[label] = array.shape[1:]
-        self.labels.append(label)
-        size = np.product(array.shape[1:]) 
+        self.headings[label] = array.shape[1:] if len(array.shape) > 1 else (1,)
+        size = np.prod(array.shape[1:],dtype=int) 
         new_data = pd.DataFrame(data=array.reshape(-1,size),
                                 columns=[label for l in range(size)])
         self.data = pd.concat([self.data,new_data],axis=1)
@@ -61,15 +89,15 @@ class Table():
 
     def to_ASCII(self,fname):
         labels = []
-        for l in self.labels:
-            if(self.shape[l] == (1,)):
+        for l in self.headings:
+            if(self.headings[l] == (1,)):
                 labels.append('{}'.format(l))
-            elif(len(self.shape[l]) == 1):
+            elif(len(self.headings[l]) == 1):
                 labels+=['{}_{}'.format(i+1,l)\
-                         for i in range(self.shape[l][0])]
+                         for i in range(self.headings[l][0])]
             else:
-                labels+=['{}:{}_{}'.format(i+1,'x'.join([str(d) for d in self.shape[l]]),l)\
-                               for i in range(np.product(self.shape[l]))]
+                labels+=['{}:{}_{}'.format(i+1,'x'.join([str(d) for d in self.headings[l]]),l)\
+                               for i in range(np.prod(self.headings[l],dtype=int))]
 
         header = ['{} header'.format(len(self.comments)+1)]\
                + self.comments\

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import os
+import sys
+from io import StringIO
 from optparse import OptionParser
 
 import damask
@@ -34,9 +36,14 @@ parser.set_defaults(defgrad = 'f',
 
 (options,filenames) = parser.parse_args()
 
+if filenames == []: filenames = [None]
+
 for name in filenames:
-    table = damask.Table(name)
-    table.add_array('Cauchy',damask.mechanics.Cauchy(table.get_array(options.defgrad).reshape(-1,3,3),
-                                                     table.get_array(options.stress).reshape(-1,3,3)).reshape(-1,9),
+    damask.util.report(scriptName,name)
+
+    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    table.add_array('Cauchy',
+                    damask.mechanics.Cauchy(table.get_array(options.defgrad).reshape(-1,3,3),
+                                            table.get_array(options.stress).reshape(-1,3,3)).reshape(-1,9),
                     scriptID)
-    table.to_ASCII(name)
+    table.to_ASCII(sys.stdout if name is None else name)
