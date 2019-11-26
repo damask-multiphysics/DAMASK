@@ -4,19 +4,12 @@ import os
 import sys
 from optparse import OptionParser
 
-import damask
+import numpy as np
 
+import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
-
-def determinant(m):
-  return  +m[0]*m[4]*m[8] \
-          +m[1]*m[5]*m[6] \
-          +m[2]*m[3]*m[7] \
-          -m[2]*m[4]*m[6] \
-          -m[1]*m[3]*m[8] \
-          -m[0]*m[5]*m[7]
 
 
 # --------------------------------------------------------------------
@@ -43,52 +36,11 @@ if options.tensor is None:
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False)
-  except: continue
-  damask.util.report(scriptName,name)
+    damask.util.report(scriptName,name)
 
-# ------------------------------------------ read header ------------------------------------------
-
-  table.head_read()
-
-# ------------------------------------------ sanity checks ----------------------------------------
-
-  items = {
-            'tensor': {'dim': 9, 'shape': [3,3], 'labels':options.tensor, 'column': []},
-          }
-  errors  = []
-  remarks = []
-  
-  for type, data in items.items():
-    for what in data['labels']:
-      dim = table.label_dimension(what)
-      if dim != data['dim']: remarks.append('column {} is not a {}...'.format(what,type))
-      else:
-        items[type]['column'].append(table.label_index(what))
-        table.labels_append('det({})'.format(what))                                                 # extend ASCII header with new labels
-
-  if remarks != []: damask.util.croak(remarks)
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# ------------------------------------------ assemble header --------------------------------------
-
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.head_write()
-
-# ------------------------------------------ process data ------------------------------------------
-
-  outputAlive = True
-  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    for type, data in items.items():
-      for column in data['column']:
-        table.data_append(determinant(list(map(float,table.data[column: column+data['dim']]))))
-    outputAlive = table.data_write()                                                                # output processed line
-
-# ------------------------------------------ output finalization -----------------------------------
-
-  table.close()                                                                                     # close input ASCII table (works for stdin)
+    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    for tensor in options.tensor:
+         table.add_array('det({})'.format(tensor),
+                         np.linalg.det(table.get_array(tensor).reshape(-1,3,3)),
+                         scriptID)
+    table.to_ASCII(sys.stdout if name is None else name)
