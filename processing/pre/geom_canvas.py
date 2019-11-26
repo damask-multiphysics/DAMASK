@@ -61,7 +61,7 @@ for name in filenames:
   canvas = np.full(new,options.fill if options.fill is not None
                   else np.nanmax(geom.microstructure)+1,geom.microstructure.dtype)
 
-  l = np.clip( offset,    0,np.minimum(old  +offset,new))
+  l = np.clip( offset,    0,np.minimum(old  +offset,new))                                           # noqa
   r = np.clip( offset+old,0,np.minimum(old*2+offset,new))
   L = np.clip(-offset,    0,np.minimum(new  -offset,old))
   R = np.clip(-offset+new,0,np.minimum(new*2-offset,old))
@@ -71,7 +71,4 @@ for name in filenames:
   damask.util.croak(geom.update(canvas,origin=origin+offset*size/old,rescale=True))
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
 
-  if name is None:
-    sys.stdout.write(str(geom.show()))
-  else:
-    geom.to_file(name)
+  geom.to_file(sys.stdout if name is None else name,pack=False)

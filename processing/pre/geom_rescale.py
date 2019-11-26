@@ -2,11 +2,10 @@
 
 import os
 import sys
-import numpy as np
-
 from io import StringIO
 from optparse import OptionParser
-from scipy import ndimage
+
+import numpy as np
 
 import damask
 
@@ -55,20 +54,7 @@ for name in filenames:
              np.array([o*float(n.lower().replace('x','')) if n.lower().endswith('x') \
                   else float(n) for o,n in zip(size,options.size)],dtype=float)
 
-  damask.util.croak(geom.update(microstructure =
-                                ndimage.interpolation.zoom(
-                                    geom.microstructure,
-                                    new_grid/grid,
-                                    output=geom.microstructure.dtype,
-                                    order=0,
-                                    mode='nearest',
-                                    prefilter=False,
-                                 ) if np.any(new_grid != grid) \
-                                 else None,
-                                 size = new_size))
+  geom.scale(new_grid)
+  damask.util.croak(geom.update(microstructure = None,size = new_size))
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
-
-  if name is None:
-    sys.stdout.write(str(geom.show()))
-  else:
-    geom.to_file(name)
+  geom.to_file(sys.stdout if name is None else name,pack=False)
