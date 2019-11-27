@@ -83,8 +83,13 @@ class Table():
         else: 
             return self.data[label].to_numpy().reshape((-1,)+self.headings[label])
 
-    def set_array(self,label,array):
+    def set_array(self,label,array,info):
         """Set data."""
+        if np.prod(array.shape[1:],dtype=int) == 1: 
+            self.comments.append('{}: {}'.format(label,info))
+        else:
+            self.comments.append('{} {}: {}'.format(label,array.shape[1:],info))
+
         if re.match(r'[0-9]*?_',label):
             idx,key = label.split('_',1)
             iloc = self.data.columns.get_loc(key).tolist().index(True) + int(idx) -1
