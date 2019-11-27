@@ -23,7 +23,7 @@ def default():
 
 @pytest.fixture
 def reference_dir(reference_dir_base):
-    """directory containing reference results."""
+    """Directory containing reference results."""
     return os.path.join(reference_dir_base,'Geom')
 
 

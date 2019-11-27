@@ -11,11 +11,11 @@ def pytest_addoption(parser):
 
 @pytest.fixture
 def update(request):
-    """store current results as new reference results."""
+    """Store current results as new reference results."""
     return request.config.getoption("--update")
 
 @pytest.fixture
 def reference_dir_base():
-    """directory containing reference results."""
+    """Directory containing reference results."""
     env = damask.Environment()
     return os.path.join(env.rootDir(),'python','tests','reference')
