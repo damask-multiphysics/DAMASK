@@ -90,7 +90,7 @@ class Table():
             iloc = self.data.columns.get_loc(key).tolist().index(True) + int(idx) -1
             self.data.iloc[:,iloc] = array
         else: 
-            self.data[label]       = array
+            self.data[label]       = array.reshape(self.data[label].shape)
 
 
     def get_labels(self):
