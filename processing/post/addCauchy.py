@@ -35,7 +35,6 @@ parser.set_defaults(defgrad = 'f',
                    )
 
 (options,filenames) = parser.parse_args()
-
 if filenames == []: filenames = [None]
 
 for name in filenames:
@@ -45,5 +44,6 @@ for name in filenames:
     table.add_array('Cauchy',
                     damask.mechanics.Cauchy(table.get_array(options.defgrad).reshape(-1,3,3),
                                             table.get_array(options.stress).reshape(-1,3,3)).reshape(-1,9),
-                    scriptID)
+                    scriptID+' '+' '.join(sys.argv[1:]))
+
     table.to_ASCII(sys.stdout if name is None else name)

@@ -27,13 +27,10 @@ parser.add_option('-t','--tensor',
                   help = 'heading of columns containing tensor field values')
 
 (options,filenames) = parser.parse_args()
+if filenames == []: filenames = [None]
 
 if options.tensor is None:
   parser.error('no data column specified.')
-
-# --- loop over input files -------------------------------------------------------------------------
-
-if filenames == []: filenames = [None]
 
 for name in filenames:
     damask.util.report(scriptName,name)
@@ -42,5 +39,6 @@ for name in filenames:
     for tensor in options.tensor:
          table.add_array('det({})'.format(tensor),
                          np.linalg.det(table.get_array(tensor).reshape(-1,3,3)),
-                         scriptID)
+                         scriptID+' '+' '.join(sys.argv[1:]))
+
     table.to_ASCII(sys.stdout if name is None else name)

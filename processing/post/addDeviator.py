@@ -30,13 +30,10 @@ parser.add_option('-s','--spherical',
                   help = 'report spherical part of tensor (hydrostatic component, pressure)')
 
 (options,filenames) = parser.parse_args()
+if filenames == []: filenames = [None]
 
 if options.tensor is None:
-  parser.error('no data column specified...')
-
-# --- loop over input files -------------------------------------------------------------------------
-
-if filenames == []: filenames = [None]
+    parser.error('no data column specified...')
 
 for name in filenames:
     damask.util.report(scriptName,name)
@@ -45,9 +42,10 @@ for name in filenames:
     for tensor in options.tensor:
          table.add_array('dev({})'.format(tensor),
                          damask.mechanics.deviatoric_part(table.get_array(tensor).reshape(-1,3,3)).reshape((-1,9)),
-                         scriptID)
+                         scriptID+' '+' '.join(sys.argv[1:]))
          if options.spherical:
              table.add_array('sph({})'.format(tensor),
                              damask.mechanics.spherical_part(table.get_array(tensor).reshape(-1,3,3)),
-                             scriptID)
+                             scriptID+' '+' '.join(sys.argv[1:]))
+
     table.to_ASCII(sys.stdout if name is None else name)
