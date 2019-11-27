@@ -83,6 +83,16 @@ class Table():
         else: 
             return self.data[label].to_numpy().reshape((-1,)+self.headings[label])
 
+    def set_array(self,label,array):
+        """Set data."""
+        if re.match(r'[0-9]*?_',label):
+            idx,key = label.split('_',1)
+            iloc = self.data.columns.get_loc(key).tolist().index(True) + int(idx) -1
+            self.data.iloc[:,iloc] = array
+        else: 
+            self.data[label]       = array
+
+
     def get_labels(self):
         """Return the labels of all columns."""
         return [label for label in self.headings]
