@@ -69,10 +69,11 @@ class Table():
         
         return Table(np.loadtxt(f),headings,comments)
 
-
     def get_array(self,label):
         return self.data[label].to_numpy().reshape((-1,)+self.headings[label])
 
+    def get_labels(self):
+        return [label for label in self.headings]
 
     def add_array(self,label,array,info):
         if np.prod(array.shape[1:],dtype=int) == 1: 
@@ -86,7 +87,6 @@ class Table():
                                 columns=[label for l in range(size)])
         self.data = pd.concat([self.data,new_data],axis=1)
         
-
     def to_ASCII(self,fname):
         labels = []
         for l in self.headings:
