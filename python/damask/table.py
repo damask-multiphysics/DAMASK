@@ -40,6 +40,13 @@ class Table():
 
     @staticmethod
     def from_ASCII(fname):
+        """
+        Create table from ASCII file.
+
+        The first line needs to indicate the number of subsequent header lines as 'n header'.
+        Vector data labels are indicated by '1_x, 2_x, ..., n_x'.
+        Tensor data labels are indicated by '3x3:1_x, 3x3:2_x, ..., 3x3:9_x'.
+        """
         try:
             f = open(fname)
         except TypeError:
@@ -50,29 +57,34 @@ class Table():
             header = int(header)
         else:
             raise Exception
-        comments   = [f.readline()[:-1] for i in range(header-1)]
-        labels_raw = f.readline().split()
-        labels     = [l.split('_',1)[1] if '_' in l else l for l in labels_raw]
+        comments = [f.readline()[:-1] for i in range(header-1)]
+        labels   = f.readline().split()
        
         headings = {}
-        for l in labels_raw:
-            tensor_column = re.search(':.*?_',l)
+        for label in labels:
+            tensor_column = re.search(r'[0-9,x]*?:[0-9]*?_',label)
             if tensor_column:
-                my_shape = tensor_column.group()[1:-1].split('x')
-                headings[l.split('_',1)[1]] = tuple([int(d) for d in my_shape])
+                my_shape = tensor_column.group().split(':',1)[0].split('x')
+                headings[label.split('_',1)[1]] = tuple([int(d) for d in my_shape])
             else:
-                vector_column = re.match('.*?_',l)
+                vector_column = re.match(r'[0-9]*?_',label)
                 if vector_column:
-                    headings[l.split('_',1)[1]] = (int(l.split('_',1)[0]),)
+                    headings[label.split('_',1)[1]] = (int(label.split('_',1)[0]),)
                 else:
-                    headings[l]=(1,)
+                    headings[label]=(1,)
         
         return Table(np.loadtxt(f),headings,comments)
 
     def get_array(self,label):
-        return self.data[label].to_numpy().reshape((-1,)+self.headings[label])
+        """Return data as array."""
+        if re.match(r'[0-9]*?_',label):
+            idx,key = label.split('_',1)
+            return self.data[key].to_numpy()[:,int(idx)-1]
+        else: 
+            return self.data[label].to_numpy().reshape((-1,)+self.headings[label])
 
     def get_labels(self):
+        """Return the labels of all columns."""
         return [label for label in self.headings]
 
     def add_array(self,label,array,info):
