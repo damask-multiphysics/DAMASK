@@ -1,14 +1,14 @@
 import numpy as np
 
-def __ks(size,field):
-    """Get differential operator."""
+def __ks(size,field,first_order=False):
+    """Get wave numbers operator."""
     grid = np.array(np.shape(field)[0:3])
 
     k_sk = np.where(np.arange(grid[0])>grid[0]//2,np.arange(grid[0])-grid[0],np.arange(grid[0]))/size[0]
-    if grid[0]%2 == 0: k_sk[grid[0]//2] = 0                                                         # Nyquist freq=0 for even grid (Johnson, MIT, 2011)
+    if grid[0]%2 == 0 and first_order: k_sk[grid[0]//2] = 0                                         # Nyquist freq=0 for even grid (Johnson, MIT, 2011)
 
     k_sj = np.where(np.arange(grid[1])>grid[1]//2,np.arange(grid[1])-grid[1],np.arange(grid[1]))/size[1]
-    if grid[1]%2 == 0: k_sj[grid[1]//2] = 0                                                         # Nyquist freq=0 for even grid (Johnson, MIT, 2011)
+    if grid[1]%2 == 0 and first_order: k_sj[grid[1]//2] = 0                                         # Nyquist freq=0 for even grid (Johnson, MIT, 2011)
 
     k_si = np.arange(grid[2]//2+1)/size[2]
 
@@ -19,7 +19,7 @@ def __ks(size,field):
 def curl(size,field):
     """Calculate curl of a vector or tensor field in Fourier space."""
     n = np.prod(field.shape[3:])
-    k_s = __ks(size,field)
+    k_s = __ks(size,field,True)
 
     e = np.zeros((3, 3, 3))
     e[0, 1, 2] = e[1, 2, 0] = e[2, 0, 1] = +1.0                                                     # Levi-Civita symbol 
@@ -35,7 +35,7 @@ def curl(size,field):
 def divergence(size,field):
     """Calculate divergence of a vector or tensor field in Fourier space."""
     n = np.prod(field.shape[3:])
-    k_s = __ks(size,field)
+    k_s = __ks(size,field,True)
 
     field_fourier = np.fft.rfftn(field,axes=(0,1,2))
     divergence = (np.einsum('ijkl,ijkl ->ijk', k_s,field_fourier)*2.0j*np.pi if n == 3 else         # vector, 3   -> 1
@@ -47,7 +47,7 @@ def divergence(size,field):
 def gradient(size,field):
     """Calculate gradient of a vector or scalar field in Fourier space."""
     n = np.prod(field.shape[3:])
-    k_s = __ks(size,field)
+    k_s = __ks(size,field,True)
 
     field_fourier = np.fft.rfftn(field,axes=(0,1,2))
     gradient = (np.einsum('ijkl,ijkm->ijkm', field_fourier,k_s)*2.0j*np.pi if n == 1 else           # scalar, 1 -> 3
@@ -56,29 +56,37 @@ def gradient(size,field):
     return np.fft.irfftn(gradient,axes=(0,1,2),s=field.shape[0:3])
 
 
-#--------------------------------------------------------------------------------------------------
-def displacementFluctFFT(F,size):
-  """Calculate displacement field from deformation gradient field."""
-  integrator = 0.5j * size / np.pi
+def coord_node(grid,size):
+    """Positions of nodes (undeformed)."""
+    x, y, z = np.meshgrid(np.linspace(0,size[2],1+grid[2]),
+                          np.linspace(0,size[1],1+grid[1]),
+                          np.linspace(0,size[0],1+grid[0]),
+                          indexing = 'ij')
+    
+    return np.concatenate((z[:,:,:,None],y[:,:,:,None],x[:,:,:,None]),axis = 3) 
 
-  kk, kj, ki = np.meshgrid(np.where(np.arange(grid[2])>grid[2]//2,np.arange(grid[2])-grid[2],np.arange(grid[2])),
-                           np.where(np.arange(grid[1])>grid[1]//2,np.arange(grid[1])-grid[1],np.arange(grid[1])),
-                                    np.arange(grid[0]//2+1),
-                           indexing = 'ij')
-  k_s = np.concatenate((ki[:,:,:,None],kj[:,:,:,None],kk[:,:,:,None]),axis = 3) 
-  k_sSquared = np.einsum('...l,...l',k_s,k_s)
-  k_sSquared[0,0,0] = 1.0                                                                           # ignore global average frequency
 
-#--------------------------------------------------------------------------------------------------
-# integration in Fourier space
+def coord_cell(grid,size):
+    """Positions of cell centers (undeformed)."""
+    delta = size/grid*0.5
+    x, y, z = np.meshgrid(np.linspace(delta[2],size[2]-delta[2],grid[2]),
+                          np.linspace(delta[1],size[1]-delta[1],grid[1]),
+                          np.linspace(delta[0],size[0]-delta[0],grid[0]),
+                          indexing = 'ij')
 
-  displacement_fourier = -np.einsum('ijkml,ijkl,l->ijkm',
-                                    np.fft.rfftn(F,axes=(0,1,2)),
-                                    k_s,
-                                    integrator,
-                                   ) / k_sSquared[...,np.newaxis]
+    return np.concatenate((z[:,:,:,None],y[:,:,:,None],x[:,:,:,None]),axis = 3) 
 
-#--------------------------------------------------------------------------------------------------
-# backtransformation to real space
 
-  return np.fft.irfftn(displacement_fourier,grid[::-1],axes=(0,1,2))
+def displacement_fluct(size,F):
+    """Calculate displacement field from deformation gradient field."""
+    integrator = 0.5j * size / np.pi
+
+    k_s = __ks(size,F,False)
+
+    displacement = -np.einsum('ijkml,ijkl,l->ijkm',
+                              np.fft.rfftn(F,axes=(0,1,2)),
+                              k_s,
+                              integrator,
+                             ) / k_sSquared[...,np.newaxis]
+
+    return np.fft.irfftn(displacement,axes=(0,1,2))
