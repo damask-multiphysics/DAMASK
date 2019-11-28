@@ -2,23 +2,13 @@
 
 import os
 import sys
+from io import StringIO
 from optparse import OptionParser
 
 import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
-
-oneThird = 1.0/3.0
-
-def deviator(m,spherical = False):                                                                  # Careful, do not change the value of m, its intent(inout)!
-  sph = oneThird*(m[0]+m[4]+m[8])
-  dev = [
-           m[0]-sph,  m[1],     m[2],
-           m[3],      m[4]-sph, m[5],
-           m[6],      m[7],     m[8]-sph,
-        ]
-  return dev,sph if spherical else dev
 
 
 # --------------------------------------------------------------------
@@ -40,67 +30,22 @@ parser.add_option('-s','--spherical',
                   help = 'report spherical part of tensor (hydrostatic component, pressure)')
 
 (options,filenames) = parser.parse_args()
-
-if options.tensor is None:
-  parser.error('no data column specified...')
-
-# --- loop over input files -------------------------------------------------------------------------
-
 if filenames == []: filenames = [None]
 
+if options.tensor is None:
+    parser.error('no data column specified...')
+
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name, buffered = False)
-  except:
-    continue
-  damask.util.report(scriptName,name)
+    damask.util.report(scriptName,name)
+    
+    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    for tensor in options.tensor:
+         table.add_array('dev({})'.format(tensor),
+                         damask.mechanics.deviatoric_part(table.get_array(tensor).reshape(-1,3,3)).reshape((-1,9)),
+                         scriptID+' '+' '.join(sys.argv[1:]))
+         if options.spherical:
+             table.add_array('sph({})'.format(tensor),
+                             damask.mechanics.spherical_part(table.get_array(tensor).reshape(-1,3,3)),
+                             scriptID+' '+' '.join(sys.argv[1:]))
 
-# ------------------------------------------ read header ------------------------------------------
-
-  table.head_read()
-
-# ------------------------------------------ sanity checks ----------------------------------------
-
-  items = {
-            'tensor': {'dim': 9, 'shape': [3,3], 'labels':options.tensor, 'active':[], 'column': []},
-          }
-  errors  = []
-  remarks = []
-  column = {}
-  
-  for type, data in items.items():
-    for what in data['labels']:
-      dim = table.label_dimension(what)
-      if dim != data['dim']: remarks.append('column {} is not a {}.'.format(what,type))
-      else:
-        items[type]['active'].append(what)
-        items[type]['column'].append(table.label_index(what))
-
-  if remarks != []: damask.util.croak(remarks)
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# ------------------------------------------ assemble header --------------------------------------
-
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  for type, data in items.items():
-    for label in data['active']:
-      table.labels_append(['{}_dev({})'.format(i+1,label) for i in range(data['dim'])] + \
-                         (['sph({})'.format(label)] if options.spherical else []))                  # extend ASCII header with new labels
-  table.head_write()
-
-# ------------------------------------------ process data ------------------------------------------
-
-  outputAlive = True
-  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    for type, data in items.items():
-      for column in data['column']:
-        table.data_append(deviator(list(map(float,table.data[column:
-                                                        column+data['dim']])),options.spherical))
-    outputAlive = table.data_write()                                                                # output processed line
-
-# ------------------------------------------ output finalization -----------------------------------
-
-  table.close()                                                                                     # close input ASCII table (works for stdin)
+    table.to_ASCII(sys.stdout if name is None else name)
