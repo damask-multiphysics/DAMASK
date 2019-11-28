@@ -2,6 +2,7 @@
 
 import os
 import sys
+from io import StringIO
 from optparse import OptionParser
 
 import numpy as np
@@ -12,52 +13,14 @@ import damask
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
-def merge_dicts(*dict_args):
-  """Given any number of dicts, shallow copy and merge into a new dict, with precedence going to key value pairs in latter dicts."""
-  result = {}
-  for dictionary in dict_args:
-      result.update(dictionary)
-  return result
-
-def divFFT(geomdim,field):
-  """Calculate divergence of a vector or tensor field by transforming into Fourier space."""
-  shapeFFT    = np.array(np.shape(field))[0:3]
-  grid = np.array(np.shape(field)[2::-1])
-  N = grid.prod()                                                                                    # field size
-  n = np.array(np.shape(field)[3:]).prod()                                                           # data size
-
-  field_fourier = np.fft.rfftn(field,axes=(0,1,2),s=shapeFFT)
-
-  # differentiation in Fourier space
-  TWOPIIMG = 2.0j*np.pi
-  einsums = { 
-              3:'ijkl,ijkl->ijk',                                                               # vector, 3 -> 1
-              9:'ijkm,ijklm->ijkl',                                                             # tensor, 3x3 -> 3
-            }
-  k_sk = np.where(np.arange(grid[2])>grid[2]//2,np.arange(grid[2])-grid[2],np.arange(grid[2]))/geomdim[0]
-  if grid[2]%2 == 0: k_sk[grid[2]//2] = 0                                                            # Nyquist freq=0 for even grid (Johnson, MIT, 2011)
-
-  k_sj = np.where(np.arange(grid[1])>grid[1]//2,np.arange(grid[1])-grid[1],np.arange(grid[1]))/geomdim[1]
-  if grid[1]%2 == 0: k_sj[grid[1]//2] = 0                                                            # Nyquist freq=0 for even grid (Johnson, MIT, 2011)
-
-  k_si = np.arange(grid[0]//2+1)/geomdim[2]
-
-  kk, kj, ki = np.meshgrid(k_sk,k_sj,k_si,indexing = 'ij')
-  k_s = np.concatenate((ki[:,:,:,None],kj[:,:,:,None],kk[:,:,:,None]),axis = 3).astype('c16')                           
-
-  div_fourier = np.einsum(einsums[n],k_s,field_fourier)*TWOPIIMG
-
-  return np.fft.irfftn(div_fourier,axes=(0,1,2),s=shapeFFT).reshape([N,n//3])
-
 
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog option(s) [ASCIItable(s)]', description = """
-Add column(s) containing curl of requested column(s).
-Operates on periodic ordered three-dimensional data sets
-of vector and tensor fields.
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [ASCIItable(s)]', description = """
+Add column(s) containing divergence of requested column(s).
+Operates on periodic ordered three-dimensional data sets of vector and tensor fields.
 """, version = scriptID)
 
 parser.add_option('-p','--pos','--periodiccellcenter',
@@ -65,95 +28,30 @@ parser.add_option('-p','--pos','--periodiccellcenter',
                   type = 'string', metavar = 'string',
                   help = 'label of coordinates [%default]')
 parser.add_option('-l','--label',
-                  dest = 'data',
+                  dest = 'labels',
                   action = 'extend', metavar = '<string LIST>',
                   help = 'label(s) of field values')
 
 parser.set_defaults(pos = 'pos',
                    )
 
-
 (options,filenames) = parser.parse_args()
-
-if options.data is None: parser.error('no data column specified.')
-
-# --- define possible data types -------------------------------------------------------------------
-
-datatypes = {
-              3: {'name': 'vector',
-                  'shape': [3],
-                 },
-              9: {'name': 'tensor',
-                  'shape': [3,3],
-                 },
-            }
-
-# --- loop over input files ------------------------------------------------------------------------
-
 if filenames == []: filenames = [None]
 
+if options.labels is None: parser.error('no data column specified.')
+
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,buffered = False)
-  except: continue
-  damask.util.report(scriptName,name)
+    damask.util.report(scriptName,name)
 
-# --- interpret header ----------------------------------------------------------------------------
+    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    grid,size = damask.util.coordGridAndSize(table.get_array(options.pos))
 
-  table.head_read()
-
-  remarks = []
-  errors  = []
-  active = []
-
-  coordDim = table.label_dimension(options.pos)
-  if coordDim != 3:
-    errors.append('coordinates "{}" must be three-dimensional.'.format(options.pos))
-  else: coordCol = table.label_index(options.pos)
-
-  for me in options.data:
-    dim = table.label_dimension(me)
-    if dim in datatypes:
-      active.append(merge_dicts({'label':me},datatypes[dim]))
-      remarks.append('differentiating {} "{}"...'.format(datatypes[dim]['name'],me))
-    else:
-      remarks.append('skipping "{}" of dimension {}...'.format(me,dim) if dim != -1 else \
-                     '"{}" not found...'.format(me) )
-
-  if remarks != []: damask.util.croak(remarks)
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# ------------------------------------------ assemble header --------------------------------------
-
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  for data in active:
-    table.labels_append(['divFFT({})'.format(data['label']) if data['shape'] == [3] \
-                 else '{}_divFFT({})'.format(i+1,data['label']) 
-                 for i in range(np.prod(np.array(data['shape']))//3)])                              # extend ASCII header with new labels
-  table.head_write()
-
-# --------------- figure out size and grid ---------------------------------------------------------
-
-  table.data_readArray()
-
-  grid,size = damask.util.coordGridAndSize(table.data[:,table.label_indexrange(options.pos)])
-
-# ------------------------------------------ process value field -----------------------------------
-
-  stack = [table.data]
-  for data in active:
-    # we need to reverse order here, because x is fastest,ie rightmost, but leftmost in our x,y,z notation
-    stack.append(divFFT(size[::-1],
-                        table.data[:,table.label_indexrange(data['label'])].
-                        reshape(grid[::-1].tolist()+data['shape'])))
-
-# ------------------------------------------ output result -----------------------------------------
-
-  if len(stack) > 1: table.data = np.hstack(tuple(stack))
-  table.data_writeArray('%.12g')
-
-# ------------------------------------------ output finalization -----------------------------------
-
-  table.close()                                                                                     # close input ASCII table (works for stdin)
+    for label in options.labels:
+        field = table.get_array(label)
+        shape = (3,) if np.prod(field.shape)//np.prod(grid) == 3 else (3,3)                         # vector or tensor
+        field = table.get_array(label).reshape(np.append(grid[::-1],shape))
+        table.add_array('divFFT({})'.format(label),
+                        damask.grid_filters.divergence(size[::-1],field).reshape((-1,np.prod(shape)//3)),
+                        scriptID+' '+' '.join(sys.argv[1:]))
+    
+    table.to_ASCII(sys.stdout if name is None else name)
