@@ -27,7 +27,6 @@ def gradFFT(geomdim,field):
   n = np.array(np.shape(field)[3:]).prod()                                                           # data size
 
   field_fourier = np.fft.rfftn(field,axes=(0,1,2),s=shapeFFT)
-  grad_fourier  = np.empty(field_fourier.shape+(3,),'c16')
 
   # differentiation in Fourier space
   TWOPIIMG = 2.0j*np.pi

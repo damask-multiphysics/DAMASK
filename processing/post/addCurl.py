@@ -27,7 +27,6 @@ def curlFFT(geomdim,field):
   n = np.array(np.shape(field)[3:]).prod()                                                           # data size
 
   field_fourier = np.fft.rfftn(field,axes=(0,1,2),s=shapeFFT)
-  curl_fourier  = np.empty(field_fourier.shape,'c16')
 
   # differentiation in Fourier space
   TWOPIIMG = 2.0j*np.pi

@@ -27,7 +27,6 @@ def divFFT(geomdim,field):
   n = np.array(np.shape(field)[3:]).prod()                                                           # data size
 
   field_fourier = np.fft.rfftn(field,axes=(0,1,2),s=shapeFFT)
-  div_fourier   = np.empty(field_fourier.shape[0:len(np.shape(field))-1],'c16')
 
   # differentiation in Fourier space
   TWOPIIMG = 2.0j*np.pi
