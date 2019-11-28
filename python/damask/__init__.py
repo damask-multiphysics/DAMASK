@@ -23,4 +23,5 @@ from .util        import extendableOption # noqa
 
 # functions in modules
 from . import mechanics                   # noqa
+from . import grid_filters                # noqa
 
