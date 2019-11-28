@@ -13,7 +13,7 @@ class Table():
         Parameters
         ----------
         array : numpy.ndarray
-            Data.
+            Data as two dimensional array
         headings : dict
             Column headings. Labels as keys and shape as tuple. Example 'F':(3,3) for a deformation gradient. 
         comments : iterable of str, optional
@@ -28,6 +28,9 @@ class Table():
             for components in range(np.prod(headings[label])):
                 d[i] = label
                 i+=1
+
+        if i != self.data.shape[1]:
+            raise IndexError('Mismatch between array shape and headings')
 
         self.data.rename(columns=d,inplace=True)
 
@@ -123,7 +126,7 @@ class Table():
                 labels+=['{}_{}'.format(i+1,l)\
                          for i in range(self.headings[l][0])]
             else:
-                labels+=['{}:{}_{}'.format(i+1,'x'.join([str(d) for d in self.headings[l]]),l)\
+                labels+=['{}:{}_{}'.format('x'.join([str(d) for d in self.headings[l]]),i+1,l)\
                                for i in range(np.prod(self.headings[l],dtype=int))]
 
         header = ['{} header'.format(len(self.comments)+1)]\
