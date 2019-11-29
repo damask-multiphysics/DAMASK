@@ -166,7 +166,7 @@ class DADF5():
       end increment (included)
 
     """
-    self.__manage_visible(['inc{:05d}'.format(i) for i in range(start,end+1)],'increments','set')
+    self.__manage_visible(['inc{}'.format(i) for i in range(start,end+1)],'increments','set')
 
 
   def add_by_increment(self,start,end):
@@ -181,7 +181,7 @@ class DADF5():
       end increment (included)
 
     """
-    self.__manage_visible(['inc{:05d}'.format(i) for i in range(start,end+1)],'increments','add')
+    self.__manage_visible(['inc{}'.format(i) for i in range(start,end+1)],'increments','add')
 
 
   def del_by_increment(self,start,end):
@@ -196,7 +196,7 @@ class DADF5():
       end increment (included)
 
     """
-    self.__manage_visible(['inc{:05d}'.format(i) for i in range(start,end+1)],'increments','del')
+    self.__manage_visible(['inc{}'.format(i) for i in range(start,end+1)],'increments','del')
 
 
   def iter_visible(self,what):
