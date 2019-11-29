@@ -30,7 +30,7 @@ class DADF5():
     """
     with h5py.File(filename,'r') as f:
       
-      if f.attrs['DADF5-major'] != 0 or not 2 <= f.attrs['DADF5-minor'] <= 3:
+      if f.attrs['DADF5-major'] != 0 or not 2 <= f.attrs['DADF5-minor'] <= 4:
         raise TypeError('Unsupported DADF5 version {} '.format(f.attrs['DADF5-version']))
     
       self.structured = 'grid' in f['geometry'].attrs.keys()
@@ -40,8 +40,9 @@ class DADF5():
         self.size = f['geometry'].attrs['size']
         
       r=re.compile('inc[0-9]+')
-      self.increments = [i for i in f.keys() if r.match(i)]
-      self.times      = [round(f[i].attrs['time/s'],12) for i in self.increments]
+      increments_unsorted = {int(i[3:]):i for i in f.keys() if r.match(i)}
+      self.increments     = [increments_unsorted[i] for i in sorted(increments_unsorted)]
+      self.times          = [round(f[i].attrs['time/s'],12) for i in self.increments]
 
       self.Nmaterialpoints, self.Nconstituents =   np.shape(f['mapping/cellResults/constituent'])
       self.materialpoints  = [m.decode() for m in np.unique(f['mapping/cellResults/materialpoint']['Name'])]
