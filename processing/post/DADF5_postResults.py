@@ -94,6 +94,6 @@ for filename in options.filenames:
     dirname  = os.path.abspath(os.path.join(os.path.dirname(filename),options.dir))
     if not os.path.isdir(dirname):
       os.mkdir(dirname,0o755)
-    file_out = '{}_{}.txt'.format(os.path.splitext(os.path.split(filename)[-1])[0],
-                                  inc[3:].zfill(N_digits))
+    file_out = '{}_inc{}.txt'.format(os.path.splitext(os.path.split(filename)[-1])[0],
+                                     inc[3:].zfill(N_digits))
     np.savetxt(os.path.join(dirname,file_out),data,header=header,comments='')
