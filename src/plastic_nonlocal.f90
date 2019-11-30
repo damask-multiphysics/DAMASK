@@ -86,17 +86,6 @@ module plastic_nonlocal
       rho_dot_sgl_ID, &
       rho_dot_sgl_mobile_ID, &
       rho_dot_dip_ID, &
-      rho_dot_gen_edge_ID, &
-      rho_dot_gen_screw_ID, &
-      rho_dot_sgl2dip_edge_ID, &
-      rho_dot_sgl2dip_screw_ID, &
-      rho_dot_ann_ath_ID, &
-      rho_dot_ann_the_edge_ID, &
-      rho_dot_ann_the_screw_ID, &
-      rho_dot_edgejogs_ID, &
-      rho_dot_flux_mobile_ID, &
-      rho_dot_flux_edge_ID, &
-      rho_dot_flux_screw_ID, &
       velocity_edge_pos_ID, &
       velocity_edge_neg_ID, &
       velocity_screw_pos_ID, &
@@ -181,18 +170,6 @@ module plastic_nonlocal
      tau_Back 
   end type tNonlocalMicrostructure
   
-  type, private :: tOutput                                                                          !< container type for storage of output results
-    real(pReal), dimension(:,:), allocatable, private :: &
-     rhoDotEdgeJogs
-    real(pReal), dimension(:,:,:), allocatable, private :: &
-      rhoDotFlux, & 
-      rhoDotMultiplication, &
-      rhoDotSingle2DipoleGlide, &
-      rhoDotAthermalAnnihilation, &
-      rhoDotThermalAnnihilation
-  end type tOutput
-   
-  
   type, private :: tNonlocalState
     real(pReal), pointer, dimension(:,:) :: &
       rho, &                                                                                        ! < all dislocations
@@ -222,7 +199,6 @@ module plastic_nonlocal
  
   type(tParameters), dimension(:), allocatable, private :: param                                    !< containers of constitutive parameters (len Ninstance)
  
-  type(tOutput), dimension(:), allocatable, private :: results
   type(tNonlocalMicrostructure), dimension(:), allocatable, private :: microstructure
 
   integer(kind(undefined_ID)), dimension(:,:),   allocatable, private :: & 
@@ -288,7 +264,6 @@ subroutine plastic_nonlocal_init
   allocate(dotState(maxNinstances))
   allocate(deltaState(maxNinstances))
   allocate(microstructure(maxNinstances))
-  allocate(results(maxNinstances)) 
 
   allocate(plastic_nonlocal_sizePostResult(maxval(phase_Noutput), maxNinstances), source=0)
   allocate(plastic_nonlocal_output(maxval(phase_Noutput), maxNinstances))
@@ -304,7 +279,6 @@ subroutine plastic_nonlocal_init
               dot => dotState(phase_plasticityInstance(p)), &
               stt => state(phase_plasticityInstance(p)), &
               del => deltaState(phase_plasticityInstance(p)), &
-              res => results(phase_plasticityInstance(p)), &
               dst => microstructure(phase_plasticityInstance(p)), &
               config => config_phase(p))
 
@@ -507,28 +481,6 @@ subroutine plastic_nonlocal_init
           outputID = merge(rho_dot_sgl_mobile_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_dot_dip')
           outputID = merge(rho_dot_dip_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_gen_edge')
-          outputID = merge(rho_dot_gen_edge_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_gen_screw')
-          outputID = merge(rho_dot_gen_screw_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_sgl2dip_edge')
-          outputID = merge(rho_dot_sgl2dip_edge_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_sgl2dip_screw')
-          outputID = merge(rho_dot_sgl2dip_screw_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_ann_ath')
-          outputID = merge(rho_dot_ann_ath_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_ann_the_edge')
-          outputID = merge(rho_dot_ann_the_edge_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_ann_the_screw')
-          outputID = merge(rho_dot_ann_the_screw_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_edgejogs')
-          outputID = merge(rho_dot_edgejogs_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_flux_mobile')
-          outputID = merge(rho_dot_flux_mobile_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_flux_edge')
-          outputID = merge(rho_dot_flux_edge_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_flux_screw')
-          outputID = merge(rho_dot_flux_screw_ID,undefined_ID,prm%totalNslip>0)
         case ('velocity_edge_pos')
           outputID = merge(velocity_edge_pos_ID,undefined_ID,prm%totalNslip>0)
         case ('velocity_edge_neg')
@@ -646,13 +598,6 @@ subroutine plastic_nonlocal_init
 
     allocate(dst%tau_Threshold(prm%totalNslip,NofMyPhase),source=0.0_pReal)
     allocate(dst%tau_Back(prm%totalNslip,NofMyPhase),source=0.0_pReal)
-     
-    allocate(res%rhoDotFlux(prm%totalNslip,8,NofMyPhase),source=0.0_pReal)
-    allocate(res%rhoDotMultiplication(prm%totalNslip,2,NofMyPhase),source=0.0_pReal)
-    allocate(res%rhoDotSingle2DipoleGlide(prm%totalNslip,2,NofMyPhase),source=0.0_pReal)
-    allocate(res%rhoDotAthermalAnnihilation(prm%totalNslip,2,NofMyPhase),source=0.0_pReal)
-    allocate(res%rhoDotThermalAnnihilation(prm%totalNslip,2,NofMyPhase),source=0.0_pReal)
-    allocate(res%rhoDotEdgeJogs(prm%totalNslip,NofMyPhase),source=0.0_pReal)
     end associate
   
 
@@ -1817,14 +1762,6 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
          + rhoDotSingle2DipoleGlide &
          + rhoDotAthermalAnnihilation &
          + rhoDotThermalAnnihilation 
-  
-  results(instance)%rhoDotFlux(1:ns,1:8,o)                 = rhoDotFlux(1:ns,1:8)
-  results(instance)%rhoDotMultiplication(1:ns,1:2,o)       = rhoDotMultiplication(1:ns,[1,3])
-  results(instance)%rhoDotSingle2DipoleGlide(1:ns,1:2,o)   = rhoDotSingle2DipoleGlide(1:ns,9:10)
-  results(instance)%rhoDotAthermalAnnihilation(1:ns,1:2,o) = rhoDotAthermalAnnihilation(1:ns,9:10)
-  results(instance)%rhoDotThermalAnnihilation(1:ns,1:2,o)  = rhoDotThermalAnnihilation(1:ns,9:10)
-  results(instance)%rhoDotEdgeJogs(1:ns,o)                 = 2.0_pReal * rhoDotThermalAnnihilation(1:ns,1)
-
 
 #ifdef DEBUG
   if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0 &
@@ -2128,53 +2065,6 @@ outputsLoop: do o = 1,size(param(instance)%outputID)
       postResults(cs+1:cs+ns) = sum(rhoDotDip,2)
       cs = cs + ns
 
-    case (rho_dot_gen_edge_ID)
-      postResults(cs+1:cs+ns) = results(instance)%rhoDotMultiplication(1:ns,1,of)
-      cs = cs + ns
-
-    case (rho_dot_gen_screw_ID)
-      postResults(cs+1:cs+ns) = results(instance)%rhoDotMultiplication(1:ns,2,of)
-      cs = cs + ns
-    
-    case (rho_dot_sgl2dip_edge_ID)
-      postResults(cs+1:cs+ns) = results(instance)%rhoDotSingle2DipoleGlide(1:ns,1,of)
-      cs = cs + ns
-    
-    case (rho_dot_sgl2dip_screw_ID)
-      postResults(cs+1:cs+ns) = results(instance)%rhoDotSingle2DipoleGlide(1:ns,2,of)
-      cs = cs + ns
-    
-    case (rho_dot_ann_ath_ID)
-      postResults(cs+1:cs+ns) = results(instance)%rhoDotAthermalAnnihilation(1:ns,1,of) & 
-                              + results(instance)%rhoDotAthermalAnnihilation(1:ns,2,of)
-      cs = cs + ns
-
-    case (rho_dot_ann_the_edge_ID) 
-      postResults(cs+1:cs+ns) = results(instance)%rhoDotThermalAnnihilation(1:ns,1,of) 
-      cs = cs + ns
-
-    case (rho_dot_ann_the_screw_ID) 
-      postResults(cs+1:cs+ns) = results(instance)%rhoDotThermalAnnihilation(1:ns,2,of)
-      cs = cs + ns
-
-    case (rho_dot_edgejogs_ID) 
-      postResults(cs+1:cs+ns) = results(instance)%rhoDotEdgeJogs(1:ns,of)
-      cs = cs + ns
-
-    case (rho_dot_flux_mobile_ID)
-      postResults(cs+1:cs+ns) = sum(results(instance)%rhoDotFlux(1:ns,1:4,of),2)
-      cs = cs + ns
-    
-    case (rho_dot_flux_edge_ID)
-      postResults(cs+1:cs+ns) = sum(results(instance)%rhoDotFlux(1:ns,1:2,of),2) &
-                              + sum(results(instance)%rhoDotFlux(1:ns,5:6,of)*sign(1.0_pReal,rhoSgl(1:ns,5:6)),2)
-      cs = cs + ns
-      
-    case (rho_dot_flux_screw_ID)
-      postResults(cs+1:cs+ns) = sum(results(instance)%rhoDotFlux(1:ns,3:4,of),2) &
-                              + sum(results(instance)%rhoDotFlux(1:ns,7:8,of)*sign(1.0_pReal,rhoSgl(1:ns,7:8)),2)
-      cs = cs + ns
-            
     case (velocity_edge_pos_ID)
       postResults(cs+1:cs+ns) = v(1:ns,1)
       cs = cs + ns
