@@ -76,17 +76,6 @@ module crystallite
     crystallite_todo, &                                                                             !< flag to indicate need for further computation
     crystallite_localPlasticity                                                                     !< indicates this grain to have purely local constitutive law
  
-  enum, bind(c)
-    enumerator :: undefined_ID, &
-                  orientation_ID, &
-                  defgrad_ID, &
-                  fp_ID, &
-                  p_ID, &
-                  elasmatrix_ID
-  end enum
-  integer(kind(undefined_ID)),dimension(:,:),   allocatable :: &
-    crystallite_outputID                                                                            !< ID of each post result output
-    
   type :: tOutput                                                                                   !< new requested output (per phase)
     character(len=65536), allocatable, dimension(:) :: &
       label
@@ -136,15 +125,10 @@ subroutine crystallite_init
     c, &                                                                                            !< counter in integration point component loop
     i, &                                                                                            !< counter in integration point loop
     e, &                                                                                            !< counter in element loop
-    o = 0, &                                                                                        !< counter in output loop
-    r, &  
     cMax, &                                                                                         !< maximum number of  integration point components
     iMax, &                                                                                         !< maximum number of integration points
     eMax, &                                                                                         !< maximum number of elements
-    myNcomponents, &                                                                                !< number of components at current IP
-    mySize
- 
-  character(len=65536), dimension(:), allocatable :: str
+    myNcomponents                                                                                   !< number of components at current IP
  
   write(6,'(/,a)')   ' <<<+-  crystallite init  -+>>>'
  
@@ -763,10 +747,7 @@ function crystallite_postResults(ipc, ip, el)
                            sum(sourceState(material_phaseAt(ipc,el))%p(:)%sizePostResults)) :: &
     crystallite_postResults
   integer :: &
-    o, &
-    c, &
-    mySize, &
-    n
+    c
 
 
   crystallite_postResults = 0.0_pReal
