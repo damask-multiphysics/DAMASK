@@ -30,7 +30,9 @@ class DADF5():
     """
     with h5py.File(filename,'r') as f:
       
-      if f.attrs['DADF5-major'] != 0 or not 2 <= f.attrs['DADF5-minor'] <= 4:
+      self.DADF5-major = f.attrs['DADF5-major']
+      self.DADF5-minor = f.attrs['DADF5-minor']
+      if self.DADF5-major != 0 or not 2 <= self.DADF5-minor <= 4:
         raise TypeError('Unsupported DADF5 version {} '.format(f.attrs['DADF5-version']))
     
       self.structured = 'grid' in f['geometry'].attrs.keys()
@@ -166,7 +168,10 @@ class DADF5():
       end increment (included)
 
     """
-    self.__manage_visible(['inc{}'.format(i) for i in range(start,end+1)],'increments','set')
+    if self.DADF5-minor >= 4:
+      self.__manage_visible([    'inc{}'.format(i) for i in range(start,end+1)],'increments','set')
+    else:
+      self.__manage_visible(['inc{:05d}'.format(i) for i in range(start,end+1)],'increments','set')
 
 
   def add_by_increment(self,start,end):
@@ -181,7 +186,10 @@ class DADF5():
       end increment (included)
 
     """
-    self.__manage_visible(['inc{}'.format(i) for i in range(start,end+1)],'increments','add')
+    if self.DADF5-minor >= 4:
+      self.__manage_visible([    'inc{}'.format(i) for i in range(start,end+1)],'increments','add')
+    else:
+      self.__manage_visible(['inc{:05d}'.format(i) for i in range(start,end+1)],'increments','add')
 
 
   def del_by_increment(self,start,end):
@@ -196,7 +204,10 @@ class DADF5():
       end increment (included)
 
     """
-    self.__manage_visible(['inc{}'.format(i) for i in range(start,end+1)],'increments','del')
+    if self.DADF5-minor >= 4:
+      self.__manage_visible([    'inc{}'.format(i) for i in range(start,end+1)],'increments','del')
+    else:
+      self.__manage_visible(['inc{:05d}'.format(i) for i in range(start,end+1)],'increments','del')
 
 
   def iter_visible(self,what):
