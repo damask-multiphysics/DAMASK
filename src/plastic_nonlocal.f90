@@ -189,7 +189,11 @@ module plastic_nonlocal
           rho_dip_scr, &
         rho_forest, &
       accumulatedshear, &
-      v
+      v, &
+          v_edg_pos, &
+          v_edg_neg, &
+          v_scr_pos, &
+          v_scr_neg
   end type tNonlocalState
   
   type(tNonlocalState), allocatable, dimension(:), private :: &
@@ -595,6 +599,10 @@ subroutine plastic_nonlocal_init
      
     stt%rho_forest => plasticState(p)%state                 (11*prm%totalNslip + 1:12*prm%totalNslip ,1:NofMyPhase)
     stt%v          => plasticState(p)%state                 (12*prm%totalNslip + 1:16*prm%totalNslip ,1:NofMyPhase)
+        stt%v_edg_pos  => plasticState(p)%state             (12*prm%totalNslip + 1:13*prm%totalNslip ,1:NofMyPhase)
+        stt%v_edg_neg  => plasticState(p)%state             (13*prm%totalNslip + 1:14*prm%totalNslip ,1:NofMyPhase)
+        stt%v_scr_pos  => plasticState(p)%state             (14*prm%totalNslip + 1:15*prm%totalNslip ,1:NofMyPhase)
+        stt%v_scr_neg  => plasticState(p)%state             (15*prm%totalNslip + 1:16*prm%totalNslip ,1:NofMyPhase)
 
     allocate(dst%tau_Threshold(prm%totalNslip,NofMyPhase),source=0.0_pReal)
     allocate(dst%tau_Back(prm%totalNslip,NofMyPhase),     source=0.0_pReal)
@@ -1159,7 +1167,7 @@ subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
   of = material_phasememberAt(1,ip,el)
   
   instance = phase_plasticityInstance(ph)
-  associate(prm => param(instance),dst=>microstructure(instance))
+  associate(prm => param(instance),dst=>microstructure(instance),stt=>state(instance))
   ns = prm%totalNslip
   
   !*** shortcut to state variables 
@@ -1210,11 +1218,8 @@ subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
                                             2 , Temperature, instance, of)
     enddo
   endif
-  
-  
-  !*** store velocity in state
-  forall (t = 1:4) &
-    plasticState(ph)%state(iV(1:ns,t,instance),of) = v(1:ns,t)
+
+  stt%v(:,of) = pack(v,.true.)
   
   !*** Bauschinger effect
   forall (s = 1:ns, t = 5:8, rhoSgl(s,t) * v(s,t-4) < 0.0_pReal) &
@@ -1975,8 +1980,6 @@ function plastic_nonlocal_postResults(ph,instance,of) result(postResults)
  real(pReal), dimension(param(instance)%totalNslip,8) :: &
    rhoSgl, &
    rhoDotSgl                                                                                        !< evolution rate of single dislocation densities (positive/negative screw and edge without dipoles)
- real(pReal), dimension(param(instance)%totalNslip,4) :: &
-   v                                                                                                !< velocities
  real(pReal), dimension(param(instance)%totalNslip,2) :: &
    rhoDotDip                                                                                        !< evolution rate of dipole dislocation densities (screw and edge dipoles)
 
@@ -1989,7 +1992,6 @@ associate(prm => param(instance),dst => microstructure(instance),stt=>state(inst
 
 forall (s = 1:ns, t = 1:4)
   rhoSgl(s,t+4)    = plasticState(ph)%State(iRhoB(s,t,instance),of)
-  v(s,t)           = plasticState(ph)%State(iV(s,t,instance),of)
   rhoDotSgl(s,t+4) = plasticState(ph)%dotState(iRhoB(s,t,instance),of)
 endforall
 forall (s = 1:ns, c = 1:2)
@@ -2065,19 +2067,19 @@ outputsLoop: do o = 1,size(param(instance)%outputID)
       cs = cs + ns
 
     case (v_edg_pos_ID)
-      postResults(cs+1:cs+ns) = v(1:ns,1)
+      postResults(cs+1:cs+ns) = stt%v_edg_pos(:,of)
       cs = cs + ns
     
     case (v_edg_neg_ID)
-      postResults(cs+1:cs+ns) = v(1:ns,2)
+      postResults(cs+1:cs+ns) = stt%v_edg_neg(:,of)
       cs = cs + ns
     
     case (v_scr_pos_ID)
-      postResults(cs+1:cs+ns) = v(1:ns,3)
+      postResults(cs+1:cs+ns) = stt%v_scr_pos(:,of)
       cs = cs + ns
     
     case (v_scr_neg_ID)
-      postResults(cs+1:cs+ns) = v(1:ns,4)
+      postResults(cs+1:cs+ns) = stt%v_scr_neg(:,of)
       cs = cs + ns
 
     case(accumulatedshear_ID)
@@ -2163,6 +2165,18 @@ subroutine plastic_nonlocal_results(instance,group)
       case (rho_forest_ID)
         call results_writeDataset(group,stt%rho_forest, 'rho_forest',&
                                   'forest density','1/m²')
+      case (v_edg_pos_ID)
+        call results_writeDataset(group,stt%v_edg_pos, 'v_edg_pos',&
+                                  'positive edge velocity','m/s')
+      case (v_edg_neg_ID)
+        call results_writeDataset(group,stt%v_edg_neg, 'v_edg_neg',&
+                                  'negative edge velocity','m/s')
+      case (v_scr_pos_ID)
+        call results_writeDataset(group,stt%v_scr_pos, 'v_scr_pos',&
+                                  'positive srew velocity','m/s')
+      case (v_scr_neg_ID)
+        call results_writeDataset(group,stt%v_scr_neg, 'v_scr_neg',&
+                                  'negative screw velocity','m/s')
     end select
   enddo outputsLoop
   end associate
