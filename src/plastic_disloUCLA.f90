@@ -480,7 +480,7 @@ subroutine plastic_disloUCLA_results(instance,group)
         call results_writeDataset(group,stt%rho_dip,'rho_dip',&
                                   'dislocation dipole density''1/m²')
       case (dot_gamma_sl_ID)
-        call results_writeDataset(group,stt%gamma_sl,'dot_gamma_sl',&
+        call results_writeDataset(group,stt%gamma_sl,'dot_gamma_sl',&   ! this is not dot!!
                                   'plastic shear','1')
       case (Lambda_sl_ID)
         call results_writeDataset(group,dst%Lambda_sl,'Lambda_sl',&

@@ -90,7 +90,7 @@ module plastic_nonlocal
       v_edg_neg_ID, &
       v_scr_pos_ID, &
       v_scr_neg_ID, &
-      accumulatedshear_ID
+      gamma_ID
   end enum
   
   type, private :: tParameters                                                                      !< container type for internal constitutive parameters
@@ -188,7 +188,7 @@ module plastic_nonlocal
           rho_dip_edg, &
           rho_dip_scr, &
         rho_forest, &
-      accumulatedshear, &
+      gamma, &
       v, &
           v_edg_pos, &
           v_edg_neg, &
@@ -494,7 +494,7 @@ subroutine plastic_nonlocal_init
         case ('velocity_screw_neg')
           outputID = merge(v_scr_neg_ID,undefined_ID,prm%totalNslip>0)
         case ('accumulatedshear','accumulated_shear')
-          outputID = merge(accumulatedshear_ID,undefined_ID,prm%totalNslip>0)
+          outputID = merge(gamma_ID,undefined_ID,prm%totalNslip>0)
       end select
 
       if (outputID /= undefined_ID) then
@@ -513,7 +513,7 @@ subroutine plastic_nonlocal_init
                                 'rhoSglEdgePosImmobile ','rhoSglEdgeNegImmobile ', &
                                 'rhoSglScrewPosImmobile','rhoSglScrewNegImmobile', &
                                 'rhoDipEdge            ','rhoDipScrew           ', &
-                                'accumulatedshear      ' ]) * prm%totalNslip                        !< "basic" microstructural state variables that are independent from other state variables
+                                'gamma                 ' ]) * prm%totalNslip                        !< "basic" microstructural state variables that are independent from other state variables
     sizeDependentState = size([ 'rhoForest   ']) * prm%totalNslip                                   !< microstructural state variables that depend on other state variables
     sizeState          = sizeDotState + sizeDependentState &
                        + size([ 'velocityEdgePos     ','velocityEdgeNeg     ', & 
@@ -590,9 +590,9 @@ subroutine plastic_nonlocal_init
         dot%rho_dip_scr => plasticState(p)%dotState               (9*prm%totalNslip+1:10*prm%totalNslip,:)
         del%rho_dip_scr => plasticState(p)%deltaState             (9*prm%totalNslip+1:10*prm%totalNslip,:)
      
-    stt%accumulatedshear => plasticState(p)%state           (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
-    dot%accumulatedshear => plasticState(p)%dotState        (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
-    del%accumulatedshear => plasticState(p)%deltaState      (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
+    stt%gamma => plasticState(p)%state                      (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
+    dot%gamma => plasticState(p)%dotState                   (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
+    del%gamma => plasticState(p)%deltaState                 (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
     plasticState(p)%aTolState(10*prm%totalNslip + 1:11*prm%totalNslip )  = prm%aTolShear
     plasticState(p)%slipRate => plasticState(p)%dotState    (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
     plasticState(p)%accumulatedSlip => plasticState(p)%state(10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
@@ -1803,7 +1803,7 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
   else
     dot%rho(:,o) = pack(rhoDot,.true.)
     forall (s = 1:ns) &
-      dot%accumulatedshear(s,o) = sum(gdot(s,1:4))
+      dot%gamma(s,o) = sum(gdot(s,1:4))
   endif
 
   end associate
@@ -2082,8 +2082,8 @@ outputsLoop: do o = 1,size(param(instance)%outputID)
       postResults(cs+1:cs+ns) = stt%v_scr_neg(:,of)
       cs = cs + ns
 
-    case(accumulatedshear_ID)
-      postResults(cs+1:cs+ns) = stt%accumulatedshear(:,of)
+    case(gamma_ID)
+      postResults(cs+1:cs+ns) = stt%gamma(:,of)
       cs = cs + ns
     
   end select
@@ -2177,6 +2177,9 @@ subroutine plastic_nonlocal_results(instance,group)
       case (v_scr_neg_ID)
         call results_writeDataset(group,stt%v_scr_neg, 'v_scr_neg',&
                                   'negative screw velocity','m/s')
+      case(gamma_ID)
+        call results_writeDataset(group,stt%gamma,'gamma',&
+                                  'plastic shear','1')
     end select
   enddo outputsLoop
   end associate
