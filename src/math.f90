@@ -840,6 +840,7 @@ end function math_Voigt66to3333
 
 !--------------------------------------------------------------------------------------------------
 !> @brief action of a quaternion on a vector (rotate vector v with Q)
+!> @details deprecated
 !--------------------------------------------------------------------------------------------------
 pure function math_qRot(Q,v)
 
@@ -1329,6 +1330,7 @@ end function math_areaTriangle
 
 !--------------------------------------------------------------------------------------------------
 !> @brief rotate 33 tensor forward
+!> @details deprecated
 !--------------------------------------------------------------------------------------------------
 pure function math_rotate_forward33(tensor,R)
 
@@ -1342,6 +1344,7 @@ end function math_rotate_forward33
 
 !--------------------------------------------------------------------------------------------------
 !> @brief rotate 33 tensor backward
+!> @details deprecated
 !--------------------------------------------------------------------------------------------------
 pure function math_rotate_backward33(tensor,R)
 
@@ -1355,6 +1358,7 @@ end function math_rotate_backward33
 
 !--------------------------------------------------------------------------------------------------
 !> @brief rotate 3333 tensor C'_ijkl=g_im*g_jn*g_ko*g_lp*C_mnop
+!> @details deprecated
 !--------------------------------------------------------------------------------------------------
 pure function math_rotate_forward3333(tensor,R)
 
