@@ -86,10 +86,10 @@ module plastic_nonlocal
       rho_dot_sgl_ID, &
       rho_dot_sgl_mobile_ID, &
       rho_dot_dip_ID, &
-      velocity_edge_pos_ID, &
-      velocity_edge_neg_ID, &
-      velocity_screw_pos_ID, &
-      velocity_screw_neg_ID, &
+      v_edg_pos_ID, &
+      v_edg_neg_ID, &
+      v_scr_pos_ID, &
+      v_scr_neg_ID, &
       accumulatedshear_ID
   end enum
   
@@ -482,13 +482,13 @@ subroutine plastic_nonlocal_init
         case ('rho_dot_dip')
           outputID = merge(rho_dot_dip_ID,undefined_ID,prm%totalNslip>0)
         case ('velocity_edge_pos')
-          outputID = merge(velocity_edge_pos_ID,undefined_ID,prm%totalNslip>0)
+          outputID = merge(v_edg_pos_ID,undefined_ID,prm%totalNslip>0)
         case ('velocity_edge_neg')
-          outputID = merge(velocity_edge_neg_ID,undefined_ID,prm%totalNslip>0)
+          outputID = merge(v_edg_neg_ID,undefined_ID,prm%totalNslip>0)
         case ('velocity_screw_pos')
-          outputID = merge(velocity_screw_pos_ID,undefined_ID,prm%totalNslip>0)
+          outputID = merge(v_scr_pos_ID,undefined_ID,prm%totalNslip>0)
         case ('velocity_screw_neg')
-          outputID = merge(velocity_screw_neg_ID,undefined_ID,prm%totalNslip>0)
+          outputID = merge(v_scr_neg_ID,undefined_ID,prm%totalNslip>0)
         case ('accumulatedshear','accumulated_shear')
           outputID = merge(accumulatedshear_ID,undefined_ID,prm%totalNslip>0)
       end select
@@ -2064,19 +2064,19 @@ outputsLoop: do o = 1,size(param(instance)%outputID)
       postResults(cs+1:cs+ns) = sum(rhoDotDip,2)
       cs = cs + ns
 
-    case (velocity_edge_pos_ID)
+    case (v_edg_pos_ID)
       postResults(cs+1:cs+ns) = v(1:ns,1)
       cs = cs + ns
     
-    case (velocity_edge_neg_ID)
+    case (v_edg_neg_ID)
       postResults(cs+1:cs+ns) = v(1:ns,2)
       cs = cs + ns
     
-    case (velocity_screw_pos_ID)
+    case (v_scr_pos_ID)
       postResults(cs+1:cs+ns) = v(1:ns,3)
       cs = cs + ns
     
-    case (velocity_screw_neg_ID)
+    case (v_scr_neg_ID)
       postResults(cs+1:cs+ns) = v(1:ns,4)
       cs = cs + ns
 
