@@ -30,7 +30,7 @@ module plastic_disloUCLA
       dot_gamma_sl_ID, &
       gamma_sl_ID, &
       Lambda_sl_ID, &
-      thresholdstress_ID
+      tau_pass_ID
   end enum
  
   type, private :: tParameters
@@ -274,7 +274,7 @@ subroutine plastic_disloUCLA_init()
         case ('mfp','mfp_slip')
           outputID = merge(Lambda_sl_ID,undefined_ID,prm%sum_N_sl>0)
         case ('threshold_stress','threshold_stress_slip')
-          outputID = merge(thresholdstress_ID,undefined_ID,prm%sum_N_sl>0)
+          outputID = merge(tau_pass_ID,undefined_ID,prm%sum_N_sl>0)
  
       end select
  
@@ -485,7 +485,7 @@ subroutine plastic_disloUCLA_results(instance,group)
       case (Lambda_sl_ID)
         call results_writeDataset(group,dst%Lambda_sl,'Lambda_sl',&
                                   'mean free path for slip','m')
-      case (thresholdstress_ID)
+      case (tau_pass_ID)
         call results_writeDataset(group,dst%threshold_stress,'tau_pass',&
                                   'threshold stress for slip','Pa')
     end select

@@ -82,7 +82,7 @@ module plastic_nonlocal
       rho_dip_scr_ID, &
       rho_forest_ID, &
       resolvedstress_back_ID, &
-      resistance_ID, &
+      tau_pass_ID, &
       rho_dot_sgl_ID, &
       rho_dot_sgl_mobile_ID, &
       rho_dot_dip_ID, &
@@ -166,7 +166,7 @@ module plastic_nonlocal
    
   type, private :: tNonlocalMicrostructure
     real(pReal), allocatable, dimension(:,:) :: &
-     tau_Threshold, & 
+     tau_pass, & 
      tau_Back 
   end type tNonlocalMicrostructure
   
@@ -478,7 +478,7 @@ subroutine plastic_nonlocal_init
         case ('resolvedstress_back')
           outputID = merge(resolvedstress_back_ID,undefined_ID,prm%totalNslip>0)
         case ('resistance')
-          outputID = merge(resistance_ID,undefined_ID,prm%totalNslip>0)
+          outputID = merge(tau_pass_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_dot_sgl')
           outputID = merge(rho_dot_sgl_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_dot_sgl_mobile')
@@ -604,7 +604,7 @@ subroutine plastic_nonlocal_init
         stt%v_scr_pos  => plasticState(p)%state             (14*prm%totalNslip + 1:15*prm%totalNslip ,1:NofMyPhase)
         stt%v_scr_neg  => plasticState(p)%state             (15*prm%totalNslip + 1:16*prm%totalNslip ,1:NofMyPhase)
 
-    allocate(dst%tau_Threshold(prm%totalNslip,NofMyPhase),source=0.0_pReal)
+    allocate(dst%tau_pass(prm%totalNslip,NofMyPhase),source=0.0_pReal)
     allocate(dst%tau_Back(prm%totalNslip,NofMyPhase),     source=0.0_pReal)
     end associate
 
@@ -851,7 +851,7 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
   endif
 
   forall (s = 1:ns) &
-    dst%tau_threshold(s,of) = prm%mu * prm%burgers(s) &
+    dst%tau_pass(s,of) = prm%mu * prm%burgers(s) &
                   * sqrt(dot_product(sum(abs(rho),2), myInteractionMatrix(1:ns,s)))
 
 
@@ -968,7 +968,7 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
              .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0)) then
     write(6,'(/,a,i8,1x,i2,1x,i1,/)') '<< CONST >> nonlocal_microstructure at el ip ',el,ip
     write(6,'(a,/,12x,12(e10.3,1x))') '<< CONST >> rhoForest', stt%rho_forest(:,of)
-    write(6,'(a,/,12x,12(f10.5,1x))') '<< CONST >> tauThreshold / MPa', dst%tau_threshold(:,of)*1e-6
+    write(6,'(a,/,12x,12(f10.5,1x))') '<< CONST >> tauThreshold / MPa', dst%tau_pass(:,of)*1e-6
     write(6,'(a,/,12x,12(f10.5,1x),/)') '<< CONST >> tauBack / MPa', dst%tau_back(:,of)*1e-6
   endif
 #endif
@@ -1198,7 +1198,7 @@ subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
   
   ! edges 
   call plastic_nonlocal_kinetics(v(1:ns,1), dv_dtau(1:ns,1), dv_dtauNS(1:ns,1), &
-                                      tau(1:ns), tauNS(1:ns,1), dst%tau_Threshold(1:ns,of), &
+                                      tau(1:ns), tauNS(1:ns,1), dst%tau_pass(1:ns,of), &
                                         1, Temperature, instance, of)
   v(1:ns,2) = v(1:ns,1)
   dv_dtau(1:ns,2) = dv_dtau(1:ns,1)
@@ -1214,7 +1214,7 @@ subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
   else
     do t = 3,4
       call plastic_nonlocal_kinetics(v(1:ns,t), dv_dtau(1:ns,t), dv_dtauNS(1:ns,t), &
-                                          tau(1:ns), tauNS(1:ns,t), dst%tau_Threshold(1:ns,of), &
+                                          tau(1:ns), tauNS(1:ns,t), dst%tau_pass(1:ns,of), &
                                             2 , Temperature, instance, of)
     enddo
   endif
@@ -2049,8 +2049,8 @@ outputsLoop: do o = 1,size(param(instance)%outputID)
       postResults(cs+1:cs+ns) = dst%tau_back(:,of)
       cs = cs + ns
       
-    case (resistance_ID)
-      postResults(cs+1:cs+ns) = dst%tau_Threshold(:,of)
+    case (tau_pass_ID)
+      postResults(cs+1:cs+ns) = dst%tau_pass(:,of)
       cs = cs + ns
       
     case (rho_dot_sgl_ID)
@@ -2129,7 +2129,7 @@ subroutine plastic_nonlocal_results(instance,group)
   character(len=*) :: group
   integer :: o
 
-  associate(prm => param(instance), stt => state(instance))
+  associate(prm => param(instance),dst => microstructure(instance),stt=>state(instance))
   outputsLoop: do o = 1,size(prm%outputID)
     select case(prm%outputID(o))
       case (rho_sgl_mob_edg_pos_ID)
@@ -2180,6 +2180,9 @@ subroutine plastic_nonlocal_results(instance,group)
       case(gamma_ID)
         call results_writeDataset(group,stt%gamma,'gamma',&
                                   'plastic shear','1')
+      case (tau_pass_ID)
+        call results_writeDataset(group,dst%tau_pass,'tau_pass',&
+                                  'passing stress for slip','Pa')
     end select
   enddo outputsLoop
   end associate
