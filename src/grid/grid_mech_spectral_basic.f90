@@ -173,8 +173,7 @@ subroutine grid_mech_spectral_basic_init
   call Utilities_updateCoords(reshape(F,shape(F_lastInc)))
   call Utilities_constitutiveResponse(P,temp33_Real,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
-                                      0.0_pReal, &                                                  ! time increment
-                                      math_I3)                                                      ! no rotation of boundary condition
+                                      0.0_pReal)                                                    ! time increment
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                ! deassociate pointer
  
   restartRead2: if (interface_restartInc > 0) then
@@ -225,7 +224,7 @@ function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_
 
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
-  S = utilities_maskedCompliance(rotation_BC%asMatrix(),stress_BC%maskLogical,C_volAvg)
+  S = utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
   if(num%update_gamma) call utilities_updateGamma(C_minMaxAvg)
 
 !--------------------------------------------------------------------------------------------------
@@ -457,7 +456,7 @@ subroutine formResidual(in, F, &
 ! evaluate constitutive response
   call utilities_constitutiveResponse(residuum, &                                                   ! "residuum" gets field of first PK stress (to save memory)
                                       P_av,C_volAvg,C_minMaxAvg, &
-                                      F,params%timeinc,params%rotation_BC%asMatrix())
+                                      F,params%timeinc,params%rotation_BC)
   call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
   
 !--------------------------------------------------------------------------------------------------

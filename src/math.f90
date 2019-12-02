@@ -1302,41 +1302,6 @@ end function math_areaTriangle
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief rotate 33 tensor forward
-!> @details deprecated
-!--------------------------------------------------------------------------------------------------
-pure function math_rotate_forward33(tensor,R)
-
-  real(pReal), dimension(3,3)             ::  math_rotate_forward33
-  real(pReal), dimension(3,3), intent(in) :: tensor, R
-
-  math_rotate_forward33 = matmul(R,matmul(tensor,transpose(R)))
-
-end function math_rotate_forward33
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief rotate 3333 tensor C'_ijkl=g_im*g_jn*g_ko*g_lp*C_mnop
-!> @details deprecated
-!--------------------------------------------------------------------------------------------------
-pure function math_rotate_forward3333(tensor,R)
-
-  real(pReal), dimension(3,3,3,3)             ::  math_rotate_forward3333
-  real(pReal), dimension(3,3),     intent(in) :: R
-  real(pReal), dimension(3,3,3,3), intent(in) :: tensor
-  integer :: i,j,k,l,m,n,o,p
-
-  math_rotate_forward3333 = 0.0_pReal
-  do i = 1,3;do j = 1,3;do k = 1,3;do l = 1,3
-  do m = 1,3;do n = 1,3;do o = 1,3;do p = 1,3
-    math_rotate_forward3333(i,j,k,l) = math_rotate_forward3333(i,j,k,l) &
-                                     + R(i,m) * R(j,n) * R(k,o) * R(l,p) * tensor(m,n,o,p)
-  enddo; enddo; enddo; enddo; enddo; enddo; enddo; enddo
-
-end function math_rotate_forward3333
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief limits a scalar value to a certain range (either one or two sided)
 ! Will return NaN if left > right
 !--------------------------------------------------------------------------------------------------

@@ -207,8 +207,7 @@ subroutine grid_mech_FEM_init
   call utilities_updateCoords(F)
   call utilities_constitutiveResponse(P_current,temp33_Real,C_volAvg,devNull, &                     ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       F, &                                                          ! target F
-                                      0.0_pReal, &                                                  ! time increment
-                                      math_I3)                                                      ! no rotation of boundary condition
+                                      0.0_pReal)                                                    ! time increment
   call DMDAVecRestoreArrayF90(mech_grid,solution_current,u_current,ierr)
   CHKERRQ(ierr)
   call DMDAVecRestoreArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr)
@@ -255,7 +254,7 @@ function grid_mech_FEM_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation
 
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
-  S = utilities_maskedCompliance(rotation_BC%asMatrix(),stress_BC%maskLogical,C_volAvg)
+  S = utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
 !--------------------------------------------------------------------------------------------------
 ! set module wide available data 
   params%stress_mask = stress_BC%maskFloat
@@ -507,7 +506,7 @@ subroutine formResidual(da_local,x_local, &
 ! evaluate constitutive response
   call Utilities_constitutiveResponse(P_current,&
                                       P_av,C_volAvg,devNull, &
-                                      F,params%timeinc,params%rotation_BC%asMatrix())
+                                      F,params%timeinc,params%rotation_BC)
   call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
   
 !--------------------------------------------------------------------------------------------------
