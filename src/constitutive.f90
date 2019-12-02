@@ -12,11 +12,8 @@ module constitutive
   use config
   use material
   use results
-  use HDF5_utilities
   use lattice
   use discretization
-  use plastic_dislotwin
-  use plastic_disloucla
   use plastic_nonlocal
   use geometry_plastic_nonlocal
   use source_thermal_dissipation
@@ -37,7 +34,6 @@ module constitutive
     constitutive_source_maxSizePostResults, &
     constitutive_source_maxSizeDotState
  
- 
   interface
 
     module subroutine plastic_none_init
@@ -51,7 +47,14 @@ module constitutive
     
     module subroutine plastic_kinehardening_init
     end subroutine plastic_kinehardening_init
+    
+    module subroutine plastic_dislotwin_init
+    end subroutine plastic_dislotwin_init
 
+    module subroutine plastic_disloUCLA_init
+    end subroutine plastic_disloUCLA_init
+    
+    
     module subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
       real(pReal), dimension(3,3),     intent(out) :: &
         Lp                                                                                          !< plastic velocity gradient
@@ -91,6 +94,36 @@ module constitutive
         of
     end subroutine plastic_kinehardening_LpAndItsTangent
 
+    module subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
+      real(pReal), dimension(3,3),     intent(out) :: &
+        Lp                                                                                          !< plastic velocity gradient
+      real(pReal), dimension(3,3,3,3), intent(out) :: &
+        dLp_dMp                                                                                     !< derivative of Lp with respect to the Mandel stress
+ 
+      real(pReal), dimension(3,3),     intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      real(pReal),                     intent(in) :: &
+        T
+      integer,                         intent(in) :: &
+        instance, &
+        of
+    end subroutine plastic_dislotwin_LpAndItsTangent
+    
+    pure module subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
+      real(pReal), dimension(3,3),     intent(out) :: &
+        Lp                                                                                          !< plastic velocity gradient
+      real(pReal), dimension(3,3,3,3), intent(out) :: &
+        dLp_dMp                                                                                     !< derivative of Lp with respect to the Mandel stress
+ 
+      real(pReal), dimension(3,3),     intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      real(pReal),                     intent(in) :: &
+        T
+      integer,                         intent(in) :: &
+        instance, &
+        of
+    end subroutine plastic_disloUCLA_LpAndItsTangent
+
 
     module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
       real(pReal), dimension(3,3),     intent(out) :: &
@@ -129,6 +162,41 @@ module constitutive
         instance, &
         of
     end subroutine plastic_kinehardening_dotState
+    
+    module subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
+      real(pReal), dimension(3,3),  intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      real(pReal),                  intent(in) :: &
+        T
+      integer,                      intent(in) :: &
+        instance, &
+        of
+    end subroutine plastic_dislotwin_dotState
+
+    module subroutine plastic_disloUCLA_dotState(Mp,T,instance,of)
+      real(pReal), dimension(3,3),  intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      real(pReal),                  intent(in) :: &
+        T
+      integer,                      intent(in) :: &
+        instance, &
+        of
+    end subroutine plastic_disloUCLA_dotState
+
+    
+    module subroutine plastic_dislotwin_dependentState(T,instance,of)
+      integer,       intent(in) :: &
+        instance, &
+        of
+      real(pReal),   intent(in) :: &
+        T
+    end subroutine plastic_dislotwin_dependentState
+    
+    module subroutine plastic_disloUCLA_dependentState(instance,of)
+      integer,       intent(in) :: &
+        instance, &
+        of
+    end subroutine plastic_disloUCLA_dependentState
 
 
     module subroutine plastic_kinehardening_deltaState(Mp,instance,of)
@@ -138,6 +206,16 @@ module constitutive
         instance, &
         of
     end subroutine plastic_kinehardening_deltaState
+
+
+    module function plastic_dislotwin_homogenizedC(ipc,ip,el) result(homogenizedC)
+      real(pReal), dimension(6,6) :: &
+        homogenizedC
+      integer,     intent(in) :: &
+        ipc, &                                                                                      !< component-ID of integration point
+        ip, &                                                                                       !< integration point
+        el                                                                                          !< element
+    end function plastic_dislotwin_homogenizedC
     
     
     module subroutine plastic_isotropic_results(instance,group)
@@ -154,6 +232,16 @@ module constitutive
       integer,          intent(in) :: instance
       character(len=*), intent(in) :: group
     end subroutine plastic_kinehardening_results
+    
+    module subroutine plastic_dislotwin_results(instance,group)
+      integer,          intent(in) :: instance
+      character(len=*), intent(in) :: group
+    end subroutine plastic_dislotwin_results
+    
+    module subroutine plastic_disloUCLA_results(instance,group)
+      integer,          intent(in) :: instance
+      character(len=*), intent(in) :: group
+    end subroutine plastic_disloUCLA_results
   
   end interface
   
@@ -810,11 +898,11 @@ subroutine constitutive_results
   character(len=256) :: group
   do p=1,size(config_name_phase)
     group = trim('current/constituent')//'/'//trim(config_name_phase(p))
-    call HDF5_closeGroup(results_addGroup(group))
+    call results_closeGroup(results_addGroup(group))
     
     group = trim(group)//'/plastic'
     
-    call HDF5_closeGroup(results_addGroup(group))  
+    call results_closeGroup(results_addGroup(group))  
     select case(phase_plasticity(p))
     
       case(PLASTICITY_ISOTROPIC_ID)

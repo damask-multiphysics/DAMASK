@@ -7,19 +7,7 @@
 !> @brief material subroutine incoprorating dislocation and twinning physics
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-module plastic_dislotwin
-  use prec
-  use debug
-  use math
-  use IO
-  use material
-  use config
-  use lattice
-  use discretization
-  use results
-
- implicit none
- private
+submodule(constitutive) plastic_dislotwin
 
  real(pReal), parameter :: &
    kB = 1.38e-23_pReal                                                                              !< Boltzmann constant in J/Kelvin
@@ -156,14 +144,6 @@ module plastic_dislotwin
    state
  type(tDislotwinMicrostructure), allocatable, dimension(:) :: dependentState
 
- public :: &
-   plastic_dislotwin_init, &
-   plastic_dislotwin_homogenizedC, &
-   plastic_dislotwin_dependentState, &
-   plastic_dislotwin_LpAndItsTangent, &
-   plastic_dislotwin_dotState, &
-   plastic_dislotwin_results
-
 contains
 
 
@@ -171,7 +151,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_dislotwin_init
+module subroutine plastic_dislotwin_init
 
  integer :: &
    Ninstance, &
@@ -576,14 +556,14 @@ end subroutine plastic_dislotwin_init
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the homogenized elasticity matrix
 !--------------------------------------------------------------------------------------------------
-function plastic_dislotwin_homogenizedC(ipc,ip,el) result(homogenizedC)
+module function plastic_dislotwin_homogenizedC(ipc,ip,el) result(homogenizedC)
  
  real(pReal), dimension(6,6) :: &
    homogenizedC
  integer,     intent(in) :: &
-   ipc, &                                                                                          !< component-ID of integration point
-   ip, &                                                                                           !< integration point
-   el                                                                                              !< element
+   ipc, &                                                                                           !< component-ID of integration point
+   ip, &                                                                                            !< integration point
+   el                                                                                               !< element
 
  integer :: i, &
             of
@@ -615,7 +595,7 @@ end function plastic_dislotwin_homogenizedC
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
+module subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
  
  real(pReal), dimension(3,3),     intent(out) :: Lp
  real(pReal), dimension(3,3,3,3), intent(out) :: dLp_dMp
@@ -730,7 +710,7 @@ end subroutine plastic_dislotwin_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
+module subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
 
  real(pReal), dimension(3,3),  intent(in):: &
    Mp                                                                                               !< Mandel stress
@@ -833,7 +813,7 @@ end subroutine plastic_dislotwin_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_dislotwin_dependentState(T,instance,of)
+module subroutine plastic_dislotwin_dependentState(T,instance,of)
 
  integer,       intent(in) :: &
    instance, &
@@ -925,11 +905,11 @@ end subroutine plastic_dislotwin_dependentState
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_dislotwin_results(instance,group)
+module subroutine plastic_dislotwin_results(instance,group)
 #if defined(PETSc) || defined(DAMASK_HDF5)
 
-  integer, intent(in) :: instance
-  character(len=*) :: group
+  integer,          intent(in) :: instance
+  character(len=*), intent(in) :: group
   integer :: o
 
   associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
@@ -1183,4 +1163,4 @@ pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,instance,of,&
 
 end subroutine kinetics_trans
 
-end module plastic_dislotwin
+end submodule plastic_dislotwin
