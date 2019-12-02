@@ -64,6 +64,7 @@ module rotations
       procedure, public :: asRodrigues
       procedure, public :: asMatrix
       !------------------------------------------
+      procedure, public :: fromQuaternion
       procedure, public :: fromEulers
       procedure, public :: fromAxisAngle
       procedure, public :: fromMatrix
@@ -156,6 +157,18 @@ end function asHomochoric
  
 !---------------------------------------------------------------------------------------------------
 ! Initialize rotation from different representations
+!---------------------------------------------------------------------------------------------------
+subroutine fromQuaternion(self,qu)
+
+  class(rotation), intent(out)          :: self
+  real(pReal), dimension(4), intent(in) :: qu
+
+  if (dNeq(norm2(qu),1.0)) &
+    call IO_error(402,ext_msg='fromQuaternion')
+
+  self%q = qu
+
+end subroutine fromQuaternion
 !---------------------------------------------------------------------------------------------------
 subroutine fromEulers(self,eu,degrees)
 
