@@ -26,13 +26,9 @@ module plastic_nonlocal
   private
   real(pReal), parameter, private :: &
     KB = 1.38e-23_pReal                                                                             !< Physical parameter, Boltzmann constant in J/Kelvin
- 
-  integer, dimension(:,:), allocatable, target, public :: &
-    plastic_nonlocal_sizePostResult                                                                 !< size of each post result output
   
   character(len=64), dimension(:,:), allocatable, target, public :: &
     plastic_nonlocal_output                                                                         !< name of each post result output
- 
 
   ! storage order of dislocation types
   integer, dimension(8), parameter :: &
@@ -268,7 +264,6 @@ subroutine plastic_nonlocal_init
   allocate(deltaState(maxNinstances))
   allocate(microstructure(maxNinstances))
 
-  allocate(plastic_nonlocal_sizePostResult(maxval(phase_Noutput), maxNinstances), source=0)
   allocate(plastic_nonlocal_output(maxval(phase_Noutput), maxNinstances))
            plastic_nonlocal_output = ''
   allocate(plastic_nonlocal_outputID(maxval(phase_Noutput), maxNinstances), source=undefined_ID)
@@ -498,7 +493,6 @@ subroutine plastic_nonlocal_init
 
       if (outputID /= undefined_ID) then
         plastic_nonlocal_output(i,phase_plasticityInstance(p)) = outputs(i)
-        plastic_nonlocal_sizePostResult(i,phase_plasticityInstance(p)) = prm%totalNslip
         prm%outputID = [prm%outputID , outputID]
       endif
 
@@ -524,7 +518,6 @@ subroutine plastic_nonlocal_init
                                        prm%totalNslip,0,0)    
     plasticState(p)%nonlocal = .true.
     plasticState(p)%offsetDeltaState = 0                                                            ! ToDo: state structure does not follow convention
-    plasticState(p)%sizePostResults = sum(plastic_nonlocal_sizePostResult(:,phase_plasticityInstance(p)))
     
     totalNslip(phase_plasticityInstance(p)) =  prm%totalNslip
     

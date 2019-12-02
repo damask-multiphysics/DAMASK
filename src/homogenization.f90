@@ -255,8 +255,8 @@ subroutine homogenization_init
   thermal_maxSizePostResults        = 0
   damage_maxSizePostResults         = 0
   do p = 1,size(config_homogenization)
-    thermal_maxSizePostResults        = max(thermal_maxSizePostResults,       thermalState     (p)%sizePostResults)
-    damage_maxSizePostResults         = max(damage_maxSizePostResults        ,damageState      (p)%sizePostResults)
+    thermal_maxSizePostResults      = max(thermal_maxSizePostResults, thermalState(p)%sizePostResults)
+    damage_maxSizePostResults       = max(damage_maxSizePostResults,  damageState (p)%sizePostResults)
   enddo
 
   materialpoint_sizeResults = 1 &                                                                   ! grain count
@@ -616,8 +616,8 @@ subroutine materialpoint_postResults
 
       grainLooping :do g = 1,myNgrains
         theSize = 1 + &
-                  1 + plasticState    (material_phaseAt(g,e))%sizePostResults + &
-                      sum(sourceState(material_phaseAt(g,e))%p(:)%sizePostResults)
+                  1 + &
+                  sum(sourceState(material_phaseAt(g,e))%p(:)%sizePostResults)
         materialpoint_results(thePos+1:thePos+theSize,i,e) = crystallite_postResults(g,i,e)        ! tell crystallite results
         thePos = thePos + theSize
       enddo grainLooping
