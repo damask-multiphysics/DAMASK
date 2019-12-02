@@ -18,7 +18,6 @@ module mesh
   use element
   use discretization
   use geometry_plastic_nonlocal
-  use HDF5_utilities
   use results
 
   implicit none
@@ -152,7 +151,7 @@ subroutine writeGeometry(elemType, &
 
 #if defined(DAMASK_HDF5)
   call results_openJobFile
-  call HDF5_closeGroup(results_addGroup('geometry'))
+  call results_closeGroup(results_addGroup('geometry'))
   
   connectivity_temp = connectivity_elem
   call results_writeDataset('geometry',connectivity_temp,'T_e',&
