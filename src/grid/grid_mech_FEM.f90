@@ -242,7 +242,8 @@ function grid_mech_FEM_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation
     timeinc_old                                                                                     !< time increment of last successful increment
   type(tBoundaryCondition),    intent(in) :: &
     stress_BC
-  real(pReal), dimension(3,3), intent(in) :: rotation_BC
+  type(rotation),              intent(in) :: &
+    rotation_BC
   type(tSolutionState)                    :: &
     solution
 !--------------------------------------------------------------------------------------------------
@@ -254,7 +255,7 @@ function grid_mech_FEM_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation
 
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
-  S = utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
+  S = utilities_maskedCompliance(rotation_BC%asMatrix(),stress_BC%maskLogical,C_volAvg)
 !--------------------------------------------------------------------------------------------------
 ! set module wide available data 
   params%stress_mask = stress_BC%maskFloat
@@ -297,7 +298,7 @@ subroutine grid_mech_FEM_forward(cutBack,guess,timeinc,timeinc_old,loadCaseTime,
   type(tBoundaryCondition),    intent(in) :: &
     stress_BC, &
     deformation_BC
-  real(pReal), dimension(3,3), intent(in) :: &
+  type(rotation),              intent(in) :: &
     rotation_BC
   PetscErrorCode :: ierr
   PetscScalar, pointer, dimension(:,:,:,:) :: &
@@ -482,7 +483,7 @@ subroutine formResidual(da_local,x_local, &
             trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter+1, '≤', itmax
     if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
-              ' deformation gradient aim (lab) =', transpose(math_rotate_backward33(F_aim,params%rotation_BC))
+              ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotTensor2(F_aim,active=.true.))
     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim       =', transpose(F_aim)
     flush(6)
@@ -498,7 +499,7 @@ subroutine formResidual(da_local,x_local, &
       x_elem(ctr,1:3) = x_scal(0:2,i+ii,j+jj,k+kk)
     enddo; enddo; enddo
     ii = i-xstart+1; jj = j-ystart+1; kk = k-zstart+1
-    F(1:3,1:3,ii,jj,kk) = math_rotate_backward33(F_aim,params%rotation_BC) + transpose(matmul(BMat,x_elem)) 
+    F(1:3,1:3,ii,jj,kk) = params%rotation_BC%rotTensor2(F_aim,active=.true.) + transpose(matmul(BMat,x_elem)) 
   enddo; enddo; enddo
   call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,ierr);CHKERRQ(ierr)
 
@@ -506,7 +507,7 @@ subroutine formResidual(da_local,x_local, &
 ! evaluate constitutive response
   call Utilities_constitutiveResponse(P_current,&
                                       P_av,C_volAvg,devNull, &
-                                      F,params%timeinc,params%rotation_BC)
+                                      F,params%timeinc,params%rotation_BC%asMatrix())
   call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
   
 !--------------------------------------------------------------------------------------------------

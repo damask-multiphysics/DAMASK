@@ -1316,20 +1316,6 @@ end function math_rotate_forward33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief rotate 33 tensor backward
-!> @details deprecated
-!--------------------------------------------------------------------------------------------------
-pure function math_rotate_backward33(tensor,R)
-
-  real(pReal), dimension(3,3)             ::  math_rotate_backward33
-  real(pReal), dimension(3,3), intent(in) :: tensor, R
-
-  math_rotate_backward33 = matmul(transpose(R),matmul(tensor,R))
-
-end function math_rotate_backward33
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief rotate 3333 tensor C'_ijkl=g_im*g_jn*g_ko*g_lp*C_mnop
 !> @details deprecated
 !--------------------------------------------------------------------------------------------------

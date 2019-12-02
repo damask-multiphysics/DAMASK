@@ -465,7 +465,7 @@ program DAMASK_spectral
                        cutBack,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
                        deformation_BC     = loadCases(currentLoadCase)%deformation, &
                        stress_BC          = loadCases(currentLoadCase)%stress, &
-                       rotation_BC        = loadCases(currentLoadCase)%rot%asMatrix())
+                       rotation_BC        = loadCases(currentLoadCase)%rot)
 
              case(FIELD_THERMAL_ID); call grid_thermal_spectral_forward(cutBack)
              case(FIELD_DAMAGE_ID);  call grid_damage_spectral_forward(cutBack)
@@ -484,7 +484,7 @@ program DAMASK_spectral
                  solres(field) = mech_solution (&
                                         incInfo,timeinc,timeIncOld, &
                                         stress_BC   = loadCases(currentLoadCase)%stress, &
-                                        rotation_BC = loadCases(currentLoadCase)%rot%asMatrix())
+                                        rotation_BC = loadCases(currentLoadCase)%rot)
 
                case(FIELD_THERMAL_ID)
                  solres(field) = grid_thermal_spectral_solution(timeinc,timeIncOld)
