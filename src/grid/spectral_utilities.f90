@@ -10,6 +10,7 @@ module spectral_utilities
 
   use prec
   use math
+  use rotations
   use IO
   use mesh_grid
   use numerics
@@ -90,7 +91,7 @@ module spectral_utilities
   end type tBoundaryCondition
 
   type, public :: tLoadCase
-    real(pReal), dimension (3,3) :: rotation               = math_I3                                !< rotation of BC
+    type(rotation)               :: rot                                                             !< rotation of BC
     type(tBoundaryCondition) ::     stress, &                                                       !< stress BC
                                     deformation                                                     !< deformation BC (Fdot or L)
     real(pReal) ::                  time                   = 0.0_pReal                              !< length of increment
