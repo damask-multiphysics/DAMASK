@@ -839,33 +839,6 @@ end function math_Voigt66to3333
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief action of a quaternion on a vector (rotate vector v with Q)
-!> @details deprecated
-!--------------------------------------------------------------------------------------------------
-pure function math_qRot(Q,v)
-
-  real(pReal), dimension(4), intent(in) :: Q
-  real(pReal), dimension(3), intent(in) :: v
-  real(pReal), dimension(3) :: math_qRot
-  real(pReal), dimension(4,4) :: T
-  integer :: i, j
-
-  do i = 1,4
-    do j = 1,i
-      T(i,j) = Q(i) * Q(j)
-    enddo
-  enddo
-
-  math_qRot = [-v(1)*(T(3,3)+T(4,4)) + v(2)*(T(3,2)-T(4,1)) + v(3)*(T(4,2)+T(3,1)), &
-                v(1)*(T(3,2)+T(4,1)) - v(2)*(T(2,2)+T(4,4)) + v(3)*(T(4,3)-T(2,1)), &
-                v(1)*(T(4,2)-T(3,1)) + v(2)*(T(4,3)+T(2,1)) - v(3)*(T(2,2)+T(3,3))]
-
-  math_qRot = 2.0_pReal * math_qRot + v
-
-end function math_qRot
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief rotation matrix from Bunge-Euler (3-1-3) angles (in radians)
 !> @details deprecated
 !--------------------------------------------------------------------------------------------------

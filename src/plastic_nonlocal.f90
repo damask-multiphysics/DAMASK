@@ -1836,8 +1836,6 @@ subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
     ns, &                                                                                           ! number of active slip systems
     s1, &                                                                                           ! slip system index (me)
     s2                                                                                              ! slip system index (my neighbor)
-  real(pReal), dimension(4) :: &
-    absoluteMisorientation                                                                          ! absolute misorientation (without symmetry) between me and my neighbor
   real(pReal), dimension(2,totalNslip(phase_plasticityInstance(material_phaseAt(1,e))),&
                            totalNslip(phase_plasticityInstance(material_phaseAt(1,e))),&
                            nIPneighbors) :: &  
@@ -1848,7 +1846,7 @@ subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
     nThresholdValues
   logical, dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,e)))) :: & 
     belowThreshold
-  type(rotation) :: rot
+  type(rotation) :: mis
 
   Nneighbors = nIPneighbors
   ph = material_phaseAt(1,e)
@@ -1914,18 +1912,17 @@ subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
     !* Finally the smallest compatibility value is decreased until the sum is exactly equal to one. 
     !* All values below the threshold are set to zero.
     else
-      rot = orientation(1,i,e)%misorientation(orientation(1,neighbor_i,neighbor_e))
-      absoluteMisorientation = rot%asQuaternion()
+      mis = orientation(1,i,e)%misorientation(orientation(1,neighbor_i,neighbor_e))
       mySlipSystems: do s1 = 1,ns
         neighborSlipSystems: do s2 = 1,ns
           my_compatibility(1,s2,s1,n) =  math_inner(prm%slip_normal(1:3,s1), &
-          math_qRot(absoluteMisorientation, prm%slip_normal(1:3,s2))) &
+                                                       mis%rotate(prm%slip_normal(1:3,s2))) &
                                   * abs(math_inner(prm%slip_direction(1:3,s1), &
-                                  math_qRot(absoluteMisorientation, prm%slip_direction(1:3,s2))))
+                                                       mis%rotate(prm%slip_direction(1:3,s2))))
           my_compatibility(2,s2,s1,n) = abs(math_inner(prm%slip_normal(1:3,s1), &
-          math_qRot(absoluteMisorientation, prm%slip_normal(1:3,s2)))) &
+                                                       mis%rotate(prm%slip_normal(1:3,s2)))) &
                                   * abs(math_inner(prm%slip_direction(1:3,s1), &
-                                  math_qRot(absoluteMisorientation, prm%slip_direction(1:3,s2))))
+                                                       mis%rotate(prm%slip_direction(1:3,s2))))
         enddo neighborSlipSystems
         
         my_compatibilitySum = 0.0_pReal
