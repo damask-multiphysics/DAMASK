@@ -21,7 +21,7 @@ module plastic_dislotwin
  implicit none
  private
 
- real(pReal),                                    parameter :: &
+ real(pReal), parameter :: &
    kB = 1.38e-23_pReal                                                                              !< Boltzmann constant in J/Kelvin
 
  enum, bind(c)

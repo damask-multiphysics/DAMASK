@@ -15,7 +15,6 @@ module constitutive
   use HDF5_utilities
   use lattice
   use discretization
-  use plastic_kinehardening
   use plastic_dislotwin
   use plastic_disloucla
   use plastic_nonlocal
@@ -49,7 +48,9 @@ module constitutive
     
     module subroutine plastic_phenopowerlaw_init
     end subroutine plastic_phenopowerlaw_init
-
+    
+    module subroutine plastic_kinehardening_init
+    end subroutine plastic_kinehardening_init
 
     module subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
       real(pReal), dimension(3,3),     intent(out) :: &
@@ -76,6 +77,19 @@ module constitutive
         instance, &
         of
     end subroutine plastic_phenopowerlaw_LpAndItsTangent
+    
+    pure module subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
+      real(pReal), dimension(3,3),     intent(out) :: &
+        Lp                                                                                          !< plastic velocity gradient
+      real(pReal), dimension(3,3,3,3), intent(out) :: &
+        dLp_dMp                                                                                     !< derivative of Lp with respect to the Mandel stress
+ 
+      real(pReal), dimension(3,3),     intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      integer,                         intent(in) :: &
+        instance, &
+        of
+    end subroutine plastic_kinehardening_LpAndItsTangent
 
 
     module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
@@ -108,6 +122,23 @@ module constitutive
         of
     end subroutine plastic_phenopowerlaw_dotState
     
+    module subroutine plastic_kinehardening_dotState(Mp,instance,of)
+      real(pReal), dimension(3,3),  intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      integer,                      intent(in) :: &
+        instance, &
+        of
+    end subroutine plastic_kinehardening_dotState
+
+
+    module subroutine plastic_kinehardening_deltaState(Mp,instance,of)
+      real(pReal), dimension(3,3),  intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      integer,                      intent(in) :: &
+        instance, &
+        of
+    end subroutine plastic_kinehardening_deltaState
+    
     
     module subroutine plastic_isotropic_results(instance,group)
       integer,          intent(in) :: instance
@@ -117,8 +148,13 @@ module constitutive
     module subroutine plastic_phenopowerlaw_results(instance,group)
       integer,          intent(in) :: instance
       character(len=*), intent(in) :: group
-    end subroutine plastic_phenopowerlaw_results    
-
+    end subroutine plastic_phenopowerlaw_results
+    
+    module subroutine plastic_kinehardening_results(instance,group)
+      integer,          intent(in) :: instance
+      character(len=*), intent(in) :: group
+    end subroutine plastic_kinehardening_results
+  
   end interface
   
   public :: &

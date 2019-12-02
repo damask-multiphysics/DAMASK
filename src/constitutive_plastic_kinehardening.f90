@@ -5,19 +5,7 @@
 !> @brief  Phenomenological crystal plasticity using a power law formulation for the shear rates
 !! and a Voce-type kinematic hardening rule
 !--------------------------------------------------------------------------------------------------
-module plastic_kinehardening
- use prec
- use debug
- use math
- use IO
- use material
- use config
- use lattice
- use discretization
- use results
-
- implicit none
- private
+submodule(constitutive) plastic_kinehardening
 
  enum, bind(c)
    enumerator :: &
@@ -80,13 +68,6 @@ module plastic_kinehardening
    deltaState, &
    state
 
- public :: &
-   plastic_kinehardening_init, &
-   plastic_kinehardening_LpAndItsTangent, &
-   plastic_kinehardening_dotState, &
-   plastic_kinehardening_deltaState, &
-   plastic_kinehardening_results
-
 contains
 
 
@@ -94,7 +75,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_kinehardening_init
+module subroutine plastic_kinehardening_init
 
  integer :: &
    Ninstance, &
@@ -304,7 +285,7 @@ end subroutine plastic_kinehardening_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-pure subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
+pure module subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
  real(pReal), dimension(3,3),     intent(out) :: &
    Lp                                                                                               !< plastic velocity gradient
@@ -346,7 +327,7 @@ end subroutine plastic_kinehardening_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_kinehardening_dotState(Mp,instance,of)
+module subroutine plastic_kinehardening_dotState(Mp,instance,of)
 
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
@@ -388,7 +369,7 @@ end subroutine plastic_kinehardening_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates (instantaneous) incremental change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_kinehardening_deltaState(Mp,instance,of)
+module subroutine plastic_kinehardening_deltaState(Mp,instance,of)
 
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
@@ -436,11 +417,11 @@ end subroutine plastic_kinehardening_deltaState
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_kinehardening_results(instance,group)
+module subroutine plastic_kinehardening_results(instance,group)
 #if defined(PETSc) || defined(DAMASK_HDF5)
 
-  integer, intent(in) :: instance
-  character(len=*) :: group
+  integer,          intent(in) :: instance
+  character(len=*), intent(in) :: group
   integer :: o
 
   associate(prm => param(instance), stt => state(instance))
@@ -548,4 +529,4 @@ pure subroutine kinetics(Mp,instance,of, &
 
 end subroutine kinetics
 
-end module plastic_kinehardening
+end submodule plastic_kinehardening
