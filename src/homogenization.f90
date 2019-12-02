@@ -262,9 +262,8 @@ subroutine homogenization_init
   materialpoint_sizeResults = 1 &                                                                   ! grain count
                             + 1 + thermal_maxSizePostResults        &
                                 + damage_maxSizePostResults         &
-                            + homogenization_maxNgrains * (1 &     ! crystallite size
-                                                         + 1 + constitutive_plasticity_maxSizePostResults & ! constitutive size & constitutive results
-                                                             + constitutive_source_maxSizePostResults)
+                            + homogenization_maxNgrains * (  1 &     ! crystallite size
+                                                           + 1 + constitutive_source_maxSizePostResults)
   allocate(materialpoint_results(materialpoint_sizeResults,discretization_nIP,discretization_nElem))
 
   write(6,'(/,a)')   ' <<<+-  homogenization init  -+>>>'
