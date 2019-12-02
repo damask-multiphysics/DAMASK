@@ -7,18 +7,7 @@
 !! resolving the stress on the slip systems. Will give the response of phenopowerlaw for an
 !! untextured polycrystal
 !--------------------------------------------------------------------------------------------------
-module plastic_isotropic
-  use prec
-  use debug
-  use math
-  use IO
-  use material
-  use config
-  use discretization
-  use results
- 
-  implicit none
-  private
+submodule(constitutive) plastic_isotropic
   
   enum, bind(c)
     enumerator :: &
@@ -64,20 +53,13 @@ module plastic_isotropic
    dotState, &
    state
 
- public :: &
-   plastic_isotropic_init, &
-   plastic_isotropic_LpAndItsTangent, &
-   plastic_isotropic_LiAndItsTangent, &
-   plastic_isotropic_dotState, &
-   plastic_isotropic_results
-
 contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_isotropic_init
+module subroutine plastic_isotropic_init
 
   integer :: &
     Ninstance, &
@@ -210,7 +192,7 @@ end subroutine plastic_isotropic_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
+module subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
  
   real(pReal), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
@@ -271,7 +253,7 @@ end subroutine plastic_isotropic_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
+module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
  
   real(pReal), dimension(3,3), intent(out) :: &
     Li                                                                                              !< inleastic velocity gradient
@@ -323,7 +305,7 @@ subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_isotropic_dotState(Mp,instance,of)
+module subroutine plastic_isotropic_dotState(Mp,instance,of)
  
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
@@ -372,7 +354,7 @@ end subroutine plastic_isotropic_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_isotropic_results(instance,group)
+module subroutine plastic_isotropic_results(instance,group)
 #if defined(PETSc) || defined(DAMASK_HDF5)
 
   integer, intent(in) :: instance
@@ -396,4 +378,4 @@ subroutine plastic_isotropic_results(instance,group)
 end subroutine plastic_isotropic_results
 
 
-end module plastic_isotropic
+end submodule plastic_isotropic

@@ -4,6 +4,7 @@
 !> @brief elasticity, plasticity, internal microstructure state
 !--------------------------------------------------------------------------------------------------
 module constitutive
+  use prec
   use math
   use debug
   use numerics
@@ -14,9 +15,6 @@ module constitutive
   use HDF5_utilities
   use lattice
   use discretization
-  use plastic_none
-  use plastic_isotropic
-  use plastic_phenopowerlaw
   use plastic_kinehardening
   use plastic_dislotwin
   use plastic_disloucla
@@ -40,6 +38,89 @@ module constitutive
     constitutive_source_maxSizePostResults, &
     constitutive_source_maxSizeDotState
  
+ 
+  interface
+
+    module subroutine plastic_none_init
+    end subroutine plastic_none_init
+    
+    module subroutine plastic_isotropic_init
+    end subroutine plastic_isotropic_init
+    
+    module subroutine plastic_phenopowerlaw_init
+    end subroutine plastic_phenopowerlaw_init
+
+
+    module subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
+      real(pReal), dimension(3,3),     intent(out) :: &
+        Lp                                                                                          !< plastic velocity gradient
+      real(pReal), dimension(3,3,3,3), intent(out) :: &
+        dLp_dMp                                                                                     !< derivative of Lp with respect to the Mandel stress
+ 
+      real(pReal), dimension(3,3),     intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      integer,                         intent(in) :: &
+        instance, &
+        of
+    end subroutine plastic_isotropic_LpAndItsTangent
+
+    pure module subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
+      real(pReal), dimension(3,3),     intent(out) :: &
+        Lp                                                                                          !< plastic velocity gradient
+      real(pReal), dimension(3,3,3,3), intent(out) :: &
+        dLp_dMp                                                                                     !< derivative of Lp with respect to the Mandel stress
+ 
+      real(pReal), dimension(3,3),     intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      integer,                         intent(in) :: &
+        instance, &
+        of
+    end subroutine plastic_phenopowerlaw_LpAndItsTangent
+
+
+    module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
+      real(pReal), dimension(3,3),     intent(out) :: &
+        Li                                                                                          !< inleastic velocity gradient
+      real(pReal), dimension(3,3,3,3), intent(out)  :: &
+        dLi_dMi                                                                                     !< derivative of Li with respect to Mandel stress
+ 
+      real(pReal), dimension(3,3),     intent(in) :: &
+        Mi                                                                                          !< Mandel stress 
+      integer,                         intent(in) :: &
+        instance, &
+        of
+    end subroutine plastic_isotropic_LiAndItsTangent
+    
+    
+    module subroutine plastic_isotropic_dotState(Mp,instance,of)
+      real(pReal), dimension(3,3),  intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      integer,                      intent(in) :: &
+        instance, &
+        of
+    end subroutine plastic_isotropic_dotState
+    
+    module subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
+      real(pReal), dimension(3,3),  intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      integer,                      intent(in) :: &
+        instance, &
+        of
+    end subroutine plastic_phenopowerlaw_dotState
+    
+    
+    module subroutine plastic_isotropic_results(instance,group)
+      integer,          intent(in) :: instance
+      character(len=*), intent(in) :: group
+    end subroutine plastic_isotropic_results
+    
+    module subroutine plastic_phenopowerlaw_results(instance,group)
+      integer,          intent(in) :: instance
+      character(len=*), intent(in) :: group
+    end subroutine plastic_phenopowerlaw_results    
+
+  end interface
+  
   public :: &
     constitutive_init, &
     constitutive_homogenizedC, &

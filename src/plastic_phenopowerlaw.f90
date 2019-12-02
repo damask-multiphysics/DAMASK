@@ -4,19 +4,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief  phenomenological crystal plasticity formulation using a powerlaw fitting
 !--------------------------------------------------------------------------------------------------
-module plastic_phenopowerlaw
- use prec
- use debug
- use math
- use IO
- use material
- use config
- use lattice
- use discretization
- use results
-
- implicit none
- private
+submodule(constitutive) plastic_phenopowerlaw
 
  enum, bind(c)
    enumerator :: &
@@ -91,12 +79,6 @@ module plastic_phenopowerlaw
    dotState, &
    state
 
- public :: &
-   plastic_phenopowerlaw_init, &
-   plastic_phenopowerlaw_LpAndItsTangent, &
-   plastic_phenopowerlaw_dotState, &
-   plastic_phenopowerlaw_results
-
 contains
 
 
@@ -104,7 +86,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_phenopowerlaw_init
+module subroutine plastic_phenopowerlaw_init
 
  integer :: &
    Ninstance, &
@@ -356,7 +338,7 @@ end subroutine plastic_phenopowerlaw_init
 !> @details asummes that deformation by dislocation glide affects twinned and untwinned volume
 !  equally (Taylor assumption). Twinning happens only in untwinned volume
 !--------------------------------------------------------------------------------------------------
-pure subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
+pure module subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
  real(pReal), dimension(3,3),     intent(out) :: &
    Lp                                                                                               !< plastic velocity gradient
@@ -407,7 +389,7 @@ end subroutine plastic_phenopowerlaw_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
+module subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
 
  real(pReal), dimension(3,3),  intent(in) :: &
    Mp                                                                                               !< Mandel stress
@@ -463,7 +445,7 @@ end subroutine plastic_phenopowerlaw_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_phenopowerlaw_results(instance,group)
+module subroutine plastic_phenopowerlaw_results(instance,group)
 #if defined(PETSc) || defined(DAMASK_HDF5)
 
   integer,          intent(in) :: instance
@@ -622,4 +604,4 @@ pure subroutine kinetics_twin(Mp,instance,of,&
 
 end subroutine kinetics_twin
 
-end module plastic_phenopowerlaw
+end submodule plastic_phenopowerlaw
