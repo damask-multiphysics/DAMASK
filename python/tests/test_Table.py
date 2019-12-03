@@ -6,7 +6,7 @@ from damask import Table
 @pytest.fixture
 def default():
     """Simple Table."""
-    x = np.ones(65).reshape((5,13))
+    x = np.ones((5,13))
     return Table(x,{'F':(3,3),'v':(3,),'s':(1,)},['test data','contains only ones'])
 
 
@@ -44,3 +44,14 @@ class TestTable:
         d = np.random.random((5,9))
         default.add_array('nine',d,'random data')
         assert np.allclose(d,default.get_array('nine'))
+
+
+    def test_invalid_initialization(self,default):
+        x = default.get_array('v')
+        with pytest.raises(IndexError):
+            Table(x,{'F':(3,3)})
+
+    def test_invalid_set(self,default):
+        x = default.get_array('v')
+        with pytest.raises(ValueError):
+            default.set_array('F',x,'does not work')
