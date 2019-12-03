@@ -308,13 +308,6 @@ nonlocal_densityConservation:
     - master
     - release
 
-Spectral_ipNeighborhood:
-  stage: grid
-  script: Spectral_ipNeighborhood/test.py
-  except:
-    - master
-    - release
-
 RGC_DetectChanges:
   stage: grid
   script: RGC_DetectChanges/test.py

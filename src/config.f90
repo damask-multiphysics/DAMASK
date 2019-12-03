@@ -85,6 +85,7 @@ subroutine config_init
       case (trim('crystallite'))
         call parse_materialConfig(config_name_crystallite,config_crystallite,line,fileContent(i+1:))
         if (verbose) write(6,'(a)') ' Crystallite    parsed'; flush(6)
+        deallocate(config_crystallite)
     
       case (trim('homogenization'))
         call parse_materialConfig(config_name_homogenization,config_homogenization,line,fileContent(i+1:))
@@ -102,27 +103,25 @@ subroutine config_init
     call IO_error(160,ext_msg='<homogenization>')
   if (.not. allocated(config_microstructure) .or. size(config_microstructure) < 1) &
     call IO_error(160,ext_msg='<microstructure>')
-  if (.not. allocated(config_crystallite)    .or. size(config_crystallite)    < 1) &
-    call IO_error(160,ext_msg='<crystallite>')
   if (.not. allocated(config_phase)          .or. size(config_phase)          < 1) &
     call IO_error(160,ext_msg='<phase>')
   if (.not. allocated(config_texture)        .or. size(config_texture)        < 1) &
     call IO_error(160,ext_msg='<texture>')
  
  
-   inquire(file='numerics.config', exist=fileExists)
-   if (fileExists) then
-     write(6,'(/,a)') ' reading numerics.config'; flush(6)
-     fileContent = IO_read_ASCII('numerics.config')
-     call parse_debugAndNumericsConfig(config_numerics,fileContent)
-   endif
+  inquire(file='numerics.config', exist=fileExists)
+  if (fileExists) then
+    write(6,'(/,a)') ' reading numerics.config'; flush(6)
+    fileContent = IO_read_ASCII('numerics.config')
+    call parse_debugAndNumericsConfig(config_numerics,fileContent)
+  endif
   
-   inquire(file='debug.config', exist=fileExists)
-   if (fileExists) then
-     write(6,'(/,a)') ' reading debug.config'; flush(6)
-     fileContent = IO_read_ASCII('debug.config')
-     call parse_debugAndNumericsConfig(config_debug,fileContent)
-   endif
+  inquire(file='debug.config', exist=fileExists)
+  if (fileExists) then
+    write(6,'(/,a)') ' reading debug.config'; flush(6)
+    fileContent = IO_read_ASCII('debug.config')
+    call parse_debugAndNumericsConfig(config_debug,fileContent)
+  endif
 
 contains
 
@@ -294,9 +293,6 @@ subroutine config_deallocate(what)
 
     case('material.config/microstructure')
       deallocate(config_microstructure)
-
-    case('material.config/crystallite')
-      deallocate(config_crystallite)
 
     case('material.config/homogenization')
       deallocate(config_homogenization)
