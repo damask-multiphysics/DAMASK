@@ -102,14 +102,21 @@ def displacement_fluct_node(size,F):
 
 def displacement_avg_node(size,F):
     F_avg = np.average(F,axis=(0,1,2))
-    return np.einsum('ml,ijkl->ijkm',F_avg-np.eye(3),coord0_node(F.shape[0:3],size))
+    return np.einsum('ml,ijkl->ijkm',F_avg-np.eye(3),coord0_node(F.shape[:3],size))
 
 
 def cell_2_node(cell_data):
     """Interpolate cell data to nodal data."""
-  
     n = (  cell_data + np.roll(cell_data,1,(0,1,2))
          + np.roll(cell_data,1,(0,))  + np.roll(cell_data,1,(1,))  + np.roll(cell_data,1,(2,))
-         + np.roll(cell_data,1,(0,1)) + np.roll(cell_data,1,(1,2)) + np.roll(cell_data,1,(2,0))) *0.125
+         + np.roll(cell_data,1,(0,1)) + np.roll(cell_data,1,(1,2)) + np.roll(cell_data,1,(2,0)))*0.125
   
     return np.pad(n,((0,1),(0,1),(0,1))+((0,0),)*len(cell_data.shape[3:]),mode='wrap')
+
+def node_2_cell(node_data):
+    """Interpolate nodal data to cell data."""
+    c = (  node_data + np.roll(node_data,1,(0,1,2))
+         + np.roll(node_data,1,(0,))  + np.roll(node_data,1,(1,))  + np.roll(node_data,1,(2,))
+         + np.roll(node_data,1,(0,1)) + np.roll(node_data,1,(1,2)) + np.roll(node_data,1,(2,0)))*0.125
+  
+    return c[:-1,:-1,:-1]
