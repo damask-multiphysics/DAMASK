@@ -72,14 +72,6 @@ class TestDADF5:
         in_file   = default.read_dataset(loc['|Fe|'],0)
         assert np.allclose(in_memory,in_file)
 
-    def test_add_determinant(self,default):
-        default.add_determinant('P')
-        loc = {'P':      default.get_dataset_location('P'),
-               'det(P)': default.get_dataset_location('det(P)')}
-        in_memory = np.linalg.det(default.read_dataset(loc['P'],0)).reshape(-1,1)
-        in_file   = default.read_dataset(loc['det(P)'],0)
-        assert np.allclose(in_memory,in_file)
-
     def test_add_spherical(self,default):
         default.add_spherical('P')
         loc = {'P':   default.get_dataset_location('P'),
