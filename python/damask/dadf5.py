@@ -437,6 +437,76 @@ class DADF5():
     else:
       with h5py.File(self.filename,'r') as f:
         return f['geometry/x_c'][()]
+    
+    
+  def add_absolute(self,x):
+    """
+    Add absolute value.
+
+    Parameters
+    ----------
+    x : str
+      Label of the dataset containing a scalar, vector, or tensor.
+
+    """
+    def __add_absolute(x):
+
+      return {
+              'data':  np.abs(x['data']),
+              'label': '|{}|'.format(x['label']),
+              'meta':  {
+                        'Unit':        x['meta']['Unit'],
+                        'Description': 'Absolute value of {} ({})'.format(x['label'],x['meta']['Description']),
+                        'Creator':     'dadf5.py:add_abs v{}'.format(version)
+                        }
+               }
+
+    requested = [{'label':x,'arg':'x'}]
+    
+    self.__add_generic_pointwise(__add_absolute,requested)
+    
+
+  def add_calculation(self,formula,label,unit='n/a',description=None,vectorized=True):
+    """
+    Add result of a general formula.
+    
+    Parameters
+    ----------
+    formula : str
+      Formula, refer to datasets by ‘#Label#‘.
+    label : str
+      Label of the dataset containing the result of the calculation.
+    unit : str, optional
+      Physical unit of the result.
+    description : str, optional
+      Human readable description of the result.
+    vectorized : bool, optional
+      Indicate whether the formula is written in vectorized form. Default is ‘True’.
+
+    """
+    if vectorized is not True:
+      raise NotImplementedError
+    
+    def __add_calculation(**kwargs):
+      
+      formula = kwargs['formula']
+      for d in re.findall(r'#(.*?)#',formula):
+        formula = formula.replace('#{}#'.format(d),"kwargs['{}']['data']".format(d))
+        
+      return {
+              'data':  eval(formula), 
+              'label': kwargs['label'],
+              'meta':  {
+                        'Unit':        kwargs['unit'],
+                        'Description': '{} (formula: {})'.format(kwargs['description'],kwargs['formula']),
+                        'Creator':     'dadf5.py:add_calculation v{}'.format(version)
+                        }
+               }
+    
+    requested    = [{'label':d,'arg':d} for d in set(re.findall(r'#(.*?)#',formula))]               # datasets used in the formula
+    pass_through = {'formula':formula,'label':label,'unit':unit,'description':description} 
+    
+    self.__add_generic_pointwise(__add_calculation,requested,pass_through)
 
 
   def add_Cauchy(self,P='P',F='F'):
@@ -468,6 +538,90 @@ class DADF5():
                  {'label':P,'arg':'P'} ]
     
     self.__add_generic_pointwise(__add_Cauchy,requested)
+
+
+  def add_determinant(self,x):
+    """
+    Add the determinant of a tensor.
+
+    Parameters
+    ----------
+    x : str
+      Label of the dataset containing a tensor.
+
+    """
+    def __add_determinant(x):
+      
+      return {
+              'data':  np.linalg.det(x['data']),
+              'label': 'det({})'.format(x['label']),
+              'meta':  {
+                        'Unit':        x['meta']['Unit'],
+                        'Description': 'Determinant of tensor {} ({})'.format(x['label'],x['meta']['Description']),
+                        'Creator':     'dadf5.py:add_determinant v{}'.format(version)
+                        }
+              }
+      
+    requested = [{'label':x,'arg':'x'}]
+    
+    self.__add_generic_pointwise(__add_determinant,requested)
+
+
+  def add_deviator(self,x):
+    """
+    Add the deviatoric part of a tensor.
+
+    Parameters
+    ----------
+    x : str
+      Label of the dataset containing a tensor.
+
+    """
+    def __add_deviator(x):
+      
+      if not np.all(np.array(x['data'].shape[1:]) == np.array([3,3])):
+        raise ValueError
+      
+      return {
+              'data':  mechanics.deviatoric_part(x['data']),
+              'label': 's_{}'.format(x['label']),
+              'meta':  {
+                        'Unit':        x['meta']['Unit'],
+                        'Description': 'Deviator of tensor {} ({})'.format(x['label'],x['meta']['Description']),
+                        'Creator':     'dadf5.py:add_deviator v{}'.format(version)
+                        }
+               }
+      
+    requested = [{'label':x,'arg':'x'}]
+    
+    self.__add_generic_pointwise(__add_deviator,requested)
+    
+    
+  def add_maximum_shear(self,x):
+    """
+    Add maximum shear components of symmetric tensor.
+    
+    Parameters
+    ----------
+    x : str
+      Label of the dataset containing a symmetric tensor.
+
+    """
+    def __add_maximum_shear(x):
+
+      return {
+              'data':  mechanics.maximum_shear(x['data']),
+              'label': 'max_shear({})'.format(x['label']),
+              'meta':  {
+                        'Unit':        x['meta']['Unit'],
+                        'Description': 'Maximum shear component of of {} ({})'.format(x['label'],x['meta']['Description']),
+                        'Creator':     'dadf5.py:add_maximum_shear v{}'.format(version)
+                        }
+               }
+
+    requested = [{'label':x,'arg':'x'}]
+
+    self.__add_generic_pointwise(__add_maximum_shear,requested)
 
 
   def add_Mises(self,x):
@@ -540,58 +694,33 @@ class DADF5():
     self.__add_generic_pointwise(__add_norm,requested,{'ord':ord})
     
     
-  def add_absolute(self,x):
+  def add_principal_components(self,x):
     """
-    Add absolute value.
-
+    Add principal components of symmetric tensor.
+    
+    The principal components are sorted in descending order, each repeated according to its multiplicity.
+    
     Parameters
     ----------
     x : str
-      Label of the dataset containing a scalar, vector, or tensor.
+      Label of the dataset containing a symmetric tensor.
 
     """
-    def __add_absolute(x):
+    def __add_principal_components(x):
 
       return {
-              'data':  np.abs(x['data']),
-              'label': '|{}|'.format(x['label']),
+              'data':  mechanics.principal_components(x['data']),
+              'label': 'lambda_{}'.format(x['label']),
               'meta':  {
                         'Unit':        x['meta']['Unit'],
-                        'Description': 'Absolute value of {} ({})'.format(x['label'],x['meta']['Description']),
-                        'Creator':     'dadf5.py:add_abs v{}'.format(version)
+                        'Description': 'Pricipal components of {} ({})'.format(x['label'],x['meta']['Description']),
+                        'Creator':     'dadf5.py:add_principal_components v{}'.format(version)
                         }
                }
 
     requested = [{'label':x,'arg':'x'}]
-    
-    self.__add_generic_pointwise(__add_absolute,requested)
 
-
-  def add_determinant(self,x):
-    """
-    Add the determinant of a tensor.
-
-    Parameters
-    ----------
-    x : str
-      Label of the dataset containing a tensor.
-
-    """
-    def __add_determinant(x):
-      
-      return {
-              'data':  np.linalg.det(x['data']),
-              'label': 'det({})'.format(x['label']),
-              'meta':  {
-                        'Unit':        x['meta']['Unit'],
-                        'Description': 'Determinant of tensor {} ({})'.format(x['label'],x['meta']['Description']),
-                        'Creator':     'dadf5.py:add_determinant v{}'.format(version)
-                        }
-              }
-      
-    requested = [{'label':x,'arg':'x'}]
-    
-    self.__add_generic_pointwise(__add_determinant,requested)
+    self.__add_generic_pointwise(__add_principal_components,requested)
 
 
   def add_spherical(self,x):
@@ -622,79 +751,6 @@ class DADF5():
     requested = [{'label':x,'arg':'x'}]
     
     self.__add_generic_pointwise(__add_spherical,requested)
-
-
-  def add_deviator(self,x):
-    """
-    Add the deviatoric part of a tensor.
-
-    Parameters
-    ----------
-    x : str
-      Label of the dataset containing a tensor.
-
-    """
-    def __add_deviator(x):
-      
-      if not np.all(np.array(x['data'].shape[1:]) == np.array([3,3])):
-        raise ValueError
-      
-      return {
-              'data':  mechanics.deviatoric_part(x['data']),
-              'label': 's_{}'.format(x['label']),
-              'meta':  {
-                        'Unit':        x['meta']['Unit'],
-                        'Description': 'Deviator of tensor {} ({})'.format(x['label'],x['meta']['Description']),
-                        'Creator':     'dadf5.py:add_deviator v{}'.format(version)
-                        }
-               }
-      
-    requested = [{'label':x,'arg':'x'}]
-    
-    self.__add_generic_pointwise(__add_deviator,requested)
-    
-
-  def add_calculation(self,formula,label,unit='n/a',description=None,vectorized=True):
-    """
-    Add result of a general formula.
-    
-    Parameters
-    ----------
-    formula : str
-      Formula, refer to datasets by ‘#Label#‘.
-    label : str
-      Label of the dataset containing the result of the calculation.
-    unit : str, optional
-      Physical unit of the result.
-    description : str, optional
-      Human readable description of the result.
-    vectorized : bool, optional
-      Indicate whether the formula is written in vectorized form. Default is ‘True’.
-
-    """
-    if vectorized is not True:
-      raise NotImplementedError
-    
-    def __add_calculation(**kwargs):
-      
-      formula = kwargs['formula']
-      for d in re.findall(r'#(.*?)#',formula):
-        formula = formula.replace('#{}#'.format(d),"kwargs['{}']['data']".format(d))
-        
-      return {
-              'data':  eval(formula), 
-              'label': kwargs['label'],
-              'meta':  {
-                        'Unit':        kwargs['unit'],
-                        'Description': '{} (formula: {})'.format(kwargs['description'],kwargs['formula']),
-                        'Creator':     'dadf5.py:add_calculation v{}'.format(version)
-                        }
-               }
-    
-    requested    = [{'label':d,'arg':d} for d in set(re.findall(r'#(.*?)#',formula))]               # datasets used in the formula
-    pass_through = {'formula':formula,'label':label,'unit':unit,'description':description} 
-    
-    self.__add_generic_pointwise(__add_calculation,requested,pass_through)
 
 
   def add_strain_tensor(self,F='F',t='U',m=0):
@@ -729,62 +785,6 @@ class DADF5():
     requested = [{'label':F,'arg':'F'}]
     
     self.__add_generic_pointwise(__add_strain_tensor,requested,{'t':t,'m':m})
-    
-    
-  def add_principal_components(self,x):
-    """
-    Add principal components of symmetric tensor.
-    
-    The principal components are sorted in descending order, each repeated according to its multiplicity.
-    
-    Parameters
-    ----------
-    x : str
-      Label of the dataset containing a symmetric tensor.
-
-    """
-    def __add_principal_components(x):
-
-      return {
-              'data':  mechanics.principal_components(x['data']),
-              'label': 'lambda_{}'.format(x['label']),
-              'meta':  {
-                        'Unit':        x['meta']['Unit'],
-                        'Description': 'Pricipal components of {} ({})'.format(x['label'],x['meta']['Description']),
-                        'Creator':     'dadf5.py:add_principal_components v{}'.format(version)
-                        }
-               }
-
-    requested = [{'label':x,'arg':'x'}]
-
-    self.__add_generic_pointwise(__add_principal_components,requested)
-    
-    
-  def add_maximum_shear(self,x):
-    """
-    Add maximum shear components of symmetric tensor.
-    
-    Parameters
-    ----------
-    x : str
-      Label of the dataset containing a symmetric tensor.
-
-    """
-    def __add_maximum_shear(x):
-
-      return {
-              'data':  mechanics.maximum_shear(x['data']),
-              'label': 'max_shear({})'.format(x['label']),
-              'meta':  {
-                        'Unit':        x['meta']['Unit'],
-                        'Description': 'Maximum shear component of of {} ({})'.format(x['label'],x['meta']['Description']),
-                        'Creator':     'dadf5.py:add_maximum_shear v{}'.format(version)
-                        }
-               }
-
-    requested = [{'label':x,'arg':'x'}]
-
-    self.__add_generic_pointwise(__add_maximum_shear,requested)
 
 
   def __add_generic_pointwise(self,func,datasets_requested,extra_args={}):

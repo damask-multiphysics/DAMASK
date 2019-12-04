@@ -28,14 +28,15 @@ class TestDADF5:
         shape = default.read_dataset(default.get_dataset_location('F'),0).shape
         default.set_by_time(0.0,20.0)
         for i in default.iter_visible('increments'):
-            assert shape == default.read_dataset(default.get_dataset_location('F'),0).shape
+           assert shape == default.read_dataset(default.get_dataset_location('F'),0).shape
 
-    def test_add_deviator(self,default):
-        default.add_deviator('P')
-        loc = {'P'  :default.get_dataset_location('P'),
-               's_P':default.get_dataset_location('s_P')}
-        in_memory = mechanics.deviatoric_part(default.read_dataset(loc['P'],0))
-        in_file   = default.read_dataset(loc['s_P'],0)
+
+    def test_add_absolute(self,default):
+        default.add_absolute('Fe')
+        loc = {'Fe':   default.get_dataset_location('Fe'),
+               '|Fe|': default.get_dataset_location('|Fe|')}
+        in_memory = np.abs(default.read_dataset(loc['Fe'],0))
+        in_file   = default.read_dataset(loc['|Fe|'],0)
         assert np.allclose(in_memory,in_file)
 
     def test_add_Cauchy(self,default):
@@ -52,8 +53,16 @@ class TestDADF5:
         default.add_determinant('P')
         loc = {'P':     default.get_dataset_location('P'),
                'det(P)':default.get_dataset_location('det(P)')}
-        in_memory = np.linalg.det(default.read_dataset(loc['P'],0))
+        in_memory = np.linalg.det(default.read_dataset(loc['P'],0)).reshape((-1,1))
         in_file   = default.read_dataset(loc['det(P)'],0)
+        assert np.allclose(in_memory,in_file)
+
+    def test_add_deviator(self,default):
+        default.add_deviator('P')
+        loc = {'P'  :default.get_dataset_location('P'),
+               's_P':default.get_dataset_location('s_P')}
+        in_memory = mechanics.deviatoric_part(default.read_dataset(loc['P'],0))
+        in_file   = default.read_dataset(loc['s_P'],0)
         assert np.allclose(in_memory,in_file)
 
     def test_add_norm(self,default):
@@ -62,14 +71,6 @@ class TestDADF5:
                '|F|_1':default.get_dataset_location('|F|_1')}
         in_memory = np.linalg.norm(default.read_dataset(loc['F'],0),ord=1,axis=(1,2),keepdims=True)
         in_file   = default.read_dataset(loc['|F|_1'],0)
-        assert np.allclose(in_memory,in_file)
-
-    def test_add_absolute(self,default):
-        default.add_absolute('Fe')
-        loc = {'Fe':   default.get_dataset_location('Fe'),
-               '|Fe|': default.get_dataset_location('|Fe|')}
-        in_memory = np.abs(default.read_dataset(loc['Fe'],0))
-        in_file   = default.read_dataset(loc['|Fe|'],0)
         assert np.allclose(in_memory,in_file)
 
     def test_add_spherical(self,default):
