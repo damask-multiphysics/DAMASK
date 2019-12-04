@@ -29,6 +29,9 @@ class Table():
                 d[i] = label
                 i+=1
 
+        if i != self.data.shape[1]:
+            raise IndexError('Mismatch between array shape and headings')
+
         self.data.rename(columns=d,inplace=True)
 
         if comments is None:
@@ -44,8 +47,14 @@ class Table():
         Create table from ASCII file.
 
         The first line needs to indicate the number of subsequent header lines as 'n header'.
-        Vector data labels are indicated by '1_x, 2_x, ..., n_x'.
-        Tensor data labels are indicated by '3x3:1_x, 3x3:2_x, ..., 3x3:9_x'.
+        Vector data labels are indicated by '1_v, 2_v, ..., n_v'.
+        Tensor data labels are indicated by '3x3:1_T, 3x3:2_T, ..., 3x3:9_T'.
+
+        Parameters
+        ----------
+        fname : file, str, or pathlib.Path
+            Filename or file for reading.
+
         """
         try:
             f = open(fname)
@@ -76,7 +85,15 @@ class Table():
         return Table(np.loadtxt(f),headings,comments)
 
     def get_array(self,label):
-        """Return data as array."""
+        """
+        Return data as array.
+
+        Parameters
+        ----------
+        label : str
+            Label of the array.
+
+        """
         if re.match(r'[0-9]*?_',label):
             idx,key = label.split('_',1)
             return self.data[key].to_numpy()[:,int(idx)-1]
@@ -84,7 +101,19 @@ class Table():
             return self.data[label].to_numpy().reshape((-1,)+self.headings[label])
 
     def set_array(self,label,array,info):
-        """Set data."""
+        """
+        Modify data in the spreadsheet.
+
+        Parameters
+        ----------
+        label : str
+            Label for the new data.
+        array : np.ndarray
+            New data.
+        info : str
+            Human-readable information about the new data.
+
+        """
         if np.prod(array.shape[1:],dtype=int) == 1: 
             self.comments.append('{}: {}'.format(label,info))
         else:
@@ -103,6 +132,19 @@ class Table():
         return [label for label in self.headings]
 
     def add_array(self,label,array,info):
+        """
+        Add data to the spreadsheet.
+
+        Parameters
+        ----------
+        label : str
+            Label for the new data.
+        array : np.ndarray
+            New data.
+        info : str
+            Human-readable information about the new data.
+
+        """
         if np.prod(array.shape[1:],dtype=int) == 1: 
             self.comments.append('{}: {}'.format(label,info))
         else:
@@ -115,6 +157,15 @@ class Table():
         self.data = pd.concat([self.data,new_data],axis=1)
         
     def to_ASCII(self,fname):
+        """
+        Store as plain text file.
+
+        Parameters
+        ----------
+        fname : file, str, or pathlib.Path
+            Filename or file for reading.
+
+        """
         labels = []
         for l in self.headings:
             if(self.headings[l] == (1,)):
@@ -123,7 +174,7 @@ class Table():
                 labels+=['{}_{}'.format(i+1,l)\
                          for i in range(self.headings[l][0])]
             else:
-                labels+=['{}:{}_{}'.format(i+1,'x'.join([str(d) for d in self.headings[l]]),l)\
+                labels+=['{}:{}_{}'.format('x'.join([str(d) for d in self.headings[l]]),i+1,l)\
                                for i in range(np.prod(self.headings[l],dtype=int))]
 
         header = ['{} header'.format(len(self.comments)+1)]\

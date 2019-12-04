@@ -50,6 +50,7 @@ module results
     results_addIncrement, &
     results_addGroup, &
     results_openGroup, &
+    results_closeGroup, &
     results_writeDataset, &
     results_setLink, &
     results_addAttribute, &
@@ -120,6 +121,7 @@ subroutine results_addIncrement(inc,time)
 
 end subroutine results_addIncrement
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief open a group from the results file
 !--------------------------------------------------------------------------------------------------
@@ -142,6 +144,18 @@ integer(HID_T) function results_addGroup(groupName)
   results_addGroup = HDF5_addGroup(resultsFile,groupName)
 
 end function results_addGroup
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief close a group
+!--------------------------------------------------------------------------------------------------
+subroutine results_closeGroup(group_id)
+
+  integer(HID_T), intent(in) :: group_id
+  
+  call HDF5_closeGroup(group_id)
+
+end subroutine results_closeGroup
 
 
 !--------------------------------------------------------------------------------------------------
