@@ -24,13 +24,10 @@ module plastic_nonlocal
     
   implicit none
   private
-  real(pReal), parameter, private :: &
+  real(pReal), parameter :: &
     KB = 1.38e-23_pReal                                                                             !< Physical parameter, Boltzmann constant in J/Kelvin
- 
-  integer, dimension(:,:), allocatable, target, public :: &
-    plastic_nonlocal_sizePostResult                                                                 !< size of each post result output
   
-  character(len=64), dimension(:,:), allocatable, target, public :: &
+  character(len=64), dimension(:,:), allocatable :: &
     plastic_nonlocal_output                                                                         !< name of each post result output
  
 
@@ -54,18 +51,18 @@ module plastic_nonlocal
     mob_scr_neg = 4                                                                                 !< mobile screw positive
 
   ! BEGIN DEPRECATES
-  integer, dimension(:,:,:), allocatable, private :: &
+  integer, dimension(:,:,:), allocatable :: &
     iRhoU, &                                                                                        !< state indices for unblocked density
     iRhoB, &                                                                                        !< state indices for blocked density
     iRhoD, &                                                                                        !< state indices for dipole density
     iV, &                                                                                           !< state indices for dislcation velocities
     iD                                                                                              !< state indices for stable dipole height
-  integer, dimension(:), allocatable, private, protected :: &
+  integer, dimension(:), allocatable :: &
     totalNslip                                                                                      !< total number of active slip systems for each instance
   !END DEPRECATED
   
-  real(pReal), dimension(:,:,:,:,:,:), allocatable, private :: &
-    compatibility                                                                                    !< slip system compatibility between me and my neighbors
+  real(pReal), dimension(:,:,:,:,:,:), allocatable :: &
+    compatibility                                                                                   !< slip system compatibility between me and my neighbors
   
   enum, bind(c) 
     enumerator :: &
@@ -93,7 +90,7 @@ module plastic_nonlocal
       gamma_ID
   end enum
   
-  type, private :: tParameters                                                                      !< container type for internal constitutive parameters
+  type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
       atomicVolume, &                                                                               !< atomic volume
       Dsd0, &                                                                                       !< prefactor for self-diffusion coefficient
@@ -143,19 +140,19 @@ module plastic_nonlocal
       interactionSlipSlip ,&                                                                        !< coefficients for slip-slip interaction
       forestProjection_Edge, &                                                                      !< matrix of forest projections of edge dislocations
       forestProjection_Screw                                                                        !< matrix of forest projections of screw dislocations
-    real(pReal), dimension(:), allocatable, private :: &
+    real(pReal), dimension(:), allocatable :: &
       nonSchmidCoeff
-    real(pReal), dimension(:,:,:), allocatable, private :: &
+    real(pReal), dimension(:,:,:), allocatable :: &
       Schmid, &                                                                                     !< Schmid contribution
       nonSchmid_pos, &
       nonSchmid_neg                                                                                 !< combined projection of Schmid and non-Schmid contributions to the resolved shear stress (only for screws)
     integer :: &
       totalNslip
-    integer, dimension(:) ,allocatable , public:: &
+    integer, dimension(:) ,allocatable :: &
       Nslip,&
       colinearSystem                                                                                !< colinear system to the active slip system (only valid for fcc!)
  
-    logical, private :: &
+    logical :: &
       shortRangeStressCorrection, &                                                                 !< flag indicating the use of the short range stress correction by a excess density gradient term
       probabilisticMultiplication
     
@@ -164,13 +161,13 @@ module plastic_nonlocal
       
   end type tParameters
    
-  type, private :: tNonlocalMicrostructure
+  type :: tNonlocalMicrostructure
     real(pReal), allocatable, dimension(:,:) :: &
      tau_pass, & 
      tau_Back 
   end type tNonlocalMicrostructure
   
-  type, private :: tNonlocalState
+  type :: tNonlocalState
     real(pReal), pointer, dimension(:,:) :: &
       rho, &                                                                                        ! < all dislocations
         rhoSgl, &
@@ -196,16 +193,16 @@ module plastic_nonlocal
           v_scr_neg
   end type tNonlocalState
   
-  type(tNonlocalState), allocatable, dimension(:), private :: &
+  type(tNonlocalState), allocatable, dimension(:) :: &
     deltaState, &
     dotState, &
     state
  
-  type(tParameters), dimension(:), allocatable, private :: param                                    !< containers of constitutive parameters (len Ninstance)
+  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstance)
  
-  type(tNonlocalMicrostructure), dimension(:), allocatable, private :: microstructure
+  type(tNonlocalMicrostructure), dimension(:), allocatable :: microstructure
 
-  integer(kind(undefined_ID)), dimension(:,:),   allocatable, private :: & 
+  integer(kind(undefined_ID)), dimension(:,:), allocatable :: & 
     plastic_nonlocal_outputID                                                                       !< ID of each post result output
   
   public :: &
@@ -268,7 +265,6 @@ subroutine plastic_nonlocal_init
   allocate(deltaState(maxNinstances))
   allocate(microstructure(maxNinstances))
 
-  allocate(plastic_nonlocal_sizePostResult(maxval(phase_Noutput), maxNinstances), source=0)
   allocate(plastic_nonlocal_output(maxval(phase_Noutput), maxNinstances))
            plastic_nonlocal_output = ''
   allocate(plastic_nonlocal_outputID(maxval(phase_Noutput), maxNinstances), source=undefined_ID)
@@ -498,7 +494,6 @@ subroutine plastic_nonlocal_init
 
       if (outputID /= undefined_ID) then
         plastic_nonlocal_output(i,phase_plasticityInstance(p)) = outputs(i)
-        plastic_nonlocal_sizePostResult(i,phase_plasticityInstance(p)) = prm%totalNslip
         prm%outputID = [prm%outputID , outputID]
       endif
 
@@ -524,7 +519,6 @@ subroutine plastic_nonlocal_init
                                        prm%totalNslip,0,0)    
     plasticState(p)%nonlocal = .true.
     plasticState(p)%offsetDeltaState = 0                                                            ! ToDo: state structure does not follow convention
-    plasticState(p)%sizePostResults = sum(plastic_nonlocal_sizePostResult(:,phase_plasticityInstance(p)))
     
     totalNslip(phase_plasticityInstance(p)) =  prm%totalNslip
     
