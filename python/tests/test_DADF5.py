@@ -42,6 +42,22 @@ class TestDADF5:
         in_file   = default.read_dataset(loc['sigma'],0)
         assert np.allclose(in_memory,in_file)
 
+    def test_add_determinant(self,default):
+        default.add_determinant('P')
+        loc = {'P':     default.get_dataset_location('P'),
+               'det(P)':default.get_dataset_location('det(P)')}
+        in_memory = np.linalg.det(default.read_dataset(loc['P'],0))
+        in_file   = default.read_dataset(loc['det(P)'],0)
+        assert np.allclose(in_memory,in_file)
+
+    def test_add_norm(self,default):
+        default.add_norm('F',1)
+        loc = {'F':    default.get_dataset_location('F'),
+               '|F|_1':default.get_dataset_location('|F|_1')}
+        in_memory = np.linalg.norm(default.read_dataset(loc['F'],0),ord=1,axis=(1,2),keepdims=True)
+        in_file   = default.read_dataset(loc['|F|_1'],0)
+        assert np.allclose(in_memory,in_file)
+
     def test_add_absolute(self,default):
         default.add_absolute('Fe')
         loc = {'Fe':   default.get_dataset_location('Fe'),
