@@ -333,8 +333,8 @@ class DADF5():
     """Return information on all active datasets in the file."""
     message = ''
     with h5py.File(self.filename,'r') as f:
-      for s,i in enumerate(self.iter_visible('increments')):
-        message+='\n{} ({}s)\n'.format(i,self.times[s])
+      for i in self.iter_visible('increments'):
+        message+='\n{} ({}s)\n'.format(i,self.times[self.increments.index(i)])
         for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
           for oo in self.iter_visible(o):
             message+='  {}\n'.format(oo)
