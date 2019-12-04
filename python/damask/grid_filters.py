@@ -1,3 +1,4 @@
+from scipy import spatial
 import numpy as np
 
 def __ks(size,field,first_order=False):
@@ -120,3 +121,18 @@ def node_2_cell(node_data):
          + np.roll(node_data,1,(0,1)) + np.roll(node_data,1,(1,2)) + np.roll(node_data,1,(2,0)))*0.125
   
     return c[:-1,:-1,:-1]
+
+def regrid(size,F,new_grid):
+    """tbd."""
+    c = coord0_cell(F.shape[:3][::-1],size) \
+      + displacement_avg_cell(size,F) \
+      + displacement_fluct_cell(size,F)
+
+    outer = np.dot(np.average(F,axis=(0,1,2)),size)
+    for d in range(3):
+        c[np.where(c[:,:,:,d]<0)]        += outer[d]
+        c[np.where(c[:,:,:,d]>outer[d])] -= outer[d]
+
+    tree = spatial.cKDTree(c.reshape((-1,3)),boxsize=outer)
+    d,i  = tree.query(coord0_cell(new_grid,outer))
+    return i
