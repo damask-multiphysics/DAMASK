@@ -23,7 +23,13 @@ def reference_dir(reference_dir_base):
 
 
 class TestDADF5:
-    
+
+    def test_time_increments(self,default):
+        shape = default.read_dataset(default.get_dataset_location('F'),0).shape
+        default.set_by_time(0.0,20.0)
+        for i in default.iter_visible('increments'):
+            assert shape == default.read_dataset(default.get_dataset_location('F'),0).shape
+
     def test_add_deviator(self,default):
         default.add_deviator('P')
         loc = {'P'  :default.get_dataset_location('P'),
