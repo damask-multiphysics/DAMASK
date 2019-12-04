@@ -4,17 +4,8 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine for plasticity including dislocation flux
 !--------------------------------------------------------------------------------------------------
-module plastic_nonlocal
-  use prec
-  use IO
-  use math
-  use debug
-  use material
-  use lattice
+submodule(constitutive) plastic_nonlocal
   use rotations
-  use config
-  use lattice
-  use discretization
   use geometry_plastic_nonlocal, only: &
     nIPneighbors    => geometry_plastic_nonlocal_nIPneighbors, &
     IPneighborhood  => geometry_plastic_nonlocal_IPneighborhood, &
@@ -22,8 +13,7 @@ module plastic_nonlocal
     IParea          => geometry_plastic_nonlocal_IParea0, &
     IPareaNormal    => geometry_plastic_nonlocal_IPareaNormal0
     
-  implicit none
-  private
+
   real(pReal), parameter :: &
     KB = 1.38e-23_pReal                                                                             !< Physical parameter, Boltzmann constant in J/Kelvin
   
@@ -62,7 +52,7 @@ module plastic_nonlocal
   !END DEPRECATED
   
   real(pReal), dimension(:,:,:,:,:,:), allocatable :: &
-    compatibility                                                                                   !< slip system compatibility between me and my neighbors
+    compatibility                                                                                    !< slip system compatibility between me and my neighbors
   
   enum, bind(c) 
     enumerator :: &
@@ -148,7 +138,7 @@ module plastic_nonlocal
       nonSchmid_neg                                                                                 !< combined projection of Schmid and non-Schmid contributions to the resolved shear stress (only for screws)
     integer :: &
       totalNslip
-    integer, dimension(:) ,allocatable :: &
+    integer, dimension(:) ,allocatable:: &
       Nslip,&
       colinearSystem                                                                                !< colinear system to the active slip system (only valid for fcc!)
  
@@ -204,18 +194,7 @@ module plastic_nonlocal
 
   integer(kind(undefined_ID)), dimension(:,:), allocatable :: & 
     plastic_nonlocal_outputID                                                                       !< ID of each post result output
-  
-  public :: &
-    plastic_nonlocal_init, &
-    plastic_nonlocal_dependentState, &
-    plastic_nonlocal_LpAndItsTangent, &
-    plastic_nonlocal_dotState, &
-    plastic_nonlocal_deltaState, &
-    plastic_nonlocal_updateCompatibility, &
-    plastic_nonlocal_results
-  
-  private :: &
-    plastic_nonlocal_kinetics
+
 
 contains
 
@@ -223,7 +202,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_init
+module subroutine plastic_nonlocal_init
 
   character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
   integer,                dimension(0), parameter :: emptyIntArray    = [integer::]
@@ -752,7 +731,7 @@ end subroutine plastic_nonlocal_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates quantities characterizing the microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
+module subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
   
   integer, intent(in) :: &
     ip, &
@@ -1114,7 +1093,7 @@ end subroutine plastic_nonlocal_kinetics
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
+module subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
                                             Mp, Temperature, volume, ip, el)
 
   integer, intent(in) :: &
@@ -1244,7 +1223,7 @@ end subroutine plastic_nonlocal_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief (instantaneous) incremental change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_deltaState(Mp,ip,el)
+module subroutine plastic_nonlocal_deltaState(Mp,ip,el)
   
   integer, intent(in) :: &
     ip, &
@@ -1360,8 +1339,8 @@ end subroutine plastic_nonlocal_deltaState
 !---------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !---------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
-                                     timestep,ip,el)
+module subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
+                                            timestep,ip,el)
   
   integer, intent(in) :: &
     ip, &                                                                                           !< current integration point
@@ -1809,13 +1788,13 @@ end subroutine plastic_nonlocal_dotState
 ! plane normals and signed cosine of the angle between the slip directions. Only the largest values
 ! that sum up to a total of 1 are considered, all others are set to zero.
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_updateCompatibility(orientation,i,e) 
+module subroutine plastic_nonlocal_updateCompatibility(orientation,i,e) 
   
   integer, intent(in) :: &
     i, &
     e
   type(rotation), dimension(1,discretization_nIP,discretization_nElem), intent(in) :: &
-    orientation                                                                                     ! crystal orientation in quaternions
+    orientation                                                                                     ! crystal orientation
                                               
   integer :: &
     Nneighbors, &                                                                                   ! number of neighbors
@@ -1974,13 +1953,13 @@ end function getRho
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_results(instance,group)
+module subroutine plastic_nonlocal_results(instance,group)
 #if defined(PETSc) || defined(DAMASK_HDF5)
   use results, only: &
     results_writeDataset
 
-  integer, intent(in) :: instance
-  character(len=*) :: group
+  integer, intent(in)         :: instance
+  character(len=*),intent(in) :: group
   integer :: o
 
   associate(prm => param(instance),dst => microstructure(instance),stt=>state(instance))
@@ -2047,4 +2026,4 @@ subroutine plastic_nonlocal_results(instance,group)
 
 end subroutine plastic_nonlocal_results
 
-end module plastic_nonlocal
+end submodule plastic_nonlocal

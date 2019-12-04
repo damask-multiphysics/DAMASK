@@ -483,7 +483,8 @@ module lattice
     lattice_slip_normal, &
     lattice_slip_direction, &
     lattice_slip_transverse, &
-    lattice_labels_slip
+    lattice_labels_slip, &
+    lattice_labels_twin
  
 contains
 !--------------------------------------------------------------------------------------------------

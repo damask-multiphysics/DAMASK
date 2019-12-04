@@ -6,6 +6,7 @@
 module constitutive
   use prec
   use math
+  use rotations
   use debug
   use numerics
   use IO
@@ -14,7 +15,6 @@ module constitutive
   use results
   use lattice
   use discretization
-  use plastic_nonlocal
   use geometry_plastic_nonlocal
   use source_thermal_dissipation
   use source_thermal_externalheat
@@ -53,6 +53,9 @@ module constitutive
 
     module subroutine plastic_disloUCLA_init
     end subroutine plastic_disloUCLA_init
+    
+    module subroutine plastic_nonlocal_init
+    end subroutine plastic_nonlocal_init
     
     
     module subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
@@ -123,6 +126,23 @@ module constitutive
         instance, &
         of
     end subroutine plastic_disloUCLA_LpAndItsTangent
+    
+    module subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
+                                                       Mp, Temperature, volume, ip, el)
+      real(pReal), dimension(3,3),     intent(out) :: &
+        Lp                                                                                          !< plastic velocity gradient
+      real(pReal), dimension(3,3,3,3), intent(out) :: &
+        dLp_dMp                                                                                     !< derivative of Lp with respect to the Mandel stress
+ 
+      real(pReal), dimension(3,3),     intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      real(pReal),                     intent(in) :: &
+        Temperature, &
+        volume
+      integer,                          intent(in) :: &
+        ip, &                                                                                       !< current integration point
+        el                                                                                          !< current element number
+    end subroutine plastic_nonlocal_LpAndItsTangent
 
 
     module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
@@ -182,6 +202,21 @@ module constitutive
         instance, &
         of
     end subroutine plastic_disloUCLA_dotState
+    
+    module subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
+                                                timestep,ip,el)
+      integer, intent(in) :: &
+        ip, &                                                                                       !< current integration point
+        el                                                                                          !< current element number
+      real(pReal), intent(in) :: &
+        Temperature, &                                                                              !< temperature
+        timestep                                                                                    !< substepped crystallite time increment
+      real(pReal), dimension(3,3), intent(in) ::&
+        Mp                                                                                          !< MandelStress
+      real(pReal), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem), intent(in) :: &
+        Fe, &                                                                                       !< elastic deformation gradient
+        Fp                                                                                          !< plastic deformation gradient
+    end subroutine plastic_nonlocal_dotState
 
     
     module subroutine plastic_dislotwin_dependentState(T,instance,of)
@@ -197,6 +232,15 @@ module constitutive
         instance, &
         of
     end subroutine plastic_disloUCLA_dependentState
+    
+    module subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
+      integer, intent(in) :: &
+        ip, &
+        el
+      real(pReal), dimension(3,3), intent(in) :: &
+        Fe, &
+        Fp
+    end subroutine plastic_nonlocal_dependentState
 
 
     module subroutine plastic_kinehardening_deltaState(Mp,instance,of)
@@ -206,6 +250,14 @@ module constitutive
         instance, &
         of
     end subroutine plastic_kinehardening_deltaState
+    
+    module subroutine plastic_nonlocal_deltaState(Mp,ip,el)
+      integer, intent(in) :: &
+        ip, &
+        el
+      real(pReal), dimension(3,3), intent(in) :: &
+        Mp
+    end subroutine plastic_nonlocal_deltaState
 
 
     module function plastic_dislotwin_homogenizedC(ipc,ip,el) result(homogenizedC)
@@ -216,6 +268,14 @@ module constitutive
         ip, &                                                                                       !< integration point
         el                                                                                          !< element
     end function plastic_dislotwin_homogenizedC
+    
+    module subroutine plastic_nonlocal_updateCompatibility(orientation,i,e) 
+      integer, intent(in) :: &
+        i, &
+        e
+      type(rotation), dimension(1,discretization_nIP,discretization_nElem), intent(in) :: &
+        orientation                                                                                 !< crystal orientation
+    end subroutine plastic_nonlocal_updateCompatibility
     
     
     module subroutine plastic_isotropic_results(instance,group)
@@ -242,10 +302,16 @@ module constitutive
       integer,          intent(in) :: instance
       character(len=*), intent(in) :: group
     end subroutine plastic_disloUCLA_results
+    
+    module subroutine plastic_nonlocal_results(instance,group)
+      integer,          intent(in) :: instance
+      character(len=*), intent(in) :: group
+    end subroutine plastic_nonlocal_results
   
   end interface
   
   public :: &
+    plastic_nonlocal_updateCompatibility, &
     constitutive_init, &
     constitutive_homogenizedC, &
     constitutive_microstructure, &
@@ -446,8 +512,7 @@ end subroutine constitutive_microstructure
 ! Mp in, dLp_dMp out
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
-                                         S, Fi, ipc, ip, el)
-
+                                         S, Fi, ipc, ip, el)  
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
     ip, &                                                                                           !< integration point
