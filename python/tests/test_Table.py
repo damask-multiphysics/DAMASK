@@ -55,3 +55,7 @@ class TestTable:
         x = default.get_array('v')
         with pytest.raises(ValueError):
             default.set_array('F',x,'does not work')
+
+    def test_invalid_get_array(self,default):
+        with pytest.raises(KeyError):
+            default.get_array('n')
