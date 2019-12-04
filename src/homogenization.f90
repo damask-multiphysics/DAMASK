@@ -262,7 +262,7 @@ subroutine homogenization_init
   materialpoint_sizeResults = 1 &                                                                   ! grain count
                             + 1 + thermal_maxSizePostResults        &
                                 + damage_maxSizePostResults         &
-                            + homogenization_maxNgrains * (1 + crystallite_maxSizePostResults &     ! crystallite size & crystallite results
+                            + homogenization_maxNgrains * (1 &     ! crystallite size
                                                          + 1 + constitutive_plasticity_maxSizePostResults & ! constitutive size & constitutive results
                                                              + constitutive_source_maxSizePostResults)
   allocate(materialpoint_results(materialpoint_sizeResults,discretization_nIP,discretization_nElem))
@@ -592,15 +592,13 @@ subroutine materialpoint_postResults
     thePos, &
     theSize, &
     myNgrains, &
-    myCrystallite, &
     g, &                                                                                            !< grain number
     i, &                                                                                            !< integration point number
     e                                                                                               !< element number
 
-  !$OMP PARALLEL DO PRIVATE(myNgrains,myCrystallite,thePos,theSize)
+  !$OMP PARALLEL DO PRIVATE(myNgrains,thePos,theSize)
   elementLooping: do e = FEsolving_execElem(1),FEsolving_execElem(2)
     myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
-    myCrystallite = microstructure_crystallite(discretization_microstructureAt(e))
     IpLooping: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
       thePos = 0
 
@@ -618,7 +616,7 @@ subroutine materialpoint_postResults
       thePos = thePos + 1
 
       grainLooping :do g = 1,myNgrains
-        theSize = 1 + crystallite_sizePostResults(myCrystallite) + &
+        theSize = 1 + &
                   1 + plasticState    (material_phaseAt(g,e))%sizePostResults + &
                       sum(sourceState(material_phaseAt(g,e))%p(:)%sizePostResults)
         materialpoint_results(thePos+1:thePos+theSize,i,e) = crystallite_postResults(g,i,e)        ! tell crystallite results

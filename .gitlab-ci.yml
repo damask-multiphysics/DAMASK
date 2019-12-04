@@ -1,6 +1,7 @@
 ---
 stages:
   - prepareAll
+  - python
   - preprocessing
   - postprocessing
   - compilePETSc
@@ -99,6 +100,16 @@ checkout:
     - git submodule update --init
     - source env/DAMASK.sh
     - make processing
+  except:
+    - master
+    - release
+
+###################################################################################################
+Pytest:
+  stage: python
+  script:
+    - cd $DAMASKROOT/python
+    - pytest
   except:
     - master
     - release
@@ -304,13 +315,6 @@ StateIntegration_compareVariants:
 nonlocal_densityConservation:
   stage: grid
   script: nonlocal_densityConservation/test.py
-  except:
-    - master
-    - release
-
-Spectral_ipNeighborhood:
-  stage: grid
-  script: Spectral_ipNeighborhood/test.py
   except:
     - master
     - release
