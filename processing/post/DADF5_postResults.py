@@ -61,35 +61,35 @@ for filename in options.filenames:
     data = np.concatenate((data,coords),1)
     header+=' 1_pos 2_pos 3_pos'
 
+    results.set_visible('materialpoints',False)
+    results.set_visible('constituents',  True)
     for label in options.con:
-      for p in results.iter_visible('con_physics'):
-        for c in results.iter_visible('constituents'):
-          x = results.get_dataset_location(label)
-          if len(x) == 0:
-            continue
-          array = results.read_dataset(x,0,plain=True)
-          d = int(np.product(np.shape(array)[1:]))
-          data = np.concatenate((data,np.reshape(array,[np.product(results.grid),d])),1)
-          
-          if d>1:
-            header+= ''.join([' {}_{}'.format(j+1,label) for j in range(d)])
-          else:
-            header+=' '+label
+      x = results.get_dataset_location(label)
+      if len(x) == 0:
+        continue
+      array = results.read_dataset(x,0,plain=True)
+      d = np.product(np.shape(array)[1:])
+      data = np.concatenate((data,np.reshape(array,[np.product(results.grid),d])),1)
             
+      if d>1:
+        header+= ''.join([' {}_{}'.format(j+1,label) for j in range(d)])
+      else:
+        header+=' '+label
+
+    results.set_visible('constituents',  False)
+    results.set_visible('materialpoints',True)
     for label in options.mat:
-      for p in results.iter_visible('mat_physics'):
-        for m in results.iter_visible('materialpoints'):
-          x = results.get_dataset_location(label)
-          if len(x) == 0:
-            continue
-          array = results.read_dataset(x,0,plain=True)
-          d = int(np.product(np.shape(array)[1:]))
-          data = np.concatenate((data,np.reshape(array,[np.product(results.grid),d])),1)
+      x = results.get_dataset_location(label)
+      if len(x) == 0:
+        continue
+      array = results.read_dataset(x,0,plain=True)
+      d = np.product(np.shape(array)[1:])
+      data = np.concatenate((data,np.reshape(array,[np.product(results.grid),d])),1)
           
-          if d>1:
-            header+= ''.join([' {}_{}'.format(j+1,label) for j in range(d)])
-          else:
-            header+=' '+label
+      if d>1:
+        header+= ''.join([' {}_{}'.format(j+1,label) for j in range(d)])
+      else:
+        header+=' '+label
 
     dirname  = os.path.abspath(os.path.join(os.path.dirname(filename),options.dir))
     if not os.path.isdir(dirname):

@@ -14,6 +14,7 @@ module mesh_grid
   use IO
   use debug
   use numerics
+  use results
   use discretization
   use geometry_plastic_nonlocal
   use FEsolving
@@ -98,6 +99,14 @@ subroutine mesh_init(ip,el)
 
   FEsolving_execElem = [1,product(myGrid)]                                                          ! parallel loop bounds set to comprise all elements
   allocate(FEsolving_execIP(2,product(myGrid)),source=1)                                            ! parallel loop bounds set to comprise the only IP
+
+!--------------------------------------------------------------------------------------------------
+! store geometry information for post processing
+  call results_openJobFile
+  call results_closeGroup(results_addGroup('geometry'))
+  call results_addAttribute('grid',grid,'geometry')
+  call results_addAttribute('size',geomSize,'geometry')
+  call results_closeJobFile
 
 !--------------------------------------------------------------------------------------------------
 ! geometry information required by the nonlocal CP model
