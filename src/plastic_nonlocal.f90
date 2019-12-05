@@ -29,7 +29,6 @@ module plastic_nonlocal
   
   character(len=64), dimension(:,:), allocatable :: &
     plastic_nonlocal_output                                                                         !< name of each post result output
- 
 
   ! storage order of dislocation types
   integer, dimension(8), parameter :: &
