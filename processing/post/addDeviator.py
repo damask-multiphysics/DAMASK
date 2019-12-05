@@ -40,12 +40,12 @@ for name in filenames:
     
     table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
     for tensor in options.tensor:
-         table.add_array('dev({})'.format(tensor),
-                         damask.mechanics.deviatoric_part(table.get_array(tensor).reshape(-1,3,3)).reshape((-1,9)),
-                         scriptID+' '+' '.join(sys.argv[1:]))
+         table.add('dev({})'.format(tensor),
+                   damask.mechanics.deviatoric_part(table.get(tensor).reshape(-1,3,3)).reshape((-1,9)),
+                   scriptID+' '+' '.join(sys.argv[1:]))
          if options.spherical:
-             table.add_array('sph({})'.format(tensor),
-                             damask.mechanics.spherical_part(table.get_array(tensor).reshape(-1,3,3)),
-                             scriptID+' '+' '.join(sys.argv[1:]))
+             table.add('sph({})'.format(tensor),
+                       damask.mechanics.spherical_part(table.get(tensor).reshape(-1,3,3)),
+                       scriptID+' '+' '.join(sys.argv[1:]))
 
     table.to_ASCII(sys.stdout if name is None else name)

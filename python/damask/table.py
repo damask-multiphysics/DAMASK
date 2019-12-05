@@ -87,14 +87,19 @@ class Table():
         return Table(data,shapes,comments)
 
 
-    def get_array(self,label):
+    def labels(self):
+        """Return the labels of all columns."""
+        return list(self.shapes.keys())
+
+
+    def get(self,label):
         """
-        Return data as array.
+        Get column data.
 
         Parameters
         ----------
         label : str
-            Label of the array.
+            Column label.
 
         """
         if re.match(r'[0-9]*?_',label):
@@ -103,62 +108,60 @@ class Table():
         else: 
             return self.data[label].to_numpy().reshape((-1,)+self.shapes[label])
 
-    def set_array(self,label,array,info):
+    def set(self,label,data,info=None):
         """
-        Modify data in the spreadsheet.
+        Set column data.
 
         Parameters
         ----------
         label : str
-            Label for the new data.
-        array : np.ndarray
+            Column label.
+        data : np.ndarray
             New data.
-        info : str
+        info : str, optional
             Human-readable information about the new data.
 
         """
-        if np.prod(array.shape[1:],dtype=int) == 1: 
-            self.comments.append('{}: {}'.format(label,info))
-        else:
-            self.comments.append('{} {}: {}'.format(label,array.shape[1:],info))
+        if info is not None:
+            if np.prod(data.shape[1:],dtype=int) == 1: 
+                self.comments.append('{}: {}'.format(label,info))
+            else:
+                self.comments.append('{} {}: {}'.format(label,data.shape[1:],info))
 
         if re.match(r'[0-9]*?_',label):
             idx,key = label.split('_',1)
             iloc = self.data.columns.get_loc(key).tolist().index(True) + int(idx) -1
-            self.data.iloc[:,iloc] = array
+            self.data.iloc[:,iloc] = data
         else: 
-            self.data[label]       = array.reshape(self.data[label].shape)
+            self.data[label]       = data.reshape(self.data[label].shape)
 
-
-    def labels(self):
-        """Return the labels of all columns."""
-        return list(self.shapes.keys())
-
-    def add_array(self,label,array,info):
+    def add(self,label,data,info=None):
         """
-        Add data to the spreadsheet.
+        Add column data.
 
         Parameters
         ----------
         label : str
-            Label for the new data.
-        array : np.ndarray
-            New data.
-        info : str
-            Human-readable information about the new data.
+            Column label.
+        data : np.ndarray
+            Modified data.
+        info : str, optional
+            Human-readable information about the modified data.
 
         """
-        if np.prod(array.shape[1:],dtype=int) == 1: 
-            self.comments.append('{}: {}'.format(label,info))
-        else:
-            self.comments.append('{} {}: {}'.format(label,array.shape[1:],info))
+        if info is not None:
+           if np.prod(data.shape[1:],dtype=int) == 1: 
+               self.comments.append('{}: {}'.format(label,info))
+           else:
+               self.comments.append('{} {}: {}'.format(label,data.shape[1:],info))
         
-        self.shapes[label] = array.shape[1:] if len(array.shape) > 1 else (1,)
-        size = np.prod(array.shape[1:],dtype=int) 
-        new_data = pd.DataFrame(data=array.reshape(-1,size),
+        self.shapes[label] = data.shape[1:] if len(data.shape) > 1 else (1,)
+        size = np.prod(data.shape[1:],dtype=int) 
+        new_data = pd.DataFrame(data=data.reshape(-1,size),
                                 columns=[label for l in range(size)])
         self.data = pd.concat([self.data,new_data],axis=1)
-        
+
+
     def to_ASCII(self,fname):
         """
         Store as plain text file.

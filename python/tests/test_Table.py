@@ -20,11 +20,11 @@ def reference_dir(reference_dir_base):
 class TestTable:
     
     def test_get_tensor(self,default):
-        d = default.get_array('F')
+        d = default.get('F')
         assert np.allclose(d,1.0) and d.shape[1:] == (3,3) 
 
     def test_get_vector(self,default):
-        d = default.get_array('v')
+        d = default.get('v')
         assert np.allclose(d,1.0) and d.shape[1:] == (3,)
   
     def test_write_read_str(self,default,tmpdir):
@@ -44,30 +44,30 @@ class TestTable:
         with open(os.path.join(reference_dir,fname)) as f:
             new = Table.from_ASCII(f)
     
-    def test_set_array(self,default):
-        default.set_array('F',np.zeros((5,3,3)),'set to zero')
-        d=default.get_array('F')
+    def test_set(self,default):
+        default.set('F',np.zeros((5,3,3)),'set to zero')
+        d=default.get('F')
         assert np.allclose(d,0.0) and d.shape[1:] == (3,3)
 
     def test_labels(self,default):
         assert default.labels() == ['F','v','s']
         
-    def test_add_array(self,default):
+    def test_add(self,default):
         d = np.random.random((5,9))
-        default.add_array('nine',d,'random data')
-        assert np.allclose(d,default.get_array('nine'))
+        default.add('nine',d,'random data')
+        assert np.allclose(d,default.get('nine'))
 
 
     def test_invalid_initialization(self,default):
-        x = default.get_array('v')
+        x = default.get('v')
         with pytest.raises(IndexError):
             Table(x,{'F':(3,3)})
 
     def test_invalid_set(self,default):
-        x = default.get_array('v')
+        x = default.get('v')
         with pytest.raises(ValueError):
-            default.set_array('F',x,'does not work')
+            default.set('F',x,'does not work')
 
-    def test_invalid_get_array(self,default):
+    def test_invalid_get(self,default):
         with pytest.raises(KeyError):
-            default.get_array('n')
+            default.get('n')

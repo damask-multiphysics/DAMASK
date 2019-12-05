@@ -41,9 +41,9 @@ for name in filenames:
     damask.util.report(scriptName,name)
 
     table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
-    table.add_array('Cauchy',
-                    damask.mechanics.Cauchy(table.get_array(options.defgrad).reshape(-1,3,3),
-                                            table.get_array(options.stress).reshape(-1,3,3)).reshape(-1,9),
-                    scriptID+' '+' '.join(sys.argv[1:]))
+    table.add('Cauchy',
+              damask.mechanics.Cauchy(table.get(options.defgrad).reshape(-1,3,3),
+                                      table.get(options.stress ).reshape(-1,3,3)).reshape(-1,9),
+              scriptID+' '+' '.join(sys.argv[1:]))
 
     table.to_ASCII(sys.stdout if name is None else name)
