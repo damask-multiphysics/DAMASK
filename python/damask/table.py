@@ -82,7 +82,10 @@ class Table():
                 else:
                     shapes[label]=(1,)
         
-        return Table(np.loadtxt(f),shapes,comments)
+        data = pd.read_csv(f,names=[i for i in range(len(labels))],sep='\s+').to_numpy()
+        
+        return Table(data,shapes,comments)
+
 
     def get_array(self,label):
         """
