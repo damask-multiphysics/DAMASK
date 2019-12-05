@@ -1,4 +1,3 @@
-import random
 import re
 
 import pandas as pd
@@ -24,15 +23,24 @@ class Table():
         self.comments = [] if comments is None else [c for c in comments]
         self.data = pd.DataFrame(data=data)
         self.shapes = shapes
+        self.__label_condensed()
 
+
+    def __label_flat(self):
+        """Label data individually, e.g. v v v ==> 1_v 2_v 3_v."""
+        labels = []
+        for label,shape in self.shapes.items():
+            size = np.prod(shape)
+            labels += ['{}{}'.format('' if size == 1 else '{}_'.format(i+1),label) for i in range(size)]
+        self.data.columns = labels
+        
+        
+    def __label_condensed(self):
+        """Label data condensed, e.g. 1_v 2_v 3_v ==> v v v."""
         labels = []
         for label,shape in self.shapes.items():
             labels += [label] * np.prod(shape)
-
-        if len(labels) != self.data.shape[1]:
-            raise IndexError('Mismatch between shapes and data')
-
-        self.data.rename(columns=dict(zip(range(len(labels)),labels)),inplace=True)
+        self.data.columns = labels
 
 
     def __add_comment(self,label,shape,info):
@@ -87,7 +95,7 @@ class Table():
 
         return Table(data,shapes,comments)
 
-
+    @property
     def labels(self):
         """Return the labels of all columns."""
         return list(self.shapes.keys())
@@ -105,9 +113,11 @@ class Table():
         """
         if re.match(r'[0-9]*?_',label):
             idx,key = label.split('_',1)
-            return self.data[key].to_numpy()[:,int(idx)-1].reshape((-1,1))
+            data = self.data[key].to_numpy()[:,int(idx)-1].reshape((-1,1))
         else: 
-            return self.data[label].to_numpy().reshape((-1,)+self.shapes[label])          # better return shape (N) instead of (N,1), i.e. no reshaping?
+            data = self.data[label].to_numpy().reshape((-1,)+self.shapes[label])
+
+        return data.astype(type(data.flatten()[0]))
 
 
     def set(self,label,data,info=None):
@@ -149,13 +159,14 @@ class Table():
 
         """
         self.__add_comment(label,data.shape[1:],info)
-        
+
         self.shapes[label] = data.shape[1:] if len(data.shape) > 1 else (1,)
-        size = np.prod(data.shape[1:],dtype=int) 
-        self.data = pd.concat([self.data,
-                               pd.DataFrame(data=data.reshape(-1,size),
-                                            columns=[label]*size)],
-                              axis=1)
+        size = np.prod(data.shape[1:],dtype=int)
+        new = pd.DataFrame(data=data.reshape(-1,size),
+                           columns=[label]*size,
+                          )
+        new.index = self.data.index
+        self.data = pd.concat([self.data,new],axis=1)
 
 
     def delete(self,label):
@@ -201,24 +212,15 @@ class Table():
 
         Parameters
         ----------
-        label : list of str or str
+        label : str or list
             Column labels.
-        ascending : bool, optional
+        ascending : bool or list, optional
             Set sort order.
 
         """
-        _temp = []
-        _labels = []
-        for label in labels if isinstance(labels,list) else [labels]:
-            if re.match(r'[0-9]*?_',label):
-                _temp.append(str(random.getrandbits(128)))
-                self.add(_temp[-1],self.get(label))
-                _labels.append(_temp[-1])
-            else: 
-                _labels.append(label)
-
-        self.data.sort_values(_labels,axis=0,inplace=True,ascending=ascending)
-        for t in _temp: self.delete(t)
+        self.__label_flat()
+        self.data.sort_values(labels,axis=0,inplace=True,ascending=ascending)
+        self.__label_condensed()
         self.comments.append('sorted by [{}]'.format(', '.join(labels)))
 
 

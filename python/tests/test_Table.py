@@ -9,7 +9,7 @@ from damask import Table
 @pytest.fixture
 def default():
     """Simple Table."""
-    x = np.ones((5,13))
+    x = np.ones((5,13),dtype=float)
     return Table(x,{'F':(3,3),'v':(3,),'s':(1,)},['test data','contains only ones'])
 
 @pytest.fixture
@@ -58,7 +58,7 @@ class TestTable:
         assert np.allclose(d,0.0) and d.shape[1:] == (3,3)
 
     def test_labels(self,default):
-        assert default.labels() == ['F','v','s']
+        assert default.labels == ['F','v','s']
         
     def test_add(self,default):
         d = np.random.random((5,9))
@@ -82,9 +82,9 @@ class TestTable:
             default.get('v')
 
 
-    def test_invalid_initialization(self,default):
-        x = default.get('v')
-        with pytest.raises(IndexError):
+    def test_invalid_initialization(self):
+        x = np.random.random((5,10))
+        with pytest.raises(ValueError):
             Table(x,{'F':(3,3)})
 
     def test_invalid_set(self,default):
@@ -115,7 +115,14 @@ class TestTable:
     def test_sort_revert(self):
         x = np.random.random((5,12))
         t = Table(x,{'F':(3,3),'v':(3,)},['random test data'])
-        t.sort_by('4_F',False)
+        t.sort_by('4_F',ascending=False)
         sort = t.get('4_F')
         assert np.all(np.sort(sort,0)==sort[::-1,:])
 
+    def test_sort(self):
+        t = Table(np.array([[0,1,],[2,1,]]),
+                  {'v':(2,)},
+                  ['test data'])
+        t.add('s',np.array(['b','a']))
+        t.sort_by('s')
+        assert np.all(t.get('1_v') == np.array([2,0]).reshape((2,1)))
