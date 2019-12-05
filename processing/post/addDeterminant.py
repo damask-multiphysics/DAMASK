@@ -38,8 +38,8 @@ for name in filenames:
 
     table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
     for tensor in options.tensor:
-         table.add_array('det({})'.format(tensor),
-                         np.linalg.det(table.get_array(tensor).reshape(-1,3,3)),
-                         scriptID+' '+' '.join(sys.argv[1:]))
+         table.add('det({})'.format(tensor),
+                   np.linalg.det(table.get(tensor).reshape(-1,3,3)),
+                   scriptID+' '+' '.join(sys.argv[1:]))
 
     table.to_ASCII(sys.stdout if name is None else name)

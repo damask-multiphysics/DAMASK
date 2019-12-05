@@ -45,12 +45,12 @@ for name in filenames:
 
     table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
     for strain in options.strain:
-        table.add_array('Mises({})'.format(strain),
-                        damask.mechanics.Mises_strain(damask.mechanics.symmetric(table.get_array(strain).reshape(-1,3,3))),
-                        scriptID+' '+' '.join(sys.argv[1:]))
+        table.add('Mises({})'.format(strain),
+                  damask.mechanics.Mises_strain(damask.mechanics.symmetric(table.get(strain).reshape(-1,3,3))),
+                  scriptID+' '+' '.join(sys.argv[1:]))
     for stress in options.stress:
-        table.add_array('Mises({})'.format(stress),
-                        damask.mechanics.Mises_stress(damask.mechanics.symmetric(table.get_array(stress).reshape(-1,3,3))),
-                        scriptID+' '+' '.join(sys.argv[1:]))
+        table.add('Mises({})'.format(stress),
+                  damask.mechanics.Mises_stress(damask.mechanics.symmetric(table.get(stress).reshape(-1,3,3))),
+                  scriptID+' '+' '.join(sys.argv[1:]))
     
     table.to_ASCII(sys.stdout if name is None else name)

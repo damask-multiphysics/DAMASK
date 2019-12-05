@@ -22,7 +22,7 @@ Uniformly scale column values by given factor.
 """, version = scriptID)
 
 parser.add_option('-l','--label',
-                  dest = 'label',
+                  dest = 'labels',
                   action = 'extend', metavar = '<string LIST>',
                   help  ='column(s) to scale')
 parser.add_option('-f','--factor',
@@ -31,7 +31,7 @@ parser.add_option('-f','--factor',
                   help = 'factor(s) per column')
 
 parser.set_defaults(label  = [],
-                   )
+                    factor = [])
 
 (options,filenames) = parser.parse_args()
 if filenames == []: filenames = [None]
@@ -43,8 +43,9 @@ for name in filenames:
     damask.util.report(scriptName,name)
 
     table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
-    for i,label in enumerate(options.label):
-        table.set_array(label,table.get_array(label)*float(options.factor[i]),
-                        scriptID+' '+' '.join(sys.argv[1:]))
+    for i,label in enumerate(options.labels):
+        table.set(label,
+                  table.get(label)*float(options.factor[i]),
+                  scriptID+' '+' '.join(sys.argv[1:]))
 
     table.to_ASCII(sys.stdout if name is None else name)
