@@ -52,23 +52,22 @@ for name in filenames:
     table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
     grid,size = damask.util.coordGridAndSize(table.get_array(options.pos))
     
-    F = table.get_array(options.f).reshape(np.append(grid[::-1],(3,3)))
+    F = table.get(options.f).reshape(np.append(grid[::-1],(3,3)))
     if options.nodal:
         table = damask.Table(damask.grid_filters.coord0_node(grid[::-1],size[::-1]).reshape((-1,3)),
                              {'pos':(3,)})
-        table.add_array('avg({}).{}'.format(options.f,options.pos),
-                        damask.grid_filters.displacement_avg_node(size[::-1],F).reshape((-1,3)),
-                        scriptID+' '+' '.join(sys.argv[1:]))
-        table.add_array('fluct({}).{}'.format(options.f,options.pos),
-                        damask.grid_filters.displacement_fluct_node(size[::-1],F).reshape((-1,3)),
-                        scriptID+' '+' '.join(sys.argv[1:]))
+        table.add('avg({}).{}'.format(options.f,options.pos),
+                  damask.grid_filters.displacement_avg_node(size[::-1],F).reshape((-1,3)),
+                  scriptID+' '+' '.join(sys.argv[1:]))
+        table.add('fluct({}).{}'.format(options.f,options.pos),
+                  damask.grid_filters.displacement_fluct_node(size[::-1],F).reshape((-1,3)),
+                  scriptID+' '+' '.join(sys.argv[1:]))
         table.to_ASCII(sys.stdout if name is None else os.path.splitext(name)[0]+'_nodal.txt')
     else:
-        table.add_array('avg({}).{}'.format(options.f,options.pos),
-                        damask.grid_filters.displacement_avg_cell(size[::-1],F).reshape((-1,3)),
-                        scriptID+' '+' '.join(sys.argv[1:]))
-        table.add_array('fluct({}).{}'.format(options.f,options.pos),
-                        damask.grid_filters.displacement_fluct_cell(size[::-1],F).reshape((-1,3)),
-                        scriptID+' '+' '.join(sys.argv[1:]))
-    
+        table.add('avg({}).{}'.format(options.f,options.pos),
+                  damask.grid_filters.displacement_avg_cell(size[::-1],F).reshape((-1,3)),
+                  scriptID+' '+' '.join(sys.argv[1:]))
+        table.add('fluct({}).{}'.format(options.f,options.pos),
+                  damask.grid_filters.displacement_fluct_cell(size[::-1],F).reshape((-1,3)),
+                  scriptID+' '+' '.join(sys.argv[1:]))
         table.to_ASCII(sys.stdout if name is None else name)
