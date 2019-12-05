@@ -36,7 +36,7 @@ parser.set_defaults(label  = [],
 (options,filenames) = parser.parse_args()
 if filenames == []: filenames = [None]
 
-if len(options.label) != len(options.offset):
+if len(options.labels) != len(options.offset):
     parser.error('number of column labels and offsets do not match.')
 
 for name in filenames:
