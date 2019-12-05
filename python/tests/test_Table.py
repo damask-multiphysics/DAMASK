@@ -42,7 +42,7 @@ class TestTable:
     @pytest.mark.parametrize('fname',['datatype-mix.txt','whitespace-mix.txt'])
     def test_read_strange(self,reference_dir,fname):
         with open(os.path.join(reference_dir,fname)) as f:
-            new = Table.from_ASCII(f)
+            Table.from_ASCII(f)
     
     def test_set(self,default):
         default.set('F',np.zeros((5,3,3)),'set to zero')
