@@ -27,7 +27,7 @@ class TestGridFilters:
     @pytest.mark.parametrize('mode',[('cell'),('node')])
     def test_displacement_avg_vanishes(self,mode):
          """Ensure that random fluctuations in F do not result in average displacement."""
-         size = np.random.random(3)
+         size = np.random.random(3)                                                                 # noqa
          grid = np.random.randint(8,32,(3))
          F    = np.random.random(tuple(grid)+(3,3))
          F   += np.eye(3) - np.average(F,axis=(0,1,2))
@@ -36,7 +36,7 @@ class TestGridFilters:
     @pytest.mark.parametrize('mode',[('cell'),('node')])
     def test_displacement_fluct_vanishes(self,mode):
          """Ensure that constant F does not result in fluctuating displacement."""
-         size = np.random.random(3)
+         size = np.random.random(3)                                                                 # noqa
          grid = np.random.randint(8,32,(3))
-         F    = np.broadcast_to(np.random.random((3,3)), tuple(grid)+(3,3)) 
+         F    = np.broadcast_to(np.random.random((3,3)), tuple(grid)+(3,3))                         # noqa
          assert np.allclose(eval('grid_filters.displacement_fluct_{}(size,F)'.format(mode)),0.0)
