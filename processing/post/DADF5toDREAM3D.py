@@ -49,7 +49,7 @@ Phase_types = {'Primary': 0} #further additions to these can be done by looking 
 # --------------------------------------------------------------------
 parser = argparse.ArgumentParser(description='Creating a file for DREAM3D from DAMASK data')
 parser.add_argument('filenames',nargs='+',help='HDF5 based output file')
-parser.add_argument('--inc',nargs='+',help='Increment for which DREAM3D to be used, eg. 00025',type=int)
+parser.add_argument('--inc',nargs='+',help='Increment for which DREAM3D to be used, eg. 25',type=int)
 parser.add_argument('-d','--dir', dest='dir',default='postProc',metavar='string',
                     help='name of subdirectory to hold output')
 
@@ -59,15 +59,13 @@ options = parser.parse_args()
 # loop over input files
 for filename in options.filenames:
   f = damask.DADF5(filename)  #DAMASK output file
-  count = 0
-  for increment in f.increments:
-    if int(increment[3:]) not in options.inc: 
-      count = count + 1
+  for increment in options.inc:
+    f.set_by_increment(increment,increment)
+    if len(f.visible['increments']) == 0:
       continue
 
     #-------output file creation-------------------------------------
     dirname  = os.path.abspath(os.path.join(os.path.dirname(filename),options.dir))
-    print(dirname)
     try:
       os.mkdir(dirname)
     except FileExistsError:
@@ -90,11 +88,10 @@ for filename in options.filenames:
     # Phase information of DREAM.3D is constituent ID in DAMASK
     o[cell_data_label + '/Phases'] = f.get_constituent_ID().reshape(tuple(f.grid)+(1,))  
     # Data quaternions
-    DAMASK_quaternion = f.read_dataset(f.get_dataset_location('orientation'),0)
-    DREAM_3D_quaternion = np.empty((np.prod(f.grid),4),dtype=np.float32)
+    DAMASK_quaternion = f.read_dataset(f.get_dataset_location('orientation'))
     # Convert: DAMASK uses P = -1, DREAM.3D uses P = +1. Also change position of imagninary part
     DREAM_3D_quaternion = np.hstack((-DAMASK_quaternion['x'],-DAMASK_quaternion['y'],-DAMASK_quaternion['z'],
-                                      DAMASK_quaternion['w']))
+                                      DAMASK_quaternion['w'])).astype(np.float32)
     o[cell_data_label + '/Quats'] = DREAM_3D_quaternion.reshape(tuple(f.grid)+(4,))
     
     # Attributes to CellData group
@@ -109,12 +106,14 @@ for filename in options.filenames:
     # phase attributes
     o[cell_data_label + '/Phases'].attrs['ComponentDimensions'] = np.array([1],np.uint64)
     o[cell_data_label + '/Phases'].attrs['ObjectType']          = 'DataArray<int32_t>'
+    o[cell_data_label + '/Phases'].attrs['TupleDimensions']     = f.grid.astype(np.uint64)
     
     # Quats attributes
     o[cell_data_label + '/Quats'].attrs['ComponentDimensions'] = np.array([4],np.uint64)
     o[cell_data_label + '/Quats'].attrs['ObjectType']          = 'DataArray<float>'        
-
-    # Create EnsembleAttributeMatrix
+    o[cell_data_label + '/Quats'].attrs['TupleDimensions']     = f.grid.astype(np.uint64)
+   
+   # Create EnsembleAttributeMatrix
     ensemble_label = data_container_label + '/EnsembleAttributeMatrix' 
     
     # Data CrystalStructures
