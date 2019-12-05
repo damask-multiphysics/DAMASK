@@ -2,8 +2,8 @@
 
 import os
 import sys
+from io import StringIO
 from optparse import OptionParser
-import re
 
 import damask
 
