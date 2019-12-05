@@ -22,7 +22,7 @@ Uniformly shift column values by given offset.
 """, version = scriptID)
 
 parser.add_option('-l','--label',
-                  dest = 'label',
+                  dest = 'labels',
                   action = 'extend', metavar = '<string LIST>',
                   help  ='column(s) to shift')
 parser.add_option('-o','--offset',
@@ -31,7 +31,7 @@ parser.add_option('-o','--offset',
                   help = 'offset(s) per column')
 
 parser.set_defaults(label  = [],
-                   )
+                    offset = [])
 
 (options,filenames) = parser.parse_args()
 if filenames == []: filenames = [None]
@@ -43,7 +43,7 @@ for name in filenames:
     damask.util.report(scriptName,name)
 
     table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
-    for i,label in enumerate(options.label):
+    for i,label in enumerate(options.labels):
         table.set(label,
                   table.get(label)+float(options.offset[i]),
                   scriptID+' '+' '.join(sys.argv[1:]))
