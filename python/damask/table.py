@@ -1,3 +1,4 @@
+import random
 import re
 
 import pandas as pd
@@ -104,7 +105,7 @@ class Table():
         """
         if re.match(r'[0-9]*?_',label):
             idx,key = label.split('_',1)
-            return self.data[key].to_numpy()[:,int(idx)-1]
+            return self.data[key].to_numpy()[:,int(idx)-1].reshape((-1,1))
         else: 
             return self.data[label].to_numpy().reshape((-1,)+self.shapes[label])
 
@@ -195,6 +196,32 @@ class Table():
 
         self.shapes[label_new] = self.shapes.pop(label_old)
 
+
+    def sort_by(self,labels,ascending=True):
+        """
+        Get column data.
+
+        Parameters
+        ----------
+        label : list of str or str
+            Column labels.
+        ascending : bool, optional
+            Set sort order.
+
+        """
+        _temp = []
+        _labels = []
+        for label in labels if isinstance(labels,list) else [labels]:
+            if re.match(r'[0-9]*?_',label):
+                _temp.append(str(random.getrandbits(128)))
+                self.add(_temp[-1],self.get(label))
+                _labels.append(_temp[-1])
+            else: 
+                _labels.append(label)
+
+        self.data.sort_values(_labels,axis=0,inplace=True,ascending=ascending)
+        for t in _temp: self.delete(t)
+        self.comments.append('sorted by [{}]'.format(', '.join(labels)))
 
     def to_ASCII(self,fname):
         """

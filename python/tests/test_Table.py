@@ -19,13 +19,21 @@ def reference_dir(reference_dir_base):
 
 class TestTable:
     
-    def test_get_tensor(self,default):
-        d = default.get('F')
-        assert np.allclose(d,1.0) and d.shape[1:] == (3,3) 
+    def test_get_scalar(self,default):
+        d = default.get('s')
+        assert np.allclose(d,1.0) and d.shape[1:] == (1,)
 
     def test_get_vector(self,default):
         d = default.get('v')
         assert np.allclose(d,1.0) and d.shape[1:] == (3,)
+
+    def test_get_tensor(self,default):
+        d = default.get('F')
+        assert np.allclose(d,1.0) and d.shape[1:] == (3,3) 
+
+    def test_get_component(self,default):
+        d = default.get('5_F')
+        assert np.allclose(d,1.0) and d.shape[1:] == (1,)
   
     def test_write_read_str(self,default,tmpdir):
         default.to_ASCII(str(tmpdir.join('default.txt')))
@@ -87,3 +95,27 @@ class TestTable:
     def test_invalid_get(self,default):
         with pytest.raises(KeyError):
             default.get('n')
+
+    def test_sort_scalar(self):
+        x = np.random.random((5,13))
+        t = Table(x,{'F':(3,3),'v':(3,),'s':(1,)},['random test data'])
+        unsort = t.get('s')
+        t.sort_by('s')
+        sort   = t.get('s')
+        assert np.all(np.sort(unsort,0)==sort)
+
+    def test_sort_component(self):
+        x = np.random.random((5,12))
+        t = Table(x,{'F':(3,3),'v':(3,)},['random test data'])
+        unsort = t.get('4_F')
+        t.sort_by('4_F')
+        sort = t.get('4_F')
+        assert np.all(np.sort(unsort,0)==sort)
+
+    def test_sort_revert(self):
+        x = np.random.random((5,12))
+        t = Table(x,{'F':(3,3),'v':(3,)},['random test data'])
+        t.sort_by('4_F',False)
+        sort = t.get('4_F')
+        assert np.all(np.sort(sort,0)==sort[::-1,:])
+
