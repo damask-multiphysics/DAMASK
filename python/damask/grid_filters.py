@@ -57,7 +57,7 @@ def gradient(size,field):
     return np.fft.irfftn(gradient,axes=(0,1,2),s=field.shape[:3])
 
 
-def coord0_cell(grid,size):
+def cell_coord0(grid,size):
     """Cell center positions (undeformed)."""
     delta = size/grid*0.5
     x, y, z = np.meshgrid(np.linspace(delta[2],size[2]-delta[2],grid[2]),
@@ -67,7 +67,7 @@ def coord0_cell(grid,size):
 
     return np.concatenate((z[:,:,:,None],y[:,:,:,None],x[:,:,:,None]),axis = 3) 
 
-def displacement_fluct_cell(size,F):
+def cell_displacement_fluct(size,F):
     """Cell center displacement field from fluctuation part of the deformation gradient field."""
     integrator = 0.5j*size/np.pi
 
@@ -83,13 +83,13 @@ def displacement_fluct_cell(size,F):
 
     return np.fft.irfftn(displacement,axes=(0,1,2),s=F.shape[:3])
 
-def displacement_avg_cell(size,F):
+def cell_displacement_avg(size,F):
     """Cell center displacement field from average part of the deformation gradient field."""
     F_avg = np.average(F,axis=(0,1,2))
-    return np.einsum('ml,ijkl->ijkm',F_avg-np.eye(3),coord0_cell(F.shape[:3],size))
+    return np.einsum('ml,ijkl->ijkm',F_avg-np.eye(3),cell_coord0(F.shape[:3],size))
 
 
-def coord0_node(grid,size):
+def node_coord0(grid,size):
     """Nodal positions (undeformed)."""
     x, y, z = np.meshgrid(np.linspace(0,size[2],1+grid[2]),
                           np.linspace(0,size[1],1+grid[1]),
@@ -98,12 +98,12 @@ def coord0_node(grid,size):
     
     return np.concatenate((z[:,:,:,None],y[:,:,:,None],x[:,:,:,None]),axis = 3) 
 
-def displacement_fluct_node(size,F):
-    return cell_2_node(displacement_fluct_cell(size,F))
+def node_displacement_fluct(size,F):
+    return cell_2_node(cell_displacement_fluct(size,F))
 
-def displacement_avg_node(size,F):
+def node_displacement_avg(size,F):
     F_avg = np.average(F,axis=(0,1,2))
-    return np.einsum('ml,ijkl->ijkm',F_avg-np.eye(3),coord0_node(F.shape[:3],size))
+    return np.einsum('ml,ijkl->ijkm',F_avg-np.eye(3),node_coord0(F.shape[:3],size))
 
 
 def cell_2_node(cell_data):
@@ -124,9 +124,9 @@ def node_2_cell(node_data):
 
 def regrid(size,F,new_grid):
     """tbd."""
-    c = coord0_cell(F.shape[:3][::-1],size) \
-      + displacement_avg_cell(size,F) \
-      + displacement_fluct_cell(size,F)
+    c = cell_coord0(F.shape[:3][::-1],size) \
+      + cell_displacement_avg(size,F) \
+      + cell_displacement_fluct(size,F)
 
     outer = np.dot(np.average(F,axis=(0,1,2)),size)
     for d in range(3):
@@ -134,5 +134,5 @@ def regrid(size,F,new_grid):
         c[np.where(c[:,:,:,d]>outer[d])] -= outer[d]
 
     tree = spatial.cKDTree(c.reshape((-1,3)),boxsize=outer)
-    d,i  = tree.query(coord0_cell(new_grid,outer))
+    d,i  = tree.query(cell_coord0(new_grid,outer))
     return i
