@@ -1,7 +1,10 @@
+import os
+
 import pytest
 import numpy as np
 
 from damask import Table
+
 
 @pytest.fixture
 def default():
@@ -9,6 +12,10 @@ def default():
     x = np.ones((5,13))
     return Table(x,{'F':(3,3),'v':(3,),'s':(1,)},['test data','contains only ones'])
 
+@pytest.fixture
+def reference_dir(reference_dir_base):
+    """Directory containing reference results."""
+    return os.path.join(reference_dir_base,'Table')
 
 class TestTable:
     
@@ -31,6 +38,11 @@ class TestTable:
         with open(tmpdir.join('default.txt')) as f:
             new = Table.from_ASCII(f)
         assert all(default.data==new.data)
+
+    @pytest.mark.parametrize('fname',['datatype-mix.txt','whitespace-mix.txt'])
+    def test_read_strange(self,reference_dir,fname):
+        with open(os.path.join(reference_dir,fname)) as f:
+            new = Table.from_ASCII(f)
     
     def test_set_array(self,default):
         default.set_array('F',np.zeros((5,3,3)),'set to zero')
