@@ -24,35 +24,16 @@ parser.add_option('-i',
                   dest = 'info', action = 'extend', metavar = '<string LIST>',
                   help    = 'items to add')
 
-
 (options,filenames) = parser.parse_args()
+if filenames == []: filenames = [None]
 
 if options.info is None:
   parser.error('no info specified.')
 
-# --- loop over input files ------------------------------------------------------------------------
-
-if filenames == []: filenames = [None]
-
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,
-                                    buffered = False)
-  except: continue
-  damask.util.report(scriptName,name)
+    damask.util.report(scriptName,name)
 
-# ------------------------------------------ assemble header ---------------------------------------
+    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    table.comments += options.info
 
-  table.head_read()
-  table.info_append(options.info)
-  table.head_write()
-
-# ------------------------------------------ pass through data -------------------------------------
-
-  outputAlive = True
-
-  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    outputAlive = table.data_write()                                                                # output processed line
-
-# ------------------------------------------ output finalization -----------------------------------
-
-  table.close()                                                                                     # close ASCII tables
+    table.to_ASCII(sys.stdout if name is None else name)

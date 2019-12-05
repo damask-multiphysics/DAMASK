@@ -161,6 +161,40 @@ class Table():
                                 columns=[label for l in range(size)])
         self.data = pd.concat([self.data,new_data],axis=1)
 
+    def delete(self,label):
+        """
+        Delete column data.
+
+        Parameters
+        ----------
+        label : str
+            Column label.
+
+        """
+        self.data.drop(columns=label,inplace=True)
+
+        del self.shapes[label]
+
+    def rename(self,label_old,label_new,info=None):
+        """
+        Rename column data.
+
+        Parameters
+        ----------
+        label_old : str
+            Old column label.
+        label_new : str
+            New column label.
+
+        """
+        self.data.rename(columns={label_old:label_new},inplace=True)
+
+        comments = '{} => {}'.format(label_old,label_new)
+        comments += ': {}'.format(info) if info is not None else ''
+        self.comments.append(comments)
+
+        self.shapes[label_new] = self.shapes.pop(label_old)
+
 
     def to_ASCII(self,fname):
         """

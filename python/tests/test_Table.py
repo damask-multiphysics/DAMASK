@@ -57,6 +57,22 @@ class TestTable:
         default.add('nine',d,'random data')
         assert np.allclose(d,default.get('nine'))
 
+    def test_rename_equivalent(self,default):
+        v = default.get('v')
+        default.rename('v','u')
+        u = default.get('u')
+        assert np.all(v == u)
+
+    def test_rename_gone(self,default):
+        default.rename('v','V')
+        with pytest.raises(KeyError):
+            default.get('v')
+
+    def test_delete(self,default):
+        default.delete('v')
+        with pytest.raises(KeyError):
+            default.get('v')
+
 
     def test_invalid_initialization(self,default):
         x = default.get('v')
