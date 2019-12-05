@@ -49,8 +49,8 @@ class TestTable:
         d=default.get_array('F')
         assert np.allclose(d,0.0) and d.shape[1:] == (3,3)
 
-    def test_get_labels(self,default):
-        assert default.get_labels() == ['F','v','s']
+    def test_labels(self,default):
+        assert default.labels() == ['F','v','s']
         
     def test_add_array(self,default):
         d = np.random.random((5,9))

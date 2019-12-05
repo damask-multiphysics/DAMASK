@@ -130,7 +130,7 @@ class Table():
             self.data[label]       = array.reshape(self.data[label].shape)
 
 
-    def get_labels(self):
+    def labels(self):
         """Return the labels of all columns."""
         return list(self.shapes.keys())
 
