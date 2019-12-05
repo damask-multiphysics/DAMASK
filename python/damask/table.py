@@ -82,7 +82,7 @@ class Table():
                 else:
                     shapes[label]=(1,)
         
-        data = pd.read_csv(f,names=[i for i in range(len(labels))],sep='\s+').to_numpy()
+        data = pd.read_csv(f,names=[i for i in range(len(labels))],sep=r'\s+').to_numpy()
         
         return Table(data,shapes,comments)
 
