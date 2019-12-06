@@ -255,16 +255,15 @@ subroutine homogenization_init
   thermal_maxSizePostResults        = 0
   damage_maxSizePostResults         = 0
   do p = 1,size(config_homogenization)
-    thermal_maxSizePostResults        = max(thermal_maxSizePostResults,       thermalState     (p)%sizePostResults)
-    damage_maxSizePostResults         = max(damage_maxSizePostResults        ,damageState      (p)%sizePostResults)
+    thermal_maxSizePostResults      = max(thermal_maxSizePostResults, thermalState(p)%sizePostResults)
+    damage_maxSizePostResults       = max(damage_maxSizePostResults,  damageState (p)%sizePostResults)
   enddo
 
   materialpoint_sizeResults = 1 &                                                                   ! grain count
                             + 1 + thermal_maxSizePostResults        &
                                 + damage_maxSizePostResults         &
-                            + homogenization_maxNgrains * (1 &     ! crystallite size
-                                                         + 1 + constitutive_plasticity_maxSizePostResults & ! constitutive size & constitutive results
-                                                             + constitutive_source_maxSizePostResults)
+                            + homogenization_maxNgrains * (  1 &     ! crystallite size
+                                                           + 1 + constitutive_source_maxSizePostResults)
   allocate(materialpoint_results(materialpoint_sizeResults,discretization_nIP,discretization_nElem))
 
   write(6,'(/,a)')   ' <<<+-  homogenization init  -+>>>'
@@ -617,8 +616,8 @@ subroutine materialpoint_postResults
 
       grainLooping :do g = 1,myNgrains
         theSize = 1 + &
-                  1 + plasticState    (material_phaseAt(g,e))%sizePostResults + &
-                      sum(sourceState(material_phaseAt(g,e))%p(:)%sizePostResults)
+                  1 + &
+                  sum(sourceState(material_phaseAt(g,e))%p(:)%sizePostResults)
         materialpoint_results(thePos+1:thePos+theSize,i,e) = crystallite_postResults(g,i,e)        ! tell crystallite results
         thePos = thePos + theSize
       enddo grainLooping

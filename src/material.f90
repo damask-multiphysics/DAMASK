@@ -749,9 +749,6 @@ subroutine material_allocatePlasticState(phase,NofMyPhase,&
   plasticState(phase)%sizeDotState     = sizeDotState
   plasticState(phase)%sizeDeltaState   = sizeDeltaState
   plasticState(phase)%offsetDeltaState = sizeState-sizeDeltaState                                   ! deltaState occupies latter part of state by definition
-  plasticState(phase)%Nslip = Nslip
-  plasticState(phase)%Ntwin = Ntwin
-  plasticState(phase)%Ntrans= Ntrans
 
   allocate(plasticState(phase)%aTolState           (sizeState),               source=0.0_pReal)
   allocate(plasticState(phase)%state0              (sizeState,NofMyPhase),    source=0.0_pReal)

@@ -26,13 +26,9 @@ module plastic_nonlocal
   private
   real(pReal), parameter, private :: &
     KB = 1.38e-23_pReal                                                                             !< Physical parameter, Boltzmann constant in J/Kelvin
- 
-  integer, dimension(:,:), allocatable, target, public :: &
-    plastic_nonlocal_sizePostResult                                                                 !< size of each post result output
   
   character(len=64), dimension(:,:), allocatable, target, public :: &
     plastic_nonlocal_output                                                                         !< name of each post result output
- 
 
   ! storage order of dislocation types
   integer, dimension(8), parameter :: &
@@ -81,28 +77,16 @@ module plastic_nonlocal
       rho_dip_edg_ID, &
       rho_dip_scr_ID, &
       rho_forest_ID, &
-      shearrate_ID, &
       resolvedstress_back_ID, &
-      resistance_ID, &
+      tau_pass_ID, &
       rho_dot_sgl_ID, &
       rho_dot_sgl_mobile_ID, &
       rho_dot_dip_ID, &
-      rho_dot_gen_edge_ID, &
-      rho_dot_gen_screw_ID, &
-      rho_dot_sgl2dip_edge_ID, &
-      rho_dot_sgl2dip_screw_ID, &
-      rho_dot_ann_ath_ID, &
-      rho_dot_ann_the_edge_ID, &
-      rho_dot_ann_the_screw_ID, &
-      rho_dot_edgejogs_ID, &
-      rho_dot_flux_mobile_ID, &
-      rho_dot_flux_edge_ID, &
-      rho_dot_flux_screw_ID, &
-      velocity_edge_pos_ID, &
-      velocity_edge_neg_ID, &
-      velocity_screw_pos_ID, &
-      velocity_screw_neg_ID, &
-      accumulatedshear_ID
+      v_edg_pos_ID, &
+      v_edg_neg_ID, &
+      v_scr_pos_ID, &
+      v_scr_neg_ID, &
+      gamma_ID
   end enum
   
   type, private :: tParameters                                                                      !< container type for internal constitutive parameters
@@ -178,21 +162,9 @@ module plastic_nonlocal
    
   type, private :: tNonlocalMicrostructure
     real(pReal), allocatable, dimension(:,:) :: &
-     tau_Threshold, & 
+     tau_pass, & 
      tau_Back 
   end type tNonlocalMicrostructure
-  
-  type, private :: tOutput                                                                          !< container type for storage of output results
-    real(pReal), dimension(:,:), allocatable, private :: &
-     rhoDotEdgeJogs
-    real(pReal), dimension(:,:,:), allocatable, private :: &
-      rhoDotFlux, & 
-      rhoDotMultiplication, &
-      rhoDotSingle2DipoleGlide, &
-      rhoDotAthermalAnnihilation, &
-      rhoDotThermalAnnihilation
-  end type tOutput
-   
   
   type, private :: tNonlocalState
     real(pReal), pointer, dimension(:,:) :: &
@@ -212,8 +184,12 @@ module plastic_nonlocal
           rho_dip_edg, &
           rho_dip_scr, &
         rho_forest, &
-      accumulatedshear, &
-      v
+      gamma, &
+      v, &
+          v_edg_pos, &
+          v_edg_neg, &
+          v_scr_pos, &
+          v_scr_neg
   end type tNonlocalState
   
   type(tNonlocalState), allocatable, dimension(:), private :: &
@@ -223,7 +199,6 @@ module plastic_nonlocal
  
   type(tParameters), dimension(:), allocatable, private :: param                                    !< containers of constitutive parameters (len Ninstance)
  
-  type(tOutput), dimension(:), allocatable, private :: results
   type(tNonlocalMicrostructure), dimension(:), allocatable, private :: microstructure
 
   integer(kind(undefined_ID)), dimension(:,:),   allocatable, private :: & 
@@ -236,7 +211,6 @@ module plastic_nonlocal
     plastic_nonlocal_dotState, &
     plastic_nonlocal_deltaState, &
     plastic_nonlocal_updateCompatibility, &
-    plastic_nonlocal_postResults, &
     plastic_nonlocal_results
   
   private :: &
@@ -289,9 +263,7 @@ subroutine plastic_nonlocal_init
   allocate(dotState(maxNinstances))
   allocate(deltaState(maxNinstances))
   allocate(microstructure(maxNinstances))
-  allocate(results(maxNinstances)) 
 
-  allocate(plastic_nonlocal_sizePostResult(maxval(phase_Noutput), maxNinstances), source=0)
   allocate(plastic_nonlocal_output(maxval(phase_Noutput), maxNinstances))
            plastic_nonlocal_output = ''
   allocate(plastic_nonlocal_outputID(maxval(phase_Noutput), maxNinstances), source=undefined_ID)
@@ -305,7 +277,6 @@ subroutine plastic_nonlocal_init
               dot => dotState(phase_plasticityInstance(p)), &
               stt => state(phase_plasticityInstance(p)), &
               del => deltaState(phase_plasticityInstance(p)), &
-              res => results(phase_plasticityInstance(p)), &
               dst => microstructure(phase_plasticityInstance(p)), &
               config => config_phase(p))
 
@@ -476,77 +447,52 @@ subroutine plastic_nonlocal_init
     do i=1, size(outputs)
       outputID = undefined_ID
       select case(trim(outputs(i)))
-        case ('rho_sgl_edge_pos_mobile')
+        case ('rho_sgl_mob_edg_pos')
           outputID = merge(rho_sgl_mob_edg_pos_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_sgl_edge_neg_mobile')
+        case ('rho_sgl_mob_edg_neg')
           outputID = merge(rho_sgl_mob_edg_neg_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_sgl_screw_pos_mobile')
+        case ('rho_sgl_mob_scr_pos')
           outputID = merge(rho_sgl_mob_scr_pos_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_sgl_screw_neg_mobile')
+        case ('rho_sgl_mob_scr_neg')
           outputID = merge(rho_sgl_mob_scr_neg_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_sgl_edge_pos_immobile')
+        case ('rho_sgl_imm_edg_pos')
           outputID = merge(rho_sgl_imm_edg_pos_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_sgl_edge_neg_immobile')
+        case ('rho_sgl_imm_edg_neg')
           outputID = merge(rho_sgl_imm_edg_neg_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_sgl_screw_pos_immobile')
+        case ('rho_sgl_imm_scr_pos')
           outputID = merge(rho_sgl_imm_scr_pos_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_sgl_screw_neg_immobile')
+        case ('rho_sgl_imm_scr_neg')
           outputID = merge(rho_sgl_imm_scr_neg_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dip_edge')
+        case ('rho_dip_edg')
           outputID = merge(rho_dip_edg_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dip_screw')
+        case ('rho_dip_scr')
           outputID = merge(rho_dip_scr_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_forest')
           outputID = merge(rho_forest_ID,undefined_ID,prm%totalNslip>0)
-        case ('shearrate')
-          outputID = merge(shearrate_ID,undefined_ID,prm%totalNslip>0)
         case ('resolvedstress_back')
           outputID = merge(resolvedstress_back_ID,undefined_ID,prm%totalNslip>0)
-        case ('resistance')
-          outputID = merge(resistance_ID,undefined_ID,prm%totalNslip>0)
+        case ('tau_pass')
+          outputID = merge(tau_pass_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_dot_sgl')
           outputID = merge(rho_dot_sgl_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_dot_sgl_mobile')
           outputID = merge(rho_dot_sgl_mobile_ID,undefined_ID,prm%totalNslip>0)
         case ('rho_dot_dip')
           outputID = merge(rho_dot_dip_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_gen_edge')
-          outputID = merge(rho_dot_gen_edge_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_gen_screw')
-          outputID = merge(rho_dot_gen_screw_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_sgl2dip_edge')
-          outputID = merge(rho_dot_sgl2dip_edge_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_sgl2dip_screw')
-          outputID = merge(rho_dot_sgl2dip_screw_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_ann_ath')
-          outputID = merge(rho_dot_ann_ath_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_ann_the_edge')
-          outputID = merge(rho_dot_ann_the_edge_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_ann_the_screw')
-          outputID = merge(rho_dot_ann_the_screw_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_edgejogs')
-          outputID = merge(rho_dot_edgejogs_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_flux_mobile')
-          outputID = merge(rho_dot_flux_mobile_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_flux_edge')
-          outputID = merge(rho_dot_flux_edge_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_flux_screw')
-          outputID = merge(rho_dot_flux_screw_ID,undefined_ID,prm%totalNslip>0)
-        case ('velocity_edge_pos')
-          outputID = merge(velocity_edge_pos_ID,undefined_ID,prm%totalNslip>0)
-        case ('velocity_edge_neg')
-          outputID = merge(velocity_edge_neg_ID,undefined_ID,prm%totalNslip>0)
-        case ('velocity_screw_pos')
-          outputID = merge(velocity_screw_pos_ID,undefined_ID,prm%totalNslip>0)
-        case ('velocity_screw_neg')
-          outputID = merge(velocity_screw_neg_ID,undefined_ID,prm%totalNslip>0)
-        case ('accumulatedshear','accumulated_shear')
-          outputID = merge(accumulatedshear_ID,undefined_ID,prm%totalNslip>0)
+        case ('v_edg_pos')
+          outputID = merge(v_edg_pos_ID,undefined_ID,prm%totalNslip>0)
+        case ('v_edg_neg')
+          outputID = merge(v_edg_neg_ID,undefined_ID,prm%totalNslip>0)
+        case ('v_scr_pos')
+          outputID = merge(v_scr_pos_ID,undefined_ID,prm%totalNslip>0)
+        case ('v_scr_neg')
+          outputID = merge(v_scr_neg_ID,undefined_ID,prm%totalNslip>0)
+        case ('gamma')
+          outputID = merge(gamma_ID,undefined_ID,prm%totalNslip>0)
       end select
 
       if (outputID /= undefined_ID) then
         plastic_nonlocal_output(i,phase_plasticityInstance(p)) = outputs(i)
-        plastic_nonlocal_sizePostResult(i,phase_plasticityInstance(p)) = prm%totalNslip
         prm%outputID = [prm%outputID , outputID]
       endif
 
@@ -560,7 +506,7 @@ subroutine plastic_nonlocal_init
                                 'rhoSglEdgePosImmobile ','rhoSglEdgeNegImmobile ', &
                                 'rhoSglScrewPosImmobile','rhoSglScrewNegImmobile', &
                                 'rhoDipEdge            ','rhoDipScrew           ', &
-                                'accumulatedshear      ' ]) * prm%totalNslip                        !< "basic" microstructural state variables that are independent from other state variables
+                                'gamma                 ' ]) * prm%totalNslip                        !< "basic" microstructural state variables that are independent from other state variables
     sizeDependentState = size([ 'rhoForest   ']) * prm%totalNslip                                   !< microstructural state variables that depend on other state variables
     sizeState          = sizeDotState + sizeDependentState &
                        + size([ 'velocityEdgePos     ','velocityEdgeNeg     ', & 
@@ -572,7 +518,6 @@ subroutine plastic_nonlocal_init
                                        prm%totalNslip,0,0)    
     plasticState(p)%nonlocal = .true.
     plasticState(p)%offsetDeltaState = 0                                                            ! ToDo: state structure does not follow convention
-    plasticState(p)%sizePostResults = sum(plastic_nonlocal_sizePostResult(:,phase_plasticityInstance(p)))
     
     totalNslip(phase_plasticityInstance(p)) =  prm%totalNslip
     
@@ -597,67 +542,63 @@ subroutine plastic_nonlocal_init
             dot%rho_sgl_mob_edg_neg => plasticState(p)%dotState   (1*prm%totalNslip+1: 2*prm%totalNslip,:)
             del%rho_sgl_mob_edg_neg => plasticState(p)%deltaState (1*prm%totalNslip+1: 2*prm%totalNslip,:)
           
-            stt%rho_sgl_mob_scr_pos => plasticState(p)%state     (2*prm%totalNslip+1: 3*prm%totalNslip,:)
-            dot%rho_sgl_mob_scr_pos => plasticState(p)%dotState  (2*prm%totalNslip+1: 3*prm%totalNslip,:)
-            del%rho_sgl_mob_scr_pos => plasticState(p)%deltaState  (2*prm%totalNslip+1: 3*prm%totalNslip,:)
+            stt%rho_sgl_mob_scr_pos => plasticState(p)%state      (2*prm%totalNslip+1: 3*prm%totalNslip,:)
+            dot%rho_sgl_mob_scr_pos => plasticState(p)%dotState   (2*prm%totalNslip+1: 3*prm%totalNslip,:)
+            del%rho_sgl_mob_scr_pos => plasticState(p)%deltaState (2*prm%totalNslip+1: 3*prm%totalNslip,:)
 
-            stt%rho_sgl_mob_scr_neg => plasticState(p)%state     (3*prm%totalNslip+1: 4*prm%totalNslip,:)
-            dot%rho_sgl_mob_scr_neg => plasticState(p)%dotState  (3*prm%totalNslip+1: 4*prm%totalNslip,:)
-            del%rho_sgl_mob_scr_neg => plasticState(p)%deltaState  (3*prm%totalNslip+1: 4*prm%totalNslip,:)
+            stt%rho_sgl_mob_scr_neg => plasticState(p)%state      (3*prm%totalNslip+1: 4*prm%totalNslip,:)
+            dot%rho_sgl_mob_scr_neg => plasticState(p)%dotState   (3*prm%totalNslip+1: 4*prm%totalNslip,:)
+            del%rho_sgl_mob_scr_neg => plasticState(p)%deltaState (3*prm%totalNslip+1: 4*prm%totalNslip,:)
             
         stt%rhoSglImmobile => plasticState(p)%state               (4*prm%totalNslip+1: 8*prm%totalNslip,:)
         dot%rhoSglImmobile => plasticState(p)%dotState            (4*prm%totalNslip+1: 8*prm%totalNslip,:)
-        del%rhoSglImmobile => plasticState(p)%deltaState            (4*prm%totalNslip+1: 8*prm%totalNslip,:)
+        del%rhoSglImmobile => plasticState(p)%deltaState          (4*prm%totalNslip+1: 8*prm%totalNslip,:)
           
-            stt%rho_sgl_imm_edg_pos => plasticState(p)%state    (4*prm%totalNslip+1: 5*prm%totalNslip,:)
-            dot%rho_sgl_imm_edg_pos => plasticState(p)%dotState (4*prm%totalNslip+1: 5*prm%totalNslip,:)
+            stt%rho_sgl_imm_edg_pos => plasticState(p)%state      (4*prm%totalNslip+1: 5*prm%totalNslip,:)
+            dot%rho_sgl_imm_edg_pos => plasticState(p)%dotState   (4*prm%totalNslip+1: 5*prm%totalNslip,:)
             del%rho_sgl_imm_edg_pos => plasticState(p)%deltaState (4*prm%totalNslip+1: 5*prm%totalNslip,:)
             
-            stt%rho_sgl_imm_edg_neg => plasticState(p)%state    (5*prm%totalNslip+1: 6*prm%totalNslip,:)
-            dot%rho_sgl_imm_edg_neg => plasticState(p)%dotState (5*prm%totalNslip+1: 6*prm%totalNslip,:)
+            stt%rho_sgl_imm_edg_neg => plasticState(p)%state      (5*prm%totalNslip+1: 6*prm%totalNslip,:)
+            dot%rho_sgl_imm_edg_neg => plasticState(p)%dotState   (5*prm%totalNslip+1: 6*prm%totalNslip,:)
             del%rho_sgl_imm_edg_neg => plasticState(p)%deltaState (5*prm%totalNslip+1: 6*prm%totalNslip,:)
             
-            stt%rho_sgl_imm_scr_pos => plasticState(p)%state   (6*prm%totalNslip+1: 7*prm%totalNslip,:)
-            dot%rho_sgl_imm_scr_pos => plasticState(p)%dotState(6*prm%totalNslip+1: 7*prm%totalNslip,:)
-            del%rho_sgl_imm_scr_pos => plasticState(p)%deltaState(6*prm%totalNslip+1: 7*prm%totalNslip,:)
+            stt%rho_sgl_imm_scr_pos => plasticState(p)%state      (6*prm%totalNslip+1: 7*prm%totalNslip,:)
+            dot%rho_sgl_imm_scr_pos => plasticState(p)%dotState   (6*prm%totalNslip+1: 7*prm%totalNslip,:)
+            del%rho_sgl_imm_scr_pos => plasticState(p)%deltaState (6*prm%totalNslip+1: 7*prm%totalNslip,:)
             
-            stt%rho_sgl_imm_scr_neg => plasticState(p)%state   (7*prm%totalNslip+1: 8*prm%totalNslip,:)
-            dot%rho_sgl_imm_scr_neg => plasticState(p)%dotState(7*prm%totalNslip+1: 8*prm%totalNslip,:)
-            del%rho_sgl_imm_scr_neg => plasticState(p)%deltaState(7*prm%totalNslip+1: 8*prm%totalNslip,:)
+            stt%rho_sgl_imm_scr_neg => plasticState(p)%state      (7*prm%totalNslip+1: 8*prm%totalNslip,:)
+            dot%rho_sgl_imm_scr_neg => plasticState(p)%dotState   (7*prm%totalNslip+1: 8*prm%totalNslip,:)
+            del%rho_sgl_imm_scr_neg => plasticState(p)%deltaState (7*prm%totalNslip+1: 8*prm%totalNslip,:)
     
       stt%rhoDip => plasticState(p)%state                         (8*prm%totalNslip+1:10*prm%totalNslip,:)
       dot%rhoDip => plasticState(p)%dotState                      (8*prm%totalNslip+1:10*prm%totalNslip,:)
-      del%rhoDip => plasticState(p)%deltaState                      (8*prm%totalNslip+1:10*prm%totalNslip,:)
+      del%rhoDip => plasticState(p)%deltaState                    (8*prm%totalNslip+1:10*prm%totalNslip,:)
       
-        stt%rho_dip_edg => plasticState(p)%state                   (8*prm%totalNslip+1: 9*prm%totalNslip,:)
-        dot%rho_dip_edg => plasticState(p)%dotState                (8*prm%totalNslip+1: 9*prm%totalNslip,:)
-        del%rho_dip_edg => plasticState(p)%deltaState              (8*prm%totalNslip+1: 9*prm%totalNslip,:)
+        stt%rho_dip_edg => plasticState(p)%state                  (8*prm%totalNslip+1: 9*prm%totalNslip,:)
+        dot%rho_dip_edg => plasticState(p)%dotState               (8*prm%totalNslip+1: 9*prm%totalNslip,:)
+        del%rho_dip_edg => plasticState(p)%deltaState             (8*prm%totalNslip+1: 9*prm%totalNslip,:)
         
         stt%rho_dip_scr => plasticState(p)%state                  (9*prm%totalNslip+1:10*prm%totalNslip,:)
         dot%rho_dip_scr => plasticState(p)%dotState               (9*prm%totalNslip+1:10*prm%totalNslip,:)
-        del%rho_dip_scr => plasticState(p)%deltaState               (9*prm%totalNslip+1:10*prm%totalNslip,:)
+        del%rho_dip_scr => plasticState(p)%deltaState             (9*prm%totalNslip+1:10*prm%totalNslip,:)
      
-    stt%accumulatedshear => plasticState(p)%state       (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
-    dot%accumulatedshear => plasticState(p)%dotState   (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
-    del%accumulatedshear => plasticState(p)%deltaState  (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
+    stt%gamma => plasticState(p)%state                      (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
+    dot%gamma => plasticState(p)%dotState                   (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
+    del%gamma => plasticState(p)%deltaState                 (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
     plasticState(p)%aTolState(10*prm%totalNslip + 1:11*prm%totalNslip )  = prm%aTolShear
-    plasticState(p)%slipRate => plasticState(p)%dotState(10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
-    plasticState(p)%accumulatedSlip => plasticState(p)%state (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
+    plasticState(p)%slipRate => plasticState(p)%dotState    (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
+    plasticState(p)%accumulatedSlip => plasticState(p)%state(10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
      
-    stt%rho_forest => plasticState(p)%state       (11*prm%totalNslip + 1:12*prm%totalNslip ,1:NofMyPhase)
-    stt%v          => plasticState(p)%state       (12*prm%totalNslip + 1:16*prm%totalNslip ,1:NofMyPhase)
+    stt%rho_forest => plasticState(p)%state                 (11*prm%totalNslip + 1:12*prm%totalNslip ,1:NofMyPhase)
+    stt%v          => plasticState(p)%state                 (12*prm%totalNslip + 1:16*prm%totalNslip ,1:NofMyPhase)
+        stt%v_edg_pos  => plasticState(p)%state             (12*prm%totalNslip + 1:13*prm%totalNslip ,1:NofMyPhase)
+        stt%v_edg_neg  => plasticState(p)%state             (13*prm%totalNslip + 1:14*prm%totalNslip ,1:NofMyPhase)
+        stt%v_scr_pos  => plasticState(p)%state             (14*prm%totalNslip + 1:15*prm%totalNslip ,1:NofMyPhase)
+        stt%v_scr_neg  => plasticState(p)%state             (15*prm%totalNslip + 1:16*prm%totalNslip ,1:NofMyPhase)
 
-    allocate(dst%tau_Threshold(prm%totalNslip,NofMyPhase),source=0.0_pReal)
-    allocate(dst%tau_Back(prm%totalNslip,NofMyPhase),source=0.0_pReal)
-     
-    allocate(res%rhoDotFlux(prm%totalNslip,8,NofMyPhase),source=0.0_pReal)
-    allocate(res%rhoDotMultiplication(prm%totalNslip,2,NofMyPhase),source=0.0_pReal)
-    allocate(res%rhoDotSingle2DipoleGlide(prm%totalNslip,2,NofMyPhase),source=0.0_pReal)
-    allocate(res%rhoDotAthermalAnnihilation(prm%totalNslip,2,NofMyPhase),source=0.0_pReal)
-    allocate(res%rhoDotThermalAnnihilation(prm%totalNslip,2,NofMyPhase),source=0.0_pReal)
-    allocate(res%rhoDotEdgeJogs(prm%totalNslip,NofMyPhase),source=0.0_pReal)
+    allocate(dst%tau_pass(prm%totalNslip,NofMyPhase),source=0.0_pReal)
+    allocate(dst%tau_Back(prm%totalNslip,NofMyPhase),     source=0.0_pReal)
     end associate
-  
 
     if (NofMyPhase > 0) call stateInit(p,NofMyPhase)
     plasticState(p)%state0 = plasticState(p)%state
@@ -902,7 +843,7 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
   endif
 
   forall (s = 1:ns) &
-    dst%tau_threshold(s,of) = prm%mu * prm%burgers(s) &
+    dst%tau_pass(s,of) = prm%mu * prm%burgers(s) &
                   * sqrt(dot_product(sum(abs(rho),2), myInteractionMatrix(1:ns,s)))
 
 
@@ -1019,7 +960,7 @@ subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
              .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0)) then
     write(6,'(/,a,i8,1x,i2,1x,i1,/)') '<< CONST >> nonlocal_microstructure at el ip ',el,ip
     write(6,'(a,/,12x,12(e10.3,1x))') '<< CONST >> rhoForest', stt%rho_forest(:,of)
-    write(6,'(a,/,12x,12(f10.5,1x))') '<< CONST >> tauThreshold / MPa', dst%tau_threshold(:,of)*1e-6
+    write(6,'(a,/,12x,12(f10.5,1x))') '<< CONST >> tauThreshold / MPa', dst%tau_pass(:,of)*1e-6
     write(6,'(a,/,12x,12(f10.5,1x),/)') '<< CONST >> tauBack / MPa', dst%tau_back(:,of)*1e-6
   endif
 #endif
@@ -1218,7 +1159,7 @@ subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
   of = material_phasememberAt(1,ip,el)
   
   instance = phase_plasticityInstance(ph)
-  associate(prm => param(instance),dst=>microstructure(instance))
+  associate(prm => param(instance),dst=>microstructure(instance),stt=>state(instance))
   ns = prm%totalNslip
   
   !*** shortcut to state variables 
@@ -1249,7 +1190,7 @@ subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
   
   ! edges 
   call plastic_nonlocal_kinetics(v(1:ns,1), dv_dtau(1:ns,1), dv_dtauNS(1:ns,1), &
-                                      tau(1:ns), tauNS(1:ns,1), dst%tau_Threshold(1:ns,of), &
+                                      tau(1:ns), tauNS(1:ns,1), dst%tau_pass(1:ns,of), &
                                         1, Temperature, instance, of)
   v(1:ns,2) = v(1:ns,1)
   dv_dtau(1:ns,2) = dv_dtau(1:ns,1)
@@ -1265,15 +1206,12 @@ subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
   else
     do t = 3,4
       call plastic_nonlocal_kinetics(v(1:ns,t), dv_dtau(1:ns,t), dv_dtauNS(1:ns,t), &
-                                          tau(1:ns), tauNS(1:ns,t), dst%tau_Threshold(1:ns,of), &
+                                          tau(1:ns), tauNS(1:ns,t), dst%tau_pass(1:ns,of), &
                                             2 , Temperature, instance, of)
     enddo
   endif
-  
-  
-  !*** store velocity in state
-  forall (t = 1:4) &
-    plasticState(ph)%state(iV(1:ns,t,instance),of) = v(1:ns,t)
+
+  stt%v(:,of) = pack(v,.true.)
   
   !*** Bauschinger effect
   forall (s = 1:ns, t = 5:8, rhoSgl(s,t) * v(s,t-4) < 0.0_pReal) &
@@ -1515,7 +1453,10 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
   
   ph = material_phaseAt(1,el)
   instance = phase_plasticityInstance(ph)
-  associate(prm => param(instance),dst => microstructure(instance),dot => dotState(instance),stt => state(instance))
+  associate(prm => param(instance), &
+            dst => microstructure(instance), &
+            dot => dotState(instance), &
+            stt => state(instance))
   ns = totalNslip(instance)
   
   tau = 0.0_pReal
@@ -1665,11 +1606,11 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
       endif
       
       enteringFlux: if (considerEnteringFlux) then
-          forall (s = 1:ns, t = 1:4)
-            neighbor_v(s,t) =          plasticState(np)%state(iV   (s,t,neighbor_instance),no)
-            neighbor_rhoSgl(s,t) = max(plasticState(np)%state(iRhoU(s,t,neighbor_instance),no), &
+        forall (s = 1:ns, t = 1:4)
+          neighbor_v(s,t) =          plasticState(np)%state(iV   (s,t,neighbor_instance),no)
+          neighbor_rhoSgl(s,t) = max(plasticState(np)%state(iRhoU(s,t,neighbor_instance),no), &
                                                                                             0.0_pReal)
-          endforall
+        endforall
   
         where (neighbor_rhoSgl * IPvolume(neighbor_ip,neighbor_el) ** 0.667_pReal < prm%significantN &
           .or. neighbor_rhoSgl < prm%significantRho) &
@@ -1817,14 +1758,6 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
          + rhoDotSingle2DipoleGlide &
          + rhoDotAthermalAnnihilation &
          + rhoDotThermalAnnihilation 
-  
-  results(instance)%rhoDotFlux(1:ns,1:8,o)                 = rhoDotFlux(1:ns,1:8)
-  results(instance)%rhoDotMultiplication(1:ns,1:2,o)       = rhoDotMultiplication(1:ns,[1,3])
-  results(instance)%rhoDotSingle2DipoleGlide(1:ns,1:2,o)   = rhoDotSingle2DipoleGlide(1:ns,9:10)
-  results(instance)%rhoDotAthermalAnnihilation(1:ns,1:2,o) = rhoDotAthermalAnnihilation(1:ns,9:10)
-  results(instance)%rhoDotThermalAnnihilation(1:ns,1:2,o)  = rhoDotThermalAnnihilation(1:ns,9:10)
-  results(instance)%rhoDotEdgeJogs(1:ns,o)                 = 2.0_pReal * rhoDotThermalAnnihilation(1:ns,1)
-
 
 #ifdef DEBUG
   if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0 &
@@ -1860,14 +1793,9 @@ subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
 #endif
     plasticState(p)%dotState = IEEE_value(1.0_pReal,IEEE_quiet_NaN)
   else
-    forall (s = 1:ns, t = 1:4) 
-      plasticState(p)%dotState(iRhoU(s,t,instance),o) = rhoDot(s,t)
-      plasticState(p)%dotState(iRhoB(s,t,instance),o) = rhoDot(s,t+4)
-    endforall
-    forall (s = 1:ns, c = 1:2) &
-      plasticState(p)%dotState(iRhoD(s,c,instance),o) = rhoDot(s,c+8)
+    dot%rho(:,o) = pack(rhoDot,.true.)
     forall (s = 1:ns) &
-      dot%accumulatedshear(s,o) = sum(gdot(s,1:4))
+      dot%gamma(s,o) = sum(gdot(s,1:4))
   endif
 
   end associate
@@ -2021,206 +1949,6 @@ end subroutine plastic_nonlocal_updateCompatibility
 
  
 !--------------------------------------------------------------------------------------------------
-!> @brief return array of constitutive results
-!--------------------------------------------------------------------------------------------------
-function plastic_nonlocal_postResults(ph,instance,of) result(postResults)
-
- integer, intent(in) :: &
-   ph, &
-   instance, &
-   of
- 
- real(pReal),   dimension(sum(plastic_nonlocal_sizePostResult(:,instance))) :: &
-   postResults
- 
- integer :: &
-   ns, &                                                                                            !< short notation for the total number of active slip systems
-   c, &                                                                                             !< character of dislocation
-   cs, &                                                                                            !< constitutive result index
-   o, &                                                                                             !< index of current output
-   t, &                                                                                             !< type of dislocation
-   s                                                                                                !< index of my current slip system
-
- real(pReal), dimension(param(instance)%totalNslip,8) :: &
-   rhoSgl, &
-   rhoDotSgl                                                                                        !< evolution rate of single dislocation densities (positive/negative screw and edge without dipoles)
- real(pReal), dimension(param(instance)%totalNslip,4) :: &
-   gdot, &                                                                                          !< shear rates
-   v                                                                                                !< velocities
- real(pReal), dimension(param(instance)%totalNslip,2) :: &
-   rhoDotDip                                                                                        !< evolution rate of dipole dislocation densities (screw and edge dipoles)
-
-   
-ns = param(instance)%totalNslip
-
-cs = 0
-
-associate(prm => param(instance),dst => microstructure(instance),stt=>state(instance),dot => dotState(instance))
-
-forall (s = 1:ns, t = 1:4)
-  rhoSgl(s,t+4)    = plasticState(ph)%State(iRhoB(s,t,instance),of)
-  v(s,t)                = plasticState(ph)%State(iV(s,t,instance),of)
-  rhoDotSgl(s,t+4) = plasticState(ph)%dotState(iRhoB(s,t,instance),of)
-endforall
-forall (s = 1:ns, c = 1:2)
-  rhoDotDip(s,c) = plasticState(ph)%dotState(iRhoD(s,c,instance),of)
-endforall
-
-!* Calculate shear rate
-
-forall (t = 1:4) &
-  gdot(1:ns,t) = rhoSgl(1:ns,t) * prm%burgers(1:ns) * v(1:ns,t)
-  
-
-!* calculate limits for stable dipole height
-
-
-outputsLoop: do o = 1,size(param(instance)%outputID)
-  select case(param(instance)%outputID(o))
-      
-    case (rho_sgl_mob_edg_pos_ID)
-      postResults(cs+1:cs+ns) = stt%rho_sgl_mob_edg_pos(:,of)
-      cs = cs + ns
-      
-    case (rho_sgl_imm_edg_pos_ID)
-      postResults(cs+1:cs+ns) = stt%rho_sgl_imm_edg_pos(:,of)
-      cs = cs + ns
-      
-    case (rho_sgl_mob_edg_neg_ID)
-      postResults(cs+1:cs+ns) = stt%rho_sgl_mob_edg_neg(:,of)
-      cs = cs + ns
-      
-    case (rho_sgl_imm_edg_neg_ID)
-      postResults(cs+1:cs+ns) = stt%rho_sgl_imm_edg_neg(:,of)
-      cs = cs + ns
-      
-    case (rho_dip_edg_ID)
-      postResults(cs+1:cs+ns) = stt%rho_dip_edg(:,of)
-      cs = cs + ns
-      
-    case (rho_sgl_mob_scr_pos_ID)
-      postResults(cs+1:cs+ns) = stt%rho_sgl_mob_scr_pos(:,of)
-      cs = cs + ns
-      
-    case (rho_sgl_imm_scr_pos_ID)
-      postResults(cs+1:cs+ns) = stt%rho_sgl_imm_scr_pos(:,of)
-      cs = cs + ns
-
-    case (rho_sgl_mob_scr_neg_ID)
-      postResults(cs+1:cs+ns) = stt%rho_sgl_mob_scr_neg(:,of)
-      cs = cs + ns
-
-    case (rho_sgl_imm_scr_neg_ID)
-      postResults(cs+1:cs+ns) = stt%rho_sgl_imm_scr_neg(:,of)
-      cs = cs + ns
-
-    case (rho_dip_scr_ID)
-      postResults(cs+1:cs+ns) = stt%rho_dip_scr(:,of)
-      cs = cs + ns
-      
-    case (rho_forest_ID)
-      postResults(cs+1:cs+ns) = stt%rho_forest(:,of)
-      cs = cs + ns
-      
-    case (shearrate_ID)
-      postResults(cs+1:cs+ns) = sum(gdot,2)
-      cs = cs + ns
-      
-    case (resolvedstress_back_ID)
-      postResults(cs+1:cs+ns) = dst%tau_back(:,of)
-      cs = cs + ns
-      
-    case (resistance_ID)
-      postResults(cs+1:cs+ns) = dst%tau_Threshold(:,of)
-      cs = cs + ns
-      
-    case (rho_dot_sgl_ID)
-      postResults(cs+1:cs+ns) = sum(rhoDotSgl(1:ns,1:4),2) &
-                              + sum(rhoDotSgl(1:ns,5:8)*sign(1.0_pReal,rhoSgl(1:ns,5:8)),2)
-      cs = cs + ns
-      
-    case (rho_dot_sgl_mobile_ID)
-      postResults(cs+1:cs+ns) = sum(rhoDotSgl(1:ns,1:4),2)
-      cs = cs + ns
-      
-    case (rho_dot_dip_ID)
-      postResults(cs+1:cs+ns) = sum(rhoDotDip,2)
-      cs = cs + ns
-
-    case (rho_dot_gen_edge_ID)
-      postResults(cs+1:cs+ns) = results(instance)%rhoDotMultiplication(1:ns,1,of)
-      cs = cs + ns
-
-    case (rho_dot_gen_screw_ID)
-      postResults(cs+1:cs+ns) = results(instance)%rhoDotMultiplication(1:ns,2,of)
-      cs = cs + ns
-    
-    case (rho_dot_sgl2dip_edge_ID)
-      postResults(cs+1:cs+ns) = results(instance)%rhoDotSingle2DipoleGlide(1:ns,1,of)
-      cs = cs + ns
-    
-    case (rho_dot_sgl2dip_screw_ID)
-      postResults(cs+1:cs+ns) = results(instance)%rhoDotSingle2DipoleGlide(1:ns,2,of)
-      cs = cs + ns
-    
-    case (rho_dot_ann_ath_ID)
-      postResults(cs+1:cs+ns) = results(instance)%rhoDotAthermalAnnihilation(1:ns,1,of) & 
-                              + results(instance)%rhoDotAthermalAnnihilation(1:ns,2,of)
-      cs = cs + ns
-
-    case (rho_dot_ann_the_edge_ID) 
-      postResults(cs+1:cs+ns) = results(instance)%rhoDotThermalAnnihilation(1:ns,1,of) 
-      cs = cs + ns
-
-    case (rho_dot_ann_the_screw_ID) 
-      postResults(cs+1:cs+ns) = results(instance)%rhoDotThermalAnnihilation(1:ns,2,of)
-      cs = cs + ns
-
-    case (rho_dot_edgejogs_ID) 
-      postResults(cs+1:cs+ns) = results(instance)%rhoDotEdgeJogs(1:ns,of)
-      cs = cs + ns
-
-    case (rho_dot_flux_mobile_ID)
-      postResults(cs+1:cs+ns) = sum(results(instance)%rhoDotFlux(1:ns,1:4,of),2)
-      cs = cs + ns
-    
-    case (rho_dot_flux_edge_ID)
-      postResults(cs+1:cs+ns) = sum(results(instance)%rhoDotFlux(1:ns,1:2,of),2) &
-                              + sum(results(instance)%rhoDotFlux(1:ns,5:6,of)*sign(1.0_pReal,rhoSgl(1:ns,5:6)),2)
-      cs = cs + ns
-      
-    case (rho_dot_flux_screw_ID)
-      postResults(cs+1:cs+ns) = sum(results(instance)%rhoDotFlux(1:ns,3:4,of),2) &
-                              + sum(results(instance)%rhoDotFlux(1:ns,7:8,of)*sign(1.0_pReal,rhoSgl(1:ns,7:8)),2)
-      cs = cs + ns
-            
-    case (velocity_edge_pos_ID)
-      postResults(cs+1:cs+ns) = v(1:ns,1)
-      cs = cs + ns
-    
-    case (velocity_edge_neg_ID)
-      postResults(cs+1:cs+ns) = v(1:ns,2)
-      cs = cs + ns
-    
-    case (velocity_screw_pos_ID)
-      postResults(cs+1:cs+ns) = v(1:ns,3)
-      cs = cs + ns
-    
-    case (velocity_screw_neg_ID)
-      postResults(cs+1:cs+ns) = v(1:ns,4)
-      cs = cs + ns
-
-    case(accumulatedshear_ID)
-      postResults(cs+1:cs+ns) = stt%accumulatedshear(:,of)
-      cs = cs + ns
-    
-  end select
-enddo outputsLoop
-end associate
-end function plastic_nonlocal_postResults
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief returns copy of current dislocation densities from state
 !> @details raw values is rectified
 !--------------------------------------------------------------------------------------------------
@@ -2233,7 +1961,7 @@ function getRho(instance,of,ip,el)
 
   getRho = reshape(state(instance)%rho(:,of),[prm%totalNslip,10])
   
-  ! ensure mobile densities (not for imm, they have a sign)
+  ! ensure positive densities (not for imm, they have a sign)
   getRho(:,mob) = max(getRho(:,mob),0.0_pReal)
   getRho(:,dip) = max(getRho(:,dip),0.0_pReal)
   
@@ -2257,7 +1985,7 @@ subroutine plastic_nonlocal_results(instance,group)
   character(len=*) :: group
   integer :: o
 
-  associate(prm => param(instance), stt => state(instance))
+  associate(prm => param(instance),dst => microstructure(instance),stt=>state(instance))
   outputsLoop: do o = 1,size(prm%outputID)
     select case(prm%outputID(o))
       case (rho_sgl_mob_edg_pos_ID)
@@ -2293,6 +2021,24 @@ subroutine plastic_nonlocal_results(instance,group)
       case (rho_forest_ID)
         call results_writeDataset(group,stt%rho_forest, 'rho_forest',&
                                   'forest density','1/m²')
+      case (v_edg_pos_ID)
+        call results_writeDataset(group,stt%v_edg_pos, 'v_edg_pos',&
+                                  'positive edge velocity','m/s')
+      case (v_edg_neg_ID)
+        call results_writeDataset(group,stt%v_edg_neg, 'v_edg_neg',&
+                                  'negative edge velocity','m/s')
+      case (v_scr_pos_ID)
+        call results_writeDataset(group,stt%v_scr_pos, 'v_scr_pos',&
+                                  'positive srew velocity','m/s')
+      case (v_scr_neg_ID)
+        call results_writeDataset(group,stt%v_scr_neg, 'v_scr_neg',&
+                                  'negative screw velocity','m/s')
+      case(gamma_ID)
+        call results_writeDataset(group,stt%gamma,'gamma',&
+                                  'plastic shear','1')
+      case (tau_pass_ID)
+        call results_writeDataset(group,dst%tau_pass,'tau_pass',&
+                                  'passing stress for slip','Pa')
     end select
   enddo outputsLoop
   end associate
