@@ -239,8 +239,8 @@ class Geom():
         header.append('homogenization {}'.format(self.get_homogenization()))
         return header
         
-    @classmethod
-    def from_file(cls,fname):
+    @staticmethod
+    def from_file(fname):
         """
         Reads a geom file.
 
@@ -300,7 +300,7 @@ class Geom():
         if not np.any(np.mod(microstructure.flatten(),1) != 0.0):                                   # no float present
             microstructure = microstructure.astype('int')
         
-        return cls(microstructure.reshape(grid),size,origin,homogenization,comments)
+        return Geom(microstructure.reshape(grid),size,origin,homogenization,comments)
 
 
     def to_file(self,fname,pack=None):
