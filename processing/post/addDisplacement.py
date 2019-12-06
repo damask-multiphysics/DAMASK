@@ -50,7 +50,7 @@ for name in filenames:
     damask.util.report(scriptName,name)
 
     table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
-    grid,size = damask.util.coordGridAndSize(table.get_array(options.pos))
+    grid,size = damask.util.coordGridAndSize(table.get(options.pos))
     
     F = table.get(options.f).reshape(np.append(grid[::-1],(3,3)))
     if options.nodal:
