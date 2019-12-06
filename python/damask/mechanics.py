@@ -19,7 +19,26 @@ def Cauchy(F,P):
     else:
         sigma = np.einsum('i,ijk,ilk->ijl',1.0/np.linalg.det(F),P,F)
     return symmetric(sigma)
-  
+
+
+def PK2(F,P):
+    """
+    Return 2. Piola-Kirchhoff stress calculated from 1. Piola-Kirchhoff stress and deformation gradient.
+      
+    Parameters
+    ----------
+    F : numpy.array of shape (:,3,3) or (3,3)
+      Deformation gradient.
+    P : numpy.array of shape (:,3,3) or (3,3)
+      1. Piola-Kirchhoff stress.
+
+    """
+    if np.shape(F) == np.shape(P) == (3,3):
+        S = np.dot(np.linalg.inv(F),P)
+    else:
+        S = np.einsum('ijk,ikl->ijl',np.linalg.inv(F),P)
+    return S
+
 
 def strain_tensor(F,t,m):
     """

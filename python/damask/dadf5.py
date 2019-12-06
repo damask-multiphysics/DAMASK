@@ -18,17 +18,17 @@ class DADF5():
   """
   
 # ------------------------------------------------------------------
-  def __init__(self,filename):
+  def __init__(self,fname):
     """
     Opens an existing DADF5 file.
     
     Parameters
     ----------
-    filename : str
+    fname : str
         name of the DADF5 file to be openend.
     
     """
-    with h5py.File(filename,'r') as f:
+    with h5py.File(fname,'r') as f:
       
       if f.attrs['DADF5-major'] != 0 or not 2 <= f.attrs['DADF5-minor'] <= 3:
         raise TypeError('Unsupported DADF5 version {} '.format(f.attrs['DADF5-version']))
@@ -64,7 +64,7 @@ class DADF5():
                    'con_physics':    self.con_physics,
                    'mat_physics':    self.mat_physics}
                   
-    self.filename   = filename
+    self.fname = fname
 
 
   def __manage_visible(self,datasets,what,action):
@@ -298,7 +298,7 @@ class DADF5():
 
     groups = []
     
-    with h5py.File(self.filename,'r') as f:
+    with h5py.File(self.fname,'r') as f:
       for i in self.iter_visible('increments'):
         for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
           for oo in self.iter_visible(o):
@@ -315,7 +315,7 @@ class DADF5():
   def list_data(self):
     """Return information on all active datasets in the file."""
     message = ''
-    with h5py.File(self.filename,'r') as f:
+    with h5py.File(self.fname,'r') as f:
       for s,i in enumerate(self.iter_visible('increments')):
         message+='\n{} ({}s)\n'.format(i,self.times[s])
         for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
@@ -336,7 +336,7 @@ class DADF5():
   def get_dataset_location(self,label):
     """Return the location of all active datasets with given label."""
     path = []
-    with h5py.File(self.filename,'r') as f:
+    with h5py.File(self.fname,'r') as f:
       for i in self.iter_visible('increments'):
         k = '/'.join([i,'geometry',label])
         try:
@@ -358,14 +358,14 @@ class DADF5():
     
   def get_constituent_ID(self,c=0):
     """Pointwise constituent ID."""
-    with h5py.File(self.filename,'r') as f:
+    with h5py.File(self.fname,'r') as f:
       names = f['/mapping/cellResults/constituent']['Name'][:,c].astype('str')
     return np.array([int(n.split('_')[0]) for n in names.tolist()],dtype=np.int32)
 
 
   def get_crystal_structure(self):                                                                  # ToDo: extension to multi constituents/phase
     """Info about the crystal structure."""
-    with h5py.File(self.filename,'r') as f:
+    with h5py.File(self.fname,'r') as f:
       return f[self.get_dataset_location('orientation')[0]].attrs['Lattice'].astype('str')          # np.bytes_ to string
 
 
@@ -375,7 +375,7 @@ class DADF5():
     
     If more than one path is given, the dataset is composed of the individual contributions.
     """
-    with h5py.File(self.filename,'r') as f:
+    with h5py.File(self.fname,'r') as f:
       shape = (self.Nmaterialpoints,) + np.shape(f[path[0]])[1:]
       if len(shape) == 1: shape = shape +(1,)
       dataset = np.full(shape,np.nan,dtype=np.dtype(f[path[0]]))
@@ -418,7 +418,7 @@ class DADF5():
                            )
       return np.concatenate((x[:,:,:,None],y[:,:,:,None],y[:,:,:,None]),axis = 3).reshape([np.product(self.grid),3])
     else:
-      with h5py.File(self.filename,'r') as f:
+      with h5py.File(self.fname,'r') as f:
         return f['geometry/x_c'][()]
 
 
@@ -798,7 +798,7 @@ class DADF5():
     todo = []
     # ToDo: It would be more memory efficient to read only from file when required, i.e. do to it in pool.add_task
     for group in self.groups_with_datasets([d['label'] for d in datasets_requested]):
-      with h5py.File(self.filename,'r') as f:
+      with h5py.File(self.fname,'r') as f:
         datasets_in = {}
         for d in datasets_requested:
           loc  = f[group+'/'+d['label']]
@@ -813,7 +813,7 @@ class DADF5():
     N_not_calculated = len(todo)
     while N_not_calculated > 0:    
       result = results.get()
-      with h5py.File(self.filename,'a') as f:                                                       # write to file
+      with h5py.File(self.fname,'a') as f:                                                       # write to file
         dataset_out = f[result['group']].create_dataset(result['label'],data=result['data'])
         for k in result['meta'].keys():
           dataset_out.attrs[k] = result['meta'][k].encode()
