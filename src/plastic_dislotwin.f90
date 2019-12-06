@@ -33,7 +33,7 @@ module plastic_dislotwin
      gamma_sl_ID, &
      Lambda_sl_ID, &
      resolved_stress_slip_ID, &
-     threshold_stress_slip_ID, &
+     tau_pass_ID, &
      edge_dipole_distance_ID, &
      f_tw_ID, &
      Lambda_tw_ID, &
@@ -477,7 +477,7 @@ subroutine plastic_dislotwin_init
          outputID = merge(Lambda_sl_ID,undefined_ID,prm%sum_N_sl > 0)
          outputSize = prm%sum_N_sl
        case ('tau_pass')
-         outputID= merge(threshold_stress_slip_ID,undefined_ID,prm%sum_N_sl > 0)
+         outputID= merge(tau_pass_ID,undefined_ID,prm%sum_N_sl > 0)
          outputSize = prm%sum_N_sl
 
        case ('f_tw')
@@ -948,7 +948,7 @@ subroutine plastic_dislotwin_results(instance,group)
       case (Lambda_sl_ID)
         call results_writeDataset(group,dst%Lambda_sl,'Lambda_sl',&
                                   'mean free path for slip','m')
-      case (threshold_stress_slip_ID)
+      case (tau_pass_ID)
         call results_writeDataset(group,dst%tau_pass,'tau_pass',&
                                   'passing stress for slip','Pa')
 
