@@ -173,8 +173,7 @@ subroutine grid_mech_spectral_basic_init
   call Utilities_updateCoords(reshape(F,shape(F_lastInc)))
   call Utilities_constitutiveResponse(P,temp33_Real,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
-                                      0.0_pReal, &                                                  ! time increment
-                                      math_I3)                                                      ! no rotation of boundary condition
+                                      0.0_pReal)                                                    ! time increment
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                ! deassociate pointer
  
   restartRead2: if (interface_restartInc > 0) then
@@ -212,7 +211,8 @@ function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_
     timeinc_old                                                                                     !< time increment of last successful increment
   type(tBoundaryCondition),    intent(in) :: &
     stress_BC
-  real(pReal), dimension(3,3), intent(in) :: rotation_BC
+  type(rotation),              intent(in) :: &
+    rotation_BC
   type(tSolutionState)                    :: &
     solution
 !--------------------------------------------------------------------------------------------------
@@ -269,7 +269,7 @@ subroutine grid_mech_spectral_basic_forward(cutBack,guess,timeinc,timeinc_old,lo
   type(tBoundaryCondition),    intent(in) :: &
     stress_BC, &
     deformation_BC
-  real(pReal), dimension(3,3), intent(in) :: &
+  type(rotation),              intent(in) :: &
     rotation_BC
   PetscErrorCode :: ierr
   PetscScalar, dimension(:,:,:,:), pointer :: F
@@ -299,9 +299,9 @@ subroutine grid_mech_spectral_basic_forward(cutBack,guess,timeinc,timeinc_old,lo
       F_aimDot + deformation_BC%maskFloat * (deformation_BC%values - F_aim_lastInc)/loadCaseTime
     endif
 
-    Fdot =  utilities_calculateRate(guess, &
-                                    F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]),timeinc_old, &
-                                    math_rotate_backward33(F_aimDot,rotation_BC))
+    Fdot = utilities_calculateRate(guess, &
+                                   F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]),timeinc_old, &
+                                   rotation_BC%rotTensor2(F_aimDot,active=.true.))
     F_lastInc = reshape(F,[3,3,grid(1),grid(2),grid3])
     
     materialpoint_F0 = reshape(F, [3,3,1,product(grid(1:2))*grid3])
@@ -311,7 +311,7 @@ subroutine grid_mech_spectral_basic_forward(cutBack,guess,timeinc,timeinc_old,lo
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * timeinc
   F = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                       ! estimate of F at end of time+timeinc that matches rotated F_aim on average
-              math_rotate_backward33(F_aim,rotation_BC)),[9,grid(1),grid(2),grid3])
+              rotation_BC%rotTensor2(F_aim,active=.true.)),[9,grid(1),grid(2),grid3])
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
   
 end subroutine grid_mech_spectral_basic_forward
@@ -446,7 +446,7 @@ subroutine formResidual(in, F, &
             trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
     if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
-              ' deformation gradient aim (lab) =', transpose(math_rotate_backward33(F_aim,params%rotation_BC))
+              ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotTensor2(F_aim,active=.true.))
     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim       =', transpose(F_aim)
     flush(6)
@@ -471,7 +471,7 @@ subroutine formResidual(in, F, &
   tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = residuum                                  ! store fPK field for subsequent FFT forward transform
   call utilities_FFTtensorForward                                                                   ! FFT forward of global "tensorField_real"
   err_div = Utilities_divergenceRMS()                                                               ! divRMS of tensorField_fourier for later use
-  call utilities_fourierGammaConvolution(math_rotate_backward33(deltaF_aim,params%rotation_BC))     ! convolution of Gamma and tensorField_fourier, with arg 
+  call utilities_fourierGammaConvolution(params%rotation_BC%rotTensor2(deltaF_aim,active=.true.))   ! convolution of Gamma and tensorField_fourier
   call utilities_FFTtensorBackward                                                                  ! FFT backward of global tensorField_fourier
  
 !--------------------------------------------------------------------------------------------------
