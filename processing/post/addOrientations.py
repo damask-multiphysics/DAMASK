@@ -125,9 +125,10 @@ R = damask.Rotation.fromAxisAngle(np.array(options.labrotation),options.degrees,
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,
-                                    buffered = False)
-  except Exception: continue
+  try: 
+    table = damask.ASCIItable(name = name, buffered = False)
+  except IOError:
+    continue
   damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
