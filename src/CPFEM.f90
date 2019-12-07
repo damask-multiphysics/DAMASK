@@ -275,7 +275,6 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
        if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /=  0_pInt) &
          write(6,'(a,i8,1x,i2)') '<< CPFEM >> calculation for elFE ip ',elFE,ip
        call materialpoint_stressAndItsTangent(updateJaco, dt)                                     ! calculate stress and its tangent
-       call materialpoint_postResults()
 
      !* parallel computation and calulation not yet done
 
@@ -284,7 +283,6 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
          write(6,'(a,i8,a,i8)') '<< CPFEM >> calculation for elements ',FEsolving_execElem(1),&
                                                                  ' to ',FEsolving_execElem(2)
        call materialpoint_stressAndItsTangent(updateJaco, dt)                                       ! calculate stress and its tangent (parallel execution inside)
-       call materialpoint_postResults()
        CPFEM_calc_done = .true.
      endif
 

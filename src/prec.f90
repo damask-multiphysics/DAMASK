@@ -62,10 +62,6 @@ module prec
   end type
 
   type, extends(tState), public :: tPlasticState
-    integer :: &
-      nSlip  = 0, &
-      nTwin  = 0, &
-      nTrans = 0
     logical :: &
       nonlocal = .false.
     real(pReal), pointer,     dimension(:,:) :: &
