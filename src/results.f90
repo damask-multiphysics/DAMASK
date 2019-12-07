@@ -69,10 +69,9 @@ subroutine results_init
   write(6,'(a)')   ' https://doi.org/10.1007/s40192-017-0084-5'
 
   resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','w',.true.)
-  call HDF5_addAttribute(resultsFile,'DADF5-version',0.3_pReal)
-  call HDF5_addAttribute(resultsFile,'DADF5-major',0)
-  call HDF5_addAttribute(resultsFile,'DADF5-minor',3)
-  call HDF5_addAttribute(resultsFile,'DAMASK',DAMASKVERSION)
+  call HDF5_addAttribute(resultsFile,'DADF5_version_major',0)
+  call HDF5_addAttribute(resultsFile,'DADF5_version_minor',4)
+  call HDF5_addAttribute(resultsFile,'DAMASK_version',DAMASKVERSION)
   call get_command(commandLine)
   call HDF5_addAttribute(resultsFile,'call',trim(commandLine))
   call HDF5_closeGroup(results_addGroup('mapping'))
@@ -111,7 +110,7 @@ subroutine results_addIncrement(inc,time)
   real(pReal),   intent(in) :: time
   character(len=pStringLen) :: incChar
 
-  write(incChar,'(i5.5)') inc                                                                       ! allow up to 99999 increments
+  write(incChar,'(i10)') inc
   call HDF5_closeGroup(results_addGroup(trim('inc'//trim(adjustl(incChar)))))
   call results_setLink(trim('inc'//trim(adjustl(incChar))),'current')
   call HDF5_addAttribute(resultsFile,'time/s',time,trim('inc'//trim(adjustl(incChar))))
