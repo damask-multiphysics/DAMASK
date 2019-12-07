@@ -105,7 +105,7 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
  call CPFEM_initAll
- write(6,'(/,a)')   ' <<<+-  DAMASK_spectral init  -+>>>'
+ write(6,'(/,a)')   ' <<<+-  DAMASK_spectral init  -+>>>'; flush(6)
 
  write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, 2019'
  write(6,'(a)')   ' https://doi.org/10.1007/978-981-10-6855-3_80'
@@ -533,11 +533,9 @@ program DAMASK_spectral
        cutBackLevel = max(0, cutBackLevel - 1)                                                      ! try half number of subincs next inc
 
        if (all(solres(:)%converged)) then
-         write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                     ! report converged inc
-                                   ' increment ', totalIncsCounter, ' converged'
+         write(6,'(/,a,i0,a)') ' increment ', totalIncsCounter, ' converged'
        else
-         write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                     ! report non-converged inc
-                                   ' increment ', totalIncsCounter, ' NOT converged'
+         write(6,'(/,a,i0,a)') ' increment ', totalIncsCounter, ' NOT converged'
        endif; flush(6)
 
        if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0) then                           ! at output frequency

@@ -73,7 +73,7 @@ program DAMASK_FEM
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
   call CPFEM_initAll
-  write(6,'(/,a)')   ' <<<+-  DAMASK_FEM init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  DAMASK_FEM init  -+>>>'; flush(6)
  
 ! reading basic information from load case file and allocate data structure containing load cases
   call DMGetDimension(geomMesh,dimPlex,ierr); CHKERRA(ierr)                                         !< dimension of mesh (2D or 3D)
@@ -366,11 +366,9 @@ program DAMASK_FEM
       cutBackLevel = max(0, cutBackLevel - 1)                                                       ! try half number of subincs next inc
 
       if (all(solres(:)%converged)) then
-        write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                      ! report converged inc
-                                  ' increment ', totalIncsCounter, ' converged'
+        write(6,'(/,a,i0,a)') ' increment ', totalIncsCounter, ' converged'
       else
-        write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                      ! report non-converged inc
-                                  ' increment ', totalIncsCounter, ' NOT converged'
+        write(6,'(/,a,i0,a)') ' increment ', totalIncsCounter, ' NOT converged'
       endif; flush(6)
 
       if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0) then                            ! at output frequency
