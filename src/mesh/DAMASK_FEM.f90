@@ -296,19 +296,12 @@ program DAMASK_FEM
 !--------------------------------------------------------------------------------------------------
 ! report begin of new step
         write(6,'(/,a)') ' ###########################################################################'
-        write(6,'(1x,a,es12.5'//&
-                ',a,'//IO_intOut(inc)//',a,'//IO_intOut(loadCases(currentLoadCase)%incs)//&
-                ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//&
-                ',a,'//IO_intOut(currentLoadCase)//',a,'//IO_intOut(size(loadCases))//')') &
+        write(6,'(1x,a,es12.5,6(a,i0))')&
                 'Time', time, &
                 's: Increment ', inc, '/', loadCases(currentLoadCase)%incs,&
                 '-', stepFraction, '/', subStepFactor**cutBackLevel,&
                 ' of load case ', currentLoadCase,'/',size(loadCases)
-        write(incInfo,&
-               '(a,'//IO_intOut(totalIncsCounter)//&
-               ',a,'//IO_intOut(sum(loadCases%incs))//&
-               ',a,'//IO_intOut(stepFraction)//&
-               ',a,'//IO_intOut(subStepFactor**cutBackLevel)//')') &
+        write(incInfo,'(4(a,i0))') &
                'Increment ',totalIncsCounter,'/',sum(loadCases%incs),&
                '-',stepFraction, '/', subStepFactor**cutBackLevel
         flush(6)
