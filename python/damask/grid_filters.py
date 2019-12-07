@@ -99,9 +99,11 @@ def node_coord0(grid,size):
     return np.concatenate((z[:,:,:,None],y[:,:,:,None],x[:,:,:,None]),axis = 3) 
 
 def node_displacement_fluct(size,F):
+    """Nodal displacement field from fluctuation part of the deformation gradient field."""
     return cell_2_node(cell_displacement_fluct(size,F))
 
 def node_displacement_avg(size,F):
+    """Nodal displacement field from average part of the deformation gradient field."""
     F_avg = np.average(F,axis=(0,1,2))
     return np.einsum('ml,ijkl->ijkm',F_avg-np.eye(3),node_coord0(F.shape[:3],size))
 
@@ -134,5 +136,4 @@ def regrid(size,F,new_grid):
         c[np.where(c[:,:,:,d]>outer[d])] -= outer[d]
 
     tree = spatial.cKDTree(c.reshape((-1,3)),boxsize=outer)
-    d,i  = tree.query(cell_coord0(new_grid,outer))
-    return i
+    return tree.query(cell_coord0(new_grid,outer))[1]
