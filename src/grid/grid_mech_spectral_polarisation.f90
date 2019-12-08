@@ -14,6 +14,7 @@ module grid_mech_spectral_polarisation
   use DAMASK_interface
   use HDF5_utilities
   use math
+  use rotations
   use spectral_utilities
   use IO
   use FEsolving
@@ -185,8 +186,7 @@ subroutine grid_mech_spectral_polarisation_init
   call Utilities_updateCoords(reshape(F,shape(F_lastInc)))
   call Utilities_constitutiveResponse(P,temp33_Real,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
-                                      0.0_pReal, &                                                  ! time increment
-                                      math_I3)                                                      ! no rotation of boundary condition
+                                      0.0_pReal)                                                    ! time increment
   call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)                        ! deassociate pointer
  
   restartRead2: if (interface_restartInc > 0) then
@@ -220,12 +220,13 @@ function grid_mech_spectral_polarisation_solution(incInfoIn,timeinc,timeinc_old,
 ! input data for solution
   character(len=*), intent(in) :: &
     incInfoIn
-  real(pReal), intent(in) :: &
+  real(pReal),                 intent(in) :: &
     timeinc, &                                                                                      !< time increment of current solution
     timeinc_old                                                                                     !< time increment of last successful increment
   type(tBoundaryCondition),    intent(in) :: &
     stress_BC
-  real(pReal), dimension(3,3), intent(in) :: rotation_BC
+  type(rotation),              intent(in) :: &
+    rotation_BC
   type(tSolutionState)                    :: &
     solution
 !--------------------------------------------------------------------------------------------------
@@ -286,7 +287,7 @@ subroutine grid_mech_spectral_polarisation_forward(cutBack,guess,timeinc,timeinc
   type(tBoundaryCondition),      intent(in) :: &
     stress_BC, &
     deformation_BC
-  real(pReal), dimension(3,3), intent(in) ::&
+  type(rotation), intent(in) :: &
     rotation_BC
   PetscErrorCode :: ierr
   PetscScalar, dimension(:,:,:,:), pointer :: FandF_tau, F, F_tau
@@ -322,10 +323,10 @@ subroutine grid_mech_spectral_polarisation_forward(cutBack,guess,timeinc,timeinc
 
     Fdot     = utilities_calculateRate(guess, &
                                        F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]),timeinc_old, &
-                                       math_rotate_backward33(F_aimDot,rotation_BC))
+                                       rotation_BC%rotTensor2(F_aimDot,active=.true.))
     F_tauDot = utilities_calculateRate(guess, &
                                        F_tau_lastInc,reshape(F_tau,[3,3,grid(1),grid(2),grid3]), timeinc_old, &
-                                       math_rotate_backward33(F_aimDot,rotation_BC))
+                                       rotation_BC%rotTensor2(F_aimDot,active=.true.))
     F_lastInc     = reshape(F,    [3,3,grid(1),grid(2),grid3])
     F_tau_lastInc = reshape(F_tau,[3,3,grid(1),grid(2),grid3])
     
@@ -336,7 +337,7 @@ subroutine grid_mech_spectral_polarisation_forward(cutBack,guess,timeinc,timeinc
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * timeinc
   F = reshape(utilities_forwardField(timeinc,F_lastInc,Fdot, &                                      ! estimate of F at end of time+timeinc that matches rotated F_aim on average
-                                     math_rotate_backward33(F_aim,rotation_BC)),&
+                                     rotation_BC%rotTensor2(F_aim,active=.true.)),&
               [9,grid(1),grid(2),grid3])
   if (guess) then
      F_tau = reshape(Utilities_forwardField(timeinc,F_tau_lastInc,F_taudot), &
@@ -347,8 +348,8 @@ subroutine grid_mech_spectral_polarisation_forward(cutBack,guess,timeinc,timeinc
        F_lambda33 = math_mul3333xx33(S_scale,matmul(F_lambda33, &
                                    math_mul3333xx33(C_scale,&
                                                     matmul(transpose(F_lambda33),&
-                                                                  F_lambda33)-math_I3))*0.5_pReal)&
-                               + math_I3
+                                                           F_lambda33)-math_I3))*0.5_pReal) &
+                  + math_I3
        F_tau(1:9,i,j,k) = reshape(F_lambda33,[9])+F(1:9,i,j,k)
     enddo; enddo; enddo
   endif
@@ -512,7 +513,7 @@ subroutine formResidual(in, FandF_tau, &
             trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
     if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
-              ' deformation gradient aim (lab) =', transpose(math_rotate_backward33(F_aim,params%rotation_BC))
+              ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotTensor2(F_aim,active=.true.))
     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim       =', transpose(F_aim)
     flush(6)
@@ -531,7 +532,7 @@ subroutine formResidual(in, FandF_tau, &
 !--------------------------------------------------------------------------------------------------
 ! doing convolution in Fourier space 
   call utilities_FFTtensorForward
-  call utilities_fourierGammaConvolution(math_rotate_backward33(polarBeta*F_aim,params%rotation_BC)) 
+  call utilities_fourierGammaConvolution(params%rotation_BC%rotTensor2(polarBeta*F_aim,active=.true.)) 
   call utilities_FFTtensorBackward
 
 !--------------------------------------------------------------------------------------------------
@@ -549,7 +550,7 @@ subroutine formResidual(in, FandF_tau, &
 ! stress BC handling
   F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%stress_BC)))                                  ! S = 0.0 for no bc
   err_BC = maxval(abs((1.0_pReal-params%stress_mask) * math_mul3333xx33(C_scale,F_aim &
-                                                 -math_rotate_forward33(F_av,params%rotation_BC)) + &
+                                                 -params%rotation_BC%rotTensor2(F_av)) + &
                                  params%stress_mask  * (P_av-params%stress_BC)))                    ! mask = 0.0 for no bc
 ! calculate divergence
   tensorField_real = 0.0_pReal

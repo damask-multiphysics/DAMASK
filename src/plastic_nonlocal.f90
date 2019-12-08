@@ -24,10 +24,10 @@ module plastic_nonlocal
     
   implicit none
   private
-  real(pReal), parameter, private :: &
+  real(pReal), parameter :: &
     KB = 1.38e-23_pReal                                                                             !< Physical parameter, Boltzmann constant in J/Kelvin
   
-  character(len=64), dimension(:,:), allocatable, target, public :: &
+  character(len=64), dimension(:,:), allocatable :: &
     plastic_nonlocal_output                                                                         !< name of each post result output
 
   ! storage order of dislocation types
@@ -50,18 +50,18 @@ module plastic_nonlocal
     mob_scr_neg = 4                                                                                 !< mobile screw positive
 
   ! BEGIN DEPRECATES
-  integer, dimension(:,:,:), allocatable, private :: &
+  integer, dimension(:,:,:), allocatable :: &
     iRhoU, &                                                                                        !< state indices for unblocked density
     iRhoB, &                                                                                        !< state indices for blocked density
     iRhoD, &                                                                                        !< state indices for dipole density
     iV, &                                                                                           !< state indices for dislcation velocities
     iD                                                                                              !< state indices for stable dipole height
-  integer, dimension(:), allocatable, private, protected :: &
+  integer, dimension(:), allocatable :: &
     totalNslip                                                                                      !< total number of active slip systems for each instance
   !END DEPRECATED
   
-  real(pReal), dimension(:,:,:,:,:,:), allocatable, private :: &
-    compatibility                                                                                    !< slip system compatibility between me and my neighbors
+  real(pReal), dimension(:,:,:,:,:,:), allocatable :: &
+    compatibility                                                                                   !< slip system compatibility between me and my neighbors
   
   enum, bind(c) 
     enumerator :: &
@@ -89,7 +89,7 @@ module plastic_nonlocal
       gamma_ID
   end enum
   
-  type, private :: tParameters                                                                      !< container type for internal constitutive parameters
+  type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
       atomicVolume, &                                                                               !< atomic volume
       Dsd0, &                                                                                       !< prefactor for self-diffusion coefficient
@@ -139,19 +139,19 @@ module plastic_nonlocal
       interactionSlipSlip ,&                                                                        !< coefficients for slip-slip interaction
       forestProjection_Edge, &                                                                      !< matrix of forest projections of edge dislocations
       forestProjection_Screw                                                                        !< matrix of forest projections of screw dislocations
-    real(pReal), dimension(:), allocatable, private :: &
+    real(pReal), dimension(:), allocatable :: &
       nonSchmidCoeff
-    real(pReal), dimension(:,:,:), allocatable, private :: &
+    real(pReal), dimension(:,:,:), allocatable :: &
       Schmid, &                                                                                     !< Schmid contribution
       nonSchmid_pos, &
       nonSchmid_neg                                                                                 !< combined projection of Schmid and non-Schmid contributions to the resolved shear stress (only for screws)
     integer :: &
       totalNslip
-    integer, dimension(:) ,allocatable , public:: &
+    integer, dimension(:) ,allocatable :: &
       Nslip,&
       colinearSystem                                                                                !< colinear system to the active slip system (only valid for fcc!)
  
-    logical, private :: &
+    logical :: &
       shortRangeStressCorrection, &                                                                 !< flag indicating the use of the short range stress correction by a excess density gradient term
       probabilisticMultiplication
     
@@ -160,13 +160,13 @@ module plastic_nonlocal
       
   end type tParameters
    
-  type, private :: tNonlocalMicrostructure
+  type :: tNonlocalMicrostructure
     real(pReal), allocatable, dimension(:,:) :: &
      tau_pass, & 
      tau_Back 
   end type tNonlocalMicrostructure
   
-  type, private :: tNonlocalState
+  type :: tNonlocalState
     real(pReal), pointer, dimension(:,:) :: &
       rho, &                                                                                        ! < all dislocations
         rhoSgl, &
@@ -192,16 +192,16 @@ module plastic_nonlocal
           v_scr_neg
   end type tNonlocalState
   
-  type(tNonlocalState), allocatable, dimension(:), private :: &
+  type(tNonlocalState), allocatable, dimension(:) :: &
     deltaState, &
     dotState, &
     state
  
-  type(tParameters), dimension(:), allocatable, private :: param                                    !< containers of constitutive parameters (len Ninstance)
+  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstance)
  
-  type(tNonlocalMicrostructure), dimension(:), allocatable, private :: microstructure
+  type(tNonlocalMicrostructure), dimension(:), allocatable :: microstructure
 
-  integer(kind(undefined_ID)), dimension(:,:),   allocatable, private :: & 
+  integer(kind(undefined_ID)), dimension(:,:), allocatable :: & 
     plastic_nonlocal_outputID                                                                       !< ID of each post result output
   
   public :: &
@@ -1829,8 +1829,6 @@ subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
     ns, &                                                                                           ! number of active slip systems
     s1, &                                                                                           ! slip system index (me)
     s2                                                                                              ! slip system index (my neighbor)
-  real(pReal), dimension(4) :: &
-    absoluteMisorientation                                                                          ! absolute misorientation (without symmetry) between me and my neighbor
   real(pReal), dimension(2,totalNslip(phase_plasticityInstance(material_phaseAt(1,e))),&
                            totalNslip(phase_plasticityInstance(material_phaseAt(1,e))),&
                            nIPneighbors) :: &  
@@ -1841,7 +1839,7 @@ subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
     nThresholdValues
   logical, dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,e)))) :: & 
     belowThreshold
-  type(rotation) :: rot
+  type(rotation) :: mis
 
   Nneighbors = nIPneighbors
   ph = material_phaseAt(1,e)
@@ -1907,18 +1905,17 @@ subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
     !* Finally the smallest compatibility value is decreased until the sum is exactly equal to one. 
     !* All values below the threshold are set to zero.
     else
-      rot = orientation(1,i,e)%misorientation(orientation(1,neighbor_i,neighbor_e))
-      absoluteMisorientation = rot%asQuaternion()
+      mis = orientation(1,i,e)%misorientation(orientation(1,neighbor_i,neighbor_e))
       mySlipSystems: do s1 = 1,ns
         neighborSlipSystems: do s2 = 1,ns
           my_compatibility(1,s2,s1,n) =  math_inner(prm%slip_normal(1:3,s1), &
-          math_qRot(absoluteMisorientation, prm%slip_normal(1:3,s2))) &
+                                                       mis%rotate(prm%slip_normal(1:3,s2))) &
                                   * abs(math_inner(prm%slip_direction(1:3,s1), &
-                                  math_qRot(absoluteMisorientation, prm%slip_direction(1:3,s2))))
+                                                       mis%rotate(prm%slip_direction(1:3,s2))))
           my_compatibility(2,s2,s1,n) = abs(math_inner(prm%slip_normal(1:3,s1), &
-          math_qRot(absoluteMisorientation, prm%slip_normal(1:3,s2)))) &
+                                                       mis%rotate(prm%slip_normal(1:3,s2)))) &
                                   * abs(math_inner(prm%slip_direction(1:3,s1), &
-                                  math_qRot(absoluteMisorientation, prm%slip_direction(1:3,s2))))
+                                                       mis%rotate(prm%slip_direction(1:3,s2))))
         enddo neighborSlipSystems
         
         my_compatibilitySum = 0.0_pReal

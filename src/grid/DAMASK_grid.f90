@@ -28,7 +28,6 @@ program DAMASK_spectral
  use grid_damage_spectral
  use grid_thermal_spectral
  use results
- use rotations
 
  implicit none
 
@@ -78,7 +77,6 @@ program DAMASK_spectral
  character(len=6)  :: loadcase_string
  character(len=1024) :: &
    incInfo
- type(rotation) :: R
  type(tLoadCase), allocatable, dimension(:) :: loadCases                                            !< array of all load cases
  type(tLoadCase) :: newLoadCase
  type(tSolutionState), allocatable, dimension(:) :: solres
@@ -189,6 +187,7 @@ program DAMASK_spectral
      newLoadCase%ID(field) = FIELD_DAMAGE_ID
    endif damageActive
 
+   call newLoadCase%rot%fromEulers(real([0.0,0.0,0.0],pReal))
    readIn: do i = 1, chunkPos(1)
      select case (IO_lc(IO_stringValue(line,chunkPos,i)))
        case('fdot','dotf','l','f')                                                                  ! assign values for the deformation BC matrix
@@ -244,14 +243,13 @@ program DAMASK_spectral
          do j = 1, 3
            temp_valueVector(j) = IO_floatValue(line,chunkPos,i+k+j)
          enddo
-         call R%fromEulers(temp_valueVector(1:3),degrees=(l==1))
-         newLoadCase%rotation = R%asMatrix()
+         call newLoadCase%rot%fromEulers(temp_valueVector(1:3),degrees=(l==1))
        case('rotation','rot')                                                                       ! assign values for the rotation  matrix
          temp_valueVector = 0.0_pReal
          do j = 1, 9
            temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)
          enddo
-         newLoadCase%rotation = math_9to33(temp_valueVector)
+         call newLoadCase%rot%fromMatrix(math_9to33(temp_valueVector))
      end select
    enddo readIn
 
@@ -295,14 +293,12 @@ program DAMASK_spectral
        endif
        enddo; write(6,'(/)',advance='no')
      enddo
-    if (any(abs(matmul(newLoadCase%rotation, &
-                transpose(newLoadCase%rotation))-math_I3) > &
-                reshape(spread(tol_math_check,1,9),[ 3,3]))&
-                .or. abs(math_det33(newLoadCase%rotation)) > &
-                1.0_pReal + tol_math_check) errorID = 846                                           ! given rotation matrix contains strain
-     if (any(dNeq(newLoadCase%rotation, math_I3))) &
+     if (any(abs(matmul(newLoadCase%rot%asMatrix(), &
+                        transpose(newLoadCase%rot%asMatrix()))-math_I3) > &
+                reshape(spread(tol_math_check,1,9),[ 3,3]))) errorID = 846                          ! given rotation matrix contains strain
+     if (any(dNeq(newLoadCase%rot%asMatrix(), math_I3))) &
        write(6,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'rotation of loadframe:',&
-                transpose(newLoadCase%rotation)
+                transpose(newLoadCase%rot%asMatrix())
      if (newLoadCase%time < 0.0_pReal) errorID = 834                                                ! negative time increment
      write(6,'(2x,a,f12.6)') 'time:       ', newLoadCase%time
      if (newLoadCase%incs < 1)    errorID = 835                                                     ! non-positive incs count
@@ -462,7 +458,7 @@ program DAMASK_spectral
                        cutBack,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
                        deformation_BC     = loadCases(currentLoadCase)%deformation, &
                        stress_BC          = loadCases(currentLoadCase)%stress, &
-                       rotation_BC        = loadCases(currentLoadCase)%rotation)
+                       rotation_BC        = loadCases(currentLoadCase)%rot)
 
              case(FIELD_THERMAL_ID); call grid_thermal_spectral_forward(cutBack)
              case(FIELD_DAMAGE_ID);  call grid_damage_spectral_forward(cutBack)
@@ -481,7 +477,7 @@ program DAMASK_spectral
                  solres(field) = mech_solution (&
                                         incInfo,timeinc,timeIncOld, &
                                         stress_BC   = loadCases(currentLoadCase)%stress, &
-                                        rotation_BC = loadCases(currentLoadCase)%rotation)
+                                        rotation_BC = loadCases(currentLoadCase)%rot)
 
                case(FIELD_THERMAL_ID)
                  solres(field) = grid_thermal_spectral_solution(timeinc,timeIncOld)

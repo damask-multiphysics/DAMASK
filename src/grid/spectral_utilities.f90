@@ -10,6 +10,7 @@ module spectral_utilities
 
   use prec
   use math
+  use rotations
   use IO
   use mesh_grid
   use numerics
@@ -90,7 +91,7 @@ module spectral_utilities
   end type tBoundaryCondition
 
   type, public :: tLoadCase
-    real(pReal), dimension (3,3) :: rotation               = math_I3                                !< rotation of BC
+    type(rotation)               :: rot                                                             !< rotation of BC
     type(tBoundaryCondition) ::     stress, &                                                       !< stress BC
                                     deformation                                                     !< deformation BC (Fdot or L)
     real(pReal) ::                  time                   = 0.0_pReal                              !< length of increment
@@ -103,7 +104,8 @@ module spectral_utilities
   end type tLoadCase
 
   type, public :: tSolutionParams                                                                   !< @todo use here the type definition for a full loadcase
-    real(pReal), dimension(3,3) :: stress_mask, stress_BC, rotation_BC
+    real(pReal), dimension(3,3) :: stress_mask, stress_BC
+    type(rotation)              :: rotation_BC
     real(pReal) :: timeinc
     real(pReal) :: timeincOld
   end type tSolutionParams
@@ -684,10 +686,11 @@ end function utilities_curlRMS
 !--------------------------------------------------------------------------------------------------
 function utilities_maskedCompliance(rot_BC,mask_stress,C)
 
-  real(pReal),              dimension(3,3,3,3) :: utilities_maskedCompliance                        !< masked compliance
-  real(pReal), intent(in) , dimension(3,3,3,3) :: C                                                 !< current average stiffness
-  real(pReal), intent(in) , dimension(3,3)     :: rot_BC                                            !< rotation of load frame
-  logical,     intent(in),  dimension(3,3)     :: mask_stress                                       !< mask of stress BC
+  real(pReal),                dimension(3,3,3,3) :: utilities_maskedCompliance                      !< masked compliance
+  real(pReal),    intent(in), dimension(3,3,3,3) :: C                                               !< current average stiffness
+  type(rotation), intent(in)                     :: rot_BC                                          !< rotation of load frame
+  logical,        intent(in), dimension(3,3)     :: mask_stress                                     !< mask of stress BC
+
   integer :: j, k, m, n
   logical, dimension(9) :: mask_stressVector
   real(pReal), dimension(9,9) :: temp99_Real
@@ -705,7 +708,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
     allocate (c_reduced(size_reduced,size_reduced), source =0.0_pReal)
     allocate (s_reduced(size_reduced,size_reduced), source =0.0_pReal)
     allocate (sTimesC(size_reduced,size_reduced),   source =0.0_pReal)
-    temp99_Real = math_3333to99(math_rotate_forward3333(C,rot_BC))
+    temp99_Real = math_3333to99(rot_BC%rotTensor4(C))
  
     if(debugGeneral) then
       write(6,'(/,a)') ' ... updating masked compliance ............................................'
@@ -834,12 +837,12 @@ end subroutine utilities_fourierTensorDivergence
 subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
                                           F,timeinc,rotation_BC)
  
-  real(pReal),intent(out), dimension(3,3,3,3)                     :: C_volAvg, C_minmaxAvg          !< average stiffness
-  real(pReal),intent(out), dimension(3,3)                         :: P_av                           !< average PK stress
-  real(pReal),intent(out), dimension(3,3,grid(1),grid(2),grid3)   :: P                              !< PK stress
-  real(pReal), intent(in), dimension(3,3,grid(1),grid(2),grid3)   :: F                              !< deformation gradient target
-  real(pReal), intent(in)                                         :: timeinc                        !< loading time
-  real(pReal), intent(in), dimension(3,3)                         :: rotation_BC                    !< rotation of load frame
+  real(pReal),    intent(out), dimension(3,3,3,3)                   :: C_volAvg, C_minmaxAvg        !< average stiffness
+  real(pReal),    intent(out), dimension(3,3)                       :: P_av                         !< average PK stress
+  real(pReal),    intent(out), dimension(3,3,grid(1),grid(2),grid3) :: P                            !< PK stress
+  real(pReal),    intent(in),  dimension(3,3,grid(1),grid(2),grid3) :: F                            !< deformation gradient target
+  real(pReal),    intent(in)                                        :: timeinc                      !< loading time
+  type(rotation), intent(in),  optional                             :: rotation_BC                  !< rotation of load frame
  
   
   integer :: &
@@ -861,7 +864,8 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   if (debugRotation) &
   write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress (lab) / MPa =',&
                                                       transpose(P_av)*1.e-6_pReal
-  P_av = math_rotate_forward33(P_av,rotation_BC)
+  if(present(rotation_BC)) &
+    P_av = rotation_BC%rotTensor2(P_av)
   write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress       / MPa =',&
                                                       transpose(P_av)*1.e-6_pReal
   flush(6)
