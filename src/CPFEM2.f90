@@ -98,14 +98,14 @@ subroutine CPFEM_init
     groupHandle = HDF5_openGroup(fileHandle,'constituent')
     do i = 1,size(phase_plasticity)
       write(datasetName,'(i0,a)') i,'_omega_plastic'
-      call HDF5_read(groupHandle,plasticState(i)%state,datasetName)
+      call HDF5_read(groupHandle,plasticState(i)%state0,datasetName)
     enddo
     call HDF5_closeGroup(groupHandle)
 
     groupHandle = HDF5_openGroup(fileHandle,'materialpoint')
     do i = 1, material_Nhomogenization
       write(datasetName,'(i0,a)') i,'_omega_homogenization'
-      call HDF5_read(groupHandle,homogState(i)%state,datasetName)
+      call HDF5_read(groupHandle,homogState(i)%state0,datasetName)
     enddo
     call HDF5_closeGroup(groupHandle)
 
