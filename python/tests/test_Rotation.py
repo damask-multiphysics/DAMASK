@@ -74,6 +74,8 @@ class TestRotation:
         ori = Orientation(Rotation(),lattice)
         eu = np.array([o.rotation.asEulers(degrees=True) for o in ori.relatedOrientations(model)])
         if update: 
+            coords = np.array([(1,i+1) for i,x in enumerate(eu)])
             table = damask.Table(eu,{'Eulers':(3,)})
+            table.add('pos',coords)
             table.to_ASCII(reference)
         assert np.allclose(eu,damask.Table.from_ASCII(reference).get('Eulers'))
