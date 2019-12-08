@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys
-import numpy as np
+import os
+import sys
 from optparse import OptionParser
+
+import numpy as np
+
 import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
@@ -191,78 +193,45 @@ parser.add_option('-p', '--port',
                   dest = 'port',
                   type = 'int', metavar = 'int',
                   help = 'Mentat connection port [%default]')
-parser.add_option('--homogenization',
-                  dest = 'homogenization',
-                  type = 'int', metavar = 'int',
-                  help = 'homogenization index to be used [auto]')
 
-parser.set_defaults(port           = None,
-                    homogenization = None,
-)
+parser.set_defaults(port = None,
+                   )
 
 (options, filenames) = parser.parse_args()
 
-if options.port:
-  try:
-    import py_mentat
-  except:
-    parser.error('no valid Mentat release found.')
+if options.port is not None:
+    try:
+        import py_mentat
+    except ImportError:
+        parser.error('no valid Mentat release found.')
 
 # --- loop over input files ------------------------------------------------------------------------
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name    = name,
-                              outname = os.path.splitext(name)[0]+'.proc' if name else name,
-                              buffered = False, labeled = False)
-  except: continue
-  damask.util.report(scriptName,name)
-
-# --- interpret header ----------------------------------------------------------------------------
-
-  table.head_read()
-  info,extra_header = table.head_getGeom()
-  if options.homogenization: info['homogenization'] = options.homogenization
+    damask.util.report(scriptName,name)
     
-  damask.util.croak(['grid     a b c:  %s'%(' x '.join(map(str,info['grid']))),
-                     'size     x y z:  %s'%(' x '.join(map(str,info['size']))),
-                     'origin   x y z:  %s'%(' : '.join(map(str,info['origin']))),
-                     'homogenization:  %i'%info['homogenization'],
-                     'microstructures: %i'%info['microstructures'],
-              ])
+    geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    microstructure = geom.get_microstructure().flatten(order='F')
 
-  errors = []
-  if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
-  if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
-  if errors != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# --- read data ------------------------------------------------------------------------------------
-
-  microstructure = table.microstructure_read(info['grid']).reshape(info['grid'].prod(),order='F')   # read microstructure
-
-  cmds = [\
-    init(),
-    mesh(info['grid'],info['size']),
-    material(),
-    geometry(),
-    initial_conditions(info['homogenization'],microstructure),
-    '*identify_sets',
-    '*show_model',
-    '*redraw',
-    '*draw_automatic',
-  ]
-  
-  outputLocals = {}
-  if options.port:
-    py_mentat.py_connect('',options.port)
-    output(cmds,outputLocals,'Mentat')
-    py_mentat.py_disconnect()
-  else:
-    output(cmds,outputLocals,table.__IO__['out'])                                                   # bad hack into internals of table class...
-
-  table.close()
+    cmds = [\
+      init(),
+      mesh(geom.grid,geom.size),
+      material(),
+      geometry(),
+      initial_conditions(geom.homogenization,microstructure),
+      '*identify_sets',
+      '*show_model',
+      '*redraw',
+      '*draw_automatic',
+    ]
+    
+    outputLocals = {}
+    if options.port:
+        py_mentat.py_connect('',options.port)
+        output(cmds,outputLocals,'Mentat')
+        py_mentat.py_disconnect()
+    else:
+        with sys.stdout if name is None else open(os.path.splitext(name)[0]+'.proc','w') as f:
+            output(cmds,outputLocals,f)
