@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys
-import numpy as np
+import os
+import sys
+from io import StringIO
 from optparse import OptionParser
+
+import numpy as np
+
 import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
@@ -29,88 +32,37 @@ parser.add_option('-b',
                   action = 'extend', metavar = '<int LIST>',
                   dest   = 'blacklist',
                   help   = 'blacklist of grain IDs')
-parser.add_option('-p',
-                  '--pos', '--seedposition',
-                  dest = 'pos',
-                  type = 'string', metavar = 'string',
-                  help = 'label of coordinates [%default]')
 
 parser.set_defaults(whitelist = [],
                     blacklist = [],
-                    pos       = 'pos',
                    )
 
 (options,filenames) = parser.parse_args()
-
-options.whitelist = list(map(int,options.whitelist))
-options.blacklist = list(map(int,options.blacklist))
-
-# --- loop over output files -------------------------------------------------------------------------
-
 if filenames == []: filenames = [None]
 
+options.whitelist = [int(i) for i in options.whitelist]
+options.blacklist = [int(i) for i in options.blacklist]
+
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,
-                                    outname = os.path.splitext(name)[0]+'.seeds' if name else name,
-                                    buffered = False,
-                                    labeled = False)
-  except: continue
-  damask.util.report(scriptName,name)
+    damask.util.report(scriptName,name)
+    
+    geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    microstructure = geom.get_microstructure().reshape((-1,1),order='F')
 
-# --- interpret header ----------------------------------------------------------------------------
+    mask = np.logical_and(np.in1d(microstructure,options.whitelist,invert=False) if options.whitelist else \
+                          np.full(geom.grid.prod(),True,dtype=bool),
+                          np.in1d(microstructure,options.blacklist,invert=True)  if options.blacklist else \
+                          np.full(geom.grid.prod(),True,dtype=bool))
+   
+    seeds = np.concatenate((damask.grid_filters.cell_coord0(geom.grid,geom.size).reshape((-1,3)),
+                            microstructure),
+                            axis=1)[mask]
+    
+    comments = [scriptID + ' ' + ' '.join(sys.argv[1:]),
+                "grid\ta {}\tb {}\tc {}".format(*geom.grid),
+                "size\tx {}\ty {}\tz {}".format(*geom.size),
+                "origin\tx {}\ty {}\tz {}".format(*geom.origin),
+                "homogenization\t{}".format(geom.homogenization)]
 
-  table.head_read()
-  info,extra_header = table.head_getGeom()
-  damask.util.report_geom(info)
-
-  errors = []
-  if np.any(info['grid'] < 1):    errors.append('invalid grid a b c.')
-  if np.any(info['size'] <= 0.0): errors.append('invalid size x y z.')
-  if errors != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# --- read data ------------------------------------------------------------------------------------
-
-  microstructure = table.microstructure_read(info['grid'])                                          # read (linear) microstructure
-
-# --- generate grid --------------------------------------------------------------------------------
-
-  x = (0.5 + np.arange(info['grid'][0],dtype=float))/info['grid'][0]*info['size'][0]+info['origin'][0]
-  y = (0.5 + np.arange(info['grid'][1],dtype=float))/info['grid'][1]*info['size'][1]+info['origin'][1]
-  z = (0.5 + np.arange(info['grid'][2],dtype=float))/info['grid'][2]*info['size'][2]+info['origin'][2]
-
-  xx = np.tile(          x,                info['grid'][1]* info['grid'][2])
-  yy = np.tile(np.repeat(y,info['grid'][0]                ),info['grid'][2])
-  zz =         np.repeat(z,info['grid'][0]*info['grid'][1])
-
-  mask = np.logical_and(np.in1d(microstructure,options.whitelist,invert=False) if options.whitelist != []
-                                                                               else np.full_like(microstructure,True,dtype=bool), 
-                        np.in1d(microstructure,options.blacklist,invert=True ) if options.blacklist != []
-                                                                               else np.full_like(microstructure,True,dtype=bool))
-
-# ------------------------------------------ assemble header ---------------------------------------
-
-  table.info_clear()
-  table.info_append(extra_header+[
-    scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta {}\tb {}\tc {}".format(*info['grid']),
-    "size\tx {}\ty {}\tz {}".format(*info['size']),
-    "origin\tx {}\ty {}\tz {}".format(*info['origin']),
-    "homogenization\t{}".format(info['homogenization']),
-    "microstructures\t{}".format(info['microstructures']),
-    ])
-  table.labels_clear()
-  table.labels_append(['{dim}_{label}'.format(dim = 1+i,label = options.pos) for i in range(3)]+['microstructure'])
-  table.head_write()
-  table.output_flush()
-  
-# --- write seeds information ------------------------------------------------------------
-
-  table.data = np.squeeze(np.dstack((xx,yy,zz,microstructure)))[mask]
-  table.data_writeArray()
-
-# ------------------------------------------ finalize output ---------------------------------------
-
-  table.close()
+    table = damask.Table(seeds,{'pos':(3,),'microstructure':(1,)},comments)
+    table.to_ASCII(sys.stdout if name is None else os.path.splitext(name)[0]+'.seeds')
