@@ -57,12 +57,13 @@ def gradient(size,field):
     return np.fft.irfftn(gradient,axes=(0,1,2),s=field.shape[:3])
 
 
-def cell_coord0(grid,size):
+def cell_coord0(grid,size,origin=np.zeros(3)):
     """Cell center positions (undeformed)."""
-    delta = size/grid*0.5
-    x, y, z = np.meshgrid(np.linspace(delta[2],size[2]-delta[2],grid[2]),
-                          np.linspace(delta[1],size[1]-delta[1],grid[1]),
-                          np.linspace(delta[0],size[0]-delta[0],grid[0]),
+    start = origin + size/grid*.5
+    end   = origin - size/grid*.5 + size
+    x, y, z = np.meshgrid(np.linspace(start[2],end[2],grid[2]),
+                          np.linspace(start[1],end[1],grid[1]),
+                          np.linspace(start[0],end[0],grid[0]),
                           indexing = 'ij')
 
     return np.concatenate((z[:,:,:,None],y[:,:,:,None],x[:,:,:,None]),axis = 3) 
@@ -88,12 +89,37 @@ def cell_displacement_avg(size,F):
     F_avg = np.average(F,axis=(0,1,2))
     return np.einsum('ml,ijkl->ijkm',F_avg-np.eye(3),cell_coord0(F.shape[:3],size))
 
+def cell_coord0_2_DNA(coord0,ordered=False):
+    coords    = [np.unique(coord0[:,i]) for i in range(3)]
+    mincorner = np.array(list(map(min,coords)))
+    maxcorner = np.array(list(map(max,coords)))
+    grid      = np.array(list(map(len,coords)),'i')
+    size      = grid/np.maximum(grid-1,1) * (maxcorner-mincorner)
+    delta     = size/grid
+    origin    = mincorner - delta*.5
+   
+    if grid.prod() != len(coord0):
+        raise ValueError('Data count {} does not match grid {}.'.format(len(coord0),grid))
 
-def node_coord0(grid,size):
+    start = origin + delta*.5
+    end   = origin + size -delta*.5
+
+    if not np.allclose(coords[0],np.linspace(start[0],end[0],grid[0])) and \
+           np.allclose(coords[1],np.linspace(start[1],end[1],grid[1])) and \
+           np.allclose(coords[2],np.linspace(start[2],end[2],grid[2])):
+        raise ValueError('Regular grid spacing violated.')
+
+    if ordered:
+        if not np.allclose(coord0.reshape(tuple(grid[::-1])+(3,)),cell_coord0(grid,size,origin)):
+             raise ValueError('Input data is not a regular grid.')
+    return (grid,size,origin)
+
+
+def node_coord0(grid,size,origin=np.zeros(3)):
     """Nodal positions (undeformed)."""
-    x, y, z = np.meshgrid(np.linspace(0,size[2],1+grid[2]),
-                          np.linspace(0,size[1],1+grid[1]),
-                          np.linspace(0,size[0],1+grid[0]),
+    x, y, z = np.meshgrid(np.linspace(origin[2],size[2]+origin[2],1+grid[2]),
+                          np.linspace(origin[1],size[1]+origin[1],1+grid[1]),
+                          np.linspace(origin[0],size[0]+origin[0],1+grid[0]),
                           indexing = 'ij')
     
     return np.concatenate((z[:,:,:,None],y[:,:,:,None],x[:,:,:,None]),axis = 3) 
@@ -123,6 +149,28 @@ def node_2_cell(node_data):
          + np.roll(node_data,1,(0,1)) + np.roll(node_data,1,(1,2)) + np.roll(node_data,1,(2,0)))*0.125
   
     return c[:-1,:-1,:-1]
+
+def node_coord0_2_DNA(coord0,ordered=False):
+    coords    = [np.unique(coord0[:,i]) for i in range(3)]
+    mincorner = np.array(list(map(min,coords)))
+    maxcorner = np.array(list(map(max,coords)))
+    grid      = np.array(list(map(len,coords)),'i') - 1
+    size      = maxcorner-mincorner
+    origin    = mincorner
+ 
+    if (grid+1).prod() != len(coord0):
+        raise ValueError('Data count {} does not match grid {}.'.format(len(coord0),grid))
+
+    if not np.allclose(coords[0],np.linspace(mincorner[0],maxcorner[0],grid[0]+1)) and \
+           np.allclose(coords[1],np.linspace(mincorner[1],maxcorner[1],grid[1]+1)) and \
+           np.allclose(coords[2],np.linspace(mincorner[2],maxcorner[2],grid[2]+1)):
+        raise ValueError('Regular grid spacing violated.')
+
+    if ordered:
+        if not np.allclose(coord0.reshape(tuple((grid+1)[::-1])+(3,)),node_coord0(grid,size,origin)):
+             raise ValueError('Input data is not a regular grid.')
+    return (grid,size,origin)
+
 
 def regrid(size,F,new_grid):
     """tbd."""
