@@ -544,6 +544,7 @@ end function IO_lc
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns format string for integer values without leading zeros
+!> @details deprecated, use '(i0)' format specifier
 !--------------------------------------------------------------------------------------------------
 pure function IO_intOut(intToPrint)
 
