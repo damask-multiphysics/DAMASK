@@ -44,7 +44,7 @@ for name in filenames:
     damask.util.report(scriptName,name)
 
     table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
-    grid,size,origin = damask.grid_filters.cell_coord0_2_DNA(table.get(options.pos),True)
+    grid,size,origin = damask.grid_filters.cell_coord0_2_DNA(table.get(options.pos))
 
     for label in options.labels:
         field = table.get(label)

@@ -89,7 +89,18 @@ def cell_displacement_avg(size,F):
     F_avg = np.average(F,axis=(0,1,2))
     return np.einsum('ml,ijkl->ijkm',F_avg-np.eye(3),cell_coord0(F.shape[:3],size))
 
-def cell_coord0_2_DNA(coord0,ordered=False):
+def cell_coord0_2_DNA(coord0,ordered=True):
+    """
+    Return grid 'DNA', i.e. grid, size, and origin from array of cell positions.
+
+    Parameters
+    ----------
+    coord0 : numpy.ndarray
+        array of undeformed cell coordinates
+    ordered : bool, optional
+        expect coord0 data to be ordered (x fast, z slow).
+
+    """
     coords    = [np.unique(coord0[:,i]) for i in range(3)]
     mincorner = np.array(list(map(min,coords)))
     maxcorner = np.array(list(map(max,coords)))
@@ -109,9 +120,9 @@ def cell_coord0_2_DNA(coord0,ordered=False):
            np.allclose(coords[2],np.linspace(start[2],end[2],grid[2])):
         raise ValueError('Regular grid spacing violated.')
 
-    if ordered:
-        if not np.allclose(coord0.reshape(tuple(grid[::-1])+(3,)),cell_coord0(grid,size,origin)):
-             raise ValueError('Input data is not a regular grid.')
+    if ordered and not np.allclose(coord0.reshape(tuple(grid[::-1])+(3,)),cell_coord0(grid,size,origin)):
+        raise ValueError('Input data is not a regular grid.')
+
     return (grid,size,origin)
 
 
@@ -151,6 +162,17 @@ def node_2_cell(node_data):
     return c[:-1,:-1,:-1]
 
 def node_coord0_2_DNA(coord0,ordered=False):
+    """
+    Return grid 'DNA', i.e. grid, size, and origin from array of nodal positions.
+
+    Parameters
+    ----------
+    coord0 : numpy.ndarray
+        array of undeformed nodal coordinates
+    ordered : bool, optional
+        expect coord0 data to be ordered (x fast, z slow).
+
+    """
     coords    = [np.unique(coord0[:,i]) for i in range(3)]
     mincorner = np.array(list(map(min,coords)))
     maxcorner = np.array(list(map(max,coords)))
@@ -166,9 +188,9 @@ def node_coord0_2_DNA(coord0,ordered=False):
            np.allclose(coords[2],np.linspace(mincorner[2],maxcorner[2],grid[2]+1)):
         raise ValueError('Regular grid spacing violated.')
 
-    if ordered:
-        if not np.allclose(coord0.reshape(tuple((grid+1)[::-1])+(3,)),node_coord0(grid,size,origin)):
-             raise ValueError('Input data is not a regular grid.')
+    if ordered and not np.allclose(coord0.reshape(tuple((grid+1)[::-1])+(3,)),node_coord0(grid,size,origin)):
+        raise ValueError('Input data is not a regular grid.')
+
     return (grid,size,origin)
 
 
