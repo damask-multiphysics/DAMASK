@@ -50,11 +50,12 @@ if filenames == []: filenames = [None]
 options.box = np.array(options.box).reshape(3,2)
 
 for name in filenames:
+  damask.util.report(scriptName,name)
+  geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
+  
   table = damask.ASCIItable(name = name,
                             outname = os.path.splitext(name)[-2]+'_poked_{}.seeds'.format(options.N) if name else name,
                             buffered = False, labeled = False)
-  damask.util.report(scriptName,name)
-
 
   table.head_read()
   info,extra_header = table.head_getGeom()
@@ -62,15 +63,13 @@ for name in filenames:
   grid = info['grid']
   size = info['size']
 
-  microstructure = table.microstructure_read(grid).reshape(grid)          # read microstructure
-
-  offset =(np.amin(options.box, axis=1)*grid/size).astype(int)
+  offset =(np.amin(options.box, axis=1)*geom.grid/geom.size).astype(int)
   box    = np.amax(options.box, axis=1) \
          - np.amin(options.box, axis=1)
 
-  Nx = int(options.N/np.sqrt(options.N*size[1]*box[1]/size[0]/box[0]))
-  Ny = int(options.N/np.sqrt(options.N*size[0]*box[0]/size[1]/box[1]))
-  Nz = int(box[2]*grid[2])
+  Nx = int(options.N/np.sqrt(options.N*geom.size[1]*box[1]/geom.size[0]/box[0]))
+  Ny = int(options.N/np.sqrt(options.N*geom.size[0]*box[0]/geom.size[1]/box[1]))
+  Nz = int(box[2]*geom.grid[2])
 
   damask.util.croak('poking {} x {} x {} in box {} {} {}...'.format(Nx,Ny,Nz,*box))
 
@@ -86,7 +85,7 @@ for name in filenames:
         g[2] = k + offset[2]
         g %= grid
         seeds[n,0:3] = (g+0.5)/grid                                                     # normalize coordinates to box
-        seeds[n,  3] = microstructure[g[2],g[1],g[0]]
+        seeds[n,  3] = geom.microstructure[g[0],g[1],g[2]]
         if options.x: g[0] += 1
         if options.y: g[1] += 1
         n += 1
@@ -94,12 +93,12 @@ for name in filenames:
 
 # ------------------------------------------ assemble header ---------------------------------------
   table.info_clear()
-  table.info_append(extra_header+[
+  table.info_append(geom.comments+[
     scriptID + ' ' + ' '.join(sys.argv[1:]),
     "poking\ta {}\tb {}\tc {}".format(Nx,Ny,Nz),
-    "grid\ta {}\tb {}\tc {}".format(*grid),
-    "size\tx {}\ty {}\tz {}".format(*size),
-    "origin\tx {}\ty {}\tz {}".format(*info['origin']),
+    "grid\ta {}\tb {}\tc {}".format(*geom.grid),
+    "size\tx {}\ty {}\tz {}".format(*geom.size),
+    "origin\tx {}\ty {}\tz {}".format(*geom.origin),
     "homogenization\t{}".format(info['homogenization']),
     ])
   table.labels_clear()
