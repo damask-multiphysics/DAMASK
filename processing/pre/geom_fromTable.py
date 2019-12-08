@@ -78,36 +78,15 @@ for name in filenames:
   table = damask.ASCIItable(name = name,readonly=True)
   table.head_read()                                                                                 # read ASCII header info
 
-# ------------------------------------------ sanity checks ---------------------------------------
-
-  coordDim = table.label_dimension(options.pos)
-
-  errors = []
-  if not 3 >= coordDim >= 2:
-    errors.append('coordinates "{}" need to have two or three dimensions.'.format(options.pos))
-  if not np.all(table.label_dimension(label) == dim):
-    errors.append('input "{}" needs to have dimension {}.'.format(label,dim))
-  if options.phase and table.label_dimension(options.phase) != 1:
-    errors.append('phase column "{}" is not scalar.'.format(options.phase))
-
-  if errors != []:
-    damask.util.croak(errors)
-    continue
 
   table.data_readArray([options.pos] \
                        + (label if isinstance(label, list) else [label]) \
                        + ([options.phase] if options.phase else []))
 
-  if coordDim == 2:
-    table.data = np.insert(table.data,2,np.zeros(len(table.data)),axis=1)                           # add zero z coordinate for two-dimensional input
   if options.phase is None:
     table.data = np.column_stack((table.data,np.ones(len(table.data))))                             # add single phase if no phase column given
 
-  grid,size = damask.util.coordGridAndSize(table.data[:,0:3])
-  coords = [np.unique(table.data[:,i]) for i in range(3)]
-  mincorner = np.array(list(map(min,coords)))
-  origin = mincorner - 0.5*size/grid                                                                # shift from cell center to corner
-
+  grid,size,origin = damask.grid_filters.cell_coord0_2_DNA(table.data[:,0:3])
 
   indices  = np.lexsort((table.data[:,0],table.data[:,1],table.data[:,2]))                          # indices of position when sorting x fast, z slow
   microstructure = np.empty(grid,dtype = int)                                                       # initialize empty microstructure
@@ -142,7 +121,6 @@ for name in filenames:
     config_header += ['<microstructure>']
     for i,data in enumerate(unique):
       config_header += ['[Grain{}]'.format(i+1),
-                        'crystallite 1',
                         '(constituent)\tphase {}\ttexture {}\tfraction 1.0'.format(int(data[4]),i+1),
                        ]
 
