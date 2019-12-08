@@ -1,6 +1,9 @@
+import os
+
 import pytest
 import numpy as np
 
+import damask
 from damask import Rotation
 from damask import Orientation
    
@@ -10,6 +13,11 @@ n = 1000
 def default():
     """A set of n random rotations."""
     return [Rotation.fromRandom() for r in range(n)]
+
+@pytest.fixture
+def reference_dir(reference_dir_base):
+    """Directory containing reference results."""
+    return os.path.join(reference_dir_base,'Rotation')
 
 
 class TestRotation:
@@ -59,3 +67,13 @@ class TestRotation:
             misorientation = ori.rotation.misorientation(ori2.rotation)
             assert misorientation.asAxisAngle(degrees=True)[3]<1.0e-5
 
+    @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch'])
+    @pytest.mark.parametrize('lattice',['fcc','bcc'])
+    def test_relationship_reference(self,update,reference_dir,model,lattice):
+        reference = os.path.join(reference_dir,'{}_{}.txt'.format(lattice,model))
+        ori = Orientation(Rotation(),lattice)
+        eu = np.array([o.rotation.asEulers(degrees=True) for o in ori.relatedOrientations(model)])
+        if update: 
+            table = damask.Table(eu,{'Eulers':(3,)})
+            table.to_ASCII(reference)
+        assert np.allclose(eu,damask.Table.from_ASCII(reference).get('Eulers'))
