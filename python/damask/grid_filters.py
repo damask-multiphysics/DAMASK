@@ -2,8 +2,15 @@ from scipy import spatial
 import numpy as np
 
 def __ks(size,grid,first_order=False):
-    """Get wave numbers operator."""
+    """
+    Get wave numbers operator.
 
+    Parameters
+    ----------
+    size : numpy.ndarray
+        physical size of the periodic field. 
+
+    """
     k_sk = np.where(np.arange(grid[0])>grid[0]//2,np.arange(grid[0])-grid[0],np.arange(grid[0]))/size[0]
     if grid[0]%2 == 0 and first_order: k_sk[grid[0]//2] = 0                                         # Nyquist freq=0 for even grid (Johnson, MIT, 2011)
 
@@ -17,7 +24,15 @@ def __ks(size,grid,first_order=False):
 
 
 def curl(size,field):
-    """Calculate curl of a vector or tensor field in Fourier space."""
+    """
+    Calculate curl of a vector or tensor field in Fourier space.
+
+    Parameters
+    ----------
+    size : numpy.ndarray
+        physical size of the periodic field. 
+
+    """
     n = np.prod(field.shape[3:])
     k_s = __ks(size,field.shape[:3],True)
 
@@ -33,7 +48,15 @@ def curl(size,field):
 
 
 def divergence(size,field):
-    """Calculate divergence of a vector or tensor field in Fourier space."""
+    """
+    Calculate divergence of a vector or tensor field in Fourier space.
+
+    Parameters
+    ----------
+    size : numpy.ndarray
+        physical size of the periodic field. 
+
+    """
     n = np.prod(field.shape[3:])
     k_s = __ks(size,field.shape[:3],True)
 
@@ -45,7 +68,15 @@ def divergence(size,field):
 
 
 def gradient(size,field):
-    """Calculate gradient of a vector or scalar field in Fourier space."""
+    """
+    Calculate gradient of a vector or scalar field in Fourier space.
+
+    Parameters
+    ----------
+    size : numpy.ndarray
+        physical size of the periodic field. 
+
+    """
     n = np.prod(field.shape[3:])
     k_s = __ks(size,field.shape[:3],True)
 
@@ -57,7 +88,17 @@ def gradient(size,field):
 
 
 def cell_coord0(grid,size,origin=np.zeros(3)):
-    """Cell center positions (undeformed)."""
+    """
+    Cell center positions (undeformed).
+
+    Parameters
+    ----------
+    grid : numpy.ndarray
+        number of grid points.
+    size : numpy.ndarray
+        physical size of the periodic field. 
+
+    """
     start = origin + size/grid*.5
     end   = origin - size/grid*.5 + size
     x, y, z = np.meshgrid(np.linspace(start[2],end[2],grid[2]),
@@ -68,7 +109,17 @@ def cell_coord0(grid,size,origin=np.zeros(3)):
     return np.concatenate((z[:,:,:,None],y[:,:,:,None],x[:,:,:,None]),axis = 3) 
 
 def cell_displacement_fluct(size,F):
-    """Cell center displacement field from fluctuation part of the deformation gradient field."""
+    """
+    Cell center displacement field from fluctuation part of the deformation gradient field.
+
+    Parameters
+    ----------
+    size : numpy.ndarray
+        physical size of the periodic field. 
+    F : numpy.ndarray
+        deformation gradient field.
+
+    """
     integrator = 0.5j*size/np.pi
 
     k_s = __ks(size,F.shape[:3],False)
@@ -84,7 +135,17 @@ def cell_displacement_fluct(size,F):
     return np.fft.irfftn(displacement,axes=(0,1,2),s=F.shape[:3])
 
 def cell_displacement_avg(size,F):
-    """Cell center displacement field from average part of the deformation gradient field."""
+    """
+    Cell center displacement field from average part of the deformation gradient field.
+
+    Parameters
+    ----------
+    size : numpy.ndarray
+        physical size of the periodic field. 
+    F : numpy.ndarray
+        deformation gradient field.
+
+    """
     F_avg = np.average(F,axis=(0,1,2))
     return np.einsum('ml,ijkl->ijkm',F_avg-np.eye(3),cell_coord0(F.shape[:3],size))
 
@@ -95,7 +156,7 @@ def cell_coord0_2_DNA(coord0,ordered=True):
     Parameters
     ----------
     coord0 : numpy.ndarray
-        array of undeformed cell coordinates
+        array of undeformed cell coordinates.
     ordered : bool, optional
         expect coord0 data to be ordered (x fast, z slow).
 
@@ -126,7 +187,17 @@ def cell_coord0_2_DNA(coord0,ordered=True):
 
 
 def node_coord0(grid,size,origin=np.zeros(3)):
-    """Nodal positions (undeformed)."""
+    """
+    Nodal positions (undeformed).
+
+    Parameters
+    ----------
+    grid : numpy.ndarray
+        number of grid points.
+    size : numpy.ndarray
+        physical size of the periodic field. 
+
+    """
     x, y, z = np.meshgrid(np.linspace(origin[2],size[2]+origin[2],1+grid[2]),
                           np.linspace(origin[1],size[1]+origin[1],1+grid[1]),
                           np.linspace(origin[0],size[0]+origin[0],1+grid[0]),
@@ -135,11 +206,31 @@ def node_coord0(grid,size,origin=np.zeros(3)):
     return np.concatenate((z[:,:,:,None],y[:,:,:,None],x[:,:,:,None]),axis = 3) 
 
 def node_displacement_fluct(size,F):
-    """Nodal displacement field from fluctuation part of the deformation gradient field."""
+    """
+    Nodal displacement field from fluctuation part of the deformation gradient field.
+
+    Parameters
+    ----------
+    size : numpy.ndarray
+        physical size of the periodic field. 
+    F : numpy.ndarray
+        deformation gradient field.
+
+    """
     return cell_2_node(cell_displacement_fluct(size,F))
 
 def node_displacement_avg(size,F):
-    """Nodal displacement field from average part of the deformation gradient field."""
+    """
+    Nodal displacement field from average part of the deformation gradient field.
+
+    Parameters
+    ----------
+    size : numpy.ndarray
+        physical size of the periodic field. 
+    F : numpy.ndarray
+        deformation gradient field.
+
+    """
     F_avg = np.average(F,axis=(0,1,2))
     return np.einsum('ml,ijkl->ijkm',F_avg-np.eye(3),node_coord0(F.shape[:3],size))
 
