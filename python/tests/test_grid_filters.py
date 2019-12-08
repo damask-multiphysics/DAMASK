@@ -25,6 +25,18 @@ class TestGridFilters:
          assert np.allclose(c,n)
 
     @pytest.mark.parametrize('mode',[('cell'),('node')])
+    def test_grid_DNA(self,mode):
+         """Ensure that xx_coord0_2_DNA is the inverse of xx_coord0."""
+         grid   = np.random.randint(8,32,(3))
+         size   = np.random.random(3)
+         origin = np.random.random(3)
+        
+         coord0 = eval('grid_filters.{}_coord0(grid,size,origin)'.format(mode))                     # noqa
+         _grid,_size,_origin = eval('grid_filters.{}_coord0_2_DNA(coord0.reshape((-1,3)))'.format(mode))
+         assert np.allclose(grid,_grid) and np.allclose(size,_size) and np.allclose(origin,_origin)
+
+
+    @pytest.mark.parametrize('mode',[('cell'),('node')])
     def test_displacement_avg_vanishes(self,mode):
          """Ensure that random fluctuations in F do not result in average displacement."""
          size = np.random.random(3)                                                                 # noqa
