@@ -6,9 +6,6 @@ module discretization
 
   use prec
   use results
-#if defined(PETSc) || defined(DAMASK_HDF5)
-  use HDF5_utilities
-#endif
 
   implicit none
   private
@@ -26,18 +23,24 @@ module discretization
     discretization_NodeCoords0, &
     discretization_IPcoords, &
     discretization_NodeCoords
+    
+  integer :: &
+    discretization_sharedNodesBeginn
 
   public :: &
     discretization_init, &
     discretization_results, &
-    discretization_setIPcoords
+    discretization_setIPcoords, &
+    discretization_setNodeCoords
 
 contains
   
 !--------------------------------------------------------------------------------------------------
 !> @brief stores the relevant information in globally accesible variables
 !--------------------------------------------------------------------------------------------------
-subroutine discretization_init(homogenizationAt,microstructureAt,IPcoords0,NodeCoords0)
+subroutine discretization_init(homogenizationAt,microstructureAt,&
+                               IPcoords0,NodeCoords0,&
+                               sharedNodesBeginn)
 
   integer,     dimension(:),   intent(in) :: &
     homogenizationAt, &
@@ -45,6 +48,8 @@ subroutine discretization_init(homogenizationAt,microstructureAt,IPcoords0,NodeC
   real(pReal), dimension(:,:), intent(in) :: &
     IPcoords0, &
     NodeCoords0
+  integer, optional, intent(in) :: &
+    sharedNodesBeginn
 
   write(6,'(/,a)')   ' <<<+-  discretization init  -+>>>'
 
@@ -60,6 +65,12 @@ subroutine discretization_init(homogenizationAt,microstructureAt,IPcoords0,NodeC
   discretization_NodeCoords0 = NodeCoords0
   discretization_NodeCoords  = NodeCoords0
   
+  if(present(sharedNodesBeginn)) then
+    discretization_sharedNodesBeginn = sharedNodesBeginn
+  else
+    discretization_sharedNodesBeginn = size(discretization_NodeCoords0,2)
+  endif
+  
 end subroutine discretization_init
 
 
@@ -70,12 +81,14 @@ subroutine discretization_results
 #if defined(PETSc) || defined(DAMASK_HDF5)
   real(pReal), dimension(:,:), allocatable :: u
   
-  call HDF5_closeGroup(results_addGroup(trim('current/geometry')))
+  call results_closeGroup(results_addGroup(trim('current/geometry')))
   
-  u =  discretization_NodeCoords - discretization_NodeCoords0
+  u = discretization_NodeCoords (1:3,:discretization_sharedNodesBeginn) &
+    - discretization_NodeCoords0(1:3,:discretization_sharedNodesBeginn)
   call results_writeDataset('current/geometry',u,'u_n','nodal displacements','m')
   
-  u = discretization_IPcoords - discretization_IPcoords0
+  u = discretization_IPcoords &
+    - discretization_IPcoords0
   call results_writeDataset('current/geometry',u,'u_c','cell center displacements','m')
 #endif
 end subroutine discretization_results
@@ -91,5 +104,18 @@ subroutine discretization_setIPcoords(IPcoords)
   discretization_IPcoords = IPcoords
 
 end subroutine discretization_setIPcoords
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief stores current IP coordinates
+!--------------------------------------------------------------------------------------------------
+subroutine discretization_setNodeCoords(NodeCoords)
+
+  real(pReal), dimension(:,:), intent(in) :: NodeCoords
+  
+  discretization_NodeCoords = NodeCoords
+
+end subroutine discretization_setNodeCoords
+
 
 end module discretization

@@ -16,29 +16,16 @@ module crystallite
   use numerics
   use rotations
   use math
-  use mesh
   use FEsolving
   use material
   use constitutive
   use discretization
   use lattice
   use plastic_nonlocal
-  use geometry_plastic_nonlocal, only: &
-    nIPneighbors    => geometry_plastic_nonlocal_nIPneighbors, &
-    IPneighborhood  => geometry_plastic_nonlocal_IPneighborhood
-  use HDF5_utilities
   use results
  
   implicit none 
   private
-  character(len=64),         dimension(:,:),          allocatable :: &
-    crystallite_output                                                                              !< name of each post result output
-  integer,                                                         public, protected :: &
-    crystallite_maxSizePostResults                                                                  !< description not available
-  integer,                   dimension(:),            allocatable, public, protected :: &
-    crystallite_sizePostResults                                                                     !< description not available
-  integer,                   dimension(:,:),          allocatable :: &
-    crystallite_sizePostResult                                                                      !< description not available
  
   real(pReal),               dimension(:,:,:),        allocatable, public :: &
     crystallite_dt                                                                                  !< requested time increment of each grain
@@ -89,27 +76,6 @@ module crystallite
     crystallite_todo, &                                                                             !< flag to indicate need for further computation
     crystallite_localPlasticity                                                                     !< indicates this grain to have purely local constitutive law
  
-  enum, bind(c)
-    enumerator :: undefined_ID, &
-                  phase_ID, &
-                  texture_ID, &
-                  orientation_ID, &
-                  grainrotation_ID, &
-                  defgrad_ID, &
-                  fe_ID, &
-                  fp_ID, &
-                  fi_ID, &
-                  lp_ID, &
-                  li_ID, &
-                  p_ID, &
-                  s_ID, &
-                  elasmatrix_ID, &
-                  neighboringip_ID, &
-                  neighboringelement_ID
-  end enum
-  integer(kind(undefined_ID)),dimension(:,:),   allocatable :: &
-    crystallite_outputID                                                                            !< ID of each post result output
-    
   type :: tOutput                                                                                   !< new requested output (per phase)
     character(len=65536), allocatable, dimension(:) :: &
       label
@@ -159,15 +125,10 @@ subroutine crystallite_init
     c, &                                                                                            !< counter in integration point component loop
     i, &                                                                                            !< counter in integration point loop
     e, &                                                                                            !< counter in element loop
-    o = 0, &                                                                                        !< counter in output loop
-    r, &  
     cMax, &                                                                                         !< maximum number of  integration point components
     iMax, &                                                                                         !< maximum number of integration points
     eMax, &                                                                                         !< maximum number of elements
-    myNcomponents, &                                                                                !< number of components at current IP
-    mySize
- 
-  character(len=65536), dimension(:), allocatable :: str
+    myNcomponents                                                                                   !< number of components at current IP
  
   write(6,'(/,a)')   ' <<<+-  crystallite init  -+>>>'
  
@@ -214,13 +175,6 @@ subroutine crystallite_init
   allocate(crystallite_requested(cMax,iMax,eMax),             source=.false.)
   allocate(crystallite_todo(cMax,iMax,eMax),                  source=.false.)
   allocate(crystallite_converged(cMax,iMax,eMax),             source=.true.)
-  allocate(crystallite_output(maxval(crystallite_Noutput), &
-                              size(config_crystallite))) ;       crystallite_output = ''
-  allocate(crystallite_outputID(maxval(crystallite_Noutput), &
-                              size(config_crystallite)),         source=undefined_ID)
-  allocate(crystallite_sizePostResults(size(config_crystallite)),source=0)
-  allocate(crystallite_sizePostResult(maxval(crystallite_Noutput), &
-                                      size(config_crystallite)), source=0)
                                       
   num%subStepMinCryst        = config_numerics%getFloat('substepmincryst',       defaultVal=1.0e-3_pReal)
   num%subStepSizeCryst       = config_numerics%getFloat('substepsizecryst',      defaultVal=0.25_pReal)
@@ -267,55 +221,6 @@ subroutine crystallite_init
       integrateState => integrateStateRKCK45
   end select
  
- 
- 
-  do c = 1, size(config_crystallite)
-#if defined(__GFORTRAN__)
-    str = ['GfortranBug86277']
-    str = config_crystallite(c)%getStrings('(output)',defaultVal=str)
-    if (str(1) == 'GfortranBug86277') str = [character(len=65536)::]
-#else
-    str = config_crystallite(c)%getStrings('(output)',defaultVal=[character(len=65536)::])
-#endif
-    do o = 1, size(str)
-      crystallite_output(o,c) = str(o)
-      outputName: select case(str(o))
-       case ('phase') outputName
-         crystallite_outputID(o,c) = phase_ID
-       case ('texture') outputName
-         crystallite_outputID(o,c) = texture_ID
-       case ('orientation') outputName
-         crystallite_outputID(o,c) = orientation_ID
-       case ('grainrotation') outputName
-         crystallite_outputID(o,c) = grainrotation_ID
-       case ('defgrad','f') outputName                                                              ! ToDo: no alias (f only)
-         crystallite_outputID(o,c) = defgrad_ID
-       case ('fe') outputName
-         crystallite_outputID(o,c) = fe_ID
-       case ('fp') outputName
-         crystallite_outputID(o,c) = fp_ID
-       case ('fi') outputName
-         crystallite_outputID(o,c) = fi_ID
-       case ('lp') outputName
-         crystallite_outputID(o,c) = lp_ID
-       case ('li') outputName
-         crystallite_outputID(o,c) = li_ID
-       case ('p','firstpiola','1stpiola') outputName                                                ! ToDo: no alias (p only)
-         crystallite_outputID(o,c) = p_ID
-       case ('s','tstar','secondpiola','2ndpiola') outputName                                       ! ToDo: no alias (s only)
-         crystallite_outputID(o,c) = s_ID
-       case ('elasmatrix') outputName
-         crystallite_outputID(o,c) = elasmatrix_ID
-       case ('neighboringip') outputName                                                            ! ToDo: this is not a result, it is static. Should be written out by mesh
-         crystallite_outputID(o,c) = neighboringip_ID
-       case ('neighboringelement') outputName                                                       ! ToDo: this is not a result, it is static. Should be written out by mesh
-         crystallite_outputID(o,c) = neighboringelement_ID
-       case default outputName
-         call IO_error(105,ext_msg=trim(str(o))//' (Crystallite)')
-      end select outputName
-    enddo
-  enddo
-  
   allocate(output_constituent(size(config_phase)))
   do c = 1, size(config_phase)
 #if defined(__GFORTRAN__)
@@ -328,51 +233,14 @@ subroutine crystallite_init
 #endif
   enddo
 
-
-  do r = 1,size(config_crystallite)
-    do o = 1,crystallite_Noutput(r)
-      select case(crystallite_outputID(o,r))
-        case(phase_ID,texture_ID)
-          mySize = 1
-        case(orientation_ID,grainrotation_ID)
-          mySize = 4
-        case(defgrad_ID,fe_ID,fp_ID,fi_ID,lp_ID,li_ID,p_ID,s_ID)
-          mySize = 9
-        case(elasmatrix_ID)
-          mySize = 36
-        case(neighboringip_ID,neighboringelement_ID)
-          mySize = nIPneighbors
-        case default
-          mySize = 0
-      end select
-      crystallite_sizePostResult(o,r) = mySize
-      crystallite_sizePostResults(r) = crystallite_sizePostResults(r) + mySize
-    enddo
-  enddo
- 
-  crystallite_maxSizePostResults = &
-    maxval(crystallite_sizePostResults(microstructure_crystallite),microstructure_active)
- 
-
 !--------------------------------------------------------------------------------------------------
 ! write description file for crystallite output
   if (worldrank == 0) then
     call IO_write_jobFile(FILEUNIT,'outputCrystallite')
- 
-    do r = 1,size(config_crystallite)
-      if (any(microstructure_crystallite(discretization_microstructureAt) == r)) then
-        write(FILEUNIT,'(/,a,/)') '['//trim(config_name_crystallite(r))//']'
-        do o = 1,crystallite_Noutput(r)
-          write(FILEUNIT,'(a,i4)') trim(crystallite_output(o,r))//char(9),crystallite_sizePostResult(o,r)
-        enddo
-      endif
-    enddo
- 
+    write(FILEUNIT,'(/,a,/)') '[not supported anymore]'
     close(FILEUNIT)
   endif
- 
   call config_deallocate('material.config/phase')
-  call config_deallocate('material.config/crystallite')
 
 !--------------------------------------------------------------------------------------------------
 ! initialize
@@ -874,96 +742,18 @@ function crystallite_postResults(ipc, ip, el)
     ip, &                         !< integration point index
     ipc                           !< grain index
 
-  real(pReal), dimension(1+crystallite_sizePostResults(microstructure_crystallite(discretization_microstructureAt(el))) + &
-                         1+plasticState(material_phaseAt(ipc,el))%sizePostResults + &
-                           sum(sourceState(material_phaseAt(ipc,el))%p(:)%sizePostResults)) :: &
+  real(pReal), dimension(1+ &
+                         1+sum(sourceState(material_phaseAt(ipc,el))%p(:)%sizePostResults)) :: &
     crystallite_postResults
   integer :: &
-    o, &
-    c, &
-    crystID, &
-    mySize, &
-    n
-  type(rotation) :: rot
+    c
 
-  crystID = microstructure_crystallite(discretization_microstructureAt(el))
 
   crystallite_postResults = 0.0_pReal
-  crystallite_postResults(1) = real(crystallite_sizePostResults(crystID),pReal)                      ! header-like information (length)
+  crystallite_postResults(1) = 0.0_pReal                      ! header-like information (length)
   c = 1
 
-  do o = 1,crystallite_Noutput(crystID)
-    mySize = 0
-    select case(crystallite_outputID(o,crystID))
-      case (phase_ID)
-        mySize = 1
-        crystallite_postResults(c+1) = real(material_phaseAt(ipc,el),pReal)                          ! phaseID of grain
-      case (texture_ID)
-        mySize = 1
-        crystallite_postResults(c+1) = real(material_texture(ipc,ip,el),pReal)                       ! textureID of grain
-      case (orientation_ID)
-        mySize = 4
-        crystallite_postResults(c+1:c+mySize) = crystallite_orientation(ipc,ip,el)%asQuaternion()
-
-      case (grainrotation_ID)
-        rot = material_orientation0(ipc,ip,el)%misorientation(crystallite_orientation(ipc,ip,el))
-        mySize = 4
-        crystallite_postResults(c+1:c+mySize) = rot%asAxisAngle()
-        crystallite_postResults(c+4) = inDeg * crystallite_postResults(c+4)                          ! angle in degree
-
-! remark: tensor output is of the form 11,12,13, 21,22,23, 31,32,33
-! thus row index i is slow, while column index j is fast. reminder: "row is slow"
-
-      case (defgrad_ID)
-        mySize = 9
-        crystallite_postResults(c+1:c+mySize) = &
-          reshape(transpose(crystallite_partionedF(1:3,1:3,ipc,ip,el)),[mySize])
-      case (fe_ID)
-        mySize = 9
-        crystallite_postResults(c+1:c+mySize) = &
-          reshape(transpose(crystallite_Fe(1:3,1:3,ipc,ip,el)),[mySize])
-      case (fp_ID)
-        mySize = 9
-        crystallite_postResults(c+1:c+mySize) = &
-          reshape(transpose(crystallite_Fp(1:3,1:3,ipc,ip,el)),[mySize])
-      case (fi_ID)
-        mySize = 9
-        crystallite_postResults(c+1:c+mySize) = &
-          reshape(transpose(crystallite_Fi(1:3,1:3,ipc,ip,el)),[mySize])
-      case (lp_ID)
-        mySize = 9
-        crystallite_postResults(c+1:c+mySize) = &
-          reshape(transpose(crystallite_Lp(1:3,1:3,ipc,ip,el)),[mySize])
-      case (li_ID)
-        mySize = 9
-        crystallite_postResults(c+1:c+mySize) = &
-          reshape(transpose(crystallite_Li(1:3,1:3,ipc,ip,el)),[mySize])
-      case (p_ID)
-        mySize = 9
-        crystallite_postResults(c+1:c+mySize) = &
-          reshape(transpose(crystallite_P(1:3,1:3,ipc,ip,el)),[mySize])
-      case (s_ID)
-        mySize = 9
-        crystallite_postResults(c+1:c+mySize) = &
-          reshape(crystallite_S(1:3,1:3,ipc,ip,el),[mySize])
-      case (elasmatrix_ID)
-        mySize = 36
-        crystallite_postResults(c+1:c+mySize) = reshape(constitutive_homogenizedC(ipc,ip,el),[mySize])
-      case(neighboringelement_ID)
-        mySize = nIPneighbors
-        crystallite_postResults(c+1:c+mySize) = 0.0_pReal
-        forall (n = 1:mySize) &
-          crystallite_postResults(c+n) = real(IPneighborhood(1,n,ip,el),pReal)
-      case(neighboringip_ID)
-        mySize = nIPneighbors
-        crystallite_postResults(c+1:c+mySize) = 0.0_pReal
-        forall (n = 1:mySize) &
-          crystallite_postResults(c+n) = real(IPneighborhood(2,n,ip,el),pReal)
-    end select
-    c = c + mySize
-  enddo
-
-  crystallite_postResults(c+1) = real(plasticState(material_phaseAt(ipc,el))%sizePostResults,pReal)  ! size of constitutive results
+  crystallite_postResults(c+1) = real(sum(sourceState(material_phaseAt(ipc,el))%p(:)%sizePostResults),pReal)  ! size of constitutive results
   c = c + 1
   if (size(crystallite_postResults)-c > 0) &
     crystallite_postResults(c+1:size(crystallite_postResults)) = &
@@ -986,7 +776,7 @@ subroutine crystallite_results
   do p=1,size(config_name_phase)
     group = trim('current/constituent')//'/'//trim(config_name_phase(p))//'/generic'
     
-    call HDF5_closeGroup(results_addGroup(group))  
+    call results_closeGroup(results_addGroup(group))  
 
     do o = 1, size(output_constituent(p)%label)
       select case (output_constituent(p)%label(o))
@@ -1056,16 +846,16 @@ subroutine crystallite_results
     real(pReal), allocatable, dimension(:,:,:) :: select_tensors
     integer :: e,i,c,j
      
-    allocate(select_tensors(3,3,count(material_phaseAt==instance)*homogenization_maxNgrains))
+    allocate(select_tensors(3,3,count(material_phaseAt==instance)*homogenization_maxNgrains*discretization_nIP))
 
     j=0
     do e = 1, size(material_phaseAt,2)
-      do i = 1, homogenization_maxNgrains                                                           !ToDo: this needs to be changed for varying Ngrains
-        do c = 1, size(material_phaseAt,1)
-           if (material_phaseAt(c,e) == instance) then
-             j = j + 1
-             select_tensors(1:3,1:3,j) = dataset(1:3,1:3,c,i,e)
-           endif
+      do i = 1, discretization_nIP
+        do c = 1, size(material_phaseAt,1)                                                          !ToDo: this needs to be changed for varying Ngrains
+          if (material_phaseAt(c,e) == instance) then
+            j = j + 1
+            select_tensors(1:3,1:3,j) = dataset(1:3,1:3,c,i,e)
+          endif
         enddo
       enddo
     enddo
@@ -1083,12 +873,12 @@ subroutine crystallite_results
     type(rotation), allocatable, dimension(:) :: select_rotations
     integer :: e,i,c,j
      
-    allocate(select_rotations(count(material_phaseAt==instance)*homogenization_maxNgrains))
+    allocate(select_rotations(count(material_phaseAt==instance)*homogenization_maxNgrains*discretization_nIP))
 
     j=0
     do e = 1, size(material_phaseAt,2)
-      do i = 1, homogenization_maxNgrains                                                           !ToDo: this needs to be changed for varying Ngrains
-        do c = 1, size(material_phaseAt,1)
+      do i = 1, discretization_nIP
+        do c = 1, size(material_phaseAt,1)                                                          !ToDo: this needs to be changed for varying Ngrains
            if (material_phaseAt(c,e) == instance) then
              j = j + 1
              select_rotations(j) = dataset(c,i,e)

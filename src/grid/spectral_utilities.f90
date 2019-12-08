@@ -10,8 +10,9 @@ module spectral_utilities
 
   use prec
   use math
+  use rotations
   use IO
-  use mesh
+  use mesh_grid
   use numerics
   use debug
   use config
@@ -22,11 +23,7 @@ module spectral_utilities
   private
   
   include 'fftw3-mpi.f03'
-
-  logical, public             :: cutBack = .false.                                                  !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
-  integer, public, parameter  :: maxPhaseFields = 2
-  integer, public             :: nActiveFields = 0
-
+  
 !--------------------------------------------------------------------------------------------------
 ! field labels information
   enum, bind(c)
@@ -39,11 +36,13 @@ module spectral_utilities
 
 !--------------------------------------------------------------------------------------------------
 ! grid related information information
-  real(pReal),   public :: wgt                                                                      !< weighting factor 1/Nelems
+  real(pReal), protected,  public                :: wgt                                             !< weighting factor 1/Nelems
+  integer,     protected,  public                :: grid1Red                                        !< grid(1)/2
+  real(pReal), protected,  public,  dimension(3) :: scaledGeomSize                                  !< scaled geometry size for calculation of divergence
 
 !--------------------------------------------------------------------------------------------------
 ! variables storing information for spectral method and FFTW
-  integer, public                                                          :: grid1Red              !< grid(1)/2
+
   real   (C_DOUBLE),        public,  dimension(:,:,:,:,:),     pointer     :: tensorField_real      !< real representation (some stress or deformation) of field_fourier
   complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:,:,:),     pointer     :: tensorField_fourier   !< field on which the Fourier transform operates
   real(C_DOUBLE),           public,  dimension(:,:,:,:),       pointer     :: vectorField_real      !< vector field real representation for fftw
@@ -54,7 +53,7 @@ module spectral_utilities
   complex(pReal),           private, dimension(:,:,:,:),       allocatable :: xi1st                 !< wave vector field for first derivatives
   complex(pReal),           private, dimension(:,:,:,:),       allocatable :: xi2nd                 !< wave vector field for second derivatives
   real(pReal),              private, dimension(3,3,3,3)                    :: C_ref                 !< mechanic reference stiffness
-  real(pReal), protected,   public,  dimension(3)                          :: scaledGeomSize        !< scaled geometry size for calculation of divergence (Basic, Basic PETSc)
+
 
 !--------------------------------------------------------------------------------------------------
 ! plans for FFTW
@@ -92,7 +91,7 @@ module spectral_utilities
   end type tBoundaryCondition
 
   type, public :: tLoadCase
-    real(pReal), dimension (3,3) :: rotation               = math_I3                                !< rotation of BC
+    type(rotation)               :: rot                                                             !< rotation of BC
     type(tBoundaryCondition) ::     stress, &                                                       !< stress BC
                                     deformation                                                     !< deformation BC (Fdot or L)
     real(pReal) ::                  time                   = 0.0_pReal                              !< length of increment
@@ -105,7 +104,8 @@ module spectral_utilities
   end type tLoadCase
 
   type, public :: tSolutionParams                                                                   !< @todo use here the type definition for a full loadcase
-    real(pReal), dimension(3,3) :: stress_mask, stress_BC, rotation_BC
+    real(pReal), dimension(3,3) :: stress_mask, stress_BC
+    type(rotation)              :: rotation_BC
     real(pReal) :: timeinc
     real(pReal) :: timeincOld
   end type tSolutionParams
@@ -157,13 +157,12 @@ module spectral_utilities
     utilities_constitutiveResponse, &
     utilities_calculateRate, &
     utilities_forwardField, &
-    utilities_updateIPcoords, &
+    utilities_updateCoords, &
+    utilities_saveReferenceStiffness, &
     FIELD_UNDEFINED_ID, &
     FIELD_MECH_ID, &
     FIELD_THERMAL_ID, &
     FIELD_DAMAGE_ID
-  private :: &
-    utilities_getFreqDerivative
 
 contains
 
@@ -390,27 +389,18 @@ end subroutine utilities_init
 !> @details Sets the current reference stiffness to the stiffness given as an argument.
 !> If the gamma operator is precalculated, it is calculated with this stiffness.
 !> In case of an on-the-fly calculation, only the reference stiffness is updated.
-!> Also writes out the current reference stiffness for restart.
 !---------------------------------------------------------------------------------------------------
-subroutine utilities_updateGamma(C,saveReference)
+subroutine utilities_updateGamma(C)
  
   real(pReal), intent(in), dimension(3,3,3,3) :: C                                                  !< input stiffness to store as reference stiffness
-  logical    , intent(in)                     :: saveReference                                      !< save reference stiffness to file for restart
   complex(pReal),              dimension(3,3) :: temp33_complex, xiDyad_cmplx
   real(pReal),                 dimension(6,6) :: A, A_inv
   integer :: &
     i, j, k, &
-    l, m, n, o, &
-    fileUnit
+    l, m, n, o
   logical :: err
  
   C_ref = C
-  if (saveReference .and. worldrank == 0) then
-    write(6,'(/,a)') ' writing reference stiffness to file'
-    flush(6)
-    fileUnit = IO_open_jobFile_binary('C_ref','w')
-    write(fileUnit) C_ref; close(fileUnit)
-  endif
  
   if(.not. num%memory_efficient) then
     gamma_hat =  cmplx(0.0_pReal,0.0_pReal,pReal)                                                   ! for the singular point and any non invertible A
@@ -438,10 +428,12 @@ end subroutine utilities_updateGamma
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forward FFT of data in field_real to field_fourier
-!> @details Does an unweighted filtered FFT transform from real to complex
+!> @details Does an unweighted FFT transform from real to complex. Extra padding entries are set
+! to 0.0
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTtensorForward
 
+  tensorField_real(1:3,1:3,grid(1)+1:grid1Red*2,:,:) = cmplx(0.0,0.0,pReal)
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
 
 end subroutine utilities_FFTtensorForward
@@ -460,10 +452,12 @@ end subroutine utilities_FFTtensorBackward
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forward FFT of data in scalarField_real to scalarField_fourier
-!> @details Does an unweighted filtered FFT transform from real to complex
+!> @details Does an unweighted FFT transform from real to complex. Extra padding entries are set
+! to 0.0
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTscalarForward
 
+  scalarField_real(grid(1)+1:grid1Red*2,:,:) = cmplx(0.0,0.0,pReal)
   call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
 
 end subroutine utilities_FFTscalarForward
@@ -483,10 +477,12 @@ end subroutine utilities_FFTscalarBackward
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forward FFT of data in field_real to field_fourier with highest freqs. removed
-!> @details Does an unweighted filtered FFT transform from real to complex.
+!> @details Does an unweighted FFT transform from real to complex. Extra padding entries are set
+! to 0.0
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTvectorForward
 
+  vectorField_real(1:3,grid(1)+1:grid1Red*2,:,:) = cmplx(0.0,0.0,pReal)
   call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
 
 end subroutine utilities_FFTvectorForward
@@ -690,10 +686,11 @@ end function utilities_curlRMS
 !--------------------------------------------------------------------------------------------------
 function utilities_maskedCompliance(rot_BC,mask_stress,C)
 
-  real(pReal),              dimension(3,3,3,3) :: utilities_maskedCompliance                        !< masked compliance
-  real(pReal), intent(in) , dimension(3,3,3,3) :: C                                                 !< current average stiffness
-  real(pReal), intent(in) , dimension(3,3)     :: rot_BC                                            !< rotation of load frame
-  logical,     intent(in),  dimension(3,3)     :: mask_stress                                       !< mask of stress BC
+  real(pReal),                dimension(3,3,3,3) :: utilities_maskedCompliance                      !< masked compliance
+  real(pReal),    intent(in), dimension(3,3,3,3) :: C                                               !< current average stiffness
+  type(rotation), intent(in)                     :: rot_BC                                          !< rotation of load frame
+  logical,        intent(in), dimension(3,3)     :: mask_stress                                     !< mask of stress BC
+
   integer :: j, k, m, n
   logical, dimension(9) :: mask_stressVector
   real(pReal), dimension(9,9) :: temp99_Real
@@ -711,7 +708,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
     allocate (c_reduced(size_reduced,size_reduced), source =0.0_pReal)
     allocate (s_reduced(size_reduced,size_reduced), source =0.0_pReal)
     allocate (sTimesC(size_reduced,size_reduced),   source =0.0_pReal)
-    temp99_Real = math_3333to99(math_rotate_forward3333(C,rot_BC))
+    temp99_Real = math_3333to99(rot_BC%rotTensor4(C))
  
     if(debugGeneral) then
       write(6,'(/,a)') ' ... updating masked compliance ............................................'
@@ -783,10 +780,10 @@ subroutine utilities_fourierScalarGradient()
  
   integer :: i, j, k
  
-  vectorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
-  forall(k = 1:grid3, j = 1:grid(2), i = 1:grid1Red) &
-    vectorField_fourier(1:3,i,j,k) = scalarField_fourier(i,j,k)*xi1st(1:3,i,j,k)
- 
+  do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid1Red
+    vectorField_fourier(1:3,i,j,k) = scalarField_fourier(i,j,k)*xi1st(1:3,i,j,k)                    ! ToDo: no -conjg?
+  enddo; enddo; enddo
+
 end subroutine utilities_fourierScalarGradient
 
 
@@ -795,13 +792,12 @@ end subroutine utilities_fourierScalarGradient
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_fourierVectorDivergence()
  
-  integer                :: i, j, k
+  integer :: i, j, k
  
-  scalarField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
-  forall(k = 1:grid3, j = 1:grid(2), i = 1:grid1Red) &
-    scalarField_fourier(i,j,k) = scalarField_fourier(i,j,k) &
-                               + sum(vectorField_fourier(1:3,i,j,k)*conjg(-xi1st(1:3,i,j,k)))
- 
+  do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid1Red
+    scalarField_fourier(i,j,k) = sum(vectorField_fourier(1:3,i,j,k)*conjg(-xi1st(1:3,i,j,k)))
+  enddo; enddo; enddo
+
 end subroutine utilities_fourierVectorDivergence
 
 
@@ -812,7 +808,6 @@ subroutine utilities_fourierVectorGradient()
  
   integer :: i, j, k, m, n
  
-  tensorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid1Red
     do m = 1, 3; do n = 1, 3
       tensorField_fourier(m,n,i,j,k) = vectorField_fourier(m,i,j,k)*xi1st(n,i,j,k)
@@ -827,14 +822,10 @@ end subroutine utilities_fourierVectorGradient
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_fourierTensorDivergence()
 
-  integer :: i, j, k, m, n
+  integer :: i, j, k
  
-  vectorField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid1Red
-    do m = 1, 3; do n = 1, 3
-      vectorField_fourier(m,i,j,k) = vectorField_fourier(m,i,j,k) &
-                                   + tensorField_fourier(m,n,i,j,k)*conjg(-xi1st(n,i,j,k))
-    enddo; enddo
+    vectorField_fourier(:,i,j,k) = matmul(tensorField_fourier(:,:,i,j,k),conjg(-xi1st(:,i,j,k)))
   enddo; enddo; enddo
 
 end subroutine utilities_fourierTensorDivergence
@@ -846,12 +837,12 @@ end subroutine utilities_fourierTensorDivergence
 subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
                                           F,timeinc,rotation_BC)
  
-  real(pReal),intent(out), dimension(3,3,3,3)                     :: C_volAvg, C_minmaxAvg          !< average stiffness
-  real(pReal),intent(out), dimension(3,3)                         :: P_av                           !< average PK stress
-  real(pReal),intent(out), dimension(3,3,grid(1),grid(2),grid3)   :: P                              !< PK stress
-  real(pReal), intent(in), dimension(3,3,grid(1),grid(2),grid3)   :: F                              !< deformation gradient target
-  real(pReal), intent(in)                                         :: timeinc                        !< loading time
-  real(pReal), intent(in), dimension(3,3)                         :: rotation_BC                    !< rotation of load frame
+  real(pReal),    intent(out), dimension(3,3,3,3)                   :: C_volAvg, C_minmaxAvg        !< average stiffness
+  real(pReal),    intent(out), dimension(3,3)                       :: P_av                         !< average PK stress
+  real(pReal),    intent(out), dimension(3,3,grid(1),grid(2),grid3) :: P                            !< PK stress
+  real(pReal),    intent(in),  dimension(3,3,grid(1),grid(2),grid3) :: F                            !< deformation gradient target
+  real(pReal),    intent(in)                                        :: timeinc                      !< loading time
+  type(rotation), intent(in),  optional                             :: rotation_BC                  !< rotation of load frame
  
   
   integer :: &
@@ -873,7 +864,8 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   if (debugRotation) &
   write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress (lab) / MPa =',&
                                                       transpose(P_av)*1.e-6_pReal
-  P_av = math_rotate_forward33(P_av,rotation_BC)
+  if(present(rotation_BC)) &
+    P_av = rotation_BC%rotTensor2(P_av)
   write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress       / MPa =',&
                                                       transpose(P_av)*1.e-6_pReal
   flush(6)
@@ -1024,51 +1016,119 @@ end function utilities_getFreqDerivative
 ! using integration in Fourier space. Similar as in mesh.f90, but using data already defined for
 ! convolution
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_updateIPcoords(F)
+subroutine utilities_updateCoords(F)
  
   real(pReal),   dimension(3,3,grid(1),grid(2),grid3), intent(in) :: F
-  integer :: i, j, k, m, ierr
-  real(pReal),   dimension(3) :: step, offset_coords
+  real(pReal),   dimension(3,  grid(1),grid(2),grid3)             :: IPcoords
+  real(pReal),   dimension(3,  grid(1),grid(2),grid3+2)           :: IPfluct_padded                  ! Fluctuations of cell center displacement (padded along z for MPI)
+  real(pReal),   dimension(3,  grid(1)+1,grid(2)+1,grid3+1)       :: nodeCoords
+  integer :: &
+    i,j,k,n, &
+    rank_t, &
+    rank_b, &
+    c, r, &
+    ierr
+  integer, dimension(MPI_STATUS_SIZE) :: &
+    s
+  real(pReal),   dimension(3)   :: step
   real(pReal),   dimension(3,3) :: Favg
+  integer,       dimension(3) :: me
+  integer, dimension(3,8) :: &
+    neighbor = reshape([ &
+                        0, 0, 0, &
+                        1, 0, 0, &
+                        1, 1, 0, &
+                        0, 1, 0, &
+                        0, 0, 1, &
+                        1, 0, 1, &
+                        1, 1, 1, &
+                        0, 1, 1  ], [3,8])
  
+  step = geomSize/real(grid, pReal)
  !--------------------------------------------------------------------------------------------------
- ! integration in Fourier space
-  tensorField_real = 0.0_pReal
+ ! integration in Fourier space to get fluctuations of cell center discplacements
   tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = F
   call utilities_FFTtensorForward()
-  call utilities_fourierTensorDivergence()
- 
+
   do k = 1, grid3; do j = 1, grid(2); do i = 1, grid1Red
-    if (any(cNeq(xi1st(1:3,i,j,k),cmplx(0.0,0.0,pReal)))) &
-      vectorField_fourier(1:3,i,j,k) = vectorField_fourier(1:3,i,j,k)/ &
-                                       sum(conjg(-xi1st(1:3,i,j,k))*xi1st(1:3,i,j,k))
+    if(any([i,j,k+grid3Offset] /= 1)) then
+      vectorField_fourier(1:3,i,j,k) = matmul(tensorField_fourier(1:3,1:3,i,j,k),xi2nd(1:3,i,j,k)) &
+                                     / sum(conjg(-xi2nd(1:3,i,j,k))*xi2nd(1:3,i,j,k)) * wgt
+    else
+      vectorField_fourier(1:3,i,j,k) = cmplx(0.0,0.0,pReal)
+    endif
   enddo; enddo; enddo
+
   call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
-  vectorField_real = vectorField_real * wgt
  
  !--------------------------------------------------------------------------------------------------
  ! average F
   if (grid3Offset == 0) Favg = real(tensorField_fourier(1:3,1:3,1,1,1),pReal)*wgt
   call MPI_Bcast(Favg,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
-  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords')
- 
+  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Bcast')
+  
  !--------------------------------------------------------------------------------------------------
- ! add average to fluctuation and put (0,0,0) on (0,0,0)
-  step = geomSize/real(grid, pReal)
-  if (grid3Offset == 0) offset_coords = vectorField_real(1:3,1,1,1)
-  call MPI_Bcast(offset_coords,3,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
-  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords')
-  offset_coords = matmul(Favg,step/2.0_pReal) - offset_coords
-  m = 1
+ ! pad cell center fluctuations along z-direction (needed when running MPI simulation)
+  IPfluct_padded(1:3,1:grid(1),1:grid(2),2:grid3+1) = vectorField_real(1:3,1:grid(1),1:grid(2),1:grid3)
+  c = product(shape(IPfluct_padded(:,:,:,1)))                                                        !< amount of data to transfer
+  rank_t = modulo(worldrank+1,worldsize)
+  rank_b = modulo(worldrank-1,worldsize)
+  
+  ! send bottom layer to process below
+  call MPI_Isend(IPfluct_padded(:,:,:,2),      c,MPI_DOUBLE,rank_b,0,PETSC_COMM_WORLD,r,ierr)
+  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Isend')
+  call MPI_Irecv(IPfluct_padded(:,:,:,grid3+2),c,MPI_DOUBLE,rank_t,0,PETSC_COMM_WORLD,r,ierr)
+  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Irecv')
+  call MPI_Wait(r,s,ierr)
+  
+  ! send top layer to process above
+  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Wait')
+  call MPI_Isend(IPfluct_padded(:,:,:,grid3+1),c,MPI_DOUBLE,rank_t,0,PETSC_COMM_WORLD,r,ierr)
+  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Isend')
+  call MPI_Irecv(IPfluct_padded(:,:,:,1),      c,MPI_DOUBLE,rank_b,0,PETSC_COMM_WORLD,r,ierr)
+  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Irecv')
+  call MPI_Wait(r,s,ierr)
+  
+ !--------------------------------------------------------------------------------------------------
+ ! calculate nodal displacements  
+  nodeCoords = 0.0_pReal
+  do k = 0,grid3; do j = 0,grid(2); do i = 0,grid(1)
+    nodeCoords(1:3,i+1,j+1,k+1) = matmul(Favg,step*(real([i,j,k+grid3Offset],pReal)))
+    averageFluct: do n = 1,8
+      me = [i+neighbor(1,n),j+neighbor(2,n),k+neighbor(3,n)]
+      nodeCoords(1:3,i+1,j+1,k+1) = nodeCoords(1:3,i+1,j+1,k+1) &
+                                  + IPfluct_padded(1:3,modulo(me(1)-1,grid(1))+1,modulo(me(2)-1,grid(2))+1,me(3)+1)*0.125_pReal
+    enddo averageFluct
+  enddo; enddo; enddo
+      
+ !--------------------------------------------------------------------------------------------------
+ ! calculate cell center displacements
   do k = 1,grid3; do j = 1,grid(2); do i = 1,grid(1)
-    mesh_ipCoordinates(1:3,1,m) = vectorField_real(1:3,i,j,k) &
-                                + offset_coords &
-                                + matmul(Favg,step*real([i,j,k+grid3Offset]-1,pReal))
-    m = m+1
+    IPcoords(1:3,i,j,k) = vectorField_real(1:3,i,j,k) &
+                        + matmul(Favg,step*real([i,j,k+grid3Offset]-0.5_pReal,pReal))
   enddo; enddo; enddo
   
-  call discretization_setIPcoords(reshape(mesh_ipCoordinates,[3,grid(1)*grid(2)*grid3]))
+  call discretization_setNodeCoords(reshape(NodeCoords,[3,(grid(1)+1)*(grid(2)+1)*(grid3+1)]))
+  call discretization_setIPcoords  (reshape(IPcoords,  [3,grid(1)*grid(2)*grid3]))
+  
+end subroutine utilities_updateCoords
 
-end subroutine utilities_updateIPcoords
+
+!---------------------------------------------------------------------------------------------------
+!> @brief Write out the current reference stiffness for restart.
+!---------------------------------------------------------------------------------------------------
+subroutine utilities_saveReferenceStiffness
+ 
+  integer :: &
+    fileUnit
+
+  if (worldrank == 0) then
+    write(6,'(a)') ' writing reference stiffness data required for restart to file';flush(6)
+    fileUnit = IO_open_jobFile_binary('C_ref','w')
+    write(fileUnit) C_ref
+    close(fileUnit)
+  endif
+ 
+end subroutine utilities_saveReferenceStiffness
 
 end module spectral_utilities

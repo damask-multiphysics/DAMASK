@@ -12,7 +12,7 @@ module grid_damage_spectral
 
   use prec
   use spectral_utilities
-  use mesh
+  use mesh_grid
   use damage_nonlocal
   use numerics
   use damage_nonlocal
@@ -203,8 +203,9 @@ end function grid_damage_spectral_solution
 !--------------------------------------------------------------------------------------------------
 !> @brief spectral damage forwarding routine
 !--------------------------------------------------------------------------------------------------
-subroutine grid_damage_spectral_forward
+subroutine grid_damage_spectral_forward(cutBack)
    
+  logical, intent(in) :: cutBack
   integer                               :: i, j, k, cell
   DM :: dm_local
   PetscScalar,  dimension(:,:,:), pointer     :: x_scal

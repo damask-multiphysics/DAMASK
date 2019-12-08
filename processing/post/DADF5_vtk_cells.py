@@ -42,7 +42,7 @@ for filename in options.filenames:
   results = damask.DADF5(filename)
   
   if results.structured:                                                                            # for grid solvers use rectilinear grid
-    grid = vtk.vtkRectilineagrid()
+    grid = vtk.vtkRectilinearGrid()
     coordArray = [vtk.vtkDoubleArray(),
                   vtk.vtkDoubleArray(),
                   vtk.vtkDoubleArray(),
@@ -66,7 +66,7 @@ for filename in options.filenames:
       for i in f['/geometry/T_c']:
         grid.InsertNextCell(vtk.VTK_HEXAHEDRON,8,i-1)
 
-
+  N_digits = int(np.floor(np.log10(int(results.increments[-1][3:]))))+1
   for i,inc in enumerate(results.iter_visible('increments')):
     print('Output step {}/{}'.format(i+1,len(results.increments)))
     vtk_data = []
@@ -74,7 +74,6 @@ for filename in options.filenames:
     results.set_visible('materialpoints',False)
     results.set_visible('constituents',  True)
     for label in options.con:
-      
       for p in results.iter_visible('con_physics'):
         if p != 'generic':
           for c in results.iter_visible('constituents'):
@@ -98,7 +97,7 @@ for filename in options.filenames:
     
     results.set_visible('constituents',  False)
     results.set_visible('materialpoints',True)
-    for label in options.mat:       
+    for label in options.mat:
       for p in results.iter_visible('mat_physics'):
         if p != 'generic':
           for m in results.iter_visible('materialpoints'):
@@ -120,14 +119,22 @@ for filename in options.filenames:
           vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
           grid.GetCellData().AddArray(vtk_data[-1])
           
-    writer = vtk.vtkXMLRectilineagridWriter() if results.structured else \
+    writer = vtk.vtkXMLRectilinearGridWriter() if results.structured else \
              vtk.vtkXMLUnstructuredGridWriter()
 
-
+    results.set_visible('constituents',  False)
+    results.set_visible('materialpoints',False)
+    x = results.get_dataset_location('u_n')
+    vtk_data.append(numpy_support.numpy_to_vtk(num_array=results.read_dataset(x,0),deep=True,array_type=vtk.VTK_DOUBLE))
+    vtk_data[-1].SetName('u')
+    grid.GetPointData().AddArray(vtk_data[-1])
+    
     dirname  = os.path.abspath(os.path.join(os.path.dirname(filename),options.dir))
     if not os.path.isdir(dirname):
       os.mkdir(dirname,0o755)
-    file_out = '{}_{}.{}'.format(os.path.splitext(os.path.split(filename)[-1])[0],inc,writer.GetDefaultFileExtension())
+    file_out = '{}_inc{}.{}'.format(os.path.splitext(os.path.split(filename)[-1])[0],
+                                    inc[3:].zfill(N_digits),
+                                    writer.GetDefaultFileExtension())
     
     writer.SetCompressorTypeToZLib()
     writer.SetDataModeToBinary()

@@ -41,8 +41,7 @@ module DAMASK_interface
  implicit none
  private
  
- character(len=4), parameter, public :: InputFileExtension = '.dat'
- character(len=4), parameter, public :: LogFileExtension = '.log'
+ character(len=4), parameter, public :: INPUTFILEEXTENSION = '.dat'
  
  public :: &
   DAMASK_interface_init, &
@@ -363,37 +362,3 @@ subroutine uedinc(inc,incsub)
   call CPFEM_results(inc,cptim)
 
 end subroutine uedinc
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief sets user defined output variables for Marc
-!> @details select a variable contour plotting (user subroutine).
-!--------------------------------------------------------------------------------------------------
-subroutine plotv(v,s,sp,etot,eplas,ecreep,t,m,nn,layer,ndi,nshear,jpltcd)
- use prec
- use mesh
- use IO
- use homogenization
-
- implicit none
- integer,               intent(in) :: &
-   m, &                                                                                             !< element number
-   nn, &                                                                                            !< integration point number
-   layer, &                                                                                         !< layer number
-   ndi, &                                                                                           !< number of direct stress components
-   nshear, &                                                                                        !< number of shear stress components
-   jpltcd                                                                                           !< user variable index
- real(pReal),   dimension(*), intent(in) :: &
-   s, &                                                                                             !< stress array
-   sp, &                                                                                            !< stresses in preferred direction
-   etot, &                                                                                          !< total strain (generalized)
-   eplas, &                                                                                         !< total plastic strain
-   ecreep, &                                                                                        !< total creep strain
-   t                                                                                                !< current temperature
- real(pReal),                 intent(out) :: &
-   v                                                                                                !< variable
-
- if (jpltcd > materialpoint_sizeResults) call IO_error(700,jpltcd)                                  ! complain about out of bounds error
- v = materialpoint_results(jpltcd,nn,mesh_FEasCP('elem', m))
-
-end subroutine plotv

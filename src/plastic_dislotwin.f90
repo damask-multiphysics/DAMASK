@@ -20,11 +20,6 @@ module plastic_dislotwin
 
  implicit none
  private
- 
- integer,                       dimension(:,:),  allocatable, target, public :: &
-   plastic_dislotwin_sizePostResult                                                                 !< size of each post result output
- character(len=64),             dimension(:,:),  allocatable, target, public :: &
-   plastic_dislotwin_output                                                                         !< name of each post result output
 
  real(pReal),                                    parameter :: &
    kB = 1.38e-23_pReal                                                                              !< Boltzmann constant in J/Kelvin
@@ -38,7 +33,7 @@ module plastic_dislotwin
      gamma_sl_ID, &
      Lambda_sl_ID, &
      resolved_stress_slip_ID, &
-     threshold_stress_slip_ID, &
+     tau_pass_ID, &
      edge_dipole_distance_ID, &
      f_tw_ID, &
      Lambda_tw_ID, &
@@ -167,7 +162,6 @@ module plastic_dislotwin
    plastic_dislotwin_dependentState, &
    plastic_dislotwin_LpAndItsTangent, &
    plastic_dislotwin_dotState, &
-   plastic_dislotwin_postResults, &
    plastic_dislotwin_results
 
 contains
@@ -213,10 +207,6 @@ subroutine plastic_dislotwin_init
 
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
- 
- allocate(plastic_dislotwin_sizePostResult(maxval(phase_Noutput),Ninstance),source=0)
- allocate(plastic_dislotwin_output(maxval(phase_Noutput),Ninstance))
-          plastic_dislotwin_output = ''
 
  allocate(param(Ninstance))
  allocate(state(Ninstance))
@@ -487,7 +477,7 @@ subroutine plastic_dislotwin_init
          outputID = merge(Lambda_sl_ID,undefined_ID,prm%sum_N_sl > 0)
          outputSize = prm%sum_N_sl
        case ('tau_pass')
-         outputID= merge(threshold_stress_slip_ID,undefined_ID,prm%sum_N_sl > 0)
+         outputID= merge(tau_pass_ID,undefined_ID,prm%sum_N_sl > 0)
          outputSize = prm%sum_N_sl
 
        case ('f_tw')
@@ -507,8 +497,6 @@ subroutine plastic_dislotwin_init
      end select
         
      if (outputID /= undefined_ID) then
-       plastic_dislotwin_output(i,phase_plasticityInstance(p)) = outputs(i)
-       plastic_dislotwin_sizePostResult(i,phase_plasticityInstance(p)) = outputSize
        prm%outputID = [prm%outputID, outputID]
      endif
 
@@ -524,8 +512,6 @@ subroutine plastic_dislotwin_init
 
    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0, &
                                       prm%sum_N_sl,prm%sum_N_tw,prm%sum_N_tr)
-   plasticState(p)%sizePostResults = sum(plastic_dislotwin_sizePostResult(:,phase_plasticityInstance(p)))
-
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
@@ -937,82 +923,6 @@ end subroutine plastic_dislotwin_dependentState
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return array of constitutive results
-!--------------------------------------------------------------------------------------------------
-function plastic_dislotwin_postResults(Mp,T,instance,of) result(postResults)
-
- real(pReal), dimension(3,3),intent(in) :: &
-   Mp                                                                                               !< 2nd Piola Kirchhoff stress tensor in Mandel notation
- real(pReal),                intent(in) :: &
-   T                                                                                                !< temperature at integration point
- integer,                    intent(in) :: &
-   instance, &
-   of
-
- real(pReal), dimension(sum(plastic_dislotwin_sizePostResult(:,instance))) :: &
-   postResults
-
- integer :: &
-   o,c,j
-
- associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
- 
- c = 0
-
- do o = 1,size(prm%outputID)
-   select case(prm%outputID(o))
- 
-     case (rho_mob_ID)
-       postResults(c+1:c+prm%sum_N_sl) = stt%rho_mob(1:prm%sum_N_sl,of)
-       c = c + prm%sum_N_sl
-     case (rho_dip_ID)
-       postResults(c+1:c+prm%sum_N_sl) = stt%rho_dip(1:prm%sum_N_sl,of)
-       c = c + prm%sum_N_sl
-     case (dot_gamma_sl_ID)
-       call kinetics_slip(Mp,T,instance,of,postResults(c+1:c+prm%sum_N_sl))
-       c = c + prm%sum_N_sl
-     case (gamma_sl_ID)
-      postResults(c+1:c+prm%sum_N_sl)  = stt%gamma_sl(1:prm%sum_N_sl,of)
-       c = c + prm%sum_N_sl
-     case (Lambda_sl_ID)
-       postResults(c+1:c+prm%sum_N_sl) = dst%Lambda_sl(1:prm%sum_N_sl,of)
-       c = c + prm%sum_N_sl
-     case (resolved_stress_slip_ID)
-       do j = 1, prm%sum_N_sl
-         postResults(c+j) = math_mul33xx33(Mp,prm%P_sl(1:3,1:3,j))
-       enddo
-       c = c + prm%sum_N_sl
-     case (threshold_stress_slip_ID)
-       postResults(c+1:c+prm%sum_N_sl) = dst%tau_pass(1:prm%sum_N_sl,of)
-       c = c + prm%sum_N_sl
-
-     case (f_tw_ID)
-       postResults(c+1:c+prm%sum_N_tw) = stt%f_tw(1:prm%sum_N_tw,of)
-       c = c + prm%sum_N_tw    
-     case (Lambda_tw_ID)
-       postResults(c+1:c+prm%sum_N_tw) = dst%Lambda_tw(1:prm%sum_N_tw,of)
-       c = c + prm%sum_N_tw
-     case (resolved_stress_twin_ID)
-       do j = 1, prm%sum_N_tw
-         postResults(c+j) = math_mul33xx33(Mp,prm%P_tw(1:3,1:3,j))
-       enddo
-       c = c + prm%sum_N_tw
-     case (tau_hat_tw_ID)
-       postResults(c+1:c+prm%sum_N_tw) = dst%tau_hat_tw(1:prm%sum_N_tw,of)
-       c = c + prm%sum_N_tw
-
-     case (f_tr_ID)
-       postResults(c+1:c+prm%sum_N_tr) = stt%f_tr(1:prm%sum_N_tr,of)
-       c = c + prm%sum_N_tr
-   end select
- enddo
- 
- end associate
- 
-end function plastic_dislotwin_postResults
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_dislotwin_results(instance,group)
@@ -1038,7 +948,7 @@ subroutine plastic_dislotwin_results(instance,group)
       case (Lambda_sl_ID)
         call results_writeDataset(group,dst%Lambda_sl,'Lambda_sl',&
                                   'mean free path for slip','m')
-      case (threshold_stress_slip_ID)
+      case (tau_pass_ID)
         call results_writeDataset(group,dst%tau_pass,'tau_pass',&
                                   'passing stress for slip','Pa')
 

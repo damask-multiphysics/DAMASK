@@ -20,11 +20,6 @@ module plastic_isotropic
   implicit none
   private
   
-  integer,           dimension(:,:),   allocatable, target, public :: &
-    plastic_isotropic_sizePostResult                                                                !< size of each post result output
-  character(len=64), dimension(:,:),   allocatable, target, public :: &
-    plastic_isotropic_output                                                                        !< name of each post result output
- 
   enum, bind(c)
     enumerator :: &
       undefined_ID, &
@@ -74,7 +69,6 @@ module plastic_isotropic
    plastic_isotropic_LpAndItsTangent, &
    plastic_isotropic_LiAndItsTangent, &
    plastic_isotropic_dotState, &
-   plastic_isotropic_postResults, &
    plastic_isotropic_results
 
 contains
@@ -109,10 +103,6 @@ subroutine plastic_isotropic_init
   Ninstance = count(phase_plasticity == PLASTICITY_ISOTROPIC_ID)
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
     write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
- 
-  allocate(plastic_isotropic_sizePostResult(maxval(phase_Noutput),Ninstance),source=0)
-  allocate(plastic_isotropic_output(maxval(phase_Noutput),Ninstance))
-           plastic_isotropic_output = ''
  
   allocate(param(Ninstance))
   allocate(state(Ninstance))
@@ -151,7 +141,7 @@ subroutine plastic_isotropic_init
 !  sanity checks
     extmsg = ''
     if (prm%aTol_gamma     <= 0.0_pReal) extmsg = trim(extmsg)//' aTol_gamma'
-    if (prm%xi_0           < 0.0_pReal) extmsg = trim(extmsg)//' xi_0'
+    if (prm%xi_0           <  0.0_pReal) extmsg = trim(extmsg)//' xi_0'
     if (prm%dot_gamma_0    <= 0.0_pReal) extmsg = trim(extmsg)//' dot_gamma_0'
     if (prm%n              <= 0.0_pReal) extmsg = trim(extmsg)//' n'
     if (prm%a              <= 0.0_pReal) extmsg = trim(extmsg)//' a'
@@ -180,8 +170,6 @@ subroutine plastic_isotropic_init
       end select
  
       if (outputID /= undefined_ID) then
-        plastic_isotropic_output(i,phase_plasticityInstance(p)) = outputs(i)
-        plastic_isotropic_sizePostResult(i,phase_plasticityInstance(p)) = 1
         prm%outputID = [prm%outputID, outputID]
      endif
  
@@ -195,7 +183,6 @@ subroutine plastic_isotropic_init
  
     call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0, &
                                        1,0,0)
-    plasticState(p)%sizePostResults = sum(plastic_isotropic_sizePostResult(:,phase_plasticityInstance(p)))
  
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
@@ -380,54 +367,6 @@ subroutine plastic_isotropic_dotState(Mp,instance,of)
   end associate
 
 end subroutine plastic_isotropic_dotState
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return array of constitutive results
-!--------------------------------------------------------------------------------------------------
-function plastic_isotropic_postResults(Mp,instance,of) result(postResults)
- 
-  real(pReal), dimension(3,3),  intent(in) :: &
-    Mp                                                                                              !< Mandel stress
-  integer,                      intent(in) :: &
-    instance, &
-    of
- 
-  real(pReal), dimension(sum(plastic_isotropic_sizePostResult(:,instance))) :: &
-    postResults
- 
-  real(pReal) :: &
-    norm_Mp                                                                                         !< norm of the Mandel stress
-  integer :: &
-    o,c
- 
-  associate(prm => param(instance), stt => state(instance))
- 
-  if (prm%dilatation) then
-    norm_Mp = sqrt(math_mul33xx33(Mp,Mp))
-  else
-    norm_Mp = sqrt(math_mul33xx33(math_deviatoric33(Mp),math_deviatoric33(Mp)))
-  endif
- 
-  c = 0
- 
-  outputsLoop: do o = 1,size(prm%outputID)
-    select case(prm%outputID(o))
- 
-      case (xi_ID)
-        postResults(c+1) = stt%xi(of)
-        c = c + 1
-      case (dot_gamma_ID)
-        postResults(c+1) = prm%dot_gamma_0 &
-                         * (sqrt(1.5_pReal) * norm_Mp /(prm%M * stt%xi(of)))**prm%n
-        c = c + 1
- 
-    end select
-  enddo outputsLoop
- 
-  end associate
-
-end function plastic_isotropic_postResults
 
 
 !--------------------------------------------------------------------------------------------------

@@ -82,9 +82,6 @@ module numerics
                                 &-damage_snes_type ngmres &
                                 &-thermal_snes_type ngmres ', &
    petsc_options              = ''
- logical, protected, public :: &
-   continueCalculation        = .false.                                                          !< false:exit if BVP solver does not converge, true: continue calculation despite BVP solver not converging
-
 #endif
 
 !--------------------------------------------------------------------------------------------------
@@ -259,8 +256,6 @@ subroutine numerics_init
          err_stress_tolrel = IO_floatValue(line,chunkPos,2)
        case ('err_stress_tolabs')
          err_stress_tolabs = IO_floatValue(line,chunkPos,2)
-       case ('continuecalculation')
-         continueCalculation = IO_intValue(line,chunkPos,2) > 0
        case ('petsc_options')
          petsc_options = trim(line(chunkPos(4):))
        case ('err_curl_tolabs')
@@ -354,7 +349,6 @@ subroutine numerics_init
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters
 #ifdef Grid
- write(6,'(a24,1x,L8)')      ' continueCalculation:    ',continueCalculation
  write(6,'(a24,1x,es8.1)')   ' err_stress_tolAbs:      ',err_stress_tolAbs
  write(6,'(a24,1x,es8.1)')   ' err_stress_tolRel:      ',err_stress_tolRel
  write(6,'(a24,1x,es8.1)')   ' err_div_tolAbs:         ',err_div_tolAbs

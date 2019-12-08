@@ -4,7 +4,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Parse geometry file to set up discretization and geometry for nonlocal model
 !--------------------------------------------------------------------------------------------------
-module mesh
+module mesh_grid
 #include <petsc/finclude/petscsys.h>
   use PETScsys
 
@@ -14,16 +14,14 @@ module mesh
   use IO
   use debug
   use numerics
+  use results
   use discretization
   use geometry_plastic_nonlocal
   use FEsolving
  
   implicit none
   private
- 
-  real(pReal), dimension(:,:,:), allocatable, public :: &
-    mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
- 
+  
   integer,     dimension(3), public, protected :: &
     grid                                                                                            !< (global) grid
   integer,                   public, protected :: &
@@ -63,7 +61,7 @@ subroutine mesh_init(ip,el)
   integer(C_INTPTR_T) :: &
     devNull, z, z_offset
 
-  write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  mesh_grid init  -+>>>'
 
   call readGeom(grid,geomSize,microstructureAt,homogenizationAt)
 
@@ -92,13 +90,23 @@ subroutine mesh_init(ip,el)
   homogenizationAt = homogenizationAt(product(grid(1:2))*grid3Offset+1: &
                                       product(grid(1:2))*(grid3Offset+grid3))                       ! reallocate/shrink in case of MPI
 
-  mesh_ipCoordinates = IPcoordinates(myGrid,mySize,grid3Offset)
   call discretization_init(homogenizationAt,microstructureAt, &
-                           reshape(mesh_ipCoordinates,[3,product(myGrid)]), &
-                           Nodes(myGrid,mySize,grid3Offset))
+                           IPcoordinates0(myGrid,mySize,grid3Offset), &
+                           Nodes0(myGrid,mySize,grid3Offset),&
+                           merge((grid(1)+1) * (grid(2)+1) * (grid3+1),&                            ! write bottom layer 
+                                 (grid(1)+1) * (grid(2)+1) *  grid3,&                               ! do not write bottom layer (is top of rank-1)
+                                 worldrank<1))
 
   FEsolving_execElem = [1,product(myGrid)]                                                          ! parallel loop bounds set to comprise all elements
   allocate(FEsolving_execIP(2,product(myGrid)),source=1)                                            ! parallel loop bounds set to comprise the only IP
+
+!--------------------------------------------------------------------------------------------------
+! store geometry information for post processing
+  call results_openJobFile
+  call results_closeGroup(results_addGroup('geometry'))
+  call results_addAttribute('grid',grid,'geometry')
+  call results_addAttribute('size',geomSize,'geometry')
+  call results_closeJobFile
 
 !--------------------------------------------------------------------------------------------------
 ! geometry information required by the nonlocal CP model
@@ -268,15 +276,15 @@ end subroutine readGeom
 
 
 !---------------------------------------------------------------------------------------------------
-!> @brief Calculate position of IPs/cell centres (pretend to be an element)
+!> @brief Calculate undeformed position of IPs/cell centres (pretend to be an element)
 !---------------------------------------------------------------------------------------------------
-function IPcoordinates(grid,geomSize,grid3Offset)
+function IPcoordinates0(grid,geomSize,grid3Offset)
 
   integer,     dimension(3), intent(in) :: grid                                                     ! grid (for this process!)
   real(pReal), dimension(3), intent(in) :: geomSize                                                 ! size (for this process!)
   integer,                   intent(in) :: grid3Offset                                              ! grid(3) offset
 
-  real(pReal), dimension(3,1,product(grid))  :: ipCoordinates
+  real(pReal), dimension(3,product(grid))  :: ipCoordinates0
 
   integer :: &
     a,b,c, &
@@ -285,22 +293,22 @@ function IPcoordinates(grid,geomSize,grid3Offset)
   i = 0
   do c = 1, grid(3); do b = 1, grid(2); do a = 1, grid(1)
     i = i + 1
-    IPcoordinates(1:3,1,i) = geomSize/real(grid,pReal) * (real([a,b,grid3Offset+c],pReal) -0.5_pReal)
+    IPcoordinates0(1:3,i) = geomSize/real(grid,pReal) * (real([a,b,grid3Offset+c],pReal) -0.5_pReal)
   enddo; enddo; enddo
 
-end function IPcoordinates
+end function IPcoordinates0
 
 
 !---------------------------------------------------------------------------------------------------
-!> @brief Calculate position of nodes (pretend to be an element)
+!> @brief Calculate position of undeformed nodes (pretend to be an element)
 !---------------------------------------------------------------------------------------------------
-pure function nodes(grid,geomSize,grid3Offset)
+pure function nodes0(grid,geomSize,grid3Offset)
 
   integer,     dimension(3), intent(in) :: grid                                                     ! grid (for this process!)
   real(pReal), dimension(3), intent(in) :: geomSize                                                 ! size (for this process!)
   integer,                   intent(in) :: grid3Offset                                              ! grid(3) offset
 
-  real(pReal), dimension(3,product(grid+1))  :: nodes
+  real(pReal), dimension(3,product(grid+1)) :: nodes0
 
   integer :: &
     a,b,c, &
@@ -309,10 +317,10 @@ pure function nodes(grid,geomSize,grid3Offset)
   n = 0
   do c = 0, grid3; do b = 0, grid(2); do a = 0, grid(1)
     n = n + 1
-    nodes(1:3,n) = geomSize/real(grid,pReal) * real([a,b,grid3Offset+c],pReal)
+    nodes0(1:3,n) = geomSize/real(grid,pReal) * real([a,b,grid3Offset+c],pReal)
   enddo; enddo; enddo
 
-end function nodes
+end function nodes0
 
 
 !--------------------------------------------------------------------------------------------------
@@ -403,78 +411,4 @@ pure function IPneighborhood(grid)
 end function IPneighborhood
 
 
-!!--------------------------------------------------------------------------------------------------
-!!> @brief builds mesh of (distorted) cubes for given coordinates (= center of the cubes)
-!!--------------------------------------------------------------------------------------------------
-!function mesh_nodesAroundCentres(gDim,Favg,centres) result(nodes)
-!
-!  real(pReal), intent(in), dimension(:,:,:,:) :: &
-!    centres
-!  real(pReal),             dimension(3,size(centres,2)+1,size(centres,3)+1,size(centres,4)+1) :: &
-!    nodes
-!  real(pReal), intent(in), dimension(3) :: &
-!    gDim
-!  real(pReal), intent(in), dimension(3,3) :: &
-!    Favg
-!  real(pReal),             dimension(3,size(centres,2)+2,size(centres,3)+2,size(centres,4)+2) :: &
-!    wrappedCentres
-!
-!  integer :: &
-!    i,j,k,n
-!  integer,           dimension(3), parameter :: &
-!    diag = 1
-!  integer,           dimension(3) :: &
-!    shift = 0, &
-!    lookup = 0, &
-!    me = 0, &
-!    iRes = 0
-!  integer,           dimension(3,8) :: &
-!    neighbor = reshape([ &
-!                        0, 0, 0, &
-!                        1, 0, 0, &
-!                        1, 1, 0, &
-!                        0, 1, 0, &
-!                        0, 0, 1, &
-!                        1, 0, 1, &
-!                        1, 1, 1, &
-!                        0, 1, 1  ], [3,8])
-!
-!!--------------------------------------------------------------------------------------------------
-!! initializing variables
-! iRes =  [size(centres,2),size(centres,3),size(centres,4)]
-! nodes = 0.0_pReal
-! wrappedCentres = 0.0_pReal
-!
-!!--------------------------------------------------------------------------------------------------
-!! building wrappedCentres = centroids + ghosts
-!  wrappedCentres(1:3,2:iRes(1)+1,2:iRes(2)+1,2:iRes(3)+1) = centres
-!  do k = 0,iRes(3)+1
-!    do j = 0,iRes(2)+1
-!      do i = 0,iRes(1)+1
-!        if (k==0 .or. k==iRes(3)+1 .or. &                                                  ! z skin
-!            j==0 .or. j==iRes(2)+1 .or. &                                                  ! y skin
-!            i==0 .or. i==iRes(1)+1      ) then                                             ! x skin
-!          me = [i,j,k]                                                                               ! me on skin
-!          shift = sign(abs(iRes+diag-2*me)/(iRes+diag),iRes+diag-2*me)
-!          lookup = me-diag+shift*iRes
-!          wrappedCentres(1:3,i+1,        j+1,        k+1) = &
-!                 centres(1:3,lookup(1)+1,lookup(2)+1,lookup(3)+1) &
-!                 - matmul(Favg, real(shift,pReal)*gDim)
-!        endif
-!  enddo; enddo; enddo
-!
-!!--------------------------------------------------------------------------------------------------
-!! averaging
-!  do k = 0,iRes(3); do j = 0,iRes(2); do i = 0,iRes(1)
-!    do n = 1,8
-!     nodes(1:3,i+1,j+1,k+1) = &
-!     nodes(1:3,i+1,j+1,k+1) + wrappedCentres(1:3,i+1+neighbor(1,n), &
-!                                                                j+1+neighbor(2,n), &
-!                                                                k+1+neighbor(3,n) )
-!    enddo
-!  enddo; enddo; enddo
-!  nodes = nodes/8.0_pReal
-!
-!end function mesh_nodesAroundCentres
-
-end module mesh
+end module mesh_grid

@@ -178,19 +178,19 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
  if (iand(mode, CPFEM_RESTOREJACOBIAN) /= 0_pInt) &
    CPFEM_dcsde = CPFEM_dcsde_knownGood
 
- !*** age results and write restart data if requested
+ !*** age results
  if (iand(mode, CPFEM_AGERESULTS) /= 0_pInt) then
-   crystallite_F0  = crystallite_partionedF                                                         ! crystallite deformation (_subF is perturbed...)
+   crystallite_F0  = crystallite_partionedF                                                         ! crystallite deformation
    crystallite_Fp0 = crystallite_Fp                                                                 ! crystallite plastic deformation
    crystallite_Lp0 = crystallite_Lp                                                                 ! crystallite plastic velocity
    crystallite_Fi0 = crystallite_Fi                                                                 ! crystallite intermediate deformation
    crystallite_Li0 = crystallite_Li                                                                 ! crystallite intermediate velocity
    crystallite_S0  = crystallite_S                                                                  ! crystallite 2nd Piola Kirchhoff stress
 
-   forall ( i = 1:size(plasticState    )) plasticState(i)%state0     = plasticState(i)%state   ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
+   forall (i = 1:size(plasticState)) plasticState(i)%state0 = plasticState(i)%state
    do i = 1, size(sourceState)
      do mySource = 1,phase_Nsources(i)
-       sourceState(i)%p(mySource)%state0 = sourceState(i)%p(mySource)%state                    ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
+       sourceState(i)%p(mySource)%state0 = sourceState(i)%p(mySource)%state
    enddo; enddo
    if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) then
      write(6,'(a)') '<< CPFEM >> aging states'
@@ -275,7 +275,6 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
        if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /=  0_pInt) &
          write(6,'(a,i8,1x,i2)') '<< CPFEM >> calculation for elFE ip ',elFE,ip
        call materialpoint_stressAndItsTangent(updateJaco, dt)                                     ! calculate stress and its tangent
-       call materialpoint_postResults()
 
      !* parallel computation and calulation not yet done
 
@@ -284,7 +283,6 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
          write(6,'(a,i8,a,i8)') '<< CPFEM >> calculation for elements ',FEsolving_execElem(1),&
                                                                  ' to ',FEsolving_execElem(2)
        call materialpoint_stressAndItsTangent(updateJaco, dt)                                       ! calculate stress and its tangent (parallel execution inside)
-       call materialpoint_postResults()
        CPFEM_calc_done = .true.
      endif
 

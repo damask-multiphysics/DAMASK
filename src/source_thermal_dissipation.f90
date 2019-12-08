@@ -18,12 +18,6 @@ module source_thermal_dissipation
     source_thermal_dissipation_offset, &                                                            !< which source is my current thermal dissipation mechanism?
     source_thermal_dissipation_instance                                                             !< instance of thermal dissipation source mechanism
  
-  integer,           dimension(:,:), allocatable, target, public :: &
-    source_thermal_dissipation_sizePostResult                                                       !< size of each post result output
- 
-  character(len=64), dimension(:,:), allocatable, target, public :: &
-    source_thermal_dissipation_output                                                               !< name of each post result output
- 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
       kappa
@@ -68,10 +62,6 @@ subroutine source_thermal_dissipation_init
     enddo    
   enddo
     
-  allocate(source_thermal_dissipation_sizePostResult(maxval(phase_Noutput),Ninstance),source=0)
-  allocate(source_thermal_dissipation_output  (maxval(phase_Noutput),Ninstance))
-           source_thermal_dissipation_output = ''
- 
   do p=1, size(config_phase)
     if (all(phase_source(:,p) /= SOURCE_THERMAL_DISSIPATION_ID)) cycle
     instance = source_thermal_dissipation_instance(p)

@@ -52,6 +52,7 @@ for filename in options.filenames:
   Polydata.SetVerts(Vertices)
   Polydata.Modified()
   
+  N_digits = int(np.floor(np.log10(int(results.increments[-1][3:]))))+1
   for i,inc in enumerate(results.iter_visible('increments')):
     print('Output step {}/{}'.format(i+1,len(results.increments)))
     vtk_data = []
@@ -111,7 +112,9 @@ for filename in options.filenames:
     dirname  = os.path.abspath(os.path.join(os.path.dirname(filename),options.dir))
     if not os.path.isdir(dirname):
       os.mkdir(dirname,0o755)
-    file_out = '{}_{}.{}'.format(os.path.splitext(os.path.split(filename)[-1])[0],inc,writer.GetDefaultFileExtension())
+    file_out = '{}_inc{}.{}'.format(os.path.splitext(os.path.split(filename)[-1])[0],
+                                   inc[3:].zfill(N_digits),
+                                   writer.GetDefaultFileExtension())
     
     writer.SetCompressorTypeToZLib()
     writer.SetDataModeToBinary()

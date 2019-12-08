@@ -29,7 +29,6 @@ module subroutine mech_none_init
     
     NofMyHomog = count(material_homogenizationAt == h)
     homogState(h)%sizeState = 0
-    homogState(h)%sizePostResults = 0
     allocate(homogState(h)%state0   (0,NofMyHomog))
     allocate(homogState(h)%subState0(0,NofMyHomog))
     allocate(homogState(h)%state    (0,NofMyHomog))

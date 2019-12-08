@@ -7,6 +7,7 @@ import numpy as np
 
 from . import util
 from . import version
+from . import mechanics
 
 # ------------------------------------------------------------------
 class DADF5():
@@ -17,19 +18,26 @@ class DADF5():
   """
   
 # ------------------------------------------------------------------
-  def __init__(self,filename):
+  def __init__(self,fname):
     """
     Opens an existing DADF5 file.
     
     Parameters
     ----------
-    filename : str
+    fname : str
         name of the DADF5 file to be openend.
     
     """
-    with h5py.File(filename,'r') as f:
+    with h5py.File(fname,'r') as f:
       
-      if f.attrs['DADF5-major'] != 0 or f.attrs['DADF5-minor'] != 2:
+      try:
+        self.version_major = f.attrs['DADF5_version_major']
+        self.version_minor = f.attrs['DADF5_version_minor']
+      except KeyError:
+        self.version_major = f.attrs['DADF5-major']
+        self.version_minor = f.attrs['DADF5-minor']
+
+      if self.version_major != 0 or not 2 <= self.version_minor <= 4:
         raise TypeError('Unsupported DADF5 version {} '.format(f.attrs['DADF5-version']))
     
       self.structured = 'grid' in f['geometry'].attrs.keys()
@@ -39,8 +47,9 @@ class DADF5():
         self.size = f['geometry'].attrs['size']
         
       r=re.compile('inc[0-9]+')
-      self.increments = [i for i in f.keys() if r.match(i)]
-      self.times      = [round(f[i].attrs['time/s'],12) for i in self.increments]
+      increments_unsorted = {int(i[3:]):i for i in f.keys() if r.match(i)}
+      self.increments     = [increments_unsorted[i] for i in sorted(increments_unsorted)]
+      self.times          = [round(f[i].attrs['time/s'],12) for i in self.increments]
 
       self.Nmaterialpoints, self.Nconstituents =   np.shape(f['mapping/cellResults/constituent'])
       self.materialpoints  = [m.decode() for m in np.unique(f['mapping/cellResults/materialpoint']['Name'])]
@@ -49,21 +58,21 @@ class DADF5():
       self.con_physics  = []
       for c in self.constituents:
         self.con_physics += f['/'.join([self.increments[0],'constituent',c])].keys()
-      self.con_physics = list(set(self.con_physics))                                          # make unique
+      self.con_physics = list(set(self.con_physics))                                                # make unique
 
       self.mat_physics = []
       for m in self.materialpoints:
         self.mat_physics += f['/'.join([self.increments[0],'materialpoint',m])].keys()
-      self.mat_physics = list(set(self.mat_physics))                                          # make unique
+      self.mat_physics = list(set(self.mat_physics))                                                # make unique
 
     self.visible= {'increments':     self.increments,
                    'constituents':   self.constituents,
                    'materialpoints': self.materialpoints,
-                   'constituent':    range(self.Nconstituents),                               # ToDo: stupid naming
+                   'constituent':    range(self.Nconstituents),                                     # ToDo: stupid naming
                    'con_physics':    self.con_physics,
                    'mat_physics':    self.mat_physics}
                   
-    self.filename   = filename
+    self.fname = fname
 
 
   def __manage_visible(self,datasets,what,action):
@@ -90,7 +99,7 @@ class DADF5():
     
     valid = [e for e_ in [glob.fnmatch.filter(getattr(self,what),s) for s in choice] for e in e_]
     existing = set(self.visible[what])
-    
+
     if   action == 'set':
       self.visible[what] = valid
     elif action == 'add':
@@ -102,21 +111,21 @@ class DADF5():
   def __time_to_inc(self,start,end):
     selected = []
     for i,time in enumerate(self.times):
-      if start <= time < end:
+      if start <= time <= end:
         selected.append(self.increments[i])
     return selected
 
 
   def set_by_time(self,start,end):
     """
-    Sets active time increments based on start and end time.
+    Set active increments based on start and end time.
 
     Parameters
     ----------
     start : float
       start time (included)
     end : float
-      end time (exclcuded)
+      end time (included)
 
     """
     self.__manage_visible(self.__time_to_inc(start,end),'increments','set')
@@ -124,14 +133,14 @@ class DADF5():
 
   def add_by_time(self,start,end):
     """
-    Adds to active time increments based on start and end time.
+    Add to active increments based on start and end time.
 
     Parameters
     ----------
     start : float
       start time (included)
     end : float
-      end time (exclcuded)
+      end time (included)
 
     """
     self.__manage_visible(self.__time_to_inc(start,end),'increments','add')
@@ -139,22 +148,76 @@ class DADF5():
 
   def del_by_time(self,start,end):
     """
-    Delets from active time increments based on start and end time.
+    Delete from active increments based on start and end time.
 
     Parameters
     ----------
     start : float
       start time (included)
     end : float
-      end time (exclcuded)
+      end time (included)
 
     """
     self.__manage_visible(self.__time_to_inc(start,end),'increments','del')
+    
+    
+  def set_by_increment(self,start,end):
+    """
+    Set active time increments based on start and end increment.
+
+    Parameters
+    ----------
+    start : int
+      start increment (included)
+    end : int
+      end increment (included)
+
+    """
+    if self.version_minor >= 4:
+      self.__manage_visible([    'inc{}'.format(i) for i in range(start,end+1)],'increments','set')
+    else:
+      self.__manage_visible(['inc{:05d}'.format(i) for i in range(start,end+1)],'increments','set')
+
+
+  def add_by_increment(self,start,end):
+    """
+    Add to active time increments based on start and end increment.
+
+    Parameters
+    ----------
+    start : int
+      start increment (included)
+    end : int
+      end increment (included)
+
+    """
+    if self.version_minor >= 4:
+      self.__manage_visible([    'inc{}'.format(i) for i in range(start,end+1)],'increments','add')
+    else:
+      self.__manage_visible(['inc{:05d}'.format(i) for i in range(start,end+1)],'increments','add')
+
+
+  def del_by_increment(self,start,end):
+    """
+    Delet from active time increments based on start and end increment.
+
+    Parameters
+    ----------
+    start : int
+      start increment (included)
+    end : int
+      end increment (included)
+
+    """
+    if self.version_minor >= 4:
+      self.__manage_visible([    'inc{}'.format(i) for i in range(start,end+1)],'increments','del')
+    else:
+      self.__manage_visible(['inc{:05d}'.format(i) for i in range(start,end+1)],'increments','del')
 
 
   def iter_visible(self,what):
     """
-    Iterates over visible items by setting each one visible.
+    Iterate over visible items by setting each one visible.
 
     Parameters
     ----------
@@ -176,7 +239,7 @@ class DADF5():
   
   def set_visible(self,what,datasets):
     """
-    Sets active groups.
+    Set active groups.
     
     Parameters
     ----------
@@ -192,7 +255,7 @@ class DADF5():
 
   def add_visible(self,what,datasets):
     """
-    Adds to active groups.
+    Add to active groups.
     
     Parameters
     ----------
@@ -208,7 +271,7 @@ class DADF5():
 
   def del_visible(self,what,datasets):
     """
-    Removes from active groupse.
+    Delete from active groupse.
     
     Parameters
     ----------
@@ -252,7 +315,7 @@ class DADF5():
 
     groups = []
     
-    with h5py.File(self.filename,'r') as f:
+    with h5py.File(self.fname,'r') as f:
       for i in self.iter_visible('increments'):
         for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
           for oo in self.iter_visible(o):
@@ -267,11 +330,11 @@ class DADF5():
 
 
   def list_data(self):
-    """Gives information on all active datasets in the file."""
+    """Return information on all active datasets in the file."""
     message = ''
-    with h5py.File(self.filename,'r') as f:
-      for i in self.iter_visible('increments'):
-        message+='\n{}\n'.format(i)
+    with h5py.File(self.fname,'r') as f:
+      for s,i in enumerate(self.iter_visible('increments')):
+        message+='\n{} ({}s)\n'.format(i,self.times[s])
         for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
           for oo in self.iter_visible(o):
             message+='  {}\n'.format(oo)
@@ -280,17 +343,24 @@ class DADF5():
               group = '/'.join([i,o[:-1],oo,pp])                              # o[:-1]: plural/singular issue
               for d in f[group].keys():
                 try:
-                  message+='      {} ({})\n'.format(d,f['/'.join([group,d])].attrs['Description'].decode())
+                  dataset = f['/'.join([group,d])]
+                  message+='      {} / ({}): {}\n'.format(d,dataset.attrs['Unit'].decode(),dataset.attrs['Description'].decode())
                 except KeyError:
                   pass
     return message
 
 
   def get_dataset_location(self,label):
-    """Returns the location of all active datasets with given label."""
+    """Return the location of all active datasets with given label."""
     path = []
-    with h5py.File(self.filename,'r') as f:
-      for i in self.iter_visible('increments'):        
+    with h5py.File(self.fname,'r') as f:
+      for i in self.iter_visible('increments'):
+        k = '/'.join([i,'geometry',label])
+        try:
+          f[k]
+          path.append(k)
+        except KeyError as e:
+          print('unable to locate geometry dataset: {}'.format(str(e)))
         for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
           for oo in self.iter_visible(o):
             for pp in self.iter_visible(p):
@@ -299,39 +369,43 @@ class DADF5():
                 f[k]
                 path.append(k)
               except KeyError as e:
-                print('unable to locate constituents dataset: '+ str(e))
+                print('unable to locate {} dataset: {}'.format(o,str(e)))
     return path
     
     
   def get_constituent_ID(self,c=0):
     """Pointwise constituent ID."""
-    with h5py.File(self.filename,'r') as f:
+    with h5py.File(self.fname,'r') as f:
       names = f['/mapping/cellResults/constituent']['Name'][:,c].astype('str')
     return np.array([int(n.split('_')[0]) for n in names.tolist()],dtype=np.int32)
 
 
   def get_crystal_structure(self):                                                                  # ToDo: extension to multi constituents/phase
     """Info about the crystal structure."""
-    with h5py.File(self.filename,'r') as f:
+    with h5py.File(self.fname,'r') as f:
       return f[self.get_dataset_location('orientation')[0]].attrs['Lattice'].astype('str')          # np.bytes_ to string
 
 
-  def read_dataset(self,path,c):
+  def read_dataset(self,path,c=0,plain=False):
     """
     Dataset for all points/cells.
     
-    If more than one path is given, the dataset is composed of the individual contributions
+    If more than one path is given, the dataset is composed of the individual contributions.
     """
-    with h5py.File(self.filename,'r') as f:
+    with h5py.File(self.fname,'r') as f:
       shape = (self.Nmaterialpoints,) + np.shape(f[path[0]])[1:]
       if len(shape) == 1: shape = shape +(1,)
       dataset = np.full(shape,np.nan,dtype=np.dtype(f[path[0]]))
       for pa in path:
-        label   = pa.split('/')[2]
+        label = pa.split('/')[2]
+        
+        if (pa.split('/')[1] == 'geometry'):
+          dataset = np.array(f[pa])
+          continue
         
         p = np.where(f['mapping/cellResults/constituent'][:,c]['Name'] == str.encode(label))[0]
         if len(p)>0:
-          u = (f['mapping/cellResults/constituent'][p,c]['Position'])
+          u = (f['mapping/cellResults/constituent']['Position'][p,c])
           a = np.array(f[pa])
           if len(a.shape) == 1:
             a=a.reshape([a.shape[0],1])
@@ -339,17 +413,20 @@ class DADF5():
 
         p = np.where(f['mapping/cellResults/materialpoint']['Name'] == str.encode(label))[0]
         if len(p)>0:
-          u = (f['mapping/cellResults/materialpoint'][p.tolist()]['Position'])
+          u = (f['mapping/cellResults/materialpoint']['Position'][p.tolist()])
           a = np.array(f[pa])
           if len(a.shape) == 1:
             a=a.reshape([a.shape[0],1])
           dataset[p,:] = a[u,:]
-
-    return dataset
+    
+    if plain and dataset.dtype.names is not None:
+      return dataset.view(('float64',len(dataset.dtype.names)))
+    else:
+      return dataset
 
 
   def cell_coordinates(self):
-    """Initial coordinates of the cell centers."""
+    """Return initial coordinates of the cell centers."""
     if self.structured:
       delta = self.size/self.grid*0.5
       z, y, x = np.meshgrid(np.linspace(delta[2],self.size[2]-delta[2],self.grid[2]),
@@ -358,76 +435,237 @@ class DADF5():
                            )
       return np.concatenate((x[:,:,:,None],y[:,:,:,None],y[:,:,:,None]),axis = 3).reshape([np.product(self.grid),3])
     else:
-      with h5py.File(self.filename,'r') as f:
+      with h5py.File(self.fname,'r') as f:
         return f['geometry/x_c'][()]
+    
+    
+  def add_absolute(self,x):
+    """
+    Add absolute value.
+
+    Parameters
+    ----------
+    x : str
+      Label of the dataset containing a scalar, vector, or tensor.
+
+    """
+    def __add_absolute(x):
+
+      return {
+              'data':  np.abs(x['data']),
+              'label': '|{}|'.format(x['label']),
+              'meta':  {
+                        'Unit':        x['meta']['Unit'],
+                        'Description': 'Absolute value of {} ({})'.format(x['label'],x['meta']['Description']),
+                        'Creator':     'dadf5.py:add_abs v{}'.format(version)
+                        }
+               }
+
+    requested = [{'label':x,'arg':'x'}]
+    
+    self.__add_generic_pointwise(__add_absolute,requested)
+    
+
+  def add_calculation(self,formula,label,unit='n/a',description=None,vectorized=True):
+    """
+    Add result of a general formula.
+    
+    Parameters
+    ----------
+    formula : str
+      Formula, refer to datasets by ‘#Label#‘.
+    label : str
+      Label of the dataset containing the result of the calculation.
+    unit : str, optional
+      Physical unit of the result.
+    description : str, optional
+      Human readable description of the result.
+    vectorized : bool, optional
+      Indicate whether the formula is written in vectorized form. Default is ‘True’.
+
+    """
+    if vectorized is not True:
+      raise NotImplementedError
+    
+    def __add_calculation(**kwargs):
+      
+      formula = kwargs['formula']
+      for d in re.findall(r'#(.*?)#',formula):
+        formula = formula.replace('#{}#'.format(d),"kwargs['{}']['data']".format(d))
+        
+      return {
+              'data':  eval(formula), 
+              'label': kwargs['label'],
+              'meta':  {
+                        'Unit':        kwargs['unit'],
+                        'Description': '{} (formula: {})'.format(kwargs['description'],kwargs['formula']),
+                        'Creator':     'dadf5.py:add_calculation v{}'.format(version)
+                        }
+               }
+    
+    requested    = [{'label':d,'arg':d} for d in set(re.findall(r'#(.*?)#',formula))]               # datasets used in the formula
+    pass_through = {'formula':formula,'label':label,'unit':unit,'description':description} 
+    
+    self.__add_generic_pointwise(__add_calculation,requested,pass_through)
 
 
   def add_Cauchy(self,P='P',F='F'):
     """
-    Adds Cauchy stress calculated from 1st Piola-Kirchhoff stress and deformation gradient.
+    Add Cauchy stress calculated from 1. Piola-Kirchhoff stress and deformation gradient.
     
-    Resulting tensor is symmetrized as the Cauchy stress should be symmetric.
+    Parameters
+    ----------
+    P : str, optional
+      Label of the dataset containing the 1. Piola-Kirchhoff stress. Default value is ‘P’.
+    F : str, optional
+      Label of the dataset containing the deformation gradient. Default value is ‘F’.
+
     """
-    def Cauchy(F,P):
-      sigma = np.einsum('i,ijk,ilk->ijl',1.0/np.linalg.det(F['data']),P['data'],F['data'])
-      sigma = (sigma + np.transpose(sigma,(0,2,1)))*0.5                                             # enforce symmetry
-      return  {
-               'data'  : sigma,
-               'label' : 'sigma',
-               'meta' : {
-                        'Unit' :        P['meta']['Unit'],
-                        'Description' : 'Cauchy stress calculated from {} ({}) '.format(P['label'],P['meta']['Description'])+\
-                                        'and deformation gradient {} ({})'.format(F['label'],F['meta']['Description']),
-                        'Creator' :     'dadf5.py:add_Cauchy v{}'.format(version)
+    def __add_Cauchy(F,P):
+
+      return {
+              'data':  mechanics.Cauchy(F['data'],P['data']),
+              'label': 'sigma',
+              'meta':  {
+                        'Unit':        P['meta']['Unit'],
+                        'Description': 'Cauchy stress calculated from {} ({}) '.format(P['label'],P['meta']['Description'])+\
+                                       'and deformation gradient {} ({})'.format(F['label'],F['meta']['Description']),
+                        'Creator':     'dadf5.py:add_Cauchy v{}'.format(version)
                         }
-               }
+              }
       
     requested = [{'label':F,'arg':'F'},
                  {'label':P,'arg':'P'} ]
     
-    self.__add_generic_pointwise(Cauchy,requested)
+    self.__add_generic_pointwise(__add_Cauchy,requested)
 
 
-  def add_Mises(self,x):
-    """Adds the equivalent Mises stress or strain of a tensor."""
-    def Mises(x):
+  def add_determinant(self,x):
+    """
+    Add the determinant of a tensor.
+
+    Parameters
+    ----------
+    x : str
+      Label of the dataset containing a tensor.
+
+    """
+    def __add_determinant(x):
       
-      if x['meta']['Unit'] == b'Pa': #ToDo: Should we use this? Then add_Cauchy  and add_strain_tensors also should perform sanity checks
-        factor = 3.0/2.0
-        t = 'stress'
-      elif x['meta']['Unit'] == b'1':
-        factor = 2.0/3.0
-        t = 'strain'
-      else:
-        print(x['meta']['Unit'])
+      return {
+              'data':  np.linalg.det(x['data']),
+              'label': 'det({})'.format(x['label']),
+              'meta':  {
+                        'Unit':        x['meta']['Unit'],
+                        'Description': 'Determinant of tensor {} ({})'.format(x['label'],x['meta']['Description']),
+                        'Creator':     'dadf5.py:add_determinant v{}'.format(version)
+                        }
+              }
+      
+    requested = [{'label':x,'arg':'x'}]
+    
+    self.__add_generic_pointwise(__add_determinant,requested)
+
+
+  def add_deviator(self,x):
+    """
+    Add the deviatoric part of a tensor.
+
+    Parameters
+    ----------
+    x : str
+      Label of the dataset containing a tensor.
+
+    """
+    def __add_deviator(x):
+      
+      if not np.all(np.array(x['data'].shape[1:]) == np.array([3,3])):
         raise ValueError
       
-      d = x['data']
-      dev = d - np.einsum('ijk,i->ijk',np.broadcast_to(np.eye(3),[d.shape[0],3,3]),np.trace(d,axis1=1,axis2=2)/3.0)
-      #dev_sym = (dev + np.einsum('ikj',dev))*0.5 # ToDo: this is not needed (only if the input is not symmetric, but then the whole concept breaks down)
-
-      return  {
-               'data' :  np.sqrt(np.einsum('ijk->i',dev**2)*factor), 
-               'label' : '{}_vM'.format(x['label']),
-               'meta' : {
-                        'Unit' :        x['meta']['Unit'],
-                        'Description' : 'Mises equivalent {} of {} ({})'.format(t,x['label'],x['meta']['Description']),
-                        'Creator' :     'dadf5.py:add_Mises_stress v{}'.format(version)
+      return {
+              'data':  mechanics.deviatoric_part(x['data']),
+              'label': 's_{}'.format(x['label']),
+              'meta':  {
+                        'Unit':        x['meta']['Unit'],
+                        'Description': 'Deviator of tensor {} ({})'.format(x['label'],x['meta']['Description']),
+                        'Creator':     'dadf5.py:add_deviator v{}'.format(version)
                         }
                }
       
     requested = [{'label':x,'arg':'x'}]
     
-    self.__add_generic_pointwise(Mises,requested)
+    self.__add_generic_pointwise(__add_deviator,requested)
+    
+    
+  def add_maximum_shear(self,x):
+    """
+    Add maximum shear components of symmetric tensor.
+    
+    Parameters
+    ----------
+    x : str
+      Label of the dataset containing a symmetric tensor.
+
+    """
+    def __add_maximum_shear(x):
+
+      return {
+              'data':  mechanics.maximum_shear(x['data']),
+              'label': 'max_shear({})'.format(x['label']),
+              'meta':  {
+                        'Unit':        x['meta']['Unit'],
+                        'Description': 'Maximum shear component of of {} ({})'.format(x['label'],x['meta']['Description']),
+                        'Creator':     'dadf5.py:add_maximum_shear v{}'.format(version)
+                        }
+               }
+
+    requested = [{'label':x,'arg':'x'}]
+
+    self.__add_generic_pointwise(__add_maximum_shear,requested)
+
+
+  def add_Mises(self,x):
+    """
+    Add the equivalent Mises stress or strain of a symmetric tensor.
+    
+    Parameters
+    ----------
+    x : str
+      Label of the dataset containing a symmetric stress or strain tensor.
+
+    """
+    def __add_Mises(x):
+
+      t = 'strain' if x['meta']['Unit'] == '1' else \
+          'stress'
+      return {
+              'data':  mechanics.Mises_strain(x['data']) if t=='strain' else  mechanics.Mises_stress(x['data']),
+              'label': '{}_vM'.format(x['label']),
+              'meta':  {
+                        'Unit':        x['meta']['Unit'],
+                        'Description': 'Mises equivalent {} of {} ({})'.format(t,x['label'],x['meta']['Description']),
+                        'Creator':     'dadf5.py:add_Mises v{}'.format(version)
+                        }
+              }
+      
+    requested = [{'label':x,'arg':'x'}]
+    
+    self.__add_generic_pointwise(__add_Mises,requested)
 
 
   def add_norm(self,x,ord=None):
     """
-    Adds norm of vector or tensor.
+    Add the norm of vector or tensor.
     
-    See numpy.linalg.norm manual for details.
+    Parameters
+    ----------
+    x : str
+      Label of the dataset containing a vector or tensor.
+    ord : {non-zero int, inf, -inf, ‘fro’, ‘nuc’}, optional
+      Order of the norm. inf means numpy’s inf object. For details refer to numpy.linalg.norm.
+
     """
-    def norm(x,ord):
+    def __add_norm(x,ord):
 
       o = ord
       if len(x['data'].shape) == 2:
@@ -441,178 +679,112 @@ class DADF5():
       else:
         raise ValueError
 
-      return  {
-               'data' : np.linalg.norm(x['data'],ord=o,axis=axis,keepdims=True),
-               'label' : '|{}|_{}'.format(x['label'],o),
-               'meta' : {
-                        'Unit' :        x['meta']['Unit'],
-                        'Description' : '{}-Norm of {} {} ({})'.format(ord,t,x['label'],x['meta']['Description']),
-                        'Creator' :     'dadf5.py:add_norm v{}'.format(version)
+      return {
+              'data':  np.linalg.norm(x['data'],ord=o,axis=axis,keepdims=True),
+              'label': '|{}|_{}'.format(x['label'],o),
+              'meta':  {
+                        'Unit':        x['meta']['Unit'],
+                        'Description': '{}-Norm of {} {} ({})'.format(ord,t,x['label'],x['meta']['Description']),
+                        'Creator':     'dadf5.py:add_norm v{}'.format(version)
                         }
                }
 
     requested = [{'label':x,'arg':'x'}]
 
-    self.__add_generic_pointwise(norm,requested,{'ord':ord})
+    self.__add_generic_pointwise(__add_norm,requested,{'ord':ord})
     
     
-  def add_absolute(self,x):
-    """Adds absolute value."""
-    def absolute(x):
+  def add_principal_components(self,x):
+    """
+    Add principal components of symmetric tensor.
+    
+    The principal components are sorted in descending order, each repeated according to its multiplicity.
+    
+    Parameters
+    ----------
+    x : str
+      Label of the dataset containing a symmetric tensor.
 
-      return  {
-               'data' : np.abs(x['data']),
-               'label' : '|{}|'.format(x['label']),
-               'meta' : {
-                        'Unit' :        x['meta']['Unit'],
-                        'Description' : 'Absolute value of {} ({})'.format(x['label'],x['meta']['Description']),
-                        'Creator' :     'dadf5.py:add_abs v{}'.format(version)
+    """
+    def __add_principal_components(x):
+
+      return {
+              'data':  mechanics.principal_components(x['data']),
+              'label': 'lambda_{}'.format(x['label']),
+              'meta':  {
+                        'Unit':        x['meta']['Unit'],
+                        'Description': 'Pricipal components of {} ({})'.format(x['label'],x['meta']['Description']),
+                        'Creator':     'dadf5.py:add_principal_components v{}'.format(version)
                         }
                }
 
     requested = [{'label':x,'arg':'x'}]
-    
-    self.__add_generic_pointwise(absolute,requested)
 
-
-  def add_determinant(self,x):
-    """Adds the determinant component of a tensor."""
-    def determinant(x):
-      
-      return  {
-               'data' : np.linalg.det(x['data']),
-               'label' : 'det({})'.format(x['label']),
-               'meta' : {
-                        'Unit' :        x['meta']['Unit'],
-                        'Description' : 'Determinant of tensor {} ({})'.format(x['label'],x['meta']['Description']),
-                        'Creator' :     'dadf5.py:add_determinant v{}'.format(version)
-                        }
-               }
-      
-    requested = [{'label':x,'arg':'x'}]
-    
-    self.__add_generic_pointwise(determinant,requested)
+    self.__add_generic_pointwise(__add_principal_components,requested)
 
 
   def add_spherical(self,x):
-    """Adds the spherical component of a tensor."""
-    def spherical(x):
+    """
+    Add the spherical (hydrostatic) part of a tensor.
+
+    Parameters
+    ----------
+    x : str
+      Label of the dataset containing a tensor.
+
+    """
+    def __add_spherical(x):
       
       if not np.all(np.array(x['data'].shape[1:]) == np.array([3,3])):
         raise ValueError
 
-      return  {
-               'data' : np.trace(x['data'],axis1=1,axis2=2)/3.0,
-               'label' : 'sph({})'.format(x['label']),
-               'meta' : {
-                        'Unit' :        x['meta']['Unit'],
-                        'Description' : 'Spherical component of tensor {} ({})'.format(x['label'],x['meta']['Description']),
-                        'Creator' :     'dadf5.py:add_spherical v{}'.format(version)
+      return {
+              'data':  mechanics.spherical_part(x['data']),
+              'label': 'p_{}'.format(x['label']),
+              'meta':  {
+                        'Unit':        x['meta']['Unit'],
+                        'Description': 'Spherical component of tensor {} ({})'.format(x['label'],x['meta']['Description']),
+                        'Creator':     'dadf5.py:add_spherical v{}'.format(version)
                         }
                }
 
     requested = [{'label':x,'arg':'x'}]
     
-    self.__add_generic_pointwise(spherical,requested)
+    self.__add_generic_pointwise(__add_spherical,requested)
 
 
-  def add_deviator(self,x):
-    """Adds the deviator of a tensor."""
-    def deviator(x):
-      d = x['data']
-      
-      if not np.all(np.array(d.shape[1:]) == np.array([3,3])):
-        raise ValueError
-      
-      return  {
-               'data' :  d - np.einsum('ijk,i->ijk',np.broadcast_to(np.eye(3),[d.shape[0],3,3]),np.trace(d,axis1=1,axis2=2)/3.0), 
-               'label' : 'dev({})'.format(x['label']),
-               'meta' : {
-                        'Unit' :        x['meta']['Unit'],
-                        'Description' : 'Deviator of tensor {} ({})'.format(x['label'],x['meta']['Description']),
-                        'Creator' :     'dadf5.py:add_deviator v{}'.format(version)
-                        }
-               }
-      
-    requested = [{'label':x,'arg':'x'}]
-    
-    self.__add_generic_pointwise(deviator,requested)
-    
-
-  def add_calculation(self,formula,label,unit='n/a',description=None,vectorized=True):
+  def add_strain_tensor(self,F='F',t='U',m=0):
     """
-    General formula.
+    Add strain tensor calculated from a deformation gradient.
     
-    Works currently only for vectorized expressions
+    For details refer to damask.mechanics.strain_tensor
     
+    Parameters
+    ----------
+    F : str, optional
+      Label of the dataset containing the deformation gradient. Default value is ‘F’.
+    t : {‘V’, ‘U’}, optional
+      Type of the polar decomposition, ‘V’ for right stretch tensor and ‘U’ for left stretch tensor.
+      Defaults value is ‘U’.
+    m : float, optional
+      Order of the strain calculation. Default value is ‘0.0’.
+
     """
-    if vectorized is not True:
-      raise NotImplementedError
-    
-    def calculation(**kwargs):
+    def __add_strain_tensor(F,t,m):
       
-      formula = kwargs['formula']
-      for d in re.findall(r'#(.*?)#',formula):
-        formula = re.sub('#{}#'.format(d),"kwargs['{}']['data']".format(d),formula)
-        
-      return  {
-               'data' : eval(formula), 
-               'label' : kwargs['label'],
-               'meta' : {
-                        'Unit' :        kwargs['unit'],
-                        'Description' : '{}'.format(kwargs['description']),
-                        'Creator' :     'dadf5.py:add_calculation v{}'.format(version)
-                        }
-               }
-    
-    requested    = [{'label':d,'arg':d} for d in re.findall(r'#(.*?)#',formula)]         # datasets used in the formula
-    pass_through = {'formula':formula,'label':label,'unit':unit,'description':description} 
-    
-    self.__add_generic_pointwise(calculation,requested,pass_through)
-
-
-  def add_strain_tensor(self,t,ord,defgrad='F'): #ToDo: Use t and ord
-    """
-    Adds the a strain tensor.
-    
-    Albrecht Bertram: Elasticity and Plasticity of Large Deformations An Introduction (3rd Edition, 2012), p. 102.
-    """
-    def strain_tensor(defgrad,t,ord):
-      
-      operator = { 
-                   'V#ln':   lambda V: np.log(V),
-                   'U#ln':   lambda U: np.log(U),
-                   'V#Biot': lambda V: np.broadcast_to(np.ones(3),[V.shape[0],3]) - 1.0/V,
-                   'U#Biot': lambda U: U - np.broadcast_to(np.ones(3),[U.shape[0],3]),
-                   'V#Green':lambda V: np.broadcast_to(np.ones(3),[V.shape[0],3]) - 1.0/V**2,
-                   'U#Green':lambda U: U**2 - np.broadcast_to(np.ones(3),[U.shape[0],3]), 
-                 }
-
-      (U,S,Vh) = np.linalg.svd(defgrad['data'])                                                             # singular value decomposition
-      R_inv    = np.transpose(np.matmul(U,Vh),(0,2,1))                                                      # transposed rotation of polar decomposition
-      U        = np.matmul(R_inv,defgrad['data'])                                                           # F = RU
-      (D,V)    = np.linalg.eigh((U+np.transpose(U,(0,2,1)))*.5)                                             # eigen decomposition (of symmetric(ed) matrix)
-
-      neg      = np.where(D < 0.0)                                                                          # find negative eigenvalues ...
-      D[neg[0],neg[1]]   = D[neg[0],neg[1]]* -1                                                             # ... flip value ...
-      V[neg[0],:,neg[1]] = V[neg[0],:,neg[1]]* -1                                                           # ... and vector
-      
-      d = operator['V#ln'](D)
-      a = np.matmul(V,np.einsum('ij,ikj->ijk',d,V))
-      
-      return  {
-               'data' : a, 
-               'label' : 'ln(V)({})'.format(defgrad['label']),
-               'meta' : {
-                        'Unit' :        defgrad['meta']['Unit'],
-                        'Description' : 'Strain tensor ln(V){} ({})'.format(defgrad['label'],defgrad['meta']['Description']),
-                        'Creator' :     'dadf5.py:add_deviator v{}'.format(version)
+      return {
+              'data':  mechanics.strain_tensor(F['data'],t,m), 
+              'label': 'epsilon_{}^{}({})'.format(t,m,F['label']),
+              'meta':  {
+                        'Unit':        F['meta']['Unit'],
+                        'Description': 'Strain tensor of {} ({})'.format(F['label'],F['meta']['Description']),
+                        'Creator':     'dadf5.py:add_strain_tensor v{}'.format(version)
                         }
                }
 
-    requested = [{'label':defgrad,'arg':'defgrad'}]
+    requested = [{'label':F,'arg':'F'}]
     
-    self.__add_generic_pointwise(strain_tensor,requested,{'t':t,'ord':ord})
+    self.__add_generic_pointwise(__add_strain_tensor,requested,{'t':t,'m':m})
 
 
   def __add_generic_pointwise(self,func,datasets_requested,extra_args={}):
@@ -621,12 +793,12 @@ class DADF5():
     
     Parameters
     ----------
-      func : function
-        Function that calculates a new dataset from one or more datasets per HDF5 group.
-      datasets_requested : list of dictionaries
-        Details of the datasets to be used: label (in HDF5 file) and arg (argument to which the data is parsed in func).
-      extra_args : dictionary, optional
-        Any extra arguments parsed to func.
+    func : function
+      Function that calculates a new dataset from one or more datasets per HDF5 group.
+    datasets_requested : list of dictionaries
+      Details of the datasets to be used: label (in HDF5 file) and arg (argument to which the data is parsed in func).
+    extra_args : dictionary, optional
+      Any extra arguments parsed to func.
 
     """
     def job(args):
@@ -643,12 +815,12 @@ class DADF5():
     todo = []
     # ToDo: It would be more memory efficient to read only from file when required, i.e. do to it in pool.add_task
     for group in self.groups_with_datasets([d['label'] for d in datasets_requested]):
-      with h5py.File(self.filename,'r') as f:
+      with h5py.File(self.fname,'r') as f:
         datasets_in = {}
         for d in datasets_requested:
           loc  = f[group+'/'+d['label']]
           data = loc[()]
-          meta = {k:loc.attrs[k] for k in loc.attrs.keys()}
+          meta = {k:loc.attrs[k].decode() for k in loc.attrs.keys()}
           datasets_in[d['arg']] = {'data': data, 'meta' : meta, 'label' : d['label']}
 
       todo.append({'in':{**datasets_in,**extra_args},'func':func,'group':group,'results':results})
@@ -658,10 +830,10 @@ class DADF5():
     N_not_calculated = len(todo)
     while N_not_calculated > 0:    
       result = results.get()
-      with h5py.File(self.filename,'a') as f:                                                       # write to file
+      with h5py.File(self.fname,'a') as f:                                                       # write to file
         dataset_out = f[result['group']].create_dataset(result['label'],data=result['data'])
         for k in result['meta'].keys():
-          dataset_out.attrs[k] = result['meta'][k]
+          dataset_out.attrs[k] = result['meta'][k].encode()
         N_not_calculated-=1
       
       if N_added < len(todo):                                                                       # add more jobs

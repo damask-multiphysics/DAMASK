@@ -2,10 +2,8 @@
 
 import os
 import sys
+from io import StringIO
 from optparse import OptionParser
-from collections import OrderedDict
-
-import numpy as np
 
 import damask
 
@@ -13,15 +11,6 @@ import damask
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
-def Mises(what,tensor):
-
-  dev = tensor - np.trace(tensor)/3.0*np.eye(3)
-  symdev = 0.5*(dev+dev.T)
-  return np.sqrt(np.sum(symdev*symdev.T)*
-        {
-         'stress': 3.0/2.0,
-         'strain': 2.0/3.0,
-         }[what.lower()])
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -47,62 +36,21 @@ parser.set_defaults(strain = [],
 (options,filenames) = parser.parse_args()
 
 if options.stress is [] and options.strain is []:
-  parser.error('no data column specified...')
-
-# --- loop over input files -------------------------------------------------------------------------
+    parser.error('no data column specified...')
 
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False)
-  except: continue
-  damask.util.report(scriptName,name)
+    damask.util.report(scriptName,name)
 
-# ------------------------------------------ read header ------------------------------------------
-
-  table.head_read()
-
-# ------------------------------------------ sanity checks ----------------------------------------
-
-  items = OrderedDict([
-            ('strain', {'dim': 9, 'shape': [3,3], 'labels':options.strain, 'active':[], 'column': []}),
-            ('stress', {'dim': 9, 'shape': [3,3], 'labels':options.stress, 'active':[], 'column': []})
-          ])
-  errors  = []
-  remarks = []
-  
-  for type, data in items.items():
-    for what in data['labels']:
-      dim = table.label_dimension(what)
-      if dim != data['dim']: remarks.append('column {} is not a {}...'.format(what,type))
-      else:
-        items[type]['active'].append(what)
-        items[type]['column'].append(table.label_index(what))
-        table.labels_append('Mises({})'.format(what))                                               # extend ASCII header with new labels
-
-  if remarks != []: damask.util.croak(remarks)
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# ------------------------------------------ assemble header --------------------------------------
-
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.head_write()
-
-# ------------------------------------------ process data ------------------------------------------
-
-  outputAlive = True
-  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    for type, data in items.items():
-      for column in data['column']:
-        table.data_append(Mises(type,
-                                np.array(table.data[column:column+data['dim']],'d').reshape(data['shape'])))
-    outputAlive = table.data_write()                                                                # output processed line
-
-# ------------------------------------------ output finalization -----------------------------------
-
-  table.close()                                                                                     # close input ASCII table (works for stdin)
+    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    for strain in options.strain:
+        table.add('Mises({})'.format(strain),
+                  damask.mechanics.Mises_strain(damask.mechanics.symmetric(table.get(strain).reshape(-1,3,3))),
+                  scriptID+' '+' '.join(sys.argv[1:]))
+    for stress in options.stress:
+        table.add('Mises({})'.format(stress),
+                  damask.mechanics.Mises_stress(damask.mechanics.symmetric(table.get(stress).reshape(-1,3,3))),
+                  scriptID+' '+' '.join(sys.argv[1:]))
+    
+    table.to_ASCII(sys.stdout if name is None else name)

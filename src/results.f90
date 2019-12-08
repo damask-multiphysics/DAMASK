@@ -50,6 +50,7 @@ module results
     results_addIncrement, &
     results_addGroup, &
     results_openGroup, &
+    results_closeGroup, &
     results_writeDataset, &
     results_setLink, &
     results_addAttribute, &
@@ -68,10 +69,9 @@ subroutine results_init
   write(6,'(a)')   ' https://doi.org/10.1007/s40192-017-0084-5'
 
   resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','w',.true.)
-  call HDF5_addAttribute(resultsFile,'DADF5-version',0.2)
-  call HDF5_addAttribute(resultsFile,'DADF5-major',0)
-  call HDF5_addAttribute(resultsFile,'DADF5-minor',2)
-  call HDF5_addAttribute(resultsFile,'DAMASK',DAMASKVERSION)
+  call HDF5_addAttribute(resultsFile,'DADF5_version_major',0)
+  call HDF5_addAttribute(resultsFile,'DADF5_version_minor',4)
+  call HDF5_addAttribute(resultsFile,'DAMASK_version',DAMASKVERSION)
   call get_command(commandLine)
   call HDF5_addAttribute(resultsFile,'call',trim(commandLine))
   call HDF5_closeGroup(results_addGroup('mapping'))
@@ -110,7 +110,7 @@ subroutine results_addIncrement(inc,time)
   real(pReal),   intent(in) :: time
   character(len=pStringLen) :: incChar
 
-  write(incChar,'(i5.5)') inc                                                                       ! allow up to 99999 increments
+  write(incChar,'(i10)') inc
   call HDF5_closeGroup(results_addGroup(trim('inc'//trim(adjustl(incChar)))))
   call results_setLink(trim('inc'//trim(adjustl(incChar))),'current')
   call HDF5_addAttribute(resultsFile,'time/s',time,trim('inc'//trim(adjustl(incChar))))
@@ -119,6 +119,7 @@ subroutine results_addIncrement(inc,time)
   call HDF5_closeGroup(results_addGroup('current/materialpoint'))
 
 end subroutine results_addIncrement
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief open a group from the results file
@@ -142,6 +143,18 @@ integer(HID_T) function results_addGroup(groupName)
   results_addGroup = HDF5_addGroup(resultsFile,groupName)
 
 end function results_addGroup
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief close a group
+!--------------------------------------------------------------------------------------------------
+subroutine results_closeGroup(group_id)
+
+  integer(HID_T), intent(in) :: group_id
+  
+  call HDF5_closeGroup(group_id)
+
+end subroutine results_closeGroup
 
 
 !--------------------------------------------------------------------------------------------------
@@ -304,18 +317,18 @@ subroutine results_writeTensorDataset_real(group,dataset,label,description,SIuni
   real(pReal),      intent(in), dimension(:,:,:) :: dataset
   
   integer :: i 
-  logical :: T
+  logical :: transposed_
   integer(HID_T) :: groupHandle
   real(pReal), dimension(:,:,:), allocatable :: dataset_transposed
 
   
   if(present(transposed)) then
-    T = transposed
+    transposed_ = transposed
   else
-    T = .true.
+    transposed_ = .true.
   endif
 
-  if(T) then
+  if(transposed_) then
     if(size(dataset,1) /= size(dataset,2)) call IO_error(0,ext_msg='transpose non-symmetric tensor')
     allocate(dataset_transposed,mold=dataset)
     do i=1,size(dataset_transposed,3)

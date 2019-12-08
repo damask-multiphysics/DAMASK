@@ -1,7 +1,7 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
-!> @author Christoph Koords, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Christoph Kords, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Sets up the mesh for the solver MSC.Marc
 !--------------------------------------------------------------------------------------------------
@@ -69,7 +69,7 @@ subroutine mesh_init(ip,el)
     microstructureAt, &
     homogenizationAt
   integer:: &
-    Nnodes                                                                                      !< total number of nodes in mesh
+    Nnodes                                                                                          !< total number of nodes in mesh
    
   real(pReal), dimension(:,:), allocatable :: &
     ip_reshaped
@@ -119,14 +119,16 @@ subroutine mesh_init(ip,el)
                      reshape(connectivity_cell,[elem%NcellNodesPerCell,elem%nIPs*nElems]),&
                      node0_cell,ip_reshaped)
 
+!--------------------------------------------------------------------------------------------------
+! geometry information required by the nonlocal CP model
   call geometry_plastic_nonlocal_setIPvolume(IPvolume(elem,node0_cell,connectivity_cell))
   unscaledNormals = IPareaNormal(elem,nElems,connectivity_cell,node0_cell)
   call geometry_plastic_nonlocal_setIParea(norm2(unscaledNormals,1))
   call geometry_plastic_nonlocal_setIPareaNormal(unscaledNormals/spread(norm2(unscaledNormals,1),1,3))
   call geometry_plastic_nonlocal_results
   
-
 end subroutine mesh_init
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Writes all information needed for the DADF5 geometry
@@ -201,9 +203,9 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
   character(len=64), dimension(:), allocatable :: &
     nameElemSet
   integer, dimension(:,:), allocatable :: &
-    mapElemSet                                                                                  !< list of elements in elementSet
+    mapElemSet                                                                                      !< list of elements in elementSet
 
-  inputFile = IO_read_ASCII(trim(modelName)//trim(InputFileExtension))
+  inputFile = IO_read_ASCII(trim(getSolverJobName())//trim(InputFileExtension))
   call inputRead_fileFormat(fileFormatVersion, &
                             inputFile)
   call inputRead_tableStyles(initialcondTableStyle,hypoelasticTableStyle, &
@@ -214,7 +216,7 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
   call inputRead_NnodesAndElements(nNodes,nElems,&
                                    inputFile)
   
-  call IO_open_inputFile(FILEUNIT,modelName)                                                        ! ToDo: It would be better to use fileContent
+  call IO_open_inputFile(FILEUNIT)                                                                  ! ToDo: It would be better to use fileContent
   
   call inputRead_mapElemSets(nameElemSet,mapElemSet,&
                              FILEUNIT)

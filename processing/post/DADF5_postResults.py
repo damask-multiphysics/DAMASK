@@ -47,6 +47,8 @@ for filename in options.filenames:
 
   coords = np.concatenate((z[:,:,:,None],y[:,:,:,None],x[:,:,:,None]),axis = 3) 
   
+  N_digits = int(np.floor(np.log10(int(results.increments[-1][3:]))))+1
+  N_digits = 5 # hack to keep test intact
   for i,inc in enumerate(results.iter_visible('increments')):
     print('Output step {}/{}'.format(i+1,len(results.increments)))
 
@@ -59,38 +61,39 @@ for filename in options.filenames:
     data = np.concatenate((data,coords),1)
     header+=' 1_pos 2_pos 3_pos'
 
+    results.set_visible('materialpoints',False)
+    results.set_visible('constituents',  True)
     for label in options.con:
-      for p in results.iter_visible('con_physics'):
-        for c in results.iter_visible('constituents'):
-          x = results.get_dataset_location(label)
-          if len(x) == 0:
-            continue
-          array = results.read_dataset(x,0)
-          d = int(np.product(np.shape(array)[1:]))
-          data = np.concatenate((data,np.reshape(array,[np.product(results.grid),d])),1)
-          
-          if d>1:
-            header+= ''.join([' {}_{}'.format(j+1,label) for j in range(d)])
-          else:
-            header+=' '+label
+      x = results.get_dataset_location(label)
+      if len(x) == 0:
+        continue
+      array = results.read_dataset(x,0,plain=True)
+      d = np.product(np.shape(array)[1:])
+      data = np.concatenate((data,np.reshape(array,[np.product(results.grid),d])),1)
             
+      if d>1:
+        header+= ''.join([' {}_{}'.format(j+1,label) for j in range(d)])
+      else:
+        header+=' '+label
+
+    results.set_visible('constituents',  False)
+    results.set_visible('materialpoints',True)
     for label in options.mat:
-      for p in results.iter_visible('mat_physics'):
-        for m in results.iter_visible('materialpoints'):
-          x = results.get_dataset_location(label)
-          if len(x) == 0:
-            continue
-          array = results.read_dataset(x,0)
-          d = int(np.product(np.shape(array)[1:]))
-          data = np.concatenate((data,np.reshape(array,[np.product(results.grid),d])),1)
+      x = results.get_dataset_location(label)
+      if len(x) == 0:
+        continue
+      array = results.read_dataset(x,0,plain=True)
+      d = np.product(np.shape(array)[1:])
+      data = np.concatenate((data,np.reshape(array,[np.product(results.grid),d])),1)
           
-          if d>1:
-            header+= ''.join([' {}_{}'.format(j+1,label) for j in range(d)])
-          else:
-            header+=' '+label
+      if d>1:
+        header+= ''.join([' {}_{}'.format(j+1,label) for j in range(d)])
+      else:
+        header+=' '+label
 
     dirname  = os.path.abspath(os.path.join(os.path.dirname(filename),options.dir))
     if not os.path.isdir(dirname):
       os.mkdir(dirname,0o755)
-    file_out = '{}_{}.txt'.format(os.path.splitext(os.path.split(filename)[-1])[0],inc)
+    file_out = '{}_inc{}.txt'.format(os.path.splitext(os.path.split(filename)[-1])[0],
+                                     inc[3:].zfill(N_digits))
     np.savetxt(os.path.join(dirname,file_out),data,header=header,comments='')

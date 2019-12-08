@@ -21,7 +21,7 @@ module grid_mech_FEM
   use DAMASK_interface
   use spectral_utilities
   use discretization
-  use mesh
+  use mesh_grid
   use math
  
   implicit none
@@ -71,7 +71,9 @@ module grid_mech_FEM
   public :: &
     grid_mech_FEM_init, &
     grid_mech_FEM_solution, &
-    grid_mech_FEM_forward
+    grid_mech_FEM_forward, &
+    grid_mech_FEM_updateCoords, &
+    grid_mech_FEM_restartWrite
 
 contains
 
@@ -95,7 +97,7 @@ subroutine grid_mech_FEM_init
                        1.0_pReal, 1.0_pReal, 1.0_pReal, 1.0_pReal], [4,8])
   PetscErrorCode :: ierr
   integer :: rank
-  integer(HID_T) :: fileHandle
+  integer(HID_T)      :: fileHandle, groupHandle
   character(len=1024) :: rankStr
   real(pReal), dimension(3,3,3,3) :: devNull
   PetscScalar, pointer, dimension(:,:,:,:) :: &
@@ -186,26 +188,26 @@ subroutine grid_mech_FEM_init
       'reading values of increment ', interface_restartInc, ' from file'
  
     write(rankStr,'(a1,i0)')'_',worldrank
-    fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
+    fileHandle  = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
+    groupHandle = HDF5_openGroup(fileHandle,'solver')
     
-    call HDF5_read(fileHandle,F_aim,        'F_aim')
-    call HDF5_read(fileHandle,F_aim_lastInc,'F_aim_lastInc')
-    call HDF5_read(fileHandle,F_aimDot,     'F_aimDot')
-    call HDF5_read(fileHandle,F,            'F')
-    call HDF5_read(fileHandle,F_lastInc,    'F_lastInc')
-    call HDF5_read(fileHandle,u_current,    'u')
-    call HDF5_read(fileHandle,u_lastInc,    'u_lastInc')
+    call HDF5_read(groupHandle,F_aim,        'F_aim')
+    call HDF5_read(groupHandle,F_aim_lastInc,'F_aim_lastInc')
+    call HDF5_read(groupHandle,F_aimDot,     'F_aimDot')
+    call HDF5_read(groupHandle,F,            'F')
+    call HDF5_read(groupHandle,F_lastInc,    'F_lastInc')
+    call HDF5_read(groupHandle,u_current,    'u')
+    call HDF5_read(groupHandle,u_lastInc,    'u_lastInc')
     
   elseif (interface_restartInc == 0) then restartRead
     F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                         ! initialize to identity
     F         = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)
   endif restartRead
   materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
-  call utilities_updateIPcoords(F)
+  call utilities_updateCoords(F)
   call utilities_constitutiveResponse(P_current,temp33_Real,C_volAvg,devNull, &                     ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       F, &                                                          ! target F
-                                      0.0_pReal, &                                                  ! time increment
-                                      math_I3)                                                      ! no rotation of boundary condition
+                                      0.0_pReal)                                                    ! time increment
   call DMDAVecRestoreArrayF90(mech_grid,solution_current,u_current,ierr)
   CHKERRQ(ierr)
   call DMDAVecRestoreArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr)
@@ -214,9 +216,12 @@ subroutine grid_mech_FEM_init
   restartRead2: if (interface_restartInc > 0) then
     write(6,'(/,a,'//IO_intOut(interface_restartInc)//',a)') &
       'reading more values of increment ', interface_restartInc, ' from file'
-    call HDF5_read(fileHandle,C_volAvg,       'C_volAvg')
-    call HDF5_read(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
+    call HDF5_read(groupHandle,C_volAvg,       'C_volAvg')
+    call HDF5_read(groupHandle,C_volAvgLastInc,'C_volAvgLastInc')
+    
+    call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
+
   endif restartRead2
 
 end subroutine grid_mech_FEM_init
@@ -236,7 +241,8 @@ function grid_mech_FEM_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation
     timeinc_old                                                                                     !< time increment of last successful increment
   type(tBoundaryCondition),    intent(in) :: &
     stress_BC
-  real(pReal), dimension(3,3), intent(in) :: rotation_BC
+  type(rotation),              intent(in) :: &
+    rotation_BC
   type(tSolutionState)                    :: &
     solution
 !--------------------------------------------------------------------------------------------------
@@ -278,9 +284,11 @@ end function grid_mech_FEM_solution
 !> @details find new boundary conditions and best F estimate for end of current timestep
 !> possibly writing restart information, triggering of state increment in DAMASK, and updating of IPcoordinates
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,stress_BC,rotation_BC)
+subroutine grid_mech_FEM_forward(cutBack,guess,timeinc,timeinc_old,loadCaseTime,&
+                                 deformation_BC,stress_BC,rotation_BC)
 
   logical,                     intent(in) :: &
+    cutBack, &
     guess
   real(pReal),                 intent(in) :: &
     timeinc_old, &
@@ -289,45 +297,18 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
   type(tBoundaryCondition),    intent(in) :: &
     stress_BC, &
     deformation_BC
-  real(pReal), dimension(3,3), intent(in) :: &
+  type(rotation),              intent(in) :: &
     rotation_BC
   PetscErrorCode :: ierr
-    integer(HID_T) :: fileHandle
-  character(len=32) :: rankStr
-    PetscScalar, pointer, dimension(:,:,:,:) :: &
-  u_current,u_lastInc
+  PetscScalar, pointer, dimension(:,:,:,:) :: &
+    u_current,u_lastInc
   
   call DMDAVecGetArrayF90(mech_grid,solution_current,u_current,ierr); CHKERRQ(ierr)
   call DMDAVecGetArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr); CHKERRQ(ierr)
  
   if (cutBack) then
-    C_volAvg    = C_volAvgLastInc        ! QUESTION: where is this required?
+    C_volAvg = C_volAvgLastInc
   else
- !--------------------------------------------------------------------------------------------------
- ! restart information for spectral solver
-    if (restartWrite) then
-      write(6,'(/,a)') ' writing converged results for restart';flush(6)
-      
-      write(rankStr,'(a1,i0)')'_',worldrank
-      fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
-
-      call HDF5_write(fileHandle,F_aim,          'F_aim')
-      call HDF5_write(fileHandle,F_aim_lastInc,  'F_aim_lastInc')
-      call HDF5_write(fileHandle,F_aimDot,       'F_aimDot')
-      call HDF5_write(fileHandle,F,              'F')
-      call HDF5_write(fileHandle,F_lastInc,      'F_lastInc')
-      call HDF5_write(fileHandle,u_current,      'u')
-      call HDF5_write(fileHandle,u_lastInc,      'u_lastInc')
-
-      call HDF5_write(fileHandle,C_volAvg,       'C_volAvg')
-      call HDF5_write(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
-
-      call HDF5_closeFile(fileHandle)
-
-    endif
-    call CPFEM_age                                                                                  ! age state and kinematics
-    call utilities_updateIPcoords(F)
-
     C_volAvgLastInc    = C_volAvg
  
     F_aimDot = merge(stress_BC%maskFloat*(F_aim-F_aim_lastInc)/timeinc_old, 0.0_pReal, guess)
@@ -345,7 +326,6 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
       F_aimDot = &
       F_aimDot + deformation_BC%maskFloat * (deformation_BC%values - F_aim_lastInc)/loadCaseTime
     endif
-    
 
     if (guess) then
       call VecWAXPY(solution_rate,-1.0_pReal,solution_lastInc,solution_current,ierr)
@@ -356,9 +336,9 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
     endif
     call VecCopy(solution_current,solution_lastInc,ierr); CHKERRQ(ierr)
     
-    F_lastInc        = F                                                                            ! winding F forward
-    materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                         ! set starting condition for materialpoint_stressAndItsTangent
-  
+    F_lastInc = F
+    
+    materialpoint_F0 = reshape(F, [3,3,1,product(grid(1:2))*grid3])   
   endif
 
 !--------------------------------------------------------------------------------------------------
@@ -366,12 +346,59 @@ subroutine grid_mech_FEM_forward(guess,timeinc,timeinc_old,loadCaseTime,deformat
   F_aim = F_aim_lastInc + F_aimDot * timeinc
   call VecAXPY(solution_current,timeinc,solution_rate,ierr); CHKERRQ(ierr)
 
-  call DMDAVecRestoreArrayF90(mech_grid,solution_current,u_current,ierr)
-  CHKERRQ(ierr)
-  call DMDAVecRestoreArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr)
-  CHKERRQ(ierr)
+  call DMDAVecRestoreArrayF90(mech_grid,solution_current,u_current,ierr);CHKERRQ(ierr)
+  call DMDAVecRestoreArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr);CHKERRQ(ierr)
 
 end subroutine grid_mech_FEM_forward
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Age
+!--------------------------------------------------------------------------------------------------
+subroutine grid_mech_FEM_updateCoords()
+
+  call utilities_updateCoords(F)
+
+end subroutine grid_mech_FEM_updateCoords
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Write current solver and constitutive data for restart to file
+!--------------------------------------------------------------------------------------------------
+subroutine grid_mech_FEM_restartWrite()
+
+  PetscErrorCode :: ierr
+  PetscScalar, dimension(:,:,:,:), pointer :: u_current,u_lastInc
+  integer(HID_T)    :: fileHandle, groupHandle
+  character(len=32) :: rankStr
+  
+  call DMDAVecGetArrayF90(mech_grid,solution_current,u_current,ierr); CHKERRQ(ierr)
+  call DMDAVecGetArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr); CHKERRQ(ierr)
+
+  write(6,'(a)') ' writing solver data required for restart to file';flush(6)
+  
+  write(rankStr,'(a1,i0)')'_',worldrank
+  fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
+  groupHandle = HDF5_addGroup(fileHandle,'solver')
+
+  call HDF5_write(groupHandle,F_aim,        'F_aim')
+  call HDF5_write(groupHandle,F_aim_lastInc,'F_aim_lastInc')
+  call HDF5_write(groupHandle,F_aimDot,     'F_aimDot')
+  call HDF5_write(groupHandle,F,            'F')
+  call HDF5_write(groupHandle,F_lastInc,    'F_lastInc')
+  call HDF5_write(groupHandle,u_current,    'u')
+  call HDF5_write(groupHandle,u_lastInc,    'u_lastInc')
+
+  call HDF5_write(groupHandle,C_volAvg,       'C_volAvg')
+  call HDF5_write(groupHandle,C_volAvgLastInc,'C_volAvgLastInc')
+
+  call HDF5_closeGroup(groupHandle)
+  call HDF5_closeFile(fileHandle)
+ 
+  call DMDAVecRestoreArrayF90(mech_grid,solution_current,u_current,ierr);CHKERRQ(ierr)
+  call DMDAVecRestoreArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr);CHKERRQ(ierr)
+
+end subroutine grid_mech_FEM_restartWrite
 
 
 !--------------------------------------------------------------------------------------------------
@@ -455,7 +482,7 @@ subroutine formResidual(da_local,x_local, &
             trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter+1, '≤', itmax
     if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
-              ' deformation gradient aim (lab) =', transpose(math_rotate_backward33(F_aim,params%rotation_BC))
+              ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotTensor2(F_aim,active=.true.))
     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim       =', transpose(F_aim)
     flush(6)
@@ -471,7 +498,7 @@ subroutine formResidual(da_local,x_local, &
       x_elem(ctr,1:3) = x_scal(0:2,i+ii,j+jj,k+kk)
     enddo; enddo; enddo
     ii = i-xstart+1; jj = j-ystart+1; kk = k-zstart+1
-    F(1:3,1:3,ii,jj,kk) = math_rotate_backward33(F_aim,params%rotation_BC) + transpose(matmul(BMat,x_elem)) 
+    F(1:3,1:3,ii,jj,kk) = params%rotation_BC%rotTensor2(F_aim,active=.true.) + transpose(matmul(BMat,x_elem)) 
   enddo; enddo; enddo
   call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,ierr);CHKERRQ(ierr)
 
@@ -549,7 +576,7 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,ierr)
   PetscScalar,dimension(24,24)         :: K_ele
   PetscScalar,dimension(9,24)          :: BMatFull
   PetscInt                             :: i, ii, j, jj, k, kk, ctr, ele
-  PetscInt,dimension(3)                :: rows
+  PetscInt,dimension(3),parameter      :: rows = [0, 1, 2]
   PetscScalar                          :: diag
   PetscObject                          :: dummy
   MatNullSpace                         :: matnull
@@ -606,7 +633,6 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,ierr)
  
 !--------------------------------------------------------------------------------------------------
 ! applying boundary conditions
-  rows = [0, 1, 2]
   diag = (C_volAvg(1,1,1,1)/delta(1)**2.0_pReal + &
           C_volAvg(2,2,2,2)/delta(2)**2.0_pReal + &
           C_volAvg(3,3,3,3)/delta(3)**2.0_pReal)*detJ

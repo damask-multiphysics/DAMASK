@@ -31,7 +31,6 @@ subroutine thermal_isothermal_init
     if (thermal_type(homog) /= THERMAL_isothermal_ID) cycle
     NofMyHomog = count(material_homogenizationAt == homog)
     thermalState(homog)%sizeState = 0
-    thermalState(homog)%sizePostResults = 0
     allocate(thermalState(homog)%state0   (0,NofMyHomog), source=0.0_pReal)
     allocate(thermalState(homog)%subState0(0,NofMyHomog), source=0.0_pReal)
     allocate(thermalState(homog)%state    (0,NofMyHomog), source=0.0_pReal)

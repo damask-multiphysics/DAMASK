@@ -3,7 +3,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Driver controlling inner and outer load case looping of the FEM solver
-!> @details doing cutbacking, forwarding in case of restart, reporting statistics, writing
+!> @details doing cutbacking, reporting statistics, writing
 !> results
 !--------------------------------------------------------------------------------------------------
 program DAMASK_FEM 
@@ -53,12 +53,9 @@ program DAMASK_FEM
     currentFace = 0, &
     inc, &                                                                                          !< current increment in current load case
     totalIncsCounter = 0, &                                                                         !< total # of increments
-    convergedCounter = 0, &                                                                         !< # of converged increments
-    notConvergedCounter = 0, &                                                                      !< # of non-converged increments
     fileUnit = 0, &                                                                                 !< file unit for reading load case and writing results
     myStat, &
     statUnit = 0, &                                                                                 !< file unit for statistics output
-    lastRestartWritten = 0, &                                                                       !< total increment No. at which last restart information was written
     stagIter, &
     component  
   character(len=6)  :: loadcase_string
@@ -164,9 +161,6 @@ program DAMASK_FEM
           loadCases(currentLoadCase)%logscale = 1
         case('freq','frequency','outputfreq')                                                       ! frequency of result writings
           loadCases(currentLoadCase)%outputfrequency = IO_intValue(line,chunkPos,i+1)                
-        case('r','restart','restartwrite')                                                          ! frequency of writing restart information
-          loadCases(currentLoadCase)%restartfrequency = &
-                max(0,IO_intValue(line,chunkPos,i+1))                
         case('guessreset','dropguessing')
           loadCases(currentLoadCase)%followFormerTrajectory = .false.                                ! do not continue to predict deformation along former trajectory
 
@@ -246,8 +240,6 @@ program DAMASK_FEM
       if (loadCases(currentLoadCase)%outputfrequency < 1)  errorID = 836                            ! non-positive result frequency
       write(6,'(2x,a,i5)')    'output  frequency:  ', &
                  loadCases(currentLoadCase)%outputfrequency
-      write(6,'(2x,a,i5,/)')    'restart frequency:  ', &
-                 loadCases(currentLoadCase)%restartfrequency
       if (errorID > 0) call IO_error(error_ID = errorID, ext_msg = loadcase_string)                 ! exit with error message
   enddo checkLoadcases
 
@@ -293,117 +285,106 @@ program DAMASK_FEM
       endif
       timeinc = timeinc * real(subStepFactor,pReal)**real(-cutBackLevel,pReal)                      ! depending on cut back level, decrease time step
 
-      skipping: if (totalIncsCounter <= interface_restartInc) then                                  ! not yet at restart inc?
-        time = time + timeinc                                                                       ! just advance time, skip already performed calculation
-        guess = .true.
-      else skipping
-        stepFraction = 0                                                                            ! fraction scaled by stepFactor**cutLevel
 
-        subStepLooping: do while (stepFraction < subStepFactor**cutBackLevel)
-          remainingLoadCaseTime = loadCases(currentLoadCase)%time+time0 - time
-          time = time + timeinc                                                                     ! forward target time
-          stepFraction = stepFraction + 1                                                           ! count step
-           
+      stepFraction = 0                                                                            ! fraction scaled by stepFactor**cutLevel
+
+      subStepLooping: do while (stepFraction < subStepFactor**cutBackLevel)
+        remainingLoadCaseTime = loadCases(currentLoadCase)%time+time0 - time
+        time = time + timeinc                                                                     ! forward target time
+        stepFraction = stepFraction + 1                                                           ! count step
+         
 !--------------------------------------------------------------------------------------------------
 ! report begin of new step
-          write(6,'(/,a)') ' ###########################################################################'
-          write(6,'(1x,a,es12.5'//&
-                  ',a,'//IO_intOut(inc)//',a,'//IO_intOut(loadCases(currentLoadCase)%incs)//&
-                  ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//&
-                  ',a,'//IO_intOut(currentLoadCase)//',a,'//IO_intOut(size(loadCases))//')') &
-                  'Time', time, &
-                  's: Increment ', inc, '/', loadCases(currentLoadCase)%incs,&
-                  '-', stepFraction, '/', subStepFactor**cutBackLevel,&
-                  ' of load case ', currentLoadCase,'/',size(loadCases)
-          write(incInfo,&
-                 '(a,'//IO_intOut(totalIncsCounter)//&
-                 ',a,'//IO_intOut(sum(loadCases%incs))//&
-                 ',a,'//IO_intOut(stepFraction)//&
-                 ',a,'//IO_intOut(subStepFactor**cutBackLevel)//')') &
-                 'Increment ',totalIncsCounter,'/',sum(loadCases%incs),&
-                 '-',stepFraction, '/', subStepFactor**cutBackLevel
-          flush(6)
+        write(6,'(/,a)') ' ###########################################################################'
+        write(6,'(1x,a,es12.5'//&
+                ',a,'//IO_intOut(inc)//',a,'//IO_intOut(loadCases(currentLoadCase)%incs)//&
+                ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//&
+                ',a,'//IO_intOut(currentLoadCase)//',a,'//IO_intOut(size(loadCases))//')') &
+                'Time', time, &
+                's: Increment ', inc, '/', loadCases(currentLoadCase)%incs,&
+                '-', stepFraction, '/', subStepFactor**cutBackLevel,&
+                ' of load case ', currentLoadCase,'/',size(loadCases)
+        write(incInfo,&
+               '(a,'//IO_intOut(totalIncsCounter)//&
+               ',a,'//IO_intOut(sum(loadCases%incs))//&
+               ',a,'//IO_intOut(stepFraction)//&
+               ',a,'//IO_intOut(subStepFactor**cutBackLevel)//')') &
+               'Increment ',totalIncsCounter,'/',sum(loadCases%incs),&
+               '-',stepFraction, '/', subStepFactor**cutBackLevel
+        flush(6)
 
 !--------------------------------------------------------------------------------------------------
 ! forward fields
+        do field = 1, nActiveFields
+          select case (loadCases(currentLoadCase)%fieldBC(field)%ID)
+            case(FIELD_MECH_ID)
+              call FEM_mech_forward (&
+                  guess,timeinc,timeIncOld,loadCases(currentLoadCase)%fieldBC(field))
+
+         end select
+        enddo       
+         
+!--------------------------------------------------------------------------------------------------
+! solve fields
+        stagIter = 0
+        stagIterate = .true.
+        do while (stagIterate)
           do field = 1, nActiveFields
             select case (loadCases(currentLoadCase)%fieldBC(field)%ID)
               case(FIELD_MECH_ID)
-                call FEM_mech_forward (&
-                    guess,timeinc,timeIncOld,loadCases(currentLoadCase)%fieldBC(field))
+                solres(field) = FEM_mech_solution (&
+                      incInfo,timeinc,timeIncOld,loadCases(currentLoadCase)%fieldBC(field))
 
-           end select
-          enddo       
-           
-!--------------------------------------------------------------------------------------------------
-! solve fields
-          stagIter = 0
-          stagIterate = .true.
-          do while (stagIterate)
-            do field = 1, nActiveFields
-              select case (loadCases(currentLoadCase)%fieldBC(field)%ID)
-                case(FIELD_MECH_ID)
-                  solres(field) = FEM_mech_solution (&
-                        incInfo,timeinc,timeIncOld,loadCases(currentLoadCase)%fieldBC(field))
+            end select
 
-              end select
+            if(.not. solres(field)%converged) exit                                                  ! no solution found
 
-              if(.not. solres(field)%converged) exit                                                ! no solution found
-
-            enddo
-            stagIter = stagIter + 1
-            stagIterate =            stagIter < stagItMax &
-                         .and.       all(solres(:)%converged) &
-                         .and. .not. all(solres(:)%stagConverged)                                   ! stationary with respect to staggered iteration
-          enddo     
-           
+          enddo
+          stagIter = stagIter + 1
+          stagIterate =            stagIter < stagItMax &
+                       .and.       all(solres(:)%converged) &
+                       .and. .not. all(solres(:)%stagConverged)                                     ! stationary with respect to staggered iteration
+        enddo     
+         
 ! check solution 
-          cutBack = .False.                                                                   
-          if(.not. all(solres(:)%converged .and. solres(:)%stagConverged)) then                     ! no solution found
-            if (cutBackLevel < maxCutBack) then                                                     ! do cut back
-              write(6,'(/,a)') ' cut back detected'
-              cutBack = .True.
-              stepFraction = (stepFraction - 1) * subStepFactor                                     ! adjust to new denominator
-              cutBackLevel = cutBackLevel + 1
-              time    = time - timeinc                                                              ! rewind time
-              timeinc = timeinc/2.0_pReal
-            else                                                                                    ! default behavior, exit if spectral solver does not converge                                
-              call IO_warning(850)
-              call quit(-1*(lastRestartWritten+1))                                                  ! quit and provide information about last restart inc written
-            endif
-          else
-            guess = .true.                                                                          ! start guessing after first converged (sub)inc
-            timeIncOld = timeinc
+        cutBack = .False.                                                                   
+        if(.not. all(solres(:)%converged .and. solres(:)%stagConverged)) then                       ! no solution found
+          if (cutBackLevel < maxCutBack) then                                                       ! do cut back
+            write(6,'(/,a)') ' cut back detected'
+            cutBack = .True.
+            stepFraction = (stepFraction - 1) * subStepFactor                                       ! adjust to new denominator
+            cutBackLevel = cutBackLevel + 1
+            time    = time - timeinc                                                                ! rewind time
+            timeinc = timeinc/2.0_pReal
+          else                                                                                      ! default behavior, exit if spectral solver does not converge                                
+            call IO_warning(850)
+            call quit(1)                                                                            ! quit
           endif
-          if (.not. cutBack) then
-            if (worldrank == 0)  write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
-                              solres%converged, solres%iterationsNeeded                             ! write statistics about accepted solution
-          endif
-        enddo subStepLooping
-
-        cutBackLevel = max(0, cutBackLevel - 1)                                                     ! try half number of subincs next inc
-
-        if (all(solres(:)%converged)) then
-          convergedCounter = convergedCounter + 1
-          write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                    ! report converged inc
-                                    ' increment ', totalIncsCounter, ' converged'
         else
-          notConvergedCounter = notConvergedCounter + 1
-          write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                    ! report non-converged inc
-                                    ' increment ', totalIncsCounter, ' NOT converged'
-        endif; flush(6)
-
-        if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0) then                          ! at output frequency
-          write(6,'(1/,a)') ' ... writing results to file ......................................'
-          call CPFEM_results(totalIncsCounter,time)
+          guess = .true.                                                                            ! start guessing after first converged (sub)inc
+          timeIncOld = timeinc
         endif
-        if (              loadCases(currentLoadCase)%restartFrequency > 0 &                         ! writing of restart info requested ...
-            .and. mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0) then                   ! ... and at frequency of writing restart information
-          restartWrite = .true.                                                                     ! set restart parameter for FEsolving
-          lastRestartWritten = inc                                                                  ! first call to CPFEM_general will write
+        if (.not. cutBack) then
+          if (worldrank == 0)  write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
+                            solres%converged, solres%iterationsNeeded                               ! write statistics about accepted solution
         endif
+      enddo subStepLooping
 
-      endif skipping
+      cutBackLevel = max(0, cutBackLevel - 1)                                                       ! try half number of subincs next inc
+
+      if (all(solres(:)%converged)) then
+        write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                      ! report converged inc
+                                  ' increment ', totalIncsCounter, ' converged'
+      else
+        write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                      ! report non-converged inc
+                                  ' increment ', totalIncsCounter, ' NOT converged'
+      endif; flush(6)
+
+      if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0) then                            ! at output frequency
+        write(6,'(1/,a)') ' ... writing results to file ......................................'
+        call CPFEM_results(totalIncsCounter,time)
+      endif
+
 
     enddo incLooping
 
@@ -413,15 +394,8 @@ program DAMASK_FEM
 !--------------------------------------------------------------------------------------------------
 ! report summary of whole calculation
   write(6,'(/,a)') ' ###########################################################################'
-  write(6,'(1x,'//IO_intOut(convergedCounter)//',a,'//IO_intOut(notConvergedCounter + convergedCounter)//',a,f5.1,a)') &
-    convergedCounter, ' out of ', &
-    notConvergedCounter + convergedCounter, ' (', &
-    real(convergedCounter, pReal)/&
-    real(notConvergedCounter + convergedCounter,pReal)*100.0_pReal, ' %) increments converged!'
-  flush(6)
   close(statUnit)
 
-  if (notConvergedCounter > 0) call quit(2)                                                         ! error if some are not converged
   call quit(0)                                                                                      ! no complains ;)
 
 end program DAMASK_FEM

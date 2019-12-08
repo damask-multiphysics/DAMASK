@@ -14,13 +14,14 @@ module grid_mech_spectral_polarisation
   use DAMASK_interface
   use HDF5_utilities
   use math
+  use rotations
   use spectral_utilities
   use IO
   use FEsolving
   use config
   use numerics
   use homogenization
-  use mesh
+  use mesh_grid
   use CPFEM2
   use debug
  
@@ -81,10 +82,9 @@ module grid_mech_spectral_polarisation
   public :: &
     grid_mech_spectral_polarisation_init, &
     grid_mech_spectral_polarisation_solution, &
-    grid_mech_spectral_polarisation_forward
-  private :: &
-    converged, &
-    formResidual
+    grid_mech_spectral_polarisation_forward, &
+    grid_mech_spectral_polarisation_updateCoords, &
+    grid_mech_spectral_polarisation_restartWrite
 
 contains
 
@@ -103,8 +103,8 @@ subroutine grid_mech_spectral_polarisation_init
     F, &                                                                                            ! specific (sub)pointer
     F_tau                                                                                           ! specific (sub)pointer
   PetscInt, dimension(worldsize) :: localK 
-  integer(HID_T) :: fileHandle
-  integer :: fileUnit
+  integer(HID_T)      :: fileHandle, groupHandle
+  integer             :: fileUnit
   character(len=1024) :: rankStr
   
   write(6,'(/,a)') ' <<<+-  grid_mech_spectral_polarisation init  -+>>>'
@@ -157,23 +157,24 @@ subroutine grid_mech_spectral_polarisation_init
 !--------------------------------------------------------------------------------------------------
 ! init fields                 
   call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)                             ! places pointer on PETSc data
-  F        => FandF_tau( 0: 8,:,:,:)
-  F_tau    => FandF_tau( 9:17,:,:,:)
+  F     => FandF_tau(0: 8,:,:,:)
+  F_tau => FandF_tau(9:17,:,:,:)
  
   restartRead: if (interface_restartInc > 0) then
     write(6,'(/,a,'//IO_intOut(interface_restartInc)//',a)') &
       ' reading values of increment ', interface_restartInc, ' from file'
  
     write(rankStr,'(a1,i0)')'_',worldrank
-    fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
+    fileHandle  = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
+    groupHandle = HDF5_openGroup(fileHandle,'solver')
  
-    call HDF5_read(fileHandle,F_aim,        'F_aim')
-    call HDF5_read(fileHandle,F_aim_lastInc,'F_aim_lastInc')
-    call HDF5_read(fileHandle,F_aimDot,     'F_aimDot')
-    call HDF5_read(fileHandle,F,            'F')
-    call HDF5_read(fileHandle,F_lastInc,    'F_lastInc')
-    call HDF5_read(fileHandle,F_tau,        'F_tau')
-    call HDF5_read(fileHandle,F_tau_lastInc,'F_tau_lastInc')
+    call HDF5_read(groupHandle,F_aim,        'F_aim')
+    call HDF5_read(groupHandle,F_aim_lastInc,'F_aim_lastInc')
+    call HDF5_read(groupHandle,F_aimDot,     'F_aimDot')
+    call HDF5_read(groupHandle,F,            'F')
+    call HDF5_read(groupHandle,F_lastInc,    'F_lastInc')
+    call HDF5_read(groupHandle,F_tau,        'F_tau')
+    call HDF5_read(groupHandle,F_tau_lastInc,'F_tau_lastInc')
  
   elseif (interface_restartInc == 0) then restartRead
     F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                         ! initialize to identity
@@ -183,18 +184,19 @@ subroutine grid_mech_spectral_polarisation_init
   endif restartRead
  
   materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
-  call Utilities_updateIPcoords(reshape(F,shape(F_lastInc)))
+  call Utilities_updateCoords(reshape(F,shape(F_lastInc)))
   call Utilities_constitutiveResponse(P,temp33_Real,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
-                                      0.0_pReal, &                                                  ! time increment
-                                      math_I3)                                                      ! no rotation of boundary condition
+                                      0.0_pReal)                                                    ! time increment
   call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)                        ! deassociate pointer
  
   restartRead2: if (interface_restartInc > 0) then
     write(6,'(/,a,'//IO_intOut(interface_restartInc)//',a)') &
       ' reading more values of increment ', interface_restartInc, ' from file'
-    call HDF5_read(fileHandle,C_volAvg,       'C_volAvg')
-    call HDF5_read(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
+    call HDF5_read(groupHandle,C_volAvg,       'C_volAvg')
+    call HDF5_read(groupHandle,C_volAvgLastInc,'C_volAvgLastInc')
+
+    call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
 
     call MPI_File_open(PETSC_COMM_WORLD, trim(getSolverJobName())//'.C_ref', &
@@ -203,7 +205,8 @@ subroutine grid_mech_spectral_polarisation_init
     call MPI_File_close(fileUnit,ierr)
   endif restartRead2
  
-  call utilities_updateGamma(C_minMaxAvg,.true.)
+  call utilities_updateGamma(C_minMaxAvg)
+  call utilities_saveReferenceStiffness
   C_scale = C_minMaxAvg
   S_scale = math_invSym3333(C_minMaxAvg)
  
@@ -219,12 +222,13 @@ function grid_mech_spectral_polarisation_solution(incInfoIn,timeinc,timeinc_old,
 ! input data for solution
   character(len=*), intent(in) :: &
     incInfoIn
-  real(pReal), intent(in) :: &
+  real(pReal),                 intent(in) :: &
     timeinc, &                                                                                      !< time increment of current solution
     timeinc_old                                                                                     !< time increment of last successful increment
   type(tBoundaryCondition),    intent(in) :: &
     stress_BC
-  real(pReal), dimension(3,3), intent(in) :: rotation_BC
+  type(rotation),              intent(in) :: &
+    rotation_BC
   type(tSolutionState)                    :: &
     solution
 !--------------------------------------------------------------------------------------------------
@@ -238,7 +242,7 @@ function grid_mech_spectral_polarisation_solution(incInfoIn,timeinc,timeinc_old,
 ! update stiffness (and gamma operator)
   S = utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
   if (num%update_gamma) then
-    call utilities_updateGamma(C_minMaxAvg,restartWrite)
+    call utilities_updateGamma(C_minMaxAvg)
     C_scale = C_minMaxAvg
     S_scale = math_invSym3333(C_minMaxAvg)
   endif  
@@ -272,9 +276,11 @@ end function grid_mech_spectral_polarisation_solution
 !> @details find new boundary conditions and best F estimate for end of current timestep
 !> possibly writing restart information, triggering of state increment in DAMASK, and updating of IPcoordinates
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,stress_BC,rotation_BC)
+subroutine grid_mech_spectral_polarisation_forward(cutBack,guess,timeinc,timeinc_old,loadCaseTime,&
+                                                   deformation_BC,stress_BC,rotation_BC)
 
-  logical, intent(in) :: &
+  logical,                     intent(in) :: &
+    cutBack, &
     guess
   real(pReal), intent(in) :: &
     timeinc_old, &
@@ -283,56 +289,28 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
   type(tBoundaryCondition),      intent(in) :: &
     stress_BC, &
     deformation_BC
-  real(pReal), dimension(3,3), intent(in) ::&
+  type(rotation), intent(in) :: &
     rotation_BC
   PetscErrorCode :: ierr
   PetscScalar, dimension(:,:,:,:), pointer :: FandF_tau, F, F_tau
   integer :: i, j, k
   real(pReal), dimension(3,3) :: F_lambda33
 
-  integer(HID_T) :: fileHandle
-  character(len=32) :: rankStr
-
   call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
-  F        => FandF_tau( 0: 8,:,:,:)
-  F_tau    => FandF_tau( 9:17,:,:,:)
+  F     => FandF_tau(0: 8,:,:,:)
+  F_tau => FandF_tau(9:17,:,:,:)
 
   if (cutBack) then
-    C_volAvg    = C_volAvgLastInc                                                                   ! QUESTION: where is this required?
-    C_minMaxAvg = C_minMaxAvgLastInc                                                                ! QUESTION: where is this required?
-  else
-  !--------------------------------------------------------------------------------------------------
-    ! restart information for spectral solver
-    if (restartWrite) then
-      write(6,'(/,a)') ' writing converged results for restart';flush(6)
-
-      write(rankStr,'(a1,i0)')'_',worldrank
-      fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
-      
-      call HDF5_write(fileHandle,F_aim,          'F_aim')
-      call HDF5_write(fileHandle,F_aim_lastInc,  'F_aim_lastInc')
-      call HDF5_write(fileHandle,F_aimDot,       'F_aimDot')
-      call HDF5_write(fileHandle,F,              'F')
-      call HDF5_write(fileHandle,F_lastInc,      'F_lastInc')
-      call HDF5_write(fileHandle,F_tau,          'F_tau')
-      call HDF5_write(fileHandle,F_tau_lastInc,  'F_tau_lastInc')
-
-      call HDF5_write(fileHandle,C_volAvg,       'C_volAvg')
-      call HDF5_write(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
-
-      call HDF5_closeFile(fileHandle)
-    endif
-
-    call CPFEM_age                                                                                  ! age state and kinematics
-    call utilities_updateIPcoords(F)
-
+    C_volAvg    = C_volAvgLastInc
+    C_minMaxAvg = C_minMaxAvgLastInc
+  else    
     C_volAvgLastInc    = C_volAvg
     C_minMaxAvgLastInc = C_minMaxAvg
 
     F_aimDot = merge(stress_BC%maskFloat*(F_aim-F_aim_lastInc)/timeinc_old, 0.0_pReal, guess)
     F_aim_lastInc = F_aim
 
-    !--------------------------------------------------------------------------------------------------
+    !-----------------------------------------------------------------------------------------------
     ! calculate rate for aim
     if     (deformation_BC%myType=='l') then                                                        ! calculate F_aimDot from given L and current F
       F_aimDot = &
@@ -345,23 +323,23 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
       F_aimDot + deformation_BC%maskFloat * (deformation_BC%values - F_aim_lastInc)/loadCaseTime
     endif
 
-
-    Fdot        = utilities_calculateRate(guess, &
-                                          F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]),timeinc_old, &
-                                          math_rotate_backward33(F_aimDot,rotation_BC))
-    F_tauDot    = utilities_calculateRate(guess, &
-                                          F_tau_lastInc,reshape(F_tau,[3,3,grid(1),grid(2),grid3]), timeinc_old, &
-                                          math_rotate_backward33(F_aimDot,rotation_BC))
-    F_lastInc        = reshape(F,         [3,3,grid(1),grid(2),grid3])                              ! winding F forward
-    F_tau_lastInc    = reshape(F_tau,     [3,3,grid(1),grid(2),grid3])                              ! winding F_tau forward
-    materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                         ! set starting condition for materialpoint_stressAndItsTangent
+    Fdot     = utilities_calculateRate(guess, &
+                                       F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]),timeinc_old, &
+                                       rotation_BC%rotTensor2(F_aimDot,active=.true.))
+    F_tauDot = utilities_calculateRate(guess, &
+                                       F_tau_lastInc,reshape(F_tau,[3,3,grid(1),grid(2),grid3]), timeinc_old, &
+                                       rotation_BC%rotTensor2(F_aimDot,active=.true.))
+    F_lastInc     = reshape(F,    [3,3,grid(1),grid(2),grid3])
+    F_tau_lastInc = reshape(F_tau,[3,3,grid(1),grid(2),grid3])
+    
+    materialpoint_F0 = reshape(F,[3,3,1,product(grid(1:2))*grid3])
   endif
 
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * timeinc
   F = reshape(utilities_forwardField(timeinc,F_lastInc,Fdot, &                                      ! estimate of F at end of time+timeinc that matches rotated F_aim on average
-                                     math_rotate_backward33(F_aim,rotation_BC)),&
+                                     rotation_BC%rotTensor2(F_aim,active=.true.)),&
               [9,grid(1),grid(2),grid3])
   if (guess) then
      F_tau = reshape(Utilities_forwardField(timeinc,F_tau_lastInc,F_taudot), &
@@ -372,8 +350,8 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
        F_lambda33 = math_mul3333xx33(S_scale,matmul(F_lambda33, &
                                    math_mul3333xx33(C_scale,&
                                                     matmul(transpose(F_lambda33),&
-                                                                  F_lambda33)-math_I3))*0.5_pReal)&
-                               + math_I3
+                                                           F_lambda33)-math_I3))*0.5_pReal) &
+                  + math_I3
        F_tau(1:9,i,j,k) = reshape(F_lambda33,[9])+F(1:9,i,j,k)
     enddo; enddo; enddo
   endif
@@ -381,6 +359,62 @@ subroutine grid_mech_spectral_polarisation_forward(guess,timeinc,timeinc_old,loa
   call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
 
 end subroutine grid_mech_spectral_polarisation_forward
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Age
+!--------------------------------------------------------------------------------------------------
+subroutine grid_mech_spectral_polarisation_updateCoords()
+
+  PetscErrorCode :: ierr
+  PetscScalar, dimension(:,:,:,:), pointer :: FandF_tau
+  
+  call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
+  call utilities_updateCoords(FandF_tau(0:8,:,:,:))
+  call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
+
+end subroutine grid_mech_spectral_polarisation_updateCoords
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Write current solver and constitutive data for restart to file
+!--------------------------------------------------------------------------------------------------
+subroutine grid_mech_spectral_polarisation_restartWrite()
+
+  PetscErrorCode :: ierr
+  PetscScalar, dimension(:,:,:,:), pointer :: FandF_tau, F, F_tau
+  integer(HID_T)    :: fileHandle, groupHandle
+  character(len=32) :: rankStr
+
+  call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
+  F     => FandF_tau(0: 8,:,:,:)
+  F_tau => FandF_tau(9:17,:,:,:)
+
+  write(6,'(a)') ' writing solver data required for restart to file';flush(6)
+
+  write(rankStr,'(a1,i0)')'_',worldrank
+  fileHandle  = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
+  groupHandle = HDF5_addGroup(fileHandle,'solver')
+  
+  call HDF5_write(groupHandle,F_aim,        'F_aim')
+  call HDF5_write(groupHandle,F_aim_lastInc,'F_aim_lastInc')
+  call HDF5_write(groupHandle,F_aimDot,     'F_aimDot')
+  call HDF5_write(groupHandle,F,            'F')
+  call HDF5_write(groupHandle,F_lastInc,    'F_lastInc')
+  call HDF5_write(groupHandle,F_tau,        'F_tau')
+  call HDF5_write(groupHandle,F_tau_lastInc,'F_tau_lastInc')
+
+  call HDF5_write(groupHandle,C_volAvg,       'C_volAvg')
+  call HDF5_write(groupHandle,C_volAvgLastInc,'C_volAvgLastInc')
+
+  call HDF5_closeGroup(groupHandle)
+  call HDF5_closeFile(fileHandle)
+  
+  if(num%update_gamma) call utilities_saveReferenceStiffness
+ 
+  call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
+
+end subroutine grid_mech_spectral_polarisation_restartWrite
 
 
 !--------------------------------------------------------------------------------------------------
@@ -457,13 +491,13 @@ subroutine formResidual(in, FandF_tau, &
   integer :: &
     i, j, k, e
 
-  F                 => FandF_tau(1:3,1:3,1,&
+  F              => FandF_tau(1:3,1:3,1,&
                                  XG_RANGE,YG_RANGE,ZG_RANGE)
-  F_tau             => FandF_tau(1:3,1:3,2,&
+  F_tau          => FandF_tau(1:3,1:3,2,&
                                  XG_RANGE,YG_RANGE,ZG_RANGE)
-  residual_F        => residuum(1:3,1:3,1,&
+  residual_F     => residuum(1:3,1:3,1,&
                                  X_RANGE, Y_RANGE, Z_RANGE)
-  residual_F_tau    => residuum(1:3,1:3,2,&
+  residual_F_tau => residuum(1:3,1:3,2,&
                                  X_RANGE, Y_RANGE, Z_RANGE)
 
   F_av = sum(sum(sum(F,dim=5),dim=4),dim=3) * wgt
@@ -481,7 +515,7 @@ subroutine formResidual(in, FandF_tau, &
             trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
     if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
-              ' deformation gradient aim (lab) =', transpose(math_rotate_backward33(F_aim,params%rotation_BC))
+              ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotTensor2(F_aim,active=.true.))
     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim       =', transpose(F_aim)
     flush(6)
@@ -500,7 +534,7 @@ subroutine formResidual(in, FandF_tau, &
 !--------------------------------------------------------------------------------------------------
 ! doing convolution in Fourier space 
   call utilities_FFTtensorForward
-  call utilities_fourierGammaConvolution(math_rotate_backward33(polarBeta*F_aim,params%rotation_BC)) 
+  call utilities_fourierGammaConvolution(params%rotation_BC%rotTensor2(polarBeta*F_aim,active=.true.)) 
   call utilities_FFTtensorBackward
 
 !--------------------------------------------------------------------------------------------------
@@ -518,7 +552,7 @@ subroutine formResidual(in, FandF_tau, &
 ! stress BC handling
   F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%stress_BC)))                                  ! S = 0.0 for no bc
   err_BC = maxval(abs((1.0_pReal-params%stress_mask) * math_mul3333xx33(C_scale,F_aim &
-                                                 -math_rotate_forward33(F_av,params%rotation_BC)) + &
+                                                 -params%rotation_BC%rotTensor2(F_av)) + &
                                  params%stress_mask  * (P_av-params%stress_BC)))                    ! mask = 0.0 for no bc
 ! calculate divergence
   tensorField_real = 0.0_pReal

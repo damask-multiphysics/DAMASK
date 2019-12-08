@@ -12,7 +12,7 @@ module grid_thermal_spectral
 
   use prec
   use spectral_utilities
-  use mesh
+  use mesh_grid
   use thermal_conduction
   use material
   use numerics
@@ -203,8 +203,9 @@ end function grid_thermal_spectral_solution
 !--------------------------------------------------------------------------------------------------
 !> @brief forwarding routine
 !--------------------------------------------------------------------------------------------------
-subroutine grid_thermal_spectral_forward
+subroutine grid_thermal_spectral_forward(cutBack)
    
+  logical, intent(in) :: cutBack
   integer :: i, j, k, cell
   DM :: dm_local
   PetscScalar,  dimension(:,:,:), pointer :: x_scal

@@ -11,7 +11,6 @@ module material
   use results
   use IO
   use debug
-  use mesh
   use numerics
   use rotations
   use discretization
@@ -117,13 +116,11 @@ module material
     phase_Noutput, &                                                                                !< number of '(output)' items per phase
     phase_elasticityInstance, &                                                                     !< instance of particular elasticity of each phase
     phase_plasticityInstance, &                                                                     !< instance of particular plasticity of each phase
-    crystallite_Noutput, &                                                                          !< number of '(output)' items per crystallite setting
     homogenization_Ngrains, &                                                                       !< number of grains in each homogenization
     homogenization_Noutput, &                                                                       !< number of '(output)' items per homogenization
     homogenization_typeInstance, &                                                                  !< instance of particular type of each homogenization
     thermal_typeInstance, &                                                                         !< instance of particular type of each thermal transport
-    damage_typeInstance, &                                                                          !< instance of particular type of each nonlocal damage
-    microstructure_crystallite                                                                      !< crystallite setting ID of each microstructure ! DEPRECATED !!!!
+    damage_typeInstance                                                                             !< instance of particular type of each nonlocal damage
  
   real(pReal), dimension(:), allocatable, public, protected :: &
     thermal_initialT, &                                                                             !< initial temperature per each homogenization
@@ -136,7 +133,7 @@ module material
     material_homogenizationMemberAt                                                                 !< position of the element within its homogenization instance
   integer, dimension(:,:), allocatable, public, protected :: &                                      ! (constituent,elem)
     material_phaseAt                                                                                !< phase ID of each element
-  integer, dimension(:,:,:), allocatable, public, protected :: &                                    ! (constituent,ip,elem)
+  integer, dimension(:,:,:), allocatable, public, protected :: &                                    ! (constituent,elem)
     material_phaseMemberAt                                                                          !< position of the element within its phase instance
 ! END NEW MAPPINGS
 
@@ -246,9 +243,6 @@ subroutine material_init
   call material_parseMicrostructure()
   if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Microstructure parsed'; flush(6)
   
-  call material_parseCrystallite()
-  if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Crystallite    parsed'; flush(6)
-  
   call material_parseHomogenization()
   if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Homogenization parsed'; flush(6)
   
@@ -278,9 +272,6 @@ subroutine material_init
   allocate(temperatureRate (material_Nhomogenization))
  
   do m = 1,size(config_microstructure)
-    if(microstructure_crystallite(m) < 1 .or. &
-       microstructure_crystallite(m) > size(config_crystallite)) &
-         call IO_error(150,m,ext_msg='crystallite')
     if(minval(microstructure_phase(1:microstructure_Nconstituents(m),m)) < 1 .or. &
        maxval(microstructure_phase(1:microstructure_Nconstituents(m),m)) > size(config_phase)) &
          call IO_error(150,m,ext_msg='phase')
@@ -299,9 +290,8 @@ subroutine material_init
     enddo
     write(6,'(/,a14,18x,1x,a11,1x,a12,1x,a13)') 'microstructure','crystallite','constituents'
     do m = 1,size(config_microstructure)
-      write(6,'(1x,a32,1x,i11,1x,i12)') config_name_microstructure(m), &
-                                        microstructure_crystallite(m), &
-                                        microstructure_Nconstituents(m)
+      write(6,'(1x,a32,1x,i12)') config_name_microstructure(m), &
+                                  microstructure_Nconstituents(m)
       if (microstructure_Nconstituents(m) > 0) then
         do c = 1,microstructure_Nconstituents(m)
           write(6,'(a1,1x,a32,1x,a32,1x,f7.4)') '>',config_name_phase(microstructure_phase(c,m)),&
@@ -501,7 +491,6 @@ subroutine material_parseMicrostructure
   character(len=65536) :: &
     tag
  
-  allocate(microstructure_crystallite(size(config_microstructure)),   source=0)
   allocate(microstructure_Nconstituents(size(config_microstructure)), source=0)
   allocate(microstructure_active(size(config_microstructure)),        source=.false.)
  
@@ -513,7 +502,6 @@ subroutine material_parseMicrostructure
  
   do m=1, size(config_microstructure)
     microstructure_Nconstituents(m) =  config_microstructure(m)%countKeys('(constituent)')
-    microstructure_crystallite(m)   =  config_microstructure(m)%getInt('crystallite')
   enddo
  
   microstructure_maxNconstituents = maxval(microstructure_Nconstituents)
@@ -546,21 +534,6 @@ subroutine material_parseMicrostructure
 
  
 end subroutine material_parseMicrostructure
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief parses the crystallite part in the material configuration file
-!--------------------------------------------------------------------------------------------------
-subroutine material_parseCrystallite
-
-  integer :: c
- 
-  allocate(crystallite_Noutput(size(config_crystallite)),source=0)
-  do c=1, size(config_crystallite)
-    crystallite_Noutput(c) = config_crystallite(c)%countKeys('(output)')
-  enddo
-
-end subroutine material_parseCrystallite
 
 
 !--------------------------------------------------------------------------------------------------
@@ -776,9 +749,6 @@ subroutine material_allocatePlasticState(phase,NofMyPhase,&
   plasticState(phase)%sizeDotState     = sizeDotState
   plasticState(phase)%sizeDeltaState   = sizeDeltaState
   plasticState(phase)%offsetDeltaState = sizeState-sizeDeltaState                                   ! deltaState occupies latter part of state by definition
-  plasticState(phase)%Nslip = Nslip
-  plasticState(phase)%Ntwin = Ntwin
-  plasticState(phase)%Ntrans= Ntrans
 
   allocate(plasticState(phase)%aTolState           (sizeState),               source=0.0_pReal)
   allocate(plasticState(phase)%state0              (sizeState,NofMyPhase),    source=0.0_pReal)

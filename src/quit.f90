@@ -42,7 +42,6 @@ subroutine quit(stop_id)
                                                         dateAndTime(7)
  
   if (stop_id == 0 .and. ierr == 0 .and. error == 0) stop 0                                         ! normal termination
-  if (stop_id == 2 .and. ierr == 0 .and. error == 0) stop 2                                         ! not all incs converged
   stop 1                                                                                            ! error (message from IO_error)
 
 end subroutine quit

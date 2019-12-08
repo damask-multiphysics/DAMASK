@@ -839,32 +839,6 @@ end function math_Voigt66to3333
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief action of a quaternion on a vector (rotate vector v with Q)
-!--------------------------------------------------------------------------------------------------
-pure function math_qRot(Q,v)
-
-  real(pReal), dimension(4), intent(in) :: Q
-  real(pReal), dimension(3), intent(in) :: v
-  real(pReal), dimension(3) :: math_qRot
-  real(pReal), dimension(4,4) :: T
-  integer :: i, j
-
-  do i = 1,4
-    do j = 1,i
-      T(i,j) = Q(i) * Q(j)
-    enddo
-  enddo
-
-  math_qRot = [-v(1)*(T(3,3)+T(4,4)) + v(2)*(T(3,2)-T(4,1)) + v(3)*(T(4,2)+T(3,1)), &
-                v(1)*(T(3,2)+T(4,1)) - v(2)*(T(2,2)+T(4,4)) + v(3)*(T(4,3)-T(2,1)), &
-                v(1)*(T(4,2)-T(3,1)) + v(2)*(T(4,3)+T(2,1)) - v(3)*(T(2,2)+T(3,3))]
-
-  math_qRot = 2.0_pReal * math_qRot + v
-
-end function math_qRot
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief rotation matrix from Bunge-Euler (3-1-3) angles (in radians)
 !> @details deprecated
 !--------------------------------------------------------------------------------------------------
@@ -1325,52 +1299,6 @@ real(pReal) pure function math_areaTriangle(v1,v2,v3)
   math_areaTriangle = 0.5_pReal * norm2(math_cross(v1-v2,v1-v3))
 
 end function math_areaTriangle
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief rotate 33 tensor forward
-!--------------------------------------------------------------------------------------------------
-pure function math_rotate_forward33(tensor,R)
-
-  real(pReal), dimension(3,3)             ::  math_rotate_forward33
-  real(pReal), dimension(3,3), intent(in) :: tensor, R
-
-  math_rotate_forward33 = matmul(R,matmul(tensor,transpose(R)))
-
-end function math_rotate_forward33
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief rotate 33 tensor backward
-!--------------------------------------------------------------------------------------------------
-pure function math_rotate_backward33(tensor,R)
-
-  real(pReal), dimension(3,3)             ::  math_rotate_backward33
-  real(pReal), dimension(3,3), intent(in) :: tensor, R
-
-  math_rotate_backward33 = matmul(transpose(R),matmul(tensor,R))
-
-end function math_rotate_backward33
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief rotate 3333 tensor C'_ijkl=g_im*g_jn*g_ko*g_lp*C_mnop
-!--------------------------------------------------------------------------------------------------
-pure function math_rotate_forward3333(tensor,R)
-
-  real(pReal), dimension(3,3,3,3)             ::  math_rotate_forward3333
-  real(pReal), dimension(3,3),     intent(in) :: R
-  real(pReal), dimension(3,3,3,3), intent(in) :: tensor
-  integer :: i,j,k,l,m,n,o,p
-
-  math_rotate_forward3333 = 0.0_pReal
-  do i = 1,3;do j = 1,3;do k = 1,3;do l = 1,3
-  do m = 1,3;do n = 1,3;do o = 1,3;do p = 1,3
-    math_rotate_forward3333(i,j,k,l) = math_rotate_forward3333(i,j,k,l) &
-                                     + R(i,m) * R(j,n) * R(k,o) * R(l,p) * tensor(m,n,o,p)
-  enddo; enddo; enddo; enddo; enddo; enddo; enddo; enddo
-
-end function math_rotate_forward3333
 
 
 !--------------------------------------------------------------------------------------------------

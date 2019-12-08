@@ -10,7 +10,6 @@ module damage_nonlocal
   use config
   use crystallite
   use lattice
-  use mesh
   use source_damage_isoBrittle
   use source_damage_isoDuctile
   use source_damage_anisoBrittle

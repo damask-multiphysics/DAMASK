@@ -20,7 +20,7 @@ module grid_mech_spectral_basic
   use config
   use numerics
   use homogenization
-  use mesh
+  use mesh_grid
   use CPFEM2
   use debug
 
@@ -75,10 +75,9 @@ module grid_mech_spectral_basic
   public :: &
     grid_mech_spectral_basic_init, &
     grid_mech_spectral_basic_solution, &
-    grid_mech_spectral_basic_forward
-  private :: &
-    converged, &
-    formResidual
+    grid_mech_spectral_basic_forward, &
+    grid_mech_spectral_basic_updateCoords, &
+    grid_mech_spectral_basic_restartWrite
 
 contains
 
@@ -95,8 +94,8 @@ subroutine grid_mech_spectral_basic_init
   PetscScalar, pointer, dimension(:,:,:,:) :: &
     F                                                                                               ! pointer to solution data
   PetscInt, dimension(worldsize) :: localK  
-  integer(HID_T) :: fileHandle
-  integer :: fileUnit
+  integer(HID_T)      :: fileHandle, groupHandle
+  integer             :: fileUnit
   character(len=1024) :: rankStr
  
   write(6,'(/,a)') ' <<<+-  grid_mech_spectral_basic init  -+>>>'
@@ -151,18 +150,19 @@ subroutine grid_mech_spectral_basic_init
 ! init fields    
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                   ! places pointer on PETSc data
  
-  restartRead: if (interface_restartInc > 0) then                                                     
+  restartRead: if (interface_restartInc > 0) then
     write(6,'(/,a,'//IO_intOut(interface_restartInc)//',a)') &
       ' reading values of increment ', interface_restartInc, ' from file'
 
     write(rankStr,'(a1,i0)')'_',worldrank
-    fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
+    fileHandle  = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
+    groupHandle = HDF5_openGroup(fileHandle,'solver')
  
-    call HDF5_read(fileHandle,F_aim,        'F_aim')
-    call HDF5_read(fileHandle,F_aim_lastInc,'F_aim_lastInc')
-    call HDF5_read(fileHandle,F_aimDot,     'F_aimDot')
-    call HDF5_read(fileHandle,F,            'F')
-    call HDF5_read(fileHandle,F_lastInc,    'F_lastInc')
+    call HDF5_read(groupHandle,F_aim,        'F_aim')
+    call HDF5_read(groupHandle,F_aim_lastInc,'F_aim_lastInc')
+    call HDF5_read(groupHandle,F_aimDot,     'F_aimDot')
+    call HDF5_read(groupHandle,F,            'F')
+    call HDF5_read(groupHandle,F_lastInc,    'F_lastInc')
  
   elseif (interface_restartInc == 0) then restartRead
     F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                         ! initialize to identity
@@ -170,18 +170,19 @@ subroutine grid_mech_spectral_basic_init
   endif restartRead
  
   materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
-  call Utilities_updateIPcoords(reshape(F,shape(F_lastInc)))
+  call Utilities_updateCoords(reshape(F,shape(F_lastInc)))
   call Utilities_constitutiveResponse(P,temp33_Real,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
-                                      0.0_pReal, &                                                  ! time increment
-                                      math_I3)                                                      ! no rotation of boundary condition
+                                      0.0_pReal)                                                    ! time increment
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                ! deassociate pointer
  
   restartRead2: if (interface_restartInc > 0) then
     write(6,'(/,a,'//IO_intOut(interface_restartInc)//',a)') &
       'reading more values of increment ', interface_restartInc, ' from file'
-    call HDF5_read(fileHandle,C_volAvg,       'C_volAvg')
-    call HDF5_read(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
+    call HDF5_read(groupHandle,C_volAvg,       'C_volAvg')
+    call HDF5_read(groupHandle,C_volAvgLastInc,'C_volAvgLastInc')
+    
+    call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
 
     call MPI_File_open(PETSC_COMM_WORLD, trim(getSolverJobName())//'.C_ref', &
@@ -190,7 +191,8 @@ subroutine grid_mech_spectral_basic_init
     call MPI_File_close(fileUnit,ierr)
   endif restartRead2
 
-  call utilities_updateGamma(C_minMaxAvg,.true.)
+  call utilities_updateGamma(C_minMaxAvg)
+  call utilities_saveReferenceStiffness
 
 end subroutine grid_mech_spectral_basic_init
 
@@ -209,7 +211,8 @@ function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_
     timeinc_old                                                                                     !< time increment of last successful increment
   type(tBoundaryCondition),    intent(in) :: &
     stress_BC
-  real(pReal), dimension(3,3), intent(in) :: rotation_BC
+  type(rotation),              intent(in) :: &
+    rotation_BC
   type(tSolutionState)                    :: &
     solution
 !--------------------------------------------------------------------------------------------------
@@ -222,8 +225,8 @@ function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
   S = utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
-  if (num%update_gamma) call utilities_updateGamma(C_minMaxAvg,restartWrite)
- 
+  if(num%update_gamma) call utilities_updateGamma(C_minMaxAvg)
+
 !--------------------------------------------------------------------------------------------------
 ! set module wide available data 
   params%stress_mask = stress_BC%maskFloat
@@ -253,9 +256,11 @@ end function grid_mech_spectral_basic_solution
 !> @details find new boundary conditions and best F estimate for end of current timestep
 !> possibly writing restart information, triggering of state increment in DAMASK, and updating of IPcoordinates
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTime,deformation_BC,stress_BC,rotation_BC)
+subroutine grid_mech_spectral_basic_forward(cutBack,guess,timeinc,timeinc_old,loadCaseTime,&
+                                            deformation_BC,stress_BC,rotation_BC)
 
   logical,                     intent(in) :: &
+    cutBack, &
     guess
   real(pReal),                 intent(in) :: &
     timeinc_old, &
@@ -264,44 +269,17 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
   type(tBoundaryCondition),    intent(in) :: &
     stress_BC, &
     deformation_BC
-  real(pReal), dimension(3,3), intent(in) :: &
+  type(rotation),              intent(in) :: &
     rotation_BC
   PetscErrorCode :: ierr
   PetscScalar, dimension(:,:,:,:), pointer :: F
-  
-  integer(HID_T) :: fileHandle
-  character(len=32) :: rankStr
 
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
   
   if (cutBack) then
-    C_volAvg    = C_volAvgLastInc                                                                  ! QUESTION: where is this required?
-    C_minMaxAvg = C_minMaxAvgLastInc                                                               ! QUESTION: where is this required?
+    C_volAvg    = C_volAvgLastInc
+    C_minMaxAvg = C_minMaxAvgLastInc
   else
-  !--------------------------------------------------------------------------------------------------
-  ! restart information for spectral solver
-    if (restartWrite) then
-      write(6,'(/,a)') ' writing converged results for restart';flush(6)
-      
-      write(rankStr,'(a1,i0)')'_',worldrank
-      fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
-      
-      call HDF5_write(fileHandle,F_aim,        'F_aim')
-      call HDF5_write(fileHandle,F_aim_lastInc,'F_aim_lastInc')
-      call HDF5_write(fileHandle,F_aimDot,     'F_aimDot')
-      call HDF5_write(fileHandle,F,            'F')
-      call HDF5_write(fileHandle,F_lastInc,    'F_lastInc')
-
-      call HDF5_write(fileHandle,C_volAvg,       'C_volAvg')
-      call HDF5_write(fileHandle,C_volAvgLastInc,'C_volAvgLastInc')
-      call HDF5_write(fileHandle,C_minMaxAvg,    'C_minMaxAvg')
-
-      call HDF5_closeFile(fileHandle)
-    endif
-
-    call CPFEM_age                                                                                  ! age state and kinematics
-    call utilities_updateIPcoords(F)
-
     C_volAvgLastInc    = C_volAvg
     C_minMaxAvgLastInc = C_minMaxAvg
  
@@ -310,33 +288,86 @@ subroutine grid_mech_spectral_basic_forward(guess,timeinc,timeinc_old,loadCaseTi
 
     !--------------------------------------------------------------------------------------------------
     ! calculate rate for aim
-    if     (deformation_BC%myType=='l') then                                                          ! calculate F_aimDot from given L and current F
+    if     (deformation_BC%myType=='l') then                                                         ! calculate F_aimDot from given L and current F
       F_aimDot = &
       F_aimDot + deformation_BC%maskFloat * matmul(deformation_BC%values, F_aim_lastInc)
-    elseif(deformation_BC%myType=='fdot') then                                                        ! F_aimDot is prescribed
+    elseif(deformation_BC%myType=='fdot') then                                                       ! F_aimDot is prescribed
       F_aimDot = &
       F_aimDot + deformation_BC%maskFloat * deformation_BC%values
-    elseif (deformation_BC%myType=='f') then                                                          ! aim at end of load case is prescribed
+    elseif (deformation_BC%myType=='f') then                                                         ! aim at end of load case is prescribed
       F_aimDot = &
       F_aimDot + deformation_BC%maskFloat * (deformation_BC%values - F_aim_lastInc)/loadCaseTime
     endif
 
-
-    Fdot =  utilities_calculateRate(guess, &
-                                    F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]),timeinc_old, &
-                                    math_rotate_backward33(F_aimDot,rotation_BC))
-    F_lastInc        = reshape(F,         [3,3,grid(1),grid(2),grid3])                                ! winding F forward
-    materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
+    Fdot = utilities_calculateRate(guess, &
+                                   F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]),timeinc_old, &
+                                   rotation_BC%rotTensor2(F_aimDot,active=.true.))
+    F_lastInc = reshape(F,[3,3,grid(1),grid(2),grid3])
+    
+    materialpoint_F0 = reshape(F, [3,3,1,product(grid(1:2))*grid3])
   endif
 
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * timeinc
   F = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                       ! estimate of F at end of time+timeinc that matches rotated F_aim on average
-              math_rotate_backward33(F_aim,rotation_BC)),[9,grid(1),grid(2),grid3])
+              rotation_BC%rotTensor2(F_aim,active=.true.)),[9,grid(1),grid(2),grid3])
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
   
 end subroutine grid_mech_spectral_basic_forward
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Age
+!--------------------------------------------------------------------------------------------------
+subroutine grid_mech_spectral_basic_updateCoords()
+
+  PetscErrorCode :: ierr
+  PetscScalar, dimension(:,:,:,:), pointer :: F
+
+  call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
+  call utilities_updateCoords(F)
+  call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
+
+end subroutine grid_mech_spectral_basic_updateCoords
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Write current solver and constitutive data for restart to file
+!--------------------------------------------------------------------------------------------------
+subroutine grid_mech_spectral_basic_restartWrite()
+
+  PetscErrorCode :: ierr
+  PetscScalar, dimension(:,:,:,:), pointer :: F
+  integer(HID_T)    :: fileHandle, groupHandle
+  character(len=32) :: rankStr
+
+  call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
+
+  write(6,'(a)') ' writing solver data required for restart to file';flush(6)
+  
+  write(rankStr,'(a1,i0)')'_',worldrank
+  fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
+  groupHandle = HDF5_addGroup(fileHandle,'solver')
+  
+  call HDF5_write(groupHandle,F_aim,        'F_aim')
+  call HDF5_write(groupHandle,F_aim_lastInc,'F_aim_lastInc')
+  call HDF5_write(groupHandle,F_aimDot,     'F_aimDot')
+  call HDF5_write(groupHandle,F,            'F')
+  call HDF5_write(groupHandle,F_lastInc,    'F_lastInc')
+
+  call HDF5_write(groupHandle,C_volAvg,       'C_volAvg')
+  call HDF5_write(groupHandle,C_volAvgLastInc,'C_volAvgLastInc')
+  call HDF5_write(groupHandle,C_minMaxAvg,    'C_minMaxAvg')
+
+  call HDF5_closeGroup(groupHandle)
+  call HDF5_closeFile(fileHandle)
+  
+  if (num%update_gamma) call utilities_saveReferenceStiffness
+
+  call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
+  
+end subroutine grid_mech_spectral_basic_restartWrite
 
 
 !--------------------------------------------------------------------------------------------------
@@ -415,7 +446,7 @@ subroutine formResidual(in, F, &
             trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
     if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
-              ' deformation gradient aim (lab) =', transpose(math_rotate_backward33(F_aim,params%rotation_BC))
+              ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotTensor2(F_aim,active=.true.))
     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim       =', transpose(F_aim)
     flush(6)
@@ -440,7 +471,7 @@ subroutine formResidual(in, F, &
   tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = residuum                                  ! store fPK field for subsequent FFT forward transform
   call utilities_FFTtensorForward                                                                   ! FFT forward of global "tensorField_real"
   err_div = Utilities_divergenceRMS()                                                               ! divRMS of tensorField_fourier for later use
-  call utilities_fourierGammaConvolution(math_rotate_backward33(deltaF_aim,params%rotation_BC))     ! convolution of Gamma and tensorField_fourier, with arg 
+  call utilities_fourierGammaConvolution(params%rotation_BC%rotTensor2(deltaF_aim,active=.true.))   ! convolution of Gamma and tensorField_fourier
   call utilities_FFTtensorBackward                                                                  ! FFT backward of global tensorField_fourier
  
 !--------------------------------------------------------------------------------------------------

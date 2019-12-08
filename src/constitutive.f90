@@ -13,7 +13,6 @@ module constitutive
   use results
   use HDF5_utilities
   use lattice
-  use mesh
   use discretization
   use plastic_none
   use plastic_isotropic
@@ -37,7 +36,6 @@ module constitutive
   private
   
   integer, public, protected :: &
-    constitutive_plasticity_maxSizePostResults, &
     constitutive_plasticity_maxSizeDotState, &
     constitutive_source_maxSizePostResults, &
     constitutive_source_maxSizeDotState
@@ -73,8 +71,7 @@ subroutine constitutive_init
   integer, dimension(:,:), pointer :: thisSize
   character(len=64), dimension(:,:), pointer :: thisOutput
   character(len=32) :: outputName                                                                   !< name of output, intermediate fix until HDF5 output is ready
-  logical :: knownPlasticity, knownSource, nonlocalConstitutionPresent
-  nonlocalConstitutionPresent = .false.
+  logical :: knownSource
 
 !--------------------------------------------------------------------------------------------------
 ! initialized plasticity
@@ -112,64 +109,11 @@ subroutine constitutive_init
     call IO_write_jobFile(FILEUNIT,'outputConstitutive')
     PhaseLoop: do ph = 1,material_Nphase
       activePhase: if (any(material_phaseAt == ph)) then
-        ins = phase_plasticityInstance(ph)
-        knownPlasticity = .true.                                                                    ! assume valid
-        plasticityType: select case(phase_plasticity(ph))
-          case (PLASTICITY_NONE_ID) plasticityType
-            outputName = PLASTICITY_NONE_label
-            thisOutput => null()
-            thisSize   => null()
-          case (PLASTICITY_ISOTROPIC_ID) plasticityType
-            outputName = PLASTICITY_ISOTROPIC_label
-            thisOutput => plastic_isotropic_output
-            thisSize   => plastic_isotropic_sizePostResult
-          case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
-            outputName = PLASTICITY_PHENOPOWERLAW_label
-            thisOutput => plastic_phenopowerlaw_output
-            thisSize   => plastic_phenopowerlaw_sizePostResult
-          case (PLASTICITY_KINEHARDENING_ID) plasticityType
-            outputName = PLASTICITY_KINEHARDENING_label
-            thisOutput => plastic_kinehardening_output
-            thisSize   => plastic_kinehardening_sizePostResult  
-          case (PLASTICITY_DISLOTWIN_ID) plasticityType
-            outputName = PLASTICITY_DISLOTWIN_label
-            thisOutput => plastic_dislotwin_output
-            thisSize   => plastic_dislotwin_sizePostResult
-          case (PLASTICITY_DISLOUCLA_ID) plasticityType
-            outputName = PLASTICITY_DISLOUCLA_label
-            thisOutput => plastic_disloucla_output
-            thisSize   => plastic_disloucla_sizePostResult
-          case (PLASTICITY_NONLOCAL_ID) plasticityType
-            outputName = PLASTICITY_NONLOCAL_label
-            thisOutput => plastic_nonlocal_output
-            thisSize   => plastic_nonlocal_sizePostResult
-          case default plasticityType
-            knownPlasticity = .false.
-        end select plasticityType
         write(FILEUNIT,'(/,a,/)') '['//trim(config_name_phase(ph))//']'
-        if (knownPlasticity) then
-          write(FILEUNIT,'(a)') '(plasticity)'//char(9)//trim(outputName)
-          if (phase_plasticity(ph) /= PLASTICITY_NONE_ID) then
-            OutputPlasticityLoop: do o = 1,size(thisOutput(:,ins))
-              if(len_trim(thisOutput(o,ins)) > 0) &
-                write(FILEUNIT,'(a,i4)') trim(thisOutput(o,ins))//char(9),thisSize(o,ins)
-            enddo OutputPlasticityLoop
-          endif
-        endif
         
         SourceLoop: do s = 1, phase_Nsources(ph)
-          knownSource = .true.                                                                       ! assume valid
+          knownSource = .true.                                                                      ! assume valid
           sourceType: select case (phase_source(s,ph))
-            case (SOURCE_thermal_dissipation_ID) sourceType
-              ins = source_thermal_dissipation_instance(ph)
-              outputName = SOURCE_thermal_dissipation_label
-              thisOutput => source_thermal_dissipation_output
-              thisSize   => source_thermal_dissipation_sizePostResult
-            case (SOURCE_thermal_externalheat_ID) sourceType
-              ins = source_thermal_externalheat_instance(ph)
-              outputName = SOURCE_thermal_externalheat_label
-              thisOutput => source_thermal_externalheat_output
-              thisSize   => source_thermal_externalheat_sizePostResult
             case (SOURCE_damage_isoBrittle_ID) sourceType
               ins = source_damage_isoBrittle_instance(ph)
               outputName = SOURCE_damage_isoBrittle_label
@@ -207,7 +151,6 @@ subroutine constitutive_init
   endif mainProcess
  
   constitutive_plasticity_maxSizeDotState = 0
-  constitutive_plasticity_maxSizePostResults = 0
   constitutive_source_maxSizeDotState = 0
   constitutive_source_maxSizePostResults = 0
  
@@ -224,8 +167,6 @@ subroutine constitutive_init
 ! determine max size of state and output
     constitutive_plasticity_maxSizeDotState    = max(constitutive_plasticity_maxSizeDotState,    &
                                                      plasticState(ph)%sizeDotState)
-    constitutive_plasticity_maxSizePostResults = max(constitutive_plasticity_maxSizePostResults, &
-                                                     plasticState(ph)%sizePostResults)
     constitutive_source_maxSizeDotState        = max(constitutive_source_maxSizeDotState, &
                                                      maxval(sourceState(ph)%p(:)%sizeDotState))
     constitutive_source_maxSizePostResults     = max(constitutive_source_maxSizePostResults, &
@@ -707,61 +648,21 @@ function constitutive_postResults(S, Fi, ipc, ip, el)
     ipc, &                                                                                          !< component-ID of integration point
     ip, &                                                                                           !< integration point
     el                                                                                              !< element
-  real(pReal), dimension(plasticState(material_phaseAt(ipc,el))%sizePostResults + &
-                         sum(sourceState(material_phaseAt(ipc,el))%p(:)%sizePostResults)) :: &
+  real(pReal), dimension(sum(sourceState(material_phaseAt(ipc,el))%p(:)%sizePostResults)) :: &
     constitutive_postResults
   real(pReal),  intent(in), dimension(3,3) :: &
     Fi                                                                                              !< intermediate deformation gradient
   real(pReal),  intent(in), dimension(3,3) :: &
     S                                                                                               !< 2nd Piola Kirchhoff stress
-  real(pReal), dimension(3,3) :: &
-    Mp                                                                                              !< Mandel stress
   integer :: &
     startPos, endPos
   integer :: &
-    ho, &                                                                                           !< homogenization
-    tme, &                                                                                          !< thermal member position
     i, of, instance                                                                                 !< counter in source loop
 
   constitutive_postResults = 0.0_pReal
 
-  Mp  = matmul(matmul(transpose(Fi),Fi),S)
 
-  ho = material_homogenizationAt(el)
-  tme = thermalMapping(ho)%p(ip,el)
-
-  startPos = 1
-  endPos = plasticState(material_phaseAt(ipc,el))%sizePostResults
-
-  of = material_phasememberAt(ipc,ip,el)
-  instance = phase_plasticityInstance(material_phaseAt(ipc,el))
-
-  plasticityType: select case (phase_plasticity(material_phaseAt(ipc,el)))
-    case (PLASTICITY_ISOTROPIC_ID) plasticityType
-      constitutive_postResults(startPos:endPos) = &
-        plastic_isotropic_postResults(Mp,instance,of)
-
-    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
-      constitutive_postResults(startPos:endPos) = &
-        plastic_phenopowerlaw_postResults(Mp,instance,of)
-
-    case (PLASTICITY_KINEHARDENING_ID) plasticityType
-      constitutive_postResults(startPos:endPos) = &
-        plastic_kinehardening_postResults(Mp,instance,of)
-
-    case (PLASTICITY_DISLOTWIN_ID) plasticityType
-      constitutive_postResults(startPos:endPos) = &
-        plastic_dislotwin_postResults(Mp,temperature(ho)%p(tme),instance,of)
-
-    case (PLASTICITY_DISLOUCLA_ID) plasticityType
-      constitutive_postResults(startPos:endPos) = &
-        plastic_disloucla_postResults(Mp,temperature(ho)%p(tme),instance,of)
-
-    case (PLASTICITY_NONLOCAL_ID) plasticityType
-      constitutive_postResults(startPos:endPos) = &
-        plastic_nonlocal_postResults (material_phaseAt(ipc,el),instance,of)
-
-  end select plasticityType
+  endPos   = 0
 
   SourceLoop: do i = 1, phase_Nsources(material_phaseAt(ipc,el))
     startPos = endPos + 1

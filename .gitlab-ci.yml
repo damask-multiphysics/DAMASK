@@ -1,6 +1,7 @@
 ---
 stages:
   - prepareAll
+  - python
   - preprocessing
   - postprocessing
   - compilePETSc
@@ -99,6 +100,16 @@ checkout:
     - git submodule update --init
     - source env/DAMASK.sh
     - make processing
+  except:
+    - master
+    - release
+
+###################################################################################################
+Pytest:
+  stage: python
+  script:
+    - cd $DAMASKROOT/python
+    - pytest
   except:
     - master
     - release
@@ -308,13 +319,6 @@ nonlocal_densityConservation:
     - master
     - release
 
-Spectral_ipNeighborhood:
-  stage: grid
-  script: Spectral_ipNeighborhood/test.py
-  except:
-    - master
-    - release
-
 RGC_DetectChanges:
   stage: grid
   script: RGC_DetectChanges/test.py
@@ -506,7 +510,6 @@ Processing:
   stage: createDocumentation
   script:
     - cd $DAMASKROOT/processing/pre
-    - rm abq_addUserOutput.py marc_addUserOutput.py
     - $DAMASKROOT/PRIVATE/documenting/scriptHelpToWiki.py --debug *.py
     - cd $DAMASKROOT/processing/post
     - rm vtk2ang.py DAD*.py

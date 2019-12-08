@@ -2,7 +2,7 @@ import os
 import sys
 import re
 import shlex
-from collections import Iterable
+from collections.abc import Iterable
 
 import numpy as np
 
@@ -15,7 +15,7 @@ except NameError:
 
 # ------------------------------------------------------------------
 class ASCIItable():
-  """Read and write to ASCII tables"""
+  """Read and write to ASCII tables."""
 
   tmpext = '_tmp'                                                                                   # filename extension for in-place access
   
@@ -27,6 +27,7 @@ class ASCIItable():
                labeled   = True,                                                                    # assume table has labels
                readonly  = False,                                                                   # no reading from file
               ):
+    """Read and write to ASCII tables."""
     self.__IO__ = {'output': [],
                    'buffered': buffered,
                    'labeled':  labeled,                                                             # header contains labels
@@ -72,7 +73,7 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def _removeCRLF(self,
                   string):
-    """Delete any carriage return and line feed from string"""
+    """Delete any carriage return and line feed from string."""
     try:
       return string.replace('\n','').replace('\r','')
     except AttributeError:
@@ -82,7 +83,7 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def _quote(self,
              what):
-    """Quote empty or white space-containing output"""
+    """Quote empty or white space-containing output."""
     return '{quote}{content}{quote}'.format(
              quote   = ('"' if str(what)=='' or re.search(r"\s",str(what)) else ''),
              content = what)
@@ -103,7 +104,7 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def output_write(self,
                    what):
-    """Aggregate a single row (string) or list of (possibly containing further lists of) rows into output"""
+    """Aggregate a single row (string) or list of (possibly containing further lists of) rows into output."""
     if isinstance(what, (str, unicode)):
       self.__IO__['output'] += [what]
     else:
@@ -143,7 +144,7 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def head_read(self):
     """
-    Get column labels
+    Get column labels.
     
     by either reading the first row or,
     if keyword "head[*]" is present, the last line of the header
@@ -154,7 +155,7 @@ class ASCIItable():
       pass
 
     firstline = self.__IO__['in'].readline().strip()
-    m = re.search('(\d+)\s+head', firstline.lower())                                                # search for "head" keyword
+    m = re.search(r'(\d+)\s+head', firstline.lower())                                                # search for "head" keyword
     
     if m:                                                                                           # proper ASCIItable format
 
@@ -194,7 +195,7 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def head_write(self,
                  header = True):
-    """Write current header information (info + labels)"""
+    """Write current header information (info + labels)."""
     head = ['{}\theader'.format(len(self.info)+self.__IO__['labeled'])] if header else []
     head.append(self.info)
     if self.__IO__['labeled']:
@@ -205,7 +206,7 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def head_getGeom(self):
-    """Interpret geom header"""
+    """Interpret geom header."""
     identifiers = {
             'grid':    ['a','b','c'],
             'size':    ['x','y','z'],
@@ -247,7 +248,7 @@ class ASCIItable():
   def labels_append(self,
                     what,
                     reset = False):
-    """Add item or list to existing set of labels (and switch on labeling)"""
+    """Add item or list to existing set of labels (and switch on labeling)."""
     if isinstance(what, (str, unicode)):
       self.tags += [self._removeCRLF(what)]
     else:
@@ -261,7 +262,7 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def labels_clear(self):
-    """Delete existing labels and switch to no labeling"""
+    """Delete existing labels and switch to no labeling."""
     self.tags = []
     self.__IO__['labeled'] = False
 
@@ -392,7 +393,7 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def info_append(self,
                   what):
-    """Add item or list to existing set of infos"""
+    """Add item or list to existing set of infos."""
     if isinstance(what, (str, unicode)):
       self.info += [self._removeCRLF(what)]
     else:
@@ -403,7 +404,7 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def info_clear(self):
-    """Delete any info block"""
+    """Delete any info block."""
     self.info = []
 
 # ------------------------------------------------------------------
@@ -416,7 +417,7 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def data_skipLines(self,
                      count):
-    """Wind forward by count number of lines"""
+    """Wind forward by count number of lines."""
     for i in range(count):
       alive = self.data_read()
 
@@ -426,7 +427,7 @@ class ASCIItable():
   def data_read(self,
                 advance = True,
                 respectLabels = True):
-    """Read next line (possibly buffered) and parse it into data array"""
+    """Read next line (possibly buffered) and parse it into data array."""
     self.line = self.__IO__['readBuffer'].pop(0) if len(self.__IO__['readBuffer']) > 0 \
            else self.__IO__['in'].readline().strip()                                                # take buffered content or get next data row from file
 
@@ -446,9 +447,11 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def data_readArray(self,
                      labels = []):
-    """Read whole data of all (given) labels as numpy array"""
-    try:      self.data_rewind()                                                                    # try to wind back to start of data
-    except:   pass                                                                                  # assume/hope we are at data start already...
+    """Read whole data of all (given) labels as numpy array."""
+    try:
+      self.data_rewind()                                                                            # try to wind back to start of data
+    except IOError:
+      pass                                                                                          # assume/hope we are at data start already...
 
     if labels is None or labels == []:
       use = None                                                                                    # use all columns (and keep labels intact)
@@ -480,7 +483,7 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def data_write(self,
                  delimiter = '\t'):
-    """Write current data array and report alive output back"""
+    """Write current data array and report alive output back."""
     if len(self.data) == 0: return True
 
     if isinstance(self.data[0],list):
@@ -492,16 +495,16 @@ class ASCIItable():
   def data_writeArray(self,
                       fmt = None,
                       delimiter = '\t'):
-    """Write whole numpy array data"""
+    """Write whole numpy array data."""
     for row in self.data:
       try:
         output = [fmt % value for value in row] if fmt else list(map(repr,row))
-      except:
+      except Exception:
         output = [fmt % row] if fmt else [repr(row)]
       
       try:
         self.__IO__['out'].write(delimiter.join(output) + '\n')
-      except:
+      except Exception:
         pass
 
 # ------------------------------------------------------------------
@@ -545,7 +548,7 @@ class ASCIItable():
                           grid,
                           type = 'i',
                           strict = False):
-    """Read microstructure data (from .geom format)"""
+    """Read microstructure data (from .geom format)."""
     def datatype(item):
       return int(item) if type.lower() == 'i' else float(item)
       

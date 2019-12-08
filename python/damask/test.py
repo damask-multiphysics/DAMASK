@@ -1,10 +1,8 @@
-# -*- coding: UTF-8 no BOM -*-
-
 import os,sys,shutil
 import logging,logging.config
 import damask
 import numpy as np
-from collections import Iterable
+from collections.abc import Iterable
 from optparse import OptionParser
 
 class Test():
@@ -17,7 +15,7 @@ class Test():
   variants = []
   
   def __init__(self, **kwargs):
-
+    """New test."""
     defaults = {'description': '',
                 'keep':          False,
                 'accept':        False,
@@ -120,22 +118,22 @@ class Test():
     """Delete directory tree containing current results."""
     try:
       shutil.rmtree(self.dirCurrent())
-    except:
+    except FileNotFoundError:
       logging.warning('removal of directory "{}" not possible...'.format(self.dirCurrent()))
 
     try:
       os.mkdir(self.dirCurrent())
       return True
-    except:
+    except FileExistsError:
       logging.critical('creation of directory "{}" failed.'.format(self.dirCurrent()))
       return False
     
   def prepareAll(self):
-    """Do all necessary preparations for the whole test"""
+    """Do all necessary preparations for the whole test."""
     return True
 
   def prepare(self,variant):
-    """Do all necessary preparations for the run of each test variant"""
+    """Do all necessary preparations for the run of each test variant."""
     return True
 
 
@@ -207,9 +205,9 @@ class Test():
     for source,target in zip(list(map(mapA,A)),list(map(mapB,B))):
       try:
         shutil.copy2(source,target)
-      except:
+      except FileNotFoundError:
         logging.critical('error copying {} to {}'.format(source,target))
-        raise
+        raise FileNotFoundError
 
 
   def copy_Reference2Current(self,sourcefiles=[],targetfiles=[]):
@@ -218,9 +216,9 @@ class Test():
     for i,f in enumerate(sourcefiles):
       try:
         shutil.copy2(self.fileInReference(f),self.fileInCurrent(targetfiles[i]))
-      except:
+      except FileNotFoundError:
         logging.critical('Reference2Current: Unable to copy file "{}"'.format(f))
-        raise
+        raise FileNotFoundError
 
 
   def copy_Base2Current(self,sourceDir,sourcefiles=[],targetfiles=[]):
@@ -230,10 +228,10 @@ class Test():
     for i,f in enumerate(sourcefiles):
       try:
         shutil.copy2(os.path.join(source,f),self.fileInCurrent(targetfiles[i]))
-      except:
+      except FileNotFoundError:
         logging.error(os.path.join(source,f))
         logging.critical('Base2Current: Unable to copy file "{}"'.format(f))
-        raise
+        raise FileNotFoundError
 
 
   def copy_Current2Reference(self,sourcefiles=[],targetfiles=[]):
@@ -242,9 +240,9 @@ class Test():
     for i,f in enumerate(sourcefiles):
       try:
         shutil.copy2(self.fileInCurrent(f),self.fileInReference(targetfiles[i]))
-      except:
+      except FileNotFoundError:
         logging.critical('Current2Reference: Unable to copy file "{}"'.format(f))
-        raise
+        raise FileNotFoundError
 
 
   def copy_Proof2Current(self,sourcefiles=[],targetfiles=[]):
@@ -253,9 +251,9 @@ class Test():
     for i,f in enumerate(sourcefiles):
       try:
         shutil.copy2(self.fileInProof(f),self.fileInCurrent(targetfiles[i]))
-      except:
+      except FileNotFoundError:
         logging.critical('Proof2Current: Unable to copy file "{}"'.format(f))
-        raise
+        raise FileNotFoundError
 
 
   def copy_Current2Current(self,sourcefiles=[],targetfiles=[]):
@@ -263,9 +261,10 @@ class Test():
     for i,f in enumerate(sourcefiles):
       try:
         shutil.copy2(self.fileInReference(f),self.fileInCurrent(targetfiles[i]))
-      except:
+      except FileNotFoundError:
         logging.critical('Current2Current: Unable to copy file "{}"'.format(f))
-        raise
+        raise FileNotFoundError
+
 
   def execute_inCurrentDir(self,cmd,streamIn=None,env=None):
 
@@ -439,7 +438,7 @@ class Test():
                      stdTol = 1.0e-6,
                      preFilter = 1.0e-9):
     """
-    Calculate statistics of tables
+    Calculate statistics of tables.
 
     threshold can be used to ignore small values (a negative number disables this feature)
     """
@@ -492,7 +491,7 @@ class Test():
                      rtol    = 1e-5,
                      atol    = 1e-8,
                      debug   = False):
-    """Compare multiple tables with np.allclose"""
+    """Compare multiple tables with np.allclose."""
     if not (isinstance(files, Iterable) and not isinstance(files, str)):       # check whether list of files is requested
       files = [str(files)]
 

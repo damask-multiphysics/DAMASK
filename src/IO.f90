@@ -37,7 +37,6 @@ module IO
 #if defined(Marc4DAMASK) || defined(Abaqus)
   public :: &
     IO_open_inputFile, &
-    IO_open_logFile, &
     IO_countContinuousIntValues, &
     IO_continuousIntValues, &
 #if defined(Abaqus)
@@ -207,27 +206,26 @@ end function IO_open_binary
 !--------------------------------------------------------------------------------------------------
 !> @brief opens FEM input file for reading located in current working directory to given unit
 !--------------------------------------------------------------------------------------------------
-subroutine IO_open_inputFile(fileUnit,modelName)
+subroutine IO_open_inputFile(fileUnit)
 
   integer,          intent(in) :: fileUnit                                                          !< file unit
-  character(len=*), intent(in) :: modelName                                                         !< model name, in case of restart not solver job name
  
   integer                  :: myStat
   character(len=1024)      :: path
 #if defined(Abaqus)
   integer                  :: fileType
- 
+
   fileType = 1                                                                                      ! assume .pes
-  path = trim(modelName)//inputFileExtension(fileType)                                              ! attempt .pes, if it exists: it should be used
+  path = trim(getSolverJobName())//inputFileExtension(fileType)                                     ! attempt .pes, if it exists: it should be used
   open(fileUnit+1,status='old',iostat=myStat,file=path,action='read',position='rewind')
   if(myStat /= 0) then                                                                              ! if .pes does not work / exist; use conventional extension, i.e.".inp"
      fileType = 2
-     path = trim(modelName)//inputFileExtension(fileType)
+     path = trim(getSolverJobName())//inputFileExtension(fileType)
      open(fileUnit+1,status='old',iostat=myStat,file=path,action='read',position='rewind')
   endif
   if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
  
-  path = trim(modelName)//inputFileExtension(fileType)//'_assembly'
+  path = trim(getSolverJobName())//inputFileExtension(fileType)//'_assembly'
   open(fileUnit,iostat=myStat,file=path)
   if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
      if (.not.abaqus_assembleInputFile(fileUnit,fileUnit+1)) call IO_error(103)                     ! strip comments and concatenate any "include"s
@@ -258,10 +256,8 @@ subroutine IO_open_inputFile(fileUnit,modelName)
         fname = trim(line(9+scan(line(9:),'='):))
         inquire(file=fname, exist=fexist)
         if (.not.(fexist)) then
-          !$OMP CRITICAL (write2out)
-            write(6,*)'ERROR: file does not exist error in abaqus_assembleInputFile'
-            write(6,*)'filename: ', trim(fname)
-          !$OMP END CRITICAL (write2out)
+          write(6,*)'ERROR: file does not exist error in abaqus_assembleInputFile'
+          write(6,*)'filename: ', trim(fname)
           createSuccess = .false.
           return
         endif
@@ -285,30 +281,12 @@ subroutine IO_open_inputFile(fileUnit,modelName)
   
   end function abaqus_assembleInputFile
 #elif defined(Marc4DAMASK)
-  path = trim(modelName)//inputFileExtension
+  path = trim(getSolverJobName())//inputFileExtension
   open(fileUnit,status='old',iostat=myStat,file=path)
   if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
 #endif
 
 end subroutine IO_open_inputFile
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief opens existing FEM log file for reading to given unit. File is named after solver job
-!!        name and located in current working directory
-!--------------------------------------------------------------------------------------------------
-subroutine IO_open_logFile(fileUnit)
-
-  integer,      intent(in) :: fileUnit                                                              !< file unit
-
-  integer                  :: myStat
-  character(len=1024)      :: path
-
-  path = trim(getSolverJobName())//LogFileExtension
-  open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
-  if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
-
-end subroutine IO_open_logFile
 #endif
 
 
@@ -733,11 +711,6 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'Ping-Pong needed when using non-local plasticity'
     case (602)
       msg = 'invalid selection for debug'
-
-!-------------------------------------------------------------------------------------------------
-! DAMASK_marc errors
-    case (700)
-      msg = 'invalid materialpoint result requested'
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the grid solver
