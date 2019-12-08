@@ -1025,7 +1025,7 @@ class Lattice:
     https://doi.org/10.1016/j.actamat.2004.11.021
 
     """
-    models={'KS':self.KS, 'GT':self.GT, "GT'":self.GTprime, 
+    models={'KS':self.KS, 'GT':self.GT, 'GT_prime':self.GTprime, 
             'NW':self.NW, 'Pitsch': self.Pitsch, 'Bain':self.Bain}
     try:
       relationship = models[model]
