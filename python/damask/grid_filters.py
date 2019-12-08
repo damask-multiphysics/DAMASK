@@ -1,9 +1,8 @@
 from scipy import spatial
 import numpy as np
 
-def __ks(size,field,first_order=False):
+def __ks(size,grid,first_order=False):
     """Get wave numbers operator."""
-    grid = np.array(np.shape(field)[:3])
 
     k_sk = np.where(np.arange(grid[0])>grid[0]//2,np.arange(grid[0])-grid[0],np.arange(grid[0]))/size[0]
     if grid[0]%2 == 0 and first_order: k_sk[grid[0]//2] = 0                                         # Nyquist freq=0 for even grid (Johnson, MIT, 2011)
@@ -20,7 +19,7 @@ def __ks(size,field,first_order=False):
 def curl(size,field):
     """Calculate curl of a vector or tensor field in Fourier space."""
     n = np.prod(field.shape[3:])
-    k_s = __ks(size,field,True)
+    k_s = __ks(size,field.shape[:3],True)
 
     e = np.zeros((3, 3, 3))
     e[0, 1, 2] = e[1, 2, 0] = e[2, 0, 1] = +1.0                                                     # Levi-Civita symbol 
@@ -36,7 +35,7 @@ def curl(size,field):
 def divergence(size,field):
     """Calculate divergence of a vector or tensor field in Fourier space."""
     n = np.prod(field.shape[3:])
-    k_s = __ks(size,field,True)
+    k_s = __ks(size,field.shape[:3],True)
 
     field_fourier = np.fft.rfftn(field,axes=(0,1,2))
     divergence = (np.einsum('ijkl,ijkl ->ijk', k_s,field_fourier)*2.0j*np.pi if n == 3 else         # vector, 3   -> 1
@@ -48,7 +47,7 @@ def divergence(size,field):
 def gradient(size,field):
     """Calculate gradient of a vector or scalar field in Fourier space."""
     n = np.prod(field.shape[3:])
-    k_s = __ks(size,field,True)
+    k_s = __ks(size,field.shape[:3],True)
 
     field_fourier = np.fft.rfftn(field,axes=(0,1,2))
     gradient = (np.einsum('ijkl,ijkm->ijkm', field_fourier,k_s)*2.0j*np.pi if n == 1 else           # scalar, 1 -> 3
@@ -72,7 +71,7 @@ def cell_displacement_fluct(size,F):
     """Cell center displacement field from fluctuation part of the deformation gradient field."""
     integrator = 0.5j*size/np.pi
 
-    k_s = __ks(size,F,False)
+    k_s = __ks(size,F.shape[:3],False)
     k_s_squared = np.einsum('...l,...l',k_s,k_s)
     k_s_squared[0,0,0] = 1.0
 
