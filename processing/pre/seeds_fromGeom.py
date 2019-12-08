@@ -58,11 +58,13 @@ for name in filenames:
                             microstructure),
                             axis=1)[mask]
     
-    comments = [scriptID + ' ' + ' '.join(sys.argv[1:]),
+    comments = geom.comments \
+             + [scriptID + ' ' + ' '.join(sys.argv[1:]),
                 "grid\ta {}\tb {}\tc {}".format(*geom.grid),
                 "size\tx {}\ty {}\tz {}".format(*geom.size),
                 "origin\tx {}\ty {}\tz {}".format(*geom.origin),
                 "homogenization\t{}".format(geom.homogenization)]
 
     table = damask.Table(seeds,{'pos':(3,),'microstructure':(1,)},comments)
-    table.to_ASCII(sys.stdout if name is None else os.path.splitext(name)[0]+'.seeds')
+    table.to_ASCII(sys.stdout if name is None else \
+                   os.path.splitext(name)[0]+'.seeds')
