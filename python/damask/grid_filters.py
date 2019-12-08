@@ -102,7 +102,7 @@ def cell_coord0_2_DNA(coord0,ordered=False):
         raise ValueError('Data count {} does not match grid {}.'.format(len(coord0),grid))
 
     start = origin + delta*.5
-    end   = origin + size -delta*.5
+    end   = origin - delta*.5 + size
 
     if not np.allclose(coords[0],np.linspace(start[0],end[0],grid[0])) and \
            np.allclose(coords[1],np.linspace(start[1],end[1],grid[1])) and \
