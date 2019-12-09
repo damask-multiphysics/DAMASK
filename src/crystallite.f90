@@ -742,23 +742,9 @@ function crystallite_postResults(ipc, ip, el)
     ip, &                         !< integration point index
     ipc                           !< grain index
 
-  real(pReal), dimension(1+ &
-                         1+sum(sourceState(material_phaseAt(ipc,el))%p(:)%sizePostResults)) :: &
-    crystallite_postResults
-  integer :: &
-    c
-
+  real(pReal), dimension(2) :: crystallite_postResults
 
   crystallite_postResults = 0.0_pReal
-  crystallite_postResults(1) = 0.0_pReal                      ! header-like information (length)
-  c = 1
-
-  crystallite_postResults(c+1) = real(sum(sourceState(material_phaseAt(ipc,el))%p(:)%sizePostResults),pReal)  ! size of constitutive results
-  c = c + 1
-  if (size(crystallite_postResults)-c > 0) &
-    crystallite_postResults(c+1:size(crystallite_postResults)) = &
-       constitutive_postResults(crystallite_S(1:3,1:3,ipc,ip,el), crystallite_Fi(1:3,1:3,ipc,ip,el), &
-                                ipc, ip, el)
 
 end function crystallite_postResults
 
