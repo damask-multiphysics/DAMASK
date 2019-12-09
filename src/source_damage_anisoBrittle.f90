@@ -21,10 +21,10 @@ module source_damage_anisoBrittle
     source_damage_anisoBrittle_offset, &                                                            !< which source is my current source mechanism?
     source_damage_anisoBrittle_instance                                                             !< instance of source mechanism
 
-  integer,                       dimension(:,:),         allocatable, target, public  :: &
+  integer,                       dimension(:,:),         allocatable :: &
     source_damage_anisoBrittle_sizePostResult                                                       !< size of each post result output
 
-  character(len=64),             dimension(:,:),         allocatable, target, public  :: &
+  character(len=64),             dimension(:,:),         allocatable :: &
     source_damage_anisoBrittle_output                                                               !< name of each post result output
     
   integer,                       dimension(:,:),         allocatable :: &

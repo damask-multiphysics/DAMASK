@@ -18,9 +18,9 @@ module source_damage_isoBrittle
   integer,                       dimension(:),           allocatable,         public, protected :: &
     source_damage_isoBrittle_offset, &
     source_damage_isoBrittle_instance
-  integer,                       dimension(:,:),         allocatable, target, public :: &
+  integer,                       dimension(:,:),         allocatable :: &
     source_damage_isoBrittle_sizePostResult
-  character(len=64),             dimension(:,:),         allocatable, target, public :: &
+  character(len=64),             dimension(:,:),         allocatable :: &
     source_damage_isoBrittle_output
 
   enum, bind(c) 
