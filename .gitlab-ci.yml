@@ -506,18 +506,6 @@ GridSolver:
     - master
     - release
 
-Processing:
-  stage: createDocumentation
-  script:
-    - cd $DAMASKROOT/processing/pre
-    - $DAMASKROOT/PRIVATE/documenting/scriptHelpToWiki.py --debug *.py
-    - cd $DAMASKROOT/processing/post
-    - rm vtk2ang.py DAD*.py
-    - $DAMASKROOT/PRIVATE/documenting/scriptHelpToWiki.py --debug *.py
-  except:
-    - master
-    - release
-
 ##################################################################################################
 backupData:
   stage: saveDocumentation
@@ -528,7 +516,6 @@ backupData:
     - mv $TESTROOT/performance/time.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
     - mv $TESTROOT/performance/memory.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
     - mv $DAMASKROOT/PRIVATE/documenting/DAMASK_* $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
-    - mv $DAMASKROOT/processing $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
   only:
     - development
 
