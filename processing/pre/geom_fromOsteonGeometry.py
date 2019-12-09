@@ -126,15 +126,12 @@ for i in range(3,np.max(microstructure)):
 
 config_header = ['<microstructure>',
                  '[canal]',
-                 'crystallite 1',
                  '(constituent)\tphase 1\ttexture 1\tfraction 1.0',
                  '[interstitial]',
-                 'crystallite 1',
                  '(constituent)\tphase 2\ttexture 2\tfraction 1.0'
                 ]
 for i in range(3,np.max(microstructure)):
   config_header += ['[Point{}]'.format(i-2),
-                    'crystallite 1',
                     '(constituent)\tphase 3\ttexture {}\tfraction 1.0'.format(i)
                    ]
 

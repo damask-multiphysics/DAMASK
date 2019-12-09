@@ -941,19 +941,15 @@ if any(output in options.output for output in ['spectral','mentat']):
   
   for i,grain in enumerate(rcData['grainMapping']):
     config+=['[grain{}]'.format(grain),
-             'crystallite\t1',
              '(constituent)\tphase 1\ttexture {}\tfraction 1.0'.format(i+1)]
   if (options.xmargin > 0.0):
     config+=['[x-margin]',
-             'crystallite\t1',
              '(constituent)\tphase 2\ttexture {}\tfraction 1.0\n'.format(len(rcData['grainMapping'])+1)]
   if (options.ymargin > 0.0):
     config+=['[y-margin]',
-             'crystallite\t1',
              '(constituent)\tphase 2\ttexture {}\tfraction 1.0\n'.format(len(rcData['grainMapping'])+1)]
   if (options.xmargin > 0.0 and options.ymargin > 0.0):
     config+=['[xy-margin]',
-             'crystallite\t1',
              '(constituent)\tphase 2\ttexture {}\tfraction 1.0\n'.format(len(rcData['grainMapping'])+1)]
   
   if (options.xmargin > 0.0 or options.ymargin > 0.0):

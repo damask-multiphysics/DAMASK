@@ -211,10 +211,6 @@ parser.add_option('-p','--phase',
                   dest = 'phase',
                   type = 'int', metavar = 'int',
                   help = 'phase index to be used [%default]')
-parser.add_option('--crystallite',
-                  dest = 'crystallite',
-                  type = 'int', metavar = 'int',
-                  help = 'crystallite index to be used [%default]')
 parser.add_option('-r', '--rnd',
                   dest = 'randomSeed',
                   type = 'int', metavar = 'int', \
@@ -223,7 +219,6 @@ parser.set_defaults(randomSeed = None,
                     number      = 500,
                     algorithm   = 'IA',
                     phase       = 1,
-                    crystallite = 1,
                     ang  = True,
                    )
 
@@ -351,7 +346,6 @@ for name in filenames:
   
   for i,ID in enumerate(range(nSamples)):
     materialConfig += ['[Grain%s]'%(str(ID+1).zfill(formatwidth)),
-                      'crystallite %i'%options.crystallite,
                       '(constituent)   phase %i   texture %s   fraction 1.0'%(options.phase,str(ID+1).rjust(formatwidth)),
                      ]
   

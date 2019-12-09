@@ -145,7 +145,6 @@ for name in filenames:
   config_header += ['<microstructure>']
   for i in range(np.nanmax(microstructure)):
     config_header += ['[{}{}]'.format(label,i+1),
-                      'crystallite 1',
                       '(constituent)\tphase {}\ttexture {}\tfraction 1.0'.format(phase[i],i+1),
                       ]
 
