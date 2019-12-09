@@ -37,7 +37,6 @@ module constitutive
   
   integer, public, protected :: &
     constitutive_plasticity_maxSizeDotState, &
-    constitutive_source_maxSizePostResults, &
     constitutive_source_maxSizeDotState
  
   public :: &
@@ -60,17 +59,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_init
 
-  integer, parameter :: FILEUNIT = 204
   integer :: &
-    o, &                                                                                            !< counter in output loop
     ph, &                                                                                           !< counter in phase loop
-    s, &                                                                                            !< counter in source loop
-    ins                                                                                             !< instance of plasticity/source
- 
-  integer, dimension(:,:), pointer :: thisSize
-  character(len=64), dimension(:,:), pointer :: thisOutput
-  character(len=32) :: outputName                                                                   !< name of output, intermediate fix until HDF5 output is ready
-  logical :: knownSource
+    s                                                                                               !< counter in source loop
 
 !--------------------------------------------------------------------------------------------------
 ! initialized plasticity
@@ -105,16 +96,15 @@ subroutine constitutive_init
   mainProcess: if (worldrank == 0) then
 !--------------------------------------------------------------------------------------------------
 ! write description file for constitutive output
-    call IO_write_jobFile(FILEUNIT,'outputConstitutive')
+    call IO_write_jobFile(204,'outputConstitutive')
     PhaseLoop: do ph = 1,material_Nphase
-      if (any(material_phaseAt == ph)) write(FILEUNIT,'(/,a,/)') '['//trim(config_name_phase(ph))//']'
+      if (any(material_phaseAt == ph)) write(204,'(/,a,/)') '['//trim(config_name_phase(ph))//']'
     enddo PhaseLoop
-    close(FILEUNIT)
+    close(204)
   endif mainProcess
  
   constitutive_plasticity_maxSizeDotState = 0
   constitutive_source_maxSizeDotState = 0
-  constitutive_source_maxSizePostResults = 0
  
   PhaseLoop2:do ph = 1,material_Nphase
 !--------------------------------------------------------------------------------------------------
