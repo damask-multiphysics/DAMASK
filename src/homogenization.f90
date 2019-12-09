@@ -583,7 +583,7 @@ end subroutine materialpoint_stressAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief parallelized calculation of result array at material points
+!> @brief calculation of result array at material points
 !--------------------------------------------------------------------------------------------------
 subroutine materialpoint_postResults
 
@@ -595,7 +595,6 @@ subroutine materialpoint_postResults
     i, &                                                                                            !< integration point number
     e                                                                                               !< element number
 
-  !$OMP PARALLEL DO PRIVATE(myNgrains,thePos,theSize)
   elementLooping: do e = FEsolving_execElem(1),FEsolving_execElem(2)
     myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
     IpLooping: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
@@ -615,15 +614,12 @@ subroutine materialpoint_postResults
       thePos = thePos + 1
 
       grainLooping :do g = 1,myNgrains
-        theSize = 1 + &
-                  1 + &
-                  sum(sourceState(material_phaseAt(g,e))%p(:)%sizePostResults)
-        materialpoint_results(thePos+1:thePos+theSize,i,e) = crystallite_postResults(g,i,e)        ! tell crystallite results
+        theSize = 2
+        materialpoint_results(thePos+1:thePos+theSize,i,e) = 0.0_pReal
         thePos = thePos + theSize
       enddo grainLooping
     enddo IpLooping
   enddo elementLooping
- !$OMP END PARALLEL DO
 
 end subroutine materialpoint_postResults
 

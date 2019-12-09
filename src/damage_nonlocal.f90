@@ -55,7 +55,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine damage_nonlocal_init
 
-  integer :: maxNinstance,homog,instance,o,i
+  integer :: maxNinstance,homog,instance,i
   integer :: sizeState
   integer :: NofMyHomog, h
   integer(kind(undefined_ID)) :: &

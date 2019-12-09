@@ -108,7 +108,6 @@ module crystallite
     crystallite_stressTangent, &
     crystallite_orientations, &
     crystallite_push33ToRef, &
-    crystallite_postResults, &
     crystallite_results
 
 contains
@@ -730,23 +729,6 @@ function crystallite_push33ToRef(ipc,ip,el, tensor33)
   crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))
 
 end function crystallite_push33ToRef
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return results of particular grain
-!--------------------------------------------------------------------------------------------------
-function crystallite_postResults(ipc, ip, el)
-
-  integer, intent(in):: &
-    el, &                         !< element index
-    ip, &                         !< integration point index
-    ipc                           !< grain index
-
-  real(pReal), dimension(2) :: crystallite_postResults
-
-  crystallite_postResults = 0.0_pReal
-
-end function crystallite_postResults
 
 
 !--------------------------------------------------------------------------------------------------
