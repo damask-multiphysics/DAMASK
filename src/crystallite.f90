@@ -118,7 +118,6 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_init
  
-  integer, parameter :: FILEUNIT=434
   logical, dimension(:,:), allocatable :: devNull
   integer :: &
     c, &                                                                                            !< counter in integration point component loop
@@ -232,13 +231,6 @@ subroutine crystallite_init
 #endif
   enddo
 
-!--------------------------------------------------------------------------------------------------
-! write description file for crystallite output
-  if (worldrank == 0) then
-    call IO_write_jobFile(FILEUNIT,'outputCrystallite')
-    write(FILEUNIT,'(/,a,/)') '[not supported anymore]'
-    close(FILEUNIT)
-  endif
   call config_deallocate('material.config/phase')
 
 !--------------------------------------------------------------------------------------------------

@@ -15,11 +15,7 @@ program DAMASK_spectral
  use config
  use debug
  use math
- use mesh_grid
  use CPFEM2
- use FEsolving
- use numerics
- use homogenization
  use material
  use spectral_utilities
  use grid_mech_spectral_basic
@@ -80,12 +76,6 @@ program DAMASK_spectral
  type(tLoadCase), allocatable, dimension(:) :: loadCases                                            !< array of all load cases
  type(tLoadCase) :: newLoadCase
  type(tSolutionState), allocatable, dimension(:) :: solres
- integer(MPI_OFFSET_KIND) :: fileOffset
- integer(MPI_OFFSET_KIND), dimension(:), allocatable :: outputSize
- integer, parameter :: maxByteOut = 2147483647-4096                                                 !< limit of one file output write https://trac.mpich.org/projects/mpich/ticket/1742
- integer, parameter :: maxRealOut = maxByteOut/pReal
- integer(pLongInt), dimension(2) :: outputIndex
- PetscErrorCode :: ierr
  procedure(grid_mech_spectral_basic_init), pointer :: &
    mech_init
  procedure(grid_mech_spectral_basic_forward), pointer :: &
@@ -280,10 +270,8 @@ program DAMASK_spectral
      enddo
      if (any(newLoadCase%stress%maskLogical .eqv. &
              newLoadCase%deformation%maskLogical)) errorID = 831                                    ! exclusive or masking only
-     if (any(newLoadCase%stress%maskLogical .and. &
-             transpose(newLoadCase%stress%maskLogical) .and. &
-             reshape([ .false.,.true.,.true.,.true.,.false.,.true.,.true.,.true.,.false.],[ 3,3]))) &
-             errorID = 838                                                                          ! no rotation is allowed by stress BC
+     if (any(newLoadCase%stress%maskLogical .and. transpose(newLoadCase%stress%maskLogical) &
+         .and. (math_I3<1))) errorID = 838                                                          ! no rotation is allowed by stress BC
      write(6,'(2x,a)') 'stress / GPa:'
      do i = 1, 3; do j = 1, 3
        if(newLoadCase%stress%maskLogical(i,j)) then
@@ -335,26 +323,10 @@ program DAMASK_spectral
 ! write header of output file
  if (worldrank == 0) then
    writeHeader: if (interface_restartInc < 1) then
-     open(newunit=fileUnit,file=trim(getSolverJobName())//&
-                                 '.spectralOut',form='UNFORMATTED',status='REPLACE')
-     write(fileUnit) 'load:',       trim(loadCaseFile)                                              ! ... and write header
-     write(fileUnit) 'workingdir:', 'n/a'
-     write(fileUnit) 'geometry:',   trim(geometryFile)
-     write(fileUnit) 'grid:',       grid
-     write(fileUnit) 'size:',       geomSize
-     write(fileUnit) 'materialpoint_sizeResults:', materialpoint_sizeResults
-     write(fileUnit) 'loadcases:',  size(loadCases)
-     write(fileUnit) 'frequencies:', loadCases%outputfrequency                                      ! one entry per LoadCase
-     write(fileUnit) 'times:',      loadCases%time                                                  ! one entry per LoadCase
-     write(fileUnit) 'logscales:',  loadCases%logscale
-     write(fileUnit) 'increments:', loadCases%incs                                                  ! one entry per LoadCase
-     write(fileUnit) 'startingIncrement:', interface_restartInc                                     ! start with writing out the previous inc
-     write(fileUnit) 'eoh'
-     close(fileUnit)                                                                                ! end of header
      open(newunit=statUnit,file=trim(getSolverJobName())//'.sta',form='FORMATTED',status='REPLACE')
      write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                 ! statistics file
      if (iand(debug_level(debug_spectral),debug_levelBasic) /= 0) &
-       write(6,'(/,a)') ' header of result and statistics file written out'
+       write(6,'(/,a)') ' header of statistics file written out'
      flush(6)
    else writeHeader
      open(newunit=statUnit,file=trim(getSolverJobName())//&
@@ -362,39 +334,10 @@ program DAMASK_spectral
    endif writeHeader
  endif
 
-!--------------------------------------------------------------------------------------------------
-! prepare MPI parallel out (including opening of file)
- allocate(outputSize(worldsize), source = 0_MPI_OFFSET_KIND)
- outputSize(worldrank+1) = size(materialpoint_results,kind=MPI_OFFSET_KIND)*int(pReal,MPI_OFFSET_KIND)
- call MPI_allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_LONG,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
- if (ierr /= 0) call IO_error(error_ID=894, ext_msg='MPI_allreduce')
- call MPI_file_open(PETSC_COMM_WORLD, trim(getSolverJobName())//'.spectralOut', &
-                    MPI_MODE_WRONLY + MPI_MODE_APPEND, &
-                    MPI_INFO_NULL, &
-                    fileUnit, &
-                    ierr)
- if (ierr /= 0) call IO_error(error_ID=894, ext_msg='MPI_file_open')
- call MPI_file_get_position(fileUnit,fileOffset,ierr)                                               ! get offset from header
- if (ierr /= 0) call IO_error(error_ID=894, ext_msg='MPI_file_get_position')
- fileOffset = fileOffset + sum(outputSize(1:worldrank))                                             ! offset of my process in file (header + processes before me)
- call MPI_file_seek (fileUnit,fileOffset,MPI_SEEK_SET,ierr)
- if (ierr /= 0) call IO_error(error_ID=894, ext_msg='MPI_file_seek')
-
  writeUndeformed: if (interface_restartInc < 1) then
    write(6,'(1/,a)') ' ... writing initial configuration to file ........................'
    call CPFEM_results(0,0.0_pReal)
-   do i = 1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1         ! slice the output of my process in chunks not exceeding the limit for one output
-     outputIndex = int([(i-1)*((maxRealOut)/materialpoint_sizeResults)+1, &
-                             min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
-     call MPI_file_write(fileUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)), &
-                                 [(outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)]), &
-                         int((outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)), &
-                         MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
-     if (ierr /= 0) call IO_error(error_ID=894, ext_msg='MPI_file_write')
-   enddo
-   fileOffset = fileOffset + sum(outputSize)                                                        ! forward to current file position
  endif writeUndeformed
-
 
  loadCaseLooping: do currentLoadCase = 1, size(loadCases)
    time0 = time                                                                                     ! load case start time
@@ -526,7 +469,6 @@ program DAMASK_spectral
            write(6,'(/,a)') ' cutting back '
          else                                                                                       ! no more options to continue
            call IO_warning(850)
-           call MPI_File_close(fileUnit,ierr)
            close(statUnit)
            call quit(0)                                                                             ! quit
          endif
@@ -546,19 +488,6 @@ program DAMASK_spectral
        if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0) then                           ! at output frequency
          write(6,'(1/,a)') ' ... writing results to file ......................................'
          flush(6)
-         call materialpoint_postResults()
-         call MPI_File_seek (fileUnit,fileOffset,MPI_SEEK_SET,ierr)
-         if (ierr /= 0) call IO_error(894, ext_msg='MPI_file_seek')
-         do i=1, size(materialpoint_results,3)/(maxByteOut/(materialpoint_sizeResults*pReal))+1     ! slice the output of my process in chunks not exceeding the limit for one output
-           outputIndex=int([(i-1)*((maxRealOut)/materialpoint_sizeResults)+1, &
-                      min(i*((maxRealOut)/materialpoint_sizeResults),size(materialpoint_results,3))],pLongInt)
-           call MPI_file_write(fileUnit,reshape(materialpoint_results(:,:,outputIndex(1):outputIndex(2)),&
-                                       [(outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)]), &
-                               int((outputIndex(2)-outputIndex(1)+1)*int(materialpoint_sizeResults,pLongInt)),&
-                               MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
-           if(ierr /=0) call IO_error(894, ext_msg='MPI_file_write')
-         enddo
-         fileOffset = fileOffset + sum(outputSize)                                                  ! forward to current file position
          call CPFEM_results(totalIncsCounter,time)
        endif
        if (mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0) then
@@ -575,7 +504,6 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! report summary of whole calculation
  write(6,'(/,a)') ' ###########################################################################'
- call MPI_file_close(fileUnit,ierr)
  close(statUnit)
 
  call quit(0)                                                                                       ! no complains ;)

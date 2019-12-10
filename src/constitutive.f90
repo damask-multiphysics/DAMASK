@@ -93,16 +93,6 @@ subroutine constitutive_init
  
   write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'; flush(6)
  
-  mainProcess: if (worldrank == 0) then
-!--------------------------------------------------------------------------------------------------
-! write description file for constitutive output
-    call IO_write_jobFile(204,'outputConstitutive')
-    PhaseLoop: do ph = 1,material_Nphase
-      if (any(material_phaseAt == ph)) write(204,'(/,a,/)') '['//trim(config_name_phase(ph))//']'
-    enddo PhaseLoop
-    close(204)
-  endif mainProcess
- 
   constitutive_plasticity_maxSizeDotState = 0
   constitutive_source_maxSizeDotState = 0
  
@@ -122,7 +112,6 @@ subroutine constitutive_init
     constitutive_source_maxSizeDotState        = max(constitutive_source_maxSizeDotState, &
                                                      maxval(sourceState(ph)%p(:)%sizeDotState))
   enddo PhaseLoop2
-
 
 end subroutine constitutive_init
 

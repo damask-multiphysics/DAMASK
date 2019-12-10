@@ -16,8 +16,6 @@ module thermal_adiabatic
   implicit none
   private
  
-  integer,                       dimension(:,:),  allocatable, target, public :: &
-    thermal_adiabatic_sizePostResult                                                                !< size of each post result output
   character(len=64),             dimension(:,:),  allocatable, target, public :: &
     thermal_adiabatic_output                                                                        !< name of each post result output
     
@@ -38,8 +36,7 @@ module thermal_adiabatic
     thermal_adiabatic_getSourceAndItsTangent, &
     thermal_adiabatic_getSpecificHeat, &
     thermal_adiabatic_getMassDensity, &
-    thermal_adiabatic_results, &
-    thermal_adiabatic_postResults
+    thermal_adiabatic_results
  
 contains
 
@@ -59,7 +56,6 @@ subroutine thermal_adiabatic_init
   maxNinstance = count(thermal_type == THERMAL_adiabatic_ID)
   if (maxNinstance == 0) return
   
-  allocate(thermal_adiabatic_sizePostResult (maxval(homogenization_Noutput),maxNinstance),source=0)
   allocate(thermal_adiabatic_output         (maxval(homogenization_Noutput),maxNinstance))
            thermal_adiabatic_output = ''
   allocate(thermal_adiabatic_outputID       (maxval(homogenization_Noutput),maxNinstance),source=undefined_ID)
@@ -77,14 +73,12 @@ subroutine thermal_adiabatic_init
               thermal_adiabatic_Noutput(instance) = thermal_adiabatic_Noutput(instance) + 1
               thermal_adiabatic_outputID(thermal_adiabatic_Noutput(instance),instance) = temperature_ID
               thermal_adiabatic_output(thermal_adiabatic_Noutput(instance),instance) = outputs(i)
-              thermal_adiabatic_sizePostResult(thermal_adiabatic_Noutput(instance),instance) = 1
       end select
     enddo
  
  ! allocate state arrays
     sizeState = 1
     thermalState(section)%sizeState = sizeState
-    thermalState(section)%sizePostResults = sum(thermal_adiabatic_sizePostResult(:,instance))
     allocate(thermalState(section)%state0   (sizeState,NofMyHomog), source=thermal_initialT(section))
     allocate(thermalState(section)%subState0(sizeState,NofMyHomog), source=thermal_initialT(section))
     allocate(thermalState(section)%state    (sizeState,NofMyHomog), source=thermal_initialT(section))
@@ -276,34 +270,5 @@ subroutine thermal_adiabatic_results(homog,group)
 #endif
 
 end subroutine thermal_adiabatic_results
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return array of thermal results
-!--------------------------------------------------------------------------------------------------
-function thermal_adiabatic_postResults(homog,instance,of) result(postResults)
- 
-  integer, intent(in) :: &
-    homog, &
-    instance, &
-    of
- 
-  real(pReal), dimension(sum(thermal_adiabatic_sizePostResult(:,instance))) :: &
-    postResults
- 
-  integer :: &
-    o, c
- 
-  c = 0
- 
-  do o = 1,thermal_adiabatic_Noutput(instance)
-     select case(thermal_adiabatic_outputID(o,instance))
-  
-       case (temperature_ID)
-         postResults(c+1) = temperature(homog)%p(of)
-         c = c + 1
-     end select
-  enddo
- 
-end function thermal_adiabatic_postResults
 
 end module thermal_adiabatic
