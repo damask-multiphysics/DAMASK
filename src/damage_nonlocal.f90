@@ -14,6 +14,7 @@ module damage_nonlocal
   use source_damage_isoDuctile
   use source_damage_anisoBrittle
   use source_damage_anisoDuctile
+  use results
 
   implicit none
   private
@@ -45,7 +46,8 @@ module damage_nonlocal
     damage_nonlocal_getDiffusion33, &
     damage_nonlocal_getMobility, &
     damage_nonlocal_putNonLocalDamage, &
-    damage_nonlocal_postResults
+    damage_nonlocal_postResults, &
+    damage_nonlocal_Results
 
 contains
 
@@ -244,6 +246,34 @@ subroutine damage_nonlocal_putNonLocalDamage(phi,ip,el)
   damage(homog)%p(offset) = phi
 
 end subroutine damage_nonlocal_putNonLocalDamage
+
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+module subroutine damage_nonlocal_results(homog,group)
+
+  integer,          intent(in) :: homog
+  character(len=*), intent(in) :: group
+#if defined(PETSc) || defined(DAMASK_HDF5)  
+  integer :: o, instance
+  
+  instance  = damage_typeInstance(homog)
+  associate(prm => param(instance))
+
+  outputsLoop: do o = 1,size(prm%outputID)
+    select case(prm%outputID(o))
+    
+      case (damage_ID)
+        call results_writeDataset(group,damage(homog)%p,'phi',&
+                                  'damage indicator','-')
+    end select
+  enddo outputsLoop
+  end associate
+#endif
+
+end subroutine damage_nonlocal_results
 
 
 !--------------------------------------------------------------------------------------------------

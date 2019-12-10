@@ -11,6 +11,7 @@ module damage_local
   use source_damage_isoDuctile
   use source_damage_anisoBrittle
   use source_damage_anisoDuctile
+  use results
 
   implicit none
   private
@@ -42,7 +43,8 @@ module damage_local
   public :: &
     damage_local_init, &
     damage_local_updateState, &
-    damage_local_postResults
+    damage_local_postResults, &
+    damage_local_Results
 
 contains
 
@@ -208,6 +210,33 @@ subroutine damage_local_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el
   dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
  
 end subroutine damage_local_getSourceAndItsTangent
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+module subroutine damage_local_results(homog,group)
+
+  integer,          intent(in) :: homog
+  character(len=*), intent(in) :: group
+#if defined(PETSc) || defined(DAMASK_HDF5)  
+  integer :: o, instance
+  
+  instance  = damage_typeInstance(homog)
+  associate(prm => param(instance))
+
+  outputsLoop: do o = 1,size(prm%outputID)
+    select case(prm%outputID(o))
+    
+      case (damage_ID)
+        call results_writeDataset(group,damage(homog)%p,'phi',&
+                                  'damage indicator','-')
+    end select
+  enddo outputsLoop
+  end associate
+#endif
+
+end subroutine damage_local_results
 
 
 !--------------------------------------------------------------------------------------------------

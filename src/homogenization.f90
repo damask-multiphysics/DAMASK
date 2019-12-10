@@ -23,7 +23,6 @@ module homogenization
   use damage_local
   use damage_nonlocal
   use results
-  use HDF5_utilities
  
   implicit none
   private
@@ -790,33 +789,44 @@ subroutine homogenization_results
     material_homogenization_type => homogenization_type
     
   integer :: p
-  character(len=256) :: group
+  character(len=pStringLen) :: group_base,group
   
   !real(pReal), dimension(:,:,:), allocatable :: temp
                                              
   do p=1,size(config_name_homogenization)
-    group = trim('current/materialpoint')//'/'//trim(config_name_homogenization(p))
-    call HDF5_closeGroup(results_addGroup(group))
+    group_base = 'current/materialpoint/'//trim(config_name_homogenization(p))
+    call results_closeGroup(results_addGroup(group_base))
     
-    group = trim(group)//'/mech'
-    
-    call HDF5_closeGroup(results_addGroup(group))  
-    select case(material_homogenization_type(p))
-      case(HOMOGENIZATION_rgc_ID)
-        call mech_RGC_results(homogenization_typeInstance(p),group)
-    end select
-    
-    group = trim('current/materialpoint')//'/'//trim(config_name_homogenization(p))//'/generic'
-    call HDF5_closeGroup(results_addGroup(group))
-    
+    group = trim(group_base)//'/generic'
+    call results_closeGroup(results_addGroup(group))
     !temp = reshape(materialpoint_F,[3,3,discretization_nIP*discretization_nElem])
     !call results_writeDataset(group,temp,'F',&
     !                          'deformation gradient','1')  
     !temp = reshape(materialpoint_P,[3,3,discretization_nIP*discretization_nElem])
     !call results_writeDataset(group,temp,'P',&
     !                          '1st Piola-Kirchoff stress','Pa')  
+    
+    group = trim(group_base)//'/mech'
+    call results_closeGroup(results_addGroup(group))
+    select case(material_homogenization_type(p))
+      case(HOMOGENIZATION_rgc_ID)
+        call mech_RGC_results(homogenization_typeInstance(p),group)
+    end select
 
- enddo   
+    group = trim(group_base)//'/damage'
+    call results_closeGroup(results_addGroup(group))
+    select case(damage_type(p))
+      case(DAMAGE_LOCAL_ID)
+        call damage_local_results(p,group)
+      case(DAMAGE_NONLOCAL_ID)
+        call damage_nonlocal_results(p,group)
+    end select
+    
+    group = trim(group_base)//'/thermal'
+    call results_closeGroup(results_addGroup(group))
+    
+ enddo
+
 #endif
 end subroutine homogenization_results
 
