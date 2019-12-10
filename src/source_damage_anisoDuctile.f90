@@ -12,6 +12,7 @@ module source_damage_anisoDuctile
   use discretization
   use material
   use config
+  use results
  
   implicit none
   private
@@ -19,9 +20,6 @@ module source_damage_anisoDuctile
   integer,                       dimension(:),           allocatable,         public, protected :: &
     source_damage_anisoDuctile_offset, &                                                            !< which source is my current damage mechanism?
     source_damage_anisoDuctile_instance                                                             !< instance of damage source mechanism
- 
-  integer,                       dimension(:,:),         allocatable, target, public  :: &
-    source_damage_anisoDuctile_sizePostResult                                                       !< size of each post result output
  
   character(len=64),             dimension(:,:),         allocatable, target, public  :: &
     source_damage_anisoDuctile_output                                                               !< name of each post result output
@@ -54,7 +52,7 @@ module source_damage_anisoDuctile
     source_damage_anisoDuctile_init, &
     source_damage_anisoDuctile_dotState, &
     source_damage_anisoDuctile_getRateAndItsTangent, &
-    source_damage_anisoDuctile_postResults
+    source_damage_anisoDuctile_results
 
 contains
 
@@ -96,7 +94,6 @@ subroutine source_damage_anisoDuctile_init
     enddo    
   enddo
     
-  allocate(source_damage_anisoDuctile_sizePostResult(maxval(phase_Noutput),Ninstance),source=0)
   allocate(source_damage_anisoDuctile_output(maxval(phase_Noutput),Ninstance))
            source_damage_anisoDuctile_output = ''
  
@@ -139,7 +136,6 @@ subroutine source_damage_anisoDuctile_init
       select case(outputs(i))
       
         case ('anisoductile_drivingforce')
-          source_damage_anisoDuctile_sizePostResult(i,source_damage_anisoDuctile_instance(p)) = 1
           source_damage_anisoDuctile_output(i,source_damage_anisoDuctile_instance(p)) = outputs(i)
           prm%outputID = [prm%outputID, damage_drivingforce_ID]
  
@@ -156,8 +152,7 @@ subroutine source_damage_anisoDuctile_init
     sourceOffset = source_damage_anisoDuctile_offset(phase)
  
     call material_allocateSourceState(phase,sourceOffset,NofMyPhase,1,1,0)
-    sourceState(phase)%p(sourceOffset)%sizePostResults = sum(source_damage_anisoDuctile_sizePostResult(:,instance))
-    sourceState(phase)%p(sourceOffset)%aTolState=param(instance)%aTol
+      sourceState(phase)%p(sourceOffset)%aTolState=param(instance)%aTol
     
   enddo
   
@@ -226,35 +221,28 @@ end subroutine source_damage_anisoDuctile_getRateAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return array of local damage results
+!> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-function source_damage_anisoDuctile_postResults(phase, constituent)
+subroutine source_damage_anisoDuctile_results(phase,group)
 
-  integer, intent(in) :: &
-    phase, &
-    constituent
-  real(pReal), dimension(sum(source_damage_anisoDuctile_sizePostResult(:, &
-                           source_damage_anisoDuctile_instance(phase)))) :: &
-    source_damage_anisoDuctile_postResults
- 
-  integer :: &
-    instance, sourceOffset, o, c
-    
-  instance = source_damage_anisoDuctile_instance(phase)
+  integer, intent(in) :: phase
+  character(len=*), intent(in) :: group
+#if defined(PETSc) || defined(DAMASK_HDF5)  
+  integer :: sourceOffset, o, instance
+   
+  instance     = source_damage_anisoDuctile_instance(phase)
   sourceOffset = source_damage_anisoDuctile_offset(phase)
- 
-  c = 0
- 
-  do o = 1,size(param(instance)%outputID)
-     select case(param(instance)%outputID(o))
-       case (damage_drivingforce_ID)
-         source_damage_anisoDuctile_postResults(c+1) = &
-           sourceState(phase)%p(sourceOffset)%state(1,constituent)
-         c = c + 1
- 
-     end select
-  enddo
 
-end function source_damage_anisoDuctile_postResults
+   associate(prm => param(instance), stt => sourceState(phase)%p(sourceOffset)%state)
+   outputsLoop: do o = 1,size(prm%outputID)
+     select case(prm%outputID(o))
+       case (damage_drivingforce_ID)
+         call results_writeDataset(group,stt,'tbd','driving force','tbd')
+     end select
+   enddo outputsLoop
+   end associate
+#endif
+
+end subroutine source_damage_anisoDuctile_results
 
 end module source_damage_anisoDuctile
