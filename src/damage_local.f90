@@ -215,7 +215,7 @@ end subroutine damage_local_getSourceAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-module subroutine damage_local_results(homog,group)
+subroutine damage_local_results(homog,group)
 
   integer,          intent(in) :: homog
   character(len=*), intent(in) :: group
