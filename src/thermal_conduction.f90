@@ -7,6 +7,7 @@ module thermal_conduction
   use material
   use config
   use lattice
+  use results
   use crystallite
   use source_thermal_dissipation
   use source_thermal_externalheat
@@ -37,6 +38,7 @@ module thermal_conduction
     thermal_conduction_getSpecificHeat, &
     thermal_conduction_getMassDensity, &
     thermal_conduction_putTemperatureAndItsRate, &
+    thermal_conduction_results, &
     thermal_conduction_postResults
 
 contains
@@ -263,6 +265,31 @@ subroutine thermal_conduction_putTemperatureAndItsRate(T,Tdot,ip,el)
 
 end subroutine thermal_conduction_putTemperatureAndItsRate
  
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine thermal_conduction_results(homog,group)
+
+  integer,          intent(in) :: homog
+  character(len=*), intent(in) :: group
+#if defined(PETSc) || defined(DAMASK_HDF5)  
+  integer :: o, instance
+  
+  instance  = thermal_typeInstance(homog)
+
+  outputsLoop: do o = 1,thermal_conduction_Noutput(instance)
+     select case(thermal_conduction_outputID(o,instance))
+    
+      case (temperature_ID)
+        call results_writeDataset(group,temperature(homog)%p,'T',&
+                                  'temperature','K')
+    end select
+  enddo outputsLoop
+#endif
+
+end subroutine thermal_conduction_results
+
  
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of thermal results

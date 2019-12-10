@@ -7,6 +7,7 @@ module thermal_adiabatic
   use config
   use numerics
   use material
+  use results
   use source_thermal_dissipation
   use source_thermal_externalheat
   use crystallite
@@ -37,6 +38,7 @@ module thermal_adiabatic
     thermal_adiabatic_getSourceAndItsTangent, &
     thermal_adiabatic_getSpecificHeat, &
     thermal_adiabatic_getMassDensity, &
+    thermal_adiabatic_results, &
     thermal_adiabatic_postResults
  
 contains
@@ -250,6 +252,30 @@ function thermal_adiabatic_getMassDensity(ip,el)
  
 end function thermal_adiabatic_getMassDensity
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine thermal_adiabatic_results(homog,group)
+
+  integer,          intent(in) :: homog
+  character(len=*), intent(in) :: group
+#if defined(PETSc) || defined(DAMASK_HDF5)  
+  integer :: o, instance
+  
+  instance  = thermal_typeInstance(homog)
+
+  outputsLoop: do o = 1,thermal_adiabatic_Noutput(instance)
+     select case(thermal_adiabatic_outputID(o,instance))
+    
+      case (temperature_ID)
+        call results_writeDataset(group,temperature(homog)%p,'T',&
+                                  'temperature','K')
+    end select
+  enddo outputsLoop
+#endif
+
+end subroutine thermal_adiabatic_results
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of thermal results

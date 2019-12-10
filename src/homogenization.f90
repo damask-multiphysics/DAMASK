@@ -779,6 +779,13 @@ subroutine homogenization_results
     
     group = trim(group_base)//'/thermal'
     call results_closeGroup(results_addGroup(group))
+    select case(thermal_type(p))
+      case(THERMAL_ADIABATIC_ID)
+        call thermal_adiabatic_results(p,group)
+      case(THERMAL_CONDUCTION_ID)
+        call thermal_conduction_results(p,group)
+    end select
+    
     
  enddo
 
