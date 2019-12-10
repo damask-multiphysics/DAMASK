@@ -78,13 +78,11 @@ def rcbOrientationParser(content,idcolumn):
         damask.util.croak('You might not have chosen the correct column for the grain IDs! '+
                           'Please check the "--id" option.')
         raise
-      except:
-        raise
 
   return grains
 
 def rcbParser(content,M,size,tolerance,idcolumn,segmentcolumn):
-  """Parser for TSL-OIM reconstructed boundary files"""
+  """Parser for TSL-OIM reconstructed boundary files."""
 # find bounding box
   boxX = [1.*sys.maxint,-1.*sys.maxint]
   boxY = [1.*sys.maxint,-1.*sys.maxint]
@@ -98,8 +96,6 @@ def rcbParser(content,M,size,tolerance,idcolumn,segmentcolumn):
     except IndexError:
       damask.util.croak('You might not have chosen the correct column for the segment end points! '+
                         'Please check the "--segment" option.')
-      raise
-    except:
       raise
     (x[0],y[0]) = (M[0]*x[0]+M[1]*y[0],M[2]*x[0]+M[3]*y[0])   # apply transformation to coordinates
     (x[1],y[1]) = (M[0]*x[1]+M[1]*y[1],M[2]*x[1]+M[3]*y[1])   # to get rcb --> Euler system
@@ -728,7 +724,7 @@ def image(name,imgsize,marginX,marginY,rcData):
 
 # -------------------------
 def inside(x,y,points):
-  """Tests whether point(x,y) is within polygon described by points"""
+  """Tests whether point(x,y) is within polygon described by points."""
   inside = False
   npoints=len(points)
   (x1,y1) = points[npoints-1]                                                # start with last point of points
@@ -750,7 +746,7 @@ def inside(x,y,points):
   
 # -------------------------
 def fftbuild(rcData,height,xframe,yframe,grid,extrusion):
-  """Build array of grain numbers"""
+  """Build array of grain numbers."""
   maxX = -1.*sys.maxint
   maxY = -1.*sys.maxint
   for line in rcData['point']:                                               # find data range
@@ -883,7 +879,7 @@ try:
   boundaryFile = open(args[0])
   boundarySegments = boundaryFile.readlines()
   boundaryFile.close()
-except:
+except IOError:
   damask.util.croak('unable to read boundary file "{}".'.format(args[0]))
   raise
 

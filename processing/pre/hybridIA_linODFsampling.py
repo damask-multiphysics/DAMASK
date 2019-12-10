@@ -19,7 +19,7 @@ def integerFactorization(i):
   return j
 
 def binAsBins(bin,intervals):
-  """Explode compound bin into 3D bins list"""
+  """Explode compound bin into 3D bins list."""
   bins = [0]*3
   bins[0] = (bin//(intervals[1] * intervals[2])) % intervals[0]
   bins[1] = (bin//intervals[2]) % intervals[1]
@@ -27,17 +27,17 @@ def binAsBins(bin,intervals):
   return bins
   
 def binsAsBin(bins,intervals):
-  """Implode 3D bins into compound bin"""
+  """Implode 3D bins into compound bin."""
   return (bins[0]*intervals[1] + bins[1])*intervals[2] + bins[2]
 
 def EulersAsBins(Eulers,intervals,deltas,center):
-  """Return list of Eulers translated into 3D bins list"""
+  """Return list of Eulers translated into 3D bins list."""
   return [int((euler+(0.5-center)*delta)//delta)%interval \
                   for euler,delta,interval in zip(Eulers,deltas,intervals) \
          ]
 
 def binAsEulers(bin,intervals,deltas,center):
-  """Compound bin number translated into list of Eulers"""
+  """Compound bin number translated into list of Eulers."""
   Eulers = [0.0]*3
   Eulers[2] = (bin%intervals[2] + center)*deltas[2]
   Eulers[1] = (bin//intervals[2]%intervals[1] + center)*deltas[1]
@@ -45,7 +45,7 @@ def binAsEulers(bin,intervals,deltas,center):
   return Eulers
 
 def directInvRepetitions(probability,scale):
-  """Calculate number of samples drawn by direct inversion"""
+  """Calculate number of samples drawn by direct inversion."""
   nDirectInv = 0
   for bin in range(len(probability)):                                                               # loop over bins
     nDirectInv += int(round(probability[bin]*scale))                                                # calc repetition
@@ -56,7 +56,7 @@ def directInvRepetitions(probability,scale):
 
 # ----- efficient algorithm ---------
 def directInversion (ODF,nSamples):
-  """ODF contains 'dV_V' (normalized to 1), 'center', 'intervals', 'limits' (in radians)"""
+  """ODF contains 'dV_V' (normalized to 1), 'center', 'intervals', 'limits' (in radians)."""
   nOptSamples = max(ODF['nNonZero'],nSamples)                                                       # random subsampling if too little samples requested
 
   nInvSamples = 0
@@ -118,7 +118,7 @@ def directInversion (ODF,nSamples):
 # ----- trial and error algorithms ---------
 
 def MonteCarloEulers (ODF,nSamples):
-  """ODF contains 'dV_V' (normalized to 1), 'center', 'intervals', 'limits' (in radians)"""
+  """ODF contains 'dV_V' (normalized to 1), 'center', 'intervals', 'limits' (in radians)."""
   countMC = 0
   maxdV_V = max(ODF['dV_V'])
   orientations     = np.zeros((nSamples,3),'f')
@@ -141,7 +141,7 @@ def MonteCarloEulers (ODF,nSamples):
 
 
 def MonteCarloBins (ODF,nSamples):
-  """ODF contains 'dV_V' (normalized to 1), 'center', 'intervals', 'limits' (in radians)"""
+  """ODF contains 'dV_V' (normalized to 1), 'center', 'intervals', 'limits' (in radians)."""
   countMC = 0
   maxdV_V = max(ODF['dV_V'])
   orientations     = np.zeros((nSamples,3),'f')
@@ -163,7 +163,7 @@ def MonteCarloBins (ODF,nSamples):
 
 
 def TothVanHoutteSTAT (ODF,nSamples):
-  """ODF contains 'dV_V' (normalized to 1), 'center', 'intervals', 'limits' (in radians)"""
+  """ODF contains 'dV_V' (normalized to 1), 'center', 'intervals', 'limits' (in radians)."""
   orientations     = np.zeros((nSamples,3),'f')
   reconstructedODF = np.zeros(ODF['nBins'],'f')
   unitInc = 1.0/nSamples
@@ -235,7 +235,7 @@ if filenames == []: filenames = [None]
 for name in filenames:
   try:
     table = damask.ASCIItable(name = name, buffered = False, readonly=True)
-  except:
+  except IOError:
     continue
   damask.util.report(scriptName,name)
 
