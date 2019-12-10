@@ -16,8 +16,6 @@ module damage_local
   implicit none
   private
   
-  integer,                       dimension(:,:),         allocatable, target, public :: &
-    damage_local_sizePostResult
   character(len=64),             dimension(:,:),         allocatable, target, public :: &
     damage_local_output
   integer,                       dimension(:),           allocatable, target, public :: &
@@ -43,7 +41,6 @@ module damage_local
   public :: &
     damage_local_init, &
     damage_local_updateState, &
-    damage_local_postResults, &
     damage_local_Results
 
 contains
@@ -68,7 +65,6 @@ subroutine damage_local_init
   maxNinstance = count(damage_type == DAMAGE_local_ID)
   if (maxNinstance == 0) return
   
-  allocate(damage_local_sizePostResult (maxval(homogenization_Noutput),maxNinstance),source=0)
   allocate(damage_local_output         (maxval(homogenization_Noutput),maxNinstance))
            damage_local_output = ''
   allocate(damage_local_outputID       (maxval(homogenization_Noutput),maxNinstance),source=undefined_ID)
@@ -92,7 +88,6 @@ subroutine damage_local_init
             case ('damage')
             damage_local_output(i,damage_typeInstance(h)) = outputs(i)
               damage_local_Noutput(instance) = damage_local_Noutput(instance) + 1
-             damage_local_sizePostResult(i,damage_typeInstance(h)) = 1
         prm%outputID = [prm%outputID , damage_ID]
            end select
       
@@ -108,7 +103,6 @@ subroutine damage_local_init
 ! allocate state arrays
       sizeState = 1
       damageState(homog)%sizeState = sizeState
-      damageState(homog)%sizePostResults = sum(damage_local_sizePostResult(:,instance))
       allocate(damageState(homog)%state0   (sizeState,NofMyHomog), source=damage_initialPhi(homog))
       allocate(damageState(homog)%subState0(sizeState,NofMyHomog), source=damage_initialPhi(homog))
       allocate(damageState(homog)%state    (sizeState,NofMyHomog), source=damage_initialPhi(homog))
@@ -238,37 +232,5 @@ subroutine damage_local_results(homog,group)
 
 end subroutine damage_local_results
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return array of damage results
-!--------------------------------------------------------------------------------------------------
-function damage_local_postResults(ip,el)
-
-  integer, intent(in) :: &
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
-  real(pReal), dimension(sum(damage_local_sizePostResult(:,damage_typeInstance(material_homogenizationAt(el))))) :: &
-    damage_local_postResults
-
-  integer :: instance, homog, offset, o, c
-    
-  homog     = material_homogenizationAt(el)
-  offset    = damageMapping(homog)%p(ip,el)
-  instance  = damage_typeInstance(homog)
-  associate(prm => param(instance))
-  c = 0
-
-  outputsLoop: do o = 1,size(prm%outputID)
-    select case(prm%outputID(o))
-  
-       case (damage_ID)
-         damage_local_postResults(c+1) = damage(homog)%p(offset)
-         c = c + 1
-     end select
-  enddo outputsLoop
-  
-  end associate
-
-end function damage_local_postResults
 
 end module damage_local

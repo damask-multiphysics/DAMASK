@@ -39,8 +39,7 @@ module homogenization
     materialpoint_results                                                                           !< results array of material point
   integer,                                            public, protected  :: &
     materialpoint_sizeResults, &
-    thermal_maxSizePostResults, &
-    damage_maxSizePostResults
+    thermal_maxSizePostResults
 
   real(pReal),   dimension(:,:,:,:),     allocatable :: &
     materialpoint_subF0, &                                                                          !< def grad of IP at beginning of homogenization increment
@@ -196,35 +195,6 @@ subroutine homogenization_init
           endif
         endif
         
-        i = damage_typeInstance(p)                                                                  ! which instance of this damage type
-        valid = .true.                                                                              ! assume valid
-        select case(damage_type(p))                                                                 ! split per damage type
-          case (DAMAGE_none_ID)
-            outputName = DAMAGE_none_label
-            thisNoutput => null()
-            thisOutput => null()
-            thisSize   => null()
-          case (DAMAGE_local_ID)
-            outputName = DAMAGE_local_label
-            thisNoutput => damage_local_Noutput
-            thisOutput => damage_local_output
-            thisSize   => damage_local_sizePostResult
-          case (DAMAGE_nonlocal_ID)
-            outputName = DAMAGE_nonlocal_label
-            thisNoutput => damage_nonlocal_Noutput
-            thisOutput => damage_nonlocal_output
-            thisSize   => damage_nonlocal_sizePostResult
-          case default
-            valid = .false.
-        end select
-        if (valid) then
-          write(FILEUNIT,'(a)') '(damage)'//char(9)//trim(outputName)
-          if (damage_type(p) /= DAMAGE_none_ID) then
-            do e = 1,thisNoutput(i)
-              write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
-            enddo
-          endif
-        endif
       endif
     enddo
     close(FILEUNIT)
@@ -252,15 +222,12 @@ subroutine homogenization_init
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global state and postresutls variables
   thermal_maxSizePostResults        = 0
-  damage_maxSizePostResults         = 0
   do p = 1,size(config_homogenization)
     thermal_maxSizePostResults      = max(thermal_maxSizePostResults, thermalState(p)%sizePostResults)
-    damage_maxSizePostResults       = max(damage_maxSizePostResults,  damageState (p)%sizePostResults)
   enddo
 
   materialpoint_sizeResults = 1 &                                                                   ! grain count
                             + 1 + thermal_maxSizePostResults        &
-                                + damage_maxSizePostResults         &
                             + homogenization_maxNgrains * 2 ! obsolete header information
   allocate(materialpoint_results(materialpoint_sizeResults,discretization_nIP,discretization_nElem))
 
@@ -742,8 +709,7 @@ function postResults(ip,el)
  integer, intent(in) :: &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element number
- real(pReal), dimension(  thermalState     (material_homogenizationAt(el))%sizePostResults &
-                        + damageState      (material_homogenizationAt(el))%sizePostResults) :: &
+ real(pReal), dimension(  thermalState     (material_homogenizationAt(el))%sizePostResults) :: &
    postResults
  integer :: &
    startPos, endPos ,&
@@ -765,17 +731,6 @@ function postResults(ip,el)
        thermal_conduction_postResults(homog,thermal_typeInstance(homog),thermalMapping(homog)%p(ip,el))
 
  end select chosenThermal
-
- startPos = endPos + 1
- endPos   = endPos + damageState(material_homogenizationAt(el))%sizePostResults
- chosenDamage: select case (damage_type(material_homogenizationAt(el)))
-
-   case (DAMAGE_local_ID) chosenDamage
-     postResults(startPos:endPos) = damage_local_postResults(ip, el)
-   case (DAMAGE_nonlocal_ID) chosenDamage
-     postResults(startPos:endPos) = damage_nonlocal_postResults(ip, el)
-     
- end select chosenDamage
 
 end function postResults
 
