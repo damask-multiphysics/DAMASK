@@ -3,8 +3,6 @@
 tmp = matlab.desktop.editor.getActive;
 cd(fileparts(tmp.Filename));
 
-
-%% Specify Crystal
 symmetry = {crystalSymmetry('m-3m', [1 1 1], 'mineral', 'Iron', 'color', 'light blue')}
 
 % plotting convention
@@ -21,14 +19,13 @@ rotation('FCC') = 'Active Rotation';
 
 for lattice = lattice_types
   for p = 0:length(models)/3-1
-    p
     EBSD_data = {loadEBSD(strcat(lattice,'_',models{p*3+1},'.txt'),symmetry,'interface','generic',...
                           'ColumnNames', { 'phi1' 'Phi' 'phi2' 'x' 'y'}, 'Bunge', rotation(char(lattice))),
                  loadEBSD(strcat(lattice,'_',models{p*3+2},'.txt'),symmetry,'interface','generic',...
                           'ColumnNames', { 'phi1' 'Phi' 'phi2' 'x' 'y'}, 'Bunge', rotation(char(lattice))),
                  loadEBSD(strcat(lattice,'_',models{p*3+3},'.txt'),symmetry,'interface','generic',...
                           'ColumnNames', { 'phi1' 'Phi' 'phi2' 'x' 'y'}, 'Bunge', rotation(char(lattice)))}
-    h = [Miller(1,0,0,symmetry{1}),Miller(1,1,0,symmetry{1}),Miller(1,1,1,symmetry{1})]; % 3 pole figures
+    h = [Miller(1,0,0,symmetry{1}),Miller(1,1,0,symmetry{1}),Miller(1,1,1,symmetry{1})];            % 3 pole figures
     plotPDF(EBSD_data{1}.orientations,h,'MarkerSize',5,'MarkerColor','r','DisplayName',models{p*3+1})
     hold on
     plotPDF(EBSD_data{2}.orientations,h,'MarkerSize',5,'MarkerColor','b','DisplayName',models{p*3+2})
