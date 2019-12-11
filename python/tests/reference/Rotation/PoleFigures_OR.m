@@ -1,7 +1,7 @@
 %% Import Script for EBSD Data
-%
-% Use MTEX
-clear ; clear all
+% 
+% Start MTEX first in Matlab
+clear ; clear all ; close; 
 
 %% Specify Crystal and Specimen Symmetries
 
@@ -19,7 +19,7 @@ setMTEXpref('xAxisDirection','north');
 setMTEXpref('zAxisDirection','outOfPlane');
 
 %% path to files
-pname = 'L:\f.gallardo\DAMASK\python\tests\reference\Rotation'; % has to be changed
+pname = 'L:\f.gallardo\DAMASK\python\tests\reference\Rotation'; % has to be changed to hwere you have DAMASK
 
 % which files to be imported
 fname1 = [pname '\bcc_Bain.txt']; fname2 = [pname '\bcc_GT.txt']; fname3 = [pname '\bcc_GT_prime.txt'];
@@ -45,17 +45,17 @@ ebsd6 = loadEBSD(fname6,CS_bcc,'interface','generic',...
   'ColumnNames', { 'phi1' 'Phi' 'phi2' 'x' 'y'}, 'Bunge', 'Passive Rotation');
 
 ebsd7 = loadEBSD(fname7,CS_fcc,'interface','generic',...
-  'ColumnNames', { 'phi1' 'Phi' 'phi2' 'x' 'y'}, 'Bunge', 'Passive Rotation');
+  'ColumnNames', { 'phi1' 'Phi' 'phi2' 'x' 'y'}, 'Bunge', 'Active Rotation');
 ebsd8 = loadEBSD(fname8,CS_fcc,'interface','generic',...
-  'ColumnNames', { 'phi1' 'Phi' 'phi2' 'x' 'y'}, 'Bunge', 'Passive Rotation');
+  'ColumnNames', { 'phi1' 'Phi' 'phi2' 'x' 'y'}, 'Bunge', 'Active Rotation');
 ebsd9 = loadEBSD(fname9,CS_fcc,'interface','generic',...
-  'ColumnNames', { 'phi1' 'Phi' 'phi2' 'x' 'y'}, 'Bunge', 'Passive Rotation');
+  'ColumnNames', { 'phi1' 'Phi' 'phi2' 'x' 'y'}, 'Bunge', 'Active Rotation');
 ebsd10 = loadEBSD(fname10,CS_fcc,'interface','generic',...
-  'ColumnNames', { 'phi1' 'Phi' 'phi2' 'x' 'y'}, 'Bunge', 'Passive Rotation');
+  'ColumnNames', { 'phi1' 'Phi' 'phi2' 'x' 'y'}, 'Bunge', 'Active Rotation');
 ebsd11 = loadEBSD(fname11,CS_fcc,'interface','generic',...
-  'ColumnNames', { 'phi1' 'Phi' 'phi2' 'x' 'y'}, 'Bunge', 'Passive Rotation');
+  'ColumnNames', { 'phi1' 'Phi' 'phi2' 'x' 'y'}, 'Bunge', 'Active Rotation');
 ebsd12 = loadEBSD(fname12,CS_fcc,'interface','generic',...
-  'ColumnNames', { 'phi1' 'Phi' 'phi2' 'x' 'y'}, 'Bunge', 'Passive Rotation');
+  'ColumnNames', { 'phi1' 'Phi' 'phi2' 'x' 'y'}, 'Bunge', 'Active Rotation');
 
 %% Plot Data 1stpart_bcc
 h1 = [Miller(1,0,0,ebsd1.CS),Miller(1,1,0,ebsd1.CS),Miller(1,1,1,ebsd1.CS)]; % 3 pole figures
