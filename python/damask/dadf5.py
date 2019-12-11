@@ -360,7 +360,7 @@ class DADF5():
           f[k]
           path.append(k)
         except KeyError as e:
-          print('unable to locate geometry dataset: {}'.format(str(e)))
+          pass
         for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
           for oo in self.iter_visible(o):
             for pp in self.iter_visible(p):
@@ -369,7 +369,7 @@ class DADF5():
                 f[k]
                 path.append(k)
               except KeyError as e:
-                print('unable to locate {} dataset: {}'.format(o,str(e)))
+                pass
     return path
     
     
