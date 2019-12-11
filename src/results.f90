@@ -452,9 +452,9 @@ end subroutine results_writeScalarDataset_rotation
 !--------------------------------------------------------------------------------------------------
 subroutine results_mapping_constituent(phaseAt,memberAt,label)
     
-  integer,           dimension(:,:),   intent(in)  :: phaseAt                                       !< phase section at (constituent,element)
-  integer,           dimension(:,:,:), intent(in)  :: memberAt                                      !< phase member at (constituent,IP,element)
-  character(len=64), dimension(:),     intent(in)  :: label                                         !< label of each phase section
+  integer,                   dimension(:,:),   intent(in) :: phaseAt                                !< phase section at (constituent,element)
+  integer,                   dimension(:,:,:), intent(in) :: memberAt                               !< phase member at (constituent,IP,element)
+  character(len=pStringLen), dimension(:),     intent(in) :: label                                  !< label of each phase section
   
   integer, dimension(size(memberAt,1),size(memberAt,2),size(memberAt,3)) :: &
     phaseAt_perIP, &
@@ -587,9 +587,9 @@ end subroutine results_mapping_constituent
 !--------------------------------------------------------------------------------------------------
 subroutine results_mapping_materialpoint(homogenizationAt,memberAt,label)
     
-  integer,           dimension(:),   intent(in)  :: homogenizationAt                                !< homogenization section at (element)
-  integer,           dimension(:,:), intent(in)  :: memberAt                                        !< homogenization member at (IP,element)
-  character(len=64), dimension(:),   intent(in)  :: label                                           !< label of each homogenization section
+  integer,                   dimension(:),   intent(in) :: homogenizationAt                         !< homogenization section at (element)
+  integer,                   dimension(:,:), intent(in) :: memberAt                                 !< homogenization member at (IP,element)
+  character(len=pStringLen), dimension(:),   intent(in) :: label                                    !< label of each homogenization section
   
   integer, dimension(size(memberAt,1),size(memberAt,2)) :: &
     homogenizationAt_perIP, &

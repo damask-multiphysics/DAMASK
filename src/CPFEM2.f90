@@ -42,7 +42,7 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief call (thread safe) all module initializations
+!> @brief call all module initializations
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_initAll
 
@@ -69,29 +69,24 @@ subroutine CPFEM_initAll
 
 end subroutine CPFEM_initAll
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief allocate the arrays defined in module CPFEM and initialize them
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_init
  
-  integer :: ph,homog
-  character(len=1024) :: rankStr, PlasticItem, HomogItem
-  integer(HID_T) :: fileHandle, groupPlasticID, groupHomogID
+  integer :: i
+  integer(HID_T) :: fileHandle, groupHandle
+  character(len=pStringLen) :: fileName, datasetName
 
-  write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
-  flush(6)
+  write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'; flush(6)
 
-  ! *** restore the last converged values of each essential variable
   if (interface_restartInc > 0) then
-    if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0) then
-      write(6,'(a)') '<< CPFEM >> restored state variables of last converged step from hdf5 file'
-      flush(6)
-    endif
-    
-    write(rankStr,'(a1,i0)')'_',worldrank
+    write(6,'(/,a,i0,a)') ' reading restart information of increment ', interface_restartInc, ' from file'
 
-    fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
-   
+    write(fileName,'(a,i0,a)') trim(getSolverJobName())//'_',worldrank,'.hdf5'
+    fileHandle = HDF5_openFile(fileName)
+    
     call HDF5_read(fileHandle,crystallite_F0, 'F')
     call HDF5_read(fileHandle,crystallite_Fp0,'Fp')
     call HDF5_read(fileHandle,crystallite_Fi0,'Fi')
@@ -99,19 +94,19 @@ subroutine CPFEM_init
     call HDF5_read(fileHandle,crystallite_Li0,'Li')
     call HDF5_read(fileHandle,crystallite_S0, 'S')
     
-    groupPlasticID = HDF5_openGroup(fileHandle,'constituent')
-    do ph = 1,size(phase_plasticity)
-      write(PlasticItem,*) ph,'_'
-      call HDF5_read(groupPlasticID,plasticState(ph)%state0,trim(PlasticItem)//'omega_plastic')
+    groupHandle = HDF5_openGroup(fileHandle,'constituent')
+    do i = 1,size(phase_plasticity)
+      write(datasetName,'(i0,a)') i,'_omega_plastic'
+      call HDF5_read(groupHandle,plasticState(i)%state0,datasetName)
     enddo
-    call HDF5_closeGroup(groupPlasticID)
-    
-    groupHomogID = HDF5_openGroup(fileHandle,'materialpoint')
-    do homog = 1, material_Nhomogenization
-      write(HomogItem,*) homog,'_'
-      call HDF5_read(groupHomogID,homogState(homog)%state0, trim(HomogItem)//'omega_homogenization')
+    call HDF5_closeGroup(groupHandle)
+
+    groupHandle = HDF5_openGroup(fileHandle,'materialpoint')
+    do i = 1, material_Nhomogenization
+      write(datasetName,'(i0,a)') i,'_omega_homogenization'
+      call HDF5_read(groupHandle,homogState(i)%state0,datasetName)
     enddo
-    call HDF5_closeGroup(groupHomogID)
+    call HDF5_closeGroup(groupHandle)
 
     call HDF5_closeFile(fileHandle)
   endif
@@ -125,7 +120,7 @@ end subroutine CPFEM_init
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_forward
 
-  integer :: i, homog, mySource
+  integer :: i, j
 
   if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) &
     write(6,'(a)') '<< CPFEM >> aging states'
@@ -141,32 +136,31 @@ subroutine CPFEM_forward
     plasticState(i)%state0 = plasticState(i)%state
   enddo 
   do i = 1, size(sourceState)
-    do mySource = 1,phase_Nsources(i)
-      sourceState(i)%p(mySource)%state0 = sourceState(i)%p(mySource)%state
+    do j = 1,phase_Nsources(i)
+      sourceState(i)%p(j)%state0 = sourceState(i)%p(j)%state
   enddo; enddo
-  do homog = 1, material_Nhomogenization
-    homogState       (homog)%state0 =  homogState       (homog)%state
-    thermalState     (homog)%state0 =  thermalState     (homog)%state
-    damageState      (homog)%state0 =  damageState      (homog)%state
+  do i = 1, material_Nhomogenization
+    homogState  (i)%state0 = homogState  (i)%state
+    thermalState(i)%state0 = thermalState(i)%state
+    damageState (i)%state0 = damageState (i)%state
   enddo
 
 end subroutine CPFEM_forward
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Write current constitutive variables for restart to file.
+!> @brief Write current  restart information (Field and constitutive data) to file.
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_restartWrite
 
-  integer           :: ph, homog
-  character(len=32) :: rankStr, PlasticItem, HomogItem
-  integer(HID_T)    :: fileHandle, groupPlastic, groupHomog
+  integer :: i
+  integer(HID_T) :: fileHandle, groupHandle
+  character(len=pStringLen) :: fileName, datasetName
 
-
-  write(6,'(a)') ' writing constitutive data required for restart to file';flush(6)
+  write(6,'(a)') ' writing field and constitutive data required for restart to file';flush(6)
     
-  write(rankStr,'(a1,i0)')'_',worldrank
-  fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','a')
+  write(fileName,'(a,i0,a)') trim(getSolverJobName())//'_',worldrank,'.hdf5'
+  fileHandle = HDF5_openFile(fileName,'a')
     
   call HDF5_write(fileHandle,crystallite_partionedF,'F')
   call HDF5_write(fileHandle,crystallite_Fp,        'Fp')
@@ -175,19 +169,19 @@ subroutine CPFEM_restartWrite
   call HDF5_write(fileHandle,crystallite_Li,        'Li')
   call HDF5_write(fileHandle,crystallite_S,         'S')
     
-  groupPlastic = HDF5_addGroup(fileHandle,'constituent')
-  do ph = 1,size(phase_plasticity)
-    write(PlasticItem,*) ph,'_'
-    call HDF5_write(groupPlastic,plasticState(ph)%state,trim(PlasticItem)//'omega_plastic')
+  groupHandle = HDF5_addGroup(fileHandle,'constituent')
+  do i = 1,size(phase_plasticity)
+    write(datasetName,'(i0,a)') i,'_omega_plastic'
+    call HDF5_write(groupHandle,plasticState(i)%state,datasetName)
   enddo
-  call HDF5_closeGroup(groupPlastic)
+  call HDF5_closeGroup(groupHandle)
 
-  groupHomog = HDF5_addGroup(fileHandle,'materialpoint')
-  do homog = 1, material_Nhomogenization
-    write(HomogItem,*) homog,'_'
-    call HDF5_write(groupHomog,homogState(homog)%state,trim(HomogItem)//'omega_homogenization')
+  groupHandle = HDF5_addGroup(fileHandle,'materialpoint')
+  do i = 1, material_Nhomogenization
+    write(datasetName,'(i0,a)') i,'_omega_homogenization'
+    call HDF5_write(groupHandle,homogState(i)%state,datasetName)
   enddo
-  call HDF5_closeGroup(groupHomog)
+  call HDF5_closeGroup(groupHandle)
     
   call HDF5_closeFile(fileHandle)
 
@@ -208,7 +202,7 @@ subroutine CPFEM_results(inc,time)
   call crystallite_results
   call homogenization_results
   call discretization_results
-  call results_removeLink('current') ! ToDo: put this into closeJobFile
+  call results_removeLink('current') ! ToDo: put this into closeJobFile?
   call results_closeJobFile
 
 end subroutine CPFEM_results
