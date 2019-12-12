@@ -88,6 +88,7 @@ if [ ! -z "$PS1" ]; then
 fi
 
 export DAMASK_NUM_THREADS
+export PYTHONPATH=$DAMASK_ROOT/python:$PYTHONPATH
 
 for var in BASE STAT SOLVER PROCESSING FREE DAMASK_BIN BRANCH; do
   unset "${var}"
