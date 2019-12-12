@@ -2,7 +2,7 @@ import setuptools
 import os
 
 with open(os.path.join(os.path.dirname(__file__),'damask/VERSION')) as f:
-  version = f.readline()
+  version = f.readline().strip()
 
 setuptools.setup(
     name="damask",
