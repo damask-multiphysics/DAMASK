@@ -16,6 +16,7 @@ from .orientation import Symmetry, Lattice, Rotation, Orientation # noqa
 from .dadf5       import DADF5 # noqa
 
 from .geom        import Geom             # noqa
+from .solver      import Solver           # noqa
 from .test        import Test             # noqa
 from .util        import extendableOption # noqa
 

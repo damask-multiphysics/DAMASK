@@ -26,4 +26,4 @@ class Environment():
                     items = re.split(r'\s*=\s*',line)
                     if len(items) == 2: 
                         self.options[items[0].upper()] = \
-                          re.sub(r'${*DAMASK_ROOT}*',self.rootDir(),os.path.expandvars(items[1]))      # expand all shell variables and DAMASK_ROOT
+                          re.sub(r'\${?DAMASK_ROOT}?',self.rootDir(),os.path.expandvars(items[1]))     # expand all shell variables and DAMASK_ROOT
