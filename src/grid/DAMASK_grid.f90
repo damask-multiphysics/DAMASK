@@ -257,7 +257,7 @@ program DAMASK_spectral
 
    reportAndCheck: if (worldrank == 0) then
      write (loadcase_string, '(i6)' ) currentLoadCase
-     write(6,'(/,1x,a,i6)') 'load case: ', currentLoadCase
+     write(6,'(/,1x,a,i0)') 'load case: ', currentLoadCase
      if (.not. newLoadCase%followFormerTrajectory) write(6,'(2x,a)') 'drop guessing along trajectory'
      if (newLoadCase%deformation%myType == 'l') then
        do j = 1, 3
@@ -300,14 +300,14 @@ program DAMASK_spectral
        write(6,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'rotation of loadframe:',&
                 transpose(newLoadCase%rot%asMatrix())
      if (newLoadCase%time < 0.0_pReal) errorID = 834                                                ! negative time increment
-     write(6,'(2x,a,f12.6)') 'time:       ', newLoadCase%time
+     write(6,'(2x,a,f0.3)') 'time: ', newLoadCase%time
      if (newLoadCase%incs < 1)    errorID = 835                                                     ! non-positive incs count
-     write(6,'(2x,a,i5)')  'increments: ', newLoadCase%incs
+     write(6,'(2x,a,i0)')  'increments: ', newLoadCase%incs
      if (newLoadCase%outputfrequency < 1)  errorID = 836                                            ! non-positive result frequency
-     write(6,'(2x,a,i5)')  'output  frequency:  ', newLoadCase%outputfrequency
+     write(6,'(2x,a,i0)')  'output frequency: ', newLoadCase%outputfrequency
      if (newLoadCase%restartfrequency < 1)  errorID = 839                                           ! non-positive restart frequency
      if (newLoadCase%restartfrequency < huge(0)) &
-       write(6,'(2x,a,i5)')  'restart frequency:  ', newLoadCase%restartfrequency
+       write(6,'(2x,a,i0)')  'restart frequency: ', newLoadCase%restartfrequency
      if (errorID > 0) call IO_error(error_ID = errorID, ext_msg = loadcase_string)                  ! exit with error message
    endif reportAndCheck
    loadCases = [loadCases,newLoadCase]                                                              ! load case is ok, append it
