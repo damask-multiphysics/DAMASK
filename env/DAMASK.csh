@@ -61,8 +61,3 @@ if ( $?prompt ) then
 endif
 
 setenv DAMASK_NUM_THREADS $DAMASK_NUM_THREADS
-if ( ! $?PYTHONPATH ) then
-  setenv PYTHONPATH $DAMASK_ROOT/python
-else
-  setenv PYTHONPATH $DAMASK_ROOT/python:$PYTHONPATH
-endif

@@ -1,1 +1,3 @@
+include damask/README
 include damask/VERSION
+include damask/LICENSE
