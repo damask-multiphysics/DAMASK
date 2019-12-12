@@ -26,7 +26,6 @@ endif
 # more info https://jblevins.org/log/segfault
 #           https://stackoverflow.com/questions/79923/what-and-where-are-the-stack-and-heap
 # http://superuser.com/questions/220059/what-parameters-has-ulimit
-limit datasize  unlimited  # maximum  heap size (kB)
 limit stacksize unlimited  # maximum stack size (kB)
 endif
 if ( `limit | grep memoryuse` != "" ) then

@@ -48,10 +48,7 @@ PROCESSING=$(type -p postResults || true 2>/dev/null)
 # more info https://jblevins.org/log/segfault
 #           https://stackoverflow.com/questions/79923/what-and-where-are-the-stack-and-heap
 # http://superuser.com/questions/220059/what-parameters-has-ulimit
-ulimit -d unlimited 2>/dev/null # maximum  heap size (kB)
 ulimit -s unlimited 2>/dev/null # maximum stack size (kB)
-ulimit -v unlimited 2>/dev/null # maximum virtual memory size
-ulimit -m unlimited 2>/dev/null # maximum physical memory size
 
 # disable output in case of scp
 if [ ! -z "$PS1" ]; then
