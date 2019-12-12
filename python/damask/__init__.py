@@ -6,6 +6,7 @@ with open(os.path.join(os.path.dirname(__file__),'VERSION')) as f:
     version = f.readline().strip()
 
 # classes
+from .environment import Environment      # noqa
 from .table       import Table            # noqa
 from .asciitable  import ASCIItable       # noqa
     
