@@ -27,9 +27,8 @@ module mesh_grid
   integer,                   public, protected :: &
     grid3, &                                                                                        !< (local) grid in 3rd direction
     grid3Offset                                                                                     !< (local) grid offset in 3rd direction
-    
   real(pReal), dimension(3), public, protected :: &
-    geomSize
+    geomSize                                                                                        !< (global) physical size
   real(pReal),               public, protected :: &
     size3, &                                                                                        !< (local) size in 3rd direction
     size3offset                                                                                     !< (local) size offset in 3rd direction
@@ -49,7 +48,8 @@ subroutine mesh_init(ip,el)
   
   include 'fftw3-mpi.f03'
   real(pReal), dimension(3) :: &
-    mySize                                                                                          !< domain size of this process
+    mySize, &                                                                                       !< domain size of this process
+    origin                                                                                          !< (global) distance to origin
   integer,     dimension(3) :: &
     myGrid                                                                                          !< domain grid of this process
 
@@ -61,9 +61,9 @@ subroutine mesh_init(ip,el)
   integer(C_INTPTR_T) :: &
     devNull, z, z_offset
 
-  write(6,'(/,a)')   ' <<<+-  mesh_grid init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  mesh_grid init  -+>>>'; flush(6)
 
-  call readGeom(grid,geomSize,microstructureAt,homogenizationAt)
+  call readGeom(grid,geomSize,origin,microstructureAt,homogenizationAt)
 
 !--------------------------------------------------------------------------------------------------
 ! grid solver specific quantities
@@ -104,8 +104,9 @@ subroutine mesh_init(ip,el)
 ! store geometry information for post processing
   call results_openJobFile
   call results_closeGroup(results_addGroup('geometry'))
-  call results_addAttribute('grid',grid,'geometry')
-  call results_addAttribute('size',geomSize,'geometry')
+  call results_addAttribute('grid',  grid,    'geometry')
+  call results_addAttribute('size',  geomSize,'geometry')
+  call results_addAttribute('origin',origin,  'geometry')
   call results_closeJobFile
 
 !--------------------------------------------------------------------------------------------------
@@ -129,10 +130,13 @@ end subroutine mesh_init
 !> @details important variables have an implicit "save" attribute. Therefore, this function is 
 ! supposed to be called only once!
 !--------------------------------------------------------------------------------------------------
-subroutine readGeom(grid,geomSize,microstructure,homogenization)
+subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
 
-  integer,     dimension(3), intent(out)              :: grid                                       ! grid (for all processes!)
-  real(pReal), dimension(3), intent(out)              :: geomSize                                   ! size (for all processes!)
+  integer,     dimension(3), intent(out) :: &
+    grid                                                                                            ! grid (for all processes!)
+  real(pReal), dimension(3), intent(out) :: &
+    geomSize, &                                                                                     ! size (for all processes!)
+    origin                                                                                          ! origin (for all processes!)
   integer,     dimension(:), intent(out), allocatable :: &
     microstructure, &
     homogenization
@@ -181,6 +185,7 @@ subroutine readGeom(grid,geomSize,microstructure,homogenization)
 
 !--------------------------------------------------------------------------------------------------
 ! read and interprete header
+  origin = 0.0_pReal
   l = 0
   do while (l < headerLength .and. startPos < len(rawData))
     endPos = startPos + index(rawData(startPos:),new_line('')) - 1
@@ -221,8 +226,23 @@ subroutine readGeom(grid,geomSize,microstructure,homogenization)
           enddo
         endif
         
+      case ('origin')
+        if (chunkPos(1) > 6) then
+          do j = 2,6,2
+            select case (IO_lc(IO_stringValue(line,chunkPos,j)))
+              case('x')
+                origin(1) = IO_floatValue(line,chunkPos,j+1)
+              case('y')
+                origin(2) = IO_floatValue(line,chunkPos,j+1)
+              case('z')
+                origin(3) = IO_floatValue(line,chunkPos,j+1)
+            end select
+          enddo
+        endif
+
       case ('homogenization')
         if (chunkPos(1) > 1) h = IO_intValue(line,chunkPos,2)
+
     end select
 
   enddo
