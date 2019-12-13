@@ -854,9 +854,9 @@ class DADF5():
     ----------
     labels : list of str
       Labels of the datasets to be exported.
-    mode   : str
+    mode : str, either 'Cell' or 'Point'
       Export in cell format or point format.
-      Default value is 'Cell'
+      Default value is 'Cell'.
 
     """
     if mode=='Cell':
@@ -868,11 +868,11 @@ class DADF5():
           for c in np.linspace(0,self.size[dim],1+self.grid[dim]):
             coordArray[dim].InsertNextValue(c)
   
-        grid = vtk.vtkRectilinearGrid()
-        grid.SetDimensions(*(self.grid+1))
-        grid.SetXCoordinates(coordArray[0])
-        grid.SetYCoordinates(coordArray[1])
-        grid.SetZCoordinates(coordArray[2])
+        vtk_geom = vtk.vtkRectilinearGrid()
+        vtk_geom.SetDimensions(*(self.grid+1))
+        vtk_geom.SetXCoordinates(coordArray[0])
+        vtk_geom.SetYCoordinates(coordArray[1])
+        vtk_geom.SetZCoordinates(coordArray[2])
   
       else:
         
@@ -880,12 +880,12 @@ class DADF5():
         with h5py.File(self.fname) as f:
           nodes.SetData(numpy_support.numpy_to_vtk(f['/geometry/x_n'][()],deep=True))
           
-          grid = vtk.vtkUnstructuredGrid()
-          grid.SetPoints(nodes)
-          grid.Allocate(f['/geometry/T_c'].shape[0])
+          vtk_geom = vtk.vtkUnstructuredGrid()
+          vtk_geom.SetPoints(nodes)
+          vtk_geom.Allocate(f['/geometry/T_c'].shape[0])
           for i in f['/geometry/T_c']:
-            grid.InsertNextCell(vtk.VTK_HEXAHEDRON,8,i-1) # not for all elements!
-    else:
+            vtk_geom.InsertNextCell(vtk.VTK_HEXAHEDRON,8,i-1) # not for all elements!
+    elif mode == 'Point':
       Points   = vtk.vtkPoints()
       Vertices = vtk.vtkCellArray()  
       for c in self.cell_coordinates():
@@ -893,10 +893,10 @@ class DADF5():
         Vertices.InsertNextCell(1)
         Vertices.InsertCellPoint(pointID)
       
-      Polydata = vtk.vtkPolyData()
-      Polydata.SetPoints(Points)
-      Polydata.SetVerts(Vertices)
-      Polydata.Modified()
+      vtk_geom = vtk.vtkPolyData()
+      vtk_geom.SetPoints(Points)
+      vtk_geom.SetVerts(Vertices)
+      vtk_geom.Modified()
   
     N_digits = int(np.floor(np.log10(int(self.increments[-1][3:]))))+1
     
@@ -917,10 +917,8 @@ class DADF5():
               vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),
                               deep=True,array_type= vtk.VTK_DOUBLE))
               vtk_data[-1].SetName('1_'+x[0].split('/',1)[1]) #ToDo: hard coded 1!
-              if mode=='Cell':
-                grid.GetCellData().AddArray(vtk_data[-1])
-              else:
-                Polydata.GetCellData().AddArray(vtk_data[-1])
+              vtk_geom.GetCellData().AddArray(vtk_data[-1])
+
           else:
             x = self.get_dataset_location(label)
             if len(x) == 0:
@@ -932,10 +930,8 @@ class DADF5():
             ph_name   = re.compile(r'(\/[1-9])_([A-Z][a-z]*)_(([a-z]*)|([A-Z]*))')  #looking for phase name in dataset name
             dset_name = '1_' + re.sub(ph_name,r'',x[0].split('/',1)[1])             #removing phase name from generic dataset
             vtk_data[-1].SetName(dset_name)
-            if mode=='Cell':
-              grid.GetCellData().AddArray(vtk_data[-1])
-            else:
-              Polydata.GetCellData().AddArray(vtk_data[-1])
+            vtk_geom.GetCellData().AddArray(vtk_data[-1])
+
       self.set_visible('materialpoints',materialpoints_backup)
   
       constituents_backup = self.visible['constituents'].copy()
@@ -952,10 +948,7 @@ class DADF5():
               vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),
                               deep=True,array_type= vtk.VTK_DOUBLE))
               vtk_data[-1].SetName('1_'+x[0].split('/',1)[1]) #ToDo: why 1_?
-              if mode=='Cell':
-                grid.GetCellData().AddArray(vtk_data[-1])
-              else:
-                Polydata.GetCellData().AddArray(vtk_data[-1])
+              vtk_geom.GetCellData().AddArray(vtk_data[-1])
           else:
             x = self.get_dataset_location(label)
             if len(x) == 0:
@@ -965,10 +958,7 @@ class DADF5():
             vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),
                             deep=True,array_type= vtk.VTK_DOUBLE))
             vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
-            if mode=='Cell':
-              grid.GetCellData().AddArray(vtk_data[-1])
-            else:
-              Polydata.GetCellData().AddArray(vtk_data[-1])
+            vtk_geom.GetCellData().AddArray(vtk_data[-1])
       self.set_visible('constituents',constituents_backup)
      
       if mode=='Cell': 
@@ -978,8 +968,8 @@ class DADF5():
         vtk_data.append(numpy_support.numpy_to_vtk(num_array=self.read_dataset(x,0),
                         deep=True,array_type=vtk.VTK_DOUBLE))
         vtk_data[-1].SetName('u')
-        grid.GetPointData().AddArray(vtk_data[-1])
-      else:
+        vtk_geom.GetPointData().AddArray(vtk_data[-1])
+      elif mode == 'Point':
         writer = vtk.vtkXMLPolyDataWriter()
 
       
@@ -990,9 +980,6 @@ class DADF5():
       writer.SetCompressorTypeToZLib()
       writer.SetDataModeToBinary()
       writer.SetFileName(file_out)
-      if mode=='Cell':
-        writer.SetInputData(grid)
-      else:
-        writer.SetInputData(Polydata)
+      writer.SetInputData(vtk_geom)
 
       writer.Write()
