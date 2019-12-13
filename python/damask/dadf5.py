@@ -436,7 +436,7 @@ class DADF5():
                             np.linspace(delta[1],self.size[1]-delta[1],self.grid[1]),
                             np.linspace(delta[0],self.size[0]-delta[0],self.grid[0]),
                            )
-      return np.concatenate((x[:,:,:,None],y[:,:,:,None],y[:,:,:,None]),axis = 3).reshape([np.product(self.grid),3])
+      return np.concatenate((x[:,:,:,None],y[:,:,:,None],z[:,:,:,None]),axis = 3).reshape([np.product(self.grid),3])
     else:
       with h5py.File(self.fname,'r') as f:
         return f['geometry/x_c'][()]
