@@ -2,6 +2,7 @@
 
 import os
 import argparse
+import re
 
 import h5py
 import numpy as np
@@ -89,10 +90,12 @@ for filename in options.filenames:
           x = results.get_dataset_location(label)
           if len(x) == 0:
             continue
+          ph_name = re.compile(r'(\/[1-9])_([A-Z][a-z]*)_(([a-z]*)|([A-Z]*))')  #looking for phase name in dataset name
           array = results.read_dataset(x,0)
           shape = [array.shape[0],np.product(array.shape[1:])]
           vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True,array_type= vtk.VTK_DOUBLE))
-          vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
+          dset_name = '1_' + re.sub(ph_name,r'',x[0].split('/',1)[1])           #removing phase name from generic dataset
+          vtk_data[-1].SetName(dset_name)
           grid.GetCellData().AddArray(vtk_data[-1])
     
     results.set_visible('constituents',  False)
