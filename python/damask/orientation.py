@@ -246,9 +246,8 @@ class Rotation:
     ################################################################################################
     # static constructors. The input data needs to follow the convention, options allow to
     # relax these convections
-    @classmethod
-    def fromQuaternion(cls,
-                       quaternion,
+    @staticmethod
+    def fromQuaternion(quaternion,
                        acceptHomomorph = False,
                        P = -1):
 
@@ -263,11 +262,10 @@ class Rotation:
       if not np.isclose(np.linalg.norm(qu), 1.0):
         raise ValueError('Quaternion is not of unit length.\n{} {} {} {}'.format(*qu))
 
-      return cls(qu)
+      return Rotation(qu)
       
-    @classmethod
-    def fromEulers(cls,
-                   eulers,
+    @staticmethod
+    def fromEulers(eulers,
                    degrees = False):
 
       eu = eulers if isinstance(eulers, np.ndarray) and eulers.dtype == np.dtype(float) \
@@ -276,11 +274,10 @@ class Rotation:
       if np.any(eu < 0.0) or np.any(eu > 2.0*np.pi) or eu[1] > np.pi:
         raise ValueError('Euler angles outside of [0..2π],[0..π],[0..2π].\n{} {} {}.'.format(*eu))
         
-      return cls(eu2qu(eu))
+      return Rotation(eu2qu(eu))
       
-    @classmethod
-    def fromAxisAngle(cls,
-                      angleAxis,
+    @staticmethod
+    def fromAxisAngle(angleAxis,
                       degrees = False,
                       normalise = False,
                       P = -1):
@@ -295,11 +292,10 @@ class Rotation:
       if not np.isclose(np.linalg.norm(ax[0:3]), 1.0):
         raise ValueError('Axis angle rotation axis is not of unit length.\n{} {} {}'.format(*ax[0:3]))
 
-      return cls(ax2qu(ax))
+      return Rotation(ax2qu(ax))
       
-    @classmethod
-    def fromBasis(cls,
-                  basis,
+    @staticmethod
+    def fromBasis(basis,
                   orthonormal = True,
                   reciprocal = False,
                  ):
@@ -318,18 +314,16 @@ class Rotation:
          or not np.isclose(np.dot(om[2],om[0]), 0.0):
         raise ValueError('matrix is not orthogonal.\n{}'.format(om))
 
-      return cls(om2qu(om))
+      return Rotation(om2qu(om))
       
-    @classmethod
-    def fromMatrix(cls,
-                   om,
+    @staticmethod
+    def fromMatrix(om,
                   ):
       
-      return cls.fromBasis(om)
+      return Rotation.fromBasis(om)
       
-    @classmethod
-    def fromRodrigues(cls,
-                      rodrigues,
+    @staticmethod
+    def fromRodrigues(rodrigues,
                       normalise = False,
                       P = -1):
         
@@ -342,35 +336,32 @@ class Rotation:
       if ro[3] < 0.0:
         raise ValueError('Rodriques rotation angle not positive.\n'.format(ro[3]))
         
-      return cls(ro2qu(ro))
+      return Rotation(ro2qu(ro))
       
-    @classmethod
-    def fromHomochoric(cls,
-                      homochoric,
-                      P = -1):
+    @staticmethod
+    def fromHomochoric(homochoric,
+                       P = -1):
         
       ho = homochoric if isinstance(homochoric, np.ndarray) and homochoric.dtype == np.dtype(float) \
                       else np.array(homochoric,dtype=float)
       if P > 0: ho *= -1                                                                            # convert from P=1 to P=-1
 
-      return cls(ho2qu(ho))
+      return Rotation(ho2qu(ho))
       
-    @classmethod
-    def fromCubochoric(cls,
-                      cubochoric,
-                      P = -1):
+    @staticmethod
+    def fromCubochoric(cubochoric,
+                       P = -1):
       
       cu = cubochoric if isinstance(cubochoric, np.ndarray) and cubochoric.dtype == np.dtype(float) \
                       else np.array(cubochoric,dtype=float)
       ho = cu2ho(cu)
       if P > 0: ho *= -1                                                                            # convert from P=1 to P=-1
         
-      return cls(ho2qu(ho))
+      return Rotation(ho2qu(ho))
 
 
-    @classmethod
-    def fromAverage(cls,
-                    rotations,
+    @staticmethod
+    def fromAverage(rotations,
                     weights = []):
       """
       Average rotation.
@@ -400,11 +391,11 @@ class Rotation:
             else M + r.asM() * n                                                                    # noqa add (multiples) of this rotation to average noqa
       eig, vec = np.linalg.eig(M/N)
 
-      return cls.fromQuaternion(np.real(vec.T[eig.argmax()]),acceptHomomorph = True)
+      return Rotation.fromQuaternion(np.real(vec.T[eig.argmax()]),acceptHomomorph = True)
 
 
-    @classmethod
-    def fromRandom(cls):
+    @staticmethod
+    def fromRandom():
       r = np.random.random(3) 
       A = np.sqrt(r[2]) 
       B = np.sqrt(1.0-r[2]) 
@@ -412,7 +403,7 @@ class Rotation:
       x = np.sin(2.0*np.pi*r[1])*B 
       y = np.cos(2.0*np.pi*r[1])*B 
       z = np.sin(2.0*np.pi*r[0])*A 
-      return cls.fromQuaternion([w,x,y,z],acceptHomomorph=True) 
+      return Rotation.fromQuaternion([w,x,y,z],acceptHomomorph=True) 
 
 
 
@@ -1180,9 +1171,8 @@ class Orientation:
     return color                                                                        
 
 
-  @classmethod
-  def fromAverage(cls,
-                  orientations,
+  @staticmethod
+  def fromAverage(orientations,
                   weights = []):
     """Create orientation from average of list of orientations."""
     if not all(isinstance(item, Orientation) for item in orientations):
