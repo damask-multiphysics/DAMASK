@@ -701,14 +701,14 @@ class Symmetry:
 
     v = np.array(vector,dtype=float)
     if proper:                                                                                      # check both improper ...
-      theComponents = np.dot(basis['improper'],v)
+      theComponents = np.around(np.dot(basis['improper'],v),12)
       inSST = np.all(theComponents >= 0.0)
       if not inSST:                                                                                 # ... and proper SST
-        theComponents = np.dot(basis['proper'],v)
+        theComponents = np.around(np.dot(basis['proper'],v),12)
         inSST = np.all(theComponents >= 0.0)
     else:      
       v[2] = abs(v[2])                                                                              # z component projects identical 
-      theComponents = np.dot(basis['improper'],v)                                                   # for positive and negative values
+      theComponents = np.around(np.dot(basis['improper'],v),12)                                     # for positive and negative values
       inSST = np.all(theComponents >= 0.0)
 
     if color:                                                                                       # have to return color array
@@ -875,7 +875,7 @@ class Lattice:
       [[ 17, 12,  5],[ 17,  7, 17]],
       [[  5, 17, 12],[ 17, 17,  7]],
       [[ 12, -5,-17],[  7,-17,-17]],
-      [[-17,-12,  5],[-17,  7, 17]]],dtype='float')}
+      [[-17,-12,  5],[-17,-7, 17]]],dtype='float')}
  
   # Greninger--Troiano' orientation relationship for fcc <-> bcc transformation
   # from Y. He et al., Journal of Applied Crystallography 39:72-81, 2006 
@@ -901,7 +901,7 @@ class Lattice:
       [[-17,-17,  7],[-17, -5, 12]],
       [[  7,-17,-17],[ 12,-17, -5]],
       [[ 17, -7,-17],[ 5, -12,-17]],
-      [[ 17,-17,  7],[ 17, -5,-12]],
+      [[ 17,-17, -7],[ 17, -5,-12]],
       [[ -7, 17,-17],[-12, 17, -5]],
       [[-17,  7,-17],[ -5, 12,-17]],
       [[-17, 17, -7],[-17,  5,-12]]],dtype='float'),
@@ -957,7 +957,7 @@ class Lattice:
       [[  2,  1, -1],[  0, -1,  1]],
       [[ -1, -2, -1],[  0, -1,  1]],
       [[ -1,  1,  2],[  0, -1,  1]],
-      [[ -1,  2,  1],[  0, -1,  1]],
+      [[  2, -1,  1],[  0, -1,  1]], #It is wrong in the paper, but matrix is correct
       [[ -1,  2,  1],[  0, -1,  1]],
       [[ -1, -1, -2],[  0, -1,  1]]],dtype='float')}
                
@@ -1025,7 +1025,7 @@ class Lattice:
     https://doi.org/10.1016/j.actamat.2004.11.021
 
     """
-    models={'KS':self.KS, 'GT':self.GT, "GT'":self.GTprime, 
+    models={'KS':self.KS, 'GT':self.GT, 'GT_prime':self.GTprime, 
             'NW':self.NW, 'Pitsch': self.Pitsch, 'Bain':self.Bain}
     try:
       relationship = models[model]
@@ -1046,13 +1046,13 @@ class Lattice:
     for miller in np.hstack((relationship['planes'],relationship['directions'])):
       myPlane     = miller[myPlane_id]/    np.linalg.norm(miller[myPlane_id])
       myDir       = miller[myDir_id]/      np.linalg.norm(miller[myDir_id])
-      myMatrix    = np.array([myDir,np.cross(myPlane,myDir),myPlane]).T
+      myMatrix    = np.array([myDir,np.cross(myPlane,myDir),myPlane])
 
       otherPlane  = miller[otherPlane_id]/ np.linalg.norm(miller[otherPlane_id])
       otherDir    = miller[otherDir_id]/   np.linalg.norm(miller[otherDir_id])
-      otherMatrix = np.array([otherDir,np.cross(otherPlane,otherDir),otherPlane]).T
+      otherMatrix = np.array([otherDir,np.cross(otherPlane,otherDir),otherPlane])
 
-      r['rotations'].append(Rotation.fromMatrix(np.dot(otherMatrix,myMatrix.T)))
+      r['rotations'].append(Rotation.fromMatrix(np.dot(otherMatrix.T,myMatrix)))
 
     return r
 
@@ -1126,10 +1126,9 @@ class Orientation:
     return (Orientation(r,self.lattice), i,j, k == 1) if symmetries else r                          # disorientation ...
                                                                                                     # ... own sym, other sym,
                                                                                                     # self-->other: True, self<--other: False
-
-
   def inFZ(self):
     return self.lattice.symmetry.inFZ(self.rotation.asRodrigues(vector=True))
+
   
   def equivalentOrientations(self,members=[]):
     """List of orientations which are symmetrically equivalent."""
@@ -1144,7 +1143,8 @@ class Orientation:
   def relatedOrientations(self,model):
     """List of orientations related by the given orientation relationship."""
     r = self.lattice.relationOperations(model)
-    return [self.__class__(self.rotation*o,r['lattice']) for o in r['rotations']]
+    return [self.__class__(o*self.rotation,r['lattice']) for o in r['rotations']]
+
     
   def reduced(self):
     """Transform orientation to fall into fundamental zone according to symmetry."""
@@ -1152,7 +1152,8 @@ class Orientation:
       if self.lattice.symmetry.inFZ(me.rotation.asRodrigues(vector=True)): break
 
     return self.__class__(me.rotation,self.lattice)
-    
+   
+ 
   def inversePole(self,
                   axis,
                   proper = False,
