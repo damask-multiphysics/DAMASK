@@ -107,12 +107,12 @@ module homogenization
         P,&                                                                                         !< partitioned stresses
         F,&                                                                                         !< partitioned deformation gradients
         F0                                                                                          !< partitioned initial deformation gradients
-     real(pReal), dimension(:,:,:,:,:), intent(in) :: dPdF                                          !< partitioned stiffnesses
-     real(pReal), dimension(3,3),       intent(in) :: avgF                                          !< average F
-     real(pReal),                       intent(in) :: dt                                            !< time increment
-     integer,                           intent(in) :: &
-      ip, &                                                                                         !< integration point number
-      el                                                                                            !< element number
+      real(pReal), dimension(:,:,:,:,:), intent(in) :: dPdF                                         !< partitioned stiffnesses
+      real(pReal), dimension(3,3),       intent(in) :: avgF                                         !< average F
+      real(pReal),                       intent(in) :: dt                                           !< time increment
+      integer,                           intent(in) :: &
+        ip, &                                                                                       !< integration point number
+        el                                                                                          !< element number
     end function mech_RGC_updateState
 
 
