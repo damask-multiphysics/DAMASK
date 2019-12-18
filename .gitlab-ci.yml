@@ -115,13 +115,6 @@ Pytest:
     - release
 
 ###################################################################################################
-OrientationRelationship:
-  stage: preprocessing
-  script: OrientationRelationship/test.py
-  except:
-    - master
-    - release
-
 Pre_SeedGeneration:
   stage: preprocessing
   script: PreProcessing_SeedGeneration/test.py
