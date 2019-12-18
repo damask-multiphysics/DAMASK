@@ -90,7 +90,7 @@ for filename in options.filenames:
           x = results.get_dataset_location(label)
           if len(x) == 0:
             continue
-          ph_name = re.compile(r'(\/[1-9])_([A-Z][a-z]*)_(([a-z]*)|([A-Z]*))')  #looking for phase name in dataset name
+          ph_name = re.compile(r'(?<=(constituent\/))(.*?)(?=(generic))') #looking for phase name in dataset name
           array = results.read_dataset(x,0)
           shape = [array.shape[0],np.product(array.shape[1:])]
           vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True,array_type= vtk.VTK_DOUBLE))
