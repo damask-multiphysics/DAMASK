@@ -833,7 +833,7 @@ class DADF5():
     N_not_calculated = len(todo)
     while N_not_calculated > 0:    
       result = results.get()
-      with h5py.File(self.fname,'a') as f:                                                       # write to file
+      with h5py.File(self.fname,'a') as f:                                                          # write to file
         dataset_out = f[result['group']].create_dataset(result['label'],data=result['data'])
         for k in result['meta'].keys():
           dataset_out.attrs[k] = result['meta'][k].encode()
@@ -927,8 +927,8 @@ class DADF5():
             shape = [array.shape[0],np.product(array.shape[1:])]
             vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),
                             deep=True,array_type= vtk.VTK_DOUBLE))
-            ph_name   = re.compile(r'(\/[1-9])_([A-Z][a-z]*)_(([a-z]*)|([A-Z]*))')  #looking for phase name in dataset name
-            dset_name = '1_' + re.sub(ph_name,r'',x[0].split('/',1)[1])             #removing phase name from generic dataset
+            ph_name = re.compile(r'(?<=(constituent\/))(.*?)(?=(generic))')                         # identify  phase name
+            dset_name = '1_' + re.sub(ph_name,r'',x[0].split('/',1)[1])                             # removing phase name
             vtk_data[-1].SetName(dset_name)
             vtk_geom.GetCellData().AddArray(vtk_data[-1])
 
