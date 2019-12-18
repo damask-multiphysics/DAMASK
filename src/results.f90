@@ -16,7 +16,6 @@ module results
   implicit none
   private
   
-#if defined(PETSc) || defined(DAMASK_HDF5)
   integer(HID_T) :: resultsFile
 
   interface results_writeDataset
@@ -978,5 +977,4 @@ end subroutine results_mapping_materialpoint
 
 !end subroutine HDF5_mappingCells
 
-#endif
 end module results

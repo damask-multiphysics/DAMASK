@@ -928,7 +928,6 @@ end subroutine mech_RGC_averageStressAndItsTangent
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 module subroutine mech_RGC_results(instance,group)
-#if defined(PETSc) || defined(DAMASK_HDF5)
 
   integer,          intent(in) :: instance
   character(len=*), intent(in) :: group
@@ -962,11 +961,6 @@ module subroutine mech_RGC_results(instance,group)
   enddo outputsLoop
   end associate
   
-#else
-  integer,          intent(in) :: instance
-  character(len=*), intent(in) :: group
-#endif
-
 end subroutine mech_RGC_results
 
 

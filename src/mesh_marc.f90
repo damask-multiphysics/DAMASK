@@ -150,7 +150,6 @@ subroutine writeGeometry(elemType, &
   real(pReal), dimension(:,:), allocatable :: &
     coordinates_temp
 
-#if defined(DAMASK_HDF5)
   call results_openJobFile
   call HDF5_closeGroup(results_addGroup('geometry'))
   
@@ -171,7 +170,6 @@ subroutine writeGeometry(elemType, &
                             'coordinates of the material points','m')
                       
   call results_closeJobFile
-#endif  
 
 end subroutine writeGeometry
 

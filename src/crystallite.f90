@@ -767,7 +767,7 @@ end function crystallite_postResults
 !> @brief writes crystallite results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_results
-#if defined(PETSc) || defined(DAMASK_HDF5)
+
   integer :: p,o
   real(pReal),    allocatable, dimension(:,:,:) :: selected_tensors
   type(rotation), allocatable, dimension(:)     :: selected_rotations
@@ -888,7 +888,7 @@ subroutine crystallite_results
    enddo
    
  end function select_rotations
-#endif
+
 end subroutine crystallite_results
 
 

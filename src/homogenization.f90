@@ -790,7 +790,7 @@ end function postResults
 !> @brief writes homogenization results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_results
-#if defined(PETSc) || defined(DAMASK_HDF5)
+
   use material, only: &
     material_homogenization_type => homogenization_type
     
@@ -822,7 +822,7 @@ subroutine homogenization_results
     !                          '1st Piola-Kirchoff stress','Pa')  
 
  enddo   
-#endif
+
 end subroutine homogenization_results
 
 end module homogenization

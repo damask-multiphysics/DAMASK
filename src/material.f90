@@ -354,12 +354,10 @@ subroutine material_init
   call config_deallocate('material.config/microstructure')
   call config_deallocate('material.config/texture')
 
-#if defined(PETSc) || defined(DAMASK_HDF5)
   call results_openJobFile
   call results_mapping_constituent(material_phaseAt,material_phaseMemberAt,config_name_phase)
   call results_mapping_materialpoint(material_homogenizationAt,material_homogenizationMemberAt,config_name_homogenization)
   call results_closeJobFile
-#endif
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
