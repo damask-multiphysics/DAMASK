@@ -367,7 +367,7 @@ pure function cellEdgeNormal(nElems)
 
   integer, intent(in) :: nElems
   
-  real, dimension(3,6,1,nElems) :: cellEdgeNormal
+  real(pReal), dimension(3,6,1,nElems) :: cellEdgeNormal
 
   cellEdgeNormal(1:3,1,1,:) = spread([+1.0_pReal, 0.0_pReal, 0.0_pReal],2,nElems)
   cellEdgeNormal(1:3,2,1,:) = spread([-1.0_pReal, 0.0_pReal, 0.0_pReal],2,nElems)
