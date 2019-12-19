@@ -23,7 +23,6 @@ module homogenization
   use damage_local
   use damage_nonlocal
   use results
-  use HDF5_utilities
  
   implicit none
   private
@@ -801,18 +800,18 @@ subroutine homogenization_results
                                              
   do p=1,size(config_name_homogenization)
     group = trim('current/materialpoint')//'/'//trim(config_name_homogenization(p))
-    call HDF5_closeGroup(results_addGroup(group))
+    call results_closeGroup(results_addGroup(group))
     
     group = trim(group)//'/mech'
     
-    call HDF5_closeGroup(results_addGroup(group))  
+    call results_closeGroup(results_addGroup(group))  
     select case(material_homogenization_type(p))
       case(HOMOGENIZATION_rgc_ID)
         call mech_RGC_results(homogenization_typeInstance(p),group)
     end select
     
     group = trim('current/materialpoint')//'/'//trim(config_name_homogenization(p))//'/generic'
-    call HDF5_closeGroup(results_addGroup(group))
+    call results_closeGroup(results_addGroup(group))
     
     !temp = reshape(materialpoint_F,[3,3,discretization_nIP*discretization_nElem])
     !call results_writeDataset(group,temp,'F',&
