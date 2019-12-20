@@ -65,11 +65,13 @@ class TestTable:
         default.add('nine',d,'random data')
         assert np.allclose(d,default.get('nine'))
 
-    def test_rename_equivalent(self,default):
-        v = default.get('v')
-        default.rename('v','u')
-        u = default.get('u')
-        assert np.all(v == u)
+    def test_rename_equivalent(self):
+        x = np.random.random((5,13))
+        t = Table(x,{'F':(3,3),'v':(3,),'s':(1,)},['random test data'])
+        s = t.get('s')
+        t.rename('s','u')
+        u = t.get('u')
+        assert np.all(s == u)
 
     def test_rename_gone(self,default):
         default.rename('v','V')

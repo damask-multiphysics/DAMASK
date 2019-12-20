@@ -143,9 +143,6 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    outdatedByNewInc, &
    outdatedFFN1, &
    lastStep
- use homogenization, only: &
-   materialpoint_sizeResults, &
-   materialpoint_results
 
  implicit none
  integer(pInt),                       intent(in) :: &
@@ -332,7 +329,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    ddsdde(6,:) = ddsdde_h(5,:)
  end if
 
- statev = materialpoint_results(1:min(nstatv,materialpoint_sizeResults),npt,mesh_FEasCP('elem', noel))
+ statev = 0
 
  if (terminallyIll) pnewdt = 0.5_pReal                                                              ! force cutback directly ?
 !$ call omp_set_num_threads(defaultNumThreadsInt)                                                   ! reset number of threads to stored default value

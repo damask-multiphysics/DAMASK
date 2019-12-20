@@ -203,7 +203,7 @@ class Table():
                                                  '' if info is None else ': {}'.format(info),
                                                  ))
 
-        self.shapes[label_new] = self.shapes.pop(label_old)
+        self.shapes = {(label if label is not label_old else label_new):self.shapes[label] for label in self.shapes}
 
 
     def sort_by(self,labels,ascending=True):
@@ -234,8 +234,9 @@ class Table():
             Filename or file for reading.
 
         """
+        seen = set()
         labels = []
-        for l in self.shapes:
+        for l in [x for x in self.data.columns if not (x in seen or seen.add(x))]:
             if(self.shapes[l] == (1,)):
                 labels.append('{}'.format(l))
             elif(len(self.shapes[l]) == 1):
