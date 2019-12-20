@@ -11,15 +11,13 @@ module source_damage_isoDuctile
  use discretization
  use material
  use config
+ use results
 
  implicit none
  private
  integer,                       dimension(:),           allocatable,         public, protected :: &
    source_damage_isoDuctile_offset, &                                                                 !< which source is my current damage mechanism?
    source_damage_isoDuctile_instance                                                                  !< instance of damage source mechanism
-
- integer,                       dimension(:,:),         allocatable, target, public :: &
-   source_damage_isoDuctile_sizePostResult                                                            !< size of each post result output
 
  character(len=64),             dimension(:,:),         allocatable, target, public :: &
    source_damage_isoDuctile_output                                                                    !< name of each post result output
@@ -46,7 +44,7 @@ module source_damage_isoDuctile
    source_damage_isoDuctile_init, &
    source_damage_isoDuctile_dotState, &
    source_damage_isoDuctile_getRateAndItsTangent, &
-   source_damage_isoDuctile_postResults
+   source_damage_isoDuctile_Results
 
 contains
 
@@ -86,7 +84,6 @@ subroutine source_damage_isoDuctile_init
    enddo    
  enddo
    
- allocate(source_damage_isoDuctile_sizePostResult(maxval(phase_Noutput),Ninstance),source=0)
  allocate(source_damage_isoDuctile_output(maxval(phase_Noutput),Ninstance))
           source_damage_isoDuctile_output = ''
 
@@ -122,7 +119,6 @@ subroutine source_damage_isoDuctile_init
      select case(outputs(i))
      
        case ('isoductile_drivingforce')
-         source_damage_isoDuctile_sizePostResult(i,source_damage_isoDuctile_instance(p)) = 1
          source_damage_isoDuctile_output(i,source_damage_isoDuctile_instance(p)) = outputs(i)
          prm%outputID = [prm%outputID, damage_drivingforce_ID]
 
@@ -138,9 +134,7 @@ subroutine source_damage_isoDuctile_init
    sourceOffset = source_damage_isoDuctile_offset(phase)
 
    call material_allocateSourceState(phase,sourceOffset,NofMyPhase,1,1,0)
-   sourceState(phase)%p(sourceOffset)%sizePostResults = sum(source_damage_isoDuctile_sizePostResult(:,instance))
    sourceState(phase)%p(sourceOffset)%aTolState=param(instance)%aTol
-              
  
  enddo
  
@@ -196,35 +190,32 @@ subroutine source_damage_isoDuctile_getRateAndItsTangent(localphiDot, dLocalphiD
  dLocalphiDot_dPhi = -sourceState(phase)%p(sourceOffset)%state(1,constituent)
  
 end subroutine source_damage_isoDuctile_getRateAndItsTangent
- 
-!--------------------------------------------------------------------------------------------------
-!> @brief return array of local damage results
-!--------------------------------------------------------------------------------------------------
-function source_damage_isoDuctile_postResults(phase, constituent)
 
- integer, intent(in) :: &
-   phase, &
-   constituent
- real(pReal), dimension(sum(source_damage_isoDuctile_sizePostResult(:, &
-                          source_damage_isoDuctile_instance(phase)))) :: &
-   source_damage_isoDuctile_postResults
 
- integer :: &
-   instance, sourceOffset, o, c
+!--------------------------------------------------------------------------------------------------
+!> @brief writes results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine source_damage_isoDuctile_results(phase,group)
+
+  integer, intent(in) :: phase
+  character(len=*), intent(in) :: group
+#if defined(PETSc) || defined(DAMASK_HDF5)  
+  integer :: sourceOffset, o, instance
    
- instance = source_damage_isoDuctile_instance(phase)
- sourceOffset = source_damage_isoDuctile_offset(phase)
+  instance     = source_damage_isoDuctile_instance(phase)
+  sourceOffset = source_damage_isoDuctile_offset(phase)
 
- c = 0
+   associate(prm => param(instance), stt => sourceState(phase)%p(sourceOffset)%state)
+   outputsLoop: do o = 1,size(prm%outputID)
+     select case(prm%outputID(o))
+       case (damage_drivingforce_ID)
+         call results_writeDataset(group,stt,'tbd','driving force','tbd')
+     end select
+   enddo outputsLoop
+   end associate
+#endif
 
- do o = 1,size(param(instance)%outputID)
-    select case(param(instance)%outputID(o))
-      case (damage_drivingforce_ID)
-        source_damage_isoDuctile_postResults(c+1) = sourceState(phase)%p(sourceOffset)%state(1,constituent)
-        c = c + 1
+end subroutine source_damage_isoDuctile_results
 
-    end select
- enddo
-end function source_damage_isoDuctile_postResults
 
 end module source_damage_isoDuctile

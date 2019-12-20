@@ -96,15 +96,15 @@ subroutine grid_mech_FEM_init
                        1.0_pReal,-1.0_pReal,-1.0_pReal,-1.0_pReal, &
                        1.0_pReal, 1.0_pReal, 1.0_pReal, 1.0_pReal], [4,8])
   PetscErrorCode :: ierr
-  integer :: rank
-  integer(HID_T)      :: fileHandle, groupHandle
-  character(len=1024) :: rankStr
+  integer        :: rank
+  integer(HID_T) :: fileHandle, groupHandle
+  character(len=pStringLen) :: fileName
   real(pReal), dimension(3,3,3,3) :: devNull
   PetscScalar, pointer, dimension(:,:,:,:) :: &
   u_current,u_lastInc
  
-  write(6,'(/,a)') ' <<<+-  grid_mech_FEM init  -+>>>'
-
+  write(6,'(/,a)') ' <<<+-  grid_mech_FEM init  -+>>>'; flush(6)
+  
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
   call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-mech_snes_type newtonls -mech_ksp_type fgmres &
@@ -184,11 +184,10 @@ subroutine grid_mech_FEM_init
 !--------------------------------------------------------------------------------------------------
 ! init fields
   restartRead: if (interface_restartInc > 0) then
-    write(6,'(/,a,'//IO_intOut(interface_restartInc)//',a)') &
-      'reading values of increment ', interface_restartInc, ' from file'
+    write(6,'(/,a,i0,a)') ' reading restart data of increment ', interface_restartInc, ' from file'
  
-    write(rankStr,'(a1,i0)')'_',worldrank
-    fileHandle  = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
+    write(fileName,'(a,a,i0,a)') trim(getSolverJobName()),'_',worldrank,'.hdf5'
+    fileHandle  = HDF5_openFile(fileName)
     groupHandle = HDF5_openGroup(fileHandle,'solver')
     
     call HDF5_read(groupHandle,F_aim,        'F_aim')
@@ -207,16 +206,14 @@ subroutine grid_mech_FEM_init
   call utilities_updateCoords(F)
   call utilities_constitutiveResponse(P_current,temp33_Real,C_volAvg,devNull, &                     ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       F, &                                                          ! target F
-                                      0.0_pReal, &                                                  ! time increment
-                                      math_I3)                                                      ! no rotation of boundary condition
+                                      0.0_pReal)                                                    ! time increment
   call DMDAVecRestoreArrayF90(mech_grid,solution_current,u_current,ierr)
   CHKERRQ(ierr)
   call DMDAVecRestoreArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr)
   CHKERRQ(ierr)
  
   restartRead2: if (interface_restartInc > 0) then
-    write(6,'(/,a,'//IO_intOut(interface_restartInc)//',a)') &
-      'reading more values of increment ', interface_restartInc, ' from file'
+    write(6,'(/,a,i0,a)') ' reading more restart data of increment ', interface_restartInc, ' from file'
     call HDF5_read(groupHandle,C_volAvg,       'C_volAvg')
     call HDF5_read(groupHandle,C_volAvgLastInc,'C_volAvgLastInc')
     
@@ -242,7 +239,8 @@ function grid_mech_FEM_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation
     timeinc_old                                                                                     !< time increment of last successful increment
   type(tBoundaryCondition),    intent(in) :: &
     stress_BC
-  real(pReal), dimension(3,3), intent(in) :: rotation_BC
+  type(rotation),              intent(in) :: &
+    rotation_BC
   type(tSolutionState)                    :: &
     solution
 !--------------------------------------------------------------------------------------------------
@@ -297,7 +295,7 @@ subroutine grid_mech_FEM_forward(cutBack,guess,timeinc,timeinc_old,loadCaseTime,
   type(tBoundaryCondition),    intent(in) :: &
     stress_BC, &
     deformation_BC
-  real(pReal), dimension(3,3), intent(in) :: &
+  type(rotation),              intent(in) :: &
     rotation_BC
   PetscErrorCode :: ierr
   PetscScalar, pointer, dimension(:,:,:,:) :: &
@@ -355,7 +353,7 @@ end subroutine grid_mech_FEM_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief Age
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mech_FEM_updateCoords()
+subroutine grid_mech_FEM_updateCoords
 
   call utilities_updateCoords(F)
 
@@ -365,20 +363,20 @@ end subroutine grid_mech_FEM_updateCoords
 !--------------------------------------------------------------------------------------------------
 !> @brief Write current solver and constitutive data for restart to file
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mech_FEM_restartWrite()
+subroutine grid_mech_FEM_restartWrite
 
   PetscErrorCode :: ierr
+  integer(HID_T) :: fileHandle, groupHandle
   PetscScalar, dimension(:,:,:,:), pointer :: u_current,u_lastInc
-  integer(HID_T)    :: fileHandle, groupHandle
-  character(len=32) :: rankStr
+  character(len=pStringLen) :: fileName
   
   call DMDAVecGetArrayF90(mech_grid,solution_current,u_current,ierr); CHKERRQ(ierr)
   call DMDAVecGetArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr); CHKERRQ(ierr)
 
-  write(6,'(a)') ' writing solver data required for restart to file';flush(6)
+  write(6,'(a)') ' writing solver data required for restart to file'; flush(6)
   
-  write(rankStr,'(a1,i0)')'_',worldrank
-  fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
+  write(fileName,'(a,a,i0,a)') trim(getSolverJobName()),'_',worldrank,'.hdf5'
+  fileHandle  = HDF5_openFile(fileName,'w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
 
   call HDF5_write(groupHandle,F_aim,        'F_aim')
@@ -478,11 +476,10 @@ subroutine formResidual(da_local,x_local, &
 ! begin of new iteration
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
-    write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') &
-            trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter+1, '≤', itmax
+    write(6,'(1x,a,3(a,i0))') trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter+1, '≤', itmax
     if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
-              ' deformation gradient aim (lab) =', transpose(math_rotate_backward33(F_aim,params%rotation_BC))
+              ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotTensor2(F_aim,active=.true.))
     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim       =', transpose(F_aim)
     flush(6)
@@ -498,7 +495,7 @@ subroutine formResidual(da_local,x_local, &
       x_elem(ctr,1:3) = x_scal(0:2,i+ii,j+jj,k+kk)
     enddo; enddo; enddo
     ii = i-xstart+1; jj = j-ystart+1; kk = k-zstart+1
-    F(1:3,1:3,ii,jj,kk) = math_rotate_backward33(F_aim,params%rotation_BC) + transpose(matmul(BMat,x_elem)) 
+    F(1:3,1:3,ii,jj,kk) = params%rotation_BC%rotTensor2(F_aim,active=.true.) + transpose(matmul(BMat,x_elem)) 
   enddo; enddo; enddo
   call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,ierr);CHKERRQ(ierr)
 

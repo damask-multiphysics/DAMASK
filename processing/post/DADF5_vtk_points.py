@@ -2,6 +2,7 @@
 
 import os
 import argparse
+import re
 
 import numpy as np
 import vtk
@@ -52,6 +53,7 @@ for filename in options.filenames:
   Polydata.SetVerts(Vertices)
   Polydata.Modified()
   
+  N_digits = int(np.floor(np.log10(int(results.increments[-1][3:]))))+1
   for i,inc in enumerate(results.iter_visible('increments')):
     print('Output step {}/{}'.format(i+1,len(results.increments)))
     vtk_data = []
@@ -75,10 +77,12 @@ for filename in options.filenames:
           x = results.get_dataset_location(label)
           if len(x) == 0:
             continue
+          ph_name = re.compile(r'(?<=(constituent\/))(.*?)(?=(generic))') #looking for phase name in dataset name
           array = results.read_dataset(x,0)
           shape = [array.shape[0],np.product(array.shape[1:])]
           vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True,array_type= vtk.VTK_DOUBLE))
-          vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
+          dset_name = '1_' + re.sub(ph_name,r'',x[0].split('/',1)[1])           #removing phase name from generic dataset
+          vtk_data[-1].SetName(dset_name)
           Polydata.GetCellData().AddArray(vtk_data[-1])
     
     results.set_visible('constituents',  False)
@@ -111,7 +115,9 @@ for filename in options.filenames:
     dirname  = os.path.abspath(os.path.join(os.path.dirname(filename),options.dir))
     if not os.path.isdir(dirname):
       os.mkdir(dirname,0o755)
-    file_out = '{}_{}.{}'.format(os.path.splitext(os.path.split(filename)[-1])[0],inc,writer.GetDefaultFileExtension())
+    file_out = '{}_inc{}.{}'.format(os.path.splitext(os.path.split(filename)[-1])[0],
+                                   inc[3:].zfill(N_digits),
+                                   writer.GetDefaultFileExtension())
     
     writer.SetCompressorTypeToZLib()
     writer.SetDataModeToBinary()

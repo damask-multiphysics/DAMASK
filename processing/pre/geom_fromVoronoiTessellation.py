@@ -290,7 +290,6 @@ for name in filenames:
     config_header += ['<microstructure>']
     for ID in grainIDs:
       config_header += ['[Grain{}]'.format(ID),
-                        'crystallite 1',
                         '(constituent)\tphase {}\ttexture {}\tfraction 1.0'.format(options.phase,ID)
                        ]
 
