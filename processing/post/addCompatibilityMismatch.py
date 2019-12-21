@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import os
-import math
 import sys
+from io import StringIO
 from optparse import OptionParser
 
 import numpy as np
@@ -61,10 +61,10 @@ def volTetrahedron(coords):
 
 def volumeMismatch(size,F,nodes):
   """
-  Calculates the volume mismatch
+  Calculates the volume mismatch.
   
   volume mismatch is defined as the difference between volume of reconstructed 
-  (compatible) cube and determinant of defgrad at the FP
+  (compatible) cube and determinant of deformation gradient at Fourier point.
   """
   coords = np.empty([8,3])
   vMismatch = np.empty(grid[::-1])
@@ -97,11 +97,11 @@ def volumeMismatch(size,F,nodes):
 
 def shapeMismatch(size,F,nodes,centres):
   """
-  Routine to calculate the shape mismatch
+  Routine to calculate the shape mismatch.
   
   shape mismatch is defined as difference between the vectors from the central point to
   the corners of reconstructed (combatible) volume element and the vectors calculated by deforming
-  the initial volume element with the  current deformation gradient
+  the initial volume element with the  current deformation gradient.
   """
   coordsInitial = np.empty([8,3])
   sMismatch    = np.empty(grid[::-1])
