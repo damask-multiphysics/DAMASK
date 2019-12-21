@@ -65,7 +65,6 @@ subroutine CPFEM_initAll
   call constitutive_init
   call crystallite_init
   call homogenization_init
-  call materialpoint_postResults
   call CPFEM_init
 
 end subroutine CPFEM_initAll

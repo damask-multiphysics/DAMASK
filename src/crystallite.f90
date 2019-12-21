@@ -108,7 +108,6 @@ module crystallite
     crystallite_stressTangent, &
     crystallite_orientations, &
     crystallite_push33ToRef, &
-    crystallite_postResults, &
     crystallite_results
 
 contains
@@ -119,7 +118,6 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_init
  
-  integer, parameter :: FILEUNIT=434
   logical, dimension(:,:), allocatable :: devNull
   integer :: &
     c, &                                                                                            !< counter in integration point component loop
@@ -233,13 +231,6 @@ subroutine crystallite_init
 #endif
   enddo
 
-!--------------------------------------------------------------------------------------------------
-! write description file for crystallite output
-  if (worldrank == 0) then
-    call IO_write_jobFile(FILEUNIT,'outputCrystallite')
-    write(FILEUNIT,'(/,a,/)') '[not supported anymore]'
-    close(FILEUNIT)
-  endif
   call config_deallocate('material.config/phase')
 
 !--------------------------------------------------------------------------------------------------
@@ -730,37 +721,6 @@ function crystallite_push33ToRef(ipc,ip,el, tensor33)
   crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))
 
 end function crystallite_push33ToRef
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return results of particular grain
-!--------------------------------------------------------------------------------------------------
-function crystallite_postResults(ipc, ip, el)
-
-  integer, intent(in):: &
-    el, &                         !< element index
-    ip, &                         !< integration point index
-    ipc                           !< grain index
-
-  real(pReal), dimension(1+ &
-                         1+sum(sourceState(material_phaseAt(ipc,el))%p(:)%sizePostResults)) :: &
-    crystallite_postResults
-  integer :: &
-    c
-
-
-  crystallite_postResults = 0.0_pReal
-  crystallite_postResults(1) = 0.0_pReal                      ! header-like information (length)
-  c = 1
-
-  crystallite_postResults(c+1) = real(sum(sourceState(material_phaseAt(ipc,el))%p(:)%sizePostResults),pReal)  ! size of constitutive results
-  c = c + 1
-  if (size(crystallite_postResults)-c > 0) &
-    crystallite_postResults(c+1:size(crystallite_postResults)) = &
-       constitutive_postResults(crystallite_S(1:3,1:3,ipc,ip,el), crystallite_Fi(1:3,1:3,ipc,ip,el), &
-                                ipc, ip, el)
-
-end function crystallite_postResults
 
 
 !--------------------------------------------------------------------------------------------------

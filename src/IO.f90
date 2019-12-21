@@ -32,8 +32,7 @@ module IO
     IO_intValue, &
     IO_lc, &
     IO_error, &
-    IO_warning, &
-    IO_intOut
+    IO_warning
 #if defined(Marc4DAMASK) || defined(Abaqus)
   public :: &
     IO_open_inputFile, &
@@ -540,26 +539,6 @@ pure function IO_lc(string)
   enddo
 
 end function IO_lc
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns format string for integer values without leading zeros
-!> @details deprecated, use '(i0)' format specifier
-!--------------------------------------------------------------------------------------------------
-pure function IO_intOut(intToPrint)
-
-  integer, intent(in) :: intToPrint
-  character(len=41)   :: IO_intOut
-  integer             :: N_digits
-  character(len=19)   :: width                                                                      ! maximum digits for 64 bit integer
-  character(len=20)   :: min_width                                                                  ! longer for negative values
-
-  N_digits =  1 + int(log10(real(max(abs(intToPrint),1))))
-  write(width, '(I19.19)') N_digits
-  write(min_width, '(I20.20)') N_digits + merge(1,0,intToPrint < 0)
-  IO_intOut = 'I'//trim(min_width)//'.'//trim(width)
-
-end function IO_intOut
 
 
 !--------------------------------------------------------------------------------------------------

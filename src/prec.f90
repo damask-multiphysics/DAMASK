@@ -42,8 +42,7 @@ module prec
       sizeState        = 0, &                                                                       !< size of state
       sizeDotState     = 0, &                                                                       !< size of dot state, i.e. state(1:sizeDot) follows time evolution by dotState rates
       offsetDeltaState = 0, &                                                                       !< index offset of delta state
-      sizeDeltaState   = 0, &                                                                       !< size of delta state, i.e. state(offset+1:offset+sizeDelta) follows time evolution by deltaState increments
-      sizePostResults  = 0                                                                          !< size of output data
+      sizeDeltaState   = 0                                                                          !< size of delta state, i.e. state(offset+1:offset+sizeDelta) follows time evolution by deltaState increments
     real(pReal), pointer,     dimension(:), contiguous :: &
       atolState
     real(pReal), pointer,     dimension(:,:), contiguous :: &                                       ! a pointer is needed here because we might point to state/doState. However, they will never point to something, but are rather allocated and, hence, contiguous
