@@ -11,9 +11,9 @@ module IO
   
   implicit none
   private
-  character(len=5), parameter, public :: &
+  character(len=*), parameter, public :: &
     IO_EOF = '#EOF#'                                                                                !< end of file string
-  character(len=207), parameter, private :: &
+  character(len=*), parameter, private :: &
     IO_DIVIDER = '───────────────────'//&
                  '───────────────────'//&
                  '───────────────────'//&
@@ -401,7 +401,7 @@ function IO_stringValue(string,chunkPos,myChunk,silent)
   character(len=:), allocatable                      :: IO_stringValue
 
   logical,                       optional,intent(in) :: silent                                      !< switch to trigger verbosity
-  character(len=16), parameter                       :: MYNAME = 'IO_stringValue: '
+  character(len=*),  parameter                       :: MYNAME = 'IO_stringValue: '
 
   logical                                            :: warn
 
@@ -429,8 +429,8 @@ real(pReal) function IO_floatValue (string,chunkPos,myChunk)
   integer,   dimension(:),        intent(in) :: chunkPos                                            !< positions of start and end of each tag/chunk in given string
   integer,                        intent(in) :: myChunk                                             !< position number of desired chunk
   character(len=*),               intent(in) :: string                                              !< raw input with known start and end of each chunk
-  character(len=15),              parameter  :: MYNAME = 'IO_floatValue: '
-  character(len=17),              parameter  :: VALIDCHARACTERS = '0123456789eEdD.+-'
+  character(len=*),               parameter  :: MYNAME = 'IO_floatValue: '
+  character(len=*),               parameter  :: VALIDCHARACTERS = '0123456789eEdD.+-'
 
   IO_floatValue = 0.0_pReal
 
@@ -453,8 +453,8 @@ integer function IO_intValue(string,chunkPos,myChunk)
   character(len=*),      intent(in) :: string                                                       !< raw input with known start and end of each chunk
   integer,               intent(in) :: myChunk                                                      !< position number of desired chunk
   integer, dimension(:), intent(in) :: chunkPos                                                     !< positions of start and end of each tag/chunk in given string
-  character(len=13),     parameter  :: MYNAME = 'IO_intValue: '
-  character(len=12),     parameter  :: VALIDCHARACTERS = '0123456789+-'
+  character(len=*),      parameter  :: MYNAME = 'IO_intValue: '
+  character(len=*),      parameter  :: VALIDCHARACTERS = '0123456789+-'
 
   IO_intValue = 0
 
@@ -477,9 +477,9 @@ real(pReal) function IO_fixedNoEFloatValue (string,ends,myChunk)
   character(len=*),      intent(in) :: string                                                       !< raw input with known ends of each chunk
   integer,               intent(in) :: myChunk                                                      !< position number of desired chunk
   integer, dimension(:), intent(in) :: ends                                                         !< positions of end of each tag/chunk in given string
-  character(len=22),     parameter  :: MYNAME = 'IO_fixedNoEFloatValue '
-  character(len=13),     parameter  :: VALIDBASE = '0123456789.+-'
-  character(len=12),     parameter  :: VALIDEXP  = '0123456789+-'
+  character(len=*),      parameter  :: MYNAME = 'IO_fixedNoEFloatValue '
+  character(len=*),      parameter  :: VALIDBASE = '0123456789.+-'
+  character(len=*),      parameter  :: VALIDEXP  = '0123456789+-'
  
   real(pReal)   :: base
   integer :: expon
@@ -509,8 +509,8 @@ integer function IO_fixedIntValue(string,ends,myChunk)
   character(len=*),      intent(in) :: string                                                       !< raw input with known ends of each chunk
   integer,               intent(in) :: myChunk                                                      !< position number of desired chunk
   integer, dimension(:), intent(in) :: ends                                                         !< positions of end of each tag/chunk in given string
-  character(len=20),     parameter  :: MYNAME = 'IO_fixedIntValue: '
-  character(len=12),     parameter  :: VALIDCHARACTERS = '0123456789+-'
+  character(len=*),      parameter  :: MYNAME = 'IO_fixedIntValue: '
+  character(len=*),      parameter  :: VALIDCHARACTERS = '0123456789+-'
  
   IO_fixedIntValue = IO_verifyIntValue(trim(adjustl(string(ends(myChunk)+1:ends(myChunk+1)))),&
                                        VALIDCHARACTERS,MYNAME)
