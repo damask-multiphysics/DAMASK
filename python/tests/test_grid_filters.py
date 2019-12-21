@@ -35,6 +35,13 @@ class TestGridFilters:
          _grid,_size,_origin = eval('grid_filters.{}_coord0_2_DNA(coord0.reshape((-1,3)))'.format(mode))
          assert np.allclose(grid,_grid) and np.allclose(size,_size) and np.allclose(origin,_origin)
 
+    def test_displacement_fluct_equivalence(self):
+         size = np.random.random(3)
+         grid = np.random.randint(8,32,(3))
+         F    = np.random.random(tuple(grid)+(3,3))
+         assert np.allclose(grid_filters.node_displacement_fluct(size,F),
+                            grid_filters.cell_2_node(grid_filters.cell_displacement_fluct(size,F)))
+
 
     @pytest.mark.parametrize('mode',[('cell'),('node')])
     def test_displacement_avg_vanishes(self,mode):
