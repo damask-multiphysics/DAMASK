@@ -24,7 +24,6 @@ unset -f set
 # add BRANCH if DAMASK_ROOT is a git repository
 cd $DAMASK_ROOT >/dev/null; BRANCH=$(git branch 2>/dev/null| grep -E '^\* '); cd - >/dev/null
 
-# add DAMASK_BIN if present
 PATH=${DAMASK_ROOT}/bin:$PATH
 
 SOLVER=$(which DAMASK_spectral || true 2>/dev/null)
@@ -35,7 +34,7 @@ PROCESSING=$(which postResults || true 2>/dev/null)
 
 [[ "x$DAMASK_NUM_THREADS" == "x" ]] && DAMASK_NUM_THREADS=1
 
-# currently, there is no information that unlimited causes problems
+# currently, there is no information that unlimited stack size causes problems
 # still, http://software.intel.com/en-us/forums/topic/501500 suggest to fix it
 # more info https://jblevins.org/log/segfault
 #           https://stackoverflow.com/questions/79923/what-and-where-are-the-stack-and-heap
@@ -51,7 +50,7 @@ if [ ! -z "$PS1" ]; then
   echo
   echo "Using environment with ..."
   echo "DAMASK             $DAMASK_ROOT $BRANCH"
-  echo "Spectral Solver    $SOLVER" 
+  echo "Grid Solver        $SOLVER" 
   echo "Post Processing    $PROCESSING"
   if [ "x$PETSC_DIR" != "x" ]; then
     echo -n "PETSc location     "
@@ -87,7 +86,7 @@ fi
 export DAMASK_NUM_THREADS
 export PYTHONPATH=$DAMASK_ROOT/python:$PYTHONPATH
 
-for var in BASE STAT SOLVER PROCESSING FREE DAMASK_BIN BRANCH; do
+for var in SOLVER PROCESSING BRANCH; do
   unset "${var}"
 done
 for var in DAMASK MSC; do

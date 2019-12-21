@@ -12,7 +12,6 @@ cd $DAMASK_ROOT >/dev/null
 set BRANCH = `git branch 2>/dev/null| grep -E '^\* ')`
 cd - >/dev/null
 
-# if DAMASK_BIN is present
 set path = ($DAMASK_ROOT/bin $path)
 
 set SOLVER=`which DAMASK_spectral`                                                          
@@ -21,19 +20,12 @@ if ( "x$DAMASK_NUM_THREADS" == "x" ) then
   set DAMASK_NUM_THREADS=1
 endif
 
-# currently, there is no information that unlimited causes problems
+# currently, there is no information that unlimited stack size causes problems
 # still, http://software.intel.com/en-us/forums/topic/501500 suggest to fix it
 # more info https://jblevins.org/log/segfault
 #           https://stackoverflow.com/questions/79923/what-and-where-are-the-stack-and-heap
 # http://superuser.com/questions/220059/what-parameters-has-ulimit
 limit stacksize unlimited  # maximum stack size (kB)
-endif
-if ( `limit | grep memoryuse` != "" ) then
-  limit memoryuse  unlimited  # maximum physical memory size
-endif
-if ( `limit | grep vmemoryuse` != "" ) then
-  limit vmemoryuse unlimited  # maximum virtual memory size
-endif
 
 # disable output in case of scp
 if ( $?prompt ) then
@@ -44,7 +36,7 @@ if ( $?prompt ) then
   echo
   echo Using environment with ...
   echo "DAMASK             $DAMASK_ROOT $BRANCH"
-  echo "Spectral Solver    $SOLVER" 
+  echo "Grid Solver        $SOLVER" 
   echo "Post Processing    $PROCESSING"
   if ( $?PETSC_DIR) then
     echo "PETSc location     $PETSC_DIR"
