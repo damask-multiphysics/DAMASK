@@ -15,13 +15,7 @@ module thermal_adiabatic
 
   implicit none
   private
- 
-  character(len=64),             dimension(:,:),  allocatable, target, public :: &
-    thermal_adiabatic_output                                                                        !< name of each post result output
-    
-  integer,                       dimension(:),    allocatable, target, public :: &
-    thermal_adiabatic_Noutput                                                                       !< number of outputs per instance of this thermal model 
- 
+
   enum, bind(c) 
     enumerator :: undefined_ID, &
                   temperature_ID
@@ -34,10 +28,6 @@ module thermal_adiabatic
   
   type(tparameters),             dimension(:), allocatable :: &
     param
-
-  integer(kind(undefined_ID)),   dimension(:,:),  allocatable :: & 
-    thermal_adiabatic_outputID                                                                      !< ID of each post result output
- 
  
   public :: &
     thermal_adiabatic_init, &
@@ -67,12 +57,6 @@ subroutine thermal_adiabatic_init
   
   allocate(param(maxNinstance))
   
-  allocate(thermal_adiabatic_output         (maxval(homogenization_Noutput),maxNinstance))
-           thermal_adiabatic_output = ''
-  allocate(thermal_adiabatic_outputID       (maxval(homogenization_Noutput),maxNinstance),source=undefined_ID)
-  allocate(thermal_adiabatic_Noutput        (maxNinstance),                               source=0) 
- 
-  
   initializeInstances: do section = 1, size(thermal_type)
     if (thermal_type(section) /= THERMAL_adiabatic_ID) cycle
             associate(prm => param(thermal_typeInstance(section)), &
@@ -80,13 +64,12 @@ subroutine thermal_adiabatic_init
               
     NofMyHomog=count(material_homogenizationAt==section)
     instance = thermal_typeInstance(section)
-    outputs = config_homogenization(section)%getStrings('(output)',defaultVal=emptyStringArray)
+    outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
+    allocate(prm%outputID(0))
     do i=1, size(outputs)
       select case(outputs(i))
         case('temperature')
-              thermal_adiabatic_Noutput(instance) = thermal_adiabatic_Noutput(instance) + 1
-              thermal_adiabatic_outputID(thermal_adiabatic_Noutput(instance),instance) = temperature_ID
-              thermal_adiabatic_output(thermal_adiabatic_Noutput(instance),instance) = outputs(i)
+              prm%outputID = [prm%outputID, temperature_ID]
       end select
     enddo
  
@@ -269,18 +252,19 @@ subroutine thermal_adiabatic_results(homog,group)
 
   integer,          intent(in) :: homog
   character(len=*), intent(in) :: group
-  integer :: o, instance
+  integer :: o
   
-  instance  = thermal_typeInstance(homog)
+  associate(prm => param(damage_typeInstance(homog)))
 
-  outputsLoop: do o = 1,thermal_adiabatic_Noutput(instance)
-     select case(thermal_adiabatic_outputID(o,instance))
+  outputsLoop: do o = 1,size(prm%outputID)
+    select case(prm%outputID(o))
     
       case (temperature_ID)
         call results_writeDataset(group,temperature(homog)%p,'T',&
                                   'temperature','K')
     end select
   enddo outputsLoop
+  end associate
 
 end subroutine thermal_adiabatic_results
 
