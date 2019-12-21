@@ -13,58 +13,6 @@ import damask
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
-#--------------------------------------------------------------------------------------------------
-def deformationAvgFFT(F,grid,size,nodal=False,transformed=False):
-  """Calculate average cell center (or nodal) deformation for deformation gradient field specified in each grid cell"""
-  if nodal:
-    x, y, z = np.meshgrid(np.linspace(0,size[2],1+grid[2]),
-                          np.linspace(0,size[1],1+grid[1]),
-                          np.linspace(0,size[0],1+grid[0]),
-                          indexing = 'ij')
-  else:
-    x, y, z = np.meshgrid(np.linspace(size[2]/grid[2]/2.,size[2]-size[2]/grid[2]/2.,grid[2]),
-                          np.linspace(size[1]/grid[1]/2.,size[1]-size[1]/grid[1]/2.,grid[1]),
-                          np.linspace(size[0]/grid[0]/2.,size[0]-size[0]/grid[0]/2.,grid[0]),
-                          indexing = 'ij')
-
-  origCoords = np.concatenate((z[:,:,:,None],y[:,:,:,None],x[:,:,:,None]),axis = 3) 
-
-  F_fourier = F if transformed else np.fft.rfftn(F,axes=(0,1,2))                                    # transform or use provided data
-  Favg = np.real(F_fourier[0,0,0,:,:])/grid.prod()                                                  # take zero freq for average
-  avgDeformation = np.einsum('ml,ijkl->ijkm',Favg,origCoords)                                       # dX = Favg.X
-
-  return avgDeformation
-
-#--------------------------------------------------------------------------------------------------
-def displacementFluctFFT(F,grid,size,nodal=False,transformed=False):
-  """Calculate cell center (or nodal) displacement for deformation gradient field specified in each grid cell"""
-  integrator = 0.5j * size / math.pi
-
-  kk, kj, ki = np.meshgrid(np.where(np.arange(grid[2])>grid[2]//2,np.arange(grid[2])-grid[2],np.arange(grid[2])),
-                           np.where(np.arange(grid[1])>grid[1]//2,np.arange(grid[1])-grid[1],np.arange(grid[1])),
-                                    np.arange(grid[0]//2+1),
-                           indexing = 'ij')
-  k_s = np.concatenate((ki[:,:,:,None],kj[:,:,:,None],kk[:,:,:,None]),axis = 3) 
-  k_sSquared = np.einsum('...l,...l',k_s,k_s)
-  k_sSquared[0,0,0] = 1.0                                                                           # ignore global average frequency
-
-#--------------------------------------------------------------------------------------------------
-# integration in Fourier space
-
-  displacement_fourier = -np.einsum('ijkml,ijkl,l->ijkm',
-                                    F if transformed else np.fft.rfftn(F,axes=(0,1,2)),
-                                    k_s,
-                                    integrator,
-                                    ) / k_sSquared[...,np.newaxis]
-
-#--------------------------------------------------------------------------------------------------
-# backtransformation to real space
-
-  displacement = np.fft.irfftn(displacement_fourier,grid[::-1],axes=(0,1,2))
-
-  return damask.grid_filters.cell_2_node(displacement) if nodal else displacement
-
-
 def volTetrahedron(coords):
   """
   Return the volume of the tetrahedron with given vertices or sides.
@@ -230,15 +178,11 @@ for name in filenames:
   table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
   grid,size,origin = damask.grid_filters.cell_coord0_2_DNA(table.get(options.pos))
 
-  N = grid.prod()
-
-  F_fourier = np.fft.rfftn(table.get(options.defgrad).reshape(grid[2],grid[1],grid[0],3,3),axes=(0,1,2)) # perform transform only once...
-  nodes = displacementFluctFFT(F_fourier,grid,size,True,transformed=True)\
-        + deformationAvgFFT   (F_fourier,grid,size,True,transformed=True)
-
+  F = table.get(options.defgrad).reshape(grid[2],grid[1],grid[0],3,3)
+  nodes = damask.grid_filters.node_coord(size,F)
+  
   if options.shape:
-    centres = displacementFluctFFT(F_fourier,grid,size,False,transformed=True)\
-            + deformationAvgFFT   (F_fourier,grid,size,False,transformed=True)
+    centres = damask.grid_filters.cell_coord(size,F)
     shapeMismatch = shapeMismatch(  size,table.get(options.defgrad).reshape(grid[2],grid[1],grid[0],3,3),nodes,centres)
     table.add('shapeMismatch(({}))'.format(options.defgrad),
               shapeMismatch.reshape((-1,1)),
