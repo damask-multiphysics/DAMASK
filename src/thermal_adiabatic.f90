@@ -26,6 +26,15 @@ module thermal_adiabatic
     enumerator :: undefined_ID, &
                   temperature_ID
   end enum
+  
+  type :: tParameters
+    integer(kind(undefined_ID)), dimension(:), allocatable :: &
+      outputID
+  end type tParameters
+  
+  type(tparameters),             dimension(:), allocatable :: &
+    param
+
   integer(kind(undefined_ID)),   dimension(:,:),  allocatable :: & 
     thermal_adiabatic_outputID                                                                      !< ID of each post result output
  
@@ -51,10 +60,12 @@ subroutine thermal_adiabatic_init
   character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
   character(len=65536), dimension(:), allocatable :: outputs
  
-  write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_ADIABATIC_label//' init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_ADIABATIC_label//' init  -+>>>'; flush(6)
   
   maxNinstance = count(thermal_type == THERMAL_adiabatic_ID)
   if (maxNinstance == 0) return
+  
+  allocate(param(maxNinstance))
   
   allocate(thermal_adiabatic_output         (maxval(homogenization_Noutput),maxNinstance))
            thermal_adiabatic_output = ''
@@ -64,6 +75,9 @@ subroutine thermal_adiabatic_init
   
   initializeInstances: do section = 1, size(thermal_type)
     if (thermal_type(section) /= THERMAL_adiabatic_ID) cycle
+            associate(prm => param(thermal_typeInstance(section)), &
+              config => config_homogenization(section))
+              
     NofMyHomog=count(material_homogenizationAt==section)
     instance = thermal_typeInstance(section)
     outputs = config_homogenization(section)%getStrings('(output)',defaultVal=emptyStringArray)
@@ -89,7 +103,8 @@ subroutine thermal_adiabatic_init
     temperature(section)%p => thermalState(section)%state(1,:)
     deallocate(temperatureRate(section)%p)
     allocate  (temperatureRate(section)%p(NofMyHomog), source=0.0_pReal)
-      
+  
+    end associate
   enddo initializeInstances
  
 end subroutine thermal_adiabatic_init
