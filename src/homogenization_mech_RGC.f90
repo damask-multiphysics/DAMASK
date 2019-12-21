@@ -77,7 +77,7 @@ module subroutine mech_RGC_init
   integer(kind(undefined_ID)) :: &
     outputID
     
-  character(len=65536), dimension(:), allocatable :: &
+  character(len=pStringLen), dimension(:), allocatable :: &
     outputs
   
   write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_RGC_label//' init  -+>>>'

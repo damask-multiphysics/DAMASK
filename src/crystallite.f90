@@ -77,7 +77,7 @@ module crystallite
     crystallite_localPlasticity                                                                     !< indicates this grain to have purely local constitutive law
  
   type :: tOutput                                                                                   !< new requested output (per phase)
-    character(len=65536), allocatable, dimension(:) :: &
+    character(len=pStringLen), allocatable, dimension(:) :: &
       label
   end type tOutput
   type(tOutput), allocatable, dimension(:) :: output_constituent

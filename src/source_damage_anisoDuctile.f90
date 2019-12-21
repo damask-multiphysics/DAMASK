@@ -67,7 +67,7 @@ subroutine source_damage_anisoDuctile_init
  
   character(len=pStringLen) :: &
     extmsg = ''
-  character(len=65536), dimension(:), allocatable :: &
+  character(len=pStringLen), dimension(:), allocatable :: &
     outputs
  
   write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_DAMAGE_ANISODUCTILE_LABEL//' init  -+>>>'; flush(6)

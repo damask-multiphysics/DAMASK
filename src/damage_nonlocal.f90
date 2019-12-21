@@ -49,7 +49,7 @@ contains
 subroutine damage_nonlocal_init
 
   integer :: maxNinstance,o,NofMyHomog,h
-  character(len=65536), dimension(:), allocatable :: outputs
+  character(len=pStringLen), dimension(:), allocatable :: outputs
 
   write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_nonlocal_label//' init  -+>>>'; flush(6)
   

@@ -243,12 +243,12 @@ subroutine IO_open_inputFile(fileUnit)
    
    
     integer, allocatable, dimension(:) :: chunkPos
-    character(len=65536)               :: line,fname
+    character(len=pStringLen           :: line,fname
     logical                            :: createSuccess,fexist
    
    
     do
-      read(unit2,'(A65536)',END=220) line
+      read(unit2,'(A256)',END=220) line
       chunkPos = IO_stringPos(line)
    
       if (IO_lc(IO_StringValue(line,chunkPos,1))=='*include') then
@@ -884,7 +884,7 @@ end subroutine IO_warning
 !--------------------------------------------------------------------------------------------------
 function IO_read(fileUnit) result(line)
  
-  integer, intent(in) :: fileUnit                                                                   !< file unit
+  integer, intent(in)       :: fileUnit                                                             !< file unit
  
   character(len=pStringLen) :: line
  
@@ -924,7 +924,7 @@ integer function IO_countDataLines(fileUnit)
  
  
   integer, allocatable, dimension(:) :: chunkPos
-  character(len=65536)               :: line, &
+  character(len=pStringLen)          :: line, &
                                         tmp
  
   IO_countDataLines = 0
@@ -956,7 +956,7 @@ integer function IO_countNumericalDataLines(fileUnit)
  
  
   integer, allocatable, dimension(:) :: chunkPos
-  character(len=65536)               :: line, &
+  character(len=pStringLen)          :: line, &
                                         tmp
  
   IO_countNumericalDataLines = 0
@@ -991,7 +991,7 @@ integer function IO_countContinuousIntValues(fileUnit)
  integer                            :: l,c
 #endif
  integer, allocatable, dimension(:) :: chunkPos
- character(len=65536)               :: line
+ character(len=pString)             :: line
 
  IO_countContinuousIntValues = 0
  line = ''
@@ -1048,21 +1048,21 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
  integer,                           intent(in) :: fileUnit, &
                                                   lookupMaxN
  integer,           dimension(:,:), intent(in) :: lookupMap
- character(len=64), dimension(:),   intent(in) :: lookupName
+ character(len=*),  dimension(:),   intent(in) :: lookupName
  integer :: i,first,last
 #ifdef Abaqus
  integer :: j,l,c
 #endif
  integer, allocatable, dimension(:) :: chunkPos
- character(len=65536) line
- logical rangeGeneration
+ character(len=pStringLen)          :: line
+ logical :: rangeGeneration
 
  IO_continuousIntValues = 0
  rangeGeneration = .false.
 
 #if defined(Marc4DAMASK)
  do
-   read(fileUnit,'(A65536)',end=100) line
+   read(fileUnit,'(A256)',end=100) line
    chunkPos = IO_stringPos(line)
    if (chunkPos(1) < 1) then                                                                        ! empty line
      exit
@@ -1103,14 +1103,14 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
 !--------------------------------------------------------------------------------------------------
 ! check if the element values in the elset are auto generated
  backspace(fileUnit)
- read(fileUnit,'(A65536)',end=100) line
+ read(fileUnit,'(A256)',end=100) line
  chunkPos = IO_stringPos(line)
  do i = 1,chunkPos(1)
    if (IO_lc(IO_stringValue(line,chunkPos,i)) == 'generate') rangeGeneration = .true.
  enddo
 
  do l = 1,c
-   read(fileUnit,'(A65536)',end=100) line
+   read(fileUnit,'(A256)',end=100) line
    chunkPos = IO_stringPos(line)
    if (verify(IO_stringValue(line,chunkPos,1),'0123456789') > 0) then                               ! a non-int, i.e. set names follow on this line
      do i = 1,chunkPos(1)                                                                           ! loop over set names in line

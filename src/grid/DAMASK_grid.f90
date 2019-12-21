@@ -36,7 +36,7 @@ program DAMASK_spectral
    N_t   = 0, &                                                                                     !< # of time indicators found in load case file
    N_n   = 0, &                                                                                     !< # of increment specifiers found in load case file
    N_def = 0                                                                                        !< # of rate of deformation specifiers found in load case file
- character(len=65536) :: &
+ character(len=pStringLen) :: &
    line
 
 !--------------------------------------------------------------------------------------------------
