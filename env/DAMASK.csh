@@ -7,11 +7,6 @@ set DAMASK_ROOT=`python -c "import os,sys; print(os.path.realpath(os.path.expand
 
 source $DAMASK_ROOT/CONFIG
 
-# add BRANCH if DAMASK_ROOT is a git repository
-cd $DAMASK_ROOT >/dev/null
-set BRANCH = `git branch 2>/dev/null| grep -E '^\* ')`
-cd - >/dev/null
-
 set path = ($DAMASK_ROOT/bin $path)
 
 set SOLVER=`which DAMASK_spectral`                                                          
@@ -35,7 +30,7 @@ if ( $?prompt ) then
   echo https://damask.mpie.de
   echo
   echo Using environment with ...
-  echo "DAMASK             $DAMASK_ROOT $BRANCH"
+  echo "DAMASK             $DAMASK_ROOT"
   echo "Grid Solver        $SOLVER" 
   echo "Post Processing    $PROCESSING"
   if ( $?PETSC_DIR) then
