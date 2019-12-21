@@ -147,7 +147,7 @@ def cell_displacement_avg(size,F):
 
     """
     F_avg = np.average(F,axis=(0,1,2))
-    return np.einsum('ml,ijkl->ijkm',F_avg-np.eye(3),cell_coord0(F.shape[:3],size))
+    return np.einsum('ml,ijkl->ijkm',F_avg-np.eye(3),cell_coord0(F.shape[:3][::-1],size))
 
 def cell_coord0_2_DNA(coord0,ordered=True):
     """
@@ -232,7 +232,7 @@ def node_displacement_avg(size,F):
 
     """
     F_avg = np.average(F,axis=(0,1,2))
-    return np.einsum('ml,ijkl->ijkm',F_avg-np.eye(3),node_coord0(F.shape[:3],size))
+    return np.einsum('ml,ijkl->ijkm',F_avg-np.eye(3),node_coord0(F.shape[:3][::-1],size))
 
 
 def cell_2_node(cell_data):
