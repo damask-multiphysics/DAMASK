@@ -2,9 +2,9 @@
 
 import os
 import sys
+from io import StringIO
 from optparse import OptionParser
 
-import numpy as np
 from scipy import ndimage
 
 import damask

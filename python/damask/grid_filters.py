@@ -219,7 +219,7 @@ def cell_coord0_2_DNA(coord0,ordered=True):
 
 def coord0_check(coord0):
     """
-    Check whether coordinates lie on a regular grid
+    Check whether coordinates lie on a regular grid.
 
     Parameters
     ----------
