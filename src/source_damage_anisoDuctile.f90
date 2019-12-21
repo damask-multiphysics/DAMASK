@@ -17,13 +17,9 @@ module source_damage_anisoDuctile
   implicit none
   private
    
-  integer,                       dimension(:),           allocatable,         public, protected :: &
+  integer,                       dimension(:),           allocatable :: &
     source_damage_anisoDuctile_offset, &                                                            !< which source is my current damage mechanism?
     source_damage_anisoDuctile_instance                                                             !< instance of damage source mechanism
- 
-  character(len=64),             dimension(:,:),         allocatable, target, public  :: &
-    source_damage_anisoDuctile_output                                                               !< name of each post result output
-    
  
   enum, bind(c) 
     enumerator :: undefined_ID, &
@@ -76,7 +72,7 @@ subroutine source_damage_anisoDuctile_init
   character(len=65536), dimension(:), allocatable :: &
     outputs
  
-  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_DAMAGE_ANISODUCTILE_LABEL//' init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_DAMAGE_ANISODUCTILE_LABEL//' init  -+>>>'; flush(6)
  
   Ninstance = count(phase_source == SOURCE_damage_anisoDuctile_ID)
   if (Ninstance == 0) return
@@ -93,10 +89,6 @@ subroutine source_damage_anisoDuctile_init
         source_damage_anisoDuctile_offset(phase) = source
     enddo    
   enddo
-    
-  allocate(source_damage_anisoDuctile_output(maxval(phase_Noutput),Ninstance))
-           source_damage_anisoDuctile_output = ''
- 
  
   allocate(param(Ninstance))
   
@@ -136,7 +128,6 @@ subroutine source_damage_anisoDuctile_init
       select case(outputs(i))
       
         case ('anisoductile_drivingforce')
-          source_damage_anisoDuctile_output(i,source_damage_anisoDuctile_instance(p)) = outputs(i)
           prm%outputID = [prm%outputID, damage_drivingforce_ID]
  
       end select
@@ -227,7 +218,6 @@ subroutine source_damage_anisoDuctile_results(phase,group)
 
   integer, intent(in) :: phase
   character(len=*), intent(in) :: group
-#if defined(PETSc) || defined(DAMASK_HDF5)  
   integer :: sourceOffset, o, instance
    
   instance     = source_damage_anisoDuctile_instance(phase)
@@ -241,7 +231,6 @@ subroutine source_damage_anisoDuctile_results(phase,group)
      end select
    enddo outputsLoop
    end associate
-#endif
 
 end subroutine source_damage_anisoDuctile_results
 

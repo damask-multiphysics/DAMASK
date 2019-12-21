@@ -14,7 +14,7 @@ module source_thermal_externalheat
   implicit none
   private
 
-  integer,           dimension(:),   allocatable,         public, protected :: &
+  integer,           dimension(:),   allocatable :: &
     source_thermal_externalheat_offset, &                                                           !< which source is my current thermal dissipation mechanism?
     source_thermal_externalheat_instance                                                            !< instance of thermal dissipation source mechanism
 
@@ -43,9 +43,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine source_thermal_externalheat_init
  
-  integer :: maxNinstance,instance,source,sourceOffset,NofMyPhase,p   
+  integer :: maxNinstance,instance,source,sourceOffset,NofMyPhase,p
  
-  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_thermal_externalheat_label//' init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_thermal_externalheat_label//' init  -+>>>'; flush(6)
  
   
   maxNinstance = count(phase_source == SOURCE_thermal_externalheat_ID)
