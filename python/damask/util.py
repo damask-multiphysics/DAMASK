@@ -7,9 +7,6 @@ from optparse import Option
 from queue import Queue
 from threading import Thread
 
-
-import numpy as np
-
 class bcolors:
     """
     ASCII Colors (Blender code).
@@ -63,19 +60,6 @@ def report(who = None,
   """Reports script and file name."""
   croak( (emph(who)+': ' if who is not None else '') + (what if what is not None else '') + '\n' )
 
-
-# -----------------------------
-def report_geom(info,
-                what = ['grid','size','origin','homogenization','microstructures']):
-  """Reports (selected) geometry information."""
-  output = {
-            'grid'   : 'grid     a b c:  {}'.format(' x '.join(list(map(str,info['grid'  ])))),
-            'size'   : 'size     x y z:  {}'.format(' x '.join(list(map(str,info['size'  ])))),
-            'origin' : 'origin   x y z:  {}'.format(' : '.join(list(map(str,info['origin'])))),
-            'homogenization' :  'homogenization:  {}'.format(info['homogenization']),
-            'microstructures' : 'microstructures: {}'.format(info['microstructures']),
-           }
-  for item in what: croak(output[item.lower()])
 
 # -----------------------------
 def emph(what):
