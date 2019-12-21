@@ -28,9 +28,6 @@ module plastic_nonlocal
   real(pReal), parameter :: &
     KB = 1.38e-23_pReal                                                                             !< Physical parameter, Boltzmann constant in J/Kelvin
   
-  character(len=64), dimension(:,:), allocatable :: &
-    plastic_nonlocal_output                                                                         !< name of each post result output
-
   ! storage order of dislocation types
   integer, dimension(8), parameter :: &
     sgl = [1,2,3,4,5,6,7,8]                                                                         !< signed (single)
@@ -202,9 +199,6 @@ module plastic_nonlocal
  
   type(tNonlocalMicrostructure), dimension(:), allocatable :: microstructure
 
-  integer(kind(undefined_ID)), dimension(:,:), allocatable :: & 
-    plastic_nonlocal_outputID                                                                       !< ID of each post result output
-  
   public :: &
     plastic_nonlocal_init, &
     plastic_nonlocal_dependentState, &
@@ -237,10 +231,10 @@ subroutine plastic_nonlocal_init
 
   integer(kind(undefined_ID)) :: &
     outputID
-  character(len=512) :: &
+  character(len=pStringLen) :: &
     extmsg    = '', &
     structure
-  character(len=65536), dimension(:), allocatable :: outputs
+  character(len=pStringLen), dimension(:), allocatable :: outputs
   integer :: NofMyPhase 
  
   write(6,'(/,a)') ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_label//' init  -+>>>'
@@ -261,9 +255,6 @@ subroutine plastic_nonlocal_init
   allocate(deltaState(maxNinstances))
   allocate(microstructure(maxNinstances))
 
-  allocate(plastic_nonlocal_output(maxval(phase_Noutput), maxNinstances))
-           plastic_nonlocal_output = ''
-  allocate(plastic_nonlocal_outputID(maxval(phase_Noutput), maxNinstances), source=undefined_ID)
   allocate(totalNslip(maxNinstances), source=0)
 
 
@@ -489,7 +480,6 @@ subroutine plastic_nonlocal_init
       end select
 
       if (outputID /= undefined_ID) then
-        plastic_nonlocal_output(i,phase_plasticityInstance(p)) = outputs(i)
         prm%outputID = [prm%outputID , outputID]
       endif
 
@@ -511,8 +501,8 @@ subroutine plastic_nonlocal_init
                                 'maxDipoleHeightEdge ','maxDipoleHeightScrew' ]) * prm%totalNslip   !< other dependent state variables that are not updated by microstructure
     sizeDeltaState            = sizeDotState
     
-    call material_allocatePlasticState(p,NofMyPhase,sizeState,sizeDotState,sizeDeltaState, &
-                                       prm%totalNslip,0,0)    
+    call material_allocatePlasticState(p,NofMyPhase,sizeState,sizeDotState,sizeDeltaState)
+
     plasticState(p)%nonlocal = .true.
     plasticState(p)%offsetDeltaState = 0                                                            ! ToDo: state structure does not follow convention
     
