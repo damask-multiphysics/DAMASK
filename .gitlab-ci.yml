@@ -391,7 +391,6 @@ Marc_compileIfort:
   stage: compileMarc
   script:
     - module load $IntelMarc $HDF5Marc $MSC
-    - export DAMASK_HDF5=ON
     - Marc_compileIfort/test.py
   except:
     - master
@@ -402,7 +401,6 @@ Hex_elastic:
   stage: marc
   script:
     - module load $IntelMarc $HDF5Marc $MSC
-    - export DAMASK_HDF5=ON
     - Hex_elastic/test.py
   except:
     - master
@@ -412,7 +410,6 @@ CubicFCC_elastic:
   stage: marc
   script:
     - module load $IntelMarc $HDF5Marc $MSC
-    - export DAMASK_HDF5=ON
     - CubicFCC_elastic/test.py
   except:
     - master
@@ -422,7 +419,6 @@ CubicBCC_elastic:
   stage: marc
   script:
     - module load $IntelMarc $HDF5Marc $MSC
-    - export DAMASK_HDF5=ON
     - CubicBCC_elastic/test.py
   except:
     - master
@@ -432,7 +428,6 @@ J2_plasticBehavior:
   stage: marc
   script:
     - module load $IntelMarc $HDF5Marc $MSC
-    - export DAMASK_HDF5=ON
     - J2_plasticBehavior/test.py
   except:
     - master
