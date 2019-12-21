@@ -584,7 +584,7 @@ end subroutine constitutive_collectDeltaState
 subroutine constitutive_results
 
   integer :: p
-  character(len=256) :: group
+  character(len=pStringLen) :: group
   do p=1,size(config_name_phase)
     group = trim('current/constituent')//'/'//trim(config_name_phase(p))
     call HDF5_closeGroup(results_addGroup(group))

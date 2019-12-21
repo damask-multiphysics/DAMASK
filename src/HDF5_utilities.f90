@@ -276,8 +276,8 @@ logical function HDF5_objectExists(loc_id,path)
   integer(HID_T),   intent(in)            :: loc_id
   character(len=*), intent(in), optional  :: path
   
-  integer            :: hdferr
-  character(len=256) :: p
+  integer                   :: hdferr
+  character(len=pStringLen) :: p
   
   if (present(path)) then
     p = trim(path)
@@ -305,10 +305,10 @@ subroutine HDF5_addAttribute_str(loc_id,attrLabel,attrValue,path)
   character(len=*), intent(in)           :: attrLabel, attrValue
   character(len=*), intent(in), optional :: path
   
-  integer            :: hdferr
-  integer(HID_T)     :: attr_id, space_id, type_id
-  logical            :: attrExists
-  character(len=256) :: p
+  integer                   :: hdferr
+  integer(HID_T)            :: attr_id, space_id, type_id
+  logical                   :: attrExists
+  character(len=pStringLen) :: p
   
   if (present(path)) then
     p = trim(path)
@@ -352,10 +352,10 @@ subroutine HDF5_addAttribute_int(loc_id,attrLabel,attrValue,path)
   integer,          intent(in)            :: attrValue
   character(len=*), intent(in), optional  :: path
   
-  integer            :: hdferr
-  integer(HID_T)     :: attr_id, space_id
-  logical            :: attrExists
-  character(len=256) :: p
+  integer                   :: hdferr
+  integer(HID_T)            :: attr_id, space_id
+  logical                   :: attrExists
+  character(len=pStringLen) :: p
   
   if (present(path)) then
     p = trim(path)
@@ -393,10 +393,10 @@ subroutine HDF5_addAttribute_real(loc_id,attrLabel,attrValue,path)
   real(pReal),      intent(in)           :: attrValue
   character(len=*), intent(in), optional :: path
   
-  integer            :: hdferr
-  integer(HID_T)     :: attr_id, space_id
-  logical            :: attrExists
-  character(len=256) :: p
+  integer                   :: hdferr
+  integer(HID_T)            :: attr_id, space_id
+  logical                   :: attrExists
+  character(len=pStringLen) :: p
   
   if (present(path)) then
     p = trim(path)
@@ -438,7 +438,7 @@ subroutine HDF5_addAttribute_int_array(loc_id,attrLabel,attrValue,path)
   integer(HID_T)                :: attr_id, space_id
   integer(HSIZE_T),dimension(1) :: array_size
   logical                       :: attrExists
-  character(len=256)            :: p
+  character(len=pStringLen)     :: p
   
   if (present(path)) then
     p = trim(path)
@@ -482,7 +482,7 @@ subroutine HDF5_addAttribute_real_array(loc_id,attrLabel,attrValue,path)
   integer(HID_T)                :: attr_id, space_id
   integer(HSIZE_T),dimension(1) :: array_size
   logical                       :: attrExists
-  character(len=256)            :: p
+  character(len=pStringLen)     :: p
   
   if (present(path)) then
     p = trim(path)
