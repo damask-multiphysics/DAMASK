@@ -33,49 +33,20 @@ parser.set_defaults(pos = 'pos',
                    )
 
 (options, filenames) = parser.parse_args()
-
-# --- loop over input files -------------------------------------------------------------------------
-
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,
-                                    buffered = False,
-                                    readonly = True)
-  except: continue
   damask.util.report(scriptName,name)
 
-# --- interpret header ----------------------------------------------------------------------------
-
-  table.head_read()
-
-  errors =  []
-  remarks = []
-  coordDim = table.label_dimension(options.pos)
-  if not 3 >= coordDim >= 1: errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.pos))
-  elif coordDim < 3:        remarks.append('appending {} dimension{} to coordinates "{}"...'.format(3-coordDim,
-                                                                                                    's' if coordDim < 2 else '',
-                                                                                                    options.pos))
-
-  if remarks != []: damask.util.croak(remarks)
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss=True)
-    continue
+  table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
 # ------------------------------------------ process data ---------------------------------------  
-
-  table.data_readArray(options.pos)
-  if table.data.shape[1] < 3:
-    table.data = np.hstack((table.data,
-                            np.zeros((table.data.shape[0],
-                                      3-table.data.shape[1]),dtype='f')))                           # fill coords up to 3D with zeros
 
   Polydata = vtk.vtkPolyData()
   Points   = vtk.vtkPoints()
   Vertices = vtk.vtkCellArray()
 
-  for p in table.data:
+  for p in table.get(options.pos):
     pointID = Points.InsertNextPoint(p)
     Vertices.InsertNextCell(1)
     Vertices.InsertCellPoint(pointID)
@@ -104,5 +75,3 @@ for name in filenames:
   writer.Write()
 
   if name is None: sys.stdout.write(writer.GetOutputString())
-
-  table.close()
