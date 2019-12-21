@@ -49,7 +49,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine damage_nonlocal_init
 
-  integer :: maxNinstance,homog,instance,i
+  integer :: maxNinstance,homog,i
   integer :: sizeState
   integer :: NofMyHomog, h
   integer(kind(undefined_ID)) :: &
@@ -70,7 +70,6 @@ subroutine damage_nonlocal_init
     associate(prm => param(damage_typeInstance(h)), &
               config => config_homogenization(h))
               
-    instance = damage_typeInstance(h)
     outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
     allocate(prm%outputID(0))
     
@@ -86,7 +85,6 @@ subroutine damage_nonlocal_init
     homog = h
 
       NofMyHomog = count(material_homogenizationAt == homog)
-      instance = damage_typeInstance(homog)
 
 
 !  allocate state arrays
@@ -237,10 +235,9 @@ subroutine damage_nonlocal_results(homog,group)
 
   integer,          intent(in) :: homog
   character(len=*), intent(in) :: group
-  integer :: o, instance
+  integer :: o
   
-  instance  = damage_typeInstance(homog)
-  associate(prm => param(instance))
+  associate(prm => param(damage_typeInstance(homog)))
 
   outputsLoop: do o = 1,size(prm%outputID)
     select case(prm%outputID(o))
