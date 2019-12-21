@@ -41,9 +41,9 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
   try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False)
-  except IOError: continue
+    table = damask.ASCIItable(name = name, buffered = False)
+  except IOError: 
+    continue
   damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------  

@@ -205,6 +205,9 @@ class Geom():
             else:
                 self.homogenization = homogenization
 
+    @property
+    def grid(self):
+        return self.get_grid()
 
     def get_microstructure(self):
         """Return the microstructure representation."""
