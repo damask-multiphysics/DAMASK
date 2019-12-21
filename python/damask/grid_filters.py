@@ -217,6 +217,19 @@ def cell_coord0_2_DNA(coord0,ordered=True):
 
     return (grid,size,origin)
 
+def coord0_check(coord0):
+    """
+    Check whether coordinates lie on a regular grid
+
+    Parameters
+    ----------
+    coord0 : numpy.ndarray
+        array of undeformed cell coordinates.
+
+    """
+    cell_coord0_2_DNA(coord0,ordered=True)
+
+
 
 def node_coord0(grid,size,origin=np.zeros(3)):
     """
