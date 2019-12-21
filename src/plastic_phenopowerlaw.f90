@@ -464,7 +464,6 @@ end subroutine plastic_phenopowerlaw_dotState
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_phenopowerlaw_results(instance,group)
-#if defined(PETSc) || defined(DAMASK_HDF5)
 
   integer,          intent(in) :: instance
   character(len=*), intent(in) :: group
@@ -492,11 +491,6 @@ subroutine plastic_phenopowerlaw_results(instance,group)
     end select
   enddo outputsLoop
   end associate
-  
-#else
-  integer,          intent(in) :: instance
-  character(len=*), intent(in) :: group
-#endif
 
 end subroutine plastic_phenopowerlaw_results
 

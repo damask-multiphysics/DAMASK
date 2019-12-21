@@ -254,7 +254,6 @@ subroutine thermal_adiabatic_results(homog,group)
 
   integer,          intent(in) :: homog
   character(len=*), intent(in) :: group
-#if defined(PETSc) || defined(DAMASK_HDF5)  
   integer :: o, instance
   
   instance  = thermal_typeInstance(homog)
@@ -267,7 +266,6 @@ subroutine thermal_adiabatic_results(homog,group)
                                   'temperature','K')
     end select
   enddo outputsLoop
-#endif
 
 end subroutine thermal_adiabatic_results
 

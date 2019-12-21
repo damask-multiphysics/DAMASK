@@ -12,6 +12,7 @@ module plastic_nonlocal
   use material
   use lattice
   use rotations
+  use results
   use config
   use lattice
   use discretization
@@ -1974,9 +1975,6 @@ end function getRho
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_results(instance,group)
-#if defined(PETSc) || defined(DAMASK_HDF5)
-  use results, only: &
-    results_writeDataset
 
   integer, intent(in) :: instance
   character(len=*) :: group
@@ -2039,10 +2037,6 @@ subroutine plastic_nonlocal_results(instance,group)
     end select
   enddo outputsLoop
   end associate
-#else
-  integer, intent(in) :: instance
-  character(len=*) :: group
-#endif
 
 end subroutine plastic_nonlocal_results
 

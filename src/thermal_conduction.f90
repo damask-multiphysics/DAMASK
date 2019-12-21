@@ -209,7 +209,8 @@ function thermal_conduction_getSpecificHeat(ip,el)
     thermal_conduction_getSpecificHeat/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
  
 end function thermal_conduction_getSpecificHeat
- 
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief returns homogenized mass density
 !--------------------------------------------------------------------------------------------------
@@ -267,7 +268,6 @@ subroutine thermal_conduction_results(homog,group)
 
   integer,          intent(in) :: homog
   character(len=*), intent(in) :: group
-#if defined(PETSc) || defined(DAMASK_HDF5)  
   integer :: o, instance
   
   instance  = thermal_typeInstance(homog)
@@ -280,7 +280,6 @@ subroutine thermal_conduction_results(homog,group)
                                   'temperature','K')
     end select
   enddo outputsLoop
-#endif
 
 end subroutine thermal_conduction_results
 

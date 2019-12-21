@@ -122,7 +122,6 @@ subroutine geometry_plastic_nonlocal_results
   
   integer,     dimension(:),   allocatable :: shp
 
-#if defined(PETSc) || defined(DAMASK_HDF5)
   call results_openJobFile
 
   writeVolume: block
@@ -151,7 +150,6 @@ subroutine geometry_plastic_nonlocal_results
 
 
   call results_closeJobFile
-#endif
   
 end subroutine geometry_plastic_nonlocal_results
 

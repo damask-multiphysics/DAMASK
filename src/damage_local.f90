@@ -213,7 +213,6 @@ subroutine damage_local_results(homog,group)
 
   integer,          intent(in) :: homog
   character(len=*), intent(in) :: group
-#if defined(PETSc) || defined(DAMASK_HDF5)  
   integer :: o, instance
   
   instance  = damage_typeInstance(homog)
@@ -228,7 +227,6 @@ subroutine damage_local_results(homog,group)
     end select
   enddo outputsLoop
   end associate
-#endif
 
 end subroutine damage_local_results
 

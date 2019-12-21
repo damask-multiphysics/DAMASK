@@ -926,7 +926,6 @@ end subroutine plastic_dislotwin_dependentState
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_dislotwin_results(instance,group)
-#if defined(PETSc) || defined(DAMASK_HDF5)
 
   integer, intent(in) :: instance
   character(len=*) :: group
@@ -969,11 +968,6 @@ subroutine plastic_dislotwin_results(instance,group)
     end select
   enddo outputsLoop
   end associate
-  
-#else
-  integer, intent(in) :: instance
-  character(len=*) :: group
-#endif
 
 end subroutine plastic_dislotwin_results
 
