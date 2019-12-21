@@ -46,8 +46,8 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_adiabatic_init
  
-  integer :: maxNinstance,section,instance,i,sizeState,NofMyHomog   
-  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
+  integer :: maxNinstance,o,h,NofMyHomog   
+  character(len=65536), dimension(0), parameter   :: emptyStringArray = [character(len=65536)::]
   character(len=65536), dimension(:), allocatable :: outputs
  
   write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_ADIABATIC_label//' init  -+>>>'; flush(6)
@@ -57,38 +57,35 @@ subroutine thermal_adiabatic_init
   
   allocate(param(maxNinstance))
   
-  initializeInstances: do section = 1, size(thermal_type)
-    if (thermal_type(section) /= THERMAL_adiabatic_ID) cycle
-            associate(prm => param(thermal_typeInstance(section)), &
-              config => config_homogenization(section))
+  do h = 1, size(thermal_type)
+    if (thermal_type(h) /= THERMAL_adiabatic_ID) cycle
+    associate(prm => param(thermal_typeInstance(h)),config => config_homogenization(h))
               
-    NofMyHomog=count(material_homogenizationAt==section)
-    instance = thermal_typeInstance(section)
     outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
     allocate(prm%outputID(0))
-    do i=1, size(outputs)
-      select case(outputs(i))
+
+    do o=1, size(outputs)
+      select case(outputs(o))
         case('temperature')
-              prm%outputID = [prm%outputID, temperature_ID]
+          prm%outputID = [prm%outputID, temperature_ID]
       end select
     enddo
+
+    NofMyHomog=count(material_homogenizationAt==h)
+    thermalState(h)%sizeState = 1
+    allocate(thermalState(h)%state0   (1,NofMyHomog), source=thermal_initialT(h))
+    allocate(thermalState(h)%subState0(1,NofMyHomog), source=thermal_initialT(h))
+    allocate(thermalState(h)%state    (1,NofMyHomog), source=thermal_initialT(h))
  
- ! allocate state arrays
-    sizeState = 1
-    thermalState(section)%sizeState = sizeState
-    allocate(thermalState(section)%state0   (sizeState,NofMyHomog), source=thermal_initialT(section))
-    allocate(thermalState(section)%subState0(sizeState,NofMyHomog), source=thermal_initialT(section))
-    allocate(thermalState(section)%state    (sizeState,NofMyHomog), source=thermal_initialT(section))
- 
-    nullify(thermalMapping(section)%p)
-    thermalMapping(section)%p => mappingHomogenization(1,:,:)
-    deallocate(temperature(section)%p)
-    temperature(section)%p => thermalState(section)%state(1,:)
-    deallocate(temperatureRate(section)%p)
-    allocate  (temperatureRate(section)%p(NofMyHomog), source=0.0_pReal)
+    nullify(thermalMapping(h)%p)
+    thermalMapping(h)%p => mappingHomogenization(1,:,:)
+    deallocate(temperature(h)%p)
+    temperature(h)%p => thermalState(h)%state(1,:)
+    deallocate(temperatureRate(h)%p)
+    allocate  (temperatureRate(h)%p(NofMyHomog), source=0.0_pReal)
   
     end associate
-  enddo initializeInstances
+  enddo
  
 end subroutine thermal_adiabatic_init
 

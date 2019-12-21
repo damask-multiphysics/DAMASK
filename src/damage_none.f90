@@ -19,26 +19,23 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine damage_none_init
 
-  integer :: &
-    homog, &
-    NofMyHomog
+  integer :: h,NofMyHomog
 
-  write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_NONE_LABEL//' init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_NONE_LABEL//' init  -+>>>'; flush(6)
 
-   initializeInstances: do homog = 1, size(config_homogenization)
+  do h = 1, size(config_homogenization)
+    if (damage_type(h) /= DAMAGE_NONE_ID) cycle
+
+    NofMyHomog = count(material_homogenizationAt == h)
+    damageState(h)%sizeState = 0
+    allocate(damageState(h)%state0   (0,NofMyHomog))
+    allocate(damageState(h)%subState0(0,NofMyHomog))
+    allocate(damageState(h)%state    (0,NofMyHomog))
     
-    myhomog: if (damage_type(homog) == DAMAGE_NONE_ID) then
-      NofMyHomog = count(material_homogenizationAt == homog)
-      damageState(homog)%sizeState = 0
-      allocate(damageState(homog)%state0   (0,NofMyHomog))
-      allocate(damageState(homog)%subState0(0,NofMyHomog))
-      allocate(damageState(homog)%state    (0,NofMyHomog))
+    deallocate(damage(h)%p)
+    allocate  (damage(h)%p(1), source=damage_initialPhi(h))
       
-      deallocate(damage(homog)%p)
-      allocate  (damage(homog)%p(1), source=damage_initialPhi(homog))
-      
-    endif myhomog
-  enddo initializeInstances
+  enddo
 
 end subroutine damage_none_init
 

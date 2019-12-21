@@ -5,8 +5,8 @@
 module damage_local
   use prec
   use material
-  use numerics
   use config
+  use numerics
   use source_damage_isoBrittle
   use source_damage_isoDuctile
   use source_damage_anisoBrittle
@@ -22,9 +22,6 @@ module damage_local
       damage_ID
   end enum
 
-  integer(kind(undefined_ID)),   dimension(:,:), allocatable :: & 
-    damage_local_outputID                                                                           !< ID of each post result output
-    
   type :: tParameters
     integer(kind(undefined_ID)), dimension(:),   allocatable :: &
       outputID
@@ -46,61 +43,42 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine damage_local_init
 
-  integer :: maxNinstance,homog,i
-  integer :: sizeState
-  integer :: NofMyHomog, h
-  integer(kind(undefined_ID)) :: &
-    outputID
+  integer :: maxNinstance,o,NofMyHomog,h
   character(len=65536), dimension(0), parameter   :: emptyStringArray = [character(len=65536)::]
-  character(len=65536), dimension(:), allocatable :: &
-    outputs
+  character(len=65536), dimension(:), allocatable :: outputs
   
   write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_local_label//' init  -+>>>'; flush(6)
 
   maxNinstance = count(damage_type == DAMAGE_local_ID)
   if (maxNinstance == 0) return
   
-  allocate(damage_local_outputID       (maxval(homogenization_Noutput),maxNinstance),source=undefined_ID)
-  
   allocate(param(maxNinstance))
    
   do h = 1, size(damage_type)
     if (damage_type(h) /= DAMAGE_LOCAL_ID) cycle
-    associate(prm => param(damage_typeInstance(h)), &
-              config => config_homogenization(h))
+    associate(prm => param(damage_typeInstance(h)),config => config_homogenization(h))
               
-
     outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
     allocate(prm%outputID(0))
     
-    do i=1, size(outputs)
-      outputID = undefined_ID
-      select case(outputs(i))
-      
-            case ('damage')
-              prm%outputID = [prm%outputID , damage_ID]
-           end select
-      
+    do o=1, size(outputs)
+      select case(outputs(o))
+        case ('damage')
+          prm%outputID = [prm%outputID , damage_ID]
+      end select     
     enddo
 
-
-    homog = h
-
-      NofMyHomog = count(material_homogenizationAt == homog)
-
-
-! allocate state arrays
-      sizeState = 1
-      damageState(homog)%sizeState = sizeState
-      allocate(damageState(homog)%state0   (sizeState,NofMyHomog), source=damage_initialPhi(homog))
-      allocate(damageState(homog)%subState0(sizeState,NofMyHomog), source=damage_initialPhi(homog))
-      allocate(damageState(homog)%state    (sizeState,NofMyHomog), source=damage_initialPhi(homog))
+    NofMyHomog = count(material_homogenizationAt == h)
+    damageState(h)%sizeState = 1
+    allocate(damageState(h)%state0   (1,NofMyHomog), source=damage_initialPhi(h))
+    allocate(damageState(h)%subState0(1,NofMyHomog), source=damage_initialPhi(h))
+    allocate(damageState(h)%state    (1,NofMyHomog), source=damage_initialPhi(h))
  
-      nullify(damageMapping(homog)%p)
-      damageMapping(homog)%p => mappingHomogenization(1,:,:)
-      deallocate(damage(homog)%p)
-      damage(homog)%p => damageState(homog)%state(1,:)
-      
+    nullify(damageMapping(h)%p)
+    damageMapping(h)%p => mappingHomogenization(1,:,:)
+    deallocate(damage(h)%p)
+    damage(h)%p => damageState(h)%state(1,:)
+    
     end associate
   enddo
 

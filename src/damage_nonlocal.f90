@@ -1,13 +1,12 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine for non-locally evolving damage field
-!> @details to be done
 !--------------------------------------------------------------------------------------------------
 module damage_nonlocal
   use prec
   use material
-  use numerics
   use config
+  use numerics
   use crystallite
   use lattice
   use source_damage_isoBrittle
@@ -49,14 +48,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine damage_nonlocal_init
 
-  integer :: maxNinstance,homog,i
-  integer :: sizeState
-  integer :: NofMyHomog, h
-  integer(kind(undefined_ID)) :: &
-    outputID
-  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
-   character(len=65536), dimension(:), allocatable :: &
-    outputs
+  integer :: maxNinstance,o,NofMyHomog,h
+  character(len=65536), dimension(0), parameter   :: emptyStringArray = [character(len=65536)::]
+  character(len=65536), dimension(:), allocatable :: outputs
 
   write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_nonlocal_label//' init  -+>>>'; flush(6)
   
@@ -67,40 +61,32 @@ subroutine damage_nonlocal_init
    
   do h = 1, size(damage_type)
     if (damage_type(h) /= DAMAGE_NONLOCAL_ID) cycle
-    associate(prm => param(damage_typeInstance(h)), &
-              config => config_homogenization(h))
+    associate(prm => param(damage_typeInstance(h)),config => config_homogenization(h))
               
     outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
     allocate(prm%outputID(0))
     
-    do i=1, size(outputs)
-      outputID = undefined_ID
-      select case(outputs(i))
-            case ('damage')
-              prm%outputID = [prm%outputID , damage_ID]
-           end select
-      
+    do o=1, size(outputs)
+      select case(outputs(o))
+         case ('damage')
+           prm%outputID = [prm%outputID, damage_ID]
+      end select
     enddo
 
-    homog = h
+    NofMyHomog = count(material_homogenizationAt == h)
+    damageState(h)%sizeState = 1
+    allocate(damageState(h)%state0   (1,NofMyHomog), source=damage_initialPhi(h))
+    allocate(damageState(h)%subState0(1,NofMyHomog), source=damage_initialPhi(h))
+    allocate(damageState(h)%state    (1,NofMyHomog), source=damage_initialPhi(h))
 
-      NofMyHomog = count(material_homogenizationAt == homog)
-
-
-!  allocate state arrays
-      sizeState = 1
-      damageState(homog)%sizeState = sizeState
-      allocate(damageState(homog)%state0   (sizeState,NofMyHomog), source=damage_initialPhi(homog))
-      allocate(damageState(homog)%subState0(sizeState,NofMyHomog), source=damage_initialPhi(homog))
-      allocate(damageState(homog)%state    (sizeState,NofMyHomog), source=damage_initialPhi(homog))
-
-      nullify(damageMapping(homog)%p)
-      damageMapping(homog)%p => mappingHomogenization(1,:,:)
-      deallocate(damage(homog)%p)
-      damage(homog)%p => damageState(homog)%state(1,:)
-      
+    nullify(damageMapping(h)%p)
+    damageMapping(h)%p => mappingHomogenization(1,:,:)
+    deallocate(damage(h)%p)
+    damage(h)%p => damageState(h)%state(1,:)
+    
     end associate
   enddo
+
 end subroutine damage_nonlocal_init
 
 

@@ -16,8 +16,9 @@ module thermal_conduction
   private
 
   enum, bind(c) 
-    enumerator :: undefined_ID, &
-                  temperature_ID
+    enumerator :: &
+      undefined_ID, &
+      temperature_ID
   end enum
   
   type :: tParameters
@@ -47,10 +48,8 @@ contains
 subroutine thermal_conduction_init
 
   
-  integer :: maxNinstance,section,instance,i
-  integer :: sizeState
-  integer :: NofMyHomog   
-  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
+  integer :: maxNinstance,o,NofMyHomog,h
+  character(len=65536), dimension(0), parameter   :: emptyStringArray = [character(len=65536)::]
   character(len=65536), dimension(:), allocatable :: outputs
  
   write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_CONDUCTION_label//' init  -+>>>'; flush(6)
@@ -60,39 +59,35 @@ subroutine thermal_conduction_init
   
   allocate(param(maxNinstance))
   
-  initializeInstances: do section = 1, size(thermal_type)
-    if (thermal_type(section) /= THERMAL_conduction_ID) cycle
-        associate(prm => param(thermal_typeInstance(section)), &
-              config => config_homogenization(section))
+  do h = 1, size(thermal_type)
+    if (thermal_type(h) /= THERMAL_conduction_ID) cycle
+    associate(prm => param(thermal_typeInstance(h)),config => config_homogenization(h))
               
-    NofMyHomog=count(material_homogenizationAt==section)
-    instance = thermal_typeInstance(section)
     outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
     allocate(prm%outputID(0))
-    do i=1, size(outputs)
-      select case(outputs(i))
+
+    do o=1, size(outputs)
+      select case(outputs(o))
         case('temperature')
-              prm%outputID = [prm%outputID, temperature_ID]
+          prm%outputID = [prm%outputID, temperature_ID]
       end select
     enddo
+  
+    NofMyHomog=count(material_homogenizationAt==h)
+    thermalState(h)%sizeState = 0
+    allocate(thermalState(h)%state0   (0,NofMyHomog))
+    allocate(thermalState(h)%subState0(0,NofMyHomog))
+    allocate(thermalState(h)%state    (0,NofMyHomog))
  
- 
- ! allocate state arrays
-    sizeState = 0
-    thermalState(section)%sizeState = sizeState
-    allocate(thermalState(section)%state0   (sizeState,NofMyHomog))
-    allocate(thermalState(section)%subState0(sizeState,NofMyHomog))
-    allocate(thermalState(section)%state    (sizeState,NofMyHomog))
- 
-    nullify(thermalMapping(section)%p)
-    thermalMapping(section)%p => mappingHomogenization(1,:,:)
-    deallocate(temperature    (section)%p)
-    allocate  (temperature    (section)%p(NofMyHomog), source=thermal_initialT(section))
-    deallocate(temperatureRate(section)%p)
-    allocate  (temperatureRate(section)%p(NofMyHomog), source=0.0_pReal)
+    nullify(thermalMapping(h)%p)
+    thermalMapping(h)%p => mappingHomogenization(1,:,:)
+    deallocate(temperature    (h)%p)
+    allocate  (temperature    (h)%p(NofMyHomog), source=thermal_initialT(h))
+    deallocate(temperatureRate(h)%p)
+    allocate  (temperatureRate(h)%p(NofMyHomog), source=0.0_pReal)
     
     end associate
-  enddo initializeInstances
+  enddo
  
 end subroutine thermal_conduction_init
 
