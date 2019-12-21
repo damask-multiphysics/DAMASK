@@ -47,7 +47,7 @@ contains
 subroutine thermal_adiabatic_init
  
   integer :: maxNinstance,o,h,NofMyHomog   
-  character(len=65536), dimension(:), allocatable :: outputs
+  character(len=pStringLen), dimension(:), allocatable :: outputs
  
   write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_ADIABATIC_label//' init  -+>>>'; flush(6)
   

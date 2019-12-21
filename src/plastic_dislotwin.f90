@@ -185,7 +185,7 @@ subroutine plastic_dislotwin_init
 
  character(len=pStringLen) :: &
    extmsg = ''
- character(len=65536), dimension(:), allocatable :: &
+ character(len=pStringLen), dimension(:), allocatable :: &
    outputs
 
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_DISLOTWIN_label//' init  -+>>>'
@@ -506,8 +506,7 @@ subroutine plastic_dislotwin_init
                 + size(['f_tr'])                           * prm%sum_N_tr
    sizeState = sizeDotState
 
-   call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0, &
-                                      prm%sum_N_sl,prm%sum_N_tw,prm%sum_N_tr)
+   call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState

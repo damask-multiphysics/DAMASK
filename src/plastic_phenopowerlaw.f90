@@ -118,7 +118,7 @@ subroutine plastic_phenopowerlaw_init
 
  character(len=pStringLen) :: &
    extmsg = ''
- character(len=65536), dimension(:), allocatable :: &
+ character(len=pStringLen), dimension(:), allocatable :: &
    outputs
 
  write(6,'(/,a)')   ' <<<+-  plastic_'//PLASTICITY_PHENOPOWERLAW_label//' init  -+>>>'
@@ -304,8 +304,7 @@ subroutine plastic_phenopowerlaw_init
                 + size(['tau_twin  ','gamma_twin']) * prm%totalNtwin
    sizeState = sizeDotState
 
-   call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0, &
-                                      prm%totalNslip,prm%totalNtwin,0)
+   call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState

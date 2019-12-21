@@ -126,7 +126,7 @@ subroutine plastic_disloUCLA_init()
  
   character(len=pStringLen) :: &
     extmsg = ''
-  character(len=65536), dimension(:), allocatable :: &
+  character(len=pStringLen), dimension(:), allocatable :: &
     outputs
  
   write(6,'(/,a)')   ' <<<+-  plastic_'//PLASTICITY_DISLOUCLA_label//' init  -+>>>'
@@ -286,8 +286,7 @@ subroutine plastic_disloUCLA_init()
     sizeDotState = size(['rho_mob ','rho_dip ','gamma_sl']) * prm%sum_N_sl
     sizeState = sizeDotState
  
-    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0, &
-                                       prm%sum_N_sl,0,0)
+    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState

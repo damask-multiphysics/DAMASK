@@ -728,18 +728,14 @@ end subroutine material_parseTexture
 !> @brief allocates the plastic state of a phase
 !--------------------------------------------------------------------------------------------------
 subroutine material_allocatePlasticState(phase,NofMyPhase,&
-                                         sizeState,sizeDotState,sizeDeltaState,&
-                                         Nslip,Ntwin,Ntrans)
+                                         sizeState,sizeDotState,sizeDeltaState)
 
   integer, intent(in) :: &
     phase, &
     NofMyPhase, &
     sizeState, &
     sizeDotState, &
-    sizeDeltaState, &
-    Nslip, &
-    Ntwin, &
-    Ntrans
+    sizeDeltaState
 
   plasticState(phase)%sizeState        = sizeState
   plasticState(phase)%sizeDotState     = sizeDotState

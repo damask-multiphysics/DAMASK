@@ -991,7 +991,7 @@ integer function IO_countContinuousIntValues(fileUnit)
  integer                            :: l,c
 #endif
  integer, allocatable, dimension(:) :: chunkPos
- character(len=pString)             :: line
+ character(len=pStringLen)          :: line
 
  IO_countContinuousIntValues = 0
  line = ''

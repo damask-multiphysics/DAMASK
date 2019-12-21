@@ -108,7 +108,7 @@ subroutine plastic_kinehardening_init
 
  character(len=pStringLen) :: &
    extmsg = ''
- character(len=65536), dimension(:), allocatable :: &
+ character(len=pStringLen), dimension(:), allocatable :: &
    outputs
 
  write(6,'(/,a)')   ' <<<+-  plastic_'//PLASTICITY_KINEHARDENING_label//' init  -+>>>'
@@ -245,8 +245,7 @@ subroutine plastic_kinehardening_init
    sizeDeltaState = size(['sense ',   'chi0  ',    'gamma0'   ]) * prm%totalNslip
    sizeState = sizeDotState + sizeDeltaState
 
-   call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,sizeDeltaState, &
-                                      prm%totalNslip,0,0)
+   call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,sizeDeltaState)
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
