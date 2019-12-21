@@ -85,8 +85,6 @@ subroutine plastic_isotropic_init
     NipcMyPhase, &
     sizeState, sizeDotState
  
-  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
- 
   integer(kind(undefined_ID)) :: &
     outputID
  

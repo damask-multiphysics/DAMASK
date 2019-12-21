@@ -62,8 +62,6 @@ subroutine source_damage_anisoDuctile_init
   integer :: Ninstance,phase,instance,source,sourceOffset
   integer :: NofMyPhase,p ,i
  
-  integer,              dimension(0), parameter :: emptyIntArray    = [integer::]
-  character(len=65536), dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
   integer(kind(undefined_ID)) :: &
     outputID
  

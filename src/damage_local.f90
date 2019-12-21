@@ -44,7 +44,6 @@ contains
 subroutine damage_local_init
 
   integer :: maxNinstance,o,NofMyHomog,h
-  character(len=65536), dimension(0), parameter   :: emptyStringArray = [character(len=65536)::]
   character(len=65536), dimension(:), allocatable :: outputs
   
   write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_local_label//' init  -+>>>'; flush(6)

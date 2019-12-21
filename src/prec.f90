@@ -79,6 +79,10 @@ module prec
   real(pReal), private, parameter :: PREAL_EPSILON = epsilon(0.0_pReal)                             !< minimum positive number such that 1.0 + EPSILON /= 1.0.
   real(pReal), private, parameter :: PREAL_MIN     = tiny(0.0_pReal)                                !< smallest normalized floating point number
 
+  integer,              dimension(0), parameter, public :: emptyIntArray    = [integer::]
+  real(pReal),          dimension(0), parameter, public :: emptyRealArray   = [real(pReal)::]
+  character(len=65536), dimension(0), parameter, public :: emptyStringArray = [character(len=65536)::]
+
   private :: &
     unitTest
 

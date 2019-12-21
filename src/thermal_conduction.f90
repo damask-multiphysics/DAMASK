@@ -49,7 +49,6 @@ subroutine thermal_conduction_init
 
   
   integer :: maxNinstance,o,NofMyHomog,h
-  character(len=65536), dimension(0), parameter   :: emptyStringArray = [character(len=65536)::]
   character(len=65536), dimension(:), allocatable :: outputs
  
   write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_CONDUCTION_label//' init  -+>>>'; flush(6)

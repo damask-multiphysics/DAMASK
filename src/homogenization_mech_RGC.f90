@@ -74,8 +74,6 @@ module subroutine mech_RGC_init
     NofMyHomog, &
     sizeState, nIntFaceTot
  
-  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
-  
   integer(kind(undefined_ID)) :: &
     outputID
     

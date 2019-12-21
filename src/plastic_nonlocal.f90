@@ -225,10 +225,6 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_nonlocal_init
 
-  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
-  integer,                dimension(0), parameter :: emptyIntArray    = [integer::]
-  real(pReal),            dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
-
   integer :: &
     sizeState, sizeDotState,sizeDependentState, sizeDeltaState, &
     maxNinstances, &

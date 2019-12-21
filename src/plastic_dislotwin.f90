@@ -180,10 +180,6 @@ subroutine plastic_dislotwin_init
    sizeState, sizeDotState, &
    startIndex, endIndex
 
- integer,               dimension(0), parameter :: emptyIntArray    = [integer::]
- real(pReal),           dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
- character(len=65536),  dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
-
  integer(kind(undefined_ID)) :: &
    outputID
 

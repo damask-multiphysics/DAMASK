@@ -53,7 +53,6 @@ subroutine source_damage_isoDuctile_init
 
  integer :: Ninstance,phase,instance,source,sourceOffset
  integer :: NofMyPhase,p,i
- character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
  integer(kind(undefined_ID)) :: &
    outputID
 
