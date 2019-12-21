@@ -15,11 +15,6 @@ module damage_local
 
   implicit none
   private
-  
-  character(len=64),             dimension(:,:),         allocatable, target, public :: &
-    damage_local_output
-  integer,                       dimension(:),           allocatable, target, public :: &
-    damage_local_Noutput
 
   enum, bind(c) 
     enumerator :: &
@@ -60,15 +55,12 @@ subroutine damage_local_init
   character(len=65536), dimension(:), allocatable :: &
     outputs
   
-  write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_local_label//' init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_local_label//' init  -+>>>'; flush(6)
 
   maxNinstance = count(damage_type == DAMAGE_local_ID)
   if (maxNinstance == 0) return
   
-  allocate(damage_local_output         (maxval(homogenization_Noutput),maxNinstance))
-           damage_local_output = ''
   allocate(damage_local_outputID       (maxval(homogenization_Noutput),maxNinstance),source=undefined_ID)
-  allocate(damage_local_Noutput        (maxNinstance),                               source=0) 
   
   allocate(param(maxNinstance))
    
@@ -86,9 +78,7 @@ subroutine damage_local_init
       select case(outputs(i))
       
             case ('damage')
-            damage_local_output(i,damage_typeInstance(h)) = outputs(i)
-              damage_local_Noutput(instance) = damage_local_Noutput(instance) + 1
-        prm%outputID = [prm%outputID , damage_ID]
+              prm%outputID = [prm%outputID , damage_ID]
            end select
       
     enddo

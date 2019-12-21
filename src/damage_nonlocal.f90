@@ -18,11 +18,6 @@ module damage_nonlocal
 
   implicit none
   private
-  
-  character(len=64),             dimension(:,:), allocatable, target, public :: &
-    damage_nonlocal_output
-  integer,                       dimension(:),   allocatable, target, public :: &
-    damage_nonlocal_Noutput
 
   enum, bind(c) 
     enumerator :: &
@@ -63,14 +58,10 @@ subroutine damage_nonlocal_init
    character(len=65536), dimension(:), allocatable :: &
     outputs
 
-  write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_nonlocal_label//' init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_nonlocal_label//' init  -+>>>'; flush(6)
   
   maxNinstance = count(damage_type == DAMAGE_nonlocal_ID)
   if (maxNinstance == 0) return
-  
-  allocate(damage_nonlocal_output         (maxval(homogenization_Noutput),maxNinstance))
-           damage_nonlocal_output = ''
-  allocate(damage_nonlocal_Noutput        (maxNinstance),                               source=0) 
 
   allocate(param(maxNinstance))
    
@@ -86,11 +77,8 @@ subroutine damage_nonlocal_init
     do i=1, size(outputs)
       outputID = undefined_ID
       select case(outputs(i))
-      
             case ('damage')
-            damage_nonlocal_output(i,damage_typeInstance(h)) = outputs(i)
-              damage_nonlocal_Noutput(instance) = damage_nonlocal_Noutput(instance) + 1
-        prm%outputID = [prm%outputID , damage_ID]
+              prm%outputID = [prm%outputID , damage_ID]
            end select
       
     enddo
