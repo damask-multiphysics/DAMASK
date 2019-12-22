@@ -248,17 +248,17 @@ class Table():
                                                  '' if info is None else ': {}'.format(info),
                                                  ))
 
-        self.shapes = {(label if label is not label_old else label_new):self.shapes[label] for label in self.shapes}
+        self.shapes = {(label if label != label_old else label_new):self.shapes[label] for label in self.shapes}
 
 
     def sort_by(self,labels,ascending=True):
         """
-        Get column data.
+        Sort table by values of given labels.
 
         Parameters
         ----------
         label : str or list
-            Column labels.
+            Column labels for sorting.
         ascending : bool or list, optional
             Set sort order.
 
@@ -267,6 +267,41 @@ class Table():
         self.data.sort_values(labels,axis=0,inplace=True,ascending=ascending)
         self.__label_condensed()
         self.comments.append('sorted by [{}]'.format(', '.join(labels)))
+
+
+    def append(self,other):
+        """
+        Append other table vertically (similar to numpy.vstack). Requires matching shapes and order.
+
+        Parameters
+        ----------
+        other : Table
+            Table to append
+
+        """
+        if self.shapes != other.shapes or not self.data.columns.equals(other.data.columns):
+            raise KeyError('Labels or shapes or order do not match')
+        else:
+            self.data = self.data.append(other.data,ignore_index=True)
+
+
+    def join(self,other):
+        """
+        Append other table horizontally (similar to numpy.hstack). Requires matching number of rows
+        and no common lables
+
+        Parameters
+        ----------
+        other : Table
+            Table to join
+
+        """
+        if set(self.shapes) & set(other.shapes) or self.data.shape[0] != other.data.shape[0]:
+            raise KeyError('Dublicated keys or row count mismatch')
+        else:
+            self.data = self.data.join(other.data)
+            for key in other.shapes:
+                self.shapes[key] = other.shapes[key]
 
 
     def to_ASCII(self,fname):
