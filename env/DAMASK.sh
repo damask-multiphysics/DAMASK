@@ -47,7 +47,7 @@ PROCESSING=$(type -p postResults || true 2>/dev/null)
 # still, http://software.intel.com/en-us/forums/topic/501500 suggest to fix it
 # more info https://jblevins.org/log/segfault
 #           https://stackoverflow.com/questions/79923/what-and-where-are-the-stack-and-heap
-# http://superuser.com/questions/220059/what-parameters-has-ulimit
+#           http://superuser.com/questions/220059/what-parameters-has-ulimit
 ulimit -s unlimited 2>/dev/null # maximum stack size (kB)
 
 # disable output in case of scp
