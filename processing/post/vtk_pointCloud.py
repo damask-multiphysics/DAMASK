@@ -2,10 +2,10 @@
 
 import os
 import sys
+from io import StringIO
 from optparse import OptionParser
 
 import vtk
-import numpy as np
 
 import damask
 
