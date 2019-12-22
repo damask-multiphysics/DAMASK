@@ -25,56 +25,19 @@ parser.add_option('-a', '--add','--table',
                   help = 'tables to add')
 
 (options,filenames) = parser.parse_args()
-
-if options.table is None:
-  parser.error('no table specified.')
-
-
-# --- loop over input files -------------------------------------------------------------------------
-
 if filenames == []: filenames = [None]
 
+if options.table is None:
+      parser.error('no table specified.')
+
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,
-                                    buffered = False)
-  except: continue
+    damask.util.report(scriptName,name)
 
-  damask.util.report(scriptName,name)
+    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
-  tables = []
-  for addTable in options.table:
-    try:    tables.append(damask.ASCIItable(name = addTable,
-                                            buffered = False,
-                                            readonly = True)
-                         )
-    except: continue
+    for addTable in options.table:
+        table2 = damask.Table.from_ASCII(addTable)
+        table2.data = table2.data[:table.data.shape[0]]
+        table.join(table2)
 
-# ------------------------------------------ read headers ------------------------------------------
-
-  table.head_read()
-  for addTable in tables: addTable.head_read()
-
-# ------------------------------------------ assemble header --------------------------------------
-
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-
-  for addTable in tables: table.labels_append(addTable.labels(raw = True))                          # extend ASCII header with new labels
-
-  table.head_write()
-
-# ------------------------------------------ process data ------------------------------------------
-
-  outputAlive = True
-  while outputAlive and table.data_read():
-    for addTable in tables:
-      outputAlive = addTable.data_read()                                                            # read next table's data
-      if not outputAlive: break
-      table.data_append(addTable.data)                                                              # append to master table
-    if outputAlive:
-      outputAlive = table.data_write()                                                              # output processed line
-
-# ------------------------------------------ output finalization -----------------------------------  
-
-  table.close()                                                                                     # close ASCII tables
-  for addTable in tables:
-    addTable.close()
+    table.to_ASCII(sys.stdout if name is None else name)

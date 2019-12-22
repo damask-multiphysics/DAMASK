@@ -27,53 +27,18 @@ parser.add_option('-a', '--add','--table',
                   help = 'tables to add')
 
 (options,filenames) = parser.parse_args()
-
-if options.table is None:
-  parser.error('no table specified.')
-
-
-# --- loop over input files -------------------------------------------------------------------------
-
 if filenames == []: filenames = [None]
 
+if options.table is None:
+    parser.error('no table specified.')
+
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,
-                                    buffered = False)
-  except: continue
+    damask.util.report(scriptName,name)
 
-  damask.util.report(scriptName,name)
+    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
-  tables = []
-  for addTable in options.table:
-    try:    tables.append(damask.ASCIItable(name = addTable,
-                                            buffered = False,
-                                            readonly = True)
-                         )
-    except: continue
+    for growTable in options.table:
+        table2 = damask.Table.from_ASCII(growTable)
+        table.append(table2)
 
-# ------------------------------------------ read headers ------------------------------------------
-
-  table.head_read()
-  for addTable in tables: addTable.head_read()
-
-# ------------------------------------------ assemble header --------------------------------------
-
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-
-  table.head_write()
-
-# ------------------------------------------ process data ------------------------------------------
-
-  table.data_readArray()
-  data = table.data
-  for addTable in tables:
-    addTable.data_readArray(table.labels(raw = True))
-    data = np.vstack((data,addTable.data))
-  table.data = data
-  table.data_writeArray()
-
-# ------------------------------------------ output finalization -----------------------------------  
-
-  table.close()                                                                                     # close ASCII tables
-  for addTable in tables:
-    addTable.close()
+    table.to_ASCII(sys.stdout if name is None else name)
