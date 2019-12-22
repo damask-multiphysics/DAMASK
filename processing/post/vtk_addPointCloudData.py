@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 from optparse import OptionParser
 from collections import defaultdict
 
@@ -20,7 +21,8 @@ scriptID   = ' '.join([scriptName,damask.version])
 
 parser = OptionParser(option_class=damask.extendableOption,
                       usage='%prog options [ASCIItable(s)]',
-                      description = """Add scalar and RGB tuples from ASCIItable to existing VTK point cloud (.vtp).""",
+                      description = "Add scalars, vectors, tensors, and/or an RGB tuple from ASCIItable "
+                                  + "VTK point cloud (.vtp).",
                       version = scriptID)
 
 parser.add_option(      '--vtk',
@@ -39,9 +41,10 @@ parser.add_option('-t', '--tensor',
                   dest = 'tensor',
                   action = 'extend', metavar = '<string LIST>',
                   help = 'tensor (3x3) value label(s)')
-parser.add_option('-c', '--color',   dest='color', action='extend',
-                  metavar ='<string LIST>',
-                  help = 'RGB color tuples')
+parser.add_option('-c', '--color',
+                  dest = 'color',
+                  action = 'extend', metavar = '<string LIST>',
+                  help = 'RGB color tuple label')
 
 parser.set_defaults(data = [],
                     tensor = [],
@@ -49,8 +52,9 @@ parser.set_defaults(data = [],
 )
 
 (options, filenames) = parser.parse_args()
+if filenames == []: filenames = [None]
 
-if not options.vtk:                 parser.error('no VTK file specified.')
+if not options.vtk:                 parser.error('No VTK file specified.')
 if not os.path.exists(options.vtk): parser.error('VTK file does not exist.')
 
 vtk_file,vtk_ext = os.path.splitext(options.vtk)
@@ -77,76 +81,28 @@ if Npoints != Ncells or Npoints != Nvertices:
 
 damask.util.croak('{}: {} points/vertices/cells...'.format(options.vtk,Npoints))
 
-# --- loop over input files -------------------------------------------------------------------------
-
-if filenames == []: filenames = [None]
-
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,
-                                    buffered = False,
-                                    readonly = True)
-  except: continue
-  damask.util.report(scriptName, name)
+  damask.util.report(scriptName,name)
 
-# --- interpret header ----------------------------------------------------------------------------
-
-  table.head_read()
-
-  remarks = []
-  errors  = []
+  table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+  
   VTKarray = {}
-  active = defaultdict(list)
+  for data in options.data:
+    VTKarray[data] = numpy_support.numpy_to_vtk(table.get(data).copy(),
+                                                deep=True,array_type=vtk.VTK_DOUBLE)
+    VTKarray[data].SetName(data)
+  
+  for color in options.color:
+    VTKarray[color] = numpy_support.numpy_to_vtk((table.get(color)*255).astype(int).copy(),
+                                                deep=True,array_type=vtk.VTK_UNSIGNED_CHAR)
+    VTKarray[color].SetName(color)
 
-  for datatype,dimension,label in [['data',0,options.data],
-                                   ['tensor',9,options.tensor],
-                                   ['color' ,3,options.color],
-                                   ]:
-    for i,dim in enumerate(table.label_dimension(label)):
-      me = label[i]
-      if dim == -1:          remarks.append('{} "{}" not found...'.format(datatype,me))
-      elif dimension > 0 \
-       and dim != dimension: remarks.append('"{}" not of dimension {}...'.format(me,dimension))
-      else:
-        remarks.append('adding {}{} "{}"...'.format(datatype if dim > 1 else 'scalar',
-                                                    '' if dimension > 0 or dim == 1 else '[{}]'.format(dim),
-                                                    me))
-        active[datatype].append(me)
+  for tensor in options.tensor:
+    data = damask.mechanics.symmetric(table.get(tensor).reshape((-1,3,3))).reshape((-1,9))
+    VTKarray[tensor] = numpy_support.numpy_to_vtk(data.copy(),
+                                                deep=True,array_type=vtk.VTK_DOUBLE)
+    VTKarray[tensor].SetName(tensor)
 
-  if remarks != []: damask.util.croak(remarks)
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# --------------------------------------- process and add data -----------------------------------
-
-  table.data_readArray([item for sublist in active.values() for item in sublist])                 # read all requested data
-
-  for datatype,labels in active.items():                                                          # loop over scalar,color
-    for me in labels:                                                                             # loop over all requested items
-      VTKtype = vtk.VTK_DOUBLE
-      VTKdata = table.data[:, table.label_indexrange(me)].copy()                                  # copy to force contiguous layout
-
-      if datatype == 'color':
-        VTKtype = vtk.VTK_UNSIGNED_CHAR
-        VTKdata = (VTKdata*255).astype(int)                                                       # translate to 0..255 UCHAR
-      elif datatype == 'tensor':
-        VTKdata[:,1] = VTKdata[:,3] = 0.5*(VTKdata[:,1]+VTKdata[:,3])
-        VTKdata[:,2] = VTKdata[:,6] = 0.5*(VTKdata[:,2]+VTKdata[:,6])
-        VTKdata[:,5] = VTKdata[:,7] = 0.5*(VTKdata[:,5]+VTKdata[:,7])
-
-      VTKarray[me] = numpy_support.numpy_to_vtk(num_array=VTKdata,deep=True,array_type=VTKtype)
-      VTKarray[me].SetName(me)
-
-      if datatype == 'color':
-        Polydata.GetPointData().SetScalars(VTKarray[me])
-        Polydata.GetCellData().SetScalars(VTKarray[me])
-      else:
-        Polydata.GetPointData().AddArray(VTKarray[me])
-        Polydata.GetCellData().AddArray(VTKarray[me])
-
-
-  table.input_close()                                                                            # close input ASCII table
 
 # ------------------------------------------ output result ---------------------------------------
 
