@@ -47,6 +47,17 @@ class TestTable:
             new = Table.from_ASCII(f)
         assert all(default.data==new.data)
 
+    def test_read_ang_str(self,reference_dir):
+        new = Table.from_ang(os.path.join(reference_dir,'simple.ang'))
+        assert new.data.shape == (4,10) and \
+               new.labels == ['eu', 'pos', 'IQ', 'CI', 'ID', 'intensity', 'fit']
+
+    def test_read_ang_file(self,reference_dir):
+        f = open(os.path.join(reference_dir,'simple.ang'))
+        new = Table.from_ang(f)
+        assert new.data.shape == (4,10) and \
+               new.labels == ['eu', 'pos', 'IQ', 'CI', 'ID', 'intensity', 'fit']
+
     @pytest.mark.parametrize('fname',['datatype-mix.txt','whitespace-mix.txt'])
     def test_read_strange(self,reference_dir,fname):
         with open(os.path.join(reference_dir,fname)) as f:
