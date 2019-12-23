@@ -15,12 +15,12 @@ scriptID   = ' '.join([scriptName,damask.version])
 def operator(stretch,strain,eigenvalues):
   """Albrecht Bertram: Elasticity and Plasticity of Large Deformations An Introduction (3rd Edition, 2012), p. 102."""
   return {
-    'V#ln':    np.log(eigenvalues)                                 ,
-    'U#ln':    np.log(eigenvalues)                                 ,
-    'V#Biot':  ( np.ones(3,'d') - 1.0/eigenvalues )                ,
-    'U#Biot':  ( eigenvalues - np.ones(3,'d') )                    ,
-    'V#Green': ( np.ones(3,'d') - 1.0/eigenvalues**2.0) *0.5,
-    'U#Green': ( eigenvalues**2.0 - np.ones(3,'d'))     *0.5,
+    'V#ln':    np.log(eigenvalues)                      ,
+    'U#ln':    np.log(eigenvalues)                      ,
+    'V#Biot':  ( np.ones(3,'d') - eigenvalues**-1.0)    ,
+    'U#Biot':  ( eigenvalues**1.0  - np.ones(3,'d'))    ,
+    'V#Green': ( np.ones(3,'d') - eigenvalues**-2.0)*0.5,
+    'U#Green': ( eigenvalues**2.0 - np.ones(3,'d')) *0.5,
          }[stretch+'#'+strain]
 
 
@@ -142,7 +142,7 @@ for name in filenames:
 
       for theStretch in stretches:
         (D,V) = np.linalg.eigh((stretch[theStretch]+stretch[theStretch].T)*0.5)                     # eigen decomposition (of symmetric(ed) matrix)
-      for theStrain in strains:
+        for theStrain in strains:
           d = operator(theStretch,theStrain,D)                                                      # operate on eigenvalues of U or V
           eps = np.dot(V,np.dot(np.diag(d),V.T)).reshape(9)                                         # build tensor back from eigenvalue/vector basis
 
