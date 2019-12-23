@@ -19,8 +19,8 @@ def operator(stretch,strain,eigenvalues):
     'U#ln':    np.log(eigenvalues)                                 ,
     'V#Biot':  ( np.ones(3,'d') - 1.0/eigenvalues )                ,
     'U#Biot':  ( eigenvalues - np.ones(3,'d') )                    ,
-    'V#Green': ( np.ones(3,'d') - 1.0/eigenvalues/eigenvalues) *0.5,
-    'U#Green': ( eigenvalues*eigenvalues - np.ones(3,'d'))     *0.5,
+    'V#Green': ( np.ones(3,'d') - 1.0/eigenvalues**2.0) *0.5,
+    'U#Green': ( eigenvalues**2.0 - np.ones(3,'d'))     *0.5,
          }[stretch+'#'+strain]
 
 
@@ -141,7 +141,6 @@ for name in filenames:
       stretch['V'] = np.dot(F,R_inv)                                                                # F = VR
 
       for theStretch in stretches:
-        stretch[theStretch] = np.where(abs(stretch[theStretch]) < 1e-12, 0, stretch[theStretch])    # kill nasty noisy data
         (D,V) = np.linalg.eigh((stretch[theStretch]+stretch[theStretch].T)*0.5)                     # eigen decomposition (of symmetric(ed) matrix)
       for theStrain in strains:
           d = operator(theStretch,theStrain,D)                                                      # operate on eigenvalues of U or V
