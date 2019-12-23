@@ -122,20 +122,10 @@ for name in filenames:
 
 #--- generate grid --------------------------------------------------------------------------------
 
-  x = (0.5 + shift[0] + np.arange(packedGrid[0],dtype=float))/packedGrid[0]*size[0]
-  y = (0.5 + shift[1] + np.arange(packedGrid[1],dtype=float))/packedGrid[1]*size[1]
-  z = (0.5 + shift[2] + np.arange(packedGrid[2],dtype=float))/packedGrid[2]*size[2]
+  coords = damask.grid_filters.cell_coord0(packedGrid,size,shift/packedGrid*size+origin)
+  table.data[:,table.label_indexrange(options.pos)] = coords.reshape((-1,3))
 
-  xx = np.tile(          x,                packedGrid[1]* packedGrid[2])
-  yy = np.tile(np.repeat(y,packedGrid[0]                ),packedGrid[2])
-  zz =         np.repeat(z,packedGrid[0]*packedGrid[1])
 
-  table.data[:,table.label_indexrange(options.pos)] = np.squeeze(np.dstack((xx,yy,zz)))
-
-# ------------------------------------------ output result -----------------------------------------  
-
-  table.data_writeArray()
-  
 # ------------------------------------------ output finalization -----------------------------------  
-
-  table.close()                                                                                     # close ASCII tables
+  table.data_writeArray()
+  table.close()

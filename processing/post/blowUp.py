@@ -4,6 +4,7 @@ import os
 import sys
 from optparse import OptionParser
 
+from scipy import ndimage
 import numpy as np
 
 import damask
@@ -94,30 +95,13 @@ for name in filenames:
   table.head_write()
 
 # ------------------------------------------ process data -------------------------------------------
+  table.data_readArray()
+  data = table.data.reshape(tuple(grid)+(-1,))
+  table.data = ndimage.interpolation.zoom(data,tuple(packing)+(1,),order=0,mode='nearest').reshape((outSize.prod(),-1))
+  coords = damask.grid_filters.cell_coord0(outSize,size,origin)
+  table.data[:,table.label_indexrange(options.pos)] = coords.reshape((-1,3))
+  table.data[:,table.label_index('elem')] = np.arange(1,outSize.prod()+1)
 
-  data = np.zeros(outSize.tolist()+[len(table.labels(raw = True))])
-  p = np.zeros(3,'i')
-  
-  for p[2] in range(grid[2]):
-    for p[1] in range(grid[1]):
-      for p[0] in range(grid[0]):
-        d = p*packing
-        table.data_read()
-        data[d[0]:d[0]+packing[0],
-             d[1]:d[1]+packing[1],
-             d[2]:d[2]+packing[2],
-             : ] = np.tile(np.array(table.data_asFloat(),'d'),packing.tolist()+[1])                 # tile to match blowUp voxel size
-  elementSize = size/grid/packing
-  elem = 1
-  for c in range(outSize[2]):
-    for b in range(outSize[1]):
-      for a in range(outSize[0]):
-        data[a,b,c,table.label_indexrange(options.pos)] = [a+0.5,b+0.5,c+0.5]*elementSize
-        if colElem != -1: data[a,b,c,colElem] = elem
-        table.data = data[a,b,c,:].tolist()
-        outputAlive = table.data_write()                                                            # output processed line
-        elem += 1
-
-# ------------------------------------------ output finalization -----------------------------------
-
-  table.close()                                                                                     # close input ASCII table (works for stdin)
+# ------------------------------------------ output finalization -----------------------------------  
+  table.data_writeArray()
+  table.close()
