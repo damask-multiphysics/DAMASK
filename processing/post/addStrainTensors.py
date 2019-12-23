@@ -12,15 +12,15 @@ import damask
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
-def operator(stretch,strain,eigenvalues):
+def parameters(stretch,strain):
   """Albrecht Bertram: Elasticity and Plasticity of Large Deformations An Introduction (3rd Edition, 2012), p. 102."""
   return {
-    'V#ln':    np.log(eigenvalues)*.5                   ,
-    'U#ln':    np.log(eigenvalues)*.5                   ,
-    'V#Biot':  ( np.ones(3,'d') - eigenvalues**-0.5)    ,
-    'U#Biot':  ( eigenvalues**0.5  - np.ones(3,'d'))    ,
-    'V#Green': ( np.ones(3,'d') - eigenvalues**-1.0)*0.5,
-    'U#Green': ( eigenvalues**1.0 - np.ones(3,'d')) *0.5,
+    'V#ln':    ('V',0.0),
+    'U#ln':    ('U',0.0),
+    'V#Biot':  ('V',-.5),
+    'U#Biot':  ('U',+.5),
+    'V#Green': ('V',-1.),
+    'U#Green': ('U',+1.),
          }[stretch+'#'+strain]
 
 
@@ -64,9 +64,10 @@ parser.set_defaults(
                    )
 
 (options,filenames) = parser.parse_args()
+if filenames == []: filenames = [None]
 
 if len(options.defgrad) > 1:
-  options.defgrad = options.defgrad[1:]
+    options.defgrad = options.defgrad[1:]
 
 stretches = []
 strains = []
@@ -78,78 +79,21 @@ if options.biot:        strains.append('Biot')
 if options.green:       strains.append('Green')
 
 if options.defgrad is None:
-  parser.error('no data column specified.')
-
-# --- loop over input files -------------------------------------------------------------------------
-
-if filenames == []: filenames = [None]
+    parser.error('no data column specified.')
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False)
-  except IOError: continue
-  damask.util.report(scriptName,name)
+    damask.util.report(scriptName,name)
+    
+    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
-# ------------------------------------------ read header ------------------------------------------
-
-  table.head_read()
-
-# ------------------------------------------ sanity checks ----------------------------------------
-
-  items = {
-            'tensor': {'dim': 9, 'shape': [3,3], 'labels':options.defgrad, 'column': []},
-          }
-  errors  = []
-  remarks = []
-  
-  for type, data in items.items():
-    for what in data['labels']:
-      dim = table.label_dimension(what)
-      if dim != data['dim']: remarks.append('column {} is not a {}...'.format(what,type))
-      else:
-        items[type]['column'].append(table.label_index(what))
+    for defgrad in options.defgrad:
+        F = table.get(defgrad).reshape((-1,3,3))
         for theStretch in stretches:
-          for theStrain in strains:
-            table.labels_append(['{}_{}({}){}'.format(i+1,                                          # extend ASCII header with new labels  
-                                                      theStrain,
-                                                      theStretch,
-                                                      what if what != 'f' else '') for i in range(9)])
+            for theStrain in strains:
+                (t,m) = parameters(theStretch,theStrain)
+                label = '{}({}){}'.format(theStrain,theStretch,defgrad if defgrad != 'f' else '')
+                table.add(label,
+                          damask.mechanics.strain_tensor(F,t,m).reshape((-1,9)),
+                          scriptID+' '+' '.join(sys.argv[1:]))
 
-  if remarks != []: damask.util.croak(remarks)
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# ------------------------------------------ assemble header --------------------------------------
-
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.head_write()
-
-# ------------------------------------------ process data ------------------------------------------
-
-  stretch = {}
-  outputAlive = True
-
-  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    for column in items['tensor']['column']:                                                        # loop over all requested defgrads
-      F = np.array(list(map(float,table.data[column:column+items['tensor']['dim']])),'d').reshape(items['tensor']['shape'])
-      stretch['V'] = np.dot(F,F.T)                                                                # F = VR
-      stretch['U'] = np.dot(F.T,F)                                                                # F = RU
-
-      for theStretch in stretches:
-        (D,V) = np.linalg.eigh((stretch[theStretch]+stretch[theStretch].T)*0.5)                     # eigen decomposition (of symmetric(ed) matrix)
-        for theStrain in strains:
-          d = operator(theStretch,theStrain,D)                                                      # operate on eigenvalues of U or V
-          eps = np.dot(V,np.dot(np.diag(d),V.T)).reshape(9)                                         # build tensor back from eigenvalue/vector basis
-
-          table.data_append(list(eps))
-
-# ------------------------------------------ output result -----------------------------------------
-
-    outputAlive = table.data_write()                                                                # output processed line
-
-# ------------------------------------------ output finalization -----------------------------------  
-
-  table.close()                                                                                     # close ASCII tables
+    table.to_ASCII(sys.stdout if name is None else name)
