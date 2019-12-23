@@ -143,9 +143,6 @@ for name in filenames:
       for theStretch in stretches:
         stretch[theStretch] = np.where(abs(stretch[theStretch]) < 1e-12, 0, stretch[theStretch])    # kill nasty noisy data
         (D,V) = np.linalg.eigh((stretch[theStretch]+stretch[theStretch].T)*0.5)                     # eigen decomposition (of symmetric(ed) matrix)
-        neg = np.where(D < 0.0)                                                                     # find negative eigenvalues ...
-        D[neg]   *= -1.                                                                             # ... flip value ...
-        V[:,neg] *= -1.                                                                             # ... and vector
       for theStrain in strains:
           d = operator(theStretch,theStrain,D)                                                      # operate on eigenvalues of U or V
           eps = np.dot(V,np.dot(np.diag(d),V.T)).reshape(9)                                         # build tensor back from eigenvalue/vector basis
