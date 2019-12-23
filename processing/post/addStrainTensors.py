@@ -15,12 +15,12 @@ scriptID   = ' '.join([scriptName,damask.version])
 def operator(stretch,strain,eigenvalues):
   """Albrecht Bertram: Elasticity and Plasticity of Large Deformations An Introduction (3rd Edition, 2012), p. 102."""
   return {
-    'V#ln':    np.log(eigenvalues)                      ,
-    'U#ln':    np.log(eigenvalues)                      ,
-    'V#Biot':  ( np.ones(3,'d') - eigenvalues**-1.0)    ,
-    'U#Biot':  ( eigenvalues**1.0  - np.ones(3,'d'))    ,
-    'V#Green': ( np.ones(3,'d') - eigenvalues**-2.0)*0.5,
-    'U#Green': ( eigenvalues**2.0 - np.ones(3,'d')) *0.5,
+    'V#ln':    np.log(eigenvalues)*.5                   ,
+    'U#ln':    np.log(eigenvalues)*.5                   ,
+    'V#Biot':  ( np.ones(3,'d') - eigenvalues**-0.5)    ,
+    'U#Biot':  ( eigenvalues**0.5  - np.ones(3,'d'))    ,
+    'V#Green': ( np.ones(3,'d') - eigenvalues**-1.0)*0.5,
+    'U#Green': ( eigenvalues**1.0 - np.ones(3,'d')) *0.5,
          }[stretch+'#'+strain]
 
 
@@ -135,10 +135,8 @@ for name in filenames:
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     for column in items['tensor']['column']:                                                        # loop over all requested defgrads
       F = np.array(list(map(float,table.data[column:column+items['tensor']['dim']])),'d').reshape(items['tensor']['shape'])
-      (U,S,Vh) = np.linalg.svd(F)                                                                   # singular value decomposition
-      R_inv = np.dot(U,Vh).T                                                                        # rotation of polar decomposition
-      stretch['V'] = np.dot(F,R_inv)                                                                # F = VR
-      stretch['U'] = np.dot(R_inv,F)                                                                # F = RU
+      stretch['V'] = np.dot(F,F.T)                                                                # F = VR
+      stretch['U'] = np.dot(F.T,F)                                                                # F = RU
 
       for theStretch in stretches:
         (D,V) = np.linalg.eigh((stretch[theStretch]+stretch[theStretch].T)*0.5)                     # eigen decomposition (of symmetric(ed) matrix)
