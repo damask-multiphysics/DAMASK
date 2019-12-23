@@ -137,8 +137,8 @@ for name in filenames:
       F = np.array(list(map(float,table.data[column:column+items['tensor']['dim']])),'d').reshape(items['tensor']['shape'])
       (U,S,Vh) = np.linalg.svd(F)                                                                   # singular value decomposition
       R_inv = np.dot(U,Vh).T                                                                        # rotation of polar decomposition
-      stretch['U'] = np.dot(R_inv,F)                                                                # F = RU
       stretch['V'] = np.dot(F,R_inv)                                                                # F = VR
+      stretch['U'] = np.dot(R_inv,F)                                                                # F = RU
 
       for theStretch in stretches:
         (D,V) = np.linalg.eigh((stretch[theStretch]+stretch[theStretch].T)*0.5)                     # eigen decomposition (of symmetric(ed) matrix)
