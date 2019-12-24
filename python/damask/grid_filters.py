@@ -200,6 +200,10 @@ def cell_coord0_2_DNA(coord0,ordered=True):
     size      = grid/np.maximum(grid-1,1) * (maxcorner-mincorner)
     delta     = size/grid
     origin    = mincorner - delta*.5
+    
+    # 1D/2D: size/origin combination undefined, set origin to 0.0
+    size  [np.where(grid==1)] = origin[np.where(grid==1)]*2.
+    origin[np.where(grid==1)] = 0.0
    
     if grid.prod() != len(coord0):
         raise ValueError('Data count {} does not match grid {}.'.format(len(coord0),grid))
