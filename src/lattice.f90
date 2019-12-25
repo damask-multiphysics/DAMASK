@@ -371,7 +371,7 @@ module lattice
        1,-1, 1,     -2,-1, 1, &
       -1, 1, 1,     -1,-2, 1, &
        1, 1, 1,      1,-2, 1  &
-       ],pReal),[ 3 + 3,LATTICE_BCT_NSLIP])                                                         !< slip systems for bct sorted by Bieler
+       ],pReal),shape(LATTICE_BCT_SYSTEMSLIP))                                                      !< slip systems for bct sorted by Bieler
   
 !--------------------------------------------------------------------------------------------------
 ! isotropic
@@ -387,7 +387,7 @@ module lattice
        0, 1, 0,     1, 0, 0, &
        0, 0, 1,     0, 1, 0, &
        1, 0, 0,     0, 0, 1  &
-      ],pReal),[ 3 + 3,LATTICE_ISO_NCLEAVAGE])
+      ],pReal),shape(LATTICE_ISO_SYSTEMCLEAVAGE))
  
  
 !--------------------------------------------------------------------------------------------------
@@ -404,7 +404,7 @@ module lattice
        0, 1, 0,     1, 0, 0, &
        0, 0, 1,     0, 1, 0, &
        1, 0, 0,     0, 0, 1  &
-      ],pReal),[ 3 + 3,LATTICE_ORT_NCLEAVAGE])
+      ],pReal),shape(LATTICE_ORT_SYSTEMCLEAVAGE))
  
  
  
