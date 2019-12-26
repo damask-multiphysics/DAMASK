@@ -173,7 +173,7 @@ subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
 !--------------------------------------------------------------------------------------------------
 ! get header length
   endPos = index(rawData,new_line(''))
-  if(endPos <= index(rawData,'head')) then
+  if(endPos <= index(rawData,'head')) then                                                          ! ToDo: Should be 'header'
     startPos = len(rawData)
     call IO_error(error_ID=841, ext_msg='readGeom')
   else
