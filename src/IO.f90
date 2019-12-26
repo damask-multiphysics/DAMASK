@@ -23,7 +23,6 @@ module IO
     IO_read_ASCII, &
     IO_open_file, &
     IO_open_jobFile_binary, &
-    IO_write_jobFile, &
     IO_isBlank, &
     IO_getTag, &
     IO_stringPos, &
@@ -287,25 +286,6 @@ subroutine IO_open_inputFile(fileUnit)
 
 end subroutine IO_open_inputFile
 #endif
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief opens ASCII file to given unit for writing. File is named after solver job name plus
-!!        given extension and located in current working directory
-!--------------------------------------------------------------------------------------------------
-subroutine IO_write_jobFile(fileUnit,ext)
-
-  integer,          intent(in) :: fileUnit                                                          !< file unit
-  character(len=*), intent(in) :: ext                                                               !< extension of file
-
-  integer                      :: myStat
-  character(len=1024)          :: path
-
-  path = trim(getSolverJobName())//'.'//ext
-  open(fileUnit,status='replace',iostat=myStat,file=path)
-  if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
-
-end subroutine IO_write_jobFile
 
 
 !--------------------------------------------------------------------------------------------------
