@@ -43,65 +43,29 @@ parser.set_defaults(pos  = 'pos',
                    )
 
 (options,filenames) = parser.parse_args()
+if filenames == []: filenames = [None]
 
 options.packing = np.array(options.packing)
 prefix = 'blowUp{}x{}x{}_'.format(*options.packing)
 
-# --- loop over input files -------------------------------------------------------------------------
-
-if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,
-                                    outname = os.path.join(os.path.dirname(name),
-                                                           prefix+os.path.basename(name)) if name else name,
-                                    buffered = False)
-  except IOError:
-    continue
   damask.util.report(scriptName,name)
-
-# ------------------------------------------ read header ------------------------------------------
-
-  table.head_read()
-
-# ------------------------------------------ sanity checks ----------------------------------------
   
-  errors  = []
-  remarks = []
-  
-  if table.label_dimension(options.pos) != 3:  errors.append('coordinates "{}" are not a vector.'.format(options.pos))
-
-  colElem = table.label_index('elem')
-  
-  if remarks != []: damask.util.croak(remarks)
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# --------------- figure out size and grid ---------------------------------------------------------
-
-  table.data_readArray(options.pos)
-  table.data_rewind()
-
-  grid,size,origin = damask.grid_filters.cell_coord0_2_DNA(table.data)
+  table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+  grid,size,origin = damask.grid_filters.cell_coord0_2_DNA(table.get(options.pos))
   
   packing = np.array(options.packing,'i')
   outSize = grid*packing
   
-# ------------------------------------------ assemble header --------------------------------------
+  data = table.data.values.reshape(tuple(grid)+(-1,))
+  blownUp = ndimage.interpolation.zoom(data,tuple(packing)+(1,),order=0,mode='nearest').reshape((outSize.prod(),-1))
 
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.head_write()
+  table = damask.Table(blownUp,table.shapes,table.comments)
 
-# ------------------------------------------ process data -------------------------------------------
-  table.data_readArray()
-  data = table.data.reshape(tuple(grid)+(-1,))
-  table.data = ndimage.interpolation.zoom(data,tuple(packing)+(1,),order=0,mode='nearest').reshape((outSize.prod(),-1))
   coords = damask.grid_filters.cell_coord0(outSize,size,origin)
-  table.data[:,table.label_indexrange(options.pos)] = coords.reshape((-1,3))
-  table.data[:,table.label_index('elem')] = np.arange(1,outSize.prod()+1)
-
-# ------------------------------------------ output finalization -----------------------------------  
-  table.data_writeArray()
-  table.close()
+  table.set(options.pos,coords.reshape((-1,3)))
+  table.set('elem',np.arange(1,outSize.prod()+1))
+  
+  outname = os.path.join(os.path.dirname(name),prefix+os.path.basename(name))
+  table.to_ASCII(sys.stdout if name is None else outname)
