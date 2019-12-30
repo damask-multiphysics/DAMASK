@@ -277,13 +277,13 @@ subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
       compression: if (IO_lc(IO_stringValue(line,chunkPos,2))  == 'of') then
         c = IO_intValue(line,chunkPos,1)
         microstructure(e:e+c-1) = [(IO_intValue(line,chunkPos,3),i = 1,IO_intValue(line,chunkPos,1))]
-      else if (IO_lc(IO_stringValue(line,chunkPos,2))  == 'to') then compression
+      else         if (IO_lc(IO_stringValue(line,chunkPos,2))  == 'to') then compression
         c = abs(IO_intValue(line,chunkPos,3) - IO_intValue(line,chunkPos,1)) + 1
         o = merge(+1, -1, IO_intValue(line,chunkPos,3) > IO_intValue(line,chunkPos,1))
         microstructure(e:e+c-1) = [(i, i = IO_intValue(line,chunkPos,1),IO_intValue(line,chunkPos,3),o)]
       else compression
         c = chunkPos(1)
-        microstructure(e:e+c-1) =  [(IO_intValue(line,chunkPos,i+1), i=0, c-1)]
+        microstructure(e:e+c-1) = [(IO_intValue(line,chunkPos,i+1), i=0, c-1)]
       endif compression
     endif noCompression
 
