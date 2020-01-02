@@ -40,7 +40,7 @@ for name in filenames:
                 "homogenization\t{}".format(geom.homogenization)]
 
     table = damask.Table(coord0,{'pos':(3,)},comments)
-    table.add('microstructure',geom.microstructure.reshape((-1,1)))
+    table.add('microstructure',geom.microstructure.reshape((-1,1),order='F'))
 
     table.to_ASCII(sys.stdout if name is None else \
                    os.path.splitext(name)[0]+'.txt')
