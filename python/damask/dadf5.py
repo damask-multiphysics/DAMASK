@@ -102,7 +102,7 @@ class DADF5():
     elif datasets is False:
       datasets = []
     choice = [datasets] if isinstance(datasets,str) else datasets
-    
+   
     valid = [e for e_ in [glob.fnmatch.filter(getattr(self,what),s) for s in choice] for e in e_]
     existing = set(self.visible[what])
 
@@ -339,8 +339,8 @@ class DADF5():
     """Return information on all active datasets in the file."""
     message = ''
     with h5py.File(self.fname,'r') as f:
-      for s,i in enumerate(self.iter_visible('increments')):
-        message+='\n{} ({}s)\n'.format(i,self.times[s])
+      for i in self.iter_visible('increments'):
+        message+='\n{} ({}s)\n'.format(i,self.times[self.increments.index(i)])
         for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
           for oo in self.iter_visible(o):
             message+='  {}\n'.format(oo)
