@@ -2,8 +2,8 @@
 
 import os
 import sys
+from io import StringIO
 from optparse import OptionParser
-from collections import defaultdict
 
 import vtk
 from vtk.util import numpy_support
@@ -120,14 +120,9 @@ for name in filenames:
 
   damask.util.croak('{} mode...'.format(mode))
 
-  for datatype,labels in active.items():                                                            # loop over scalar,color
-    if datatype == 'color':
-      if   mode == 'cell':  rGrid.GetCellData().SetScalars(VTKarray[active['color'][0]])
-      elif mode == 'point': rGrid.GetPointData().SetScalars(VTKarray[active['color'][0]])
-    for me in labels:                                                                               # loop over all requested items
-      if   mode == 'cell':  rGrid.GetCellData().AddArray(VTKarray[me])
-      elif mode == 'point': rGrid.GetPointData().AddArray(VTKarray[me])
-
+  for data in VTKarray:
+    if   mode == 'cell':  rGrid.GetCellData().AddArray(VTKarray[data])
+    elif mode == 'point': rGrid.GetPointData().AddArray(VTKarray[data])
   rGrid.Modified()
 
 # ------------------------------------------ output result ---------------------------------------

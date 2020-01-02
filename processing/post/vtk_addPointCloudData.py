@@ -2,8 +2,8 @@
 
 import os
 import sys
+from io import StringIO
 from optparse import OptionParser
-from collections import defaultdict
 
 import vtk
 from vtk.util import numpy_support
@@ -104,9 +104,11 @@ for name in filenames:
     VTKarray[tensor].SetName(tensor)
 
 
-# ------------------------------------------ output result ---------------------------------------
-
+  for data in VTKarray:
+     Polydata.GetPointData().AddArray(VTKarray[data])
   Polydata.Modified()
+
+# ------------------------------------------ output result ---------------------------------------
 
   writer = vtk.vtkXMLPolyDataWriter()
   writer.SetDataModeToBinary()
