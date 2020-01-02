@@ -17,7 +17,6 @@ module CPFEM2
   use DAMASK_interface
   use results
   use discretization
-  use HDF5
   use HDF5_utilities
   use homogenization
   use constitutive

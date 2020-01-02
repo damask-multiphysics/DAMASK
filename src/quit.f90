@@ -10,7 +10,7 @@ subroutine quit(stop_id)
 #ifdef _OPENMP
    use MPI
 #endif
-  use hdf5
+  use HDF5
 
   implicit none
   integer, intent(in) :: stop_id
