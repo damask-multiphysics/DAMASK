@@ -13,6 +13,8 @@ module IO
   private
   character(len=*), parameter, public :: &
     IO_EOF = '#EOF#'                                                                                !< end of file string
+  character, parameter, public :: &
+    IO_EOL = new_line(' ')                                                                          !< end of line str
   character(len=*), parameter, private :: &
     IO_DIVIDER = '───────────────────'//&
                  '───────────────────'//&
@@ -46,10 +48,6 @@ module IO
     IO_countNumericalDataLines
 #endif
 #endif
-
- private :: &
-   IO_verifyFloatValue, &
-   IO_verifyIntValue
 
 contains
 
@@ -102,7 +100,7 @@ function IO_read_ASCII(fileName) result(fileContent)
 ! count lines to allocate string array
   myTotalLines = 1
   do l=1, len(rawData)
-    if (rawData(l:l) == new_line('')) myTotalLines = myTotalLines+1
+    if (rawData(l:l) == IO_EOL) myTotalLines = myTotalLines+1
   enddo
   allocate(fileContent(myTotalLines))
 
@@ -112,7 +110,7 @@ function IO_read_ASCII(fileName) result(fileContent)
   startPos = 1
   l = 1
   do while (l <= myTotalLines)
-    endPos = merge(startPos + scan(rawData(startPos:),new_line('')) - 2,len(rawData),l /= myTotalLines)
+    endPos = merge(startPos + scan(rawData(startPos:),IO_EOL) - 2,len(rawData),l /= myTotalLines)
     if (endPos - startPos > pStringLen-1) then
       line = rawData(startPos:startPos+pStringLen-1)
       if (.not. warned) then
@@ -418,7 +416,7 @@ real(pReal) function IO_floatValue (string,chunkPos,myChunk)
     call IO_warning(201,el=myChunk,ext_msg=MYNAME//trim(string))
   else  valuePresent
     IO_floatValue = &
-                IO_verifyFloatValue(trim(adjustl(string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)))),&
+                verifyFloatValue(trim(adjustl(string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)))),&
                                         VALIDCHARACTERS,MYNAME)
   endif  valuePresent
 
@@ -441,7 +439,7 @@ integer function IO_intValue(string,chunkPos,myChunk)
   valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1) then
     call IO_warning(201,el=myChunk,ext_msg=MYNAME//trim(string))
   else valuePresent
-    IO_intValue = IO_verifyIntValue(trim(adjustl(string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)))),&
+    IO_intValue = verifyIntValue(trim(adjustl(string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)))),&
                                     VALIDCHARACTERS,MYNAME)
   endif valuePresent
 
@@ -467,12 +465,12 @@ real(pReal) function IO_fixedNoEFloatValue (string,ends,myChunk)
  
   pos_exp = scan(string(ends(myChunk)+1:ends(myChunk+1)),'+-',back=.true.)
   hasExponent: if (pos_exp > 1) then
-    base  = IO_verifyFloatValue(trim(adjustl(string(ends(myChunk)+1:ends(myChunk)+pos_exp-1))),&
+    base  = verifyFloatValue(trim(adjustl(string(ends(myChunk)+1:ends(myChunk)+pos_exp-1))),&
                                 VALIDBASE,MYNAME//'(base): ')
-    expon = IO_verifyIntValue(trim(adjustl(string(ends(myChunk)+pos_exp:ends(myChunk+1)))),&
+    expon = verifyIntValue(trim(adjustl(string(ends(myChunk)+pos_exp:ends(myChunk+1)))),&
                                 VALIDEXP,MYNAME//'(exp): ')
   else hasExponent
-    base  = IO_verifyFloatValue(trim(adjustl(string(ends(myChunk)+1:ends(myChunk+1)))),&
+    base  = verifyFloatValue(trim(adjustl(string(ends(myChunk)+1:ends(myChunk+1)))),&
                                 VALIDBASE,MYNAME//'(base): ')
     expon = 0
   endif hasExponent
@@ -492,7 +490,7 @@ integer function IO_fixedIntValue(string,ends,myChunk)
   character(len=*),      parameter  :: MYNAME = 'IO_fixedIntValue: '
   character(len=*),      parameter  :: VALIDCHARACTERS = '0123456789+-'
  
-  IO_fixedIntValue = IO_verifyIntValue(trim(adjustl(string(ends(myChunk)+1:ends(myChunk+1)))),&
+  IO_fixedIntValue = verifyIntValue(trim(adjustl(string(ends(myChunk)+1:ends(myChunk+1)))),&
                                        VALIDCHARACTERS,MYNAME)
 
 end function IO_fixedIntValue
@@ -1128,34 +1126,34 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
 !--------------------------------------------------------------------------------------------------
 !> @brief returns verified integer value in given string
 !--------------------------------------------------------------------------------------------------
-integer function IO_verifyIntValue (string,validChars,myName)
+integer function verifyIntValue (string,validChars,myName)
  
   character(len=*), intent(in) :: string, &                                                         !< string for conversion to int value. Must not contain spaces!
                                   validChars, &                                                     !< valid characters in string
                                   myName                                                            !< name of caller function (for debugging)
   integer                      :: readStatus, invalidWhere
  
-  IO_verifyIntValue = 0
+  verifyIntValue = 0
  
   invalidWhere = verify(string,validChars)
   if (invalidWhere == 0) then
-    read(UNIT=string,iostat=readStatus,FMT=*) IO_verifyIntValue                                     ! no offending chars found
+    read(UNIT=string,iostat=readStatus,FMT=*) verifyIntValue                                        ! no offending chars found
     if (readStatus /= 0) &                                                                          ! error during string to integer conversion
       call IO_warning(203,ext_msg=myName//'"'//string//'"')
   else
     call IO_warning(202,ext_msg=myName//'"'//string//'"')                                           ! complain about offending characters
-    read(UNIT=string(1:invalidWhere-1),iostat=readStatus,FMT=*) IO_verifyIntValue                   ! interpret remaining string
+    read(UNIT=string(1:invalidWhere-1),iostat=readStatus,FMT=*) verifyIntValue                      ! interpret remaining string
     if (readStatus /= 0) &                                                                          ! error during string to integer conversion
       call IO_warning(203,ext_msg=myName//'"'//string(1:invalidWhere-1)//'"')
   endif
  
-end function IO_verifyIntValue
+end function verifyIntValue
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns verified float value in given string
 !--------------------------------------------------------------------------------------------------
-real(pReal) function IO_verifyFloatValue (string,validChars,myName)
+real(pReal) function verifyFloatValue (string,validChars,myName)
  
   character(len=*), intent(in) :: string, &                                                         !< string for conversion to int value. Must not contain spaces!
                                   validChars, &                                                     !< valid characters in string
@@ -1163,20 +1161,20 @@ real(pReal) function IO_verifyFloatValue (string,validChars,myName)
  
   integer                      :: readStatus, invalidWhere
  
-  IO_verifyFloatValue = 0.0_pReal
+  verifyFloatValue = 0.0_pReal
  
   invalidWhere = verify(string,validChars)
   if (invalidWhere == 0) then
-    read(UNIT=string,iostat=readStatus,FMT=*) IO_verifyFloatValue                                   ! no offending chars found
+    read(UNIT=string,iostat=readStatus,FMT=*) verifyFloatValue                                      ! no offending chars found
     if (readStatus /= 0) &                                                                          ! error during string to float conversion
       call IO_warning(203,ext_msg=myName//'"'//string//'"')
   else
     call IO_warning(202,ext_msg=myName//'"'//string//'"')                                           ! complain about offending characters
-    read(UNIT=string(1:invalidWhere-1),iostat=readStatus,FMT=*) IO_verifyFloatValue                 ! interpret remaining string
+    read(UNIT=string(1:invalidWhere-1),iostat=readStatus,FMT=*) verifyFloatValue                    ! interpret remaining string
     if (readStatus /= 0) &                                                                          ! error during string to float conversion
       call IO_warning(203,ext_msg=myName//'"'//string(1:invalidWhere-1)//'"')
   endif
  
-end function IO_verifyFloatValue
+end function verifyFloatValue
 
 end module IO
