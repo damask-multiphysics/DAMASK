@@ -411,9 +411,9 @@ pure function math_exp33(A,n)
   endif
   
   do i = 1, order
-    invFac = invFac/real(i,pReal)                                                                   ! invfac = 1/i!
+    invFac = invFac/real(i,pReal)                                                                   ! invfac = 1/(i!)
     B = matmul(B,A)
-    math_exp33 = math_exp33 + invFac*B                                                              ! exp = SUM (A^i)/i!
+    math_exp33 = math_exp33 + invFac*B                                                              ! exp = SUM (A^i)/(i!)
   enddo
 
 end function math_exp33
@@ -489,8 +489,8 @@ function math_invSym3333(A)
   real(pReal), dimension(6*(64+2)) :: work
   logical                          :: error
   external :: &
-   dgetrf, &
-   dgetri
+    dgetrf, &
+    dgetri
 
   temp66 = math_sym3333to66(A)
   call dgetrf(6,6,temp66,6,ipiv6,ierr)
@@ -519,8 +519,8 @@ subroutine math_invert(InvA, error, A)
   real(pReal), dimension(size(A,1)*(64+2)) :: work
   integer                                  :: ierr
   external :: &
-   dgetrf, &
-   dgetri
+    dgetrf, &
+    dgetri
 
   invA = A 
   call dgetrf(size(A,1),size(A,1),invA,size(A,1),ipiv,ierr)
