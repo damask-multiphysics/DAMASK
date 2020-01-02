@@ -491,13 +491,12 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine lattice_init
  
-  integer :: Nphases
+  integer :: Nphases, p
   character(len=pStringLen) :: &
     tag  = ''
-  integer :: i,p
+  real(pReal) :: CoverA
   real(pReal),  dimension(:), allocatable :: &
-    temp, &
-    CoverA                                                                                          !< c/a ratio for low symmetry type lattice
+    temp
  
   write(6,'(/,a)') ' <<<+-  lattice init  -+>>>'
  
@@ -515,14 +514,12 @@ subroutine lattice_init
   allocate(lattice_specificHeat           (    Nphases), source=0.0_pReal)
   allocate(lattice_referenceTemperature   (    Nphases), source=300.0_pReal)
  
-  allocate(lattice_mu(Nphases),       source=0.0_pReal)
-  allocate(lattice_nu(Nphases),       source=0.0_pReal)
+  allocate(lattice_mu(Nphases), source=0.0_pReal)
+  allocate(lattice_nu(Nphases), source=0.0_pReal)
  
  
   allocate(lattice_Scleavage(3,3,3,lattice_maxNcleavage,Nphases),source=0.0_pReal)
   allocate(lattice_NcleavageSystem(lattice_maxNcleavageFamily,Nphases),source=0)
- 
-  allocate(CoverA(Nphases),source=0.0_pReal)
  
   do p = 1, size(config_phase)
     tag = config_phase(p)%getString('lattice_structure')
@@ -553,7 +550,7 @@ subroutine lattice_init
     lattice_C66(6,6,p) = config_phase(p)%getFloat('c66',defaultVal=0.0_pReal)
  
  
-    CoverA(p) = config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal)
+    CoverA = config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal)
  
     lattice_thermalConductivity33(1,1,p) = config_phase(p)%getFloat('thermal_conductivity11',defaultVal=0.0_pReal)
     lattice_thermalConductivity33(2,2,p) = config_phase(p)%getFloat('thermal_conductivity22',defaultVal=0.0_pReal)
@@ -573,14 +570,12 @@ subroutine lattice_init
     lattice_DamageDiffusion33(2,2,p) = config_phase(p)%getFloat( 'damage_diffusion22',defaultVal=0.0_pReal)
     lattice_DamageDiffusion33(3,3,p) = config_phase(p)%getFloat( 'damage_diffusion33',defaultVal=0.0_pReal)
     lattice_DamageMobility(p) = config_phase(p)%getFloat( 'damage_mobility',defaultVal=0.0_pReal)
-  enddo
  
-  do i = 1,Nphases
-    if ((CoverA(i) < 1.0_pReal .or. CoverA(i) > 2.0_pReal) &
-        .and. lattice_structure(i) == LATTICE_hex_ID) call IO_error(131,el=i)                       ! checking physical significance of c/a
-    if ((CoverA(i) > 2.0_pReal) &
-        .and. lattice_structure(i) == LATTICE_bct_ID) call IO_error(131,el=i)                       ! checking physical significance of c/a
-    call lattice_initializeStructure(i, CoverA(i))
+    if ((CoverA < 1.0_pReal .or. CoverA > 2.0_pReal) &
+        .and. lattice_structure(p) == LATTICE_hex_ID) call IO_error(131,el=p)                       ! checking physical significance of c/a
+    if ((CoverA > 2.0_pReal) &
+        .and. lattice_structure(p) == LATTICE_bct_ID) call IO_error(131,el=p)                       ! checking physical significance of c/a
+    call lattice_initializeStructure(p, CoverA)
   enddo
  
 end subroutine lattice_init
