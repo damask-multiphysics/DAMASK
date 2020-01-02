@@ -9,7 +9,6 @@ module mesh
   use IO
   use prec
   use math
-  use mesh_base
   use DAMASK_interface
   use IO
   use debug
