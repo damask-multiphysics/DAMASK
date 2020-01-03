@@ -15,13 +15,11 @@ module grid_mech_spectral_basic
   use HDF5_utilities
   use math
   use spectral_utilities
-  use IO
   use FEsolving
   use config
   use numerics
   use homogenization
   use mesh_grid
-  use CPFEM2
   use debug
 
   implicit none

@@ -12,8 +12,6 @@ module grid_mech_FEM
   use PETScdmda
   use PETScsnes
   use prec
-  use CPFEM2
-  use IO
   use debug
   use FEsolving
   use numerics

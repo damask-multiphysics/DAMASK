@@ -16,13 +16,11 @@ module grid_mech_spectral_polarisation
   use math
   use rotations
   use spectral_utilities
-  use IO
   use FEsolving
   use config
   use numerics
   use homogenization
   use mesh_grid
-  use CPFEM2
   use debug
  
   implicit none
