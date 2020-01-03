@@ -282,7 +282,7 @@ subroutine grid_mech_spectral_basic_forward(cutBack,guess,timeinc,timeinc_old,lo
     F_aimDot = merge(stress_BC%maskFloat*(F_aim-F_aim_lastInc)/timeinc_old, 0.0_pReal, guess)
     F_aim_lastInc = F_aim
 
-    !--------------------------------------------------------------------------------------------------
+    !-----------------------------------------------------------------------------------------------
     ! calculate rate for aim
     if     (deformation_BC%myType=='l') then                                                         ! calculate F_aimDot from given L and current F
       F_aimDot = &
@@ -362,7 +362,7 @@ subroutine grid_mech_spectral_basic_restartWrite
   if (num%update_gamma) call utilities_saveReferenceStiffness
 
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
-  
+
 end subroutine grid_mech_spectral_basic_restartWrite
 
 
