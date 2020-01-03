@@ -36,12 +36,6 @@ module mesh
     mesh_mapFEtoCPelem, &                                                                           !< [sorted FEid, corresponding CPid]
     mesh_mapFEtoCPnode                                                                              !< [sorted FEid, corresponding CPid]
 
-!-------------------------------------------------------------------------------------------------- 
-! DEPRECATED
-  real(pReal), dimension(:,:,:), allocatable, public :: &
-    mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
-!--------------------------------------------------------------------------------------------------
-
  public :: &
    mesh_init, &
    mesh_FEasCP
@@ -95,8 +89,6 @@ subroutine mesh_init(ip,el)
   allocate(calcMode(elem%nIPs,nElems),source=.false.)                                               ! pretend to have collected what first call is asking (F = I)
   calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                      ! first ip,el needs to be already pingponged to "calc"
  
-
-  allocate(mesh_ipCoordinates(3,elem%nIPs,nElems),source=0.0_pReal)                                 ! deprecated
 
   allocate(cellNodeDefinition(elem%nNodes-1))
   allocate(connectivity_cell(elem%NcellNodesPerCell,elem%nIPs,nElems))
