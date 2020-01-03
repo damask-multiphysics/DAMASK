@@ -855,7 +855,7 @@ class DADF5():
     
     Parameters
     ----------
-    labels : list of str
+    labels : str or list of
       Labels of the datasets to be exported.
     mode : str, either 'Cell' or 'Point'
       Export in cell format or point format.
@@ -908,7 +908,7 @@ class DADF5():
       
       materialpoints_backup = self.visible['materialpoints'].copy()
       self.set_visible('materialpoints',False)
-      for label in labels:
+      for label in (labels if isinstance(labels,list) else [labels]):
         for p in self.iter_visible('con_physics'):
           if p != 'generic':
             for c in self.iter_visible('constituents'):
@@ -939,7 +939,7 @@ class DADF5():
   
       constituents_backup = self.visible['constituents'].copy()
       self.set_visible('constituents',False)
-      for label in labels:
+      for label in (labels if isinstance(labels,list) else [labels]):
         for p in self.iter_visible('mat_physics'):
           if p != 'generic':
             for m in self.iter_visible('materialpoints'):
