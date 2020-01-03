@@ -10,7 +10,7 @@
 !>           and working directory.
 !--------------------------------------------------------------------------------------------------
 #define GCC_MIN 6
-#define INTEL_MIN 1600
+#define INTEL_MIN 1700
 #define PETSC_MAJOR 3
 #define PETSC_MINOR_MIN 10
 #define PETSC_MINOR_MAX 12

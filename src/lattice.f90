@@ -483,9 +483,11 @@ module lattice
     lattice_slip_normal, &
     lattice_slip_direction, &
     lattice_slip_transverse, &
-    lattice_labels_slip
+    lattice_labels_slip, &
+    lattice_labels_twin
  
 contains
+
 !--------------------------------------------------------------------------------------------------
 !> @brief Module initialization
 !--------------------------------------------------------------------------------------------------
@@ -2306,14 +2308,13 @@ end subroutine buildTransformationSystem
 !--------------------------------------------------------------------------------------------------
 !> @brief select active systems as strings
 !--------------------------------------------------------------------------------------------------
-function getlabels(active,potential,system,structure) result(labels)
+function getlabels(active,potential,system) result(labels)
  
   integer,          dimension(:),   intent(in) :: &
     active, &                                                                                       !< # of active systems per family
     potential                                                                                       !< # of potential systems per family
   real(pReal),      dimension(:,:), intent(in) :: &
     system
-  character(len=*),                 intent(in) :: structure                                         !< lattice structure
 
   character(len=:), dimension(:), allocatable :: labels
   character(len=:),               allocatable :: label
