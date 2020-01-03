@@ -14,8 +14,8 @@ module grid_thermal_spectral
   use spectral_utilities
   use mesh_grid
   use thermal_conduction
-  use material
   use numerics
+  use material
  
   implicit none
   private
