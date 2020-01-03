@@ -2114,8 +2114,8 @@ end function buildInteraction
 function buildCoordinateSystem(active,potential,system,structure,cOverA)
  
   integer, dimension(:), intent(in) :: &
-    active, &
-    potential
+    active, &                                                                                       !< # of active systems per family
+    potential                                                                                       !< # of potential systems per family
   real(pReal), dimension(:,:), intent(in) :: &
     system
   character(len=*),            intent(in) :: &
@@ -2308,12 +2308,12 @@ end subroutine buildTransformationSystem
 !--------------------------------------------------------------------------------------------------
 function getlabels(active,potential,system,structure) result(labels)
  
-  integer,     dimension(:),   intent(in) :: &
-    active, &
-    potential
-  real(pReal), dimension(:,:), intent(in) :: &
+  integer,          dimension(:),   intent(in) :: &
+    active, &                                                                                       !< # of active systems per family
+    potential                                                                                       !< # of potential systems per family
+  real(pReal),      dimension(:,:), intent(in) :: &
     system
-  character(len=*),            intent(in) :: structure                                              !< lattice structure
+  character(len=*),                 intent(in) :: structure                                         !< lattice structure
 
   character(len=:), dimension(:), allocatable :: labels
   character(len=:),               allocatable :: label
@@ -2335,15 +2335,16 @@ function getlabels(active,potential,system,structure) result(labels)
       p = sum(potential(1:f-1))+s
       
       i = 1
-      label(i:i) = merge('[','<',structure(1:3) /= 'bct')
+      label(i:i) = '['
       direction: do j = 1, size(system,1)/2
         write(label(i+1:i+2),"(I2.1)") int(system(j,p))
         label(i+3:i+3) = ' '
         i = i + 3
       enddo direction
       label(i:i) = ']'
+      
       i = i +1
-      label(i:i) = merge('(','{',structure(1:3) /= 'bct')
+      label(i:i) = '('
       normal: do j = size(system,1)/2+1, size(system,1)
         write(label(i+1:i+2),"(I2.1)") int(system(j,p))
         label(i+3:i+3) = ' '
