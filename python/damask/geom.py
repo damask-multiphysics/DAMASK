@@ -422,7 +422,7 @@ class Geom():
             ext = os.path.splitext(fname)[1]
             if ext == '':
                 name = fname + '.' + writer.GetDefaultFileExtension()
-            elif ext == writer.GetDefaultFileExtension():
+            elif ext[1:] == writer.GetDefaultFileExtension():
                 name = fname
             else:
                 raise ValueError("unknown extension {}".format(ext))
