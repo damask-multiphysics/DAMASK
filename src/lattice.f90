@@ -1952,7 +1952,7 @@ function lattice_labels_slip(Nslip,structure) result(labels)
   if (any(Nslip < 0)) &
     call IO_error(144,ext_msg='Nslip '//trim(structure))
  
-  labels = getLabels(Nslip,NslipMax,slipSystems,structure)
+  labels = getLabels(Nslip,NslipMax,slipSystems)
  
 end function lattice_labels_slip
 
@@ -1993,7 +1993,7 @@ function lattice_labels_twin(Ntwin,structure) result(labels)
   if (any(Ntwin < 0)) &
     call IO_error(144,ext_msg='Ntwin '//trim(structure))
  
-  labels = getLabels(Ntwin,NtwinMax,twinSystems,structure)
+  labels = getLabels(Ntwin,NtwinMax,twinSystems)
  
 end function lattice_labels_twin
 

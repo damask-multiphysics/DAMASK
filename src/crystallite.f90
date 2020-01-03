@@ -118,7 +118,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_init
  
-  logical, dimension(:,:), allocatable :: devNull
+  logical, dimension(discretization_nIP,discretization_nElem) :: devNull
   integer :: &
     c, &                                                                                            !< counter in integration point component loop
     i, &                                                                                            !< counter in integration point loop
