@@ -23,7 +23,7 @@ module IO
   public :: &
     IO_init, &
     IO_read_ASCII, &
-    IO_open_file, &
+    IO_open_file, &                                                                                 ! deprecated, use IO_read_ASCII
     IO_open_jobFile_binary, &
     IO_isBlank, &
     IO_getTag, &
@@ -44,8 +44,7 @@ module IO
     IO_countDataLines
 #elif defined(Marc4DAMASK)
     IO_fixedNoEFloatValue, &
-    IO_fixedIntValue, &
-    IO_countNumericalDataLines
+    IO_fixedIntValue
 #endif
 #endif
 
@@ -549,14 +548,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'could not read file:'
     case (103)
       msg = 'could not assemble input files'
-    case (104)
-      msg = '{input} recursion limit reached'
-    case (105)
-      msg = 'unknown output:'
     case (106)
       msg = 'working directory does not exist:'
-    case (107)
-      msg = 'line length exceeds limit of 256'
 
 !--------------------------------------------------------------------------------------------------
 ! lattice error messages
@@ -920,38 +913,6 @@ integer function IO_countDataLines(fileUnit)
   backspace(fileUnit)
 
 end function IO_countDataLines
-#endif
-
-
-#ifdef Marc4DAMASK
-!--------------------------------------------------------------------------------------------------
-!> @brief count lines containig data up to next *keyword
-!--------------------------------------------------------------------------------------------------
-integer function IO_countNumericalDataLines(fileUnit)
-
-  integer, intent(in)                :: fileUnit                                                    !< file handle
- 
- 
-  integer, allocatable, dimension(:) :: chunkPos
-  character(len=pStringLen)          :: line, &
-                                        tmp
- 
-  IO_countNumericalDataLines = 0
-  line = ''
- 
-  do while (trim(line) /= IO_EOF)
-    line = IO_read(fileUnit)
-    chunkPos = IO_stringPos(line)
-    tmp = IO_lc(IO_stringValue(line,chunkPos,1))
-    if (verify(trim(tmp),'0123456789') == 0) then                                                   ! numerical values
-      IO_countNumericalDataLines = IO_countNumericalDataLines + 1
-    else
-      exit
-    endif
-  enddo
-  backspace(fileUnit)
-
-end function IO_countNumericalDataLines
 #endif
 
 
