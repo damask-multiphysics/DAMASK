@@ -30,6 +30,9 @@ set (COMPILE_FLAGS "${COMPILE_FLAGS} -Minfo=all")
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -Minform=warn")
 # instructs the compiler to display error messages at the specified and higher levels
 
+set (COMPILE_FLAGS "${COMPILE_FLAGS} -Mdclchk")
+# instructs the compiler to require that all program variables be declared
+
 #------------------------------------------------------------------------------------------------O
 # Runtime debugging
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -g")
