@@ -59,7 +59,7 @@ module grid_mech_spectral_polarisation
     F_av = 0.0_pReal, &                                                                             !< average incompatible def grad field
     P_av = 0.0_pReal                                                                                !< average 1st Piola--Kirchhoff stress
   
-  character(len=1024), private :: incInfo                                                           !< time and increment information
+  character(len=pStringLen), private :: incInfo                                                     !< time and increment information
   real(pReal), private, dimension(3,3,3,3) :: &
     C_volAvg = 0.0_pReal, &                                                                         !< current volume average stiffness 
     C_volAvgLastInc = 0.0_pReal, &                                                                  !< previous volume average stiffness

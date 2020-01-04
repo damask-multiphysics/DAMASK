@@ -53,7 +53,7 @@ module grid_mech_FEM
     F_aim_lastInc  = math_I3, &                                                                     !< previous average deformation gradient
     P_av = 0.0_pReal                                                                                !< average 1st Piola--Kirchhoff stress
  
-  character(len=1024), private :: incInfo                                                           !< time and increment information
+  character(len=pStringLen), private :: incInfo                                                     !< time and increment information
  
   real(pReal), private, dimension(3,3,3,3) :: &
     C_volAvg = 0.0_pReal, &                                                                         !< current volume average stiffness 

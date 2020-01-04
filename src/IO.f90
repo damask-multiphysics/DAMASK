@@ -528,8 +528,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
   character(len=*), optional, intent(in) :: ext_msg
 
   external                               :: quit
-  character(len=1024)                    :: msg
-  character(len=1024)                    :: formatString
+  character(len=pStringLen)              :: msg
+  character(len=pStringLen)              :: formatString
 
   select case (error_ID)
 
@@ -769,8 +769,8 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
   integer,          optional, intent(in) :: el,ip,g
   character(len=*), optional, intent(in) :: ext_msg
  
-  character(len=1024)                    :: msg
-  character(len=1024)                    :: formatString
+  character(len=pStringLen)              :: msg
+  character(len=pStringLen)              :: formatString
  
   select case (warning_ID)
     case (1)

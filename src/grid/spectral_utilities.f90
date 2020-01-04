@@ -700,7 +700,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
     c_reduced, &                                                                                    !< reduced stiffness (depending on number of stress BC)
     sTimesC                                                                                         !< temp variable to check inversion
   logical :: errmatinv
-  character(len=1024):: formatString
+  character(len=pStringLen):: formatString
  
   mask_stressVector = reshape(transpose(mask_stress), [9])
   size_reduced = count(mask_stressVector)
