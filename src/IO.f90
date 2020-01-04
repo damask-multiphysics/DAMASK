@@ -384,7 +384,7 @@ function IO_stringValue(string,chunkPos,myChunk,silent)
   logical                                            :: warn
 
   if (present(silent)) then
-    warn = silent
+    warn = .not. silent
   else
     warn = .false.
   endif
@@ -414,11 +414,10 @@ real(pReal) function IO_floatValue (string,chunkPos,myChunk)
 
   valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1) then
     call IO_warning(201,el=myChunk,ext_msg=MYNAME//trim(string))
-  else  valuePresent
-    IO_floatValue = &
-                verifyFloatValue(trim(adjustl(string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)))),&
-                                        VALIDCHARACTERS,MYNAME)
-  endif  valuePresent
+  else valuePresent
+    IO_floatValue = verifyFloatValue(trim(adjustl(string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)))),&
+                                     VALIDCHARACTERS,MYNAME)
+  endif valuePresent
 
 end function IO_floatValue
 
@@ -466,12 +465,12 @@ real(pReal) function IO_fixedNoEFloatValue (string,ends,myChunk)
   pos_exp = scan(string(ends(myChunk)+1:ends(myChunk+1)),'+-',back=.true.)
   hasExponent: if (pos_exp > 1) then
     base  = verifyFloatValue(trim(adjustl(string(ends(myChunk)+1:ends(myChunk)+pos_exp-1))),&
-                                VALIDBASE,MYNAME//'(base): ')
+                             VALIDBASE,MYNAME//'(base): ')
     expon = verifyIntValue(trim(adjustl(string(ends(myChunk)+pos_exp:ends(myChunk+1)))),&
-                                VALIDEXP,MYNAME//'(exp): ')
+                           VALIDEXP,MYNAME//'(exp): ')
   else hasExponent
     base  = verifyFloatValue(trim(adjustl(string(ends(myChunk)+1:ends(myChunk+1)))),&
-                                VALIDBASE,MYNAME//'(base): ')
+                             VALIDBASE,MYNAME//'(base): ')
     expon = 0
   endif hasExponent
   IO_fixedNoEFloatValue = base*10.0_pReal**real(expon,pReal)

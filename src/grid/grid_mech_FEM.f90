@@ -94,7 +94,6 @@ subroutine grid_mech_FEM_init
                        1.0_pReal,-1.0_pReal,-1.0_pReal,-1.0_pReal, &
                        1.0_pReal, 1.0_pReal, 1.0_pReal, 1.0_pReal], [4,8])
   PetscErrorCode :: ierr
-  integer        :: rank
   integer(HID_T) :: fileHandle, groupHandle
   character(len=pStringLen) :: fileName
   real(pReal), dimension(3,3,3,3) :: devNull
