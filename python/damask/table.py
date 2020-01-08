@@ -138,8 +138,11 @@ class Table():
                 break
        
         data = np.loadtxt(content)
+        for c in range(data.shape[1]-10):
+            shapes['user_defined{}'.format(c+1)] = (1,)
 
         return Table(data,shapes,comments)
+
 
     @property
     def labels(self):
