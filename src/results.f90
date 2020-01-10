@@ -47,6 +47,7 @@ module results
     results_openJobFile, &
     results_closeJobFile, &
     results_addIncrement, &
+    results_finalizeIncrement, &
     results_addGroup, &
     results_openGroup, &
     results_closeGroup, &
@@ -117,6 +118,17 @@ subroutine results_addIncrement(inc,time)
   call results_closeGroup(results_addGroup('current/materialpoint'))
 
 end subroutine results_addIncrement
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief finalize increment
+!> @details remove soft link
+!--------------------------------------------------------------------------------------------------
+subroutine results_finalizeIncrement
+
+  call results_removeLink('current')
+
+end subroutine results_finalizeIncrement
 
 
 !--------------------------------------------------------------------------------------------------

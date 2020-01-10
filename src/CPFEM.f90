@@ -377,7 +377,7 @@ subroutine CPFEM_results(inc,time)
   call constitutive_results
   call crystallite_results
   call homogenization_results
-  call results_removeLink('current') ! ToDo: put this into closeJobFile
+  call results_finalizeIncrement
   call results_closeJobFile
 
 end subroutine CPFEM_results
