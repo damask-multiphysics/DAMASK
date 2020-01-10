@@ -142,32 +142,29 @@ type(quaternion) pure function init__(array)
 
   real(pReal), intent(in), dimension(4) :: array
 
-  init__%w=array(1)
-  init__%x=array(2)
-  init__%y=array(3)
-  init__%z=array(4)
+  init__%w = array(1)
+  init__%x = array(2)
+  init__%y = array(3)
+  init__%z = array(4)
 
 end function init__
 
 
 !---------------------------------------------------------------------------------------------------
-!> assing a quaternion
+!> assigning a quaternion
 !---------------------------------------------------------------------------------------------------
 elemental pure subroutine assign_quat__(self,other)
 
   type(quaternion), intent(out) :: self
   type(quaternion), intent(in)  :: other
 
-  self%w = other%w
-  self%x = other%x
-  self%y = other%y
-  self%z = other%z
-
+  self = [other%w,other%x,other%y,other%z]
+  
 end subroutine assign_quat__
 
 
 !---------------------------------------------------------------------------------------------------
-!> assing a 4-vector
+!> assigning a 4-vector
 !---------------------------------------------------------------------------------------------------
 pure subroutine assign_vec__(self,other)
 
@@ -189,11 +186,8 @@ type(quaternion) elemental pure function add__(self,other)
 
   class(quaternion), intent(in) :: self,other
 
-  add__%w = self%w + other%w
-  add__%x = self%x + other%x
-  add__%y = self%y + other%y
-  add__%z = self%z + other%z
-
+  add__ = [self%w + other%w,self%x + other%x,self%y + other%y,self%z + other%z]
+  
 end function add__
 
 
@@ -204,11 +198,8 @@ type(quaternion) elemental pure function pos__(self)
 
   class(quaternion), intent(in) :: self
 
-  pos__%w = self%w
-  pos__%x = self%x
-  pos__%y = self%y
-  pos__%z = self%z
-
+  pos__ = [self%w,self%x,self%y,self%z]
+  
 end function pos__
 
 
@@ -219,26 +210,20 @@ type(quaternion) elemental pure function sub__(self,other)
 
   class(quaternion), intent(in) :: self,other
 
-  sub__%w = self%w - other%w
-  sub__%x = self%x - other%x
-  sub__%y = self%y - other%y
-  sub__%z = self%z - other%z
-
+  sub__ = [self%w - other%w,self%x - other%x,self%y - other%y,self%z - other%z]
+  
 end function sub__
 
 
 !---------------------------------------------------------------------------------------------------
-!> unary positive operator
+!> unary negative operator
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function neg__(self)
 
   class(quaternion), intent(in) :: self
 
-  neg__%w = -self%w
-  neg__%x = -self%x
-  neg__%y = -self%y
-  neg__%z = -self%z
-
+  neg__ = [-self%w,-self%x,-self%y,-self%z]
+  
 end function neg__
 
 
@@ -258,18 +243,15 @@ end function mul_quat__
 
 
 !---------------------------------------------------------------------------------------------------
-!> multiplication of quaternions with scalar
+!> multiplication of quaternion with scalar
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function mul_scal__(self,scal)
 
   class(quaternion), intent(in) :: self
   real(pReal), intent(in) :: scal
 
-  mul_scal__%w = self%w*scal
-  mul_scal__%x = self%x*scal
-  mul_scal__%y = self%y*scal
-  mul_scal__%z = self%z*scal
-
+  mul_scal__ = [self%w,self%x,self%y,self%z]*scal
+  
 end function mul_scal__
 
 
@@ -418,7 +400,7 @@ type(quaternion) elemental pure function conjg__(a)
 
   class(quaternion), intent(in) :: a
 
-  conjg__ = quaternion([a%w, -a%x, -a%y, -a%z])
+  conjg__ = [a%w, -a%x, -a%y, -a%z]
 
 end function conjg__
 
@@ -430,7 +412,7 @@ type(quaternion) elemental pure function quat_homomorphed(self)
 
   class(quaternion), intent(in) :: self
 
-  quat_homomorphed = quaternion(-[self%w,self%x,self%y,self%z])
+  quat_homomorphed = -[self%w,self%x,self%y,self%z]
 
 end function quat_homomorphed
 
@@ -444,6 +426,7 @@ pure function asArray(self)
   class(quaternion), intent(in) :: self
 
   asArray = [self%w,self%x,self%y,self%z]
+  if (self%w < 0) asArray = -asArray
 
 end function asArray
 
@@ -484,6 +467,7 @@ subroutine unitTest
   type(quaternion)          :: q, q_2
 
   call random_number(qu)
+  if (qu(1) < 0.0_pReal) qu = -qu
   q = qu
   
   q_2 = q + q
@@ -492,10 +476,10 @@ subroutine unitTest
   q_2 = q - q
   if(any(dNeq0(q_2%asArray())))                     call IO_error(401,ext_msg='sub__')
      
-  q_2 = q * 5.0_preal
+  q_2 = q * 5.0_pReal
   if(any(dNeq(q_2%asArray(),5.0_pReal*qu)))         call IO_error(401,ext_msg='mul__')
   
-  q_2 = q / 0.5_preal
+  q_2 = q / 0.5_pReal
   if(any(dNeq(q_2%asArray(),2.0_pReal*qu)))         call IO_error(401,ext_msg='div__')
     
   q_2 = q
