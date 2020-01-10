@@ -51,7 +51,7 @@ subroutine kinematics_slipplane_opening_init
 
   integer :: maxNinstance,p,instance
 
-  write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_slipplane_opening_LABEL//' init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_slipplane_opening_LABEL//' init  -+>>>'; flush(6)
 
   maxNinstance = count(phase_kinematics == KINEMATICS_slipplane_opening_ID)
   if (maxNinstance == 0) return
@@ -144,40 +144,31 @@ subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, 
     
     traction_crit = prm%critLoad(i)* damage(homog)%p(damageOffset)                                                        ! degrading critical load carrying capacity by damage 
 
-    udotd = sign(1.0_pReal,traction_d)* &
-      prm%sdot0* &
-      (abs(traction_d)/traction_crit - &
-       abs(traction_d)/prm%critLoad(i))**prm%n
+    udotd = sign(1.0_pReal,traction_d)* prm%sdot0* (  abs(traction_d)/traction_crit &
+                                                    - abs(traction_d)/prm%critLoad(i))**prm%n
     if (abs(udotd) > tol_math_check) then
       Ld = Ld + udotd*projection_d
       dudotd_dt = udotd*prm%n/traction_d
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-        dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + &
-          dudotd_dt*projection_d(k,l)*projection_d(m,n)
+        dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + dudotd_dt*projection_d(k,l)*projection_d(m,n)
     endif                
   
-    udott = sign(1.0_pReal,traction_t)* &
-      prm%sdot0* &
-      (abs(traction_t)/traction_crit - &
-       abs(traction_t)/prm%critLoad(i))**prm%n
+    udott = sign(1.0_pReal,traction_t)* prm%sdot0* (  abs(traction_t)/traction_crit &
+                                                    - abs(traction_t)/prm%critLoad(i))**prm%n
     if (abs(udott) > tol_math_check) then
       Ld = Ld + udott*projection_t
       dudott_dt = udott*prm%n/traction_t
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-        dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + &
-          dudott_dt*projection_t(k,l)*projection_t(m,n)
+        dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + dudott_dt*projection_t(k,l)*projection_t(m,n)
     endif
 
-    udotn = &
-      prm%sdot0* &
-      (max(0.0_pReal,traction_n)/traction_crit - &
-       max(0.0_pReal,traction_n)/prm%critLoad(i))**prm%n
+    udotn = prm%sdot0* (  max(0.0_pReal,traction_n)/traction_crit &
+                        - max(0.0_pReal,traction_n)/prm%critLoad(i))**prm%n
     if (abs(udotn) > tol_math_check) then
       Ld = Ld + udotn*projection_n
       dudotn_dt = udotn*prm%n/traction_n
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-        dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + &
-          dudotn_dt*projection_n(k,l)*projection_n(m,n)
+        dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + dudotn_dt*projection_n(k,l)*projection_n(m,n)
     endif 
   enddo
   
