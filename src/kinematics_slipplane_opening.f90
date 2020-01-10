@@ -134,36 +134,35 @@ subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, 
   dLd_dTstar = 0.0_pReal
   do i = 1, prm%totalNslip
 
-    projection_d = math_outer(prm%slip_direction(1:3,i),prm%slip_normal(1:3,i))
+    projection_d = math_outer(prm%slip_direction(1:3,i), prm%slip_normal(1:3,i))
     projection_t = math_outer(prm%slip_transverse(1:3,i),prm%slip_normal(1:3,i))
-    projection_n = math_outer(prm%slip_normal(1:3,i),prm%slip_normal(1:3,i))
+    projection_n = math_outer(prm%slip_normal(1:3,i),    prm%slip_normal(1:3,i))
     
     traction_d    = math_mul33xx33(S,projection_d)
     traction_t    = math_mul33xx33(S,projection_t)
     traction_n    = math_mul33xx33(S,projection_n)
     
-    traction_crit = prm%critLoad(i)* damage(homog)%p(damageOffset)                                                        ! degrading critical load carrying capacity by damage 
+    traction_crit = prm%critLoad(i)* damage(homog)%p(damageOffset)                                  ! degrading critical load carrying capacity by damage 
 
     udotd = sign(1.0_pReal,traction_d)* prm%sdot0* (  abs(traction_d)/traction_crit &
                                                     - abs(traction_d)/prm%critLoad(i))**prm%n
-    Ld = Ld + udotd*projection_d
-    dudotd_dt = udotd*prm%n/traction_d
-    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-      dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + dudotd_dt*projection_d(k,l)*projection_d(m,n)
-  
     udott = sign(1.0_pReal,traction_t)* prm%sdot0* (  abs(traction_t)/traction_crit &
                                                     - abs(traction_t)/prm%critLoad(i))**prm%n
-    Ld = Ld + udott*projection_t
-    dudott_dt = udott*prm%n/traction_t
-    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-      dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + dudott_dt*projection_t(k,l)*projection_t(m,n)
-
     udotn = prm%sdot0* (  max(0.0_pReal,traction_n)/traction_crit &
                         - max(0.0_pReal,traction_n)/prm%critLoad(i))**prm%n
-    Ld = Ld + udotn*projection_n
+
+    dudotd_dt = udotd*prm%n/traction_d
+    dudott_dt = udott*prm%n/traction_t
     dudotn_dt = udotn*prm%n/traction_n
+
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-      dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + dudotn_dt*projection_n(k,l)*projection_n(m,n)
+      dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + dudotd_dt*projection_d(k,l)*projection_d(m,n) &
+                                                + dudott_dt*projection_t(k,l)*projection_t(m,n) &
+                                                + dudotn_dt*projection_n(k,l)*projection_n(m,n)
+
+    Ld = Ld + udotd*projection_d &
+            + udott*projection_t &
+            + udotn*projection_n
   enddo
   
   end associate
