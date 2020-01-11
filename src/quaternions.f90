@@ -345,7 +345,6 @@ end function pow_scal__
 
 !---------------------------------------------------------------------------------------------------
 !> take exponential
-!> ToDo: Lacks any check for invalid operations
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function exp__(self)
 
@@ -354,17 +353,18 @@ type(quaternion) elemental pure function exp__(self)
 
   absImag = norm2(aimag(self))
 
-  exp__ = exp(self%w) * [                 cos(absImag), &
-                         self%x/absImag * sin(absImag), &
-                         self%y/absImag * sin(absImag), &
-                         self%z/absImag * sin(absImag)]
+  exp__ = merge(exp(self%w) * [                 cos(absImag), &
+                               self%x/absImag * sin(absImag), &
+                               self%y/absImag * sin(absImag), &
+                               self%z/absImag * sin(absImag)], &
+                IEEE_value(1.0_pReal,IEEE_SIGNALING_NAN), &
+                dNeq0(absImag))
 
 end function exp__
 
 
 !---------------------------------------------------------------------------------------------------
 !> take logarithm
-!> ToDo: Lacks any check for invalid operations
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function log__(self)
 
@@ -373,10 +373,12 @@ type(quaternion) elemental pure function log__(self)
 
   absImag = norm2(aimag(self))
 
-  log__ = [log(abs(self)), &
-           self%x/absImag * acos(self%w/abs(self)), &
-           self%y/absImag * acos(self%w/abs(self)), &
-           self%z/absImag * acos(self%w/abs(self))]
+  log__ = merge([log(abs(self)), &
+                 self%x/absImag * acos(self%w/abs(self)), &
+                 self%y/absImag * acos(self%w/abs(self)), &
+                 self%z/absImag * acos(self%w/abs(self))], &
+                IEEE_value(1.0_pReal,IEEE_SIGNALING_NAN), &
+                dNeq0(absImag))
 
 end function log__
 
@@ -541,7 +543,7 @@ subroutine unitTest
     if(any(dNeq0(q_2%asArray(),1.0e-15_pReal)))        call IO_error(401,ext_msg='inverse/conjg')
   endif
   
-  if (norm2(aimag(q)) * abs(real(q)) > 0.0_pReal) then
+  if (norm2(aimag(q)) > 0.0_pReal) then
     if (dNeq0(abs(q-exp(log(q))),1.0e-13_pReal))       call IO_error(401,ext_msg='exp/log')
     if (dNeq0(abs(q-log(exp(q))),1.0e-13_pReal))       call IO_error(401,ext_msg='log/exp')
   endif
