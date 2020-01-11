@@ -209,14 +209,16 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
   call inputRead_mapElemSets(nameElemSet,mapElemSet,&
                              FILEUNIT)
 
+  call inputRead_elemType(elem, &
+                          nElems,inputFile)
+
   allocate (mesh_mapFEtoCPelem(2,nElems), source=0)
-  call inputRead_mapElems(hypoelasticTableStyle,nameElemSet,mapElemSet,fileFormatVersion,matNumber,FILEUNIT)
+  call inputRead_mapElems(elem%nNodes,nElems,&
+                          inputFile)
 
   allocate (mesh_mapFEtoCPnode(2,Nnodes), source=0)
   call inputRead_mapNodes(inputFile)
 
-  call inputRead_elemType(elem, &
-                          nElems,inputFile)
   call inputRead_elemNodes(node0_elem, &
                            Nnodes,inputFile)
 
@@ -411,65 +413,35 @@ subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,fileUnit)
 !--------------------------------------------------------------------------------------------------
 !> @brief Maps elements from FE ID to internal (consecutive) representation.
 !--------------------------------------------------------------------------------------------------
-subroutine inputRead_mapElems(tableStyle,nameElemSet,mapElemSet,fileFormatVersion,matNumber,fileUnit)
+subroutine inputRead_mapElems(nNodes,nElem,fileContent)
  
-  integer, intent(in) :: fileUnit,tableStyle,fileFormatVersion
-  integer, dimension(:), intent(in) :: matNumber
-  character(len=64), intent(in), dimension(:) :: nameElemSet
-  integer, dimension(:,:), intent(in) :: &
-    mapElemSet
- 
+  integer, intent(in) :: &
+    nElem, &
+    nNodes                                                                                          !< number of nodes per element
+  character(len=pStringLen), dimension(:), intent(in)  :: fileContent                               !< file content, separated per lines
+
   integer, allocatable, dimension(:) :: chunkPos
-  character(len=300) :: line, &
-                        tmp
- 
-  integer, dimension(:), allocatable :: contInts
-  integer :: i,cpElem 
- 
-  allocate(contInts(size(mesh_mapFEtoCPelem,2)+1))
- 
-  cpElem = 0
-  contInts = 0
-  rewind(fileUnit)
-  do
-    read (fileUnit,'(A300)',END=620) line
-    chunkPos = IO_stringPos(line)
-    Marc2016andEarlier: if (fileFormatVersion < 13) then
-      if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'hypoelastic' ) then
-        skipLines: do i=1,3+TableStyle
-          read (fileUnit,'(A300)') line
-        enddo skipLines
-        contInts = IO_continuousIntValues(fileUnit,size(mesh_mapFEtoCPelem,2),nameElemSet,&
-                                          mapElemSet,size(nameElemSet))
-        exit
-      endif  
-    else Marc2016andEarlier
-      if ( IO_lc(IO_stringValue(line,chunkPos,1)) == 'connectivity') then
-        read (fileUnit,'(A300)',END=620) line
-        chunkPos = IO_stringPos(line)
-        if(any(matNumber==IO_intValue(line,chunkPos,6))) then
-          do 
-            read (fileUnit,'(A300)',END=620) line
-            chunkPos = IO_stringPos(line)
-            tmp = IO_lc(IO_stringValue(line,chunkPos,1))
-            if (verify(trim(tmp),"0123456789")/=0) then                                             ! found keyword
-              exit
-            else
-              contInts(1) = contInts(1) + 1  
-              read (tmp,*) contInts(contInts(1)+1)     
-            endif
-          enddo
-        endif  
-      endif
-    endif Marc2016andEarlier
-  enddo    
-620 do i = 1,contInts(1)
-    cpElem = cpElem+1
-    mesh_mapFEtoCPelem(1,cpElem) = contInts(1+i)
-    mesh_mapFEtoCPelem(2,cpElem) = cpElem
+  integer :: i,j,l,nNodesAlreadyRead
+
+  do l = 1, size(fileContent)
+    chunkPos = IO_stringPos(fileContent(l))
+    if( IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'connectivity' ) then
+      j = 0
+      do i = 1,nElem
+        chunkPos = IO_stringPos(fileContent(l+1+i+j))
+        mesh_mapFEtoCPelem(:,i) = [IO_intValue(fileContent(l+1+i+j),chunkPos,1),i]
+        nNodesAlreadyRead = chunkPos(1) - 2
+        do while(nNodesAlreadyRead < nNodes)                                                        ! read on if not all nodes in one line
+          j = j + 1
+          chunkPos = IO_stringPos(fileContent(l+1+i+j))
+          nNodesAlreadyRead = nNodesAlreadyRead + chunkPos(1)
+        enddo
+      enddo
+      exit
+    endif
   enddo
- 
-call math_sort(mesh_mapFEtoCPelem)
+
+  call math_sort(mesh_mapFEtoCPelem)
 
 end subroutine inputRead_mapElems
 
