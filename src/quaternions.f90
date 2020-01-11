@@ -475,7 +475,10 @@ subroutine unitTest
 
   call random_number(qu)
   qu = (qu-0.5_pReal) * 2.0_pReal
-  q = qu
+  q  = quaternion(qu)
+
+  q_2= qu
+  if(any(dNeq(q%asArray(),q_2%asArray())))          call IO_error(401,ext_msg='assign_vec__')
 
   q_2 = q + q
   if(any(dNeq(q_2%asArray(),2.0_pReal*qu)))         call IO_error(401,ext_msg='add__')
@@ -489,8 +492,13 @@ subroutine unitTest
   q_2 = q / 0.5_pReal
   if(any(dNeq(q_2%asArray(),2.0_pReal*qu)))         call IO_error(401,ext_msg='div__')
   
+  q_2 = q * 0.3_pReal
+  if(dNeq0(abs(q)) .and. q_2 == q)                  call IO_error(401,ext_msg='eq__')
+  
   q_2 = q
-  if(q_2 /= q)                                      call IO_error(401,ext_msg='eq__')
+  if(q_2 /= q)                                      call IO_error(401,ext_msg='neq__')
+
+  if(dNeq(abs(q),norm2(qu)))                        call IO_error(401,ext_msg='abs__')
 
   if(any(dNeq(q%asArray(),qu)))                     call IO_error(401,ext_msg='eq__')
   if(dNeq(q%real(),       qu(1)))                   call IO_error(401,ext_msg='real()')
@@ -504,6 +512,11 @@ subroutine unitTest
   q_2 = conjg(q)
   if(dNeq(q_2%real(),     q%real()))                call IO_error(401,ext_msg='conjg/real')
   if(any(dNeq(q_2%aimag(),q%aimag()*(-1.0_pReal)))) call IO_error(401,ext_msg='conjg/aimag')
+  
+  if (norm2(aimag(q)) * abs(real(q)) > 0.0_pReal) then
+    if (dNeq0(abs(q-exp(log(q))),1.0e-12_pReal))    call IO_error(401,ext_msg='exp/log')
+    if (dNeq0(abs(q-log(exp(q))),1.0e-12_pReal))    call IO_error(401,ext_msg='log/exp')
+  endif
       
 end subroutine unitTest
 
