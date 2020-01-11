@@ -274,7 +274,9 @@ class Table():
 
     def append(self,other):
         """
-        Append other table vertically (similar to numpy.vstack). Requires matching shapes and order.
+        Append other table vertically (similar to numpy.vstack).
+
+        Requires matching labels/shapes and order.
 
         Parameters
         ----------
@@ -290,8 +292,9 @@ class Table():
 
     def join(self,other):
         """
-        Append other table horizontally (similar to numpy.hstack). Requires matching number of rows
-        and no common lables
+        Append other table horizontally (similar to numpy.hstack).
+
+        Requires matching number of rows and no common labels.
 
         Parameters
         ----------
