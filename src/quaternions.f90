@@ -195,7 +195,8 @@ type(quaternion) elemental pure function add__(self,other)
 
   class(quaternion), intent(in) :: self,other
 
-  add__ = [self%w + other%w,self%x + other%x,self%y + other%y,self%z + other%z]
+  add__ = [ self%w,  self%x,  self%y ,self%z] &
+        + [other%w, other%x, other%y,other%z]
   
 end function add__
 
@@ -207,7 +208,7 @@ type(quaternion) elemental pure function pos__(self)
 
   class(quaternion), intent(in) :: self
 
-  pos__ = [self%w,self%x,self%y,self%z]
+  pos__ = self * (+1.0_pReal)
   
 end function pos__
 
@@ -219,7 +220,8 @@ type(quaternion) elemental pure function sub__(self,other)
 
   class(quaternion), intent(in) :: self,other
 
-  sub__ = [self%w - other%w,self%x - other%x,self%y - other%y,self%z - other%z]
+  sub__ = [ self%w,  self%x,  self%y ,self%z] &
+        - [other%w, other%x, other%y,other%z]
   
 end function sub__
 
@@ -231,7 +233,7 @@ type(quaternion) elemental pure function neg__(self)
 
   class(quaternion), intent(in) :: self
 
-  neg__ = [-self%w,-self%x,-self%y,-self%z]
+  neg__ = self * (-1.0_pReal)
   
 end function neg__
 
@@ -333,7 +335,7 @@ end function pow_quat__
 type(quaternion) elemental pure function pow_scal__(self,expon)
 
   class(quaternion), intent(in) :: self
-  real(pReal), intent(in) :: expon
+  real(pReal),       intent(in) :: expon
 
   pow_scal__ = exp(log(self)*expon)
 
@@ -421,7 +423,7 @@ type(quaternion) elemental pure function quat_homomorphed(self)
 
   class(quaternion), intent(in) :: self
 
-  quat_homomorphed = -[self%w,self%x,self%y,self%z]
+  quat_homomorphed = - self
 
 end function quat_homomorphed
 
