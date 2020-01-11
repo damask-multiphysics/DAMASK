@@ -513,12 +513,14 @@ subroutine unitTest
     q_2 = conjg(q_2) - inverse(q_2)
     if(any(dNeq0(q_2%asArray(),1.0e-15_pReal)))        call IO_error(401,ext_msg='inverse/conjg')
   endif
-  
+
+#if !(defined(__GFORTRAN__) &&  __GNUC__ < 9)
   if (norm2(aimag(q)) > 0.0_pReal) then
     if (dNeq0(abs(q-exp(log(q))),1.0e-13_pReal))       call IO_error(401,ext_msg='exp/log')
     if (dNeq0(abs(q-log(exp(q))),1.0e-13_pReal))       call IO_error(401,ext_msg='log/exp')
   endif
-      
+#endif
+
 end subroutine unitTest
 
 
