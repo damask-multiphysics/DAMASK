@@ -487,7 +487,8 @@ subroutine unitTest
   if(q_2 /= q)                                         call IO_error(401,ext_msg='neq__')
 
   if(dNeq(abs(q),norm2(qu)))                           call IO_error(401,ext_msg='abs__')
-  if(dNeq(abs(q)**2.0_pReal, real(q*q%conjg())))       call IO_error(401,ext_msg='abs__/*conjg')
+  if(dNeq(abs(q)**2.0_pReal, real(q*q%conjg()),1.0e-14_pReal)) &
+                                                       call IO_error(401,ext_msg='abs__/*conjg')
 
   if(any(dNeq(q%asArray(),qu)))                        call IO_error(401,ext_msg='eq__')
   if(dNeq(q%real(),       qu(1)))                      call IO_error(401,ext_msg='real()')
