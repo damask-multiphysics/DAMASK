@@ -46,10 +46,10 @@ subroutine FE_init
     call IO_open_inputFile(FILEUNIT)
     rewind(FILEUNIT)
     do
-      read (FILEUNIT,'(a256)',END=100) line
+      read (FILEUNIT,'(A)',END=100) line
       chunkPos = IO_stringPos(line)
       if(IO_lc(IO_stringValue(line,chunkPos,1)) == 'solver') then
-        read (FILEUNIT,'(a256)',END=100) line                                                       ! next line
+        read (FILEUNIT,'(A)',END=100) line                                                          ! next line
         chunkPos = IO_stringPos(line)
         symmetricSolver = (IO_intValue(line,chunkPos,2) /= 1)
       endif

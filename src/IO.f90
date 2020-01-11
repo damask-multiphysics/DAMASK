@@ -244,7 +244,7 @@ subroutine IO_open_inputFile(fileUnit)
    
    
     do
-      read(unit2,'(A256)',END=220) line
+      read(unit2,'(A)',END=220) line
       chunkPos = IO_stringPos(line)
    
       if (IO_lc(IO_StringValue(line,chunkPos,1))=='*include') then
@@ -1000,7 +1000,7 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
 
 #if defined(Marc4DAMASK)
  do
-   read(fileUnit,'(A256)',end=100) line
+   read(fileUnit,'(A)',end=100) line
    chunkPos = IO_stringPos(line)
    if (chunkPos(1) < 1) then                                                                        ! empty line
      exit
@@ -1041,14 +1041,14 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
 !--------------------------------------------------------------------------------------------------
 ! check if the element values in the elset are auto generated
  backspace(fileUnit)
- read(fileUnit,'(A256)',end=100) line
+ read(fileUnit,'(A)',end=100) line
  chunkPos = IO_stringPos(line)
  do i = 1,chunkPos(1)
    if (IO_lc(IO_stringValue(line,chunkPos,i)) == 'generate') rangeGeneration = .true.
  enddo
 
  do l = 1,c
-   read(fileUnit,'(A256)',end=100) line
+   read(fileUnit,'(A)',end=100) line
    chunkPos = IO_stringPos(line)
    if (verify(IO_stringValue(line,chunkPos,1),'0123456789') > 0) then                               ! a non-int, i.e. set names follow on this line
      do i = 1,chunkPos(1)                                                                           ! loop over set names in line
