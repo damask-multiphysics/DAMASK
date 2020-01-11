@@ -81,7 +81,7 @@ contains
 subroutine grid_mech_FEM_init
     
   real(pReal) :: HGCoeff = 0.0e-2_pReal
-  PetscInt, dimension(worldsize) :: localK
+  PetscInt, dimension(0:worldsize-1) :: localK
   real(pReal), dimension(3,3) :: &
     temp33_Real = 0.0_pReal
   real(pReal), dimension(4,8) :: &
@@ -120,8 +120,8 @@ subroutine grid_mech_FEM_init
 ! initialize solver specific parts of PETSc
   call SNESCreate(PETSC_COMM_WORLD,mech_snes,ierr); CHKERRQ(ierr)
   call SNESSetOptionsPrefix(mech_snes,'mech_',ierr);CHKERRQ(ierr) 
-  localK              = 0
-  localK(worldrank+1) = grid3
+  localK            = 0
+  localK(worldrank) = grid3
   call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)
   call DMDACreate3d(PETSC_COMM_WORLD, &
          DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, &

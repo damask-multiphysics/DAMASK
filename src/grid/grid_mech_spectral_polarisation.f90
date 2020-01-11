@@ -100,7 +100,7 @@ subroutine grid_mech_spectral_polarisation_init
     FandF_tau, &                                                                                    ! overall pointer to solution data
     F, &                                                                                            ! specific (sub)pointer
     F_tau                                                                                           ! specific (sub)pointer
-  PetscInt, dimension(worldsize) :: localK 
+  PetscInt, dimension(0:worldsize-1) :: localK 
   integer(HID_T) :: fileHandle, groupHandle
   integer        :: fileUnit
   character(len=pStringLen) :: fileName
@@ -130,8 +130,8 @@ subroutine grid_mech_spectral_polarisation_init
 ! initialize solver specific parts of PETSc
   call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
   call SNESSetOptionsPrefix(snes,'mech_',ierr);CHKERRQ(ierr) 
-  localK              = 0
-  localK(worldrank+1) = grid3
+  localK            = 0
+  localK(worldrank) = grid3
   call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)
   call DMDACreate3d(PETSC_COMM_WORLD, &
          DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                    ! cut off stencil at boundary
