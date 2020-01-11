@@ -170,9 +170,18 @@ class Rotation:
     ################################################################################################
     # convert to different orientation representations (numpy arrays)
 
-    def asQuaternion(self):
-      """Unit quaternion: (q, p_1, p_2, p_3)."""
-      return self.quaternion.asArray()
+    def asQuaternion(self,
+                     quaternion = False):
+      """
+      Unit quaternion [q, p_1, p_2, p_3] unless quaternion == True: damask.quaternion object.
+
+      Parameters
+      ----------
+      quaternion : bool, optional
+          return quaternion as DAMASK object.
+      
+      """
+      return self.quaternion if quaternion else self.quaternion.asArray()
       
     def asEulers(self,
                  degrees = False):
@@ -190,33 +199,36 @@ class Rotation:
       return eu
     
     def asAxisAngle(self,
-                    degrees = False):
+                    degrees = False,
+                    pair = False):
       """
-      Axis angle pair: ([n_1, n_2, n_3], ω).
+      Axis angle representation [n_1, n_2, n_3, ω] unless pair == True: ([n_1, n_2, n_3], ω).
 
       Parameters
       ----------
       degrees : bool, optional
           return rotation angle in degrees.
+      pair : bool, optional
+          return tuple of axis and angle.
       
       """
       ax = qu2ax(self.quaternion.asArray())
       if degrees: ax[3] = np.degrees(ax[3])
-      return ax
+      return (ax[:3],np.degrees(ax[3])) if pair else ax
       
     def asMatrix(self):
       """Rotation matrix."""
       return qu2om(self.quaternion.asArray())
 
     def asRodrigues(self,
-                    vector=False):
+                    vector = False):
       """
-      Rodrigues-Frank vector: ([n_1, n_2, n_3], tan(ω/2)).
+      Rodrigues-Frank vector representation [n_1, n_2, n_3, tan(ω/2)] unless vector == True: [n_1, n_2, n_3] * tan(ω/2).
 
       Parameters
       ----------
       vector : bool, optional
-          return as array of length 3, i.e. scale the unit vector giving the rotation axis.
+          return as actual Rodrigues--Frank vector, i.e. rotation axis scaled by tan(ω/2).
 
       """
       ro = qu2ro(self.quaternion.asArray())
@@ -252,8 +264,8 @@ class Rotation:
                        acceptHomomorph = False,
                        P = -1):
 
-      qu = quaternion if isinstance(quaternion, np.ndarray) and quaternion.dtype == np.dtype(float) \
-                      else np.array(quaternion,dtype=float)
+      qu =   quaternion if isinstance(quaternion, np.ndarray) and quaternion.dtype == np.dtype(float) \
+                        else np.array(quaternion,dtype=float)
       if P > 0: qu[1:4] *= -1                                                                       # convert from P=1 to P=-1
       if qu[0] < 0.0:
         if acceptHomomorph:
@@ -1193,9 +1205,9 @@ class Orientation:
     ref = orientations[0]
     for o in orientations:
       closest.append(o.equivalentOrientations(
-                    ref.disorientation(o,
-                                       SST = False,                                                 # select (o[ther]'s) sym orientation
-                                       symmetries = True)[2]).rotation)                             # with lowest misorientation
+                     ref.disorientation(o,
+                                        SST = False,                                                # select (o[ther]'s) sym orientation
+                                        symmetries = True)[2]).rotation)                            # with lowest misorientation
 
     return Orientation(Rotation.fromAverage(closest,weights),ref.lattice)
 
