@@ -182,8 +182,8 @@ for name in filenames:
   nodes = damask.grid_filters.node_coord(size,F)
   
   if options.shape:
-    centres = damask.grid_filters.cell_coord(size,F)
-    shapeMismatch = shapeMismatch(  size,table.get(options.defgrad).reshape(grid[2],grid[1],grid[0],3,3),nodes,centres)
+    centers = damask.grid_filters.cell_coord(size,F)
+    shapeMismatch = shapeMismatch(  size,table.get(options.defgrad).reshape(grid[2],grid[1],grid[0],3,3),nodes,centers)
     table.add('shapeMismatch(({}))'.format(options.defgrad),
               shapeMismatch.reshape((-1,1)),
               scriptID+' '+' '.join(sys.argv[1:]))
