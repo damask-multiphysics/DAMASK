@@ -82,11 +82,12 @@ module quaternions
     procedure, public  :: conjg__
     procedure, public  :: exp__
     procedure, public  :: log__
-
-    procedure, public  :: homomorphed => quat_homomorphed
-    procedure, public  :: asArray
     procedure, public  :: real  => real__
     procedure, public  :: aimag => aimag__
+
+    procedure, public  :: homomorphed
+    procedure, public  :: asArray
+    procedure, public  :: inverse
 
   end type
 
@@ -137,7 +138,6 @@ contains
 !> @brief do self test
 !--------------------------------------------------------------------------------------------------
 subroutine quaternions_init
-
   write(6,'(/,a)') ' <<<+-  quaternions init  -+>>>'; flush(6)
   call unitTest
 
@@ -419,13 +419,13 @@ end function conjg__
 !---------------------------------------------------------------------------------------------------
 !> homomorph
 !---------------------------------------------------------------------------------------------------
-type(quaternion) elemental pure function quat_homomorphed(self)
+type(quaternion) elemental pure function homomorphed(self)
 
   class(quaternion), intent(in) :: self
 
-  quat_homomorphed = - self
+  homomorphed = - self
 
-end function quat_homomorphed
+end function homomorphed
 
 
 !---------------------------------------------------------------------------------------------------
@@ -467,6 +467,18 @@ pure function aimag__(self)
 end function aimag__
 
 
+!---------------------------------------------------------------------------------------------------
+!> inverse
+!---------------------------------------------------------------------------------------------------
+type(quaternion) elemental pure function inverse(self)
+
+  class(quaternion), intent(in) :: self
+
+  inverse = conjg(self)/abs(self)**2.0_pReal
+
+end function inverse
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief check correctness of (some) quaternions functions
 !--------------------------------------------------------------------------------------------------
@@ -478,7 +490,7 @@ subroutine unitTest
   call random_number(qu)
   qu = (qu-0.5_pReal) * 2.0_pReal
   q  = quaternion(qu)
-
+  
   q_2= qu
   if(any(dNeq(q%asArray(),q_2%asArray())))          call IO_error(401,ext_msg='assign_vec__')
 
@@ -515,9 +527,15 @@ subroutine unitTest
   if(dNeq(q_2%real(),     q%real()))                call IO_error(401,ext_msg='conjg/real')
   if(any(dNeq(q_2%aimag(),q%aimag()*(-1.0_pReal)))) call IO_error(401,ext_msg='conjg/aimag')
   
+  if(abs(q) > 0.0_pReal) then
+    q_2 = q * q%inverse()
+    if(     dNeq(real(q_2), 1.0_pReal,1.0e-15_pReal))  call IO_error(401,ext_msg='inverse/real')
+    if(any(dNeq0(aimag(q_2),          1.0e-15_pReal))) call IO_error(401,ext_msg='inverse/aimag')
+  endif
+  
   if (norm2(aimag(q)) * abs(real(q)) > 0.0_pReal) then
-    if (dNeq0(abs(q-exp(log(q))),1.0e-12_pReal))    call IO_error(401,ext_msg='exp/log')
-    if (dNeq0(abs(q-log(exp(q))),1.0e-12_pReal))    call IO_error(401,ext_msg='log/exp')
+    if (dNeq0(abs(q-exp(log(q))),1.0e-13_pReal))    call IO_error(401,ext_msg='exp/log')
+    if (dNeq0(abs(q-log(exp(q))),1.0e-13_pReal))    call IO_error(401,ext_msg='log/exp')
   endif
       
 end subroutine unitTest
