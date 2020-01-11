@@ -350,6 +350,9 @@ subroutine flux(f,ts,n,time)
 
 !--------------------------------------------------------------------------------------------------
 !> @brief trigger writing of results
+!> @details uedinc is called before each new increment, not at the end of a converged one.
+!> Therefore, storing the last written inc with an 'save' variable is required to avoid writing the
+! same increment multiple times.
 !--------------------------------------------------------------------------------------------------
 subroutine uedinc(inc,incsub)
   use prec
@@ -357,8 +360,12 @@ subroutine uedinc(inc,incsub)
 
   implicit none
   integer, intent(in) :: inc, incsub
+  integer, save :: inc_written
 #include QUOTE(PASTE(./MarcInclude/creeps,Marc4DAMASK))                                             ! creeps is needed for timinc (time increment)
 
-  call CPFEM_results(inc,cptim)
+  if (inc > inc_written) then
+    call CPFEM_results(inc,cptim)
+    inc_written = inc
+  endif
 
 end subroutine uedinc
