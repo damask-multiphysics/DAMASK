@@ -435,7 +435,6 @@ pure function asArray(self)
   class(quaternion), intent(in) :: self
 
   asArray = [self%w,self%x,self%y,self%z]
-  if (self%w < 0) asArray = -asArray
 
 end function asArray
 
@@ -475,7 +474,7 @@ subroutine unitTest
   type(quaternion)          :: q, q_2
 
   call random_number(qu)
-  if (qu(1) < 0.0_pReal) qu = -qu
+  qu = (qu-0.5_pReal) * 2.0_pReal
   q = qu
 
   q_2 = q + q
