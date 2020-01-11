@@ -113,7 +113,7 @@ class TestMechanics:
    
     def test_strain_tensor_rotation_equivalence(self):
          """Ensure that left and right strain differ only by a rotation."""
-         F = np.random.random((self.n,3,3))
+         F = np.broadcast_to(np.eye(3),[self.n,3,3]) + (np.random.random((self.n,3,3))*0.5 - 0.25)
          m = np.random.random()*5.0-2.5
          assert np.allclose(np.linalg.det(mechanics.strain_tensor(F,'U',m)),
                             np.linalg.det(mechanics.strain_tensor(F,'V',m)))
