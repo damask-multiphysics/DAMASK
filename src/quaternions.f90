@@ -31,7 +31,8 @@
 !> @author Marc De Graef, Carnegie Mellon University
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief general quaternion math, not limited to unit quaternions
-!> @details  w is the real part, (x, y, z) are the imaginary parts.
+!> @details w is the real part, (x, y, z) are the imaginary parts.
+!> @details https://users.aalto.fi/~ssarkka/pub/quat.pdf
 !---------------------------------------------------------------------------------------------------
 module quaternions
   use prec
@@ -117,6 +118,14 @@ module quaternions
   interface log
     module procedure log__
   end interface log
+
+  interface real
+    module procedure real__
+  end interface real
+
+  interface aimag
+    module procedure aimag__
+  end interface aimag
   
   private :: &
     unitTest
@@ -125,18 +134,18 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief doing self test
+!> @brief do self test
 !--------------------------------------------------------------------------------------------------
 subroutine quaternions_init
 
-  write(6,'(/,a)')   ' <<<+-  quaternions init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  quaternions init  -+>>>'; flush(6)
   call unitTest
 
 end subroutine quaternions_init
 
 
 !---------------------------------------------------------------------------------------------------
-!> constructor for a quaternion from a 4-vector
+!> construct a quaternion from a 4-vector
 !---------------------------------------------------------------------------------------------------
 type(quaternion) pure function init__(array)
 
@@ -151,7 +160,7 @@ end function init__
 
 
 !---------------------------------------------------------------------------------------------------
-!> assigning a quaternion
+!> assign a quaternion
 !---------------------------------------------------------------------------------------------------
 elemental pure subroutine assign_quat__(self,other)
 
@@ -164,7 +173,7 @@ end subroutine assign_quat__
 
 
 !---------------------------------------------------------------------------------------------------
-!> assigning a 4-vector
+!> assign a 4-vector
 !---------------------------------------------------------------------------------------------------
 pure subroutine assign_vec__(self,other)
 
@@ -180,7 +189,7 @@ end subroutine assign_vec__
 
 
 !---------------------------------------------------------------------------------------------------
-!> addition of two quaternions
+!> add a quaternion
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function add__(self,other)
 
@@ -192,7 +201,7 @@ end function add__
 
 
 !---------------------------------------------------------------------------------------------------
-!> unary positive operator
+!> return (unary positive operator)
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function pos__(self)
 
@@ -204,7 +213,7 @@ end function pos__
 
 
 !---------------------------------------------------------------------------------------------------
-!> subtraction of two quaternions
+!> subtract a quaternion
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function sub__(self,other)
 
@@ -216,7 +225,7 @@ end function sub__
 
 
 !---------------------------------------------------------------------------------------------------
-!> unary negative operator
+!> negate (unary negative operator)
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function neg__(self)
 
@@ -228,7 +237,7 @@ end function neg__
 
 
 !---------------------------------------------------------------------------------------------------
-!> multiplication of two quaternions
+!> multiply with a quaternion
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function mul_quat__(self,other)
 
@@ -243,7 +252,7 @@ end function mul_quat__
 
 
 !---------------------------------------------------------------------------------------------------
-!> multiplication of quaternion with scalar
+!> multiply with a scalar
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function mul_scal__(self,scal)
 
@@ -256,7 +265,7 @@ end function mul_scal__
 
 
 !---------------------------------------------------------------------------------------------------
-!> division of two quaternions
+!> divide by a quaternion
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function div_quat__(self,other)
 
@@ -268,7 +277,7 @@ end function div_quat__
 
 
 !---------------------------------------------------------------------------------------------------
-!> divisiont of quaternions by scalar
+!> divide by a scalar
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function div_scal__(self,scal)
 
@@ -281,7 +290,7 @@ end function div_scal__
 
 
 !---------------------------------------------------------------------------------------------------
-!> equality of two quaternions
+!> test equality
 !---------------------------------------------------------------------------------------------------
 logical elemental pure function eq__(self,other)
 
@@ -294,7 +303,7 @@ end function eq__
 
 
 !---------------------------------------------------------------------------------------------------
-!> inequality of two quaternions
+!> test inequality
 !---------------------------------------------------------------------------------------------------
 logical elemental pure function neq__(self,other)
 
@@ -306,20 +315,7 @@ end function neq__
 
 
 !---------------------------------------------------------------------------------------------------
-!> quaternion to the power of a scalar
-!---------------------------------------------------------------------------------------------------
-type(quaternion) elemental pure function pow_scal__(self,expon)
-
-  class(quaternion), intent(in) :: self
-  real(pReal), intent(in) :: expon
-
-  pow_scal__ = exp(log(self)*expon)
-
-end function pow_scal__
-
-
-!---------------------------------------------------------------------------------------------------
-!> quaternion to the power of a quaternion
+!> raise to the power of a quaternion
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function pow_quat__(self,expon)
 
@@ -332,7 +328,20 @@ end function pow_quat__
 
 
 !---------------------------------------------------------------------------------------------------
-!> exponential of a quaternion
+!> raise to the power of a scalar
+!---------------------------------------------------------------------------------------------------
+type(quaternion) elemental pure function pow_scal__(self,expon)
+
+  class(quaternion), intent(in) :: self
+  real(pReal), intent(in) :: expon
+
+  pow_scal__ = exp(log(self)*expon)
+
+end function pow_scal__
+
+
+!---------------------------------------------------------------------------------------------------
+!> take exponential
 !> ToDo: Lacks any check for invalid operations
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function exp__(self)
@@ -340,7 +349,7 @@ type(quaternion) elemental pure function exp__(self)
   class(quaternion), intent(in) :: self
   real(pReal)                   :: absImag
 
-  absImag = norm2([self%x, self%y, self%z])
+  absImag = norm2(aimag(self))
 
   exp__ = exp(self%w) * [                 cos(absImag), &
                          self%x/absImag * sin(absImag), &
@@ -351,7 +360,7 @@ end function exp__
 
 
 !---------------------------------------------------------------------------------------------------
-!> logarithm of a quaternion
+!> take logarithm
 !> ToDo: Lacks any check for invalid operations
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function log__(self)
@@ -359,7 +368,7 @@ type(quaternion) elemental pure function log__(self)
   class(quaternion), intent(in) :: self
   real(pReal)                   :: absImag
 
-  absImag = norm2([self%x, self%y, self%z])
+  absImag = norm2(aimag(self))
 
   log__ = [log(abs(self)), &
            self%x/absImag * acos(self%w/abs(self)), &
@@ -370,7 +379,7 @@ end function log__
 
 
 !---------------------------------------------------------------------------------------------------
-!> norm of a quaternion
+!> return norm
 !---------------------------------------------------------------------------------------------------
 real(pReal) elemental pure function abs__(a)
 
@@ -382,7 +391,7 @@ end function abs__
 
 
 !---------------------------------------------------------------------------------------------------
-!> dot product of two quaternions
+!> calculate dot product
 !---------------------------------------------------------------------------------------------------
 real(pReal) elemental pure function dot_product__(a,b)
 
@@ -394,7 +403,7 @@ end function dot_product__
 
 
 !---------------------------------------------------------------------------------------------------
-!> conjugate complex of a quaternion
+!> take conjugate complex
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function conjg__(a)
 
@@ -406,7 +415,7 @@ end function conjg__
 
 
 !---------------------------------------------------------------------------------------------------
-!> homomorphed quaternion of a quaternion
+!> homomorph
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function quat_homomorphed(self)
 
@@ -418,7 +427,7 @@ end function quat_homomorphed
 
 
 !---------------------------------------------------------------------------------------------------
-!> quaternion as plain array
+!> return as plain array
 !---------------------------------------------------------------------------------------------------
 pure function asArray(self)
 
@@ -432,7 +441,7 @@ end function asArray
 
 
 !---------------------------------------------------------------------------------------------------
-!> real part of a quaternion
+!> real part (scalar)
 !---------------------------------------------------------------------------------------------------
 pure function real__(self)
 
@@ -445,7 +454,7 @@ end function real__
 
 
 !---------------------------------------------------------------------------------------------------
-!> imaginary part of a quaternion
+!> imaginary part (3-vector)
 !---------------------------------------------------------------------------------------------------
 pure function aimag__(self)
 
@@ -463,37 +472,36 @@ end function aimag__
 subroutine unitTest
 
   real(pReal), dimension(4) :: qu
-
   type(quaternion)          :: q, q_2
 
   call random_number(qu)
   if (qu(1) < 0.0_pReal) qu = -qu
   q = qu
-  
+
   q_2 = q + q
   if(any(dNeq(q_2%asArray(),2.0_pReal*qu)))         call IO_error(401,ext_msg='add__')
-  
+
   q_2 = q - q
   if(any(dNeq0(q_2%asArray())))                     call IO_error(401,ext_msg='sub__')
-     
+
   q_2 = q * 5.0_pReal
   if(any(dNeq(q_2%asArray(),5.0_pReal*qu)))         call IO_error(401,ext_msg='mul__')
-  
+
   q_2 = q / 0.5_pReal
   if(any(dNeq(q_2%asArray(),2.0_pReal*qu)))         call IO_error(401,ext_msg='div__')
-    
+  
   q_2 = q
   if(q_2 /= q)                                      call IO_error(401,ext_msg='eq__')
 
   if(any(dNeq(q%asArray(),qu)))                     call IO_error(401,ext_msg='eq__')
   if(dNeq(q%real(),       qu(1)))                   call IO_error(401,ext_msg='real()')
   if(any(dNeq(q%aimag(),  qu(2:4))))                call IO_error(401,ext_msg='aimag()')
-  
+
   q_2 = q%homomorphed()
   if(q                 /= q_2*    (-1.0_pReal))     call IO_error(401,ext_msg='homomorphed')
   if(dNeq(q_2%real(),     qu(1)*  (-1.0_pReal)))    call IO_error(401,ext_msg='homomorphed/real')
   if(any(dNeq(q_2%aimag(),qu(2:4)*(-1.0_pReal))))   call IO_error(401,ext_msg='homomorphed/aimag')
-  
+
   q_2 = conjg(q)
   if(dNeq(q_2%real(),     q%real()))                call IO_error(401,ext_msg='conjg/real')
   if(any(dNeq(q_2%aimag(),q%aimag()*(-1.0_pReal)))) call IO_error(401,ext_msg='conjg/aimag')
