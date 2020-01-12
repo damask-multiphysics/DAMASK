@@ -478,7 +478,8 @@ subroutine inputRead_mapNodes(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
     if( IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'coordinates' ) then
       do i = 1,size(mesh_mapFEtoCPnode,2)
-        mesh_mapFEtoCPnode(1:2,i) = [IO_fixedIntValue (fileContent(l+1+i),[0,10],1),i]              ! ToDo: use IO_intValue
+        chunkPos = IO_stringPos(fileContent(l+1+i))
+        mesh_mapFEtoCPnode(:,i) = [IO_intValue(fileContent(l+1+i),chunkPos,1),i]
       enddo
       exit
     endif
@@ -499,7 +500,6 @@ subroutine inputRead_elemNodes(nodes, &
   integer,                                   intent(in)  :: nNode
   character(len=pStringLen), dimension(:),   intent(in)  :: fileContent                             !< file content, separated per lines
   
-  integer, dimension(5), parameter   :: node_ends = [0,10,30,50,70]
   integer, allocatable, dimension(:) :: chunkPos
   integer :: i,j,m,l
 
@@ -509,9 +509,10 @@ subroutine inputRead_elemNodes(nodes, &
     chunkPos = IO_stringPos(fileContent(l))
     if( IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'coordinates' ) then
       do i=1,nNode
-        m = mesh_FEasCP('node',IO_fixedIntValue(fileContent(l+1+i),node_ends,1))                    !ToDo: use IO_intValue
+        chunkPos = IO_stringPos(fileContent(l+1+i))
+        m = mesh_FEasCP('node',IO_intValue(fileContent(l+1+i),chunkPos,1))
         do j = 1,3
-          nodes(j,m) = mesh_unitlength * IO_fixedNoEFloatValue(fileContent(l+1+i),node_ends,j+1)    !ToDo: use IO_floatValue
+          nodes(j,m) = mesh_unitlength * IO_floatValue(fileContent(l+1+i),chunkPos,j+1)
         enddo
       enddo
       exit
@@ -699,7 +700,7 @@ subroutine inputRead_microstructureAndHomogenization(microstructureAt,homogeniza
         read (fileUnit,'(A300)',END=630) line                                                       ! read line with value of state var
         chunkPos = IO_stringPos(line)
         do while (scan(IO_stringValue(line,chunkPos,1),'+-',back=.true.)>1)                         ! is noEfloat value?
-          myVal = nint(IO_fixedNoEFloatValue(line,[0,20],1),pInt)                                   ! state var's value
+          myVal = nint(IO_floatValue(line,chunkPos,1))
           if (initialcondTableStyle == 2) then
             read (fileUnit,'(A300)',END=630) line                                                   ! read extra line
             read (fileUnit,'(A300)',END=630) line                                                   ! read extra line
