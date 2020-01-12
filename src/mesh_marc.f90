@@ -72,7 +72,7 @@ subroutine mesh_init(ip,el)
   real(pReal), dimension(:,:,:,:),allocatable :: &
     unscaledNormals
 
-  write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  mesh init  -+>>>'; flush(6)
  
   mesh_unitlength = numerics_unitlength                                                             ! set physical extent of a length unit in mesh
 
@@ -121,7 +121,7 @@ end subroutine mesh_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Writes all information needed for the DADF5 geometry
+!> @brief Write all information needed for the DADF5 geometry
 !--------------------------------------------------------------------------------------------------
 subroutine writeGeometry(elemType, &
                          connectivity_elem,connectivity_cell, &
@@ -164,14 +164,16 @@ subroutine writeGeometry(elemType, &
 end subroutine writeGeometry
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief Read mesh from marc input file
+!--------------------------------------------------------------------------------------------------
 subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogenizationAt)
 
   type(tElement), intent(out) :: elem
   real(pReal), dimension(:,:), allocatable, intent(out) :: &
    node0_elem                                                                                       !< node x,y,z coordinates (initially!)
-  integer, dimension(:,:), allocatable, intent(out) :: &
+  integer, dimension(:,:),     allocatable, intent(out) :: &
     connectivity_elem
-
   integer,     dimension(:),   allocatable, intent(out) :: &
     microstructureAt, &
     homogenizationAt
@@ -207,7 +209,7 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
   call IO_open_inputFile(FILEUNIT)                                                                  ! ToDo: It would be better to use fileContent
   
   call inputRead_mapElemSets(nameElemSet,mapElemSet,&
-                             FILEUNIT)
+                             FILEUNIT,inputFile)
 
   call inputRead_elemType(elem, &
                           nElems,inputFile)
@@ -349,47 +351,63 @@ end subroutine inputRead_NnodesAndElements
 !> @brief Count overall number of element sets in mesh.
 !--------------------------------------------------------------------------------------------------
 subroutine inputRead_NelemSets(nElemSets,maxNelemInSet,&
-                               fileUnit)
+                               fileContent)
  
-  integer, intent(out) :: nElemSets, maxNelemInSet
-  integer, intent(in)  :: fileUnit
+  integer,                                 intent(out) :: nElemSets, maxNelemInSet
+  character(len=pStringLen), dimension(:), intent(in)  :: fileContent                               !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
-  character(len=300) :: line
+  integer :: i,l,elemInCurrentSet
 
   nElemSets     = 0
   maxNelemInSet = 0
 
-  rewind(fileUnit)
-  do
-    read (fileUnit,'(A300)',END=620) line
-    chunkPos = IO_stringPos(line)
-
-    if ( IO_lc(IO_StringValue(line,chunkPos,1)) == 'define' .and. &
-         IO_lc(IO_StringValue(line,chunkPos,2)) == 'element' ) then
+  do l = 1, size(fileContent)
+    chunkPos = IO_stringPos(fileContent(l))
+    if ( IO_lc(IO_StringValue(fileContent(l),chunkPos,1)) == 'define' .and. &
+         IO_lc(IO_StringValue(fileContent(l),chunkPos,2)) == 'element' ) then
       nElemSets = nElemSets + 1
-      maxNelemInSet = max(maxNelemInSet, IO_countContinuousIntValues(fileUnit))
+
+      chunkPos = IO_stringPos(fileContent(l+1))
+      if(IO_lc(IO_StringValue(fileContent(l+1),chunkPos,2)) == 'to' ) then
+        elemInCurrentSet = 1 + abs( IO_intValue(fileContent(l+1),chunkPos,3) &
+                                   -IO_intValue(fileContent(l+1),chunkPos,1))
+      else
+        elemInCurrentSet = 0
+        i = 0
+        do while (.true.)
+          i = i + 1
+          chunkPos = IO_stringPos(fileContent(l+i))
+          elemInCurrentSet = elemInCurrentSet + chunkPos(1) - 1                                       ! add line's count when assuming 'c'
+          if(IO_lc(IO_stringValue(fileContent(l+i),chunkPos,chunkPos(1))) /= 'c') then                ! line finished, read last value
+            elemInCurrentSet = elemInCurrentSet + 1                                                   ! data ended
+            exit
+          endif
+        enddo
+      endif
+      maxNelemInSet = max(maxNelemInSet, elemInCurrentSet)
     endif
   enddo
 
-620 end subroutine inputRead_NelemSets
+end subroutine inputRead_NelemSets
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief map element sets
 !--------------------------------------------------------------------------------------------------
-subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,fileUnit)
+subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,fileUnit,fileContent)
  
   character(len=64), dimension(:),   allocatable, intent(out) :: nameElemSet
   integer,           dimension(:,:), allocatable, intent(out) :: mapElemSet
   integer,                                        intent(in)  :: fileUnit
+  character(len=pStringLen), dimension(:), intent(in)  :: fileContent                               !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
   character(len=300) :: line
   integer :: elemSet, NelemSets, maxNelemInSet
 
 
-  call inputRead_NelemSets(NelemSets,maxNelemInSet,fileUnit) 
+  call inputRead_NelemSets(NelemSets,maxNelemInSet,fileContent)
   allocate(nameElemSet(NelemSets)); nameElemSet = 'n/a'
   allocate(mapElemSet(1+maxNelemInSet,NelemSets),source=0)
   elemSet = 0

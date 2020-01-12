@@ -37,7 +37,6 @@ module IO
 #if defined(Marc4DAMASK) || defined(Abaqus)
   public :: &
     IO_open_inputFile, &
-    IO_countContinuousIntValues, &
     IO_continuousIntValues, &
 #if defined(Abaqus)
     IO_extractValue, &
@@ -914,62 +913,6 @@ integer function IO_countDataLines(fileUnit)
 
 end function IO_countDataLines
 #endif
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief count items in consecutive lines depending on lines
-!> @details Marc:      ints concatenated by "c" as last char or range of values a "to" b
-!> Abaqus:    triplet of start,stop,inc
-!--------------------------------------------------------------------------------------------------
-integer function IO_countContinuousIntValues(fileUnit)
-
- integer, intent(in) :: fileUnit
-
-#ifdef Abaqus
- integer                            :: l,c
-#endif
- integer, allocatable, dimension(:) :: chunkPos
- character(len=pStringLen)          :: line
-
- IO_countContinuousIntValues = 0
- line = ''
-
-#if defined(Marc4DAMASK)
- do while (trim(line) /= IO_EOF)
-   line = IO_read(fileUnit)
-   chunkPos = IO_stringPos(line)
-   if (chunkPos(1) < 1) then                                                                        ! empty line
-     exit
-   elseif (IO_lc(IO_stringValue(line,chunkPos,2)) == 'to' ) then                                    ! found range indicator
-     IO_countContinuousIntValues = 1 + abs( IO_intValue(line,chunkPos,3) &
-                                           -IO_intValue(line,chunkPos,1))
-     exit                                                                                           ! only one single range indicator allowed                              
-   else
-     IO_countContinuousIntValues = IO_countContinuousIntValues+chunkPos(1)-1                        ! add line's count when assuming 'c'
-     if ( IO_lc(IO_stringValue(line,chunkPos,chunkPos(1))) /= 'c' ) then                            ! line finished, read last value
-       IO_countContinuousIntValues = IO_countContinuousIntValues+1
-       exit                                                                                         ! data ended
-     endif
-   endif
- enddo
-#elif defined(Abaqus)
- c = IO_countDataLines(fileUnit)
- do l = 1,c
-   backspace(fileUnit)
- enddo
-
- l = 1
- do while (trim(line) /= IO_EOF .and. l <= c)                                                       ! ToDo: is this correct?
-   l = l + 1
-   line = IO_read(fileUnit)
-   chunkPos = IO_stringPos(line)
-   IO_countContinuousIntValues = IO_countContinuousIntValues + 1 + &                                ! assuming range generation
-                            (IO_intValue(line,chunkPos,2)-IO_intValue(line,chunkPos,1))/&
-                                                     max(1,IO_intValue(line,chunkPos,3))
- enddo
-#endif
-
-end function IO_countContinuousIntValues
 
 
 !--------------------------------------------------------------------------------------------------
