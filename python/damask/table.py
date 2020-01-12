@@ -22,7 +22,7 @@ class Table():
             Additional, human-readable information.
         
         """
-        self.comments = ['table.py v {}'.format(version)] if not comments else [c for c in comments]
+        self.comments = [c for c in comments]
         self.data = pd.DataFrame(data=data)
         self.shapes = shapes
         self.__label_condensed()
@@ -79,8 +79,7 @@ class Table():
         else:
             raise Exception
         
-        comments = ['table.py:from_ASCII v {}'.format(version)]
-        comments+= [f.readline()[:-1] for i in range(1,header)]
+        comments = [f.readline()[:-1] for i in range(1,header)]
         labels   = f.readline().split()
        
         shapes = {}
