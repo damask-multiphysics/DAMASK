@@ -3,7 +3,6 @@ import re
 import pandas as pd
 import numpy as np
 
-from . import version
 
 class Table():
     """Store spreadsheet-like data."""
@@ -22,7 +21,7 @@ class Table():
             Additional, human-readable information.
         
         """
-        self.comments = [c for c in comments]
+        self.comments = [] if comments is None else [c for c in comments]
         self.data = pd.DataFrame(data=data)
         self.shapes = shapes
         self.__label_condensed()
@@ -77,8 +76,8 @@ class Table():
         if keyword == 'header':
             header = int(header)
         else:
-            raise Exception
-        
+            raise TypeError
+
         comments = [f.readline()[:-1] for i in range(1,header)]
         labels   = f.readline().split()
        
@@ -138,7 +137,7 @@ class Table():
        
         data = np.loadtxt(content)
         for c in range(data.shape[1]-10):
-            shapes['user_defined{}'.format(c+1)] = (1,)
+            shapes['n/a_{}'.format(c+1)] = (1,)
 
         return Table(data,shapes,comments)
 
