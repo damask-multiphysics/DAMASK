@@ -102,7 +102,7 @@ subroutine mesh_init(ip,el)
 
   call discretization_init(microstructureAt,homogenizationAt,&
                            ip_reshaped,&
-                           node0_elem)
+                           node0_cell)
                            
   call writeGeometry(0,connectivity_elem,&
                      reshape(connectivity_cell,[elem%NcellNodesPerCell,elem%nIPs*nElems]),&
@@ -152,11 +152,11 @@ subroutine writeGeometry(elemType, &
                             
   coordinates_temp = coordinates_nodes
   call results_writeDataset('geometry',coordinates_temp,'x_n', &
-                            'coordinates of the nodes','m')
+                            'initial coordinates of the nodes','m')
                             
   coordinates_temp = coordinates_points
   call results_writeDataset('geometry',coordinates_temp,'x_p', &
-                            'coordinates of the material points','m')
+                            'initial coordinates of the materialpoints','m')
                       
   call results_closeJobFile
 

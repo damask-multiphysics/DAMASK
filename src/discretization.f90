@@ -48,10 +48,10 @@ subroutine discretization_init(homogenizationAt,microstructureAt,&
   real(pReal), dimension(:,:), intent(in) :: &
     IPcoords0, &
     NodeCoords0
-  integer, optional, intent(in) :: &
+  integer, optional,           intent(in) :: &
     sharedNodesBeginn
 
-  write(6,'(/,a)')   ' <<<+-  discretization init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  discretization init  -+>>>'; flush(6)
 
   discretization_nElem = size(microstructureAt,1)
   discretization_nIP   = size(IPcoords0,2)/discretization_nElem
@@ -81,15 +81,15 @@ subroutine discretization_results
 
   real(pReal), dimension(:,:), allocatable :: u
   
-  call results_closeGroup(results_addGroup(trim('current/geometry')))
+  call results_closeGroup(results_addGroup('current/geometry'))
   
   u = discretization_NodeCoords (1:3,:discretization_sharedNodesBeginn) &
     - discretization_NodeCoords0(1:3,:discretization_sharedNodesBeginn)
-  call results_writeDataset('current/geometry',u,'u_n','nodal displacements','m')
+  call results_writeDataset('current/geometry',u,'u_n','displacements of the nodes','m')
   
   u = discretization_IPcoords &
     - discretization_IPcoords0
-  call results_writeDataset('current/geometry',u,'u_c','cell center displacements','m')
+  call results_writeDataset('current/geometry',u,'u_p','displacements of the materialpoints','m')
 
 end subroutine discretization_results
 
