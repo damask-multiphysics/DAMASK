@@ -3,6 +3,7 @@ import re
 import pandas as pd
 import numpy as np
 
+from . import version
 
 class Table():
     """Store spreadsheet-like data."""
