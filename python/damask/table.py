@@ -97,7 +97,6 @@ class Table():
 
     @property
     def labels(self):
-        """Return the labels of all columns."""
         return list(self.shapes.keys())
 
 
