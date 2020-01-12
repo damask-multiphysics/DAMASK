@@ -582,9 +582,9 @@ end subroutine constitutive_collectDeltaState
 !> @brief writes constitutive results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_results
-#if defined(PETSc) || defined(DAMASK_HDF5)                                             
+
   integer :: p
-  character(len=256) :: group
+  character(len=pStringLen) :: group
   do p=1,size(config_name_phase)
     group = trim('current/constituent')//'/'//trim(config_name_phase(p))
     call HDF5_closeGroup(results_addGroup(group))
@@ -613,8 +613,8 @@ subroutine constitutive_results
         call plastic_nonlocal_results(phase_plasticityInstance(p),group) 
     end select
   
- enddo   
-#endif
+  enddo   
+
 end subroutine constitutive_results
 
 end module constitutive

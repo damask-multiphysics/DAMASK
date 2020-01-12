@@ -97,6 +97,8 @@ def cell_coord0(grid,size,origin=np.zeros(3)):
         number of grid points.
     size : numpy.ndarray
         physical size of the periodic field. 
+    origin : numpy.ndarray, optional
+        physical origin of the periodic field. Default is [0.0,0.0,0.0].
 
     """
     start = origin + size/grid*.5
@@ -149,6 +151,36 @@ def cell_displacement_avg(size,F):
     F_avg = np.average(F,axis=(0,1,2))
     return np.einsum('ml,ijkl->ijkm',F_avg-np.eye(3),cell_coord0(F.shape[:3][::-1],size))
 
+def cell_displacement(size,F):
+    """
+    Cell center displacement field from deformation gradient field.
+
+    Parameters
+    ----------
+    size : numpy.ndarray
+        physical size of the periodic field. 
+    F : numpy.ndarray
+        deformation gradient field.
+
+    """
+    return cell_displacement_avg(size,F) + cell_displacement_fluct(size,F)
+
+def cell_coord(size,F,origin=np.zeros(3)):
+    """
+    Cell center positions.
+
+    Parameters
+    ----------
+    size : numpy.ndarray
+        physical size of the periodic field. 
+    F : numpy.ndarray
+        deformation gradient field.
+    origin : numpy.ndarray, optional
+        physical origin of the periodic field. Default is [0.0,0.0,0.0].
+
+    """
+    return cell_coord0(F.shape[:3][::-1],size,origin) + cell_displacement(size,F)
+
 def cell_coord0_2_DNA(coord0,ordered=True):
     """
     Return grid 'DNA', i.e. grid, size, and origin from array of cell positions.
@@ -185,6 +217,19 @@ def cell_coord0_2_DNA(coord0,ordered=True):
 
     return (grid,size,origin)
 
+def coord0_check(coord0):
+    """
+    Check whether coordinates lie on a regular grid.
+
+    Parameters
+    ----------
+    coord0 : numpy.ndarray
+        array of undeformed cell coordinates.
+
+    """
+    cell_coord0_2_DNA(coord0,ordered=True)
+
+
 
 def node_coord0(grid,size,origin=np.zeros(3)):
     """
@@ -196,6 +241,8 @@ def node_coord0(grid,size,origin=np.zeros(3)):
         number of grid points.
     size : numpy.ndarray
         physical size of the periodic field. 
+    origin : numpy.ndarray, optional
+        physical origin of the periodic field. Default is [0.0,0.0,0.0].
 
     """
     x, y, z = np.meshgrid(np.linspace(origin[2],size[2]+origin[2],1+grid[2]),
@@ -234,9 +281,38 @@ def node_displacement_avg(size,F):
     F_avg = np.average(F,axis=(0,1,2))
     return np.einsum('ml,ijkl->ijkm',F_avg-np.eye(3),node_coord0(F.shape[:3][::-1],size))
 
+def node_displacement(size,F):
+    """
+    Nodal displacement field from deformation gradient field.
+
+    Parameters
+    ----------
+    size : numpy.ndarray
+        physical size of the periodic field. 
+    F : numpy.ndarray
+        deformation gradient field.
+
+    """
+    return node_displacement_avg(size,F) + node_displacement_fluct(size,F)
+
+def node_coord(size,F,origin=np.zeros(3)):
+    """
+    Nodal positions.
+
+    Parameters
+    ----------
+    size : numpy.ndarray
+        physical size of the periodic field. 
+    F : numpy.ndarray
+        deformation gradient field.
+    origin : numpy.ndarray, optional
+        physical origin of the periodic field. Default is [0.0,0.0,0.0].
+
+    """
+    return node_coord0(F.shape[:3][::-1],size,origin) + node_displacement(size,F)
 
 def cell_2_node(cell_data):
-    """Interpolate cell data to nodal data."""
+    """Interpolate periodic cell data to nodal data."""
     n = (  cell_data + np.roll(cell_data,1,(0,1,2))
          + np.roll(cell_data,1,(0,))  + np.roll(cell_data,1,(1,))  + np.roll(cell_data,1,(2,))
          + np.roll(cell_data,1,(0,1)) + np.roll(cell_data,1,(1,2)) + np.roll(cell_data,1,(2,0)))*0.125
@@ -244,7 +320,7 @@ def cell_2_node(cell_data):
     return np.pad(n,((0,1),(0,1),(0,1))+((0,0),)*len(cell_data.shape[3:]),mode='wrap')
 
 def node_2_cell(node_data):
-    """Interpolate nodal data to cell data."""
+    """Interpolate periodic nodal data to cell data."""
     c = (  node_data + np.roll(node_data,1,(0,1,2))
          + np.roll(node_data,1,(0,))  + np.roll(node_data,1,(1,))  + np.roll(node_data,1,(2,))
          + np.roll(node_data,1,(0,1)) + np.roll(node_data,1,(1,2)) + np.roll(node_data,1,(2,0)))*0.125

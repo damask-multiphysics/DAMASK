@@ -77,7 +77,7 @@ module crystallite
     crystallite_localPlasticity                                                                     !< indicates this grain to have purely local constitutive law
  
   type :: tOutput                                                                                   !< new requested output (per phase)
-    character(len=65536), allocatable, dimension(:) :: &
+    character(len=pStringLen), allocatable, dimension(:) :: &
       label
   end type tOutput
   type(tOutput), allocatable, dimension(:) :: output_constituent
@@ -727,7 +727,7 @@ end function crystallite_push33ToRef
 !> @brief writes crystallite results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_results
-#if defined(PETSc) || defined(DAMASK_HDF5)
+
   integer :: p,o
   real(pReal),    allocatable, dimension(:,:,:) :: selected_tensors
   type(rotation), allocatable, dimension(:)     :: selected_rotations
@@ -848,7 +848,7 @@ subroutine crystallite_results
    enddo
    
  end function select_rotations
-#endif
+
 end subroutine crystallite_results
 
 

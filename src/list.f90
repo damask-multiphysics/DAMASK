@@ -261,7 +261,7 @@ end function getInt
 !! error unless default is given. If raw is true, the the complete string is returned, otherwise 
 !! the individual chunks are returned
 !--------------------------------------------------------------------------------------------------
-character(len=65536) function getString(this,key,defaultVal,raw)
+character(len=pStringLen) function getString(this,key,defaultVal,raw)
  
   class(tPartitionedStringList), target, intent(in)           :: this
   character(len=*),                      intent(in)           :: key
@@ -400,13 +400,13 @@ end function getInts
 !--------------------------------------------------------------------------------------------------
 function getStrings(this,key,defaultVal,raw)
  
-  character(len=65536),dimension(:), allocatable             :: getStrings
+  character(len=pStringLen),dimension(:), allocatable        :: getStrings
   class(tPartitionedStringList),target, intent(in)           :: this
   character(len=*),                     intent(in)           :: key
   character(len=*),    dimension(:),    intent(in), optional :: defaultVal
   logical,                              intent(in), optional :: raw
   type(tPartitionedStringList), pointer                      :: item
-  character(len=65536)                                       :: str
+  character(len=pStringLen)                                  :: str
   integer                                                    :: i
   logical                                                    :: found, &
                                                                 whole, &

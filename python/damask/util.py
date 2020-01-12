@@ -7,9 +7,6 @@ from optparse import Option
 from queue import Queue
 from threading import Thread
 
-
-import numpy as np
-
 class bcolors:
     """
     ASCII Colors (Blender code).
@@ -65,19 +62,6 @@ def report(who = None,
 
 
 # -----------------------------
-def report_geom(info,
-                what = ['grid','size','origin','homogenization','microstructures']):
-  """Reports (selected) geometry information."""
-  output = {
-            'grid'   : 'grid     a b c:  {}'.format(' x '.join(list(map(str,info['grid'  ])))),
-            'size'   : 'size     x y z:  {}'.format(' x '.join(list(map(str,info['size'  ])))),
-            'origin' : 'origin   x y z:  {}'.format(' : '.join(list(map(str,info['origin'])))),
-            'homogenization' :  'homogenization:  {}'.format(info['homogenization']),
-            'microstructures' : 'microstructures: {}'.format(info['microstructures']),
-           }
-  for item in what: croak(output[item.lower()])
-
-# -----------------------------
 def emph(what):
   """Formats string with emphasis."""
   return bcolors.BOLD+srepr(what)+bcolors.ENDC
@@ -119,30 +103,6 @@ def execute(cmd,
   if process.returncode != 0: raise RuntimeError('{} failed with returncode {}'.format(cmd,process.returncode))
   return out,error
 
-def coordGridAndSize(coordinates):
-  """Determines grid count and overall physical size along each dimension of an ordered array of coordinates."""
-  dim    = coordinates.shape[1]
-  coords = [np.unique(coordinates[:,i]) for i in range(dim)]
-  mincorner = np.array(list(map(min,coords)))
-  maxcorner = np.array(list(map(max,coords)))
-  grid   = np.array(list(map(len,coords)),'i')
-  size   = grid/np.maximum(np.ones(dim,'d'), grid-1.0) * (maxcorner-mincorner)                      # size from edge to edge = dim * n/(n-1) 
-  size   = np.where(grid > 1, size, min(size[grid > 1]/grid[grid > 1]))                             # spacing for grid==1 equal to smallest among other ones
-  delta  = size/grid
-  
-  N = grid.prod()
-  
-  if  N != len(coordinates):
-    raise ValueError('Data count {} does not match grid {}.'.format(len(coordinates),' x '.join(map(repr,grid))))
-    
-  if   np.any(np.abs(np.log10((coords[0][1:]-coords[0][:-1])/delta[0])) > 0.01) \
-    or np.any(np.abs(np.log10((coords[1][1:]-coords[1][:-1])/delta[1])) > 0.01):
-    raise ValueError('regular grid spacing {} violated.'.format(' x '.join(map(repr,delta))))
-  if dim==3 and np.any(np.abs(np.log10((coords[2][1:]-coords[2][:-1])/delta[2])) > 0.01):
-    raise ValueError('regular grid spacing {} violated.'.format(' x '.join(map(repr,delta))))  
-  
-  return grid,size
-  
 # -----------------------------
 class extendableOption(Option):
   """

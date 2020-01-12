@@ -40,7 +40,7 @@ class DADF5():
         self.version_major = f.attrs['DADF5-major']
         self.version_minor = f.attrs['DADF5-minor']
 
-      if self.version_major != 0 or not 2 <= self.version_minor <= 4:
+      if self.version_major != 0 or not 2 <= self.version_minor <= 5:
         raise TypeError('Unsupported DADF5 version {} '.format(f.attrs['DADF5-version']))
     
       self.structured = 'grid' in f['geometry'].attrs.keys()
@@ -48,6 +48,9 @@ class DADF5():
       if self.structured:
         self.grid = f['geometry'].attrs['grid']
         self.size = f['geometry'].attrs['size']
+        if self.version_major == 0 and self.version_minor >= 5:
+          self.origin = f['geometry'].attrs['origin']
+
         
       r=re.compile('inc[0-9]+')
       increments_unsorted = {int(i[3:]):i for i in f.keys() if r.match(i)}

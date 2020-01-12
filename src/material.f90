@@ -354,12 +354,10 @@ subroutine material_init
   call config_deallocate('material.config/microstructure')
   call config_deallocate('material.config/texture')
 
-#if defined(PETSc) || defined(DAMASK_HDF5)
   call results_openJobFile
   call results_mapping_constituent(material_phaseAt,material_phaseMemberAt,config_name_phase)
   call results_mapping_materialpoint(material_homogenizationAt,material_homogenizationMemberAt,config_name_homogenization)
   call results_closeJobFile
-#endif
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -393,8 +391,8 @@ end subroutine material_init
 !--------------------------------------------------------------------------------------------------
 subroutine material_parseHomogenization
 
-  integer              :: h
-  character(len=65536) :: tag
+  integer :: h
+  character(len=pStringLen) :: tag
  
   allocate(homogenization_type(size(config_homogenization)),           source=HOMOGENIZATION_undefined_ID)
   allocate(thermal_type(size(config_homogenization)),                  source=THERMAL_isothermal_ID)
@@ -484,11 +482,11 @@ end subroutine material_parseHomogenization
 !--------------------------------------------------------------------------------------------------
 subroutine material_parseMicrostructure
 
-  character(len=65536), dimension(:), allocatable :: &
+  character(len=pStringLen), dimension(:), allocatable :: &
     strings
   integer, allocatable, dimension(:) :: chunkPos
   integer :: e, m, c, i
-  character(len=65536) :: &
+  character(len=pStringLen) :: &
     tag
  
   allocate(microstructure_Nconstituents(size(config_microstructure)), source=0)
@@ -542,7 +540,7 @@ end subroutine material_parseMicrostructure
 subroutine material_parsePhase
 
   integer :: sourceCtr, kinematicsCtr, stiffDegradationCtr, p
-  character(len=65536), dimension(:), allocatable ::  str 
+  character(len=pStringLen), dimension(:), allocatable ::  str 
  
  
   allocate(phase_elasticity(size(config_phase)),source=ELASTICITY_undefined_ID)
@@ -596,9 +594,9 @@ subroutine material_parsePhase
 #if defined(__GFORTRAN__) || defined(__PGI)
     str = ['GfortranBug86277']
     str = config_phase(p)%getStrings('(source)',defaultVal=str)
-    if (str(1) == 'GfortranBug86277') str = [character(len=65536)::]
+    if (str(1) == 'GfortranBug86277') str = [character(len=pStringLen)::]
 #else
-    str = config_phase(p)%getStrings('(source)',defaultVal=[character(len=65536)::])
+    str = config_phase(p)%getStrings('(source)',defaultVal=[character(len=pStringLen)::])
 #endif
     do sourceCtr = 1, size(str)
       select case (trim(str(sourceCtr)))
@@ -620,9 +618,9 @@ subroutine material_parsePhase
 #if defined(__GFORTRAN__) || defined(__PGI)
     str = ['GfortranBug86277']
     str = config_phase(p)%getStrings('(kinematics)',defaultVal=str)
-    if (str(1) == 'GfortranBug86277') str = [character(len=65536)::]
+    if (str(1) == 'GfortranBug86277') str = [character(len=pStringLen)::]
 #else
-    str = config_phase(p)%getStrings('(kinematics)',defaultVal=[character(len=65536)::])
+    str = config_phase(p)%getStrings('(kinematics)',defaultVal=[character(len=pStringLen)::])
 #endif
     do kinematicsCtr = 1, size(str)
       select case (trim(str(kinematicsCtr)))
@@ -637,9 +635,9 @@ subroutine material_parsePhase
 #if defined(__GFORTRAN__) || defined(__PGI)
     str = ['GfortranBug86277']
     str = config_phase(p)%getStrings('(stiffness_degradation)',defaultVal=str)
-    if (str(1) == 'GfortranBug86277') str = [character(len=65536)::]
+    if (str(1) == 'GfortranBug86277') str = [character(len=pStringLen)::]
 #else
-    str = config_phase(p)%getStrings('(stiffness_degradation)',defaultVal=[character(len=65536)::])
+    str = config_phase(p)%getStrings('(stiffness_degradation)',defaultVal=[character(len=pStringLen)::])
 #endif
     do stiffDegradationCtr = 1, size(str)
       select case (trim(str(stiffDegradationCtr)))
@@ -665,8 +663,8 @@ end subroutine material_parsePhase
 !--------------------------------------------------------------------------------------------------
 subroutine material_parseTexture
 
-  integer :: j, t
-  character(len=65536), dimension(:), allocatable ::  strings                                       ! Values for given key in material config 
+  integer :: j,t
+  character(len=pStringLen), dimension(:), allocatable ::  strings                                  ! Values for given key in material config 
   integer, dimension(:), allocatable :: chunkPos
   real(pReal), dimension(3,3) :: transformation                                                     ! maps texture to microstructure coordinate system
   real(pReal), dimension(3)   :: Eulers                                                             ! Euler angles in degrees from file
@@ -702,29 +700,27 @@ subroutine material_parseTexture
       do j = 1, 3                                                                                   ! look for "x", "y", and "z" entries
         select case (strings(j))
           case('x', '+x')
-            transformation(j,1:3) = [ 1.0_pReal, 0.0_pReal, 0.0_pReal]                      ! original axis is now +x-axis
+            transformation(j,1:3) = [ 1.0_pReal, 0.0_pReal, 0.0_pReal]                              ! original axis is now +x-axis
           case('-x')
-            transformation(j,1:3) = [-1.0_pReal, 0.0_pReal, 0.0_pReal]                      ! original axis is now -x-axis
+            transformation(j,1:3) = [-1.0_pReal, 0.0_pReal, 0.0_pReal]                              ! original axis is now -x-axis
           case('y', '+y')
-            transformation(j,1:3) = [ 0.0_pReal, 1.0_pReal, 0.0_pReal]                      ! original axis is now +y-axis
+            transformation(j,1:3) = [ 0.0_pReal, 1.0_pReal, 0.0_pReal]                              ! original axis is now +y-axis
           case('-y')
-            transformation(j,1:3) = [ 0.0_pReal,-1.0_pReal, 0.0_pReal]                      ! original axis is now -y-axis
+            transformation(j,1:3) = [ 0.0_pReal,-1.0_pReal, 0.0_pReal]                              ! original axis is now -y-axis
           case('z', '+z')
-            transformation(j,1:3) = [ 0.0_pReal, 0.0_pReal, 1.0_pReal]                      ! original axis is now +z-axis
+            transformation(j,1:3) = [ 0.0_pReal, 0.0_pReal, 1.0_pReal]                              ! original axis is now +z-axis
           case('-z')
-            transformation(j,1:3) = [ 0.0_pReal, 0.0_pReal,-1.0_pReal]                      ! original axis is now -z-axis
+            transformation(j,1:3) = [ 0.0_pReal, 0.0_pReal,-1.0_pReal]                              ! original axis is now -z-axis
           case default
             call IO_error(157,t)
         end select
       enddo
-      if(dNeq(math_det33(transformation),1.0_pReal)) call IO_error(157,t)
       call transformation_%fromMatrix(transformation)
       texture_orientation(t) = texture_orientation(t) * transformation_
     endif
     
   enddo 
   
-
 end subroutine material_parseTexture
 
 
@@ -732,18 +728,14 @@ end subroutine material_parseTexture
 !> @brief allocates the plastic state of a phase
 !--------------------------------------------------------------------------------------------------
 subroutine material_allocatePlasticState(phase,NofMyPhase,&
-                                         sizeState,sizeDotState,sizeDeltaState,&
-                                         Nslip,Ntwin,Ntrans)
+                                         sizeState,sizeDotState,sizeDeltaState)
 
   integer, intent(in) :: &
     phase, &
     NofMyPhase, &
     sizeState, &
     sizeDotState, &
-    sizeDeltaState, &
-    Nslip, &
-    Ntwin, &
-    Ntrans
+    sizeDeltaState
 
   plasticState(phase)%sizeState        = sizeState
   plasticState(phase)%sizeDotState     = sizeDotState

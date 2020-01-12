@@ -18,12 +18,9 @@ module source_damage_anisoBrittle
   implicit none
   private
 
-  integer,                       dimension(:),           allocatable,         public, protected :: &
+  integer,                       dimension(:),           allocatable :: &
     source_damage_anisoBrittle_offset, &                                                            !< which source is my current source mechanism?
     source_damage_anisoBrittle_instance                                                             !< instance of source mechanism
-
-  character(len=64),             dimension(:,:),         allocatable :: &
-    source_damage_anisoBrittle_output                                                               !< name of each post result output
     
   integer,                       dimension(:,:),         allocatable :: &
     source_damage_anisoBrittle_Ncleavage                                                            !< number of cleavage systems per family
@@ -72,17 +69,15 @@ subroutine source_damage_anisoBrittle_init
 
   integer :: Ninstance,phase,instance,source,sourceOffset
   integer :: NofMyPhase,p   ,i
-  integer,              dimension(0), parameter :: emptyIntArray    = [integer::]
-  character(len=65536), dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
   integer(kind(undefined_ID)) :: &
     outputID
 
   character(len=pStringLen) :: &
     extmsg = ''
-  character(len=65536), dimension(:), allocatable :: &
+  character(len=pStringLen), dimension(:), allocatable :: &
     outputs
 
-  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_DAMAGE_ANISOBRITTLE_LABEL//' init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_DAMAGE_ANISOBRITTLE_LABEL//' init  -+>>>'; flush(6)
 
   Ninstance = count(phase_source == SOURCE_damage_anisoBrittle_ID)
   if (Ninstance == 0) return
@@ -100,9 +95,6 @@ subroutine source_damage_anisoBrittle_init
     enddo    
   enddo
   
-  allocate(source_damage_anisoBrittle_output(maxval(phase_Noutput),Ninstance))
-           source_damage_anisoBrittle_output = ''
-
   allocate(source_damage_anisoBrittle_Ncleavage(lattice_maxNcleavageFamily,Ninstance), source=0)
 
   allocate(param(Ninstance))
@@ -151,7 +143,6 @@ subroutine source_damage_anisoBrittle_init
       select case(outputs(i))
       
         case ('anisobrittle_drivingforce')
-          source_damage_anisoBrittle_output(i,source_damage_anisoBrittle_instance(p)) = outputs(i)
           prm%outputID = [prm%outputID, damage_drivingforce_ID]
 
       end select
@@ -266,8 +257,7 @@ end subroutine source_damage_anisoBrittle_getRateAndItsTangent
 subroutine source_damage_anisoBrittle_results(phase,group)
 
   integer, intent(in) :: phase
-  character(len=*), intent(in) :: group
-#if defined(PETSc) || defined(DAMASK_HDF5)  
+  character(len=*), intent(in) :: group 
   integer :: sourceOffset, o, instance
    
   instance     = source_damage_anisoBrittle_instance(phase)
@@ -281,7 +271,6 @@ subroutine source_damage_anisoBrittle_results(phase,group)
      end select
    enddo outputsLoop
    end associate
-#endif
 
 end subroutine source_damage_anisoBrittle_results
 

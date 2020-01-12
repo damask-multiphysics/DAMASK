@@ -15,18 +15,14 @@ module source_damage_isoDuctile
 
  implicit none
  private
- integer,                       dimension(:),           allocatable,         public, protected :: &
+ integer,                       dimension(:),           allocatable :: &
    source_damage_isoDuctile_offset, &                                                                 !< which source is my current damage mechanism?
    source_damage_isoDuctile_instance                                                                  !< instance of damage source mechanism
-
- character(len=64),             dimension(:,:),         allocatable, target, public :: &
-   source_damage_isoDuctile_output                                                                    !< name of each post result output
-
 
  enum, bind(c) 
    enumerator :: undefined_ID, &
                  damage_drivingforce_ID
- end enum                                                 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11 ToDo
+ end enum                                                 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ToDo
 
  type, private :: tParameters                                                                       !< container type for internal constitutive parameters
    real(pReal) :: &
@@ -57,13 +53,12 @@ subroutine source_damage_isoDuctile_init
 
  integer :: Ninstance,phase,instance,source,sourceOffset
  integer :: NofMyPhase,p,i
- character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
  integer(kind(undefined_ID)) :: &
    outputID
 
  character(len=pStringLen) :: &
    extmsg = ''
- character(len=65536), dimension(:), allocatable :: &
+ character(len=pStringLen), dimension(:), allocatable :: &
    outputs
 
  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_DAMAGE_ISODUCTILE_LABEL//' init  -+>>>'
@@ -83,9 +78,6 @@ subroutine source_damage_isoDuctile_init
        source_damage_isoDuctile_offset(phase) = source
    enddo    
  enddo
-   
- allocate(source_damage_isoDuctile_output(maxval(phase_Noutput),Ninstance))
-          source_damage_isoDuctile_output = ''
 
  allocate(param(Ninstance))
  
@@ -119,7 +111,6 @@ subroutine source_damage_isoDuctile_init
      select case(outputs(i))
      
        case ('isoductile_drivingforce')
-         source_damage_isoDuctile_output(i,source_damage_isoDuctile_instance(p)) = outputs(i)
          prm%outputID = [prm%outputID, damage_drivingforce_ID]
 
      end select
@@ -198,8 +189,7 @@ end subroutine source_damage_isoDuctile_getRateAndItsTangent
 subroutine source_damage_isoDuctile_results(phase,group)
 
   integer, intent(in) :: phase
-  character(len=*), intent(in) :: group
-#if defined(PETSc) || defined(DAMASK_HDF5)  
+  character(len=*), intent(in) :: group 
   integer :: sourceOffset, o, instance
    
   instance     = source_damage_isoDuctile_instance(phase)
@@ -213,7 +203,6 @@ subroutine source_damage_isoDuctile_results(phase,group)
      end select
    enddo outputsLoop
    end associate
-#endif
 
 end subroutine source_damage_isoDuctile_results
 

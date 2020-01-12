@@ -5,9 +5,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !--------------------------------------------------------------------------------------------------
 module HDF5_utilities
-#if defined(PETSc) || defined(DAMASK_HDF5)
   use HDF5
-#endif
 #ifdef PETSc
   use PETSC
 #endif
@@ -20,7 +18,6 @@ module HDF5_utilities
  implicit none
  public
 
-#if defined(PETSc) || defined(DAMASK_HDF5)
 !--------------------------------------------------------------------------------------------------
 !> @brief reads integer or float data of defined shape from file                                    ! ToDo: order of arguments wrong
 !> @details for parallel IO, all dimension except for the last need to match
@@ -279,8 +276,8 @@ logical function HDF5_objectExists(loc_id,path)
   integer(HID_T),   intent(in)            :: loc_id
   character(len=*), intent(in), optional  :: path
   
-  integer            :: hdferr
-  character(len=256) :: p
+  integer                   :: hdferr
+  character(len=pStringLen) :: p
   
   if (present(path)) then
     p = trim(path)
@@ -308,10 +305,10 @@ subroutine HDF5_addAttribute_str(loc_id,attrLabel,attrValue,path)
   character(len=*), intent(in)           :: attrLabel, attrValue
   character(len=*), intent(in), optional :: path
   
-  integer            :: hdferr
-  integer(HID_T)     :: attr_id, space_id, type_id
-  logical            :: attrExists
-  character(len=256) :: p
+  integer                   :: hdferr
+  integer(HID_T)            :: attr_id, space_id, type_id
+  logical                   :: attrExists
+  character(len=pStringLen) :: p
   
   if (present(path)) then
     p = trim(path)
@@ -355,10 +352,10 @@ subroutine HDF5_addAttribute_int(loc_id,attrLabel,attrValue,path)
   integer,          intent(in)            :: attrValue
   character(len=*), intent(in), optional  :: path
   
-  integer            :: hdferr
-  integer(HID_T)     :: attr_id, space_id
-  logical            :: attrExists
-  character(len=256) :: p
+  integer                   :: hdferr
+  integer(HID_T)            :: attr_id, space_id
+  logical                   :: attrExists
+  character(len=pStringLen) :: p
   
   if (present(path)) then
     p = trim(path)
@@ -396,10 +393,10 @@ subroutine HDF5_addAttribute_real(loc_id,attrLabel,attrValue,path)
   real(pReal),      intent(in)           :: attrValue
   character(len=*), intent(in), optional :: path
   
-  integer            :: hdferr
-  integer(HID_T)     :: attr_id, space_id
-  logical            :: attrExists
-  character(len=256) :: p
+  integer                   :: hdferr
+  integer(HID_T)            :: attr_id, space_id
+  logical                   :: attrExists
+  character(len=pStringLen) :: p
   
   if (present(path)) then
     p = trim(path)
@@ -441,7 +438,7 @@ subroutine HDF5_addAttribute_int_array(loc_id,attrLabel,attrValue,path)
   integer(HID_T)                :: attr_id, space_id
   integer(HSIZE_T),dimension(1) :: array_size
   logical                       :: attrExists
-  character(len=256)            :: p
+  character(len=pStringLen)     :: p
   
   if (present(path)) then
     p = trim(path)
@@ -485,7 +482,7 @@ subroutine HDF5_addAttribute_real_array(loc_id,attrLabel,attrValue,path)
   integer(HID_T)                :: attr_id, space_id
   integer(HSIZE_T),dimension(1) :: array_size
   logical                       :: attrExists
-  character(len=256)            :: p
+  character(len=pStringLen)     :: p
   
   if (present(path)) then
     p = trim(path)
@@ -1928,6 +1925,5 @@ subroutine finalize_write(plist_id, dset_id, filespace_id, memspace_id)
   if (hdferr < 0) call IO_error(1,ext_msg='finalize_write: h5sclose_f/memspace_id')
 
 end subroutine finalize_write
-#endif
 
 end module HDF5_Utilities
