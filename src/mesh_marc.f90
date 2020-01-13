@@ -104,7 +104,7 @@ subroutine mesh_init(ip,el)
                            ip_reshaped,&
                            node0_cell)
                            
-  call writeGeometry(0,connectivity_elem,&
+  call writeGeometry(elem,connectivity_elem,&
                      reshape(connectivity_cell,[elem%NcellNodesPerCell,elem%nIPs*nElems]),&
                      node0_cell,ip_reshaped)
 
@@ -122,11 +122,12 @@ end subroutine mesh_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Write all information needed for the DADF5 geometry
 !--------------------------------------------------------------------------------------------------
-subroutine writeGeometry(elemType, &
+subroutine writeGeometry(elem, &
                          connectivity_elem,connectivity_cell, &
                          coordinates_nodes,coordinates_points)
 
-  integer,                     intent(in) :: elemType
+  type(tElement),              intent(in) :: &
+    elem
   integer, dimension(:,:),     intent(in) :: &
     connectivity_elem, &
     connectivity_cell
@@ -149,6 +150,7 @@ subroutine writeGeometry(elemType, &
   connectivity_temp = connectivity_cell
   call results_writeDataset('geometry',connectivity_temp,'T_c', &
                             'connectivity of the cells','-')
+  call results_addAttribute('VTK_TYPE',elem%vtkType,'geometry/T_c')
                             
   coordinates_temp = coordinates_nodes
   call results_writeDataset('geometry',coordinates_temp,'x_n', &

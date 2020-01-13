@@ -880,14 +880,33 @@ class DADF5():
       else:
         
         nodes = vtk.vtkPoints()
-        with h5py.File(self.fname) as f:
+        with h5py.File(self.fname,'r') as f:
           nodes.SetData(numpy_support.numpy_to_vtk(f['/geometry/x_n'][()],deep=True))
           
           vtk_geom = vtk.vtkUnstructuredGrid()
           vtk_geom.SetPoints(nodes)
           vtk_geom.Allocate(f['/geometry/T_c'].shape[0])
+
+          if self.version_major == 0 and self.version_minor <= 5:
+            vtk_type = vtk.VTK_HEXAHEDRON
+            n_nodes = 8
+          else:
+            if   f['/geometry/T_c'].attrs['VTK_TYPE'] == b'TRIANGLE':
+              vtk_type = vtk.VTK_TRIANGLE
+              n_nodes = 3
+            elif f['/geometry/T_c'].attrs['VTK_TYPE'] == b'QUAD':
+              vtk_type = vtk.VTK_QUAD
+              n_nodes = 4
+            elif f['/geometry/T_c'].attrs['VTK_TYPE'] == b'TETRA':                                  # not tested
+              vtk_type = vtk.VTK_TETRA
+              n_nodes = 4
+            elif f['/geometry/T_c'].attrs['VTK_TYPE'] == b'HEXAHEDRON':
+              vtk_type = vtk.VTK_HEXAHEDRON
+              n_nodes = 8
+
           for i in f['/geometry/T_c']:
-            vtk_geom.InsertNextCell(vtk.VTK_HEXAHEDRON,8,i-1) # not for all elements!
+            vtk_geom.InsertNextCell(n_nodes,vtk_type,i-1)
+
     elif mode == 'Point':
       Points   = vtk.vtkPoints()
       Vertices = vtk.vtkCellArray()  
@@ -936,7 +955,7 @@ class DADF5():
             vtk_geom.GetCellData().AddArray(vtk_data[-1])
 
       self.set_visible('materialpoints',materialpoints_backup)
-  
+
       constituents_backup = self.visible['constituents'].copy()
       self.set_visible('constituents',False)
       for label in (labels if isinstance(labels,list) else [labels]):
